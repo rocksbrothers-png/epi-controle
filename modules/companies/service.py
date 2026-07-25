@@ -550,10 +550,30 @@ def provision_tenant_structure(connection, company_id, payload):
         )
         details.append({'field': 'Subdomínio temporário', 'before': '', 'after': slug})
 
+    # LegalEntity padrão (matriz) da empresa — âncora jurídica/fiscal do modelo
+    # Multi-CNPJ. Criada a partir do CNPJ/razão social da própria empresa quando
+    # o schema Multi-CNPJ já está provisionado.
+    from modules.legal_entities.service import ensure_default_legal_entity, legal_entities_ready
+    legal_entity_id = None
+    if legal_entities_ready(connection):
+        legal_entity_id = ensure_default_legal_entity(connection, int(company_id))
+        details.append({'field': 'CNPJ matriz (LegalEntity)', 'before': '', 'after': f'id {legal_entity_id}'})
+
     unit_id = create_unit(
         connection, int(company_id), 'Matriz', 'base', '',
         'Unidade matriz criada automaticamente na liberação da tenant.',
     )
+    # Vincula a unidade matriz ao CNPJ matriz (best-effort; coluna nullable).
+    if legal_entity_id is not None:
+        try:
+            connection.execute(
+                'UPDATE units SET legal_entity_id = ? WHERE id = ? AND legal_entity_id IS NULL',
+                (legal_entity_id, int(unit_id)),
+            )
+        except Exception:
+            # Vínculo unidade↔CNPJ é conveniência não-crítica: se a coluna ainda
+            # não existir (janela de migração), o provisionamento não deve falhar.
+            pass
     details.append({'field': 'Unidade matriz', 'before': '', 'after': f'Matriz (id {unit_id})'})
 
     general_admin_email = str(payload.get('general_admin_email') or '').strip().lower()

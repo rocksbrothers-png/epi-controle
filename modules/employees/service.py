@@ -78,26 +78,40 @@ def create_employee(connection, payload, *, actor):
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
     empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
+    columns = [
+        'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'email', 'whatsapp',
+        'preferred_contact_channel', 'sector', 'role_name', 'admission_date', 'schedule_type',
+        'tipo_vinculo', 'empresa_origem',
+    ]
+    values = [
+        payload['company_id'],
+        unit['id'],
+        payload['employee_id_code'],
+        cpf_digits,
+        payload['name'],
+        str(payload.get('email') or '').strip().lower(),
+        ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
+        preferred_channel,
+        payload['sector'],
+        payload['role_name'],
+        payload['admission_date'],
+        payload['schedule_type'],
+        tipo_vinculo,
+        empresa_origem,
+    ]
+    # CNPJ (LegalEntity) ao qual o colaborador pertence. Se o cliente não enviar
+    # (retrocompatibilidade), cai para a matriz padrão da empresa. Só é gravado
+    # quando o schema Multi-CNPJ já está provisionado.
+    from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
+    if legal_entities_ready(connection):
+        columns.append('legal_entity_id')
+        values.append(resolve_employee_legal_entity_id(
+            connection, int(payload['company_id']), payload.get('legal_entity_id')
+        ))
+    placeholders = ', '.join(['?'] * len(values))
     cursor = connection.execute(
-        'INSERT INTO employees (company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
-        'preferred_contact_channel, sector, role_name, admission_date, schedule_type, tipo_vinculo, empresa_origem) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (
-            payload['company_id'],
-            unit['id'],
-            payload['employee_id_code'],
-            cpf_digits,
-            payload['name'],
-            str(payload.get('email') or '').strip().lower(),
-            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
-            preferred_channel,
-            payload['sector'],
-            payload['role_name'],
-            payload['admission_date'],
-            payload['schedule_type'],
-            tipo_vinculo,
-            empresa_origem,
-        )
+        f"INSERT INTO employees ({', '.join(columns)}) VALUES ({placeholders})",
+        tuple(values),
     )
     connection.commit()
     return int(cursor.lastrowid)
@@ -123,34 +137,40 @@ def update_employee(connection, employee_id, payload, *, actor):
     preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
     tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
     empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
-    connection.execute(
-        _SQL_UPDATE_EMPLOYEE,
-        (
-            payload['company_id'],
-            payload['unit_id'],
-            payload['employee_id_code'],
-            cpf_digits,
-            payload['name'],
-            str(payload.get('email') or '').strip().lower(),
-            ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit()),
-            preferred_channel,
-            payload['sector'],
-            payload['role_name'],
-            payload['admission_date'],
-            payload['schedule_type'],
-            tipo_vinculo,
-            empresa_origem,
-            employee_id,
+    whatsapp = ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit())
+    email = str(payload.get('email') or '').strip().lower()
+    base_values = [
+        payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits,
+        payload['name'], email, whatsapp, preferred_channel, payload['sector'],
+        payload['role_name'], payload['admission_date'], payload['schedule_type'],
+        tipo_vinculo, empresa_origem,
+    ]
+    # Atualiza o vínculo com CNPJ apenas quando o schema Multi-CNPJ existe.
+    # Preserva o CNPJ atual quando o cliente não envia legal_entity_id.
+    from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
+    if legal_entities_ready(connection):
+        requested_entity = payload.get('legal_entity_id')
+        if requested_entity in (None, '', 0, '0'):
+            requested_entity = current.get('legal_entity_id')
+        legal_entity_id = resolve_employee_legal_entity_id(
+            connection, int(payload['company_id']), requested_entity
         )
-    )
+        sql = _SQL_UPDATE_EMPLOYEE.replace(
+            'empresa_origem = ? ', 'empresa_origem = ?, legal_entity_id = ? '
+        )
+        connection.execute(sql, tuple(base_values + [legal_entity_id, employee_id]))
+    else:
+        connection.execute(_SQL_UPDATE_EMPLOYEE, tuple(base_values + [employee_id]))
     connection.commit()
 
 
 def get_employee_by_id(connection, employee_id):
+    from epi_backend.db import table_columns
+    legal_entity_col = ', legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'employees') else ''
     row = connection.execute(
         'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
         'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
-        'tipo_vinculo, empresa_origem FROM employees WHERE id = ?',
+        f'tipo_vinculo, empresa_origem{legal_entity_col} FROM employees WHERE id = ?',
         (employee_id,),
     ).fetchone()
     return row_to_dict(row) if row else None
@@ -245,20 +265,26 @@ def apply_current_unit_allocation(connection, employees):
 
 def fetch_employees(connection, actor=None):
     from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
+    from modules.legal_entities.service import employee_legal_entity_sql
     lifecycle = lifecycle_enabled(connection, 'employees')
     status_field = ', employees.status' if lifecycle else ''
+    # O vínculo com CNPJ (LegalEntity) é opcional durante a janela de migração e
+    # em fixtures de schema parcial — o helper devolve fragmentos vazios nesse
+    # caso, preservando retrocompatibilidade.
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
         'employees.employee_id_code, employees.cpf, employees.name, employees.email, '
         'employees.whatsapp, employees.preferred_contact_channel, employees.sector, '
         'employees.role_name, employees.admission_date, employees.schedule_type, '
-        f'employees.tipo_vinculo, employees.empresa_origem{status_field}, '
+        f'employees.tipo_vinculo, employees.empresa_origem{legal_entity_select}{status_field}, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj, '
         'companies.logo_type, units.name AS unit_name, units.unit_type, '
         'units.city AS unit_city '
         'FROM employees '
         'JOIN companies ON companies.id = employees.company_id '
         'JOIN units ON units.id = employees.unit_id'
+        + legal_entity_join
     )
     where = []
     params = []

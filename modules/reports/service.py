@@ -40,6 +40,7 @@ def normalize_report_filters(raw_filters):
 
     return {
         'company_id': parse_optional_int('company_id'),
+        'legal_entity_id': parse_optional_int('legal_entity_id'),
         'unit_id': parse_optional_int('unit_id'),
         'employee_id': parse_optional_int('employee_id'),
         'epi_id': parse_optional_int('epi_id'),
@@ -66,6 +67,16 @@ def build_reports(connection, actor, filters):
     elif actor['role'] != 'master_admin':
         clauses.append('deliveries.company_id = ?')
         params.append(actor['company_id'])
+    # Filtro por CNPJ (LegalEntity): derivado do vínculo jurídico do colaborador.
+    # Ignorado silenciosamente enquanto o schema Multi-CNPJ não existir, para não
+    # quebrar relatórios durante a janela de migração.
+    if filters.get('legal_entity_id'):
+        from modules.legal_entities.service import get_legal_entity_by_id, legal_entities_ready
+        if legal_entities_ready(connection):
+            entity = get_legal_entity_by_id(connection, int(filters['legal_entity_id']))
+            ensure_resource_company(actor, entity, 'CNPJ')
+            clauses.append('employees.legal_entity_id = ?')
+            params.append(int(filters['legal_entity_id']))
     raw_unit_id = str(filters.get('unit_id') or '').strip()
     if scope_unit_id:
         if raw_unit_id and int(raw_unit_id) != int(scope_unit_id):

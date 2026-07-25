@@ -188,49 +188,15 @@ def _classify_db_error(error) -> str:
 
 
 def _table_exists(connection, table) -> bool:
-    table_name = str(table or '').strip()
-    if not table_name:
-        return False
-    try:
-        if _is_sqlite_connection(connection):
-            row = connection.execute(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
-                (table_name,),
-            ).fetchone()
-            return row is not None
-        row = connection.execute(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_name = ? LIMIT 1",
-            (table_name,),
-        ).fetchone()
-        return row is not None
-    except Exception:
-        return False
+    # Implementação canônica vive em epi_backend.db (camada de baixo nível, sem
+    # ciclos). Mantido aqui como alias para os chamadores internos de schema.
+    from epi_backend.db import table_exists as _db_table_exists
+    return _db_table_exists(connection, table)
 
 
 def _table_columns(connection, table) -> set:
-    table_name = str(table or '').strip()
-    if not table_name:
-        return set()
-    try:
-        if _is_sqlite_connection(connection):
-            rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
-            return {str(row['name'] if isinstance(row, dict) else row[1]) for row in rows}
-        rows = connection.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
-            (table_name,),
-        ).fetchall()
-        result = set()
-        for row in rows:
-            if isinstance(row, dict):
-                result.add(str(row.get('column_name') or ''))
-            elif hasattr(row, 'keys'):
-                result.add(str(row['column_name']))
-            else:
-                result.add(str(row[0]))
-        return {item for item in result if item}
-    except Exception:
-        return set()
+    from epi_backend.db import table_columns as _db_table_columns
+    return _db_table_columns(connection, table)
 
 
 def _col_exists(connection, table, column) -> bool:
@@ -2220,6 +2186,122 @@ def ensure_employee_columns(connection) -> None:
     _safe_add_column(connection, 'employees', 'empresa_origem', "TEXT NOT NULL DEFAULT ''")
 
 
+def ensure_legal_entities(connection) -> None:
+    """Arquitetura Multi-CNPJ / Joint Venture (LegalEntity).
+
+    Cria a tabela ``legal_entities`` — cada empresa contratante (tenant, tabela
+    ``companies``) passa a poder possuir um ou vários CNPJs (matriz, filiais,
+    subsidiárias, SPEs, empresas sócias de Joint Venture). Adiciona também:
+
+      - ``companies.org_structure_type``   → estrutura organizacional escolhida
+        no onboarding (single_cnpj, multi_cnpj, holding, group, joint_venture,
+        consortium, other);
+      - ``companies.stock_control_scope``  → granularidade do estoque
+        (company | legal_entity | unit);
+      - ``employees.legal_entity_id``      → CNPJ ao qual o colaborador pertence;
+      - ``units.legal_entity_id``          → CNPJ ao qual a unidade pertence.
+
+    A migração é idempotente e faz backfill: toda empresa existente recebe uma
+    LegalEntity padrão (matriz) a partir do CNPJ/razão social já cadastrado, e
+    colaboradores/unidades sem vínculo passam a apontar para essa matriz.
+    Nenhum dado é perdido e nenhuma API existente é quebrada (colunas nullable).
+    """
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS legal_entities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            cnpj TEXT NOT NULL,
+            legal_name TEXT NOT NULL DEFAULT '',
+            trade_name TEXT NOT NULL DEFAULT '',
+            entity_type TEXT NOT NULL DEFAULT 'matriz',
+            parent_entity_id INTEGER,
+            state_registration TEXT NOT NULL DEFAULT '',
+            municipal_registration TEXT NOT NULL DEFAULT '',
+            cnae TEXT NOT NULL DEFAULT '',
+            address TEXT NOT NULL DEFAULT '',
+            municipality TEXT NOT NULL DEFAULT '',
+            uf TEXT NOT NULL DEFAULT '',
+            cep TEXT NOT NULL DEFAULT '',
+            opening_date TEXT NOT NULL DEFAULT '',
+            registration_status TEXT NOT NULL DEFAULT 'ativa',
+            is_headquarters INTEGER NOT NULL DEFAULT 1,
+            active INTEGER NOT NULL DEFAULT 1,
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE(company_id, cnpj),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (parent_entity_id) REFERENCES legal_entities(id) ON DELETE SET NULL
+        )
+        '''
+    )
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_legal_entities_company ON legal_entities (company_id, active)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    # Configuração da tenant (onboarding + escopo de estoque).
+    _safe_add_column(connection, 'companies', 'org_structure_type', "TEXT NOT NULL DEFAULT 'single_cnpj'")
+    _safe_add_column(connection, 'companies', 'stock_control_scope', "TEXT NOT NULL DEFAULT 'company'")
+
+    # Vínculo do colaborador e da unidade ao CNPJ (nullable: retrocompatível).
+    _safe_add_column(connection, 'employees', 'legal_entity_id', 'INTEGER')
+    _safe_add_column(connection, 'units', 'legal_entity_id', 'INTEGER')
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_employees_legal_entity ON employees (legal_entity_id)'
+        )
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_units_legal_entity ON units (legal_entity_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    _backfill_default_legal_entities(connection)
+
+
+def _backfill_default_legal_entities(connection) -> None:
+    """Cria a LegalEntity padrão (matriz) das empresas existentes e revincula
+    colaboradores/unidades órfãos. Idempotente: só cria/atualiza o que falta."""
+    now_iso = datetime.now(UTC).isoformat()
+    companies = connection.execute(
+        'SELECT id, name, legal_name, cnpj FROM companies'
+    ).fetchall()
+    for row in companies:
+        company_id = row['id'] if hasattr(row, 'keys') else row[0]
+        name = (row['name'] if hasattr(row, 'keys') else row[1]) or ''
+        legal_name = (row['legal_name'] if hasattr(row, 'keys') else row[2]) or ''
+        cnpj = (row['cnpj'] if hasattr(row, 'keys') else row[3]) or ''
+        existing = connection.execute(
+            'SELECT id FROM legal_entities WHERE company_id = ? ORDER BY id LIMIT 1',
+            (company_id,),
+        ).fetchone()
+        if existing:
+            entity_id = existing['id'] if hasattr(existing, 'keys') else existing[0]
+        else:
+            cursor = connection.execute(
+                'INSERT INTO legal_entities (company_id, cnpj, legal_name, trade_name, '
+                'entity_type, is_headquarters, active, created_at, updated_at) '
+                "VALUES (?, ?, ?, ?, 'matriz', 1, 1, ?, ?)",
+                (company_id, str(cnpj), str(legal_name or name), str(name), now_iso, now_iso),
+            )
+            entity_id = int(cursor.lastrowid)
+        # Backfill de colaboradores e unidades sem CNPJ vinculado.
+        connection.execute(
+            'UPDATE employees SET legal_entity_id = ? '
+            'WHERE company_id = ? AND (legal_entity_id IS NULL OR legal_entity_id = 0)',
+            (entity_id, company_id),
+        )
+        connection.execute(
+            'UPDATE units SET legal_entity_id = ? '
+            'WHERE company_id = ? AND (legal_entity_id IS NULL OR legal_entity_id = 0)',
+            (entity_id, company_id),
+        )
+
+
 def ensure_unit_lifecycle_columns(connection) -> None:
     """Ciclo de vida da unidade (arquivamento/soft delete com retenção).
 
@@ -2711,6 +2793,7 @@ def init_db():
             ensure_tenant_domain_tables,
             ensure_epi_columns,
             ensure_employee_columns,
+            ensure_legal_entities,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,

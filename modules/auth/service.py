@@ -310,7 +310,13 @@ def build_bootstrap(connection, actor):
 
     units = _safe_bootstrap_section('units', lambda: fetch_units(connection, actor), [], warnings, actor, connection=connection)
     employees = _safe_bootstrap_section('employees', lambda: fetch_employees(connection, actor), [], warnings, actor, connection=connection)
-    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor), [], warnings, actor, connection=connection)
+    # Escopo de EPI por unidade: perfis operacionais (Administrador Local /
+    # Gestor de EPI) só enxergam os EPIs cadastrados na sua unidade + os de
+    # nível empresa (unit_id NULL). Administradores de empresa (sem unidade
+    # operacional) seguem vendo todos os EPIs. fetch_epis(unit_id) aplica o
+    # filtro `epis.unit_id = ? OR epis.unit_id IS NULL`.
+    _epis_scope_unit = _actor_op_unit_id(connection, actor)
+    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor, _epis_scope_unit), [], warnings, actor, connection=connection)
 
     units = _safe_bootstrap_section(
         'units_visibility_canary',

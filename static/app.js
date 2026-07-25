@@ -4938,12 +4938,12 @@ function bindDependentSelects() {
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-employee-id', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
-  populateSelect('delivery-epi', state.epis, (item) => `${item.name} - ${item.unit_measure}`);
+  populateSelect('delivery-epi', episForOperationalScope(state.epis), (item) => `${item.name} - ${item.unit_measure}`);
   populateSelect('stock-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
-  populateSelect('stock-epi', state.epis, (item) => `${item.name} - ${item.unit_measure}`);
+  populateSelect('stock-epi', episForOperationalScope(state.epis), (item) => `${item.name} - ${item.unit_measure}`);
   populateSelect('ficha-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('report-unit', state.units, (item) => item.name, 'id', true, tr('employee.filterAllUnits', 'Todas'));
-  populateSelect('report-epi', state.epis, (item) => item.name, 'id', true, tr('employee.filterAll', 'Todos'));
+  populateSelect('report-epi', episForOperationalScope(state.epis), (item) => item.name, 'id', true, tr('employee.filterAll', 'Todos'));
   populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, tr('employee.allEmployees', 'Todos os colaboradores'));
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
   document.getElementById('report-sector').innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>` + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
@@ -5347,6 +5347,32 @@ function applyEmployeesFilters(items, source = 'employees') {
   });
 }
 
+// Escopo de visibilidade de EPI por unidade operacional. Espelha o backend
+// (epi_backend/epi_scope.is_epi_visible_for_unit): um EPI aparece para uma
+// unidade quando é de nível empresa (GLOBAL / "Todas as Unidades") ou pertence
+// àquela unidade específica.
+function epiVisibleForOperationalUnit(item, unitId) {
+  const uid = String(unitId || '').trim();
+  if (!uid) return true;
+  const scopeType = String(item.scope_type || '').toUpperCase();
+  const isCompanyLevel = scopeType === 'GLOBAL'
+    || String(item.scope_label || '').toLowerCase().includes('todas as unidades');
+  if (isCompanyLevel) return true;
+  const epiUnit = String(item.unit_id || '');
+  const scopeUnit = String(item.scope_unit_id || '');
+  return epiUnit === uid || scopeUnit === uid;
+}
+
+// Restringe uma lista de EPIs ao escopo da unidade operacional do usuário
+// (perfis com unidade fixa: uma unidade só enxerga os EPIs cadastrados nela,
+// além dos EPIs de nível empresa). Administradores de empresa (sem unidade
+// operacional) continuam vendo todos os EPIs da empresa.
+function episForOperationalScope(epis) {
+  const opUnit = String(state.user?.operational_unit_id || '').trim();
+  if (!opUnit) return epis || [];
+  return (epis || []).filter((item) => epiVisibleForOperationalUnit(item, opUnit));
+}
+
 function applyEpisFilters(items) {
   const restrictToCompanyLevelAllUnits = ['general_admin', 'registry_admin'].includes(state.user?.role)
     && String(state.episFilters.unit_id || '').trim() === EPI_COMPANY_LEVEL_FILTER_VALUE;
@@ -5561,7 +5587,7 @@ function renderTables() {
   const filteredUnits = applyUnitsFilters(filterByUserCompany(state.units));
   const filteredEmployeesBase = applyEmployeesFilters(filterByUserCompany(state.employees), 'employees');
   const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
-  const filteredEpis = applyEpisFilters(filterByUserCompany(state.epis));
+  const filteredEpis = applyEpisFilters(episForOperationalScope(filterByUserCompany(state.epis)));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || globalThis.dsTableState({ colspan: 5, message: tr('unit.empty', 'Sem unidades.') });
@@ -5812,7 +5838,7 @@ function setupStockMovementsReport() {
   });
   const epiSelect = document.getElementById('smr-epi');
   if (epiSelect) {
-    const epis = filterByUserCompany(state.epis || []);
+    const epis = episForOperationalScope(filterByUserCompany(state.epis || []));
     epiSelect.innerHTML = `<option value="">${tr('unit.filterAll', 'Todos')}</option>`
       + epis.map(ep => `<option value="${ep.id}">${escapeHtml(ep.name || '')}</option>`).join('');
   }

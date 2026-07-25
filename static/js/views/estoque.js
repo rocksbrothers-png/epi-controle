@@ -15,9 +15,16 @@
     return typeof globalThis.trEpi === 'function' ? globalThis.trEpi(key, fallback) : fallback;
   }
   function esc(v) {
+    // Sanitização COMPLETA para atributos HTML (aspas incluídas), espelhando o
+    // escapeHtml global — o fallback não pode deixar " ou ' sem escape (XSS).
     return typeof globalThis.escapeHtml === 'function'
       ? globalThis.escapeHtml(v)
-      : String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      : String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
   }
   function epiProtectionLabel(value) {
     return typeof globalThis.epiProtectionLabel === 'function' ? globalThis.epiProtectionLabel(value) : (value || '-');

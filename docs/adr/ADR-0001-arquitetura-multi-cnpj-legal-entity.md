@@ -150,15 +150,36 @@ verdes).
 completo ficam para as próximas fases; enquanto isso o vínculo já é gravado e
 rastreável no backend, mas ainda não é exposto em toda a UI.
 
-## 8. Roadmap das próximas fases
+## 8. Fase 2 — rastreabilidade operacional (implementada)
 
-1. **Operacional:** derivar/registrar CNPJ em entregas (via colaborador),
-   estoque (respeitando `stock_control_scope`), requisições, compras, relatórios
-   (filtros por Empresa/CNPJ/Unidade/Setor/Colaborador), portal do colaborador,
-   QR (QR → Entrega → Colaborador → CNPJ → Empresa) e auditoria
-   (`company_tax_id`/`legal_entity_id` em todos os logs).
+Decisão-chave: **o CNPJ não é duplicado nas tabelas operacionais.** Ele é
+sempre *derivado* do vínculo jurídico do colaborador
+(`employees.legal_entity_id`), mantendo uma única fonte de verdade e evitando
+divergência entre o cadastro e o histórico.
+
+Para não repetir o gating de schema em cada módulo, o fragmento SQL é
+centralizado em `employee_legal_entity_sql(connection)`
+(`modules/legal_entities/service.py`), que devolve `(select, join)` — vazios
+quando o schema Multi-CNPJ ainda não existe. É a fonte única usada por
+colaboradores, entregas, portal e relatórios.
+
+| Área | Comportamento |
+|---|---|
+| **Entregas / QR** | `fetch_deliveries` expõe `legal_entity_id`, `legal_entity_cnpj`, `legal_entity_name`, completando a cadeia **QR → Entrega → Colaborador → CNPJ → Empresa**. |
+| **Unidades** | `create_unit`/`update_unit` aceitam `legal_entity_id` (keyword opcional), validando que o CNPJ pertence à empresa. Assinaturas antigas seguem válidas. |
+| **Portal do colaborador** | Contexto do portal traz Empresa / CNPJ / Unidade; a auditoria registra `legal_entity_id`, `company_tax_id` e `unit_id` no payload — sem migração da tabela de auditoria. |
+| **Relatórios** | Novo filtro `legal_entity_id`, aplicado sobre `employees.legal_entity_id` e sujeito ao escopo de empresa do ator. |
+| **Auditoria de CNPJ** | Criação/alteração de LegalEntity grava em `company_audit_logs` (efeito fiscal/trabalhista precisa ser auditável). Falha de auditoria não desfaz a operação. |
+
+## 9. Roadmap das próximas fases
+
+1. **Estoque e suprimentos (comportamental):** honrar `stock_control_scope`
+   (`company` | `legal_entity` | `unit`) na baixa/saldo de estoque, e registrar
+   CNPJ em requisições e pedidos de compra. Fica separado por alterar
+   semântica de negócio, não apenas leitura.
 2. **Onboarding UI:** etapa "Como sua organização está estruturada?" e o
-   cadastro em lote / importação de planilha para múltiplos CNPJs e JV.
+   cadastro em lote / importação de planilha para múltiplos CNPJs e JV
+   (backend de lote já disponível em `POST /api/legal-entities/batch`).
 3. **Frontend:** Flutter Web, Android, iOS e Web legado — seletor de CNPJ no
    cadastro de colaborador, filtros de dashboard e exportações LGPD com
    Empresa/CNPJ/Unidade.

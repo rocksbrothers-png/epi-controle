@@ -57,6 +57,29 @@ def legal_entities_ready(connection) -> bool:
     )
 
 
+def employee_legal_entity_sql(connection, *, employee_alias='employees', prefix='legal_entity'):
+    """Fragmentos SQL para enriquecer consultas que já fazem JOIN com
+    ``employees``, derivando o CNPJ do colaborador.
+
+    Retorna ``(select_fragment, join_fragment)`` — ambos vazios quando o schema
+    Multi-CNPJ ainda não está provisionado, de modo que a consulta original
+    continua válida. Centraliza o gating para não duplicar a checagem em cada
+    módulo (entregas, colaboradores, portal, relatórios).
+    """
+    if not legal_entities_ready(connection):
+        return '', ''
+    select_fragment = (
+        f', {employee_alias}.legal_entity_id'
+        f', legal_entities.cnpj AS {prefix}_cnpj'
+        f', legal_entities.legal_name AS {prefix}_name'
+        f', legal_entities.trade_name AS {prefix}_trade_name'
+    )
+    join_fragment = (
+        f' LEFT JOIN legal_entities ON legal_entities.id = {employee_alias}.legal_entity_id'
+    )
+    return select_fragment, join_fragment
+
+
 def normalize_entity_type(value) -> str:
     v = str(value or 'matriz').strip().lower()
     return v if v in ENTITY_TYPES else 'matriz'

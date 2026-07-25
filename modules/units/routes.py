@@ -74,7 +74,7 @@ def handle_post_units(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'units:create', int(payload['company_id']))
         require_structural_admin(actor)
         unit_type = normalize_unit_type(payload.get('unit_type'))
-        unit_id = create_unit(connection, payload['company_id'], payload['name'], unit_type, payload['city'], payload.get('notes', ''))
+        unit_id = create_unit(connection, payload['company_id'], payload['name'], unit_type, payload['city'], payload.get('notes', ''), legal_entity_id=payload.get('legal_entity_id'))
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'id': unit_id})
 
@@ -88,7 +88,7 @@ def handle_put_unit(handler, parsed, payload, match):
         current = get_unit_by_id(connection, unit_id)
         ensure_resource_company(actor, current, 'Unidade')
         unit_type = normalize_unit_type(payload.get('unit_type'))
-        update_unit(connection, unit_id, payload['company_id'], payload['name'], unit_type, payload['city'], payload.get('notes', ''))
+        update_unit(connection, unit_id, payload['company_id'], payload['name'], unit_type, payload['city'], payload.get('notes', ''), legal_entity_id=payload.get('legal_entity_id'))
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 

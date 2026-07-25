@@ -265,27 +265,13 @@ def apply_current_unit_allocation(connection, employees):
 
 def fetch_employees(connection, actor=None):
     from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
-    from epi_backend.db import table_columns as _table_columns, table_exists as _table_exists
+    from modules.legal_entities.service import employee_legal_entity_sql
     lifecycle = lifecycle_enabled(connection, 'employees')
     status_field = ', employees.status' if lifecycle else ''
     # O vínculo com CNPJ (LegalEntity) é opcional durante a janela de migração e
-    # em fixtures de schema parcial: só entra no SELECT quando a coluna e a
-    # tabela existem, preservando retrocompatibilidade.
-    has_legal_entity = (
-        'legal_entity_id' in _table_columns(connection, 'employees')
-        and _table_exists(connection, 'legal_entities')
-    )
-    if has_legal_entity:
-        legal_entity_select = (
-            ', employees.legal_entity_id, '
-            'legal_entities.cnpj AS legal_entity_cnpj, '
-            'legal_entities.legal_name AS legal_entity_name, '
-            'legal_entities.trade_name AS legal_entity_trade_name'
-        )
-        legal_entity_join = ' LEFT JOIN legal_entities ON legal_entities.id = employees.legal_entity_id'
-    else:
-        legal_entity_select = ''
-        legal_entity_join = ''
+    # em fixtures de schema parcial — o helper devolve fragmentos vazios nesse
+    # caso, preservando retrocompatibilidade.
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
         'employees.employee_id_code, employees.cpf, employees.name, employees.email, '

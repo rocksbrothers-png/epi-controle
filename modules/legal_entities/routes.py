@@ -32,6 +32,20 @@ from modules.legal_entities.service import (
 )
 
 
+def _audit(connection, company_id, actor, action_type, summary, details=None):
+    """Registra a alteração de CNPJ na trilha de auditoria da empresa.
+
+    Alterações de pessoa jurídica têm efeito fiscal/trabalhista, logo precisam
+    ser auditáveis. Falha de auditoria não desfaz a operação já validada — é
+    registrada como aviso estruturado.
+    """
+    try:
+        from modules.companies.service import register_company_audit
+        register_company_audit(connection, int(company_id), actor, action_type, summary, details or [])
+    except Exception as exc:
+        structured_log('warning', 'legal_entity.audit_failed', company_id=company_id, error=str(exc))
+
+
 def _resolve_company_id(actor, payload):
     """CNPJ é sempre cadastrado sob uma empresa. Master informa company_id no
     payload; os demais papéis operam sempre sob a própria empresa."""
@@ -81,6 +95,12 @@ def handle_post_legal_entities(handler, parsed, payload, match):
         company_id = _resolve_company_id(actor, payload)
         ensure_company_access(actor, company_id)
         entity_id = create_legal_entity(connection, payload, company_id)
+        _audit(
+            connection, company_id, actor, 'legal_entity_create',
+            f"CNPJ cadastrado: {payload.get('cnpj')} ({payload.get('legal_name')}).",
+            [{'field': 'CNPJ', 'before': '', 'after': str(payload.get('cnpj') or '')}],
+        )
+        connection.commit()
         structured_log('info', 'legal_entity.created', legal_entity_id=entity_id, company_id=company_id, actor_user_id=actor['id'])
         return send_json(handler, 201, {'ok': True, 'id': entity_id})
 
@@ -121,6 +141,16 @@ def handle_put_legal_entity(handler, parsed, payload, match):
             return send_json(handler, 404, {'error': 'CNPJ não encontrado.'})
         ensure_company_access(actor, current['company_id'])
         update_legal_entity(connection, entity_id, payload, int(current['company_id']))
+        changes = [
+            {'field': field, 'before': str(current.get(field) or ''), 'after': str(payload.get(field) or '')}
+            for field in ('cnpj', 'legal_name', 'trade_name', 'entity_type', 'active')
+            if str(payload.get(field) or '') != str(current.get(field) or '')
+        ]
+        _audit(
+            connection, current['company_id'], actor, 'legal_entity_update',
+            f"CNPJ atualizado: {current.get('cnpj')}.", changes,
+        )
+        connection.commit()
         structured_log('info', 'legal_entity.updated', legal_entity_id=entity_id, actor_user_id=actor['id'])
         return send_json(handler, 200, {'ok': True, 'id': entity_id})
 

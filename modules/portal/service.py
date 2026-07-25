@@ -78,6 +78,14 @@ def register_employee_portal_audit(connection, portal_context, action, ip_addres
     if not portal_context:
         return
     now = datetime.now(UTC).isoformat()
+    # Rastreabilidade jurídica: o log carrega também o CNPJ (LegalEntity) e a
+    # unidade do colaborador, sem exigir migração da tabela de auditoria.
+    audit_payload = dict(payload or {})
+    if portal_context.get('legal_entity_id'):
+        audit_payload.setdefault('legal_entity_id', portal_context.get('legal_entity_id'))
+        audit_payload.setdefault('company_tax_id', portal_context.get('legal_entity_cnpj'))
+    if portal_context.get('unit_id'):
+        audit_payload.setdefault('unit_id', portal_context.get('unit_id'))
     connection.execute(
         '''
         INSERT INTO employee_portal_audit_logs (
@@ -92,7 +100,7 @@ def register_employee_portal_audit(connection, portal_context, action, ip_addres
             str(action or '').strip() or 'unknown',
             str(ip_address or '').strip(),
             str(user_agent or '').strip(),
-            json.dumps(payload or {}, ensure_ascii=False),
+            json.dumps(audit_payload, ensure_ascii=False),
             now
         )
     )
@@ -101,17 +109,21 @@ def register_employee_portal_audit(connection, portal_context, action, ip_addres
 def get_employee_portal_context_by_token(connection, token):
     if not token:
         return None
+    # Portal do colaborador exibe Empresa / CNPJ / Unidade — o CNPJ vem do
+    # vínculo jurídico do colaborador (LegalEntity), não da empresa contratante.
+    from modules.legal_entities.service import employee_legal_entity_sql
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
     row = connection.execute(
-        '''
+        f'''
         SELECT employee_portal_links.id AS portal_link_id, employee_portal_links.company_id, employee_portal_links.employee_id,
                employee_portal_links.token, employee_portal_links.active, employee_portal_links.expires_at,
                employee_portal_links.cpf_attempts, employee_portal_links.last_cpf_attempt_at, employee_portal_links.blocked_at,
                employees.name AS employee_name, employees.employee_id_code, employees.role_name, employees.sector,
-               employees.schedule_type, employees.unit_id, units.name AS unit_name, companies.name AS company_name
+               employees.schedule_type, employees.unit_id, units.name AS unit_name, companies.name AS company_name{legal_entity_select}
         FROM employee_portal_links
         JOIN employees ON employees.id = employee_portal_links.employee_id
         JOIN units ON units.id = employees.unit_id
-        JOIN companies ON companies.id = employee_portal_links.company_id
+        JOIN companies ON companies.id = employee_portal_links.company_id{legal_entity_join}
         WHERE employee_portal_links.token = ?
         LIMIT 1
         ''',

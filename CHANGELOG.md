@@ -11,6 +11,15 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Multi-CNPJ Fase 2 — rastreabilidade operacional por CNPJ: entregas expõem o
+  CNPJ derivado do colaborador, completando a cadeia QR → Entrega → Colaborador
+  → CNPJ → Empresa; unidades aceitam `legal_entity_id` (validado por empresa);
+  portal do colaborador mostra Empresa/CNPJ/Unidade e registra
+  `legal_entity_id`/`company_tax_id`/`unit_id` na auditoria; relatórios ganham
+  filtro `legal_entity_id`; criação/alteração de CNPJ passa a ser auditada em
+  `company_audit_logs`. O CNPJ é sempre derivado do vínculo do colaborador
+  (fonte única, sem duplicação), via helper compartilhado
+  `employee_legal_entity_sql`.
 - Arquitetura Multi-CNPJ / Joint Venture (Fase 1 — fundação de backend): nova
   entidade `LegalEntity` (tabela `legal_entities`), permitindo que uma empresa
   possua um ou vários CNPJs (matriz, filiais, subsidiárias, SPEs, sócias de JV).

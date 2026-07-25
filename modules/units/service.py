@@ -238,18 +238,46 @@ def delete_unit_dependencies(connection, unit_id):
 
 # ── Route-level SQL extractions ───────────────────────────────────────────────
 
-def create_unit(connection, company_id, name, unit_type, city, notes):
+def _resolve_unit_legal_entity(connection, company_id, legal_entity_id):
+    """Valida o CNPJ informado para a unidade. Devolve ``None`` quando o schema
+    Multi-CNPJ ainda não existe ou quando nada foi informado — nesses casos a
+    coluna simplesmente não entra na escrita (retrocompatível)."""
+    if legal_entity_id in (None, '', 0, '0'):
+        return None
+    from modules.legal_entities.service import get_legal_entity_by_id, legal_entities_ready
+    if not legal_entities_ready(connection):
+        return None
+    entity = get_legal_entity_by_id(connection, int(legal_entity_id))
+    if not entity or int(entity['company_id']) != int(company_id):
+        raise ValueError('CNPJ informado não pertence a esta empresa.')
+    return int(legal_entity_id)
+
+
+def create_unit(connection, company_id, name, unit_type, city, notes, *, legal_entity_id=None):
+    columns = ['company_id', 'name', 'unit_type', 'city', 'notes']
+    values = [company_id, name, unit_type, city, notes]
+    resolved = _resolve_unit_legal_entity(connection, company_id, legal_entity_id)
+    if resolved is not None:
+        columns.append('legal_entity_id')
+        values.append(resolved)
+    placeholders = ', '.join(['?'] * len(values))
     cursor = connection.execute(
-        'INSERT INTO units (company_id, name, unit_type, city, notes) VALUES (?, ?, ?, ?, ?)',
-        (company_id, name, unit_type, city, notes)
+        f"INSERT INTO units ({', '.join(columns)}) VALUES ({placeholders})",
+        tuple(values)
     )
     return cursor.lastrowid
 
 
-def update_unit(connection, unit_id, company_id, name, unit_type, city, notes):
+def update_unit(connection, unit_id, company_id, name, unit_type, city, notes, *, legal_entity_id=None):
+    assignments = ['company_id = ?', 'name = ?', 'unit_type = ?', 'city = ?', 'notes = ?']
+    values = [company_id, name, unit_type, city, notes]
+    resolved = _resolve_unit_legal_entity(connection, company_id, legal_entity_id)
+    if resolved is not None:
+        assignments.append('legal_entity_id = ?')
+        values.append(resolved)
     connection.execute(
-        'UPDATE units SET company_id = ?, name = ?, unit_type = ?, city = ?, notes = ? WHERE id = ?',
-        (company_id, name, unit_type, city, notes, int(unit_id))
+        f"UPDATE units SET {', '.join(assignments)} WHERE id = ?",
+        tuple(values + [int(unit_id)])
     )
 
 

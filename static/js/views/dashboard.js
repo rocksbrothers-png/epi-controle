@@ -31,9 +31,17 @@
       : true;
   }
   function esc(v) {
+    // Sanitização COMPLETA para uso em atributos HTML (aspas incluídas). O
+    // fallback precisa escapar &, <, >, " e ' — senão um valor com aspas
+    // poderia quebrar o atributo (XSS). Espelha o escapeHtml global.
     return typeof globalThis.escapeHtml === 'function'
       ? globalThis.escapeHtml(v)
-      : String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      : String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
   }
   function fmtDate(v) {
     return typeof globalThis.formatDate === 'function' ? globalThis.formatDate(v) : String(v || '-');

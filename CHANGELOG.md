@@ -11,6 +11,17 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Multi-CNPJ Fase 4 — conformidade: escopo de visibilidade por CNPJ
+  (`user_legal_entities`, migration 017) — Administrador Local restrito aos
+  CNPJs autorizados e Usuário restrito ao CNPJ do próprio colaborador, com
+  lista vazia = sem restrição para não travar usuários existentes; CNPJ passa a
+  ser obrigatório no colaborador quando a empresa tem mais de um CNPJ ativo
+  (empresa de CNPJ único mantém o fallback); `company_audit_logs.legal_entity_id`
+  registra o CNPJ afetado; exportação da ficha (LGPD) informa Empresa/CNPJ/
+  Unidade com o CNPJ jurídico do colaborador; nova rota
+  `DELETE /api/legal-entities/{id}` como inativação auditada (bloqueia o último
+  CNPJ ativo e CNPJ com colaboradores vinculados) e
+  `GET|PUT /api/users/{id}/legal-entities` para gerir a autorização.
 - Multi-CNPJ Fase 3 — estoque, requisições e compras por CNPJ: nova configuração
   `stock_control_scope` (Empresa / CNPJ / Unidade) e `org_structure_type` em
   *Minha Empresa*; pool de estoque derivado de `units.legal_entity_id`

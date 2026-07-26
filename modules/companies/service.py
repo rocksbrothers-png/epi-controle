@@ -274,20 +274,34 @@ def summarize_company_changes(previous, payload):
     return summary, details
 
 
-def register_company_audit(connection, company_id, actor, action_type, summary, details=None):
+def register_company_audit(connection, company_id, actor, action_type, summary, details=None,
+                           *, legal_entity_id=None):
+    """Trilha de auditoria da empresa.
+
+    ``legal_entity_id`` registra o CNPJ afetado pela ação (efeito fiscal /
+    trabalhista). Só entra no INSERT quando a coluna existe, preservando
+    compatibilidade durante a janela de migração.
+    """
+    from epi_backend.db import table_columns
+
+    columns = ['company_id', 'actor_user_id', 'actor_name', 'action_type', 'summary',
+               'details_json', 'created_at']
+    values = [
+        company_id,
+        actor['id'],
+        actor['full_name'],
+        action_type,
+        summary,
+        json.dumps(details or [], ensure_ascii=False),
+        datetime.now().isoformat(timespec='seconds'),
+    ]
+    if legal_entity_id not in (None, '', 0, '0') and 'legal_entity_id' in table_columns(connection, 'company_audit_logs'):
+        columns.append('legal_entity_id')
+        values.append(int(legal_entity_id))
+    placeholders = ', '.join(['?'] * len(values))
     connection.execute(
-        'INSERT INTO company_audit_logs '
-        '(company_id, actor_user_id, actor_name, action_type, summary, details_json, created_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?)',
-        (
-            company_id,
-            actor['id'],
-            actor['full_name'],
-            action_type,
-            summary,
-            json.dumps(details or [], ensure_ascii=False),
-            datetime.now().isoformat(timespec='seconds'),
-        ),
+        f"INSERT INTO company_audit_logs ({', '.join(columns)}) VALUES ({placeholders})",  # noqa: S608
+        tuple(values),
     )
 
 

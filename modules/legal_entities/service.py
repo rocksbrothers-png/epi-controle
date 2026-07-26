@@ -57,6 +57,63 @@ def legal_entities_ready(connection) -> bool:
     )
 
 
+# Papéis que enxergam todos os CNPJs da própria empresa (gestão estrutural).
+_FULL_SCOPE_ROLES: frozenset[str] = frozenset({'master_admin', 'general_admin', 'registry_admin'})
+
+
+def resolve_actor_legal_entity_ids(connection, actor):
+    """CNPJs que o ator pode enxergar. ``None`` = sem restrição.
+
+    Regras (conformidade jurídica):
+      - Administrador Master / Geral / de Registro → todos (``None``);
+      - Administrador Local (``admin``) → apenas os CNPJs autorizados em
+        ``user_legal_entities``. **Lista vazia = sem restrição**, para não
+        quebrar os administradores locais já existentes, que nunca tiveram
+        autorização explícita;
+      - Usuário (``user``) → apenas o CNPJ do colaborador vinculado, derivado de
+        ``users.linked_employee_id`` (sem dado redundante).
+    """
+    if not actor:
+        return None
+    role = str(actor.get('role') or '')
+    if role in _FULL_SCOPE_ROLES:
+        return None
+    if not legal_entities_ready(connection):
+        return None
+
+    if role == 'user':
+        employee_id = actor.get('linked_employee_id')
+        if not employee_id:
+            return []
+        row = connection.execute(
+            'SELECT legal_entity_id FROM employees WHERE id = ?', (int(employee_id),)
+        ).fetchone()
+        entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
+        return [int(entity_id)] if entity_id else []
+
+    # Administrador Local: autorização explícita por CNPJ.
+    from epi_backend.db import table_exists
+    if not table_exists(connection, 'user_legal_entities'):
+        return None
+    rows = connection.execute(
+        'SELECT legal_entity_id FROM user_legal_entities WHERE user_id = ?',
+        (int(actor.get('id') or 0),),
+    ).fetchall()
+    allowed = [int(r['legal_entity_id'] if hasattr(r, 'keys') else r[0]) for r in rows]
+    return allowed or None
+
+
+def ensure_legal_entity_access(connection, actor, legal_entity_id):
+    """Bloqueia o acesso a um CNPJ fora do escopo autorizado do ator."""
+    if legal_entity_id in (None, '', 0, '0'):
+        return
+    allowed = resolve_actor_legal_entity_ids(connection, actor)
+    if allowed is None:
+        return
+    if int(legal_entity_id) not in allowed:
+        raise PermissionError('Acesso permitido apenas para os CNPJs autorizados ao seu perfil.')
+
+
 def employee_legal_entity_sql(connection, *, employee_alias='employees', prefix='legal_entity'):
     """Fragmentos SQL para enriquecer consultas que já fazem JOIN com
     ``employees``, derivando o CNPJ do colaborador.
@@ -279,6 +336,15 @@ def fetch_legal_entities(connection, actor=None, company_id=None):
     elif company_id is not None:
         where.append('company_id = ?')
         params.append(int(company_id))
+    # Escopo por CNPJ: Administrador Local restrito aos autorizados; Usuário
+    # restrito ao CNPJ do seu colaborador.
+    allowed = resolve_actor_legal_entity_ids(connection, actor) if actor else None
+    if allowed is not None:
+        if not allowed:
+            return []
+        placeholders = ', '.join(['?'] * len(allowed))
+        where.append(f'id IN ({placeholders})')
+        params.extend(allowed)
     sql = f'SELECT {_SELECT_COLUMNS} FROM legal_entities'
     if where:
         sql += ' WHERE ' + ' AND '.join(where)
@@ -337,6 +403,86 @@ def ensure_default_legal_entity(connection, company_id):
     return int(cursor.lastrowid)
 
 
+def count_active_legal_entities(connection, company_id) -> int:
+    row = connection.execute(
+        'SELECT COUNT(*) AS total FROM legal_entities WHERE company_id = ? AND active = 1',
+        (int(company_id),),
+    ).fetchone()
+    if not row:
+        return 0
+    return int(row['total'] if hasattr(row, 'keys') else row[0])
+
+
+def deactivate_legal_entity(connection, entity_id, company_id):
+    """Inativa um CNPJ (exclusão nunca é física).
+
+    O histórico jurídico/fiscal precisa ser preservado, então DELETE vira
+    inativação auditada. Bloqueia quando:
+      - é o último CNPJ ativo da empresa (deixaria a empresa sem pessoa jurídica);
+      - existem colaboradores ativos vinculados (exige realocação antes).
+    """
+    entity = get_legal_entity_by_id(connection, entity_id)
+    if not entity or int(entity['company_id']) != int(company_id):
+        raise ValueError('CNPJ não encontrado nesta empresa.')
+    if not int(entity.get('active', 1)):
+        return  # já inativo: idempotente
+    if count_active_legal_entities(connection, company_id) <= 1:
+        raise ValueError('Não é possível inativar o único CNPJ ativo da empresa.')
+    linked = connection.execute(
+        'SELECT COUNT(*) AS total FROM employees WHERE legal_entity_id = ?',
+        (int(entity_id),),
+    ).fetchone()
+    linked_total = int(linked['total'] if hasattr(linked, 'keys') else linked[0]) if linked else 0
+    if linked_total:
+        raise ValueError(
+            f'Existem {linked_total} colaborador(es) vinculados a este CNPJ. '
+            'Realoque-os para outro CNPJ antes de inativar.'
+        )
+    connection.execute(
+        'UPDATE legal_entities SET active = 0, updated_at = ? WHERE id = ? AND company_id = ?',
+        (datetime.now(UTC).isoformat(), int(entity_id), int(company_id)),
+    )
+    connection.commit()
+
+
+def fetch_user_legal_entities(connection, user_id):
+    """CNPJs explicitamente autorizados a um usuário."""
+    from epi_backend.db import table_exists
+    if not table_exists(connection, 'user_legal_entities'):
+        return []
+    rows = connection.execute(
+        'SELECT legal_entity_id FROM user_legal_entities WHERE user_id = ? ORDER BY legal_entity_id',
+        (int(user_id),),
+    ).fetchall()
+    return [int(r['legal_entity_id'] if hasattr(r, 'keys') else r[0]) for r in rows]
+
+
+def set_user_legal_entities(connection, user_id, company_id, legal_entity_ids):
+    """Define a autorização de CNPJs de um usuário (substitui a lista inteira).
+
+    Lista vazia remove a restrição (usuário volta a enxergar todos os CNPJs da
+    empresa), coerente com o padrão retrocompatível de ``resolve_actor_legal_entity_ids``.
+    """
+    ids = []
+    for raw in legal_entity_ids or []:
+        if raw in (None, '', 0, '0'):
+            continue
+        entity = get_legal_entity_by_id(connection, int(raw))
+        if not entity or int(entity['company_id']) != int(company_id):
+            raise ValueError('CNPJ informado não pertence a esta empresa.')
+        ids.append(int(raw))
+    connection.execute('DELETE FROM user_legal_entities WHERE user_id = ?', (int(user_id),))
+    now_iso = datetime.now(UTC).isoformat()
+    for entity_id in sorted(set(ids)):
+        connection.execute(
+            'INSERT INTO user_legal_entities (user_id, legal_entity_id, company_id, created_at) '
+            'VALUES (?, ?, ?, ?)',
+            (int(user_id), entity_id, int(company_id), now_iso),
+        )
+    connection.commit()
+    return sorted(set(ids))
+
+
 def resolve_employee_legal_entity_id(connection, company_id, requested_id):
     """Resolve o CNPJ de um colaborador: usa o informado (validando que pertence
     à empresa) ou cai para a matriz padrão. Mantém retrocompatibilidade com
@@ -348,4 +494,13 @@ def resolve_employee_legal_entity_id(connection, company_id, requested_id):
         if not int(entity.get('active', 1)):
             raise ValueError('CNPJ informado está inativo.')
         return int(requested_id)
+    # Empresa com mais de um CNPJ ativo: o vínculo jurídico do colaborador é
+    # obrigatório — escolher a matriz por omissão poderia registrar o vínculo
+    # trabalhista/previdenciário na pessoa jurídica errada. Empresa de CNPJ
+    # único mantém o fallback automático (retrocompatível).
+    if count_active_legal_entities(connection, company_id) > 1:
+        raise ValueError(
+            'Informe o CNPJ ao qual este colaborador pertence '
+            '(a empresa possui mais de um CNPJ ativo).'
+        )
     return ensure_default_legal_entity(connection, company_id)

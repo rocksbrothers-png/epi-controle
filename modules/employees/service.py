@@ -145,15 +145,15 @@ def update_employee(connection, employee_id, payload, *, actor):
         payload['role_name'], payload['admission_date'], payload['schedule_type'],
         tipo_vinculo, empresa_origem,
     ]
-    # Atualiza o vínculo com CNPJ apenas quando o schema Multi-CNPJ existe.
-    # Preserva o CNPJ atual quando o cliente não envia legal_entity_id.
+    # O CNPJ é o vínculo jurídico do contrato de trabalho: IMUTÁVEL na edição
+    # comum do cadastro. Um legal_entity_id enviado no payload é ignorado — a
+    # mudança só ocorre pelo processo administrativo auditado
+    # (transfer_employee_legal_entity). Colaborador legado sem vínculo recebe o
+    # backfill na primeira edição.
     from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
     if legal_entities_ready(connection):
-        requested_entity = payload.get('legal_entity_id')
-        if requested_entity in (None, '', 0, '0'):
-            requested_entity = current.get('legal_entity_id')
-        legal_entity_id = resolve_employee_legal_entity_id(
-            connection, int(payload['company_id']), requested_entity
+        legal_entity_id = current.get('legal_entity_id') or resolve_employee_legal_entity_id(
+            connection, int(payload['company_id']), None
         )
         sql = _SQL_UPDATE_EMPLOYEE.replace(
             'empresa_origem = ? ', 'empresa_origem = ?, legal_entity_id = ? '
@@ -353,10 +353,108 @@ def create_employee_unit_movement(connection, employee_id, company_id, source_un
 
 
 def update_employee_unit(connection, employee_id, unit_id):
+    # Lotação operacional apenas. NUNCA altera legal_entity_id: transferência de
+    # unidade não muda o vínculo jurídico do contrato de trabalho.
     connection.execute(
         'UPDATE employees SET unit_id = ? WHERE id = ?',
         (int(unit_id), int(employee_id))
     )
+
+
+def transfer_employee_legal_entity(connection, employee_id, target_legal_entity_id, *,
+                                   actor, reason, effective_date=''):
+    """Processo administrativo de mudança de CNPJ do colaborador.
+
+    O CNPJ representa o vínculo jurídico do contrato de trabalho e é imutável na
+    edição comum do cadastro. Esta é a única via de alteração, e exige:
+
+      - justificativa obrigatória (rastreabilidade trabalhista);
+      - CNPJ de destino da mesma empresa e ativo;
+      - registro em ``employee_legal_entity_movements`` (histórico preservado);
+      - auditoria em ``company_audit_logs`` com o CNPJ afetado.
+
+    A lotação operacional (unidade) não é tocada — ela segue seus próprios
+    fluxos de transferência.
+    """
+    from datetime import date, datetime, timezone
+
+    from modules.companies.service import register_company_audit
+    from modules.legal_entities.service import get_legal_entity_by_id
+
+    justification = str(reason or '').strip()
+    if not justification:
+        raise ValueError('Justificativa é obrigatória para alterar o CNPJ do colaborador.')
+
+    employee = get_employee_by_id(connection, int(employee_id))
+    if not employee:
+        raise ValueError('Colaborador não encontrado.')
+    company_id = int(employee['company_id'])
+
+    target = get_legal_entity_by_id(connection, int(target_legal_entity_id))
+    if not target or int(target['company_id']) != company_id:
+        raise ValueError('CNPJ de destino não pertence à empresa do colaborador.')
+    if not int(target.get('active', 1)):
+        raise ValueError('CNPJ de destino está inativo.')
+
+    source_id = employee.get('legal_entity_id')
+    if source_id and int(source_id) == int(target_legal_entity_id):
+        raise ValueError('O colaborador já pertence a este CNPJ.')
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    effective = str(effective_date or '').strip() or date.today().isoformat()
+    connection.execute(
+        'INSERT INTO employee_legal_entity_movements ('
+        'employee_id, company_id, source_legal_entity_id, target_legal_entity_id, '
+        'reason, effective_date, actor_user_id, actor_name, created_at'
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            int(employee_id), company_id,
+            int(source_id) if source_id else None, int(target_legal_entity_id),
+            justification, effective,
+            int(actor['id']), str(actor.get('full_name') or ''), now_iso,
+        ),
+    )
+    connection.execute(
+        'UPDATE employees SET legal_entity_id = ? WHERE id = ?',
+        (int(target_legal_entity_id), int(employee_id)),
+    )
+    source = get_legal_entity_by_id(connection, int(source_id)) if source_id else None
+    register_company_audit(
+        connection, company_id, actor, 'employee_legal_entity_transfer',
+        f"Vínculo jurídico de {employee.get('name')} alterado para o CNPJ {target.get('cnpj')}.",
+        [
+            {'field': 'CNPJ do colaborador',
+             'before': str((source or {}).get('cnpj') or ''),
+             'after': str(target.get('cnpj') or '')},
+            {'field': 'Justificativa', 'before': '', 'after': justification},
+            {'field': 'Vigência', 'before': '', 'after': effective},
+        ],
+        legal_entity_id=int(target_legal_entity_id),
+    )
+    connection.commit()
+    return {
+        'employee_id': int(employee_id),
+        'source_legal_entity_id': int(source_id) if source_id else None,
+        'target_legal_entity_id': int(target_legal_entity_id),
+        'effective_date': effective,
+    }
+
+
+def fetch_employee_legal_entity_movements(connection, employee_id):
+    """Histórico de vínculo jurídico do colaborador (mais recente primeiro)."""
+    from epi_backend.db import table_exists
+    if not table_exists(connection, 'employee_legal_entity_movements'):
+        return []
+    rows = connection.execute(
+        'SELECT m.*, src.cnpj AS source_cnpj, tgt.cnpj AS target_cnpj, '
+        'tgt.legal_name AS target_legal_name '
+        'FROM employee_legal_entity_movements m '
+        'LEFT JOIN legal_entities src ON src.id = m.source_legal_entity_id '
+        'LEFT JOIN legal_entities tgt ON tgt.id = m.target_legal_entity_id '
+        'WHERE m.employee_id = ? ORDER BY m.created_at DESC, m.id DESC',
+        (int(employee_id),),
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
 
 
 # ── Arquivamento (Soft Delete) com retenção — mesma política das Unidades ────

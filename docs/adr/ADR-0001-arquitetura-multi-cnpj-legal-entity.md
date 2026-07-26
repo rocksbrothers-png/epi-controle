@@ -247,7 +247,31 @@ Bloqueia quando é o último CNPJ ativo ou quando há colaboradores vinculados
 colaborador** (com o da empresa contratante como fallback), além de Empresa e
 Unidade.
 
-## 11. Roadmap das próximas fases
+## 11. Fase 5 — CNPJ imutável e transferência administrativa (implementada)
+
+**Decisão de negócio do cliente:** o CNPJ representa o **vínculo jurídico do
+contrato de trabalho** e é **imutável após a admissão**. A unidade representa
+apenas a **lotação operacional**.
+
+Consequências implementadas:
+
+| Regra | Implementação |
+|---|---|
+| Transferência de unidade nunca altera o CNPJ | `update_employee_unit` toca somente `unit_id` — verificado e documentado; nenhuma lógica automática foi criada |
+| CNPJ imutável na edição comum | `update_employee` **ignora** `legal_entity_id` do payload e preserva o vínculo da admissão |
+| Alteração só por processo administrativo | `POST /api/employees/{id}/legal-entity-transfer`, com justificativa obrigatória |
+| Auditoria completa | Registro em `employee_legal_entity_movements` (migration 018) + `company_audit_logs` com o CNPJ afetado |
+| Histórico preservado | O histórico é cumulativo (`GET /api/employees/{id}/legal-entity-movements`); nada é sobrescrito |
+| Operações usam a unidade atual | Estoque, entrega e movimentações continuam ancorados na lotação operacional vigente |
+
+A permissão `employees:legal_entity_transfer` restringe o processo a
+Administrador Master / Geral / de Registro.
+
+Colaborador legado sem vínculo recebe o backfill para a matriz na primeira
+edição — não é uma "alteração" de CNPJ, e sim a materialização do vínculo que
+já existia implicitamente.
+
+## 12. Roadmap das próximas fases
 
 1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
    quando o pool é compartilhado (FEFO entre unidades? unidade da operação

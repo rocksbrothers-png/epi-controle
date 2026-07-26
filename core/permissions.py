@@ -18,6 +18,9 @@ PERM_EMPLOYEES_VIEW = 'employees:view'
 PERM_EMPLOYEES_CREATE = 'employees:create'
 PERM_EMPLOYEES_UPDATE = 'employees:update'
 PERM_EMPLOYEES_DELETE = 'employees:delete'
+# Mudança do vínculo jurídico (CNPJ) do colaborador. O CNPJ é imutável na
+# edição comum; esta permissão libera o processo administrativo auditado.
+PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER = 'employees:legal_entity_transfer'
 
 PERM_EPIS_VIEW = 'epis:view'
 PERM_EPIS_CREATE = 'epis:create'
@@ -125,6 +128,8 @@ COMPANY_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({
 # Administrador de Registro. O Administrador Master gerencia via suporte.
 LEGAL_ENTITY_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({
     PERM_LEGAL_ENTITIES_CREATE, PERM_LEGAL_ENTITIES_UPDATE, PERM_LEGAL_ENTITIES_DELETE,
+    # Processo administrativo de mudança do vínculo jurídico do colaborador.
+    PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
 })
 COMMERCIAL_PERMISSIONS: frozenset[str] = frozenset({PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW})
 STOCK_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_ADJUST})

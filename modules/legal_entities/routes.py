@@ -18,6 +18,7 @@ from core.auth import ensure_company_access
 from core.database import get_connection
 from core.permissions import (
     PERM_LEGAL_ENTITIES_CREATE,
+    PERM_LEGAL_ENTITIES_DELETE,
     PERM_LEGAL_ENTITIES_UPDATE,
     PERM_LEGAL_ENTITIES_VIEW,
 )
@@ -26,13 +27,17 @@ from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.legal_entities.service import (
     create_legal_entity,
+    deactivate_legal_entity,
+    ensure_legal_entity_access,
     fetch_legal_entities,
+    fetch_user_legal_entities,
     get_legal_entity_by_id,
+    set_user_legal_entities,
     update_legal_entity,
 )
 
 
-def _audit(connection, company_id, actor, action_type, summary, details=None):
+def _audit(connection, company_id, actor, action_type, summary, details=None, *, legal_entity_id=None):
     """Registra a alteração de CNPJ na trilha de auditoria da empresa.
 
     Alterações de pessoa jurídica têm efeito fiscal/trabalhista, logo precisam
@@ -41,7 +46,10 @@ def _audit(connection, company_id, actor, action_type, summary, details=None):
     """
     try:
         from modules.companies.service import register_company_audit
-        register_company_audit(connection, int(company_id), actor, action_type, summary, details or [])
+        register_company_audit(
+            connection, int(company_id), actor, action_type, summary, details or [],
+            legal_entity_id=legal_entity_id,
+        )
     except Exception as exc:
         structured_log('warning', 'legal_entity.audit_failed', company_id=company_id, error=str(exc))
 
@@ -74,6 +82,7 @@ def handle_get_legal_entity(handler, parsed, payload, match):
         if not entity:
             return send_json(handler, 404, {'error': 'CNPJ não encontrado.'})
         ensure_company_access(actor, entity['company_id'])
+        ensure_legal_entity_access(connection, actor, entity_id)
         return send_json(handler, 200, {'legal_entity': entity})
 
 
@@ -140,6 +149,7 @@ def handle_put_legal_entity(handler, parsed, payload, match):
         if not current:
             return send_json(handler, 404, {'error': 'CNPJ não encontrado.'})
         ensure_company_access(actor, current['company_id'])
+        ensure_legal_entity_access(connection, actor, entity_id)
         update_legal_entity(connection, entity_id, payload, int(current['company_id']))
         changes = [
             {'field': field, 'before': str(current.get(field) or ''), 'after': str(payload.get(field) or '')}
@@ -155,10 +165,83 @@ def handle_put_legal_entity(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'id': entity_id})
 
 
+# ── DELETE ────────────────────────────────────────────────────────────────────
+
+def handle_delete_legal_entity(handler, parsed, payload, match):
+    """Inativação auditada do CNPJ. A exclusão nunca é física: o histórico
+    jurídico/fiscal precisa ser preservado."""
+    entity_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_LEGAL_ENTITIES_DELETE)
+        current = get_legal_entity_by_id(connection, entity_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'CNPJ não encontrado.'})
+        ensure_company_access(actor, current['company_id'])
+        ensure_legal_entity_access(connection, actor, entity_id)
+        deactivate_legal_entity(connection, entity_id, int(current['company_id']))
+        _audit(
+            connection, current['company_id'], actor, 'legal_entity_deactivate',
+            f"CNPJ inativado: {current.get('cnpj')} ({current.get('legal_name')}).",
+            [{'field': 'Ativo', 'before': '1', 'after': '0'}],
+            legal_entity_id=entity_id,
+        )
+        connection.commit()
+        structured_log('info', 'legal_entity.deactivated', legal_entity_id=entity_id, actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'id': entity_id})
+
+
+# ── Autorização de CNPJ por usuário (Administrador Local) ────────────────────
+
+def handle_get_user_legal_entities(handler, parsed, payload, match):
+    user_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_LEGAL_ENTITIES_VIEW)
+        target = _load_company_user(connection, user_id)
+        if not target:
+            return send_json(handler, 404, {'error': 'Usuário não encontrado.'})
+        ensure_company_access(actor, target['company_id'])
+        return send_json(handler, 200, {'legal_entity_ids': fetch_user_legal_entities(connection, user_id)})
+
+
+def handle_put_user_legal_entities(handler, parsed, payload, match):
+    """Define os CNPJs autorizados a um usuário. Lista vazia remove a restrição."""
+    user_id = int(match.group(1))
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_LEGAL_ENTITIES_UPDATE)
+        target = _load_company_user(connection, user_id)
+        if not target:
+            return send_json(handler, 404, {'error': 'Usuário não encontrado.'})
+        ensure_company_access(actor, target['company_id'])
+        ids = set_user_legal_entities(
+            connection, user_id, int(target['company_id']), payload.get('legal_entity_ids') or []
+        )
+        _audit(
+            connection, target['company_id'], actor, 'user_legal_entities_update',
+            f"CNPJs autorizados ao usuário {target.get('username') or user_id} atualizados.",
+            [{'field': 'CNPJs autorizados', 'before': '', 'after': ', '.join(str(i) for i in ids) or '(sem restrição)'}],
+        )
+        connection.commit()
+        structured_log('info', 'legal_entity.user_scope_updated', user_id=user_id, count=len(ids), actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'legal_entity_ids': ids})
+
+
+def _load_company_user(connection, user_id):
+    row = connection.execute(
+        'SELECT id, username, company_id FROM users WHERE id = ?', (int(user_id),)
+    ).fetchone()
+    if not row:
+        return None
+    return {key: row[key] for key in row.keys()}
+
+
 def register_routes(router):
     router.register('GET',  '/api/legal-entities',                         handle_get_legal_entities)
     router.register('GET',  r'^/api/legal-entities/(\d+)$',                 handle_get_legal_entity, regex=True)
     router.register('GET',  r'^/api/companies/(\d+)/legal-entities$',       handle_get_company_legal_entities, regex=True)
     router.register('POST', '/api/legal-entities',                         handle_post_legal_entities)
     router.register('POST', '/api/legal-entities/batch',                   handle_post_legal_entities_batch)
+    router.register('GET',  r'^/api/users/(\d+)/legal-entities$',           handle_get_user_legal_entities, regex=True)
     router.register('PUT',  r'^/api/legal-entities/(\d+)$',                 handle_put_legal_entity, regex=True)
+    router.register('PUT',  r'^/api/users/(\d+)/legal-entities$',           handle_put_user_legal_entities, regex=True)
+    router.register('DELETE', r'^/api/legal-entities/(\d+)$',               handle_delete_legal_entity, regex=True)

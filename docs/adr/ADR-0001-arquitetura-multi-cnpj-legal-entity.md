@@ -209,12 +209,52 @@ momento da emissão**, não um dado derivável. `NULL` = pedido da empresa
 *Minha Empresa*, atendendo a tela "Controlar estoque por: Empresa / CNPJ /
 Unidade". Valores fora do enum caem no padrão em vez de quebrar a tela.
 
-## 10. Roadmap das próximas fases
+## 10. Fase 4 — conformidade: escopo, obrigatoriedade, auditoria e ciclo de vida
+
+**Escopo de visibilidade por CNPJ** (`resolve_actor_legal_entity_ids`):
+
+| Papel | Alcance |
+|---|---|
+| Master / Geral / Registro | todos os CNPJs da empresa |
+| Administrador Local (`admin`) | apenas os CNPJs autorizados em `user_legal_entities` |
+| Usuário (`user`) | apenas o CNPJ do colaborador vinculado (derivado de `linked_employee_id`) |
+
+> **Decisão de retrocompatibilidade:** para o Administrador Local, **lista de
+> autorização vazia = sem restrição**. Administradores locais já existentes
+> nunca tiveram autorização explícita; tratá-los como "sem acesso a nada" os
+> deixaria travados no primeiro deploy. A restrição passa a valer assim que o
+> Administrador Geral atribui CNPJs ao usuário
+> (`PUT /api/users/{id}/legal-entities`).
+
+O guard `ensure_legal_entity_access` aplica o escopo nas leituras/escritas de
+CNPJ; `fetch_legal_entities` filtra a listagem.
+
+**CNPJ obrigatório no colaborador** — exigido **quando a empresa tem mais de um
+CNPJ ativo**. Empresa de CNPJ único mantém o fallback automático para a matriz.
+Escolher a matriz por omissão numa empresa multi-CNPJ registraria o vínculo
+trabalhista/previdenciário na pessoa jurídica errada; exigir sempre quebraria
+todos os clientes atuais. A regra condicional resolve os dois.
+
+**Auditoria** — `company_audit_logs.legal_entity_id` (migration 017) registra o
+CNPJ afetado; `NULL` = ação no nível da empresa.
+
+**Ciclo de vida do CNPJ** — `DELETE /api/legal-entities/{id}` é **inativação
+auditada**, nunca exclusão física: o histórico jurídico/fiscal deve sobreviver.
+Bloqueia quando é o último CNPJ ativo ou quando há colaboradores vinculados
+(exige realocação antes).
+
+**LGPD** — o snapshot da ficha passa a informar o CNPJ **jurídico do
+colaborador** (com o da empresa contratante como fallback), além de Empresa e
+Unidade.
+
+## 11. Roadmap das próximas fases
 
 1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
    quando o pool é compartilhado (FEFO entre unidades? unidade da operação
    primeiro?). Exige decisão de negócio do cliente.
-2. **Onboarding UI:** etapa "Como sua organização está estruturada?" e o
+2. **Importação de planilha de CNPJs** e **filtros hierárquicos de dashboard**
+   (Empresa → CNPJ → Unidade → Setor).
+3. **Onboarding UI:** etapa "Como sua organização está estruturada?" e o
    cadastro em lote / importação de planilha para múltiplos CNPJs e JV
    (backend de lote já disponível em `POST /api/legal-entities/batch`).
 3. **Frontend:** Flutter Web, Android, iOS e Web legado — seletor de CNPJ no

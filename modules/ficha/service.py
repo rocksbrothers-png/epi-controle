@@ -881,15 +881,19 @@ def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
 def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
     has_finalized_at = _col_exists(connection, 'epi_ficha_periods', 'finalized_at')
     finalized_at_select = 'fp.finalized_at' if has_finalized_at else "'' AS finalized_at"
+    # LGPD: a exportação informa Empresa, CNPJ e Unidade. O CNPJ correto é o da
+    # pessoa jurídica do colaborador (LegalEntity), não o da empresa contratante.
+    from modules.legal_entities.service import employee_legal_entity_sql
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection, employee_alias='e')
     ficha = connection.execute(
         (
             f'SELECT fp.id, fp.company_id, fp.unit_id, fp.employee_id, fp.period_start, fp.period_end, fp.status, {finalized_at_select}, '
             'e.name AS employee_name, e.employee_id_code, e.sector, e.role_name, '
-            'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name '
+            f'c.name AS company_name, c.cnpj AS company_cnpj, u.name AS unit_name{legal_entity_select} '
             'FROM epi_ficha_periods fp '
             'JOIN employees e ON e.id = fp.employee_id '
             'JOIN companies c ON c.id = fp.company_id '
-            'JOIN units u ON u.id = fp.unit_id '
+            f'JOIN units u ON u.id = fp.unit_id{legal_entity_join} '
             'WHERE fp.id = ?'
         ),
         (int(ficha_period_id),),
@@ -937,7 +941,14 @@ def build_ficha_snapshot_payload(connection, ficha_period_id, actor):
         'company': {
             'id': int(ficha['company_id']),
             'name': ficha.get('company_name') or '',
-            'cnpj': ficha.get('company_cnpj') or '',
+            # CNPJ jurídico do colaborador quando disponível; o da empresa
+            # contratante permanece como fallback retrocompatível.
+            'cnpj': ficha.get('legal_entity_cnpj') or ficha.get('company_cnpj') or '',
+        },
+        'legal_entity': {
+            'id': ficha.get('legal_entity_id'),
+            'cnpj': ficha.get('legal_entity_cnpj') or '',
+            'legal_name': ficha.get('legal_entity_name') or '',
         },
         'unit': {
             'id': int(ficha['unit_id']),

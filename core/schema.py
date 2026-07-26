@@ -2066,6 +2066,9 @@ def ensure_company_columns(connection) -> None:
 def ensure_company_audit_columns(connection) -> None:
     """Adiciona colunas de auditoria apenas se nao existirem."""
     _safe_add_column(connection, 'company_audit_logs', 'details_json', "TEXT NOT NULL DEFAULT '[]'")
+    # CNPJ (LegalEntity) afetado pela ação — efeito fiscal/trabalhista.
+    # NULL = ação no nível da empresa (comportamento histórico).
+    _safe_add_column(connection, 'company_audit_logs', 'legal_entity_id', 'INTEGER')
 
 
 def ensure_tenant_domain_tables(connection) -> None:
@@ -2262,6 +2265,33 @@ def ensure_legal_entities(connection) -> None:
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
+    # Autorização de CNPJ por usuário (Administrador Local restrito a um
+    # subconjunto de CNPJs). Lista vazia = sem restrição, preservando o
+    # comportamento dos usuários já existentes.
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS user_legal_entities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            legal_entity_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT '',
+            UNIQUE(user_id, legal_entity_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (legal_entity_id) REFERENCES legal_entities(id) ON DELETE CASCADE,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+        '''
+    )
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_user_legal_entities_user ON user_legal_entities (user_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    # A coluna legal_entity_id de company_audit_logs é adicionada por
+    # ensure_company_audit_columns, dona dessa tabela.
     _backfill_default_legal_entities(connection)
 
 

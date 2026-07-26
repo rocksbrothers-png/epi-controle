@@ -254,6 +254,9 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW,
             PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW,
             PERM_EPIS_VIEW, PERM_STOCK_VIEW,
+            # Enxerga apenas o CNPJ do próprio colaborador — restrição aplicada
+            # em resolve_actor_legal_entity_ids, não pela permissão em si.
+            PERM_LEGAL_ENTITIES_VIEW,
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS
         | frozenset({

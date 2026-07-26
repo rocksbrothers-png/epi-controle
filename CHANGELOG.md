@@ -11,6 +11,15 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Multi-CNPJ Fase 3 — estoque, requisições e compras por CNPJ: nova configuração
+  `stock_control_scope` (Empresa / CNPJ / Unidade) e `org_structure_type` em
+  *Minha Empresa*; pool de estoque derivado de `units.legal_entity_id`
+  (`resolve_stock_pool_unit_ids`) e saldo agregado por escopo
+  (`fetch_scoped_stock_balance`) — o saldo físico segue por unidade, sem
+  re-chavear a tabela nem migrar dados; requisições expõem o CNPJ derivado do
+  solicitante; pedidos de compra ganham `legal_entity_id` (migration 016) por
+  ser escolha de emissão, com NULL = pedido da empresa. A baixa de estoque na
+  entrega permanece inalterada (ver ADR-0001 seção 9).
 - Multi-CNPJ Fase 2 — rastreabilidade operacional por CNPJ: entregas expõem o
   CNPJ derivado do colaborador, completando a cadeia QR → Entrega → Colaborador
   → CNPJ → Empresa; unidades aceitam `legal_entity_id` (validado por empresa);

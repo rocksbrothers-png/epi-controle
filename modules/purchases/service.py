@@ -830,6 +830,11 @@ def fetch_purchase_request_stock_labels(connection, pr_id):
 # ── Query / fetch functions ────────────────────────────────────────────────────
 
 def fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope):
+    from modules.legal_entities.service import employee_legal_entity_sql
+    # Requisição registra Empresa / CNPJ / Unidade / Solicitante — o CNPJ é
+    # derivado do vínculo jurídico do solicitante (mesma fonte única das
+    # entregas), evitando divergência com o cadastro do colaborador.
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
     clauses, params = [], []
     if company_filter:
         clauses.append('r.company_id = ?')
@@ -846,11 +851,11 @@ def fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope
         'SELECT r.*, employees.name AS employee_name, employees.employee_id_code, '
         'employees.sector AS employee_sector, employees.role_name AS employee_role, '
         'units.name AS unit_name, '
-        'epis.name AS epi_name, epis.ca, epis.unit_measure '
+        f'epis.name AS epi_name, epis.ca, epis.unit_measure{legal_entity_select} '
         'FROM epi_requests r '
         'JOIN employees ON employees.id = r.employee_id '
         'JOIN units ON units.id = r.unit_id '
-        'JOIN epis ON epis.id = r.epi_id '
+        f'JOIN epis ON epis.id = r.epi_id{legal_entity_join} '
         f'{final_where} '
         'ORDER BY r.requested_at DESC, r.id DESC',
         tuple(params),
@@ -1559,6 +1564,30 @@ def _po_company_approval_threshold(connection, company_id):
         return 0.0
 
 
+def _resolve_order_legal_entity(connection, company_id, payload):
+    """CNPJ emissor do pedido de compra.
+
+    Ausente ⇒ ``None`` (pedido da empresa, comportamento histórico). Quando
+    informado, precisa existir, pertencer à empresa e estar ativo. Devolve
+    ``None`` também enquanto o schema Multi-CNPJ não estiver provisionado.
+    """
+    requested = (payload or {}).get('legal_entity_id')
+    if requested in (None, '', 0, '0'):
+        return None
+    from epi_backend.db import table_columns
+    from modules.legal_entities.service import get_legal_entity_by_id, legal_entities_ready
+    if not legal_entities_ready(connection):
+        return None
+    if 'legal_entity_id' not in table_columns(connection, 'purchase_orders'):
+        return None
+    entity = get_legal_entity_by_id(connection, int(requested))
+    if not entity or int(entity['company_id']) != int(company_id):
+        raise ValueError('CNPJ informado não pertence a esta empresa.')
+    if not int(entity.get('active', 1)):
+        raise ValueError('CNPJ informado está inativo.')
+    return int(requested)
+
+
 def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_id_fn=None):
     unit_id = int(payload.get('unit_id') or 0)
     if not unit_id:
@@ -1619,16 +1648,27 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
             'employee_role': str(raw.get('employee_role') or '').strip(),
         })
 
+    # CNPJ emissor do pedido: escolha explícita no momento da emissão (não é
+    # derivável como nas entregas). Ausente = pedido da empresa (histórico).
+    po_columns = [
+        'purchase_request_id', 'company_id', 'unit_id', 'po_number', 'supplier', 'supplier_cnpj',
+        'expected_delivery_date', 'notes', 'total_value', 'created_by_user_id', 'created_by_name',
+        'created_at', 'updated_at',
+    ]
+    po_values = [
+        pr_id or None, company_id, unit_id, po_number, supplier, supplier_cnpj,
+        expected_delivery, notes, round(total_value, 2),
+        int(actor['id']), actor.get('full_name') or '', now, now,
+    ]
+    order_legal_entity_id = _resolve_order_legal_entity(connection, company_id, payload)
+    if order_legal_entity_id is not None:
+        po_columns.append('legal_entity_id')
+        po_values.append(order_legal_entity_id)
+    placeholders = ', '.join(['?'] * len(po_values))
     cursor = connection.execute(
-        'INSERT INTO purchase_orders ('
-        'purchase_request_id, company_id, unit_id, status, po_number, supplier, supplier_cnpj, '
-        'expected_delivery_date, notes, total_value, created_by_user_id, created_by_name, created_at, updated_at'
-        ") VALUES (?, ?, ?, 'waiting_admin_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
-            pr_id or None, company_id, unit_id, po_number, supplier, supplier_cnpj,
-            expected_delivery, notes, round(total_value, 2),
-            int(actor['id']), actor.get('full_name') or '', now, now,
-        )
+        f"INSERT INTO purchase_orders (status, {', '.join(po_columns)}) "  # noqa: S608
+        f"VALUES ('waiting_admin_review', {placeholders})",
+        tuple(po_values)
     )
     po_id = int(cursor.lastrowid)
     for item in normalized_items:

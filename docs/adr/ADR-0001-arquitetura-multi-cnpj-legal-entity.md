@@ -171,12 +171,49 @@ colaboradores, entregas, portal e relatórios.
 | **Relatórios** | Novo filtro `legal_entity_id`, aplicado sobre `employees.legal_entity_id` e sujeito ao escopo de empresa do ator. |
 | **Auditoria de CNPJ** | Criação/alteração de LegalEntity grava em `company_audit_logs` (efeito fiscal/trabalhista precisa ser auditável). Falha de auditoria não desfaz a operação. |
 
-## 9. Roadmap das próximas fases
+## 9. Fase 3 — estoque, requisições e compras (implementada)
 
-1. **Estoque e suprimentos (comportamental):** honrar `stock_control_scope`
-   (`company` | `legal_entity` | `unit`) na baixa/saldo de estoque, e registrar
-   CNPJ em requisições e pedidos de compra. Fica separado por alterar
-   semântica de negócio, não apenas leitura.
+**Decisão-chave sobre estoque:** o saldo físico continua registrado *por
+unidade* — é onde o item de fato está. O `stock_control_scope` define apenas a
+**fronteira de compartilhamento** do saldo, não a chave de armazenamento:
+
+| Escopo | Pool de estoque |
+|---|---|
+| `unit` | só a própria unidade (comportamento histórico) |
+| `legal_entity` | todas as unidades do mesmo CNPJ |
+| `company` | todas as unidades da empresa (estoque compartilhado) |
+
+Como cada unidade já carrega `legal_entity_id`, o pool por CNPJ é **derivado**
+(`resolve_stock_pool_unit_ids`) — sem re-chavear `unit_epi_stock` e sem migração
+de dados. Um re-chaveamento seria destrutivo e obrigaria a reconciliar todo o
+histórico; a derivação entrega a mesma semântica com risco zero de perda.
+
+`fetch_scoped_stock_balance` devolve o saldo agregado do pool **e** a composição
+por unidade, para conferência operacional.
+
+> **Escopo deliberadamente não alterado:** a *baixa* de estoque na entrega
+> continua ocorrendo na unidade da operação. Tornar a baixa multi-unidade muda
+> comportamento crítico de negócio (qual unidade é debitada quando o pool é
+> compartilhado) e exige decisão do cliente sobre a ordem de consumo — fica para
+> uma fase própria, validada.
+
+**Requisições** registram Empresa / CNPJ / Unidade / Solicitante com o CNPJ
+*derivado* do solicitante, coerente com a Fase 2 — sem coluna redundante.
+
+**Pedidos de compra** são a exceção justificada: `purchase_orders.legal_entity_id`
+é coluna própria (migration 016), porque o CNPJ emissor é uma **escolha no
+momento da emissão**, não um dado derivável. `NULL` = pedido da empresa
+(comportamento histórico).
+
+**Configuração** (`org_structure_type`, `stock_control_scope`) exposta em
+*Minha Empresa*, atendendo a tela "Controlar estoque por: Empresa / CNPJ /
+Unidade". Valores fora do enum caem no padrão em vez de quebrar a tela.
+
+## 10. Roadmap das próximas fases
+
+1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
+   quando o pool é compartilhado (FEFO entre unidades? unidade da operação
+   primeiro?). Exige decisão de negócio do cliente.
 2. **Onboarding UI:** etapa "Como sua organização está estruturada?" e o
    cadastro em lote / importação de planilha para múltiplos CNPJs e JV
    (backend de lote já disponível em `POST /api/legal-entities/batch`).

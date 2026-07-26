@@ -11,6 +11,16 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Multi-CNPJ Fase 5 — CNPJ imutável e transferência administrativa auditada: o
+  CNPJ representa o vínculo jurídico do contrato de trabalho e passa a ser
+  imutável após a admissão (a edição comum do colaborador ignora
+  `legal_entity_id` no payload). A transferência de unidade nunca altera o CNPJ
+  — a unidade é apenas lotação operacional. Alteração ocorre somente por
+  `POST /api/employees/{id}/legal-entity-transfer`, com justificativa
+  obrigatória, histórico cumulativo em `employee_legal_entity_movements`
+  (migration 018) e auditoria completa; `GET /api/employees/{id}/legal-entity-movements`
+  expõe o histórico. Nova permissão `employees:legal_entity_transfer`, restrita
+  a Administrador Master/Geral/Registro.
 - Multi-CNPJ Fase 4 — conformidade: escopo de visibilidade por CNPJ
   (`user_legal_entities`, migration 017) — Administrador Local restrito aos
   CNPJs autorizados e Usuário restrito ao CNPJ do próprio colaborador, com

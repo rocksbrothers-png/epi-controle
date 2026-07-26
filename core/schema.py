@@ -2290,6 +2290,36 @@ def ensure_legal_entities(connection) -> None:
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
+    # Histórico de vínculo jurídico do colaborador. O CNPJ é o vínculo do
+    # contrato de trabalho: imutável na edição comum e alterável somente por
+    # processo administrativo auditado. Cada mudança fica registrada aqui,
+    # preservando o histórico trabalhista/previdenciário.
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS employee_legal_entity_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL,
+            source_legal_entity_id INTEGER,
+            target_legal_entity_id INTEGER NOT NULL,
+            reason TEXT NOT NULL DEFAULT '',
+            effective_date TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER NOT NULL,
+            actor_name TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        )
+        '''
+    )
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_employee_legal_entity_movements_employee '
+            'ON employee_legal_entity_movements (employee_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
     # A coluna legal_entity_id de company_audit_logs é adicionada por
     # ensure_company_audit_columns, dona dessa tabela.
     _backfill_default_legal_entities(connection)

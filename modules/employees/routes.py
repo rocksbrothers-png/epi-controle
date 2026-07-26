@@ -6,10 +6,10 @@ from datetime import datetime
 
 from core.auth import ensure_resource_company
 from core.database import get_connection
-from core.permissions import PERM_EMPLOYEES_VIEW
+from core.permissions import PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER, PERM_EMPLOYEES_VIEW
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
-from epi_backend.http_utils import require_fields, send_json
+from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
     apply_current_unit_allocation,
@@ -20,11 +20,13 @@ from modules.employees.service import (
     ensure_employee_operational,
     fetch_archived_employees,
     fetch_employee_movements,
+    fetch_employee_legal_entity_movements,
     fetch_employees,
     get_employee_lifecycle,
     purge_employee_history,
     summarize_employee_history,
     update_employee,
+    transfer_employee_legal_entity,
     update_employee_unit,
 )
 
@@ -276,7 +278,54 @@ def handle_post_employee_unit_movements(handler, parsed, payload, match):
 
 # ── Registro ──────────────────────────────────────────────────────────────────
 
+def handle_get_employee_legal_entity_movements(handler, parsed, payload, match):
+    """Histórico de vínculo jurídico (CNPJ) do colaborador."""
+    employee_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        ensure_resource_company(actor, employee, 'Colaborador')
+        return send_json(handler, 200, {
+            'movements': fetch_employee_legal_entity_movements(connection, employee_id),
+        })
+
+
+def handle_post_employee_legal_entity_transfer(handler, parsed, payload, match):
+    """Processo administrativo de mudança de CNPJ do colaborador.
+
+    O CNPJ é o vínculo jurídico do contrato de trabalho: imutável na edição
+    comum. Esta rota é a única via de alteração e exige justificativa, gerando
+    histórico e auditoria completos.
+    """
+    employee_id = int(match.group(1))
+    require_fields(payload, ['actor_user_id', 'legal_entity_id', 'reason'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed, payload),
+            PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
+        )
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        ensure_resource_company(actor, employee, 'Colaborador')
+        result = transfer_employee_legal_entity(
+            connection, employee_id, int(payload['legal_entity_id']),
+            actor=actor, reason=payload.get('reason'),
+            effective_date=payload.get('effective_date', ''),
+        )
+        structured_log('info', 'employee.legal_entity_transferred',
+                       employee_id=employee_id, actor_user_id=actor['id'],
+                       target_legal_entity_id=result['target_legal_entity_id'])
+        return send_json(handler, 200, {'ok': True, **result})
+
+
 def register_routes(router):
+    router.register('GET',  r'^/api/employees/(\d+)/legal-entity-movements$',
+                    handle_get_employee_legal_entity_movements, regex=True)
+    router.register('POST', r'^/api/employees/(\d+)/legal-entity-transfer$',
+                    handle_post_employee_legal_entity_transfer, regex=True)
     router.register('GET',    '/api/employees',                   handle_get_employees)
     router.register('GET',    '/api/employees/archived',          handle_get_archived_employees)
     router.register('GET',    '/api/employee-unit-movements',     handle_get_employee_unit_movements)

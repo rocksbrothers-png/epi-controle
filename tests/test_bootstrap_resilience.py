@@ -14,6 +14,7 @@ import modules.commercial.service as commercial_svc
 import modules.companies.service as companies_svc
 import modules.ficha.service as ficha_svc
 import modules.settings.service as settings_svc
+import modules.legal_entities.service as legal_entities_svc
 from core.security import create_jwt_token, resolve_actor_user_id
 
 
@@ -37,6 +38,7 @@ def _patch_successful_bootstrap_sections(monkeypatch):
     monkeypatch.setattr(ficha_svc, 'fetch_ficha_epi_audit_logs', lambda connection, actor, filters: [])
     monkeypatch.setattr(auth_svc, 'fetch_users', lambda connection, actor: [{'id': actor['id']}])
     monkeypatch.setattr(units_svc, 'fetch_units', lambda connection, actor: [{'id': 4, 'company_id': actor['company_id']}])
+    monkeypatch.setattr(legal_entities_svc, 'fetch_legal_entities', lambda connection, actor=None, company_id=None: [{'id': 2, 'company_id': actor['company_id'] if actor else company_id}])
     monkeypatch.setattr(employees_svc, 'fetch_employees', lambda connection, actor: [{'id': 21, 'unit_id': 4}])
     monkeypatch.setattr(employees_svc, 'fetch_employee_movements', lambda connection, actor: [])
     monkeypatch.setattr(epis_svc, 'fetch_epis', lambda connection, actor, unit_id=None: [{'id': 9, 'unit_id': 4}])

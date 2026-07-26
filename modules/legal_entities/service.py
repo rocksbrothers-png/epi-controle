@@ -403,6 +403,124 @@ def ensure_default_legal_entity(connection, company_id):
     return int(cursor.lastrowid)
 
 
+# Cabeçalhos aceitos na importação de planilha de CNPJs. Cada campo do modelo
+# aceita variações em português (com e sem acento) e o nome técnico em inglês —
+# planilhas de clientes raramente seguem um padrão único.
+_IMPORT_HEADER_ALIASES: dict[str, tuple[str, ...]] = {
+    'cnpj': ('cnpj', 'c.n.p.j', 'cnpj_numero'),
+    'legal_name': ('legal_name', 'razao_social', 'razaosocial', 'razao'),
+    'trade_name': ('trade_name', 'nome_fantasia', 'nomefantasia', 'fantasia', 'nome'),
+    'entity_type': ('entity_type', 'tipo', 'tipo_entidade', 'natureza'),
+    'state_registration': ('state_registration', 'inscricao_estadual', 'ie'),
+    'municipal_registration': ('municipal_registration', 'inscricao_municipal', 'im'),
+    'cnae': ('cnae', 'cnae_principal'),
+    'address': ('address', 'endereco', 'logradouro'),
+    'municipality': ('municipality', 'municipio', 'cidade'),
+    'uf': ('uf', 'estado'),
+    'cep': ('cep', 'codigo_postal'),
+    'opening_date': ('opening_date', 'data_abertura', 'dataabertura', 'abertura'),
+    'registration_status': ('registration_status', 'situacao', 'situacao_cadastral'),
+    'notes': ('notes', 'observacoes', 'observacao', 'obs'),
+    'active': ('active', 'ativo'),
+    'is_headquarters': ('is_headquarters', 'matriz', 'matriz_filial'),
+}
+
+_TRUTHY = {'1', 'true', 'sim', 's', 'yes', 'y', 'ativo', 'ativa', 'matriz'}
+_FALSY = {'0', 'false', 'nao', 'não', 'n', 'no', 'inativo', 'inativa', 'filial'}
+
+# Rótulos de planilha para os tipos de pessoa jurídica.
+_ENTITY_TYPE_ALIASES: dict[str, str] = {
+    'matriz': 'matriz', 'sede': 'matriz', 'headquarters': 'matriz',
+    'filial': 'filial', 'branch': 'filial',
+    'subsidiaria': 'subsidiaria', 'subsidiária': 'subsidiaria', 'subsidiary': 'subsidiaria',
+    'spe': 'spe',
+    'jv': 'jv_partner', 'jv_partner': 'jv_partner', 'joint_venture': 'jv_partner',
+    'socia': 'jv_partner', 'sócia': 'jv_partner',
+    'consorciada': 'consorciada', 'consorcio': 'consorciada',
+}
+
+
+def _normalize_header(value) -> str:
+    """Cabeçalho comparável: minúsculo, sem acento e com separadores unificados."""
+    import unicodedata
+    text = unicodedata.normalize('NFKD', str(value or '')).encode('ascii', 'ignore').decode('ascii')
+    text = text.strip().lower()
+    for ch in (' ', '-', '/', '.'):
+        text = text.replace(ch, '_')
+    while '__' in text:
+        text = text.replace('__', '_')
+    return text.strip('_')
+
+
+def _parse_bool_cell(value, default=None):
+    text = _normalize_header(value)
+    if not text:
+        return default
+    if text in _TRUTHY:
+        return True
+    if text in _FALSY:
+        return False
+    return default
+
+
+def normalize_import_row(row) -> dict:
+    """Converte uma linha de planilha no payload de LegalEntity.
+
+    Aceita cabeçalhos em português (com/sem acento) e em inglês. Campos
+    desconhecidos são ignorados — planilhas de clientes costumam trazer colunas
+    extras irrelevantes.
+    """
+    normalized_row = {_normalize_header(key): value for key, value in dict(row or {}).items()}
+    payload: dict = {}
+    for field, aliases in _IMPORT_HEADER_ALIASES.items():
+        for alias in aliases:
+            if alias in normalized_row and str(normalized_row[alias] or '').strip():
+                payload[field] = normalized_row[alias]
+                break
+
+    if 'entity_type' in payload:
+        payload['entity_type'] = _ENTITY_TYPE_ALIASES.get(
+            _normalize_header(payload['entity_type']), 'filial'
+        )
+    active = _parse_bool_cell(payload.get('active'), default=True)
+    payload['active'] = 1 if active else 0
+    headquarters = _parse_bool_cell(payload.get('is_headquarters'), default=None)
+    if headquarters is not None:
+        payload['is_headquarters'] = 1 if headquarters else 0
+    return payload
+
+
+def import_legal_entities_rows(connection, company_id, rows):
+    """Importa CNPJs a partir de linhas de planilha já convertidas em dicts.
+
+    CNPJ já existente na empresa é **atualizado**; novo é criado. Erros são
+    reportados por índice de linha (1-based, como o usuário vê na planilha) sem
+    abortar a importação inteira — o operador corrige apenas as linhas com
+    problema e reenvia.
+    """
+    created, updated, errors = [], [], []
+    for index, raw_row in enumerate(rows or [], start=1):
+        try:
+            payload = normalize_import_row(raw_row)
+            if not payload.get('cnpj'):
+                continue  # linha vazia / separador da planilha
+            cnpj_digits = only_digits(payload['cnpj'])
+            existing = connection.execute(
+                'SELECT id FROM legal_entities WHERE company_id = ? AND '
+                "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ? LIMIT 1",
+                (int(company_id), cnpj_digits),
+            ).fetchone()
+            if existing:
+                entity_id = int(existing['id'] if hasattr(existing, 'keys') else existing[0])
+                update_legal_entity(connection, entity_id, payload, int(company_id))
+                updated.append(entity_id)
+            else:
+                created.append(create_legal_entity(connection, payload, int(company_id)))
+        except (ValueError, PermissionError) as exc:
+            errors.append({'row': index, 'error': str(exc)})
+    return {'created_ids': created, 'updated_ids': updated, 'errors': errors}
+
+
 def count_active_legal_entities(connection, company_id) -> int:
     row = connection.execute(
         'SELECT COUNT(*) AS total FROM legal_entities WHERE company_id = ? AND active = 1',

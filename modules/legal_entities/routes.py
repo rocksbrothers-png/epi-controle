@@ -6,7 +6,10 @@ Endpoints:
   GET  /api/companies/{id}/legal-entities      → CNPJs de uma empresa
   POST /api/legal-entities                     → cadastra um CNPJ
   POST /api/legal-entities/batch               → cadastro em lote (múltiplos CNPJs)
+  POST /api/legal-entities/import              → importação de planilha de CNPJs
   PUT  /api/legal-entities/{id}                → atualiza um CNPJ
+  DELETE /api/legal-entities/{id}              → inativação auditada (nunca exclusão física)
+  GET|PUT /api/users/{id}/legal-entities       → autorização de CNPJs por usuário
 
 Todas as escritas exigem que o ator pertença à empresa alvo (ou seja Master) e
 tenham a permissão legal_entities:*. Nenhuma altera a assinatura SaaS da tenant.
@@ -24,6 +27,7 @@ from core.permissions import (
 )
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
+from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.legal_entities.service import (
     create_legal_entity,
@@ -31,6 +35,7 @@ from modules.legal_entities.service import (
     ensure_legal_entity_access,
     fetch_legal_entities,
     fetch_user_legal_entities,
+    import_legal_entities_rows,
     get_legal_entity_by_id,
     set_user_legal_entities,
     update_legal_entity,
@@ -138,6 +143,36 @@ def handle_post_legal_entities_batch(handler, parsed, payload, match):
         return send_json(handler, status, {'ok': not errors, 'created_ids': created, 'errors': errors})
 
 
+def handle_post_legal_entities_import(handler, parsed, payload, match):
+    """Importação de planilha de CNPJs (onboarding de empresa multi-CNPJ / JV).
+
+    Recebe ``rows`` já convertidas em dicionários pelo cliente — mesma convenção
+    da importação de fornecedores autorizados. Aceita cabeçalhos em português e
+    inglês; CNPJ já existente é atualizado, novo é criado.
+    """
+    require_fields(payload, ['actor_user_id'])
+    rows = payload.get('rows') or payload.get('items') or []
+    if not isinstance(rows, list) or not rows:
+        return send_json(handler, 400, {'error': 'Envie uma lista não vazia em "rows".'})
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_LEGAL_ENTITIES_CREATE)
+        company_id = _resolve_company_id(actor, payload)
+        ensure_company_access(actor, company_id)
+        result = import_legal_entities_rows(connection, company_id, rows)
+        _audit(
+            connection, company_id, actor, 'legal_entity_import',
+            f"Importação de planilha de CNPJs: {len(result['created_ids'])} criado(s), "
+            f"{len(result['updated_ids'])} atualizado(s), {len(result['errors'])} com erro.",
+        )
+        connection.commit()
+        structured_log('info', 'legal_entity.imported',
+                       company_id=company_id, actor_user_id=actor['id'],
+                       created=len(result['created_ids']), updated=len(result['updated_ids']),
+                       errors=len(result['errors']))
+        status = 200 if not result['errors'] else 207
+        return send_json(handler, status, {'ok': not result['errors'], **result})
+
+
 # ── PUT ───────────────────────────────────────────────────────────────────────
 
 def handle_put_legal_entity(handler, parsed, payload, match):
@@ -232,7 +267,7 @@ def _load_company_user(connection, user_id):
     ).fetchone()
     if not row:
         return None
-    return {key: row[key] for key in row.keys()}
+    return row_to_dict(row)
 
 
 def register_routes(router):
@@ -241,6 +276,7 @@ def register_routes(router):
     router.register('GET',  r'^/api/companies/(\d+)/legal-entities$',       handle_get_company_legal_entities, regex=True)
     router.register('POST', '/api/legal-entities',                         handle_post_legal_entities)
     router.register('POST', '/api/legal-entities/batch',                   handle_post_legal_entities_batch)
+    router.register('POST', '/api/legal-entities/import',                  handle_post_legal_entities_import)
     router.register('GET',  r'^/api/users/(\d+)/legal-entities$',           handle_get_user_legal_entities, regex=True)
     router.register('PUT',  r'^/api/legal-entities/(\d+)$',                 handle_put_legal_entity, regex=True)
     router.register('PUT',  r'^/api/users/(\d+)/legal-entities$',           handle_put_user_legal_entities, regex=True)

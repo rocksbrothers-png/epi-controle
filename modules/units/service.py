@@ -51,10 +51,17 @@ def unit_lifecycle_enabled(connection):
 
 
 def fetch_units(connection, actor=None, include_archived=False):
+    from epi_backend.db import table_columns
     lifecycle = unit_lifecycle_enabled(connection)
     status_fields = ', units.status, units.archived_at, units.retention_until' if lifecycle else ''
+    # Vínculo da unidade com o CNPJ: alimenta o filtro em cascata do dashboard
+    # (Empresa → CNPJ → Unidade → Setor). Ausente durante a janela de migração.
+    legal_entity_field = (
+        ', units.legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'units') else ''
+    )
     sql = (
-        f'SELECT units.id, units.company_id, units.name, units.unit_type, units.city, units.notes{status_fields}, '
+        f'SELECT units.id, units.company_id, units.name, units.unit_type, units.city, '
+        f'units.notes{legal_entity_field}{status_fields}, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type '
         'FROM units JOIN companies ON companies.id = units.company_id'
     )

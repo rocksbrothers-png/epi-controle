@@ -11,6 +11,14 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 ## [Unreleased]
 
 ### Added
+- Multi-CNPJ Fase 6 — importação de planilha de CNPJs e insumos do dashboard:
+  novo `POST /api/legal-entities/import` aceita cabeçalhos em português (com e
+  sem acento) e inglês, ignora colunas desconhecidas, é idempotente por CNPJ
+  (existente é atualizado, novo é criado, casando com ou sem máscara) e reporta
+  erros por linha sem abortar a importação. `GET /api/bootstrap` passa a expor a
+  seção `legal_entities` (escopada por papel) e `fetch_units` devolve
+  `legal_entity_id`, alimentando o filtro em cascata
+  Empresa → CNPJ → Unidade → Setor.
 - Multi-CNPJ Fase 5 — CNPJ imutável e transferência administrativa auditada: o
   CNPJ representa o vínculo jurídico do contrato de trabalho e passa a ser
   imutável após a admissão (a edição comum do colaborador ignora

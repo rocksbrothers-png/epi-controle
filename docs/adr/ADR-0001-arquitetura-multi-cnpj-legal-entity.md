@@ -271,7 +271,28 @@ Colaborador legado sem vínculo recebe o backfill para a matriz na primeira
 edição — não é uma "alteração" de CNPJ, e sim a materialização do vínculo que
 já existia implicitamente.
 
-## 12. Roadmap das próximas fases
+## 12. Fase 6 — importação de planilha e insumos do dashboard (implementada)
+
+**Importação de planilha de CNPJs** (`POST /api/legal-entities/import`). Segue a
+convenção já usada pela importação de fornecedores autorizados: o cliente
+converte a planilha em `rows` (dicts) e o backend faz o mapeamento e a
+persistência — evita duplicar parser de XLSX/CSV no servidor.
+
+- Cabeçalhos aceitos em **português (com e sem acento) e inglês**; colunas
+  desconhecidas são ignoradas, porque planilhas de clientes trazem colunas
+  extras.
+- **Idempotente por CNPJ**: já existente é *atualizado*, novo é *criado*. O
+  casamento ignora máscara (`11222333000181` casa com `11.222.333/0001-81`).
+- Erros são reportados **por linha (1-based, como o usuário vê na planilha)**
+  sem abortar a importação — o operador corrige só o que falhou e reenvia.
+- Linhas vazias/separadoras são puladas silenciosamente.
+
+**Insumos do filtro em cascata do dashboard** (Empresa → CNPJ → Unidade →
+Setor): `GET /api/bootstrap` passa a expor a seção `legal_entities` (já escopada
+por papel) e `fetch_units` passa a devolver `legal_entity_id`. Com isso o
+frontend monta a cascata sem chamadas adicionais.
+
+## 13. Roadmap das próximas fases
 
 1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
    quando o pool é compartilhado (FEFO entre unidades? unidade da operação

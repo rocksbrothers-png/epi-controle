@@ -378,7 +378,7 @@ def transfer_employee_legal_entity(connection, employee_id, target_legal_entity_
     """
     from datetime import date, datetime, timezone
 
-    from modules.companies.service import register_company_audit
+    from core.audit import register_company_audit
     from modules.legal_entities.service import get_legal_entity_by_id
 
     justification = str(reason or '').strip()

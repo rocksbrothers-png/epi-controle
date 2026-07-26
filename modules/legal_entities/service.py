@@ -80,6 +80,63 @@ def employee_legal_entity_sql(connection, *, employee_alias='employees', prefix=
     return select_fragment, join_fragment
 
 
+def get_stock_control_scope(connection, company_id) -> str:
+    """Escopo de controle de estoque configurado para a empresa.
+
+    Cai para ``unit`` (comportamento histórico) quando a coluna ainda não existe.
+    """
+    from epi_backend.db import table_columns
+    if 'stock_control_scope' not in table_columns(connection, 'companies'):
+        return 'unit'
+    row = connection.execute(
+        'SELECT stock_control_scope FROM companies WHERE id = ?', (int(company_id),)
+    ).fetchone()
+    if not row:
+        return 'unit'
+    value = row['stock_control_scope'] if hasattr(row, 'keys') else row[0]
+    return normalize_stock_control_scope(value)
+
+
+def resolve_stock_pool_unit_ids(connection, company_id, unit_id):
+    """Unidades que compartilham o mesmo pool de estoque da ``unit_id``.
+
+    O estoque físico continua registrado por unidade — é onde o item de fato
+    está. O escopo configurado define apenas a **fronteira de compartilhamento**
+    do saldo:
+
+      - ``unit``          → só a própria unidade (comportamento histórico);
+      - ``legal_entity``  → todas as unidades do mesmo CNPJ (estoque por CNPJ);
+      - ``company``       → todas as unidades da empresa (estoque compartilhado).
+
+    Como cada unidade já carrega ``legal_entity_id``, o pool por CNPJ é derivado
+    sem re-chavear a tabela de estoque nem migrar dados.
+    """
+    unit_id = int(unit_id)
+    scope = get_stock_control_scope(connection, company_id)
+    if scope == 'unit':
+        return [unit_id]
+    if scope == 'company':
+        rows = connection.execute(
+            'SELECT id FROM units WHERE company_id = ?', (int(company_id),)
+        ).fetchall()
+        return sorted({int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id})
+    # scope == 'legal_entity'
+    from epi_backend.db import table_columns
+    if 'legal_entity_id' not in table_columns(connection, 'units'):
+        return [unit_id]
+    row = connection.execute(
+        'SELECT legal_entity_id FROM units WHERE id = ?', (unit_id,)
+    ).fetchone()
+    entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
+    if not entity_id:
+        return [unit_id]
+    rows = connection.execute(
+        'SELECT id FROM units WHERE company_id = ? AND legal_entity_id = ?',
+        (int(company_id), int(entity_id)),
+    ).fetchall()
+    return sorted({int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id})
+
+
 def normalize_entity_type(value) -> str:
     v = str(value or 'matriz').strip().lower()
     return v if v in ENTITY_TYPES else 'matriz'

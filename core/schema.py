@@ -1523,6 +1523,8 @@ def ensure_epi_operational_tables(connection) -> None:
     _safe_add_column(connection, 'purchase_request_items', 'approval_decided_by_name', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_request_items', 'approval_decided_at', "TEXT NOT NULL DEFAULT ''")
     # Colunas para revisão operacional do Admin e sugestões ao Comprador
+    # CNPJ emissor do pedido (Multi-CNPJ). NULL = pedido da empresa (histórico).
+    _safe_add_column(connection, 'purchase_orders', 'legal_entity_id', 'INTEGER')
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_user_id', "INTEGER")
     _safe_add_column(connection, 'purchase_orders', 'admin_review_by_name', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_orders', 'admin_review_at', "TEXT NOT NULL DEFAULT ''")

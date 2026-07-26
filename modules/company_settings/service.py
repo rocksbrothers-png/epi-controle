@@ -33,6 +33,8 @@ PROFILE_EDITABLE_FIELDS: tuple[str, ...] = (
     'slug', 'subdomain', 'custom_domain',
     # Preferências
     'default_language', 'timezone',
+    # Estrutura empresarial (Multi-CNPJ / Joint Venture)
+    'org_structure_type', 'stock_control_scope',
 )
 
 # Campos somente-leitura expostos no perfil (controlados pelo Administrador Master).
@@ -67,6 +69,8 @@ _FIELD_LABELS: dict[str, str] = {
     'custom_domain': 'Domínio personalizado',
     'default_language': 'Idioma',
     'timezone': 'Fuso horário',
+    'org_structure_type': 'Estrutura organizacional',
+    'stock_control_scope': 'Controle de estoque por',
 }
 
 # Campos com payload de imagem (auditados como "[imagem]" para não inflar o log).
@@ -169,6 +173,15 @@ def validate_my_company_payload(connection, payload: dict, company_id: int, prev
     if 'cnpj' in fields:
         fields['cnpj'] = validate_cnpj(fields['cnpj'])
         ensure_unique_company_cnpj(connection, fields['cnpj'], company_id)
+
+    # Estrutura empresarial: valores fora do enum caem no padrão em vez de
+    # quebrar a tela de configuração.
+    if 'org_structure_type' in fields:
+        from modules.legal_entities.service import normalize_org_structure_type
+        fields['org_structure_type'] = normalize_org_structure_type(fields['org_structure_type'])
+    if 'stock_control_scope' in fields:
+        from modules.legal_entities.service import normalize_stock_control_scope
+        fields['stock_control_scope'] = normalize_stock_control_scope(fields['stock_control_scope'])
 
     for field in ('state_registration', 'municipal_registration', 'address',
                   'contact_phone', 'whatsapp', 'contact_email', 'website',

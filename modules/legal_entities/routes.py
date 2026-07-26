@@ -45,7 +45,7 @@ def _audit(connection, company_id, actor, action_type, summary, details=None, *,
     registrada como aviso estruturado.
     """
     try:
-        from modules.companies.service import register_company_audit
+        from core.audit import register_company_audit
         register_company_audit(
             connection, int(company_id), actor, action_type, summary, details or [],
             legal_entity_id=legal_entity_id,

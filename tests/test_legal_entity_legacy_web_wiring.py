@@ -109,6 +109,82 @@ def test_unit_table_shows_the_legal_entity_column():
     assert 'data-i18n="unit.tableLegalEntity"' in _read('static', 'index.html')
 
 
+# ── tela de CNPJs ────────────────────────────────────────────────────────────
+
+def test_legal_entities_view_exists_in_the_generated_page():
+    """O web legado não tinha nenhuma tela de CNPJ.
+
+    O recurso existia no backend e no app; quem usa o legado simplesmente não
+    alcançava o Multi-CNPJ — não dava para cadastrar, consultar nem inativar.
+    """
+    html = _read('static', 'index.html')
+    assert 'id="cnpjs-view"' in html
+    assert 'id="legal-entity-form"' in html
+    assert 'id="legal-entities-table"' in html
+
+
+def test_legal_entities_view_is_in_the_menu():
+    """Tela sem item de menu é tela que não existe para o usuário."""
+    html = _read('static', 'index.html')
+    assert 'data-view="cnpjs"' in html
+    assert 'data-view="cnpjs"' in _read('static', 'views', '_sidebar.html')
+
+
+def test_legal_entities_view_is_registered_in_the_builder():
+    """`index.html` é gerado: fragmento fora do builder nunca chega à página."""
+    builder = _read('scripts', 'build_index.py')
+    assert '"cnpjs",' in builder
+    assert 'EPI_VIEW_INCLUDE:cnpjs' in _read('static', 'views', '_layout.html')
+    assert os.path.exists(os.path.join(ROOT, 'static', 'views', 'cnpjs.html'))
+
+
+def test_legal_entities_view_is_permission_gated():
+    app_js = _read('static', 'app.js')
+    assert re.search(r"cnpjs:\s*'legal_entities:view'", app_js)
+
+
+def test_legal_entity_form_preserves_the_active_flag():
+    """Sem enviar `active`, o backend assume 1.
+
+    Editar um CNPJ inativo sem o campo o **reativaria em silêncio** — por isso
+    ele viaja explicitamente e é repovoado ao abrir a edição.
+    """
+    html = _read('static', 'index.html')
+    assert re.search(r'<input[^>]*name="active"[^>]*id="legal-entity-active"', html)
+    app_js = _read('static', 'app.js')
+    assert "form.elements.active.value = active ? '1' : '0'" in app_js
+
+
+def test_legal_entity_deactivation_uses_the_delete_route():
+    """A inativação é a rota DELETE; não existe exclusão física de CNPJ."""
+    app_js = _read('static', 'app.js')
+    assert re.search(r"api\(`/api/legal-entities/\$\{entityId\}\?\$\{actorQuery\(\)\}`, \{ method: 'DELETE' \}\)", app_js)
+
+
+def test_legal_entity_company_field_is_master_only():
+    """Empresa só é escolhida pelo Master; para os demais é a do próprio usuário."""
+    app_js = _read('static', 'app.js')
+    assert 'function syncLegalEntityCompanyField()' in app_js
+    assert "state.user?.role === 'master_admin'" in app_js
+    assert 'id="legal-entity-company-field"' in _read('static', 'views', 'cnpjs.html')
+
+
+def test_legal_entities_view_module_is_loaded_by_the_page():
+    assert 'js/views/legal-entities-view.js' in _read('static', 'views', '_scripts.html')
+    assert 'js/views/legal-entities-view.js' in _read('static', 'index.html')
+
+
+def test_legal_entities_view_labels_exist_in_all_locales():
+    import json
+
+    for locale in ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']:
+        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
+        assert data['nav']['legalEntities'], locale
+        for key in ('pageTitle', 'create', 'save', 'statusActive', 'statusInactive',
+                    'deactivate', 'deactivateConfirm', 'empty', 'showInactive'):
+            assert data['legalEntity'][key], f'{locale}.legalEntity.{key}'
+
+
 # ── módulo de helpers ────────────────────────────────────────────────────────
 
 def test_legal_entity_helpers_module_is_loaded_by_the_page():

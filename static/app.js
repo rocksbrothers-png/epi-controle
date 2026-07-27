@@ -50,6 +50,7 @@ const VIEW_PERMISSIONS = {
   comercial: 'commercial:view',
   usuarios: 'users:view',
   unidades: 'units:view',
+  cnpjs: 'legal_entities:view',
   colaboradores: 'employees:view',
   'gestao-colaborador': 'employees:update',
   epis: 'epis:view',
@@ -67,6 +68,7 @@ const VIEW_EYEBROW = {
   comercial: 'Administração',
   usuarios: 'Administração',
   unidades: 'Cadastro',
+  cnpjs: 'Cadastro',
   colaboradores: 'Cadastro',
   'gestao-colaborador': 'Operação',
   epis: 'Cadastro',
@@ -1853,6 +1855,7 @@ const state = {
   userFilters: { company_id: '', role: '', active: '', search: '' },
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
+  legalEntitiesFilters: { search: '', type: '', showInactive: false },
   archivedUnits: [],
   archivedUnitsFilters: { company_id: '', date: '', reason: '', user: '' },
   archivedEmployees: [],
@@ -2029,6 +2032,10 @@ const refs = {
   unitsTable: document.getElementById('units-table'),
   unitsFilterCompany: document.getElementById('units-filter-company'),
   unitsFilterName: document.getElementById('units-filter-name'),
+  legalEntitiesTable: document.getElementById('legal-entities-table'),
+  legalEntitiesFilterSearch: document.getElementById('legal-entities-filter-search'),
+  legalEntitiesFilterType: document.getElementById('legal-entities-filter-type'),
+  legalEntitiesShowInactive: document.getElementById('legal-entities-show-inactive'),
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
   archivedUnitsTable: document.getElementById('archived-units-table'),
@@ -5654,7 +5661,7 @@ function renderTables() {
   const filteredEpis = applyEpisFilters(episForOperationalScope(filterByUserCompany(state.epis)));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
   refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
-  refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || globalThis.dsTableState({ colspan: 5, message: tr('unit.empty', 'Sem unidades.') });
+  refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || globalThis.dsTableState({ colspan: 6, message: tr('unit.empty', 'Sem unidades.') });
   // P1-1 — paginação client-side da tabela de Colaboradores (alta volumetria).
   const employeesPage = globalThis.dsPaginate(filteredEmployeesBase, state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
   if (state.pagination) state.pagination.employees = employeesPage.page;
@@ -7150,6 +7157,127 @@ function setEmployeeLegalEntityLock(legalEntityId, locked) {
   if (legalEntityId) field.value = String(legalEntityId);
   field.disabled = Boolean(locked);
   if (locked) field.required = false;
+}
+
+// ── Tela de CNPJs (web legado) ───────────────────────────────────────────────
+
+// Regras puras vivem em js/views/legal-entities-view.js (testadas no harness);
+// aqui ficam a leitura do estado, o DOM e as chamadas de API.
+function legalEntitiesViewHelpers() {
+  return globalThis.__EPI_LEGAL_ENTITIES_VIEW__ || {};
+}
+
+function renderLegalEntities() {
+  if (!refs.legalEntitiesTable) return;
+  const helpers = legalEntitiesViewHelpers();
+  const visible = helpers.visibleLegalEntities
+    ? helpers.visibleLegalEntities(state.legalEntities, state.legalEntitiesFilters)
+    : (state.legalEntities || []);
+  const canUpdate = hasPermission('legal_entities:update');
+  const canDelete = hasPermission('legal_entities:delete');
+  refs.legalEntitiesTable.innerHTML = visible
+    .map((item) => formatLegalEntityRow(item, { canUpdate, canDelete }))
+    .join('') || globalThis.dsTableState({
+      colspan: 6,
+      message: tr('legalEntity.empty', 'Sem CNPJs cadastrados.'),
+    });
+}
+
+function formatLegalEntityRow(item, permissions) {
+  const helpers = legalEntitiesViewHelpers();
+  const typeLabel = helpers.entityTypeLabel ? helpers.entityTypeLabel(item.entity_type) : '';
+  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
+  const status = active
+    ? tr('legalEntity.statusActive', 'Ativo')
+    : tr('legalEntity.statusInactive', 'Inativo');
+  // O botão de inativar só aparece quando a ação é possível: o backend recusa
+  // o último CNPJ ativo, e oferecer o botão só geraria mensagem de erro.
+  const showDeactivate = permissions.canDelete
+    && (helpers.canDeactivate ? helpers.canDeactivate(item, state.legalEntities) : active);
+  const buttons = [];
+  if (permissions.canUpdate) {
+    buttons.push(`<button class="ghost" data-legal-entity-edit="${item.id}">${tr('edit', 'Editar')}</button>`);
+  }
+  if (showDeactivate) {
+    buttons.push(`<button class="ghost" data-legal-entity-deactivate="${item.id}">${tr('legalEntity.deactivate', 'Inativar')}</button>`);
+  }
+  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
+  return `<tr><td>${escapeHtml(item.cnpj || '')}</td><td>${escapeHtml(item.legal_name || '')}</td>`
+    + `<td>${escapeHtml(item.trade_name || '') || '-'}</td><td>${escapeHtml(typeLabel)}</td>`
+    + `<td>${escapeHtml(status)}</td><td>${actions}</td></tr>`;
+}
+
+function syncLegalEntitiesFilters() {
+  state.legalEntitiesFilters.search = String(refs.legalEntitiesFilterSearch?.value || '').trim();
+  state.legalEntitiesFilters.type = String(refs.legalEntitiesFilterType?.value || '').trim();
+  state.legalEntitiesFilters.showInactive = Boolean(refs.legalEntitiesShowInactive?.checked);
+  renderLegalEntities();
+}
+
+// Empresa só é escolhida pelo Administrador Master, que atende vários clientes.
+// Para os demais o campo some: a empresa é a do próprio usuário, e mostrar um
+// seletor de uma opção só induz a erro.
+function syncLegalEntityCompanyField() {
+  const field = document.getElementById('legal-entity-company');
+  const wrapper = document.getElementById('legal-entity-company-field');
+  if (!field || !wrapper) return;
+  const isMaster = state.user?.role === 'master_admin';
+  wrapper.hidden = !isMaster;
+  field.required = isMaster;
+  if (!isMaster) {
+    field.innerHTML = `<option value="${state.user?.company_id || ''}"></option>`;
+    field.value = String(state.user?.company_id || '');
+    return;
+  }
+  const previous = field.value;
+  populateSelect('legal-entity-company', state.companies, (item) => `${item.name} - ${item.cnpj}`);
+  if (previous) field.value = previous;
+}
+
+function startEditLegalEntity(entityId) {
+  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
+  const form = document.getElementById('legal-entity-form');
+  if (!item || !form) return;
+  form.elements.id.value = item.id;
+  syncLegalEntityCompanyField();
+  if (form.elements.company_id) form.elements.company_id.value = item.company_id || '';
+  form.elements.cnpj.value = item.cnpj || '';
+  form.elements.legal_name.value = item.legal_name || '';
+  form.elements.trade_name.value = item.trade_name || '';
+  form.elements.entity_type.value = item.entity_type || 'matriz';
+  form.elements.state_registration.value = item.state_registration || '';
+  form.elements.municipal_registration.value = item.municipal_registration || '';
+  form.elements.cnae.value = item.cnae || '';
+  form.elements.opening_date.value = item.opening_date || '';
+  form.elements.address.value = item.address || '';
+  form.elements.municipality.value = item.municipality || '';
+  form.elements.uf.value = item.uf || '';
+  form.elements.cep.value = item.cep || '';
+  form.elements.notes.value = item.notes || '';
+  // Preserva a situação atual: sem isso o backend assumiria `active = 1` e a
+  // simples edição de um CNPJ inativo o reativaria.
+  const helpers = legalEntitiesViewHelpers();
+  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
+  form.elements.active.value = active ? '1' : '0';
+  setFormSubmitLabel('legal-entity-form', tr('legalEntity.update', 'Atualizar CNPJ'));
+  showView('cnpjs');
+}
+
+async function deactivateLegalEntity(entityId) {
+  if (!requirePermission('legal_entities:delete')) return;
+  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
+  if (!item) return;
+  const confirmed = confirm(tr(
+    'legalEntity.deactivateConfirm',
+    'Inativar este CNPJ? O histórico jurídico e fiscal é preservado; ele apenas deixa de ser usado em novas operações.',
+  ) + `\n\n${item.cnpj} — ${item.legal_name}`);
+  if (!confirmed) return;
+  try {
+    await api(`/api/legal-entities/${entityId}?${actorQuery()}`, { method: 'DELETE' });
+    await loadBootstrap();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 // Vínculo jurídico da unidade.
@@ -9411,6 +9539,8 @@ function renderAll() {
   renderCommercialExpiring();
   renderCommercialHistory();
   renderTables();
+  renderLegalEntities();
+  syncLegalEntityCompanyField();
   if (canManagePurchaseFunctions()) void loadPurchaseFunctions();
   renderLowStock();
   renderRequests();
@@ -9842,6 +9972,10 @@ async function handleEmployeeFormSuccess(accessLink) {
 function handleFormReset(form) {
   if (form.id === 'epi-form') {
     resetEpiForm(form);
+  } else if (form.id === 'legal-entity-form') {
+    setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
+    if (form.elements.active) form.elements.active.value = '1';
+    syncLegalEntityCompanyField();
   } else if (form.id === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
   } else if (form.id === 'employee-form') {
@@ -11223,6 +11357,7 @@ async function init() {
   });
 
   bindAppListener(document.getElementById('unit-form'), 'submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
+  bindAppListener(document.getElementById('legal-entity-form'), 'submit', (event) => saveSimpleForm(event, '/api/legal-entities', 'legal_entities:create'));
   bindAppListener(document.getElementById('employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
@@ -11390,6 +11525,15 @@ async function init() {
   bindAppListener(refs.unitsFilterType, 'change', syncUnitsSearchFilters);
   bindSearchInput(refs.unitsFilterName, syncUnitsSearchFilters, 120);
   bindSearchInput(refs.unitsFilterCity, syncUnitsSearchFilters, 120);
+  bindSearchInput(refs.legalEntitiesFilterSearch, syncLegalEntitiesFilters, 120);
+  bindAppListener(refs.legalEntitiesFilterType, 'change', syncLegalEntitiesFilters);
+  bindAppListener(refs.legalEntitiesShowInactive, 'change', syncLegalEntitiesFilters);
+  bindAppListener(refs.legalEntitiesTable, 'click', (event) => {
+    const edit = event.target.dataset.legalEntityEdit;
+    if (edit) { startEditLegalEntity(edit); return; }
+    const deactivate = event.target.dataset.legalEntityDeactivate;
+    if (deactivate) void deactivateLegalEntity(deactivate);
+  });
   bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
   bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);
   bindSearchInput(refs.archivedUnitsFilterReason, syncArchivedUnitsFilters, 120);

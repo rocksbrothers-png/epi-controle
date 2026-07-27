@@ -57,6 +57,7 @@ function loadModule(relPath) {
   'views/estoque.js',
   'views/employee-portal.js',
   'views/legal-entity-fields.js',
+  'views/legal-entities-view.js',
   'views/dashboard-scope.js'
 ].forEach(loadModule);
 
@@ -1183,6 +1184,67 @@ test('legal-entity-fields: unidade sem CNPJ devolve vazio, não "undefined"', ()
   const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
   eq(F.unitLegalEntityLabel({ name: 'Base sem CNPJ' }), '');
   eq(F.unitLegalEntityLabel(null), '');
+});
+
+// ── Tela de CNPJs (web legado) ────────────────────────────────────────────
+const _LE_VIEW = [
+  { id: 10, cnpj: '11.222.333/0001-81', legal_name: 'ACME Serviços LTDA', trade_name: 'ACME Matriz', entity_type: 'matriz', active: 1 },
+  { id: 20, cnpj: '45.723.174/0001-10', legal_name: 'ACME Filial RJ LTDA', trade_name: '', entity_type: 'filial', active: 1 },
+  { id: 30, cnpj: '19.131.243/0001-97', legal_name: 'ACME SPE Norte', trade_name: 'SPE Norte', entity_type: 'spe', active: 0 },
+];
+function _LV() { return globalThis.__EPI_LEGAL_ENTITIES_VIEW__; }
+
+test('legal-entities-view: inativos ficam fora por padrão', () => {
+  // O histórico é preservado, mas o CNPJ inativo não entra em nova operação —
+  // deixá-lo na lista de trabalho só atrapalha quem opera.
+  const ids = _LV().visibleLegalEntities(_LE_VIEW, {}).map((e) => e.id);
+  eq(JSON.stringify(ids), JSON.stringify([10, 20]));
+});
+test('legal-entities-view: inativos aparecem quando pedidos', () => {
+  const ids = _LV().visibleLegalEntities(_LE_VIEW, { showInactive: true }).map((e) => e.id);
+  eq(JSON.stringify(ids), JSON.stringify([10, 20, 30]));
+});
+test('legal-entities-view: busca cobre número, razão social e fantasia', () => {
+  const V = _LV();
+  eq(V.visibleLegalEntities(_LE_VIEW, { search: '45.723' })[0].id, 20);
+  eq(V.visibleLegalEntities(_LE_VIEW, { search: 'filial rj' })[0].id, 20);
+  eq(V.visibleLegalEntities(_LE_VIEW, { search: 'acme matriz' })[0].id, 10);
+});
+test('legal-entities-view: busca ignora caixa e espaços nas bordas', () => {
+  eq(_LV().visibleLegalEntities(_LE_VIEW, { search: '  ACME MATRIZ ' })[0].id, 10);
+});
+test('legal-entities-view: filtro de tipo é exato, não por prefixo', () => {
+  const V = _LV();
+  eq(V.visibleLegalEntities(_LE_VIEW, { type: 'filial' }).length, 1);
+  eq(V.visibleLegalEntities(_LE_VIEW, { type: 'matriz' })[0].id, 10);
+});
+test('legal-entities-view: rótulo do tipo traduz e não engole valor desconhecido', () => {
+  const V = _LV();
+  eq(V.entityTypeLabel('jv_partner'), 'Sócia de JV');
+  eq(V.entityTypeLabel('coisa_nova'), 'coisa_nova');
+  eq(V.entityTypeLabel(''), '-');
+});
+test('legal-entities-view: o último CNPJ ativo não oferece inativação', () => {
+  // O backend recusa (a empresa ficaria sem pessoa jurídica); oferecer o botão
+  // só produziria mensagem de erro.
+  const V = _LV();
+  const soUmAtivo = [_LE_VIEW[0], _LE_VIEW[2]];
+  assert(!V.canDeactivate(_LE_VIEW[0], soUmAtivo), 'último ativo não pode');
+  assert(V.canDeactivate(_LE_VIEW[0], _LE_VIEW), 'com dois ativos, pode');
+});
+test('legal-entities-view: CNPJ já inativo não oferece inativação', () => {
+  assert(!_LV().canDeactivate(_LE_VIEW[2], _LE_VIEW), 'inativo não reinativa');
+});
+test('legal-entities-view: active tolera 0/1, booleano e string', () => {
+  const V = _LV();
+  assert(V.isActive({ active: true }) && V.isActive({ active: 1 }) && V.isActive({ active: '1' }), 'ativos');
+  assert(!V.isActive({ active: false }) && !V.isActive({ active: 0 }) && !V.isActive({ active: '0' }), 'inativos');
+});
+test('legal-entities-view: lista ausente não quebra', () => {
+  const V = _LV();
+  eq(V.visibleLegalEntities(undefined, {}).length, 0);
+  eq(V.visibleLegalEntities(null, { showInactive: true }).length, 0);
+  assert(!V.canDeactivate(null, null), 'sem dados, sem ação');
 });
 
 // ── Filtro em cascata do dashboard (web legado) ───────────────────────────

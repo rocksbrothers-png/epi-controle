@@ -1359,5 +1359,9 @@
     "title": "CNPJ",
     "select": "Selecione o CNPJ",
     "auto": "Automático (CNPJ único)"
+  },
+  "myCompany": {
+    "stockScope": "Consolidar saldos de estoque por",
+    "stockScopeHint": "Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade."
   }
 }

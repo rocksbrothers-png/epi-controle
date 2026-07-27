@@ -243,3 +243,100 @@ def test_purchase_order_rejects_inactive_cnpj():
     )
     with pytest.raises(ValueError):
         _resolve_order_legal_entity(conn, 1, {'legal_entity_id': filial})
+
+
+# ── consolidação ∩ unidades autorizadas (ADR-0001 §15) ───────────────────────
+#
+# O escopo configurado é fronteira de CONSOLIDAÇÃO DE LEITURA, nunca de saída.
+# O saldo exibido é a interseção entre esse escopo e a carteira do usuário.
+
+def test_consolidation_intersects_authorized_units():
+    from modules.legal_entities.service import resolve_stock_consolidation_unit_ids
+
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'company')
+    authorized = [units['Matriz A'], units['Filial RJ']]
+    result = resolve_stock_consolidation_unit_ids(conn, 1, units['Matriz A'], authorized)
+    assert set(result) == {units['Matriz A'], units['Filial RJ']}
+    assert units['Matriz B'] not in result  # dentro do escopo, fora da carteira
+
+
+def test_consolidation_without_authorization_list_is_unrestricted():
+    """``None`` significa "sem restrição" — retrocompatibilidade dos chamadores."""
+    from modules.legal_entities.service import resolve_stock_consolidation_unit_ids
+
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'company')
+    result = resolve_stock_consolidation_unit_ids(conn, 1, units['Matriz A'], None)
+    assert set(result) == set(units.values())
+
+
+def test_consolidation_with_empty_authorization_returns_nothing():
+    """Lista vazia ≠ ``None``.
+
+    Confundir os dois mostraria a empresa inteira a quem não tem acesso a
+    unidade alguma — o oposto do pretendido.
+    """
+    from modules.legal_entities.service import resolve_stock_consolidation_unit_ids
+
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'company')
+    assert resolve_stock_consolidation_unit_ids(conn, 1, units['Matriz A'], []) == []
+
+
+def test_consolidation_does_not_smuggle_in_the_unauthorized_own_unit():
+    """A própria unidade da consulta também passa pela carteira.
+
+    O código antigo unia ``{unit_id}`` incondicionalmente; sob autorização isso
+    vazaria o saldo de uma unidade que o ator não pode ver.
+    """
+    from modules.legal_entities.service import resolve_stock_consolidation_unit_ids
+
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'unit')
+    result = resolve_stock_consolidation_unit_ids(
+        conn, 1, units['Matriz A'], [units['Filial RJ']]
+    )
+    assert result == []
+
+
+def test_scoped_balance_respects_authorized_units():
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'company')
+    balance = fetch_scoped_stock_balance(
+        conn, 1, units['Matriz A'], 99, [units['Matriz A']]
+    )
+    assert balance['quantity'] == 10  # só a Matriz A, não os 22 da empresa
+    assert set(balance['consolidated_unit_ids']) == {units['Matriz A']}
+
+
+def test_scoped_balance_with_no_authorized_unit_is_zero_not_everything():
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'company')
+    balance = fetch_scoped_stock_balance(conn, 1, units['Matriz A'], 99, [])
+    assert balance['quantity'] == 0
+    assert balance['quantity_by_unit'] == {}
+
+
+def test_legacy_pool_alias_still_works():
+    """Nome antigo mantido: a palavra "pool" saiu, os chamadores não quebram."""
+    from modules.legal_entities.service import (
+        resolve_stock_consolidation_unit_ids,
+        resolve_stock_pool_unit_ids,
+    )
+
+    assert resolve_stock_pool_unit_ids is resolve_stock_consolidation_unit_ids
+
+
+def test_scoped_balance_keeps_legacy_pool_key():
+    conn = _conn()
+    _, _, units = _seed_two_cnpjs_with_units(conn)
+    _set_scope(conn, 'legal_entity')
+    balance = fetch_scoped_stock_balance(conn, 1, units['Matriz A'], 99)
+    assert balance['pool_unit_ids'] == balance['consolidated_unit_ids']

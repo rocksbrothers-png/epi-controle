@@ -2465,6 +2465,36 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Histórico de vínculo'**
   String get legalEntityTransferHistory;
+
+  /// No description provided for @myCompanyStockScope.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Consolidar saldos de estoque por'**
+  String get myCompanyStockScope;
+
+  /// No description provided for @myCompanyStockScopeHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.'**
+  String get myCompanyStockScopeHint;
+
+  /// No description provided for @myCompanyStockScopeUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get myCompanyStockScopeUnit;
+
+  /// No description provided for @myCompanyStockScopeLegalEntity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get myCompanyStockScopeLegalEntity;
+
+  /// No description provided for @myCompanyStockScopeCompany.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa'**
+  String get myCompanyStockScopeCompany;
 }
 
 class _AppLocalizationsDelegate

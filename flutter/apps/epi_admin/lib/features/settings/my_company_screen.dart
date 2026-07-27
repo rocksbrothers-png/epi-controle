@@ -85,6 +85,7 @@ class _MyCompanyFormState extends State<_MyCompanyForm> {
   late final Map<String, TextEditingController> _fields;
   final _domainController = TextEditingController();
   String _domainType = 'platform_subdomain';
+  late String _stockControlScope;
 
   static const _fieldKeys = [
     'name',
@@ -129,6 +130,7 @@ class _MyCompanyFormState extends State<_MyCompanyForm> {
       for (final key in _fieldKeys)
         key: TextEditingController(text: values[key] ?? ''),
     };
+    _stockControlScope = widget.profile.stockControlScope;
   }
 
   @override
@@ -143,6 +145,7 @@ class _MyCompanyFormState extends State<_MyCompanyForm> {
   void _save() {
     final body = <String, dynamic>{
       for (final entry in _fields.entries) entry.key: entry.value.text.trim(),
+      'stock_control_scope': _stockControlScope,
     };
     context.read<MyCompanyCubit>().save(body);
   }
@@ -206,6 +209,7 @@ class _MyCompanyFormState extends State<_MyCompanyForm> {
         const SizedBox(height: EpiSpacing.lg),
         _SectionTitle(label: l10n.myCompanyPreferencesSection),
         _field('timezone', l10n.myCompanyTimezone),
+        _stockScopeField(l10n),
         const SizedBox(height: EpiSpacing.lg),
         FilledButton(
           onPressed: widget.isSaving ? null : _save,
@@ -261,6 +265,46 @@ class _MyCompanyFormState extends State<_MyCompanyForm> {
         ),
         const SizedBox(height: EpiSpacing.xl5),
       ],
+    );
+  }
+
+  /// Consolidação de saldos — deliberadamente NÃO se chama "controlar estoque".
+  ///
+  /// O rótulo antigo induzia à leitura de que a configuração escolheria de onde
+  /// o material sai. O texto auxiliar existe para fechar essa porta: a decisão
+  /// do ADR-0001 §15 é que o estoque pertence sempre a uma unidade.
+  Widget _stockScopeField(AppLocalizations l10n) {
+    final options = <String, String>{
+      'unit': l10n.myCompanyStockScopeUnit,
+      'legal_entity': l10n.myCompanyStockScopeLegalEntity,
+      'company': l10n.myCompanyStockScopeCompany,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: EpiSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: options.containsKey(_stockControlScope)
+                ? _stockControlScope
+                : 'company',
+            isExpanded: true,
+            decoration: InputDecoration(labelText: l10n.myCompanyStockScope),
+            items: options.entries
+                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (value) =>
+                setState(() => _stockControlScope = value ?? 'company'),
+          ),
+          const SizedBox(height: EpiSpacing.xs),
+          Text(
+            l10n.myCompanyStockScopeHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: EpiColors.textMuted,
+                ),
+          ),
+        ],
+      ),
     );
   }
 

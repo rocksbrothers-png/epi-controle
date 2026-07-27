@@ -127,38 +127,51 @@ def upsert_unit_stock(connection, company_id, unit_id, epi_id, new_quantity):
         )
 
 
-def fetch_scoped_stock_balance(connection, company_id, unit_id, epi_id):
-    """Saldo do EPI dentro da fronteira de compartilhamento configurada.
+def fetch_scoped_stock_balance(connection, company_id, unit_id, epi_id, authorized_unit_ids=None):
+    """Saldo do EPI **consolidado para leitura** (ADR-0001 §15).
 
-    Respeita ``companies.stock_control_scope`` (Empresa / CNPJ / Unidade). O
-    saldo físico continua por unidade; aqui ele é agregado sobre o pool de
-    unidades que compartilham estoque, devolvendo também a composição por
-    unidade para conferência operacional.
+    O estoque pertence exclusivamente a uma unidade. Este agregado existe para a
+    visão de quem administra várias — nunca para escolher de onde o material
+    sai. A composição por unidade vai junto justamente para que a origem
+    permaneça explícita.
 
-    Somente leitura: a baixa de estoque na entrega continua ocorrendo na unidade
-    da operação, sem alteração de comportamento.
+    ``authorized_unit_ids`` recorta pela carteira do ator: o saldo exibido é a
+    interseção entre o escopo configurado e as unidades autorizadas. ``None``
+    significa "sem restrição"; lista vazia devolve saldo zero, não a empresa
+    inteira.
+
+    Somente leitura: a baixa na entrega continua ocorrendo na unidade da
+    operação.
     """
-    from modules.legal_entities.service import get_stock_control_scope, resolve_stock_pool_unit_ids
+    from modules.legal_entities.service import (
+        get_stock_control_scope,
+        resolve_stock_consolidation_unit_ids,
+    )
 
-    pool_unit_ids = resolve_stock_pool_unit_ids(connection, company_id, unit_id)
-    placeholders = ', '.join(['?'] * len(pool_unit_ids))
-    rows = connection.execute(
-        f'SELECT unit_id, quantity FROM unit_epi_stock '  # noqa: S608
-        f'WHERE company_id = ? AND epi_id = ? AND unit_id IN ({placeholders})',
-        (int(company_id), int(epi_id), *pool_unit_ids),
-    ).fetchall()
+    consolidated_unit_ids = resolve_stock_consolidation_unit_ids(
+        connection, company_id, unit_id, authorized_unit_ids,
+    )
     by_unit = {}
     total = 0
-    for row in rows:
-        data = row_to_dict(row)
-        quantity = int(data.get('quantity') or 0)
-        by_unit[int(data['unit_id'])] = quantity
-        total += quantity
+    if consolidated_unit_ids:
+        placeholders = ', '.join(['?'] * len(consolidated_unit_ids))
+        rows = connection.execute(
+            f'SELECT unit_id, quantity FROM unit_epi_stock '  # noqa: S608
+            f'WHERE company_id = ? AND epi_id = ? AND unit_id IN ({placeholders})',
+            (int(company_id), int(epi_id), *consolidated_unit_ids),
+        ).fetchall()
+        for row in rows:
+            data = row_to_dict(row)
+            quantity = int(data.get('quantity') or 0)
+            by_unit[int(data['unit_id'])] = quantity
+            total += quantity
     return {
         'scope': get_stock_control_scope(connection, company_id),
         'unit_id': int(unit_id),
         'epi_id': int(epi_id),
-        'pool_unit_ids': pool_unit_ids,
+        'consolidated_unit_ids': consolidated_unit_ids,
+        # Nome anterior da chave, mantido para não quebrar consumidores.
+        'pool_unit_ids': consolidated_unit_ids,
         'quantity': total,
         'quantity_by_unit': by_unit,
     }

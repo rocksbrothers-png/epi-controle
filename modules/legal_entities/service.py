@@ -138,9 +138,15 @@ def employee_legal_entity_sql(connection, *, employee_alias='employees', prefix=
 
 
 def get_stock_control_scope(connection, company_id) -> str:
-    """Escopo de controle de estoque configurado para a empresa.
+    """Escopo de **consolidação de saldos** configurado para a empresa.
 
-    Cai para ``unit`` (comportamento histórico) quando a coluna ainda não existe.
+    Apesar do nome histórico da coluna, este valor governa apenas até onde os
+    saldos são agregados **na leitura** (ADR-0001 §15). Ele nunca define unidade
+    de saída, origem de baixa, estoque usado na entrega, origem de reserva, de
+    ajuste, de devolução ou unidade de recebimento — essas continuam presas à
+    unidade da operação.
+
+    Cai para ``unit`` (o recorte mais restrito) quando a coluna ainda não existe.
     """
     from epi_backend.db import table_columns
     if 'stock_control_scope' not in table_columns(connection, 'companies'):
@@ -154,44 +160,61 @@ def get_stock_control_scope(connection, company_id) -> str:
     return normalize_stock_control_scope(value)
 
 
-def resolve_stock_pool_unit_ids(connection, company_id, unit_id):
-    """Unidades que compartilham o mesmo pool de estoque da ``unit_id``.
+def resolve_stock_consolidation_unit_ids(connection, company_id, unit_id, authorized_unit_ids=None):
+    """Unidades cujos saldos são **consolidados na leitura** junto com ``unit_id``.
 
-    O estoque físico continua registrado por unidade — é onde o item de fato
-    está. O escopo configurado define apenas a **fronteira de compartilhamento**
-    do saldo:
+    Fronteira de CONSOLIDAÇÃO, nunca de saída (ADR-0001 §15). O estoque pertence
+    exclusivamente a uma unidade: nenhuma operação física ou lógica — entrega,
+    reserva, baixa, ajuste, devolução, recebimento — pode escolher a unidade de
+    origem a partir daqui. Este resultado só alimenta visão agregada.
 
-      - ``unit``          → só a própria unidade (comportamento histórico);
-      - ``legal_entity``  → todas as unidades do mesmo CNPJ (estoque por CNPJ);
-      - ``company``       → todas as unidades da empresa (estoque compartilhado).
+      - ``unit``          → só a própria unidade;
+      - ``legal_entity``  → todas as unidades do mesmo CNPJ;
+      - ``company``       → todas as unidades da empresa.
 
-    Como cada unidade já carrega ``legal_entity_id``, o pool por CNPJ é derivado
-    sem re-chavear a tabela de estoque nem migrar dados.
+    Como cada unidade já carrega ``legal_entity_id``, a consolidação por CNPJ é
+    derivada sem re-chavear a tabela de estoque nem migrar dados.
+
+    ``authorized_unit_ids`` recorta o resultado pelas unidades que o ator pode
+    ver: o saldo exibido é a interseção entre o escopo configurado e a carteira
+    do usuário. ``None`` significa "sem restrição" — diferente de lista vazia,
+    que significa "nenhuma unidade autorizada" e devolve nada. Confundir os dois
+    mostraria a empresa inteira a quem não tem acesso a unidade alguma.
     """
     unit_id = int(unit_id)
     scope = get_stock_control_scope(connection, company_id)
     if scope == 'unit':
-        return [unit_id]
-    if scope == 'company':
+        candidates = {unit_id}
+    elif scope == 'company':
         rows = connection.execute(
             'SELECT id FROM units WHERE company_id = ?', (int(company_id),)
         ).fetchall()
-        return sorted({int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id})
-    # scope == 'legal_entity'
-    from epi_backend.db import table_columns
-    if 'legal_entity_id' not in table_columns(connection, 'units'):
-        return [unit_id]
-    row = connection.execute(
-        'SELECT legal_entity_id FROM units WHERE id = ?', (unit_id,)
-    ).fetchone()
-    entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
-    if not entity_id:
-        return [unit_id]
-    rows = connection.execute(
-        'SELECT id FROM units WHERE company_id = ? AND legal_entity_id = ?',
-        (int(company_id), int(entity_id)),
-    ).fetchall()
-    return sorted({int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id})
+        candidates = {int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id}
+    else:  # scope == 'legal_entity'
+        from epi_backend.db import table_columns
+        if 'legal_entity_id' not in table_columns(connection, 'units'):
+            candidates = {unit_id}
+        else:
+            row = connection.execute(
+                'SELECT legal_entity_id FROM units WHERE id = ?', (unit_id,)
+            ).fetchone()
+            entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
+            if not entity_id:
+                candidates = {unit_id}
+            else:
+                rows = connection.execute(
+                    'SELECT id FROM units WHERE company_id = ? AND legal_entity_id = ?',
+                    (int(company_id), int(entity_id)),
+                ).fetchall()
+                candidates = {int(r['id'] if hasattr(r, 'keys') else r[0]) for r in rows} | {unit_id}
+    if authorized_unit_ids is None:
+        return sorted(candidates)
+    return sorted(candidates & {int(item) for item in authorized_unit_ids})
+
+
+# Nome anterior. A palavra "pool" carregava a leitura de estoque compartilhado
+# que a decisão da §15 rejeita; mantido como alias para não quebrar chamadores.
+resolve_stock_pool_unit_ids = resolve_stock_consolidation_unit_ids
 
 
 def normalize_entity_type(value) -> str:

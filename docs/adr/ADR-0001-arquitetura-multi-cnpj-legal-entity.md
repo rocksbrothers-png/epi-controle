@@ -292,16 +292,56 @@ Setor): `GET /api/bootstrap` passa a expor a seção `legal_entities` (já escop
 por papel) e `fetch_units` passa a devolver `legal_entity_id`. Com isso o
 frontend monta a cascata sem chamadas adicionais.
 
-## 13. Roadmap das próximas fases
+## 13. Frontend — Flutter Web/Android/iOS e Web legado (implementado)
+
+O backend não ganhou contrato novo nesta etapa: o frontend passou a **consumir**
+o que as Fases 2–6 já expunham.
+
+**Camada de dados (`epi_api`).** Modelo `LegalEntity` com parsing tolerante de
+booleano (`0/1`, bool, string) — o backend devolve inteiro em SQLite e booleano
+em Postgres, e o cliente não pode quebrar por causa do dialeto. `Employee` ganha
+`legalEntityId`/`legalEntityCnpj`/`legalEntityName`, **ausentes** enquanto o
+schema Multi-CNPJ não estiver provisionado.
+
+**Telas.** Gestão de CNPJs com importação de planilha **por colagem** (parser em
+Dart puro: leitura nativa de arquivo exigiria configuração por plataforma que
+não poderia ser validada nos builds Android/iOS); seletor de CNPJ no cadastro de
+colaborador; filtro em cascata no dashboard, recomputando os KPIs **localmente**,
+sem nova chamada de rede a cada troca de nível.
+
+**Transferência de vínculo jurídico** vive no *detalhe* do colaborador, não no
+formulário de edição — decisão deliberada, coerente com a §11: alterar o CNPJ
+não é edição de cadastro, é processo administrativo que exige justificativa e
+gera auditoria. A UI só oferece CNPJs ativos diferentes do atual, os mesmos dois
+casos que o backend recusa.
+
+**Portal do colaborador** (Flutter e Web legado) mostra `Empresa · CNPJ ·
+Unidade`, **omitindo o que estiver ausente** — instalações de CNPJ único não
+podem exibir separadores soltos. A etapa "Como sua organização está
+estruturada?" não se aplica aqui: este repositório não tem a página de
+cadastro/onboarding do Web legado.
+
+## 14. Testes E2E (implementado)
+
+O `integration_test/smoke_test.dart` existente é deliberadamente *backend-free*.
+A jornada Multi-CNPJ não pode ser: **não se prova a cascata Empresa → CNPJ →
+Unidade sem CNPJs e unidades**. Em vez de mockar o cliente HTTP — o que deixaria
+de exercitar justamente o parsing que já causou bug de paridade —
+`integration_test/multi_cnpj_test.dart` sobe um `HttpServer` real em `127.0.0.1`
+com respostas canônicas.
+
+O caminho exercitado é o inteiro e o de produção: Dio + interceptors → HTTP →
+parsing dos modelos → cubits → widgets. E continua determinístico, porque o
+"backend" é local e fixo. Cobre login → bootstrap com dois CNPJs → barra de
+filtros → seleção de CNPJ restringindo as unidades.
+
+O job "Integration (Android emulator)" passou a rodar o **diretório**
+`integration_test` inteiro, em vez de apenas o smoke.
+
+## 15. Roadmap das próximas fases
 
 1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
    quando o pool é compartilhado (FEFO entre unidades? unidade da operação
    primeiro?). Exige decisão de negócio do cliente.
-2. **Importação de planilha de CNPJs** e **filtros hierárquicos de dashboard**
-   (Empresa → CNPJ → Unidade → Setor).
-3. **Onboarding UI:** etapa "Como sua organização está estruturada?" e o
-   cadastro em lote / importação de planilha para múltiplos CNPJs e JV
-   (backend de lote já disponível em `POST /api/legal-entities/batch`).
-3. **Frontend:** Flutter Web, Android, iOS e Web legado — seletor de CNPJ no
-   cadastro de colaborador, filtros de dashboard e exportações LGPD com
-   Empresa/CNPJ/Unidade.
+2. **Exportações LGPD** com Empresa/CNPJ/Unidade nas telas de relatório do app
+   (o backend já emite os três níveis).

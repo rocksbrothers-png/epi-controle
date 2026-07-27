@@ -78,11 +78,24 @@ class PortalHomeScreen extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    access.unitName,
+                                    // Empresa / CNPJ / Unidade: o CNPJ e o
+                                    // vinculo juridico do colaborador, nao o da
+                                    // empresa contratante. Omitido enquanto o
+                                    // schema Multi-CNPJ nao estiver ativo.
+                                    [
+                                      if (access.companyName.isNotEmpty)
+                                        access.companyName,
+                                      if (access.legalEntityCnpj.isNotEmpty)
+                                        access.legalEntityCnpj,
+                                      if (access.unitName.isNotEmpty)
+                                        access.unitName,
+                                    ].join(' · '),
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
                                         ?.copyWith(color: Colors.white70),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),

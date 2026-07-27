@@ -27,6 +27,20 @@
     return String(tr(key, fallback)).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
   }
 
+  // Cadeia organizacional do colaborador: Empresa · CNPJ · Unidade.
+  //
+  // Partes ausentes são omitidas em vez de virarem '-', para que instalações
+  // com um único CNPJ (ou ainda sem o schema Multi-CNPJ provisionado) não
+  // exibam separadores soltos. O CNPJ vem derivado do vínculo jurídico do
+  // colaborador — o portal nunca guarda cópia própria.
+  function formatOrgChain(employee) {
+    const source = employee || {};
+    return [source.company_name, source.legal_entity_cnpj, source.unit_name]
+      .map((part) => String(part ?? '').trim())
+      .filter((part) => part !== '')
+      .join(' · ');
+  }
+
   function formatDate(value) {
     return globalThis.formatDate?.(value) ?? String(value || '-');
   }
@@ -186,7 +200,7 @@
     <section class="screen active">
       <div class="login-panel employee-portal-shell">
         <h2>${tr('portal.employeeAccessTitle', 'Acesso do Colaborador')}</h2>
-        <p><strong>${esc(employee.employee_name || '-')}</strong> ${esc(employee.company_name || '-')}</p>
+        <p><strong>${esc(employee.employee_name || '-')}</strong> ${esc(formatOrgChain(employee) || '-')}</p>
         <p>${tr('employee.employeeId', 'ID')}: ${esc(employee.employee_id_code || '-')} | ${tr('employee.sector', 'Setor')}: ${esc(employee.sector || '-')}</p>
         <label>${tr('portal.employeeSignature', 'Assinatura do colaborador')}
           <button id="employee-signature-open" class="ghost" type="button">${tr('portal.clickHereToSign', 'Clique aqui para assinar')}</button>
@@ -633,12 +647,14 @@
   // ── Exports ────────────────────────────────────────────────────────────────
 
   globalThis.portalCpfStorageKey = portalCpfStorageKey;
+  globalThis.formatPortalOrgChain = formatOrgChain;
   globalThis.cachePortalCpfLast3 = cachePortalCpfLast3;
   globalThis.getCachedPortalCpfLast3 = getCachedPortalCpfLast3;
   globalThis.renderEmployeeCpfValidationScreen = renderEmployeeCpfValidationScreen;
   globalThis.renderEmployeeExternalAccess = renderEmployeeExternalAccess;
 
   globalThis.__EPI_EMPLOYEE_PORTAL__ = Object.freeze({
+    formatOrgChain,
     portalCpfStorageKey,
     cachePortalCpfLast3,
     getCachedPortalCpfLast3,

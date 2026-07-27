@@ -3,6 +3,7 @@
 class BootstrapResponse {
   const BootstrapResponse({
     required this.units,
+    this.legalEntities = const [],
     required this.employees,
     required this.epis,
     required this.users,
@@ -14,6 +15,12 @@ class BootstrapResponse {
   });
 
   final List<Map<String, dynamic>> units;
+
+  /// CNPJs (LegalEntity) visíveis ao ator — já escopados por papel pelo
+  /// backend. Alimentam o filtro em cascata Empresa → CNPJ → Unidade → Setor
+  /// e o seletor de CNPJ no cadastro de colaborador.
+  final List<Map<String, dynamic>> legalEntities;
+
   final List<Map<String, dynamic>> employees;
   final List<Map<String, dynamic>> epis;
   final List<Map<String, dynamic>> users;
@@ -33,6 +40,7 @@ class BootstrapResponse {
         (data[key] as List? ?? []).cast<Map<String, dynamic>>();
     return BootstrapResponse(
       units:      _list('units'),
+      legalEntities: _list('legal_entities'),
       employees:  _list('employees'),
       epis:       _list('epis'),
       users:      _list('users'),

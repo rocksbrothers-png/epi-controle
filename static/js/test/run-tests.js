@@ -54,7 +54,8 @@ function loadModule(relPath) {
   'views/view-helpers.js',
   'views/dashboard.js',
   'views/epis.js',
-  'views/estoque.js'
+  'views/estoque.js',
+  'views/employee-portal.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -1087,6 +1088,25 @@ test('ui-helpers: dsBulkBar vazio quando count 0; renderiza ações e clear', ()
   assert(html.includes('data-ds-bulk-action="export"'), 'tem ação export');
   assert(html.includes('data-ds-bulk-action="__clear"'), 'tem limpar');
   assert(html.includes('>3<') || html.includes('<strong>3</strong>'), 'mostra contador');
+});
+
+// ── Portal do colaborador: Empresa · CNPJ · Unidade ───────────────────────
+test('employee-portal: cadeia completa Empresa · CNPJ · Unidade', () => {
+  const chain = globalThis.__EPI_EMPLOYEE_PORTAL__.formatOrgChain({
+    company_name: 'ACME', legal_entity_cnpj: '11.222.333/0001-81', unit_name: 'Matriz SP',
+  });
+  eq(chain, 'ACME · 11.222.333/0001-81 · Matriz SP');
+});
+test('employee-portal: sem Multi-CNPJ mostra só o que existe (sem separador solto)', () => {
+  const F = globalThis.__EPI_EMPLOYEE_PORTAL__.formatOrgChain;
+  eq(F({ company_name: 'ACME' }), 'ACME');
+  eq(F({ company_name: 'ACME', unit_name: 'Matriz SP' }), 'ACME · Matriz SP');
+});
+test('employee-portal: campos vazios/brancos e payload ausente não geram lixo', () => {
+  const F = globalThis.__EPI_EMPLOYEE_PORTAL__.formatOrgChain;
+  eq(F({ company_name: '  ', legal_entity_cnpj: null, unit_name: undefined }), '');
+  eq(F({}), '');
+  eq(F(null), '');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

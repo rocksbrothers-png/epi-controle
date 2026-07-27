@@ -26,7 +26,7 @@ dependencies:
     path: ../../packages/epi_api
 
   # State management
-  flutter_bloc: ^8.1.6
+  flutter_bloc: ^9.1.1
   equatable: ^2.0.5
 
   # Navigation

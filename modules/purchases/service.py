@@ -1401,12 +1401,9 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
 # ficava um *conjunto*: validava o destino e ignorava a origem, então
 # `solicitado → entregue` passava.
 from modules.epis.request_states import (  # noqa: E402
-    ALL_STATUSES as _EPI_REQUEST_ALL_STATUSES,
     InvalidStatusTransition as _InvalidStatusTransition,
     assert_transition as _assert_epi_request_transition,
 )
-
-_EPI_REQUEST_VALID_STATUSES = set(_EPI_REQUEST_ALL_STATUSES)
 
 
 def update_epi_request_status(connection, actor, req, new_status, postponed_until, rejection_reason, notes):

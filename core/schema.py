@@ -2380,6 +2380,73 @@ def ensure_stock_reservations(connection) -> None:
             structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_stock_replenishment_needs(connection) -> None:
+    """Necessidade de reposição **persistida** (plano §4).
+
+    O estoque mínimo já era detectado, mas apenas *calculado na hora*. Sem
+    registro não havia como cumprir duas exigências do plano: evitar demanda
+    duplicada (§4.2) e rastrear a origem até a compra (§3.8) — a corrente
+    ``solicitação do colaborador → necessidade → requisição de compra``.
+
+    A necessidade é **sempre de uma unidade**, como todo o resto do fluxo. Duas
+    unidades abaixo do mínimo geram duas necessidades, nunca uma agregada.
+
+    Grava também o retrato que gerou a sugestão (saldo, mínimo, máximo, em
+    compra, demanda pendente). Sem esse retrato, uma sugestão antiga vira um
+    número sem explicação assim que o saldo muda.
+    """
+    # `maximum_stock` é o alvo da reposição do §4.3. Só havia `minimum_stock`.
+    # Zero significa "não configurado": o alvo cai para o mínimo, em vez de
+    # sugerir compra negativa ou zerada.
+    _safe_add_column(connection, 'epis', 'maximum_stock', 'INTEGER NOT NULL DEFAULT 0')
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS stock_replenishment_needs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            origin TEXT NOT NULL DEFAULT 'minimum_stock',
+            status TEXT NOT NULL DEFAULT 'open',
+            physical_stock INTEGER NOT NULL DEFAULT 0,
+            reserved_stock INTEGER NOT NULL DEFAULT 0,
+            free_stock INTEGER NOT NULL DEFAULT 0,
+            minimum_stock INTEGER NOT NULL DEFAULT 0,
+            maximum_stock INTEGER NOT NULL DEFAULT 0,
+            on_order_quantity INTEGER NOT NULL DEFAULT 0,
+            pending_demand_quantity INTEGER NOT NULL DEFAULT 0,
+            suggested_quantity INTEGER NOT NULL DEFAULT 0,
+            employee_request_id INTEGER,
+            purchase_request_id INTEGER,
+            trigger_rule TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            closed_at TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (employee_request_id) REFERENCES epi_requests(id) ON DELETE SET NULL,
+            FOREIGN KEY (purchase_request_id) REFERENCES purchase_requests(id) ON DELETE SET NULL
+        )
+        '''
+    )
+    for statement in (
+        # A consulta quente é a antiduplicidade: "já existe necessidade aberta
+        # para este EPI nesta unidade?".
+        'CREATE INDEX IF NOT EXISTS idx_replenishment_open '
+        'ON stock_replenishment_needs (company_id, unit_id, epi_id, status)',
+        'CREATE INDEX IF NOT EXISTS idx_replenishment_purchase_request '
+        'ON stock_replenishment_needs (purchase_request_id)',
+        'CREATE INDEX IF NOT EXISTS idx_replenishment_employee_request '
+        'ON stock_replenishment_needs (employee_request_id)',
+    ):
+        try:
+            connection.execute(statement)
+        except Exception as _e:  # noqa: BLE001 - índice é otimização, não requisito
+            structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def _backfill_default_legal_entities(connection) -> None:
     """Cria a LegalEntity padrão (matriz) das empresas existentes e revincula
     colaboradores/unidades órfãos. Idempotente: só cria/atualiza o que falta."""
@@ -2924,6 +2991,7 @@ def init_db():
             ensure_employee_columns,
             ensure_legal_entities,
             ensure_stock_reservations,
+            ensure_stock_replenishment_needs,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,

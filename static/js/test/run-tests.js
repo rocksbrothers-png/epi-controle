@@ -55,7 +55,8 @@ function loadModule(relPath) {
   'views/dashboard.js',
   'views/epis.js',
   'views/estoque.js',
-  'views/employee-portal.js'
+  'views/employee-portal.js',
+  'views/legal-entity-fields.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -1107,6 +1108,59 @@ test('employee-portal: campos vazios/brancos e payload ausente não geram lixo',
   eq(F({ company_name: '  ', legal_entity_cnpj: null, unit_name: undefined }), '');
   eq(F({}), '');
   eq(F(null), '');
+});
+
+// ── Campos de CNPJ (web legado) ───────────────────────────────────────────
+const _LE = [
+  { id: 10, company_id: 1, cnpj: '11.222.333/0001-81', legal_name: 'ACME SA', trade_name: 'ACME Matriz', active: 1 },
+  { id: 20, company_id: 1, cnpj: '45.723.174/0001-10', legal_name: 'ACME Filial RJ LTDA', trade_name: '', active: 1 },
+  { id: 30, company_id: 1, cnpj: '11.444.777/0001-61', legal_name: 'ACME Extinta', trade_name: '', active: 0 },
+  { id: 40, company_id: 2, cnpj: '99.999.999/0001-99', legal_name: 'Outra Empresa', trade_name: '', active: 1 },
+];
+test('legal-entity-fields: cadastro só enxerga CNPJ ativo da própria empresa', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  const ids = F.legalEntitiesForCompany(_LE, 1).map((e) => e.id);
+  eq(JSON.stringify(ids), JSON.stringify([10, 20]));
+});
+test('legal-entity-fields: relatório inclui inativos (histórico é consultável)', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  const ids = F.legalEntitiesForCompany(_LE, 1, { activeOnly: false }).map((e) => e.id);
+  eq(JSON.stringify(ids), JSON.stringify([10, 20, 30]));
+});
+test('legal-entity-fields: nunca vaza CNPJ de outra empresa', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  const ids = F.legalEntitiesForCompany(_LE, 2, { activeOnly: false }).map((e) => e.id);
+  eq(JSON.stringify(ids), JSON.stringify([40]));
+});
+test('legal-entity-fields: empresa vazia não filtra (usuário de empresa única)', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  eq(F.legalEntitiesForCompany(_LE, '').length, 3); // só os ativos
+});
+test('legal-entity-fields: active tolera 0/1, booleano e string', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  const rows = [{ id: 1, active: true }, { id: 2, active: '1' }, { id: 3, active: 1 },
+    { id: 4, active: false }, { id: 5, active: 0 }, { id: 6, active: '0' }];
+  eq(JSON.stringify(F.legalEntitiesForCompany(rows, '').map((e) => e.id)), JSON.stringify([1, 2, 3]));
+});
+test('legal-entity-fields: rótulo usa fantasia, cai para razão social', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  eq(F.legalEntityLabel(_LE[0]), 'ACME Matriz - 11.222.333/0001-81');
+  eq(F.legalEntityLabel(_LE[1]), 'ACME Filial RJ LTDA - 45.723.174/0001-10');
+  eq(F.legalEntityLabel({ cnpj: '11.222.333/0001-81' }), '11.222.333/0001-81');
+  eq(F.legalEntityLabel({ legal_name: 'Sem CNPJ' }), 'Sem CNPJ');
+});
+test('legal-entity-fields: CNPJ obrigatório apenas com mais de um ativo', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  // Sem schema Multi-CNPJ e com CNPJ único o backend resolve sozinho.
+  assert(!F.employeeLegalEntityRequired([]), 'sem CNPJ não exige');
+  assert(!F.employeeLegalEntityRequired([_LE[0]]), 'CNPJ único não exige');
+  assert(F.employeeLegalEntityRequired([_LE[0], _LE[1]]), 'multi-CNPJ exige');
+});
+test('legal-entity-fields: lista ausente ou inválida não quebra', () => {
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  eq(F.legalEntitiesForCompany(undefined, 1).length, 0);
+  eq(F.legalEntitiesForCompany(null, 1).length, 0);
+  eq(F.legalEntityLabel(null), '');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

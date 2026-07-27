@@ -334,7 +334,9 @@
     "archivedEmpty": "Nenhum colaborador arquivado.",
     "restoreConfirm": "O colaborador será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
     "tableName": "Colaborador",
-    "tableUnit": "Unidade"
+    "tableUnit": "Unidade",
+    "legalEntity": "CNPJ (vínculo jurídico)",
+    "legalEntityHint": "Vínculo do contrato de trabalho. Imutável após a admissão: alterações exigem transferência auditada."
   },
   "epi": {
     "title": "EPI",
@@ -1351,5 +1353,10 @@
     "register": "Registrar",
     "conference": "Conferência",
     "history": "Histórico"
+  },
+  "legalEntity": {
+    "title": "CNPJ",
+    "select": "Selecione o CNPJ",
+    "auto": "Automático (CNPJ único)"
   }
 }

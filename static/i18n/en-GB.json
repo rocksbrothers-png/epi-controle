@@ -334,7 +334,9 @@
     "archivedEmpty": "No archived employees.",
     "restoreConfirm": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
     "tableName": "Employee",
-    "tableUnit": "Unit"
+    "tableUnit": "Unit",
+    "legalEntity": "Tax ID (legal entity)",
+    "legalEntityHint": "Employment contract link. Immutable after admission: changes require an audited transfer."
   },
   "epi": {
     "title": "PPE",
@@ -1351,5 +1353,10 @@
     "register": "Register",
     "conference": "Handover check",
     "history": "History"
+  },
+  "legalEntity": {
+    "title": "Tax ID",
+    "select": "Select the tax ID",
+    "auto": "Automatic (single tax ID)"
   }
 }

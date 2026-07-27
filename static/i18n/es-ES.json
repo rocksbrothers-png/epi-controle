@@ -334,7 +334,9 @@
     "archivedEmpty": "No archived employees.",
     "restoreConfirm": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
     "tableName": "Employee",
-    "tableUnit": "Unit"
+    "tableUnit": "Unit",
+    "legalEntity": "CNPJ (vínculo jurídico)",
+    "legalEntityHint": "Vínculo del contrato de trabajo. Inmutable tras la admisión: los cambios exigen una transferencia auditada."
   },
   "epi": {
     "title": "EPP",
@@ -1351,5 +1353,10 @@
     "register": "Register",
     "conference": "Handover check",
     "history": "History"
+  },
+  "legalEntity": {
+    "title": "CNPJ",
+    "select": "Seleccione el CNPJ",
+    "auto": "Automático (CNPJ único)"
   }
 }

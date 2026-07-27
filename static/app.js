@@ -4840,6 +4840,9 @@ async function loadBootstrap() {
     state.fichaAuditLogs = payload.ficha_audit_logs || [];
     state.users = Array.isArray(payload.users) ? payload.users : [];
     state.units = Array.isArray(payload.units) ? payload.units : [];
+    // CNPJs (LegalEntity) do tenant. Vem vazio enquanto o schema Multi-CNPJ não
+    // estiver provisionado — os campos de CNPJ ficam ocultos nesse caso.
+    state.legalEntities = Array.isArray(payload.legal_entities) ? payload.legal_entities : [];
     state.employees = Array.isArray(payload.employees) ? payload.employees : [];
     state.employeeMovements = payload.employee_movements || [];
     state.epis = Array.isArray(payload.epis) ? payload.epis : [];
@@ -6331,6 +6334,10 @@ function startEditEmployee(employeeId) {
   form.elements.company_id.value = item.company_id;
   syncEmployeeUnitOptions();
   form.elements.unit_id.value = item.unit_id || '';
+  // CNPJ é o vínculo jurídico do contrato: imutável na edição comum. Mostramos
+  // o valor atual, mas desabilitado — alterar exige o processo administrativo
+  // auditado de transferência, e o backend ignora este campo no update.
+  setEmployeeLegalEntityLock(item.legal_entity_id || '', true);
   form.elements.employee_id_code.value = item.employee_id_code || '';
   form.elements.cpf.value = item.cpf || '';
   form.elements.name.value = item.name || '';
@@ -7066,9 +7073,88 @@ function syncEmployeeUnitOptions() {
   if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
     unitField.value = String(units[0].id);
   }
+  // O CNPJ acompanha a empresa selecionada, então é resincronizado junto.
+  syncEmployeeLegalEntityOptions();
+}
+
+// ── Multi-CNPJ: seletores de vínculo jurídico ────────────────────────────────
+
+// Regras puras vivem em js/views/legal-entity-fields.js (testadas no harness);
+// aqui ficam apenas os wrappers que leem o estado e mexem no DOM.
+function legalEntityHelpers() {
+  return globalThis.__EPI_LEGAL_ENTITY_FIELDS__ || {};
+}
+
+function legalEntitiesForCompany(companyId, options) {
+  const helper = legalEntityHelpers().legalEntitiesForCompany;
+  return helper ? helper(state.legalEntities, companyId, options) : [];
+}
+
+function legalEntityOptionsHtml(entities) {
+  const label = legalEntityHelpers().legalEntityLabel || ((item) => String(item?.cnpj || ''));
+  return entities
+    .map((item) => `<option value="${item.id}">${escapeHtml(label(item))}</option>`)
+    .join('');
+}
+
+// Vínculo jurídico do colaborador.
+//
+// O campo só aparece quando a empresa tem CNPJs cadastrados, e só é obrigatório
+// quando há mais de um ativo: com CNPJ único o backend resolve sozinho, e
+// exigir escolha seria ruído. Com mais de um, o backend recusa o cadastro sem
+// o campo — por isso a obrigatoriedade aqui espelha a regra do servidor em vez
+// de inventar uma própria.
+function syncEmployeeLegalEntityOptions() {
+  const field = document.getElementById('employee-legal-entity');
+  const wrapper = document.getElementById('employee-legal-entity-field');
+  if (!field || !wrapper) return;
+  const companyId = document.getElementById('employee-company')?.value || state.user?.company_id || '';
+  const entities = legalEntitiesForCompany(companyId);
+  const previous = field.value;
+  const required = legalEntityHelpers().employeeLegalEntityRequired;
+  const mandatory = required ? required(entities) : entities.length > 1;
+  wrapper.hidden = entities.length === 0;
+  field.required = mandatory;
+  const placeholder = mandatory
+    ? `<option value="">${tr('legalEntity.select', 'Selecione o CNPJ')}</option>`
+    : `<option value="">${tr('legalEntity.auto', 'Automático (CNPJ único)')}</option>`;
+  field.innerHTML = placeholder + legalEntityOptionsHtml(entities);
+  if (previous && entities.some((item) => String(item.id) === String(previous))) {
+    field.value = previous;
+  }
+}
+
+// Trava (ou destrava) o seletor de CNPJ do colaborador.
+//
+// Na edição o campo fica visível e desabilitado: o operador precisa VER a qual
+// CNPJ o colaborador pertence, mas não pode trocar por aqui. Campo desabilitado
+// não é serializado no submit, o que também impede o envio acidental do valor.
+function setEmployeeLegalEntityLock(legalEntityId, locked) {
+  const field = document.getElementById('employee-legal-entity');
+  if (!field) return;
+  syncEmployeeLegalEntityOptions();
+  if (legalEntityId) field.value = String(legalEntityId);
+  field.disabled = Boolean(locked);
+  if (locked) field.required = false;
+}
+
+function syncReportLegalEntityOptions() {
+  const field = document.getElementById('report-legal-entity');
+  const wrapper = document.getElementById('report-legal-entity-field');
+  if (!field || !wrapper) return;
+  const companyId = document.getElementById('report-company')?.value || state.user?.company_id || '';
+  const entities = legalEntitiesForCompany(companyId, { activeOnly: false });
+  const previous = field.value;
+  wrapper.hidden = entities.length === 0;
+  field.innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>`
+    + legalEntityOptionsHtml(entities);
+  if (previous && entities.some((item) => String(item.id) === String(previous))) {
+    field.value = previous;
+  }
 }
 
 function syncReportOptions() {
+  syncReportLegalEntityOptions();
   const companyField = document.getElementById('report-company');
   const unitField = document.getElementById('report-unit');
   const employeeField = document.getElementById('report-employee');
@@ -9058,6 +9144,7 @@ function collectReportFilters() {
   };
   const values = {
     company_id: normalizeOptionalInt('company_id', reportForm?.querySelector('#report-company')?.value),
+    legal_entity_id: normalizeOptionalInt('legal_entity_id', reportForm?.querySelector('#report-legal-entity')?.value),
     unit_id: normalizeOptionalInt('unit_id', reportForm?.querySelector('#report-unit')?.value),
     employee_id: normalizeOptionalInt('employee_id', reportForm?.querySelector('#report-employee')?.value),
     sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
@@ -9724,6 +9811,8 @@ function handleFormReset(form) {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
   } else if (form.id === 'employee-form') {
     setFormSubmitLabel('employee-form', 'Salvar colaborador');
+    // Volta ao modo de admissão: o CNPJ é escolhível de novo.
+    setEmployeeLegalEntityLock('', false);
     const origemRow = document.getElementById('employee-empresa-origem-row');
     if (origemRow) origemRow.hidden = true;
     const tipoVinculoEl = document.getElementById('employee-tipo-vinculo');

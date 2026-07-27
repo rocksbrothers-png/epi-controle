@@ -1217,6 +1217,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get legalEntityTransferHistory => 'Histórico de vínculo';
+
+  @override
+  String get myCompanyStockScope => 'Consolidar saldos de estoque por';
+
+  @override
+  String get myCompanyStockScopeHint =>
+      'Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.';
+
+  @override
+  String get myCompanyStockScopeUnit => 'Unidade';
+
+  @override
+  String get myCompanyStockScopeLegalEntity => 'CNPJ';
+
+  @override
+  String get myCompanyStockScopeCompany => 'Empresa';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2434,4 +2450,20 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get legalEntityTransferHistory => 'Historique du lien';
+
+  @override
+  String get myCompanyStockScope => 'Consolider les soldes de stock par';
+
+  @override
+  String get myCompanyStockScopeHint =>
+      'Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité.';
+
+  @override
+  String get myCompanyStockScopeUnit => 'Unité';
+
+  @override
+  String get myCompanyStockScopeLegalEntity => 'CNPJ';
+
+  @override
+  String get myCompanyStockScopeCompany => 'Entreprise';
 }

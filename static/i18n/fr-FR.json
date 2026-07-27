@@ -1359,5 +1359,9 @@
     "title": "CNPJ",
     "select": "Sélectionnez le CNPJ",
     "auto": "Automatique (CNPJ unique)"
+  },
+  "myCompany": {
+    "stockScope": "Consolider les soldes de stock par",
+    "stockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité."
   }
 }

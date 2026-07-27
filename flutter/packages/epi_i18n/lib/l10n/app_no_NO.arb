@@ -462,5 +462,10 @@
   "legalEntityTransferReason": "Begrunnelse",
   "legalEntityTransferTarget": "Ny CNPJ",
   "legalEntityTransferAction": "Overfør",
-  "legalEntityTransferHistory": "Tilknytningshistorikk"
+  "legalEntityTransferHistory": "Tilknytningshistorikk",
+  "myCompanyStockScope": "Konsolider lagersaldo etter",
+  "myCompanyStockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet.",
+  "myCompanyStockScopeUnit": "Enhet",
+  "myCompanyStockScopeLegalEntity": "CNPJ",
+  "myCompanyStockScopeCompany": "Selskap"
 }

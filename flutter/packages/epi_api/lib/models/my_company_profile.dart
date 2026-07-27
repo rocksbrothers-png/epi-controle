@@ -28,6 +28,7 @@ class MyCompanyProfile {
     this.customDomain = '',
     this.defaultLanguage = '',
     this.timezone = '',
+    this.stockControlScope = 'company',
     this.planName = '',
     this.userLimit = 0,
     this.licenseStatus = '',
@@ -56,6 +57,14 @@ class MyCompanyProfile {
   final String customDomain;
   final String defaultLanguage;
   final String timezone;
+
+  /// Até onde os saldos de estoque são **consolidados na leitura**
+  /// (`unit` / `legal_entity` / `company`).
+  ///
+  /// Nunca define de onde o material sai: entradas, reservas, saídas, entregas
+  /// e demais movimentações permanecem presas ao estoque de cada unidade
+  /// (ADR-0001 §15).
+  final String stockControlScope;
 
   // Somente leitura (contrato — administrado pelo Master)
   final String planName;
@@ -90,6 +99,9 @@ class MyCompanyProfile {
         customDomain: _s(json, 'custom_domain'),
         defaultLanguage: _s(json, 'default_language'),
         timezone: _s(json, 'timezone'),
+        stockControlScope: _s(json, 'stock_control_scope').isEmpty
+            ? 'company'
+            : _s(json, 'stock_control_scope'),
         planName: _s(json, 'plan_name'),
         userLimit: (json['user_limit'] as num?)?.toInt() ?? 0,
         licenseStatus: _s(json, 'license_status'),

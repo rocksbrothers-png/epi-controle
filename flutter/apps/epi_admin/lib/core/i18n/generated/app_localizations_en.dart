@@ -1217,6 +1217,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get legalEntityTransferHistory => 'Histórico de vínculo';
+
+  @override
+  String get myCompanyStockScope => 'Consolidar saldos de estoque por';
+
+  @override
+  String get myCompanyStockScopeHint =>
+      'Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.';
+
+  @override
+  String get myCompanyStockScopeUnit => 'Unidade';
+
+  @override
+  String get myCompanyStockScopeLegalEntity => 'CNPJ';
+
+  @override
+  String get myCompanyStockScopeCompany => 'Empresa';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -2427,4 +2443,20 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get legalEntityTransferHistory => 'Legal entity history';
+
+  @override
+  String get myCompanyStockScope => 'Consolidate stock balances by';
+
+  @override
+  String get myCompanyStockScopeHint =>
+      'This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock.';
+
+  @override
+  String get myCompanyStockScopeUnit => 'Unit';
+
+  @override
+  String get myCompanyStockScopeLegalEntity => 'Tax ID';
+
+  @override
+  String get myCompanyStockScopeCompany => 'Company';
 }

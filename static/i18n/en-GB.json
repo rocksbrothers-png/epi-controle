@@ -1359,5 +1359,9 @@
     "title": "Tax ID",
     "select": "Select the tax ID",
     "auto": "Automatic (single tax ID)"
+  },
+  "myCompany": {
+    "stockScope": "Consolidate stock balances by",
+    "stockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock."
   }
 }

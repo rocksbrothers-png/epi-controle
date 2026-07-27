@@ -98,6 +98,14 @@
                 </select>
               </label>
               <label>Fuso horário<input data-mc-field="timezone" type="text" placeholder="America/Sao_Paulo"></label>
+              <label><span data-i18n="myCompany.stockScope">Consolidar saldos de estoque por</span>
+                <select data-mc-field="stock_control_scope">
+                  <option value="unit" data-i18n="unit.title">Unidade</option>
+                  <option value="legal_entity" data-i18n="legalEntity.title">CNPJ</option>
+                  <option value="company" data-i18n="company.title">Empresa</option>
+                </select>
+                <small class="hint" data-i18n="myCompany.stockScopeHint">Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.</small>
+              </label>
             </div>
             <button class="primary" type="submit">Salvar configurações da empresa</button>
             <div id="my-company-feedback" class="form-feedback" aria-live="polite"></div>

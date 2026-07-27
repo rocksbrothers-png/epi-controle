@@ -1359,5 +1359,9 @@
     "title": "CNPJ",
     "select": "Velg CNPJ",
     "auto": "Automatisk (ett CNPJ)"
+  },
+  "myCompany": {
+    "stockScope": "Konsolider lagersaldo etter",
+    "stockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet."
   }
 }

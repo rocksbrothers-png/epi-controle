@@ -462,5 +462,10 @@
   "legalEntityTransferReason": "Justification",
   "legalEntityTransferTarget": "Nouveau CNPJ",
   "legalEntityTransferAction": "Transférer",
-  "legalEntityTransferHistory": "Historique du lien"
+  "legalEntityTransferHistory": "Historique du lien",
+  "myCompanyStockScope": "Consolider les soldes de stock par",
+  "myCompanyStockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité.",
+  "myCompanyStockScopeUnit": "Unité",
+  "myCompanyStockScopeLegalEntity": "CNPJ",
+  "myCompanyStockScopeCompany": "Entreprise"
 }

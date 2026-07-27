@@ -489,5 +489,10 @@
   "legalEntityTransferReason": "Justification",
   "legalEntityTransferTarget": "New tax ID",
   "legalEntityTransferAction": "Transfer",
-  "legalEntityTransferHistory": "Legal entity history"
+  "legalEntityTransferHistory": "Legal entity history",
+  "myCompanyStockScope": "Consolidate stock balances by",
+  "myCompanyStockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock.",
+  "myCompanyStockScopeUnit": "Unit",
+  "myCompanyStockScopeLegalEntity": "Tax ID",
+  "myCompanyStockScopeCompany": "Company"
 }

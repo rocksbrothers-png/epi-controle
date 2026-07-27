@@ -492,5 +492,10 @@
   "legalEntityTransferReason": "Justificativa",
   "legalEntityTransferTarget": "Novo CNPJ",
   "legalEntityTransferAction": "Transferir",
-  "legalEntityTransferHistory": "Histórico de vínculo"
+  "legalEntityTransferHistory": "Histórico de vínculo",
+  "myCompanyStockScope": "Consolidar saldos de estoque por",
+  "myCompanyStockScopeHint": "Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.",
+  "myCompanyStockScopeUnit": "Unidade",
+  "myCompanyStockScopeLegalEntity": "CNPJ",
+  "myCompanyStockScopeCompany": "Empresa"
 }

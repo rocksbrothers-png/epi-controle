@@ -399,8 +399,27 @@ O enum (`unit` / `legal_entity` / `company`) permanece, mas passa a significar
 administra várias unidades — e **nunca** de onde o material pode sair. Nenhuma
 migração é necessária, porque o valor jamais foi usado para debitar estoque.
 
-Fica pendente um ajuste de rótulo: *"Controlar estoque por"* em *Minha Empresa*
-induz à leitura errada. O texto correto é *"Consolidar saldos de estoque por"*.
+**Resolvido.** O rótulo previsto era *"Controlar estoque por"*, que induzia
+exatamente à leitura que esta seção proíbe. Ao implementar, descobrimos que o
+controle **nunca chegou a existir em tela alguma**: o campo era gravável apenas
+pelo endpoint. Foi criado já com o texto certo — *"Consolidar saldos de estoque
+por"* — em *Minha Empresa*, no app e no Web legado, acompanhado do texto
+auxiliar que fecha a porta:
+
+> Esta configuração altera apenas a visualização consolidada dos saldos.
+> Entradas, reservas, saídas, entregas e demais movimentações permanecem
+> vinculadas ao estoque de cada unidade.
+
+**Interseção com a carteira do usuário.** O saldo consolidado exibido é a
+interseção entre o escopo configurado e as unidades autorizadas ao ator.
+`None` significa "sem restrição"; lista vazia devolve zero, não a empresa
+inteira — confundir os dois mostraria tudo a quem não tem acesso a nada.
+
+**Guarda estrutural.** Um teste varre os módulos que movimentam estoque
+(entregas, devoluções, compras, EPIs) e falha se qualquer um deles passar a
+consultar o escopo. Um teste de comportamento não pegaria isso: hoje nada
+consome o escopo na escrita, então não há caso que falhe — o que precisa ser
+impedido é a *introdução* futura, e isso se vê no código.
 
 ## 16. Roadmap das próximas fases
 
@@ -408,7 +427,5 @@ induz à leitura errada. O texto correto é *"Consolidar saldos de estoque por"*
    individualidade dos saldos: saída na origem, entrada no destino, confirmação
    pelas duas pontas e histórico de responsáveis. Substitui o item anterior de
    "baixa multi-unidade", descartado pela decisão da §15.
-2. **Rótulo de `stock_control_scope`**: trocar *"Controlar estoque por"* por
-   *"Consolidar saldos de estoque por"* na tela *Minha Empresa* e nos ARBs.
-3. **Exportações LGPD** com Empresa/CNPJ/Unidade nas telas de relatório do app
+2. **Exportações LGPD** com Empresa/CNPJ/Unidade nas telas de relatório do app
    (o backend já emite os três níveis).

@@ -70,7 +70,7 @@ _FIELD_LABELS: dict[str, str] = {
     'default_language': 'Idioma',
     'timezone': 'Fuso horário',
     'org_structure_type': 'Estrutura organizacional',
-    'stock_control_scope': 'Controle de estoque por',
+    'stock_control_scope': 'Consolidação de saldos de estoque por',
 }
 
 # Campos com payload de imagem (auditados como "[imagem]" para não inflar o log).

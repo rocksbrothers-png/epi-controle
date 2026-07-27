@@ -105,6 +105,12 @@ class _DashboardContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(EpiSpacing.lg),
       children: [
+        // Filtro em cascata Empresa → CNPJ → Unidade → Setor. Só aparece
+        // quando a empresa tem CNPJs cadastrados (Multi-CNPJ provisionado).
+        if (state.legalEntities.isNotEmpty) ...[
+          _DashboardFilterBar(state: state),
+          const SizedBox(height: EpiSpacing.md),
+        ],
         // KPI grid
         GridView.count(
           crossAxisCount: 2,
@@ -365,6 +371,113 @@ class _FabAction extends StatelessWidget {
           child: Icon(icon, size: 20),
         ),
       ],
+    );
+  }
+}
+
+/// Barra de filtros do dashboard: Empresa → CNPJ → Unidade → Setor.
+///
+/// A cascata é do estado: escolher um CNPJ restringe as unidades
+/// (`availableUnits`), e escolher uma unidade restringe os setores. Os KPIs são
+/// recomputados localmente, sem nova chamada de rede.
+class _DashboardFilterBar extends StatelessWidget {
+  const _DashboardFilterBar({required this.state});
+  final DashboardState state;
+
+  String _entityLabel(Map<String, dynamic> e) {
+    final trade = '${e['trade_name'] ?? ''}'.trim();
+    final legal = '${e['legal_name'] ?? ''}'.trim();
+    final name = trade.isNotEmpty ? trade : legal;
+    final cnpj = '${e['cnpj'] ?? ''}'.trim();
+    if (name.isEmpty) return cnpj;
+    return cnpj.isEmpty ? name : '$name — $cnpj';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<DashboardCubit>();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(EpiSpacing.md),
+        child: Wrap(
+          spacing: EpiSpacing.md,
+          runSpacing: EpiSpacing.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: 260,
+              child: DropdownButtonFormField<int?>(
+                initialValue: state.selectedLegalEntityId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.dashboardFilterLegalEntity,
+                ),
+                items: [
+                  DropdownMenuItem<int?>(
+                    child: Text(l10n.dashboardFilterAll),
+                  ),
+                  ...state.legalEntities.map(
+                    (e) => DropdownMenuItem<int?>(
+                      value: (e['id'] as num).toInt(),
+                      child: Text(_entityLabel(e), overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
+                onChanged: cubit.selectLegalEntity,
+              ),
+            ),
+            SizedBox(
+              width: 200,
+              child: DropdownButtonFormField<int?>(
+                initialValue: state.selectedUnitId,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: l10n.dashboardFilterUnit),
+                items: [
+                  DropdownMenuItem<int?>(
+                    child: Text(l10n.dashboardFilterAll),
+                  ),
+                  ...state.availableUnits.map(
+                    (u) => DropdownMenuItem<int?>(
+                      value: (u['id'] as num).toInt(),
+                      child: Text('${u['name'] ?? ''}',
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
+                onChanged: cubit.selectUnit,
+              ),
+            ),
+            SizedBox(
+              width: 180,
+              child: DropdownButtonFormField<String?>(
+                initialValue: state.selectedSector,
+                isExpanded: true,
+                decoration:
+                    InputDecoration(labelText: l10n.dashboardFilterSector),
+                items: [
+                  DropdownMenuItem<String?>(
+                    child: Text(l10n.dashboardFilterAll),
+                  ),
+                  ...state.sectors.map(
+                    (s) => DropdownMenuItem<String?>(
+                      value: s,
+                      child: Text(s, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
+                onChanged: cubit.selectSector,
+              ),
+            ),
+            if (state.hasActiveFilter)
+              TextButton.icon(
+                onPressed: cubit.clearFilters,
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                label: Text(l10n.dashboardFilterClear),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

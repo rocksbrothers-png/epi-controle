@@ -274,7 +274,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run integration smoke on emulator
+      - name: Run integration tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -285,4 +285,6 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: flutter/apps/epi_admin
-          script: flutter test integration_test/smoke_test.dart
+          # Diretório inteiro: o smoke (backend-free) mais o E2E do Multi-CNPJ,
+          # que sobe um HttpServer local com respostas canônicas.
+          script: flutter test integration_test

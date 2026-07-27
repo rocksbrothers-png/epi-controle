@@ -94,6 +94,35 @@ def test_ensure_legal_entities_creates_default_and_backfills():
     assert company['stock_control_scope'] == 'company'
 
 
+def test_ensure_legal_entities_backfills_without_optional_company_columns():
+    """Instalação antiga sem ``companies.legal_name``/``cnpj`` ainda provisiona.
+
+    O backfill não pode abortar o Multi-CNPJ inteiro por causa de uma coluna
+    opcional ausente: cai para vazio e usa o nome da empresa como razão social.
+    """
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE companies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
+        CREATE TABLE units (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, name TEXT);
+        CREATE TABLE employees (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, unit_id INTEGER, name TEXT);
+        INSERT INTO companies (id, name) VALUES (1, 'ACME');
+        INSERT INTO employees (company_id, unit_id, name) VALUES (1, 1, 'Ana');
+        """
+    )
+    conn.commit()
+
+    ensure_legal_entities(conn)
+
+    entity_id = get_default_legal_entity_id(conn, 1)
+    entity = conn.execute('SELECT * FROM legal_entities WHERE id = ?', (entity_id,)).fetchone()
+    assert entity['cnpj'] == ''
+    assert entity['legal_name'] == 'ACME'
+    emp = conn.execute('SELECT legal_entity_id FROM employees WHERE name = ?', ('Ana',)).fetchone()
+    assert emp['legal_entity_id'] == entity_id
+
+
 def test_ensure_legal_entities_is_idempotent():
     conn = _conn()
     cid = _seed_company(conn, 'ACME', 'ACME SA', CNPJ_A)

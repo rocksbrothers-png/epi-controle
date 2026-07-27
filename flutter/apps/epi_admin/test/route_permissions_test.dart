@@ -52,6 +52,23 @@ void main() {
     });
   });
 
+  group('rota de CNPJs (Multi-CNPJ)', () {
+    test('/legal-entities exige legal_entities:view', () {
+      // Sem o gate, qualquer usuário autenticado abriria a tela de CNPJs e só
+      // tomaria 403 do backend — tela carregada e chamada falhando.
+      expect(requiredPermissionFor(Routes.legalEntities), 'legal_entities:view');
+    });
+
+    test('subrota de CNPJ herda a mesma permissão', () {
+      expect(requiredPermissionFor('${Routes.legalEntities}/7'), 'legal_entities:view');
+    });
+
+    test('rota de CNPJs não colide com o prefixo de outra rota gateada', () {
+      // `startsWith` casaria errado se alguma rota anterior fosse prefixo desta.
+      expect(requiredPermissionFor(Routes.legalEntities), isNot('units:view'));
+    });
+  });
+
   group('routePermissions (cobertura do mapa)', () {
     test('cobre exatamente as rotas gateadas esperadas', () {
       expect(
@@ -69,6 +86,7 @@ void main() {
           Routes.reports,
           Routes.users,
           Routes.units,
+          Routes.legalEntities,
           Routes.feedback,
           Routes.settings,
           Routes.myCompany,

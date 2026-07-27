@@ -65,7 +65,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -88,11 +88,11 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +105,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR')
+    Locale('pt', 'BR'),
   ];
 
   /// Nome da aplicação
@@ -131,6 +131,42 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Cancelar'**
   String get cancel;
+
+  /// No description provided for @reportsExportPdf.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Exportar PDF'**
+  String get reportsExportPdf;
+
+  /// No description provided for @feedbackForward.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Encaminhar'**
+  String get feedbackForward;
+
+  /// No description provided for @feedbackReject.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Rejeitar'**
+  String get feedbackReject;
+
+  /// No description provided for @feedbackApprove.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovar'**
+  String get feedbackApprove;
+
+  /// No description provided for @feedbackJustification.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa'**
+  String get feedbackJustification;
+
+  /// No description provided for @feedbackRejectReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Motivo da rejeição'**
+  String get feedbackRejectReason;
 
   /// No description provided for @confirm.
   ///
@@ -330,7 +366,7 @@ abstract class AppLocalizations {
   /// **'Portal'**
   String get navPortal;
 
-  /// Rótulo do menu de avaliações/feedback.
+  /// Rótulo do menu de avaliações/feedback
   ///
   /// In pt_BR, this message translates to:
   /// **'Avaliações'**
@@ -546,6 +582,12 @@ abstract class AppLocalizations {
   /// **'Matrícula'**
   String get employeeCodeLabel;
 
+  /// No description provided for @employeeCpfLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CPF'**
+  String get employeeCpfLabel;
+
   /// No description provided for @employeeSectorLabel.
   ///
   /// In pt_BR, this message translates to:
@@ -563,6 +605,12 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Unidade'**
   String get employeeUnitLabel;
+
+  /// No description provided for @employeeLegalEntityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get employeeLegalEntityLabel;
 
   /// No description provided for @employeeAdmissionLabel.
   ///
@@ -629,6 +677,54 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'CA'**
   String get epiCaLabel;
+
+  /// No description provided for @epiSectorLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Setor'**
+  String get epiSectorLabel;
+
+  /// No description provided for @epiSectionLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seção do EPI'**
+  String get epiSectionLabel;
+
+  /// No description provided for @epiModelLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Modelo/referência'**
+  String get epiModelLabel;
+
+  /// No description provided for @epiManufacturerLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fabricante'**
+  String get epiManufacturerLabel;
+
+  /// No description provided for @epiSupplierLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fornecedor'**
+  String get epiSupplierLabel;
+
+  /// No description provided for @epiUnitMeasureLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade de medida'**
+  String get epiUnitMeasureLabel;
+
+  /// No description provided for @epiValidityDateLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data de validade'**
+  String get epiValidityDateLabel;
+
+  /// No description provided for @epiManufacturerValidityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade (meses)'**
+  String get epiManufacturerValidityLabel;
 
   /// No description provided for @epiCaExpiryLabel.
   ///
@@ -893,6 +989,84 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Compras'**
   String get purchasesTitle;
+
+  /// No description provided for @purchaseOrdersTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ordens de Compra'**
+  String get purchaseOrdersTitle;
+
+  /// No description provided for @poApprove.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovar'**
+  String get poApprove;
+
+  /// No description provided for @poReceive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Receber'**
+  String get poReceive;
+
+  /// No description provided for @poQuantityReceived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Qtd. recebida'**
+  String get poQuantityReceived;
+
+  /// No description provided for @poReceiveNotes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Observação'**
+  String get poReceiveNotes;
+
+  /// No description provided for @poManufacturerValidity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante'**
+  String get poManufacturerValidity;
+
+  /// No description provided for @poManufacturerValidityHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informar data'**
+  String get poManufacturerValidityHint;
+
+  /// No description provided for @poManufacturerValidityRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe a validade do fabricante de todos os EPIs recebidos.'**
+  String get poManufacturerValidityRequired;
+
+  /// No description provided for @poOcrDateNotFound.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível identificar a data. Tente novamente.'**
+  String get poOcrDateNotFound;
+
+  /// No description provided for @poOcrCameraFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Falha na leitura por câmera.'**
+  String get poOcrCameraFailed;
+
+  /// No description provided for @poPickDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar data'**
+  String get poPickDate;
+
+  /// No description provided for @poReadDateCamera.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ler data por câmera (OCR)'**
+  String get poReadDateCamera;
+
+  /// No description provided for @poCheck.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conferir'**
+  String get poCheck;
 
   /// No description provided for @purchasesNew.
   ///
@@ -1655,6 +1829,642 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Cancelado'**
   String get purchaseStatusCancelled;
+
+  /// No description provided for @suppliersTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fornecedores'**
+  String get suppliersTitle;
+
+  /// No description provided for @supplierNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo fornecedor'**
+  String get supplierNew;
+
+  /// No description provided for @supplierEdit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Editar fornecedor'**
+  String get supplierEdit;
+
+  /// No description provided for @supplierCnpjLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get supplierCnpjLabel;
+
+  /// No description provided for @supplierPhoneLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Telefone'**
+  String get supplierPhoneLabel;
+
+  /// No description provided for @supplierPaymentTermsLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Condições de pagamento'**
+  String get supplierPaymentTermsLabel;
+
+  /// No description provided for @supplierIntegrationLevelLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nível de integração'**
+  String get supplierIntegrationLevelLabel;
+
+  /// No description provided for @supplierInactiveLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Inativo'**
+  String get supplierInactiveLabel;
+
+  /// No description provided for @supplierCatalogTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Catálogo do fornecedor'**
+  String get supplierCatalogTitle;
+
+  /// No description provided for @catalogNewProduct.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo produto'**
+  String get catalogNewProduct;
+
+  /// No description provided for @catalogSkuLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'SKU'**
+  String get catalogSkuLabel;
+
+  /// No description provided for @catalogDescriptionLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Descrição'**
+  String get catalogDescriptionLabel;
+
+  /// No description provided for @catalogLastPriceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Último preço'**
+  String get catalogLastPriceLabel;
+
+  /// No description provided for @catalogLeadTimeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Prazo (dias)'**
+  String get catalogLeadTimeLabel;
+
+  /// No description provided for @quotesTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cotações'**
+  String get quotesTitle;
+
+  /// No description provided for @quotesNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova cotação'**
+  String get quotesNew;
+
+  /// No description provided for @quotesSelectSuppliers.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione os fornecedores'**
+  String get quotesSelectSuppliers;
+
+  /// No description provided for @quoteSendEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Enviar por e-mail'**
+  String get quoteSendEmail;
+
+  /// No description provided for @quoteSendPortal.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Enviar pelo portal'**
+  String get quoteSendPortal;
+
+  /// No description provided for @quoteAnswerAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Registrar resposta'**
+  String get quoteAnswerAction;
+
+  /// No description provided for @quoteSelectWinner.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar vencedora'**
+  String get quoteSelectWinner;
+
+  /// No description provided for @quoteComparisonTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Comparação de cotações'**
+  String get quoteComparisonTitle;
+
+  /// No description provided for @quoteFreightLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Frete'**
+  String get quoteFreightLabel;
+
+  /// No description provided for @quoteUnitPriceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preço unitário'**
+  String get quoteUnitPriceLabel;
+
+  /// No description provided for @quoteDeclinedLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recusado'**
+  String get quoteDeclinedLabel;
+
+  /// No description provided for @quoteBestPriceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Melhor preço'**
+  String get quoteBestPriceLabel;
+
+  /// No description provided for @quoteBestLeadTimeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Melhor prazo'**
+  String get quoteBestLeadTimeLabel;
+
+  /// No description provided for @quoteCreatePo.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gerar PO a partir da cotação vencedora?'**
+  String get quoteCreatePo;
+
+  /// No description provided for @poSupplierActionsTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fornecedor e entrega'**
+  String get poSupplierActionsTitle;
+
+  /// No description provided for @poSendToSupplier.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Enviar ao fornecedor'**
+  String get poSendToSupplier;
+
+  /// No description provided for @poPortalLinkAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Enviar link do portal'**
+  String get poPortalLinkAction;
+
+  /// No description provided for @poRegisterConfirmation.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Registrar confirmação'**
+  String get poRegisterConfirmation;
+
+  /// No description provided for @poTrackingTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Acompanhamento'**
+  String get poTrackingTitle;
+
+  /// No description provided for @poDeliveryForecastLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Previsão de entrega'**
+  String get poDeliveryForecastLabel;
+
+  /// No description provided for @poCarrierLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Transportadora'**
+  String get poCarrierLabel;
+
+  /// No description provided for @poTrackingCodeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Código de rastreio'**
+  String get poTrackingCodeLabel;
+
+  /// No description provided for @commentLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Comentário'**
+  String get commentLabel;
+
+  /// No description provided for @actionSentSuccess.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Enviado com sucesso'**
+  String get actionSentSuccess;
+
+  /// No description provided for @myCompanyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Minha Empresa'**
+  String get myCompanyTitle;
+
+  /// No description provided for @myCompanySubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dados, identidade visual e domínio da sua empresa'**
+  String get myCompanySubtitle;
+
+  /// No description provided for @myCompanySaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Configurações da empresa salvas com sucesso.'**
+  String get myCompanySaved;
+
+  /// No description provided for @myCompanyLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar os dados da empresa.'**
+  String get myCompanyLoadError;
+
+  /// No description provided for @myCompanyContractSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Contrato (somente leitura)'**
+  String get myCompanyContractSection;
+
+  /// No description provided for @myCompanyPlan.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Plano'**
+  String get myCompanyPlan;
+
+  /// No description provided for @myCompanyUserLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Limite de usuários'**
+  String get myCompanyUserLimit;
+
+  /// No description provided for @myCompanyLicense.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Licença'**
+  String get myCompanyLicense;
+
+  /// No description provided for @myCompanyRegistrationSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dados cadastrais'**
+  String get myCompanyRegistrationSection;
+
+  /// No description provided for @myCompanyName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome fantasia'**
+  String get myCompanyName;
+
+  /// No description provided for @myCompanyLegalName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Razão social'**
+  String get myCompanyLegalName;
+
+  /// No description provided for @myCompanyCnpj.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get myCompanyCnpj;
+
+  /// No description provided for @myCompanyStateRegistration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Inscrição estadual'**
+  String get myCompanyStateRegistration;
+
+  /// No description provided for @myCompanyMunicipalRegistration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Inscrição municipal'**
+  String get myCompanyMunicipalRegistration;
+
+  /// No description provided for @myCompanyAddress.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Endereço'**
+  String get myCompanyAddress;
+
+  /// No description provided for @myCompanyPhone.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Telefone'**
+  String get myCompanyPhone;
+
+  /// No description provided for @myCompanyWhatsapp.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'WhatsApp'**
+  String get myCompanyWhatsapp;
+
+  /// No description provided for @myCompanyEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'E-mail institucional'**
+  String get myCompanyEmail;
+
+  /// No description provided for @myCompanyWebsite.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Website'**
+  String get myCompanyWebsite;
+
+  /// No description provided for @myCompanyIdentitySection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identidade e tema'**
+  String get myCompanyIdentitySection;
+
+  /// No description provided for @myCompanyDisplayName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome exibido no sistema'**
+  String get myCompanyDisplayName;
+
+  /// No description provided for @myCompanyInstitutionalMessage.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mensagem institucional'**
+  String get myCompanyInstitutionalMessage;
+
+  /// No description provided for @myCompanyPrimaryColor.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cor principal (hex)'**
+  String get myCompanyPrimaryColor;
+
+  /// No description provided for @myCompanySecondaryColor.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cor secundária (hex)'**
+  String get myCompanySecondaryColor;
+
+  /// No description provided for @myCompanyPreferencesSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preferências'**
+  String get myCompanyPreferencesSection;
+
+  /// No description provided for @myCompanyTimezone.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fuso horário'**
+  String get myCompanyTimezone;
+
+  /// No description provided for @myCompanySave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar configurações da empresa'**
+  String get myCompanySave;
+
+  /// No description provided for @myCompanyDomainsSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Domínios'**
+  String get myCompanyDomainsSection;
+
+  /// No description provided for @myCompanyDomainField.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Domínio'**
+  String get myCompanyDomainField;
+
+  /// No description provided for @myCompanyDomainTypePlatform.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Subdomínio da plataforma'**
+  String get myCompanyDomainTypePlatform;
+
+  /// No description provided for @myCompanyDomainTypeCustomSub.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Subdomínio personalizado'**
+  String get myCompanyDomainTypeCustomSub;
+
+  /// No description provided for @myCompanyDomainTypeCustom.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Domínio personalizado'**
+  String get myCompanyDomainTypeCustom;
+
+  /// No description provided for @myCompanyDomainAdd.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Registrar domínio'**
+  String get myCompanyDomainAdd;
+
+  /// No description provided for @myCompanyDomainVerify.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Verificar'**
+  String get myCompanyDomainVerify;
+
+  /// No description provided for @myCompanyDomainDelete.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Remover'**
+  String get myCompanyDomainDelete;
+
+  /// No description provided for @myCompanyDomainPending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pendente'**
+  String get myCompanyDomainPending;
+
+  /// No description provided for @myCompanyDomainVerified.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Verificado'**
+  String get myCompanyDomainVerified;
+
+  /// No description provided for @myCompanyDomainFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Falhou'**
+  String get myCompanyDomainFailed;
+
+  /// No description provided for @myCompanyDomainPrimary.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Principal'**
+  String get myCompanyDomainPrimary;
+
+  /// No description provided for @myCompanyDomainCname.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aponte o CNAME para'**
+  String get myCompanyDomainCname;
+
+  /// No description provided for @myCompanyDomainTxt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Crie o registro TXT'**
+  String get myCompanyDomainTxt;
+
+  /// No description provided for @myCompanyDomainToken.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Valor do TXT'**
+  String get myCompanyDomainToken;
+
+  /// No description provided for @handoverScanAgain.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova conferência'**
+  String get handoverScanAgain;
+
+  /// No description provided for @legalEntitiesTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJs'**
+  String get legalEntitiesTitle;
+
+  /// No description provided for @legalEntitiesNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo CNPJ'**
+  String get legalEntitiesNew;
+
+  /// No description provided for @legalEntityLegalNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Razão social'**
+  String get legalEntityLegalNameLabel;
+
+  /// No description provided for @legalEntityTradeNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome fantasia'**
+  String get legalEntityTradeNameLabel;
+
+  /// No description provided for @legalEntityTypeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tipo'**
+  String get legalEntityTypeLabel;
+
+  /// No description provided for @legalEntityInactiveBadge.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Inativo'**
+  String get legalEntityInactiveBadge;
+
+  /// No description provided for @legalEntityDeactivate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Inativar CNPJ'**
+  String get legalEntityDeactivate;
+
+  /// No description provided for @legalEntityDeactivateHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O histórico jurídico é preservado. O CNPJ deixa de ser usado em novas operações.'**
+  String get legalEntityDeactivateHint;
+
+  /// No description provided for @legalEntityShowInactive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mostrar inativos'**
+  String get legalEntityShowInactive;
+
+  /// No description provided for @legalEntitiesEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum CNPJ cadastrado.'**
+  String get legalEntitiesEmpty;
+
+  /// No description provided for @legalEntityMunicipalityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Município'**
+  String get legalEntityMunicipalityLabel;
+
+  /// No description provided for @legalEntitiesImport.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Importar planilha'**
+  String get legalEntitiesImport;
+
+  /// No description provided for @legalEntitiesImportHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Copie as linhas da planilha (com a linha de cabeçalho) e cole abaixo. Aceita colunas em português ou inglês.'**
+  String get legalEntitiesImportHint;
+
+  /// No description provided for @legalEntitiesImportResult.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Importação concluída'**
+  String get legalEntitiesImportResult;
+
+  /// No description provided for @dashboardFilterLegalEntity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get dashboardFilterLegalEntity;
+
+  /// No description provided for @dashboardFilterUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get dashboardFilterUnit;
+
+  /// No description provided for @dashboardFilterSector.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Setor'**
+  String get dashboardFilterSector;
+
+  /// No description provided for @dashboardFilterAll.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todos'**
+  String get dashboardFilterAll;
+
+  /// No description provided for @dashboardFilterClear.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Limpar filtros'**
+  String get dashboardFilterClear;
+
+  /// No description provided for @legalEntityTransferTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Transferir vínculo jurídico'**
+  String get legalEntityTransferTitle;
+
+  /// No description provided for @legalEntityTransferHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O CNPJ é o vínculo do contrato de trabalho e não muda em transferência de unidade. Esta alteração é auditada e exige justificativa.'**
+  String get legalEntityTransferHint;
+
+  /// No description provided for @legalEntityTransferReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa'**
+  String get legalEntityTransferReason;
+
+  /// No description provided for @legalEntityTransferTarget.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo CNPJ'**
+  String get legalEntityTransferTarget;
+
+  /// No description provided for @legalEntityTransferAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Transferir'**
+  String get legalEntityTransferAction;
+
+  /// No description provided for @legalEntityTransferHistory.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico de vínculo'**
+  String get legalEntityTransferHistory;
 }
 
 class _AppLocalizationsDelegate
@@ -1682,7 +2492,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'US':
             return app_localizations_en.loadLibrary().then(
-                (dynamic _) => app_localizations_en.AppLocalizationsEnUs());
+              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
+            );
         }
         break;
       }
@@ -1691,7 +2502,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'ES':
             return app_localizations_es.loadLibrary().then(
-                (dynamic _) => app_localizations_es.AppLocalizationsEsEs());
+              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
+            );
         }
         break;
       }
@@ -1700,7 +2512,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'FR':
             return app_localizations_fr.loadLibrary().then(
-                (dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
+              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
+            );
         }
         break;
       }
@@ -1709,7 +2522,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'NO':
             return app_localizations_no.loadLibrary().then(
-                (dynamic _) => app_localizations_no.AppLocalizationsNoNo());
+              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
+            );
         }
         break;
       }
@@ -1718,7 +2532,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'BR':
             return app_localizations_pt.loadLibrary().then(
-                (dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
+              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
+            );
         }
         break;
       }
@@ -1727,30 +2542,31 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'en':
-      return app_localizations_en
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_en.AppLocalizationsEn());
+      return app_localizations_en.loadLibrary().then(
+        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
+      );
     case 'es':
-      return app_localizations_es
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_es.AppLocalizationsEs());
+      return app_localizations_es.loadLibrary().then(
+        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
+      );
     case 'fr':
-      return app_localizations_fr
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
+      return app_localizations_fr.loadLibrary().then(
+        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
+      );
     case 'no':
-      return app_localizations_no
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_no.AppLocalizationsNo());
+      return app_localizations_no.loadLibrary().then(
+        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
+      );
     case 'pt':
-      return app_localizations_pt
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
+      return app_localizations_pt.loadLibrary().then(
+        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
+      );
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

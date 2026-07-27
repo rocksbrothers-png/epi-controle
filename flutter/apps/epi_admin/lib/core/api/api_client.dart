@@ -26,6 +26,7 @@ class ApiClient {
 
   static late final AuthApi auth;
   static late final CompaniesApi companies;
+  static late final LegalEntitiesApi legalEntities;
   static late final DeliveriesApi deliveries;
   static late final DevolutionsApi devolutions;
   static late final FichasApi fichas;
@@ -68,6 +69,7 @@ class ApiClient {
     dio.interceptors.add(_RetryInterceptor(dio));
     auth = AuthApi(dio, baseUrl: baseUrl);
     companies = CompaniesApi(dio);
+    legalEntities = LegalEntitiesApi(dio);
     deliveries = DeliveriesApi(dio);
     devolutions = DevolutionsApi(dio);
     fichas = FichasApi(dio);

@@ -26,18 +26,18 @@ dependencies:
     path: ../../packages/epi_api
 
   # State management
-  flutter_bloc: ^8.1.6
+  flutter_bloc: ^9.1.1
   equatable: ^2.0.5
 
   # Navigation
-  go_router: ^14.2.7
+  go_router: ^17.3.0
 
   # HTTP
   dio: ^5.7.0
   retrofit: ^4.9.2
 
   # Storage seguro (tokens JWT)
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^10.3.1
 
   # Offline DB
   drift: ^2.20.3
@@ -47,7 +47,7 @@ dependencies:
   sqflite: ^2.3.3
 
   # Conectividade
-  connectivity_plus: ^6.0.5
+  connectivity_plus: ^7.3.1
 
   # QR Scanner
   mobile_scanner: ^7.4.0

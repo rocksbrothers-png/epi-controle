@@ -212,3 +212,53 @@ def test_resolve_external_employee_context_rejects_unknown_token():
     conn = _base_conn()
     with pytest.raises(Exception):
         resolve_external_employee_context(conn, 'nonexistent-token', cpf_last3='901')
+
+
+# ── portal do colaborador: cabeçalho Empresa / CNPJ / Unidade ────────────────
+
+def _portal_link_conn(with_legal_entities=True):
+    conn = _base_conn()
+    conn.execute(
+        "INSERT INTO employee_portal_links (id, company_id, employee_id, token, qr_code_value, active, expires_at, created_by_user_id, created_at, updated_at) "
+        "VALUES (1, 1, 100, 'token-1', 'qr', 1, '9999-12-31T00:00:00+00:00', 1, '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00')"
+    )
+    if with_legal_entities:
+        from core.schema import ensure_legal_entities
+        ensure_legal_entities(conn)
+    conn.commit()
+    return conn
+
+
+def test_portal_context_exposes_company_cnpj_and_unit():
+    """O cabeçalho do portal mostra Empresa · CNPJ · Unidade.
+
+    O CNPJ é derivado do vínculo jurídico do colaborador (LegalEntity) — o
+    portal nunca guarda cópia própria do dado.
+    """
+    from modules.legal_entities.service import create_legal_entity
+
+    conn = _portal_link_conn()
+    filial_id = create_legal_entity(
+        conn,
+        {'cnpj': '45.723.174/0001-10', 'legal_name': 'ACME Filial RJ', 'entity_type': 'filial', 'uf': 'RJ'},
+        1,
+    )
+    conn.execute('UPDATE employees SET legal_entity_id = ? WHERE id = 100', (filial_id,))
+    conn.commit()
+
+    ctx = get_employee_portal_context_by_token(conn, 'token-1')
+    assert ctx['company_name'] == 'ACME'
+    assert ctx['unit_name'] == 'Base'
+    assert ctx['legal_entity_cnpj'] == '45.723.174/0001-10'
+    assert ctx['legal_entity_name'] == 'ACME Filial RJ'
+
+
+def test_portal_context_without_legal_entities_schema_keeps_working():
+    """Retrocompatibilidade: sem o schema Multi-CNPJ o portal segue abrindo,
+    apenas sem a coluna de CNPJ — o cabeçalho omite a parte ausente."""
+    conn = _portal_link_conn(with_legal_entities=False)
+    ctx = get_employee_portal_context_by_token(conn, 'token-1')
+    assert ctx['employee_name'] == 'João'
+    assert ctx['company_name'] == 'ACME'
+    assert ctx['unit_name'] == 'Base'
+    assert 'legal_entity_cnpj' not in ctx

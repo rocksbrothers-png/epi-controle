@@ -25,6 +25,158 @@
       ? globalThis.filterByUserCompany(items)
       : items;
   }
+
+  // ── Filtro em cascata Empresa → CNPJ → Unidade → Setor ────────────────────
+  //
+  // A seleção vive aqui (não no state global do app) porque é recorte de
+  // visualização do dashboard: recarregar o bootstrap não deve preservá-la, e
+  // nenhuma outra tela consome. Os KPIs são recomputados localmente, sem nova
+  // chamada de rede a cada troca de nível.
+
+  const _scope = { legalEntityId: null, unitId: null, sector: '' };
+
+  function scopeApi() { return globalThis.__EPI_DASHBOARD_SCOPE__ || null; }
+
+  function scopedUnits() {
+    const api = scopeApi();
+    if (!api) { return null; }
+    return api.scopedUnitIds(filterByCompany(getState().units || []), _scope.legalEntityId, _scope.unitId);
+  }
+
+  /**
+   * Recorte padrão: empresa (permissão) + escopo escolhido.
+   *
+   * Substitui `filterByCompany` nas listas que carregam `unit_id`. Sem seleção
+   * o resultado é idêntico ao de antes — instalação de CNPJ único não muda.
+   */
+  function scoped(items, sectorKey) {
+    const api = scopeApi();
+    const byCompany = filterByCompany(items || []);
+    if (!api) { return byCompany; }
+    return api.applyScope(byCompany, scopedUnits(), _scope.sector, sectorKey);
+  }
+
+  /** Idem, preservando itens de nível empresa (EPI sem `unit_id`). */
+  function scopedKeepingCompanyWide(items) {
+    const api = scopeApi();
+    const byCompany = filterByCompany(items || []);
+    if (!api) { return byCompany; }
+    return api.applyScopeKeepingCompanyWide(byCompany, scopedUnits());
+  }
+
+  /** A própria lista de unidades no escopo — casa por `id`, não por `unit_id`. */
+  function scopedUnitsList() {
+    const byCompany = filterByCompany(getState().units || []);
+    const ids = scopedUnits();
+    if (ids === null) { return byCompany; }
+    return byCompany.filter((unit) => ids.has(Number(unit?.id)));
+  }
+
+  function legalEntityLabel(entity) {
+    const helper = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+    return helper ? helper.legalEntityLabel(entity) : String(entity?.cnpj || '');
+  }
+
+  function optionsHtml(items, valueKey, labelFn, allLabel, selected) {
+    const head = `<option value="">${esc(allLabel)}</option>`;
+    return head + items.map((item) => {
+      const value = item?.[valueKey];
+      const isSelected = String(selected ?? '') === String(value ?? '') ? ' selected' : '';
+      return `<option value="${esc(value)}"${isSelected}>${esc(labelFn(item))}</option>`;
+    }).join('');
+  }
+
+  /**
+   * Monta a barra de filtros.
+   *
+   * Só aparece quando a empresa tem CNPJs cadastrados: sem Multi-CNPJ
+   * provisionado o dashboard fica exatamente como era.
+   */
+  function renderDashboardScopeFilter() {
+    const api = scopeApi();
+    const wrapper = document.getElementById('dashboard-scope-filter');
+    if (!api || !wrapper) { return; }
+    const state = getState();
+    const entities = filterByCompany(state.legalEntities || []);
+    wrapper.hidden = entities.length === 0;
+    if (entities.length === 0) { return; }
+
+    const units = filterByCompany(state.units || []);
+    const allLabel = tr('employee.filterAll', 'Todos');
+
+    const entityField = document.getElementById('dashboard-scope-legal-entity');
+    if (entityField) {
+      entityField.innerHTML = optionsHtml(entities, 'id', legalEntityLabel, allLabel, _scope.legalEntityId);
+    }
+    const unitField = document.getElementById('dashboard-scope-unit');
+    if (unitField) {
+      const available = api.availableUnits(units, _scope.legalEntityId);
+      unitField.innerHTML = optionsHtml(available, 'id', (u) => u?.name || '', allLabel, _scope.unitId);
+    }
+    const sectorField = document.getElementById('dashboard-scope-sector');
+    if (sectorField) {
+      const sectors = api.sectorsOf(filterByCompany(state.employees || []), scopedUnits());
+      sectorField.innerHTML = optionsHtml(
+        sectors.map((name) => ({ name })), 'name', (s) => s.name, allLabel, _scope.sector
+      );
+    }
+    const clearButton = document.getElementById('dashboard-scope-clear');
+    if (clearButton) { clearButton.hidden = !api.hasActiveFilter(_scope); }
+  }
+
+  function rerenderDashboard() {
+    renderDashboardScopeFilter();
+    renderStats();
+    renderAlerts();
+    renderLatestDeliveries();
+    renderDashboardInterativo();
+  }
+
+  /**
+   * Cascata: trocar um nível limpa os de baixo.
+   *
+   * Manter a unidade selecionada ao trocar de CNPJ produziria um recorte
+   * incoerente — a unidade pode não pertencer ao novo CNPJ.
+   */
+  function selectDashboardScope(level, value) {
+    if (level === 'legalEntity') {
+      _scope.legalEntityId = value || null;
+      _scope.unitId = null;
+      _scope.sector = '';
+    } else if (level === 'unit') {
+      _scope.unitId = value || null;
+      _scope.sector = '';
+    } else if (level === 'sector') {
+      _scope.sector = String(value || '');
+    } else if (level === 'clear') {
+      _scope.legalEntityId = null;
+      _scope.unitId = null;
+      _scope.sector = '';
+    }
+    rerenderDashboard();
+  }
+
+  function bindDashboardScopeFilter() {
+    if (globalThis.__EPI_DASHBOARD_SCOPE_BOUND__) { return; }
+    const pairs = [
+      ['dashboard-scope-legal-entity', 'legalEntity'],
+      ['dashboard-scope-unit', 'unit'],
+      ['dashboard-scope-sector', 'sector'],
+    ];
+    let bound = false;
+    pairs.forEach(([id, level]) => {
+      const el = document.getElementById(id);
+      if (!el) { return; }
+      el.addEventListener('change', (event) => selectDashboardScope(level, event.target.value));
+      bound = true;
+    });
+    const clearButton = document.getElementById('dashboard-scope-clear');
+    if (clearButton) {
+      clearButton.addEventListener('click', () => selectDashboardScope('clear'));
+      bound = true;
+    }
+    if (bound) { globalThis.__EPI_DASHBOARD_SCOPE_BOUND__ = true; }
+  }
   function matchesQuery(values) {
     return typeof globalThis.matchesDashboardQuery === 'function'
       ? globalThis.matchesDashboardQuery(values)
@@ -184,10 +336,14 @@
     const state = getState();
     const refs = getRefs();
     if (!refs.statsGrid) { return; }
-    const epis = filterByCompany(state.epis || []);
-    const deliveries = filterByCompany(state.deliveries || []);
-    const employees = filterByCompany(state.employees || []);
-    const units = filterByCompany(state.units || []);
+    bindDashboardScopeFilter();
+    renderDashboardScopeFilter();
+    // Recortes do filtro em cascata. Sem seleção, `scoped` devolve exatamente
+    // o mesmo que `filterByCompany` — instalação de CNPJ único não muda.
+    const epis = scopedKeepingCompanyWide(state.epis || []);
+    const deliveries = scoped(state.deliveries || []);
+    const employees = scoped(state.employees || []);
+    const units = scopedUnitsList();
     const companies = state.user?.role === 'master_admin' ? (state.companies || []) : filterByCompany(state.companies || []);
     const feedbacks = state.feedbacks || [];
     const canFeedback = userHasPermission('epi_feedback:view');
@@ -273,19 +429,19 @@
     refs.statsGrid.innerHTML = `<div class="dashboard-kpi-groups">${operational}${safety}${managerial}${poolGroup}</div>`;
     _bindStatCardNavigation(refs.statsGrid);
     phase3Cards(refs.phase3ColaboradoresSummary, [
-      { label: 'Total base', value: filterByCompany(state.employees || []).length },
-      { label: 'Com e-mail', value: filterByCompany(state.employees || []).filter((item) => String(item.email || '').trim()).length },
-      { label: 'Com WhatsApp', value: filterByCompany(state.employees || []).filter((item) => String(item.whatsapp || '').trim()).length }
+      { label: 'Total base', value: scoped(state.employees || []).length },
+      { label: 'Com e-mail', value: scoped(state.employees || []).filter((item) => String(item.email || '').trim()).length },
+      { label: 'Com WhatsApp', value: scoped(state.employees || []).filter((item) => String(item.whatsapp || '').trim()).length }
     ]);
     phase3Cards(refs.phase3GestaoSummary, [
-      { label: 'Vínculos ativos', value: filterByCompany(state.employees || []).length },
-      { label: 'Movimentações', value: filterByCompany(state.employeeMovements || []).length },
-      { label: 'Unidades', value: filterByCompany(state.units || []).length }
+      { label: 'Vínculos ativos', value: scoped(state.employees || []).length },
+      { label: 'Movimentações', value: scoped(state.employeeMovements || []).length },
+      { label: 'Unidades', value: scopedUnitsList().length }
     ]);
     phase3Cards(refs.phase3EpisSummary, [
-      { label: 'Catálogo', value: filterByCompany(state.epis || []).length },
-      { label: 'Com foto', value: filterByCompany(state.epis || []).filter((item) => String(item.epi_photo_data || '').trim()).length },
-      { label: tr('epi.caExpiry', 'Validade do CA'), value: filterByCompany(state.epis || []).filter((item) => String(item.ca_expiry || '').trim()).length }
+      { label: 'Catálogo', value: scopedKeepingCompanyWide(state.epis || []).length },
+      { label: 'Com foto', value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.epi_photo_data || '').trim()).length },
+      { label: tr('epi.caExpiry', 'Validade do CA'), value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.ca_expiry || '').trim()).length }
     ]);
   }
 
@@ -401,7 +557,7 @@
     if (!enabled) { return; }
     try {
       refs.dashboardInteractiveLoading.hidden = false;
-      const scopedDeliveries = filterByCompany(state.deliveries || []);
+      const scopedDeliveries = scoped(state.deliveries || []);
       // KPIs numéricos foram unificados no painel executivo consolidado
       // (renderStats). Aqui o painel interativo mantém apenas os gráficos, para
       // não repetir os mesmos indicadores (auditoria Dashboard §1).

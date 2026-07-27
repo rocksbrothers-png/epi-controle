@@ -56,7 +56,8 @@ function loadModule(relPath) {
   'views/epis.js',
   'views/estoque.js',
   'views/employee-portal.js',
-  'views/legal-entity-fields.js'
+  'views/legal-entity-fields.js',
+  'views/dashboard-scope.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -1161,6 +1162,81 @@ test('legal-entity-fields: lista ausente ou inválida não quebra', () => {
   eq(F.legalEntitiesForCompany(undefined, 1).length, 0);
   eq(F.legalEntitiesForCompany(null, 1).length, 0);
   eq(F.legalEntityLabel(null), '');
+});
+
+// ── Filtro em cascata do dashboard (web legado) ───────────────────────────
+const _SC_UNITS = [
+  { id: 1, name: 'Matriz SP', legal_entity_id: 10 },
+  { id: 2, name: 'Base Santos', legal_entity_id: 10 },
+  { id: 3, name: 'Filial RJ', legal_entity_id: 20 },
+  { id: 4, name: 'Sem CNPJ', legal_entity_id: null },
+];
+function _S() { return globalThis.__EPI_DASHBOARD_SCOPE__; }
+
+test('dashboard-scope: sem CNPJ selecionado devolve todas as unidades', () => {
+  eq(_S().availableUnits(_SC_UNITS, null).length, 4);
+});
+test('dashboard-scope: com CNPJ devolve só as unidades daquele CNPJ', () => {
+  const names = _S().availableUnits(_SC_UNITS, 10).map((u) => u.name);
+  eq(JSON.stringify(names), JSON.stringify(['Matriz SP', 'Base Santos']));
+});
+test('dashboard-scope: unidade sem vínculo não aparece sob nenhum CNPJ', () => {
+  const ids = _S().availableUnits(_SC_UNITS, 20).map((u) => u.id);
+  eq(JSON.stringify(ids), JSON.stringify([3]));
+});
+test('dashboard-scope: sem seleção NÃO restringe (null, não Set vazio)', () => {
+  // A distinção que mais importa: null = sem restrição; Set vazio = nada casa.
+  eq(_S().scopedUnitIds(_SC_UNITS, null, null), null);
+});
+test('dashboard-scope: CNPJ sem unidades zera em vez de mostrar tudo', () => {
+  const ids = _S().scopedUnitIds(_SC_UNITS, 99, null);
+  assert(ids instanceof Set, 'deve ser Set, não null');
+  eq(ids.size, 0);
+});
+test('dashboard-scope: unidade selecionada vence o CNPJ', () => {
+  const ids = _S().scopedUnitIds(_SC_UNITS, 10, 2);
+  eq(JSON.stringify(Array.from(ids)), JSON.stringify([2]));
+});
+test('dashboard-scope: applyScope recorta por unidade e por setor', () => {
+  const rows = [
+    { id: 1, unit_id: 1, sector: 'Operação' },
+    { id: 2, unit_id: 2, sector: 'Manutenção' },
+    { id: 3, unit_id: 3, sector: 'Operação' },
+  ];
+  const ids = _S().scopedUnitIds(_SC_UNITS, 10, null);
+  eq(_S().applyScope(rows, ids, '').map((r) => r.id).join(','), '1,2');
+  eq(_S().applyScope(rows, ids, 'Operação').map((r) => r.id).join(','), '1');
+  eq(_S().applyScope(rows, null, '').length, 3);
+});
+test('dashboard-scope: registro sem unidade fica de fora quando há recorte', () => {
+  const rows = [{ id: 1, unit_id: null }, { id: 2, unit_id: 1 }];
+  const ids = _S().scopedUnitIds(_SC_UNITS, 10, null);
+  eq(_S().applyScope(rows, ids, '').map((r) => r.id).join(','), '2');
+});
+test('dashboard-scope: EPI de nível empresa permanece visível em qualquer recorte', () => {
+  // EPI sem unit_id pertence à empresa; filtrá-lo esconderia o catálogo.
+  const epis = [{ id: 1, unit_id: null }, { id: 2, unit_id: 1 }, { id: 3, unit_id: 3 }];
+  const ids = _S().scopedUnitIds(_SC_UNITS, 10, null);
+  eq(_S().applyScopeKeepingCompanyWide(epis, ids).map((e) => e.id).join(','), '1,2');
+});
+test('dashboard-scope: setores vêm só do escopo e ordenados', () => {
+  const employees = [
+    { unit_id: 1, sector: 'Operação' }, { unit_id: 2, sector: 'Almoxarifado' },
+    { unit_id: 3, sector: 'Offshore' }, { unit_id: 1, sector: '  ' },
+  ];
+  const ids = _S().scopedUnitIds(_SC_UNITS, 10, null);
+  eq(JSON.stringify(_S().sectorsOf(employees, ids)), JSON.stringify(['Almoxarifado', 'Operação']));
+  eq(_S().sectorsOf(employees, null).length, 3);
+});
+test('dashboard-scope: hasActiveFilter reconhece qualquer nível', () => {
+  assert(!_S().hasActiveFilter({ legalEntityId: null, unitId: null, sector: '' }), 'vazio');
+  assert(_S().hasActiveFilter({ legalEntityId: 10 }), 'CNPJ');
+  assert(_S().hasActiveFilter({ unitId: 1 }), 'unidade');
+  assert(_S().hasActiveFilter({ sector: 'Operação' }), 'setor');
+});
+test('dashboard-scope: ids como string (vindos de <select>) funcionam', () => {
+  const ids = _S().scopedUnitIds(_SC_UNITS, '10', '');
+  eq(JSON.stringify(Array.from(ids)), JSON.stringify([1, 2]));
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

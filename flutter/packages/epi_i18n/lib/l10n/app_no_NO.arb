@@ -468,5 +468,7 @@
   "myCompanyStockScopeUnit": "Enhet",
   "myCompanyStockScopeLegalEntity": "CNPJ",
   "myCompanyStockScopeCompany": "Selskap",
-  "navLegalEntities": "CNPJ"
+  "navLegalEntities": "CNPJ",
+  "unitLegalEntityLabel": "Ansvarlig CNPJ",
+  "unitLegalEntityHint": "Juridisk enhet som er ansvarlig for driften og lageret til denne enheten."
 }

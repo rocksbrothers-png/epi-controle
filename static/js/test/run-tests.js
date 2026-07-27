@@ -1163,6 +1163,27 @@ test('legal-entity-fields: lista ausente ou inválida não quebra', () => {
   eq(F.legalEntitiesForCompany(null, 1).length, 0);
   eq(F.legalEntityLabel(null), '');
 });
+test('legal-entity-fields: rótulo do CNPJ da unidade vem do próprio registro', () => {
+  // A listagem de unidades não carrega a lista de CNPJs: o rótulo é montado a
+  // partir do que o LEFT JOIN de `fetch_units` já devolve.
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  eq(F.unitLegalEntityLabel({
+    legal_entity_trade_name: 'ACME Offshore',
+    legal_entity_legal_name: 'ACME Serviços Marítimos LTDA',
+    legal_entity_cnpj: '11.222.333/0001-81',
+  }), 'ACME Offshore - 11.222.333/0001-81');
+  eq(F.unitLegalEntityLabel({
+    legal_entity_legal_name: 'ACME Serviços Marítimos LTDA',
+    legal_entity_cnpj: '11.222.333/0001-81',
+  }), 'ACME Serviços Marítimos LTDA - 11.222.333/0001-81');
+});
+test('legal-entity-fields: unidade sem CNPJ devolve vazio, não "undefined"', () => {
+  // Estado legítimo durante a migração. A tabela mostra `-`; um "undefined" na
+  // coluna pareceria defeito.
+  const F = globalThis.__EPI_LEGAL_ENTITY_FIELDS__;
+  eq(F.unitLegalEntityLabel({ name: 'Base sem CNPJ' }), '');
+  eq(F.unitLegalEntityLabel(null), '');
+});
 
 // ── Filtro em cascata do dashboard (web legado) ───────────────────────────
 const _SC_UNITS = [

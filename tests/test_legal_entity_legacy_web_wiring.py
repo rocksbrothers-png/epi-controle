@@ -63,6 +63,52 @@ def test_report_payload_sends_legal_entity_id():
     assert "#report-legal-entity" in app_js
 
 
+# ── cadastro de unidade ──────────────────────────────────────────────────────
+
+def test_unit_form_has_legal_entity_select():
+    """Sem este campo o vínculo unidade↔CNPJ só existia no banco.
+
+    O backend aceita `legal_entity_id` em POST/PUT `/api/units` desde a fundação
+    do Multi-CNPJ, mas nenhuma tela oferecia o campo — então na prática toda
+    unidade nascia sem CNPJ definido.
+    """
+    html = _read('static', 'index.html')
+    assert re.search(
+        r'<select[^>]*name="legal_entity_id"[^>]*id="unit-legal-entity"', html
+    ), 'select de CNPJ da unidade precisa enviar legal_entity_id'
+    assert 'id="unit-legal-entity"' in _read('static', 'views', 'unidades.html')
+
+
+def test_unit_legal_entity_field_starts_hidden():
+    """Empresa sem CNPJs cadastrados não ganha um seletor vazio."""
+    html = _read('static', 'index.html')
+    assert re.search(r'id="unit-legal-entity-field"[^>]*hidden', html)
+
+
+def test_unit_legal_entity_follows_the_company_select():
+    """CNPJ de outra empresa é recusado pelo backend — a lista tem de resincronizar."""
+    app_js = _read('static', 'app.js')
+    assert 'function syncUnitLegalEntityOptions()' in app_js
+    assert re.search(
+        r"getElementById\('unit-company'\), 'change'", app_js
+    ), 'trocar a empresa precisa recarregar os CNPJs'
+
+
+def test_unit_edit_preselects_the_current_legal_entity():
+    app_js = _read('static', 'app.js')
+    assert re.search(
+        r"form\.elements\.legal_entity_id\.value = item\.legal_entity_id", app_js
+    )
+
+
+def test_unit_table_shows_the_legal_entity_column():
+    """Empresa com vários CNPJs precisa distinguir as unidades na lista."""
+    app_js = _read('static', 'app.js')
+    assert 'unitLegalEntityLabel(item)' in app_js
+    assert 'data-i18n="unit.tableLegalEntity"' in _read('static', 'views', 'unidades.html')
+    assert 'data-i18n="unit.tableLegalEntity"' in _read('static', 'index.html')
+
+
 # ── módulo de helpers ────────────────────────────────────────────────────────
 
 def test_legal_entity_helpers_module_is_loaded_by_the_page():
@@ -96,8 +142,10 @@ def test_legal_entity_labels_exist_in_all_locales():
         data = json.loads(_read('static', 'i18n', f'{locale}.json'))
         assert data['employee']['legalEntity'], locale
         assert data['employee']['legalEntityHint'], locale
-        for key in ('title', 'select', 'auto'):
+        for key in ('title', 'select', 'auto', 'selectOptional'):
             assert data['legalEntity'][key], f'{locale}.legalEntity.{key}'
+        assert data['unit']['legalEntity'], locale
+        assert data['unit']['tableLegalEntity'], locale
 
 
 # ── filtro em cascata do dashboard ───────────────────────────────────────────

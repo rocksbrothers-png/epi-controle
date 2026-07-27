@@ -1236,6 +1236,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -2465,4 +2472,11 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get navLegalEntities => 'Tax IDs';
+
+  @override
+  String get unitLegalEntityLabel => 'Responsible tax ID';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Legal entity accountable for this unit’s operations and stock.';
 }

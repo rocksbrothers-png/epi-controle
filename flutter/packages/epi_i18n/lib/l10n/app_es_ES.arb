@@ -468,5 +468,7 @@
   "myCompanyStockScopeUnit": "Unidad",
   "myCompanyStockScopeLegalEntity": "CNPJ",
   "myCompanyStockScopeCompany": "Empresa",
-  "navLegalEntities": "CNPJ"
+  "navLegalEntities": "CNPJ",
+  "unitLegalEntityLabel": "CNPJ responsable",
+  "unitLegalEntityHint": "Persona jurídica responsable de las operaciones y del stock de esta unidad."
 }

@@ -1019,7 +1019,9 @@
     "purgeSummaryOutro": "O registro de auditoria desta operação será preservado permanentemente.",
     "purgeJustification": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
     "purgeConfirmName": "Digite o nome exato da unidade para confirmar:",
-    "purgeDone": "Unidade excluída definitivamente. O registro da operação foi gravado na auditoria."
+    "purgeDone": "Unidade excluída definitivamente. O registro da operação foi gravado na auditoria.",
+    "legalEntity": "CNPJ responsável",
+    "tableLegalEntity": "CNPJ"
   },
   "user": {
     "title": "Usuários",
@@ -1358,7 +1360,8 @@
   "legalEntity": {
     "title": "CNPJ",
     "select": "Selecione o CNPJ",
-    "auto": "Automático (CNPJ único)"
+    "auto": "Automático (CNPJ único)",
+    "selectOptional": "Selecione o CNPJ"
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",

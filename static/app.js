@@ -5002,6 +5002,7 @@ function bindDependentSelects() {
   });
   populateLinkedEmployeeOptions();
   syncEmployeeUnitOptions();
+  syncUnitLegalEntityOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
   syncStockOptions();
@@ -5590,7 +5591,10 @@ function buildDeliveryRow(item) {
 
 function formatUnitTableRow(item, canManageUnitRecords) {
   const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-archive="${item.id}">${tr('unit.archive', 'Arquivar')}</button></div>` : '-';
-  return `<tr><td>${item.company_name}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
+  // Sem esta coluna, uma empresa com vários CNPJs vê uma lista em que todas as
+  // unidades parecem iguais — e é justamente aqui que a distinção importa.
+  const legalEntity = escapeHtml(unitLegalEntityLabel(item)) || '-';
+  return `<tr><td>${item.company_name}</td><td>${legalEntity}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
 const DELIVERIES_PER_PAGE = 20;
@@ -6322,6 +6326,11 @@ function startEditUnit(unitId) {
   form.elements.unit_type.value = item.unit_type || 'base';
   form.elements.city.value = item.city || '';
   form.elements.notes.value = item.notes || '';
+  // A lista de CNPJs depende da empresa, que acabou de ser preenchida.
+  syncUnitLegalEntityOptions();
+  if (form.elements.legal_entity_id) {
+    form.elements.legal_entity_id.value = item.legal_entity_id ? String(item.legal_entity_id) : '';
+  }
   setFormSubmitLabel('unit-form', 'Atualizar unidade');
   showView('unidades');
 }
@@ -7090,6 +7099,11 @@ function legalEntitiesForCompany(companyId, options) {
   return helper ? helper(state.legalEntities, companyId, options) : [];
 }
 
+function unitLegalEntityLabel(unit) {
+  const helper = legalEntityHelpers().unitLegalEntityLabel;
+  return helper ? helper(unit) : String(unit?.legal_entity_cnpj || '');
+}
+
 function legalEntityOptionsHtml(entities) {
   const label = legalEntityHelpers().legalEntityLabel || ((item) => String(item?.cnpj || ''));
   return entities
@@ -7136,6 +7150,27 @@ function setEmployeeLegalEntityLock(legalEntityId, locked) {
   if (legalEntityId) field.value = String(legalEntityId);
   field.disabled = Boolean(locked);
   if (locked) field.required = false;
+}
+
+// Vínculo jurídico da unidade.
+//
+// Diferente do colaborador, aqui não há imutabilidade: a unidade pode mudar de
+// CNPJ responsável (reorganização societária, troca de operadora da JV). O que
+// o backend não faz é *limpar* o vínculo — enviar vazio mantém o valor atual —
+// então o seletor não oferece uma opção "nenhum" que não teria efeito.
+function syncUnitLegalEntityOptions() {
+  const field = document.getElementById('unit-legal-entity');
+  const wrapper = document.getElementById('unit-legal-entity-field');
+  if (!field || !wrapper) return;
+  const companyId = document.getElementById('unit-company')?.value || state.user?.company_id || '';
+  const entities = legalEntitiesForCompany(companyId);
+  const previous = field.value;
+  wrapper.hidden = entities.length === 0;
+  field.innerHTML = `<option value="">${tr('legalEntity.selectOptional', 'Selecione o CNPJ')}</option>`
+    + legalEntityOptionsHtml(entities);
+  if (previous && entities.some((item) => String(item.id) === String(previous))) {
+    field.value = previous;
+  }
 }
 
 function syncReportLegalEntityOptions() {
@@ -11211,6 +11246,13 @@ async function init() {
   bindAppListener(document.getElementById('employee-company'), 'change', () => {
     syncEmployeeUnitOptions();
   });
+  // Trocar a empresa muda o conjunto de CNPJs disponíveis: o backend recusa
+  // CNPJ de outra empresa, então manter a lista anterior só geraria erro no
+  // salvar.
+  bindAppListener(document.getElementById('unit-company'), 'change', () => {
+    syncUnitLegalEntityOptions();
+  });
+
   const syncEmpresaOrigemVisibility = () => {
     const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
     const row = document.getElementById('employee-empresa-origem-row');

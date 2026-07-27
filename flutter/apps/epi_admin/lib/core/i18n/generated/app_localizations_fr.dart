@@ -1236,6 +1236,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2472,4 +2479,11 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get navLegalEntities => 'CNPJ';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsable';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Personne morale responsable des opérations et du stock de cette unité.';
 }

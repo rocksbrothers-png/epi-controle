@@ -1236,6 +1236,13 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -2467,4 +2474,11 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get navLegalEntities => 'CNPJ';
+
+  @override
+  String get unitLegalEntityLabel => 'Ansvarlig CNPJ';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Juridisk enhet som er ansvarlig for driften og lageret til denne enheten.';
 }

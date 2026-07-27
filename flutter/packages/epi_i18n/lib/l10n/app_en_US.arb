@@ -495,5 +495,7 @@
   "myCompanyStockScopeUnit": "Unit",
   "myCompanyStockScopeLegalEntity": "Tax ID",
   "myCompanyStockScopeCompany": "Company",
-  "navLegalEntities": "Tax IDs"
+  "navLegalEntities": "Tax IDs",
+  "unitLegalEntityLabel": "Responsible tax ID",
+  "unitLegalEntityHint": "Legal entity accountable for this unit’s operations and stock."
 }

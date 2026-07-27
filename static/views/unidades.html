@@ -20,6 +20,9 @@
               <label><span data-i18n="unit.name">Nome da unidade</span><input name="name" type="text" autocomplete="off" required></label>
               <label><span data-i18n="unit.type">Tipo</span><select name="unit_type"><option value="base" data-i18n="unit.typeBase">Base</option><option value="embarcacao" data-i18n="unit.typeVessel">Embarcação</option><option value="plataforma" data-i18n="unit.typePlatform">Plataforma</option></select></label>
               <label><span data-i18n="unit.city">Cidade ou Área</span><input name="city" type="text" required></label>
+              <!-- CNPJ responsável pela unidade. Fica oculto quando a empresa
+                   não tem CNPJs cadastrados, para não exibir um campo vazio. -->
+              <label id="unit-legal-entity-field" hidden><span data-i18n="unit.legalEntity">CNPJ responsável</span><select name="legal_entity_id" id="unit-legal-entity"></select></label>
             </fieldset>
             <fieldset class="form-fieldset">
               <legend data-i18n="settings.title">Configuração</legend>
@@ -36,7 +39,7 @@
               <label><span data-i18n="unit.filterType">Tipo</span><select id="units-filter-type"><option value="" data-i18n="unit.filterAll">Todos</option><option value="base" data-i18n="unit.typeBase">Base</option><option value="embarcacao" data-i18n="unit.typeVessel">Embarcação</option><option value="plataforma" data-i18n="unit.typePlatform">Plataforma</option></select></label>
               <label><span data-i18n="unit.filterCity">Cidade</span><input id="units-filter-city" type="search" placeholder="Cidade/Área" data-i18n-placeholder="unit.placeholderCityArea"></label>
             </div>
-            <div class="table-wrap"><table><thead><tr><th scope="col" data-i18n="unit.tableCompany">Empresa</th><th scope="col" data-i18n="unit.tableUnit">Unidade</th><th scope="col" data-i18n="unit.tableType">Tipo</th><th scope="col" data-i18n="unit.tableCity">Cidade</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th scope="col" data-i18n="unit.tableCompany">Empresa</th><th scope="col" data-i18n="unit.tableLegalEntity">CNPJ</th><th scope="col" data-i18n="unit.tableUnit">Unidade</th><th scope="col" data-i18n="unit.tableType">Tipo</th><th scope="col" data-i18n="unit.tableCity">Cidade</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="units-table"></tbody></table></div>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="arquivadas">

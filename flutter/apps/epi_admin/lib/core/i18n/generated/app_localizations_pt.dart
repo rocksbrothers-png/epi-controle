@@ -1236,6 +1236,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -2470,4 +2477,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }

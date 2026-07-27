@@ -7194,12 +7194,15 @@ function formatLegalEntityRow(item, permissions) {
   // o último CNPJ ativo, e oferecer o botão só geraria mensagem de erro.
   const showDeactivate = permissions.canDelete
     && (helpers.canDeactivate ? helpers.canDeactivate(item, state.legalEntities) : active);
+  // O id vira atributo HTML: escapado como qualquer outro dado vindo do
+  // servidor, mesmo sendo numérico na prática.
+  const entityId = escapeHtml(String(item.id ?? ''));
   const buttons = [];
   if (permissions.canUpdate) {
-    buttons.push(`<button class="ghost" data-legal-entity-edit="${item.id}">${tr('edit', 'Editar')}</button>`);
+    buttons.push(`<button class="ghost" data-legal-entity-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
   }
   if (showDeactivate) {
-    buttons.push(`<button class="ghost" data-legal-entity-deactivate="${item.id}">${tr('legalEntity.deactivate', 'Inativar')}</button>`);
+    buttons.push(`<button class="ghost" data-legal-entity-deactivate="${entityId}">${escapeHtml(tr('legalEntity.deactivate', 'Inativar'))}</button>`);
   }
   const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
   return `<tr><td>${escapeHtml(item.cnpj || '')}</td><td>${escapeHtml(item.legal_name || '')}</td>`
@@ -7225,8 +7228,12 @@ function syncLegalEntityCompanyField() {
   wrapper.hidden = !isMaster;
   field.required = isMaster;
   if (!isMaster) {
-    field.innerHTML = `<option value="${state.user?.company_id || ''}"></option>`;
-    field.value = String(state.user?.company_id || '');
+    // Opção montada pela API do DOM, não por string de HTML: o valor vem do
+    // estado da sessão e não há por que reinterpretá-lo como marcação.
+    const option = document.createElement('option');
+    option.value = String(state.user?.company_id || '');
+    field.replaceChildren(option);
+    field.value = option.value;
     return;
   }
   const previous = field.value;

@@ -1233,6 +1233,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJs';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -2465,4 +2468,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJ';
 }

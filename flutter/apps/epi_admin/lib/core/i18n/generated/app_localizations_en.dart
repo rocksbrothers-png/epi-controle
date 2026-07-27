@@ -1233,6 +1233,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJs';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -2459,4 +2462,7 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get myCompanyStockScopeCompany => 'Company';
+
+  @override
+  String get navLegalEntities => 'Tax IDs';
 }

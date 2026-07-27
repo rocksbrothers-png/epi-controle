@@ -1233,6 +1233,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJs';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2466,4 +2469,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get myCompanyStockScopeCompany => 'Entreprise';
+
+  @override
+  String get navLegalEntities => 'CNPJ';
 }

@@ -467,5 +467,6 @@
   "myCompanyStockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité.",
   "myCompanyStockScopeUnit": "Unité",
   "myCompanyStockScopeLegalEntity": "CNPJ",
-  "myCompanyStockScopeCompany": "Entreprise"
+  "myCompanyStockScopeCompany": "Entreprise",
+  "navLegalEntities": "CNPJ"
 }

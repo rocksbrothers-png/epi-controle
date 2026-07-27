@@ -1233,6 +1233,9 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJs';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -2461,4 +2464,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get myCompanyStockScopeCompany => 'Selskap';
+
+  @override
+  String get navLegalEntities => 'CNPJ';
 }

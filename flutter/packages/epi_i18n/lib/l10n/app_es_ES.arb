@@ -467,5 +467,6 @@
   "myCompanyStockScopeHint": "Esta configuración solo cambia la vista consolidada de los saldos. Entradas, reservas, salidas, entregas y demás movimientos siguen vinculados al stock de cada unidad.",
   "myCompanyStockScopeUnit": "Unidad",
   "myCompanyStockScopeLegalEntity": "CNPJ",
-  "myCompanyStockScopeCompany": "Empresa"
+  "myCompanyStockScopeCompany": "Empresa",
+  "navLegalEntities": "CNPJ"
 }

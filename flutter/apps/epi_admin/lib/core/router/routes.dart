@@ -23,4 +23,33 @@ abstract final class Routes {
   static const portal      = '/portal';
   static const qr          = '/qr';
   static const feedback     = '/feedback';
+
+  /// Todas as rotas declaradas. Usado pelo teste que confere se o menu
+  /// aponta apenas para rotas existentes.
+  static const all = <String>[
+    login,
+    dashboard,
+    employees,
+    employeeDetail,
+    epiDetail,
+    epis,
+    stock,
+    deliveries,
+    deliveryNew,
+    returns,
+    records,
+    purchases,
+    reports,
+    settings,
+    myCompany,
+    subscription,
+    invoices,
+    companies,
+    users,
+    units,
+    legalEntities,
+    portal,
+    qr,
+    feedback,
+  ];
 }

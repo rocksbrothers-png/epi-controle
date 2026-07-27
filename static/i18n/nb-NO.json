@@ -175,7 +175,8 @@
     "missingManufacture": "Mangler produksjonsdato",
     "missingLot": "Mangler parti",
     "complianceError": "—",
-    "loadingShort": "…"
+    "loadingShort": "…",
+    "clearFilters": "Tøm filtre"
   },
   "company": {
     "title": "Selskap",

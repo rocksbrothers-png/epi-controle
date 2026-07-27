@@ -326,6 +326,14 @@ podem exibir separadores soltos. A etapa "Como sua organização está
 estruturada?" não se aplica aqui: este repositório não tem a página de
 cadastro/onboarding do Web legado.
 
+**Web legado, paridade concluída.** O cadastro de colaborador ganhou o seletor
+de CNPJ — obrigatório só quando há mais de um ativo, travado na edição porque o
+vínculo é imutável —, o filtro de relatórios ganhou o recorte por CNPJ
+(incluindo os inativos, cujo histórico segue consultável) e o dashboard ganhou a
+barra em cascata que ele não tinha. Antes disso, cadastrar colaborador pelo
+legado **falhava** em empresa com mais de um CNPJ ativo: o backend recusa a
+operação sem o campo, e o campo não existia.
+
 ## 14. Testes E2E (implementado)
 
 O `integration_test/smoke_test.dart` existente é deliberadamente *backend-free*.

@@ -653,6 +653,16 @@ body.ux-hierarchy-enabled .view.active.hierarchy-view-enter {
 .dashboard-grid, .panel-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .reports-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .dashboard-interactive-panel { display: grid; gap: 16px; margin-bottom: 16px; }
+
+/* Barra do filtro em cascata do dashboard (Empresa -> CNPJ -> Unidade -> Setor).
+   Envolve em vez de espremer: em telas estreitas os campos empilham. */
+.dashboard-scope-filter { margin-bottom: 16px; }
+.dashboard-scope-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.dashboard-scope-controls label { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1 1 180px; }
+.dashboard-scope-controls button { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .dashboard-scope-controls label { min-width: 100%; }
+}
 .dashboard-interactive-state { margin-bottom: 16px; }
 .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .dashboard-kpi-card {

@@ -98,3 +98,57 @@ def test_legal_entity_labels_exist_in_all_locales():
         assert data['employee']['legalEntityHint'], locale
         for key in ('title', 'select', 'auto'):
             assert data['legalEntity'][key], f'{locale}.legalEntity.{key}'
+
+
+# ── filtro em cascata do dashboard ───────────────────────────────────────────
+
+def test_dashboard_scope_filter_is_rendered():
+    html = _read('static', 'index.html')
+    for element_id in (
+        'dashboard-scope-filter',
+        'dashboard-scope-legal-entity',
+        'dashboard-scope-unit',
+        'dashboard-scope-sector',
+        'dashboard-scope-clear',
+    ):
+        assert f'id="{element_id}"' in html, element_id
+    assert 'id="dashboard-scope-filter"' in _read('static', 'views', 'dashboard.html')
+
+
+def test_dashboard_scope_filter_starts_hidden():
+    """Sem Multi-CNPJ provisionado o dashboard fica exatamente como era."""
+    html = _read('static', 'index.html')
+    assert re.search(r'id="dashboard-scope-filter"[^>]*hidden', html)
+
+
+def test_dashboard_scope_module_loads_before_the_dashboard_view():
+    """`dashboard.js` consome `__EPI_DASHBOARD_SCOPE__` — carrega antes dele.
+
+    A leitura é tardia (dentro de `scopeApi()`), então hoje a ordem não
+    quebraria nada. Fixamos mesmo assim: é mais barato manter a dependência
+    declarada na ordem certa do que descobrir o acoplamento no dia em que
+    alguém passar a lê-la no carregamento.
+    """
+    for source in (
+        _read('static', 'views', '_scripts.html'),
+        _read('static', 'index.html'),
+    ):
+        assert 'js/views/dashboard-scope.js' in source
+        assert source.index('dashboard-scope.js') < source.index('views/dashboard.js')
+
+
+def test_dashboard_reads_through_the_scope_helpers():
+    """Os KPIs precisam usar o recorte, não `filterByCompany` cru."""
+    view = _read('static', 'js', 'views', 'dashboard.js')
+    assert 'scopedKeepingCompanyWide(state.epis' in view
+    assert 'scoped(state.deliveries' in view
+    assert 'scoped(state.employees' in view
+    assert 'scopedUnitsList()' in view
+
+
+def test_dashboard_scope_clear_label_exists_in_all_locales():
+    import json
+
+    for locale in ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']:
+        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
+        assert data['dashboard']['clearFilters'], locale

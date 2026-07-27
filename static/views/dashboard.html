@@ -6,6 +6,14 @@
           </div>
         </header>
         <div id="dashboard-critical-banner" aria-live="polite"></div>
+        <article id="dashboard-scope-filter" class="card dashboard-scope-filter" hidden>
+          <div class="dashboard-scope-controls">
+            <label><span data-i18n="legalEntity.title">CNPJ</span><select id="dashboard-scope-legal-entity"></select></label>
+            <label><span data-i18n="unit.title">Unidade</span><select id="dashboard-scope-unit"></select></label>
+            <label><span data-i18n="employee.sector">SETOR</span><select id="dashboard-scope-sector"></select></label>
+            <button id="dashboard-scope-clear" class="ghost" type="button" hidden data-i18n="dashboard.clearFilters">Limpar filtros</button>
+          </div>
+        </article>
         <article id="dashboard-interactive-loading" class="card dashboard-interactive-state" hidden>
           <strong data-i18n="dashboard.interactiveLoadingTitle">Carregando painel interativo...</strong>
           <small class="hint" data-i18n="dashboard.interactiveLoadingHint">Aguarde enquanto consolidamos indicadores.</small>

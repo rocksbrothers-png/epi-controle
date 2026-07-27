@@ -175,7 +175,8 @@
     "missingManufacture": "Sin fecha de fabricación",
     "missingLot": "Sin lote",
     "complianceError": "—",
-    "loadingShort": "…"
+    "loadingShort": "…",
+    "clearFilters": "Limpiar filtros"
   },
   "company": {
     "title": "Empresa",

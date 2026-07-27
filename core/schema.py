@@ -2325,6 +2325,61 @@ def ensure_legal_entities(connection) -> None:
     _backfill_default_legal_entities(connection)
 
 
+def ensure_stock_reservations(connection) -> None:
+    """Reserva de estoque — o elo que faltava entre aprovar e entregar.
+
+    Sem ela não existe *saldo livre*: o sistema só sabia o saldo físico, então
+    duas solicitações podiam ser aprovadas sobre a mesma peça. A reserva
+    **não** baixa o estoque; ela apenas subtrai do que está disponível para
+    novas promessas::
+
+        saldo livre = saldo físico - saldo reservado
+
+    A reserva é **sempre de uma unidade** (ADR-0001 §15). Não há reserva que
+    atravesse unidades, nem reserva "da empresa": a coluna ``unit_id`` é
+    obrigatória e é a unidade da operação, nunca uma derivada do escopo de
+    consolidação.
+    """
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS stock_reservations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            request_id INTEGER,
+            quantity INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            glove_size TEXT NOT NULL DEFAULT 'N/A',
+            size TEXT NOT NULL DEFAULT 'N/A',
+            uniform_size TEXT NOT NULL DEFAULT 'N/A',
+            notes TEXT NOT NULL DEFAULT '',
+            delivery_id INTEGER,
+            created_by_user_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            consumed_at TEXT NOT NULL DEFAULT '',
+            released_at TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE RESTRICT,
+            FOREIGN KEY (request_id) REFERENCES epi_requests(id) ON DELETE SET NULL
+        )
+        '''
+    )
+    for statement in (
+        # A consulta quente é "quanto está reservado deste EPI nesta unidade".
+        'CREATE INDEX IF NOT EXISTS idx_stock_reservations_unit_epi '
+        'ON stock_reservations (company_id, unit_id, epi_id, status)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_reservations_request '
+        'ON stock_reservations (request_id)',
+    ):
+        try:
+            connection.execute(statement)
+        except Exception as _e:  # noqa: BLE001 - índice é otimização, não requisito
+            structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def _backfill_default_legal_entities(connection) -> None:
     """Cria a LegalEntity padrão (matriz) das empresas existentes e revincula
     colaboradores/unidades órfãos. Idempotente: só cria/atualiza o que falta."""
@@ -2868,6 +2923,7 @@ def init_db():
             ensure_epi_columns,
             ensure_employee_columns,
             ensure_legal_entities,
+            ensure_stock_reservations,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,

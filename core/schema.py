@@ -1515,6 +1515,10 @@ def ensure_epi_operational_tables(connection) -> None:
     _safe_add_column(connection, 'purchase_orders', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_requests', 'postponed_until', "TEXT NOT NULL DEFAULT ''")
+    # Urgência da solicitação (plano §3.1). É o primeiro critério da ordem de
+    # atendimento quando material entra no estoque (§10) — sem ela a fila só
+    # poderia ser cronológica, e um caso urgente esperaria atrás de um rotineiro.
+    _safe_add_column(connection, 'epi_requests', 'urgency', "TEXT NOT NULL DEFAULT 'normal'")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'purchase_requests', 'linked_po_id', "INTEGER")
     _safe_add_column(connection, 'purchase_request_items', 'rejection_reason', "TEXT NOT NULL DEFAULT ''")

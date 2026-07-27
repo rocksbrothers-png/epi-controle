@@ -47,7 +47,7 @@ dependencies:
   sqflite: ^2.3.3
 
   # Conectividade
-  connectivity_plus: ^6.0.5
+  connectivity_plus: ^7.3.1
 
   # QR Scanner
   mobile_scanner: ^7.4.0

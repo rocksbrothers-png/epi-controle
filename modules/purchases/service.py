@@ -1397,13 +1397,24 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
     return {'stock_entries': stock_entries, 'qr_labels': qr_labels, 'pendencies': pendencies}
 
 
-_EPI_REQUEST_VALID_STATUSES = {'solicitado', 'em análise', 'aprovado', 'rejeitado', 'prorrogado', 'separado', 'entregue', 'assinado'}
+# O vocabulário e as transições vivem em modules/epis/request_states.py. Aqui
+# ficava um *conjunto*: validava o destino e ignorava a origem, então
+# `solicitado → entregue` passava.
+from modules.epis.request_states import (  # noqa: E402
+    ALL_STATUSES as _EPI_REQUEST_ALL_STATUSES,
+    InvalidStatusTransition as _InvalidStatusTransition,
+    assert_transition as _assert_epi_request_transition,
+)
+
+_EPI_REQUEST_VALID_STATUSES = set(_EPI_REQUEST_ALL_STATUSES)
 
 
 def update_epi_request_status(connection, actor, req, new_status, postponed_until, rejection_reason, notes):
     """Updates a single epi_request status and inserts a history record."""
-    if new_status not in _EPI_REQUEST_VALID_STATUSES:
-        raise ValueError('Status inválido.')
+    try:
+        new_status = _assert_epi_request_transition(req.get('status'), new_status)
+    except _InvalidStatusTransition as exc:
+        raise ValueError(str(exc)) from exc
     if new_status == 'prorrogado' and not postponed_until:
         raise ValueError('Data de prorrogação obrigatória.')
     now = datetime.now(UTC).isoformat()
@@ -1438,8 +1449,13 @@ def bulk_update_epi_request_statuses(connection, actor, updates):
             continue
         req = row_to_dict(_req)
         ensure_resource_company(actor, req, 'Solicitação')
-        new_status = str(upd.get('status', '')).strip().lower()
-        if new_status not in _EPI_REQUEST_VALID_STATUSES:
+        # O bulk pula item inválido em vez de abortar o lote — contrato
+        # existente, agora aplicado também à transição, não só ao destino.
+        try:
+            new_status = _assert_epi_request_transition(
+                req.get('status'), upd.get('status', ''),
+            )
+        except _InvalidStatusTransition:
             continue
         postponed_until = str(upd.get('postponed_until') or '').strip()
         rejection_reason = str(upd.get('rejection_reason') or '').strip()

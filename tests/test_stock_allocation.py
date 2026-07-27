@@ -34,7 +34,7 @@ def _conn(stock=0):
         );
         CREATE TABLE epi_request_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT, request_id INTEGER, company_id INTEGER,
-            status TEXT, notes TEXT, actor_name TEXT, created_at TEXT
+            status TEXT, notes TEXT, actor_user_id INTEGER, actor_name TEXT, created_at TEXT
         );
         CREATE TABLE unit_epi_stock (
             id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, unit_id INTEGER,
@@ -260,3 +260,142 @@ def test_zero_quantity_request_is_skipped_without_breaking_the_queue():
 def test_nothing_waiting_means_nothing_allocated():
     conn = _conn(stock=10)
     assert allocate_incoming_stock(conn, 1, MATRIZ, EPI) == []
+
+
+# ── datas ausentes: reconstruir, e sinalizar o que não dá (revisão do cliente) ─
+#
+# A versão anterior ordenava data ausente ANTES de qualquer data real. Isso
+# transformava registro incompleto em prioridade máxima — exatamente o que a
+# revisão do cliente mandou corrigir.
+
+def _history(conn, request_id, status, created_at):
+    conn.execute(
+        'INSERT INTO epi_request_history (request_id, company_id, status, notes, '
+        "actor_name, created_at) VALUES (?, 1, ?, '', 'Sistema', ?)",
+        (request_id, status, created_at),
+    )
+    conn.commit()
+
+
+def test_missing_approval_date_is_rebuilt_from_history():
+    """Fonte confiável primeiro: o histórico sabe quando a aprovação ocorreu."""
+    conn = _conn()
+    _request(conn, 1, approved_at='', requested_at='2026-01-01')
+    _history(conn, 1, 'aprovado', '2026-03-01')
+    _request(conn, 2, approved_at='2026-05-01', requested_at='2026-01-01')
+
+    queue = pending_requests_for(conn, 1, MATRIZ, EPI)
+    assert [r['id'] for r in queue] == [1, 2], 'a reconstruída (março) vem antes de maio'
+    assert queue[0]['effective_approved_at'] == '2026-03-01'
+    assert not queue[0]['needs_date_review']
+
+
+def test_unreconstructible_date_waits_instead_of_jumping_the_queue():
+    """Sem fonte, a solicitação vai para o FIM da sua faixa — não para o começo."""
+    conn = _conn()
+    _request(conn, 1, approved_at='', requested_at='')  # sem histórico algum
+    _request(conn, 2, approved_at='2026-05-01', requested_at='2026-04-01')
+    _request(conn, 3, approved_at='2026-09-01', requested_at='2026-08-01')
+
+    assert [r['id'] for r in pending_requests_for(conn, 1, MATRIZ, EPI)] == [2, 3, 1]
+
+
+def test_unreconstructible_date_is_flagged_not_silent():
+    conn = _conn()
+    _request(conn, 1, approved_at='', requested_at='')
+    queue = pending_requests_for(conn, 1, MATRIZ, EPI)
+    assert queue[0]['needs_date_review']
+    assert set(queue[0]['unresolved_date_fields']) == {'approved_at', 'requested_at'}
+
+
+def test_urgency_still_outranks_a_missing_date():
+    """A sinalização não rebaixa entre faixas: urgente com data ruim segue urgente."""
+    conn = _conn()
+    _request(conn, 1, urgency='alta', approved_at='', requested_at='')
+    _request(conn, 2, urgency='normal', approved_at='2026-01-01', requested_at='2026-01-01')
+    assert [r['id'] for r in pending_requests_for(conn, 1, MATRIZ, EPI)] == [1, 2]
+
+
+def test_review_list_exposes_the_inconsistency_for_cleanup():
+    """Sem lista, o problema ficaria só na ordenação — invisível para corrigir."""
+    from modules.stock.allocation import requests_needing_date_review
+
+    conn = _conn()
+    _request(conn, 1, approved_at='', requested_at='')
+    _request(conn, 2, approved_at='2026-05-01', requested_at='2026-04-01')
+    _request(conn, 3, approved_at='', requested_at='')
+    _history(conn, 3, 'aprovado', '2026-02-01')
+    _history(conn, 3, 'solicitado', '2026-01-15')
+
+    flagged = requests_needing_date_review(conn, 1)
+    assert [r['id'] for r in flagged] == [1], 'a reconstruível (3) não é problema'
+
+
+def test_review_list_ignores_terminal_requests():
+    """Solicitação encerrada não precisa de saneamento de fila."""
+    from modules.stock.allocation import requests_needing_date_review
+
+    conn = _conn()
+    _request(conn, 1, approved_at='', requested_at='', status='entregue')
+    assert requests_needing_date_review(conn, 1) == []
+
+
+# ── atendimento fora de ordem (revisão do cliente) ───────────────────────────
+
+def test_out_of_order_allocation_requires_a_justification():
+    from modules.stock.allocation import allocate_to_request
+
+    conn = _conn(stock=10)
+    _request(conn, 1, quantity=1)
+    for empty in ('', '   ', None):
+        try:
+            allocate_to_request(conn, 1, reason=empty)
+            raise AssertionError('deveria exigir justificativa')
+        except ValueError as exc:
+            assert 'justificativa' in str(exc)
+
+
+def test_out_of_order_allocation_serves_whoever_the_manager_chose():
+    """A rotina automática nunca pula a fila; este caminho pula, com registro."""
+    from modules.stock.allocation import allocate_to_request
+
+    conn = _conn(stock=1)
+    _request(conn, 1, quantity=1, requested_at='2026-01-01')
+    _request(conn, 2, quantity=1, requested_at='2026-06-01')
+
+    result = allocate_to_request(
+        conn, 2, reason='colaborador embarca hoje', actor_user_id=5, actor_name='Gestor',
+    )
+    assert result['out_of_order'] is True
+    assert _status(conn, 2) == RESERVED
+    assert _status(conn, 1) == WAITING_STOCK
+
+
+def test_out_of_order_allocation_is_audited_with_the_reason():
+    from modules.stock.allocation import allocate_to_request
+
+    conn = _conn(stock=5)
+    _request(conn, 1, quantity=2)
+    allocate_to_request(conn, 1, reason='embarque antecipado', actor_user_id=5, actor_name='Gestor')
+
+    row = conn.execute(
+        'SELECT * FROM epi_request_history WHERE request_id = 1 ORDER BY id DESC LIMIT 1'
+    ).fetchone()
+    assert 'fora de ordem' in row['notes']
+    assert 'embarque antecipado' in row['notes']
+    assert row['actor_name'] == 'Gestor'
+
+
+def test_out_of_order_still_respects_stock_and_unit():
+    """Não é atalho para as demais regras."""
+    from modules.stock.allocation import allocate_to_request
+    from modules.stock.reservations import InsufficientFreeStock
+
+    conn = _conn(stock=1)
+    _request(conn, 1, quantity=5)
+    try:
+        allocate_to_request(conn, 1, reason='urgente')
+        raise AssertionError('sem saldo livre não pode reservar')
+    except InsufficientFreeStock:
+        pass
+    assert _status(conn, 1) == WAITING_STOCK

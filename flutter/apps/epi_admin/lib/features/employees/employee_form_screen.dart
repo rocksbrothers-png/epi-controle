@@ -32,8 +32,22 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
   DateTime? _admission;
   List<Map<String, dynamic>> _units = const [];
   Map<String, dynamic>? _unit;
+
+  /// CNPJs (LegalEntity) da empresa, vindos do bootstrap já escopados por papel.
+  List<Map<String, dynamic>> _legalEntities = const [];
+  Map<String, dynamic>? _legalEntity;
+
   bool _loading = true;
   bool _submitting = false;
+
+  /// O CNPJ é o vínculo jurídico do contrato de trabalho: **imutável após a
+  /// admissão**. Na edição o campo aparece somente leitura; a alteração exige o
+  /// processo administrativo auditado (transferência de vínculo jurídico).
+  bool get _legalEntityLocked => _editing;
+
+  /// O backend só exige o CNPJ quando a empresa tem mais de um CNPJ ativo —
+  /// empresa de CNPJ único continua caindo na matriz automaticamente.
+  bool get _legalEntityRequired => _legalEntities.length > 1;
 
   bool get _editing => widget.employeeId != null;
 
@@ -47,14 +61,21 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
       final units = bootstrap.units;
+      final legalEntities = bootstrap.legalEntities
+          .where((e) => (e['active'] ?? 1) != 0)
+          .toList(growable: false);
       if (_editing) {
         final emp = await ApiClient.employees
             .getEmployee(widget.employeeId!, actorUserId: ApiClient.actorUserId);
-        _prefill(emp, units);
+        _prefill(emp, units, legalEntities);
       }
       if (!mounted) return;
       setState(() {
         _units = units;
+        _legalEntities = legalEntities;
+        // Empresa com um único CNPJ: pré-seleciona, já que o backend cairia
+        // nele de qualquer forma — evita um campo com escolha única.
+        _legalEntity ??= legalEntities.length == 1 ? legalEntities.first : null;
         _loading = false;
       });
     } on Exception {
@@ -63,7 +84,11 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     }
   }
 
-  void _prefill(Map<String, dynamic> emp, List<Map<String, dynamic>> units) {
+  void _prefill(
+    Map<String, dynamic> emp,
+    List<Map<String, dynamic>> units,
+    List<Map<String, dynamic>> legalEntities,
+  ) {
     _name.text = '${emp['name'] ?? ''}';
     _code.text = '${emp['employee_id_code'] ?? ''}';
     _cpf.text = '${emp['cpf'] ?? ''}';
@@ -81,6 +106,24 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
         break;
       }
     }
+    final legalEntityId = emp['legal_entity_id'];
+    for (final e in legalEntities) {
+      if (e['id'] == legalEntityId) {
+        _legalEntity = e;
+        break;
+      }
+    }
+  }
+
+  /// Rótulo do CNPJ no seletor: nome fantasia (ou razão social) + número.
+  String _legalEntityLabel(Map<String, dynamic>? entity) {
+    if (entity == null) return '';
+    final trade = '${entity['trade_name'] ?? ''}'.trim();
+    final legal = '${entity['legal_name'] ?? ''}'.trim();
+    final cnpj = '${entity['cnpj'] ?? ''}'.trim();
+    final name = trade.isNotEmpty ? trade : legal;
+    if (name.isEmpty) return cnpj;
+    return cnpj.isEmpty ? name : '$name — $cnpj';
   }
 
   @override
@@ -110,6 +153,9 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
       'admission_date': _admission!.toIso8601String().split('T').first,
       if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
       if (_whatsapp.text.trim().isNotEmpty) 'whatsapp': _whatsapp.text.trim(),
+      // Só enviado na criação: na edição o backend ignora legal_entity_id e
+      // preserva o vínculo da admissão. Não enviar deixa a intenção explícita.
+      if (!_editing && _legalEntity != null) 'legal_entity_id': _legalEntity!['id'],
     };
     if (_editing) {
       await widget.cubit.updateEmployee(widget.employeeId!, body);
@@ -171,6 +217,38 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
                     onChanged: (v) => setState(() => _unit = v),
                   ),
                   const SizedBox(height: EpiSpacing.md),
+                  // CNPJ ao qual o colaborador pertence juridicamente.
+                  // Na edição fica somente leitura: o vínculo do contrato de
+                  // trabalho é imutável após a admissão e só muda pelo processo
+                  // administrativo auditado.
+                  if (_legalEntities.isNotEmpty) ...[
+                    if (_legalEntityLocked)
+                      TextFormField(
+                        readOnly: true,
+                        enabled: false,
+                        initialValue: _legalEntityLabel(_legalEntity),
+                        decoration: InputDecoration(
+                          labelText: l10n.employeeLegalEntityLabel,
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<Map<String, dynamic>>(
+                        value: _legalEntity,
+                        decoration: InputDecoration(
+                          labelText: l10n.employeeLegalEntityLabel,
+                        ),
+                        items: _legalEntities
+                            .map((e) => DropdownMenuItem<Map<String, dynamic>>(
+                                  value: e,
+                                  child: Text(_legalEntityLabel(e)),
+                                ))
+                            .toList(),
+                        validator: (v) =>
+                            (_legalEntityRequired && v == null) ? l10n.required : null,
+                        onChanged: (v) => setState(() => _legalEntity = v),
+                      ),
+                    const SizedBox(height: EpiSpacing.md),
+                  ],
                   TextFormField(
                     controller: _sector,
                     validator: req,

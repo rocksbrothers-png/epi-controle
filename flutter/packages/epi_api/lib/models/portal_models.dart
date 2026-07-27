@@ -68,10 +68,21 @@ class PortalAccess {
     required this.fichas,
     this.employeeCode,
     this.photoUrl,
+    this.companyName = '',
+    this.legalEntityCnpj = '',
+    this.legalEntityName = '',
   });
 
   final String employeeName;
   final String unitName;
+
+  /// Empresa contratante do colaborador.
+  final String companyName;
+
+  /// CNPJ (LegalEntity) do vínculo jurídico do colaborador. Vazio enquanto o
+  /// schema Multi-CNPJ não estiver provisionado.
+  final String legalEntityCnpj;
+  final String legalEntityName;
   final String? employeeCode;
   final String? photoUrl;
   final List<PortalDelivery> deliveries;
@@ -85,11 +96,26 @@ class PortalAccess {
         ((json[key] as List?) ?? [])
             .map((e) => fn(e as Map<String, dynamic>))
             .toList();
+    // GET /api/employee-access aninha os dados do colaborador em `employee`;
+    // lemos de lá com o topo como fallback, para tolerar ambos os formatos.
+    final employee = (json['employee'] as Map<String, dynamic>?) ?? const {};
+    String field(String key) =>
+        (employee[key] ?? json[key])?.toString() ?? '';
+
     return PortalAccess(
-      employeeName: json['employee_name'] as String? ?? '',
-      unitName: json['unit_name'] as String? ?? '',
-      employeeCode: json['employee_code'] as String?,
-      photoUrl: json['photo_url'] as String?,
+      employeeName: field('employee_name').isNotEmpty
+          ? field('employee_name')
+          : field('name'),
+      unitName: field('unit_name'),
+      companyName: field('company_name'),
+      legalEntityCnpj: field('legal_entity_cnpj'),
+      legalEntityName: field('legal_entity_name'),
+      employeeCode: field('employee_code').isNotEmpty
+          ? field('employee_code')
+          : (field('employee_id_code').isNotEmpty
+              ? field('employee_id_code')
+              : null),
+      photoUrl: field('photo_url').isNotEmpty ? field('photo_url') : null,
       deliveries: _list('deliveries', PortalDelivery.fromJson),
       fichas: _list('fichas', PortalFicha.fromJson),
     );

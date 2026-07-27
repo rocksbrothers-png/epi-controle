@@ -21,6 +21,24 @@ class AppLocalizationsNo extends AppLocalizations {
   String get cancel => 'Cancelar';
 
   @override
+  String get reportsExportPdf => 'Exportar PDF';
+
+  @override
+  String get feedbackForward => 'Encaminhar';
+
+  @override
+  String get feedbackReject => 'Rejeitar';
+
+  @override
+  String get feedbackApprove => 'Aprovar';
+
+  @override
+  String get feedbackJustification => 'Justificativa';
+
+  @override
+  String get feedbackRejectReason => 'Motivo da rejeição';
+
+  @override
   String get confirm => 'Confirmar';
 
   @override
@@ -228,6 +246,9 @@ class AppLocalizationsNo extends AppLocalizations {
   String get employeeCodeLabel => 'Matrícula';
 
   @override
+  String get employeeCpfLabel => 'CPF';
+
+  @override
   String get employeeSectorLabel => 'Setor';
 
   @override
@@ -235,6 +256,9 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get employeeUnitLabel => 'Unidade';
+
+  @override
+  String get employeeLegalEntityLabel => 'CNPJ';
 
   @override
   String get employeeAdmissionLabel => 'Admissão';
@@ -270,6 +294,30 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get epiCaLabel => 'CA';
+
+  @override
+  String get epiSectorLabel => 'Setor';
+
+  @override
+  String get epiSectionLabel => 'Seção do EPI';
+
+  @override
+  String get epiModelLabel => 'Modelo/referência';
+
+  @override
+  String get epiManufacturerLabel => 'Fabricante';
+
+  @override
+  String get epiSupplierLabel => 'Fornecedor';
+
+  @override
+  String get epiUnitMeasureLabel => 'Unidade de medida';
+
+  @override
+  String get epiValidityDateLabel => 'Data de validade';
+
+  @override
+  String get epiManufacturerValidityLabel => 'Validade (meses)';
 
   @override
   String get epiCaExpiryLabel => 'Vencimento CA';
@@ -408,6 +456,47 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get purchasesTitle => 'Compras';
+
+  @override
+  String get purchaseOrdersTitle => 'Ordens de Compra';
+
+  @override
+  String get poApprove => 'Aprovar';
+
+  @override
+  String get poReceive => 'Receber';
+
+  @override
+  String get poQuantityReceived => 'Qtd. recebida';
+
+  @override
+  String get poReceiveNotes => 'Observação';
+
+  @override
+  String get poManufacturerValidity => 'Validade do fabricante';
+
+  @override
+  String get poManufacturerValidityHint => 'Informar data';
+
+  @override
+  String get poManufacturerValidityRequired =>
+      'Informe a validade do fabricante de todos os EPIs recebidos.';
+
+  @override
+  String get poOcrDateNotFound =>
+      'Não foi possível identificar a data. Tente novamente.';
+
+  @override
+  String get poOcrCameraFailed => 'Falha na leitura por câmera.';
+
+  @override
+  String get poPickDate => 'Selecionar data';
+
+  @override
+  String get poReadDateCamera => 'Ler data por câmera (OCR)';
+
+  @override
+  String get poCheck => 'Conferir';
 
   @override
   String get purchasesNew => 'Novo Pedido';
@@ -699,112 +788,435 @@ class AppLocalizationsNo extends AppLocalizations {
   String get syncDone => 'Dados sincronizados';
 
   @override
-  String get searchEmployeeHint => 'Søk etter ansatt...';
+  String get searchEmployeeHint => 'Buscar colaborador...';
 
   @override
-  String get searchEpiHint => 'Søk etter PVU...';
+  String get searchEpiHint => 'Buscar EPI...';
 
   @override
-  String get fieldQuantity => 'Antall';
+  String get fieldQuantity => 'Quantidade';
 
   @override
-  String get filterAll => 'Alle';
+  String get filterAll => 'Todos';
 
   @override
   String deliveryStockAvailable(int qty) {
-    return 'Lager: ${qty}';
+    return 'Estoque: $qty';
   }
 
   @override
-  String get deliveryDateLabel => 'Leveringsdato';
+  String get deliveryDateLabel => 'Data da entrega';
 
   @override
-  String get deliveryNextReplacement => 'Neste utskifting';
+  String get deliveryNextReplacement => 'Próxima substituição';
 
   @override
   String deliveryDateValue(String date) {
-    return 'Dato: ${date}';
+    return 'Data: $date';
   }
 
   @override
-  String get returnSelectDelivery => 'Velg levering som skal returneres';
+  String get returnSelectDelivery => 'Selecionar entrega para devolver';
 
   @override
   String returnDeliveredInfo(String date, int qty) {
-    return 'Levert ${date} · Antall: ${qty}';
+    return 'Entregue em $date · Qtd: $qty';
   }
 
   @override
-  String get returnConditionTitle => 'PVU-tilstand';
+  String get returnConditionTitle => 'Condição do EPI';
 
   @override
-  String get returnDestinationTitle => 'Destinasjon';
+  String get returnDestinationTitle => 'Destino';
 
   @override
-  String get returnDestDiscard => 'Kassering';
+  String get returnDestDiscard => 'Descarte';
 
   @override
-  String get returnDestRepair => 'Vedlikehold';
+  String get returnDestRepair => 'Manutenção';
 
   @override
-  String get returnDestStock => 'Tilbake til lager';
+  String get returnDestStock => 'Retornar ao estoque';
 
   @override
-  String get returnSubmit => 'Registrer retur';
+  String get returnSubmit => 'Registrar Devolução';
 
   @override
   String returnDeliveryDateInfo(String date) {
-    return 'Levering: ${date}';
+    return 'Entrega: $date';
   }
 
   @override
   String returnQuantityInfo(int qty) {
-    return 'Antall: ${qty}';
+    return 'Quantidade: $qty';
   }
 
   @override
-  String get purchaseTitleLabel => 'Tittel på forespørsel';
+  String get purchaseTitleLabel => 'Título da requisição';
 
   @override
-  String get purchaseSelectUnit => 'Velg en enhet';
+  String get purchaseSelectUnit => 'Selecione uma unidade';
 
   @override
-  String get purchaseItemsTitle => 'Forespørselens varer';
+  String get purchaseItemsTitle => 'Itens da requisição';
 
   @override
-  String get purchaseAddEpi => 'Legg til PVU';
+  String get purchaseAddEpi => 'Adicionar EPI';
 
   @override
-  String get purchaseNoItems => 'Ingen varer lagt til';
+  String get purchaseNoItems => 'Nenhum item adicionado';
 
   @override
-  String get purchaseCreate => 'Opprett forespørsel';
+  String get purchaseCreate => 'Criar Requisição';
 
   @override
-  String get purchaseAddAtLeastOne => 'Legg til minst én vare';
+  String get purchaseAddAtLeastOne => 'Adicione pelo menos um item';
 
   @override
-  String get purchaseQuantityColon => 'Antall:';
+  String get purchaseQuantityColon => 'Quantidade:';
 
   @override
   String purchaseItemsCount(int count) {
-    return '${count} varer';
+    return '$count itens';
   }
 
   @override
-  String get purchaseStatusAwaiting => 'Venter';
+  String get purchaseStatusAwaiting => 'Aguardando';
 
   @override
-  String get purchaseStatusCorrection => 'Korrigering forespurt';
+  String get purchaseStatusCorrection => 'Correção solicitada';
 
   @override
-  String get purchaseStatusAwaitingReceipt => 'Venter på mottak';
+  String get purchaseStatusAwaitingReceipt => 'Aguardando recebimento';
 
   @override
-  String get purchaseStatusCompleted => 'Fullført';
+  String get purchaseStatusCompleted => 'Concluído';
 
   @override
-  String get purchaseStatusCancelled => 'Kansellert';
+  String get purchaseStatusCancelled => 'Cancelado';
+
+  @override
+  String get suppliersTitle => 'Fornecedores';
+
+  @override
+  String get supplierNew => 'Novo fornecedor';
+
+  @override
+  String get supplierEdit => 'Editar fornecedor';
+
+  @override
+  String get supplierCnpjLabel => 'CNPJ';
+
+  @override
+  String get supplierPhoneLabel => 'Telefone';
+
+  @override
+  String get supplierPaymentTermsLabel => 'Condições de pagamento';
+
+  @override
+  String get supplierIntegrationLevelLabel => 'Nível de integração';
+
+  @override
+  String get supplierInactiveLabel => 'Inativo';
+
+  @override
+  String get supplierCatalogTitle => 'Catálogo do fornecedor';
+
+  @override
+  String get catalogNewProduct => 'Novo produto';
+
+  @override
+  String get catalogSkuLabel => 'SKU';
+
+  @override
+  String get catalogDescriptionLabel => 'Descrição';
+
+  @override
+  String get catalogLastPriceLabel => 'Último preço';
+
+  @override
+  String get catalogLeadTimeLabel => 'Prazo (dias)';
+
+  @override
+  String get quotesTitle => 'Cotações';
+
+  @override
+  String get quotesNew => 'Nova cotação';
+
+  @override
+  String get quotesSelectSuppliers => 'Selecione os fornecedores';
+
+  @override
+  String get quoteSendEmail => 'Enviar por e-mail';
+
+  @override
+  String get quoteSendPortal => 'Enviar pelo portal';
+
+  @override
+  String get quoteAnswerAction => 'Registrar resposta';
+
+  @override
+  String get quoteSelectWinner => 'Selecionar vencedora';
+
+  @override
+  String get quoteComparisonTitle => 'Comparação de cotações';
+
+  @override
+  String get quoteFreightLabel => 'Frete';
+
+  @override
+  String get quoteUnitPriceLabel => 'Preço unitário';
+
+  @override
+  String get quoteDeclinedLabel => 'Recusado';
+
+  @override
+  String get quoteBestPriceLabel => 'Melhor preço';
+
+  @override
+  String get quoteBestLeadTimeLabel => 'Melhor prazo';
+
+  @override
+  String get quoteCreatePo => 'Gerar PO a partir da cotação vencedora?';
+
+  @override
+  String get poSupplierActionsTitle => 'Fornecedor e entrega';
+
+  @override
+  String get poSendToSupplier => 'Enviar ao fornecedor';
+
+  @override
+  String get poPortalLinkAction => 'Enviar link do portal';
+
+  @override
+  String get poRegisterConfirmation => 'Registrar confirmação';
+
+  @override
+  String get poTrackingTitle => 'Acompanhamento';
+
+  @override
+  String get poDeliveryForecastLabel => 'Previsão de entrega';
+
+  @override
+  String get poCarrierLabel => 'Transportadora';
+
+  @override
+  String get poTrackingCodeLabel => 'Código de rastreio';
+
+  @override
+  String get commentLabel => 'Comentário';
+
+  @override
+  String get actionSentSuccess => 'Enviado com sucesso';
+
+  @override
+  String get myCompanyTitle => 'Minha Empresa';
+
+  @override
+  String get myCompanySubtitle =>
+      'Dados, identidade visual e domínio da sua empresa';
+
+  @override
+  String get myCompanySaved => 'Configurações da empresa salvas com sucesso.';
+
+  @override
+  String get myCompanyLoadError =>
+      'Não foi possível carregar os dados da empresa.';
+
+  @override
+  String get myCompanyContractSection => 'Contrato (somente leitura)';
+
+  @override
+  String get myCompanyPlan => 'Plano';
+
+  @override
+  String get myCompanyUserLimit => 'Limite de usuários';
+
+  @override
+  String get myCompanyLicense => 'Licença';
+
+  @override
+  String get myCompanyRegistrationSection => 'Dados cadastrais';
+
+  @override
+  String get myCompanyName => 'Nome fantasia';
+
+  @override
+  String get myCompanyLegalName => 'Razão social';
+
+  @override
+  String get myCompanyCnpj => 'CNPJ';
+
+  @override
+  String get myCompanyStateRegistration => 'Inscrição estadual';
+
+  @override
+  String get myCompanyMunicipalRegistration => 'Inscrição municipal';
+
+  @override
+  String get myCompanyAddress => 'Endereço';
+
+  @override
+  String get myCompanyPhone => 'Telefone';
+
+  @override
+  String get myCompanyWhatsapp => 'WhatsApp';
+
+  @override
+  String get myCompanyEmail => 'E-mail institucional';
+
+  @override
+  String get myCompanyWebsite => 'Website';
+
+  @override
+  String get myCompanyIdentitySection => 'Identidade e tema';
+
+  @override
+  String get myCompanyDisplayName => 'Nome exibido no sistema';
+
+  @override
+  String get myCompanyInstitutionalMessage => 'Mensagem institucional';
+
+  @override
+  String get myCompanyPrimaryColor => 'Cor principal (hex)';
+
+  @override
+  String get myCompanySecondaryColor => 'Cor secundária (hex)';
+
+  @override
+  String get myCompanyPreferencesSection => 'Preferências';
+
+  @override
+  String get myCompanyTimezone => 'Fuso horário';
+
+  @override
+  String get myCompanySave => 'Salvar configurações da empresa';
+
+  @override
+  String get myCompanyDomainsSection => 'Domínios';
+
+  @override
+  String get myCompanyDomainField => 'Domínio';
+
+  @override
+  String get myCompanyDomainTypePlatform => 'Subdomínio da plataforma';
+
+  @override
+  String get myCompanyDomainTypeCustomSub => 'Subdomínio personalizado';
+
+  @override
+  String get myCompanyDomainTypeCustom => 'Domínio personalizado';
+
+  @override
+  String get myCompanyDomainAdd => 'Registrar domínio';
+
+  @override
+  String get myCompanyDomainVerify => 'Verificar';
+
+  @override
+  String get myCompanyDomainDelete => 'Remover';
+
+  @override
+  String get myCompanyDomainPending => 'Pendente';
+
+  @override
+  String get myCompanyDomainVerified => 'Verificado';
+
+  @override
+  String get myCompanyDomainFailed => 'Falhou';
+
+  @override
+  String get myCompanyDomainPrimary => 'Principal';
+
+  @override
+  String get myCompanyDomainCname => 'Aponte o CNAME para';
+
+  @override
+  String get myCompanyDomainTxt => 'Crie o registro TXT';
+
+  @override
+  String get myCompanyDomainToken => 'Valor do TXT';
+
+  @override
+  String get handoverScanAgain => 'Nova conferência';
+
+  @override
+  String get legalEntitiesTitle => 'CNPJs';
+
+  @override
+  String get legalEntitiesNew => 'Novo CNPJ';
+
+  @override
+  String get legalEntityLegalNameLabel => 'Razão social';
+
+  @override
+  String get legalEntityTradeNameLabel => 'Nome fantasia';
+
+  @override
+  String get legalEntityTypeLabel => 'Tipo';
+
+  @override
+  String get legalEntityInactiveBadge => 'Inativo';
+
+  @override
+  String get legalEntityDeactivate => 'Inativar CNPJ';
+
+  @override
+  String get legalEntityDeactivateHint =>
+      'O histórico jurídico é preservado. O CNPJ deixa de ser usado em novas operações.';
+
+  @override
+  String get legalEntityShowInactive => 'Mostrar inativos';
+
+  @override
+  String get legalEntitiesEmpty => 'Nenhum CNPJ cadastrado.';
+
+  @override
+  String get legalEntityMunicipalityLabel => 'Município';
+
+  @override
+  String get legalEntitiesImport => 'Importar planilha';
+
+  @override
+  String get legalEntitiesImportHint =>
+      'Copie as linhas da planilha (com a linha de cabeçalho) e cole abaixo. Aceita colunas em português ou inglês.';
+
+  @override
+  String get legalEntitiesImportResult => 'Importação concluída';
+
+  @override
+  String get dashboardFilterLegalEntity => 'CNPJ';
+
+  @override
+  String get dashboardFilterUnit => 'Unidade';
+
+  @override
+  String get dashboardFilterSector => 'Setor';
+
+  @override
+  String get dashboardFilterAll => 'Todos';
+
+  @override
+  String get dashboardFilterClear => 'Limpar filtros';
+
+  @override
+  String get legalEntityTransferTitle => 'Transferir vínculo jurídico';
+
+  @override
+  String get legalEntityTransferHint =>
+      'O CNPJ é o vínculo do contrato de trabalho e não muda em transferência de unidade. Esta alteração é auditada e exige justificativa.';
+
+  @override
+  String get legalEntityTransferReason => 'Justificativa';
+
+  @override
+  String get legalEntityTransferTarget => 'Novo CNPJ';
+
+  @override
+  String get legalEntityTransferAction => 'Transferir';
+
+  @override
+  String get legalEntityTransferHistory => 'Histórico de vínculo';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -822,6 +1234,24 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get cancel => 'Avbryt';
+
+  @override
+  String get reportsExportPdf => 'Eksporter PDF';
+
+  @override
+  String get feedbackForward => 'Videresend';
+
+  @override
+  String get feedbackReject => 'Avvis';
+
+  @override
+  String get feedbackApprove => 'Godkjenn';
+
+  @override
+  String get feedbackJustification => 'Begrunnelse';
+
+  @override
+  String get feedbackRejectReason => 'Avslagsgrunn';
 
   @override
   String get confirm => 'Bekreft';
@@ -1031,6 +1461,9 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get employeeCodeLabel => 'Ansatt-ID';
 
   @override
+  String get employeeCpfLabel => 'CPF';
+
+  @override
   String get employeeSectorLabel => 'Avdeling';
 
   @override
@@ -1038,6 +1471,9 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get employeeUnitLabel => 'Enhet';
+
+  @override
+  String get employeeLegalEntityLabel => 'CNPJ';
 
   @override
   String get employeeAdmissionLabel => 'Ansettelsesdato';
@@ -1063,7 +1499,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get episNew => 'Nytt PVU';
 
   @override
-  String get episSearchHint => 'Søk etter navn, godkjenningsnummer eller kode';
+  String get episSearchHint => 'Søk etter navn, CE-merking eller kode';
 
   @override
   String get epiNameLabel => 'PVU-navn';
@@ -1072,10 +1508,34 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get epiCodeLabel => 'Innkjøpskode';
 
   @override
-  String get epiCaLabel => 'Godkjenningsnr.';
+  String get epiCaLabel => 'CE-nr.';
 
   @override
-  String get epiCaExpiryLabel => 'Godkjenning utløper';
+  String get epiSectorLabel => 'Sektor';
+
+  @override
+  String get epiSectionLabel => 'Verneutstyr-seksjon';
+
+  @override
+  String get epiModelLabel => 'Modell/referanse';
+
+  @override
+  String get epiManufacturerLabel => 'Produsent';
+
+  @override
+  String get epiSupplierLabel => 'Leverandør';
+
+  @override
+  String get epiUnitMeasureLabel => 'Måleenhet';
+
+  @override
+  String get epiValidityDateLabel => 'Gyldighetsdato';
+
+  @override
+  String get epiManufacturerValidityLabel => 'Gyldighet (måneder)';
+
+  @override
+  String get epiCaExpiryLabel => 'CE-merking utløper';
 
   @override
   String get epiValidityDaysLabel => 'Gyldighet (dager)';
@@ -1185,7 +1645,8 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get returnSuccess => 'Retur registrert.';
 
   @override
-  String get returnOfflineQueued => 'Retur lagret — synkroniseres ved tilkobling.';
+  String get returnOfflineQueued =>
+      'Retur lagret — synkroniseres ved tilkobling.';
 
   @override
   String get recordsTitle => 'Skjemaer';
@@ -1210,6 +1671,46 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get purchasesTitle => 'Innkjøp';
+
+  @override
+  String get purchaseOrdersTitle => 'Innkjøpsordrer';
+
+  @override
+  String get poApprove => 'Godkjenn';
+
+  @override
+  String get poReceive => 'Motta';
+
+  @override
+  String get poQuantityReceived => 'Mottatt ant.';
+
+  @override
+  String get poReceiveNotes => 'Merknad';
+
+  @override
+  String get poManufacturerValidity => 'Produsentgyldighet';
+
+  @override
+  String get poManufacturerValidityHint => 'Angi dato';
+
+  @override
+  String get poManufacturerValidityRequired =>
+      'Angi produsentgyldighet for alt mottatt verneutstyr.';
+
+  @override
+  String get poOcrDateNotFound => 'Kunne ikke lese datoen. Prøv igjen.';
+
+  @override
+  String get poOcrCameraFailed => 'Kameralesing mislyktes.';
+
+  @override
+  String get poPickDate => 'Velg dato';
+
+  @override
+  String get poReadDateCamera => 'Les dato med kamera (OCR)';
+
+  @override
+  String get poCheck => 'Kontroller';
 
   @override
   String get purchasesNew => 'Ny bestilling';
@@ -1514,7 +2015,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String deliveryStockAvailable(int qty) {
-    return 'Lager: ${qty}';
+    return 'Lager: $qty';
   }
 
   @override
@@ -1525,7 +2026,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String deliveryDateValue(String date) {
-    return 'Dato: ${date}';
+    return 'Dato: $date';
   }
 
   @override
@@ -1533,7 +2034,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String returnDeliveredInfo(String date, int qty) {
-    return 'Levert ${date} · Antall: ${qty}';
+    return 'Levert $date · Antall: $qty';
   }
 
   @override
@@ -1556,12 +2057,12 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String returnDeliveryDateInfo(String date) {
-    return 'Levering: ${date}';
+    return 'Levering: $date';
   }
 
   @override
   String returnQuantityInfo(int qty) {
-    return 'Antall: ${qty}';
+    return 'Antall: $qty';
   }
 
   @override
@@ -1590,7 +2091,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String purchaseItemsCount(int count) {
-    return '${count} varer';
+    return '$count varer';
   }
 
   @override
@@ -1607,4 +2108,325 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get purchaseStatusCancelled => 'Kansellert';
+
+  @override
+  String get suppliersTitle => 'Leverandører';
+
+  @override
+  String get supplierNew => 'Ny leverandør';
+
+  @override
+  String get supplierEdit => 'Rediger leverandør';
+
+  @override
+  String get supplierCnpjLabel => 'CNPJ (org.nr.)';
+
+  @override
+  String get supplierPhoneLabel => 'Telefon';
+
+  @override
+  String get supplierPaymentTermsLabel => 'Betalingsbetingelser';
+
+  @override
+  String get supplierIntegrationLevelLabel => 'Integrasjonsnivå';
+
+  @override
+  String get supplierInactiveLabel => 'Inaktiv';
+
+  @override
+  String get supplierCatalogTitle => 'Leverandørkatalog';
+
+  @override
+  String get catalogNewProduct => 'Nytt produkt';
+
+  @override
+  String get catalogSkuLabel => 'SKU';
+
+  @override
+  String get catalogDescriptionLabel => 'Beskrivelse';
+
+  @override
+  String get catalogLastPriceLabel => 'Siste pris';
+
+  @override
+  String get catalogLeadTimeLabel => 'Leveringstid (dager)';
+
+  @override
+  String get quotesTitle => 'Tilbud';
+
+  @override
+  String get quotesNew => 'Nytt tilbud';
+
+  @override
+  String get quotesSelectSuppliers => 'Velg leverandører';
+
+  @override
+  String get quoteSendEmail => 'Send på e-post';
+
+  @override
+  String get quoteSendPortal => 'Send via portal';
+
+  @override
+  String get quoteAnswerAction => 'Registrer svar';
+
+  @override
+  String get quoteSelectWinner => 'Velg vinner';
+
+  @override
+  String get quoteComparisonTitle => 'Tilbudssammenligning';
+
+  @override
+  String get quoteFreightLabel => 'Frakt';
+
+  @override
+  String get quoteUnitPriceLabel => 'Enhetspris';
+
+  @override
+  String get quoteDeclinedLabel => 'Avslått';
+
+  @override
+  String get quoteBestPriceLabel => 'Beste pris';
+
+  @override
+  String get quoteBestLeadTimeLabel => 'Beste leveringstid';
+
+  @override
+  String get quoteCreatePo => 'Opprette PO fra vinnertilbudet?';
+
+  @override
+  String get poSupplierActionsTitle => 'Leverandør og levering';
+
+  @override
+  String get poSendToSupplier => 'Send til leverandør';
+
+  @override
+  String get poPortalLinkAction => 'Send portallenke';
+
+  @override
+  String get poRegisterConfirmation => 'Registrer bekreftelse';
+
+  @override
+  String get poTrackingTitle => 'Sporing';
+
+  @override
+  String get poDeliveryForecastLabel => 'Forventet levering';
+
+  @override
+  String get poCarrierLabel => 'Transportør';
+
+  @override
+  String get poTrackingCodeLabel => 'Sporingskode';
+
+  @override
+  String get commentLabel => 'Kommentar';
+
+  @override
+  String get actionSentSuccess => 'Sendt vellykket';
+
+  @override
+  String get myCompanyTitle => 'Mitt Firma';
+
+  @override
+  String get myCompanySubtitle => 'Firmaets data, visuelle identitet og domene';
+
+  @override
+  String get myCompanySaved => 'Firmainnstillingene ble lagret.';
+
+  @override
+  String get myCompanyLoadError => 'Kunne ikke laste firmadata.';
+
+  @override
+  String get myCompanyContractSection => 'Kontrakt (skrivebeskyttet)';
+
+  @override
+  String get myCompanyPlan => 'Plan';
+
+  @override
+  String get myCompanyUserLimit => 'Brukergrense';
+
+  @override
+  String get myCompanyLicense => 'Lisens';
+
+  @override
+  String get myCompanyRegistrationSection => 'Registreringsdata';
+
+  @override
+  String get myCompanyName => 'Firmanavn';
+
+  @override
+  String get myCompanyLegalName => 'Juridisk navn';
+
+  @override
+  String get myCompanyCnpj => 'CNPJ';
+
+  @override
+  String get myCompanyStateRegistration => 'Statlig registrering';
+
+  @override
+  String get myCompanyMunicipalRegistration => 'Kommunal registrering';
+
+  @override
+  String get myCompanyAddress => 'Adresse';
+
+  @override
+  String get myCompanyPhone => 'Telefon';
+
+  @override
+  String get myCompanyWhatsapp => 'WhatsApp';
+
+  @override
+  String get myCompanyEmail => 'Firma-e-post';
+
+  @override
+  String get myCompanyWebsite => 'Nettsted';
+
+  @override
+  String get myCompanyIdentitySection => 'Identitet og tema';
+
+  @override
+  String get myCompanyDisplayName => 'Visningsnavn i systemet';
+
+  @override
+  String get myCompanyInstitutionalMessage => 'Institusjonell melding';
+
+  @override
+  String get myCompanyPrimaryColor => 'Primærfarge (hex)';
+
+  @override
+  String get myCompanySecondaryColor => 'Sekundærfarge (hex)';
+
+  @override
+  String get myCompanyPreferencesSection => 'Preferanser';
+
+  @override
+  String get myCompanyTimezone => 'Tidssone';
+
+  @override
+  String get myCompanySave => 'Lagre firmainnstillinger';
+
+  @override
+  String get myCompanyDomainsSection => 'Domener';
+
+  @override
+  String get myCompanyDomainField => 'Domene';
+
+  @override
+  String get myCompanyDomainTypePlatform => 'Plattformens underdomene';
+
+  @override
+  String get myCompanyDomainTypeCustomSub => 'Tilpasset underdomene';
+
+  @override
+  String get myCompanyDomainTypeCustom => 'Tilpasset domene';
+
+  @override
+  String get myCompanyDomainAdd => 'Registrer domene';
+
+  @override
+  String get myCompanyDomainVerify => 'Verifiser';
+
+  @override
+  String get myCompanyDomainDelete => 'Fjern';
+
+  @override
+  String get myCompanyDomainPending => 'Venter';
+
+  @override
+  String get myCompanyDomainVerified => 'Verifisert';
+
+  @override
+  String get myCompanyDomainFailed => 'Mislyktes';
+
+  @override
+  String get myCompanyDomainPrimary => 'Primær';
+
+  @override
+  String get myCompanyDomainCname => 'Pek CNAME til';
+
+  @override
+  String get myCompanyDomainTxt => 'Opprett TXT-oppføringen';
+
+  @override
+  String get myCompanyDomainToken => 'TXT-verdi';
+
+  @override
+  String get handoverScanAgain => 'Ny kontroll';
+
+  @override
+  String get legalEntitiesTitle => 'CNPJ';
+
+  @override
+  String get legalEntitiesNew => 'Ny CNPJ';
+
+  @override
+  String get legalEntityLegalNameLabel => 'Juridisk navn';
+
+  @override
+  String get legalEntityTradeNameLabel => 'Handelsnavn';
+
+  @override
+  String get legalEntityTypeLabel => 'Type';
+
+  @override
+  String get legalEntityInactiveBadge => 'Inaktiv';
+
+  @override
+  String get legalEntityDeactivate => 'Deaktiver CNPJ';
+
+  @override
+  String get legalEntityDeactivateHint =>
+      'Juridisk historikk bevares. CNPJ brukes ikke i nye operasjoner.';
+
+  @override
+  String get legalEntityShowInactive => 'Vis inaktive';
+
+  @override
+  String get legalEntitiesEmpty => 'Ingen CNPJ registrert.';
+
+  @override
+  String get legalEntityMunicipalityLabel => 'Kommune';
+
+  @override
+  String get legalEntitiesImport => 'Importer regneark';
+
+  @override
+  String get legalEntitiesImportHint =>
+      'Kopier radene fra regnearket (med overskriftsraden) og lim inn nedenfor. Godtar kolonner på portugisisk eller engelsk.';
+
+  @override
+  String get legalEntitiesImportResult => 'Import fullført';
+
+  @override
+  String get dashboardFilterLegalEntity => 'CNPJ';
+
+  @override
+  String get dashboardFilterUnit => 'Enhet';
+
+  @override
+  String get dashboardFilterSector => 'Sektor';
+
+  @override
+  String get dashboardFilterAll => 'Alle';
+
+  @override
+  String get dashboardFilterClear => 'Tøm filtre';
+
+  @override
+  String get legalEntityTransferTitle => 'Overfør juridisk tilknytning';
+
+  @override
+  String get legalEntityTransferHint =>
+      'CNPJ er tilknytningen til arbeidsavtalen og endres ikke ved enhetsoverføring. Endringen revideres og krever en begrunnelse.';
+
+  @override
+  String get legalEntityTransferReason => 'Begrunnelse';
+
+  @override
+  String get legalEntityTransferTarget => 'Ny CNPJ';
+
+  @override
+  String get legalEntityTransferAction => 'Overfør';
+
+  @override
+  String get legalEntityTransferHistory => 'Tilknytningshistorikk';
 }

@@ -2329,14 +2329,26 @@ def _backfill_default_legal_entities(connection) -> None:
     """Cria a LegalEntity padrão (matriz) das empresas existentes e revincula
     colaboradores/unidades órfãos. Idempotente: só cria/atualiza o que falta."""
     now_iso = datetime.now(UTC).isoformat()
+    # Instalações antigas (e fixtures de schema parcial) podem não ter todas as
+    # colunas de empresa. O backfill seleciona só o que existe e degrada para
+    # vazio no resto, em vez de abortar o provisionamento do Multi-CNPJ.
+    company_columns = _table_columns(connection, 'companies')
+    selected = ['id', 'name'] + [
+        column for column in ('legal_name', 'cnpj') if column in company_columns
+    ]
     companies = connection.execute(
-        'SELECT id, name, legal_name, cnpj FROM companies'
+        f'SELECT {", ".join(selected)} FROM companies'
     ).fetchall()
     for row in companies:
-        company_id = row['id'] if hasattr(row, 'keys') else row[0]
-        name = (row['name'] if hasattr(row, 'keys') else row[1]) or ''
-        legal_name = (row['legal_name'] if hasattr(row, 'keys') else row[2]) or ''
-        cnpj = (row['cnpj'] if hasattr(row, 'keys') else row[3]) or ''
+        def _value(column, _row=row):
+            if column not in selected:
+                return ''
+            return _row[column] if hasattr(_row, 'keys') else _row[selected.index(column)]
+
+        company_id = _value('id')
+        name = _value('name') or ''
+        legal_name = _value('legal_name') or ''
+        cnpj = _value('cnpj') or ''
         existing = connection.execute(
             'SELECT id FROM legal_entities WHERE company_id = ? ORDER BY id LIMIT 1',
             (company_id,),

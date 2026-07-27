@@ -65,7 +65,25 @@ class LegalEntitiesState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
-  LegalEntitiesCubit() : super(const LegalEntitiesState());
+  /// [companyId] recorta a tela numa empresa específica. É o caminho do Admin
+  /// Master, que atende vários clientes: sem ele a lista traria os CNPJs de
+  /// todas as empresas misturados, e escolher o CNPJ certo viraria adivinhação.
+  ///
+  /// Nulo mantém o comportamento normal — o backend escopa pela empresa do
+  /// próprio ator.
+  ///
+  /// [api] existe para o teste: com o cliente estático não haveria como provar
+  /// que o recorte muda o endpoint chamado, e é exatamente aí que um erro
+  /// levaria o Admin Master a cadastrar CNPJ na empresa errada.
+  LegalEntitiesCubit({this.companyId, LegalEntitiesApi? api})
+      : _api = api,
+        super(const LegalEntitiesState());
+
+  final int? companyId;
+
+  final LegalEntitiesApi? _api;
+
+  LegalEntitiesApi get _legalEntities => _api ?? ApiClient.legalEntities;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, clearError: true));
@@ -74,8 +92,11 @@ class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
 
   Future<void> _reload() async {
     try {
-      final entities = await ApiClient.legalEntities
-          .getLegalEntities(actorUserId: ApiClient.actorUserId);
+      final actorId = ApiClient.actorUserId;
+      final entities = companyId == null
+          ? await _legalEntities.getLegalEntities(actorUserId: actorId)
+          : await _legalEntities
+              .getCompanyLegalEntities(companyId!, actorUserId: actorId);
       emit(state.copyWith(isLoading: false, entities: entities, clearError: true));
     } on Exception catch (e) {
       emit(state.copyWith(isLoading: false, error: _errorMessage(e)));
@@ -90,7 +111,10 @@ class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
   Future<void> createEntity(Map<String, dynamic> body) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await ApiClient.legalEntities.createLegalEntity({
+      await _legalEntities.createLegalEntity({
+        // A empresa do recorte vai junto: o backend exige `company_id` do
+        // Admin Master, que não tem empresa própria de onde deduzi-la.
+        if (companyId != null) 'company_id': companyId,
         ...body,
         'actor_user_id': ApiClient.actorUserId,
       });
@@ -103,7 +127,7 @@ class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
   Future<void> updateEntity(int id, Map<String, dynamic> body) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await ApiClient.legalEntities.updateLegalEntity(id, {
+      await _legalEntities.updateLegalEntity(id, {
         ...body,
         'actor_user_id': ApiClient.actorUserId,
       });
@@ -119,7 +143,7 @@ class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
   Future<void> deactivateEntity(int id) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      await ApiClient.legalEntities
+      await _legalEntities
           .deactivateLegalEntity(id, actorUserId: ApiClient.actorUserId);
       await _reload();
     } on Exception catch (e) {
@@ -132,8 +156,11 @@ class LegalEntitiesCubit extends Cubit<LegalEntitiesState> {
   Future<Map<String, dynamic>> importRows(List<Map<String, dynamic>> rows) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      final result = await ApiClient.legalEntities
-          .importLegalEntities(rows, actorUserId: ApiClient.actorUserId);
+      final result = await _legalEntities.importLegalEntities(
+        rows,
+        actorUserId: ApiClient.actorUserId,
+        companyId: companyId,
+      );
       await _reload();
       return result;
     } on Exception catch (e) {

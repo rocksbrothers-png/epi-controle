@@ -3,7 +3,11 @@ import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/companies_cubit.dart';
+import '../../core/router/routes.dart';
 
 class CompaniesScreen extends StatelessWidget {
   const CompaniesScreen({super.key});
@@ -101,6 +105,21 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
+/// Rota da tela de CNPJs recortada por empresa.
+///
+/// Vive fora do widget para ser testável: o Admin Master atende vários
+/// clientes, e um recorte montado errado o faria cadastrar CNPJ na empresa
+/// errada sem nenhum sinal na tela.
+String legalEntitiesRouteForCompany(int companyId, String companyName) {
+  return Uri(
+    path: Routes.legalEntities,
+    queryParameters: {
+      'company_id': '$companyId',
+      if (companyName.trim().isNotEmpty) 'company_name': companyName.trim(),
+    },
+  ).toString();
+}
+
 class _CompanyTile extends StatelessWidget {
   const _CompanyTile({required this.company});
   final Company company;
@@ -122,6 +141,9 @@ class _CompanyTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final color = _statusColor(l10n);
     final label = _statusLabel(l10n);
+    final authState = context.watch<AuthCubit>().state;
+    final canViewLegalEntities = authState is AuthAuthenticated &&
+        authState.permissions.contains('legal_entities:view');
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -221,6 +243,17 @@ class _CompanyTile extends StatelessWidget {
                   ),
             ),
           ),
+          // Caminho do Admin Master para os CNPJs do cliente. Sem ele, a única
+          // forma de gerenciar o Multi-CNPJ de uma empresa que não é a sua era
+          // digitar a URL com o `company_id` na mão.
+          if (canViewLegalEntities)
+            IconButton(
+              icon: const Icon(Icons.domain_rounded, size: 20),
+              color: EpiColors.brand,
+              onPressed: () => context.push(
+                legalEntitiesRouteForCompany(company.id, company.name),
+              ),
+            ),
         ],
       ),
     );

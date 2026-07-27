@@ -12,19 +12,29 @@ import 'paste_import_dialog.dart';
 /// Registro veem todos os CNPJs da empresa; Administrador Local, apenas os
 /// autorizados; Usuário, somente o do seu colaborador.
 class LegalEntitiesScreen extends StatelessWidget {
-  const LegalEntitiesScreen({super.key});
+  const LegalEntitiesScreen({super.key, this.companyId, this.companyName});
+
+  /// Empresa do recorte, quando o Admin Master abriu a tela a partir de um
+  /// cliente específico. Nulo = CNPJs da própria empresa do usuário.
+  final int? companyId;
+
+  /// Nome exibido no título do recorte. Vem da tela de empresas para evitar
+  /// uma segunda busca só para descobrir o nome de quem já foi selecionado.
+  final String? companyName;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => LegalEntitiesCubit()..load(),
-      child: const _LegalEntitiesBody(),
+      create: (_) => LegalEntitiesCubit(companyId: companyId)..load(),
+      child: _LegalEntitiesBody(companyName: companyName),
     );
   }
 }
 
 class _LegalEntitiesBody extends StatelessWidget {
-  const _LegalEntitiesBody();
+  const _LegalEntitiesBody({this.companyName});
+
+  final String? companyName;
 
   Future<void> _openForm(BuildContext context, {LegalEntity? entity}) async {
     final cubit = context.read<LegalEntitiesCubit>();
@@ -88,7 +98,14 @@ class _LegalEntitiesBody extends StatelessWidget {
         final items = state.visible;
         return Scaffold(
           appBar: AppBar(
-            title: Text(l10n.legalEntitiesTitle),
+            // Com recorte por empresa o título diz de quem são os CNPJs. Sem
+            // isso o Admin Master não teria como saber em qual cliente está
+            // cadastrando — e cadastraria no errado sem perceber.
+            title: Text(
+              companyName == null || companyName!.isEmpty
+                  ? l10n.legalEntitiesTitle
+                  : '${l10n.legalEntitiesTitle} · $companyName',
+            ),
             actions: [
               IconButton(
                 tooltip: l10n.legalEntitiesImport,

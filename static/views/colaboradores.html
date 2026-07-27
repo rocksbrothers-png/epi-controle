@@ -29,6 +29,7 @@
               <legend data-i18n="tabs.register">Cadastro</legend>
               <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="employee-company" required></select></label>
               <label><span data-i18n="employee.mainUnit">Unidade principal (opcional neste cadastro)</span><select name="unit_id" id="employee-unit"></select></label>
+              <label id="employee-legal-entity-field" hidden><span data-i18n="employee.legalEntity">CNPJ (vínculo jurídico)</span><select name="legal_entity_id" id="employee-legal-entity"></select><small class="hint" data-i18n="employee.legalEntityHint">Vínculo do contrato de trabalho. Imutável após a admissão: alterações exigem transferência auditada.</small></label>
               <label><span data-i18n="employee.employeeId">ID do colaborador</span><input name="employee_id_code" type="text" required></label>
               <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required></label>
               <label><span data-i18n="employee.name">Nome</span><input name="name" type="text" required></label>

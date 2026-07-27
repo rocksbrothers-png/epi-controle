@@ -334,7 +334,9 @@
     "archivedEmpty": "No archived employees.",
     "restoreConfirm": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
     "tableName": "Employee",
-    "tableUnit": "Unit"
+    "tableUnit": "Unit",
+    "legalEntity": "CNPJ (juridisk enhet)",
+    "legalEntityHint": "Tilknytning til arbeidsavtalen. Uforanderlig etter ansettelse: endringer krever revidert overføring."
   },
   "epi": {
     "title": "PVU",
@@ -1351,5 +1353,10 @@
     "register": "Register",
     "conference": "Handover check",
     "history": "History"
+  },
+  "legalEntity": {
+    "title": "CNPJ",
+    "select": "Velg CNPJ",
+    "auto": "Automatisk (ett CNPJ)"
   }
 }

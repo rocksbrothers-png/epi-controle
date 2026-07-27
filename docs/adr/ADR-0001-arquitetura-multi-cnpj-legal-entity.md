@@ -196,6 +196,11 @@ por unidade, para conferência operacional.
 > comportamento crítico de negócio (qual unidade é debitada quando o pool é
 > compartilhado) e exige decisão do cliente sobre a ordem de consumo — fica para
 > uma fase própria, validada.
+>
+> **Resolvido na §15:** o cliente decidiu que a baixa multi-unidade **não deve
+> existir**. A pergunta sobre ordem de consumo fica sem objeto, e o
+> `stock_control_scope` passa a ser lido como fronteira de *consolidação*, não
+> de compartilhamento. Ver §15.
 
 **Requisições** registram Empresa / CNPJ / Unidade / Solicitante com o CNPJ
 *derivado* do solicitante, coerente com a Fase 2 — sem coluna redundante.
@@ -338,10 +343,64 @@ filtros → seleção de CNPJ restringindo as unidades.
 O job "Integration (Android emulator)" passou a rodar o **diretório**
 `integration_test` inteiro, em vez de apenas o smoke.
 
-## 15. Roadmap das próximas fases
+## 15. Individualidade do estoque por unidade (decisão do cliente)
 
-1. **Baixa de estoque multi-unidade:** definir e implementar a ordem de consumo
-   quando o pool é compartilhado (FEFO entre unidades? unidade da operação
-   primeiro?). Exige decisão de negócio do cliente.
-2. **Exportações LGPD** com Empresa/CNPJ/Unidade nas telas de relatório do app
+Decisão de negócio ratificada, que **encerra** o ponto em aberto da §9.
+
+### Decisão
+
+Cada estoque pertence exclusivamente a uma unidade operacional. O fato de
+compradores e aprovadores terem autorização sobre várias unidades **não**
+estabelece compartilhamento de estoque entre elas: autorização é sobre *quem
+opera*, não sobre *de onde sai o material*.
+
+1. Solicitação, aprovação, compra, pedido, recebimento e entrada permanecem
+   vinculados à **unidade solicitante**. Comprador e aprovador são identificados
+   pelo sistema a partir dos vínculos e escopos de unidade já configurados — não
+   são um dado a mais a preencher.
+2. **Não há baixa automática no estoque de outra unidade** para atender entrega
+   ou solicitação local.
+3. Quando uma unidade precisar de material de outra, a via é uma **transferência
+   formal, auditável e confirmada** entre origem e destino. Transfere-se
+   primeiro; consome-se depois, no estoque do destino.
+4. A transferência gera **saída na origem e entrada no destino**, preservando a
+   rastreabilidade do item e o histórico dos responsáveis pela operação.
+
+### Estado do código na data da decisão
+
+Verificação feita antes de escrever esta seção, porque a §9 descrevia um pool
+compartilhado e era preciso saber se ele já tinha efeito prático:
+
+- **A baixa multi-unidade nunca existiu.** `fetch_scoped_stock_balance` — único
+  ponto que agrega saldo por pool — não tem nenhum chamador em produção: só
+  testes, e nenhuma rota o expõe. A baixa da entrega usa a unidade da operação
+  (`modules/deliveries/service.py`), como sempre usou.
+- **A transferência formal também não existe.** `sync_epi_scope_stock_unit` move
+  saldo entre unidades, mas é *reescopo cadastral do EPI* (troca a unidade dona
+  do item), sem movimento auditado e sem confirmação entre origem e destino —
+  não atende ao item 4 acima.
+
+Ou seja: a decisão **não exige desfazer comportamento**. Ela ratifica o que o
+sistema já faz e converte a fronteira de compartilhamento em fronteira de
+consolidação. O que falta construir é a transferência.
+
+### Consequência sobre `stock_control_scope`
+
+O enum (`unit` / `legal_entity` / `company`) permanece, mas passa a significar
+**até onde os saldos são consolidados para leitura** — visão do comprador que
+administra várias unidades — e **nunca** de onde o material pode sair. Nenhuma
+migração é necessária, porque o valor jamais foi usado para debitar estoque.
+
+Fica pendente um ajuste de rótulo: *"Controlar estoque por"* em *Minha Empresa*
+induz à leitura errada. O texto correto é *"Consolidar saldos de estoque por"*.
+
+## 16. Roadmap das próximas fases
+
+1. **Transferência auditada de estoque entre unidades**, preservando a
+   individualidade dos saldos: saída na origem, entrada no destino, confirmação
+   pelas duas pontas e histórico de responsáveis. Substitui o item anterior de
+   "baixa multi-unidade", descartado pela decisão da §15.
+2. **Rótulo de `stock_control_scope`**: trocar *"Controlar estoque por"* por
+   *"Consolidar saldos de estoque por"* na tela *Minha Empresa* e nos ARBs.
+3. **Exportações LGPD** com Empresa/CNPJ/Unidade nas telas de relatório do app
    (o backend já emite os três níveis).

@@ -232,7 +232,12 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE,
             PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW,
             PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW,
-            PERM_LEGAL_ENTITIES_VIEW,
+            # Sem PERM_LEGAL_ENTITIES_VIEW: a aba CNPJs é de cadastro
+            # societário (matriz, filiais, SPEs, sócias de JV) e cabe ao
+            # Administrador Geral e ao Administrador de Registro. O
+            # Administrador Local é perfil operacional de unidade — segue
+            # consumindo o CNPJ na entrega, na ficha e no cadastro de
+            # colaborador, que vêm do /api/bootstrap sem esta permissão.
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
         | frozenset({
@@ -259,9 +264,11 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW,
             PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW,
             PERM_EPIS_VIEW, PERM_STOCK_VIEW,
-            # Enxerga apenas o CNPJ do próprio colaborador — restrição aplicada
-            # em resolve_actor_legal_entity_ids, não pela permissão em si.
-            PERM_LEGAL_ENTITIES_VIEW,
+            # Sem PERM_LEGAL_ENTITIES_VIEW: o Gestor de EPI é perfil
+            # operacional de unidade e não administra o cadastro societário.
+            # O CNPJ que ele precisa ver (vínculo do colaborador na ficha e na
+            # entrega) chega pelo /api/bootstrap, que não exige esta permissão
+            # — por isso fechar a aba não cega nenhuma tela de operação.
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS
         | frozenset({

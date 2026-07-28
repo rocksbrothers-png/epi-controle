@@ -18,11 +18,14 @@ class ApiEmployeesRemoteDataSource implements EmployeesRemoteDataSource {
 
   @override
   Future<List<Employee>> fetchEmployees() async {
+    // O ator NÃO é definido aqui. Ele vem da sessão autenticada
+    // (`ApiClient.actorUserId`, escrito ao salvar/restaurar a sessão).
+    //
+    // Antes esta linha fazia duas coisas erradas ao mesmo tempo: definia o ator
+    // como `bootstrap.users.first` — o primeiro usuário da empresa, não quem
+    // estava logado — e só o fazia quando alguém abria Colaboradores. Quem
+    // fosse direto a outra tela mandava `actor_user_id=0` e tomava 401.
     final bootstrap = await ApiClient.auth.bootstrap();
-    if (bootstrap.users.isNotEmpty) {
-      ApiClient.actorUserId =
-          (bootstrap.users.first['id'] as num?)?.toInt() ?? 0;
-    }
     return bootstrap.employees.map(Employee.fromJson).toList();
   }
 

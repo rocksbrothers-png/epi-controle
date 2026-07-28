@@ -185,6 +185,72 @@ def test_legal_entities_view_labels_exist_in_all_locales():
             assert data['legalEntity'][key], f'{locale}.legalEntity.{key}'
 
 
+# ── editar × cadastrar: o defeito relatado em produção ───────────────────────
+
+def test_edit_takes_the_operator_to_the_registration_tab():
+    """Clicar "Editar" precisa mostrar o formulário, não preenchê-lo escondido.
+
+    Lista e cadastro são abas da mesma view. `showView` troca a view, mas não a
+    aba: o formulário era preenchido numa aba invisível e, da perspectiva de
+    quem clicou, nada acontecia. Ao abrir o cadastro depois, aparecia um
+    formulário em "Atualizar CNPJ" sem explicação — foi o que foi relatado.
+    """
+    app_js = _read('static', 'app.js')
+    assert 'function focusRegistrationTab(' in app_js
+    assert re.search(
+        r"setFormSubmitLabel\('legal-entity-form', tr\('legalEntity\.update'.*\n(?:.*\n)*?"
+        r"\s*focusRegistrationTab\('cnpjs'\);",
+        app_js,
+    ), 'editar CNPJ precisa ativar a aba de cadastro'
+    # A unidade tem exatamente o mesmo desenho de abas e o mesmo defeito.
+    assert "focusRegistrationTab('unidades');" in app_js
+
+
+def test_form_offers_a_way_out_of_edit_mode():
+    """Sem saída, "Atualizar CNPJ" só terminava recarregando a página.
+
+    O usuário que queria **acrescentar** um CNPJ encontrava o formulário preso
+    em modo de atualização.
+    """
+    html = _read('static', 'index.html')
+    assert 'id="legal-entity-cancel-edit"' in html
+    assert re.search(r'id="legal-entity-cancel-edit"[^>]*hidden', html), \
+        'a saída só faz sentido quando há edição em curso'
+    app_js = _read('static', 'app.js')
+    assert 'function resetLegalEntityForm()' in app_js
+    assert "bindAppListener(document.getElementById('legal-entity-cancel-edit'), 'click', resetLegalEntityForm)" in app_js
+
+
+def test_edit_mode_is_visible_and_reversible():
+    app_js = _read('static', 'app.js')
+    assert 'function setLegalEntityFormMode(' in app_js
+    assert "setLegalEntityFormMode('edit')" in app_js
+    # Depois de salvar, o formulário volta a cadastrar — senão o próximo
+    # cadastro herdaria o modo do anterior.
+    assert "setLegalEntityFormMode('create')" in app_js
+
+
+def test_cnpj_view_requires_bootstrap_data():
+    """Lista vazia por falha de carga não pode ser lida como "não existe".
+
+    Com o bootstrap degradado a tela mostrava "Sem CNPJs cadastrados" mesmo
+    havendo CNPJ cadastrado — e o operador concluía que a empresa não tinha
+    nenhum. A view depende inteiramente de `state.legalEntities`.
+    """
+    app_js = _read('static', 'app.js')
+    required = re.search(r'BOOTSTRAP_REQUIRED_VIEWS = new Set\(\[([^\]]*)\]\)', app_js)
+    assert required, 'lista de views que exigem bootstrap não encontrada'
+    assert "'cnpjs'" in required.group(1)
+
+
+def test_new_entity_label_exists_in_all_locales():
+    import json
+
+    for locale in ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']:
+        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
+        assert data['legalEntity']['newEntity'], locale
+
+
 # ── módulo de helpers ────────────────────────────────────────────────────────
 
 def test_legal_entity_helpers_module_is_loaded_by_the_page():

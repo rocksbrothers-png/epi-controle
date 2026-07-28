@@ -1400,7 +1400,8 @@
     "typeSpe": "SPE",
     "typeJvPartner": "JV partner",
     "typeConsortium": "Consortium member",
-    "typeOther": "Other"
+    "typeOther": "Other",
+    "newEntity": "New legal entity"
   },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",

@@ -44,8 +44,27 @@ class ApiClient {
   static late final MyCompanyApi myCompany;
   static late final FlutterSecureStorage _storage;
 
-  /// Cached actor user ID — set after bootstrap, used by all admin actions.
-  static int actorUserId = 0;
+  /// Usuário autenticado, enviado como `actor_user_id` nas rotas de admin.
+  ///
+  /// Vem **da sessão** — nunca de uma lista de usuários. O backend compara este
+  /// valor com o `sub` do JWT e recusa com "Dados de autenticação
+  /// inconsistentes" se divergirem, então qualquer outra origem produz 401.
+  ///
+  /// Antes ele só era preenchido como efeito colateral de abrir a tela de
+  /// Colaboradores, e com `bootstrap.users.first` — o primeiro usuário da
+  /// empresa, não quem estava logado. Quem abrisse CNPJs (ou qualquer tela que
+  /// não passasse por Colaboradores antes) mandava `actor_user_id=0` e tomava
+  /// 401. É por isso que a lista aparecia vazia.
+  ///
+  /// Mantido `private set` para que o único caminho de escrita seja
+  /// [_applySessionActor], chamado por todo ponto que grava, lê ou limpa a
+  /// sessão.
+  static int get actorUserId => _actorUserId;
+  static int _actorUserId = 0;
+
+  static void _applySessionActor(SessionContext? context) {
+    _actorUserId = context?.userId ?? 0;
+  }
 
   /// Base URL configurada no init — usada para montar links autenticados por
   /// querystring (ex.: download de PDF aberto pelo navegador).
@@ -121,26 +140,34 @@ class ApiClient {
   static Future<void> clearPermissions() =>
       _storage.delete(key: _kPermissionsKey);
 
-  static Future<void> saveSessionContext(SessionContext context) =>
-      _storage.write(
-        key: _kSessionContextKey,
-        value: jsonEncode(context.toJson()),
-      );
+  static Future<void> saveSessionContext(SessionContext context) {
+    _applySessionActor(context);
+    return _storage.write(
+      key: _kSessionContextKey,
+      value: jsonEncode(context.toJson()),
+    );
+  }
 
   static Future<SessionContext> getSessionContext() async {
     final raw = await _storage.read(key: _kSessionContextKey);
     if (raw == null || raw.isEmpty) return SessionContext.empty;
     try {
-      return SessionContext.fromJson(
+      final context = SessionContext.fromJson(
         (jsonDecode(raw) as Map).cast<String, dynamic>(),
       );
+      // Restaurar a sessão do armazenamento também restaura o ator: sem
+      // isto, reabrir o app com sessão válida voltaria a mandar 0.
+      _applySessionActor(context);
+      return context;
     } on Object {
       return SessionContext.empty;
     }
   }
 
-  static Future<void> clearSessionContext() =>
-      _storage.delete(key: _kSessionContextKey);
+  static Future<void> clearSessionContext() {
+    _applySessionActor(null);
+    return _storage.delete(key: _kSessionContextKey);
+  }
 
   /// Reexecuta uma request (usado pelo interceptor após refresh bem-sucedido).
   static Future<Response<dynamic>> retry(RequestOptions options) =>

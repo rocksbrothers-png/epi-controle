@@ -178,6 +178,43 @@ def test_legal_entity_company_field_starts_hidden_and_optional():
     )
 
 
+def test_company_field_shows_the_account_company_instead_of_going_blank():
+    """Para quem não é Master, o campo informa — não pergunta.
+
+    Esconder o campo evitava o erro, mas tirava do Administrador Geral a
+    confirmação de **em qual empresa** o CNPJ vai nascer, justamente na tela de
+    cadastrar pessoa jurídica. A escolha aqui é a mesma já usada no CNPJ do
+    colaborador em edição: mostrar desabilitado.
+    """
+    app_js = _read('static', 'app.js')
+    assert 'field.disabled = true;' in app_js, 'campo informativo precisa ficar desabilitado'
+    assert 'state.user?.company_name' in app_js, 'precisa exibir o nome da empresa da conta'
+    assert 'id="legal-entity-company-hint"' in _read('static', 'index.html'), (
+        'sem a explicação, um campo travado vira outra dúvida'
+    )
+
+
+def test_master_gets_a_placeholder_instead_of_a_blank_selection():
+    """Seleção vazia precisa ler como "escolha uma", não como campo quebrado."""
+    app_js = _read('static', 'app.js')
+    assert re.search(r"tr\('company\.select'", app_js)
+
+
+def test_company_field_hides_when_the_company_is_unknown():
+    """Sem nome carregado não há o que afirmar — melhor sumir do que mentir."""
+    app_js = _read('static', 'app.js')
+    assert "wrapper.hidden = companyName === '';" in app_js
+
+
+def test_company_labels_exist_in_all_locales():
+    import json
+
+    for locale in ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']:
+        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
+        assert data['company']['select'], locale
+        assert data['legalEntity']['companyFromAccount'], locale
+
+
 def test_legal_entity_company_field_is_master_only():
     """Empresa só é escolhida pelo Master; para os demais é a do próprio usuário."""
     app_js = _read('static', 'app.js')

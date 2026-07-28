@@ -248,7 +248,8 @@
     "changeLogo": "Change logo",
     "configureLicense": "Configure licence",
     "activate": "Activate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "select": "Select the company"
   },
   "employee": {
     "title": "Employee",
@@ -1401,7 +1402,8 @@
     "typeJvPartner": "JV partner",
     "typeConsortium": "Consortium member",
     "typeOther": "Other",
-    "newEntity": "New legal entity"
+    "newEntity": "New legal entity",
+    "companyFromAccount": "Set by your account — the legal entity is registered under this company."
   },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",

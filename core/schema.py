@@ -2994,12 +2994,16 @@ def init_db():
             ensure_epi_columns,
             ensure_employee_columns,
             ensure_legal_entities,
-            ensure_stock_reservations,
-            ensure_stock_replenishment_needs,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,
             ensure_epi_operational_tables,
+            # Depois de `ensure_epi_operational_tables`, e não antes: as duas
+            # referenciam `epi_requests` e `purchase_requests`, criadas ali. O
+            # SQLite aceita FK para tabela inexistente e escondia a inversão;
+            # o PostgreSQL recusa, e a criação do banco do zero falhava inteira.
+            ensure_stock_reservations,
+            ensure_stock_replenishment_needs,
             ensure_procurement_supplier_tables,
             _ensure_commercial_settings,
             _ensure_commercial_tables,

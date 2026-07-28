@@ -1400,7 +1400,8 @@
     "typeSpe": "SPE",
     "typeJvPartner": "JV-partner",
     "typeConsortium": "Konsortiemedlem",
-    "typeOther": "Annet"
+    "typeOther": "Annet",
+    "newEntity": "Nytt CNPJ"
   },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",

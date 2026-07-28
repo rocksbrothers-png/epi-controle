@@ -2231,7 +2231,12 @@ function normalizeRole(role) {
   return ROLE_ALIASES[normalized] || role;
 }
 
-const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
+// `cnpjs` entra aqui porque a tela vive inteiramente do bootstrap
+// (`state.legalEntities` e `state.companies`). Fora desta lista, o
+// carregamento degradado deixava a lista vazia com a mensagem "Sem CNPJs
+// cadastrados" — que é falsa: o CNPJ existe, só não chegou. O operador
+// concluía que a empresa não tinha CNPJ nenhum.
+const BOOTSTRAP_REQUIRED_VIEWS = new Set(['empresas', 'comercial', 'usuarios', 'unidades', 'cnpjs', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque', 'fichas', 'relatorios', 'configuracao']);
 
 function setBootstrapDegraded(error) {
   const wasAlreadyDegraded = state.bootstrapDegraded;
@@ -6323,6 +6328,18 @@ function setFormSubmitLabel(formId, text) {
   if (button) button.textContent = text;
 }
 
+// Leva o operador até o formulário que acabou de ser preenchido.
+//
+// `showView` troca a *view*, mas não a aba interna. Quando a lista e o
+// cadastro são abas da mesma view, clicar "Editar" preenchia o formulário numa
+// aba escondida: da perspectiva de quem clicou, nada acontecia — e ao abrir o
+// cadastro depois, aparecia um formulário em modo de atualização sem
+// explicação.
+function focusRegistrationTab(group) {
+  const nav = document.querySelector(`[data-vtabs="${group}"]`);
+  if (nav) activateViewTab(nav, 'cadastro');
+}
+
 function startEditUnit(unitId) {
   const item = state.units.find((unit) => String(unit.id) === String(unitId));
   const form = document.getElementById('unit-form');
@@ -6340,6 +6357,7 @@ function startEditUnit(unitId) {
   }
   setFormSubmitLabel('unit-form', 'Atualizar unidade');
   showView('unidades');
+  focusRegistrationTab('unidades');
 }
 
 function startEditEmployee(employeeId) {
@@ -7241,6 +7259,29 @@ function syncLegalEntityCompanyField() {
   if (previous) field.value = previous;
 }
 
+// Alterna o formulário entre cadastrar e atualizar.
+//
+// O estado precisa ser visível: o rótulo do botão muda e a saída ("Novo CNPJ")
+// só aparece quando há de onde sair. Um formulário preso em "Atualizar" sem
+// nenhuma indicação de por quê foi exatamente o que se viu em produção.
+function setLegalEntityFormMode(mode) {
+  const cancel = document.getElementById('legal-entity-cancel-edit');
+  if (cancel) cancel.hidden = mode !== 'edit';
+}
+
+function resetLegalEntityForm() {
+  const form = document.getElementById('legal-entity-form');
+  if (!form) return;
+  form.reset();
+  form.elements.id.value = '';
+  // `reset()` devolve o valor do atributo `value` do HTML, que é '1'; sendo
+  // explícito aqui para não depender do markup na hora de voltar a cadastrar.
+  if (form.elements.active) form.elements.active.value = '1';
+  setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
+  setLegalEntityFormMode('create');
+  syncLegalEntityCompanyField();
+}
+
 function startEditLegalEntity(entityId) {
   const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
   const form = document.getElementById('legal-entity-form');
@@ -7267,7 +7308,9 @@ function startEditLegalEntity(entityId) {
   const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
   form.elements.active.value = active ? '1' : '0';
   setFormSubmitLabel('legal-entity-form', tr('legalEntity.update', 'Atualizar CNPJ'));
+  setLegalEntityFormMode('edit');
   showView('cnpjs');
+  focusRegistrationTab('cnpjs');
 }
 
 async function deactivateLegalEntity(entityId) {
@@ -9982,6 +10025,7 @@ function handleFormReset(form) {
   } else if (form.id === 'legal-entity-form') {
     setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
     if (form.elements.active) form.elements.active.value = '1';
+    setLegalEntityFormMode('create');
     syncLegalEntityCompanyField();
   } else if (form.id === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
@@ -11535,6 +11579,7 @@ async function init() {
   bindSearchInput(refs.legalEntitiesFilterSearch, syncLegalEntitiesFilters, 120);
   bindAppListener(refs.legalEntitiesFilterType, 'change', syncLegalEntitiesFilters);
   bindAppListener(refs.legalEntitiesShowInactive, 'change', syncLegalEntitiesFilters);
+  bindAppListener(document.getElementById('legal-entity-cancel-edit'), 'click', resetLegalEntityForm);
   bindAppListener(refs.legalEntitiesTable, 'click', (event) => {
     const edit = event.target.dataset.legalEntityEdit;
     if (edit) { startEditLegalEntity(edit); return; }

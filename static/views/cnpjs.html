@@ -51,7 +51,13 @@
               <legend data-i18n="settings.title">Configuração</legend>
               <label><span data-i18n="legalEntity.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
             </fieldset>
-            <button class="primary" type="submit" data-i18n="legalEntity.save">Salvar CNPJ</button>
+            <div class="action-group">
+              <button class="primary" type="submit" data-i18n="legalEntity.save">Salvar CNPJ</button>
+              <!-- Saída do modo de edição. Sem isto, clicar "Editar" prendia o
+                   formulário em "Atualizar CNPJ" e a única forma de voltar a
+                   cadastrar era recarregar a página. -->
+              <button id="legal-entity-cancel-edit" class="ghost" type="button" hidden data-i18n="legalEntity.newEntity">Novo CNPJ</button>
+            </div>
           </form>
         </div>
         <div class="vtab-panel" data-vtab-panel="lista">

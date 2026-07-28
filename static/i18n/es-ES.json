@@ -1400,7 +1400,8 @@
     "typeSpe": "SPE",
     "typeJvPartner": "Socia de JV",
     "typeConsortium": "Consorciada",
-    "typeOther": "Otro"
+    "typeOther": "Otro",
+    "newEntity": "Nuevo CNPJ"
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de stock por",

@@ -248,7 +248,8 @@
     "changeLogo": "Endre logo",
     "configureLicense": "Konfigurer lisens",
     "activate": "Aktiver",
-    "deactivate": "Deaktiver"
+    "deactivate": "Deaktiver",
+    "select": "Velg selskap"
   },
   "employee": {
     "title": "Ansatt",
@@ -1401,7 +1402,8 @@
     "typeJvPartner": "JV-partner",
     "typeConsortium": "Konsortiemedlem",
     "typeOther": "Annet",
-    "newEntity": "Nytt CNPJ"
+    "newEntity": "Nytt CNPJ",
+    "companyFromAccount": "Angitt av kontoen din — CNPJ-et registreres på dette selskapet."
   },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",

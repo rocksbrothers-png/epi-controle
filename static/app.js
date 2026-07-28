@@ -7241,22 +7241,45 @@ function syncLegalEntitiesFilters() {
 function syncLegalEntityCompanyField() {
   const field = document.getElementById('legal-entity-company');
   const wrapper = document.getElementById('legal-entity-company-field');
+  const hint = document.getElementById('legal-entity-company-hint');
   if (!field || !wrapper) return;
   const isMaster = state.user?.role === 'master_admin';
-  wrapper.hidden = !isMaster;
-  field.required = isMaster;
-  if (!isMaster) {
-    // Opção montada pela API do DOM, não por string de HTML: o valor vem do
-    // estado da sessão e não há por que reinterpretá-lo como marcação.
-    const option = document.createElement('option');
-    option.value = String(state.user?.company_id || '');
-    field.replaceChildren(option);
-    field.value = option.value;
+
+  if (isMaster) {
+    // Só o Master escolhe: ele atende vários clientes e não tem empresa
+    // própria de onde deduzir. O placeholder faz uma seleção vazia ler como
+    // "escolha uma", e não como campo quebrado.
+    const previous = field.value;
+    wrapper.hidden = false;
+    field.disabled = false;
+    field.required = true;
+    populateSelect('legal-entity-company', state.companies, (item) => `${item.name} - ${item.cnpj}`);
+    field.insertBefore(
+      new Option(tr('company.select', 'Selecione a empresa'), ''),
+      field.firstChild,
+    );
+    field.value = previous || '';
+    if (hint) hint.hidden = true;
     return;
   }
-  const previous = field.value;
-  populateSelect('legal-entity-company', state.companies, (item) => `${item.name} - ${item.cnpj}`);
-  if (previous) field.value = previous;
+
+  // Demais perfis: a empresa é a da conta e não se escolhe. Mostrar o nome —
+  // desabilitado, como o CNPJ do colaborador na edição — informa em qual
+  // empresa o CNPJ vai nascer sem oferecer uma decisão que não existe.
+  //
+  // Esconder o campo também evitaria o erro, mas tiraria essa confirmação
+  // justamente na tela onde ela importa: a de cadastrar pessoa jurídica.
+  const companyName = String(state.user?.company_name || '').trim();
+  // Sem nome não há o que afirmar; nesse caso o campo some, e o aviso geral de
+  // dados indisponíveis explica a tela.
+  wrapper.hidden = companyName === '';
+  field.required = false;
+  // Desabilitado não é serializado no submit — de propósito: o backend resolve
+  // a empresa pela sessão, e enviar um palpite daqui seria uma forma de gravar
+  // na empresa errada.
+  field.disabled = true;
+  field.replaceChildren(new Option(companyName, String(state.user?.company_id || '')));
+  if (hint) hint.hidden = wrapper.hidden;
 }
 
 // Alterna o formulário entre cadastrar e atualizar.

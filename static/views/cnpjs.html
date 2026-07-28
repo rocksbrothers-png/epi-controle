@@ -24,7 +24,7 @@
                    carregar a lista. Visível por padrão, ele aparecia vazio e
                    obrigatório quando os dados não carregavam — travando o
                    formulário justamente para quem nem deveria vê-lo. -->
-              <label id="legal-entity-company-field" hidden><span data-i18n="company.title">Empresa</span><select name="company_id" id="legal-entity-company"></select></label>
+              <label id="legal-entity-company-field" hidden><span data-i18n="company.title">Empresa</span><select name="company_id" id="legal-entity-company"></select><small id="legal-entity-company-hint" class="muted" hidden data-i18n="legalEntity.companyFromAccount">Definida pela sua conta — o CNPJ será cadastrado nesta empresa.</small></label>
               <label><span data-i18n="legalEntity.cnpj">CNPJ</span><input name="cnpj" id="legal-entity-cnpj" type="text" autocomplete="off" required placeholder="00.000.000/0001-00"></label>
               <label><span data-i18n="legalEntity.legalName">Razão social</span><input name="legal_name" type="text" autocomplete="off" required></label>
               <label><span data-i18n="legalEntity.tradeName">Nome fantasia</span><input name="trade_name" type="text" autocomplete="off"></label>

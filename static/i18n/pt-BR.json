@@ -248,7 +248,8 @@
     "changeLogo": "Alterar logotipo",
     "configureLicense": "Configurar licença",
     "activate": "Ativar",
-    "deactivate": "Inativar"
+    "deactivate": "Inativar",
+    "select": "Selecione a empresa"
   },
   "employee": {
     "title": "Colaborador",
@@ -1401,7 +1402,8 @@
     "typeJvPartner": "Sócia de JV",
     "typeConsortium": "Consorciada",
     "typeOther": "Outro",
-    "newEntity": "Novo CNPJ"
+    "newEntity": "Novo CNPJ",
+    "companyFromAccount": "Definida pela sua conta — o CNPJ será cadastrado nesta empresa."
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",

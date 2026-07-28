@@ -48,3 +48,16 @@ logs/imports/
 
 # Claude Code internal (worktrees, session data)
 .claude/
+
+# Flutter — saidas de build local.
+#
+# Estes caminhos sao regenerados por `melos bootstrap` / `flutter pub get` e
+# `flutter gen-l10n`, inclusive no CI. Sem estas linhas, rodar os testes do app
+# localmente sujava o `git status` com cache de build e caminhos absolutos da
+# maquina de quem rodou.
+#
+# `local.properties` fica de fora de proposito: ja e versionado e aponta para o
+# SDK de quem trabalha no projeto — ignora-lo agora nao o destrackearia, e
+# remove-lo apagaria o arquivo de quem o usa.
+flutter/**/.dart_tool/
+flutter/pubspec.lock

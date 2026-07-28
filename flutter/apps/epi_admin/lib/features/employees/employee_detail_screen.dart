@@ -11,6 +11,19 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/api_client.dart';
 import 'legal_entity_transfer_dialog.dart';
 
+/// Rótulo exibido para cada valor de `tipo_vinculo` — mesmo mapeamento do
+/// formulário de edição, para que a leitura e a escrita concordem.
+String _employmentTypeLabel(AppLocalizations l10n, String value) => switch (value) {
+      'CLT' => l10n.employmentTypeClt,
+      'Terceirizado' => l10n.employmentTypeOutsourced,
+      'Temporário' => l10n.employmentTypeTemporary,
+      'Prestador de Serviço' => l10n.employmentTypeServiceProvider,
+      'Menor Aprendiz' => l10n.employmentTypeApprentice,
+      'Praticante' => l10n.employmentTypeTrainee,
+      'Estagiário' => l10n.employmentTypeIntern,
+      _ => value,
+    };
+
 class EmployeeDetailScreen extends StatelessWidget {
   const EmployeeDetailScreen({super.key, required this.employee});
   final Employee employee;
@@ -91,6 +104,22 @@ class EmployeeDetailScreen extends StatelessWidget {
                 ),
               if (employee.schedule != null)
                 _DetailRow(label: l10n.employeeScheduleLabel, value: employee.schedule!),
+              if (employee.employmentType != null &&
+                  employee.employmentType!.isNotEmpty)
+                _DetailRow(
+                  label: l10n.employeeEmploymentTypeLabel,
+                  value: _employmentTypeLabel(l10n, employee.employmentType!),
+                ),
+              // Só faz sentido junto do vínculo não-CLT — mesma regra
+              // condicional do formulário e do web legado.
+              if (employee.employmentType != null &&
+                  employee.employmentType != 'CLT' &&
+                  employee.sourceCompany != null &&
+                  employee.sourceCompany!.isNotEmpty)
+                _DetailRow(
+                  label: l10n.employeeSourceCompanyLabel,
+                  value: employee.sourceCompany!,
+                ),
             ],
           ),
         ],

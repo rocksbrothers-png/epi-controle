@@ -18,6 +18,19 @@ class EmployeeFormScreen extends StatefulWidget {
   State<EmployeeFormScreen> createState() => _EmployeeFormScreenState();
 }
 
+/// Valores enviados como `tipo_vinculo` — os mesmos que o web legado grava,
+/// para que o mesmo colaborador leia igual nas duas superfícies.
+const _kClt = 'CLT';
+const _kEmploymentTypes = [
+  _kClt,
+  'Terceirizado',
+  'Temporário',
+  'Prestador de Serviço',
+  'Menor Aprendiz',
+  'Praticante',
+  'Estagiário',
+];
+
 class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
@@ -28,8 +41,13 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
   final _schedule = TextEditingController();
   final _email = TextEditingController();
   final _whatsapp = TextEditingController();
+  final _sourceCompany = TextEditingController();
 
   DateTime? _admission;
+
+  /// Valor enviado como `tipo_vinculo` — texto livre no backend, sem lista
+  /// fechada validada no servidor. As opções aqui espelham o web legado.
+  String _employmentType = _kClt;
   List<Map<String, dynamic>> _units = const [];
   Map<String, dynamic>? _unit;
 
@@ -97,6 +115,9 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     _schedule.text = '${emp['schedule_type'] ?? ''}';
     _email.text = '${emp['email'] ?? ''}';
     _whatsapp.text = '${emp['whatsapp'] ?? ''}';
+    final loadedType = '${emp['tipo_vinculo'] ?? ''}'.trim();
+    _employmentType = _kEmploymentTypes.contains(loadedType) ? loadedType : _kClt;
+    _sourceCompany.text = '${emp['empresa_origem'] ?? ''}';
     final admission = '${emp['admission_date'] ?? ''}';
     _admission = admission.isEmpty ? null : DateTime.tryParse(admission);
     final unitId = emp['unit_id'];
@@ -115,6 +136,25 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
     }
   }
 
+  /// Rótulo exibido para cada valor de `tipo_vinculo`.
+  String _employmentTypeLabel(AppLocalizations l10n, String value) => switch (value) {
+        _kClt => l10n.employmentTypeClt,
+        'Terceirizado' => l10n.employmentTypeOutsourced,
+        'Temporário' => l10n.employmentTypeTemporary,
+        'Prestador de Serviço' => l10n.employmentTypeServiceProvider,
+        'Menor Aprendiz' => l10n.employmentTypeApprentice,
+        'Praticante' => l10n.employmentTypeTrainee,
+        'Estagiário' => l10n.employmentTypeIntern,
+        _ => value,
+      };
+
+  /// Espelha exatamente a regra do web legado
+  /// (`syncEmpresaOrigemVisibility`): o campo só aparece quando o vínculo não
+  /// é CLT — uma única comparação, sem lista de casos, para que uma opção
+  /// nova (como as três que acabaram de entrar) não precise de outra edição
+  /// aqui.
+  bool get _showSourceCompany => _employmentType != _kClt;
+
   /// Rótulo do CNPJ no seletor: nome fantasia (ou razão social) + número.
   String _legalEntityLabel(Map<String, dynamic>? entity) {
     if (entity == null) return '';
@@ -128,7 +168,17 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _code, _cpf, _sector, _role, _schedule, _email, _whatsapp]) {
+    for (final c in [
+      _name,
+      _code,
+      _cpf,
+      _sector,
+      _role,
+      _schedule,
+      _email,
+      _whatsapp,
+      _sourceCompany,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -153,6 +203,8 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
       'admission_date': _admission!.toIso8601String().split('T').first,
       if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
       if (_whatsapp.text.trim().isNotEmpty) 'whatsapp': _whatsapp.text.trim(),
+      'tipo_vinculo': _employmentType,
+      if (_showSourceCompany) 'empresa_origem': _sourceCompany.text.trim(),
       // Só enviado na criação: na edição o backend ignora legal_entity_id e
       // preserva o vínculo da admissão. Não enviar deixa a intenção explícita.
       if (!_editing && _legalEntity != null) 'legal_entity_id': _legalEntity!['id'],
@@ -266,6 +318,30 @@ class _EmployeeFormScreenState extends State<EmployeeFormScreen> {
                     validator: req,
                     decoration: InputDecoration(labelText: l10n.employeeScheduleLabel),
                   ),
+                  const SizedBox(height: EpiSpacing.md),
+                  DropdownButtonFormField<String>(
+                    value: _employmentType,
+                    decoration: InputDecoration(
+                      labelText: l10n.employeeEmploymentTypeLabel,
+                    ),
+                    items: _kEmploymentTypes
+                        .map((v) => DropdownMenuItem<String>(
+                              value: v,
+                              child: Text(_employmentTypeLabel(l10n, v)),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _employmentType = v ?? _kClt),
+                  ),
+                  if (_showSourceCompany) ...[
+                    const SizedBox(height: EpiSpacing.md),
+                    TextFormField(
+                      controller: _sourceCompany,
+                      decoration: InputDecoration(
+                        labelText: l10n.employeeSourceCompanyLabel,
+                        helperText: l10n.employeeSourceCompanyHint,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: EpiSpacing.md),
                   InkWell(
                     onTap: () async {

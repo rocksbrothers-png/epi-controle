@@ -1243,6 +1243,37 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get unitLegalEntityHint =>
       'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Empresa de Origem';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Nome da empresa de origem do colaborador';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Terceirizado';
+
+  @override
+  String get employmentTypeTemporary => 'Temporário';
+
+  @override
+  String get employmentTypeServiceProvider => 'Prestador de Serviço';
+
+  @override
+  String get employmentTypeApprentice => 'Menor Aprendiz';
+
+  @override
+  String get employmentTypeTrainee => 'Praticante';
+
+  @override
+  String get employmentTypeIntern => 'Estagiário';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -2485,4 +2516,35 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   @override
   String get unitLegalEntityHint =>
       'Persona jurídica responsable de las operaciones y del stock de esta unidad.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Empresa de Origen';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Nombre de la empresa de origen del colaborador';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Tercerizado';
+
+  @override
+  String get employmentTypeTemporary => 'Temporal';
+
+  @override
+  String get employmentTypeServiceProvider => 'Prestador de Servicio';
+
+  @override
+  String get employmentTypeApprentice => 'Aprendiz Menor';
+
+  @override
+  String get employmentTypeTrainee => 'Practicante';
+
+  @override
+  String get employmentTypeIntern => 'Becario';
 }

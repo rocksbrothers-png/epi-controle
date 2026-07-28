@@ -1243,6 +1243,37 @@ class AppLocalizationsNo extends AppLocalizations {
   @override
   String get unitLegalEntityHint =>
       'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Empresa de Origem';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Nome da empresa de origem do colaborador';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Terceirizado';
+
+  @override
+  String get employmentTypeTemporary => 'Temporário';
+
+  @override
+  String get employmentTypeServiceProvider => 'Prestador de Serviço';
+
+  @override
+  String get employmentTypeApprentice => 'Menor Aprendiz';
+
+  @override
+  String get employmentTypeTrainee => 'Praticante';
+
+  @override
+  String get employmentTypeIntern => 'Estagiário';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -2481,4 +2512,35 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   @override
   String get unitLegalEntityHint =>
       'Juridisk enhet som er ansvarlig for driften og lageret til denne enheten.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Ansettelsestype';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Opprinnelsesselskap';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Navn på den ansattes opprinnelsesselskap';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Utkontraktert';
+
+  @override
+  String get employmentTypeTemporary => 'Midlertidig';
+
+  @override
+  String get employmentTypeServiceProvider => 'Tjenesteleverandør';
+
+  @override
+  String get employmentTypeApprentice => 'Ung lærling';
+
+  @override
+  String get employmentTypeTrainee => 'Hospitant';
+
+  @override
+  String get employmentTypeIntern => 'Praktikant';
 }

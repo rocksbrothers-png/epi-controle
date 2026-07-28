@@ -1243,6 +1243,37 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get unitLegalEntityHint =>
       'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Empresa de Origem';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Nome da empresa de origem do colaborador';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Terceirizado';
+
+  @override
+  String get employmentTypeTemporary => 'Temporário';
+
+  @override
+  String get employmentTypeServiceProvider => 'Prestador de Serviço';
+
+  @override
+  String get employmentTypeApprentice => 'Menor Aprendiz';
+
+  @override
+  String get employmentTypeTrainee => 'Praticante';
+
+  @override
+  String get employmentTypeIntern => 'Estagiário';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2486,4 +2517,35 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   @override
   String get unitLegalEntityHint =>
       'Personne morale responsable des opérations et du stock de cette unité.';
+
+  @override
+  String get employeeEmploymentTypeLabel => 'Type de Contrat';
+
+  @override
+  String get employeeSourceCompanyLabel => 'Entreprise d\'Origine';
+
+  @override
+  String get employeeSourceCompanyHint =>
+      'Nom de l\'entreprise d\'origine de l\'employé';
+
+  @override
+  String get employmentTypeClt => 'CLT';
+
+  @override
+  String get employmentTypeOutsourced => 'Externalisé';
+
+  @override
+  String get employmentTypeTemporary => 'Temporaire';
+
+  @override
+  String get employmentTypeServiceProvider => 'Prestataire de Services';
+
+  @override
+  String get employmentTypeApprentice => 'Apprenti Mineur';
+
+  @override
+  String get employmentTypeTrainee => 'Stagiaire (pratique)';
+
+  @override
+  String get employmentTypeIntern => 'Stagiaire (scolaire)';
 }

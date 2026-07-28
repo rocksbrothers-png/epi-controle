@@ -35,13 +35,19 @@ const PURCHASE_PERMS = ['purchase_requests:view', 'purchase_requests:create', 'p
 const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 const PPE_TEST_ALL_PERMS = ['ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review', 'ppe_test:decide', 'ppe_test:homologate'];
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'],
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'],
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
+  // Sem employees:update: edição de cadastro e reativação são atribuição do
+  // Administrador de Registro. O Administrador Local transfere colaboradores
+  // entre unidades via employees:transfer.
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:transfer', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
   approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate'],
+  // `epi_manager` é apelido de `user` (ROLE_ALIASES em core/roles.py) — o
+  // mesmo papel Gestor de EPI, que também triagem/revê tecnicamente o EPI em
+  // teste e faz a revisão HSEQ do feedback.
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:create', 'epi_feedback:hseq_review', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:triage', 'ppe_test:tech_review'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -52,7 +58,10 @@ const VIEW_PERMISSIONS = {
   unidades: 'units:view',
   cnpjs: 'legal_entities:view',
   colaboradores: 'employees:view',
-  'gestao-colaborador': 'employees:update',
+  // Só transferência entre unidades (form + tabela somente-leitura) — nunca
+  // teve edição de dados cadastrais, então a permissão certa sempre foi a de
+  // movimentação, não a de update genérico.
+  'gestao-colaborador': 'employees:transfer',
   epis: 'epis:view',
   estoque: 'stock:view',
   entregas: 'deliveries:view',
@@ -2920,8 +2929,9 @@ globalThis.canAccessView = canAccessView;
 
 // View de colaboradores acessível ao papel atual, ou '' quando nenhuma.
 // - Administradores estruturais: "colaboradores" (cadastro/lista/arquivados).
-// - Administrador Local (admin): "gestao-colaborador" (operacional).
-// - Demais (ex.: Gestor de EPI sem employees:update): nenhuma.
+// - Administrador Local (admin): "gestao-colaborador" (movimentação entre
+//   unidades, via employees:transfer — não edita cadastro).
+// - Demais (ex.: Gestor de EPI, sem employees:transfer): nenhuma.
 function accessibleEmployeesView() {
   if (canAccessView('colaboradores')) return 'colaboradores';
   if (canAccessView('gestao-colaborador')) return 'gestao-colaborador';
@@ -10568,7 +10578,7 @@ async function reprintStockLabelByQr() {
 
 async function saveEmployeeMovement(event) {
   event.preventDefault();
-  if (!requirePermission('employees:update')) return;
+  if (!requirePermission('employees:transfer')) return;
   try {
     const values = formValues(event.target);
     values.actor_user_id = state.user.id;
@@ -14389,7 +14399,10 @@ function _matchPurchaseImportRows(rows, prItems) {
 
   function renderDestaques(data) {
     const role = state.user?.role || '';
-    const canSeeDestaques = ['general_admin', 'registry_admin', 'epi_manager'].includes(role);
+    // `epi_manager` é apelido de `user` (ROLE_ALIASES em core/roles.py) — o
+    // role do ator sempre chega normalizado como `user`, então checar o
+    // apelido aqui nunca batia e escondia os destaques do Gestor de EPI.
+    const canSeeDestaques = ['general_admin', 'registry_admin', 'user'].includes(role);
     const wrapper = document.getElementById('avaliacoes-destaques');
     if (!wrapper) return;
     if (!canSeeDestaques) { wrapper.style.display = 'none'; return; }

@@ -92,7 +92,7 @@ def _conn():
     return connection
 
 
-def _actor(role='epi_manager', user_id=10, company_id=1):
+def _actor(role='user', user_id=10, company_id=1):
     return {'id': user_id, 'role': role, 'company_id': company_id, 'full_name': f'{role} User'}
 
 
@@ -107,12 +107,12 @@ def _insert_feedback(connection, status='pendente', fb_type='avaliacao'):
 
 # ── Permission checks ─────────────────────────────────────────────────────────
 
-def test_epi_manager_has_triage_permission():
-    assert PERM_EPI_FEEDBACK_TRIAGE in PERMISSIONS.get('epi_manager', set())
+def test_gestor_de_epi_has_triage_permission():
+    assert PERM_EPI_FEEDBACK_TRIAGE in PERMISSIONS.get('user', set())
 
 
-def test_epi_manager_has_hseq_review_permission():
-    assert PERM_EPI_FEEDBACK_HSEQ_REVIEW in PERMISSIONS.get('epi_manager', set())
+def test_gestor_de_epi_has_hseq_review_permission():
+    assert PERM_EPI_FEEDBACK_HSEQ_REVIEW in PERMISSIONS.get('user', set())
 
 
 def test_general_admin_has_admin_approve_permission():
@@ -136,7 +136,7 @@ def test_employee_has_no_feedback_view():
 def test_gestor_can_triage_feedback():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     result = apply_feedback_triage(connection, actor, fb_id, {
         'type': 'reclamacao',
         'category': 'Qualidade',
@@ -155,7 +155,7 @@ def test_gestor_can_triage_feedback():
 def test_triage_with_hseq_required_sets_status_aguardando_hseq():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     result = apply_feedback_triage(connection, actor, fb_id, {
         'type': 'sugestao',
         'priority': 'normal',
@@ -170,7 +170,7 @@ def test_triage_with_hseq_required_sets_status_aguardando_hseq():
 def test_triage_records_history():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     apply_feedback_triage(connection, actor, fb_id, {'type': 'elogio', 'priority': 'baixa'})
     history = connection.execute('SELECT * FROM epi_feedback_history WHERE feedback_id = ?', (fb_id,)).fetchall()
     assert len(history) == 1
@@ -183,7 +183,7 @@ def test_triage_records_history():
 def test_triage_invalid_priority_fails():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     with pytest.raises(ValueError, match='Prioridade'):
         apply_feedback_triage(connection, actor, fb_id, {'type': 'avaliacao', 'priority': 'maxima'})
 
@@ -201,7 +201,7 @@ def test_user_without_triage_permission_cannot_triage():
 def test_hseq_can_register_opinion():
     connection = _conn()
     fb_id = _insert_feedback(connection, status='aguardando_hseq')
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     result = apply_feedback_hseq_review(connection, actor, fb_id, {
         'hseq_opinion': 'EPI compatível. Substituição recomendada em 6 meses.',
         'notes': 'Verificado no campo.',
@@ -216,7 +216,7 @@ def test_hseq_can_register_opinion():
 def test_hseq_opinion_required():
     connection = _conn()
     fb_id = _insert_feedback(connection, status='aguardando_hseq')
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     with pytest.raises(ValueError, match='Parecer HSEQ'):
         apply_feedback_hseq_review(connection, actor, fb_id, {'hseq_opinion': ''})
 
@@ -234,7 +234,7 @@ def test_actor_without_hseq_permission_cannot_review():
 def test_gestor_can_forward_to_admin():
     connection = _conn()
     fb_id = _insert_feedback(connection, status='em_analise_gestor')
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     result = apply_feedback_forward_admin(connection, actor, fb_id, {'notes': 'Para aprovação.'})
     assert result['ok'] is True
     assert result['status'] == 'aguardando_aprovacao_admin'
@@ -358,7 +358,7 @@ def test_fetch_feedbacks_for_manager_scopes_by_company():
     connection = _conn()
     _insert_feedback(connection)
     _insert_feedback(connection)
-    actor = _actor('epi_manager', company_id=1)
+    actor = _actor('user', company_id=1)
     items = fetch_feedbacks_for_manager(connection, actor)
     assert len(items) == 2
     for item in items:
@@ -368,7 +368,7 @@ def test_fetch_feedbacks_for_manager_scopes_by_company():
 def test_fetch_feedback_detail_includes_history():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = _actor('epi_manager')
+    actor = _actor('user')
     apply_feedback_triage(connection, actor, fb_id, {'type': 'avaliacao', 'priority': 'normal'})
     detail = fetch_feedback_detail(connection, fb_id, actor)
     assert 'history' in detail
@@ -378,6 +378,6 @@ def test_fetch_feedback_detail_includes_history():
 def test_fetch_feedback_detail_wrong_company_raises():
     connection = _conn()
     fb_id = _insert_feedback(connection)
-    actor = {'id': 99, 'role': 'epi_manager', 'company_id': 2, 'full_name': 'Other Company User'}
+    actor = {'id': 99, 'role': 'user', 'company_id': 2, 'full_name': 'Other Company User'}
     with pytest.raises(PermissionError):
         fetch_feedback_detail(connection, fb_id, actor)

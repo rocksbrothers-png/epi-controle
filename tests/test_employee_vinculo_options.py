@@ -87,12 +87,29 @@ def test_empresa_origem_visibility_only_compares_against_clt():
     """
     app_js = _read('static', 'app.js')
     fn_match = re.search(
-        r'const syncEmpresaOrigemVisibility = \(\) => \{(.*?)\n  \};', app_js, re.S
+        r'function syncEmpresaOrigemVisibility\(\) \{(.*?)\n\}', app_js, re.S
     )
     assert fn_match, 'syncEmpresaOrigemVisibility não encontrada'
     body = fn_match.group(1)
     comparisons = re.findall(r"===\s*'([^']*)'", body)
     assert comparisons == ['CLT'], comparisons
+
+
+def test_empresa_origem_visibility_has_a_single_source_of_truth():
+    """`row.hidden` só pode ser escrito dentro de `syncEmpresaOrigemVisibility`.
+
+    As três chamadoras (setup inicial, edição, reset do formulário) devem
+    delegar a essa função em vez de duplicar `row.hidden = ...` — foi
+    exatamente essa duplicação que causou o campo ficar visível com CLT
+    selecionado (o estado divergia entre os pontos que o escreviam).
+    """
+    app_js = _read('static', 'app.js')
+    # Só a própria função pode buscar o elemento — as chamadoras delegam a ela.
+    lookups = re.findall(r"getElementById\('employee-empresa-origem-row'\)", app_js)
+    assert len(lookups) == 1, lookups
+    calls = len(re.findall(r'syncEmpresaOrigemVisibility\(\)', app_js))
+    # Definição + init() + startEditEmployee + handleFormReset.
+    assert calls >= 4, calls
 
 
 def test_new_values_are_not_clt_so_they_show_the_field_by_construction():

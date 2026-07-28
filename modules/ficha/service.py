@@ -371,6 +371,26 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
     <div class="campo"><span class="campo-label">PERÍODO:</span> <span>{period_label}</span></div>
   </div>"""
 
+    # Identificação do empregador: obrigatória na ficha (NR-6). O CNPJ vem do
+    # vínculo jurídico do colaborador (LegalEntity) quando o schema Multi-CNPJ
+    # está provisionado; sem ele, cai na empresa contratante — mesma regra do
+    # portal do colaborador (get_employee_portal_context_by_token).
+    legal_entity_name = str(
+        employee.get('legal_entity_trade_name') or employee.get('legal_entity_name') or ''
+    ).strip()
+    legal_entity_cnpj = str(employee.get('legal_entity_cnpj') or '').strip()
+    employer_name = legal_entity_name or str(company.get('name') or '')
+    employer_cnpj = legal_entity_cnpj or str(company.get('cnpj') or '')
+
+    # Vínculo não-CLT: o colaborador é empregado pela empresa de origem, não
+    # pela empresa que opera os EPIs — a ficha precisa deixar isso explícito.
+    tipo_vinculo = str(employee.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
+    empresa_origem = str(employee.get('empresa_origem') or '').strip()
+    source_company_row = ''
+    if tipo_vinculo != 'CLT' and empresa_origem:
+        source_company_row = f"""
+  <div class="dados-linha"><div class="campo"><span class="campo-label">EMPRESA DE ORIGEM:</span> <span>{empresa_origem}</span></div></div>"""
+
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -405,6 +425,10 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 <div class="titulo">{config['titulo']}</div>
 <div class="dados-colaborador">
   <div class="dados-linha"><div class="campo"><span class="campo-label">NOME:</span> <span>{employee.get('name','')}</span></div></div>
+  <div class="dados-linha">
+    <div class="campo"><span class="campo-label">EMPRESA:</span> <span>{employer_name}</span></div>
+    <div class="campo" style="margin-left:auto"><span class="campo-label">CNPJ:</span> <span>{employer_cnpj}</span></div>
+  </div>{source_company_row}
   <div class="dados-linha"><div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{employee.get('role_name','')}</span></div></div>
   <div class="dados-linha">
     <div class="campo"><span class="campo-label">SETOR:</span> <span>{employee.get('sector','')}</span></div>
@@ -424,6 +448,24 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 </html>"""
 
 
+def _enrich_employee_with_legal_entity(connection, employee):
+    """Junta CNPJ/razão social do vínculo jurídico do colaborador, quando o
+    schema Multi-CNPJ está provisionado — mesmo padrão do portal do
+    colaborador (`get_employee_portal_context_by_token`), agora reaproveitado
+    na ficha impressa/PDF, que precisa identificar o empregador (NR-6)."""
+    from modules.legal_entities.service import employee_legal_entity_sql
+    legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection, employee_alias='employees')
+    if not legal_entity_select:
+        return employee
+    row = connection.execute(
+        f'SELECT employees.id{legal_entity_select} FROM employees{legal_entity_join} WHERE employees.id = ?',
+        (int(employee['id']),),
+    ).fetchone()
+    if row:
+        employee.update({k: v for k, v in row_to_dict(row).items() if k != 'id'})
+    return employee
+
+
 def build_ficha_epi_html(connection, employee_id, actor, *, get_employee_fn=None, ensure_actor_scope_fn=None):
     _get_employee = get_employee_fn if get_employee_fn is not None else get_employee_by_id
     _ensure_scope = ensure_actor_scope_fn if ensure_actor_scope_fn is not None else ensure_actor_employee_scope
@@ -432,8 +474,9 @@ def build_ficha_epi_html(connection, employee_id, actor, *, get_employee_fn=None
         raise ValueError('Colaborador não encontrado.')
     ensure_resource_company(actor, employee, 'Colaborador')
     _ensure_scope(connection, actor, employee)
+    employee = _enrich_employee_with_legal_entity(connection, employee)
 
-    company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
+    company = connection.execute('SELECT id, name, cnpj, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
     has_stock_items_table = _table_exists(connection, 'epi_stock_items')
     manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
@@ -495,8 +538,9 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor, *, get_em
     scope_unit_id = _actor_unit_id(connection, actor)
     if scope_unit_id and int(employee['unit_id']) != int(scope_unit_id):
         raise PermissionError('Seu perfil só pode acessar fichas da própria unidade operacional.')
+    employee = _enrich_employee_with_legal_entity(connection, employee)
 
-    company = connection.execute('SELECT id, name, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
+    company = connection.execute('SELECT id, name, cnpj, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
     unit = connection.execute('SELECT id, name, unit_type FROM units WHERE id = ?', (int(employee['unit_id']),)).fetchone()
     has_stock_items_table = _table_exists(connection, 'epi_stock_items')
     manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'

@@ -133,6 +133,89 @@ def test_build_ficha_by_period_does_not_mix_items_from_other_periods():
     assert 'Luva' in current_html
 
 
+# ── ficha impressa: identificação do empregador (NR-6) ───────────────────────
+
+def _render_base(**overrides):
+    base = dict(
+        employee={'name': 'João', 'role_name': 'Operador', 'sector': 'Ops'},
+        company={'name': 'ACME', 'cnpj': '00.000.000/0001-00', 'logo_type': ''},
+        unit={'name': 'Base'},
+        deliveries=[],
+        devolutions=[],
+        config={'titulo': 'Ficha EPI', 'declaracao': 'Declaração', 'observacoes': 'Obs', 'rastreabilidade': 'R-1'},
+    )
+    base.update(overrides)
+    return render_ficha_epi_html_document(**base)
+
+
+def test_renderer_falls_back_to_company_when_no_legal_entity():
+    html = _render_base()
+    assert 'EMPRESA:' in html
+    assert '<span>ACME</span>' in html
+    assert '<span>00.000.000/0001-00</span>' in html
+
+
+def test_renderer_prefers_legal_entity_cnpj_over_company():
+    """O CNPJ do vínculo jurídico do colaborador prevalece sobre o da empresa
+    contratante — é o CNPJ que assina a ficha perante a fiscalização."""
+    html = _render_base(employee={
+        'name': 'João', 'role_name': 'Operador', 'sector': 'Ops',
+        'legal_entity_trade_name': 'ACME Filial RJ',
+        'legal_entity_cnpj': '45.723.174/0001-10',
+    })
+    assert '<span>ACME Filial RJ</span>' in html
+    assert '<span>45.723.174/0001-10</span>' in html
+    assert '00.000.000/0001-00' not in html
+
+
+def test_renderer_omits_source_company_for_clt():
+    html = _render_base(employee={'name': 'João', 'role_name': 'Operador', 'sector': 'Ops', 'tipo_vinculo': 'CLT'})
+    assert 'EMPRESA DE ORIGEM' not in html
+
+
+def test_renderer_shows_source_company_for_non_clt():
+    """Terceirizado/estagiário/aprendiz etc.: a ficha precisa deixar explícito
+    de qual empresa o colaborador vem, já que não é empregado da contratante."""
+    html = _render_base(employee={
+        'name': 'João', 'role_name': 'Operador', 'sector': 'Ops',
+        'tipo_vinculo': 'Estagiário', 'empresa_origem': 'Instituto XYZ',
+    })
+    assert 'EMPRESA DE ORIGEM:' in html
+    assert '<span>Instituto XYZ</span>' in html
+
+
+def test_build_ficha_includes_legal_entity_cnpj_for_employee_in_other_entity():
+    """Integração: colaborador com legal_entity_id de outro CNPJ que não o
+    padrão da empresa precisa ver esse CNPJ (não o da matriz) na ficha."""
+    from modules.legal_entities.service import create_legal_entity
+
+    conn = _base_conn()
+    from core.schema import ensure_legal_entities
+    ensure_legal_entities(conn)
+    filial_id = create_legal_entity(
+        conn,
+        {'cnpj': '45.723.174/0001-10', 'legal_name': 'ACME Filial RJ', 'entity_type': 'filial', 'uf': 'RJ'},
+        1,
+    )
+    conn.execute('UPDATE employees SET legal_entity_id = ? WHERE id = 100', (filial_id,))
+    conn.commit()
+    actor = {'id': 1, 'role': 'general_admin', 'company_id': 1, 'full_name': 'Admin'}
+
+    html = build_ficha_epi_html(conn, 100, actor)
+    assert '45.723.174/0001-10' in html
+    assert 'ACME Filial RJ' in html
+
+
+def test_build_ficha_includes_source_company_for_non_clt_employee():
+    conn = _base_conn()
+    conn.execute("UPDATE employees SET tipo_vinculo = 'Terceirizado', empresa_origem = 'Fornecedora ABC' WHERE id = 100")
+    actor = {'id': 1, 'role': 'general_admin', 'company_id': 1, 'full_name': 'Admin'}
+
+    html = build_ficha_epi_html(conn, 100, actor)
+    assert 'EMPRESA DE ORIGEM:' in html
+    assert 'Fornecedora ABC' in html
+
+
 def test_build_ficha_current_denies_operational_profile_outside_unit():
     conn = _base_conn()
     conn.execute("INSERT INTO units (id, company_id, name) VALUES (11, 1, 'Filial')")

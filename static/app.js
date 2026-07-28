@@ -6363,6 +6363,15 @@ function startEditUnit(unitId) {
   focusRegistrationTab('unidades');
 }
 
+// Único ponto que decide a visibilidade de "Empresa de Origem": chamado no
+// setup inicial, no 'change' do select, na edição e no reset do formulário —
+// nunca `row.hidden = ...` duplicado nesses lugares, para não divergir.
+function syncEmpresaOrigemVisibility() {
+  const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
+  const row = document.getElementById('employee-empresa-origem-row');
+  if (row) row.hidden = tv === 'CLT';
+}
+
 function startEditEmployee(employeeId) {
   const item = state.employees.find((employee) => String(employee.id) === String(employeeId));
   const form = document.getElementById('employee-form');
@@ -6387,8 +6396,7 @@ function startEditEmployee(employeeId) {
   form.elements.admission_date.value = item.admission_date || '';
   form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
   form.elements.empresa_origem.value = item.empresa_origem || '';
-  const origemRow = document.getElementById('employee-empresa-origem-row');
-  if (origemRow) origemRow.hidden = (item.tipo_vinculo || 'CLT') === 'CLT';
+  syncEmpresaOrigemVisibility();
   setFormSubmitLabel('employee-form', 'Atualizar colaborador');
   showView('colaboradores');
 }
@@ -10059,10 +10067,9 @@ function handleFormReset(form) {
     setFormSubmitLabel('employee-form', 'Salvar colaborador');
     // Volta ao modo de admissão: o CNPJ é escolhível de novo.
     setEmployeeLegalEntityLock('', false);
-    const origemRow = document.getElementById('employee-empresa-origem-row');
-    if (origemRow) origemRow.hidden = true;
     const tipoVinculoEl = document.getElementById('employee-tipo-vinculo');
     if (tipoVinculoEl) tipoVinculoEl.value = 'CLT';
+    syncEmpresaOrigemVisibility();
   } else if (form.id === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
@@ -11465,12 +11472,11 @@ async function init() {
     syncUnitLegalEntityOptions();
   });
 
-  const syncEmpresaOrigemVisibility = () => {
-    const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
-    const row = document.getElementById('employee-empresa-origem-row');
-    if (row) row.hidden = tv === 'CLT';
-  };
   bindAppListener(document.getElementById('employee-tipo-vinculo'), 'change', syncEmpresaOrigemVisibility);
+  // Estado inicial: cobre o caso de o valor do select já não ser 'CLT' sem
+  // que um evento 'change' tenha disparado (ex.: valor restaurado pelo
+  // navegador ao recarregar a página, o que não dispara 'change').
+  syncEmpresaOrigemVisibility();
   bindAppListener(document.getElementById('epi-joinventure-add'), 'click', addJoinventure);
   bindAppListener(document.getElementById('epi-joinventure-name'), 'keyup', (event) => {
     if (event.key === 'Enter') addJoinventure();

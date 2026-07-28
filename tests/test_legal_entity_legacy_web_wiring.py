@@ -161,6 +161,23 @@ def test_legal_entity_deactivation_uses_the_delete_route():
     assert re.search(r"api\(`/api/legal-entities/\$\{entityId\}\?\$\{actorQuery\(\)\}`, \{ method: 'DELETE' \}\)", app_js)
 
 
+def test_legal_entity_company_field_starts_hidden_and_optional():
+    """O campo de empresa não pode nascer visível nem obrigatório.
+
+    Só o Administrador Master escolhe a empresa; para os demais ela vem da
+    sessão. Nascendo visível e `required`, ele aparecia **vazio e obrigatório**
+    sempre que os dados iniciais não carregavam — e travava o envio do
+    formulário justamente para quem nem deveria ver o campo.
+    """
+    html = _read('static', 'index.html')
+    assert re.search(r'id="legal-entity-company-field"[^>]*hidden', html)
+    campo = re.search(r'<select[^>]*id="legal-entity-company"[^>]*>', html)
+    assert campo, 'select de empresa não encontrado'
+    assert 'required' not in campo.group(0), (
+        'obrigatoriedade é decidida em runtime (só para o Master), não no HTML'
+    )
+
+
 def test_legal_entity_company_field_is_master_only():
     """Empresa só é escolhida pelo Master; para os demais é a do próprio usuário."""
     app_js = _read('static', 'app.js')

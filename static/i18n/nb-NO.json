@@ -339,7 +339,13 @@
     "tableName": "Employee",
     "tableUnit": "Unit",
     "legalEntity": "CNPJ (juridisk enhet)",
-    "legalEntityHint": "Tilknytning til arbeidsavtalen. Uforanderlig etter ansettelse: endringer krever revidert overføring."
+    "legalEntityHint": "Tilknytning til arbeidsavtalen. Uforanderlig etter ansettelse: endringer krever revidert overføring.",
+    "vincApprentice": "Ung lærling",
+    "vincTrainee": "Hospitant",
+    "vincIntern": "Praktikant",
+    "employmentApprentice": "Ung lærling",
+    "employmentTrainee": "Hospitant",
+    "employmentIntern": "Praktikant"
   },
   "epi": {
     "title": "PVU",

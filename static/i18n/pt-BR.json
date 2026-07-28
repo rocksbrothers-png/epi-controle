@@ -339,7 +339,13 @@
     "tableName": "Colaborador",
     "tableUnit": "Unidade",
     "legalEntity": "CNPJ (vínculo jurídico)",
-    "legalEntityHint": "Vínculo do contrato de trabalho. Imutável após a admissão: alterações exigem transferência auditada."
+    "legalEntityHint": "Vínculo do contrato de trabalho. Imutável após a admissão: alterações exigem transferência auditada.",
+    "vincApprentice": "Menor Aprendiz",
+    "vincTrainee": "Praticante",
+    "vincIntern": "Estagiário",
+    "employmentApprentice": "Menor Aprendiz",
+    "employmentTrainee": "Praticante",
+    "employmentIntern": "Estagiário"
   },
   "epi": {
     "title": "EPI",

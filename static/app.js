@@ -5538,6 +5538,9 @@ function employmentTypeLabel(value) {
   if (normalized === 'terceirizado') return tr('employee.vincOutsourced', 'Terceirizado');
   if (normalized === 'temporário' || normalized === 'temporario') return tr('employee.vincTemporary', 'Temporário');
   if (normalized === 'prestador de serviço' || normalized === 'prestador de servico') return tr('employee.vincServiceProvider', 'Prestador de Serviço');
+  if (normalized === 'menor aprendiz') return tr('employee.vincApprentice', 'Menor Aprendiz');
+  if (normalized === 'praticante') return tr('employee.vincTrainee', 'Praticante');
+  if (normalized === 'estagiário' || normalized === 'estagiario') return tr('employee.vincIntern', 'Estagiário');
   return value || 'CLT';
 }
 

@@ -339,7 +339,13 @@
     "tableName": "Employee",
     "tableUnit": "Unit",
     "legalEntity": "CNPJ (vínculo jurídico)",
-    "legalEntityHint": "Vínculo del contrato de trabajo. Inmutable tras la admisión: los cambios exigen una transferencia auditada."
+    "legalEntityHint": "Vínculo del contrato de trabajo. Inmutable tras la admisión: los cambios exigen una transferencia auditada.",
+    "vincApprentice": "Aprendiz Menor",
+    "vincTrainee": "Practicante",
+    "vincIntern": "Becario",
+    "employmentApprentice": "Aprendiz Menor",
+    "employmentTrainee": "Practicante",
+    "employmentIntern": "Becario"
   },
   "epi": {
     "title": "EPP",

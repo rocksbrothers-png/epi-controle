@@ -339,7 +339,13 @@
     "tableName": "Employee",
     "tableUnit": "Unit",
     "legalEntity": "Tax ID (legal entity)",
-    "legalEntityHint": "Employment contract link. Immutable after admission: changes require an audited transfer."
+    "legalEntityHint": "Employment contract link. Immutable after admission: changes require an audited transfer.",
+    "vincApprentice": "Young Apprentice",
+    "vincTrainee": "Trainee",
+    "vincIntern": "Intern",
+    "employmentApprentice": "Young Apprentice",
+    "employmentTrainee": "Trainee",
+    "employmentIntern": "Intern"
   },
   "epi": {
     "title": "PPE",

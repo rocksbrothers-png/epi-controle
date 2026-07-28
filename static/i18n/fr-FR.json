@@ -339,7 +339,13 @@
     "tableName": "Employee",
     "tableUnit": "Unit",
     "legalEntity": "CNPJ (entité juridique)",
-    "legalEntityHint": "Lien du contrat de travail. Immuable après l'embauche : toute modification exige un transfert audité."
+    "legalEntityHint": "Lien du contrat de travail. Immuable après l'embauche : toute modification exige un transfert audité.",
+    "vincApprentice": "Apprenti Mineur",
+    "vincTrainee": "Stagiaire (pratique)",
+    "vincIntern": "Stagiaire (scolaire)",
+    "employmentApprentice": "Apprenti Mineur",
+    "employmentTrainee": "Stagiaire (pratique)",
+    "employmentIntern": "Stagiaire (scolaire)"
   },
   "epi": {
     "title": "EPI",

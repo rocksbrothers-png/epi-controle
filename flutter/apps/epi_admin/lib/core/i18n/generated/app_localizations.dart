@@ -2495,6 +2495,24 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Empresa'**
   String get myCompanyStockScopeCompany;
+
+  /// No description provided for @navLegalEntities.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJs'**
+  String get navLegalEntities;
+
+  /// No description provided for @unitLegalEntityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ responsável'**
+  String get unitLegalEntityLabel;
+
+  /// No description provided for @unitLegalEntityHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.'**
+  String get unitLegalEntityHint;
 }
 
 class _AppLocalizationsDelegate

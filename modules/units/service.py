@@ -51,19 +51,34 @@ def unit_lifecycle_enabled(connection):
 
 
 def fetch_units(connection, actor=None, include_archived=False):
-    from epi_backend.db import table_columns
+    from epi_backend.db import table_columns, table_exists
     lifecycle = unit_lifecycle_enabled(connection)
     status_fields = ', units.status, units.archived_at, units.retention_until' if lifecycle else ''
     # Vínculo da unidade com o CNPJ: alimenta o filtro em cascata do dashboard
     # (Empresa → CNPJ → Unidade → Setor). Ausente durante a janela de migração.
-    legal_entity_field = (
-        ', units.legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'units') else ''
-    )
+    has_legal_entity = 'legal_entity_id' in table_columns(connection, 'units')
+    legal_entity_field = ', units.legal_entity_id' if has_legal_entity else ''
+    # O id sozinho não dá para exibir nada. O LEFT JOIN traz o rótulo junto, o
+    # que evita que cada tela busque a lista de CNPJs só para traduzir um id —
+    # e o JOIN é `LEFT` porque unidade sem CNPJ definido continua listável.
+    legal_entity_labels = ''
+    legal_entity_join = ''
+    if has_legal_entity and table_exists(connection, 'legal_entities'):
+        legal_entity_labels = (
+            ', legal_entities.cnpj AS legal_entity_cnpj, '
+            'legal_entities.legal_name AS legal_entity_legal_name, '
+            'legal_entities.trade_name AS legal_entity_trade_name'
+        )
+        legal_entity_join = (
+            ' LEFT JOIN legal_entities ON legal_entities.id = units.legal_entity_id'
+        )
     sql = (
         f'SELECT units.id, units.company_id, units.name, units.unit_type, units.city, '
         f'units.notes{legal_entity_field}{status_fields}, '
-        'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type '
+        'companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type'
+        f'{legal_entity_labels} '
         'FROM units JOIN companies ON companies.id = units.company_id'
+        f'{legal_entity_join}'
     )
     where = []
     params = []

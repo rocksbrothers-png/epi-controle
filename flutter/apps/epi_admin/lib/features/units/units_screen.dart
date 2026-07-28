@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/bloc/units_cubit.dart';
+import 'unit_labels.dart';
 
 class UnitsScreen extends StatelessWidget {
   const UnitsScreen({super.key});
@@ -202,7 +203,7 @@ class _UnitTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final name = unit['name'] as String? ?? '';
-    final companyName = unit['company_name'] as String? ?? '';
+    final subtitle = unitSubtitle(unit);
     final type = unit['type'] as String? ?? '';
 
     return ListTile(
@@ -229,9 +230,9 @@ class _UnitTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      subtitle: companyName.isNotEmpty
+      subtitle: subtitle.isNotEmpty
           ? Text(
-              companyName,
+              subtitle,
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -385,6 +386,12 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
   bool _saving = false;
   String? _error;
 
+  /// CNPJs da empresa selecionada. A unidade pertence a **um** CNPJ: é ele que
+  /// responde fiscalmente pelas entregas e pelo estoque daquela unidade.
+  List<LegalEntity> _legalEntities = const [];
+  int? _legalEntityId;
+  bool _loadingLegalEntities = false;
+
   static const _unitTypes = ['base', 'embarcacao', 'plataforma'];
 
   bool get _isEdit => widget.unit != null;
@@ -399,6 +406,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
       _notesCtrl.text = u['notes'] as String? ?? '';
       _unitType = u['type'] as String? ?? 'base';
       _companyId = u['company_id'] as int?;
+      _legalEntityId = (u['legal_entity_id'] as num?)?.toInt();
     }
     _loadCompanies();
   }
@@ -426,6 +434,43 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
     } catch (_) {
       if (mounted) setState(() => _loadingCompanies = false);
     }
+    await _loadLegalEntities();
+  }
+
+  /// Recarrega os CNPJs sempre que a empresa muda — CNPJ de outra empresa é
+  /// recusado pelo backend, então oferecê-lo aqui só produziria erro no salvar.
+  Future<void> _loadLegalEntities() async {
+    final companyId = _companyId;
+    if (companyId == null) {
+      if (mounted) setState(() => _legalEntities = const []);
+      return;
+    }
+    setState(() => _loadingLegalEntities = true);
+    try {
+      final entities = await ApiClient.legalEntities.getCompanyLegalEntities(
+        companyId,
+        actorUserId: ApiClient.actorUserId,
+      );
+      if (!mounted) return;
+      setState(() {
+        // Inativo não some quando já é o CNPJ da unidade: esconder a seleção
+        // vigente faria o campo parecer vazio e induziria a troca acidental.
+        _legalEntities = entities
+            .where((e) => e.active || e.id == _legalEntityId)
+            .toList(growable: false);
+        if (!_legalEntities.any((e) => e.id == _legalEntityId)) {
+          _legalEntityId = null;
+        }
+        _loadingLegalEntities = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _legalEntities = const [];
+          _loadingLegalEntities = false;
+        });
+      }
+    }
   }
 
   Future<void> _save() async {
@@ -441,6 +486,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
       'name': name,
       'unit_type': _unitType,
       'city': city,
+      if (_legalEntityId != null) 'legal_entity_id': _legalEntityId,
       if (_notesCtrl.text.trim().isNotEmpty) 'notes': _notesCtrl.text.trim(),
     };
 
@@ -538,9 +584,48 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                   items: _companies
                       .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                       .toList(),
-                  onChanged: _saving ? null : (v) => setState(() => _companyId = v),
+                  onChanged: _saving
+                      ? null
+                      : (v) {
+                          setState(() {
+                            _companyId = v;
+                            _legalEntityId = null;
+                          });
+                          _loadLegalEntities();
+                        },
                 ),
               const SizedBox(height: EpiSpacing.md),
+              // CNPJ responsável pela unidade. Só aparece quando a empresa tem
+              // CNPJs cadastrados — empresa de CNPJ único não ganha um campo
+              // com uma opção só.
+              if (_loadingLegalEntities)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(EpiSpacing.sm),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_legalEntities.isNotEmpty) ...[
+                DropdownButtonFormField<int>(
+                  value: _legalEntityId,
+                  decoration: InputDecoration(
+                    labelText: l10n.unitLegalEntityLabel,
+                    helperText: l10n.unitLegalEntityHint,
+                    helperMaxLines: 3,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: _legalEntities
+                      .map((e) => DropdownMenuItem(
+                            value: e.id,
+                            child: Text(e.displayLabel),
+                          ))
+                      .toList(),
+                  onChanged:
+                      _saving ? null : (v) => setState(() => _legalEntityId = v),
+                ),
+                const SizedBox(height: EpiSpacing.md),
+              ],
               EpiInput(
                 label: 'Observações (opcional)',
                 controller: _notesCtrl,

@@ -494,5 +494,8 @@
   "myCompanyStockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock.",
   "myCompanyStockScopeUnit": "Unit",
   "myCompanyStockScopeLegalEntity": "Tax ID",
-  "myCompanyStockScopeCompany": "Company"
+  "myCompanyStockScopeCompany": "Company",
+  "navLegalEntities": "Tax IDs",
+  "unitLegalEntityLabel": "Responsible tax ID",
+  "unitLegalEntityHint": "Legal entity accountable for this unit’s operations and stock."
 }

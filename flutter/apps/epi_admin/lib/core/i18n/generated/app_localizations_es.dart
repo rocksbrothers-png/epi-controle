@@ -1233,6 +1233,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJs';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsável';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -2465,4 +2475,14 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get myCompanyStockScopeCompany => 'Empresa';
+
+  @override
+  String get navLegalEntities => 'CNPJ';
+
+  @override
+  String get unitLegalEntityLabel => 'CNPJ responsable';
+
+  @override
+  String get unitLegalEntityHint =>
+      'Persona jurídica responsable de las operaciones y del stock de esta unidad.';
 }

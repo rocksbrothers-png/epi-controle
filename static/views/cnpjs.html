@@ -1,0 +1,84 @@
+      <section id="cnpjs-view" class="view">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="legalEntity.pageTitle">CNPJs</h2>
+            <p class="page-desc" data-i18n="legalEntity.pageDesc">Cadastre e mantenha os CNPJs da empresa: matriz, filiais, subsidiárias, SPEs e sócias de Joint Venture.</p>
+          </div>
+        </header>
+        <nav class="view-tabs" data-vtabs="cnpjs" aria-label="CNPJs">
+          <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
+          <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="cadastro">
+          <form id="legal-entity-form" class="card form-stack" data-update-permission="legal_entities:update">
+            <h3 data-i18n="legalEntity.create">Cadastro de CNPJ</h3>
+            <input type="hidden" name="id">
+            <!-- `active` viaja explicitamente: o backend assume 1 quando o
+                 campo não vem, então editar um CNPJ inativo sem enviá-lo o
+                 reativaria em silêncio. -->
+            <input type="hidden" name="active" id="legal-entity-active" value="1">
+            <fieldset class="form-fieldset">
+              <legend data-i18n="legalEntity.identification">Identificação</legend>
+              <label id="legal-entity-company-field"><span data-i18n="company.title">Empresa</span><select name="company_id" id="legal-entity-company" required></select></label>
+              <label><span data-i18n="legalEntity.cnpj">CNPJ</span><input name="cnpj" id="legal-entity-cnpj" type="text" autocomplete="off" required placeholder="00.000.000/0001-00"></label>
+              <label><span data-i18n="legalEntity.legalName">Razão social</span><input name="legal_name" type="text" autocomplete="off" required></label>
+              <label><span data-i18n="legalEntity.tradeName">Nome fantasia</span><input name="trade_name" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.entityType">Tipo</span><select name="entity_type">
+                <option value="matriz" data-i18n="legalEntity.typeHeadquarters">Matriz</option>
+                <option value="filial" data-i18n="legalEntity.typeBranch">Filial</option>
+                <option value="subsidiaria" data-i18n="legalEntity.typeSubsidiary">Subsidiária</option>
+                <option value="spe" data-i18n="legalEntity.typeSpe">SPE</option>
+                <option value="jv_partner" data-i18n="legalEntity.typeJvPartner">Sócia de JV</option>
+                <option value="consorciada" data-i18n="legalEntity.typeConsortium">Consorciada</option>
+                <option value="outro" data-i18n="legalEntity.typeOther">Outro</option>
+              </select></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="legalEntity.fiscal">Dados fiscais</legend>
+              <label><span data-i18n="legalEntity.stateRegistration">Inscrição estadual</span><input name="state_registration" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.municipalRegistration">Inscrição municipal</span><input name="municipal_registration" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.cnae">CNAE</span><input name="cnae" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.openingDate">Data de abertura</span><input name="opening_date" type="date"></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="legalEntity.address">Endereço</legend>
+              <label><span data-i18n="legalEntity.addressLine">Logradouro</span><input name="address" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.municipality">Município</span><input name="municipality" type="text" autocomplete="off"></label>
+              <label><span data-i18n="legalEntity.uf">UF</span><input name="uf" type="text" autocomplete="off" maxlength="2"></label>
+              <label><span data-i18n="legalEntity.cep">CEP</span><input name="cep" type="text" autocomplete="off"></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="settings.title">Configuração</legend>
+              <label><span data-i18n="legalEntity.notes">Observações</span><textarea name="notes" rows="3"></textarea></label>
+            </fieldset>
+            <button class="primary" type="submit" data-i18n="legalEntity.save">Salvar CNPJ</button>
+          </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="lista">
+          <article class="card"><h3 data-i18n="legalEntity.pageTitle">CNPJs</h3>
+            <p class="muted" data-i18n="legalEntity.inactiveHint">A inativação preserva todo o histórico jurídico e fiscal do CNPJ; ela apenas impede o uso em novas operações.</p>
+            <div class="form-grid">
+              <label><span data-i18n="legalEntity.filterSearch">Buscar</span><input id="legal-entities-filter-search" type="search" placeholder="CNPJ, razão social ou nome fantasia"></label>
+              <label><span data-i18n="legalEntity.filterType">Tipo</span><select id="legal-entities-filter-type"><option value="" data-i18n="unit.filterAll">Todos</option>
+                <option value="matriz" data-i18n="legalEntity.typeHeadquarters">Matriz</option>
+                <option value="filial" data-i18n="legalEntity.typeBranch">Filial</option>
+                <option value="subsidiaria" data-i18n="legalEntity.typeSubsidiary">Subsidiária</option>
+                <option value="spe" data-i18n="legalEntity.typeSpe">SPE</option>
+                <option value="jv_partner" data-i18n="legalEntity.typeJvPartner">Sócia de JV</option>
+                <option value="consorciada" data-i18n="legalEntity.typeConsortium">Consorciada</option>
+                <option value="outro" data-i18n="legalEntity.typeOther">Outro</option>
+              </select></label>
+              <label class="checkbox-inline"><input id="legal-entities-show-inactive" type="checkbox"><span data-i18n="legalEntity.showInactive">Mostrar inativos</span></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="legalEntity.cnpj">CNPJ</th>
+              <th scope="col" data-i18n="legalEntity.legalName">Razão social</th>
+              <th scope="col" data-i18n="legalEntity.tradeName">Nome fantasia</th>
+              <th scope="col" data-i18n="legalEntity.entityType">Tipo</th>
+              <th scope="col" data-i18n="legalEntity.status">Situação</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="legal-entities-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>
+

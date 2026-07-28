@@ -421,7 +421,48 @@ consultar o escopo. Um teste de comportamento não pegaria isso: hoje nada
 consome o escopo na escrita, então não há caso que falhe — o que precisa ser
 impedido é a *introdução* futura, e isso se vê no código.
 
-## 16. Roadmap das próximas fases
+## 16. Ordem de atendimento das solicitações (decisão do cliente)
+
+Decisão ratificada sobre a alocação de estoque recebido às solicitações
+pendentes (plano §10).
+
+### Decisão
+
+1. **Ordem determinística:** urgência, data efetiva de aprovação, data da
+   solicitação e identificador. O `id` é o desempate final — sem ele, duas
+   solicitações do mesmo instante alternariam de posição entre execuções e
+   ninguém conseguiria explicar por que uma foi atendida antes.
+2. **Urgência desconhecida é tratada como `normal`** e fica registrada para
+   saneamento. Um valor inesperado não pode pular a fila nem afundar nela.
+3. **Data ausente é primeiro reconstruída** pelo histórico da solicitação
+   (`epi_request_history`, a transição correspondente). Só quando a
+   reconstrução falha a solicitação é **sinalizada para revisão** e ordenada no
+   **fim** da sua faixa de urgência.
+4. **Prioridade estrita, sem salto automático.** Se a primeira solicitação não
+   pode ser atendida integralmente, a rotina **para** — não pula para uma
+   posterior que caberia.
+5. **Atendimento fora de ordem existe**, mas só por decisão do Gestor de EPI,
+   com **justificativa obrigatória** gravada no histórico
+   (`allocate_to_request`).
+6. **Sem atendimento parcial automático.** Entrega parcial depende de decisão
+   explícita do gestor e preserva a quantidade pendente.
+7. **Alocação restrita à unidade** que recebeu ou possui o material. Sem
+   consumo, reserva ou atendimento cruzado entre unidades.
+
+### Correção sobre a versão anterior
+
+A primeira implementação ordenava **data ausente antes de qualquer data real**,
+com o argumento de que uma solicitação antiga sem carimbo não deveria ir para o
+fim da fila. O cliente identificou o efeito colateral: aquilo **transformava
+registro incompleto em prioridade máxima**, premiando o dado ruim.
+
+A regra corrigida inverte a ordem de tratamento — reconstruir primeiro,
+sinalizar depois, e só então ordenar — e nunca concede prioridade por ausência.
+`requests_needing_date_review` expõe a lista para saneamento: sem ela, a
+inconsistência ficaria apenas na ordenação, invisível para quem poderia
+corrigi-la.
+
+## 17. Roadmap das próximas fases
 
 1. **Transferência auditada de estoque entre unidades**, preservando a
    individualidade dos saldos: saída na origem, entrada no destino, confirmação

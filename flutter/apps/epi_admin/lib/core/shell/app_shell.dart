@@ -17,40 +17,62 @@ class AppShell extends StatelessWidget {
   final String location;
   final Widget child;
 
-  // Destinos ordenados: (rota, ícone-inativo, ícone-ativo, permissão)
-  static const _destinations = [
-    (Routes.dashboard,  Icons.dashboard_outlined,          Icons.dashboard_rounded,          'dashboard:view'),
-    (Routes.employees,  Icons.people_outline_rounded,      Icons.people_rounded,             'employees:view'),
-    (Routes.epis,       Icons.shield_outlined,             Icons.shield_rounded,             'epis:view'),
-    (Routes.deliveries, Icons.local_shipping_outlined,     Icons.local_shipping_rounded,     'deliveries:view'),
-    (Routes.returns,    Icons.assignment_return_outlined,  Icons.assignment_return_rounded,  'deliveries:view'),
-    (Routes.records,    Icons.folder_outlined,             Icons.folder_rounded,             'fichas:view'),
-    (Routes.stock,      Icons.inventory_2_outlined,        Icons.inventory_2_rounded,        'stock:view'),
-    (Routes.purchases,  Icons.shopping_cart_outlined,      Icons.shopping_cart_rounded,      'purchase_requests:view'),
-    (Routes.companies,  Icons.business_outlined,           Icons.business_rounded,           'companies:view'),
-    (Routes.reports,    Icons.bar_chart_outlined,          Icons.bar_chart_rounded,          'reports:view'),
-    (Routes.users,      Icons.manage_accounts_outlined,    Icons.manage_accounts_rounded,    'users:view'),
-    (Routes.units,      Icons.location_on_outlined,        Icons.location_on_rounded,        'units:view'),
-    (Routes.feedback,   Icons.rate_review_outlined,        Icons.rate_review_rounded,        'epi_feedback:view'),
-    (Routes.settings,   Icons.settings_outlined,           Icons.settings_rounded,           'settings:view'),
+  /// Destino do menu lateral.
+  ///
+  /// O rótulo é um **seletor** de `AppLocalizations`, não uma string em lista
+  /// separada. Antes havia duas listas casadas por índice, e foi por isso que a
+  /// tela de CNPJs ficou sem entrada de menu: o destino entrou numa, o rótulo
+  /// não entrou na outra, e nada acusou. Aqui os dois nascem juntos.
+  static const _destinations = <(String, IconData, IconData, String, String Function(AppLocalizations))>[
+    (Routes.dashboard,  Icons.dashboard_outlined,          Icons.dashboard_rounded,          'dashboard:view',        _navDashboard),
+    (Routes.employees,  Icons.people_outline_rounded,      Icons.people_rounded,             'employees:view',        _navEmployees),
+    (Routes.epis,       Icons.shield_outlined,             Icons.shield_rounded,             'epis:view',             _navEpis),
+    (Routes.deliveries, Icons.local_shipping_outlined,     Icons.local_shipping_rounded,     'deliveries:view',       _navDeliveries),
+    (Routes.returns,    Icons.assignment_return_outlined,  Icons.assignment_return_rounded,  'deliveries:view',       _navReturns),
+    (Routes.records,    Icons.folder_outlined,             Icons.folder_rounded,             'fichas:view',           _navRecords),
+    (Routes.stock,      Icons.inventory_2_outlined,        Icons.inventory_2_rounded,        'stock:view',            _navStock),
+    (Routes.purchases,  Icons.shopping_cart_outlined,      Icons.shopping_cart_rounded,      'purchase_requests:view', _navPurchases),
+    (Routes.companies,  Icons.business_outlined,           Icons.business_rounded,           'companies:view',        _navCompanies),
+    (Routes.reports,    Icons.bar_chart_outlined,          Icons.bar_chart_rounded,          'reports:view',          _navReports),
+    (Routes.users,      Icons.manage_accounts_outlined,    Icons.manage_accounts_rounded,    'users:view',            _navUsers),
+    (Routes.units,      Icons.location_on_outlined,        Icons.location_on_rounded,        'units:view',            _navUnits),
+    // CNPJ fica ao lado de Unidades: é o nível imediatamente acima dela na
+    // hierarquia Empresa → CNPJ → Unidade.
+    (Routes.legalEntities, Icons.domain_outlined,          Icons.domain_rounded,             'legal_entities:view',   _navLegalEntities),
+    (Routes.feedback,   Icons.rate_review_outlined,        Icons.rate_review_rounded,        'epi_feedback:view',     _navFeedback),
+    (Routes.settings,   Icons.settings_outlined,           Icons.settings_rounded,           'settings:view',         _navSettings),
   ];
 
-  List<String> _allLabels(AppLocalizations l10n) => [
-    l10n.navDashboard,
-    l10n.navEmployees,
-    l10n.navEpis,
-    l10n.navDeliveries,
-    l10n.navReturns,
-    l10n.navRecords,
-    l10n.navStock,
-    l10n.navPurchases,
-    l10n.navCompanies,
-    l10n.navReports,
-    l10n.navUsers,
-    l10n.navUnits,
-    l10n.navFeedback,
-    l10n.navSettings,
-  ];
+  // Seletores de rótulo. Precisam ser funções de topo para caber num `const`.
+  static String _navDashboard(AppLocalizations l) => l.navDashboard;
+  static String _navEmployees(AppLocalizations l) => l.navEmployees;
+  static String _navEpis(AppLocalizations l) => l.navEpis;
+  static String _navDeliveries(AppLocalizations l) => l.navDeliveries;
+  static String _navReturns(AppLocalizations l) => l.navReturns;
+  static String _navRecords(AppLocalizations l) => l.navRecords;
+  static String _navStock(AppLocalizations l) => l.navStock;
+  static String _navPurchases(AppLocalizations l) => l.navPurchases;
+  static String _navCompanies(AppLocalizations l) => l.navCompanies;
+  static String _navReports(AppLocalizations l) => l.navReports;
+  static String _navUsers(AppLocalizations l) => l.navUsers;
+  static String _navUnits(AppLocalizations l) => l.navUnits;
+  static String _navLegalEntities(AppLocalizations l) => l.navLegalEntities;
+  static String _navFeedback(AppLocalizations l) => l.navFeedback;
+  static String _navSettings(AppLocalizations l) => l.navSettings;
+
+  /// Rotas alcançáveis pelo menu — usado pelo teste que confronta navegação
+  /// com as rotas gateadas.
+  static List<String> get destinationRoutes =>
+      [for (final d in _destinations) d.$1];
+
+  /// Permissões que liberam cada destino.
+  static List<String> get destinationPermissions =>
+      [for (final d in _destinations) d.$4];
+
+  static int get destinationCount => _destinations.length;
+
+  /// Mantido para o teste de simetria; com a lista única, é sempre igual.
+  static int get labelCount => _destinations.length;
 
   int _selectedIndex(List<String> permissions) {
     var idx = 0;
@@ -69,14 +91,10 @@ class AppShell extends StatelessWidget {
 
   List<ds.EpiNavItem> _buildNavItems(
       AppLocalizations l10n, List<String> permissions) {
-    final labels = _allLabels(l10n);
     return [
-      for (var i = 0; i < _destinations.length; i++)
-        if (permissions.contains(_destinations[i].$4))
-          ds.EpiNavItem(
-            icon:  _destinations[i].$2,
-            label: labels[i],
-          ),
+      for (final d in _destinations)
+        if (permissions.contains(d.$4))
+          ds.EpiNavItem(icon: d.$2, label: d.$5(l10n)),
     ];
   }
 

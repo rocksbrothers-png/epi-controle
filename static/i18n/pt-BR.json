@@ -56,7 +56,8 @@
     "groupRegistry": "Cadastros",
     "expandMenu": "Expandir menu",
     "collapseMenu": "Recolher menu",
-    "back": "Voltar"
+    "back": "Voltar",
+    "legalEntities": "CNPJs"
   },
   "login": {
     "title": "Entrar",
@@ -1019,7 +1020,9 @@
     "purgeSummaryOutro": "O registro de auditoria desta operação será preservado permanentemente.",
     "purgeJustification": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
     "purgeConfirmName": "Digite o nome exato da unidade para confirmar:",
-    "purgeDone": "Unidade excluída definitivamente. O registro da operação foi gravado na auditoria."
+    "purgeDone": "Unidade excluída definitivamente. O registro da operação foi gravado na auditoria.",
+    "legalEntity": "CNPJ responsável",
+    "tableLegalEntity": "CNPJ"
   },
   "user": {
     "title": "Usuários",
@@ -1358,7 +1361,46 @@
   "legalEntity": {
     "title": "CNPJ",
     "select": "Selecione o CNPJ",
-    "auto": "Automático (CNPJ único)"
+    "auto": "Automático (CNPJ único)",
+    "selectOptional": "Selecione o CNPJ",
+    "pageTitle": "CNPJs",
+    "pageDesc": "Cadastre e mantenha os CNPJs da empresa: matriz, filiais, subsidiárias, SPEs e sócias de Joint Venture.",
+    "create": "Cadastro de CNPJ",
+    "save": "Salvar CNPJ",
+    "update": "Atualizar CNPJ",
+    "identification": "Identificação",
+    "fiscal": "Dados fiscais",
+    "address": "Endereço",
+    "cnpj": "CNPJ",
+    "legalName": "Razão social",
+    "tradeName": "Nome fantasia",
+    "entityType": "Tipo",
+    "stateRegistration": "Inscrição estadual",
+    "municipalRegistration": "Inscrição municipal",
+    "cnae": "CNAE",
+    "openingDate": "Data de abertura",
+    "addressLine": "Logradouro",
+    "municipality": "Município",
+    "uf": "UF",
+    "cep": "CEP",
+    "notes": "Observações",
+    "status": "Situação",
+    "statusActive": "Ativo",
+    "statusInactive": "Inativo",
+    "deactivate": "Inativar",
+    "deactivateConfirm": "Inativar este CNPJ? O histórico jurídico e fiscal é preservado; ele apenas deixa de ser usado em novas operações.",
+    "inactiveHint": "A inativação preserva todo o histórico jurídico e fiscal do CNPJ; ela apenas impede o uso em novas operações.",
+    "showInactive": "Mostrar inativos",
+    "filterSearch": "Buscar",
+    "filterType": "Tipo",
+    "empty": "Sem CNPJs cadastrados.",
+    "typeHeadquarters": "Matriz",
+    "typeBranch": "Filial",
+    "typeSubsidiary": "Subsidiária",
+    "typeSpe": "SPE",
+    "typeJvPartner": "Sócia de JV",
+    "typeConsortium": "Consorciada",
+    "typeOther": "Outro"
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",

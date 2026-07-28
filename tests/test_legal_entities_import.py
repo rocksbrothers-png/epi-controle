@@ -175,6 +175,40 @@ def test_fetch_units_exposes_legal_entity_for_cascading_filter():
     assert units[0]['legal_entity_id'] == matriz
 
 
+def test_fetch_units_exposes_legal_entity_label():
+    """O id sozinho não dá para exibir nada.
+
+    A listagem de unidades precisa mostrar *qual* CNPJ responde pela unidade —
+    no app e no web legado. Sem o rótulo vindo junto, cada tela teria de buscar
+    a lista inteira de CNPJs só para traduzir um número.
+    """
+    conn = _conn()
+    matriz = get_default_legal_entity_id(conn, 1)
+    conn.execute(
+        "UPDATE legal_entities SET trade_name = 'ACME Matriz' WHERE id = ?", (matriz,)
+    )
+    create_unit(conn, 1, 'Base Santos', 'base', 'Santos', '', legal_entity_id=matriz)
+    conn.commit()
+    unit = fetch_units(conn, actor={'role': 'general_admin', 'company_id': 1})[0]
+    assert unit['legal_entity_cnpj']
+    assert unit['legal_entity_trade_name'] == 'ACME Matriz'
+    assert unit['legal_entity_legal_name']
+
+
+def test_fetch_units_lists_unit_without_legal_entity():
+    """Unidade ainda sem CNPJ definido continua aparecendo, com rótulo vazio.
+
+    Se o JOIN fosse interno, a unidade sumiria da tela justamente no estado em
+    que alguém precisa encontrá-la para atribuir o CNPJ.
+    """
+    conn = _conn()
+    create_unit(conn, 1, 'Base Sem CNPJ', 'base', 'Santos', '')
+    conn.commit()
+    units = {u['name']: u for u in fetch_units(conn, actor={'role': 'general_admin', 'company_id': 1})}
+    assert 'Base Sem CNPJ' in units
+    assert not units['Base Sem CNPJ']['legal_entity_cnpj']
+
+
 def test_fetch_units_works_without_legal_entity_column():
     """Retrocompatibilidade: schema sem o vínculo continua listando unidades."""
     conn = sqlite3.connect(':memory:')

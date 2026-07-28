@@ -157,7 +157,15 @@ GoRouter buildRouter({
           ),
           GoRoute(
             path: Routes.legalEntities,
-            builder: (c, s) => const LegalEntitiesScreen(),
+            // `?company_id=` recorta a tela num cliente — caminho do Admin
+            // Master a partir da lista de empresas. Ausente, a tela usa a
+            // empresa do próprio usuário, como sempre.
+            builder: (c, s) => LegalEntitiesScreen(
+              companyId: int.tryParse(
+                s.uri.queryParameters['company_id'] ?? '',
+              ),
+              companyName: s.uri.queryParameters['company_name'],
+            ),
           ),
           GoRoute(
             path: Routes.feedback,

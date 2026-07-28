@@ -467,5 +467,8 @@
   "myCompanyStockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet.",
   "myCompanyStockScopeUnit": "Enhet",
   "myCompanyStockScopeLegalEntity": "CNPJ",
-  "myCompanyStockScopeCompany": "Selskap"
+  "myCompanyStockScopeCompany": "Selskap",
+  "navLegalEntities": "CNPJ",
+  "unitLegalEntityLabel": "Ansvarlig CNPJ",
+  "unitLegalEntityHint": "Juridisk enhet som er ansvarlig for driften og lageret til denne enheten."
 }

@@ -54,9 +54,30 @@
     return (Array.isArray(entities) ? entities : []).length > 1;
   }
 
+  /**
+   * Rótulo do CNPJ **de uma unidade**, montado a partir dos campos que
+   * `fetch_units` devolve pelo LEFT JOIN (`legal_entity_cnpj`,
+   * `legal_entity_trade_name`, `legal_entity_legal_name`).
+   *
+   * Recebe a unidade, e não a entidade, de propósito: a listagem de unidades
+   * não carrega a lista de CNPJs, e obrigá-la a carregar só para traduzir um id
+   * acoplaria as duas telas sem necessidade.
+   *
+   * Devolve string vazia quando a unidade ainda não tem CNPJ — estado legítimo
+   * durante a migração, que a tabela mostra como `-`.
+   */
+  function unitLegalEntityLabel(unit) {
+    return legalEntityLabel({
+      trade_name: unit?.legal_entity_trade_name,
+      legal_name: unit?.legal_entity_legal_name,
+      cnpj: unit?.legal_entity_cnpj,
+    });
+  }
+
   globalThis.__EPI_LEGAL_ENTITY_FIELDS__ = Object.freeze({
     legalEntitiesForCompany,
     legalEntityLabel,
+    unitLegalEntityLabel,
     employeeLegalEntityRequired,
   });
 })();

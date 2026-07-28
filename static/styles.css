@@ -1,3 +1,13 @@
+/* O atributo `hidden` do HTML só esconde via folha de estilo do NAVEGADOR, e
+   qualquer regra de autor que defina `display` ganha dela — independentemente
+   de especificidade. Como este arquivo define `label { display: grid }` (e
+   outras regras de layout amplas), `<label hidden>` continuava visível: era o
+   caso do campo "Empresa de Origem", que o JS marcava como hidden sem efeito
+   nenhum na tela. Esta regra restabelece o contrato de `hidden` para todo o
+   app — sem ela, cada campo condicional novo precisa do seu próprio remendo
+   `[hidden] { display: none }` (já havia dois no arquivo). */
+[hidden] { display: none !important; }
+
 :root {
   --bg: #efe7db;
   --panel: rgba(255, 252, 247, 0.88);

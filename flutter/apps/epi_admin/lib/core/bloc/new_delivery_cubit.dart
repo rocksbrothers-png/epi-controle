@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:epi_api/epi_api.dart';
@@ -164,7 +166,13 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     final sector    = s.sector ?? s.selectedEmployee!.sector ?? '';
     final roleName  = s.roleName ?? s.selectedEmployee!.role ?? '';
     final qrCode    = s.selectedEpi!.code ?? s.selectedEpi!.id.toString();
+    // Uma chave por **tentativa de entrega**, não por requisição HTTP: ela vai
+    // junto no payload da fila, então o reenvio depois de uma resposta perdida
+    // repete a MESMA chave e o backend devolve a entrega original. Sem isso o
+    // reenvio esbarrava no item já entregue e a fila nunca drenava.
+    final idempotencyKey = _novaChaveDeIdempotencia();
     final Map<String, dynamic> payload = {
+      'idempotency_key': idempotencyKey,
       'company_id': companyId,
       'employee_id': s.selectedEmployee!.id,
       'epi_id': s.selectedEpi!.id,
@@ -188,6 +196,7 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
         nextReplacementDate: s.nextReplacementDate!,
         stockItemId: s.selectedEpi!.id,
         stockQrCode: qrCode,
+        idempotencyKey: idempotencyKey,
       );
       emit(state.copyWith(isSubmitting: false, successId: id));
       return true;
@@ -207,5 +216,14 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
       emit(state.copyWith(isSubmitting: false, error: e.toString()));
       return false;
     }
+  }
+
+  /// Aleatória, não derivada de relógio: dois aparelhos podem enviar no mesmo
+  /// milissegundo, e um relógio atrasado repetiria uma chave já usada — o que
+  /// faria uma entrega nova ser confundida com o reenvio de outra.
+  static String _novaChaveDeIdempotencia() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return 'entrega-${base64Url.encode(bytes).replaceAll('=', '')}';
   }
 }

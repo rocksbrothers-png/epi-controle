@@ -14,6 +14,10 @@ class _FakeDeliveriesRepository implements DeliveriesRepository {
   final int id;
   final Object? error;
 
+  /// Chaves recebidas, para conferir que a entrega é identificável e que o
+  /// reenvio da fila repete a mesma.
+  final List<String> idempotencyKeys = [];
+
   @override
   Future<int> createDelivery({
     required int companyId,
@@ -26,7 +30,9 @@ class _FakeDeliveriesRepository implements DeliveriesRepository {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    String idempotencyKey = '',
   }) async {
+    idempotencyKeys.add(idempotencyKey);
     if (error != null) throw error!;
     return id;
   }
@@ -44,9 +50,14 @@ class _RecordingQueue implements OfflineQueue {
   }
 }
 
-NewDeliveryCubit _cubit({int id = 1, Object? error, OfflineQueue? offlineQueue}) =>
+NewDeliveryCubit _cubit({
+  int id = 1,
+  Object? error,
+  OfflineQueue? offlineQueue,
+  _FakeDeliveriesRepository? repository,
+}) =>
     NewDeliveryCubit(
-      repository: _FakeDeliveriesRepository(id: id, error: error),
+      repository: repository ?? _FakeDeliveriesRepository(id: id, error: error),
       offlineQueue: offlineQueue,
     );
 
@@ -127,13 +138,13 @@ void main() {
 
     test('falha de conexão enfileira offline e retorna true', () async {
       final queue = _RecordingQueue();
-      final cubit = _cubit(
+      final repository = _FakeDeliveriesRepository(
         error: DioException(
           requestOptions: RequestOptions(path: '/api/deliveries'),
           type: DioExceptionType.connectionError,
         ),
-        offlineQueue: queue,
       );
+      final cubit = _cubit(repository: repository, offlineQueue: queue);
       _fillForm(cubit);
       final ok = await cubit.submit(companyId: 7, signatureData: 'sig');
 
@@ -147,6 +158,25 @@ void main() {
       expect(op['company_id'], 7);
       expect(op['employee_id'], 1);
       expect(op['epi_id'], 2);
+      // A chave precisa viajar com a operação: sem ela o reenvio bate no item
+      // já entregue, falha para sempre e a fila nunca drena.
+      expect(op['idempotency_key'], isNotEmpty);
+      expect(op['idempotency_key'], repository.idempotencyKeys.single,
+          reason: 'a tentativa online e a enfileirada são a MESMA entrega');
+    });
+
+    test('a chave identifica a tentativa, não a requisição', () async {
+      // Duas entregas distintas não podem compartilhar chave — a segunda seria
+      // descartada como se fosse reenvio da primeira.
+      final repository = _FakeDeliveriesRepository();
+      for (var i = 0; i < 2; i++) {
+        final cubit = _cubit(repository: repository);
+        _fillForm(cubit);
+        await cubit.submit(companyId: 1, signatureData: 'sig');
+      }
+      expect(repository.idempotencyKeys, hasLength(2));
+      expect(repository.idempotencyKeys.toSet(), hasLength(2));
+      expect(repository.idempotencyKeys.every((k) => k.isNotEmpty), isTrue);
     });
 
     test('erro de servidor (badResponse) seta error e não enfileira', () async {

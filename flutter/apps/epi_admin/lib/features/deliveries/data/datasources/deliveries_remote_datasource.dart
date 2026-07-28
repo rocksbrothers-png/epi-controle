@@ -12,6 +12,7 @@ abstract class DeliveriesRemoteDataSource {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    String idempotencyKey = '',
   });
 }
 
@@ -30,6 +31,7 @@ class ApiDeliveriesRemoteDataSource implements DeliveriesRemoteDataSource {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    String idempotencyKey = '',
   }) =>
       ApiClient.deliveries.createDelivery(
         companyId: companyId,
@@ -42,5 +44,6 @@ class ApiDeliveriesRemoteDataSource implements DeliveriesRemoteDataSource {
         nextReplacementDate: nextReplacementDate,
         stockItemId: stockItemId,
         stockQrCode: stockQrCode,
+        idempotencyKey: idempotencyKey,
       );
 }

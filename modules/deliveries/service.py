@@ -4,6 +4,11 @@ import secrets
 from datetime import datetime
 
 from epi_backend.db import row_to_dict
+from modules.deliveries.evidence import (
+    QR_HANDOVER,
+    SIGNATURE_HANDWRITTEN,
+    record_evidence,
+)
 from modules.epis.validity import is_expired
 from modules.stock.service import apply_effective_size_fields
 
@@ -51,6 +56,15 @@ def create_delivery_service(
     ensure_ficha_for_delivery,
 ):
     actor = authorize_action(connection, resolve_actor_user_id(), 'deliveries:create', int(payload['company_id']))
+    # Antes de qualquer escrita: se esta entrega já foi registrada, devolve a
+    # original. Reenvio da fila offline é reenvio da mesma entrega, não de uma
+    # nova — e o operador precisa receber sucesso, não um erro sobre um item
+    # que ele mesmo acabou de entregar.
+    existing_id = find_delivery_by_idempotency_key(
+        connection, company_id=int(payload['company_id']), key=payload.get('idempotency_key')
+    )
+    if existing_id is not None:
+        return existing_id
     employee = get_employee_by_id(connection, int(payload['employee_id']))
     epi = get_epi_by_id(connection, int(payload['epi_id']))
     ensure_resource_company(actor, employee, 'Colaborador')
@@ -142,15 +156,16 @@ def create_delivery_service(
         (
             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '
             'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment, '
-            'glove_size, size, uniform_size) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'glove_size, size, uniform_size, idempotency_key) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
             str(epi.get('unit_measure') or 'unidade'), payload['sector'], payload['role_name'], payload['delivery_date'],
             payload['next_replacement_date'], payload.get('notes', ''), signature_name,
             str(client_ip or ''), signature_at, signature_data, signature_comment,
-            str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A')
+            str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A'),
+            str(payload.get('idempotency_key') or '').strip()
         )
     )
     new_stock = current_stock - quantity
@@ -199,13 +214,112 @@ def create_delivery_service(
             'signature_comment': signature_comment
         }
     )
+    if signature_data:
+        # A assinatura passa a existir também como evidência: a coluna
+        # continua sendo a fonte do conteúdo, e aqui fica o registro
+        # auditável de quem assinou, quando e de onde.
+        record_evidence(
+            connection,
+            company_id=int(payload['company_id']),
+            delivery_id=int(cursor.lastrowid),
+            kind=SIGNATURE_HANDWRITTEN,
+            content=signature_data,
+            content_ref='deliveries.signature_data',
+            provider='app',
+            actor_user_id=int(actor['id']),
+            actor_name=str(actor.get('full_name') or ''),
+            subject_name=signature_name,
+            client_ip=str(client_ip or ''),
+            notes=signature_comment,
+            collected_at=signature_at,
+        )
     if str(payload.get('request_id', '')).strip():
+        consume_request_reservation(
+            connection,
+            request_id=int(payload['request_id']),
+            company_id=int(payload['company_id']),
+            unit_id=delivery_unit_id,
+            epi_id=int(epi['id']),
+            quantity=quantity,
+            delivery_id=int(cursor.lastrowid),
+        )
         connection.execute(
             "UPDATE epi_requests SET status = 'entregue', delivery_id = ?, last_updated_at = ? WHERE id = ?",
             (int(cursor.lastrowid), datetime.now(UTC).isoformat(), int(payload['request_id']))
         )
     connection.commit()
     return int(cursor.lastrowid)
+
+
+def find_delivery_by_idempotency_key(connection, *, company_id, key):
+    """Entrega já registrada com esta chave nesta empresa, se houver.
+
+    Escopada por empresa de propósito: a chave é gerada pelo cliente, e uma
+    colisão entre tenants não pode fazer uma empresa enxergar a entrega de
+    outra. Chave vazia significa "sem idempotência" — todo o histórico anterior
+    a esta coluna está assim, e essas entregas não podem colidir entre si.
+    """
+    from epi_backend.db import table_columns
+
+    normalized = str(key or '').strip()
+    if not normalized:
+        return None
+    if 'idempotency_key' not in table_columns(connection, 'deliveries'):
+        return None
+    row = connection.execute(
+        'SELECT id FROM deliveries WHERE company_id = ? AND idempotency_key = ? LIMIT 1',
+        (int(company_id), normalized),
+    ).fetchone()
+    if not row:
+        return None
+    return int(row['id'] if hasattr(row, 'keys') else row[0])
+
+
+def consume_request_reservation(
+    connection, *, request_id, company_id, unit_id, epi_id, quantity, delivery_id
+):
+    """Abate da reserva o que acabou de sair fisicamente.
+
+    Sem isto a reserva ficava ``active`` para sempre: o estoque físico caía na
+    entrega e a promessa continuava de pé, então **a mesma peça era subtraída
+    duas vezes** do saldo livre. Depois de algumas entregas a unidade parecia
+    sem estoque tendo prateleira cheia.
+
+    Roda na mesma transação da baixa de propósito: reserva consumida sem
+    entrega (ou o contrário) deixa o saldo errado, e é justamente o par que
+    precisa ser indivisível.
+
+    Silencioso quando não há reserva — entrega direta de estoque, sem
+    solicitação prévia, é caminho legítimo e não tem o que abater.
+    """
+    from modules.stock.reservations import (
+        ReservationNotActive,
+        consume_reservation,
+        reservation_for_request,
+        reservations_ready,
+    )
+
+    if not reservations_ready(connection):
+        return None
+    reservation = reservation_for_request(connection, request_id)
+    if not reservation:
+        return None
+    # A reserva pertence a uma unidade e a um EPI. Abater a reserva errada
+    # devolveria saldo livre a quem não entregou nada — pior que não abater.
+    if (
+        int(reservation.get('company_id') or 0) != int(company_id)
+        or int(reservation.get('unit_id') or 0) != int(unit_id)
+        or int(reservation.get('epi_id') or 0) != int(epi_id)
+    ):
+        return None
+    try:
+        return consume_reservation(
+            connection, int(reservation['id']), quantity=int(quantity), delivery_id=delivery_id
+        )
+    except ReservationNotActive:
+        # Corrida com outra entrega da mesma solicitação: a peça já saiu e já
+        # foi abatida. Recusar a entrega aqui seria pior — ela é real.
+        return None
 
 
 def _safe_split_name(full_name):
@@ -322,6 +436,24 @@ def confirm_delivery_handover(connection, token, actor, *, signature_name='', si
             (confirmer or MSG_SIGNED_DIGITALLY, signature_data, str(client_ip or ''), now,
              str(signature_comment or ''), delivery_id)
         )
+    # A conferência pelo QR é uma segunda evidência da mesma entrega — o motivo
+    # de existir uma tabela em vez de mais colunas: assinatura no ato e
+    # conferência depois coexistem, cada uma com seu momento e seu responsável.
+    record_evidence(
+        connection,
+        company_id=int(row['company_id']),
+        delivery_id=delivery_id,
+        kind=QR_HANDOVER,
+        content=signature_data or token,
+        content_ref='deliveries.handover_token',
+        provider='qr',
+        actor_user_id=int(actor['id']) if actor else None,
+        actor_name=str((actor or {}).get('full_name') or ''),
+        subject_name=confirmer,
+        client_ip=str(client_ip or ''),
+        notes=str(signature_comment or ''),
+        collected_at=now,
+    )
     connection.execute(
         "UPDATE epi_requests SET status = 'entregue', last_updated_at = ? "
         "WHERE delivery_id = ? AND LOWER(COALESCE(status, '')) <> 'entregue'",

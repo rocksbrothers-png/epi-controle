@@ -18,6 +18,7 @@ class DeliveriesRepositoryImpl implements DeliveriesRepository {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    String idempotencyKey = '',
   }) =>
       _remoteDataSource.createDelivery(
         companyId: companyId,
@@ -30,5 +31,6 @@ class DeliveriesRepositoryImpl implements DeliveriesRepository {
         nextReplacementDate: nextReplacementDate,
         stockItemId: stockItemId,
         stockQrCode: stockQrCode,
+        idempotencyKey: idempotencyKey,
       );
 }

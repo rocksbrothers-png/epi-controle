@@ -64,6 +64,9 @@ class SyncService {
           nextReplacementDate: payload['next_replacement_date'] as String,
           stockItemId: payload['stock_item_id'] as int,
           stockQrCode: payload['stock_qr_code'] as String,
+          // A chave veio guardada com a operação: o reenvio é da mesma
+          // entrega, e é isso que o backend precisa reconhecer.
+          idempotencyKey: (payload['idempotency_key'] as String?) ?? '',
         );
       case 'devolution_create':
         await ApiClient.devolutions.createDevolution(

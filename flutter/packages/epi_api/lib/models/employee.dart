@@ -13,6 +13,8 @@ class Employee {
     this.legalEntityId,
     this.legalEntityCnpj,
     this.legalEntityName,
+    this.employmentType,
+    this.sourceCompany,
   });
 
   final int id;
@@ -36,6 +38,18 @@ class Employee {
   final String? legalEntityCnpj;
   final String? legalEntityName;
 
+  /// Tipo de vínculo (`tipo_vinculo`): `CLT`, `Terceirizado`, `Temporário`,
+  /// `Prestador de Serviço`, `Menor Aprendiz`, `Praticante` ou `Estagiário`.
+  ///
+  /// Texto livre no backend, sem lista fechada validada no servidor — os
+  /// valores acima são os que a UI oferece, espelhando o web legado.
+  final String? employmentType;
+
+  /// Empresa de origem (`empresa_origem`), preenchida só quando
+  /// [employmentType] é diferente de `CLT`. O backend zera este campo
+  /// automaticamente quando o vínculo volta a ser CLT.
+  final String? sourceCompany;
+
   factory Employee.fromJson(Map<String, dynamic> json) => Employee(
         id: (json['id'] as num).toInt(),
         name: json['name'] as String? ?? '',
@@ -51,5 +65,7 @@ class Employee {
         legalEntityId: (json['legal_entity_id'] as num?)?.toInt(),
         legalEntityCnpj: json['legal_entity_cnpj'] as String?,
         legalEntityName: json['legal_entity_name'] as String?,
+        employmentType: json['tipo_vinculo'] as String?,
+        sourceCompany: json['empresa_origem'] as String?,
       );
 }

@@ -2513,6 +2513,66 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.'**
   String get unitLegalEntityHint;
+
+  /// No description provided for @employeeEmploymentTypeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tipo de Vínculo'**
+  String get employeeEmploymentTypeLabel;
+
+  /// No description provided for @employeeSourceCompanyLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa de Origem'**
+  String get employeeSourceCompanyLabel;
+
+  /// No description provided for @employeeSourceCompanyHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome da empresa de origem do colaborador'**
+  String get employeeSourceCompanyHint;
+
+  /// No description provided for @employmentTypeClt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CLT'**
+  String get employmentTypeClt;
+
+  /// No description provided for @employmentTypeOutsourced.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Terceirizado'**
+  String get employmentTypeOutsourced;
+
+  /// No description provided for @employmentTypeTemporary.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Temporário'**
+  String get employmentTypeTemporary;
+
+  /// No description provided for @employmentTypeServiceProvider.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Prestador de Serviço'**
+  String get employmentTypeServiceProvider;
+
+  /// No description provided for @employmentTypeApprentice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Menor Aprendiz'**
+  String get employmentTypeApprentice;
+
+  /// No description provided for @employmentTypeTrainee.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Praticante'**
+  String get employmentTypeTrainee;
+
+  /// No description provided for @employmentTypeIntern.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estagiário'**
+  String get employmentTypeIntern;
 }
 
 class _AppLocalizationsDelegate

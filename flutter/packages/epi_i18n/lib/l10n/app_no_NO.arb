@@ -470,5 +470,15 @@
   "myCompanyStockScopeCompany": "Selskap",
   "navLegalEntities": "CNPJ",
   "unitLegalEntityLabel": "Ansvarlig CNPJ",
-  "unitLegalEntityHint": "Juridisk enhet som er ansvarlig for driften og lageret til denne enheten."
+  "unitLegalEntityHint": "Juridisk enhet som er ansvarlig for driften og lageret til denne enheten.",
+  "employeeEmploymentTypeLabel": "Ansettelsestype",
+  "employeeSourceCompanyLabel": "Opprinnelsesselskap",
+  "employeeSourceCompanyHint": "Navn på den ansattes opprinnelsesselskap",
+  "employmentTypeClt": "CLT",
+  "employmentTypeOutsourced": "Utkontraktert",
+  "employmentTypeTemporary": "Midlertidig",
+  "employmentTypeServiceProvider": "Tjenesteleverandør",
+  "employmentTypeApprentice": "Ung lærling",
+  "employmentTypeTrainee": "Hospitant",
+  "employmentTypeIntern": "Praktikant"
 }

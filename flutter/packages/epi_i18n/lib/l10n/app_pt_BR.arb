@@ -500,5 +500,15 @@
   "myCompanyStockScopeCompany": "Empresa",
   "navLegalEntities": "CNPJs",
   "unitLegalEntityLabel": "CNPJ responsável",
-  "unitLegalEntityHint": "Pessoa jurídica que responde pelas operações e pelo estoque desta unidade."
+  "unitLegalEntityHint": "Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.",
+  "employeeEmploymentTypeLabel": "Tipo de Vínculo",
+  "employeeSourceCompanyLabel": "Empresa de Origem",
+  "employeeSourceCompanyHint": "Nome da empresa de origem do colaborador",
+  "employmentTypeClt": "CLT",
+  "employmentTypeOutsourced": "Terceirizado",
+  "employmentTypeTemporary": "Temporário",
+  "employmentTypeServiceProvider": "Prestador de Serviço",
+  "employmentTypeApprentice": "Menor Aprendiz",
+  "employmentTypeTrainee": "Praticante",
+  "employmentTypeIntern": "Estagiário"
 }

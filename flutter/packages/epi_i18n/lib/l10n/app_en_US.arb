@@ -497,5 +497,15 @@
   "myCompanyStockScopeCompany": "Company",
   "navLegalEntities": "Tax IDs",
   "unitLegalEntityLabel": "Responsible tax ID",
-  "unitLegalEntityHint": "Legal entity accountable for this unit’s operations and stock."
+  "unitLegalEntityHint": "Legal entity accountable for this unit’s operations and stock.",
+  "employeeEmploymentTypeLabel": "Employment Type",
+  "employeeSourceCompanyLabel": "Source Company",
+  "employeeSourceCompanyHint": "Name of the employee's source company",
+  "employmentTypeClt": "CLT (Payroll)",
+  "employmentTypeOutsourced": "Outsourced",
+  "employmentTypeTemporary": "Temporary",
+  "employmentTypeServiceProvider": "Service Provider",
+  "employmentTypeApprentice": "Young Apprentice",
+  "employmentTypeTrainee": "Trainee",
+  "employmentTypeIntern": "Intern"
 }

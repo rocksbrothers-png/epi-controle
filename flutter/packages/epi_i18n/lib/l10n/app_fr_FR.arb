@@ -470,5 +470,15 @@
   "myCompanyStockScopeCompany": "Entreprise",
   "navLegalEntities": "CNPJ",
   "unitLegalEntityLabel": "CNPJ responsable",
-  "unitLegalEntityHint": "Personne morale responsable des opérations et du stock de cette unité."
+  "unitLegalEntityHint": "Personne morale responsable des opérations et du stock de cette unité.",
+  "employeeEmploymentTypeLabel": "Type de Contrat",
+  "employeeSourceCompanyLabel": "Entreprise d'Origine",
+  "employeeSourceCompanyHint": "Nom de l'entreprise d'origine de l'employé",
+  "employmentTypeClt": "CLT",
+  "employmentTypeOutsourced": "Externalisé",
+  "employmentTypeTemporary": "Temporaire",
+  "employmentTypeServiceProvider": "Prestataire de Services",
+  "employmentTypeApprentice": "Apprenti Mineur",
+  "employmentTypeTrainee": "Stagiaire (pratique)",
+  "employmentTypeIntern": "Stagiaire (scolaire)"
 }

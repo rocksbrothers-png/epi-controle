@@ -350,4 +350,23 @@ void main() {
       expect(created['username'], 'novo');
     });
   });
+
+  group('Employee.fromJson (tipo_vinculo / empresa_origem)', () {
+    test('mapeia tipo_vinculo e empresa_origem', () {
+      final employee = Employee.fromJson(const {
+        'id': 9,
+        'name': 'Ana Paula',
+        'tipo_vinculo': 'Estagiário',
+        'empresa_origem': 'Instituto XYZ',
+      });
+      expect(employee.employmentType, 'Estagiário');
+      expect(employee.sourceCompany, 'Instituto XYZ');
+    });
+
+    test('tipo_vinculo e empresa_origem ausentes ficam nulos', () {
+      final employee = Employee.fromJson(const {'id': 10, 'name': 'Carlos'});
+      expect(employee.employmentType, isNull);
+      expect(employee.sourceCompany, isNull);
+    });
+  });
 }

@@ -12,5 +12,6 @@ abstract class DeliveriesRepository {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    String idempotencyKey = '',
   });
 }

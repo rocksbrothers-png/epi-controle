@@ -31,10 +31,15 @@ class DeliveriesApi {
     required String nextReplacementDate,
     required int stockItemId,
     required String stockQrCode,
+    /// Identifica a **tentativa de entrega**, não a requisição HTTP: o reenvio
+    /// da fila offline repete a mesma chave, e o backend devolve a entrega
+    /// original em vez de recusar o item já entregue.
+    String idempotencyKey = '',
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/deliveries',
       data: {
+        if (idempotencyKey.isNotEmpty) 'idempotency_key': idempotencyKey,
         'company_id': companyId,
         'employee_id': employeeId,
         'epi_id': epiId,

@@ -47,11 +47,18 @@ def reservations_ready(connection) -> bool:
 
 
 def reserved_quantity(connection, company_id, unit_id, epi_id) -> int:
-    """Soma das reservas **ativas** do EPI naquela unidade."""
+    """Quantidade ainda **prometida** do EPI naquela unidade.
+
+    É o que falta entregar, não o que foi reservado: ``quantity -
+    consumed_quantity``. A parte já entregue saiu do estoque físico, então
+    continuar contando-a como reserva subtrairia a mesma peça duas vezes do
+    saldo livre.
+    """
     if not reservations_ready(connection):
         return 0
     row = connection.execute(
-        'SELECT COALESCE(SUM(quantity), 0) AS total FROM stock_reservations '
+        'SELECT COALESCE(SUM(quantity - COALESCE(consumed_quantity, 0)), 0) AS total '
+        'FROM stock_reservations '
         'WHERE company_id = ? AND unit_id = ? AND epi_id = ? AND status = ?',
         (int(company_id), int(unit_id), int(epi_id), ACTIVE),
     ).fetchone()
@@ -177,21 +184,78 @@ def _claim(connection, reservation_id, new_status, timestamp_column) -> dict:
     return get_reservation(connection, reservation_id)
 
 
-def consume_reservation(connection, reservation_id, *, delivery_id=None) -> dict:
-    """Marca a reserva como consumida (a entrega ocorreu).
+def remaining_quantity(reservation) -> int:
+    """Quanto da reserva ainda não foi entregue."""
+    if not reservation:
+        return 0
+    return max(
+        0,
+        int(reservation.get('quantity') or 0) - int(reservation.get('consumed_quantity') or 0),
+    )
+
+
+def consume_reservation(connection, reservation_id, *, quantity=None, delivery_id=None) -> dict:
+    """Abate ``quantity`` da reserva porque a entrega ocorreu.
 
     **Não baixa o estoque aqui.** A baixa é do fluxo de entrega, que ocorre na
     mesma transação — separar as duas responsabilidades evita que uma reserva
     consumida sem entrega deixe o saldo errado.
+
+    O consumo é **parcial por natureza**: a entrega é sempre de uma unidade
+    etiquetada, então uma solicitação de 3 gera 3 entregas contra a mesma
+    reserva. A reserva só fecha (``consumed``) quando o último item sai; até
+    lá continua ``active`` com o restante ainda prometido a quem solicitou.
+
+    ``quantity=None`` consome o restante — o caso de quem chama sem se
+    importar com fracionamento.
     """
-    reservation = _claim(connection, reservation_id, CONSUMED, 'consumed_at')
+    reservation = get_reservation(connection, reservation_id)
+    if reservation is None:
+        raise ReservationNotActive('Reserva inexistente.')
+    if str(reservation.get('status')) != ACTIVE:
+        raise ReservationNotActive(
+            f'Reserva já {reservation.get("status")}. Atualize e tente novamente.'
+        )
+
+    remaining = remaining_quantity(reservation)
+    amount = remaining if quantity is None else int(quantity)
+    if amount <= 0:
+        raise ValueError('Quantidade consumida deve ser positiva.')
+    if amount > remaining:
+        raise InsufficientFreeStock(
+            f'Reserva tem {remaining} unidade(s) pendente(s); {amount} pedida(s).'
+        )
+
+    consumed_total = int(reservation.get('consumed_quantity') or 0) + amount
+    closes = consumed_total >= int(reservation.get('quantity') or 0)
+    now = datetime.now(UTC).isoformat()
+    # Claim otimista sobre o que ainda resta: duas entregas simultâneas do
+    # último item não podem ambas ter sucesso. A condição de `consumed_quantity`
+    # é o que impede a segunda de passar.
+    cursor = connection.execute(
+        'UPDATE stock_reservations SET consumed_quantity = ?, status = ?, '
+        'consumed_at = ?, updated_at = ? '
+        'WHERE id = ? AND status = ? AND COALESCE(consumed_quantity, 0) = ?',
+        (
+            consumed_total,
+            CONSUMED if closes else ACTIVE,
+            now if closes else str(reservation.get('consumed_at') or ''),
+            now,
+            int(reservation_id),
+            ACTIVE,
+            int(reservation.get('consumed_quantity') or 0),
+        ),
+    )
+    if int(getattr(cursor, 'rowcount', 0) or 0) != 1:
+        raise ReservationNotActive(
+            'Reserva alterada por outra operação simultânea. Atualize e tente novamente.'
+        )
     if delivery_id:
         connection.execute(
             'UPDATE stock_reservations SET delivery_id = ? WHERE id = ?',
             (int(delivery_id), int(reservation_id)),
         )
-        reservation = get_reservation(connection, reservation_id)
-    return reservation
+    return get_reservation(connection, reservation_id)
 
 
 def release_reservation(connection, reservation_id, *, notes='') -> dict:

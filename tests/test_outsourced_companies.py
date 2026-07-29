@@ -32,7 +32,6 @@ from modules.outsourced_companies.service import (
     promote_outsourced_company,
     resolve_effective_epi_responsibility,
     update_outsourced_company,
-    validate_outsourced_company_payload,
 )
 
 CNPJ_A = '11.222.333/0001-81'
@@ -82,7 +81,7 @@ def _bootstrap(conn):
 
 def test_ensure_outsourced_companies_creates_tables_and_columns():
     conn = _conn()
-    cid = _seed_company(conn)
+    _seed_company(conn)
     _bootstrap(conn)
 
     assert outsourced_companies_ready(conn)

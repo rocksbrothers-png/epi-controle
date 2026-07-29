@@ -57,7 +57,8 @@
     "expandMenu": "Développer le menu",
     "collapseMenu": "Réduire le menu",
     "back": "Retour",
-    "legalEntities": "CNPJ"
+    "legalEntities": "CNPJ",
+    "outsourcedCompanies": "Sous-traitants et Prestataires"
   },
   "login": {
     "title": "Connexion",
@@ -1410,6 +1411,29 @@
     "typeOther": "Autre",
     "newEntity": "Nouveau CNPJ",
     "companyFromAccount": "Définie par votre compte — le CNPJ sera enregistré dans cette entreprise."
+  },
+  "outsourcedCompany": {
+    "pageTitle": "Sous-traitants et Prestataires",
+    "pageDesc": "Enregistrement Simplifié des entreprises sous-traitantes et prestataires de service — le CNPJ est facultatif ici, il peut être complété plus tard.",
+    "create": "Enregistrement d’une Entreprise Sous-traitante",
+    "save": "Enregistrer l’Entreprise",
+    "update": "Mettre à jour l’Entreprise",
+    "legalName": "Raison sociale",
+    "tradeName": "Nom commercial",
+    "cnpj": "CNPJ",
+    "cnpjHint": "Facultatif dans l’Enregistrement Simplifié — obligatoire pour promouvoir à l’Enregistrement Standard.",
+    "companyKind": "Type d’entreprise",
+    "kindOutsourced": "Sous-traitante",
+    "kindServiceProvider": "Prestataire de Service",
+    "kindOther": "Autre",
+    "responsibility": "Responsabilité de la fourniture d’EPI",
+    "registrationMode": "Enregistrement",
+    "filterSearch": "Rechercher",
+    "filterKind": "Type",
+    "empty": "Aucune entreprise sous-traitante enregistrée.",
+    "newEntity": "Nouvelle Entreprise",
+    "promote": "Promouvoir à l’Enregistrement Standard",
+    "promoteConfirm": "Promouvoir à l’Enregistrement Standard ? L’entreprise sera traitée comme un Enregistrement Standard. Un CNPJ est requis."
   },
   "myCompany": {
     "stockScope": "Consolider les soldes de stock par",

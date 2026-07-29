@@ -57,7 +57,8 @@
     "expandMenu": "Expandir menu",
     "collapseMenu": "Recolher menu",
     "back": "Voltar",
-    "legalEntities": "CNPJs"
+    "legalEntities": "CNPJs",
+    "outsourcedCompanies": "Terceirizados e Prestadores"
   },
   "login": {
     "title": "Entrar",
@@ -1410,6 +1411,29 @@
     "typeOther": "Outro",
     "newEntity": "Novo CNPJ",
     "companyFromAccount": "Definida pela sua conta — o CNPJ será cadastrado nesta empresa."
+  },
+  "outsourcedCompany": {
+    "pageTitle": "Terceirizados e Prestadores",
+    "pageDesc": "Cadastro Simplificado de empresas terceirizadas e prestadoras de serviço — CNPJ é opcional aqui, pode ser completado depois.",
+    "create": "Cadastro de Empresa Terceirizada",
+    "save": "Salvar Empresa",
+    "update": "Atualizar Empresa",
+    "legalName": "Razão social",
+    "tradeName": "Nome fantasia",
+    "cnpj": "CNPJ",
+    "cnpjHint": "Opcional no Cadastro Simplificado — obrigatório para promover ao Cadastro Padrão.",
+    "companyKind": "Tipo da empresa",
+    "kindOutsourced": "Terceirizada",
+    "kindServiceProvider": "Prestadora de Serviço",
+    "kindOther": "Outro",
+    "responsibility": "Responsabilidade pelo fornecimento de EPI",
+    "registrationMode": "Cadastro",
+    "filterSearch": "Buscar",
+    "filterKind": "Tipo",
+    "empty": "Nenhuma empresa terceirizada cadastrada.",
+    "newEntity": "Nova Empresa",
+    "promote": "Promover a Cadastro Padrão",
+    "promoteConfirm": "Promover ao Cadastro Padrão? A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido."
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",

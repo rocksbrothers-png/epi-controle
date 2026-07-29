@@ -58,6 +58,7 @@ function loadModule(relPath) {
   'views/employee-portal.js',
   'views/legal-entity-fields.js',
   'views/legal-entities-view.js',
+  'views/outsourced-companies-view.js',
   'views/dashboard-scope.js'
 ].forEach(loadModule);
 
@@ -1245,6 +1246,50 @@ test('legal-entities-view: lista ausente não quebra', () => {
   eq(V.visibleLegalEntities(undefined, {}).length, 0);
   eq(V.visibleLegalEntities(null, { showInactive: true }).length, 0);
   assert(!V.canDeactivate(null, null), 'sem dados, sem ação');
+});
+
+// ── Tela de Terceirizados e Prestadores (web legado, ADR-0002) ────────────
+const _OC_VIEW = [
+  { id: 100, legal_name: 'Terceirizada Alfa LTDA', trade_name: 'Alfa', cnpj: '11.222.333/0001-81', company_kind: 'outsourced', registration_mode: 'simplified' },
+  { id: 200, legal_name: 'Prestadora Beta LTDA', trade_name: '', cnpj: '', company_kind: 'service_provider', registration_mode: 'simplified' },
+  { id: 300, legal_name: 'Gama Contratada LTDA', trade_name: 'Gama', cnpj: '45.723.174/0001-10', company_kind: 'other_contracted', registration_mode: 'standard' },
+];
+function _OCV() { return globalThis.__EPI_OUTSOURCED_COMPANIES_VIEW__; }
+
+test('outsourced-companies-view: rótulo do tipo traduz e cai para Outro quando desconhecido', () => {
+  const V = _OCV();
+  eq(V.companyKindLabel('outsourced'), 'Terceirizada');
+  eq(V.companyKindLabel('service_provider'), 'Prestadora de Serviço');
+  eq(V.companyKindLabel('other_contracted'), 'Outro');
+  eq(V.companyKindLabel('coisa_nova'), 'Outro');
+});
+test('outsourced-companies-view: isSimplified e registrationModeLabel', () => {
+  const V = _OCV();
+  assert(V.isSimplified(_OC_VIEW[0]), 'nasce simplificado');
+  assert(!V.isSimplified(_OC_VIEW[2]), 'já promovida ao padrão');
+  eq(V.registrationModeLabel(_OC_VIEW[0]), 'Simplificado');
+  eq(V.registrationModeLabel(_OC_VIEW[2]), 'Padrão');
+});
+test('outsourced-companies-view: busca cobre razão social, fantasia e CNPJ (mesmo vazio)', () => {
+  const V = _OCV();
+  eq(V.visibleOutsourcedCompanies(_OC_VIEW, { search: 'beta' })[0].id, 200);
+  eq(V.visibleOutsourcedCompanies(_OC_VIEW, { search: '45.723' })[0].id, 300);
+  eq(V.visibleOutsourcedCompanies(_OC_VIEW, { search: 'alfa' })[0].id, 100);
+});
+test('outsourced-companies-view: filtro de tipo é exato', () => {
+  const V = _OCV();
+  eq(V.visibleOutsourcedCompanies(_OC_VIEW, { kind: 'service_provider' }).length, 1);
+  eq(V.visibleOutsourcedCompanies(_OC_VIEW, { kind: 'outsourced' })[0].id, 100);
+});
+test('outsourced-companies-view: promover só aparece para quem ainda está no Simplificado', () => {
+  const V = _OCV();
+  assert(V.canPromote(_OC_VIEW[0]), 'simplificado pode promover');
+  assert(!V.canPromote(_OC_VIEW[2]), 'já padrão não promove de novo');
+});
+test('outsourced-companies-view: lista ausente não quebra', () => {
+  const V = _OCV();
+  eq(V.visibleOutsourcedCompanies(undefined, {}).length, 0);
+  eq(V.visibleOutsourcedCompanies(null, { kind: 'outsourced' }).length, 0);
 });
 
 // ── Filtro em cascata do dashboard (web legado) ───────────────────────────

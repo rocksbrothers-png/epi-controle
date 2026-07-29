@@ -484,11 +484,21 @@ def confirm_delivery_handover(connection, token, actor, *, signature_name='', si
 
 
 def fetch_deliveries(connection, actor=None, where_clause='', params=()):
+    from epi_backend.db import table_columns
     from modules.legal_entities.service import employee_legal_entity_sql
     # Rastreabilidade jurídica: QR → Entrega → Colaborador → CNPJ → Empresa.
     # A entrega não guarda o CNPJ redundantemente; ele é derivado do vínculo do
     # colaborador, mantendo uma única fonte de verdade.
     legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
+    # Snapshot histórico do vínculo com empresa terceirizada/prestadora
+    # (ADR-0002) — ao contrário do CNPJ acima, é gravado direto na entrega,
+    # porque é congelado no momento da entrega e não deve mudar se o
+    # cadastro vivo da empresa/contrato mudar depois (ver PR 4).
+    snapshot_select = (
+        ', deliveries.snapshot_tipo_vinculo, deliveries.snapshot_outsourced_company_name, '
+        'deliveries.snapshot_outsourced_company_cnpj, deliveries.snapshot_contract_ref, '
+        'deliveries.snapshot_epi_responsibility'
+    ) if 'snapshot_tipo_vinculo' in table_columns(connection, 'deliveries') else ''
     clauses = []
     query_params = list(params)
     if actor and actor['role'] != 'master_admin':
@@ -503,7 +513,7 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
                           companies.name AS company_name, companies.cnpj AS company_cnpj, companies.logo_type,
                           employees.employee_id_code, employees.name AS employee_name, employees.schedule_type, employees.tipo_vinculo,
                           units.name AS unit_name, units.unit_type, epis.name AS epi_name, epis.purchase_code, epis.ca, epis.unit_measure, epis.epi_validity_date, epis.manufacture_date, epis.qr_code_value,
-                          esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size{legal_entity_select},
+                          esi.glove_size AS stock_item_glove_size, esi.size AS stock_item_size, esi.uniform_size AS stock_item_uniform_size{legal_entity_select}{snapshot_select},
                           CASE WHEN COALESCE(deliveries.returned_date, '') != '' THEN 0
                                WHEN EXISTS (
                                    SELECT 1 FROM epi_ficha_items fi

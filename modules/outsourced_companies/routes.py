@@ -1,0 +1,172 @@
+"""Rotas de Empresa Terceirizada/Prestadora — Cadastro Simplificado (ADR-014).
+
+Endpoints:
+  GET  /api/outsourced-companies                                  → lista da empresa do ator
+  GET  /api/outsourced-companies/{id}                              → item único
+  POST /api/outsourced-companies                                   → cadastro (Simplificado ou Padrão)
+  PUT  /api/outsourced-companies/{id}                               → atualização
+  POST /api/outsourced-companies/{id}/promote                      → migração Simplificado → Padrão
+  GET  /api/outsourced-companies/{id}/service-contracts             → contratos da empresa
+  POST /api/outsourced-companies/{id}/service-contracts             → cadastro de contrato
+
+Reaproveita a mesma permissão de criar/ver colaborador (employees:*) — sem
+modelo de permissão novo, por decisão explícita do ADR-014. O piso técnico
+do módulo "terceirizados" em module_visibility (MODULE_REQUIRED_PERMISSIONS)
+usa a mesma permissão. A subpasta nasce oculta por padrão: mesmo quem tem
+employees:create só vê a tela depois que o Administrador Geral liga o
+módulo em Configuração > Regras > Visualização.
+"""
+
+from contextlib import closing
+
+from core.auth import ensure_company_access
+from core.database import get_connection
+from core.permissions import PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_VIEW
+from core.repository import authorize_action
+from core.security import resolve_actor_user_id
+from epi_backend.http_utils import require_fields, send_json, structured_log
+from modules.outsourced_companies.service import (
+    create_outsourced_company,
+    create_service_contract,
+    fetch_outsourced_companies,
+    fetch_service_contracts,
+    get_outsourced_company_by_id,
+    promote_outsourced_company,
+    update_outsourced_company,
+)
+
+
+def _audit(connection, company_id, actor, action_type, summary, details=None):
+    try:
+        from core.audit import register_company_audit
+        register_company_audit(connection, int(company_id), actor, action_type, summary, details or [])
+    except Exception as exc:
+        structured_log('warning', 'outsourced_company.audit_failed', company_id=company_id, error=str(exc))
+
+
+# ── GET ───────────────────────────────────────────────────────────────────────
+
+def handle_get_outsourced_companies(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        data = fetch_outsourced_companies(connection, int(actor['company_id']))
+        return send_json(handler, 200, {'outsourced_companies': data, 'items': data})
+
+
+def handle_get_outsourced_company(handler, parsed, payload, match):
+    entity_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        entity = get_outsourced_company_by_id(connection, entity_id)
+        if not entity:
+            return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
+        ensure_company_access(actor, entity['company_id'])
+        return send_json(handler, 200, {'outsourced_company': entity})
+
+
+def handle_get_service_contracts(handler, parsed, payload, match):
+    entity_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        entity = get_outsourced_company_by_id(connection, entity_id)
+        if not entity:
+            return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
+        ensure_company_access(actor, entity['company_id'])
+        data = fetch_service_contracts(connection, int(actor['company_id']), entity_id)
+        return send_json(handler, 200, {'service_contracts': data, 'items': data})
+
+
+# ── POST ──────────────────────────────────────────────────────────────────────
+
+def handle_post_outsourced_companies(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'legal_name'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_CREATE)
+        company_id = int(actor['company_id'])
+        entity_id = create_outsourced_company(connection, payload, company_id, actor_user_id=actor['id'])
+        _audit(
+            connection, company_id, actor, 'outsourced_company_created',
+            f"Empresa terceirizada cadastrada: {payload.get('legal_name')}.",
+            [{'field': 'legal_name', 'before': '', 'after': str(payload.get('legal_name') or '')}],
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.created', outsourced_company_id=entity_id,
+                       company_id=company_id, actor_user_id=actor['id'])
+        return send_json(handler, 201, {'ok': True, 'id': entity_id})
+
+
+def handle_post_outsourced_company_promote(handler, parsed, payload, match):
+    entity_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_UPDATE)
+        current = get_outsourced_company_by_id(connection, entity_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
+        ensure_company_access(actor, current['company_id'])
+        promote_outsourced_company(connection, entity_id, int(current['company_id']))
+        _audit(
+            connection, current['company_id'], actor, 'outsourced_company_promoted',
+            f"Empresa terceirizada promovida ao Cadastro Padrão: {current.get('legal_name')}.",
+            [{'field': 'registration_mode', 'before': 'simplified', 'after': 'standard'}],
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.promoted', outsourced_company_id=entity_id, actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'id': entity_id})
+
+
+def handle_post_service_contracts(handler, parsed, payload, match):
+    entity_id = int(match.group(1))
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_CREATE)
+        current = get_outsourced_company_by_id(connection, entity_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
+        ensure_company_access(actor, current['company_id'])
+        company_id = int(current['company_id'])
+        contract_id = create_service_contract(connection, payload, company_id, entity_id, actor_user_id=actor['id'])
+        _audit(
+            connection, company_id, actor, 'service_contract_created',
+            f"Contrato cadastrado para {current.get('legal_name')}.",
+            [{'field': 'contract_ref', 'before': '', 'after': str(payload.get('contract_ref') or '')}],
+        )
+        connection.commit()
+        structured_log('info', 'service_contract.created', service_contract_id=contract_id,
+                       outsourced_company_id=entity_id, actor_user_id=actor['id'])
+        return send_json(handler, 201, {'ok': True, 'id': contract_id})
+
+
+# ── PUT ───────────────────────────────────────────────────────────────────────
+
+def handle_put_outsourced_company(handler, parsed, payload, match):
+    entity_id = int(match.group(1))
+    require_fields(payload, ['actor_user_id', 'legal_name'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_UPDATE)
+        current = get_outsourced_company_by_id(connection, entity_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
+        ensure_company_access(actor, current['company_id'])
+        update_outsourced_company(connection, entity_id, payload, int(current['company_id']))
+        changes = [
+            {'field': field, 'before': str(current.get(field) or ''), 'after': str(payload.get(field) or '')}
+            for field in ('legal_name', 'cnpj', 'company_kind', 'epi_responsibility', 'status')
+            if str(payload.get(field) or '') != str(current.get(field) or '')
+        ]
+        _audit(
+            connection, current['company_id'], actor, 'outsourced_company_updated',
+            f"Empresa terceirizada atualizada: {current.get('legal_name')}.", changes,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.updated', outsourced_company_id=entity_id, actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'id': entity_id})
+
+
+def register_routes(router):
+    router.register('GET',  '/api/outsourced-companies',                                    handle_get_outsourced_companies)
+    router.register('GET',  r'^/api/outsourced-companies/(\d+)$',                            handle_get_outsourced_company, regex=True)
+    router.register('GET',  r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_get_service_contracts, regex=True)
+    router.register('POST', '/api/outsourced-companies',                                     handle_post_outsourced_companies)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/promote$',                    handle_post_outsourced_company_promote, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_post_service_contracts, regex=True)
+    router.register('PUT',  r'^/api/outsourced-companies/(\d+)$',                            handle_put_outsourced_company, regex=True)

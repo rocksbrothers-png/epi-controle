@@ -16,6 +16,7 @@ from core.permissions import (
     PERM_COMPANIES_VIEW,
     PERM_DASHBOARD_VIEW,
     PERM_DELIVERIES_VIEW,
+    PERM_EMPLOYEES_CREATE,
     PERM_FICHAS_VIEW,
     PERM_LEGAL_ENTITIES_VIEW,
     PERM_PO_VIEW,
@@ -51,6 +52,7 @@ MODULE_KEYS = (
     "relatorios",
     "administracao",
     "configuracoes",
+    "terceirizados",
 )
 
 # Piso técnico de cada módulo: o ator só pode enxergá-lo se tiver ao menos
@@ -70,6 +72,12 @@ MODULE_REQUIRED_PERMISSIONS: dict[str, frozenset[str]] = {
     # gateia por units:view, amplamente concedido) e não "Administração".
     "administracao": frozenset({PERM_USERS_VIEW, PERM_COMPANIES_VIEW, PERM_LEGAL_ENTITIES_VIEW}),
     "configuracoes": frozenset({PERM_SETTINGS_VIEW}),
+    # Cadastro Simplificado de Terceirizados e Prestadores (ADR-014). Piso
+    # técnico igual ao de criar colaborador: quem já pode `employees:create`
+    # (master_admin/general_admin/registry_admin) pode, em tese, operar esta
+    # subpasta — mas ver _OPT_IN_MODULES abaixo: ela nasce oculta para todos,
+    # inclusive esses papéis, até o Administrador Geral ligá-la por tenant.
+    "terceirizados": frozenset({PERM_EMPLOYEES_CREATE}),
 }
 
 # Comprador e Aprovador enxergam stock:view/deliveries:view apenas como
@@ -81,18 +89,26 @@ _STRUCTURALLY_HIDDEN_BY_DEFAULT: dict[str, frozenset[str]] = {
     "approver": frozenset({"estoque", "entregas", "fichas"}),
 }
 
+# Módulos "opt-in": diferente do padrão (visível sse a permissão técnica
+# existe), estes nascem OCULTOS para todo papel — mesmo quem tem a
+# permissão técnica — até o Administrador Geral ligá-los explicitamente na
+# configuração por tenant (module_visibility). Hoje só "terceirizados"
+# (ADR-014, condição de aprovação: subpasta oculta por padrão).
+_OPT_IN_MODULES: frozenset[str] = frozenset({"terceirizados"})
+
 
 def _default_module_visibility() -> dict[str, dict[str, bool]]:
     """Visibilidade padrão do sistema: módulo visível sse o perfil tem ao
     menos uma permissão técnica exigida, menos as restrições estruturais
-    explícitas acima. É o ponto de partida que a configuração do
-    Administrador Geral (por tenant) pode restringir ou liberar — sempre
-    reclampada pela permissão técnica em resolve_module_visibility().
+    explícitas acima, menos os módulos opt-in (sempre ocultos por padrão).
+    É o ponto de partida que a configuração do Administrador Geral (por
+    tenant) pode restringir ou liberar — sempre reclampada pela permissão
+    técnica em resolve_module_visibility().
     """
     hidden_by_role = _STRUCTURALLY_HIDDEN_BY_DEFAULT
     visibility: dict[str, dict[str, bool]] = {}
     for role, granted in PERMISSIONS.items():
-        hidden = hidden_by_role.get(role, frozenset())
+        hidden = hidden_by_role.get(role, frozenset()) | _OPT_IN_MODULES
         visibility[role] = {
             module: bool(required & granted) and module not in hidden
             for module, required in MODULE_REQUIRED_PERMISSIONS.items()

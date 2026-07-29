@@ -2405,6 +2405,123 @@ def ensure_legal_entities(connection) -> None:
     _backfill_default_legal_entities(connection)
 
 
+def ensure_outsourced_companies(connection) -> None:
+    """Cadastro Simplificado de Terceirizados e Prestadores (ADR-014).
+
+    ``outsourced_companies`` é uma tabela de referência pequena e isolada por
+    tenant (``company_id``) — NÃO é um tenant, não tem plano/billing/login
+    próprio, não é uma segunda base de colaboradores. Modela apenas a empresa
+    externa que empresta mão de obra para a operação (Terceirizada,
+    Prestadora de Serviço, ou Outro), no mesmo padrão que ``authorized_suppliers``
+    já valida em produção para um relacionamento de negócio diferente
+    (compra, não mão de obra).
+
+    ``service_contracts`` permite que a mesma empresa terceirizada tenha
+    vários contratos (unidades/períodos diferentes) sem duplicar seu
+    cadastro, cada um podendo sobrescrever a responsabilidade padrão de
+    fornecimento de EPI da empresa, com motivo auditável.
+
+    ``employees.outsourced_company_id`` substitui, de forma gradual, o texto
+    livre de ``empresa_origem`` por uma referência pesquisável — nullable,
+    ``NULL`` para todo colaborador CLT, exatamente como ``empresa_origem`` é
+    string vazia hoje. ``employees.legal_entity_id`` (vínculo trabalhista com
+    um CNPJ do PRÓPRIO tenant) não é tocado por esta migração.
+
+    Migração idempotente, apenas aditiva: nenhuma coluna/tabela existente é
+    removida, renomeada ou perde significado.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS outsourced_companies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                legal_name TEXT NOT NULL,
+                trade_name TEXT NOT NULL DEFAULT '',
+                cnpj TEXT NOT NULL DEFAULT '',
+                cnpj_normalized TEXT NOT NULL DEFAULT '',
+                company_kind TEXT NOT NULL DEFAULT 'outsourced',
+                epi_responsibility TEXT NOT NULL DEFAULT 'Conforme Contrato',
+                registration_mode TEXT NOT NULL DEFAULT 'simplified',
+                registration_status TEXT NOT NULL DEFAULT 'pending_completion',
+                status TEXT NOT NULL DEFAULT 'Ativa',
+                promoted_at TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                UNIQUE(company_id, cnpj_normalized),
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_outsourced_companies_company '
+            'ON outsourced_companies (company_id, status)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS service_contracts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                outsourced_company_id INTEGER NOT NULL,
+                unit_id INTEGER,
+                contract_ref TEXT NOT NULL DEFAULT '',
+                start_date TEXT NOT NULL DEFAULT '',
+                end_date TEXT NOT NULL DEFAULT '',
+                epi_responsibility_override TEXT NOT NULL DEFAULT '',
+                override_reason TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Ativo',
+                created_by_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (outsourced_company_id) REFERENCES outsourced_companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_service_contracts_outsourced_company '
+            'ON service_contracts (outsourced_company_id, status)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    # employees: referência à empresa terceirizada/contrato (nullable = CLT).
+    _safe_add_column(connection, 'employees', 'outsourced_company_id', 'INTEGER')
+    _safe_add_column(connection, 'employees', 'service_contract_id', 'INTEGER')
+    # Exceção individual de responsabilidade pelo fornecimento de EPI, com
+    # motivo obrigatório na camada de serviço quando preenchida.
+    _safe_add_column(connection, 'employees', 'epi_responsibility_override', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'epi_responsibility_override_reason', "TEXT NOT NULL DEFAULT ''")
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_employees_outsourced_company '
+            'ON employees (outsourced_company_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    # Limiar (em dias) para o alerta de sugestão de migração Simplificado →
+    # Padrão. Configurável por tenant via configuration_framework (mesmo
+    # storage do module_visibility) — nunca hardcoded no fluxo. O valor
+    # default de sistema (30 dias) só é usado quando o tenant não configurou
+    # nada; não é gravado aqui como linha, apenas documentado — o serviço lê
+    # com fallback, seguindo o mesmo padrão de outras chaves do framework.
+
+
 def ensure_stock_reservations(connection) -> None:
     """Reserva de estoque — o elo que faltava entre aprovar e entregar.
 
@@ -3077,6 +3194,9 @@ def init_db():
             ensure_epi_columns,
             ensure_employee_columns,
             ensure_legal_entities,
+            # Depende de ensure_legal_entities: usa a FK de companies e o
+            # padrão de employees já criado por essa migração.
+            ensure_outsourced_companies,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,

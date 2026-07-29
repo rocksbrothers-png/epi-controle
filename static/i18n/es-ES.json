@@ -57,7 +57,8 @@
     "expandMenu": "Expandir menú",
     "collapseMenu": "Contraer menú",
     "back": "Volver",
-    "legalEntities": "CNPJ"
+    "legalEntities": "CNPJ",
+    "outsourcedCompanies": "Tercerizados y Prestadores"
   },
   "login": {
     "title": "Iniciar sesión",
@@ -1410,6 +1411,29 @@
     "typeOther": "Otro",
     "newEntity": "Nuevo CNPJ",
     "companyFromAccount": "Definida por su cuenta — el CNPJ se registrará en esta empresa."
+  },
+  "outsourcedCompany": {
+    "pageTitle": "Tercerizados y Prestadores",
+    "pageDesc": "Registro Simplificado de empresas tercerizadas y prestadoras de servicio — el CNPJ es opcional aquí, puede completarse después.",
+    "create": "Registro de Empresa Tercerizada",
+    "save": "Guardar Empresa",
+    "update": "Actualizar Empresa",
+    "legalName": "Razón social",
+    "tradeName": "Nombre comercial",
+    "cnpj": "CNPJ",
+    "cnpjHint": "Opcional en el Registro Simplificado — obligatorio para promover al Registro Estándar.",
+    "companyKind": "Tipo de empresa",
+    "kindOutsourced": "Tercerizada",
+    "kindServiceProvider": "Prestadora de Servicio",
+    "kindOther": "Otro",
+    "responsibility": "Responsabilidad por el suministro de EPP",
+    "registrationMode": "Registro",
+    "filterSearch": "Buscar",
+    "filterKind": "Tipo",
+    "empty": "Ninguna empresa tercerizada registrada.",
+    "newEntity": "Nueva Empresa",
+    "promote": "Promover a Registro Estándar",
+    "promoteConfirm": "¿Promover a Registro Estándar? La empresa pasará a ser tratada como Registro Estándar. Se requiere un CNPJ."
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de stock por",

@@ -64,6 +64,9 @@ const VIEW_PERMISSIONS = {
   unidades: 'units:view',
   cnpjs: 'legal_entities:view',
   colaboradores: 'employees:view',
+  // Reaproveita o mesmo piso técnico de criar colaborador (ADR-0002) — sem
+  // permissão dedicada, por decisão explícita do ADR.
+  terceirizados: 'employees:create',
   // Só transferência entre unidades (form + tabela somente-leitura) — nunca
   // teve edição de dados cadastrais, então a permissão certa sempre foi a de
   // movimentação, não a de update genérico.
@@ -87,6 +90,10 @@ const VIEW_MODULE = {
   empresas: 'administracao',
   usuarios: 'administracao',
   cnpjs: 'administracao',
+  // Módulo opt-in próprio (ADR-0002): diferente de `cnpjs` acima, nasce
+  // OCULTO para todo papel — mesmo quem tem a permissão técnica — até o
+  // Administrador Geral ligá-lo explicitamente por tenant.
+  terceirizados: 'terceirizados',
   estoque: 'estoque',
   entregas: 'entregas',
   fichas: 'fichas',
@@ -105,7 +112,8 @@ const MODULE_VISIBILITY_LABELS = {
   fichas: 'Fichas de EPI',
   relatorios: 'Relatórios',
   administracao: 'Administração',
-  configuracoes: 'Configurações'
+  configuracoes: 'Configurações',
+  terceirizados: 'Terceirizados e Prestadores'
 };
 const VIEW_EYEBROW = {
   dashboard: 'Visão Geral',
@@ -115,6 +123,7 @@ const VIEW_EYEBROW = {
   unidades: 'Cadastro',
   cnpjs: 'Cadastro',
   colaboradores: 'Cadastro',
+  terceirizados: 'Cadastro',
   'gestao-colaborador': 'Operação',
   epis: 'Cadastro',
   estoque: 'Operação',
@@ -1911,6 +1920,11 @@ const state = {
   commercialFilters: { status: '', date_from: '', date_to: '', actor_name: '' },
   unitsFilters: { company_id: '', name: '', type: '', city: '' },
   legalEntitiesFilters: { search: '', type: '', showInactive: false },
+  // Terceirizados e Prestadores (ADR-0002): ao contrário de `legalEntities`
+  // acima, não chega no bootstrap — o módulo é opt-in/oculto por padrão, então
+  // a lista só é buscada sob demanda quando a tela é aberta (ver showView).
+  outsourcedCompanies: [],
+  outsourcedCompaniesFilters: { search: '', kind: '' },
   archivedUnits: [],
   archivedUnitsFilters: { company_id: '', date: '', reason: '', user: '' },
   archivedEmployees: [],
@@ -2091,6 +2105,9 @@ const refs = {
   legalEntitiesFilterSearch: document.getElementById('legal-entities-filter-search'),
   legalEntitiesFilterType: document.getElementById('legal-entities-filter-type'),
   legalEntitiesShowInactive: document.getElementById('legal-entities-show-inactive'),
+  outsourcedCompaniesTable: document.getElementById('outsourced-companies-table'),
+  outsourcedCompaniesFilterSearch: document.getElementById('outsourced-companies-filter-search'),
+  outsourcedCompaniesFilterKind: document.getElementById('outsourced-companies-filter-kind'),
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
   archivedUnitsTable: document.getElementById('archived-units-table'),
@@ -3085,6 +3102,9 @@ function showView(view, options = {}) {
   }
   if (view === 'epis' && typeof loadArchivedRecords === 'function') {
     void loadArchivedRecords('epi');
+  }
+  if (view === 'terceirizados' && typeof loadOutsourcedCompanies === 'function') {
+    void loadOutsourcedCompanies();
   }
   if (view === 'configuracao' && typeof loadArchivalPolicy === 'function') {
     void loadArchivalPolicy();
@@ -7447,6 +7467,125 @@ async function deactivateLegalEntity(entityId) {
   }
 }
 
+// ── Tela de Terceirizados e Prestadores (web legado, ADR-0002) ──────────────
+
+// Regras puras vivem em js/views/outsourced-companies-view.js (testadas no
+// harness); aqui ficam a leitura do estado, o DOM e as chamadas de API.
+function outsourcedCompaniesViewHelpers() {
+  return globalThis.__EPI_OUTSOURCED_COMPANIES_VIEW__ || {};
+}
+
+// Diferente de `state.legalEntities`, esta lista não chega no bootstrap — o
+// módulo nasce oculto por padrão, então só busca quando a tela é aberta
+// (chamado a partir de showView).
+async function loadOutsourcedCompanies() {
+  if (!hasPermission('employees:create')) return;
+  try {
+    const data = await api(`/api/outsourced-companies?${actorQuery()}`);
+    state.outsourcedCompanies = data.outsourced_companies || data.items || [];
+  } catch (error) {
+    state.outsourcedCompanies = [];
+    reportNonCriticalError('[terceirizados] falha ao carregar empresas terceirizadas', error);
+  }
+  renderOutsourcedCompanies();
+}
+
+function renderOutsourcedCompanies() {
+  if (!refs.outsourcedCompaniesTable) return;
+  const helpers = outsourcedCompaniesViewHelpers();
+  const visible = helpers.visibleOutsourcedCompanies
+    ? helpers.visibleOutsourcedCompanies(state.outsourcedCompanies, state.outsourcedCompaniesFilters)
+    : (state.outsourcedCompanies || []);
+  const canUpdate = hasPermission('employees:update');
+  refs.outsourcedCompaniesTable.innerHTML = visible
+    .map((item) => formatOutsourcedCompanyRow(item, { canUpdate }))
+    .join('') || globalThis.dsTableState({
+      colspan: 6,
+      message: tr('outsourcedCompany.empty', 'Nenhuma empresa terceirizada cadastrada.'),
+    });
+}
+
+function formatOutsourcedCompanyRow(item, permissions) {
+  const helpers = outsourcedCompaniesViewHelpers();
+  const kindLabel = helpers.companyKindLabel ? helpers.companyKindLabel(item.company_kind) : (item.company_kind || '');
+  const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
+  // Promover só faz sentido para quem ainda está no Simplificado — o backend
+  // também recusa promover quem já é Padrão, mas oferecer o botão sempre só
+  // geraria mensagem de erro sem efeito.
+  const showPromote = permissions.canUpdate
+    && (helpers.canPromote ? helpers.canPromote(item) : true);
+  const entityId = escapeHtml(String(item.id ?? ''));
+  const buttons = [];
+  if (permissions.canUpdate) {
+    buttons.push(`<button class="ghost" data-outsourced-company-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
+  }
+  if (showPromote) {
+    buttons.push(`<button class="ghost" data-outsourced-company-promote="${entityId}">${escapeHtml(tr('outsourcedCompany.promote', 'Promover a Cadastro Padrão'))}</button>`);
+  }
+  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
+  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
+    + `<td>${escapeHtml(kindLabel)}</td><td>${escapeHtml(item.epi_responsibility || '')}</td>`
+    + `<td>${escapeHtml(modeLabel)}</td><td>${actions}</td></tr>`;
+}
+
+function syncOutsourcedCompaniesFilters() {
+  state.outsourcedCompaniesFilters.search = String(refs.outsourcedCompaniesFilterSearch?.value || '').trim();
+  state.outsourcedCompaniesFilters.kind = String(refs.outsourcedCompaniesFilterKind?.value || '').trim();
+  renderOutsourcedCompanies();
+}
+
+// Alterna o formulário entre cadastrar e atualizar — mesmo padrão de
+// setLegalEntityFormMode.
+function setOutsourcedCompanyFormMode(mode) {
+  const cancel = document.getElementById('outsourced-company-cancel-edit');
+  if (cancel) cancel.hidden = mode !== 'edit';
+}
+
+function resetOutsourcedCompanyForm() {
+  const form = document.getElementById('outsourced-company-form');
+  if (!form) return;
+  form.reset();
+  form.elements.id.value = '';
+  setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
+  setOutsourcedCompanyFormMode('create');
+}
+
+function startEditOutsourcedCompany(entityId) {
+  const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === String(entityId));
+  const form = document.getElementById('outsourced-company-form');
+  if (!item || !form) return;
+  form.elements.id.value = item.id;
+  form.elements.legal_name.value = item.legal_name || '';
+  form.elements.trade_name.value = item.trade_name || '';
+  form.elements.cnpj.value = item.cnpj || '';
+  form.elements.company_kind.value = item.company_kind || 'outsourced';
+  form.elements.epi_responsibility.value = item.epi_responsibility || 'Conforme Contrato';
+  setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.update', 'Atualizar Empresa'));
+  setOutsourcedCompanyFormMode('edit');
+  showView('terceirizados');
+  focusRegistrationTab('terceirizados');
+}
+
+async function promoteOutsourcedCompany(entityId) {
+  if (!requirePermission('employees:update')) return;
+  const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === String(entityId));
+  if (!item) return;
+  const confirmed = confirm(tr(
+    'outsourcedCompany.promoteConfirm',
+    'Promover ao Cadastro Padrão? A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.',
+  ) + `\n\n${item.legal_name}`);
+  if (!confirmed) return;
+  try {
+    await api(`/api/outsourced-companies/${entityId}/promote`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id }),
+    });
+    await loadOutsourcedCompanies();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 // Vínculo jurídico da unidade.
 //
 // Diferente do colaborador, aqui não há imutabilidade: a unidade pode mudar de
@@ -9708,6 +9847,7 @@ function renderAll() {
   renderTables();
   renderLegalEntities();
   syncLegalEntityCompanyField();
+  renderOutsourcedCompanies();
   if (canManagePurchaseFunctions()) void loadPurchaseFunctions();
   renderLowStock();
   renderRequests();
@@ -10116,6 +10256,11 @@ async function saveSimpleForm(event, path, permission) {
     }
     
     await loadBootstrap();
+    // Terceirizados e Prestadores não vem no bootstrap (módulo opt-in) —
+    // recarrega a lista à parte, mesma lógica de loadOutsourcedCompanies().
+    if (event.target.id === 'outsourced-company-form') {
+      await loadOutsourcedCompanies();
+    }
   } catch (error) {
     if (event.target.id === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
@@ -10144,6 +10289,9 @@ function handleFormReset(form) {
     if (form.elements.active) form.elements.active.value = '1';
     setLegalEntityFormMode('create');
     syncLegalEntityCompanyField();
+  } else if (form.id === 'outsourced-company-form') {
+    setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
+    setOutsourcedCompanyFormMode('create');
   } else if (form.id === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
   } else if (form.id === 'employee-form') {
@@ -11581,6 +11729,7 @@ async function init() {
 
   bindAppListener(document.getElementById('unit-form'), 'submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
   bindAppListener(document.getElementById('legal-entity-form'), 'submit', (event) => saveSimpleForm(event, '/api/legal-entities', 'legal_entities:create'));
+  bindAppListener(document.getElementById('outsourced-company-form'), 'submit', (event) => saveSimpleForm(event, '/api/outsourced-companies', 'employees:create'));
   bindAppListener(document.getElementById('employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
@@ -11756,6 +11905,15 @@ async function init() {
     if (edit) { startEditLegalEntity(edit); return; }
     const deactivate = event.target.dataset.legalEntityDeactivate;
     if (deactivate) void deactivateLegalEntity(deactivate);
+  });
+  bindSearchInput(refs.outsourcedCompaniesFilterSearch, syncOutsourcedCompaniesFilters, 120);
+  bindAppListener(refs.outsourcedCompaniesFilterKind, 'change', syncOutsourcedCompaniesFilters);
+  bindAppListener(document.getElementById('outsourced-company-cancel-edit'), 'click', resetOutsourcedCompanyForm);
+  bindAppListener(refs.outsourcedCompaniesTable, 'click', (event) => {
+    const edit = event.target.dataset.outsourcedCompanyEdit;
+    if (edit) { startEditOutsourcedCompany(edit); return; }
+    const promote = event.target.dataset.outsourcedCompanyPromote;
+    if (promote) void promoteOutsourcedCompany(promote);
   });
   bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
   bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);

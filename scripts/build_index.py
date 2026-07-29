@@ -48,6 +48,7 @@ VIEW_IDS = [
     "usuarios",
     "unidades",
     "cnpjs",
+    "terceirizados",
     "colaboradores",
     "gestao-colaborador",
     "epis",

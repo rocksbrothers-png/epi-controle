@@ -57,7 +57,8 @@
     "expandMenu": "Expand menu",
     "collapseMenu": "Collapse menu",
     "back": "Back",
-    "legalEntities": "Tax IDs"
+    "legalEntities": "Tax IDs",
+    "outsourcedCompanies": "Outsourced Companies & Contractors"
   },
   "login": {
     "title": "Sign In",
@@ -1410,6 +1411,29 @@
     "typeOther": "Other",
     "newEntity": "New legal entity",
     "companyFromAccount": "Set by your account — the legal entity is registered under this company."
+  },
+  "outsourcedCompany": {
+    "pageTitle": "Outsourced Companies & Contractors",
+    "pageDesc": "Simplified Registration for outsourced companies and service providers — Tax ID is optional here, it can be completed later.",
+    "create": "Register Outsourced Company",
+    "save": "Save Company",
+    "update": "Update Company",
+    "legalName": "Legal name",
+    "tradeName": "Trade name",
+    "cnpj": "Tax ID",
+    "cnpjHint": "Optional in the Simplified Registration — required to promote to Standard Registration.",
+    "companyKind": "Company type",
+    "kindOutsourced": "Outsourced",
+    "kindServiceProvider": "Service provider",
+    "kindOther": "Other",
+    "responsibility": "PPE supply responsibility",
+    "registrationMode": "Registration",
+    "filterSearch": "Search",
+    "filterKind": "Type",
+    "empty": "No outsourced company registered.",
+    "newEntity": "New company",
+    "promote": "Promote to Standard Registration",
+    "promoteConfirm": "Promote to Standard Registration? The company will be treated as a Standard Registration. A Tax ID is required."
   },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",

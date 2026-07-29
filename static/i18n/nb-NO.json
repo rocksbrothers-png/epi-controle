@@ -57,7 +57,8 @@
     "expandMenu": "Utvid meny",
     "collapseMenu": "Skjul meny",
     "back": "Tilbake",
-    "legalEntities": "CNPJ"
+    "legalEntities": "CNPJ",
+    "outsourcedCompanies": "Underleverandører og Tjenesteytere"
   },
   "login": {
     "title": "Logg inn",
@@ -1410,6 +1411,29 @@
     "typeOther": "Annet",
     "newEntity": "Nytt CNPJ",
     "companyFromAccount": "Angitt av kontoen din — CNPJ-et registreres på dette selskapet."
+  },
+  "outsourcedCompany": {
+    "pageTitle": "Underleverandører og Tjenesteytere",
+    "pageDesc": "Forenklet Registrering av underleverandører og tjenesteytende selskaper — CNPJ er valgfritt her, kan fullføres senere.",
+    "create": "Registrer Underleverandør",
+    "save": "Lagre Selskap",
+    "update": "Oppdater Selskap",
+    "legalName": "Foretaksnavn",
+    "tradeName": "Handelsnavn",
+    "cnpj": "CNPJ",
+    "cnpjHint": "Valgfritt i Forenklet Registrering — påkrevd for å oppgradere til Standard Registrering.",
+    "companyKind": "Selskapstype",
+    "kindOutsourced": "Underleverandør",
+    "kindServiceProvider": "Tjenesteyter",
+    "kindOther": "Annet",
+    "responsibility": "Ansvar for levering av verneutstyr",
+    "registrationMode": "Registrering",
+    "filterSearch": "Søk",
+    "filterKind": "Type",
+    "empty": "Ingen underleverandør registrert.",
+    "newEntity": "Nytt Selskap",
+    "promote": "Oppgrader til Standard Registrering",
+    "promoteConfirm": "Oppgradere til Standard Registrering? Selskapet vil bli behandlet som Standard Registrering. Et CNPJ kreves."
   },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",

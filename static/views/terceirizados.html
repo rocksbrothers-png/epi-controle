@@ -1,0 +1,64 @@
+      <section id="terceirizados-view" class="view">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="outsourcedCompany.pageTitle">Terceirizados e Prestadores</h2>
+            <p class="page-desc" data-i18n="outsourcedCompany.pageDesc">Cadastro Simplificado de empresas terceirizadas e prestadoras de serviço — CNPJ é opcional aqui, pode ser completado depois.</p>
+          </div>
+        </header>
+        <nav class="view-tabs" data-vtabs="terceirizados" aria-label="Terceirizados e Prestadores">
+          <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
+          <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+        </nav>
+        <div class="vtab-panel" data-vtab-panel="cadastro">
+          <form id="outsourced-company-form" class="card form-stack" data-update-permission="employees:update">
+            <h3 data-i18n="outsourcedCompany.create">Cadastro de Empresa Terceirizada</h3>
+            <input type="hidden" name="id">
+            <fieldset class="form-fieldset">
+              <legend data-i18n="legalEntity.identification">Identificação</legend>
+              <label><span data-i18n="outsourcedCompany.legalName">Razão social</span><input name="legal_name" type="text" autocomplete="off" required></label>
+              <label><span data-i18n="outsourcedCompany.tradeName">Nome fantasia</span><input name="trade_name" type="text" autocomplete="off"></label>
+              <label><span data-i18n="outsourcedCompany.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" placeholder="00.000.000/0001-00"><small class="muted" data-i18n="outsourcedCompany.cnpjHint">Opcional no Cadastro Simplificado — obrigatório para promover ao Cadastro Padrão.</small></label>
+              <label><span data-i18n="outsourcedCompany.companyKind">Tipo da empresa</span><select name="company_kind">
+                <option value="outsourced" data-i18n="outsourcedCompany.kindOutsourced">Terceirizada</option>
+                <option value="service_provider" data-i18n="outsourcedCompany.kindServiceProvider">Prestadora de Serviço</option>
+                <option value="other_contracted" data-i18n="outsourcedCompany.kindOther">Outro</option>
+              </select></label>
+              <label><span data-i18n="outsourcedCompany.responsibility">Responsabilidade pelo fornecimento de EPI</span><select name="epi_responsibility">
+                <option value="Empresa Contratante">Empresa Contratante</option>
+                <option value="Empresa Terceirizada">Empresa Terceirizada</option>
+                <option value="Empresa Prestadora de Serviço">Empresa Prestadora de Serviço</option>
+                <option value="Responsabilidade Compartilhada">Responsabilidade Compartilhada</option>
+                <option value="Conforme Contrato" selected>Conforme Contrato</option>
+                <option value="Não Definido">Não Definido</option>
+              </select></label>
+            </fieldset>
+            <div class="action-group">
+              <button class="primary" type="submit" data-i18n="outsourcedCompany.save">Salvar Empresa</button>
+              <!-- Mesma função de gravação para criar e editar, sem caminho de
+                   código separado (condição vinculante do ADR-0002). Sem este
+                   botão, "Editar" prendia o formulário no modo edição. -->
+              <button id="outsourced-company-cancel-edit" class="ghost" type="button" hidden data-i18n="outsourcedCompany.newEntity">Nova Empresa</button>
+            </div>
+          </form>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="lista">
+          <article class="card"><h3 data-i18n="outsourcedCompany.pageTitle">Terceirizados e Prestadores</h3>
+            <div class="form-grid">
+              <label><span data-i18n="outsourcedCompany.filterSearch">Buscar</span><input id="outsourced-companies-filter-search" type="search" placeholder="Nome ou CNPJ"></label>
+              <label><span data-i18n="outsourcedCompany.filterKind">Tipo</span><select id="outsourced-companies-filter-kind"><option value="" data-i18n="unit.filterAll">Todos</option>
+                <option value="outsourced" data-i18n="outsourcedCompany.kindOutsourced">Terceirizada</option>
+                <option value="service_provider" data-i18n="outsourcedCompany.kindServiceProvider">Prestadora de Serviço</option>
+                <option value="other_contracted" data-i18n="outsourcedCompany.kindOther">Outro</option>
+              </select></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="outsourcedCompany.legalName">Razão social</th>
+              <th scope="col" data-i18n="outsourcedCompany.cnpj">CNPJ</th>
+              <th scope="col" data-i18n="outsourcedCompany.companyKind">Tipo</th>
+              <th scope="col" data-i18n="outsourcedCompany.responsibility">Responsabilidade pelo EPI</th>
+              <th scope="col" data-i18n="outsourcedCompany.registrationMode">Cadastro</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="outsourced-companies-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>

@@ -355,7 +355,18 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    `module_visibility: 'terceirizados'` (oculto por padrão, opt-in) e piso
    técnico `employees:create` (sem permissão dedicada, por decisão deste
    ADR). 22 chaves de i18n traduzidas nos 5 locales region-specific.
-8. **PR 8 — Web Legado.**
+8. **PR 8 — Web Legado. (implementado)** Nova tela `#terceirizados-view`
+   (padrão de abas Cadastro/Lista, igual à de CNPJs) em `static/`, montada
+   via fragmentos (`static/views/terceirizados.html`, `_sidebar.html`,
+   `_scripts.html`, `scripts/build_index.py`). Regras puras em
+   `static/js/views/outsourced-companies-view.js` (rótulo de tipo, filtro de
+   lista, `canPromote`), testadas em `static/js/test/run-tests.js`. Estado
+   (`state.outsourcedCompanies`) carregado sob demanda ao abrir a tela — não
+   entra no `/api/bootstrap`, pois o módulo nasce oculto por padrão
+   (`VIEW_MODULE.terceirizados: 'terceirizados'`). CRUD via
+   `saveSimpleForm`/`api()` reaproveitando os endpoints do PR1, incluindo
+   promoção Simplificado → Padrão com confirmação. 22 chaves de i18n
+   traduzidas nos 5 locales de `static/i18n/`.
 9. **PR 9 — Testes completos, regressão e documentação final.**
 
 Critério de aceite em cada PR: suíte completa (`pytest`, `flutter

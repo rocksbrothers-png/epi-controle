@@ -21,12 +21,14 @@ from modules.settings.service import (
     get_configuration_rules,
     get_ficha_config,
     get_ficha_retention_policy,
+    get_module_visibility_config,
     get_rule_engine_status,
     promote_rule_engine,
     save_configuration_framework,
     save_configuration_rules,
     save_ficha_config,
     save_ficha_retention_policy,
+    save_module_visibility,
     delete_shadow_log,
     fetch_shadow_log,
 )
@@ -79,6 +81,17 @@ def handle_get_configuration_rules(handler, parsed, payload, match):
         require_configuration_admin(actor)
         rules = get_configuration_rules(connection, actor['company_id'])
         return send_json(handler, 200, {'rules': rules})
+
+
+def handle_get_module_visibility(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        require_configuration_admin(actor)
+        query = parse_qs(parsed.query)
+        company_id = _resolve_settings_company_id(connection, actor, query.get('company_id', [None])[0], require=False)
+        module_visibility = get_module_visibility_config(connection, company_id)
+        from epi_backend.rule_engine import MODULE_KEYS
+        return send_json(handler, 200, {'module_visibility': module_visibility, 'modules': list(MODULE_KEYS)})
 
 
 def handle_get_configuration_framework(handler, parsed, payload, match):
@@ -217,6 +230,32 @@ def handle_post_configuration_rules(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True})
 
 
+def handle_post_module_visibility(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
+        require_configuration_admin(actor)
+        # require=False: sem seletor de empresa na tela hoje (só general_admin/
+        # registry_admin usam este endpoint na prática — sempre têm company_id
+        # próprio). master_admin sem seleção cai no escopo 'global', mesmo
+        # comportamento herdado de save_configuration_rules/framework.
+        company_id = _resolve_settings_company_id(connection, actor, payload.get('company_id'), require=False)
+        role = payload.get('role')
+        modules = payload.get('modules')
+        before, after = save_module_visibility(connection, company_id, role, modules)
+        from modules.companies.service import register_company_audit
+        register_company_audit(
+            connection, company_id, actor, 'visibility_config_updated',
+            f'Visibilidade de módulos atualizada para o perfil "{role}".',
+            {
+                'role': role,
+                'before': before,
+                'after': after,
+            },
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'role': role, 'before': before, 'after': after})
+
+
 def handle_post_configuration_framework(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
@@ -303,6 +342,8 @@ def register_routes(router):
     router.register('GET',  '/api/ficha-config',              handle_get_ficha_config)
     router.register('GET',  '/api/configuration-rules',       handle_get_configuration_rules)
     router.register('GET',  '/api/configuration-framework',   handle_get_configuration_framework)
+    router.register('GET',  '/api/module-visibility',         handle_get_module_visibility)
+    router.register('POST', '/api/module-visibility',         handle_post_module_visibility)
     router.register('GET',  '/api/rules-engine/diagnostics',  handle_get_rules_engine_diagnostics)
     router.register('GET',  '/api/rules-engine/status',       handle_get_rules_engine_status)
     router.register('GET',  '/api/rules-engine/shadow-diff',   handle_get_rules_engine_shadow_diff)

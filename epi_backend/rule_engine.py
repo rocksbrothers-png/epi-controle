@@ -12,6 +12,21 @@ import copy
 import hashlib
 import os
 
+from core.permissions import (
+    PERM_COMPANIES_VIEW,
+    PERM_DASHBOARD_VIEW,
+    PERM_DELIVERIES_VIEW,
+    PERM_FICHAS_VIEW,
+    PERM_LEGAL_ENTITIES_VIEW,
+    PERM_PO_VIEW,
+    PERM_PURCHASE_REQUESTS_VIEW,
+    PERM_REPORTS_VIEW,
+    PERM_SETTINGS_VIEW,
+    PERM_STOCK_VIEW,
+    PERM_USERS_VIEW,
+    PERMISSIONS,
+)
+
 ADMIN_CONFIGURATION_ROLES = ("master_admin", "general_admin", "registry_admin")
 SUPPORTED_REPORT_TYPES = (
     "stock_by_unit",
@@ -22,6 +37,67 @@ SUPPORTED_REPORT_TYPES = (
 )
 SUPPORTED_CONTEXTS = ("outside_jv", "inside_jv")
 SUPPORTED_EXECUTION_MODES = ("off", "shadow", "canary", "enforced")
+
+# Módulos estruturais reconhecidos pela política de acesso (menus, rotas,
+# deep links). Mesmo conjunto usado pelo Flutter (NavigationPolicy) e pelo
+# web legado (canAccessView) — qualquer módulo novo entra aqui primeiro.
+MODULE_KEYS = (
+    "dashboard",
+    "compras",
+    "estoque",
+    "entregas",
+    "solicitacoes",
+    "fichas",
+    "relatorios",
+    "administracao",
+    "configuracoes",
+)
+
+# Piso técnico de cada módulo: o ator só pode enxergá-lo se tiver ao menos
+# uma destas permissões (ADMIN_CONFIGURATION_ROLES/regra de negócio decide o
+# "pode", isto decide o "existe tecnicamente"). É o teto que a configuração
+# administrativa (module_visibility) nunca pode ultrapassar.
+MODULE_REQUIRED_PERMISSIONS: dict[str, frozenset[str]] = {
+    "dashboard": frozenset({PERM_DASHBOARD_VIEW}),
+    "compras": frozenset({PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW}),
+    "estoque": frozenset({PERM_STOCK_VIEW}),
+    "entregas": frozenset({PERM_DELIVERIES_VIEW}),
+    "solicitacoes": frozenset({PERM_PURCHASE_REQUESTS_VIEW}),
+    "fichas": frozenset({PERM_FICHAS_VIEW}),
+    "relatorios": frozenset({PERM_REPORTS_VIEW}),
+    # Empresas/Usuários/CNPJs (administração de tenant). Unidades fica de
+    # fora de propósito: é cadastro operacional (route_permissions.dart já a
+    # gateia por units:view, amplamente concedido) e não "Administração".
+    "administracao": frozenset({PERM_USERS_VIEW, PERM_COMPANIES_VIEW, PERM_LEGAL_ENTITIES_VIEW}),
+    "configuracoes": frozenset({PERM_SETTINGS_VIEW}),
+}
+
+# Comprador e Aprovador enxergam stock:view/deliveries:view apenas como
+# apoio à decisão de compra (ex.: nível de estoque no card do pedido), mas
+# não devem ter acesso estrutural às telas operacionais completas de
+# Estoque, Entregas e Fichas de EPI por padrão (docs/PAPEIS_E_ATRIBUICOES.md).
+_STRUCTURALLY_HIDDEN_BY_DEFAULT: dict[str, frozenset[str]] = {
+    "buyer": frozenset({"estoque", "entregas", "fichas"}),
+    "approver": frozenset({"estoque", "entregas", "fichas"}),
+}
+
+
+def _default_module_visibility() -> dict[str, dict[str, bool]]:
+    """Visibilidade padrão do sistema: módulo visível sse o perfil tem ao
+    menos uma permissão técnica exigida, menos as restrições estruturais
+    explícitas acima. É o ponto de partida que a configuração do
+    Administrador Geral (por tenant) pode restringir ou liberar — sempre
+    reclampada pela permissão técnica em resolve_module_visibility().
+    """
+    hidden_by_role = _STRUCTURALLY_HIDDEN_BY_DEFAULT
+    visibility: dict[str, dict[str, bool]] = {}
+    for role, granted in PERMISSIONS.items():
+        hidden = hidden_by_role.get(role, frozenset())
+        visibility[role] = {
+            module: bool(required & granted) and module not in hidden
+            for module, required in MODULE_REQUIRED_PERMISSIONS.items()
+        }
+    return visibility
 
 
 @dataclass(frozen=True)
@@ -66,6 +142,7 @@ def default_framework_payload() -> dict[str, Any]:
             },
         },
         "visibility_rules": [],
+        "module_visibility": _default_module_visibility(),
         "report_scopes": {
             report_type: {
                 "enabled": True,
@@ -138,6 +215,17 @@ def normalize_framework_payload(candidate: dict[str, Any] | None) -> dict[str, A
             "employees": str((scope or {}).get("employees") or "operational"),
         }
     payload["hierarchy"]["who_can_view_what"] = _merge(default_framework_payload()["hierarchy"]["who_can_view_what"], cleaned_hierarchy)
+
+    valid_module_roles = set(PERMISSIONS.keys())
+    cleaned_module_visibility: dict[str, dict[str, bool]] = {}
+    for role, modules in (payload.get("module_visibility", {}) or {}).items():
+        role_name = str(role or "").strip()
+        if role_name not in valid_module_roles or not isinstance(modules, dict):
+            continue
+        cleaned_module_visibility[role_name] = {
+            module: bool(modules[module]) for module in MODULE_KEYS if module in modules
+        }
+    payload["module_visibility"] = _merge(_default_module_visibility(), cleaned_module_visibility)
 
     for report_type in SUPPORTED_REPORT_TYPES:
         scope = payload["report_scopes"].setdefault(report_type, {})
@@ -252,6 +340,26 @@ def resolve_visibility_filters(context: RuleContext, framework: dict[str, Any]) 
         "allow_employees": True if not last_rule else bool(last_rule.get("can_view_employees", True)),
         "matched_rule_id": (last_rule or {}).get("id", ""),
     }
+
+
+def resolve_module_visibility(context: RuleContext, framework: dict[str, Any], actor_permissions: set[str] | frozenset[str]) -> dict[str, bool]:
+    """Visibilidade estrutural efetiva de cada módulo para o ator.
+
+    Combinação: configuração (padrão do sistema + override do tenant, já
+    mesclados em `framework["module_visibility"]` por normalize_framework_payload)
+    AND permissão técnica (piso que a configuração nunca ultrapassa). O
+    backend segue sendo a autoridade final: este resultado só orienta
+    menu/rotas/deep links no Flutter e no web legado — nenhuma rota de dados
+    passa a confiar nele para autorizar leitura/escrita.
+    """
+    role_config = framework.get("module_visibility", {}).get(context.role, {})
+    granted = set(actor_permissions or [])
+    resolved: dict[str, bool] = {}
+    for module, required in MODULE_REQUIRED_PERMISSIONS.items():
+        has_technical_permission = bool(required & granted)
+        configured = bool(role_config.get(module, False))
+        resolved[module] = configured and has_technical_permission
+    return resolved
 
 
 def resolve_report_scope(report_type: str, context: RuleContext, framework: dict[str, Any]) -> dict[str, Any]:

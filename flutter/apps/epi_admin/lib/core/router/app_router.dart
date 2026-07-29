@@ -27,6 +27,7 @@ import '../../features/feedback/feedback_screen.dart';
 import '../i18n/locale_provider.dart';
 import '../i18n/theme_mode_notifier.dart';
 import '../shell/app_shell.dart';
+import 'navigation_policy.dart';
 import 'route_permissions.dart';
 import 'routes.dart';
 
@@ -39,12 +40,14 @@ const _kUsarFlutterLogin =
 GoRouter buildRouter({
   required ValueNotifier<bool> isAuthenticated,
   required ValueNotifier<List<String>> permissions,
+  required ValueNotifier<Map<String, bool>> moduleVisibility,
   required LocaleProvider localeProvider,
   required ThemeModeNotifier themeNotifier,
 }) {
   return GoRouter(
     initialLocation: Routes.login,
-    refreshListenable: Listenable.merge([isAuthenticated, permissions]),
+    refreshListenable:
+        Listenable.merge([isAuthenticated, permissions, moduleVisibility]),
     redirect: (context, state) {
       if (!_kUsarFlutterLogin) return null;
       final isLoggedIn = isAuthenticated.value;
@@ -59,6 +62,16 @@ GoRouter buildRouter({
       if (isLoggedIn) {
         final required = requiredPermissionFor(state.matchedLocation);
         if (required != null && !permissions.value.contains(required)) {
+          return Routes.dashboard;
+        }
+        // Camada de visibilidade estrutural (menu/rotas/deep links): a
+        // configuração do Administrador Geral pode desligar um módulo para
+        // o perfil mesmo quando a permissão técnica acima libera — cobre
+        // navegação direta por URL/deep link, não só o menu.
+        if (!isModuleLocationAccessible(
+          state.matchedLocation,
+          moduleVisibility.value,
+        )) {
           return Routes.dashboard;
         }
       }

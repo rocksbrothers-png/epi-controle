@@ -40,6 +40,7 @@ class LoginResponse {
     required this.user,
     this.refreshToken,
     this.permissions = const [],
+    this.moduleVisibility = const {},
   });
 
   final String token;
@@ -52,11 +53,17 @@ class LoginResponse {
   /// (que não existe), deixando o RBAC do app sem permissões.
   final List<String> permissions;
 
+  /// Visibilidade estrutural por módulo (menu/rotas/deep links) — regra
+  /// padrão + configuração do Administrador Geral, já clampada pela
+  /// permissão técnica. Consumida pelo NavigationPolicy.
+  final Map<String, dynamic> moduleVisibility;
+
   factory LoginResponse.fromJson(Map<String, dynamic> json) => LoginResponse(
         token: json['token'] as String,
         user: _asMap(json['user']),
         refreshToken: json['refresh_token'] as String?,
         permissions: _parsePermissions(json['permissions']),
+        moduleVisibility: _asMap(json['module_visibility']),
       );
 }
 
@@ -75,10 +82,15 @@ class RefreshResponse {
 
 /// Identidade do usuário a partir de `GET /api/auth/me` (envelope `data`).
 class AuthIdentity {
-  const AuthIdentity({required this.user, this.permissions = const []});
+  const AuthIdentity({
+    required this.user,
+    this.permissions = const [],
+    this.moduleVisibility = const {},
+  });
 
   final Map<String, dynamic> user;
   final List<String> permissions;
+  final Map<String, dynamic> moduleVisibility;
 
   /// Desembrulha o envelope `{success, data:{user, permissions}}`; tolera
   /// também o formato plano `{user, permissions}` por robustez.
@@ -87,6 +99,7 @@ class AuthIdentity {
     return AuthIdentity(
       user: _asMap(data['user']),
       permissions: _parsePermissions(data['permissions']),
+      moduleVisibility: _asMap(data['module_visibility']),
     );
   }
 }

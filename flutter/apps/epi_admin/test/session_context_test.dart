@@ -55,5 +55,40 @@ void main() {
 
       expect(SessionContext.fromJson(original.toJson()), original);
     });
+
+    test('isModuleVisible reflete a configuração vinda do backend', () {
+      final context = SessionContext.fromAuthPayload(
+        user: const {'id': 1, 'role': 'buyer', 'company_id': 2},
+        permissions: const ['stock:view', 'deliveries:view'],
+        moduleVisibility: const {'estoque': false, 'compras': true},
+      );
+
+      expect(context.isModuleVisible('estoque'), isFalse);
+      expect(context.isModuleVisible('compras'), isTrue);
+    });
+
+    test('módulo ausente do mapa é tratado como visível (fail-open de UI)', () {
+      final context = SessionContext.fromAuthPayload(
+        user: const {'id': 1, 'role': 'admin', 'company_id': 2},
+        permissions: const [],
+      );
+
+      expect(context.isModuleVisible('estoque'), isTrue);
+    });
+
+    test('serializa e restaura a visibilidade de módulos junto com o resto', () {
+      const original = SessionContext(
+        userId: 1,
+        companyId: 2,
+        unitId: 3,
+        role: 'buyer',
+        permissions: ['stock:view'],
+        tenantName: 'Plataforma',
+        companySettings: {},
+        moduleVisibility: {'estoque': false, 'compras': true},
+      );
+
+      expect(SessionContext.fromJson(original.toJson()), original);
+    });
   });
 }

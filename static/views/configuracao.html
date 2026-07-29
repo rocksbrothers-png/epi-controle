@@ -248,6 +248,19 @@
               </table>
             </div>
           </article>
+          <article class="card form-stack">
+            <div class="section-intro">
+              <span class="eyebrow">Regras</span>
+              <h3>Visibilidade por Módulo</h3>
+              <p class="hint">Defina quais módulos cada perfil enxerga no menu, nas rotas e nos deep links (Web e Flutter). A permissão técnica do perfil é sempre o teto: esta configuração só restringe ou libera dentro do que a permissão já autoriza, nunca além dela.</p>
+            </div>
+            <form id="module-visibility-form" class="form-stack">
+              <label>Perfil<select id="module-visibility-role" name="role" required></select></label>
+              <div class="form-grid" id="module-visibility-checkboxes"></div>
+              <button class="primary" type="submit">Salvar visibilidade de módulos</button>
+            </form>
+            <p class="hint" id="module-visibility-feedback"></p>
+          </article>
           </div>
           <div class="vtab-panel" data-vtab-panel="motor" data-vtab-group="config-regras">
           <form id="config-framework-form" class="card form-stack">

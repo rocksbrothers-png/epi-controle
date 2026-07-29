@@ -77,6 +77,36 @@ const VIEW_PERMISSIONS = {
   relatorios: 'reports:view',
   avaliacoes: 'epi_evaluation:view'
 };
+// Mapa view → módulo estrutural (espelha `MODULE_REQUIRED_PERMISSIONS`/
+// `routeModules` do backend e do Flutter). Só as views cobertas pela
+// personalização do Administrador Geral (Configuração → Regras →
+// Visualização) entram aqui; as demais seguem só a permissão técnica acima,
+// sem mudança de comportamento.
+const VIEW_MODULE = {
+  dashboard: 'dashboard',
+  empresas: 'administracao',
+  usuarios: 'administracao',
+  cnpjs: 'administracao',
+  estoque: 'estoque',
+  entregas: 'entregas',
+  fichas: 'fichas',
+  compras: 'compras',
+  configuracao: 'configuracoes',
+  relatorios: 'relatorios'
+};
+// Rótulos dos módulos configuráveis na aba Visualização — mesmas chaves de
+// `VIEW_MODULE` acima e de `MODULE_KEYS` em epi_backend/rule_engine.py.
+const MODULE_VISIBILITY_LABELS = {
+  dashboard: 'Dashboard',
+  compras: 'Compras',
+  estoque: 'Estoque',
+  entregas: 'Entregas',
+  solicitacoes: 'Solicitações',
+  fichas: 'Fichas de EPI',
+  relatorios: 'Relatórios',
+  administracao: 'Administração',
+  configuracoes: 'Configurações'
+};
 const VIEW_EYEBROW = {
   dashboard: 'Visão Geral',
   empresas: 'Administração',
@@ -1853,9 +1883,19 @@ function markRequiredFieldLabels() {
 const state = {
   user: safeJsonParse(safeStorageRead(STORAGE_KEYS.session, 'null'), null),
   permissions: safeJsonParse(safeStorageRead(STORAGE_KEYS.permissions, '[]'), []),
+  // Visibilidade estrutural por módulo (menu/rotas), combinando a regra
+  // padrão + a configuração do Administrador Geral com a permissão técnica
+  // — já resolvida pelo backend. Recarregado a cada bootstrap; não precisa
+  // de cache otimista offline como `permissions`.
+  moduleVisibility: {},
   token: safeStorageRead(STORAGE_KEYS.token, ''),
   configurationRules: [],
   configurationFramework: deepClone(DEFAULT_CONFIGURATION_FRAMEWORK),
+  // Configuração admin de visibilidade por módulo (perfil -> módulo -> bool)
+  // — distinta de `moduleVisibility` (que é a visibilidade JÁ RESOLVIDA para
+  // o ator logado, usada por canAccessView). Esta é a matriz completa que a
+  // tela "Configuração → Regras → Visualização" edita.
+  moduleVisibilityAdminConfig: {},
   fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
@@ -2137,6 +2177,10 @@ const refs = {
   configRuleRole: document.getElementById('config-rule-role'),
   configRuleUnit: document.getElementById('config-rule-unit'),
   configRulesTable: document.getElementById('config-rules-table'),
+  moduleVisibilityForm: document.getElementById('module-visibility-form'),
+  moduleVisibilityRole: document.getElementById('module-visibility-role'),
+  moduleVisibilityCheckboxes: document.getElementById('module-visibility-checkboxes'),
+  moduleVisibilityFeedback: document.getElementById('module-visibility-feedback'),
   configFrameworkForm: document.getElementById('config-framework-form'),
   configEnableNewEngine: document.getElementById('config-enable-new-engine'),
   configExecutionMode: document.getElementById('config-execution-mode'),
@@ -2929,6 +2973,14 @@ function canAccessView(view) {
     return false;
   }
   if (view === 'configuracao') return hasConfigurationAccess();
+  // Visibilidade estrutural por módulo (configuração do Administrador
+  // Geral): módulo ausente do mapa é tratado como visível — só restringe
+  // quando o backend explicitamente desliga o módulo para o papel. Nunca
+  // amplia o que a permissão técnica acima já negou.
+  const module = VIEW_MODULE[view];
+  if (module && state.moduleVisibility && Object.prototype.hasOwnProperty.call(state.moduleVisibility, module)) {
+    return Boolean(state.moduleVisibility[module]);
+  }
   return true;
 }
 globalThis.canAccessView = canAccessView;
@@ -4878,6 +4930,7 @@ async function loadBootstrap() {
     state.feedbacks = Array.isArray(payload.feedbacks) ? payload.feedbacks : [];
     state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
+    state.moduleVisibility = (payload.module_visibility && typeof payload.module_visibility === 'object') ? payload.module_visibility : {};
     state.bootstrapWarnings = Array.isArray(payload.bootstrap_warnings) ? payload.bootstrap_warnings : [];
     if (state.user?.role === 'master_admin') {
       try {
@@ -4952,6 +5005,16 @@ async function loadBootstrap() {
         ? rulesPayload.rules
         : [];
 
+      const moduleVisibilityPayload = await loadOptionalBootstrapSection(
+        'configuration',
+        { module_visibility: {} },
+        () => api(`/api/module-visibility?${actorQuery()}`),
+        { permission: 'settings:view' }
+      );
+      state.moduleVisibilityAdminConfig = (moduleVisibilityPayload.module_visibility && typeof moduleVisibilityPayload.module_visibility === 'object')
+        ? moduleVisibilityPayload.module_visibility
+        : {};
+
       if (hasHardeningAccess()) {
         const frameworkPayload = await loadOptionalBootstrapSection(
           'configuration',
@@ -4970,6 +5033,7 @@ async function loadBootstrap() {
     } else {
       state.configurationRules = [];
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
+      state.moduleVisibilityAdminConfig = {};
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
@@ -11094,7 +11158,63 @@ function hydrateConfigurationForms() {
   }
   renderConfigurationRules();
   renderConfigurationFramework();
+  hydrateModuleVisibilityForm();
   renderFichaAuditLogs();
+}
+
+// Perfis válidos para a matriz de visibilidade de módulos: todos os 8
+// papéis canônicos (espelha PERMISSIONS.keys() em core/permissions.py) —
+// mais amplo que configRoleOptions() (que só cobre visibility_rules).
+function moduleVisibilityRoleOptions() {
+  return Object.keys(ROLE_LABELS).map((role) => [role, ROLE_LABELS[role]]);
+}
+
+function hydrateModuleVisibilityForm() {
+  if (!refs.moduleVisibilityRole || !refs.moduleVisibilityCheckboxes) return;
+  const previous = refs.moduleVisibilityRole.value;
+  refs.moduleVisibilityRole.innerHTML = moduleVisibilityRoleOptions()
+    .map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+  refs.moduleVisibilityRole.value = previous && refs.moduleVisibilityRole.querySelector(`option[value="${previous}"]`)
+    ? previous
+    : refs.moduleVisibilityRole.value;
+  renderModuleVisibilityCheckboxes();
+}
+
+function renderModuleVisibilityCheckboxes() {
+  if (!refs.moduleVisibilityCheckboxes || !refs.moduleVisibilityRole) return;
+  const role = refs.moduleVisibilityRole.value;
+  const current = (state.moduleVisibilityAdminConfig || {})[role] || {};
+  refs.moduleVisibilityCheckboxes.innerHTML = Object.keys(MODULE_VISIBILITY_LABELS).map((moduleKey) => {
+    // Sem entrada salva ainda: assume visível (regra padrão do sistema,
+    // igual ao que o backend calcula em default_framework_payload()).
+    const checked = Object.prototype.hasOwnProperty.call(current, moduleKey) ? Boolean(current[moduleKey]) : true;
+    return `<label><input type="checkbox" name="module_${moduleKey}" data-module-key="${moduleKey}" ${checked ? 'checked' : ''}> ${MODULE_VISIBILITY_LABELS[moduleKey]}</label>`;
+  }).join('');
+}
+
+async function onSubmitModuleVisibility(event) {
+  event.preventDefault();
+  if (!hasConfigurationAccess() || !refs.moduleVisibilityRole || !refs.moduleVisibilityCheckboxes) return;
+  const role = refs.moduleVisibilityRole.value;
+  const modules = {};
+  refs.moduleVisibilityCheckboxes.querySelectorAll('input[data-module-key]').forEach((input) => {
+    modules[input.dataset.moduleKey] = input.checked;
+  });
+  try {
+    // Sem seletor de empresa nesta tela: general_admin/registry_admin usam a
+    // própria empresa (resolvida no backend); master_admin sem seleção grava
+    // no escopo global, mesma limitação herdada da aba de regras por unidade.
+    const body = { actor_user_id: state.user.id, role, modules };
+    const result = await api('/api/module-visibility', { method: 'POST', body: JSON.stringify(body) });
+    state.moduleVisibilityAdminConfig = {
+      ...state.moduleVisibilityAdminConfig,
+      [role]: { ...(state.moduleVisibilityAdminConfig[role] || {}), ...(result.after || modules) }
+    };
+    if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = `Visibilidade de módulos salva para ${roleLabel(role)}.`;
+  } catch (e) {
+    if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = '';
+    alert(e.message);
+  }
 }
 
 function roleVisibilityLabel(scope) {
@@ -11804,6 +11924,8 @@ async function init() {
     void removeConfigurationRule(button.dataset.removeConfigRule);
   });
   bindAppListener(refs.configFrameworkForm, 'submit', (event) => { void saveConfigurationFramework(event); });
+  bindAppListener(refs.moduleVisibilityRole, 'change', () => { renderModuleVisibilityCheckboxes(); });
+  bindAppListener(refs.moduleVisibilityForm, 'submit', (event) => { void onSubmitModuleVisibility(event); });
   [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]
     .forEach((el) => bindAppListener(el, 'change', () => { void loadFichaAuditLogs(); }));
 

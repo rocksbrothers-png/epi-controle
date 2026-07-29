@@ -51,9 +51,42 @@ def test_default_visibility_matches_technical_permission_floor():
 
 
 def test_master_and_general_admin_see_every_module_by_default():
+    # "terceirizados" é opt-in (ADR-014): oculto por padrão até para quem tem
+    # o piso técnico, porque a subpasta só deve aparecer quando o
+    # Administrador Geral a liga explicitamente por tenant.
     visibility = default_framework_payload()['module_visibility']
     for role in ('master_admin', 'general_admin'):
-        assert all(visibility[role].values()), role
+        modules = dict(visibility[role])
+        opt_in = modules.pop('terceirizados')
+        assert all(modules.values()), role
+        assert opt_in is False, role
+
+
+def test_terceirizados_is_opt_in_hidden_for_every_role_by_default():
+    # Condição vinculante da aprovação do ADR-014: a subpasta nasce oculta
+    # por padrão em todo tenant, para todo papel — mesmo quem já tem
+    # employees:create — até o Administrador Geral ligá-la explicitamente.
+    visibility = default_framework_payload()['module_visibility']
+    for role in PERMISSIONS:
+        assert visibility[role]['terceirizados'] is False, role
+
+
+def test_terceirizados_can_be_turned_on_within_the_technical_ceiling():
+    # Administrador Geral liga o módulo: dentro do teto técnico
+    # (employees:create), a liberação vale.
+    framework = normalize_framework_payload({'module_visibility': {'general_admin': {'terceirizados': True}}})
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'general_admin'})
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['general_admin'])
+    assert resolved['terceirizados'] is True
+
+
+def test_terceirizados_stays_hidden_for_roles_without_employees_create_even_if_configured():
+    # 'user' (Gestor de EPI) não tem employees:create — mesmo que alguém
+    # tente ligar o módulo para este papel, o teto técnico bloqueia.
+    framework = normalize_framework_payload({'module_visibility': {'user': {'terceirizados': True}}})
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'user'})
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['user'])
+    assert resolved['terceirizados'] is False
 
 
 def test_normalize_merges_partial_override_without_wiping_other_modules():

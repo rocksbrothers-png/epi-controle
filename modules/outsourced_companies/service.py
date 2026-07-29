@@ -1,0 +1,297 @@
+"""Serviços de Empresa Terceirizada/Prestadora — Cadastro Simplificado (ADR-014).
+
+``outsourced_companies`` é uma tabela de referência pequena, isolada por
+tenant (``company_id``): NÃO é um tenant, não tem plano/billing/login
+próprio, não é uma segunda base de colaboradores. Modela a empresa externa
+que empresta mão de obra para a operação (Terceirizada, Prestadora de
+Serviço, ou Outro) — no mesmo padrão que ``authorized_suppliers`` já valida
+em produção para um relacionamento de negócio diferente (compra de
+material, não fornecimento de mão de obra).
+
+``service_contracts`` permite múltiplos contratos (unidades/períodos
+diferentes) para a mesma empresa terceirizada, sem duplicar seu cadastro.
+Cada contrato pode sobrescrever a responsabilidade padrão de fornecimento
+de EPI da empresa, com motivo auditável.
+
+Este módulo cobre apenas a fundação (PR 1 da sequência aprovada): CRUD
+escopado por tenant, normalização/unicidade de CNPJ, contratos. Integração
+com o fluxo de entrega (snapshot histórico), relatórios e ressarcimento
+ficam para PRs seguintes — ver docs/adr/adr-014-terceirizados.md.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from epi_backend.db import row_to_dict
+from modules.commercial.service import only_digits, validate_cnpj
+
+UTC = timezone.utc
+
+# Valores técnicos estáveis (inglês) — condição vinculante da aprovação:
+# rótulo em português só na camada de UI, nunca gravado na coluna.
+COMPANY_KINDS: tuple[str, ...] = ('outsourced', 'service_provider', 'other_contracted')
+
+EPI_RESPONSIBILITIES: tuple[str, ...] = (
+    'Empresa Contratante',
+    'Empresa Terceirizada',
+    'Empresa Prestadora de Serviço',
+    'Responsabilidade Compartilhada',
+    'Conforme Contrato',
+    'Não Definido',
+)
+
+REGISTRATION_MODES: tuple[str, ...] = ('simplified', 'standard')
+REGISTRATION_STATUSES: tuple[str, ...] = ('pending_completion', 'complete', 'inactive', 'archived')
+
+_SELECT_COLUMNS = (
+    'id, company_id, legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
+    'epi_responsibility, registration_mode, registration_status, status, promoted_at, '
+    'created_by_user_id, created_at, updated_at'
+)
+
+_CONTRACT_SELECT_COLUMNS = (
+    'id, company_id, outsourced_company_id, unit_id, contract_ref, start_date, end_date, '
+    'epi_responsibility_override, override_reason, status, created_by_user_id, created_at, updated_at'
+)
+
+
+def outsourced_companies_ready(connection) -> bool:
+    """Indica se o schema desta feature já está provisionado. Durante a
+    janela de migração — e em fixtures de schema parcial — chamadas ao
+    módulo devem checar isto e degradar graciosamente (subpasta oculta por
+    módule_visibility de qualquer forma cobre o caso normal)."""
+    from epi_backend.db import table_exists
+    return table_exists(connection, 'outsourced_companies')
+
+
+def normalize_company_kind(value) -> str:
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in COMPANY_KINDS else 'outsourced'
+
+
+def normalize_epi_responsibility(value) -> str:
+    value = str(value or '').strip()
+    return value if value in EPI_RESPONSIBILITIES else 'Conforme Contrato'
+
+
+def normalize_registration_mode(value) -> str:
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in REGISTRATION_MODES else 'simplified'
+
+
+def normalize_registration_status(value) -> str:
+    normalized = str(value or '').strip().lower()
+    return normalized if normalized in REGISTRATION_STATUSES else 'pending_completion'
+
+
+def validate_outsourced_company_payload(connection, payload, company_id, entity_id=None):
+    """Valida e normaliza o payload de uma empresa terceirizada/prestadora.
+
+    CNPJ é opcional no Cadastro Simplificado (o pedido inicial pode ser
+    emergencial, sem CNPJ em mãos) — quando informado, precisa ser válido e
+    único dentro do tenant. Razão social é sempre obrigatória.
+    """
+    payload = payload or {}
+    legal_name = str(payload.get('legal_name') or '').strip()
+    if not legal_name:
+        raise ValueError('Razão social é obrigatória.')
+
+    raw_cnpj = str(payload.get('cnpj') or '').strip()
+    if raw_cnpj:
+        cnpj = validate_cnpj(raw_cnpj)
+        cnpj_normalized = only_digits(cnpj)
+        duplicate = connection.execute(
+            'SELECT id FROM outsourced_companies WHERE company_id = ? AND cnpj_normalized = ? '
+            + ('AND id <> ? ' if entity_id else '')
+            + 'LIMIT 1',
+            (company_id, cnpj_normalized, entity_id) if entity_id else (company_id, cnpj_normalized),
+        ).fetchone()
+        if duplicate:
+            raise ValueError('Já existe uma empresa terceirizada com este CNPJ nesta empresa.')
+    else:
+        cnpj = ''
+        cnpj_normalized = ''
+
+    registration_mode = normalize_registration_mode(payload.get('registration_mode'))
+    registration_status = normalize_registration_status(payload.get('registration_status'))
+    if registration_mode == 'standard' and not cnpj:
+        raise ValueError('CNPJ é obrigatório para o Cadastro Padrão.')
+
+    return {
+        'company_id': int(company_id),
+        'legal_name': legal_name,
+        'trade_name': str(payload.get('trade_name') or '').strip(),
+        'cnpj': cnpj,
+        'cnpj_normalized': cnpj_normalized,
+        'company_kind': normalize_company_kind(payload.get('company_kind')),
+        'epi_responsibility': normalize_epi_responsibility(payload.get('epi_responsibility')),
+        'registration_mode': registration_mode,
+        'registration_status': registration_status,
+        'status': str(payload.get('status') or 'Ativa').strip() or 'Ativa',
+    }
+
+
+def create_outsourced_company(connection, payload, company_id, actor_user_id=None):
+    validated = validate_outsourced_company_payload(connection, payload, company_id)
+    now_iso = datetime.now(UTC).isoformat()
+    cursor = connection.execute(
+        'INSERT INTO outsourced_companies (company_id, legal_name, trade_name, cnpj, '
+        'cnpj_normalized, company_kind, epi_responsibility, registration_mode, '
+        'registration_status, status, created_by_user_id, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            validated['company_id'], validated['legal_name'], validated['trade_name'],
+            validated['cnpj'], validated['cnpj_normalized'], validated['company_kind'],
+            validated['epi_responsibility'], validated['registration_mode'],
+            validated['registration_status'], validated['status'],
+            int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
+        ),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def update_outsourced_company(connection, entity_id, payload, company_id):
+    validated = validate_outsourced_company_payload(connection, payload, company_id, entity_id=entity_id)
+    now_iso = datetime.now(UTC).isoformat()
+    connection.execute(
+        'UPDATE outsourced_companies SET legal_name = ?, trade_name = ?, cnpj = ?, '
+        'cnpj_normalized = ?, company_kind = ?, epi_responsibility = ?, registration_mode = ?, '
+        'registration_status = ?, status = ?, updated_at = ? WHERE id = ? AND company_id = ?',
+        (
+            validated['legal_name'], validated['trade_name'], validated['cnpj'],
+            validated['cnpj_normalized'], validated['company_kind'], validated['epi_responsibility'],
+            validated['registration_mode'], validated['registration_status'], validated['status'],
+            now_iso, int(entity_id), int(company_id),
+        ),
+    )
+    connection.commit()
+
+
+def promote_outsourced_company(connection, entity_id, company_id):
+    """Migração Simplificado → Padrão: mesma linha, mesmo id, sem duplicar
+    nada. Exige CNPJ já preenchido (obrigatório no Padrão)."""
+    current = get_outsourced_company_by_id(connection, entity_id)
+    if not current or int(current['company_id']) != int(company_id):
+        raise ValueError('Empresa terceirizada não encontrada nesta empresa.')
+    if not current.get('cnpj'):
+        raise ValueError('CNPJ é obrigatório para promover ao Cadastro Padrão.')
+    now_iso = datetime.now(UTC).isoformat()
+    connection.execute(
+        "UPDATE outsourced_companies SET registration_mode = 'standard', "
+        "registration_status = 'complete', promoted_at = ?, updated_at = ? "
+        'WHERE id = ? AND company_id = ?',
+        (now_iso, now_iso, int(entity_id), int(company_id)),
+    )
+    connection.commit()
+
+
+def fetch_outsourced_companies(connection, company_id):
+    rows = connection.execute(
+        f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies '  # noqa: S608
+        'WHERE company_id = ? ORDER BY legal_name',
+        (company_id,),
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+def get_outsourced_company_by_id(connection, entity_id):
+    row = connection.execute(
+        f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies WHERE id = ?',  # noqa: S608
+        (entity_id,),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+# ── Contratos ─────────────────────────────────────────────────────────────
+
+def validate_service_contract_payload(connection, payload, company_id, outsourced_company_id):
+    payload = payload or {}
+    company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
+    if not company_row or int(company_row['company_id']) != int(company_id):
+        raise ValueError('Empresa terceirizada não encontrada nesta empresa.')
+
+    unit_id = payload.get('unit_id')
+    if unit_id in (None, '', 0, '0'):
+        unit_id = None
+    else:
+        unit_id = int(unit_id)
+        unit = connection.execute(
+            'SELECT id FROM units WHERE id = ? AND company_id = ? LIMIT 1', (unit_id, company_id),
+        ).fetchone()
+        if not unit:
+            raise ValueError('Unidade não encontrada nesta empresa.')
+
+    override = str(payload.get('epi_responsibility_override') or '').strip()
+    if override:
+        override = normalize_epi_responsibility(override)
+        if not str(payload.get('override_reason') or '').strip():
+            raise ValueError('Motivo é obrigatório ao sobrescrever a responsabilidade pelo EPI do contrato.')
+
+    return {
+        'company_id': int(company_id),
+        'outsourced_company_id': int(outsourced_company_id),
+        'unit_id': unit_id,
+        'contract_ref': str(payload.get('contract_ref') or '').strip(),
+        'start_date': str(payload.get('start_date') or '').strip(),
+        'end_date': str(payload.get('end_date') or '').strip(),
+        'epi_responsibility_override': override,
+        'override_reason': str(payload.get('override_reason') or '').strip() if override else '',
+        'status': str(payload.get('status') or 'Ativo').strip() or 'Ativo',
+    }
+
+
+def create_service_contract(connection, payload, company_id, outsourced_company_id, actor_user_id=None):
+    validated = validate_service_contract_payload(connection, payload, company_id, outsourced_company_id)
+    now_iso = datetime.now(UTC).isoformat()
+    cursor = connection.execute(
+        'INSERT INTO service_contracts (company_id, outsourced_company_id, unit_id, contract_ref, '
+        'start_date, end_date, epi_responsibility_override, override_reason, status, '
+        'created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            validated['company_id'], validated['outsourced_company_id'], validated['unit_id'],
+            validated['contract_ref'], validated['start_date'], validated['end_date'],
+            validated['epi_responsibility_override'], validated['override_reason'],
+            validated['status'], int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
+        ),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def fetch_service_contracts(connection, company_id, outsourced_company_id):
+    rows = connection.execute(
+        f'SELECT {_CONTRACT_SELECT_COLUMNS} FROM service_contracts '  # noqa: S608
+        'WHERE company_id = ? AND outsourced_company_id = ? ORDER BY created_at DESC',
+        (company_id, outsourced_company_id),
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+def resolve_effective_epi_responsibility(connection, *, outsourced_company_id=None, service_contract_id=None,
+                                          employee_override=None):
+    """Resolve a responsabilidade efetiva pelo fornecimento de EPI, na ordem
+    de precedência: exceção individual do colaborador > exceção do contrato
+    > default da empresa terceirizada > 'Não Definido' (CLT sem empresa
+    terceirizada não passa por aqui — chamador decide o default nesse caso).
+    """
+    if str(employee_override or '').strip():
+        return normalize_epi_responsibility(employee_override)
+
+    if service_contract_id:
+        contract = connection.execute(
+            'SELECT epi_responsibility_override FROM service_contracts WHERE id = ?',
+            (int(service_contract_id),),
+        ).fetchone()
+        if contract:
+            override = row_to_dict(contract).get('epi_responsibility_override')
+            if str(override or '').strip():
+                return normalize_epi_responsibility(override)
+
+    if outsourced_company_id:
+        company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
+        if company_row:
+            return normalize_epi_responsibility(company_row.get('epi_responsibility'))
+
+    return 'Não Definido'

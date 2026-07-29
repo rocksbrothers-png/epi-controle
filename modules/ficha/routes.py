@@ -187,8 +187,11 @@ def handle_post_fichas_finalize(handler, parsed, payload, match):
         structured_log('info', 'ficha.finalize.period_loaded', ficha_period_id=int(ficha['id']), elapsed_ms=round((time.perf_counter() - finalize_started_at) * 1000, 2))
         ensure_resource_company(actor, ficha, 'Ficha de EPI')
         scope_unit_id = actor_operational_unit_id(connection, actor)
-        if scope_unit_id and int(ficha['unit_id']) != int(scope_unit_id):
-            raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
+        if actor.get('role') in ('admin', 'user'):
+            if not scope_unit_id:
+                raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+            if int(ficha['unit_id']) != int(scope_unit_id):
+                raise PermissionError('Seu perfil só pode finalizar ficha da própria unidade operacional.')
         preview_only = bool(payload.get('preview_only'))
         totals_data = compute_ficha_period_signature_state(connection, int(ficha['id']))
         pending_items = int(totals_data.get('pending_items') or 0)

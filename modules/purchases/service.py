@@ -271,8 +271,11 @@ def ensure_purchase_request_action_scope(connection, actor, purchase_request, *,
     if actor.get('role') == 'master_admin':
         return
     scope_unit_id = actor_operational_unit_id(connection, actor) if actor_operational_unit_id is not None else None
-    if scope_unit_id and int(purchase_request['unit_id']) != int(scope_unit_id):
-        raise PermissionError('Requisição fora da unidade operacional do usuário.')
+    if actor_operational_unit_id is not None and actor.get('role') in ('admin', 'user'):
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        if int(purchase_request['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Requisição fora da unidade operacional do usuário.')
     purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
     if actor.get('role') in ('buyer', 'approver'):
         if not purchase_scope_units:
@@ -1463,15 +1466,18 @@ def update_epi_request_status(connection, actor, req, new_status, postponed_unti
     )
 
 
-def bulk_update_epi_request_statuses(connection, actor, updates):
+def bulk_update_epi_request_statuses(connection, actor, updates, *, actor_operational_unit_id=None):
     """Bulk-updates epi_request statuses, skipping missing or invalid records."""
     now = datetime.now(UTC).isoformat()
+    scope_unit_id = actor_operational_unit_id(connection, actor) if actor_operational_unit_id is not None else None
     for upd in updates or []:
         _req = connection.execute('SELECT * FROM epi_requests WHERE id = ?', (int(upd['request_id']),)).fetchone()
         if not _req:
             continue
         req = row_to_dict(_req)
         ensure_resource_company(actor, req, 'Solicitação')
+        if actor_operational_unit_id is not None and actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(req['unit_id']) != int(scope_unit_id)):
+            raise PermissionError('Solicitação fora da unidade operacional do usuário.')
         # O bulk pula item inválido em vez de abortar o lote — contrato
         # existente, agora aplicado também à transição, não só ao destino.
         try:
@@ -1584,8 +1590,11 @@ def ensure_purchase_order_action_scope(connection, actor, po, *, actor_operation
     if actor.get('role') == 'master_admin':
         return
     scope_unit_id = actor_operational_unit_id(connection, actor) if actor_operational_unit_id is not None else None
-    if scope_unit_id and int(po['unit_id']) != int(scope_unit_id):
-        raise PermissionError('PO fora da unidade operacional do usuário.')
+    if actor_operational_unit_id is not None and actor.get('role') in ('admin', 'user'):
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        if int(po['unit_id']) != int(scope_unit_id):
+            raise PermissionError('PO fora da unidade operacional do usuário.')
     if actor.get('role') in ('buyer', 'approver'):
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
         if not purchase_scope_units:

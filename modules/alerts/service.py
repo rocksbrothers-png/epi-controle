@@ -18,6 +18,9 @@ def compute_alerts(
 ):
     alerts = []
     today = date.today()
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor and actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        return alerts
     low_stock_items = fetch_low_stock_items(connection, actor)
     for item in low_stock_items:
         stock = int(item['stock'])
@@ -59,7 +62,6 @@ def compute_alerts(
             'size_balances': size_balances,
         })
 
-    scope_unit_id = actor_operational_unit_id(connection, actor)
     for epi in fetch_epis(connection, actor, scope_unit_id):
         if int(epi.get('active', 1) or 0) != 1:
             continue

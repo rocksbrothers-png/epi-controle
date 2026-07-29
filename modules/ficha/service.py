@@ -536,8 +536,11 @@ def build_ficha_epi_html_by_period(connection, ficha_period_id, actor, *, get_em
         raise ValueError('Colaborador não encontrado para o período informado.')
     ensure_resource_company(actor, employee, 'Colaborador')
     scope_unit_id = _actor_unit_id(connection, actor)
-    if scope_unit_id and int(employee['unit_id']) != int(scope_unit_id):
-        raise PermissionError('Seu perfil só pode acessar fichas da própria unidade operacional.')
+    if actor.get('role') in ('admin', 'user'):
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        if int(employee['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Seu perfil só pode acessar fichas da própria unidade operacional.')
     employee = _enrich_employee_with_legal_entity(connection, employee)
 
     company = connection.execute('SELECT id, name, cnpj, logo_type FROM companies WHERE id = ?', (int(employee['company_id']),)).fetchone()
@@ -681,6 +684,8 @@ def fetch_ficha_epi_audit_logs(connection, actor, filters=None):
         clauses.append('l.company_id = ?')
         params.append(int(actor['company_id']))
     scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        return []
     if scope_unit_id:
         clauses.append('l.unit_id = ?')
         params.append(int(scope_unit_id))
@@ -821,6 +826,11 @@ def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
         params.append(int(actor['company_id']))
 
     scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        return {
+            'items': [], 'page': filters['page'], 'page_size': filters['page_size'],
+            'total': 0, 'retention_policy': policy,
+        }
     if scope_unit_id:
         clauses.append('s.unit_id = ?')
         params.append(int(scope_unit_id))
@@ -916,8 +926,11 @@ def get_ficha_archive_snapshot_by_id(connection, actor, snapshot_id):
     snapshot = row_to_dict(row)
     ensure_company_access(actor, snapshot.get('company_id'))
     scope_unit_id = actor_operational_unit_id(connection, actor)
-    if scope_unit_id and int(snapshot.get('unit_id') or 0) != int(scope_unit_id):
-        raise PermissionError('Operação permitida somente para sua unidade operacional.')
+    if actor.get('role') in ('admin', 'user'):
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        if int(snapshot.get('unit_id') or 0) != int(scope_unit_id):
+            raise PermissionError('Operação permitida somente para sua unidade operacional.')
     snapshot['status'] = _snapshot_status(snapshot, datetime.now(UTC).isoformat())
     return snapshot
 

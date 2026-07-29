@@ -7,7 +7,6 @@ existentes intactos; tudo aqui é endpoint novo (plano §5).
 from contextlib import closing
 from urllib.parse import parse_qs
 
-from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.permissions import (
     PERM_PO_CREATE,
@@ -215,7 +214,7 @@ def handle_get_purchase_order_tracking(handler, parsed, payload, match):
         po = get_purchase_order_by_id(connection, int(match.group(1)))
         if not po:
             return send_json(handler, 404, {'error': 'PO não encontrada.'})
-        ensure_resource_company(actor, po, 'PO')
+        ensure_purchase_order_action_scope(connection, actor, po, actor_operational_unit_id=actor_operational_unit_id)
         return send_json(handler, 200, {'item': fetch_po_tracking(connection, int(match.group(1)))})
 
 

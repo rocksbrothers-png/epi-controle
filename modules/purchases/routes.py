@@ -22,7 +22,7 @@ from core.permissions import (
     PERM_UNIT_LINKS_MANAGE,
 )
 from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
-from modules.employees.service import actor_operational_unit_id
+from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
 from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
@@ -90,7 +90,7 @@ def handle_get_epi_requests(handler, parsed, payload, match):
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         items = fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope)
         items = canary_evaluate_visibility_dataset(
@@ -110,7 +110,7 @@ def handle_get_purchase_demands(handler, parsed, payload, match):
             company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         if not scope_unit_id and purchase_scope_units:
             all_demands, seen = [], set()
@@ -138,7 +138,7 @@ def handle_get_purchase_requests(handler, parsed, payload, match):
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_requests(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
@@ -179,7 +179,7 @@ def handle_get_purchase_pendencies(handler, parsed, payload, match):
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', ['open'])[0] or 'open').strip()
         items = fetch_purchase_pendencies(connection, company_id, scope_unit_id, status_filter or None, purchase_scope_units=purchase_scope_units)
@@ -202,7 +202,7 @@ def handle_get_purchase_orders(handler, parsed, payload, match):
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_orders(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
@@ -219,7 +219,7 @@ def handle_get_purchase_order_detail(handler, parsed, payload, match):
         po, items, files, events = get_purchase_order_detail(connection, po_id)
         if not po:
             return send_json(handler, 404, {'error': 'PO não encontrada.'})
-        ensure_resource_company(actor, po, 'PO')
+        ensure_purchase_order_action_scope(connection, actor, po, actor_operational_unit_id=actor_operational_unit_id)
         return send_json(handler, 200, {'item': po, 'items': items, 'files': files, 'events': events})
 
 
@@ -278,7 +278,7 @@ def handle_post_purchase_requests(handler, parsed, payload, match):
         ensure_resource_company(actor, unit, 'Unidade')
         ensure_unit_operational(connection, unit_id, 'requisições de compra')
         scope_unit_id = actor_operational_unit_id(connection, actor)
-        if scope_unit_id and int(unit_id) != int(scope_unit_id):
+        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(unit_id) != int(scope_unit_id)):
             return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Administrador local pode criar requisições apenas para sua própria unidade operacional.'}})
         items = payload.get('items') or []
         if not items:
@@ -386,7 +386,7 @@ def handle_post_purchase_orders(handler, parsed, payload, match):
         for item in (payload.get('items') or []):
             ensure_epi_operational(connection, int((item or {}).get('epi_id') or 0), 'pedidos de compra')
         scope_unit_id = actor_operational_unit_id(connection, actor)
-        if scope_unit_id and int(payload['unit_id']) != int(scope_unit_id):
+        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(payload['unit_id']) != int(scope_unit_id)):
             return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Usuário pode criar PO apenas para sua unidade operacional.'}})
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
         result = create_purchase_order(connection, actor, payload, ip, get_epi_by_id_fn=get_epi_by_id)
@@ -471,6 +471,9 @@ def handle_post_requests_status(handler, parsed, payload, match):
         if not req:
             raise ValueError('Solicitação não encontrada.')
         ensure_resource_company(actor, req, 'Solicitação')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(req['unit_id']) != int(scope_unit_id)):
+            raise PermissionError('Solicitação fora da unidade operacional do usuário.')
         new_status = str(payload.get('status', '')).strip().lower()
         postponed_until = str(payload.get('postponed_until') or '').strip()
         rejection_reason = str(payload.get('rejection_reason', '')).strip()
@@ -487,7 +490,7 @@ def handle_post_requests_bulk_status(handler, parsed, payload, match):
         updates = payload.get('updates') or []
         if not updates:
             raise ValueError('Nenhuma atualização enviada.')
-        bulk_update_epi_request_statuses(connection, actor, updates)
+        bulk_update_epi_request_statuses(connection, actor, updates, actor_operational_unit_id=actor_operational_unit_id)
         connection.commit()
         return send_json(handler, 200, {'ok': True})
 
@@ -500,6 +503,9 @@ def handle_post_feedbacks_status(handler, parsed, payload, match):
         if not feedback:
             raise ValueError('Avaliação não encontrada.')
         ensure_resource_company(actor, feedback, 'Avaliação')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(feedback['unit_id']) != int(scope_unit_id)):
+            raise PermissionError('Avaliação fora da unidade operacional do usuário.')
         status = str(payload.get('status', '')).strip().lower()
         notes = str(payload.get('notes', '')).strip()
         update_feedback_status(connection, actor, feedback, status, notes)

@@ -227,12 +227,14 @@ def fetch_low_stock_items(
     is_epi_visible_for_unit,
 ):
     items = []
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if actor and actor.get('role') in ('admin', 'user') and not scope_unit_id:
+        return items
     clauses = ['COALESCE(epis.active, 1) = 1']
     params = []
     if actor and actor['role'] != 'master_admin':
         clauses.append('s.company_id = %s')
         params.append(actor['company_id'])
-    scope_unit_id = actor_operational_unit_id(connection, actor)
     if scope_unit_id:
         clauses.append('s.unit_id = %s')
         params.append(scope_unit_id)

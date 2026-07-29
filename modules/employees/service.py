@@ -207,6 +207,19 @@ def actor_operational_unit_id(connection, actor):
     return get_employee_current_unit(connection, int(linked_employee_id))
 
 
+def actor_has_no_operational_unit(actor, scope_unit_id):
+    """True quando Administrador Local/Gestor de EPI não tem unidade ativa.
+
+    Administrador Local e Gestor de EPI só enxergam a própria unidade
+    (vínculo único, nunca uma carteira — docs/PAPEIS_E_ATRIBUICOES.md #4/#5):
+    sem colaborador vinculado ou sem unidade atual, a listagem/ação deve
+    negar ou devolver vazio — nunca cair para "sem restrição" (empresa
+    inteira). Mesmo antipadrão do escopo de CNPJ do Administrador Local e do
+    escopo de Comprador/Aprovador (ver actor_has_no_purchase_unit_scope).
+    """
+    return actor.get('role') in ('admin', 'user') and not scope_unit_id
+
+
 def ensure_actor_employee_scope(connection, actor, employee):
     ensure_resource_company(actor, employee, 'Colaborador')
     scope_unit_id = actor_operational_unit_id(connection, actor)

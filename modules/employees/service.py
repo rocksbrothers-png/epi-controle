@@ -4,13 +4,6 @@ from epi_backend.http_utils import structured_log
 from epi_backend.db import row_to_dict
 from core.auth import ensure_resource_company
 
-_SQL_UPDATE_EMPLOYEE = (
-    "UPDATE employees SET company_id = ?, unit_id = ?, employee_id_code = ?, cpf = ?, name = ?, "
-    "email = ?, whatsapp = ?, preferred_contact_channel = ?, "
-    "sector = ?, role_name = ?, admission_date = ?, schedule_type = ?, tipo_vinculo = ?, empresa_origem = ? "
-    "WHERE id = ?"
-)
-
 
 def normalize_cpf(value):
     digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
@@ -108,6 +101,21 @@ def create_employee(connection, payload, *, actor):
         values.append(resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), payload.get('legal_entity_id')
         ))
+    # Vínculo opcional com empresa terceirizada/prestadora — Cadastro
+    # Simplificado (ADR-0002). Ausente (None) para todo colaborador CLT,
+    # exatamente como legal_entity_id acima é ausente sem schema Multi-CNPJ.
+    from modules.outsourced_companies.service import (
+        outsourced_companies_ready, validate_employee_outsourced_reference,
+    )
+    if outsourced_companies_ready(connection):
+        outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
+            validate_employee_outsourced_reference(connection, payload, int(payload['company_id']))
+        )
+        columns.extend([
+            'outsourced_company_id', 'service_contract_id',
+            'epi_responsibility_override', 'epi_responsibility_override_reason',
+        ])
+        values.extend([outsourced_company_id, service_contract_id, epi_override, epi_override_reason])
     placeholders = ', '.join(['?'] * len(values))
     cursor = connection.execute(
         f"INSERT INTO employees ({', '.join(columns)}) VALUES ({placeholders})",
@@ -139,7 +147,12 @@ def update_employee(connection, employee_id, payload, *, actor):
     empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
     whatsapp = ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit())
     email = str(payload.get('email') or '').strip().lower()
-    base_values = [
+    set_columns = [
+        'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'email', 'whatsapp',
+        'preferred_contact_channel', 'sector', 'role_name', 'admission_date', 'schedule_type',
+        'tipo_vinculo', 'empresa_origem',
+    ]
+    values = [
         payload['company_id'], payload['unit_id'], payload['employee_id_code'], cpf_digits,
         payload['name'], email, whatsapp, preferred_channel, payload['sector'],
         payload['role_name'], payload['admission_date'], payload['schedule_type'],
@@ -155,22 +168,41 @@ def update_employee(connection, employee_id, payload, *, actor):
         legal_entity_id = current.get('legal_entity_id') or resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), None
         )
-        sql = _SQL_UPDATE_EMPLOYEE.replace(
-            'empresa_origem = ? ', 'empresa_origem = ?, legal_entity_id = ? '
+        set_columns.append('legal_entity_id')
+        values.append(legal_entity_id)
+    # Vínculo com empresa terceirizada/prestadora é mutável na edição comum
+    # (não tem a semântica jurídica de legal_entity_id — é só a referência
+    # comercial vigente). Cadastro Simplificado (ADR-0002).
+    from modules.outsourced_companies.service import (
+        outsourced_companies_ready, validate_employee_outsourced_reference,
+    )
+    if outsourced_companies_ready(connection):
+        outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
+            validate_employee_outsourced_reference(connection, payload, int(payload['company_id']))
         )
-        connection.execute(sql, tuple(base_values + [legal_entity_id, employee_id]))
-    else:
-        connection.execute(_SQL_UPDATE_EMPLOYEE, tuple(base_values + [employee_id]))
+        set_columns.extend([
+            'outsourced_company_id', 'service_contract_id',
+            'epi_responsibility_override', 'epi_responsibility_override_reason',
+        ])
+        values.extend([outsourced_company_id, service_contract_id, epi_override, epi_override_reason])
+    values.append(employee_id)
+    sql = f"UPDATE employees SET {', '.join(f'{c} = ?' for c in set_columns)} WHERE id = ?"
+    connection.execute(sql, tuple(values))
     connection.commit()
 
 
 def get_employee_by_id(connection, employee_id):
     from epi_backend.db import table_columns
-    legal_entity_col = ', legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'employees') else ''
+    cols = table_columns(connection, 'employees')
+    legal_entity_col = ', legal_entity_id' if 'legal_entity_id' in cols else ''
+    outsourced_cols = (
+        ', outsourced_company_id, service_contract_id, epi_responsibility_override, '
+        'epi_responsibility_override_reason'
+    ) if 'outsourced_company_id' in cols else ''
     row = connection.execute(
         'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
         'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
-        f'tipo_vinculo, empresa_origem{legal_entity_col} FROM employees WHERE id = ?',
+        f'tipo_vinculo, empresa_origem{legal_entity_col}{outsourced_cols} FROM employees WHERE id = ?',
         (employee_id,),
     ).fetchone()
     return row_to_dict(row) if row else None
@@ -278,6 +310,7 @@ def apply_current_unit_allocation(connection, employees):
 
 def fetch_employees(connection, actor=None):
     from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
+    from epi_backend.db import table_columns
     from modules.legal_entities.service import employee_legal_entity_sql
     lifecycle = lifecycle_enabled(connection, 'employees')
     status_field = ', employees.status' if lifecycle else ''
@@ -285,12 +318,18 @@ def fetch_employees(connection, actor=None):
     # em fixtures de schema parcial — o helper devolve fragmentos vazios nesse
     # caso, preservando retrocompatibilidade.
     legal_entity_select, legal_entity_join = employee_legal_entity_sql(connection)
+    # Vínculo com empresa terceirizada/prestadora (ADR-0002), mesma janela de
+    # migração/retrocompatibilidade que legal_entity_id acima.
+    outsourced_select = (
+        ', employees.outsourced_company_id, employees.service_contract_id, '
+        'employees.epi_responsibility_override, employees.epi_responsibility_override_reason'
+    ) if 'outsourced_company_id' in table_columns(connection, 'employees') else ''
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
         'employees.employee_id_code, employees.cpf, employees.name, employees.email, '
         'employees.whatsapp, employees.preferred_contact_channel, employees.sector, '
         'employees.role_name, employees.admission_date, employees.schedule_type, '
-        f'employees.tipo_vinculo, employees.empresa_origem{legal_entity_select}{status_field}, '
+        f'employees.tipo_vinculo, employees.empresa_origem{legal_entity_select}{outsourced_select}{status_field}, '
         'companies.name AS company_name, companies.cnpj AS company_cnpj, '
         'companies.logo_type, units.name AS unit_name, units.unit_type, '
         'units.city AS unit_city '

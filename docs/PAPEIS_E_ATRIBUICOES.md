@@ -261,7 +261,7 @@ mas não realiza a movimentação física.
 - Não captura assinatura.
 - Não captura biometria.
 - Não realiza baixa física.
-- Não recebe fisicamente material, salvo se acumular perfil específico.
+- Não recebe fisicamente material.
 - Não altera usuários ou permissões.
 - Não administra CNPJs.
 
@@ -443,7 +443,7 @@ alçada.
 - Não entrega EPI.
 - Não movimenta estoque.
 - Não cadastra colaborador.
-- Não cria requisição em nome da unidade, salvo acumulação formal de perfil.
+- Não cria requisição em nome da unidade.
 - Não altera usuários.
 - Não altera configurações da empresa.
 

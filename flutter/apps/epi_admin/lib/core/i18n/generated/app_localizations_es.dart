@@ -1219,6 +1219,28 @@ class AppLocalizationsEs extends AppLocalizations {
   String get legalEntityTransferHistory => 'Histórico de vínculo';
 
   @override
+  String get unitTransferTitle => 'Transferir de unidade';
+  @override
+  String get unitTransferHint =>
+      'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
+  @override
+  String get unitTransferTarget => 'Unidade destino';
+  @override
+  String get unitTransferType => 'Tipo de movimentação';
+  @override
+  String get unitTransferTypeTemporary => 'Temporária';
+  @override
+  String get unitTransferTypeDefinitive => 'Definitiva';
+  @override
+  String get unitTransferStartDate => 'Data início';
+  @override
+  String get unitTransferEndDate => 'Data fim (opcional)';
+  @override
+  String get unitTransferNotes => 'Observação (opcional)';
+  @override
+  String get unitTransferAction => 'Transferir';
+
+  @override
   String get myCompanyStockScope => 'Consolidar saldos de estoque por';
 
   @override
@@ -2490,6 +2512,28 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get legalEntityTransferHistory => 'Historial de vínculo';
+
+  @override
+  String get unitTransferTitle => 'Transferir de unidad';
+  @override
+  String get unitTransferHint =>
+      'Movimiento de unidad operativa — temporal o definitivo. Genera un registro auditable y no cambia el CNPJ del colaborador.';
+  @override
+  String get unitTransferTarget => 'Unidad destino';
+  @override
+  String get unitTransferType => 'Tipo de movimiento';
+  @override
+  String get unitTransferTypeTemporary => 'Temporal';
+  @override
+  String get unitTransferTypeDefinitive => 'Definitivo';
+  @override
+  String get unitTransferStartDate => 'Fecha de inicio';
+  @override
+  String get unitTransferEndDate => 'Fecha de fin (opcional)';
+  @override
+  String get unitTransferNotes => 'Observación (opcional)';
+  @override
+  String get unitTransferAction => 'Transferir';
 
   @override
   String get myCompanyStockScope => 'Consolidar saldos de stock por';

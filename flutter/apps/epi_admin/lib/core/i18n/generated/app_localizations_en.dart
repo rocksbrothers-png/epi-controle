@@ -1219,6 +1219,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get legalEntityTransferHistory => 'Histórico de vínculo';
 
   @override
+  String get unitTransferTitle => 'Transferir de unidade';
+  @override
+  String get unitTransferHint =>
+      'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
+  @override
+  String get unitTransferTarget => 'Unidade destino';
+  @override
+  String get unitTransferType => 'Tipo de movimentação';
+  @override
+  String get unitTransferTypeTemporary => 'Temporária';
+  @override
+  String get unitTransferTypeDefinitive => 'Definitiva';
+  @override
+  String get unitTransferStartDate => 'Data início';
+  @override
+  String get unitTransferEndDate => 'Data fim (opcional)';
+  @override
+  String get unitTransferNotes => 'Observação (opcional)';
+  @override
+  String get unitTransferAction => 'Transferir';
+
+  @override
   String get myCompanyStockScope => 'Consolidar saldos de estoque por';
 
   @override
@@ -2484,6 +2506,28 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get legalEntityTransferHistory => 'Legal entity history';
+
+  @override
+  String get unitTransferTitle => 'Transfer unit';
+  @override
+  String get unitTransferHint =>
+      'Operational unit movement — temporary or definitive. Creates an auditable record and does not change the employee\'s tax ID (CNPJ).';
+  @override
+  String get unitTransferTarget => 'Target unit';
+  @override
+  String get unitTransferType => 'Movement type';
+  @override
+  String get unitTransferTypeTemporary => 'Temporary';
+  @override
+  String get unitTransferTypeDefinitive => 'Definitive';
+  @override
+  String get unitTransferStartDate => 'Start date';
+  @override
+  String get unitTransferEndDate => 'End date (optional)';
+  @override
+  String get unitTransferNotes => 'Notes (optional)';
+  @override
+  String get unitTransferAction => 'Transfer';
 
   @override
   String get myCompanyStockScope => 'Consolidate stock balances by';

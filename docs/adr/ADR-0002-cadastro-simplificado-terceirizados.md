@@ -1,6 +1,10 @@
 # ADR-0002 — Cadastro Simplificado de Terceirizados e Prestadores
 
-- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador), PR 4 (snapshot na entrega), PR 5 (auditoria de responsabilidade) e PR 6 (relatórios, ressarcimento, alerta de migração) implementados
+- **Status:** Aceito e implementado — PR 1 (fundação), PR 3 (cadastro do
+  colaborador), PR 4 (snapshot na entrega), PR 5 (auditoria de
+  responsabilidade), PR 6 (relatórios, ressarcimento, alerta de migração),
+  PR 7 (Flutter), PR 8 (Web Legado) e PR 9 (regressão de ponta a ponta e
+  documentação final) — sequência completa
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -367,7 +371,21 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    `saveSimpleForm`/`api()` reaproveitando os endpoints do PR1, incluindo
    promoção Simplificado → Padrão com confirmação. 22 chaves de i18n
    traduzidas nos 5 locales de `static/i18n/`.
-9. **PR 9 — Testes completos, regressão e documentação final.**
+9. **PR 9 — Testes completos, regressão e documentação final. (implementado)**
+   `tests/test_outsourced_companies_end_to_end_journey.py`: regressão de
+   ponta a ponta amarrando PR1+PR3+PR4+PR5+PR6 num único fluxo contínuo —
+   cadastro Simplificado sem CNPJ → promoção recusada sem CNPJ → entrega com
+   snapshot congelado → mudança de responsabilidade audita mas não reescreve
+   o snapshot já gravado → ressarcimento ligado à entrega real → sugestão de
+   migração após o limiar configurado → CNPJ preenchido e promoção ao
+   Cadastro Padrão bem-sucedida → isolamento multi-tenant (mesmo CNPJ em
+   dois tenants, nenhum dado vaza). `tests/test_outsourced_companies_legacy_
+   web_wiring.py`: garante que a tela do PR8 está de fato acessível a partir
+   do `index.html` gerado (nav, module_visibility, formulário, script,
+   i18n) — mesmo padrão de `tests/test_legal_entity_legacy_web_wiring.py`.
+   Este ADR foi atualizado como documentação final: todos os 9 PRs da
+   sequência aprovada estão marcados "(implementado)" nesta seção, cada um
+   com o resumo técnico do que foi entregue.
 
 Critério de aceite em cada PR: suíte completa (`pytest`, `flutter
 analyze`/`test`, runner JS) verde, mais teste manual em navegador antes de

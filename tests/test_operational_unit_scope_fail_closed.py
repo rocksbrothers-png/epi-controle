@@ -27,18 +27,18 @@ GENERAL_ADMIN = {'id': 3, 'role': 'general_admin', 'company_id': 1, 'linked_empl
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def test_actor_has_no_operational_unit_true_for_admin_without_unit():
-    from modules.employees.service import actor_has_no_operational_unit
-    assert actor_has_no_operational_unit(ADMIN_NO_UNIT, None) is True
+    import modules.employees.service as emp_svc
+    assert emp_svc.actor_has_no_operational_unit(ADMIN_NO_UNIT, None) is True
 
 
 def test_actor_has_no_operational_unit_false_when_unit_present():
-    from modules.employees.service import actor_has_no_operational_unit
-    assert actor_has_no_operational_unit(ADMIN_WITH_UNIT, 5) is False
+    import modules.employees.service as emp_svc
+    assert emp_svc.actor_has_no_operational_unit(ADMIN_WITH_UNIT, 5) is False
 
 
 def test_actor_has_no_operational_unit_false_for_structural_roles():
-    from modules.employees.service import actor_has_no_operational_unit
-    assert actor_has_no_operational_unit(GENERAL_ADMIN, None) is False
+    import modules.employees.service as emp_svc
+    assert emp_svc.actor_has_no_operational_unit(GENERAL_ADMIN, None) is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -499,21 +499,22 @@ def _fake_get_employee(connection, employee_id):
     return {'id': employee_id, 'company_id': 1, 'unit_id': 9, 'name': 'Colaborador B'}
 
 
+import modules.ficha.service as ficha_svc
+
+
 def test_build_ficha_epi_html_by_period_denies_admin_without_unit():
-    from modules.ficha.service import build_ficha_epi_html_by_period
     conn = _ficha_conn()
     with pytest.raises(PermissionError, match='unidade operacional'):
-        build_ficha_epi_html_by_period(
+        ficha_svc.build_ficha_epi_html_by_period(
             conn, 1, ADMIN_NO_UNIT,
             get_employee_fn=_fake_get_employee, actor_unit_id_fn=lambda c, a: None,
         )
 
 
 def test_build_ficha_epi_html_by_period_denies_cross_unit():
-    from modules.ficha.service import build_ficha_epi_html_by_period
     conn = _ficha_conn()
     with pytest.raises(PermissionError, match='própria unidade'):
-        build_ficha_epi_html_by_period(
+        ficha_svc.build_ficha_epi_html_by_period(
             conn, 1, ADMIN_WITH_UNIT,
             get_employee_fn=_fake_get_employee, actor_unit_id_fn=lambda c, a: 5,
         )
@@ -525,39 +526,34 @@ def _patch_actor_unit(monkeypatch, resolver):
     chamada) — para interceptar em todos os pontos, o patch precisa cobrir o
     módulo de origem, não só o nome já importado em modules.ficha.service."""
     import modules.employees.service as emp_svc
-    import modules.ficha.service as ficha_svc
     monkeypatch.setattr(emp_svc, 'actor_operational_unit_id', resolver)
     monkeypatch.setattr(ficha_svc, 'actor_operational_unit_id', resolver)
 
 
 def test_fetch_ficha_epi_audit_logs_empty_for_admin_without_unit(monkeypatch):
-    from modules.ficha.service import fetch_ficha_epi_audit_logs
     conn = _ficha_conn()
     _patch_actor_unit(monkeypatch, lambda c, a: None)
-    result = fetch_ficha_epi_audit_logs(conn, ADMIN_NO_UNIT)
+    result = ficha_svc.fetch_ficha_epi_audit_logs(conn, ADMIN_NO_UNIT)
     assert result == []
 
 
 def test_fetch_ficha_archive_snapshots_empty_for_admin_without_unit(monkeypatch):
-    from modules.ficha.service import fetch_ficha_archive_snapshots
     conn = _ficha_conn()
     _patch_actor_unit(monkeypatch, lambda c, a: None)
-    result = fetch_ficha_archive_snapshots(conn, ADMIN_NO_UNIT)
+    result = ficha_svc.fetch_ficha_archive_snapshots(conn, ADMIN_NO_UNIT)
     assert result['items'] == []
     assert result['total'] == 0
 
 
 def test_get_ficha_archive_snapshot_by_id_denies_admin_without_unit(monkeypatch):
-    from modules.ficha.service import get_ficha_archive_snapshot_by_id
     conn = _ficha_conn()
     _patch_actor_unit(monkeypatch, lambda c, a: None)
     with pytest.raises(PermissionError, match='unidade operacional'):
-        get_ficha_archive_snapshot_by_id(conn, ADMIN_NO_UNIT, 1)
+        ficha_svc.get_ficha_archive_snapshot_by_id(conn, ADMIN_NO_UNIT, 1)
 
 
 def test_get_ficha_archive_snapshot_by_id_denies_cross_unit(monkeypatch):
-    from modules.ficha.service import get_ficha_archive_snapshot_by_id
     conn = _ficha_conn()
     _patch_actor_unit(monkeypatch, lambda c, a: 5)
     with pytest.raises(PermissionError, match='sua unidade operacional'):
-        get_ficha_archive_snapshot_by_id(conn, ADMIN_WITH_UNIT, 1)
+        ficha_svc.get_ficha_archive_snapshot_by_id(conn, ADMIN_WITH_UNIT, 1)

@@ -1011,6 +1011,30 @@ def ensure_devolution_columns(connection) -> None:
     _safe_add_column(connection, 'epi_devolutions', 'signature_comment', "TEXT NOT NULL DEFAULT ''")
 
 
+def ensure_delivery_outsourced_snapshot_columns(connection) -> None:
+    """Snapshot histórico do vínculo com empresa terceirizada/prestadora na
+    entrega (ADR-0002, PR 4).
+
+    Editar a empresa terceirizada ou o contrato depois de uma entrega já
+    feita não pode alterar o que aquela entrega significa historicamente —
+    por isso a entrega grava, uma única vez no momento em que acontece, uma
+    cópia denormalizada dos atributos relevantes. Nunca recalculadas depois:
+    mesmo padrão já usado por ``glove_size``/``size``/``uniform_size`` nesta
+    mesma tabela (copiados do ``stock_item`` físico entregue, não do
+    cadastro atual do EPI).
+
+    Colunas vazias para toda entrega de colaborador CLT (sem empresa
+    terceirizada) — o snapshot só é preenchido quando há algo para
+    congelar.
+    """
+    _safe_add_column(connection, 'deliveries', 'snapshot_tipo_vinculo', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'snapshot_outsourced_company_name', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'snapshot_outsourced_company_cnpj', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'snapshot_contracting_company_id', 'INTEGER')
+    _safe_add_column(connection, 'deliveries', 'snapshot_contract_ref', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'snapshot_epi_responsibility', "TEXT NOT NULL DEFAULT ''")
+
+
 def ensure_stock_movement_size_columns(connection) -> None:
     _safe_add_column(connection, 'stock_movements', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
     _safe_add_column(connection, 'stock_movements', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
@@ -3239,6 +3263,7 @@ def init_db():
             ensure_delivery_handover_columns,
             ensure_delivery_evidence,
             ensure_devolution_columns,
+            ensure_delivery_outsourced_snapshot_columns,
             _ensure_jv_table,
             _ensure_ppe_test_tables,
             ensure_rule_engine_shadow_log,

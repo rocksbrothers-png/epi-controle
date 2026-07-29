@@ -152,12 +152,29 @@ def create_delivery_service(
     )
     if int(getattr(claim_cursor, 'rowcount', 0) or 0) != 1:
         raise ValueError('Entrega bloqueada: item já foi processado em outra operação. Atualize e tente novamente.')
+    # Snapshot histórico do vínculo com empresa terceirizada/prestadora
+    # (ADR-0002, PR 4) — congelado agora, nunca recalculado depois. Vazio
+    # para colaborador CLT (exceto tipo_vinculo, sempre conhecido).
+    from modules.outsourced_companies.service import (
+        outsourced_companies_ready, resolve_delivery_outsourced_snapshot,
+    )
+    if outsourced_companies_ready(connection):
+        snapshot = resolve_delivery_outsourced_snapshot(connection, employee, payload['company_id'])
+    else:
+        snapshot = {
+            'snapshot_tipo_vinculo': str(employee.get('tipo_vinculo') or 'CLT').strip() or 'CLT',
+            'snapshot_outsourced_company_name': '', 'snapshot_outsourced_company_cnpj': '',
+            'snapshot_contracting_company_id': None, 'snapshot_contract_ref': '',
+            'snapshot_epi_responsibility': '',
+        }
     cursor = connection.execute(
         (
             'INSERT INTO deliveries (company_id, employee_id, epi_id, quantity, quantity_label, sector, role_name, '
             'delivery_date, next_replacement_date, notes, signature_name, signature_ip, signature_at, signature_data, signature_comment, '
-            'glove_size, size, uniform_size, idempotency_key) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'glove_size, size, uniform_size, idempotency_key, snapshot_tipo_vinculo, '
+            'snapshot_outsourced_company_name, snapshot_outsourced_company_cnpj, '
+            'snapshot_contracting_company_id, snapshot_contract_ref, snapshot_epi_responsibility) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ),
         (
             payload['company_id'], payload['employee_id'], payload['epi_id'], quantity,
@@ -165,7 +182,10 @@ def create_delivery_service(
             payload['next_replacement_date'], payload.get('notes', ''), signature_name,
             str(client_ip or ''), signature_at, signature_data, signature_comment,
             str(stock_item.get('glove_size') or 'N/A'), str(stock_item.get('size') or 'N/A'), str(stock_item.get('uniform_size') or 'N/A'),
-            str(payload.get('idempotency_key') or '').strip()
+            str(payload.get('idempotency_key') or '').strip(),
+            snapshot['snapshot_tipo_vinculo'], snapshot['snapshot_outsourced_company_name'],
+            snapshot['snapshot_outsourced_company_cnpj'], snapshot['snapshot_contracting_company_id'],
+            snapshot['snapshot_contract_ref'], snapshot['snapshot_epi_responsibility'],
         )
     )
     new_stock = current_stock - quantity

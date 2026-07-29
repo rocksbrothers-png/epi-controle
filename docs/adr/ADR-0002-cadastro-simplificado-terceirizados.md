@@ -1,6 +1,6 @@
 # ADR-0002 — Cadastro Simplificado de Terceirizados e Prestadores
 
-- **Status:** Aceito — PR 1 (fundação de backend) e PR 3 (cadastro do colaborador) implementados
+- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador) e PR 4 (snapshot na entrega) implementados
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -310,8 +310,14 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    mesma leva, um bug real descoberto pelos testes: o índice de unicidade de
    CNPJ era `UNIQUE` de tabela em vez de parcial, e bloqueava uma segunda
    terceirizada sem CNPJ no mesmo tenant — ver §3.1.
-4. **PR 4 — Integração com o fluxo existente de entrega** (leitura +
-   snapshot histórico), sem alterar o fluxo em si.
+4. **PR 4 (implementado) — Integração com o fluxo existente de entrega.**
+   Seis colunas `snapshot_*` novas em `deliveries` (§3.5), preenchidas uma
+   única vez por `resolve_delivery_outsourced_snapshot` no momento da
+   criação da entrega — `create_delivery_service` ganhou uma leitura a
+   mais antes do `INSERT`, nenhuma bifurcação de lógica. Vazio (exceto
+   `tipo_vinculo`) para colaborador CLT. Testado que editar a empresa/
+   contrato depois de uma entrega já registrada não altera o snapshot já
+   gravado — a garantia central deste PR.
 5. **PR 5 — Auditoria, histórico e registro de responsabilidades.**
 6. **PR 6 — Relatórios, custos, ressarcimento, dashboards, alertas
    inteligentes.**

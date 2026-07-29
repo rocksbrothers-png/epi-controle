@@ -350,3 +350,55 @@ def resolve_effective_epi_responsibility(connection, *, outsourced_company_id=No
             return normalize_epi_responsibility(company_row.get('epi_responsibility'))
 
     return 'Não Definido'
+
+
+# ── Snapshot histórico na entrega (ADR-0002, PR 4) ─────────────────────────
+
+def resolve_delivery_outsourced_snapshot(connection, employee, company_id):
+    """Congela, para uma entrega sendo criada agora, os atributos do vínculo
+    do colaborador com empresa terceirizada/prestadora no momento exato da
+    entrega — para nunca mudar depois, mesmo que a empresa/contrato seja
+    editado ou o colaborador seja migrado para outra terceirizada.
+
+    ``employee`` é o dict já carregado pelo chamador (mesma linha que
+    ``core.repository.get_employee_by_id`` devolve) — não faz query extra
+    para os campos que já estão nele. Retorna um dict pronto para
+    desempacotar nas colunas ``snapshot_*`` de ``deliveries``.
+
+    Colaborador CLT (sem ``outsourced_company_id``): todo o snapshot fica
+    vazio, exceto ``tipo_vinculo`` (sempre conhecido, ex. ``'CLT'``) — não
+    há empresa terceirizada nem responsabilidade pelo EPI para congelar.
+    """
+    employee = employee or {}
+    outsourced_company_id = employee.get('outsourced_company_id')
+    service_contract_id = employee.get('service_contract_id')
+    snapshot = {
+        'snapshot_tipo_vinculo': str(employee.get('tipo_vinculo') or 'CLT').strip() or 'CLT',
+        'snapshot_outsourced_company_name': '',
+        'snapshot_outsourced_company_cnpj': '',
+        'snapshot_contracting_company_id': int(company_id) if company_id else None,
+        'snapshot_contract_ref': '',
+        'snapshot_epi_responsibility': '',
+    }
+    if not outsourced_company_id:
+        return snapshot
+
+    company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
+    if company_row:
+        snapshot['snapshot_outsourced_company_name'] = company_row.get('legal_name') or ''
+        snapshot['snapshot_outsourced_company_cnpj'] = company_row.get('cnpj') or ''
+
+    if service_contract_id:
+        contract_row = connection.execute(
+            'SELECT contract_ref FROM service_contracts WHERE id = ?', (int(service_contract_id),),
+        ).fetchone()
+        if contract_row:
+            snapshot['snapshot_contract_ref'] = row_to_dict(contract_row).get('contract_ref') or ''
+
+    snapshot['snapshot_epi_responsibility'] = resolve_effective_epi_responsibility(
+        connection,
+        outsourced_company_id=outsourced_company_id,
+        service_contract_id=service_contract_id,
+        employee_override=employee.get('epi_responsibility_override'),
+    )
+    return snapshot

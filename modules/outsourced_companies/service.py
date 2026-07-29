@@ -204,6 +204,61 @@ def get_outsourced_company_by_id(connection, entity_id):
     return row_to_dict(row) if row else None
 
 
+# ── Vínculo do colaborador (Cadastro Simplificado, ADR-014 PR 3) ──────────
+
+def validate_employee_outsourced_reference(connection, payload, company_id):
+    """Valida os campos opcionais que ligam um colaborador (``employees``) a
+    uma empresa terceirizada/prestadora e, opcionalmente, a um contrato.
+
+    Chamado por ``modules.employees.service.create_employee``/
+    ``update_employee`` — nunca cria nem edita a empresa terceirizada em si,
+    só valida a referência. Ausência de ``outsourced_company_id`` (CLT) é o
+    caso comum e retorna tudo vazio/``None``, preservando compatibilidade.
+
+    Regras: ``outsourced_company_id`` e ``service_contract_id`` (quando
+    informados) precisam pertencer ao mesmo tenant do colaborador — nunca a
+    outro; um contrato informado precisa pertencer à empresa terceirizada
+    informada, quando as duas vêm juntas; exceção individual de
+    responsabilidade pelo EPI exige motivo.
+    """
+    payload = payload or {}
+    outsourced_company_id = payload.get('outsourced_company_id')
+    if outsourced_company_id in (None, '', 0, '0'):
+        outsourced_company_id = None
+    else:
+        outsourced_company_id = int(outsourced_company_id)
+        company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
+        if not company_row or int(company_row['company_id']) != int(company_id):
+            raise ValueError('Empresa terceirizada não encontrada nesta empresa.')
+
+    service_contract_id = payload.get('service_contract_id')
+    if service_contract_id in (None, '', 0, '0'):
+        service_contract_id = None
+    else:
+        service_contract_id = int(service_contract_id)
+        contract_row = connection.execute(
+            'SELECT id, company_id, outsourced_company_id FROM service_contracts WHERE id = ?',
+            (service_contract_id,),
+        ).fetchone()
+        contract = row_to_dict(contract_row) if contract_row else None
+        if not contract or int(contract['company_id']) != int(company_id):
+            raise ValueError('Contrato não encontrado nesta empresa.')
+        if outsourced_company_id and int(contract['outsourced_company_id']) != int(outsourced_company_id):
+            raise ValueError('Contrato não pertence à empresa terceirizada informada.')
+
+    override = str(payload.get('epi_responsibility_override') or '').strip()
+    override_reason = str(payload.get('epi_responsibility_override_reason') or '').strip()
+    if override:
+        override = normalize_epi_responsibility(override)
+        if not override_reason:
+            raise ValueError('Motivo é obrigatório ao sobrescrever a responsabilidade pelo EPI do colaborador.')
+    else:
+        override = ''
+        override_reason = ''
+
+    return outsourced_company_id, service_contract_id, override, override_reason
+
+
 # ── Contratos ─────────────────────────────────────────────────────────────
 
 def validate_service_contract_payload(connection, payload, company_id, outsourced_company_id):

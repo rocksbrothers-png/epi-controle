@@ -184,6 +184,20 @@ def test_same_cnpj_allowed_across_different_tenants():
     assert id_a != id_b
 
 
+def test_multiple_companies_without_cnpj_are_allowed_in_same_tenant():
+    # Regressão: a unicidade (company_id, cnpj_normalized) é um índice
+    # PARCIAL (WHERE cnpj_normalized <> ''), não um UNIQUE de tabela — senão
+    # a segunda empresa terceirizada cadastrada sem CNPJ no Cadastro
+    # Simplificado (caso comum: serviço emergencial) colidiria com a
+    # primeira, já que as duas teriam cnpj_normalized = ''.
+    conn = _conn()
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    id_1 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 1'}, cid)
+    id_2 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 2'}, cid)
+    assert id_1 != id_2
+
+
 def test_unknown_company_kind_and_epi_responsibility_fall_back_to_safe_defaults():
     conn = _conn()
     cid = _seed_company(conn)

@@ -2449,7 +2449,6 @@ def ensure_outsourced_companies(connection) -> None:
                 created_by_user_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT '',
                 updated_at TEXT NOT NULL DEFAULT '',
-                UNIQUE(company_id, cnpj_normalized),
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
                 FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
             )
@@ -2463,6 +2462,29 @@ def ensure_outsourced_companies(connection) -> None:
             'ON outsourced_companies (company_id, status)'
         )
     except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    # A unicidade de CNPJ é só por tenant e só quando o CNPJ é conhecido: o
+    # Cadastro Simplificado permite CNPJ vazio (serviço emergencial), e mais
+    # de uma terceirizada do mesmo tenant pode estar nesse estado ao mesmo
+    # tempo — um UNIQUE(company_id, cnpj_normalized) sem filtro bloquearia a
+    # segunda. Instalações que já rodaram uma versão anterior desta migração
+    # (com UNIQUE inline na tabela) têm o constraint removido antes de criar
+    # o índice parcial equivalente; SQLite não suporta DROP CONSTRAINT e
+    # nunca chegou a materializar o inline UNIQUE como algo removível por
+    # nome — o except tolera isso.
+    try:
+        connection.execute(
+            'ALTER TABLE outsourced_companies DROP CONSTRAINT IF EXISTS '
+            'outsourced_companies_company_id_cnpj_normalized_key'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_outsourced_companies_company_cnpj '
+            "ON outsourced_companies (company_id, cnpj_normalized) WHERE cnpj_normalized <> ''"
+        )
+    except Exception as _e:  # noqa: BLE001 - base sem suporte a índice parcial
         structured_log('warning', 'db.col_skip', error=str(_e))
 
     try:

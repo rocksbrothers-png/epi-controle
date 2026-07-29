@@ -43,7 +43,8 @@ def get_employee_by_id(connection, employee_id):
     row = connection.execute(
         'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
         'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
-        f'tipo_vinculo, empresa_origem{_employee_legal_entity_column(connection)} FROM employees WHERE id = %s',
+        f'tipo_vinculo, empresa_origem{_employee_legal_entity_column(connection)}'
+        f'{_employee_outsourced_columns(connection)} FROM employees WHERE id = %s',
         (int(employee_id),),
     ).fetchone()
     return row_to_dict(row) if row else None
@@ -54,6 +55,19 @@ def _employee_legal_entity_column(connection) -> str:
     contrário (janela de migração / schema parcial)."""
     from epi_backend.db import table_columns
     return ', legal_entity_id' if 'legal_entity_id' in table_columns(connection, 'employees') else ''
+
+
+def _employee_outsourced_columns(connection) -> str:
+    """Colunas do vínculo com empresa terceirizada/prestadora (ADR-0002)
+    quando o schema já está provisionado; vazio caso contrário (janela de
+    migração / schema parcial), preservando retrocompatibilidade."""
+    from epi_backend.db import table_columns
+    if 'outsourced_company_id' not in table_columns(connection, 'employees'):
+        return ''
+    return (
+        ', outsourced_company_id, service_contract_id, epi_responsibility_override, '
+        'epi_responsibility_override_reason'
+    )
 
 
 def get_unit_by_id(connection, unit_id):

@@ -1,6 +1,6 @@
 # ADR-0002 — Cadastro Simplificado de Terceirizados e Prestadores
 
-- **Status:** Aceito — PR 1 (fundação de backend) implementado
+- **Status:** Aceito — PR 1 (fundação de backend) e PR 3 (cadastro do colaborador) implementados
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -117,10 +117,16 @@ acompanha **não** criam:
 carrega `company_id` (o tenant contratante) como fronteira de isolamento
 obrigatória — mesmo padrão de `legal_entities`/`authorized_suppliers`. Toda
 query passa pelo filtro de escopo existente. CNPJ é armazenado normalizado
-(`cnpj_normalized`, só dígitos) com `UNIQUE(company_id, cnpj_normalized)`:
-a mesma terceirizada nunca duplica dentro do mesmo tenant, mas o mesmo CNPJ
-pode aparecer em tenants diferentes sem colisão (unicidade composta, não
-global).
+(`cnpj_normalized`, só dígitos) com um **índice único parcial**
+`(company_id, cnpj_normalized) WHERE cnpj_normalized <> ''` (mesmo padrão já
+usado por `idx_deliveries_idempotency`): a mesma terceirizada nunca duplica
+dentro do mesmo tenant quando o CNPJ é conhecido, o mesmo CNPJ pode aparecer
+em tenants diferentes sem colisão (unicidade composta, não global), e — por
+ser parcial — mais de uma terceirizada do mesmo tenant pode estar sem CNPJ
+ao mesmo tempo (Cadastro Simplificado emergencial). Um `UNIQUE` de tabela
+simples bloquearia esse último caso, porque duas linhas com
+`cnpj_normalized = ''` colidiriam entre si — corrigido ainda no PR 1 antes
+da wiring do PR 3 revelar o problema em teste.
 
 ### 3.2 Nomenclatura
 
@@ -167,10 +173,15 @@ CREATE TABLE outsourced_companies (
     created_by_user_id    INTEGER,
     created_at           TEXT NOT NULL DEFAULT '',
     updated_at           TEXT NOT NULL DEFAULT '',
-    UNIQUE(company_id, cnpj_normalized),
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- unicidade só quando o CNPJ é conhecido — índice parcial, não UNIQUE de
+-- tabela (ver §3.1: duas terceirizadas do mesmo tenant sem CNPJ não colidem)
+CREATE UNIQUE INDEX uq_outsourced_companies_company_cnpj
+    ON outsourced_companies (company_id, cnpj_normalized)
+    WHERE cnpj_normalized <> '';
 
 -- contrato: uma outsourced_company pode ter N contratos (unidades/períodos
 -- diferentes) sem duplicar o cadastro da empresa
@@ -284,9 +295,21 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    financeiros/ressarcimento, telas finais de UI. Zero mudança de
    comportamento visível até alguém ligar o módulo.
 2. **PR 2 — Cadastro das empresas.** `GET/POST/PUT /api/outsourced-companies`
-   (já implementado neste PR 1 como fundação; PR 2 cobre telas e regras de
-   apresentação Simplificado/Padrão).
-3. **PR 3 — Cadastro dos colaboradores + migração + validações.**
+   e `POST .../promote` já implementados no PR 1 como fundação — cobre
+   Simplificado (CNPJ opcional) e Padrão (CNPJ obrigatório) na mesma função
+   de gravação. Sem gap adicional de API; a apresentação em tela fica com os
+   PRs 7/8.
+3. **PR 3 (implementado) — Cadastro dos colaboradores + validações.**
+   `create_employee`/`update_employee` aceitam, opcionalmente,
+   `outsourced_company_id`/`service_contract_id`/
+   `epi_responsibility_override(_reason)`, validados por
+   `validate_employee_outsourced_reference` (mesmo tenant; contrato
+   pertence à empresa informada; override exige motivo) — mesma função que
+   o cadastro completo já usa, sem caminho de código novo. `GET /api/employees`
+   e `GET /api/employees/{id}` devolvem as colunas novas. Corrigido, nesta
+   mesma leva, um bug real descoberto pelos testes: o índice de unicidade de
+   CNPJ era `UNIQUE` de tabela em vez de parcial, e bloqueava uma segunda
+   terceirizada sem CNPJ no mesmo tenant — ver §3.1.
 4. **PR 4 — Integração com o fluxo existente de entrega** (leitura +
    snapshot histórico), sem alterar o fluxo em si.
 5. **PR 5 — Auditoria, histórico e registro de responsabilidades.**

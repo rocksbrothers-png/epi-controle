@@ -191,10 +191,12 @@ riscos, vínculos organizacionais e dados complementares da estrutura.
 
 ## 4. Administrador Local
 
-É o responsável administrativo por uma unidade ou por uma carteira de
-unidades. Ele controla solicitações, necessidades de compra, aprovações e
-acompanhamento administrativo do estoque, mas não realiza o cadastro dos
-colaboradores.
+É o responsável administrativo por exatamente uma unidade — vínculo único,
+nunca uma carteira de N unidades (decisão confirmada em 2026-07-29; ver
+`actor_operational_unit_id`). Ele controla solicitações, necessidades de
+compra, aprovações e acompanhamento administrativo do estoque, mas não
+realiza o cadastro dos colaboradores. Se tentar acessar outra unidade,
+mesmo do mesmo CNPJ, o backend nega o acesso.
 
 **Atribuições — Solicitações de EPI**
 - Receber solicitações dos colaboradores.
@@ -251,8 +253,8 @@ mas não realiza a movimentação física.
 - Acompanhar compras.
 - Acompanhar entregas.
 - Acompanhar necessidades geradas por mudanças dos colaboradores.
-- Administrar apenas as unidades de sua carteira.
-- Transferir colaboradores entre unidades.
+- Administrar apenas a própria unidade.
+- Transferir colaboradores da própria unidade para outra unidade.
 
 **Não faz**
 - Não cadastra colaboradores.

@@ -15,7 +15,7 @@ from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
 from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS
-from modules.purchases.service import get_actor_purchase_unit_scope
+from modules.purchases.service import actor_has_no_purchase_unit_scope, get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
     BLOCKED_STOCK_STATUSES,
@@ -220,6 +220,8 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope):
+            return send_json(handler, 200, {'items': []})
         clauses, params = [], []
         if company_filter:
             clauses.append('sm.company_id = ?')

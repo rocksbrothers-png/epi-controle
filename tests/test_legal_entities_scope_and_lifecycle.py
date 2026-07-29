@@ -2,8 +2,11 @@
 
 Cobre as lacunas de conformidade:
   - escopo de visibilidade por CNPJ (Geral/Registro x Administrador Local x
-    Usuário), com retrocompatibilidade explícita para quem nunca teve
-    autorização atribuída;
+    Gestor de EPI). O Administrador Local não administra CNPJ nem possui
+    carteira própria (docs/PAPEIS_E_ATRIBUICOES.md #4): o CNPJ é sempre
+    derivado da única unidade que ele administra (``units.legal_entity_id``),
+    nunca escolhido — e a ausência de unidade/CNPJ fecha o escopo (``[]``),
+    nunca abre (``None``);
   - CNPJ obrigatório no colaborador quando a empresa tem mais de um CNPJ ativo;
   - auditoria registrando o CNPJ afetado;
   - inativação auditada do CNPJ (exclusão nunca é física).
@@ -21,23 +24,32 @@ from modules.legal_entities.service import (
     deactivate_legal_entity,
     ensure_legal_entity_access,
     fetch_legal_entities,
-    fetch_user_legal_entities,
     get_default_legal_entity_id,
     resolve_actor_legal_entity_ids,
     resolve_employee_legal_entity_id,
-    set_user_legal_entities,
 )
 
 CNPJ_A = '11.222.333/0001-81'
 CNPJ_B = '45.723.174/0001-10'
 CNPJ_C = '19.131.243/0001-97'
 
+_EMPLOYEES_TABLE = """
+    CREATE TABLE employees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER NOT NULL, unit_id INTEGER, name TEXT,
+        employee_id_code TEXT DEFAULT '', cpf TEXT DEFAULT '', email TEXT DEFAULT '',
+        whatsapp TEXT DEFAULT '', preferred_contact_channel TEXT DEFAULT '',
+        sector TEXT DEFAULT '', role_name TEXT DEFAULT '', admission_date TEXT DEFAULT '',
+        schedule_type TEXT DEFAULT '', tipo_vinculo TEXT DEFAULT 'CLT', empresa_origem TEXT DEFAULT ''
+    );
+"""
+
 
 def _conn():
     conn = sqlite3.connect(':memory:')
     conn.row_factory = sqlite3.Row
     conn.executescript(
-        """
+        f"""
         CREATE TABLE companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT, legal_name TEXT DEFAULT '', cnpj TEXT
@@ -46,9 +58,11 @@ def _conn():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER NOT NULL, name TEXT
         );
-        CREATE TABLE employees (
+        {_EMPLOYEES_TABLE}
+        CREATE TABLE employee_unit_movements (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL, unit_id INTEGER, name TEXT
+            employee_id INTEGER, movement_type TEXT, start_date TEXT, end_date TEXT DEFAULT '',
+            target_unit_id INTEGER
         );
         CREATE TABLE users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +86,28 @@ def _add_filial(conn, cnpj=CNPJ_B, name='ACME Filial RJ'):
     return create_legal_entity(conn, {'cnpj': cnpj, 'legal_name': name, 'entity_type': 'filial'}, 1)
 
 
+def _add_unit(conn, *, legal_entity_id=None, name='Base Santos'):
+    cur = conn.execute('INSERT INTO units (company_id, name) VALUES (1, ?)', (name,))
+    unit_id = cur.lastrowid
+    if legal_entity_id is not None:
+        conn.execute('UPDATE units SET legal_entity_id = ? WHERE id = ?', (legal_entity_id, unit_id))
+    conn.commit()
+    return unit_id
+
+
+def _add_local_admin(conn, user_id=7, *, unit_id=None):
+    cur = conn.execute(
+        "INSERT INTO employees (id, company_id, unit_id, name) VALUES (?, 1, ?, 'Admin Local')",
+        (user_id, unit_id),
+    )
+    conn.execute(
+        "INSERT INTO users (id, username, company_id, role, linked_employee_id) VALUES (?, 'local', 1, 'admin', ?)",
+        (user_id, user_id),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
 # ── escopo de visibilidade ────────────────────────────────────────────────────
 
 @pytest.mark.parametrize('role', ['master_admin', 'general_admin', 'registry_admin'])
@@ -82,25 +118,49 @@ def test_structural_roles_see_all_cnpjs(role):
     assert resolve_actor_legal_entity_ids(conn, actor) is None  # sem restrição
 
 
-def test_local_admin_without_authorization_is_unrestricted():
-    """Retrocompatibilidade: admin local existente nunca teve autorização
-    explícita e não pode perder acesso ao migrar."""
+def test_local_admin_without_operational_unit_sees_nothing():
+    """Sem colaborador vinculado (ainda não provisionado), o escopo fecha —
+    nunca abre."""
     conn = _conn()
     _add_filial(conn)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    actor = {'id': 7, 'role': 'admin', 'company_id': 1}
-    assert resolve_actor_legal_entity_ids(conn, actor) is None
+    actor = {'id': 7, 'role': 'admin', 'company_id': 1, 'linked_employee_id': None}
+    assert resolve_actor_legal_entity_ids(conn, actor) == []
 
 
-def test_local_admin_restricted_to_authorized_cnpjs():
+def test_local_admin_with_unit_without_cnpj_sees_nothing():
+    """Unidade sem CNPJ vinculado: nada a resolver automaticamente."""
+    conn = _conn()
+    _add_filial(conn)
+    unit_id = _add_unit(conn, legal_entity_id=None)
+    _add_local_admin(conn, unit_id=unit_id)
+    actor = {'id': 7, 'role': 'admin', 'company_id': 1, 'linked_employee_id': 7}
+    assert resolve_actor_legal_entity_ids(conn, actor) == []
+
+
+def test_local_admin_cnpj_is_derived_from_managed_unit():
+    """O CNPJ nunca é escolhido — é sempre o da única unidade administrada."""
     conn = _conn()
     filial = _add_filial(conn)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    set_user_legal_entities(conn, 7, 1, [filial])
-    actor = {'id': 7, 'role': 'admin', 'company_id': 1}
+    unit_id = _add_unit(conn, legal_entity_id=filial)
+    _add_local_admin(conn, unit_id=unit_id)
+    actor = {'id': 7, 'role': 'admin', 'company_id': 1, 'linked_employee_id': 7}
     assert resolve_actor_legal_entity_ids(conn, actor) == [filial]
+
+
+def test_local_admin_scope_follows_unit_not_a_portfolio():
+    """Não existe carteira de CNPJs para o Administrador Local: o escopo é
+    sempre o CNPJ de uma única unidade, nunca uma lista configurável."""
+    conn = _conn()
+    matriz = get_default_legal_entity_id(conn, 1)
+    filial = _add_filial(conn)
+    unit_matriz = _add_unit(conn, legal_entity_id=matriz, name='Matriz')
+    unit_filial = _add_unit(conn, legal_entity_id=filial, name='Filial')
+    admin_matriz = _add_local_admin(conn, user_id=7, unit_id=unit_matriz)
+    admin_filial = _add_local_admin(conn, user_id=8, unit_id=unit_filial)
+    actor_matriz = {'id': admin_matriz, 'role': 'admin', 'company_id': 1, 'linked_employee_id': admin_matriz}
+    actor_filial = {'id': admin_filial, 'role': 'admin', 'company_id': 1, 'linked_employee_id': admin_filial}
+    assert resolve_actor_legal_entity_ids(conn, actor_matriz) == [matriz]
+    assert resolve_actor_legal_entity_ids(conn, actor_filial) == [filial]
 
 
 def test_user_sees_only_own_employee_cnpj():
@@ -120,6 +180,16 @@ def test_user_without_linked_employee_sees_nothing():
     assert resolve_actor_legal_entity_ids(conn, actor) == []
 
 
+def test_buyer_and_approver_and_employee_see_no_cnpjs_by_default():
+    """Nenhum desses papéis tem escopo de CNPJ definido hoje — o padrão é
+    fechado (``[]``), nunca a lista inteira da empresa."""
+    conn = _conn()
+    _add_filial(conn)
+    for role in ('buyer', 'approver', 'employee'):
+        actor = {'id': 1, 'role': role, 'company_id': 1}
+        assert resolve_actor_legal_entity_ids(conn, actor) == [], role
+
+
 def test_fetch_legal_entities_applies_user_scope():
     conn = _conn()
     matriz = get_default_legal_entity_id(conn, 1)
@@ -133,54 +203,30 @@ def test_fetch_legal_entities_applies_user_scope():
     assert matriz not in [e['id'] for e in visible]
 
 
+def test_fetch_legal_entities_scopes_local_admin_to_managed_unit():
+    """O achado original desta correção: o bootstrap entregava todos os CNPJs
+    da empresa ao Administrador Local. Agora entrega só o da unidade dele."""
+    conn = _conn()
+    matriz = get_default_legal_entity_id(conn, 1)
+    filial = _add_filial(conn)
+    unit_id = _add_unit(conn, legal_entity_id=filial)
+    _add_local_admin(conn, unit_id=unit_id)
+    actor = {'id': 7, 'role': 'admin', 'company_id': 1, 'linked_employee_id': 7}
+    visible = fetch_legal_entities(conn, actor)
+    assert [e['id'] for e in visible] == [filial]
+    assert matriz not in [e['id'] for e in visible]
+
+
 def test_ensure_legal_entity_access_blocks_out_of_scope():
     conn = _conn()
     matriz = get_default_legal_entity_id(conn, 1)
     filial = _add_filial(conn)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    set_user_legal_entities(conn, 7, 1, [filial])
-    actor = {'id': 7, 'role': 'admin', 'company_id': 1}
+    unit_id = _add_unit(conn, legal_entity_id=filial)
+    _add_local_admin(conn, unit_id=unit_id)
+    actor = {'id': 7, 'role': 'admin', 'company_id': 1, 'linked_employee_id': 7}
     ensure_legal_entity_access(conn, actor, filial)  # não levanta
     with pytest.raises(PermissionError):
         ensure_legal_entity_access(conn, actor, matriz)
-
-
-# ── autorização usuário↔CNPJ ─────────────────────────────────────────────────
-
-def test_set_user_legal_entities_replaces_list():
-    conn = _conn()
-    matriz = get_default_legal_entity_id(conn, 1)
-    filial = _add_filial(conn)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    set_user_legal_entities(conn, 7, 1, [matriz, filial])
-    assert fetch_user_legal_entities(conn, 7) == sorted([matriz, filial])
-    set_user_legal_entities(conn, 7, 1, [filial])
-    assert fetch_user_legal_entities(conn, 7) == [filial]
-
-
-def test_empty_authorization_removes_restriction():
-    conn = _conn()
-    filial = _add_filial(conn)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    set_user_legal_entities(conn, 7, 1, [filial])
-    set_user_legal_entities(conn, 7, 1, [])
-    actor = {'id': 7, 'role': 'admin', 'company_id': 1}
-    assert resolve_actor_legal_entity_ids(conn, actor) is None
-
-
-def test_set_user_legal_entities_rejects_other_company_cnpj():
-    conn = _conn()
-    conn.execute("INSERT INTO companies (name, legal_name, cnpj) VALUES ('OUTRA', 'OUTRA SA', ?)", (CNPJ_C,))
-    conn.commit()
-    ensure_legal_entities(conn)
-    other = get_default_legal_entity_id(conn, 2)
-    conn.execute("INSERT INTO users (id, username, company_id, role) VALUES (7, 'local', 1, 'admin')")
-    conn.commit()
-    with pytest.raises(ValueError):
-        set_user_legal_entities(conn, 7, 1, [other])
 
 
 # ── CNPJ obrigatório no colaborador ──────────────────────────────────────────

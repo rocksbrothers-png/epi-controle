@@ -9,10 +9,15 @@ Endpoints:
   POST /api/legal-entities/import              → importação de planilha de CNPJs
   PUT  /api/legal-entities/{id}                → atualiza um CNPJ
   DELETE /api/legal-entities/{id}              → inativação auditada (nunca exclusão física)
-  GET|PUT /api/users/{id}/legal-entities       → autorização de CNPJs por usuário
 
 Todas as escritas exigem que o ator pertença à empresa alvo (ou seja Master) e
 tenham a permissão legal_entities:*. Nenhuma altera a assinatura SaaS da tenant.
+
+Não há rota de "autorização de CNPJs por usuário": só Administrador Geral,
+de Registro e Master administram CNPJ (docs/PAPEIS_E_ATRIBUICOES.md #2/#3). O
+Administrador Local nunca escolhe um CNPJ — ele é resolvido automaticamente a
+partir da unidade que administra (ver
+``modules.legal_entities.service.resolve_actor_legal_entity_ids``).
 """
 
 from contextlib import closing
@@ -27,17 +32,14 @@ from core.permissions import (
 )
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
-from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.legal_entities.service import (
     create_legal_entity,
     deactivate_legal_entity,
     ensure_legal_entity_access,
     fetch_legal_entities,
-    fetch_user_legal_entities,
     import_legal_entities_rows,
     get_legal_entity_by_id,
-    set_user_legal_entities,
     update_legal_entity,
 )
 
@@ -225,51 +227,6 @@ def handle_delete_legal_entity(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'id': entity_id})
 
 
-# ── Autorização de CNPJ por usuário (Administrador Local) ────────────────────
-
-def handle_get_user_legal_entities(handler, parsed, payload, match):
-    user_id = int(match.group(1))
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_LEGAL_ENTITIES_VIEW)
-        target = _load_company_user(connection, user_id)
-        if not target:
-            return send_json(handler, 404, {'error': 'Usuário não encontrado.'})
-        ensure_company_access(actor, target['company_id'])
-        return send_json(handler, 200, {'legal_entity_ids': fetch_user_legal_entities(connection, user_id)})
-
-
-def handle_put_user_legal_entities(handler, parsed, payload, match):
-    """Define os CNPJs autorizados a um usuário. Lista vazia remove a restrição."""
-    user_id = int(match.group(1))
-    require_fields(payload, ['actor_user_id'])
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_LEGAL_ENTITIES_UPDATE)
-        target = _load_company_user(connection, user_id)
-        if not target:
-            return send_json(handler, 404, {'error': 'Usuário não encontrado.'})
-        ensure_company_access(actor, target['company_id'])
-        ids = set_user_legal_entities(
-            connection, user_id, int(target['company_id']), payload.get('legal_entity_ids') or []
-        )
-        _audit(
-            connection, target['company_id'], actor, 'user_legal_entities_update',
-            f"CNPJs autorizados ao usuário {target.get('username') or user_id} atualizados.",
-            [{'field': 'CNPJs autorizados', 'before': '', 'after': ', '.join(str(i) for i in ids) or '(sem restrição)'}],
-        )
-        connection.commit()
-        structured_log('info', 'legal_entity.user_scope_updated', user_id=user_id, count=len(ids), actor_user_id=actor['id'])
-        return send_json(handler, 200, {'ok': True, 'legal_entity_ids': ids})
-
-
-def _load_company_user(connection, user_id):
-    row = connection.execute(
-        'SELECT id, username, company_id FROM users WHERE id = ?', (int(user_id),)
-    ).fetchone()
-    if not row:
-        return None
-    return row_to_dict(row)
-
-
 def register_routes(router):
     router.register('GET',  '/api/legal-entities',                         handle_get_legal_entities)
     router.register('GET',  r'^/api/legal-entities/(\d+)$',                 handle_get_legal_entity, regex=True)
@@ -277,7 +234,5 @@ def register_routes(router):
     router.register('POST', '/api/legal-entities',                         handle_post_legal_entities)
     router.register('POST', '/api/legal-entities/batch',                   handle_post_legal_entities_batch)
     router.register('POST', '/api/legal-entities/import',                  handle_post_legal_entities_import)
-    router.register('GET',  r'^/api/users/(\d+)/legal-entities$',           handle_get_user_legal_entities, regex=True)
     router.register('PUT',  r'^/api/legal-entities/(\d+)$',                 handle_put_legal_entity, regex=True)
-    router.register('PUT',  r'^/api/users/(\d+)/legal-entities$',           handle_put_user_legal_entities, regex=True)
     router.register('DELETE', r'^/api/legal-entities/(\d+)$',               handle_delete_legal_entity, regex=True)

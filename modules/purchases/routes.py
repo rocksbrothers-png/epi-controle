@@ -35,6 +35,7 @@ UTC = timezone.utc
 
 from modules.purchases.service import (
     actor_company_id_or_query,
+    actor_has_no_purchase_unit_scope,
     add_purchase_order_file,
     apply_purchase_request_workflow_action,
     approve_purchase_order,
@@ -89,6 +90,8 @@ def handle_get_epi_requests(handler, parsed, payload, match):
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope):
+            return send_json(handler, 200, {'items': []})
         items = fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/requests', dataset_name='epi_requests', legacy_items=items
@@ -107,6 +110,8 @@ def handle_get_purchase_demands(handler, parsed, payload, match):
             company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+            return send_json(handler, 200, {'items': []})
         if not scope_unit_id and purchase_scope_units:
             all_demands, seen = [], set()
             for uid in purchase_scope_units:
@@ -133,6 +138,8 @@ def handle_get_purchase_requests(handler, parsed, payload, match):
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+            return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_requests(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
         items = canary_evaluate_visibility_dataset(
@@ -171,8 +178,11 @@ def handle_get_purchase_pendencies(handler, parsed, payload, match):
         query = parse_qs(parsed.query)
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
+        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+            return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', ['open'])[0] or 'open').strip()
-        items = fetch_purchase_pendencies(connection, company_id, scope_unit_id, status_filter or None)
+        items = fetch_purchase_pendencies(connection, company_id, scope_unit_id, status_filter or None, purchase_scope_units=purchase_scope_units)
         return send_json(handler, 200, {'items': items})
 
 
@@ -192,6 +202,8 @@ def handle_get_purchase_orders(handler, parsed, payload, match):
         company_id = actor_company_id_or_query(connection, actor, query)
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+            return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
         items = fetch_purchase_orders(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
         items = canary_evaluate_visibility_dataset(

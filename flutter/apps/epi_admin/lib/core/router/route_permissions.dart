@@ -29,6 +29,9 @@ const Map<String, String> routePermissions = <String, String>{
   Routes.users: 'users:view',
   Routes.units: 'units:view',
   Routes.legalEntities: 'legal_entities:view',
+  // Reaproveita o mesmo piso técnico de criar colaborador (ADR-0002) — sem
+  // permissão dedicada, por decisão explícita do ADR.
+  Routes.outsourcedCompanies: 'employees:create',
   Routes.feedback: 'epi_feedback:view',
   Routes.myCompany: 'company_settings:view',
   Routes.settings: 'settings:view',

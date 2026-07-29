@@ -20,6 +20,10 @@ const Map<String, String> routeModules = <String, String>{
   Routes.companies: 'administracao',
   Routes.users: 'administracao',
   Routes.legalEntities: 'administracao',
+  // Cadastro Simplificado de Terceirizados e Prestadores (ADR-0002) — módulo
+  // opt-in: oculto por padrão para todo papel até o Administrador Geral
+  // ligá-lo explicitamente por tenant (ver rule_engine.py _OPT_IN_MODULES).
+  Routes.outsourcedCompanies: 'terceirizados',
   Routes.settings: 'configuracoes',
   Routes.subscription: 'configuracoes',
   Routes.invoices: 'configuracoes',

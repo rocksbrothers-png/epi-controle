@@ -2633,6 +2633,138 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Estagiário'**
   String get employmentTypeIntern;
+
+  /// No description provided for @navTerceirizados.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Terceirizados e Prestadores'**
+  String get navTerceirizados;
+
+  /// No description provided for @outsourcedCompaniesTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Terceirizados e Prestadores'**
+  String get outsourcedCompaniesTitle;
+
+  /// No description provided for @outsourcedCompaniesEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma empresa terceirizada cadastrada.'**
+  String get outsourcedCompaniesEmpty;
+
+  /// No description provided for @outsourcedCompaniesSearchHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Buscar por nome ou CNPJ'**
+  String get outsourcedCompaniesSearchHint;
+
+  /// No description provided for @outsourcedCompanyNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova empresa'**
+  String get outsourcedCompanyNew;
+
+  /// No description provided for @outsourcedCompanyLegalNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Razão Social'**
+  String get outsourcedCompanyLegalNameLabel;
+
+  /// No description provided for @outsourcedCompanyTradeNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome Fantasia'**
+  String get outsourcedCompanyTradeNameLabel;
+
+  /// No description provided for @outsourcedCompanyCnpjLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get outsourcedCompanyCnpjLabel;
+
+  /// No description provided for @outsourcedCompanyCnpjHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Opcional no Cadastro Simplificado'**
+  String get outsourcedCompanyCnpjHint;
+
+  /// No description provided for @outsourcedCompanyKindLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tipo da Empresa'**
+  String get outsourcedCompanyKindLabel;
+
+  /// No description provided for @outsourcedCompanyKindOutsourced.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Terceirizada'**
+  String get outsourcedCompanyKindOutsourced;
+
+  /// No description provided for @outsourcedCompanyKindServiceProvider.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Prestadora de Serviço'**
+  String get outsourcedCompanyKindServiceProvider;
+
+  /// No description provided for @outsourcedCompanyKindOther.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Outro'**
+  String get outsourcedCompanyKindOther;
+
+  /// No description provided for @outsourcedCompanyResponsibilityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Responsabilidade pelo Fornecimento de EPI'**
+  String get outsourcedCompanyResponsibilityLabel;
+
+  /// No description provided for @outsourcedCompanyStatusLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Situação'**
+  String get outsourcedCompanyStatusLabel;
+
+  /// No description provided for @outsourcedCompanySave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar'**
+  String get outsourcedCompanySave;
+
+  /// No description provided for @outsourcedCompanyCancel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelar'**
+  String get outsourcedCompanyCancel;
+
+  /// No description provided for @outsourcedCompanyPromote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Promover a Cadastro Padrão'**
+  String get outsourcedCompanyPromote;
+
+  /// No description provided for @outsourcedCompanyPromoteConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Promover ao Cadastro Padrão?'**
+  String get outsourcedCompanyPromoteConfirmTitle;
+
+  /// No description provided for @outsourcedCompanyPromoteConfirmBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.'**
+  String get outsourcedCompanyPromoteConfirmBody;
+
+  /// No description provided for @outsourcedCompanySimplifiedBadge.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Simplificado'**
+  String get outsourcedCompanySimplifiedBadge;
+
+  /// No description provided for @outsourcedCompanyStandardBadge.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Padrão'**
+  String get outsourcedCompanyStandardBadge;
 }
 
 class _AppLocalizationsDelegate

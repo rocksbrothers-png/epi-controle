@@ -87,6 +87,7 @@ void main() {
           Routes.users,
           Routes.units,
           Routes.legalEntities,
+          Routes.outsourcedCompanies,
           Routes.feedback,
           Routes.settings,
           Routes.myCompany,

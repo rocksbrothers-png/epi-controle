@@ -53,7 +53,7 @@ def _fake_meta_store(monkeypatch):
 
 
 def _patch_common(monkeypatch, actor):
-    monkeypatch.setattr(routes, 'get_connection', lambda: _FakeConn())
+    monkeypatch.setattr(routes, 'get_connection', _FakeConn)
     monkeypatch.setattr(routes, 'resolve_actor_user_id', lambda *a, **k: actor['id'])
     monkeypatch.setattr(routes, 'authorize_action', lambda *a, **k: actor)
 

@@ -1035,6 +1035,64 @@ def ensure_delivery_outsourced_snapshot_columns(connection) -> None:
     _safe_add_column(connection, 'deliveries', 'snapshot_epi_responsibility', "TEXT NOT NULL DEFAULT ''")
 
 
+def ensure_epi_reimbursements(connection) -> None:
+    """Ressarcimento de EPI a empresas terceirizadas/prestadoras (ADR-0002,
+    PR 6) — registro de apoio para conferência manual, NUNCA cobrança
+    automática: sem qualquer integração de pagamento/fatura. Relatórios de
+    ressarcimento são consultas sobre esta tabela, não um sistema separado.
+
+    Uma linha liga uma entrega (``delivery_id``) a uma empresa terceirizada
+    (``outsourced_company_id``) quando a responsabilidade efetiva pelo EPI
+    (resolvida no momento da entrega — ver ``resolve_delivery_outsourced_snapshot``)
+    diverge de quem operou/pagou a entrega. Criar a linha é sempre uma
+    decisão humana explícita — nada aqui é gerado automaticamente pela
+    entrega em si.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS epi_reimbursements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                delivery_id INTEGER NOT NULL,
+                outsourced_company_id INTEGER NOT NULL,
+                unit_cost REAL NOT NULL DEFAULT 0,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                total_value REAL NOT NULL DEFAULT 0,
+                reason TEXT NOT NULL DEFAULT '',
+                contract_ref TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Não Aplicável',
+                created_by_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
+                FOREIGN KEY (outsourced_company_id) REFERENCES outsourced_companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_epi_reimbursements_company '
+            'ON epi_reimbursements (company_id, status)'
+        )
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_epi_reimbursements_outsourced_company '
+            'ON epi_reimbursements (outsourced_company_id)'
+        )
+        # Uma entrega tem no máximo um registro de ressarcimento — reenvio/
+        # reprocessamento não deve criar duplicata silenciosa.
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_epi_reimbursements_delivery '
+            'ON epi_reimbursements (delivery_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_stock_movement_size_columns(connection) -> None:
     _safe_add_column(connection, 'stock_movements', 'glove_size', "TEXT NOT NULL DEFAULT 'N/A'")
     _safe_add_column(connection, 'stock_movements', 'size', "TEXT NOT NULL DEFAULT 'N/A'")
@@ -3264,6 +3322,10 @@ def init_db():
             ensure_delivery_evidence,
             ensure_devolution_columns,
             ensure_delivery_outsourced_snapshot_columns,
+            # Depende de deliveries (colunas snapshot acima) e de
+            # outsourced_companies (ensure_outsourced_companies, já
+            # executada antes na sequência via ensure_legal_entities).
+            ensure_epi_reimbursements,
             _ensure_jv_table,
             _ensure_ppe_test_tables,
             ensure_rule_engine_shadow_log,

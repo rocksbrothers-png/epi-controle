@@ -8,6 +8,10 @@ Endpoints:
   POST /api/outsourced-companies/{id}/promote                      → migração Simplificado → Padrão
   GET  /api/outsourced-companies/{id}/service-contracts             → contratos da empresa
   POST /api/outsourced-companies/{id}/service-contracts             → cadastro de contrato
+  GET  /api/outsourced-companies/migration-suggestions              → alerta de sugestão de migração (PR 6)
+  GET  /api/epi-reimbursements                                     → lista de ressarcimentos (PR 6)
+  POST /api/epi-reimbursements                                     → registro de ressarcimento (PR 6)
+  PUT  /api/epi-reimbursements/{id}/status                          → atualização de status (PR 6)
 
 Reaproveita a mesma permissão de criar/ver colaborador (employees:*) — sem
 modelo de permissão novo, por decisão explícita do ADR-014. O piso técnico
@@ -15,9 +19,13 @@ do módulo "terceirizados" em module_visibility (MODULE_REQUIRED_PERMISSIONS)
 usa a mesma permissão. A subpasta nasce oculta por padrão: mesmo quem tem
 employees:create só vê a tela depois que o Administrador Geral liga o
 módulo em Configuração > Regras > Visualização.
+
+Ressarcimento é registro de apoio para conferência manual — nenhuma rota
+aqui dispara cobrança ou integração de pagamento (ADR-0002 §3.6).
 """
 
 from contextlib import closing
+from urllib.parse import parse_qs
 
 from core.auth import ensure_company_access
 from core.database import get_connection
@@ -27,12 +35,17 @@ from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.outsourced_companies.service import (
     create_outsourced_company,
+    create_reimbursement,
     create_service_contract,
+    fetch_migration_suggestions,
     fetch_outsourced_companies,
+    fetch_reimbursements,
     fetch_service_contracts,
     get_outsourced_company_by_id,
+    get_reimbursement_by_id,
     promote_outsourced_company,
     update_outsourced_company,
+    update_reimbursement_status,
 )
 
 
@@ -173,7 +186,70 @@ def handle_put_outsourced_company(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'id': entity_id})
 
 
+# ── Alerta de sugestão de migração (PR 6) ──────────────────────────────────
+
+def handle_get_migration_suggestions(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        data = fetch_migration_suggestions(connection, int(actor['company_id']))
+        return send_json(handler, 200, {'migration_suggestions': data, 'items': data})
+
+
+# ── Ressarcimento (PR 6) ────────────────────────────────────────────────────
+
+def handle_get_reimbursements(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        query = parse_qs(parsed.query)
+        outsourced_company_id = (query.get('outsourced_company_id') or [None])[0]
+        status = (query.get('status') or [None])[0]
+        data = fetch_reimbursements(
+            connection, int(actor['company_id']),
+            outsourced_company_id=int(outsourced_company_id) if outsourced_company_id else None,
+            status=status,
+        )
+        return send_json(handler, 200, {'epi_reimbursements': data, 'items': data})
+
+
+def handle_post_reimbursements(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'delivery_id', 'outsourced_company_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_CREATE)
+        company_id = int(actor['company_id'])
+        reimbursement_id = create_reimbursement(connection, payload, company_id, actor_user_id=actor['id'])
+        _audit(
+            connection, company_id, actor, 'epi_reimbursement_recorded',
+            f"Ressarcimento registrado para a entrega #{payload.get('delivery_id')}.",
+            [{'field': 'total_value', 'before': '', 'after': str(payload.get('total_value') or '')}],
+        )
+        connection.commit()
+        structured_log('info', 'epi_reimbursement.created', reimbursement_id=reimbursement_id,
+                       company_id=company_id, actor_user_id=actor['id'])
+        return send_json(handler, 201, {'ok': True, 'id': reimbursement_id})
+
+
+def handle_put_reimbursement_status(handler, parsed, payload, match):
+    reimbursement_id = int(match.group(1))
+    require_fields(payload, ['actor_user_id', 'status'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_UPDATE)
+        current = get_reimbursement_by_id(connection, reimbursement_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'Ressarcimento não encontrado.'})
+        ensure_company_access(actor, current['company_id'])
+        new_status = update_reimbursement_status(connection, reimbursement_id, current['company_id'], payload['status'])
+        _audit(
+            connection, current['company_id'], actor, 'epi_reimbursement_status_changed',
+            f"Status de ressarcimento #{reimbursement_id} alterado.",
+            [{'field': 'status', 'before': current.get('status') or '', 'after': new_status}],
+        )
+        connection.commit()
+        structured_log('info', 'epi_reimbursement.status_changed', reimbursement_id=reimbursement_id, actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'id': reimbursement_id, 'status': new_status})
+
+
 def register_routes(router):
+    router.register('GET',  '/api/outsourced-companies/migration-suggestions',               handle_get_migration_suggestions)
     router.register('GET',  '/api/outsourced-companies',                                    handle_get_outsourced_companies)
     router.register('GET',  r'^/api/outsourced-companies/(\d+)$',                            handle_get_outsourced_company, regex=True)
     router.register('GET',  r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_get_service_contracts, regex=True)
@@ -181,3 +257,6 @@ def register_routes(router):
     router.register('POST', r'^/api/outsourced-companies/(\d+)/promote$',                    handle_post_outsourced_company_promote, regex=True)
     router.register('POST', r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_post_service_contracts, regex=True)
     router.register('PUT',  r'^/api/outsourced-companies/(\d+)$',                            handle_put_outsourced_company, regex=True)
+    router.register('GET',  '/api/epi-reimbursements',                                       handle_get_reimbursements)
+    router.register('POST', '/api/epi-reimbursements',                                       handle_post_reimbursements)
+    router.register('PUT',  r'^/api/epi-reimbursements/(\d+)/status$',                       handle_put_reimbursement_status, regex=True)

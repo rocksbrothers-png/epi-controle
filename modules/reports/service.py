@@ -49,6 +49,12 @@ def normalize_report_filters(raw_filters):
         'end_date': parse_optional_date('end_date'),
         'archive_status': str(raw_filters.get('archive_status', raw_filters.get('status', '')) or '').strip().lower(),
         'tipo_vinculo': str(raw_filters.get('tipo_vinculo', '') or '').strip(),
+        # Dimensões do Cadastro Simplificado de Terceirizados (ADR-0002):
+        # lidas do snapshot histórico gravado na entrega (deliveries.snapshot_*),
+        # não do cadastro vivo — o relatório reflete o que aconteceu, não o
+        # estado atual da empresa/contrato.
+        'outsourced_company_name': str(raw_filters.get('outsourced_company_name', '') or '').strip(),
+        'epi_responsibility': str(raw_filters.get('epi_responsibility', '') or '').strip(),
     }
 
 
@@ -104,6 +110,15 @@ def build_reports(connection, actor, filters):
     if filters.get('tipo_vinculo'):
         clauses.append('employees.tipo_vinculo = ?')
         params.append(filters['tipo_vinculo'])
+    if filters.get('outsourced_company_name') or filters.get('epi_responsibility'):
+        from epi_backend.db import table_columns
+        if 'snapshot_outsourced_company_name' in table_columns(connection, 'deliveries'):
+            if filters.get('outsourced_company_name'):
+                clauses.append('deliveries.snapshot_outsourced_company_name = ?')
+                params.append(filters['outsourced_company_name'])
+            if filters.get('epi_responsibility'):
+                clauses.append('deliveries.snapshot_epi_responsibility = ?')
+                params.append(filters['epi_responsibility'])
     if filters.get('epi_id'):
         epi = get_epi_by_id(connection, int(filters['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
@@ -118,12 +133,23 @@ def build_reports(connection, actor, filters):
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     deliveries = fetch_deliveries(connection, None, where_clause, tuple(params))
     by_unit, by_sector, by_epi, by_tipo_vinculo = {}, {}, {}, {}
+    by_outsourced_company, by_epi_responsibility, by_delivering_company = {}, {}, {}
     for item in deliveries:
         by_unit[item['unit_name']] = by_unit.get(item['unit_name'], 0) + int(item['quantity'])
         by_sector[item['sector']] = by_sector.get(item['sector'], 0) + int(item['quantity'])
         by_epi[item['epi_name']] = by_epi.get(item['epi_name'], 0) + int(item['quantity'])
         tv = str(item.get('tipo_vinculo') or 'CLT')
         by_tipo_vinculo[tv] = by_tipo_vinculo.get(tv, 0) + int(item['quantity'])
+        # Dimensões do Cadastro Simplificado de Terceirizados (ADR-0002),
+        # lidas do snapshot histórico da entrega — colaborador CLT (sem
+        # terceirizada) cai no rótulo fixo abaixo, nunca fica de fora da soma.
+        outsourced_company = str(item.get('snapshot_outsourced_company_name') or '').strip() or 'CLT / Sem Terceirizada'
+        by_outsourced_company[outsourced_company] = by_outsourced_company.get(outsourced_company, 0) + int(item['quantity'])
+        responsibility = str(item.get('snapshot_epi_responsibility') or '').strip() or 'Não Aplicável'
+        by_epi_responsibility[responsibility] = by_epi_responsibility.get(responsibility, 0) + int(item['quantity'])
+        delivering_company = str(item.get('company_name') or '').strip()
+        if delivering_company:
+            by_delivering_company[delivering_company] = by_delivering_company.get(delivering_company, 0) + int(item['quantity'])
     employee_fichas = []
     if employee:
         ficha_clauses = ['fp.employee_id = ?']
@@ -163,6 +189,9 @@ def build_reports(connection, actor, filters):
         'by_sector': by_sector,
         'by_epi': by_epi,
         'by_tipo_vinculo': by_tipo_vinculo,
+        'by_outsourced_company': by_outsourced_company,
+        'by_epi_responsibility': by_epi_responsibility,
+        'by_delivering_company': by_delivering_company,
         'total_quantity': sum(int(item['quantity']) for item in deliveries),
         'employee_fichas': employee_fichas,
     }
@@ -203,7 +232,8 @@ def build_report_pdf(report, meta=None):
     applied = []
     for key, label in (('start_date', 'De'), ('end_date', 'Ate'), ('unit_id', 'Unidade'),
                        ('employee_id', 'Colaborador'), ('epi_id', 'EPI'), ('sector', 'Setor'),
-                       ('tipo_vinculo', 'Vinculo')):
+                       ('tipo_vinculo', 'Vinculo'), ('outsourced_company_name', 'Empresa Terceirizada'),
+                       ('epi_responsibility', 'Responsavel pelo EPI')):
         value = str(filters.get(key) or '').strip()
         if value:
             applied.append(f"{label}: {value}")
@@ -227,6 +257,8 @@ def build_report_pdf(report, meta=None):
     add_group('Por setor', report.get('by_sector') or {})
     add_group('Por EPI', report.get('by_epi') or {})
     add_group('Por tipo de vinculo', report.get('by_tipo_vinculo') or {})
+    add_group('Por empresa terceirizada', report.get('by_outsourced_company') or {})
+    add_group('Por responsavel pelo fornecimento de EPI', report.get('by_epi_responsibility') or {})
 
     add_line('', gap=8)
     add_line(f"Entregas ({len(deliveries)})", size=13, bold=True, gap=18)

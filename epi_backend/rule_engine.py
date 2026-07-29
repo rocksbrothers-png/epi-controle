@@ -172,6 +172,11 @@ def default_framework_payload() -> dict[str, Any]:
             "audit_decisions": False,
             "debug_visibility": False,
         },
+        # Cadastro Simplificado de Terceirizados e Prestadores (ADR-0002):
+        # limiar em dias, editável por tenant, para o alerta de sugestão de
+        # migração Simplificado -> Padrão. Nunca hardcoded no fluxo — ver
+        # modules.outsourced_companies.service.get_simplified_duration_threshold_days.
+        "outsourced_simplified_duration_threshold_days": 30,
     }
 
 

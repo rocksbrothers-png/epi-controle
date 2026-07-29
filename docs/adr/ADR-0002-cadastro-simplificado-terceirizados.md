@@ -1,6 +1,6 @@
 # ADR-0002 — Cadastro Simplificado de Terceirizados e Prestadores
 
-- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador), PR 4 (snapshot na entrega) e PR 5 (auditoria de responsabilidade) implementados
+- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador), PR 4 (snapshot na entrega), PR 5 (auditoria de responsabilidade) e PR 6 (relatórios, ressarcimento, alerta de migração) implementados
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -328,8 +328,22 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    colaborador é criada, alterada ou removida. Ambos só disparam quando o
    valor de fato muda, nunca a cada create/update. `register_company_audit()`
    segue sendo a única função de auditoria — zero schema novo.
-6. **PR 6 — Relatórios, custos, ressarcimento, dashboards, alertas
-   inteligentes.**
+6. **PR 6 (implementado) — Relatórios, ressarcimento, alerta de migração.**
+   Relatório de entregas ganha três dimensões novas —
+   `by_outsourced_company`, `by_epi_responsibility`, `by_delivering_company`
+   — lidas do snapshot histórico gravado na entrega (PR 4), mais dois
+   filtros (`outsourced_company_name`, `epi_responsibility`); exportação em
+   PDF também as inclui. Tabela `epi_reimbursements` (registro de apoio,
+   sem cobrança automática) com o enum de 8 estados do §3.6, unicidade por
+   entrega (`UNIQUE(delivery_id)`), endpoints
+   `GET/POST /api/epi-reimbursements` e
+   `PUT /api/epi-reimbursements/{id}/status`. Alerta de sugestão de
+   migração Simplificado → Padrão (`GET /api/outsourced-companies/
+   migration-suggestions`) usa o limiar configurável já documentado no §3.4
+   — passou a existir de fato em `default_framework_payload()`
+   (`outsourced_simplified_duration_threshold_days`, default 30 dias),
+   sugestão nunca bloqueio. Dashboards de UI ficam para os PRs de Flutter/
+   Web legado (7/8) — este PR cobre só a API.
 7. **PR 7 — Flutter (Web, Android, iOS).**
 8. **PR 8 — Web Legado.**
 9. **PR 9 — Testes completos, regressão e documentação final.**

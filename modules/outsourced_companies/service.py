@@ -44,6 +44,17 @@ EPI_RESPONSIBILITIES: tuple[str, ...] = (
 REGISTRATION_MODES: tuple[str, ...] = ('simplified', 'standard')
 REGISTRATION_STATUSES: tuple[str, ...] = ('pending_completion', 'complete', 'inactive', 'archived')
 
+REIMBURSEMENT_STATUSES: tuple[str, ...] = (
+    'Não Aplicável',
+    'Pendente de Análise',
+    'Passível de Ressarcimento',
+    'Apta para Cobrança',
+    'Incluída em Relatório',
+    'Ressarcida',
+    'Contestada',
+    'Dispensada',
+)
+
 _SELECT_COLUMNS = (
     'id, company_id, legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
     'epi_responsibility, registration_mode, registration_status, status, promoted_at, '
@@ -402,3 +413,174 @@ def resolve_delivery_outsourced_snapshot(connection, employee, company_id):
         employee_override=employee.get('epi_responsibility_override'),
     )
     return snapshot
+
+
+# ── Ressarcimento (ADR-0002, PR 6) ─────────────────────────────────────────
+#
+# Registro de apoio para conferência manual — NUNCA cobrança automática.
+# Uma linha liga uma entrega já realizada a uma empresa terceirizada quando
+# a responsabilidade efetiva pelo EPI diverge de quem operou a entrega.
+# Relatórios de ressarcimento são consultas sobre esta tabela; nenhuma
+# integração de pagamento/fatura é disparada por mudança de status.
+
+_REIMBURSEMENT_SELECT_COLUMNS = (
+    'id, company_id, delivery_id, outsourced_company_id, unit_cost, quantity, total_value, '
+    'reason, contract_ref, status, created_by_user_id, created_at, updated_at'
+)
+
+
+def normalize_reimbursement_status(value) -> str:
+    value = str(value or '').strip()
+    return value if value in REIMBURSEMENT_STATUSES else 'Não Aplicável'
+
+
+def validate_reimbursement_payload(connection, payload, company_id):
+    payload = payload or {}
+    delivery_id = payload.get('delivery_id')
+    if delivery_id in (None, '', 0, '0'):
+        raise ValueError('delivery_id é obrigatório.')
+    delivery_id = int(delivery_id)
+    delivery_row = connection.execute(
+        'SELECT id, company_id FROM deliveries WHERE id = ?', (delivery_id,),
+    ).fetchone()
+    delivery = row_to_dict(delivery_row) if delivery_row else None
+    if not delivery or int(delivery['company_id']) != int(company_id):
+        raise ValueError('Entrega não encontrada nesta empresa.')
+
+    outsourced_company_id = payload.get('outsourced_company_id')
+    if outsourced_company_id in (None, '', 0, '0'):
+        raise ValueError('outsourced_company_id é obrigatório.')
+    outsourced_company_id = int(outsourced_company_id)
+    company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
+    if not company_row or int(company_row['company_id']) != int(company_id):
+        raise ValueError('Empresa terceirizada não encontrada nesta empresa.')
+
+    quantity = int(payload.get('quantity') or 1)
+    unit_cost = float(payload.get('unit_cost') or 0)
+    total_value = payload.get('total_value')
+    total_value = float(total_value) if total_value not in (None, '') else round(unit_cost * quantity, 2)
+
+    return {
+        'company_id': int(company_id),
+        'delivery_id': delivery_id,
+        'outsourced_company_id': outsourced_company_id,
+        'unit_cost': unit_cost,
+        'quantity': quantity,
+        'total_value': total_value,
+        'reason': str(payload.get('reason') or '').strip(),
+        'contract_ref': str(payload.get('contract_ref') or '').strip(),
+        'status': normalize_reimbursement_status(payload.get('status') or 'Pendente de Análise'),
+    }
+
+
+def create_reimbursement(connection, payload, company_id, actor_user_id=None):
+    validated = validate_reimbursement_payload(connection, payload, company_id)
+    now_iso = datetime.now(UTC).isoformat()
+    cursor = connection.execute(
+        'INSERT INTO epi_reimbursements (company_id, delivery_id, outsourced_company_id, unit_cost, '
+        'quantity, total_value, reason, contract_ref, status, created_by_user_id, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (
+            validated['company_id'], validated['delivery_id'], validated['outsourced_company_id'],
+            validated['unit_cost'], validated['quantity'], validated['total_value'],
+            validated['reason'], validated['contract_ref'], validated['status'],
+            int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
+        ),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def update_reimbursement_status(connection, reimbursement_id, company_id, status):
+    normalized = normalize_reimbursement_status(status)
+    now_iso = datetime.now(UTC).isoformat()
+    connection.execute(
+        'UPDATE epi_reimbursements SET status = ?, updated_at = ? WHERE id = ? AND company_id = ?',
+        (normalized, now_iso, int(reimbursement_id), int(company_id)),
+    )
+    connection.commit()
+    return normalized
+
+
+def get_reimbursement_by_id(connection, reimbursement_id):
+    row = connection.execute(
+        f'SELECT {_REIMBURSEMENT_SELECT_COLUMNS} FROM epi_reimbursements WHERE id = ?',  # noqa: S608
+        (int(reimbursement_id),),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def fetch_reimbursements(connection, company_id, *, outsourced_company_id=None, status=None):
+    sql = f'SELECT {_REIMBURSEMENT_SELECT_COLUMNS} FROM epi_reimbursements WHERE company_id = ?'  # noqa: S608
+    params = [int(company_id)]
+    if outsourced_company_id:
+        sql += ' AND outsourced_company_id = ?'
+        params.append(int(outsourced_company_id))
+    if status:
+        sql += ' AND status = ?'
+        params.append(normalize_reimbursement_status(status))
+    sql += ' ORDER BY created_at DESC'
+    rows = connection.execute(sql, tuple(params)).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+# ── Alerta de sugestão de migração Simplificado → Padrão (PR 6) ───────────
+
+DEFAULT_SIMPLIFIED_DURATION_THRESHOLD_DAYS = 30
+_SIMPLIFIED_THRESHOLD_CONFIG_KEY = 'outsourced_simplified_duration_threshold_days'
+
+
+def get_simplified_duration_threshold_days(connection, company_id) -> int:
+    """Limiar (em dias) para sugerir a migração Simplificado → Padrão —
+    configurável por tenant via ``configuration_framework`` (mesmo storage
+    do ``module_visibility``), nunca hardcoded no fluxo. Cai para o default
+    de sistema quando o tenant não configurou nada, ou quando o próprio
+    framework de configuração ainda não está provisionado (retrocompatível).
+    """
+    try:
+        from modules.settings.service import get_configuration_framework
+        framework = get_configuration_framework(connection, company_id)
+        raw = (framework or {}).get(_SIMPLIFIED_THRESHOLD_CONFIG_KEY)
+        return int(raw) if raw not in (None, '') else DEFAULT_SIMPLIFIED_DURATION_THRESHOLD_DAYS
+    except Exception:
+        return DEFAULT_SIMPLIFIED_DURATION_THRESHOLD_DAYS
+
+
+def fetch_migration_suggestions(connection, company_id):
+    """Empresas terceirizadas ainda em Cadastro Simplificado há mais tempo
+    que o limiar configurado — sugestão de promoção ao Cadastro Padrão,
+    nunca bloqueio. O colaborador e a operação seguem funcionando
+    normalmente independente desta lista; é só um lembrete para quem
+    administra o cadastro.
+    """
+    threshold_days = get_simplified_duration_threshold_days(connection, company_id)
+    rows = connection.execute(
+        f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies '  # noqa: S608
+        "WHERE company_id = ? AND registration_mode = 'simplified' "
+        "AND registration_status != 'archived' "
+        "ORDER BY created_at",
+        (int(company_id),),
+    ).fetchall()
+    companies = [row_to_dict(row) for row in rows]
+    now = datetime.now(UTC)
+    suggestions = []
+    for company in companies:
+        created_at = str(company.get('created_at') or '').strip()
+        if not created_at:
+            continue
+        try:
+            created = datetime.fromisoformat(created_at)
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=UTC)
+        except ValueError:
+            continue
+        age_days = (now - created).days
+        if age_days >= threshold_days:
+            suggestions.append({
+                'outsourced_company_id': company['id'],
+                'legal_name': company['legal_name'],
+                'registration_mode': company['registration_mode'],
+                'age_days': age_days,
+                'threshold_days': threshold_days,
+            })
+    return suggestions

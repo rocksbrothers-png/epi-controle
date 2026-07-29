@@ -21,6 +21,7 @@ void main() {
         Routes.companies: 'administracao',
         Routes.users: 'administracao',
         Routes.legalEntities: 'administracao',
+        Routes.outsourcedCompanies: 'terceirizados',
         Routes.settings: 'configuracoes',
         Routes.subscription: 'configuracoes',
         Routes.invoices: 'configuracoes',
@@ -77,6 +78,20 @@ void main() {
     test('dashboard nunca é bloqueado por esta camada', () {
       expect(
         isModuleLocationAccessible(Routes.dashboard, const {'dashboard': false}),
+        isTrue,
+      );
+    });
+
+    test('terceirizados (opt-in, ADR-0002) fica oculto quando desligado, mesmo com permissão técnica', () {
+      expect(
+        isModuleLocationAccessible(Routes.outsourcedCompanies, const {'terceirizados': false}),
+        isFalse,
+      );
+    });
+
+    test('terceirizados aparece assim que o Administrador Geral liga o módulo', () {
+      expect(
+        isModuleLocationAccessible(Routes.outsourcedCompanies, const {'terceirizados': true}),
         isTrue,
       );
     });

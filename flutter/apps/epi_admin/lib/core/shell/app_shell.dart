@@ -40,6 +40,11 @@ class AppShell extends StatelessWidget {
     // CNPJ fica ao lado de Unidades: é o nível imediatamente acima dela na
     // hierarquia Empresa → CNPJ → Unidade.
     (Routes.legalEntities, Icons.domain_outlined,          Icons.domain_rounded,             'legal_entities:view',   _navLegalEntities),
+    // Terceirizados e Prestadores (ADR-0002) — subpasta de Colaboradores.
+    // Reaproveita o piso técnico de criar colaborador (employees:create);
+    // a visibilidade real é module_visibility (oculto por padrão até o
+    // Administrador Geral ligar em Configuração → Regras → Visualização).
+    (Routes.outsourcedCompanies, Icons.groups_outlined,    Icons.groups_rounded,              'employees:create',      _navTerceirizados),
     (Routes.feedback,   Icons.rate_review_outlined,        Icons.rate_review_rounded,        'epi_feedback:view',     _navFeedback),
     (Routes.settings,   Icons.settings_outlined,           Icons.settings_rounded,           'settings:view',         _navSettings),
   ];
@@ -58,6 +63,7 @@ class AppShell extends StatelessWidget {
   static String _navUsers(AppLocalizations l) => l.navUsers;
   static String _navUnits(AppLocalizations l) => l.navUnits;
   static String _navLegalEntities(AppLocalizations l) => l.navLegalEntities;
+  static String _navTerceirizados(AppLocalizations l) => l.navTerceirizados;
   static String _navFeedback(AppLocalizations l) => l.navFeedback;
   static String _navSettings(AppLocalizations l) => l.navSettings;
 

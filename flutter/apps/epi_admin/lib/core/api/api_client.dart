@@ -27,6 +27,7 @@ class ApiClient {
   static late final AuthApi auth;
   static late final CompaniesApi companies;
   static late final LegalEntitiesApi legalEntities;
+  static late final OutsourcedCompaniesApi outsourcedCompanies;
   static late final DeliveriesApi deliveries;
   static late final DevolutionsApi devolutions;
   static late final FichasApi fichas;
@@ -89,6 +90,7 @@ class ApiClient {
     auth = AuthApi(dio, baseUrl: baseUrl);
     companies = CompaniesApi(dio);
     legalEntities = LegalEntitiesApi(dio);
+    outsourcedCompanies = OutsourcedCompaniesApi(dio);
     deliveries = DeliveriesApi(dio);
     devolutions = DevolutionsApi(dio);
     fichas = FichasApi(dio);

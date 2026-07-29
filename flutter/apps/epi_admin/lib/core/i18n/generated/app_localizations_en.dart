@@ -1220,23 +1220,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unitTransferTitle => 'Transferir de unidade';
+
   @override
   String get unitTransferHint =>
       'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
+
   @override
   String get unitTransferTarget => 'Unidade destino';
+
   @override
   String get unitTransferType => 'Tipo de movimentação';
+
   @override
   String get unitTransferTypeTemporary => 'Temporária';
+
   @override
   String get unitTransferTypeDefinitive => 'Definitiva';
+
   @override
   String get unitTransferStartDate => 'Data início';
+
   @override
   String get unitTransferEndDate => 'Data fim (opcional)';
+
   @override
   String get unitTransferNotes => 'Observação (opcional)';
+
   @override
   String get unitTransferAction => 'Transferir';
 
@@ -1296,6 +1305,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get employmentTypeIntern => 'Estagiário';
+
+  @override
+  String get navTerceirizados => 'Terceirizados e Prestadores';
+
+  @override
+  String get outsourcedCompaniesTitle => 'Terceirizados e Prestadores';
+
+  @override
+  String get outsourcedCompaniesEmpty =>
+      'Nenhuma empresa terceirizada cadastrada.';
+
+  @override
+  String get outsourcedCompaniesSearchHint => 'Buscar por nome ou CNPJ';
+
+  @override
+  String get outsourcedCompanyNew => 'Nova empresa';
+
+  @override
+  String get outsourcedCompanyLegalNameLabel => 'Razão Social';
+
+  @override
+  String get outsourcedCompanyTradeNameLabel => 'Nome Fantasia';
+
+  @override
+  String get outsourcedCompanyCnpjLabel => 'CNPJ';
+
+  @override
+  String get outsourcedCompanyCnpjHint => 'Opcional no Cadastro Simplificado';
+
+  @override
+  String get outsourcedCompanyKindLabel => 'Tipo da Empresa';
+
+  @override
+  String get outsourcedCompanyKindOutsourced => 'Terceirizada';
+
+  @override
+  String get outsourcedCompanyKindServiceProvider => 'Prestadora de Serviço';
+
+  @override
+  String get outsourcedCompanyKindOther => 'Outro';
+
+  @override
+  String get outsourcedCompanyResponsibilityLabel =>
+      'Responsabilidade pelo Fornecimento de EPI';
+
+  @override
+  String get outsourcedCompanyStatusLabel => 'Situação';
+
+  @override
+  String get outsourcedCompanySave => 'Salvar';
+
+  @override
+  String get outsourcedCompanyCancel => 'Cancelar';
+
+  @override
+  String get outsourcedCompanyPromote => 'Promover a Cadastro Padrão';
+
+  @override
+  String get outsourcedCompanyPromoteConfirmTitle =>
+      'Promover ao Cadastro Padrão?';
+
+  @override
+  String get outsourcedCompanyPromoteConfirmBody =>
+      'A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.';
+
+  @override
+  String get outsourcedCompanySimplifiedBadge => 'Simplificado';
+
+  @override
+  String get outsourcedCompanyStandardBadge => 'Padrão';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -2509,23 +2588,32 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get unitTransferTitle => 'Transfer unit';
+
   @override
   String get unitTransferHint =>
       'Operational unit movement — temporary or definitive. Creates an auditable record and does not change the employee\'s tax ID (CNPJ).';
+
   @override
   String get unitTransferTarget => 'Target unit';
+
   @override
   String get unitTransferType => 'Movement type';
+
   @override
   String get unitTransferTypeTemporary => 'Temporary';
+
   @override
   String get unitTransferTypeDefinitive => 'Definitive';
+
   @override
   String get unitTransferStartDate => 'Start date';
+
   @override
   String get unitTransferEndDate => 'End date (optional)';
+
   @override
   String get unitTransferNotes => 'Notes (optional)';
+
   @override
   String get unitTransferAction => 'Transfer';
 
@@ -2585,4 +2673,74 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get employmentTypeIntern => 'Intern';
+
+  @override
+  String get navTerceirizados => 'Outsourced & Contractors';
+
+  @override
+  String get outsourcedCompaniesTitle => 'Outsourced & Contractors';
+
+  @override
+  String get outsourcedCompaniesEmpty => 'No outsourced company registered.';
+
+  @override
+  String get outsourcedCompaniesSearchHint => 'Search by name or Tax ID';
+
+  @override
+  String get outsourcedCompanyNew => 'New company';
+
+  @override
+  String get outsourcedCompanyLegalNameLabel => 'Legal Name';
+
+  @override
+  String get outsourcedCompanyTradeNameLabel => 'Trade Name';
+
+  @override
+  String get outsourcedCompanyCnpjLabel => 'Tax ID';
+
+  @override
+  String get outsourcedCompanyCnpjHint =>
+      'Optional in the Simplified Registration';
+
+  @override
+  String get outsourcedCompanyKindLabel => 'Company Type';
+
+  @override
+  String get outsourcedCompanyKindOutsourced => 'Outsourced';
+
+  @override
+  String get outsourcedCompanyKindServiceProvider => 'Service Provider';
+
+  @override
+  String get outsourcedCompanyKindOther => 'Other';
+
+  @override
+  String get outsourcedCompanyResponsibilityLabel =>
+      'PPE Supply Responsibility';
+
+  @override
+  String get outsourcedCompanyStatusLabel => 'Status';
+
+  @override
+  String get outsourcedCompanySave => 'Save';
+
+  @override
+  String get outsourcedCompanyCancel => 'Cancel';
+
+  @override
+  String get outsourcedCompanyPromote => 'Promote to Standard Registration';
+
+  @override
+  String get outsourcedCompanyPromoteConfirmTitle =>
+      'Promote to Standard Registration?';
+
+  @override
+  String get outsourcedCompanyPromoteConfirmBody =>
+      'The company will be treated as a Standard Registration. A Tax ID is required.';
+
+  @override
+  String get outsourcedCompanySimplifiedBadge => 'Simplified';
+
+  @override
+  String get outsourcedCompanyStandardBadge => 'Standard';
 }

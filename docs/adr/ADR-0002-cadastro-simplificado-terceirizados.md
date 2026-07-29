@@ -344,7 +344,17 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    (`outsourced_simplified_duration_threshold_days`, default 30 dias),
    sugestão nunca bloqueio. Dashboards de UI ficam para os PRs de Flutter/
    Web legado (7/8) — este PR cobre só a API.
-7. **PR 7 — Flutter (Web, Android, iOS).**
+7. **PR 7 — Flutter (Web, Android, iOS). (implementado)** Tela
+   `OutsourcedCompaniesScreen` + `OutsourcedCompaniesCubit` no app
+   `epi_admin`, espelhando exatamente o padrão de CNPJs (LegalEntity):
+   modelos `OutsourcedCompany`/`ServiceContract`/`MigrationSuggestion`/
+   `EpiReimbursement` no pacote `epi_api` com `fromJson`/`toJson`;
+   `OutsourcedCompaniesApi` cobrindo todo o CRUD do §7 (PR6); listagem com
+   busca, formulário único de criar/editar e confirmação de promoção
+   Simplificado → Padrão. Rota `/outsourced-companies` cadastrada com
+   `module_visibility: 'terceirizados'` (oculto por padrão, opt-in) e piso
+   técnico `employees:create` (sem permissão dedicada, por decisão deste
+   ADR). 22 chaves de i18n traduzidas nos 5 locales region-specific.
 8. **PR 8 — Web Legado.**
 9. **PR 9 — Testes completos, regressão e documentação final.**
 

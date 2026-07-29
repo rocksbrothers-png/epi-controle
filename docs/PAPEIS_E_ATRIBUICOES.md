@@ -58,6 +58,15 @@ de EPIs.
 - Não movimenta estoque.
 - Não substitui os administradores internos da empresa.
 
+Estas restrições são permanentes no papel (`core/permissions.py`), não
+apenas recomendações de uso: o Administrador Master não retém
+`employees:create/update/delete`, `deliveries:create`, `stock:adjust` nem
+`purchase_requests:create/update` (decisão confirmada em 2026-07-29).
+Quando o suporte à plataforma exigir agir sobre dados operacionais do
+cliente, isso deve passar por um mecanismo formal de impersonation ou
+acesso temporário auditado — ainda não implementado — nunca por concessão
+permanente no papel.
+
 ## 2. Administrador Geral
 
 É o responsável máximo pela administração do cliente dentro da plataforma.
@@ -188,6 +197,15 @@ riscos, vínculos organizacionais e dados complementares da estrutura.
 - Não realiza baixa de estoque.
 - Não altera configurações globais da empresa, salvo permissão adicional.
 - Não cria novos perfis de acesso, salvo autorização expressa.
+
+O Administrador de Registro mantém apenas as permissões de cadastro
+organizacional (`employees:create/update/delete` — arquivamento lógico,
+nunca exclusão física — e `employees:transfer`); as permissões
+operacionais de compra (`purchase_requests:create/update`,
+`purchase_orders:review/receive`) e de estoque (`stock:adjust`,
+`deliveries:create`) foram removidas do papel (decisão confirmada em
+2026-07-29). A consulta a requisições/pedidos de compra permanece, para
+relatórios cadastrais.
 
 ## 4. Administrador Local
 

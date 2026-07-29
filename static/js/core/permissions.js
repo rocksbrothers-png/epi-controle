@@ -13,6 +13,16 @@
 
   const SUPPLIERS_MANAGE_PERM = 'suppliers:manage';
 
+  // master_admin não retém employees:create/update/delete, deliveries:create,
+  // stock:adjust nem purchase_requests:create/update de forma permanente
+  // (docs/PAPEIS_E_ATRIBUICOES.md #1; decisão de 2026-07-29) — mesmo escopo
+  // de core/permissions.py, aqui só como fallback de bootstrap indisponível.
+  const MASTER_ADMIN_OPERATIONAL_EXCLUSIONS = Object.freeze([
+    'employees:create', 'employees:update', 'employees:delete',
+    'deliveries:create', 'stock:adjust',
+    'purchase_requests:create', 'purchase_requests:update'
+  ]);
+
   const ROLE_PERMISSIONS = Object.freeze({
     master_admin: Object.freeze([
       'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete',
@@ -26,7 +36,7 @@
       'stock:view', 'stock:adjust',
       'settings:view', 'settings:update', 'companies:support',
       ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage'
-    ]),
+    ].filter((p) => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p))),
 
     general_admin: Object.freeze([
       'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete',
@@ -51,8 +61,8 @@
       'deliveries:view', 'fichas:view',
       'reports:view', 'alerts:view', 'stock:view',
       'settings:view', 'settings:update',
-      'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update',
-      'purchase_orders:view', 'purchase_orders:receive', 'finance:view',
+      'purchase_requests:view',
+      'purchase_orders:view', 'finance:view',
       'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval',
       'epi_evaluation:view', 'epi_evaluation:decide'
     ]),

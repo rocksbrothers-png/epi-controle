@@ -160,6 +160,17 @@ PURCHASE_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
     PERM_QUOTES_VIEW, PERM_SUPPLIER_CATALOG_VIEW,
 })
 
+# Administrador Master não deve reter permissão permanente de execução
+# operacional (docs/PAPEIS_E_ATRIBUICOES.md #1: "Não faz"). O acesso a estas
+# ações, quando necessário para suporte, deve passar por um mecanismo
+# formal de impersonation/acesso temporário auditado — ainda não
+# implementado — e nunca por concessão permanente no papel.
+MASTER_ADMIN_OPERATIONAL_EXCLUSIONS: frozenset[str] = frozenset({
+    PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
+    PERM_DELIVERIES_CREATE, PERM_STOCK_ADJUST,
+    PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE,
+})
+
 EPI_FEEDBACK_MANAGER_PERMISSIONS: frozenset[str] = frozenset({
     PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE,
 })
@@ -202,7 +213,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_COMPANIES_SUPPORT,
             PERM_PPE_TEST_VIEW,
         })
-    ),
+    ) - MASTER_ADMIN_OPERATIONAL_EXCLUSIONS,
     'general_admin': (
         ADMIN_BASE_PERMISSIONS | DELIVERY_WRITE_PERMISSIONS | COMPANY_CORE_PERMISSIONS
         | LEGAL_ENTITY_MANAGEMENT_PERMISSIONS
@@ -220,11 +231,16 @@ PERMISSIONS: dict[str, frozenset[str]] = {
         | PPE_TEST_GENERAL_ADMIN_PERMISSIONS
     ),
     'registry_admin': (
+        # Sem PURCHASE_ADMIN_PERMISSIONS: o Administrador de Registro cuida do
+        # cadastro organizacional, não do processo de compra
+        # (docs/PAPEIS_E_ATRIBUICOES.md #3: "Não cria requisições de compra.
+        # Não aprova compras."). PURCHASE_VIEW_PERMISSIONS cobre a consulta
+        # (relatórios cadastrais) sem conceder criação/atualização/PO.
         ADMIN_BASE_PERMISSIONS | LEGAL_ENTITY_MANAGEMENT_PERMISSIONS
-        | PURCHASE_VIEW_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
+        | PURCHASE_VIEW_PERMISSIONS
         | EPI_FEEDBACK_ADMIN_PERMISSIONS
         | frozenset({
-            PERM_PURCHASE_REQUESTS_CREATE, PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE,
+            PERM_SETTINGS_VIEW, PERM_SETTINGS_UPDATE,
             PERM_UNIT_LINKS_MANAGE,
             PERM_EPI_FEEDBACK_CREATE, PERM_EPI_FEEDBACK_TRIAGE, PERM_EPI_FEEDBACK_MANAGER_EVAL,
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE,

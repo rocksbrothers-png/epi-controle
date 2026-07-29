@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:epi_api/epi_api.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/employees_cubit.dart';
 import '../../core/router/routes.dart';
 import 'employee_form_screen.dart';
@@ -39,6 +41,13 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final authState = context.watch<AuthCubit>().state;
+    // Administrador Local (admin) vê a lista mas não cadastra colaborador —
+    // atribuição do Administrador de Registro/Geral (docs/PAPEIS_E_ATRIBUICOES.md
+    // #3 vs #4). O backend já bloqueia sem employees:create; isto só evita
+    // mostrar uma ação que falharia ao confirmar.
+    final canCreate = authState is AuthAuthenticated &&
+        authState.permissions.contains('employees:create');
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.employeesTitle),
@@ -64,18 +73,20 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: l10n.employeesNew,
-        onPressed: () {
-          final cubit = context.read<EmployeesCubit>();
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => EmployeeFormScreen(cubit: cubit),
-            ),
-          );
-        },
-        child: const Icon(Icons.add_rounded),
-      ),
+      floatingActionButton: canCreate
+          ? FloatingActionButton(
+              tooltip: l10n.employeesNew,
+              onPressed: () {
+                final cubit = context.read<EmployeesCubit>();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EmployeeFormScreen(cubit: cubit),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
       body: Column(
         children: [
           Padding(

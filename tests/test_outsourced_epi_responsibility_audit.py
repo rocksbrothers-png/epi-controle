@@ -69,7 +69,7 @@ def _capture_audit(monkeypatch, module):
 
 def test_post_employee_audits_override_when_set(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(employees_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(employees_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(employees_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(employees_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(employees_routes, 'create_employee', lambda *a, **k: 42)
@@ -94,7 +94,7 @@ def test_post_employee_audits_override_when_set(monkeypatch):
 
 def test_post_employee_does_not_audit_when_no_override(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(employees_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(employees_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(employees_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(employees_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(employees_routes, 'create_employee', lambda *a, **k: 42)
@@ -118,7 +118,7 @@ def test_post_employee_does_not_audit_when_no_override(monkeypatch):
 
 def test_put_employee_audits_only_when_override_changes(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(employees_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(employees_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(employees_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(employees_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(employees_routes, 'update_employee', lambda *a, **k: None)
@@ -148,7 +148,7 @@ def test_put_employee_audits_only_when_override_changes(monkeypatch):
 
 def test_put_employee_does_not_audit_when_override_unchanged(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(employees_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(employees_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(employees_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(employees_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(employees_routes, 'update_employee', lambda *a, **k: None)
@@ -172,7 +172,7 @@ def test_put_employee_does_not_audit_when_override_unchanged(monkeypatch):
 
 def test_put_outsourced_company_audits_responsibility_change_as_dedicated_event(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(oc_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
@@ -198,7 +198,7 @@ def test_put_outsourced_company_audits_responsibility_change_as_dedicated_event(
 
 def test_put_outsourced_company_no_dedicated_event_when_responsibility_unchanged(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
-    monkeypatch.setattr(oc_routes, 'get_connection', lambda: _DummyConnection())
+    monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
     monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)

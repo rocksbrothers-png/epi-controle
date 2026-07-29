@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/dashboard_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
+import '../../core/router/navigation_policy.dart';
 import '../../core/router/routes.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -37,6 +40,10 @@ class _DashboardBodyState extends State<_DashboardBody> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final authState = context.watch<AuthCubit>().state;
+    final moduleVisibility = authState is AuthAuthenticated
+        ? authState.sessionContext.moduleVisibility
+        : const <String, bool>{};
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.dashboardTitle),
@@ -60,24 +67,29 @@ class _DashboardBodyState extends State<_DashboardBody> {
               context.push(Routes.qr);
             },
           ),
-          _FabAction(
-            icon: Icons.assignment_return_outlined,
-            label: l10n.dashboardQuickReturn,
-            heroTag: 'fab-return',
-            onTap: () {
-              setState(() => _fabOpen = false);
-              context.push(Routes.returns);
-            },
-          ),
-          _FabAction(
-            icon: Icons.assignment_outlined,
-            label: l10n.dashboardQuickDelivery,
-            heroTag: 'fab-delivery',
-            onTap: () {
-              setState(() => _fabOpen = false);
-              context.push(Routes.deliveries);
-            },
-          ),
+          // Atalhos de Devolução/Entrega: escondidos junto com o módulo
+          // "entregas" — sem isto, o atalho ficaria visível apontando para
+          // uma rota que o guarda de navegação vai recusar.
+          if (isModuleLocationAccessible(Routes.returns, moduleVisibility))
+            _FabAction(
+              icon: Icons.assignment_return_outlined,
+              label: l10n.dashboardQuickReturn,
+              heroTag: 'fab-return',
+              onTap: () {
+                setState(() => _fabOpen = false);
+                context.push(Routes.returns);
+              },
+            ),
+          if (isModuleLocationAccessible(Routes.deliveries, moduleVisibility))
+            _FabAction(
+              icon: Icons.assignment_outlined,
+              label: l10n.dashboardQuickDelivery,
+              heroTag: 'fab-delivery',
+              onTap: () {
+                setState(() => _fabOpen = false);
+                context.push(Routes.deliveries);
+              },
+            ),
         ],
       ),
       body: BlocBuilder<DashboardCubit, DashboardState>(

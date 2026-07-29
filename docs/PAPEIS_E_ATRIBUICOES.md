@@ -579,3 +579,103 @@ Admin Master
 
 Essa distribuição deve orientar as permissões, as rotas, os menus, as
 telas e os testes de autorização do sistema.
+
+## Política de acesso: regra padrão + personalização por módulo
+
+Além da permissão técnica individual (seção anterior), o sistema tem uma
+segunda camada — **visibilidade estrutural por módulo** (menu lateral, menu
+inferior, rotas, deep links) — que o **Administrador Geral** pode
+personalizar por tenant em **Configuração → Regras → Visualização →
+Visibilidade por Módulo**. É a mesma tela e o mesmo armazenamento já usados
+pela visibilidade por Unidade/Colaborador (nenhuma tabela nova).
+
+A decisão final de acesso combina cinco fatores, nesta ordem:
+
+```
+Acesso Final = Regra Padrão AND Configuração Administrativa AND Permissões Técnicas AND Escopo AND Backend
+```
+
+- **Regra Padrão**: visibilidade de cada módulo computada a partir da
+  permissão técnica do perfil (`core/permissions.py`), com uma exceção
+  explícita: Comprador e Aprovador continuam sem acesso estrutural a
+  Estoque, Entregas e Fichas de EPI mesmo tendo `stock:view`/
+  `deliveries:view` como apoio à decisão de compra.
+- **Configuração Administrativa**: override por tenant que o Administrador
+  Geral grava na tela acima. Pode restringir ou liberar um módulo, **nunca**
+  além do que a permissão técnica do perfil autoriza.
+- **Permissões Técnicas**: o teto. `resolve_module_visibility()` sempre
+  reclampa `configuração AND permissão_técnica` — é estruturalmente
+  impossível a configuração conceder um módulo sem a permissão
+  correspondente (`tests/test_module_visibility_negative_authz.py` trava
+  isso por prova estrutural e comportamental).
+- **Escopo**: tenant/empresa/CNPJ/unidade, já aplicado pelas regras
+  existentes (`actor_operational_unit_id`, `ensure_resource_company`,
+  `ensure_actor_employee_scope` etc.) — inalterado por esta camada.
+- **Backend**: autoridade final. Esta política é **só de navegação**
+  (menu/rotas/deep links, Web e Flutter); nenhuma rota de dados passa a
+  confiar nela para autorizar leitura/escrita — a autorização real continua
+  exclusivamente nas rotas de API, gateadas por `ensure_permission`/
+  `authorize_action`, sem qualquer acoplamento a `module_visibility`.
+
+### Matriz oficial
+
+| Perfil | Dashboard | Compras | Estoque | Entregas | Solicitações | Fichas de EPI | Relatórios | Administração | Configurações |
+|---|---|---|---|---|---|---|---|---|---|
+| Admin Master | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Administrador Geral | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Administrador de Registro | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Administrador Local | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Gestor de EPI | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Comprador | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Aprovador | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Colaborador | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+Esta é a **visibilidade padrão do sistema** (`default_framework_payload()`
+em `epi_backend/rule_engine.py`) — o ponto de partida antes de qualquer
+override do Administrador Geral. Colaborador não usa esta matriz porque
+opera pelo Portal externo (token), fora da navegação estrutural do
+`epi_admin`/web legado.
+
+Permissão técnica mínima exigida por módulo — o teto que a configuração
+nunca ultrapassa (`MODULE_REQUIRED_PERMISSIONS` em `rule_engine.py`):
+
+| Módulo | Permissão técnica exigida (qualquer uma) |
+|---|---|
+| Dashboard | `dashboard:view` |
+| Compras | `purchase_requests:view` ou `purchase_orders:view` |
+| Estoque | `stock:view` |
+| Entregas | `deliveries:view` |
+| Solicitações | `purchase_requests:view` |
+| Fichas de EPI | `fichas:view` |
+| Relatórios | `reports:view` |
+| Administração | `users:view`, `companies:view` ou `legal_entities:view` |
+| Configurações | `settings:view` |
+
+**Configurável pelo Administrador Geral** (restringir ou liberar dentro do
+teto técnico): todos os módulos acima, por perfil, por tenant, via
+`GET/POST /api/module-visibility`. Cada alteração é auditada
+(`company_audit_logs`, evento `visibility_config_updated`, com tenant/
+empresa, perfil, módulo, estado anterior, novo estado, admin responsável e
+data/hora).
+
+**Escopo da configuração**: por tenant (`company_id`), reaproveitando a
+mesma chave `configuration_framework:{company_id}` já usada pela
+visibilidade por Unidade/Colaborador. Administrador Geral e Administrador
+de Registro operam sempre na própria empresa; Admin Master sem seleção
+explícita de empresa grava no escopo `global` (mesma limitação pré-existente
+da aba de regras por unidade).
+
+**Regra Flutter**: `NavigationPolicy`
+(`flutter/apps/epi_admin/lib/core/router/navigation_policy.dart`) — mapa
+`routeModules` (rota → módulo) e `isModuleLocationAccessible()`, único
+ponto de verdade consumido por três lugares: o `redirect` do `GoRouter`
+(cobre navegação direta por URL e deep link, não só clique no menu), o
+menu lateral (`AppShell`) e os atalhos do FAB no dashboard. `module_visibility`
+chega ao app no login, em `/api/auth/me` e em `/api/bootstrap`.
+
+**Regra backend**: `resolve_module_visibility()` em `epi_backend/
+rule_engine.py`, consumido por `get_effective_module_visibility()` em
+`modules/settings/service.py` — chamado a partir de `authenticate_login`,
+`handle_get_auth_me` e `build_bootstrap`. Rota/módulo ausente do mapa
+(`MODULE_REQUIRED_PERMISSIONS`/`routeModules`) continua gateado **só** pela
+permissão técnica, exatamente como antes desta política — sem regressão.

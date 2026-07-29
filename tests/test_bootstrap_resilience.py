@@ -45,6 +45,7 @@ def _patch_successful_bootstrap_sections(monkeypatch):
     monkeypatch.setattr(deliveries_svc, 'fetch_deliveries', lambda connection, actor: [{'id': 33}])
     monkeypatch.setattr(feedbacks_svc, 'fetch_feedbacks', lambda connection, actor: [])
     monkeypatch.setattr(settings_svc, 'canary_evaluate_visibility_dataset', lambda connection, actor, endpoint_name, dataset_name, legacy_items: legacy_items)
+    monkeypatch.setattr(settings_svc, 'get_effective_module_visibility', lambda connection, actor: {})
     # patch compute_alerts via auth_svc inner function — patch alerts service directly
     import modules.alerts.service as alerts_svc
     monkeypatch.setattr(alerts_svc, 'compute_alerts', lambda connection, actor=None, **kwargs: [])

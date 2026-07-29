@@ -5,6 +5,7 @@ import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/auth_cubit.dart';
 import '../bloc/auth_state.dart';
+import '../router/navigation_policy.dart';
 import '../router/routes.dart';
 
 /// Shell oficial do EPI Controle.
@@ -74,10 +75,22 @@ class AppShell extends StatelessWidget {
   /// Mantido para o teste de simetria; com a lista única, é sempre igual.
   static int get labelCount => _destinations.length;
 
-  int _selectedIndex(List<String> permissions) {
+  /// Permissão técnica (piso) AND visibilidade de módulo (configuração do
+  /// Administrador Geral) — mesma combinação usada no guarda de rota do
+  /// GoRouter, agora também no menu, para os dois nunca divergirem.
+  bool _isDestinationVisible(
+    (String, IconData, IconData, String, String Function(AppLocalizations)) d,
+    List<String> permissions,
+    Map<String, bool> moduleVisibility,
+  ) {
+    if (!permissions.contains(d.$4)) return false;
+    return isModuleLocationAccessible(d.$1, moduleVisibility);
+  }
+
+  int _selectedIndex(List<String> permissions, Map<String, bool> moduleVisibility) {
     var idx = 0;
     for (var i = 0; i < _destinations.length; i++) {
-      if (!permissions.contains(_destinations[i].$4)) continue;
+      if (!_isDestinationVisible(_destinations[i], permissions, moduleVisibility)) continue;
       final route = _destinations[i].$1;
       if (route == Routes.dashboard) {
         if (location == route) return idx;
@@ -89,19 +102,20 @@ class AppShell extends StatelessWidget {
     return 0;
   }
 
-  List<ds.EpiNavItem> _buildNavItems(
-      AppLocalizations l10n, List<String> permissions) {
+  List<ds.EpiNavItem> _buildNavItems(AppLocalizations l10n, List<String> permissions,
+      Map<String, bool> moduleVisibility) {
     return [
       for (final d in _destinations)
-        if (permissions.contains(d.$4))
+        if (_isDestinationVisible(d, permissions, moduleVisibility))
           ds.EpiNavItem(icon: d.$2, label: d.$5(l10n)),
     ];
   }
 
-  String _currentTitle(AppLocalizations l10n, List<String> permissions) {
-    final items = _buildNavItems(l10n, permissions);
+  String _currentTitle(AppLocalizations l10n, List<String> permissions,
+      Map<String, bool> moduleVisibility) {
+    final items = _buildNavItems(l10n, permissions, moduleVisibility);
     if (items.isEmpty) return '';
-    final idx = _selectedIndex(permissions);
+    final idx = _selectedIndex(permissions, moduleVisibility);
     return items[idx < items.length ? idx : 0].label;
   }
 
@@ -112,19 +126,22 @@ class AppShell extends StatelessWidget {
     final permissions = authState is AuthAuthenticated
         ? authState.permissions
         : const <String>[];
+    final moduleVisibility = authState is AuthAuthenticated
+        ? authState.sessionContext.moduleVisibility
+        : const <String, bool>{};
 
     final visibleRoutes = [
       for (final d in _destinations)
-        if (permissions.contains(d.$4)) d.$1,
+        if (_isDestinationVisible(d, permissions, moduleVisibility)) d.$1,
     ];
 
     return ds.AppShell(
-      selectedIndex: _selectedIndex(permissions),
-      navItems:      _buildNavItems(l10n, permissions),
+      selectedIndex: _selectedIndex(permissions, moduleVisibility),
+      navItems:      _buildNavItems(l10n, permissions, moduleVisibility),
       onNavSelected: (i) {
         if (i < visibleRoutes.length) context.go(visibleRoutes[i]);
       },
-      title:  _currentTitle(l10n, permissions),
+      title:  _currentTitle(l10n, permissions, moduleVisibility),
       child:  child,
     );
   }

@@ -12,6 +12,7 @@ class BootstrapResponse {
     this.pendingPurchases = 0,
     this.preferredLocale,
     this.companyLocale,
+    this.moduleVisibility = const {},
   });
 
   final List<Map<String, dynamic>> units;
@@ -33,6 +34,11 @@ class BootstrapResponse {
   final String? preferredLocale;  // user.locale
   final String? companyLocale;    // company.default_locale
 
+  /// Visibilidade estrutural por módulo (menu/rotas/deep links) — regra
+  /// padrão + configuração do Administrador Geral, já clampada pela
+  /// permissão técnica. Consumida pelo NavigationPolicy.
+  final Map<String, dynamic> moduleVisibility;
+
   factory BootstrapResponse.fromJson(Map<String, dynamic> json) {
     // Backend wraps payload in {'ok': true, 'data': {...}}
     final data = (json['data'] as Map<String, dynamic>?) ?? json;
@@ -49,6 +55,7 @@ class BootstrapResponse {
       pendingPurchases: (data['pending_purchases'] as num?)?.toInt() ?? 0,
       preferredLocale: data['preferred_locale'] as String?,
       companyLocale:   data['company_locale']   as String?,
+      moduleVisibility: (data['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {},
     );
   }
 }

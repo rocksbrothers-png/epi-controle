@@ -106,9 +106,15 @@ def authenticate_login(connection, username, password, totp_code=None):
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
     structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
+    from modules.settings.service import get_effective_module_visibility
     return {
         'user': user_data,
         'permissions': sorted(PERMISSIONS.get(resolved_role, set())),
+        # Visibilidade estrutural por módulo (menu/rotas/deep links) — mesma
+        # combinação (config x permissão técnica) usada no /api/bootstrap.
+        # Vem também no login para o NavigationPolicy do Flutter decidir a
+        # navegação desde a primeira tela, sem esperar o bootstrap completo.
+        'module_visibility': get_effective_module_visibility(connection, user_data),
         'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS,
         'refresh_token': create_refresh_token(user_data),
@@ -260,7 +266,7 @@ def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, pat
 
 
 def build_bootstrap(connection, actor):
-    from modules.settings.service import canary_evaluate_visibility_dataset
+    from modules.settings.service import canary_evaluate_visibility_dataset, get_effective_module_visibility
     from modules.units.service import fetch_units
     from modules.legal_entities.service import fetch_legal_entities
     from modules.employees.service import fetch_employees, fetch_employee_movements
@@ -367,6 +373,16 @@ def build_bootstrap(connection, actor):
             'cnpj': actor.get('company_cnpj'),
         } if actor.get('company_id') else None,
         'permissions': permissions,
+        # Visibilidade estrutural por módulo (menu/rotas/deep links), já
+        # combinando a regra padrão + a configuração do Administrador Geral
+        # (por tenant) com a permissão técnica do ator. Orienta navegação no
+        # Flutter (NavigationPolicy) e no web legado (canAccessView); a
+        # autorização de dados continua exclusivamente nas rotas de API.
+        'module_visibility': _safe_bootstrap_section(
+            'module_visibility',
+            lambda: get_effective_module_visibility(connection, actor),
+            {}, warnings, actor, connection=connection,
+        ),
         'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor, connection=connection),
         'commercial_settings': _safe_bootstrap_section(
             'commercial_settings',

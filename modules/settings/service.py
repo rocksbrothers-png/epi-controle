@@ -9,13 +9,16 @@ from epi_backend.http_utils import structured_log
 from epi_backend.http_utils import structured_log as _structured_log
 from epi_backend.rule_engine import SUPPORTED_EXECUTION_MODES, normalize_framework_payload
 from epi_backend.rule_engine import (
+    MODULE_KEYS,
     build_context as build_rule_context,
     compute_visibility_diff,
     resolve_execution_plan,
+    resolve_module_visibility,
     resolve_visibility_filters,
 )
 
 from core.meta import get_meta, set_meta
+from core.permissions import PERMISSIONS
 
 UTC = timezone.utc
 
@@ -255,6 +258,76 @@ def save_configuration_rules(connection, company_id, rules):
     set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(framework, ensure_ascii=False))
     connection.commit()
     return sanitized
+
+
+# ── Visibilidade estrutural por módulo (menu/rotas/deep links) ────────────
+# Reaproveita o mesmo armazenamento do framework (`configuration_framework:
+# {scope_key}`, aba "Configuração → Regras → Visualização") — não é uma
+# tabela nova. A regra padrão do sistema vem de
+# rule_engine.default_framework_payload()["module_visibility"]; o que é
+# salvo aqui é só o override por tenant, mesclado por normalize_framework_
+# payload(). resolve_module_visibility() ainda reclampa pela permissão
+# técnica do ator — esta camada nunca amplia o que o backend autoriza.
+
+def get_module_visibility_config(connection, company_id):
+    """Configuração de visibilidade por módulo (perfil -> módulo -> bool),
+    já mesclada com o padrão do sistema. Usada pela tela de administração
+    (para exibir o estado atual) e por get_effective_module_visibility."""
+    framework = get_configuration_framework(connection, company_id)
+    return framework.get('module_visibility', {})
+
+
+def get_effective_module_visibility(connection, actor):
+    """Visibilidade efetiva de cada módulo para o ator autenticado: config
+    (padrão + override do tenant) AND permissão técnica. É isto que entra
+    no /api/bootstrap (e no login/`auth/me`) para orientar menu/rotas no
+    Flutter e no web legado — a autorização real de dados continua nas
+    rotas, inalterada.
+
+    Camada só-UI: se a leitura da configuração falhar (ex.: schema ainda
+    não migrado), cai para a regra padrão do sistema (sem override de
+    tenant) em vez de derrubar o login/bootstrap por causa de um recurso
+    não-crítico.
+    """
+    company_id = actor.get('company_id')
+    try:
+        framework = get_configuration_framework(connection, company_id)
+    except Exception as exc:
+        structured_log('warning', 'configuration.module_visibility_load_error', error=str(exc))
+        framework = normalize_framework_payload({})
+    context = build_rule_context(actor)
+    granted = PERMISSIONS.get(str(actor.get('role') or ''), frozenset())
+    return resolve_module_visibility(context, framework, granted)
+
+
+def save_module_visibility(connection, company_id, role, updates):
+    """Grava o override de visibilidade de módulos para um perfil, dentro
+    do framework do tenant. Retorna (before, after) só dos módulos alterados
+    — usado para auditoria (core.audit.register_company_audit)."""
+    role = str(role or '').strip()
+    if role not in PERMISSIONS:
+        raise ValueError(f'Perfil inválido: {role!r}.')
+    if not isinstance(updates, dict) or not updates:
+        raise ValueError('Informe ao menos um módulo para atualizar.')
+    scope_key = _configuration_scope_key(company_id)
+    framework = get_configuration_framework(connection, company_id)
+    role_visibility = dict(framework.get('module_visibility', {}).get(role, {}))
+    before = {}
+    after = {}
+    for module, value in updates.items():
+        module = str(module or '').strip()
+        if module not in MODULE_KEYS:
+            continue
+        before[module] = bool(role_visibility.get(module, False))
+        role_visibility[module] = bool(value)
+        after[module] = bool(value)
+    if not before:
+        raise ValueError('Nenhum módulo reconhecido em: ' + ', '.join(sorted(updates.keys())))
+    framework.setdefault('module_visibility', {})[role] = role_visibility
+    normalized = normalize_framework_payload(framework)
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    connection.commit()
+    return before, after
 
 
 def default_ficha_retention_policy():

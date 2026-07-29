@@ -31,6 +31,7 @@ class AuthCubit extends Cubit<AuthState> {
       final context = SessionContext.fromAuthPayload(
         user: identity.user,
         permissions: identity.permissions,
+        moduleVisibility: identity.moduleVisibility,
       );
       await ApiClient.savePermissions(identity.permissions);
       await ApiClient.saveSessionContext(context);
@@ -74,6 +75,7 @@ class AuthCubit extends Cubit<AuthState> {
       final context = SessionContext.fromAuthPayload(
         user: res.user,
         permissions: permissions,
+        moduleVisibility: res.moduleVisibility,
       );
       await ApiClient.savePermissions(permissions);
       await ApiClient.saveSessionContext(context);

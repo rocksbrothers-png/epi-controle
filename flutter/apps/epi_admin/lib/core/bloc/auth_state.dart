@@ -26,6 +26,12 @@ final class AuthAuthenticated extends AuthState {
   final Map<String, dynamic> user;
   final List<String> permissions;
   final SessionContext sessionContext;
+
+  /// Visibilidade estrutural por módulo (menu/rotas/deep links) — atalho
+  /// para `sessionContext.moduleVisibility`, no mesmo padrão de
+  /// [permissions] (que também espelha `sessionContext.permissions`).
+  bool isModuleVisible(String module) => sessionContext.isModuleVisible(module);
+
   @override
   List<Object?> get props => [token, user, permissions, sessionContext];
 }

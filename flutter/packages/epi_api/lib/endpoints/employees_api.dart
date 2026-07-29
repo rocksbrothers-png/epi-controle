@@ -68,4 +68,32 @@ class EmployeesApi {
       queryParameters: {'actor_user_id': actorUserId},
     );
   }
+
+  /// Movimentação de unidade operacional (transferência), temporária ou
+  /// definitiva. Só o Administrador Local (`employees:transfer`) executa —
+  /// o backend valida que origem e destino pertencem à mesma empresa e que
+  /// o destino é diferente da unidade atual.
+  Future<Map<String, dynamic>> createUnitMovement({
+    required int actorUserId,
+    required int employeeId,
+    required int targetUnitId,
+    required String movementType,
+    required String startDate,
+    String endDate = '',
+    String notes = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/employee-unit-movements',
+      data: {
+        'actor_user_id': actorUserId,
+        'employee_id': employeeId,
+        'target_unit_id': targetUnitId,
+        'movement_type': movementType,
+        'start_date': startDate,
+        if (endDate.isNotEmpty) 'end_date': endDate,
+        if (notes.isNotEmpty) 'notes': notes,
+      },
+    );
+    return res.data ?? {};
+  }
 }

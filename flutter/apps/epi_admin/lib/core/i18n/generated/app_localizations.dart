@@ -2466,6 +2466,66 @@ abstract class AppLocalizations {
   /// **'Histórico de vínculo'**
   String get legalEntityTransferHistory;
 
+  /// No description provided for @unitTransferTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Transferir de unidade'**
+  String get unitTransferTitle;
+
+  /// No description provided for @unitTransferHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.'**
+  String get unitTransferHint;
+
+  /// No description provided for @unitTransferTarget.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade destino'**
+  String get unitTransferTarget;
+
+  /// No description provided for @unitTransferType.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tipo de movimentação'**
+  String get unitTransferType;
+
+  /// No description provided for @unitTransferTypeTemporary.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Temporária'**
+  String get unitTransferTypeTemporary;
+
+  /// No description provided for @unitTransferTypeDefinitive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Definitiva'**
+  String get unitTransferTypeDefinitive;
+
+  /// No description provided for @unitTransferStartDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data início'**
+  String get unitTransferStartDate;
+
+  /// No description provided for @unitTransferEndDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data fim (opcional)'**
+  String get unitTransferEndDate;
+
+  /// No description provided for @unitTransferNotes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Observação (opcional)'**
+  String get unitTransferNotes;
+
+  /// No description provided for @unitTransferAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Transferir'**
+  String get unitTransferAction;
+
   /// No description provided for @myCompanyStockScope.
   ///
   /// In pt_BR, this message translates to:

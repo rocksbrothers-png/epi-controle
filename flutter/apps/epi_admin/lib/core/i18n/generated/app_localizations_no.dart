@@ -1219,6 +1219,28 @@ class AppLocalizationsNo extends AppLocalizations {
   String get legalEntityTransferHistory => 'Histórico de vínculo';
 
   @override
+  String get unitTransferTitle => 'Transferir de unidade';
+  @override
+  String get unitTransferHint =>
+      'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
+  @override
+  String get unitTransferTarget => 'Unidade destino';
+  @override
+  String get unitTransferType => 'Tipo de movimentação';
+  @override
+  String get unitTransferTypeTemporary => 'Temporária';
+  @override
+  String get unitTransferTypeDefinitive => 'Definitiva';
+  @override
+  String get unitTransferStartDate => 'Data início';
+  @override
+  String get unitTransferEndDate => 'Data fim (opcional)';
+  @override
+  String get unitTransferNotes => 'Observação (opcional)';
+  @override
+  String get unitTransferAction => 'Transferir';
+
+  @override
   String get myCompanyStockScope => 'Consolidar saldos de estoque por';
 
   @override
@@ -2486,6 +2508,28 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get legalEntityTransferHistory => 'Tilknytningshistorikk';
+
+  @override
+  String get unitTransferTitle => 'Overfør enhet';
+  @override
+  String get unitTransferHint =>
+      'Bevegelse av driftsenhet — midlertidig eller permanent. Oppretter en sporbar hendelse og endrer ikke medarbeiderens CNPJ.';
+  @override
+  String get unitTransferTarget => 'Målenhet';
+  @override
+  String get unitTransferType => 'Bevegelsestype';
+  @override
+  String get unitTransferTypeTemporary => 'Midlertidig';
+  @override
+  String get unitTransferTypeDefinitive => 'Permanent';
+  @override
+  String get unitTransferStartDate => 'Startdato';
+  @override
+  String get unitTransferEndDate => 'Sluttdato (valgfritt)';
+  @override
+  String get unitTransferNotes => 'Merknad (valgfritt)';
+  @override
+  String get unitTransferAction => 'Overfør';
 
   @override
   String get myCompanyStockScope => 'Konsolider lagersaldo etter';

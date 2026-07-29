@@ -116,6 +116,11 @@ def test_permission_matrix_separates_update_from_transfer():
     assert PERM_EMPLOYEES_UPDATE not in PERMISSIONS['admin']
     for role in ('master_admin', 'general_admin', 'registry_admin'):
         assert PERM_EMPLOYEES_TRANSFER in PERMISSIONS[role], role
+    # master_admin não retém employees:update de forma permanente
+    # (docs/PAPEIS_E_ATRIBUICOES.md #1 — acesso operacional só via suporte
+    # formal auditado); general_admin/registry_admin seguem com o cadastro.
+    assert PERM_EMPLOYEES_UPDATE not in PERMISSIONS['master_admin']
+    for role in ('general_admin', 'registry_admin'):
         assert PERM_EMPLOYEES_UPDATE in PERMISSIONS[role], role
 
 

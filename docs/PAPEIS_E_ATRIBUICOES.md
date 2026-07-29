@@ -58,6 +58,15 @@ de EPIs.
 - Não movimenta estoque.
 - Não substitui os administradores internos da empresa.
 
+Estas restrições são permanentes no papel (`core/permissions.py`), não
+apenas recomendações de uso: o Administrador Master não retém
+`employees:create/update/delete`, `deliveries:create`, `stock:adjust` nem
+`purchase_requests:create/update` (decisão confirmada em 2026-07-29).
+Quando o suporte à plataforma exigir agir sobre dados operacionais do
+cliente, isso deve passar por um mecanismo formal de impersonation ou
+acesso temporário auditado — ainda não implementado — nunca por concessão
+permanente no papel.
+
 ## 2. Administrador Geral
 
 É o responsável máximo pela administração do cliente dentro da plataforma.
@@ -189,12 +198,23 @@ riscos, vínculos organizacionais e dados complementares da estrutura.
 - Não altera configurações globais da empresa, salvo permissão adicional.
 - Não cria novos perfis de acesso, salvo autorização expressa.
 
+O Administrador de Registro mantém apenas as permissões de cadastro
+organizacional (`employees:create/update/delete` — arquivamento lógico,
+nunca exclusão física — e `employees:transfer`); as permissões
+operacionais de compra (`purchase_requests:create/update`,
+`purchase_orders:review/receive`) e de estoque (`stock:adjust`,
+`deliveries:create`) foram removidas do papel (decisão confirmada em
+2026-07-29). A consulta a requisições/pedidos de compra permanece, para
+relatórios cadastrais.
+
 ## 4. Administrador Local
 
-É o responsável administrativo por uma unidade ou por uma carteira de
-unidades. Ele controla solicitações, necessidades de compra, aprovações e
-acompanhamento administrativo do estoque, mas não realiza o cadastro dos
-colaboradores.
+É o responsável administrativo por exatamente uma unidade — vínculo único,
+nunca uma carteira de N unidades (decisão confirmada em 2026-07-29; ver
+`actor_operational_unit_id`). Ele controla solicitações, necessidades de
+compra, aprovações e acompanhamento administrativo do estoque, mas não
+realiza o cadastro dos colaboradores. Se tentar acessar outra unidade,
+mesmo do mesmo CNPJ, o backend nega o acesso.
 
 **Atribuições — Solicitações de EPI**
 - Receber solicitações dos colaboradores.
@@ -251,8 +271,8 @@ mas não realiza a movimentação física.
 - Acompanhar compras.
 - Acompanhar entregas.
 - Acompanhar necessidades geradas por mudanças dos colaboradores.
-- Administrar apenas as unidades de sua carteira.
-- Transferir colaboradores entre unidades.
+- Administrar apenas a própria unidade.
+- Transferir colaboradores da própria unidade para outra unidade.
 
 **Não faz**
 - Não cadastra colaboradores.
@@ -261,7 +281,7 @@ mas não realiza a movimentação física.
 - Não captura assinatura.
 - Não captura biometria.
 - Não realiza baixa física.
-- Não recebe fisicamente material, salvo se acumular perfil específico.
+- Não recebe fisicamente material.
 - Não altera usuários ou permissões.
 - Não administra CNPJs.
 
@@ -443,7 +463,7 @@ alçada.
 - Não entrega EPI.
 - Não movimenta estoque.
 - Não cadastra colaborador.
-- Não cria requisição em nome da unidade, salvo acumulação formal de perfil.
+- Não cria requisição em nome da unidade.
 - Não altera usuários.
 - Não altera configurações da empresa.
 

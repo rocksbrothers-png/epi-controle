@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import 'legal_entity_transfer_dialog.dart';
+import 'unit_transfer_dialog.dart';
 
 /// Rótulo exibido para cada valor de `tipo_vinculo` — mesmo mapeamento do
 /// formulário de edição, para que a leitura e a escrita concordem.
@@ -82,7 +83,13 @@ class EmployeeDetailScreen extends StatelessWidget {
               if (employee.role != null)
                 _DetailRow(label: l10n.employeeRoleLabel, value: employee.role!),
               if (employee.unitName != null)
-                _DetailRow(label: l10n.employeeUnitLabel, value: employee.unitName!),
+                _DetailRow(
+                  label: l10n.employeeUnitLabel,
+                  value: employee.unitName!,
+                  // Movimentação de unidade (temporária/definitiva) — só o
+                  // Administrador Local executa; o backend valida a permissão.
+                  trailing: _UnitTransferButton(employee: employee),
+                ),
               // Vínculo jurídico (CNPJ) do contrato de trabalho. Ausente
               // enquanto o schema Multi-CNPJ não estiver provisionado.
               if (employee.legalEntityCnpj != null &&
@@ -430,6 +437,39 @@ class _LegalEntityTransferButton extends StatelessWidget {
         if (done == true) {
           messenger.showSnackBar(
             SnackBar(content: Text(l10n.legalEntityTransferTitle)),
+          );
+        }
+      },
+    );
+  }
+}
+
+/// Botão que abre a movimentação de unidade operacional (transferência),
+/// temporária ou definitiva — paridade com "Gestão de Colaborador" do web
+/// legado. Diferente do vínculo jurídico: não exige justificativa nem afeta
+/// o CNPJ do colaborador.
+class _UnitTransferButton extends StatelessWidget {
+  const _UnitTransferButton({required this.employee});
+  final Employee employee;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return IconButton(
+      tooltip: l10n.unitTransferTitle,
+      icon: const Icon(Icons.move_down_rounded),
+      onPressed: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        final done = await showDialog<bool>(
+          context: context,
+          builder: (_) => UnitTransferDialog(
+            employeeId: employee.id,
+            currentUnitId: employee.unitId,
+          ),
+        );
+        if (done == true) {
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.unitTransferTitle)),
           );
         }
       },

@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.repository import authorize_action, get_epi_by_id, get_unit_by_id, get_unit_active_jv_name
-from modules.employees.service import actor_operational_unit_id
+from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
 from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
@@ -149,6 +149,8 @@ def handle_post_stock_item_status(handler, parsed, payload, match):
         if not qr_code and stock_item_id <= 0:
             raise ValueError('Informe o QR/código do item ou selecione um item.')
         scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para ajustar estoque.')
         # Restringe a busca à unidade operacional (se houver); senão usa a unidade
         # informada (opcional) ou busca em toda a empresa.
         lookup_unit = int(scope_unit_id) if scope_unit_id else int(payload.get('unit_id') or 0)
@@ -220,7 +222,7 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope):
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope) or actor_has_no_operational_unit(actor, scope_unit_id):
             return send_json(handler, 200, {'items': []})
         clauses, params = [], []
         if company_filter:
@@ -476,6 +478,9 @@ def handle_post_stock_labels_reprint(handler, parsed, payload, match):
         if not stock_item:
             raise ValueError('Etiqueta não encontrada para reimpressão.')
         ensure_resource_company(actor, stock_item, 'Etiqueta')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(stock_item['unit_id']) != int(scope_unit_id)):
+            raise PermissionError('Etiqueta fora da unidade operacional do usuário.')
         now = datetime.now(UTC).isoformat()
         new_reprint_count = create_stock_item_reprint(
             connection,

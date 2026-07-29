@@ -268,6 +268,7 @@ def build_bootstrap(connection, actor):
     from modules.deliveries.service import fetch_deliveries
     from modules.feedback.service import fetch_feedbacks
     from modules.purchases.service import (
+        actor_has_no_purchase_unit_scope as _has_no_purchase_scope,
         count_pending_purchase_requests as _count_pending_purchases,
         get_actor_purchase_unit_scope as _get_purchase_scope,
     )
@@ -275,6 +276,7 @@ def build_bootstrap(connection, actor):
     from modules.companies.service import fetch_companies, fetch_company_audit_logs
     from modules.ficha.service import fetch_ficha_epi_audit_logs
     from modules.alerts.service import compute_alerts as _compute_alerts_impl
+    from modules.employees.service import actor_has_no_operational_unit as _has_no_operational_unit
     from modules.employees.service import actor_operational_unit_id as _actor_op_unit_id
     from modules.stock.service import fetch_low_stock_items as _fetch_low_stock
     from epi_backend.epi_scope import is_epi_visible_for_unit as _is_epi_visible
@@ -304,6 +306,8 @@ def build_bootstrap(connection, actor):
             return 0
         scope_unit_id = _actor_op_unit_id(connection, actor)
         purchase_scope_units = _get_purchase_scope(connection, actor)
+        if _has_no_purchase_scope(actor, scope_unit_id, purchase_scope_units) or _has_no_operational_unit(actor, scope_unit_id):
+            return 0
         return _count_pending_purchases(connection, company_id, scope_unit_id, purchase_scope_units)
 
     warnings = []
@@ -317,7 +321,10 @@ def build_bootstrap(connection, actor):
     # operacional) seguem vendo todos os EPIs. fetch_epis(unit_id) aplica o
     # filtro `epis.unit_id = ? OR epis.unit_id IS NULL`.
     _epis_scope_unit = _actor_op_unit_id(connection, actor)
-    epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor, _epis_scope_unit), [], warnings, actor, connection=connection)
+    if actor.get('role') in ('admin', 'user') and not _epis_scope_unit:
+        epis = []
+    else:
+        epis = _safe_bootstrap_section('epis', lambda: fetch_epis(connection, actor, _epis_scope_unit), [], warnings, actor, connection=connection)
 
     units = _safe_bootstrap_section(
         'units_visibility_canary',

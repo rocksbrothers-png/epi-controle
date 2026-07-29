@@ -12,7 +12,7 @@ from core.repository import (
     get_employee_current_unit,
     get_epi_by_id,
 )
-from modules.employees.service import actor_operational_unit_id
+from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.deliveries.service import (
@@ -32,6 +32,8 @@ def handle_get_deliveries(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_DELIVERIES_VIEW)
         scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor_has_no_operational_unit(actor, scope_unit_id):
+            return send_json(handler, 200, {'deliveries': [], 'items': []})
         where, params = '', ()
         if scope_unit_id:
             where, params = 'WHERE deliveries.unit_id = ?', (int(scope_unit_id),)

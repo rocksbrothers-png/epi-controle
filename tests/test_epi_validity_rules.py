@@ -45,9 +45,12 @@ def test_validity_helpers():
 # ── alertas de validade do fabricante (PEPS) ──────────────────────────────────
 
 def _compute(epis):
+    # Papel sem unidade operacional própria (general_admin): este teste cobre a
+    # lógica de geração de alerta de validade, não o escopo por unidade — que é
+    # coberto em test_low_stock_alert_scope.py.
     from modules.alerts.service import compute_alerts
     return compute_alerts(
-        None, {'role': 'admin', 'company_id': 1},
+        None, {'role': 'general_admin', 'company_id': 1},
         fetch_low_stock_items=lambda conn, act: [],
         actor_operational_unit_id=lambda conn, act: None,
         fetch_epis=lambda conn, act, unit: epis,

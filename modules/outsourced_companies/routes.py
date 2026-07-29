@@ -157,6 +157,17 @@ def handle_put_outsourced_company(handler, parsed, payload, match):
             connection, current['company_id'], actor, 'outsourced_company_updated',
             f"Empresa terceirizada atualizada: {current.get('legal_name')}.", changes,
         )
+        responsibility_change = next((c for c in changes if c['field'] == 'epi_responsibility'), None)
+        if responsibility_change:
+            # Entrada dedicada (ADR-0002 §5) além do 'outsourced_company_updated'
+            # genérico acima — permite filtrar o histórico só por mudança de
+            # responsabilidade pelo EPI, sem varrer todo update de cadastro.
+            _audit(
+                connection, current['company_id'], actor, 'epi_responsibility_changed',
+                f"Responsabilidade pelo fornecimento de EPI de {current.get('legal_name')} alterada: "
+                f"{responsibility_change['before']} → {responsibility_change['after']}.",
+                [responsibility_change],
+            )
         connection.commit()
         structured_log('info', 'outsourced_company.updated', outsourced_company_id=entity_id, actor_user_id=actor['id'])
         return send_json(handler, 200, {'ok': True, 'id': entity_id})

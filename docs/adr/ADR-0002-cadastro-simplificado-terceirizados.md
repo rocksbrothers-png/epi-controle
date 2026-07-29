@@ -1,6 +1,6 @@
 # ADR-0002 — Cadastro Simplificado de Terceirizados e Prestadores
 
-- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador) e PR 4 (snapshot na entrega) implementados
+- **Status:** Aceito — PR 1 (fundação), PR 3 (cadastro do colaborador), PR 4 (snapshot na entrega) e PR 5 (auditoria de responsabilidade) implementados
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -318,7 +318,16 @@ relatórios sem nenhuma mudança de código nesses fluxos.
    `tipo_vinculo`) para colaborador CLT. Testado que editar a empresa/
    contrato depois de uma entrega já registrada não altera o snapshot já
    gravado — a garantia central deste PR.
-5. **PR 5 — Auditoria, histórico e registro de responsabilidades.**
+5. **PR 5 (implementado) — Auditoria, histórico e registro de
+   responsabilidades.** Além de `outsourced_company_created/updated/
+   promoted` e `service_contract_created` (já no PR 1), dois eventos
+   dedicados: `epi_responsibility_changed` — quando o default da empresa
+   muda, emitido junto com o `outsourced_company_updated` genérico, para
+   permitir filtrar o histórico só por essa mudança específica — e
+   `epi_responsibility_override_set` — quando a exceção individual do
+   colaborador é criada, alterada ou removida. Ambos só disparam quando o
+   valor de fato muda, nunca a cada create/update. `register_company_audit()`
+   segue sendo a única função de auditoria — zero schema novo.
 6. **PR 6 — Relatórios, custos, ressarcimento, dashboards, alertas
    inteligentes.**
 7. **PR 7 — Flutter (Web, Android, iOS).**

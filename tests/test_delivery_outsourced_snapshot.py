@@ -15,8 +15,6 @@ Cobre:
 
 import sqlite3
 
-import pytest
-
 from core.schema import (
     ensure_delivery_handover_columns,
     ensure_delivery_outsourced_snapshot_columns,

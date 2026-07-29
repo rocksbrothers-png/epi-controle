@@ -80,11 +80,42 @@ def handle_get_employee_unit_movements(handler, parsed, payload, match):
 
 # ── POST ──────────────────────────────────────────────────────────────────────
 
+def _audit_epi_responsibility_override(connection, company_id, actor, employee, *, before_override=''):
+    """Auditoria pontual (ADR-0002 PR 5): exceção individual de
+    responsabilidade pelo fornecimento de EPI é a única alteração de
+    colaborador auditada hoje — o cadastro comum de colaborador não tem
+    trilha de auditoria (gap pré-existente, fora do escopo desta feature).
+    Só registra quando o override efetivamente muda (aparece, some ou tem o
+    valor alterado), nunca a cada create/update.
+    """
+    after_override = str(employee.get('epi_responsibility_override') or '').strip()
+    if after_override == str(before_override or '').strip():
+        return
+    try:
+        from core.audit import register_company_audit
+        reason = str(employee.get('epi_responsibility_override_reason') or '').strip()
+        register_company_audit(
+            connection, int(company_id), actor, 'epi_responsibility_override_set',
+            f"Exceção de responsabilidade pelo EPI para {employee.get('name')}: "
+            f"{after_override or 'removida'}.",
+            [
+                {'field': 'epi_responsibility_override', 'before': str(before_override or ''), 'after': after_override},
+                {'field': 'motivo', 'before': '', 'after': reason},
+            ],
+        )
+    except Exception as exc:
+        structured_log('warning', 'employee.audit_failed', company_id=company_id, error=str(exc))
+
+
 def handle_post_employees(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'company_id', 'employee_id_code', 'cpf', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'employees:create', int(payload['company_id']))
         employee_id = create_employee(connection, payload, actor=actor)
+        employee = get_employee_by_id(connection, employee_id)
+        if employee and employee.get('epi_responsibility_override'):
+            _audit_epi_responsibility_override(connection, payload['company_id'], actor, employee)
+            connection.commit()
         return send_json(handler, 201, {'ok': True, 'id': employee_id})
 
 
@@ -95,7 +126,13 @@ def handle_put_employee(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'sector', 'role_name', 'admission_date', 'schedule_type'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'employees:update', int(payload['company_id']))
+        current = get_employee_by_id(connection, employee_id)
+        before_override = (current or {}).get('epi_responsibility_override') or ''
         update_employee(connection, employee_id, payload, actor=actor)
+        employee = get_employee_by_id(connection, employee_id)
+        if employee:
+            _audit_epi_responsibility_override(connection, payload['company_id'], actor, employee, before_override=before_override)
+            connection.commit()
         return send_json(handler, 200, {'ok': True})
 
 

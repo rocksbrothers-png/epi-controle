@@ -21,6 +21,12 @@ PERM_EMPLOYEES_DELETE = 'employees:delete'
 # Mudança do vínculo jurídico (CNPJ) do colaborador. O CNPJ é imutável na
 # edição comum; esta permissão libera o processo administrativo auditado.
 PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER = 'employees:legal_entity_transfer'
+# Movimentação entre unidades (temporária ou definitiva). Distinta de
+# PERM_EMPLOYEES_UPDATE (edição de dados cadastrais): o Administrador Local
+# transfere colaboradores entre as unidades da sua carteira, mas não edita
+# cadastro nem reativa desligados — atribuição do Administrador de Registro
+# (docs/PAPEIS_E_ATRIBUICOES.md #3 vs #4).
+PERM_EMPLOYEES_TRANSFER = 'employees:transfer'
 
 PERM_EPIS_VIEW = 'epis:view'
 PERM_EPIS_CREATE = 'epis:create'
@@ -114,6 +120,7 @@ ADMIN_BASE_PERMISSIONS: frozenset[str] = frozenset({
     PERM_USERS_VIEW, PERM_USERS_CREATE, PERM_USERS_UPDATE, PERM_USERS_DELETE,
     PERM_UNITS_VIEW, PERM_UNITS_CREATE, PERM_UNITS_UPDATE, PERM_UNITS_DELETE,
     PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
+    PERM_EMPLOYEES_TRANSFER,
     PERM_EPIS_VIEW, PERM_EPIS_CREATE, PERM_EPIS_UPDATE, PERM_EPIS_DELETE,
     PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW,
     PERM_LEGAL_ENTITIES_VIEW,
@@ -158,16 +165,14 @@ EPI_FEEDBACK_MANAGER_PERMISSIONS: frozenset[str] = frozenset({
 })
 
 # Fluxo de EPI em teste — grupos por papel funcional.
-# Administrador Local (role 'user') acompanha e opera o teste na unidade,
-# mas não decide nem homologa. Área de Segurança (epi_manager) faz análise
-# técnica e emite parecer. Administrador Geral decide, define escopo e
-# homologa. Administrador Master atua somente em suporte auditado (view).
+# Gestor de EPI (role 'user' — 'epi_manager' é apenas um apelido histórico do
+# mesmo papel, normalizado por ROLE_ALIASES em core/roles.py) opera o teste na
+# unidade, faz a triagem e a análise técnica, mas não decide nem homologa.
+# Administrador Geral e Administrador de Registro decidem, definem escopo e
+# homologam. Administrador Master atua somente em suporte auditado (view).
 PPE_TEST_LOCAL_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
     PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_MANAGE, PERM_PPE_TEST_EVALUATE,
-})
-PPE_TEST_SAFETY_PERMISSIONS: frozenset[str] = frozenset({
-    PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_TRIAGE,
-    PERM_PPE_TEST_TECH_REVIEW, PERM_PPE_TEST_EVALUATE,
+    PERM_PPE_TEST_TRIAGE, PERM_PPE_TEST_TECH_REVIEW,
 })
 PPE_TEST_GENERAL_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
     PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST, PERM_PPE_TEST_TRIAGE, PERM_PPE_TEST_MANAGE,
@@ -229,9 +234,14 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     'admin': (
         frozenset({
             PERM_DASHBOARD_VIEW, PERM_USERS_VIEW, PERM_UNITS_VIEW,
-            PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_UPDATE,
+            PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_TRANSFER,
             PERM_EPIS_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW,
             PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW,
+            # Sem PERM_EMPLOYEES_UPDATE: edição de cadastro e reativação de
+            # colaborador são atribuição do Administrador de Registro
+            # (docs/PAPEIS_E_ATRIBUICOES.md #3). O Administrador Local segue
+            # transferindo colaboradores entre unidades da sua carteira
+            # (docs/PAPEIS_E_ATRIBUICOES.md #4) via PERM_EMPLOYEES_TRANSFER.
             # Sem PERM_LEGAL_ENTITIES_VIEW: a aba CNPJs é de cadastro
             # societário (matriz, filiais, SPEs, sócias de JV) e cabe ao
             # Administrador Geral e ao Administrador de Registro. O
@@ -272,20 +282,10 @@ PERMISSIONS: dict[str, frozenset[str]] = {
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS
         | frozenset({
-            PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE,
-            PERM_EPI_FEEDBACK_MANAGER_EVAL, PERM_EPI_EVALUATION_VIEW,
+            PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE, PERM_EPI_FEEDBACK_CREATE,
+            PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_MANAGER_EVAL, PERM_EPI_EVALUATION_VIEW,
         })
         | PPE_TEST_LOCAL_ADMIN_PERMISSIONS
-    ),
-    'epi_manager': (
-        frozenset({
-            PERM_DASHBOARD_VIEW, PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW,
-            PERM_ALERTS_VIEW, PERM_UNITS_VIEW, PERM_EMPLOYEES_VIEW,
-            PERM_EPIS_VIEW, PERM_STOCK_VIEW,
-        })
-        | EPI_FEEDBACK_MANAGER_PERMISSIONS
-        | frozenset({PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE})
-        | PPE_TEST_SAFETY_PERMISSIONS
     ),
     'employee': frozenset({PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}),
 }

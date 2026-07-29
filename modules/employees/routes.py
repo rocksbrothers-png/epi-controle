@@ -6,7 +6,11 @@ from datetime import datetime
 
 from core.auth import ensure_resource_company
 from core.database import get_connection
-from core.permissions import PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER, PERM_EMPLOYEES_VIEW
+from core.permissions import (
+    PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
+    PERM_EMPLOYEES_TRANSFER,
+    PERM_EMPLOYEES_VIEW,
+)
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
@@ -227,7 +231,7 @@ def handle_post_employee_purge_confirm(handler, parsed, payload, match):
 def handle_post_employee_unit_movements(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'employee_id', 'target_unit_id', 'movement_type', 'start_date'])
     with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'employees:update')
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_EMPLOYEES_TRANSFER)
         employee = get_employee_by_id(connection, int(payload['employee_id']))
         if not employee:
             raise ValueError('Colaborador não encontrado.')

@@ -517,8 +517,10 @@ def test_permission_matrix():
     assert PERM_PPE_TEST_HOMOLOGATE not in PERMISSIONS['user']
     assert PERM_PPE_TEST_DECIDE not in PERMISSIONS['user']
     assert PERM_PPE_TEST_MANAGE in PERMISSIONS['user']
-    assert PERM_PPE_TEST_TECH_REVIEW in PERMISSIONS['epi_manager']
-    assert PERM_PPE_TEST_TRIAGE in PERMISSIONS['epi_manager']
+    # 'epi_manager' é apelido de 'user' (ROLE_ALIASES em core/roles.py) — o
+    # Gestor de EPI é quem faz a triagem e a análise técnica.
+    assert PERM_PPE_TEST_TECH_REVIEW in PERMISSIONS['user']
+    assert PERM_PPE_TEST_TRIAGE in PERMISSIONS['user']
     # Administrador Master: somente suporte auditado (view), nunca decide/homologa
     assert PERM_PPE_TEST_VIEW in PERMISSIONS['master_admin']
     assert PERM_PPE_TEST_DECIDE not in PERMISSIONS['master_admin']

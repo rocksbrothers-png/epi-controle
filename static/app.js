@@ -2967,11 +2967,19 @@ function canAccessView(view) {
       && !['master_admin', 'general_admin', 'registry_admin'].includes(role)) {
     return false;
   }
-  // Views operacionais: administradores + perfis operacionais (Local/Gestor).
-  if (['gestao-colaborador', 'estoque', 'entregas', 'fichas'].includes(view)
+  // Gestão de colaborador (movimentação entre unidades): administradores +
+  // perfis operacionais (Local/Gestor) — fora do escopo de module_visibility
+  // (não é um dos módulos configuráveis), mantém a restrição fixa.
+  if (view === 'gestao-colaborador'
       && !['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(role)) {
     return false;
   }
+  // Estoque/Entregas/Fichas de EPI: a restrição fixa de papel foi
+  // substituída pela visibilidade por módulo (configurável pelo
+  // Administrador Geral) logo abaixo — o padrão do sistema já nega estas
+  // três para Comprador/Aprovador (MODULE_REQUIRED_PERMISSIONS/
+  // _STRUCTURALLY_HIDDEN_BY_DEFAULT em rule_engine.py), mas agora pode ser
+  // liberado por configuração, o que um `return false` fixo aqui impediria.
   if (view === 'configuracao') return hasConfigurationAccess();
   // Visibilidade estrutural por módulo (configuração do Administrador
   // Geral): módulo ausente do mapa é tratado como visível — só restringe
@@ -3479,19 +3487,14 @@ function renderPhase3SummaryCards(container, items = []) {
 }
 
 function applyRoleVisibility() {
+  // Fonte única com canAccessView() (permissão + restrições estruturais +
+  // visibilidade por módulo). Duplicar a regra aqui foi o bug real: o menu
+  // tinha sua própria cópia da restrição de papel e nunca ganhou o cheque de
+  // module_visibility quando a política de acesso por módulo foi criada —
+  // a configuração do Administrador Geral mudava o dado, mas o menu não lia.
   document.querySelectorAll('.menu-link').forEach((item) => {
     const view = item.dataset.view;
-    let visible = hasPermission(VIEW_PERMISSIONS[view]);
-    if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)) {
-      visible = visible && ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
-    }
-    if (['gestao-colaborador', 'estoque', 'entregas', 'fichas'].includes(view)) {
-      visible = visible && ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(state.user?.role);
-    }
-    if (view === 'configuracao') {
-      visible = visible && hasConfigurationAccess();
-    }
-    item.style.display = visible ? '' : 'none';
+    item.style.display = canAccessView(view) ? '' : 'none';
   });
   if (refs.topConfigTrigger) refs.topConfigTrigger.style.display = hasConfigurationAccess() ? '' : 'none';
   if (!hasHardeningAccess() && refs.configFrameworkForm) {

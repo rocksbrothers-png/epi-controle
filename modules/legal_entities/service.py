@@ -65,13 +65,15 @@ def resolve_actor_legal_entity_ids(connection, actor):
     """CNPJs que o ator pode enxergar. ``None`` = sem restrição.
 
     Regras (conformidade jurídica):
-      - Administrador Master / Geral / de Registro → todos (``None``);
-      - Administrador Local (``admin``) → apenas os CNPJs autorizados em
-        ``user_legal_entities``. **Lista vazia = sem restrição**, para não
-        quebrar os administradores locais já existentes, que nunca tiveram
-        autorização explícita;
-      - Usuário (``user``) → apenas o CNPJ do colaborador vinculado, derivado de
-        ``users.linked_employee_id`` (sem dado redundante).
+      - Administrador Master / Geral / de Registro → todos (``None``). São os
+        únicos perfis que administram CNPJ (docs/PAPEIS_E_ATRIBUICOES.md #2/#3);
+      - Administrador Local (``admin``) → não administra CNPJ e não escolhe um.
+        O CNPJ é resolvido automaticamente a partir da única unidade que ele
+        administra (``units.legal_entity_id``) — nunca de uma carteira própria.
+        Ausência de unidade operacional ou de CNPJ na unidade devolve ``[]``
+        (nenhum CNPJ), nunca "sem restrição";
+      - Gestor de EPI (``user``) → apenas o CNPJ do colaborador vinculado,
+        derivado de ``users.linked_employee_id`` (sem dado redundante).
     """
     if not actor:
         return None
@@ -91,16 +93,18 @@ def resolve_actor_legal_entity_ids(connection, actor):
         entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
         return [int(entity_id)] if entity_id else []
 
-    # Administrador Local: autorização explícita por CNPJ.
-    from epi_backend.db import table_exists
-    if not table_exists(connection, 'user_legal_entities'):
-        return None
-    rows = connection.execute(
-        'SELECT legal_entity_id FROM user_legal_entities WHERE user_id = ?',
-        (int(actor.get('id') or 0),),
-    ).fetchall()
-    allowed = [int(r['legal_entity_id'] if hasattr(r, 'keys') else r[0]) for r in rows]
-    return allowed or None
+    if role == 'admin':
+        from modules.employees.service import actor_operational_unit_id
+        unit_id = actor_operational_unit_id(connection, actor)
+        if not unit_id:
+            return []
+        row = connection.execute(
+            'SELECT legal_entity_id FROM units WHERE id = ?', (int(unit_id),)
+        ).fetchone()
+        entity_id = (row['legal_entity_id'] if hasattr(row, 'keys') else row[0]) if row else None
+        return [int(entity_id)] if entity_id else []
+
+    return []
 
 
 def ensure_legal_entity_access(connection, actor, legal_entity_id):
@@ -584,44 +588,6 @@ def deactivate_legal_entity(connection, entity_id, company_id):
         (datetime.now(UTC).isoformat(), int(entity_id), int(company_id)),
     )
     connection.commit()
-
-
-def fetch_user_legal_entities(connection, user_id):
-    """CNPJs explicitamente autorizados a um usuário."""
-    from epi_backend.db import table_exists
-    if not table_exists(connection, 'user_legal_entities'):
-        return []
-    rows = connection.execute(
-        'SELECT legal_entity_id FROM user_legal_entities WHERE user_id = ? ORDER BY legal_entity_id',
-        (int(user_id),),
-    ).fetchall()
-    return [int(r['legal_entity_id'] if hasattr(r, 'keys') else r[0]) for r in rows]
-
-
-def set_user_legal_entities(connection, user_id, company_id, legal_entity_ids):
-    """Define a autorização de CNPJs de um usuário (substitui a lista inteira).
-
-    Lista vazia remove a restrição (usuário volta a enxergar todos os CNPJs da
-    empresa), coerente com o padrão retrocompatível de ``resolve_actor_legal_entity_ids``.
-    """
-    ids = []
-    for raw in legal_entity_ids or []:
-        if raw in (None, '', 0, '0'):
-            continue
-        entity = get_legal_entity_by_id(connection, int(raw))
-        if not entity or int(entity['company_id']) != int(company_id):
-            raise ValueError('CNPJ informado não pertence a esta empresa.')
-        ids.append(int(raw))
-    connection.execute('DELETE FROM user_legal_entities WHERE user_id = ?', (int(user_id),))
-    now_iso = datetime.now(UTC).isoformat()
-    for entity_id in sorted(set(ids)):
-        connection.execute(
-            'INSERT INTO user_legal_entities (user_id, legal_entity_id, company_id, created_at) '
-            'VALUES (?, ?, ?, ?)',
-            (int(user_id), entity_id, int(company_id), now_iso),
-        )
-    connection.commit()
-    return sorted(set(ids))
 
 
 def resolve_employee_legal_entity_id(connection, company_id, requested_id):

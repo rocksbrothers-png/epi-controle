@@ -10,7 +10,7 @@ from core.repository import authorize_action
 from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_bytes, send_json
-from modules.purchases.service import get_actor_purchase_unit_scope
+from modules.purchases.service import actor_has_no_purchase_unit_scope, get_actor_purchase_unit_scope
 from modules.reports.service import (
     build_report_pdf,
     create_report_request,
@@ -52,6 +52,8 @@ def handle_get_report_requests(handler, parsed, payload, match):
         company_id = int(actor['company_id'])
         scope_unit_id = actor_operational_unit_id(connection, actor)
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
+        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope):
+            return send_json(handler, 200, {'items': []})
         clauses = ['rr.company_id = %s']
         params = [company_id]
         if scope_unit_id:
@@ -79,10 +81,11 @@ def handle_post_report_requests(handler, parsed, payload, match):
         company_id = int(actor['company_id'])
         purchase_scope = get_actor_purchase_unit_scope(connection, actor)
         unit_id = payload.get('unit_id')
+        if actor.get('role') == 'approver':
+            if not unit_id or not purchase_scope or int(unit_id) not in purchase_scope:
+                raise PermissionError('Aprovador só pode solicitar relatório para unidades que administra.')
         if unit_id:
             unit_id = int(unit_id)
-            if purchase_scope and unit_id not in purchase_scope:
-                raise PermissionError('Aprovador só pode solicitar relatório para unidades que administra.')
         now = datetime.now(UTC).isoformat()
         create_report_request(
             connection, company_id, unit_id, actor['id'], actor['full_name'],

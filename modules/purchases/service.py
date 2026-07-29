@@ -48,7 +48,14 @@ def normalize_purchase_function_type(value):
 
 
 def get_actor_purchase_unit_scope(connection, actor):
-    """Retorna unit_ids para vínculos de Compras via purchase_role_unit_links."""
+    """Retorna unit_ids para vínculos de Compras via purchase_role_unit_links.
+
+    ``None`` = ator fora do universo de Compras (não é `None` == "sem
+    restrição" para Comprador/Aprovador). Quem decide se `None`/lista vazia
+    vira "toda a empresa" ou "nada" é o chamador — ver
+    ``actor_has_no_purchase_unit_scope`` para Comprador/Aprovador, cujo
+    escopo precisa ser fail-closed (vínculo ausente = zero acesso).
+    """
     if not actor:
         return None
     actor_role = actor.get('role')
@@ -61,6 +68,21 @@ def get_actor_purchase_unit_scope(connection, actor):
     ).fetchall()
     unit_ids = [int(r['unit_id']) for r in function_rows]
     return sorted(set(unit_ids)) if unit_ids else None
+
+
+def actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):
+    """True quando o ator é Comprador/Aprovador sem nenhuma unidade vinculada.
+
+    Comprador e Aprovador só enxergam as unidades de
+    ``purchase_role_unit_links`` (docs/PAPEIS_E_ATRIBUICOES.md #6/#7): sem
+    vínculo cadastrado, a listagem deve devolver vazio — nunca a empresa
+    inteira. Antes desta correção, vários endpoints de listagem tratavam
+    "sem vínculo" como "sem restrição" (o mesmo antipadrão do escopo de CNPJ
+    do Administrador Local), embora a AÇÃO sobre um registro específico
+    (aprovar/rejeitar) já bloqueasse corretamente
+    (``ensure_purchase_request_action_scope``).
+    """
+    return actor.get('role') in ('buyer', 'approver') and not scope_unit_id and not purchase_scope_units
 
 
 def actor_company_id_or_query(connection, actor, query):
@@ -764,7 +786,7 @@ def _record_partial_receipt_pendencies(connection, pr, received_item_flags, acto
     return pendencies
 
 
-def fetch_purchase_pendencies(connection, company_id, scope_unit_id=None, status='open'):
+def fetch_purchase_pendencies(connection, company_id, scope_unit_id=None, status='open', purchase_scope_units=None):
     """Lista pendências de recebimento parcial para o comprador acompanhar."""
     clauses, params = [], []
     if company_id is not None:
@@ -773,6 +795,10 @@ def fetch_purchase_pendencies(connection, company_id, scope_unit_id=None, status
     if scope_unit_id:
         clauses.append('p.unit_id = ?')
         params.append(int(scope_unit_id))
+    elif purchase_scope_units:
+        placeholders = ','.join(['?'] * len(purchase_scope_units))
+        clauses.append(f'p.unit_id IN ({placeholders})')
+        params.extend(purchase_scope_units)
     if status:
         clauses.append('p.status = ?')
         params.append(status)

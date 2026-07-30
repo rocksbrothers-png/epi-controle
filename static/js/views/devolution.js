@@ -8,7 +8,7 @@
   function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
   function getRefs() { return globalThis.__EPI_REFS__ || {}; }
   function safeOn(el, evt, fn) { if (typeof globalThis.safeOn === 'function') { globalThis.safeOn(el, evt, fn); } }
-  function api(path, opts) { return globalThis.api?.(path, opts); }
+  function api(path, opts) { return globalThis.apiFetch(path, opts); }
   function openModal(el) { if (typeof globalThis.openModal === 'function') { globalThis.openModal(el); } }
   function closeModal(el) { if (typeof globalThis.closeModal === 'function') { globalThis.closeModal(el); } }
   function bindModalKeyboard(el, fn) { if (typeof globalThis.bindModalKeyboard === 'function') { globalThis.bindModalKeyboard(el, fn); } }
@@ -24,19 +24,8 @@
     return String(tr(key, fallback)).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
   }
 
-  async function apiWithBootstrapRetry(path, opts) {
-    for (let attempt = 1; attempt <= 4; attempt += 1) {
-      try {
-        return await api(path, opts);
-      } catch (err) {
-        const status = Number(err?.status || 0);
-        if ((status === 502 || status === 503) && attempt < 4) {
-          await new Promise((r) => setTimeout(r, 1200 * Math.pow(2, attempt - 1)));
-          continue;
-        }
-        throw err;
-      }
-    }
+  function apiWithBootstrapRetry(path, opts) {
+    return globalThis.apiFetchWithRetry(path, opts, { maxAttempts: 4, retryDelayMs: 1200, retryJitterMs: 0 });
   }
 
   // ── Implementations ────────────────────────────────────────────────────────

@@ -39,16 +39,44 @@ def _now_iso():
 # ── Schema ──────────────────────────────────────────────────────────────────
 
 def _enable_rls(connection, *tables):
-    """Habilita Row Level Security (idempotente) nas tabelas informadas.
+    """Habilita Row Level Security (idempotente) nas tabelas informadas, com
+    a policy `block_direct_api_access` que nega `anon`/`authenticated` —
+    mesmo padrão das fases de RLS hardening em `supabase/migrations/`.
 
-    Sem políticas, RLS nega acesso a `anon`/`authenticated` (PostgREST público),
-    enquanto o backend — que conecta como dono (`postgres`) — segue acessando,
-    pois o dono ignora RLS (sem FORCE). Resolve o lint rls_disabled_in_public.
-    SQLite (testes) não suporta RLS: o erro é ignorado com segurança.
+    RLS habilitado sem nenhuma policy já nega acesso a `anon`/`authenticated`
+    (PostgREST público) por padrão, mas o Supabase Security Advisor sinaliza
+    essa lacuna (`rls_enabled_no_policy`) porque o estado fica ambíguo sem
+    uma policy explícita — a policy formaliza a intenção. O backend, que
+    conecta como dono (`postgres`), segue acessando normalmente: dono ignora
+    RLS (sem FORCE). Resolve os lints `rls_disabled_in_public` e
+    `rls_enabled_no_policy`. SQLite (testes) não suporta RLS/policies: o
+    erro é ignorado com segurança.
     """
     for table in tables:
         try:
             connection.execute(f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY')
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+        try:
+            connection.execute(
+                f"""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies
+                        WHERE schemaname = current_schema()
+                          AND tablename = '{table}'
+                          AND policyname = 'block_direct_api_access'
+                    ) THEN
+                        EXECUTE 'CREATE POLICY block_direct_api_access ON {table} '
+                            'AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)';
+                    END IF;
+                END $$;
+                """
+            )
         except Exception:
             try:
                 connection.rollback()

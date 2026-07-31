@@ -42,6 +42,10 @@ alvo já adotada pelo projeto; não representa uma reescrita nem uma nova camada
 2. **P0 — múltiplos adaptadores HTTP nas views:** `feedback.js`, `profile.js`, `procurement.js`,
    `fichas.js`, `purchases.js` e `employee-portal.js` ainda declaram wrappers locais chamados `api`.
    `devolution.js` e `feedback-detail.js` já consomem o cliente canônico.
+   `fichas.js`, `purchases.js`, `feedback-detail.js` e `employee-portal.js` ainda declaram wrappers
+   locais chamados `api`. `devolution.js` foi o primeiro domínio migrado para o cliente canônico.
+   `fichas.js`, `purchases.js`, `feedback-detail.js`, `employee-portal.js` e `devolution.js` ainda
+   declaram wrappers locais chamados `api`; `devolution.js` também possui um wrapper de retry.
    Eles não devem ser substituídos isoladamente: primeiro deve ser definido um único contrato de
    consumo do `api-client.js`, com teste de compatibilidade, e então migrados por domínio.
 3. **P1 — composition root Python volumoso:** `app.py` ainda importa muitos serviços e símbolos de

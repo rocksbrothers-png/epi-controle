@@ -399,6 +399,29 @@ def test_http_layer_delegates_to_canonical_api_client():
         assert re.search(rf"\basync function {fn}\(", api_client), f"{fn} deve existir em api-client.js"
 
 
+def test_devolution_view_uses_canonical_api_client():
+    """A primeira extração UBX não deve manter pipeline HTTP/retry próprio."""
+    devolution_js = (_repo_root() / "static" / "js" / "views" / "devolution.js").read_text(encoding="utf-8")
+
+    assert "return globalThis.apiFetch(path, opts);" in devolution_js
+    assert "return globalThis.apiFetchWithRetry(path, opts," in devolution_js
+    assert "maxAttempts: 4, retryDelayMs: 1200, retryJitterMs: 0" in devolution_js
+    assert "for (let attempt = 1; attempt <= 4" not in devolution_js
+    assert "setTimeout(r, 1200 * Math.pow" not in devolution_js
+
+
+def test_feedback_detail_view_uses_canonical_api_client():
+    """A view de detalhe não deve manter parsing/fallback HTTP próprio."""
+    feedback_detail_js = (
+        _repo_root() / "static" / "js" / "views" / "feedback-detail.js"
+    ).read_text(encoding="utf-8")
+
+    assert "globalThis.apiFetch(`/api/feedbacks?" in feedback_detail_js
+    assert "globalThis.apiFetch(`/api/feedbacks/${fbId}?" in feedback_detail_js
+    assert "function api(" not in feedback_detail_js
+    assert "return fetch(" not in feedback_detail_js
+
+
 def test_purchase_request_epi_select_follows_unit_visibility_rule():
     """A Nova Requisição de Compra deve listar EPIs seguindo a regra de
     visibilidade do sistema (Global + Joint Venture + Unidade), aplicada

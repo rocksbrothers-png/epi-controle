@@ -6,16 +6,6 @@
 
   // ── Local wrappers ─────────────────────────────────────────────────────────
   function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
-  function api(path, opts) {
-    if (typeof globalThis.api === 'function') { return globalThis.api(path, opts); }
-    const options = opts || {};
-    if (!options.headers) { options.headers = {}; }
-    return fetch(path, options).then(async (r) => {
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) { throw new Error(data?.error || data?.message || `HTTP ${r.status}`); }
-      return data;
-    });
-  }
   function showToast(msg, type) { if (typeof globalThis.showToast === 'function') { globalThis.showToast(msg, type); } }
   function esc(value) { return globalThis.escapeHtml?.(value) ?? String(value ?? ''); }
   function tr(key, fallback) { return typeof globalThis.tr === 'function' ? globalThis.tr(key, fallback) : (fallback ?? key); }
@@ -96,7 +86,7 @@
     if (statusFilter) { params.set('status', statusFilter); }
     if (typeFilter) { params.set('type', typeFilter); }
     try {
-      const res = await api(`/api/feedbacks?${params.toString()}`);
+      const res = await globalThis.apiFetch(`/api/feedbacks?${params.toString()}`);
       _currentFeedbackList = res?.items || [];
       if (!_currentFeedbackList.length) {
         if (table) { table.style.display = 'none'; }
@@ -134,7 +124,7 @@
   async function openFeedbackDetail(fbId) {
     const state = getState();
     try {
-      const res = await api(`/api/feedbacks/${fbId}?actor_user_id=${encodeURIComponent(state.user?.id || '')}`);
+      const res = await globalThis.apiFetch(`/api/feedbacks/${fbId}?actor_user_id=${encodeURIComponent(state.user?.id || '')}`);
       _currentFeedbackDetail = res?.item ?? res;
       renderFeedbackDetail(_currentFeedbackDetail);
       const detailPanel = document.getElementById('feedbacks-detail-panel');

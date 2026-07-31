@@ -2,10 +2,9 @@
 
 // Módulo de cliente HTTP (refatoração JS — Fase 4).
 //
-// Reimplementação canônica da camada de comunicação HTTP de app.js, seguindo
-// o padrão aditivo: app.js mantém suas cópias locais; este módulo expõe as
-// versões testáveis em globalThis/__EPI_API_CLIENT__ para o app modular
-// futuro e scripts externos.
+// Implementação canônica da camada de comunicação HTTP. app.js mantém apenas
+// adaptadores de compatibilidade; módulos extraídos consomem estas funções via
+// globalThis/__EPI_API_CLIENT__.
 //
 // Dependência de estado: buildApiHeaders lê o token via __EPI_APP_STATE__.token
 // (o mesmo objeto de estado publicado por app.js), sem acesso a refs ou DOM.
@@ -193,6 +192,7 @@
   async function apiFetchWithRetry(path, options = {}, config = {}) {
     const maxAttempts = Math.max(1, Number(config.maxAttempts || 4));
     const retryDelayMs = Math.max(250, Number(config.retryDelayMs || 1200));
+    const retryJitterMs = Math.max(0, Number(config.retryJitterMs ?? 1000));
     let lastError = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
@@ -204,7 +204,7 @@
         if (!bootstrapUnavailable || attempt >= maxAttempts) {break;}
         // Exponential backoff with jitter: base * 2^(attempt-1) + random(0-1s), capped at 30s
         const backoff = Math.min(retryDelayMs * Math.pow(2, attempt - 1), 30000);
-        await waitMs(backoff + Math.random() * 1000);
+        await waitMs(backoff + Math.random() * retryJitterMs);
       }
     }
     throw lastError || new Error('Falha ao carregar dados da API.');

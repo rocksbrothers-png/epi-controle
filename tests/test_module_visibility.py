@@ -355,16 +355,17 @@ def test_get_module_unit_scope_config_reflects_saved_scope(monkeypatch):
 
 
 def test_get_effective_module_visibility_respects_unit_scope_for_admin(monkeypatch):
+    # unit_id é responsabilidade do chamador (modules.auth.service/routes,
+    # via modules.employees.service.actor_operational_unit_id) — não é
+    # recalculado dentro de get_effective_module_visibility, para não
+    # importar modules.employees.service a partir de modules.settings.service
+    # (evita ciclo: settings -> employees -> outsourced_companies -> settings).
     _fake_meta_store(monkeypatch)
     conn = _FakeUnitsConnection({9, 10})
     settings_service.save_module_visibility(conn, 7, 'admin', {'terceirizados_colaboradores': True})
     settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [9])
-    monkeypatch.setattr(
-        'modules.employees.service.actor_operational_unit_id',
-        lambda _conn, _actor: 10,
-    )
     effective = settings_service.get_effective_module_visibility(
-        conn, {'company_id': 7, 'id': 1, 'role': 'admin'},
+        conn, {'company_id': 7, 'id': 1, 'role': 'admin'}, unit_id=10,
     )
     # Administrador Local está na unidade 10, mas só a 9 foi autorizada.
     assert effective['terceirizados_colaboradores'] is False

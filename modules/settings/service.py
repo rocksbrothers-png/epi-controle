@@ -278,12 +278,22 @@ def get_module_visibility_config(connection, company_id):
     return framework.get('module_visibility', {})
 
 
-def get_effective_module_visibility(connection, actor):
+def get_effective_module_visibility(connection, actor, unit_id=None):
     """Visibilidade efetiva de cada módulo para o ator autenticado: config
     (padrão + override do tenant) AND permissão técnica. É isto que entra
     no /api/bootstrap (e no login/`auth/me`) para orientar menu/rotas no
     Flutter e no web legado — a autorização real de dados continua nas
     rotas, inalterada.
+
+    `unit_id` (ADR-0002 §10.3): unidade operacional do ator, só relevante
+    para Administrador Local/Gestor de EPI (resolve_module_visibility só a
+    usa para módulos em _UNIT_SCOPABLE_MODULES e papéis admin/user). O
+    chamador (modules.auth.service/routes) já resolve isso via
+    modules.employees.service.actor_operational_unit_id — não é recalculado
+    aqui para não importar modules.employees.service a partir deste módulo
+    (modules.employees.service importa modules.outsourced_companies.service,
+    que já importa modules.settings.service: fechar esse ciclo aqui criaria
+    um import circular entre os três).
 
     Camada só-UI: se a leitura da configuração falhar (ex.: schema ainda
     não migrado), cai para a regra padrão do sistema (sem override de
@@ -296,13 +306,6 @@ def get_effective_module_visibility(connection, actor):
     except Exception as exc:
         structured_log('warning', 'configuration.module_visibility_load_error', error=str(exc))
         framework = normalize_framework_payload({})
-    # Unidade operacional do ator (ADR-0002 §10.3) — só Administrador Local/
-    # Gestor de EPI são escopados por unidade; para os demais papéis
-    # actor_operational_unit_id já devolve None, sem custo extra de query
-    # nem efeito no resultado (resolve_module_visibility só usa unit_id para
-    # módulos em _UNIT_SCOPABLE_MODULES e papéis admin/user).
-    from modules.employees.service import actor_operational_unit_id
-    unit_id = actor_operational_unit_id(connection, actor)
     context = build_rule_context(actor, unit_id=unit_id)
     granted = PERMISSIONS.get(str(actor.get('role') or ''), frozenset())
     return resolve_module_visibility(context, framework, granted)

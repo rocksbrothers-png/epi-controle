@@ -322,11 +322,13 @@ def handle_get_auth_me(handler, parsed, payload, match):
         actor = require_actor(connection, resolve_actor_user_id(handler, parsed))
         user = dict(actor)
         user.pop('password', None)
+        from modules.employees.service import actor_operational_unit_id
         from modules.settings.service import get_effective_module_visibility
+        unit_id = actor_operational_unit_id(connection, actor)
         return send_api_response(handler, 200, data={
             'user': user,
             'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
-            'module_visibility': get_effective_module_visibility(connection, actor),
+            'module_visibility': get_effective_module_visibility(connection, actor, unit_id=unit_id),
         })
 
 

@@ -162,4 +162,54 @@ class OutsourcedCompaniesApi {
     );
     return res.data ?? {};
   }
+
+  /// Empresas terceirizadas/prestadoras arquivadas (soft delete) — aba
+  /// "Empresas Arquivadas" do Cadastro de Colaboradores (ADR-0002 §10.4).
+  Future<List<Map<String, dynamic>>> getArchivedOutsourcedCompanies({
+    required int actorUserId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/outsourced-companies/archived',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final raw = (res.data?['outsourced_companies'] as List?) ?? const [];
+    return raw.whereType<Map<String, dynamic>>().toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> archiveOutsourcedCompany(
+    int id, {
+    required int actorUserId,
+    String reason = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/outsourced-companies/$id/archive',
+      data: {'actor_user_id': actorUserId, 'reason': reason},
+    );
+    return res.data ?? {};
+  }
+
+  /// Desarquiva a empresa terceirizada/prestadora, que volta ao status ativo.
+  Future<Map<String, dynamic>> restoreOutsourcedCompany(
+    int id, {
+    required int actorUserId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/outsourced-companies/$id/restore',
+      data: {'actor_user_id': actorUserId},
+    );
+    return res.data ?? {};
+  }
+
+  /// Relatório de headcount por empresa terceirizada/prestadora (ativos vs.
+  /// arquivados, por tipo de vínculo) — aba "Relatórios" (ADR-0002 §10.4).
+  Future<List<Map<String, dynamic>>> getOutsourcedEmployeesSummary({
+    required int actorUserId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/outsourced-companies/employees-summary',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final raw = (res.data?['outsourced_employees_summary'] as List?) ?? const [];
+    return raw.whereType<Map<String, dynamic>>().toList(growable: false);
+  }
 }

@@ -12,6 +12,8 @@ class OutsourcedCompaniesState extends Equatable {
     this.isLoading = false,
     this.error,
     this.companies = const [],
+    this.archivedCompanies = const [],
+    this.showArchived = false,
     this.query = '',
   });
 
@@ -20,6 +22,14 @@ class OutsourcedCompaniesState extends Equatable {
 
   /// Escopado pelo backend à empresa (tenant) do ator — nunca cross-tenant.
   final List<OutsourcedCompany> companies;
+
+  /// Empresas arquivadas (soft delete) — aba "Empresas Arquivadas"
+  /// (ADR-0002 §10.4). Mapa cru: carrega motivo/data/retenção, que o
+  /// model [OutsourcedCompany] não modela.
+  final List<Map<String, dynamic>> archivedCompanies;
+
+  /// Alterna a listagem entre empresas ativas e arquivadas.
+  final bool showArchived;
   final String query;
 
   List<OutsourcedCompany> get visible {
@@ -33,22 +43,37 @@ class OutsourcedCompaniesState extends Equatable {
         .toList(growable: false);
   }
 
+  List<Map<String, dynamic>> get visibleArchived {
+    if (query.isEmpty) return archivedCompanies;
+    final q = query.toLowerCase();
+    return archivedCompanies.where((c) {
+      final legalName = (c['legal_name'] as String? ?? '').toLowerCase();
+      final tradeName = (c['trade_name'] as String? ?? '').toLowerCase();
+      return legalName.contains(q) || tradeName.contains(q);
+    }).toList(growable: false);
+  }
+
   OutsourcedCompaniesState copyWith({
     bool? isLoading,
     String? error,
     bool clearError = false,
     List<OutsourcedCompany>? companies,
+    List<Map<String, dynamic>>? archivedCompanies,
+    bool? showArchived,
     String? query,
   }) =>
       OutsourcedCompaniesState(
         isLoading: isLoading ?? this.isLoading,
         error: clearError ? null : (error ?? this.error),
         companies: companies ?? this.companies,
+        archivedCompanies: archivedCompanies ?? this.archivedCompanies,
+        showArchived: showArchived ?? this.showArchived,
         query: query ?? this.query,
       );
 
   @override
-  List<Object?> get props => [isLoading, error, companies, query];
+  List<Object?> get props =>
+      [isLoading, error, companies, archivedCompanies, showArchived, query];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
@@ -73,13 +98,58 @@ class OutsourcedCompaniesCubit extends Cubit<OutsourcedCompaniesState> {
     try {
       final companies =
           await _outsourced.getOutsourcedCompanies(actorUserId: ApiClient.actorUserId);
-      emit(state.copyWith(isLoading: false, companies: companies, clearError: true));
+      final archived = await _loadArchivedSafe();
+      emit(state.copyWith(
+        isLoading: false,
+        companies: companies,
+        archivedCompanies: archived,
+        clearError: true,
+      ));
     } on Exception catch (e) {
       emit(state.copyWith(isLoading: false, error: _errorMessage(e)));
     }
   }
 
+  Future<List<Map<String, dynamic>>> _loadArchivedSafe() async {
+    try {
+      return await _outsourced.getArchivedOutsourcedCompanies(actorUserId: ApiClient.actorUserId);
+    } on Exception {
+      return const [];
+    }
+  }
+
+  /// Alterna entre a listagem de empresas ativas e a de arquivadas.
+  void toggleArchivedView() => emit(state.copyWith(showArchived: !state.showArchived));
+
   void search(String query) => emit(state.copyWith(query: query));
+
+  /// Arquiva a empresa terceirizada/prestadora (soft delete): colaboradores
+  /// já vinculados não são afetados, mas novos colaboradores e novas
+  /// entregas passam a ser bloqueados enquanto ela estiver arquivada.
+  Future<bool> archiveCompany(int id, {String reason = ''}) async {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      await _outsourced.archiveOutsourcedCompany(id, actorUserId: ApiClient.actorUserId, reason: reason);
+      await _reload();
+      return true;
+    } on Exception catch (e) {
+      emit(state.copyWith(isLoading: false, error: _errorMessage(e)));
+      return false;
+    }
+  }
+
+  /// Desarquiva a empresa: volta ao status ativo.
+  Future<bool> restoreCompany(int id) async {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      await _outsourced.restoreOutsourcedCompany(id, actorUserId: ApiClient.actorUserId);
+      await _reload();
+      return true;
+    } on Exception catch (e) {
+      emit(state.copyWith(isLoading: false, error: _errorMessage(e)));
+      return false;
+    }
+  }
 
   /// Cadastro Simplificado (CNPJ opcional) ou Padrão (CNPJ obrigatório) —
   /// mesma função de gravação no backend, a diferença é só quantos campos

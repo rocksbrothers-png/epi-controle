@@ -113,6 +113,10 @@ class _SettingsBody extends StatelessWidget {
               const SizedBox(height: EpiSpacing.lg),
               const _SectionHeader(label: 'Regras'),
               const _ArchivalPolicyCard(),
+              const SizedBox(height: EpiSpacing.xl),
+              const _ModuleVisibilityCard(),
+              const SizedBox(height: EpiSpacing.xl),
+              const _ModuleUnitScopeCard(),
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),
               if (state.isLoading)
@@ -526,6 +530,315 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
               onPressed: _saving ? null : _save,
               loading: _saving,
             ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+// ── Regras → Visualização de Módulos (ADR-0002 §10.3) ───────────────────────
+// Reaproveita integralmente o mecanismo já existente de module_visibility
+// (o mesmo que já gateia CNPJs/Estoque/Entregas) — aqui só a UI de
+// administração para os dois módulos opt-in do Cadastro de Colaboradores:
+// `terceirizados` (aba Empresas) e `terceirizados_colaboradores` (aba
+// Cadastro de Colaboradores). Nasce oculto por padrão em todo tenant até o
+// Administrador Geral ligar, por perfil.
+const _kModuleVisibilityRoles = <(String value, String label)>[
+  ('admin', 'Administrador Local'),
+  ('user', 'Gestor de EPI'),
+  ('general_admin', 'Administrador Geral'),
+  ('registry_admin', 'Administrador de Registro'),
+];
+
+const _kOutsourcedModules = <(String value, String label)>[
+  ('terceirizados', 'Terceirizados e Prestadores (Empresas)'),
+  ('terceirizados_colaboradores', 'Cadastro de Colaboradores'),
+];
+
+class _ModuleVisibilityCard extends StatefulWidget {
+  const _ModuleVisibilityCard();
+
+  @override
+  State<_ModuleVisibilityCard> createState() => _ModuleVisibilityCardState();
+}
+
+class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
+  String _role = _kModuleVisibilityRoles.first.$1;
+  Map<String, Map<String, bool>> _visibility = const {};
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await ApiClient.settings.getModuleVisibility();
+      final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
+      if (!mounted) return;
+      setState(() {
+        _visibility = raw.map(
+          (role, modules) => MapEntry(
+            role,
+            (modules as Map?)?.cast<String, dynamic>().map(
+                  (k, v) => MapEntry(k, v == true),
+                ) ??
+                const {},
+          ),
+        );
+        _loading = false;
+      });
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Não foi possível carregar a visualização de módulos.';
+      });
+    }
+  }
+
+  bool _isVisible(String module) => _visibility[_role]?[module] ?? false;
+
+  Future<void> _toggle(String module, bool value) async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ApiClient.settings.saveModuleVisibility(
+        actorUserId: ApiClient.actorUserId,
+        role: _role,
+        modules: {module: value},
+      );
+      if (!mounted) return;
+      setState(() {
+        _visibility = {
+          ..._visibility,
+          _role: {...(_visibility[_role] ?? const {}), module: value},
+        };
+        _saving = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final authState = context.watch<AuthCubit>().state;
+    final role = authState is AuthAuthenticated ? authState.sessionContext.role : '';
+    final canEdit = role == 'master_admin' || role == 'general_admin' || role == 'registry_admin';
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(EpiSpacing.lg),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.moduleVisibilityTitle, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: EpiSpacing.xs),
+          Text(
+            l10n.moduleVisibilityDescription,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+          ),
+          const SizedBox(height: EpiSpacing.md),
+          DropdownButtonFormField<String>(
+            value: _role,
+            decoration: InputDecoration(
+              labelText: l10n.moduleVisibilityRoleLabel,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: _kModuleVisibilityRoles
+                .map((r) => DropdownMenuItem(value: r.$1, child: Text(r.$2)))
+                .toList(),
+            onChanged: canEdit && !_saving ? (v) => setState(() => _role = v ?? _role) : null,
+          ),
+          const SizedBox(height: EpiSpacing.sm),
+          for (final module in _kOutsourcedModules)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(module.$2),
+              value: _isVisible(module.$1),
+              onChanged: canEdit && !_saving ? (v) => _toggle(module.$1, v) : null,
+            ),
+          if (_error != null) ...[
+            const SizedBox(height: EpiSpacing.sm),
+            Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Regras → Escopo por Unidade dos módulos opt-in (correção do ADR-0002
+// §10.3) ──────────────────────────────────────────────────────────────────
+// Ampliação do mesmo mecanismo de module_visibility: quando a lista de
+// Unidades autorizadas para um módulo não está vazia, Administrador Local e
+// Gestor de EPI só o veem nas Unidades marcadas. Lista vazia = liberado em
+// todas as Unidades (respeitando a Visualização por perfil acima).
+class _ModuleUnitScopeCard extends StatefulWidget {
+  const _ModuleUnitScopeCard();
+
+  @override
+  State<_ModuleUnitScopeCard> createState() => _ModuleUnitScopeCardState();
+}
+
+class _ModuleUnitScopeCardState extends State<_ModuleUnitScopeCard> {
+  String _module = _kOutsourcedModules.first.$1;
+  Map<String, List<int>> _scope = const {};
+  List<Map<String, dynamic>> _units = const [];
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await ApiClient.settings.getModuleUnitScope();
+      final raw = (res['module_unit_scope'] as Map?)?.cast<String, dynamic>() ?? const {};
+      final bootstrap = await ApiClient.auth.bootstrap();
+      if (!mounted) return;
+      setState(() {
+        _scope = raw.map(
+          (module, ids) => MapEntry(
+            module,
+            ((ids as List?) ?? const [])
+                .map((id) => (id as num).toInt())
+                .toList(growable: false),
+          ),
+        );
+        _units = bootstrap.units;
+        _loading = false;
+      });
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Não foi possível carregar o escopo por Unidade.';
+      });
+    }
+  }
+
+  List<int> get _selectedUnitIds => _scope[_module] ?? const [];
+
+  Future<void> _toggleUnit(int unitId, bool selected) async {
+    final current = List<int>.from(_selectedUnitIds);
+    if (selected) {
+      if (!current.contains(unitId)) current.add(unitId);
+    } else {
+      current.remove(unitId);
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ApiClient.settings.saveModuleUnitScope(
+        actorUserId: ApiClient.actorUserId,
+        module: _module,
+        unitIds: current,
+      );
+      if (!mounted) return;
+      setState(() {
+        _scope = {..._scope, _module: current};
+        _saving = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final authState = context.watch<AuthCubit>().state;
+    final role = authState is AuthAuthenticated ? authState.sessionContext.role : '';
+    final canEdit = role == 'master_admin' || role == 'general_admin' || role == 'registry_admin';
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(EpiSpacing.lg),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.moduleUnitScopeTitle, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: EpiSpacing.xs),
+          Text(
+            l10n.moduleUnitScopeDescription,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+          ),
+          const SizedBox(height: EpiSpacing.md),
+          DropdownButtonFormField<String>(
+            value: _module,
+            decoration: InputDecoration(
+              labelText: l10n.moduleUnitScopeModuleLabel,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: _kOutsourcedModules
+                .map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)))
+                .toList(),
+            onChanged: canEdit && !_saving ? (v) => setState(() => _module = v ?? _module) : null,
+          ),
+          const SizedBox(height: EpiSpacing.sm),
+          if (_units.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: EpiSpacing.sm),
+              child: Text(
+                l10n.moduleUnitScopeNoUnits,
+                style: const TextStyle(color: EpiColors.textMuted),
+              ),
+            )
+          else
+            for (final unit in _units)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text('${unit['name'] ?? ''}'),
+                value: _selectedUnitIds.contains((unit['id'] as num).toInt()),
+                onChanged: canEdit && !_saving
+                    ? (v) => _toggleUnit((unit['id'] as num).toInt(), v ?? false)
+                    : null,
+              ),
+          if (_error != null) ...[
+            const SizedBox(height: EpiSpacing.sm),
+            Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),
           ],
         ],
       ),

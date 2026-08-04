@@ -3,29 +3,95 @@ import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/outsourced_companies_cubit.dart';
+import '../../core/bloc/outsourced_employees_cubit.dart';
+import 'outsourced_employees_reports_tab.dart';
+import 'outsourced_employees_tab.dart';
 
-/// Cadastro Simplificado de Terceirizados e Prestadores (ADR-0002).
+/// Cadastro Simplificado de Terceirizados e Prestadores (ADR-0002), agora
+/// com o Cadastro de Colaboradores simplificado (ADR-0002 §10) como aba
+/// irmã dentro da mesma tela.
 ///
-/// Subpasta dentro de Cadastro de Colaborador — nasce oculta por padrão em
-/// todo tenant; só aparece quando o Administrador Geral liga o módulo
-/// `terceirizados` em Configuração → Regras → Visualização
-/// (`module_visibility`, mesmo mecanismo que já gateia CNPJs/Estoque/
-/// Entregas). A lista chega do backend já escopada à empresa do ator.
-class OutsourcedCompaniesScreen extends StatelessWidget {
+/// A tela em si só é alcançável quando o ator tem `employees:create` OU
+/// `employees:create_simplified` — cada uma dessas duas permissões abre uma
+/// aba diferente (Empresas / Cadastro de Colaboradores). module_visibility
+/// (`terceirizados`/`terceirizados_colaboradores`) segue a mesma regra:
+/// oculto por padrão em todo tenant até o Administrador Geral ligar,
+/// agora também configurável por Unidade (module_unit_scope). O backend é a
+/// autoridade final em ambos os casos — esta tela só orienta a navegação.
+class OutsourcedCompaniesScreen extends StatefulWidget {
   const OutsourcedCompaniesScreen({super.key});
 
   @override
+  State<OutsourcedCompaniesScreen> createState() => _OutsourcedCompaniesScreenState();
+}
+
+class _OutsourcedCompaniesScreenState extends State<OutsourcedCompaniesScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  bool _canCompanies = false;
+  bool _canEmployees = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      _canCompanies = authState.permissions.contains('employees:create') &&
+          authState.isModuleVisible('terceirizados');
+      _canEmployees = authState.permissions.contains('employees:create_simplified') &&
+          authState.isModuleVisible('terceirizados_colaboradores');
+    }
+    final tabCount = (_canCompanies ? 1 : 0) + (_canEmployees ? 1 : 0) + 1;
+    _tabController = TabController(length: tabCount, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => OutsourcedCompaniesCubit()..load(),
-      child: const _OutsourcedCompaniesBody(),
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.outsourcedCompaniesTitle),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: [
+            if (_canCompanies) Tab(text: l10n.outsourcedTabCompanies),
+            if (_canEmployees) Tab(text: l10n.outsourcedTabEmployees),
+            Tab(text: l10n.outsourcedTabReports),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          if (_canCompanies)
+            BlocProvider(
+              create: (_) => OutsourcedCompaniesCubit()..load(),
+              child: const _CompaniesTabBody(),
+            ),
+          if (_canEmployees)
+            BlocProvider(
+              create: (_) => OutsourcedEmployeesCubit()..load(),
+              child: const OutsourcedEmployeesTab(),
+            ),
+          const OutsourcedEmployeesReportsTab(),
+        ],
+      ),
     );
   }
 }
 
-class _OutsourcedCompaniesBody extends StatelessWidget {
-  const _OutsourcedCompaniesBody();
+class _CompaniesTabBody extends StatelessWidget {
+  const _CompaniesTabBody();
 
   Future<void> _openForm(BuildContext context, {OutsourcedCompany? company}) async {
     final cubit = context.read<OutsourcedCompaniesCubit>();
@@ -62,6 +128,66 @@ class _OutsourcedCompaniesBody extends StatelessWidget {
     if (confirmed == true) await cubit.promoteCompany(company.id);
   }
 
+  Future<void> _confirmArchive(BuildContext context, OutsourcedCompany company) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<OutsourcedCompaniesCubit>();
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.outsourcedCompanyArchiveConfirmTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(company.displayLabel),
+            const SizedBox(height: EpiSpacing.md),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(labelText: l10n.archiveReasonLabel),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.outsourcedCompanyArchive),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.archiveCompany(company.id, reason: reasonController.text.trim());
+    }
+  }
+
+  Future<void> _confirmRestore(BuildContext context, Map<String, dynamic> company) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<OutsourcedCompaniesCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.outsourcedCompanyRestoreConfirmTitle),
+        content: Text('${company['legal_name'] ?? ''}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.outsourcedCompanyRestore),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await cubit.restoreCompany((company['id'] as num).toInt());
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -71,40 +197,69 @@ class _OutsourcedCompaniesBody extends StatelessWidget {
         ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(state.error!)));
       },
       builder: (ctx, state) {
-        final items = state.visible;
         return Scaffold(
-          appBar: AppBar(title: Text(l10n.outsourcedCompaniesTitle)),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _openForm(ctx),
-            icon: const Icon(Icons.add),
-            label: Text(l10n.outsourcedCompanyNew),
-          ),
-          body: state.isLoading && items.isEmpty
+          floatingActionButton: state.showArchived
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: () => _openForm(ctx),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.outsourcedCompanyNew),
+                ),
+          body: state.isLoading && state.companies.isEmpty && state.archivedCompanies.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(EpiSpacing.md),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search),
-                          labelText: l10n.outsourcedCompaniesSearchHint,
-                        ),
-                        onChanged: ctx.read<OutsourcedCompaniesCubit>().search,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.search),
+                                labelText: l10n.outsourcedCompaniesSearchHint,
+                              ),
+                              onChanged: ctx.read<OutsourcedCompaniesCubit>().search,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: state.showArchived
+                                ? l10n.outsourcedShowActive
+                                : l10n.outsourcedShowArchived,
+                            icon: Icon(
+                              state.showArchived
+                                  ? Icons.business_outlined
+                                  : Icons.inventory_2_outlined,
+                            ),
+                            onPressed: () => ctx.read<OutsourcedCompaniesCubit>().toggleArchivedView(),
+                          ),
+                        ],
                       ),
                     ),
                     Expanded(
-                      child: items.isEmpty
-                          ? Center(child: Text(l10n.outsourcedCompaniesEmpty))
-                          : ListView.separated(
-                              itemCount: items.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
-                              itemBuilder: (_, i) => _OutsourcedCompanyTile(
-                                company: items[i],
-                                onEdit: () => _openForm(ctx, company: items[i]),
-                                onPromote: () => _confirmPromote(ctx, items[i]),
-                              ),
-                            ),
+                      child: state.showArchived
+                          ? (state.visibleArchived.isEmpty
+                              ? Center(child: Text(l10n.outsourcedCompaniesArchivedEmpty))
+                              : ListView.separated(
+                                  itemCount: state.visibleArchived.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (_, i) => _ArchivedOutsourcedCompanyTile(
+                                    company: state.visibleArchived[i],
+                                    onRestore: () => _confirmRestore(ctx, state.visibleArchived[i]),
+                                  ),
+                                ))
+                          : (state.visible.isEmpty
+                              ? Center(child: Text(l10n.outsourcedCompaniesEmpty))
+                              : ListView.separated(
+                                  itemCount: state.visible.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (_, i) => _OutsourcedCompanyTile(
+                                    company: state.visible[i],
+                                    onEdit: () => _openForm(ctx, company: state.visible[i]),
+                                    onPromote: () => _confirmPromote(ctx, state.visible[i]),
+                                    onArchive: () => _confirmArchive(ctx, state.visible[i]),
+                                  ),
+                                )),
                     ),
                   ],
                 ),
@@ -119,11 +274,13 @@ class _OutsourcedCompanyTile extends StatelessWidget {
     required this.company,
     required this.onEdit,
     required this.onPromote,
+    required this.onArchive,
   });
 
   final OutsourcedCompany company;
   final VoidCallback onEdit;
   final VoidCallback onPromote;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +319,39 @@ class _OutsourcedCompanyTile extends StatelessWidget {
               icon: const Icon(Icons.upgrade_outlined),
               onPressed: onPromote,
             ),
+          IconButton(
+            tooltip: l10n.outsourcedCompanyArchive,
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: onArchive,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _ArchivedOutsourcedCompanyTile extends StatelessWidget {
+  const _ArchivedOutsourcedCompanyTile({required this.company, required this.onRestore});
+
+  final Map<String, dynamic> company;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final reason = '${company['archive_reason'] ?? ''}'.trim();
+    return ListTile(
+      title: Text('${company['legal_name'] ?? ''}'),
+      subtitle: Text(
+        [
+          '${l10n.archivedAt}: ${company['archived_at'] ?? ''}',
+          if (reason.isNotEmpty) reason,
+        ].join(' · '),
+      ),
+      trailing: TextButton.icon(
+        icon: const Icon(Icons.unarchive_outlined),
+        label: Text(l10n.outsourcedCompanyRestore),
+        onPressed: onRestore,
       ),
     );
   }

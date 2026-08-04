@@ -61,6 +61,24 @@ def test_new_routes_are_registered():
     assert (r'POST', r'^/api/outsourced-companies/(\d+)/archive$') in paths
     assert (r'POST', r'^/api/outsourced-companies/(\d+)/restore$') in paths
     assert (r'DELETE', r'^/api/outsourced-companies/(\d+)$') in paths
+    assert ('GET', '/api/outsourced-companies/employees-summary') in paths
+
+
+def test_get_outsourced_employees_summary_returns_service_data(monkeypatch):
+    actor = {'id': 1, 'role': 'general_admin', 'company_id': 1}
+    monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
+    monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
+    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(
+        oc_routes, 'fetch_outsourced_employees_summary',
+        lambda _c, cid: [{'outsourced_company_id': 9, 'active_count': 2, 'archived_count': 1}],
+    )
+    h = _FakeHandler()
+    oc_routes.handle_get_outsourced_employees_summary(h, _parsed(), None, None)
+    assert h.status == 200
+    assert h.json()['outsourced_employees_summary'] == [
+        {'outsourced_company_id': 9, 'active_count': 2, 'archived_count': 1},
+    ]
 
 
 def test_get_migration_suggestions_returns_service_data(monkeypatch):

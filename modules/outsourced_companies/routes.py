@@ -40,6 +40,7 @@ from modules.outsourced_companies.service import (
     fetch_archived_outsourced_companies,
     fetch_migration_suggestions,
     fetch_outsourced_companies,
+    fetch_outsourced_employees_summary,
     fetch_reimbursements,
     fetch_service_contracts,
     get_outsourced_company_by_id,
@@ -199,6 +200,15 @@ def handle_get_migration_suggestions(handler, parsed, payload, match):
         return send_json(handler, 200, {'migration_suggestions': data, 'items': data})
 
 
+# ── Relatórios (PR 13, ADR-0002 §10) ────────────────────────────────────────
+
+def handle_get_outsourced_employees_summary(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        data = fetch_outsourced_employees_summary(connection, int(actor['company_id']))
+        return send_json(handler, 200, {'outsourced_employees_summary': data, 'items': data})
+
+
 # ── Ressarcimento (PR 6) ────────────────────────────────────────────────────
 
 def handle_get_reimbursements(handler, parsed, payload, match):
@@ -322,6 +332,7 @@ def handle_delete_outsourced_company(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',  '/api/outsourced-companies/migration-suggestions',               handle_get_migration_suggestions)
+    router.register('GET',  '/api/outsourced-companies/employees-summary',                   handle_get_outsourced_employees_summary)
     router.register('GET',  '/api/outsourced-companies/archived',                            handle_get_archived_outsourced_companies)
     router.register('GET',  '/api/outsourced-companies',                                    handle_get_outsourced_companies)
     router.register('GET',  r'^/api/outsourced-companies/(\d+)$',                            handle_get_outsourced_company, regex=True)

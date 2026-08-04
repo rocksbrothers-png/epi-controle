@@ -269,9 +269,16 @@ def handle_post_employee_restore(handler, parsed, payload, match):
 
 
 def handle_get_archived_employees(handler, parsed, payload, match):
+    from urllib.parse import parse_qs
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
-        return send_json(handler, 200, {'employees': fetch_archived_employees(connection, actor)})
+        # outsourced_only (ADR-0002 §10.4): aba "Colaboradores Arquivados" do
+        # Cadastro de Colaboradores — mesma rota, só filtra terceirizado/
+        # prestador (nunca CLT), sem rota nova.
+        outsourced_only = parse_qs(parsed.query).get('outsourced_only', [''])[0] in ('1', 'true', 'True')
+        return send_json(handler, 200, {
+            'employees': fetch_archived_employees(connection, actor, outsourced_only=outsourced_only),
+        })
 
 
 def handle_get_employee_deletion_summary(handler, parsed, payload, match):

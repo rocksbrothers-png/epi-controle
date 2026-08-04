@@ -48,16 +48,50 @@ class EmployeesApi {
   }
 
   /// Colaboradores arquivados do tenant, com motivo e retenção restante.
-  Future<List<Map<String, dynamic>>> getArchivedEmployees({required int actorUserId}) async {
+  ///
+  /// [outsourcedOnly] filtra para só terceirizado/prestador (nunca CLT) —
+  /// aba "Colaboradores Arquivados" do Cadastro de Colaboradores
+  /// (ADR-0002 §10.4). Mesma rota do arquivamento geral, sem rota nova.
+  Future<List<Map<String, dynamic>>> getArchivedEmployees({
+    required int actorUserId,
+    bool outsourcedOnly = false,
+  }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/employees/archived',
-      queryParameters: {'actor_user_id': actorUserId},
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        if (outsourcedOnly) 'outsourced_only': '1',
+      },
     );
     final items = res.data?['employees'];
     if (items is List) {
       return items.whereType<Map<String, dynamic>>().toList();
     }
     return const [];
+  }
+
+  /// Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — só
+  /// terceirizado/prestador, nunca CLT (o backend recusa). Escreve na mesma
+  /// tabela `employees`, sem estrutura paralela.
+  Future<Map<String, dynamic>> createEmployeeOutsourcedSimplified(
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/employees/outsourced-simplified',
+      data: body,
+    );
+    return res.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> updateEmployeeOutsourcedSimplified(
+    int id,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await _dio.put<Map<String, dynamic>>(
+      '/api/employees/outsourced-simplified/$id',
+      data: body,
+    );
+    return res.data ?? {};
   }
 
   /// O backend não remove mais fisicamente: DELETE arquiva o colaborador

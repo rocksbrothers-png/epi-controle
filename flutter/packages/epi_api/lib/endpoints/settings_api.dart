@@ -45,4 +45,68 @@ class SettingsApi {
     );
     return res.data ?? {};
   }
+
+  /// Visibilidade de módulo por perfil (Configuração → Regras →
+  /// Visualização) — mesmo mecanismo que já gateia CNPJs/Estoque/Entregas,
+  /// reaproveitado para os módulos opt-in `terceirizados` e
+  /// `terceirizados_colaboradores` (ADR-0002 §10.3).
+  ///
+  /// Retorna `{module_visibility: {role: {module: bool}}, modules: [...]}`.
+  Future<Map<String, dynamic>> getModuleVisibility({int? companyId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/module-visibility',
+      queryParameters: companyId != null ? {'company_id': companyId} : null,
+    );
+    return res.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> saveModuleVisibility({
+    required int actorUserId,
+    required String role,
+    required Map<String, bool> modules,
+    int? companyId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/module-visibility',
+      data: {
+        'actor_user_id': actorUserId,
+        'role': role,
+        'modules': modules,
+        if (companyId != null) 'company_id': companyId,
+      },
+    );
+    return res.data ?? {};
+  }
+
+  /// Escopo por Unidade dos módulos opt-in unit-scopable (`terceirizados`,
+  /// `terceirizados_colaboradores`) — ampliação do `module_visibility`
+  /// (correção do ADR-0002 §10.3): quando a lista de unidades de um módulo
+  /// não está vazia, `admin`/`user` só o veem nas unidades autorizadas.
+  ///
+  /// Retorna `{module_unit_scope: {module: [unit_id,...]}, unit_scopable_modules: [...]}`.
+  Future<Map<String, dynamic>> getModuleUnitScope({int? companyId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/module-unit-scope',
+      queryParameters: companyId != null ? {'company_id': companyId} : null,
+    );
+    return res.data ?? {};
+  }
+
+  Future<Map<String, dynamic>> saveModuleUnitScope({
+    required int actorUserId,
+    required String module,
+    required List<int> unitIds,
+    int? companyId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/module-unit-scope',
+      data: {
+        'actor_user_id': actorUserId,
+        'module': module,
+        'unit_ids': unitIds,
+        if (companyId != null) 'company_id': companyId,
+      },
+    );
+    return res.data ?? {};
+  }
 }

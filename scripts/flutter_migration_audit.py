@@ -75,7 +75,15 @@ def audit_foundation() -> list[Check]:
         Check(
             "1-fundacao",
             "guard-permissoes",
-            "ok" if "!permissions.value.contains(required)" in router else "fail",
+            # ADR-0002 §10 (correção de escopo): o guard de permissão do
+            # redirect passou a delegar para hasRoutePermission (Terceirizados
+            # e Prestadores aceita employees:create OU
+            # employees:create_simplified) — mesmo guard, agora também
+            # OR-aware; aceita a forma antiga ou a nova.
+            "ok"
+            if "!permissions.value.contains(required)" in router
+            or "hasRoutePermission(" in router
+            else "fail",
             str(APP_ROUTER.relative_to(ROOT)),
         ),
     ]

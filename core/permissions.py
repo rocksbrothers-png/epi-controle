@@ -27,6 +27,13 @@ PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER = 'employees:legal_entity_transfer'
 # cadastro nem reativa desligados — atribuição do Administrador de Registro
 # (docs/PAPEIS_E_ATRIBUICOES.md #3 vs #4).
 PERM_EMPLOYEES_TRANSFER = 'employees:transfer'
+# Cadastro/edição simplificado de colaborador terceirizado/prestador
+# (ADR-0002 §10.2), restrito à aba "Cadastro de Colaboradores" do módulo
+# terceirizados_colaboradores — nunca ao cadastro completo de CLT.
+# Intencionalmente distinta de PERM_EMPLOYEES_CREATE/UPDATE: Administrador
+# Local e Gestor de EPI não ganham o cadastro completo por causa disto.
+PERM_EMPLOYEES_CREATE_SIMPLIFIED = 'employees:create_simplified'
+PERM_EMPLOYEES_UPDATE_SIMPLIFIED = 'employees:update_simplified'
 
 PERM_EPIS_VIEW = 'epis:view'
 PERM_EPIS_CREATE = 'epis:create'
@@ -121,6 +128,9 @@ ADMIN_BASE_PERMISSIONS: frozenset[str] = frozenset({
     PERM_UNITS_VIEW, PERM_UNITS_CREATE, PERM_UNITS_UPDATE, PERM_UNITS_DELETE,
     PERM_EMPLOYEES_VIEW, PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
     PERM_EMPLOYEES_TRANSFER,
+    # Superset de PERM_EMPLOYEES_CREATE/UPDATE — quem já tem o cadastro
+    # completo também usa o formulário simplificado sem exceção de rota.
+    PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
     PERM_EPIS_VIEW, PERM_EPIS_CREATE, PERM_EPIS_UPDATE, PERM_EPIS_DELETE,
     PERM_DELIVERIES_VIEW, PERM_FICHAS_VIEW, PERM_REPORTS_VIEW, PERM_ALERTS_VIEW, PERM_STOCK_VIEW,
     PERM_LEGAL_ENTITIES_VIEW,
@@ -167,6 +177,7 @@ PURCHASE_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
 # implementado — e nunca por concessão permanente no papel.
 MASTER_ADMIN_OPERATIONAL_EXCLUSIONS: frozenset[str] = frozenset({
     PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
+    PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
     PERM_DELIVERIES_CREATE, PERM_STOCK_ADJUST,
     PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE,
 })
@@ -264,6 +275,10 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             # Administrador Local é perfil operacional de unidade — segue
             # consumindo o CNPJ na entrega, na ficha e no cadastro de
             # colaborador, que vêm do /api/bootstrap sem esta permissão.
+            # Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — só
+            # terceirizado/prestador, nunca o cadastro completo de CLT (por
+            # isso é uma permissão própria, não PERM_EMPLOYEES_CREATE/UPDATE).
+            PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
         | frozenset({
@@ -295,6 +310,9 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             # O CNPJ que ele precisa ver (vínculo do colaborador na ficha e na
             # entrega) chega pelo /api/bootstrap, que não exige esta permissão
             # — por isso fechar a aba não cega nenhuma tela de operação.
+            # Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — ver
+            # comentário equivalente no papel 'admin' acima.
+            PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
         })
         | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS
         | frozenset({

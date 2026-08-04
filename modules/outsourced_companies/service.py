@@ -139,7 +139,9 @@ def validate_outsourced_company_payload(connection, payload, company_id, entity_
         'epi_responsibility': normalize_epi_responsibility(payload.get('epi_responsibility')),
         'registration_mode': registration_mode,
         'registration_status': registration_status,
-        'status': str(payload.get('status') or 'Ativa').strip() or 'Ativa',
+        # `status` (ciclo de vida: active/archived/...) NÃO é aceito do
+        # payload do cliente (ADR-0002 §10.4) — só as rotas de arquivar/
+        # restaurar/expurgar (core.archival) mudam esse campo.
     }
 
 
@@ -155,7 +157,7 @@ def create_outsourced_company(connection, payload, company_id, actor_user_id=Non
             validated['company_id'], validated['legal_name'], validated['trade_name'],
             validated['cnpj'], validated['cnpj_normalized'], validated['company_kind'],
             validated['epi_responsibility'], validated['registration_mode'],
-            validated['registration_status'], validated['status'],
+            validated['registration_status'], 'active',
             int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
         ),
     )
@@ -169,11 +171,11 @@ def update_outsourced_company(connection, entity_id, payload, company_id):
     connection.execute(
         'UPDATE outsourced_companies SET legal_name = ?, trade_name = ?, cnpj = ?, '
         'cnpj_normalized = ?, company_kind = ?, epi_responsibility = ?, registration_mode = ?, '
-        'registration_status = ?, status = ?, updated_at = ? WHERE id = ? AND company_id = ?',
+        'registration_status = ?, updated_at = ? WHERE id = ? AND company_id = ?',
         (
             validated['legal_name'], validated['trade_name'], validated['cnpj'],
             validated['cnpj_normalized'], validated['company_kind'], validated['epi_responsibility'],
-            validated['registration_mode'], validated['registration_status'], validated['status'],
+            validated['registration_mode'], validated['registration_status'],
             now_iso, int(entity_id), int(company_id),
         ),
     )

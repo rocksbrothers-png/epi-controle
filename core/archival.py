@@ -95,6 +95,7 @@ RETENTION_COLUMNS = {
     'units': 'unit_retention_years',
     'epis': 'epi_retention_years',
     'employees': 'employee_retention_years',
+    'outsourced_companies': 'outsourced_company_retention_years',
 }
 
 

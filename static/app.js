@@ -39,21 +39,29 @@ const PPE_TEST_ALL_PERMS = ['ppe_test:view', 'ppe_test:suggest', 'ppe_test:triag
 // forma permanente (docs/PAPEIS_E_ATRIBUICOES.md #1 e #3; decisão de
 // 2026-07-29) — mesmo escopo de core/permissions.py, aqui só como fallback
 // de bootstrap indisponível.
-const MASTER_ADMIN_OPERATIONAL_EXCLUSIONS = ['employees:create', 'employees:update', 'employees:delete', 'deliveries:create', 'stock:adjust', 'purchase_requests:create', 'purchase_requests:update'];
+// ADR-0002 §10 (Cadastro de Colaboradores simplificado): igual ao backend
+// (core/permissions.py MASTER_ADMIN_OPERATIONAL_EXCLUSIONS), master_admin
+// também não retém employees:create_simplified/update_simplified de forma
+// permanente — mesma razão dos pares completos acima.
+const MASTER_ADMIN_OPERATIONAL_EXCLUSIONS = ['employees:create', 'employees:update', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'deliveries:create', 'stock:adjust', 'purchase_requests:create', 'purchase_requests:update'];
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'].filter(p => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p)),
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_orders:view', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'].filter(p => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p)),
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
+  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_orders:view', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
   // Sem employees:update: edição de cadastro e reativação são atribuição do
   // Administrador de Registro. O Administrador Local transfere colaboradores
-  // entre unidades via employees:transfer.
-  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:transfer', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest'],
+  // entre unidades via employees:transfer. Tem, porém,
+  // employees:create_simplified/update_simplified (ADR-0002 §10.2): Cadastro
+  // de Colaboradores só cobre terceirizado/prestador, nunca CLT — por isso é
+  // uma permissão própria, não employees:create/update.
+  admin: ['dashboard:view', 'users:view', 'units:view', 'employees:view', 'employees:transfer', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'stock:adjust', 'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:review', 'purchase_orders:receive', 'finance:view', 'epi_feedback:view', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest'],
   buyer: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_requests:update', 'purchase_orders:view', 'purchase_orders:create', 'purchase_orders:upload', 'finance:view'],
   approver: ['dashboard:view', 'epis:view', 'units:view', 'stock:view', 'purchase_requests:view', 'purchase_orders:view', 'purchase_orders:approve', 'finance:view'],
   // `epi_manager` é apelido de `user` (ROLE_ALIASES em core/roles.py) — o
   // mesmo papel Gestor de EPI, que também triagem/revê tecnicamente o EPI em
-  // teste e faz a revisão HSEQ do feedback.
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:create', 'epi_feedback:hseq_review', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:triage', 'ppe_test:tech_review'],
+  // teste e faz a revisão HSEQ do feedback. Ganha employees:create_simplified/
+  // update_simplified pelo mesmo motivo do Administrador Local acima.
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:create', 'epi_feedback:hseq_review', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:triage', 'ppe_test:tech_review'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -113,7 +121,27 @@ const MODULE_VISIBILITY_LABELS = {
   relatorios: 'Relatórios',
   administracao: 'Administração',
   configuracoes: 'Configurações',
-  terceirizados: 'Terceirizados e Prestadores'
+  terceirizados: 'Terceirizados e Prestadores',
+  // Módulo opt-in irmão (ADR-0002 §10.3): Cadastro de Colaboradores
+  // simplificado dentro da mesma tela de Terceirizados e Prestadores —
+  // liga/desliga independente do módulo acima (admin/user só têm a
+  // permissão técnica deste, nunca do de Empresas).
+  terceirizados_colaboradores: 'Cadastro de Colaboradores'
+};
+// Módulo alternativo que também libera a view (correção do ADR-0002 §10.3):
+// Terceirizados e Prestadores tem duas abas com módulos opt-in distintos —
+// qualquer um dos dois ligado libera a view; a aba em si ainda respeita seu
+// próprio módulo/permissão (ver syncViewTabsVisibility e o formulário de
+// Cadastro de Colaboradores, escondido quando terceirizados_colaboradores
+// está desligado).
+const VIEW_MODULE_ALTERNATIVES = {
+  terceirizados: 'terceirizados_colaboradores'
+};
+// Permissão alternativa que também libera a view — mesma ideia acima, para o
+// piso técnico: admin/user só têm employees:create_simplified, nunca
+// employees:create.
+const VIEW_PERMISSION_ALTERNATIVES = {
+  terceirizados: 'employees:create_simplified'
 };
 const VIEW_EYEBROW = {
   dashboard: 'Visão Geral',
@@ -1905,6 +1933,11 @@ const state = {
   // o ator logado, usada por canAccessView). Esta é a matriz completa que a
   // tela "Configuração → Regras → Visualização" edita.
   moduleVisibilityAdminConfig: {},
+  // Escopo por Unidade dos módulos opt-in unit-scopable (ADR-0002 §10.3
+  // corrigido) — {module: [unit_id, ...]}. Distinta de moduleVisibility
+  // (já resolvida para o ator logado), mesma relação de
+  // moduleVisibilityAdminConfig acima com module_visibility.
+  moduleUnitScopeAdminConfig: {},
   fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
@@ -1925,6 +1958,16 @@ const state = {
   // a lista só é buscada sob demanda quando a tela é aberta (ver showView).
   outsourcedCompanies: [],
   outsourcedCompaniesFilters: { search: '', kind: '' },
+  // Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — derivado por
+  // filtro client-side sobre `state.employees` (tipo_vinculo != CLT), sem
+  // rota nova de listagem: mesma lista já usada pela tela geral de
+  // Colaboradores, só recortada aqui.
+  outsourcedEmployeesFilters: { search: '' },
+  outsourcedEmployeesSummary: [],
+  archivedOutsourcedCompanies: [],
+  archivedOutsourcedCompaniesFilters: { company_id: '', date: '', reason: '', user: '' },
+  archivedOutsourcedEmployees: [],
+  archivedOutsourcedEmployeesFilters: { company_id: '', date: '', reason: '', user: '' },
   archivedUnits: [],
   archivedUnitsFilters: { company_id: '', date: '', reason: '', user: '' },
   archivedEmployees: [],
@@ -2108,6 +2151,19 @@ const refs = {
   outsourcedCompaniesTable: document.getElementById('outsourced-companies-table'),
   outsourcedCompaniesFilterSearch: document.getElementById('outsourced-companies-filter-search'),
   outsourcedCompaniesFilterKind: document.getElementById('outsourced-companies-filter-kind'),
+  outsourcedEmployeesTable: document.getElementById('outsourced-employees-table'),
+  outsourcedEmployeesFilterSearch: document.getElementById('outsourced-employees-filter-search'),
+  outsourcedEmployeesSummaryTable: document.getElementById('outsourced-employees-summary-table'),
+  archivedOutsourcedCompaniesTable: document.getElementById('archived-outsourced-companies-table'),
+  archivedOutsourcedCompaniesFilterCompany: document.getElementById('archived-outsourced-companies-filter-company'),
+  archivedOutsourcedCompaniesFilterDate: document.getElementById('archived-outsourced-companies-filter-date'),
+  archivedOutsourcedCompaniesFilterReason: document.getElementById('archived-outsourced-companies-filter-reason'),
+  archivedOutsourcedCompaniesFilterUser: document.getElementById('archived-outsourced-companies-filter-user'),
+  archivedOutsourcedEmployeesTable: document.getElementById('archived-outsourced-employees-table'),
+  archivedOutsourcedEmployeesFilterCompany: document.getElementById('archived-outsourced-employees-filter-company'),
+  archivedOutsourcedEmployeesFilterDate: document.getElementById('archived-outsourced-employees-filter-date'),
+  archivedOutsourcedEmployeesFilterReason: document.getElementById('archived-outsourced-employees-filter-reason'),
+  archivedOutsourcedEmployeesFilterUser: document.getElementById('archived-outsourced-employees-filter-user'),
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
   archivedUnitsTable: document.getElementById('archived-units-table'),
@@ -2198,6 +2254,10 @@ const refs = {
   moduleVisibilityRole: document.getElementById('module-visibility-role'),
   moduleVisibilityCheckboxes: document.getElementById('module-visibility-checkboxes'),
   moduleVisibilityFeedback: document.getElementById('module-visibility-feedback'),
+  moduleUnitScopeForm: document.getElementById('module-unit-scope-form'),
+  moduleUnitScopeModule: document.getElementById('module-unit-scope-module'),
+  moduleUnitScopeUnits: document.getElementById('module-unit-scope-units'),
+  moduleUnitScopeFeedback: document.getElementById('module-unit-scope-feedback'),
   configFrameworkForm: document.getElementById('config-framework-form'),
   configEnableNewEngine: document.getElementById('config-enable-new-engine'),
   configExecutionMode: document.getElementById('config-execution-mode'),
@@ -2977,7 +3037,14 @@ function bindSpaNavigationHistory() {
 // deep-links) não abra uma view proibida para o papel.
 function canAccessView(view) {
   const permission = VIEW_PERMISSIONS[view];
-  if (permission && !hasPermission(permission)) return false;
+  if (permission && !hasPermission(permission)) {
+    // ADR-0002 §10 (correção de escopo): Terceirizados e Prestadores abre
+    // com employees:create (aba Empresas) OU employees:create_simplified
+    // (aba Cadastro de Colaboradores) — sem isso, admin/user (que só têm a
+    // segunda) nunca alcançavam a tela mesmo com o módulo ligado.
+    const altPermission = VIEW_PERMISSION_ALTERNATIVES[view];
+    if (!altPermission || !hasPermission(altPermission)) return false;
+  }
   const role = state.user?.role;
   // Views de cadastro estrutural: apenas administradores estruturais.
   if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)
@@ -3004,7 +3071,14 @@ function canAccessView(view) {
   // amplia o que a permissão técnica acima já negou.
   const module = VIEW_MODULE[view];
   if (module && state.moduleVisibility && Object.prototype.hasOwnProperty.call(state.moduleVisibility, module)) {
-    return Boolean(state.moduleVisibility[module]);
+    if (Boolean(state.moduleVisibility[module])) return true;
+    // Mesma correção acima, agora para o módulo: terceirizados OU
+    // terceirizados_colaboradores libera a view.
+    const altModule = VIEW_MODULE_ALTERNATIVES[view];
+    if (altModule && Object.prototype.hasOwnProperty.call(state.moduleVisibility, altModule)) {
+      return Boolean(state.moduleVisibility[altModule]);
+    }
+    return false;
   }
   return true;
 }
@@ -3105,6 +3179,10 @@ function showView(view, options = {}) {
   }
   if (view === 'terceirizados' && typeof loadOutsourcedCompanies === 'function') {
     void loadOutsourcedCompanies();
+    renderOutsourcedEmployees();
+    void loadArchivedRecords('outsourcedCompany');
+    void loadArchivedRecords('outsourcedEmployee');
+    void loadOutsourcedEmployeesSummary();
   }
   if (view === 'configuracao' && typeof loadArchivalPolicy === 'function') {
     void loadArchivalPolicy();
@@ -5038,6 +5116,16 @@ async function loadBootstrap() {
         ? moduleVisibilityPayload.module_visibility
         : {};
 
+      const moduleUnitScopePayload = await loadOptionalBootstrapSection(
+        'configuration',
+        { module_unit_scope: {} },
+        () => api(`/api/module-unit-scope?${actorQuery()}`),
+        { permission: 'settings:view' }
+      );
+      state.moduleUnitScopeAdminConfig = (moduleUnitScopePayload.module_unit_scope && typeof moduleUnitScopePayload.module_unit_scope === 'object')
+        ? moduleUnitScopePayload.module_unit_scope
+        : {};
+
       if (hasHardeningAccess()) {
         const frameworkPayload = await loadOptionalBootstrapSection(
           'configuration',
@@ -5057,6 +5145,7 @@ async function loadBootstrap() {
       state.configurationRules = [];
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
       state.moduleVisibilityAdminConfig = {};
+      state.moduleUnitScopeAdminConfig = {};
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
@@ -5095,6 +5184,8 @@ function bindDependentSelects() {
   populateSelect('delivery-unit-filter', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, tr('epi.allUnits', 'Todas as Unidades'));
   populateSelect('report-company', companies, (item) => item.name, 'id', true, tr('employee.filterAllCompanies', 'Todas'));
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
+  populateSelect('outsourced-employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
+  populateSelect('outsourced-employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-employee-id', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -5109,7 +5200,7 @@ function bindDependentSelects() {
   document.getElementById('report-sector').innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>` + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
   const isMasterAdmin = state.user?.role === 'master_admin';
-  ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company'].forEach((fieldId) => {
+  ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company', 'outsourced-employee-company'].forEach((fieldId) => {
     const field = document.getElementById(fieldId);
     // master_admin: delivery-company has a "Selecione a empresa" placeholder — don't force a default
     if (fieldId === 'delivery-company' && isMasterAdmin) return;
@@ -5117,6 +5208,7 @@ function bindDependentSelects() {
   });
   populateLinkedEmployeeOptions();
   syncEmployeeUnitOptions();
+  syncOutsourcedEmployeeUnitOptions();
   syncUnitLegalEntityOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
@@ -6725,6 +6817,58 @@ const ARCHIVAL_ENTITIES = {
       purchase_request_items: 'Itens de requisição de compra', purchase_order_items: 'Itens de pedido de compra',
     },
   },
+  // Empresa terceirizada/prestadora (ADR-0002 §10.4) — mesma política de
+  // arquivamento de Colaboradores/Unidades/EPIs, mas SEM purge: o backend
+  // não oferece exclusão definitiva aqui de propósito (risco de referência
+  // pendente em employees.outsourced_company_id/service_contracts sem FK
+  // garantida). `identityKind` existe porque `kind` aqui não é 'employee'
+  // nem 'epi' — reaproveita a mesma coluna de identidade que o EPI usa
+  // (nome + segunda coluna), só trocando o texto da segunda coluna.
+  outsourcedCompany: {
+    path: '/api/outsourced-companies',
+    stateList: 'outsourcedCompanies',
+    archivedList: 'archivedOutsourcedCompanies',
+    filters: 'archivedOutsourcedCompaniesFilters',
+    tableRef: 'archivedOutsourcedCompaniesTable',
+    i18nPrefix: 'outsourcedCompany',
+    labelFallback: 'Empresa terceirizada',
+    responseKey: 'outsourced_companies',
+    // Reaproveita o mesmo piso técnico de editar colaborador (ADR-0002) —
+    // sem permissão dedicada, por decisão explícita do ADR (mesma regra do
+    // backend: handle_post_outsourced_company_archive/restore usam
+    // PERM_EMPLOYEES_UPDATE).
+    deletePermission: 'employees:update',
+    updatePermission: 'employees:update',
+    supportsPurge: false,
+    identityKind: 'outsourcedCompanyLike',
+  },
+  // Colaborador terceirizado/prestador (ADR-0002 §10.4) — MESMA tabela/rota
+  // de arquivamento do colaborador CLT (`/api/employees/<id>/archive` etc.),
+  // só a LISTAGEM de arquivados é filtrada (?outsourced_only=1, via
+  // archivedQueryExtra) para não misturar com "Colaboradores Arquivados" do
+  // cadastro completo. `identityKind: 'employee'` reaproveita a mesma
+  // formatação de linha e os mesmos textos i18n (`employee.*`) do
+  // colaborador CLT — é o mesmo tipo de registro, só filtrado.
+  outsourcedEmployee: {
+    path: '/api/employees',
+    stateList: 'employees',
+    archivedList: 'archivedOutsourcedEmployees',
+    filters: 'archivedOutsourcedEmployeesFilters',
+    tableRef: 'archivedOutsourcedEmployeesTable',
+    i18nPrefix: 'employee',
+    labelFallback: 'Colaborador',
+    responseKey: 'employees',
+    deletePermission: 'employees:delete',
+    updatePermission: 'employees:update',
+    identityKind: 'employee',
+    archivedQueryExtra: '&outsourced_only=1',
+    purgeLabels: {
+      deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
+      feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
+      unit_movements: 'Movimentações de unidade', portal_links: 'Links do portal',
+      portal_audit_logs: 'Logs do portal',
+    },
+  },
 };
 
 // Item 1: EPI com saldo/vínculos vivos exige decisão autorizada. Consome
@@ -6804,7 +6948,7 @@ async function loadArchivedRecords(kind) {
   const cfg = ARCHIVAL_ENTITIES[kind];
   if (!cfg || !hasPermission(cfg.updatePermission.replace(':update', ':view'))) return;
   try {
-    const data = await api(`${cfg.path}/archived?${actorQuery()}`);
+    const data = await api(`${cfg.path}/archived?${actorQuery()}${cfg.archivedQueryExtra || ''}`);
     state[cfg.archivedList] = data[cfg.responseKey] || [];
   } catch (error) {
     state[cfg.archivedList] = [];
@@ -6823,14 +6967,17 @@ function formatArchivedRecordRow(kind, item, canManage, canPurge) {
   const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
   const actions = [];
   if (canManage) actions.push(`<button class="ghost" data-archived-restore="${kind}:${item.id}">${tr('unit.restore', 'Desarquivar')}</button>`);
-  if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
+  if (canPurge && cfg.supportsPurge !== false && retentionOver && !Number(item.legal_hold || 0)) {
     actions.push(`<button class="ghost" data-archived-purge="${kind}:${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
   }
   const actionsCell = actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-';
-  const identity = kind === 'employee'
+  const identityKind = cfg.identityKind || kind;
+  const identity = identityKind === 'employee'
     ? `<td>${item.employee_id_code || '-'} · ${item.name}${statusBadge}${holdBadge}</td><td>${item.unit_name || '-'}</td>`
-    : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
-  return `<tr><td>${item.company_name}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
+    : identityKind === 'outsourcedCompanyLike'
+      ? `<td>${item.legal_name || item.trade_name || ''}${statusBadge}${holdBadge}</td><td>${item.cnpj || '-'}</td>`
+      : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
+  return `<tr><td>${item.company_name || '-'}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
 }
 
 function renderArchivedRecords(kind) {
@@ -6877,7 +7024,7 @@ async function restoreArchivedRecord(kind, recordId) {
 // Exclusão definitiva em duas etapas (habilitada só após a retenção mínima).
 async function purgeArchivedRecord(kind, recordId) {
   const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !requirePermission(cfg.deletePermission)) return;
+  if (!cfg || cfg.supportsPurge === false || !requirePermission(cfg.deletePermission)) return;
   const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
   if (!record) return;
   try {
@@ -7503,6 +7650,11 @@ function renderOutsourcedCompanies() {
       colspan: 6,
       message: tr('outsourcedCompany.empty', 'Nenhuma empresa terceirizada cadastrada.'),
     });
+  // O seletor de empresa do Cadastro de Colaboradores depende da mesma
+  // lista — resincroniza sempre que ela muda (mesma lógica de
+  // bindDependentSelects, mas esta lista não vem do bootstrap).
+  syncOutsourcedEmployeeCompanySelect();
+  renderOutsourcedEmployees();
 }
 
 function formatOutsourcedCompanyRow(item, permissions) {
@@ -7583,6 +7735,245 @@ async function promoteOutsourcedCompany(entityId) {
     await loadOutsourcedCompanies();
   } catch (error) {
     alert(error.message);
+  }
+}
+
+// Popula o seletor de empresa terceirizada/prestadora do Cadastro de
+// Colaboradores — depende de state.outsourcedCompanies, que (ao contrário de
+// state.companies/state.units) só chega quando a tela é aberta, então este
+// sync roda de novo a cada loadOutsourcedCompanies(), não em
+// bindDependentSelects() (que só cobre dados do bootstrap).
+function syncOutsourcedEmployeeCompanySelect() {
+  const field = document.getElementById('outsourced-employee-outsourced-company');
+  if (!field) return;
+  const previous = field.value;
+  const companies = filterByUserCompany(state.outsourcedCompanies || []);
+  field.innerHTML = companies
+    .map((item) => `<option value="${item.id}">${escapeHtml(item.trade_name || item.legal_name || '')}</option>`)
+    .join('');
+  if (previous && companies.some((item) => String(item.id) === previous)) field.value = previous;
+}
+
+function syncOutsourcedEmployeeUnitOptions() {
+  const companyField = document.getElementById('outsourced-employee-company');
+  const unitField = document.getElementById('outsourced-employee-unit');
+  if (!companyField || !unitField) return;
+  const companyId = companyField.value || state.user?.company_id || '';
+  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
+  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
+    unitField.value = String(units[0].id);
+  }
+}
+
+// ── Cadastro de Colaboradores simplificado (ADR-0002 §10.2) ─────────────────
+// Só terceirizado/prestador, nunca CLT (o backend recusa). Sem rota de
+// listagem própria — deriva de state.employees (já carregado pelo
+// bootstrap, `fetch_employees` inclui tipo_vinculo/outsourced_company_id),
+// mesma estratégia do app Flutter: filtro client-side, sem endpoint novo.
+
+function outsourcedEmployeesViewHelpers() {
+  return globalThis.__EPI_OUTSOURCED_EMPLOYEES_VIEW__ || {};
+}
+
+function outsourcedEmployeesList() {
+  const helpers = outsourcedEmployeesViewHelpers();
+  const all = filterByUserCompany(state.employees || []);
+  return helpers.outsourcedEmployeesOnly ? helpers.outsourcedEmployeesOnly(all) : all.filter((item) => {
+    const tipo = String(item.tipo_vinculo || '').trim();
+    return Boolean(tipo) && tipo !== 'CLT' && Boolean(item.outsourced_company_id);
+  });
+}
+
+function renderOutsourcedEmployees() {
+  if (!refs.outsourcedEmployeesTable) return;
+  const helpers = outsourcedEmployeesViewHelpers();
+  const all = outsourcedEmployeesList();
+  const visible = helpers.visibleOutsourcedEmployees
+    ? helpers.visibleOutsourcedEmployees(all, state.outsourcedEmployeesFilters)
+    : all;
+  const canUpdate = hasPermission('employees:update_simplified');
+  refs.outsourcedEmployeesTable.innerHTML = visible
+    .map((item) => formatOutsourcedEmployeeRow(item, { canUpdate }))
+    .join('') || globalThis.dsTableState({
+      colspan: 6,
+      message: tr('outsourcedCompany.employeesEmpty', 'Nenhum colaborador terceirizado/prestador cadastrado.'),
+    });
+}
+
+function formatOutsourcedEmployeeRow(item, permissions) {
+  const helpers = outsourcedEmployeesViewHelpers();
+  const vincLabel = helpers.tipoVinculoLabel ? helpers.tipoVinculoLabel(item.tipo_vinculo) : (item.tipo_vinculo || '');
+  const outsourcedCompany = (state.outsourcedCompanies || []).find((c) => String(c.id) === String(item.outsourced_company_id));
+  const companyLabel = outsourcedCompany ? (outsourcedCompany.trade_name || outsourcedCompany.legal_name) : '-';
+  const entityId = escapeHtml(String(item.id ?? ''));
+  const buttons = [];
+  if (permissions.canUpdate) {
+    buttons.push(`<button class="ghost" data-outsourced-employee-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
+  }
+  if (hasPermission('employees:delete')) {
+    buttons.push(`<button class="ghost" data-outsourced-employee-archive="${entityId}">${escapeHtml(tr('employee.archive', 'Arquivar'))}</button>`);
+  }
+  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
+  return `<tr><td>${escapeHtml(item.name || '')}</td><td>${escapeHtml(item.role_name || '')}</td>`
+    + `<td>${escapeHtml(vincLabel)}</td><td>${escapeHtml(companyLabel)}</td>`
+    + `<td>${escapeHtml(item.unit_name || '')}</td><td>${actions}</td></tr>`;
+}
+
+function syncOutsourcedEmployeesFilters() {
+  state.outsourcedEmployeesFilters.search = String(refs.outsourcedEmployeesFilterSearch?.value || '').trim();
+  renderOutsourcedEmployees();
+}
+
+function setOutsourcedEmployeeFormMode(mode) {
+  const cancel = document.getElementById('outsourced-employee-cancel-edit');
+  if (cancel) cancel.hidden = mode !== 'edit';
+}
+
+function resetOutsourcedEmployeeForm() {
+  const form = document.getElementById('outsourced-employee-form');
+  if (!form) return;
+  form.reset();
+  form.elements.id.value = '';
+  syncOutsourcedEmployeeUnitOptions();
+  setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
+  setOutsourcedEmployeeFormMode('create');
+}
+
+// Diferente de startEditOutsourcedCompany (que reaproveita state.outsourcedCompanies
+// já carregado), o Cadastro de Colaboradores só tem no bootstrap os campos da
+// listagem geral — origin_company_registration/badge_number/notes só vêm do
+// item único (GET /api/employees/:id), por isso busca de novo ao editar.
+async function startEditOutsourcedEmployee(entityId) {
+  const form = document.getElementById('outsourced-employee-form');
+  if (!form) return;
+  try {
+    const data = await api(`/api/employees/${entityId}?${actorQuery()}`);
+    const item = data.employee || data;
+    if (!item || !item.id) return;
+    form.elements.id.value = item.id;
+    if (form.elements.company_id) form.elements.company_id.value = item.company_id || '';
+    syncOutsourcedEmployeeUnitOptions();
+    if (form.elements.unit_id) form.elements.unit_id.value = item.unit_id || '';
+    syncOutsourcedEmployeeCompanySelect();
+    if (form.elements.outsourced_company_id) form.elements.outsourced_company_id.value = item.outsourced_company_id || '';
+    form.elements.name.value = item.name || '';
+    form.elements.cpf.value = item.cpf || '';
+    form.elements.role_name.value = item.role_name || '';
+    form.elements.tipo_vinculo.value = item.tipo_vinculo || 'Terceirizado';
+    form.elements.admission_date.value = item.admission_date || '';
+    if (form.elements.origin_company_registration) form.elements.origin_company_registration.value = item.origin_company_registration || '';
+    if (form.elements.badge_number) form.elements.badge_number.value = item.badge_number || '';
+    if (form.elements.notes) form.elements.notes.value = item.notes || '';
+    setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeUpdate', 'Atualizar Colaborador'));
+    setOutsourcedEmployeeFormMode('edit');
+    showView('terceirizados');
+    const nav = document.querySelector('[data-vtabs="terceirizados"]');
+    if (nav) activateViewTab(nav, 'colaboradores');
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// Arquivar reaproveita a MESMA rota/regra do colaborador CLT
+// (/api/employees/:id/archive) — é o mesmo registro, só filtrado nesta
+// tela; reusa archiveEntityRecord('employee', ...) para não duplicar o
+// fluxo de motivo/confirmação/auditoria.
+async function archiveOutsourcedEmployee(entityId) {
+  await archiveEntityRecord('employee', entityId);
+  renderOutsourcedEmployees();
+}
+
+// ── Relatório de headcount por empresa terceirizada/prestadora (ADR-0002
+// §10.4) — GET /api/outsourced-companies/employees-summary. ─────────────────
+async function loadOutsourcedEmployeesSummary() {
+  if (!hasPermission('employees:view')) return;
+  try {
+    const data = await api(`/api/outsourced-companies/employees-summary?${actorQuery()}`);
+    state.outsourcedEmployeesSummary = data.outsourced_employees_summary || data.items || [];
+  } catch (error) {
+    state.outsourcedEmployeesSummary = [];
+    reportNonCriticalError('[terceirizados] falha ao carregar relatório de colaboradores', error);
+  }
+  renderOutsourcedEmployeesSummary();
+}
+
+function renderOutsourcedEmployeesSummary() {
+  if (!refs.outsourcedEmployeesSummaryTable) return;
+  const items = state.outsourcedEmployeesSummary || [];
+  refs.outsourcedEmployeesSummaryTable.innerHTML = items.map((entry) => {
+    const byTipo = Object.entries(entry.by_tipo_vinculo || {})
+      .map(([tipo, count]) => `${escapeHtml(tipo)}: ${count}`)
+      .join(' · ') || '-';
+    const name = entry.trade_name || entry.legal_name || '';
+    return `<tr><td>${escapeHtml(name)}</td><td>${entry.active_count ?? 0}</td>`
+      + `<td>${entry.archived_count ?? 0}</td><td>${byTipo}</td></tr>`;
+  }).join('') || globalThis.dsTableState({
+    colspan: 4,
+    message: tr('outsourcedCompany.reportsEmpty', 'Nenhuma empresa terceirizada/prestadora cadastrada.'),
+  });
+}
+
+// ── Escopo por Unidade dos módulos opt-in (module_unit_scope, correção do
+// ADR-0002 §10.3) — ampliação do mesmo mecanismo de module_visibility:
+// quando a lista de Unidades autorizadas para um módulo não está vazia,
+// Administrador Local e Gestor de EPI só o veem nas Unidades marcadas.
+// ─────────────────────────────────────────────────────────────────────────
+const MODULE_UNIT_SCOPE_LABELS = {
+  terceirizados: 'Terceirizados e Prestadores (Empresas)',
+  terceirizados_colaboradores: 'Cadastro de Colaboradores',
+};
+let _moduleUnitScopeSelectedIds = new Set();
+
+function hydrateModuleUnitScopeForm() {
+  if (!refs.moduleUnitScopeModule || !refs.moduleUnitScopeUnits) return;
+  const previous = refs.moduleUnitScopeModule.value;
+  refs.moduleUnitScopeModule.innerHTML = Object.keys(MODULE_UNIT_SCOPE_LABELS)
+    .map((moduleKey) => `<option value="${moduleKey}">${MODULE_UNIT_SCOPE_LABELS[moduleKey]}</option>`).join('');
+  refs.moduleUnitScopeModule.value = previous && refs.moduleUnitScopeModule.querySelector(`option[value="${previous}"]`)
+    ? previous
+    : refs.moduleUnitScopeModule.value;
+  syncModuleUnitScopeSelection();
+  renderModuleUnitScopeUnits();
+}
+
+function syncModuleUnitScopeSelection() {
+  const moduleKey = refs.moduleUnitScopeModule?.value || '';
+  const current = (state.moduleUnitScopeAdminConfig || {})[moduleKey] || [];
+  _moduleUnitScopeSelectedIds = new Set(current.map((id) => String(id)));
+}
+
+function renderModuleUnitScopeUnits() {
+  if (!refs.moduleUnitScopeUnits) return;
+  const units = filterByUserCompany(state.units || []);
+  if (!units.length) {
+    refs.moduleUnitScopeUnits.innerHTML = `<p class="hint">${tr('moduleUnitScope.noUnits', 'Nenhuma Unidade cadastrada.')}</p>`;
+    return;
+  }
+  refs.moduleUnitScopeUnits.innerHTML = units.map((unit) => {
+    const checked = _moduleUnitScopeSelectedIds.has(String(unit.id)) ? 'checked' : '';
+    return `<label class="unit-link-option"><input type="checkbox" data-module-unit-scope-unit="${unit.id}" ${checked}> ${escapeHtml(unit.name)}</label>`;
+  }).join('');
+}
+
+async function onSubmitModuleUnitScope(event) {
+  event.preventDefault();
+  if (!hasConfigurationAccess() || !refs.moduleUnitScopeModule) return;
+  const moduleKey = refs.moduleUnitScopeModule.value;
+  const unitIds = Array.from(_moduleUnitScopeSelectedIds).map((id) => Number(id)).filter((id) => Number.isFinite(id));
+  try {
+    const body = { actor_user_id: state.user.id, module: moduleKey, unit_ids: unitIds };
+    const result = await api('/api/module-unit-scope', { method: 'POST', body: JSON.stringify(body) });
+    state.moduleUnitScopeAdminConfig = {
+      ...state.moduleUnitScopeAdminConfig,
+      [moduleKey]: result.after != null ? result.after : unitIds,
+    };
+    syncModuleUnitScopeSelection();
+    renderModuleUnitScopeUnits();
+    if (refs.moduleUnitScopeFeedback) refs.moduleUnitScopeFeedback.textContent = tr('moduleUnitScope.saved', 'Escopo por Unidade salvo.');
+  } catch (e) {
+    if (refs.moduleUnitScopeFeedback) refs.moduleUnitScopeFeedback.textContent = '';
+    alert(e.message);
   }
 }
 
@@ -10261,6 +10652,13 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'outsourced-company-form') {
       await loadOutsourcedCompanies();
     }
+    // Cadastro de Colaboradores simplificado: deriva de state.employees, que
+    // loadBootstrap() acima já atualizou — só falta re-renderizar a tabela
+    // (o reset do modo de edição já roda em handleFormReset, como no
+    // outsourced-company-form).
+    if (event.target.id === 'outsourced-employee-form') {
+      renderOutsourcedEmployees();
+    }
   } catch (error) {
     if (event.target.id === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
@@ -10292,6 +10690,10 @@ function handleFormReset(form) {
   } else if (form.id === 'outsourced-company-form') {
     setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
     setOutsourcedCompanyFormMode('create');
+  } else if (form.id === 'outsourced-employee-form') {
+    setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
+    setOutsourcedEmployeeFormMode('create');
+    syncOutsourcedEmployeeUnitOptions();
   } else if (form.id === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
   } else if (form.id === 'employee-form') {
@@ -11310,6 +11712,7 @@ function hydrateConfigurationForms() {
   renderConfigurationRules();
   renderConfigurationFramework();
   hydrateModuleVisibilityForm();
+  hydrateModuleUnitScopeForm();
   renderFichaAuditLogs();
 }
 
@@ -11730,6 +12133,8 @@ async function init() {
   bindAppListener(document.getElementById('unit-form'), 'submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
   bindAppListener(document.getElementById('legal-entity-form'), 'submit', (event) => saveSimpleForm(event, '/api/legal-entities', 'legal_entities:create'));
   bindAppListener(document.getElementById('outsourced-company-form'), 'submit', (event) => saveSimpleForm(event, '/api/outsourced-companies', 'employees:create'));
+  bindAppListener(document.getElementById('outsourced-employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees/outsourced-simplified', 'employees:create_simplified'));
+  bindAppListener(document.getElementById('outsourced-employee-company'), 'change', syncOutsourcedEmployeeUnitOptions);
   bindAppListener(document.getElementById('employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));
   bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
@@ -11915,6 +12320,25 @@ async function init() {
     const promote = event.target.dataset.outsourcedCompanyPromote;
     if (promote) void promoteOutsourcedCompany(promote);
   });
+  bindSearchInput(refs.outsourcedEmployeesFilterSearch, syncOutsourcedEmployeesFilters, 120);
+  bindAppListener(document.getElementById('outsourced-employee-cancel-edit'), 'click', resetOutsourcedEmployeeForm);
+  bindAppListener(refs.outsourcedEmployeesTable, 'click', (event) => {
+    const edit = event.target.dataset.outsourcedEmployeeEdit;
+    if (edit) { void startEditOutsourcedEmployee(edit); return; }
+    const archive = event.target.dataset.outsourcedEmployeeArchive;
+    if (archive) void archiveOutsourcedEmployee(archive);
+  });
+  bindAppListener(document.getElementById('module-unit-scope-form'), 'submit', onSubmitModuleUnitScope);
+  bindAppListener(refs.moduleUnitScopeModule, 'change', () => {
+    syncModuleUnitScopeSelection();
+    renderModuleUnitScopeUnits();
+  });
+  bindAppListener(refs.moduleUnitScopeUnits, 'change', (event) => {
+    const unitId = event.target?.dataset?.moduleUnitScopeUnit;
+    if (!unitId) return;
+    if (event.target.checked) _moduleUnitScopeSelectedIds.add(String(unitId));
+    else _moduleUnitScopeSelectedIds.delete(String(unitId));
+  });
   bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
   bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);
   bindSearchInput(refs.archivedUnitsFilterReason, syncArchivedUnitsFilters, 120);
@@ -11923,7 +12347,7 @@ async function init() {
     if (event.target.dataset.unitRestore) restoreArchivedUnit(event.target.dataset.unitRestore);
     if (event.target.dataset.unitPurge) purgeArchivedUnit(event.target.dataset.unitPurge);
   });
-  [['employee', 'archivedEmployees'], ['epi', 'archivedEpis']].forEach(([kind, prefix]) => {
+  [['employee', 'archivedEmployees'], ['epi', 'archivedEpis'], ['outsourcedCompany', 'archivedOutsourcedCompanies'], ['outsourcedEmployee', 'archivedOutsourcedEmployees']].forEach(([kind, prefix]) => {
     bindAppListener(refs[`${prefix}FilterCompany`], 'change', () => syncArchivedRecordsFilters(kind));
     bindAppListener(refs[`${prefix}FilterDate`], 'change', () => syncArchivedRecordsFilters(kind));
     bindSearchInput(refs[`${prefix}FilterReason`], () => syncArchivedRecordsFilters(kind), 120);

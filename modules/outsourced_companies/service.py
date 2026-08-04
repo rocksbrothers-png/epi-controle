@@ -640,3 +640,59 @@ def fetch_migration_suggestions(connection, company_id):
                 'threshold_days': threshold_days,
             })
     return suggestions
+
+
+# ── Relatórios (ADR-0002 §10) ───────────────────────────────────────────────
+# Complementa os relatórios de entrega (modules.reports.service, já com
+# dimensões de empresa terceirizada desde o PR6) com um resumo de
+# colaboradores por empresa terceirizada/prestadora — headcount ativo vs.
+# arquivado e distribuição por tipo de vínculo, para a aba "Relatórios" do
+# Cadastro de Colaboradores.
+
+def fetch_outsourced_employees_summary(connection, company_id):
+    """Resumo de colaboradores (ativos + arquivados) por empresa terceirizada
+    do tenant: total, contagem ativa/arquivada e distribuição por
+    tipo_vinculo. Empresas sem nenhum colaborador vinculado aparecem com
+    contagens zeradas (não somem do relatório)."""
+    from epi_backend.db import table_columns
+    if 'outsourced_company_id' not in table_columns(connection, 'employees'):
+        return []
+    lifecycle = 'status' in table_columns(connection, 'employees')
+    status_col = 'employees.status' if lifecycle else "'active'"
+    rows = connection.execute(
+        f'SELECT outsourced_companies.id AS outsourced_company_id, '  # noqa: S608
+        'outsourced_companies.legal_name, outsourced_companies.trade_name, '
+        'employees.id AS employee_id, employees.tipo_vinculo, '
+        f'{status_col} AS employee_status '
+        'FROM outsourced_companies '
+        'LEFT JOIN employees ON employees.outsourced_company_id = outsourced_companies.id '
+        'WHERE outsourced_companies.company_id = ? '
+        'ORDER BY outsourced_companies.legal_name',
+        (int(company_id),),
+    ).fetchall()
+    summary = {}
+    order = []
+    for row in rows:
+        item = row_to_dict(row)
+        oc_id = item['outsourced_company_id']
+        if oc_id not in summary:
+            summary[oc_id] = {
+                'outsourced_company_id': oc_id,
+                'legal_name': item['legal_name'],
+                'trade_name': item['trade_name'],
+                'active_count': 0,
+                'archived_count': 0,
+                'by_tipo_vinculo': {},
+            }
+            order.append(oc_id)
+        if item.get('employee_id') is None:
+            continue
+        entry = summary[oc_id]
+        status = str(item.get('employee_status') or 'active')
+        if status in ('archived', 'pending_deletion', 'deleted'):
+            entry['archived_count'] += 1
+        else:
+            entry['active_count'] += 1
+        tipo = str(item.get('tipo_vinculo') or 'Não informado')
+        entry['by_tipo_vinculo'][tipo] = entry['by_tipo_vinculo'].get(tipo, 0) + 1
+    return [summary[oc_id] for oc_id in order]

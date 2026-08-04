@@ -15,17 +15,22 @@ Cobre:
 
 import sqlite3
 
+import pytest
+
+from core import archival
 from core.schema import (
     ensure_delivery_handover_columns,
     ensure_delivery_outsourced_snapshot_columns,
     ensure_delivery_signature_columns,
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_archival_lifecycle_columns,
 )
 from modules.deliveries.service import create_delivery_service
 from modules.outsourced_companies.service import (
     create_outsourced_company,
     create_service_contract,
+    get_outsourced_company_lifecycle,
     resolve_delivery_outsourced_snapshot,
     update_outsourced_company,
 )
@@ -179,6 +184,12 @@ def _delivery_conn():
             actor_user_id INTEGER, actor_name TEXT DEFAULT '', created_at TEXT DEFAULT '',
             glove_size TEXT DEFAULT 'N/A', size TEXT DEFAULT 'N/A', uniform_size TEXT DEFAULT 'N/A'
         );
+        CREATE TABLE company_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, actor_user_id INTEGER NOT NULL, actor_name TEXT NOT NULL,
+            action_type TEXT NOT NULL, summary TEXT NOT NULL, details_json TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL
+        );
         """
     )
     cur = conn.execute("INSERT INTO companies (name, legal_name, cnpj) VALUES ('ACME', 'ACME', '')")
@@ -189,6 +200,7 @@ def _delivery_conn():
     ensure_delivery_outsourced_snapshot_columns(conn)
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_archival_lifecycle_columns(conn)
     conn.commit()
     return conn, cid
 
@@ -290,3 +302,55 @@ def test_delivery_snapshot_survives_later_company_edit():
     row = conn.execute('SELECT * FROM deliveries WHERE id = ?', (delivery_id,)).fetchone()
     assert row['snapshot_outsourced_company_name'] == 'Terceirizada Original'
     assert row['snapshot_epi_responsibility'] == 'Empresa Terceirizada'
+
+
+# ── entrega bloqueada quando a empresa terceirizada está arquivada (PR 13, ADR-0002 §10.4) ──
+
+ACTOR_GENERAL = {'id': 1, 'full_name': 'Admin Geral', 'role': 'general_admin', 'company_id': 1}
+
+
+def test_delivery_blocked_when_outsourced_company_is_archived():
+    conn, cid = _delivery_conn()
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    entity = get_outsourced_company_lifecycle(conn, oc_id)
+    archival.archive_record(
+        conn, 'outsourced_companies', entity, {**ACTOR_GENERAL, 'company_id': cid},
+        entity_label='Empresa terceirizada', audit_prefix='outsourced_company',
+        record_label=entity['legal_name'], reason='Fim de contrato',
+    )
+    stock_item_id, qr = _stock_item(conn, cid)
+    employee = {
+        'id': 21, 'company_id': cid, 'name': 'Carlos', 'tipo_vinculo': 'Terceirizado',
+        'outsourced_company_id': oc_id, 'service_contract_id': None, 'epi_responsibility_override': '',
+    }
+    payload = {
+        'company_id': cid, 'employee_id': 21, 'epi_id': 30, 'quantity': 1,
+        'sector': 'Operações', 'role_name': 'Técnico', 'delivery_date': '2026-07-29',
+        'next_replacement_date': '2027-07-29', 'stock_item_id': stock_item_id, 'stock_qr_code': qr,
+    }
+    with pytest.raises(ValueError, match='arquivad'):
+        create_delivery_service(conn, payload, **_delivery_kwargs(employee))
+
+
+def test_delivery_still_works_for_clt_employee_when_unrelated_outsourced_company_is_archived():
+    # Garantia negativa: arquivar UMA empresa terceirizada não afeta entregas
+    # de colaboradores CLT (sem outsourced_company_id) nem de terceirizados
+    # de OUTRAS empresas.
+    conn, cid = _delivery_conn()
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    entity = get_outsourced_company_lifecycle(conn, oc_id)
+    archival.archive_record(
+        conn, 'outsourced_companies', entity, {**ACTOR_GENERAL, 'company_id': cid},
+        entity_label='Empresa terceirizada', audit_prefix='outsourced_company',
+        record_label=entity['legal_name'],
+    )
+    stock_item_id, qr = _stock_item(conn, cid)
+    employee = {'id': 21, 'company_id': cid, 'name': 'Ana', 'tipo_vinculo': 'CLT',
+                'outsourced_company_id': None, 'service_contract_id': None}
+    payload = {
+        'company_id': cid, 'employee_id': 21, 'epi_id': 30, 'quantity': 1,
+        'sector': 'Operações', 'role_name': 'Técnica', 'delivery_date': '2026-07-29',
+        'next_replacement_date': '2027-07-29', 'stock_item_id': stock_item_id, 'stock_qr_code': qr,
+    }
+    delivery_id = create_delivery_service(conn, payload, **_delivery_kwargs(employee))
+    assert delivery_id

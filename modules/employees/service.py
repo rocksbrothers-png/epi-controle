@@ -733,26 +733,43 @@ def ensure_employee_operational(connection, employee_id, operation='esta operaç
     ensure_record_operational(connection, 'employees', employee_id, 'Colaborador', operation)
 
 
-def fetch_archived_employees(connection, actor):
-    """Colaboradores arquivados do tenant, com dados de retenção para a UI."""
+def fetch_archived_employees(connection, actor, *, outsourced_only=False):
+    """Colaboradores arquivados do tenant, com dados de retenção para a UI.
+
+    `outsourced_only` (ADR-0002 §10.4): filtra só terceirizado/prestador
+    (tipo_vinculo != 'CLT') — usado pela aba "Colaboradores Arquivados" do
+    Cadastro de Colaboradores. Nenhuma rota nova: mesmo fetch_archived_employees
+    já usado pela tela geral de Colaboradores, só com um filtro a mais.
+    """
     from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
+    from epi_backend.db import table_columns
+    outsourced_cols = (
+        ', employees.tipo_vinculo, employees.outsourced_company_id, '
+        'outsourced_companies.legal_name AS outsourced_company_name'
+    ) if 'outsourced_company_id' in table_columns(connection, 'employees') else ''
+    outsourced_join = (
+        ' LEFT JOIN outsourced_companies ON outsourced_companies.id = employees.outsourced_company_id'
+    ) if outsourced_cols else ''
     sql = (
         'SELECT employees.id, employees.company_id, employees.unit_id, '
         'employees.employee_id_code, employees.name, employees.sector, employees.role_name, '
         'employees.status, employees.archived_at, employees.archived_by, '
         'employees.archive_reason, employees.retention_until, employees.legal_hold, '
-        'companies.name AS company_name, units.name AS unit_name, '
-        'users.full_name AS archived_by_name '
+        f'companies.name AS company_name, units.name AS unit_name, '
+        f'users.full_name AS archived_by_name{outsourced_cols} '
         'FROM employees '
         'JOIN companies ON companies.id = employees.company_id '
         'LEFT JOIN units ON units.id = employees.unit_id '
-        'LEFT JOIN users ON users.id = employees.archived_by '
+        'LEFT JOIN users ON users.id = employees.archived_by'
+        f'{outsourced_join} '
         'WHERE employees.status IN (?, ?)'
     )
     params = [STATUS_ARCHIVED, STATUS_PENDING_DELETION]
     if actor and actor['role'] != 'master_admin':
         sql += ' AND employees.company_id = ?'
         params.append(actor['company_id'])
+    if outsourced_only and outsourced_cols:
+        sql += " AND employees.tipo_vinculo != 'CLT'"
     rows = connection.execute(sql + ' ORDER BY employees.archived_at DESC', tuple(params)).fetchall()
     result = []
     for row in rows:

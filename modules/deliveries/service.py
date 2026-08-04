@@ -71,6 +71,15 @@ def create_delivery_service(
     ensure_resource_company(actor, epi, 'EPI')
     if str(employee['company_id']) != str(payload['company_id']) or str(epi['company_id']) != str(payload['company_id']):
         raise ValueError('Empresa incompatível para entrega.')
+    # Empresa terceirizada/prestadora arquivada (ADR-0002 §10.4): bloqueia
+    # novas entregas para colaboradores já vinculados a ela — o vínculo em si
+    # não é desfeito, só novas operações contra a empresa arquivada.
+    if employee.get('outsourced_company_id'):
+        from core.archival import ensure_record_operational
+        ensure_record_operational(
+            connection, 'outsourced_companies', employee['outsourced_company_id'],
+            'Empresa terceirizada', 'novas entregas',
+        )
     # Regra NT 146/2015: após a aquisição (com CA válido), o uso/entrega do EPI
     # não fica proibido pelo vencimento do CA — passa a valer a validade do
     # produto informada pelo fabricante. Portanto, bloqueia-se a entrega quando a

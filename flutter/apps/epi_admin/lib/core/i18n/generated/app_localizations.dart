@@ -2765,6 +2765,210 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Padrão'**
   String get outsourcedCompanyStandardBadge;
+
+  /// No description provided for @outsourcedTabCompanies.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresas'**
+  String get outsourcedTabCompanies;
+
+  /// No description provided for @outsourcedTabEmployees.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastro de Colaboradores'**
+  String get outsourcedTabEmployees;
+
+  /// No description provided for @outsourcedTabReports.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Relatórios'**
+  String get outsourcedTabReports;
+
+  /// No description provided for @outsourcedShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver ativos'**
+  String get outsourcedShowActive;
+
+  /// No description provided for @outsourcedShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver arquivados'**
+  String get outsourcedShowArchived;
+
+  /// No description provided for @archive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar'**
+  String get archive;
+
+  /// No description provided for @restore.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar'**
+  String get restore;
+
+  /// No description provided for @archivedAt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado em'**
+  String get archivedAt;
+
+  /// No description provided for @archiveReasonLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Motivo do arquivamento (auditoria)'**
+  String get archiveReasonLabel;
+
+  /// No description provided for @outsourcedCompanyArchive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar empresa'**
+  String get outsourcedCompanyArchive;
+
+  /// No description provided for @outsourcedCompanyArchiveConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar esta empresa?'**
+  String get outsourcedCompanyArchiveConfirmTitle;
+
+  /// No description provided for @outsourcedCompanyRestore.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar'**
+  String get outsourcedCompanyRestore;
+
+  /// No description provided for @outsourcedCompanyRestoreConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar esta empresa?'**
+  String get outsourcedCompanyRestoreConfirmTitle;
+
+  /// No description provided for @outsourcedCompaniesArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma empresa terceirizada arquivada.'**
+  String get outsourcedCompaniesArchivedEmpty;
+
+  /// No description provided for @outsourcedEmployeeNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo colaborador'**
+  String get outsourcedEmployeeNew;
+
+  /// No description provided for @outsourcedEmployeesEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum colaborador terceirizado/prestador cadastrado.'**
+  String get outsourcedEmployeesEmpty;
+
+  /// No description provided for @outsourcedEmployeesArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum colaborador terceirizado/prestador arquivado.'**
+  String get outsourcedEmployeesArchivedEmpty;
+
+  /// No description provided for @outsourcedEmployeeCompanyLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa terceirizada/prestadora'**
+  String get outsourcedEmployeeCompanyLabel;
+
+  /// No description provided for @outsourcedEmployeeOriginRegistrationLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Matrícula da empresa de origem'**
+  String get outsourcedEmployeeOriginRegistrationLabel;
+
+  /// No description provided for @outsourcedEmployeeBadgeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Crachá'**
+  String get outsourcedEmployeeBadgeLabel;
+
+  /// No description provided for @outsourcedEmployeeNotesLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Observações'**
+  String get outsourcedEmployeeNotesLabel;
+
+  /// No description provided for @outsourcedEmployeeArchiveConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar este colaborador?'**
+  String get outsourcedEmployeeArchiveConfirmTitle;
+
+  /// No description provided for @outsourcedEmployeeRestoreConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar este colaborador?'**
+  String get outsourcedEmployeeRestoreConfirmTitle;
+
+  /// No description provided for @outsourcedReportsError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar o relatório.'**
+  String get outsourcedReportsError;
+
+  /// No description provided for @outsourcedReportsEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma empresa terceirizada/prestadora cadastrada.'**
+  String get outsourcedReportsEmpty;
+
+  /// No description provided for @outsourcedReportsActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ativos'**
+  String get outsourcedReportsActive;
+
+  /// No description provided for @outsourcedReportsArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivados'**
+  String get outsourcedReportsArchived;
+
+  /// No description provided for @moduleVisibilityTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Visualização de Módulos'**
+  String get moduleVisibilityTitle;
+
+  /// No description provided for @moduleVisibilityDescription.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.'**
+  String get moduleVisibilityDescription;
+
+  /// No description provided for @moduleUnitScopeTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Escopo por Unidade'**
+  String get moduleUnitScopeTitle;
+
+  /// No description provided for @moduleUnitScopeDescription.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).'**
+  String get moduleUnitScopeDescription;
+
+  /// No description provided for @moduleUnitScopeModuleLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Módulo'**
+  String get moduleUnitScopeModuleLabel;
+
+  /// No description provided for @moduleUnitScopeNoUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma Unidade cadastrada.'**
+  String get moduleUnitScopeNoUnits;
+
+  /// No description provided for @moduleVisibilityRoleLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Perfil'**
+  String get moduleVisibilityRoleLabel;
 }
 
 class _AppLocalizationsDelegate

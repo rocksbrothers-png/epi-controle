@@ -61,8 +61,7 @@ GoRouter buildRouter({
       // private screens; this prevents a transient permissive state during
       // session hydration.
       if (isLoggedIn) {
-        final required = requiredPermissionFor(state.matchedLocation);
-        if (required != null && !permissions.value.contains(required)) {
+        if (!hasRoutePermission(state.matchedLocation, permissions.value)) {
           return Routes.dashboard;
         }
         // Camada de visibilidade estrutural (menu/rotas/deep links): a

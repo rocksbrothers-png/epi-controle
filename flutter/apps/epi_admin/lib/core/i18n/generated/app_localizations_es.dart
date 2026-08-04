@@ -1375,6 +1375,119 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get outsourcedCompanyStandardBadge => 'Padrão';
+
+  @override
+  String get outsourcedTabCompanies => 'Empresas';
+
+  @override
+  String get outsourcedTabEmployees => 'Cadastro de Colaboradores';
+
+  @override
+  String get outsourcedTabReports => 'Relatórios';
+
+  @override
+  String get outsourcedShowActive => 'Ver ativos';
+
+  @override
+  String get outsourcedShowArchived => 'Ver arquivados';
+
+  @override
+  String get archive => 'Arquivar';
+
+  @override
+  String get restore => 'Desarquivar';
+
+  @override
+  String get archivedAt => 'Arquivado em';
+
+  @override
+  String get archiveReasonLabel => 'Motivo do arquivamento (auditoria)';
+
+  @override
+  String get outsourcedCompanyArchive => 'Arquivar empresa';
+
+  @override
+  String get outsourcedCompanyArchiveConfirmTitle => 'Arquivar esta empresa?';
+
+  @override
+  String get outsourcedCompanyRestore => 'Desarquivar';
+
+  @override
+  String get outsourcedCompanyRestoreConfirmTitle =>
+      'Desarquivar esta empresa?';
+
+  @override
+  String get outsourcedCompaniesArchivedEmpty =>
+      'Nenhuma empresa terceirizada arquivada.';
+
+  @override
+  String get outsourcedEmployeeNew => 'Novo colaborador';
+
+  @override
+  String get outsourcedEmployeesEmpty =>
+      'Nenhum colaborador terceirizado/prestador cadastrado.';
+
+  @override
+  String get outsourcedEmployeesArchivedEmpty =>
+      'Nenhum colaborador terceirizado/prestador arquivado.';
+
+  @override
+  String get outsourcedEmployeeCompanyLabel =>
+      'Empresa terceirizada/prestadora';
+
+  @override
+  String get outsourcedEmployeeOriginRegistrationLabel =>
+      'Matrícula da empresa de origem';
+
+  @override
+  String get outsourcedEmployeeBadgeLabel => 'Crachá';
+
+  @override
+  String get outsourcedEmployeeNotesLabel => 'Observações';
+
+  @override
+  String get outsourcedEmployeeArchiveConfirmTitle =>
+      'Arquivar este colaborador?';
+
+  @override
+  String get outsourcedEmployeeRestoreConfirmTitle =>
+      'Desarquivar este colaborador?';
+
+  @override
+  String get outsourcedReportsError => 'Não foi possível carregar o relatório.';
+
+  @override
+  String get outsourcedReportsEmpty =>
+      'Nenhuma empresa terceirizada/prestadora cadastrada.';
+
+  @override
+  String get outsourcedReportsActive => 'Ativos';
+
+  @override
+  String get outsourcedReportsArchived => 'Arquivados';
+
+  @override
+  String get moduleVisibilityTitle => 'Visualização de Módulos';
+
+  @override
+  String get moduleVisibilityDescription =>
+      'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
+
+  @override
+  String get moduleUnitScopeTitle => 'Escopo por Unidade';
+
+  @override
+  String get moduleUnitScopeDescription =>
+      'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).';
+
+  @override
+  String get moduleUnitScopeModuleLabel => 'Módulo';
+
+  @override
+  String get moduleUnitScopeNoUnits => 'Nenhuma Unidade cadastrada.';
+
+  @override
+  String get moduleVisibilityRoleLabel => 'Perfil';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -2750,4 +2863,116 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get outsourcedCompanyStandardBadge => 'Estándar';
+
+  @override
+  String get outsourcedTabCompanies => 'Empresas';
+
+  @override
+  String get outsourcedTabEmployees => 'Registro de Colaboradores';
+
+  @override
+  String get outsourcedTabReports => 'Informes';
+
+  @override
+  String get outsourcedShowActive => 'Ver activos';
+
+  @override
+  String get outsourcedShowArchived => 'Ver archivados';
+
+  @override
+  String get archive => 'Archivar';
+
+  @override
+  String get restore => 'Restaurar';
+
+  @override
+  String get archivedAt => 'Archivado el';
+
+  @override
+  String get archiveReasonLabel => 'Motivo del archivado (auditoría)';
+
+  @override
+  String get outsourcedCompanyArchive => 'Archivar empresa';
+
+  @override
+  String get outsourcedCompanyArchiveConfirmTitle => '¿Archivar esta empresa?';
+
+  @override
+  String get outsourcedCompanyRestore => 'Restaurar';
+
+  @override
+  String get outsourcedCompanyRestoreConfirmTitle => '¿Restaurar esta empresa?';
+
+  @override
+  String get outsourcedCompaniesArchivedEmpty =>
+      'No hay empresas subcontratadas archivadas.';
+
+  @override
+  String get outsourcedEmployeeNew => 'Nuevo colaborador';
+
+  @override
+  String get outsourcedEmployeesEmpty =>
+      'No hay colaboradores subcontratados/prestadores registrados.';
+
+  @override
+  String get outsourcedEmployeesArchivedEmpty =>
+      'No hay colaboradores subcontratados/prestadores archivados.';
+
+  @override
+  String get outsourcedEmployeeCompanyLabel =>
+      'Empresa subcontratada/prestadora';
+
+  @override
+  String get outsourcedEmployeeOriginRegistrationLabel =>
+      'Matrícula de la empresa de origen';
+
+  @override
+  String get outsourcedEmployeeBadgeLabel => 'Credencial';
+
+  @override
+  String get outsourcedEmployeeNotesLabel => 'Observaciones';
+
+  @override
+  String get outsourcedEmployeeArchiveConfirmTitle =>
+      '¿Archivar este colaborador?';
+
+  @override
+  String get outsourcedEmployeeRestoreConfirmTitle =>
+      '¿Restaurar este colaborador?';
+
+  @override
+  String get outsourcedReportsError => 'No fue posible cargar el informe.';
+
+  @override
+  String get outsourcedReportsEmpty =>
+      'No hay empresas subcontratadas/prestadoras registradas.';
+
+  @override
+  String get outsourcedReportsActive => 'Activos';
+
+  @override
+  String get outsourcedReportsArchived => 'Archivados';
+
+  @override
+  String get moduleVisibilityTitle => 'Visibilidad de Módulos';
+
+  @override
+  String get moduleVisibilityDescription =>
+      'Controle qué módulos aparecen para cada perfil. Los módulos opcionales (como Subcontratados y Registro de Colaboradores) nacen ocultos por defecto en todo tenant.';
+
+  @override
+  String get moduleUnitScopeTitle => 'Alcance por Unidad';
+
+  @override
+  String get moduleUnitScopeDescription =>
+      'Restrinja un módulo a Unidades específicas para los perfiles Administrador Local y Gestor de EPI. Sin ninguna Unidad marcada, el módulo queda liberado en todas las Unidades (respetando la Visibilidad anterior).';
+
+  @override
+  String get moduleUnitScopeModuleLabel => 'Módulo';
+
+  @override
+  String get moduleUnitScopeNoUnits => 'Ninguna Unidad registrada.';
+
+  @override
+  String get moduleVisibilityRoleLabel => 'Perfil';
 }

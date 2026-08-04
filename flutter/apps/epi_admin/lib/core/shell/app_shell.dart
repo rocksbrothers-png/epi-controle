@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../bloc/auth_cubit.dart';
 import '../bloc/auth_state.dart';
 import '../router/navigation_policy.dart';
+import '../router/route_permissions.dart';
 import '../router/routes.dart';
 
 /// Shell oficial do EPI Controle.
@@ -89,7 +90,7 @@ class AppShell extends StatelessWidget {
     List<String> permissions,
     Map<String, bool> moduleVisibility,
   ) {
-    if (!permissions.contains(d.$4)) return false;
+    if (!hasRoutePermission(d.$1, permissions)) return false;
     return isModuleLocationAccessible(d.$1, moduleVisibility);
   }
 

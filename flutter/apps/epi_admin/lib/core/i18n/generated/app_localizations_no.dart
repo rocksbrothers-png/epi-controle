@@ -1375,6 +1375,119 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get outsourcedCompanyStandardBadge => 'Padrão';
+
+  @override
+  String get outsourcedTabCompanies => 'Empresas';
+
+  @override
+  String get outsourcedTabEmployees => 'Cadastro de Colaboradores';
+
+  @override
+  String get outsourcedTabReports => 'Relatórios';
+
+  @override
+  String get outsourcedShowActive => 'Ver ativos';
+
+  @override
+  String get outsourcedShowArchived => 'Ver arquivados';
+
+  @override
+  String get archive => 'Arquivar';
+
+  @override
+  String get restore => 'Desarquivar';
+
+  @override
+  String get archivedAt => 'Arquivado em';
+
+  @override
+  String get archiveReasonLabel => 'Motivo do arquivamento (auditoria)';
+
+  @override
+  String get outsourcedCompanyArchive => 'Arquivar empresa';
+
+  @override
+  String get outsourcedCompanyArchiveConfirmTitle => 'Arquivar esta empresa?';
+
+  @override
+  String get outsourcedCompanyRestore => 'Desarquivar';
+
+  @override
+  String get outsourcedCompanyRestoreConfirmTitle =>
+      'Desarquivar esta empresa?';
+
+  @override
+  String get outsourcedCompaniesArchivedEmpty =>
+      'Nenhuma empresa terceirizada arquivada.';
+
+  @override
+  String get outsourcedEmployeeNew => 'Novo colaborador';
+
+  @override
+  String get outsourcedEmployeesEmpty =>
+      'Nenhum colaborador terceirizado/prestador cadastrado.';
+
+  @override
+  String get outsourcedEmployeesArchivedEmpty =>
+      'Nenhum colaborador terceirizado/prestador arquivado.';
+
+  @override
+  String get outsourcedEmployeeCompanyLabel =>
+      'Empresa terceirizada/prestadora';
+
+  @override
+  String get outsourcedEmployeeOriginRegistrationLabel =>
+      'Matrícula da empresa de origem';
+
+  @override
+  String get outsourcedEmployeeBadgeLabel => 'Crachá';
+
+  @override
+  String get outsourcedEmployeeNotesLabel => 'Observações';
+
+  @override
+  String get outsourcedEmployeeArchiveConfirmTitle =>
+      'Arquivar este colaborador?';
+
+  @override
+  String get outsourcedEmployeeRestoreConfirmTitle =>
+      'Desarquivar este colaborador?';
+
+  @override
+  String get outsourcedReportsError => 'Não foi possível carregar o relatório.';
+
+  @override
+  String get outsourcedReportsEmpty =>
+      'Nenhuma empresa terceirizada/prestadora cadastrada.';
+
+  @override
+  String get outsourcedReportsActive => 'Ativos';
+
+  @override
+  String get outsourcedReportsArchived => 'Arquivados';
+
+  @override
+  String get moduleVisibilityTitle => 'Visualização de Módulos';
+
+  @override
+  String get moduleVisibilityDescription =>
+      'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
+
+  @override
+  String get moduleUnitScopeTitle => 'Escopo por Unidade';
+
+  @override
+  String get moduleUnitScopeDescription =>
+      'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).';
+
+  @override
+  String get moduleUnitScopeModuleLabel => 'Módulo';
+
+  @override
+  String get moduleUnitScopeNoUnits => 'Nenhuma Unidade cadastrada.';
+
+  @override
+  String get moduleVisibilityRoleLabel => 'Perfil';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -2744,4 +2857,117 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get outsourcedCompanyStandardBadge => 'Standard';
+
+  @override
+  String get outsourcedTabCompanies => 'Selskaper';
+
+  @override
+  String get outsourcedTabEmployees => 'Registrering av Medarbeidere';
+
+  @override
+  String get outsourcedTabReports => 'Rapporter';
+
+  @override
+  String get outsourcedShowActive => 'Vis aktive';
+
+  @override
+  String get outsourcedShowArchived => 'Vis arkiverte';
+
+  @override
+  String get archive => 'Arkiver';
+
+  @override
+  String get restore => 'Gjenopprett';
+
+  @override
+  String get archivedAt => 'Arkivert den';
+
+  @override
+  String get archiveReasonLabel => 'Årsak til arkivering (revisjon)';
+
+  @override
+  String get outsourcedCompanyArchive => 'Arkiver selskap';
+
+  @override
+  String get outsourcedCompanyArchiveConfirmTitle =>
+      'Arkivere dette selskapet?';
+
+  @override
+  String get outsourcedCompanyRestore => 'Gjenopprett';
+
+  @override
+  String get outsourcedCompanyRestoreConfirmTitle =>
+      'Gjenopprette dette selskapet?';
+
+  @override
+  String get outsourcedCompaniesArchivedEmpty =>
+      'Ingen arkiverte innleide selskaper.';
+
+  @override
+  String get outsourcedEmployeeNew => 'Ny medarbeider';
+
+  @override
+  String get outsourcedEmployeesEmpty =>
+      'Ingen innleide/tjenesteytende medarbeidere registrert.';
+
+  @override
+  String get outsourcedEmployeesArchivedEmpty =>
+      'Ingen arkiverte innleide/tjenesteytende medarbeidere.';
+
+  @override
+  String get outsourcedEmployeeCompanyLabel => 'Innleid/tjenesteytende selskap';
+
+  @override
+  String get outsourcedEmployeeOriginRegistrationLabel =>
+      'Registreringsnummer hos opprinnelig arbeidsgiver';
+
+  @override
+  String get outsourcedEmployeeBadgeLabel => 'Adgangskort';
+
+  @override
+  String get outsourcedEmployeeNotesLabel => 'Merknader';
+
+  @override
+  String get outsourcedEmployeeArchiveConfirmTitle =>
+      'Arkivere denne medarbeideren?';
+
+  @override
+  String get outsourcedEmployeeRestoreConfirmTitle =>
+      'Gjenopprette denne medarbeideren?';
+
+  @override
+  String get outsourcedReportsError => 'Kunne ikke laste rapporten.';
+
+  @override
+  String get outsourcedReportsEmpty =>
+      'Ingen innleide/tjenesteytende selskaper registrert.';
+
+  @override
+  String get outsourcedReportsActive => 'Aktive';
+
+  @override
+  String get outsourcedReportsArchived => 'Arkiverte';
+
+  @override
+  String get moduleVisibilityTitle => 'Modulsynlighet';
+
+  @override
+  String get moduleVisibilityDescription =>
+      'Kontroller hvilke moduler som vises for hver rolle. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.';
+
+  @override
+  String get moduleUnitScopeTitle => 'Enhetsomfang';
+
+  @override
+  String get moduleUnitScopeDescription =>
+      'Begrens en modul til bestemte Enheter for rollene Lokal Administrator og EPI-ansvarlig. Uten noen valgt Enhet er modulen tilgjengelig i alle Enheter (fortsatt underlagt Synlighet ovenfor).';
+
+  @override
+  String get moduleUnitScopeModuleLabel => 'Modul';
+
+  @override
+  String get moduleUnitScopeNoUnits => 'Ingen Enheter registrert.';
+
+  @override
+  String get moduleVisibilityRoleLabel => 'Rolle';
 }

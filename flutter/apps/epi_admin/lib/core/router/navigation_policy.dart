@@ -46,6 +46,16 @@ String? requiredModuleFor(String location) {
   return null;
 }
 
+/// Módulo alternativo que também libera [routeModules] — mesma ideia de
+/// `routePermissionAlternatives` em `route_permissions.dart`: Terceirizados
+/// e Prestadores (ADR-0002 §10) tem duas abas com módulos opt-in distintos
+/// (`terceirizados` para Empresas, `terceirizados_colaboradores` para
+/// Cadastro de Colaboradores) — qualquer um dos dois ligado libera a rota;
+/// cada aba, dentro da tela, ainda checa o seu próprio módulo + permissão.
+const Map<String, String> routeModuleAlternatives = <String, String>{
+  Routes.outsourcedCompanies: 'terceirizados_colaboradores',
+};
+
 /// Decisão final de navegação para [location]: permissão técnica (piso,
 /// já resolvida em `permissions`/`requiredPermissionFor`) AND visibilidade
 /// de módulo (configuração do Administrador Geral, já clampada pela
@@ -57,5 +67,14 @@ bool isModuleLocationAccessible(
 ) {
   final module = requiredModuleFor(location);
   if (module == null) return true;
-  return moduleVisibility[module] ?? true;
+  if (moduleVisibility[module] ?? true) return true;
+  final alternative = _alternativeModuleFor(location);
+  return alternative != null && (moduleVisibility[alternative] ?? true);
+}
+
+String? _alternativeModuleFor(String location) {
+  for (final entry in routeModuleAlternatives.entries) {
+    if (location.startsWith(entry.key)) return entry.value;
+  }
+  return null;
 }

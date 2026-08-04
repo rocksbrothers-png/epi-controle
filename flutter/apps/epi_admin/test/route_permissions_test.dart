@@ -132,4 +132,31 @@ void main() {
       expect(canNavigate(Routes.portal, perms), isTrue);
     });
   });
+
+  group('hasRoutePermission / routePermissionAlternatives (ADR-0002 §10)', () {
+    test('a permissão primária libera a rota', () {
+      expect(hasRoutePermission(Routes.outsourcedCompanies, const ['employees:create']), isTrue);
+    });
+
+    test('a permissão alternativa (Cadastro de Colaboradores) também libera a rota', () {
+      // admin/user têm só employees:create_simplified, nunca employees:create.
+      expect(
+        hasRoutePermission(Routes.outsourcedCompanies, const ['employees:create_simplified']),
+        isTrue,
+      );
+    });
+
+    test('sem nenhuma das duas, a rota fica bloqueada', () {
+      expect(hasRoutePermission(Routes.outsourcedCompanies, const ['employees:view']), isFalse);
+    });
+
+    test('routePermissionAlternatives só cobre a rota de Terceirizados e Prestadores', () {
+      expect(routePermissionAlternatives.keys, [Routes.outsourcedCompanies]);
+      expect(routePermissionAlternatives[Routes.outsourcedCompanies], 'employees:create_simplified');
+    });
+
+    test('rota sem permissão exigida é sempre navegável, alternativa ou não', () {
+      expect(hasRoutePermission(Routes.dashboard, const []), isTrue);
+    });
+  });
 }

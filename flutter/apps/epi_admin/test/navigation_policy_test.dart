@@ -83,17 +83,46 @@ void main() {
     });
 
     test('terceirizados (opt-in, ADR-0002) fica oculto quando desligado, mesmo com permissão técnica', () {
+      // Os dois módulos opt-in da tela (Empresas e Cadastro de
+      // Colaboradores) precisam estar explicitamente desligados — só
+      // "terceirizados": false não basta mais desde que a tela ganhou a
+      // segunda aba (ver `routeModuleAlternatives`).
       expect(
-        isModuleLocationAccessible(Routes.outsourcedCompanies, const {'terceirizados': false}),
+        isModuleLocationAccessible(
+          Routes.outsourcedCompanies,
+          const {'terceirizados': false, 'terceirizados_colaboradores': false},
+        ),
         isFalse,
       );
     });
 
     test('terceirizados aparece assim que o Administrador Geral liga o módulo', () {
       expect(
-        isModuleLocationAccessible(Routes.outsourcedCompanies, const {'terceirizados': true}),
+        isModuleLocationAccessible(
+          Routes.outsourcedCompanies,
+          const {'terceirizados': true, 'terceirizados_colaboradores': false},
+        ),
         isTrue,
       );
+    });
+
+    test('terceirizados_colaboradores (módulo alternativo, ADR-0002 §10) também libera a tela', () {
+      // admin/user só têm employees:create_simplified — sem esta camada,
+      // ligar só o Cadastro de Colaboradores nunca abriria a rota.
+      expect(
+        isModuleLocationAccessible(
+          Routes.outsourcedCompanies,
+          const {'terceirizados': false, 'terceirizados_colaboradores': true},
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('routeModuleAlternatives', () {
+    test('só cobre a rota de Terceirizados e Prestadores', () {
+      expect(routeModuleAlternatives.keys, [Routes.outsourcedCompanies]);
+      expect(routeModuleAlternatives[Routes.outsourcedCompanies], 'terceirizados_colaboradores');
     });
   });
 }

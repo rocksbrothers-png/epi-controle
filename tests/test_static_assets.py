@@ -410,6 +410,18 @@ def test_devolution_view_uses_canonical_api_client():
     assert "setTimeout(r, 1200 * Math.pow" not in devolution_js
 
 
+def test_feedback_detail_view_uses_canonical_api_client():
+    """A view de detalhe não deve manter parsing/fallback HTTP próprio."""
+    feedback_detail_js = (
+        _repo_root() / "static" / "js" / "views" / "feedback-detail.js"
+    ).read_text(encoding="utf-8")
+
+    assert "globalThis.apiFetch(`/api/feedbacks?" in feedback_detail_js
+    assert "globalThis.apiFetch(`/api/feedbacks/${fbId}?" in feedback_detail_js
+    assert "function api(" not in feedback_detail_js
+    assert "return fetch(" not in feedback_detail_js
+
+
 def test_purchase_request_epi_select_follows_unit_visibility_rule():
     """A Nova Requisição de Compra deve listar EPIs seguindo a regra de
     visibilidade do sistema (Global + Joint Venture + Unidade), aplicada

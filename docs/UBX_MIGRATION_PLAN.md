@@ -40,6 +40,8 @@ alvo já adotada pelo projeto; não representa uma reescrita nem uma nova camada
    regressão. A prioridade permanece extrair um domínio por PR, preservando os nomes globais como
    shims temporários.
 2. **P0 — múltiplos adaptadores HTTP nas views:** `feedback.js`, `profile.js`, `procurement.js`,
+   `fichas.js`, `purchases.js` e `employee-portal.js` ainda declaram wrappers locais chamados `api`.
+   `devolution.js` e `feedback-detail.js` já consomem o cliente canônico.
    `fichas.js`, `purchases.js`, `feedback-detail.js` e `employee-portal.js` ainda declaram wrappers
    locais chamados `api`. `devolution.js` foi o primeiro domínio migrado para o cliente canônico.
    `fichas.js`, `purchases.js`, `feedback-detail.js`, `employee-portal.js` e `devolution.js` ainda

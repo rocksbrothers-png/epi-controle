@@ -191,6 +191,207 @@ def update_employee(connection, employee_id, payload, *, actor):
     connection.commit()
 
 
+# ── Cadastro de Colaboradores simplificado (ADR-0002 §10.2) ────────────────
+# Escreve na MESMA tabela employees, nunca cria uma base paralela. Só cobre
+# terceirizado/prestador — CLT continua exclusivamente por create_employee/
+# update_employee. Campos que não fazem parte do formulário simplificado
+# (sector, schedule_type, email, whatsapp) ficam em branco; employee_id_code
+# é gerado automaticamente (não é um campo do formulário).
+
+def _generate_simplified_employee_code(connection, company_id):
+    import secrets
+    for _ in range(5):
+        candidate = f"TERC-{int(company_id)}-{secrets.token_hex(4).upper()}"
+        exists = connection.execute(
+            'SELECT id FROM employees WHERE employee_id_code = ? LIMIT 1', (candidate,),
+        ).fetchone()
+        if not exists:
+            return candidate
+    raise RuntimeError('Não foi possível gerar um código único para o colaborador.')
+
+
+def ensure_actor_unit_scope_for_target(connection, actor, unit_id):
+    """Mesma regra de ensure_actor_employee_scope, mas para um unit_id-alvo
+    que ainda não tem colaborador (ex.: criação) — Administrador Local/
+    Gestor de EPI só podem operar dentro da própria unidade operacional."""
+    if actor.get('role') not in ('admin', 'user'):
+        return
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if not scope_unit_id:
+        raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+    if int(unit_id) != int(scope_unit_id):
+        raise PermissionError('Operação permitida somente para a sua unidade operacional.')
+
+
+def validate_employee_outsourced_simplified_payload(payload):
+    """Campos obrigatórios/opcionais do Cadastro de Colaboradores (ADR-0002
+    §10.2, prompt do produto) — nunca aceita tipo_vinculo == 'CLT'."""
+    payload = payload or {}
+    name = str(payload.get('name') or '').strip()
+    if not name:
+        raise ValueError('Nome completo é obrigatório.')
+    tipo_vinculo = str(payload.get('tipo_vinculo') or '').strip()
+    if not tipo_vinculo:
+        raise ValueError('Tipo de vínculo é obrigatório.')
+    if tipo_vinculo == 'CLT':
+        raise ValueError(
+            'Cadastro de Colaboradores simplificado não aceita vínculo CLT — use o cadastro completo.'
+        )
+    role_name = str(payload.get('role_name') or '').strip()
+    if not role_name:
+        raise ValueError('Função é obrigatória.')
+    admission_date = str(payload.get('admission_date') or '').strip()
+    if not admission_date:
+        raise ValueError('Data de início é obrigatória.')
+    if payload.get('outsourced_company_id') in (None, '', 0, '0'):
+        raise ValueError('Empresa terceirizada/prestadora é obrigatória.')
+    if payload.get('unit_id') in (None, '', 0, '0'):
+        raise ValueError('Unidade é obrigatória.')
+    return {
+        'name': name,
+        'tipo_vinculo': tipo_vinculo,
+        'role_name': role_name,
+        'admission_date': admission_date,
+        'origin_company_registration': str(payload.get('origin_company_registration') or '').strip(),
+        'badge_number': str(payload.get('badge_number') or '').strip(),
+        'notes': str(payload.get('notes') or '').strip(),
+    }
+
+
+def create_employee_outsourced_simplified(connection, payload, *, actor):
+    from core.archival import ensure_record_operational
+    from core.repository import get_unit_by_id
+    from modules.outsourced_companies.service import (
+        get_outsourced_company_by_id, validate_employee_outsourced_reference,
+    )
+    from modules.units.service import ensure_unit_operational
+
+    company_id = int(payload.get('company_id') or actor.get('company_id') or 0)
+    if not company_id:
+        raise ValueError('Empresa é obrigatória.')
+
+    validated = validate_employee_outsourced_simplified_payload(payload)
+    unit_id = int(payload['unit_id'])
+    unit = get_unit_by_id(connection, unit_id)
+    ensure_resource_company(actor, unit, 'Unidade')
+    if str(unit['company_id']) != str(company_id):
+        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+    ensure_unit_operational(connection, unit_id, 'novos colaboradores')
+    ensure_actor_unit_scope_for_target(connection, actor, unit_id)
+
+    outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
+        validate_employee_outsourced_reference(connection, payload, company_id)
+    )
+    if not outsourced_company_id:
+        raise ValueError('Empresa terceirizada/prestadora é obrigatória.')
+    ensure_record_operational(
+        connection, 'outsourced_companies', outsourced_company_id,
+        'Empresa terceirizada', 'novos colaboradores',
+    )
+    outsourced_company = get_outsourced_company_by_id(connection, outsourced_company_id)
+    empresa_origem = str((outsourced_company or {}).get('trade_name') or (outsourced_company or {}).get('legal_name') or '')
+
+    cpf_digits = normalize_cpf(payload.get('cpf'))
+    employee_id_code = _generate_simplified_employee_code(connection, company_id)
+    ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf_digits)
+
+    columns = [
+        'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'sector', 'role_name',
+        'admission_date', 'schedule_type', 'tipo_vinculo', 'empresa_origem',
+        'outsourced_company_id', 'service_contract_id',
+        'epi_responsibility_override', 'epi_responsibility_override_reason',
+        'origin_company_registration', 'badge_number', 'notes',
+    ]
+    values = [
+        company_id, unit_id, employee_id_code, cpf_digits, validated['name'], '', validated['role_name'],
+        validated['admission_date'], '', validated['tipo_vinculo'], empresa_origem,
+        outsourced_company_id, service_contract_id, epi_override, epi_override_reason,
+        validated['origin_company_registration'], validated['badge_number'], validated['notes'],
+    ]
+    from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
+    if legal_entities_ready(connection):
+        columns.append('legal_entity_id')
+        values.append(resolve_employee_legal_entity_id(connection, company_id, payload.get('legal_entity_id')))
+
+    placeholders = ', '.join(['?'] * len(values))
+    cursor = connection.execute(
+        f"INSERT INTO employees ({', '.join(columns)}) VALUES ({placeholders})",
+        tuple(values),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def update_employee_outsourced_simplified(connection, employee_id, payload, *, actor):
+    from core.archival import ensure_record_operational
+    from core.repository import get_employee_by_id as _get_employee_by_id, get_unit_by_id
+    from modules.outsourced_companies.service import (
+        get_outsourced_company_by_id, validate_employee_outsourced_reference,
+    )
+    from modules.units.service import ensure_unit_operational
+
+    current = _get_employee_by_id(connection, employee_id)
+    if not current:
+        raise ValueError('Colaborador não encontrado.')
+    ensure_resource_company(actor, current, 'Colaborador')
+    if str(current.get('tipo_vinculo') or '') == 'CLT' or not current.get('outsourced_company_id'):
+        raise PermissionError(
+            'Este colaborador não pertence ao Cadastro de Colaboradores simplificado — use o cadastro completo.'
+        )
+
+    company_id = int(payload.get('company_id') or current['company_id'])
+    if str(company_id) != str(current['company_id']):
+        raise ValueError('Empresa do colaborador é imutável nesta edição.')
+
+    validated = validate_employee_outsourced_simplified_payload(payload)
+    unit_id = int(payload['unit_id'])
+    unit = get_unit_by_id(connection, unit_id)
+    ensure_resource_company(actor, unit, 'Unidade')
+    if str(unit['company_id']) != str(company_id):
+        raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+    if int(unit_id) != int(current.get('unit_id') or 0):
+        ensure_unit_operational(connection, unit_id, 'transferência de colaboradores')
+    # Escopo por unidade do ator: precisa poder operar tanto na unidade atual
+    # do colaborador quanto na unidade-destino (evita transferir para fora,
+    # ou editar de fora, da própria carteira de unidade).
+    ensure_actor_employee_scope(connection, actor, current)
+    ensure_actor_unit_scope_for_target(connection, actor, unit_id)
+
+    outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
+        validate_employee_outsourced_reference(connection, payload, company_id)
+    )
+    if not outsourced_company_id:
+        raise ValueError('Empresa terceirizada/prestadora é obrigatória.')
+    ensure_record_operational(
+        connection, 'outsourced_companies', outsourced_company_id,
+        'Empresa terceirizada', 'edição de colaboradores',
+    )
+    outsourced_company = get_outsourced_company_by_id(connection, outsourced_company_id)
+    empresa_origem = str((outsourced_company or {}).get('trade_name') or (outsourced_company or {}).get('legal_name') or '')
+
+    cpf_digits = normalize_cpf(payload.get('cpf'))
+    ensure_employee_identity_unique(
+        connection, company_id, current['employee_id_code'], cpf_digits, exclude_id=employee_id,
+    )
+
+    set_columns = [
+        'unit_id', 'cpf', 'name', 'role_name', 'admission_date', 'tipo_vinculo', 'empresa_origem',
+        'outsourced_company_id', 'service_contract_id',
+        'epi_responsibility_override', 'epi_responsibility_override_reason',
+        'origin_company_registration', 'badge_number', 'notes',
+    ]
+    values = [
+        unit_id, cpf_digits, validated['name'], validated['role_name'], validated['admission_date'],
+        validated['tipo_vinculo'], empresa_origem,
+        outsourced_company_id, service_contract_id, epi_override, epi_override_reason,
+        validated['origin_company_registration'], validated['badge_number'], validated['notes'],
+    ]
+    values.append(employee_id)
+    sql = f"UPDATE employees SET {', '.join(f'{c} = ?' for c in set_columns)} WHERE id = ?"
+    connection.execute(sql, tuple(values))
+    connection.commit()
+
+
 def get_employee_by_id(connection, employee_id):
     from epi_backend.db import table_columns
     cols = table_columns(connection, 'employees')
@@ -199,10 +400,14 @@ def get_employee_by_id(connection, employee_id):
         ', outsourced_company_id, service_contract_id, epi_responsibility_override, '
         'epi_responsibility_override_reason'
     ) if 'outsourced_company_id' in cols else ''
+    # Cadastro de Colaboradores simplificado (ADR-0002 §10.2).
+    simplified_cols = (
+        ', origin_company_registration, badge_number, notes'
+    ) if 'origin_company_registration' in cols else ''
     row = connection.execute(
         'SELECT id, company_id, unit_id, employee_id_code, cpf, name, email, whatsapp, '
         'preferred_contact_channel, sector, role_name, admission_date, schedule_type, '
-        f'tipo_vinculo, empresa_origem{legal_entity_col}{outsourced_cols} FROM employees WHERE id = ?',
+        f'tipo_vinculo, empresa_origem{legal_entity_col}{outsourced_cols}{simplified_cols} FROM employees WHERE id = ?',
         (employee_id,),
     ).fetchone()
     return row_to_dict(row) if row else None

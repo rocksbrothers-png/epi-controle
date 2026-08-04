@@ -311,6 +311,23 @@ def get_effective_module_visibility(connection, actor, unit_id=None):
     return resolve_module_visibility(context, framework, granted)
 
 
+def ensure_module_enabled_for_unit(connection, actor, module, unit_id):
+    """Autoridade no BACKEND (ADR-0002 §10.3) para módulos opt-in escopáveis
+    por Unidade: mesmo com o menu oculto no Flutter/web legado, nenhuma rota
+    de escrita pode confiar só na UI. Levanta PermissionError se o módulo
+    não está habilitado (config do Administrador Geral) OU se a unidade do
+    ator não está autorizada em module_unit_scope — reusa integralmente
+    get_effective_module_visibility/resolve_module_visibility, sem
+    mecanismo novo.
+    """
+    effective = get_effective_module_visibility(connection, actor, unit_id=unit_id)
+    if not effective.get(module, False):
+        raise PermissionError(
+            f'Módulo "{module}" não autorizado para o seu perfil/unidade. '
+            'Peça ao Administrador Geral para habilitar o acesso.'
+        )
+
+
 def save_module_visibility(connection, company_id, role, updates):
     """Grava o override de visibilidade de módulos para um perfil, dentro
     do framework do tenant. Retorna (before, after) só dos módulos alterados

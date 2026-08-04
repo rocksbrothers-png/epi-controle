@@ -62,7 +62,7 @@ _SELECT_COLUMNS = (
 )
 
 _CONTRACT_SELECT_COLUMNS = (
-    'id, company_id, outsourced_company_id, unit_id, contract_ref, start_date, end_date, '
+    'id, company_id, outsourced_company_id, unit_id, contract_ref, service_order_ref, start_date, end_date, '
     'epi_responsibility_override, override_reason, status, created_by_user_id, created_at, updated_at'
 )
 
@@ -302,6 +302,7 @@ def validate_service_contract_payload(connection, payload, company_id, outsource
         'outsourced_company_id': int(outsourced_company_id),
         'unit_id': unit_id,
         'contract_ref': str(payload.get('contract_ref') or '').strip(),
+        'service_order_ref': str(payload.get('service_order_ref') or '').strip(),
         'start_date': str(payload.get('start_date') or '').strip(),
         'end_date': str(payload.get('end_date') or '').strip(),
         'epi_responsibility_override': override,
@@ -315,11 +316,11 @@ def create_service_contract(connection, payload, company_id, outsourced_company_
     now_iso = datetime.now(UTC).isoformat()
     cursor = connection.execute(
         'INSERT INTO service_contracts (company_id, outsourced_company_id, unit_id, contract_ref, '
-        'start_date, end_date, epi_responsibility_override, override_reason, status, '
-        'created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'service_order_ref, start_date, end_date, epi_responsibility_override, override_reason, status, '
+        'created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
             validated['company_id'], validated['outsourced_company_id'], validated['unit_id'],
-            validated['contract_ref'], validated['start_date'], validated['end_date'],
+            validated['contract_ref'], validated['service_order_ref'], validated['start_date'], validated['end_date'],
             validated['epi_responsibility_override'], validated['override_reason'],
             validated['status'], int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
         ),

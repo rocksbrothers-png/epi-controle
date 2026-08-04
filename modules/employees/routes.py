@@ -7,8 +7,10 @@ from datetime import datetime
 from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.permissions import (
+    PERM_EMPLOYEES_CREATE_SIMPLIFIED,
     PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
     PERM_EMPLOYEES_TRANSFER,
+    PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
     PERM_EMPLOYEES_VIEW,
 )
 from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
@@ -19,6 +21,7 @@ from modules.employees.service import (
     apply_current_unit_allocation,
     close_temporary_unit_movements,
     create_employee,
+    create_employee_outsourced_simplified,
     create_employee_unit_movement,
     ensure_actor_employee_scope,
     ensure_employee_operational,
@@ -30,9 +33,11 @@ from modules.employees.service import (
     purge_employee_history,
     summarize_employee_history,
     update_employee,
+    update_employee_outsourced_simplified,
     transfer_employee_legal_entity,
     update_employee_unit,
 )
+from modules.settings.service import ensure_module_enabled_for_unit
 
 from core import archival
 
@@ -133,6 +138,79 @@ def handle_put_employee(handler, parsed, payload, match):
         if employee:
             _audit_epi_responsibility_override(connection, payload['company_id'], actor, employee, before_override=before_override)
             connection.commit()
+        return send_json(handler, 200, {'ok': True})
+
+
+# ── Cadastro de Colaboradores simplificado (ADR-0002 §10.2/§10.3) ───────────
+# Escreve na MESMA tabela employees, via modules.employees.service.
+# create/update_employee_outsourced_simplified — nunca cria uma base
+# paralela. Além da permissão técnica (employees:create_simplified/
+# update_simplified), toda operação valida no BACKEND que o módulo
+# "terceirizados_colaboradores" está autorizado para a Unidade-alvo — a
+# mesma checagem que orienta o menu no Flutter/web legado, mas aqui é
+# autoridade, não só UI (ensure_module_enabled_for_unit nunca confia no
+# estado do menu do cliente).
+
+def handle_post_employee_outsourced_simplified(handler, parsed, payload, match):
+    require_fields(payload, [
+        'actor_user_id', 'company_id', 'unit_id', 'outsourced_company_id',
+        'name', 'cpf', 'role_name', 'tipo_vinculo', 'admission_date',
+    ])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed, payload),
+            PERM_EMPLOYEES_CREATE_SIMPLIFIED, int(payload['company_id']),
+        )
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', int(payload['unit_id']))
+        employee_id = create_employee_outsourced_simplified(connection, payload, actor=actor)
+        employee = get_employee_by_id(connection, employee_id)
+        from modules.companies.service import register_company_audit
+        register_company_audit(
+            connection, int(payload['company_id']), actor, 'employee_outsourced_simplified_created',
+            f"Colaborador terceirizado/prestador cadastrado: {employee.get('name')}.",
+            {
+                'employee_id': employee_id,
+                'name': employee.get('name'),
+                'tipo_vinculo': employee.get('tipo_vinculo'),
+                'outsourced_company_id': employee.get('outsourced_company_id'),
+                'unit_id': employee.get('unit_id'),
+            },
+        )
+        connection.commit()
+        return send_json(handler, 201, {'ok': True, 'id': employee_id})
+
+
+def handle_put_employee_outsourced_simplified(handler, parsed, payload, match):
+    employee_id = int(match.group(1))
+    require_fields(payload, [
+        'actor_user_id', 'unit_id', 'outsourced_company_id',
+        'name', 'cpf', 'role_name', 'tipo_vinculo', 'admission_date',
+    ])
+    with closing(get_connection()) as connection:
+        current = get_employee_by_id(connection, employee_id)
+        if not current:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        company_id = int(payload.get('company_id') or current['company_id'])
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed, payload),
+            PERM_EMPLOYEES_UPDATE_SIMPLIFIED, company_id,
+        )
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', int(payload['unit_id']))
+        update_employee_outsourced_simplified(connection, employee_id, payload, actor=actor)
+        employee = get_employee_by_id(connection, employee_id)
+        from modules.companies.service import register_company_audit
+        register_company_audit(
+            connection, company_id, actor, 'employee_outsourced_simplified_updated',
+            f"Colaborador terceirizado/prestador atualizado: {employee.get('name')}.",
+            {
+                'employee_id': employee_id,
+                'name': employee.get('name'),
+                'tipo_vinculo': employee.get('tipo_vinculo'),
+                'outsourced_company_id': employee.get('outsourced_company_id'),
+                'unit_id': employee.get('unit_id'),
+            },
+        )
+        connection.commit()
         return send_json(handler, 200, {'ok': True})
 
 
@@ -379,5 +457,13 @@ def register_routes(router):
     router.register('POST',   r'/api/employees/(\d+)/purge-cancel$',  handle_post_employee_purge_cancel,  regex=True)
     router.register('POST',   r'/api/employees/(\d+)/purge-confirm$', handle_post_employee_purge_confirm, regex=True)
     router.register('POST',   '/api/employee-unit-movements',     handle_post_employee_unit_movements)
+    router.register('POST',   '/api/employees/outsourced-simplified', handle_post_employee_outsourced_simplified)
     router.register('PUT',    r'/api/employees/(\d+)',             handle_put_employee,    regex=True)
     router.register('DELETE', r'/api/employees/(\d+)',             handle_delete_employee, regex=True)
+    # Registrada DEPOIS da PUT genérica acima: `(\d+)` na rota genérica não
+    # casa com o segmento literal "outsourced-simplified" (não são dígitos),
+    # então a ordem não afeta o roteamento — só evita que testes que
+    # localizam "a" rota PUT de /api/employees pelo substring 'employees'
+    # peguem esta em vez da genérica.
+    router.register('PUT',    r'^/api/employees/outsourced-simplified/(\d+)$',
+                    handle_put_employee_outsourced_simplified, regex=True)

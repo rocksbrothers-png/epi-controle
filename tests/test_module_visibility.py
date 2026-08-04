@@ -8,6 +8,8 @@ regra que garante que a configuração administrativa nunca amplia o que a
 permissão técnica do perfil já não autoriza.
 """
 
+import pytest
+
 import modules.settings.service as settings_service
 from core.permissions import PERMISSIONS
 from epi_backend.rule_engine import (
@@ -369,3 +371,51 @@ def test_get_effective_module_visibility_respects_unit_scope_for_admin(monkeypat
     )
     # Administrador Local está na unidade 10, mas só a 9 foi autorizada.
     assert effective['terceirizados_colaboradores'] is False
+
+
+# ── ensure_module_enabled_for_unit: autoridade no BACKEND (ADR-0002 §10.3) ──
+# O menu oculto no Flutter/web legado é só orientação de UI — toda rota de
+# escrita dos módulos opt-in escopáveis por Unidade precisa desta checagem
+# independente, mesmo que o cliente tente contornar o menu.
+
+def test_ensure_module_enabled_for_unit_raises_when_module_not_configured(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({9, 10})
+    # Módulo nunca foi ligado pelo Administrador Geral para este perfil.
+    with pytest.raises(PermissionError):
+        settings_service.ensure_module_enabled_for_unit(
+            conn, {'company_id': 7, 'id': 1, 'role': 'admin'}, 'terceirizados_colaboradores', 9,
+        )
+
+
+def test_ensure_module_enabled_for_unit_raises_when_unit_not_authorized(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({9, 10})
+    settings_service.save_module_visibility(conn, 7, 'admin', {'terceirizados_colaboradores': True})
+    settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [9])
+    with pytest.raises(PermissionError):
+        settings_service.ensure_module_enabled_for_unit(
+            conn, {'company_id': 7, 'id': 1, 'role': 'admin'}, 'terceirizados_colaboradores', 10,
+        )
+
+
+def test_ensure_module_enabled_for_unit_passes_when_authorized(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({9, 10})
+    settings_service.save_module_visibility(conn, 7, 'admin', {'terceirizados_colaboradores': True})
+    settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [9])
+    settings_service.ensure_module_enabled_for_unit(
+        conn, {'company_id': 7, 'id': 1, 'role': 'admin'}, 'terceirizados_colaboradores', 9,
+    )  # não levanta
+
+
+def test_ensure_module_enabled_for_unit_general_admin_not_unit_scoped(monkeypatch):
+    # general_admin nunca é escopado por unidade — basta o módulo estar
+    # ligado, independente de module_unit_scope.
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({9, 10})
+    settings_service.save_module_visibility(conn, 7, 'general_admin', {'terceirizados_colaboradores': True})
+    settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [9])
+    settings_service.ensure_module_enabled_for_unit(
+        conn, {'company_id': 7, 'id': 1, 'role': 'general_admin'}, 'terceirizados_colaboradores', 10,
+    )  # não levanta — role fora de admin/user não é escopada por unidade

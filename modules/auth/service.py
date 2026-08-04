@@ -114,7 +114,7 @@ def authenticate_login(connection, username, password, totp_code=None):
         # combinação (config x permissão técnica) usada no /api/bootstrap.
         # Vem também no login para o NavigationPolicy do Flutter decidir a
         # navegação desde a primeira tela, sem esperar o bootstrap completo.
-        'module_visibility': get_effective_module_visibility(connection, user_data),
+        'module_visibility': get_effective_module_visibility(connection, user_data, unit_id=operational_unit_id),
         'token': create_jwt_token(user_data),
         'token_expires_in': JWT_EXP_SECONDS,
         'refresh_token': create_refresh_token(user_data),
@@ -380,7 +380,7 @@ def build_bootstrap(connection, actor):
         # autorização de dados continua exclusivamente nas rotas de API.
         'module_visibility': _safe_bootstrap_section(
             'module_visibility',
-            lambda: get_effective_module_visibility(connection, actor),
+            lambda: get_effective_module_visibility(connection, actor, unit_id=_epis_scope_unit),
             {}, warnings, actor, connection=connection,
         ),
         'platform_brand': _safe_bootstrap_section('platform_brand', lambda: get_platform_brand(connection), {}, warnings, actor, connection=connection),

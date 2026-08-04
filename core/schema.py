@@ -2526,7 +2526,7 @@ def ensure_outsourced_companies(connection) -> None:
                 epi_responsibility TEXT NOT NULL DEFAULT 'Conforme Contrato',
                 registration_mode TEXT NOT NULL DEFAULT 'simplified',
                 registration_status TEXT NOT NULL DEFAULT 'pending_completion',
-                status TEXT NOT NULL DEFAULT 'Ativa',
+                status TEXT NOT NULL DEFAULT 'active',
                 promoted_at TEXT NOT NULL DEFAULT '',
                 created_by_user_id INTEGER,
                 created_at TEXT NOT NULL DEFAULT '',
@@ -2602,6 +2602,10 @@ def ensure_outsourced_companies(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    # "Ordem de Serviço" do Cadastro de Colaboradores simplificado (ADR-0002
+    # §10.1) — contract_ref já cobre "Contrato" e end_date já cobre "Data
+    # prevista de término"; esta é a única peça sem equivalente existente.
+    _safe_add_column(connection, 'service_contracts', 'service_order_ref', "TEXT NOT NULL DEFAULT ''")
 
     # employees: referência à empresa terceirizada/contrato (nullable = CLT).
     _safe_add_column(connection, 'employees', 'outsourced_company_id', 'INTEGER')
@@ -2624,6 +2628,53 @@ def ensure_outsourced_companies(connection) -> None:
     # default de sistema (30 dias) só é usado quando o tenant não configurou
     # nada; não é gravado aqui como linha, apenas documentado — o serviço lê
     # com fallback, seguindo o mesmo padrão de outras chaves do framework.
+
+
+def ensure_outsourced_company_archival_lifecycle_columns(connection) -> None:
+    """Ciclo de vida de arquivamento (soft delete) para Empresa Terceirizada/
+    Prestadora (ADR-0002 §10.4) — mesma política de Colaboradores/Unidades/
+    EPIs: exclusão vira arquivamento com retenção mínima de 5 anos.
+
+    ``status`` já existia como texto livre PT-BR (``'Ativa'``/``'Inativa'``),
+    gravável pelo formulário mas nunca lido por nenhuma tela/filtro — é
+    redefinido aqui para ser o campo de lifecycle (mesmo contrato de
+    ``employees``/``units``). O backfill roda ANTES do CHECK constraint (na
+    migration SQL pareada) tratar qualquer valor fora do novo enum.
+    """
+    try:
+        connection.execute(
+            "UPDATE outsourced_companies SET status = 'active' "
+            "WHERE status IS NULL OR status NOT IN "
+            "('active', 'inactive', 'archived', 'pending_deletion', 'deleted')"
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    migrations = [
+        ('archived_at', 'TEXT'),
+        ('archived_by', 'INTEGER'),
+        ('archive_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('retention_until', 'TEXT'),
+        ('legal_hold', 'INTEGER NOT NULL DEFAULT 0'),
+        ('legal_hold_reason', "TEXT NOT NULL DEFAULT ''"),
+        ('deleted_at', 'TEXT'),
+        ('deleted_by', 'INTEGER'),
+        ('delete_reason', "TEXT NOT NULL DEFAULT ''"),
+    ]
+    for col, defn in migrations:
+        _safe_add_column(connection, 'outsourced_companies', col, defn)
+    # Retenção configurável por tenant, mesmo padrão de employee_retention_years.
+    _safe_add_column(connection, 'companies', 'outsourced_company_retention_years', 'INTEGER NOT NULL DEFAULT 5')
+
+
+def ensure_employee_simplified_registration_columns(connection) -> None:
+    """Campos opcionais do Cadastro de Colaboradores simplificado (ADR-0002
+    §10.1) — matrícula da empresa de origem, crachá e observações. Aditivos,
+    default vazio: colaborador CLT (ou qualquer registro existente) nunca
+    muda de comportamento.
+    """
+    _safe_add_column(connection, 'employees', 'origin_company_registration', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'badge_number', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'employees', 'notes', "TEXT NOT NULL DEFAULT ''")
 
 
 def ensure_stock_reservations(connection) -> None:
@@ -3301,6 +3352,10 @@ def init_db():
             # Depende de ensure_legal_entities: usa a FK de companies e o
             # padrão de employees já criado por essa migração.
             ensure_outsourced_companies,
+            # Depende de ensure_outsourced_companies (tabela/coluna status
+            # precisam existir antes do backfill/lifecycle).
+            ensure_outsourced_company_archival_lifecycle_columns,
+            ensure_employee_simplified_registration_columns,
             ensure_unit_lifecycle_columns,
             ensure_archival_lifecycle_columns,
             ensure_stock_columns,

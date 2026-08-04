@@ -17,6 +17,7 @@ from core.permissions import (
     PERM_DASHBOARD_VIEW,
     PERM_DELIVERIES_VIEW,
     PERM_EMPLOYEES_CREATE,
+    PERM_EMPLOYEES_CREATE_SIMPLIFIED,
     PERM_FICHAS_VIEW,
     PERM_LEGAL_ENTITIES_VIEW,
     PERM_PO_VIEW,
@@ -53,6 +54,7 @@ MODULE_KEYS = (
     "administracao",
     "configuracoes",
     "terceirizados",
+    "terceirizados_colaboradores",
 )
 
 # Piso técnico de cada módulo: o ator só pode enxergá-lo se tiver ao menos
@@ -78,6 +80,11 @@ MODULE_REQUIRED_PERMISSIONS: dict[str, frozenset[str]] = {
     # subpasta — mas ver _OPT_IN_MODULES abaixo: ela nasce oculta para todos,
     # inclusive esses papéis, até o Administrador Geral ligá-la por tenant.
     "terceirizados": frozenset({PERM_EMPLOYEES_CREATE}),
+    # Aba "Cadastro de Colaboradores" simplificado (ADR-0002 §10) — piso
+    # próprio (não reaproveita PERM_EMPLOYEES_CREATE): dá ao Administrador
+    # Local/Gestor de EPI só o cadastro simplificado de terceirizado/
+    # prestador, nunca o cadastro completo de CLT.
+    "terceirizados_colaboradores": frozenset({PERM_EMPLOYEES_CREATE_SIMPLIFIED}),
 }
 
 # Comprador e Aprovador enxergam stock:view/deliveries:view apenas como
@@ -92,9 +99,17 @@ _STRUCTURALLY_HIDDEN_BY_DEFAULT: dict[str, frozenset[str]] = {
 # Módulos "opt-in": diferente do padrão (visível sse a permissão técnica
 # existe), estes nascem OCULTOS para todo papel — mesmo quem tem a
 # permissão técnica — até o Administrador Geral ligá-los explicitamente na
-# configuração por tenant (module_visibility). Hoje só "terceirizados"
-# (ADR-014, condição de aprovação: subpasta oculta por padrão).
-_OPT_IN_MODULES: frozenset[str] = frozenset({"terceirizados"})
+# configuração por tenant (module_visibility). "terceirizados" (ADR-014,
+# condição de aprovação: subpasta oculta por padrão) e
+# "terceirizados_colaboradores" (ADR-0002 §10, mesma regra).
+_OPT_IN_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
+
+# Módulos que suportam restrição adicional por Unidade (ADR-0002 §10.3) —
+# além de perfil/tenant, o Administrador Geral pode restringir a um
+# subconjunto de unidades. Vazio/ausente em module_unit_scope (o padrão
+# para todo módulo fora desta lista) significa "sem restrição de unidade" —
+# nenhum módulo existente muda de comportamento com esta extensão.
+_UNIT_SCOPABLE_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
 
 
 def _default_module_visibility() -> dict[str, dict[str, bool]]:
@@ -159,6 +174,10 @@ def default_framework_payload() -> dict[str, Any]:
         },
         "visibility_rules": [],
         "module_visibility": _default_module_visibility(),
+        # Restrição adicional por Unidade (ADR-0002 §10.3), só para módulos
+        # em _UNIT_SCOPABLE_MODULES — {module: [unit_id, ...]}. Vazio/ausente
+        # é o padrão de todo módulo: sem restrição de unidade.
+        "module_unit_scope": {},
         "report_scopes": {
             report_type: {
                 "enabled": True,
@@ -247,6 +266,22 @@ def normalize_framework_payload(candidate: dict[str, Any] | None) -> dict[str, A
             module: bool(modules[module]) for module in MODULE_KEYS if module in modules
         }
     payload["module_visibility"] = _merge(_default_module_visibility(), cleaned_module_visibility)
+
+    # Restrição por Unidade (ADR-0002 §10.3) — só módulos declarados
+    # unit-scopable aceitam entrada; ids não numéricos/duplicados são
+    # descartados. Validação de que a unidade pertence ao tenant é
+    # responsabilidade do chamador (modules.settings.service.
+    # save_module_unit_scope), que tem o company_id — esta função é pura e
+    # não consulta o banco.
+    cleaned_module_unit_scope: dict[str, list[int]] = {}
+    for module, unit_ids in (payload.get("module_unit_scope", {}) or {}).items():
+        module_name = str(module or "").strip()
+        if module_name not in _UNIT_SCOPABLE_MODULES or not isinstance(unit_ids, list):
+            continue
+        cleaned_module_unit_scope[module_name] = sorted({
+            int(item) for item in unit_ids if str(item).strip().isdigit() and int(item) > 0
+        })
+    payload["module_unit_scope"] = cleaned_module_unit_scope
 
     for report_type in SUPPORTED_REPORT_TYPES:
         scope = payload["report_scopes"].setdefault(report_type, {})
@@ -368,18 +403,31 @@ def resolve_module_visibility(context: RuleContext, framework: dict[str, Any], a
 
     Combinação: configuração (padrão do sistema + override do tenant, já
     mesclados em `framework["module_visibility"]` por normalize_framework_payload)
-    AND permissão técnica (piso que a configuração nunca ultrapassa). O
-    backend segue sendo a autoridade final: este resultado só orienta
-    menu/rotas/deep links no Flutter e no web legado — nenhuma rota de dados
-    passa a confiar nele para autorizar leitura/escrita.
+    AND permissão técnica (piso que a configuração nunca ultrapassa) AND,
+    para módulos em `_UNIT_SCOPABLE_MODULES` com lista configurada em
+    `framework["module_unit_scope"]`, a unidade operacional do ator
+    (Administrador Local/Gestor de EPI — únicos papéis escopados por
+    unidade, `context.unit_id`) precisa estar na lista autorizada
+    (ADR-0002 §10.3). `general_admin`/`registry_admin`/`master_admin` não
+    são escopados por unidade em nenhum outro fluxo do sistema e não são
+    afetados por esta checagem. O backend segue sendo a autoridade final:
+    este resultado só orienta menu/rotas/deep links no Flutter e no web
+    legado — nenhuma rota de dados passa a confiar nele para autorizar
+    leitura/escrita.
     """
     role_config = framework.get("module_visibility", {}).get(context.role, {})
+    unit_scope = framework.get("module_unit_scope", {}) or {}
     granted = set(actor_permissions or [])
     resolved: dict[str, bool] = {}
     for module, required in MODULE_REQUIRED_PERMISSIONS.items():
         has_technical_permission = bool(required & granted)
         configured = bool(role_config.get(module, False))
-        resolved[module] = configured and has_technical_permission
+        unit_ok = True
+        if module in _UNIT_SCOPABLE_MODULES and context.role in ("admin", "user"):
+            allowed_units = unit_scope.get(module) or []
+            if allowed_units:
+                unit_ok = context.unit_id is not None and int(context.unit_id) in set(allowed_units)
+        resolved[module] = configured and has_technical_permission and unit_ok
     return resolved
 
 

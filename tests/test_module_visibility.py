@@ -13,6 +13,7 @@ from core.permissions import PERMISSIONS
 from epi_backend.rule_engine import (
     MODULE_KEYS,
     MODULE_REQUIRED_PERMISSIONS,
+    _UNIT_SCOPABLE_MODULES,
     build_context,
     default_framework_payload,
     normalize_framework_payload,
@@ -51,15 +52,18 @@ def test_default_visibility_matches_technical_permission_floor():
 
 
 def test_master_and_general_admin_see_every_module_by_default():
-    # "terceirizados" é opt-in (ADR-014): oculto por padrão até para quem tem
-    # o piso técnico, porque a subpasta só deve aparecer quando o
-    # Administrador Geral a liga explicitamente por tenant.
+    # "terceirizados" (ADR-014) e "terceirizados_colaboradores" (ADR-0002
+    # §10) são opt-in: ocultos por padrão até para quem tem o piso técnico,
+    # porque a subpasta só deve aparecer quando o Administrador Geral a liga
+    # explicitamente por tenant.
     visibility = default_framework_payload()['module_visibility']
     for role in ('master_admin', 'general_admin'):
         modules = dict(visibility[role])
-        opt_in = modules.pop('terceirizados')
+        opt_in_terceirizados = modules.pop('terceirizados')
+        opt_in_colaboradores = modules.pop('terceirizados_colaboradores')
         assert all(modules.values()), role
-        assert opt_in is False, role
+        assert opt_in_terceirizados is False, role
+        assert opt_in_colaboradores is False, role
 
 
 def test_terceirizados_is_opt_in_hidden_for_every_role_by_default():
@@ -212,3 +216,156 @@ def test_get_effective_module_visibility_falls_back_when_storage_read_fails(monk
         conn, {'company_id': 7, 'id': 1, 'role': 'admin'},
     )
     assert effective['dashboard'] is True
+
+
+# ── module_unit_scope: escopo por Unidade (ADR-0002 §10.3) ────────────────
+# Extensão do MESMO framework/module_visibility — não é mecanismo novo.
+# _UNIT_SCOPABLE_MODULES restringe onde a checagem se aplica; papéis fora
+# de admin/user (general_admin/registry_admin/master_admin) nunca são
+# escopados por unidade, em nenhum outro fluxo do sistema.
+
+def test_module_unit_scope_defaults_to_empty():
+    assert default_framework_payload()['module_unit_scope'] == {}
+
+
+def test_normalize_module_unit_scope_keeps_only_scopable_modules():
+    normalized = normalize_framework_payload({
+        'module_unit_scope': {
+            'terceirizados_colaboradores': [2, 1, 2],
+            'estoque': [3],  # não escopável por unidade — descartado
+        },
+    })
+    assert normalized['module_unit_scope'] == {'terceirizados_colaboradores': [1, 2]}
+
+
+def test_normalize_module_unit_scope_ignores_non_list_value():
+    normalized = normalize_framework_payload({
+        'module_unit_scope': {'terceirizados_colaboradores': 'not-a-list'},
+    })
+    assert normalized['module_unit_scope'] == {}
+
+
+def test_resolve_module_visibility_unit_scope_blocks_admin_outside_authorized_units():
+    framework = normalize_framework_payload({
+        'module_visibility': {'admin': {'terceirizados_colaboradores': True}},
+        'module_unit_scope': {'terceirizados_colaboradores': [1, 2]},
+    })
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'admin'}, unit_id=9)
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['admin'])
+    assert resolved['terceirizados_colaboradores'] is False
+
+
+def test_resolve_module_visibility_unit_scope_allows_admin_inside_authorized_units():
+    framework = normalize_framework_payload({
+        'module_visibility': {'admin': {'terceirizados_colaboradores': True}},
+        'module_unit_scope': {'terceirizados_colaboradores': [1, 2]},
+    })
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'admin'}, unit_id=2)
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['admin'])
+    assert resolved['terceirizados_colaboradores'] is True
+
+
+def test_resolve_module_visibility_unit_scope_empty_list_means_unrestricted():
+    framework = normalize_framework_payload({
+        'module_visibility': {'admin': {'terceirizados_colaboradores': True}},
+    })
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'admin'})  # sem unit_id
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['admin'])
+    assert resolved['terceirizados_colaboradores'] is True
+
+
+def test_resolve_module_visibility_unit_scope_does_not_apply_to_general_admin():
+    # general_admin nunca é escopado por unidade (papel de empresa inteira).
+    framework = normalize_framework_payload({
+        'module_visibility': {'general_admin': {'terceirizados_colaboradores': True}},
+        'module_unit_scope': {'terceirizados_colaboradores': [1, 2]},
+    })
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'general_admin'})
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['general_admin'])
+    assert resolved['terceirizados_colaboradores'] is True
+
+
+class _FakeUnitsConnection(_FakeConnection):
+    """Conexão fake que responde à query de unidades do tenant usada por
+    _configuration_scope_unit_ids (validação de pertencimento em
+    save_module_unit_scope)."""
+
+    def __init__(self, unit_ids):
+        self._unit_ids = set(unit_ids)
+
+    def execute(self, _sql, _params=()):
+        return _FakeUnitsRows([{'id': unit_id} for unit_id in self._unit_ids])
+
+
+class _FakeUnitsRows:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+def test_save_module_unit_scope_returns_before_after_diff(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({1, 2, 3})
+    before, after = settings_service.save_module_unit_scope(
+        conn, 7, 'terceirizados_colaboradores', [2, 3, 3],
+    )
+    assert before == []
+    assert after == [2, 3]
+
+
+def test_save_module_unit_scope_rejects_non_scopable_module(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({1, 2})
+    try:
+        settings_service.save_module_unit_scope(conn, 7, 'estoque', [1])
+        assert False, 'deveria ter levantado ValueError'
+    except ValueError:
+        pass
+
+
+def test_save_module_unit_scope_rejects_non_list_payload(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({1, 2})
+    try:
+        settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', 'not-a-list')
+        assert False, 'deveria ter levantado ValueError'
+    except ValueError:
+        pass
+
+
+def test_save_module_unit_scope_filters_out_units_outside_tenant(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({1, 2})
+    # 99 não pertence ao tenant (company_id=7) — descartado silenciosamente.
+    before, after = settings_service.save_module_unit_scope(
+        conn, 7, 'terceirizados_colaboradores', [1, 99],
+    )
+    assert before == []
+    assert after == [1]
+
+
+def test_get_module_unit_scope_config_reflects_saved_scope(monkeypatch):
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({1, 2, 3})
+    settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [1, 2])
+    config = settings_service.get_module_unit_scope_config(conn, 7)
+    assert config == {'terceirizados_colaboradores': [1, 2]}
+
+
+def test_get_effective_module_visibility_respects_unit_scope_for_admin(monkeypatch):
+    # unit_id é responsabilidade do chamador (modules.auth.service/routes,
+    # via modules.employees.service.actor_operational_unit_id) — não é
+    # recalculado dentro de get_effective_module_visibility, para não
+    # importar modules.employees.service a partir de modules.settings.service
+    # (evita ciclo: settings -> employees -> outsourced_companies -> settings).
+    _fake_meta_store(monkeypatch)
+    conn = _FakeUnitsConnection({9, 10})
+    settings_service.save_module_visibility(conn, 7, 'admin', {'terceirizados_colaboradores': True})
+    settings_service.save_module_unit_scope(conn, 7, 'terceirizados_colaboradores', [9])
+    effective = settings_service.get_effective_module_visibility(
+        conn, {'company_id': 7, 'id': 1, 'role': 'admin'}, unit_id=10,
+    )
+    # Administrador Local está na unidade 10, mas só a 9 foi autorizada.
+    assert effective['terceirizados_colaboradores'] is False

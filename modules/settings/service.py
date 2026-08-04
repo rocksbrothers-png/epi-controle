@@ -10,6 +10,7 @@ from epi_backend.http_utils import structured_log as _structured_log
 from epi_backend.rule_engine import SUPPORTED_EXECUTION_MODES, normalize_framework_payload
 from epi_backend.rule_engine import (
     MODULE_KEYS,
+    _UNIT_SCOPABLE_MODULES,
     build_context as build_rule_context,
     compute_visibility_diff,
     resolve_execution_plan,
@@ -277,12 +278,22 @@ def get_module_visibility_config(connection, company_id):
     return framework.get('module_visibility', {})
 
 
-def get_effective_module_visibility(connection, actor):
+def get_effective_module_visibility(connection, actor, unit_id=None):
     """Visibilidade efetiva de cada módulo para o ator autenticado: config
     (padrão + override do tenant) AND permissão técnica. É isto que entra
     no /api/bootstrap (e no login/`auth/me`) para orientar menu/rotas no
     Flutter e no web legado — a autorização real de dados continua nas
     rotas, inalterada.
+
+    `unit_id` (ADR-0002 §10.3): unidade operacional do ator, só relevante
+    para Administrador Local/Gestor de EPI (resolve_module_visibility só a
+    usa para módulos em _UNIT_SCOPABLE_MODULES e papéis admin/user). O
+    chamador (modules.auth.service/routes) já resolve isso via
+    modules.employees.service.actor_operational_unit_id — não é recalculado
+    aqui para não importar modules.employees.service a partir deste módulo
+    (modules.employees.service importa modules.outsourced_companies.service,
+    que já importa modules.settings.service: fechar esse ciclo aqui criaria
+    um import circular entre os três).
 
     Camada só-UI: se a leitura da configuração falhar (ex.: schema ainda
     não migrado), cai para a regra padrão do sistema (sem override de
@@ -295,7 +306,7 @@ def get_effective_module_visibility(connection, actor):
     except Exception as exc:
         structured_log('warning', 'configuration.module_visibility_load_error', error=str(exc))
         framework = normalize_framework_payload({})
-    context = build_rule_context(actor)
+    context = build_rule_context(actor, unit_id=unit_id)
     granted = PERMISSIONS.get(str(actor.get('role') or ''), frozenset())
     return resolve_module_visibility(context, framework, granted)
 
@@ -324,6 +335,48 @@ def save_module_visibility(connection, company_id, role, updates):
     if not before:
         raise ValueError('Nenhum módulo reconhecido em: ' + ', '.join(sorted(updates.keys())))
     framework.setdefault('module_visibility', {})[role] = role_visibility
+    normalized = normalize_framework_payload(framework)
+    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    connection.commit()
+    return before, after
+
+
+def get_module_unit_scope_config(connection, company_id):
+    """Escopo por Unidade dos módulos opt-in que suportam autorização
+    granular (ADR-0002 §10.3) — {module: [unit_id, ...]}. Lista vazia ou
+    módulo ausente significa "sem restrição de unidade" (mantém o
+    comportamento anterior à extensão). Mesmo armazenamento do framework,
+    sem tabela nova."""
+    framework = get_configuration_framework(connection, company_id)
+    return framework.get('module_unit_scope', {})
+
+
+def save_module_unit_scope(connection, company_id, module, unit_ids):
+    """Grava as unidades autorizadas para um módulo escopável por unidade
+    (ADR-0002 §10.3), dentro do framework do tenant. Retorna (before, after)
+    — listas de unit_id — para auditoria (core.audit.register_company_audit).
+
+    Só aceita módulos em _UNIT_SCOPABLE_MODULES e unit_ids que pertençam ao
+    tenant (company_id): normalize_framework_payload é uma função pura, sem
+    acesso ao banco, então essa validação é responsabilidade daqui.
+    """
+    module = str(module or '').strip()
+    if module not in _UNIT_SCOPABLE_MODULES:
+        raise ValueError(f'Módulo não escopável por unidade: {module!r}.')
+    if not isinstance(unit_ids, list):
+        raise ValueError('Informe uma lista de unit_id.')
+    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
+    cleaned_unit_ids = sorted({
+        int(unit_id) for unit_id in unit_ids
+        if str(unit_id).strip() and int(unit_id) in valid_unit_ids
+    })
+    scope_key = _configuration_scope_key(company_id)
+    framework = get_configuration_framework(connection, company_id)
+    module_unit_scope = dict(framework.get('module_unit_scope', {}))
+    before = sorted(int(u) for u in module_unit_scope.get(module, []))
+    after = cleaned_unit_ids
+    module_unit_scope[module] = cleaned_unit_ids
+    framework['module_unit_scope'] = module_unit_scope
     normalized = normalize_framework_payload(framework)
     set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
     connection.commit()

@@ -405,3 +405,146 @@ qualquer PR de UI ir para revisão.
 
 PRs 2–9 descritos na seção 7, cada um com o mesmo rigor de testes e revisão
 manual de UI aplicado nesta e nas fases anteriores do projeto.
+
+## 10. Extensão — Cadastro de Colaboradores, Arquivamento e Escopo por Unidade
+
+Com os 9 PRs da fundação implantados, o pedido de produto evoluiu para três
+capacidades novas dentro do módulo "Terceirizados e Prestadores", sempre
+reaproveitando a arquitetura já estabelecida — nenhuma delas introduz um
+modelo de dados paralelo, um novo mecanismo de autorização, ou uma segunda
+fonte de verdade.
+
+### 10.1 Cadastro de Colaboradores (simplificado)
+
+Nova aba dentro do módulo para cadastrar colaboradores terceirizados/
+prestadores diretamente pela unidade, sem passar pelo formulário completo
+de RH. Grava na MESMA tabela `employees` (nunca uma tabela paralela) — o
+colaborador criado por este formulário é indistinguível, para o resto do
+sistema (entrega, ficha, auditoria, relatórios), de um criado pelo
+Cadastro de Colaborador completo.
+
+Campos obrigatórios: nome, CPF, empresa terceirizada/prestadora
+(`outsourced_company_id`, agora obrigatório neste fluxo — no formulário
+completo continua opcional), unidade, função, tipo de vínculo (restrito a
+`Terceirizado`/`Prestador de Serviço` — CLT nunca é aceito por este
+formulário), data de início.
+
+Campos opcionais novos: matrícula da empresa de origem
+(`employees.origin_company_registration`), crachá (`employees.
+badge_number`), observações (`employees.notes`).
+
+**Contrato, Ordem de Serviço e Data prevista de término reaproveitam
+`service_contracts`** (já existente desde o PR1 da fundação), em vez de
+ganharem colunas próprias em `employees`: `service_contracts.contract_ref`
+= "Contrato", `service_contracts.end_date` = "Data prevista de término"
+(já é exatamente esse conceito), e a única peça genuinamente nova é
+`service_contracts.service_order_ref` = "Ordem de Serviço" (não havia
+campo equivalente). `employees.service_contract_id` já existia para ligar
+o colaborador ao contrato. Duplicar esses três campos em `employees`
+criaria duas fontes de verdade divergentes para o mesmo fato — contrário
+ao princípio desta ADR.
+
+### 10.2 Permissões — reaproveitadas, não ampliadas
+
+Administrador Local (`admin`) e Gestor de EPI (`user`) hoje não têm
+`employees:create`/`employees:update` — decisão deliberada e documentada
+em `core/permissions.py` (edição de cadastro é atribuição do Administrador
+de Registro). Em vez de conceder essas permissões amplas — o que abriria o
+cadastro COMPLETO de CLT para esses papéis, muito além do pedido —,
+criamos duas permissões novas e estreitas, exclusivas deste fluxo:
+`employees:create_simplified` e `employees:update_simplified`, concedidas
+a `admin`/`user`, checadas apenas nas rotas do Cadastro de Colaboradores
+simplificado. `create_employee`/`update_employee` (a função real que grava
+no banco) permanecem inalteradas — sem lógica paralela, só um piso de
+permissão diferente na rota de entrada.
+
+### 10.3 Visibilidade — reaproveitada e estendida com escopo por unidade
+
+**Nenhum mecanismo novo de visibilidade foi criado.** A tela permanece
+oculta por padrão em todo tenant (módulo opt-in, mesmo tratamento de
+`terceirizados`) até o Administrador Geral autorizar explicitamente — e a
+autorização usa o `module_visibility` já existente
+(`epi_backend/rule_engine.py`, storage em `configuration_framework`,
+edição via `modules/settings/service.py::save_module_visibility`), sem
+tabela nova, sem sistema de autorização paralelo.
+
+A melhoria pedida — autorizar por Unidade, não só por perfil/tenant — foi
+implementada como uma extensão mínima e retrocompatível do mesmo
+mecanismo:
+
+- Novo módulo dedicado `"terceirizados_colaboradores"` em `MODULE_KEYS`
+  (piso técnico `employees:create_simplified`), tratado como opt-in
+  exatamente como `terceirizados`.
+- Nova chave `module_unit_scope: {module: [unit_id, ...]}` no mesmo
+  `configuration_framework` que já guarda `module_visibility` — não uma
+  tabela nova, um campo a mais no mesmo JSON por tenant. Lista vazia ou
+  ausente (o padrão para TODOS os módulos existentes) significa "sem
+  restrição de unidade" — comportamento de todo módulo anterior a esta
+  extensão permanece 100% inalterado.
+- `resolve_module_visibility()` ganha uma terceira condição, além de
+  "configurado" e "permissão técnica": quando o módulo tem unidades
+  configuradas em `module_unit_scope` E o ator é `admin`/`user`, a unidade
+  operacional atual do ator (`modules.employees.service.
+  actor_operational_unit_id` — o mesmo resolvedor já usado em entregas,
+  fichas, alertas e compras para escopar esses papéis à própria unidade)
+  precisa estar na lista autorizada. `general_admin`/`registry_admin`/
+  `master_admin` não são escopados por unidade (já é assim em todo o
+  sistema) e não são afetados por essa checagem.
+- Reaproveita a premissa já documentada em `actor_operational_unit_id`:
+  Administrador Local e Gestor de EPI têm vínculo único com UMA unidade
+  (nunca uma carteira de várias) — por isso a UI do Administrador Geral
+  não atribui unidades a um usuário específico, e sim autoriza QUAIS
+  unidades têm o módulo ligado; cada Admin Local/Gestor de EPI só enxerga
+  o módulo se a única unidade em que já opera estiver na lista.
+- **Backend é a autoridade real, não só o menu**: as rotas de escrita do
+  Cadastro de Colaboradores simplificado e do CRUD de empresas
+  terceirizadas validam o mesmo escopo (unidade do ator dentro da lista
+  autorizada do módulo, e — para colaborador — unidade do colaborador
+  igual à unidade do ator) mesmo que o frontend nunca chegue a mostrar o
+  menu. Nenhuma rota de dados passa a confiar em `module_visibility`/
+  `module_unit_scope` para autorizar — eles só orientam menu/rotas/deep
+  links, como já documentado no docstring de `resolve_module_visibility`.
+
+### 10.4 Arquivamento
+
+`outsourced_companies` ganha o mesmo ciclo de vida genérico já usado por
+`employees`/`units`/`epis` (`core/archival.py`: `archive_record`,
+`restore_record`, `request_purge`/`cancel_purge`/`confirm_purge`,
+`ensure_record_operational`) — mesmas 10 colunas de lifecycle
+(`status/archived_at/archived_by/archive_reason/retention_until/
+legal_hold/legal_hold_reason/deleted_at/deleted_by/delete_reason`), mesma
+tabela de retenção por tenant (`companies.
+outsourced_company_retention_years`, registrada em
+`core.archival.RETENTION_COLUMNS`), mesma convenção de `action_type` de
+auditoria (`outsourced_company_archived/restored/purge_requested/
+purge_cancelled/purged`).
+
+**Achado importante**: `outsourced_companies.status` já existia como um
+campo de texto livre PT-BR (`'Ativa'`/`'Inativa'`), gravável pelo
+formulário de criar/editar, mas nunca lido por nenhuma tela/filtro. Ele é
+redefinido para ser o campo de lifecycle (mesmo contrato de `employees`/
+`units`), com backfill de qualquer valor fora do novo enum
+(`active/inactive/archived/pending_deletion/deleted`) para `'active'`
+antes de aplicar o `CHECK` constraint no Postgres. O formulário de criar/
+editar empresa deixa de aceitar `status` do payload do cliente — o
+lifecycle passa a ser gerido exclusivamente pelas rotas de arquivar/
+restaurar/expurgar.
+
+Colaboradores terceirizados/prestadores **já são arquiváveis hoje, sem
+nenhuma alteração** — são linhas comuns de `employees`, e o motor
+genérico de arquivamento já opera sobre `employees.id` sem se importar
+com `tipo_vinculo`. O trabalho novo aqui é só de exposição na nova aba
+"Colaboradores Arquivados" (filtro sobre `fetch_archived_employees`, sem
+rota nova) e uma checagem adicional: arquivar a empresa terceirizada
+bloqueia (com aviso, não bloqueio silencioso) o cadastro de novos
+colaboradores contra ela e novas entregas para colaboradores já
+vinculados a ela, via `core.archival.ensure_record_operational`.
+
+### 10.5 "Cadastros Pendentes"
+
+Reaproveita o campo já existente `outsourced_companies.registration_status
+== 'pending_completion'` (empresa em modo Simplificado, sem CNPJ ainda) —
+sem tabela nova, sem estado novo. Não existe conceito equivalente para
+colaboradores: o formulário simplificado já exige todos os campos
+obrigatórios na criação, então não há colaborador "incompleto" a
+rastrear — só a empresa pode nascer incompleta (CNPJ pendente).

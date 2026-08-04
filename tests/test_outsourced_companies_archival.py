@@ -21,7 +21,6 @@ from modules.outsourced_companies.service import (
     create_outsourced_company,
     fetch_archived_outsourced_companies,
     fetch_outsourced_companies,
-    get_outsourced_company_by_id,
     get_outsourced_company_lifecycle,
 )
 

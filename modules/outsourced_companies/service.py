@@ -201,11 +201,14 @@ def promote_outsourced_company(connection, entity_id, company_id):
 
 
 def fetch_outsourced_companies(connection, company_id):
-    rows = connection.execute(
-        f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies '  # noqa: S608
-        'WHERE company_id = ? ORDER BY legal_name',
-        (company_id,),
-    ).fetchall()
+    from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
+    sql = f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies WHERE company_id = ?'  # noqa: S608
+    params = [company_id]
+    if lifecycle_enabled(connection, 'outsourced_companies'):
+        placeholders = ', '.join(['?'] * len(NON_OPERATIONAL_STATUSES))
+        sql += f' AND status NOT IN ({placeholders})'
+        params.extend(NON_OPERATIONAL_STATUSES)
+    rows = connection.execute(sql + ' ORDER BY legal_name', tuple(params)).fetchall()
     return [row_to_dict(row) for row in rows]
 
 
@@ -215,6 +218,56 @@ def get_outsourced_company_by_id(connection, entity_id):
         (entity_id,),
     ).fetchone()
     return row_to_dict(row) if row else None
+
+
+# ── Arquivamento (Soft Delete) — mesma política de Colaboradores/Unidades/EPIs
+# (ADR-0002 §10.4). Reversível, preserva todo o histórico e a auditoria; sem
+# fluxo de exclusão definitiva por ora (colaboradores vinculados via
+# employees.outsourced_company_id não são apagados nem desvinculados — a
+# empresa arquivada só fica bloqueada para NOVOS vínculos, via
+# core.archival.ensure_record_operational, já usado em
+# modules.employees.service.create_employee_outsourced_simplified).
+
+def get_outsourced_company_lifecycle(connection, entity_id):
+    """Empresa terceirizada com os campos de ciclo de vida (para arquivar/desarquivar)."""
+    from core.archival import LIFECYCLE_FIELD_NAMES, lifecycle_enabled
+    extra = (', ' + ', '.join(LIFECYCLE_FIELD_NAMES)) if lifecycle_enabled(connection, 'outsourced_companies') else ''
+    row = connection.execute(
+        f'SELECT id, company_id, legal_name, trade_name{extra} '  # noqa: S608
+        'FROM outsourced_companies WHERE id = ?',
+        (int(entity_id),),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def fetch_archived_outsourced_companies(connection, actor):
+    """Empresas terceirizadas arquivadas do tenant, com dados de retenção (para a UI)."""
+    from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
+    sql = (
+        'SELECT outsourced_companies.id, outsourced_companies.company_id, '
+        'outsourced_companies.legal_name, outsourced_companies.trade_name, '
+        'outsourced_companies.cnpj, outsourced_companies.company_kind, '
+        'outsourced_companies.status, outsourced_companies.archived_at, '
+        'outsourced_companies.archived_by, outsourced_companies.archive_reason, '
+        'outsourced_companies.retention_until, outsourced_companies.legal_hold, '
+        'users.full_name AS archived_by_name '
+        'FROM outsourced_companies '
+        'LEFT JOIN users ON users.id = outsourced_companies.archived_by '
+        'WHERE outsourced_companies.status IN (?, ?)'
+    )
+    params = [STATUS_ARCHIVED, STATUS_PENDING_DELETION]
+    if actor and actor.get('role') != 'master_admin':
+        sql += ' AND outsourced_companies.company_id = ?'
+        params.append(actor['company_id'])
+    rows = connection.execute(
+        sql + ' ORDER BY outsourced_companies.archived_at DESC', tuple(params),
+    ).fetchall()
+    result = []
+    for row in rows:
+        item = row_to_dict(row)
+        item['retention_days_remaining'] = retention_days_remaining(item.get('retention_until'))
+        result.append(item)
+    return result
 
 
 # ── Vínculo do colaborador (Cadastro Simplificado, ADR-014 PR 3) ──────────

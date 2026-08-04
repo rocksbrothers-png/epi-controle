@@ -37,16 +37,20 @@ from modules.outsourced_companies.service import (
     create_outsourced_company,
     create_reimbursement,
     create_service_contract,
+    fetch_archived_outsourced_companies,
     fetch_migration_suggestions,
     fetch_outsourced_companies,
     fetch_reimbursements,
     fetch_service_contracts,
     get_outsourced_company_by_id,
+    get_outsourced_company_lifecycle,
     get_reimbursement_by_id,
     promote_outsourced_company,
     update_outsourced_company,
     update_reimbursement_status,
 )
+
+from core import archival
 
 
 def _audit(connection, company_id, actor, action_type, summary, details=None):
@@ -248,15 +252,87 @@ def handle_put_reimbursement_status(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'id': reimbursement_id, 'status': new_status})
 
 
+# ── Arquivamento (Soft Delete) — mesma política de Colaboradores/Unidades ────
+
+_OUTSOURCED_COMPANY_ARCHIVAL = dict(entity_label='Empresa terceirizada', audit_prefix='outsourced_company')
+
+
+def _load_outsourced_company_for_lifecycle(connection, handler, parsed, payload, match, permission):
+    actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), permission)
+    entity = get_outsourced_company_lifecycle(connection, int(match.group(1)))
+    if not entity:
+        raise ValueError('Empresa terceirizada não encontrada.')
+    ensure_company_access(actor, entity['company_id'])
+    return actor, entity
+
+
+def handle_get_archived_outsourced_companies(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        data = fetch_archived_outsourced_companies(connection, actor)
+        return send_json(handler, 200, {'outsourced_companies': data, 'items': data})
+
+
+def handle_post_outsourced_company_archive(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, PERM_EMPLOYEES_UPDATE,
+        )
+        result = archival.archive_record(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'],
+            reason=str((payload or {}).get('reason') or ''),
+            **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.archived', outsourced_company_id=entity['id'], actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+
+
+def handle_post_outsourced_company_restore(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, PERM_EMPLOYEES_UPDATE,
+        )
+        archival.restore_record(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'],
+            **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.restored', outsourced_company_id=entity['id'], actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'status': 'active'})
+
+
+def handle_delete_outsourced_company(handler, parsed, payload, match):
+    """Política de retenção: DELETE não remove — arquiva (soft delete)."""
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, PERM_EMPLOYEES_UPDATE,
+        )
+        reason = str(parse_qs(parsed.query).get('reason', [''])[0] or '')
+        result = archival.archive_record(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'], reason=reason,
+            **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'archived': True, **result})
+
+
 def register_routes(router):
     router.register('GET',  '/api/outsourced-companies/migration-suggestions',               handle_get_migration_suggestions)
+    router.register('GET',  '/api/outsourced-companies/archived',                            handle_get_archived_outsourced_companies)
     router.register('GET',  '/api/outsourced-companies',                                    handle_get_outsourced_companies)
     router.register('GET',  r'^/api/outsourced-companies/(\d+)$',                            handle_get_outsourced_company, regex=True)
     router.register('GET',  r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_get_service_contracts, regex=True)
     router.register('POST', '/api/outsourced-companies',                                     handle_post_outsourced_companies)
     router.register('POST', r'^/api/outsourced-companies/(\d+)/promote$',                    handle_post_outsourced_company_promote, regex=True)
     router.register('POST', r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_post_service_contracts, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/archive$',                    handle_post_outsourced_company_archive, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/restore$',                    handle_post_outsourced_company_restore, regex=True)
     router.register('PUT',  r'^/api/outsourced-companies/(\d+)$',                            handle_put_outsourced_company, regex=True)
+    router.register('DELETE', r'^/api/outsourced-companies/(\d+)$',                          handle_delete_outsourced_company, regex=True)
     router.register('GET',  '/api/epi-reimbursements',                                       handle_get_reimbursements)
     router.register('POST', '/api/epi-reimbursements',                                       handle_post_reimbursements)
     router.register('PUT',  r'^/api/epi-reimbursements/(\d+)/status$',                       handle_put_reimbursement_status, regex=True)

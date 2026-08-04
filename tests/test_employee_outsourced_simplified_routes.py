@@ -191,7 +191,7 @@ def test_update_returns_404_when_employee_not_found(monkeypatch):
         'tipo_vinculo': 'Terceirizado', 'admission_date': '2026-01-01',
     }
     match = type('M', (), {'group': lambda self, i: '999'})()
-    result = routes.handle_put_employee_outsourced_simplified(handler, _parsed(), update_payload, match)
+    routes.handle_put_employee_outsourced_simplified(handler, _parsed(), update_payload, match)
     assert handler.status == 404
 
 

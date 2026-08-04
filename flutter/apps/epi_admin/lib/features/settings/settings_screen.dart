@@ -556,8 +556,7 @@ const _kOutsourcedModules = <(String value, String label)>[
 ];
 
 class _ModuleVisibilityCard extends StatefulWidget {
-  const _ModuleVisibilityCard({this.companyId});
-  final int? companyId;
+  const _ModuleVisibilityCard();
 
   @override
   State<_ModuleVisibilityCard> createState() => _ModuleVisibilityCardState();
@@ -576,19 +575,13 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
     _load();
   }
 
-  @override
-  void didUpdateWidget(_ModuleVisibilityCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.companyId != widget.companyId) _load();
-  }
-
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await ApiClient.settings.getModuleVisibility(companyId: widget.companyId);
+      final res = await ApiClient.settings.getModuleVisibility();
       final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
       if (!mounted) return;
       setState(() {
@@ -624,7 +617,6 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
         actorUserId: ApiClient.actorUserId,
         role: _role,
         modules: {module: value},
-        companyId: widget.companyId,
       );
       if (!mounted) return;
       setState(() {
@@ -704,8 +696,7 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
 // Gestor de EPI só o veem nas Unidades marcadas. Lista vazia = liberado em
 // todas as Unidades (respeitando a Visualização por perfil acima).
 class _ModuleUnitScopeCard extends StatefulWidget {
-  const _ModuleUnitScopeCard({this.companyId});
-  final int? companyId;
+  const _ModuleUnitScopeCard();
 
   @override
   State<_ModuleUnitScopeCard> createState() => _ModuleUnitScopeCardState();
@@ -725,19 +716,13 @@ class _ModuleUnitScopeCardState extends State<_ModuleUnitScopeCard> {
     _load();
   }
 
-  @override
-  void didUpdateWidget(_ModuleUnitScopeCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.companyId != widget.companyId) _load();
-  }
-
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await ApiClient.settings.getModuleUnitScope(companyId: widget.companyId);
+      final res = await ApiClient.settings.getModuleUnitScope();
       final raw = (res['module_unit_scope'] as Map?)?.cast<String, dynamic>() ?? const {};
       final bootstrap = await ApiClient.auth.bootstrap();
       if (!mounted) return;
@@ -780,7 +765,6 @@ class _ModuleUnitScopeCardState extends State<_ModuleUnitScopeCard> {
         actorUserId: ApiClient.actorUserId,
         module: _module,
         unitIds: current,
-        companyId: widget.companyId,
       );
       if (!mounted) return;
       setState(() {

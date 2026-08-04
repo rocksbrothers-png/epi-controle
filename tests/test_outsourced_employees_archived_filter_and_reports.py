@@ -207,7 +207,7 @@ def test_summary_counts_active_and_archived_by_tipo_vinculo():
     _bootstrap(conn)
     unit_id = _seed_unit(conn, cid)
     oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    active_id = _create_employee(conn, cid, unit_id, oc_id, cpf=VALID_CPF, tipo_vinculo='Terceirizado')
+    _create_employee(conn, cid, unit_id, oc_id, cpf=VALID_CPF, tipo_vinculo='Terceirizado')
     archived_id = _create_employee(conn, cid, unit_id, oc_id, cpf=VALID_CPF_2, tipo_vinculo='Prestador de Serviço')
     _archive_employee(conn, archived_id)
 

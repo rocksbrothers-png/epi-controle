@@ -1465,14 +1465,6 @@
     "reportsEmpty": "No outsourced/contracted companies registered.",
     "reportsError": "Could not load the report."
   },
-  "moduleUnitScope": {
-    "title": "Unit Scope",
-    "description": "Restrict an opt-in module (Outsourced Companies / Employee Registration) to specific Units for the Local Admin and EPI Manager roles. With no Unit selected, the module is available in all Units (still subject to the Visibility setting above).",
-    "moduleLabel": "Module",
-    "noUnits": "No Units registered.",
-    "save": "Save Unit scope",
-    "saved": "Unit scope saved."
-  },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",
     "stockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock."

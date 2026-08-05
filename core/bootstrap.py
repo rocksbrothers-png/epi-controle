@@ -32,6 +32,7 @@ from modules.payments.service import (
     ensure_payment_tables as _ensure_payment_tables,
     ensure_subscription_tables as _ensure_subscription_tables,
 )
+from modules.settings.service import migrate_module_visibility_unit_model as _migrate_module_visibility
 from modules.stock.service import (
     backfill_unit_stock_from_epis as _backfill_stock,
     next_company_qr_sequence as _next_qr_seq,
@@ -304,6 +305,11 @@ def init_db():
             schema.ensure_rule_engine_enforced_all_companies,
             schema.ensure_ubx_golive_declared,
             schema.ensure_drop_legacy_token_columns,
+            # Migração idempotente (não é DDL): converte todo
+            # configuration_framework:* legado (module_visibility plano +
+            # module_unit_scope separado) para o modelo único de
+            # module_visibility com override por Unidade.
+            _migrate_module_visibility,
         ]
         for _fn in _ensure_fns:
             try:

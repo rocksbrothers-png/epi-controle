@@ -10,7 +10,8 @@ from epi_backend.http_utils import structured_log as _structured_log
 from epi_backend.rule_engine import SUPPORTED_EXECUTION_MODES, normalize_framework_payload
 from epi_backend.rule_engine import (
     MODULE_KEYS,
-    _UNIT_SCOPABLE_MODULES,
+    _DEFAULT_UNIT_BUCKET,
+    _UNIT_SCOPED_ROLES,
     build_context as build_rule_context,
     compute_visibility_diff,
     resolve_execution_plan,
@@ -20,6 +21,7 @@ from epi_backend.rule_engine import (
 
 from core.meta import get_meta, set_meta
 from core.permissions import PERMISSIONS
+from epi_backend.db import row_to_dict
 
 UTC = timezone.utc
 
@@ -266,29 +268,35 @@ def save_configuration_rules(connection, company_id, rules):
 # {scope_key}`, aba "Configuração → Regras → Visualização") — não é uma
 # tabela nova. A regra padrão do sistema vem de
 # rule_engine.default_framework_payload()["module_visibility"]; o que é
-# salvo aqui é só o override por tenant, mesclado por normalize_framework_
-# payload(). resolve_module_visibility() ainda reclampa pela permissão
-# técnica do ator — esta camada nunca amplia o que o backend autoriza.
+# salvo aqui é só o override por tenant (e, para admin/user, por Unidade),
+# mesclado por normalize_framework_payload(). resolve_module_visibility()
+# ainda reclampa pela permissão técnica do ator — esta camada nunca amplia
+# o que o backend autoriza. module_visibility é a ÚNICA fonte de verdade
+# para tenant+perfil+unidade+módulo — não existe mais um module_unit_scope
+# separado (aposentado; normalize_framework_payload converte automaticamente
+# qualquer configuração antiga que ainda o contenha).
 
 def get_module_visibility_config(connection, company_id):
-    """Configuração de visibilidade por módulo (perfil -> módulo -> bool),
-    já mesclada com o padrão do sistema. Usada pela tela de administração
-    (para exibir o estado atual) e por get_effective_module_visibility."""
+    """Configuração de visibilidade por módulo — {role: {"*"|unit_id:
+    {module: bool}}}, já mesclada com o padrão do sistema. Usada pela tela
+    de administração (para exibir o estado atual) e por
+    get_effective_module_visibility."""
     framework = get_configuration_framework(connection, company_id)
     return framework.get('module_visibility', {})
 
 
 def get_effective_module_visibility(connection, actor, unit_id=None):
     """Visibilidade efetiva de cada módulo para o ator autenticado: config
-    (padrão + override do tenant) AND permissão técnica. É isto que entra
-    no /api/bootstrap (e no login/`auth/me`) para orientar menu/rotas no
-    Flutter e no web legado — a autorização real de dados continua nas
-    rotas, inalterada.
+    (padrão + override do tenant, por perfil e — para admin/user — por
+    Unidade) AND permissão técnica. É isto que entra no /api/bootstrap (e
+    no login/`auth/me`) para orientar menu/rotas no Flutter e no web
+    legado — a autorização real de dados continua nas rotas, inalterada.
 
-    `unit_id` (ADR-0002 §10.3): unidade operacional do ator, só relevante
-    para Administrador Local/Gestor de EPI (resolve_module_visibility só a
-    usa para módulos em _UNIT_SCOPABLE_MODULES e papéis admin/user). O
-    chamador (modules.auth.service/routes) já resolve isso via
+    `unit_id`: unidade operacional do ator, só relevante para
+    Administrador Local/Gestor de EPI (resolve_module_visibility só a usa
+    para papéis em _UNIT_SCOPED_ROLES — todo módulo suporta override por
+    Unidade, não só um subconjunto fixo). O chamador
+    (modules.auth.service/routes) já resolve isso via
     modules.employees.service.actor_operational_unit_id — não é recalculado
     aqui para não importar modules.employees.service a partir deste módulo
     (modules.employees.service importa modules.outsourced_companies.service,
@@ -312,13 +320,12 @@ def get_effective_module_visibility(connection, actor, unit_id=None):
 
 
 def ensure_module_enabled_for_unit(connection, actor, module, unit_id):
-    """Autoridade no BACKEND (ADR-0002 §10.3) para módulos opt-in escopáveis
-    por Unidade: mesmo com o menu oculto no Flutter/web legado, nenhuma rota
-    de escrita pode confiar só na UI. Levanta PermissionError se o módulo
-    não está habilitado (config do Administrador Geral) OU se a unidade do
-    ator não está autorizada em module_unit_scope — reusa integralmente
-    get_effective_module_visibility/resolve_module_visibility, sem
-    mecanismo novo.
+    """Autoridade no BACKEND para módulos escopáveis por Unidade: mesmo com
+    o menu oculto no Flutter/web legado, nenhuma rota de escrita pode
+    confiar só na UI. Levanta PermissionError se o módulo não está
+    habilitado (config do Administrador Geral, por perfil e por Unidade) —
+    reusa integralmente get_effective_module_visibility/
+    resolve_module_visibility, sem mecanismo novo.
     """
     effective = get_effective_module_visibility(connection, actor, unit_id=unit_id)
     if not effective.get(module, False):
@@ -328,76 +335,107 @@ def ensure_module_enabled_for_unit(connection, actor, module, unit_id):
         )
 
 
-def save_module_visibility(connection, company_id, role, updates):
-    """Grava o override de visibilidade de módulos para um perfil, dentro
-    do framework do tenant. Retorna (before, after) só dos módulos alterados
-    — usado para auditoria (core.audit.register_company_audit)."""
+def save_module_visibility(connection, company_id, role, updates, unit_id=None):
+    """Grava o override de visibilidade de módulos para um perfil — no
+    bucket "*" (padrão do perfil, toda unidade) quando `unit_id` é
+    omitido, ou no bucket daquela Unidade especificamente quando
+    informado (só válido para papéis em _UNIT_SCOPED_ROLES — admin/user;
+    os demais não são escopados por unidade em nenhum outro fluxo do
+    sistema). Retorna (before, after) só dos módulos alterados — usado
+    para auditoria (core.audit.register_company_audit).
+    """
     role = str(role or '').strip()
     if role not in PERMISSIONS:
         raise ValueError(f'Perfil inválido: {role!r}.')
     if not isinstance(updates, dict) or not updates:
         raise ValueError('Informe ao menos um módulo para atualizar.')
+    unit_bucket = _DEFAULT_UNIT_BUCKET
+    if unit_id not in (None, '', 0, '0'):
+        if role not in _UNIT_SCOPED_ROLES:
+            raise ValueError(f'Perfil {role!r} não é escopado por Unidade — grave sem unit_id.')
+        unit_id = int(unit_id)
+        if unit_id not in _configuration_scope_unit_ids(connection, company_id):
+            raise ValueError('Unidade informada não pertence a este tenant.')
+        unit_bucket = str(unit_id)
     scope_key = _configuration_scope_key(company_id)
     framework = get_configuration_framework(connection, company_id)
-    role_visibility = dict(framework.get('module_visibility', {}).get(role, {}))
+    role_config = framework.setdefault('module_visibility', {}).setdefault(role, {})
+    bucket_visibility = dict(role_config.get(unit_bucket, {}))
+    base_visibility = role_config.get(_DEFAULT_UNIT_BUCKET, {})
     before = {}
     after = {}
     for module, value in updates.items():
         module = str(module or '').strip()
         if module not in MODULE_KEYS:
             continue
-        before[module] = bool(role_visibility.get(module, False))
-        role_visibility[module] = bool(value)
+        # "before" é o valor EFETIVO (com fallback para "*" quando o bucket
+        # da Unidade ainda não tem override daquele módulo) — mais útil para
+        # auditoria do que mostrar sempre False para um módulo nunca
+        # sobrescrito naquela Unidade.
+        if module in bucket_visibility:
+            before[module] = bool(bucket_visibility[module])
+        else:
+            before[module] = bool(base_visibility.get(module, False))
+        bucket_visibility[module] = bool(value)
         after[module] = bool(value)
     if not before:
         raise ValueError('Nenhum módulo reconhecido em: ' + ', '.join(sorted(updates.keys())))
-    framework.setdefault('module_visibility', {})[role] = role_visibility
+    role_config[unit_bucket] = bucket_visibility
     normalized = normalize_framework_payload(framework)
     set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
     connection.commit()
     return before, after
 
 
-def get_module_unit_scope_config(connection, company_id):
-    """Escopo por Unidade dos módulos opt-in que suportam autorização
-    granular (ADR-0002 §10.3) — {module: [unit_id, ...]}. Lista vazia ou
-    módulo ausente significa "sem restrição de unidade" (mantém o
-    comportamento anterior à extensão). Mesmo armazenamento do framework,
-    sem tabela nova."""
-    framework = get_configuration_framework(connection, company_id)
-    return framework.get('module_unit_scope', {})
+def _module_visibility_needs_migration(payload):
+    """True quando `payload` (config_framework bruto, como armazenado em
+    app_meta) ainda tem algum vestígio do modelo legado: module_unit_scope
+    separado, ou module_visibility no formato plano {role: {module: bool}}
+    (sem bucket de Unidade)."""
+    if isinstance(payload.get('module_unit_scope'), dict) and payload['module_unit_scope']:
+        return True
+    for role_config in (payload.get('module_visibility') or {}).values():
+        if isinstance(role_config, dict) and any(isinstance(v, bool) for v in role_config.values()):
+            return True
+    return False
 
 
-def save_module_unit_scope(connection, company_id, module, unit_ids):
-    """Grava as unidades autorizadas para um módulo escopável por unidade
-    (ADR-0002 §10.3), dentro do framework do tenant. Retorna (before, after)
-    — listas de unit_id — para auditoria (core.audit.register_company_audit).
+def migrate_module_visibility_unit_model(connection):
+    """Migration idempotente: converte todo `configuration_framework:*`
+    guardado em `app_meta` (um por tenant + o escopo global do Admin
+    Master) do modelo legado (module_visibility plano por perfil +
+    module_unit_scope separado, {module: [unit_id, ...]}) para o modelo
+    único (module_visibility com override por Unidade — "*" = padrão do
+    perfil, "<unit_id>" = override, um bucket por módulo). Mesma conversão
+    que epi_backend.rule_engine.normalize_framework_payload já faz em
+    memória a cada leitura; esta função persiste o resultado de volta, para
+    o armazenamento em si parar de carregar os dois formatos.
 
-    Só aceita módulos em _UNIT_SCOPABLE_MODULES e unit_ids que pertençam ao
-    tenant (company_id): normalize_framework_payload é uma função pura, sem
-    acesso ao banco, então essa validação é responsabilidade daqui.
+    Preserva integralmente o comportamento observável: um módulo com
+    restrição ativa (allowlist não vazia) vira `"*": {module: False}` +
+    `"<unit_id>": {module: True}` para cada unidade antes autorizada — as
+    demais unidades continuam vendo False, exatamente como antes.
+
+    Idempotente: linhas já no formato novo (sem module_unit_scope e sem
+    nenhum module_visibility plano) não são regravadas.
     """
-    module = str(module or '').strip()
-    if module not in _UNIT_SCOPABLE_MODULES:
-        raise ValueError(f'Módulo não escopável por unidade: {module!r}.')
-    if not isinstance(unit_ids, list):
-        raise ValueError('Informe uma lista de unit_id.')
-    valid_unit_ids = _configuration_scope_unit_ids(connection, company_id)
-    cleaned_unit_ids = sorted({
-        int(unit_id) for unit_id in unit_ids
-        if str(unit_id).strip() and int(unit_id) in valid_unit_ids
-    })
-    scope_key = _configuration_scope_key(company_id)
-    framework = get_configuration_framework(connection, company_id)
-    module_unit_scope = dict(framework.get('module_unit_scope', {}))
-    before = sorted(int(u) for u in module_unit_scope.get(module, []))
-    after = cleaned_unit_ids
-    module_unit_scope[module] = cleaned_unit_ids
-    framework['module_unit_scope'] = module_unit_scope
-    normalized = normalize_framework_payload(framework)
-    set_meta(connection, f'configuration_framework:{scope_key}', json.dumps(normalized, ensure_ascii=False))
+    rows = connection.execute(
+        "SELECT key, value FROM app_meta WHERE key LIKE 'configuration_framework:%'"
+    ).fetchall()
+    for row in rows:
+        item = row_to_dict(row)
+        key = str(item.get('key') or '')
+        if not key:
+            continue
+        try:
+            payload = json.loads(item.get('value') or '{}')
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(payload, dict) or not _module_visibility_needs_migration(payload):
+            continue
+        normalized = normalize_framework_payload(payload)
+        set_meta(connection, key, json.dumps(normalized, ensure_ascii=False))
     connection.commit()
-    return before, after
 
 
 def default_ficha_retention_policy():

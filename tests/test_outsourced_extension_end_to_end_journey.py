@@ -7,16 +7,21 @@ outsourced_companies, filtro de Colaboradores Arquivados + relatório de
 headcount, Flutter, Web Legado). Este arquivo verifica que as peças
 funcionam **juntas**, na mesma jornada que um Administrador Geral e um
 Administrador Local realmente percorrem: módulo oculto por padrão →
-Administrador Geral habilita module_visibility para o perfil → sem
-module_unit_scope configurado nenhuma Unidade é restrita → Administrador
-Geral restringe o módulo a uma Unidade específica → só aquela Unidade
-acessa (nunca general_admin, que não é escopado por Unidade) →
-Administrador Local cadastra um colaborador terceirizado pelo Cadastro de
-Colaboradores simplificado → arquivar a empresa terceirizada bloqueia novo
-cadastro contra ela → arquivar o colaborador o expõe em "Colaboradores
-Arquivados" → o relatório de headcount reflete ativos/arquivados →
-desarquivar a empresa libera novo cadastro de novo — sempre com isolamento
-multi-tenant intacto.
+Administrador Geral habilita module_visibility para o perfil (bucket "*") →
+sem override de Unidade nenhuma é restrita → Administrador Geral restringe o
+módulo numa Unidade específica (save_module_visibility com unit_id) → só
+aquela Unidade fica bloqueada, as demais continuam herdando o "*" (nunca
+general_admin, que não é escopado por Unidade) → Administrador Local
+cadastra um colaborador terceirizado pelo Cadastro de Colaboradores
+simplificado → arquivar a empresa terceirizada bloqueia novo cadastro contra
+ela → arquivar o colaborador o expõe em "Colaboradores Arquivados" → o
+relatório de headcount reflete ativos/arquivados → desarquivar a empresa
+libera novo cadastro de novo — sempre com isolamento multi-tenant intacto.
+
+Desde o PR18 (evolução do modelo de visibilidade por Unidade),
+module_visibility é a ÚNICA fonte de verdade para tenant+perfil+unidade+
+módulo — não existe mais um module_unit_scope separado; o override por
+Unidade é gravado via save_module_visibility(..., unit_id=...).
 """
 
 import sqlite3
@@ -41,7 +46,6 @@ from modules.outsourced_companies.service import (
 )
 from modules.settings.service import (
     ensure_module_enabled_for_unit,
-    save_module_unit_scope,
     save_module_visibility,
 )
 
@@ -178,11 +182,11 @@ def _restore(conn, table, record_id, actor, entity_label, audit_prefix):
 
 
 def test_module_gating_journey_hidden_by_default_then_scoped_by_unit():
-    """§10.3: módulo nasce oculto; Administrador Geral habilita para o
-    perfil; sem module_unit_scope configurado nenhuma Unidade é restrita;
-    configurar o escopo passa a bloquear as Unidades fora da lista — só
-    para admin/user, nunca para general_admin (mesma premissa de
-    actor_operational_unit_id em todo o sistema)."""
+    """§10.3 evoluído (PR18): módulo nasce oculto; Administrador Geral
+    habilita para o perfil (bucket "*"); sem override de Unidade nenhuma é
+    restrita; um override específico bloqueia só aquela Unidade, as demais
+    continuam herdando o "*" — só para admin/user, nunca para general_admin
+    (mesma premissa de actor_operational_unit_id em todo o sistema)."""
     conn = _PgStyleConn(_conn())
     cid = _seed_company(conn)
     _bootstrap(conn)
@@ -196,20 +200,21 @@ def test_module_gating_journey_hidden_by_default_then_scoped_by_unit():
         ensure_module_enabled_for_unit(conn, local_admin, 'terceirizados_colaboradores', unit_a)
 
     # 2) Administrador Geral habilita o módulo para o perfil Administrador
-    # Local — sem module_unit_scope configurado, qualquer Unidade acessa.
+    # Local — sem override de Unidade configurado, qualquer Unidade herda o
+    # "*" e acessa.
     save_module_visibility(conn, cid, 'admin', {'terceirizados_colaboradores': True})
     ensure_module_enabled_for_unit(conn, local_admin, 'terceirizados_colaboradores', unit_a)
     ensure_module_enabled_for_unit(conn, local_admin, 'terceirizados_colaboradores', unit_b)
 
-    # 3) Administrador Geral restringe o módulo à Unidade A — Unidade B some
-    # para o Administrador Local.
-    save_module_unit_scope(conn, cid, 'terceirizados_colaboradores', [unit_a])
+    # 3) Administrador Geral desliga o módulo especificamente na Unidade B —
+    # Unidade A continua herdando o "*" (True), só a B fica bloqueada.
+    save_module_visibility(conn, cid, 'admin', {'terceirizados_colaboradores': False}, unit_id=unit_b)
     ensure_module_enabled_for_unit(conn, local_admin, 'terceirizados_colaboradores', unit_a)
     with pytest.raises(PermissionError):
         ensure_module_enabled_for_unit(conn, local_admin, 'terceirizados_colaboradores', unit_b)
 
-    # 4) general_admin nunca é escopado por Unidade, mesmo com
-    # module_unit_scope restrito à Unidade A no mesmo tenant.
+    # 4) general_admin nunca é escopado por Unidade, mesmo com um override
+    # de Unidade configurado para 'admin' no mesmo tenant.
     general_admin = _actor(cid, role='general_admin')
     save_module_visibility(conn, cid, 'general_admin', {'terceirizados_colaboradores': True})
     ensure_module_enabled_for_unit(conn, general_admin, 'terceirizados_colaboradores', unit_b)
@@ -271,9 +276,9 @@ def test_outsourced_employee_and_company_archival_journey():
 
 
 def test_outsourced_extension_isolation_across_tenants():
-    """Isolamento multi-tenant de ponta a ponta: module_unit_scope, empresa
-    terceirizada, colaborador e relatório de um tenant nunca vazam para
-    outro — condição vinculante do ADR-0002."""
+    """Isolamento multi-tenant de ponta a ponta: override de Unidade em
+    module_visibility, empresa terceirizada, colaborador e relatório de um
+    tenant nunca vazam para outro — condição vinculante do ADR-0002."""
     conn = _PgStyleConn(_conn())
     cid_a = _seed_company(conn, 'Tenant A')
     cid_b = _seed_company(conn, 'Tenant B')
@@ -282,9 +287,9 @@ def test_outsourced_extension_isolation_across_tenants():
     unit_b = _seed_unit(conn, cid_b)
 
     save_module_visibility(conn, cid_a, 'admin', {'terceirizados_colaboradores': True})
-    save_module_unit_scope(conn, cid_a, 'terceirizados_colaboradores', [unit_a])
+    save_module_visibility(conn, cid_a, 'admin', {'terceirizados_colaboradores': True}, unit_id=unit_a)
     # Tenant B nunca configurou nada — módulo continua oculto por padrão lá,
-    # mesmo o Tenant A já tendo habilitado o dele.
+    # mesmo o Tenant A já tendo habilitado o dele (com override de Unidade).
     with pytest.raises(PermissionError):
         ensure_module_enabled_for_unit(conn, _actor(cid_b, role='admin'), 'terceirizados_colaboradores', unit_b)
 

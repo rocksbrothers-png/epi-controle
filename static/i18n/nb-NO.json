@@ -1465,14 +1465,6 @@
     "reportsEmpty": "Ingen innleide/tjenesteytende selskaper registrert.",
     "reportsError": "Kunne ikke laste rapporten."
   },
-  "moduleUnitScope": {
-    "title": "Enhetsomfang",
-    "description": "Begrens en valgfri modul (Innleide Selskaper / Registrering av Medarbeidere) til bestemte Enheter for rollene Lokal Administrator og EPI-ansvarlig. Uten noen valgt Enhet er modulen tilgjengelig i alle Enheter (fortsatt underlagt Synlighet ovenfor).",
-    "moduleLabel": "Modul",
-    "noUnits": "Ingen Enheter registrert.",
-    "save": "Lagre enhetsomfang",
-    "saved": "Enhetsomfang lagret."
-  },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",
     "stockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet."

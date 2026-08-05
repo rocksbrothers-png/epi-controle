@@ -21,7 +21,6 @@ from modules.settings.service import (
     get_configuration_rules,
     get_ficha_config,
     get_ficha_retention_policy,
-    get_module_unit_scope_config,
     get_module_visibility_config,
     get_rule_engine_status,
     promote_rule_engine,
@@ -29,7 +28,6 @@ from modules.settings.service import (
     save_configuration_rules,
     save_ficha_config,
     save_ficha_retention_policy,
-    save_module_unit_scope,
     save_module_visibility,
     delete_shadow_log,
     fetch_shadow_log,
@@ -94,20 +92,6 @@ def handle_get_module_visibility(handler, parsed, payload, match):
         module_visibility = get_module_visibility_config(connection, company_id)
         from epi_backend.rule_engine import MODULE_KEYS
         return send_json(handler, 200, {'module_visibility': module_visibility, 'modules': list(MODULE_KEYS)})
-
-
-def handle_get_module_unit_scope(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
-        require_configuration_admin(actor)
-        query = parse_qs(parsed.query)
-        company_id = _resolve_settings_company_id(connection, actor, query.get('company_id', [None])[0], require=False)
-        module_unit_scope = get_module_unit_scope_config(connection, company_id)
-        from epi_backend.rule_engine import _UNIT_SCOPABLE_MODULES
-        return send_json(handler, 200, {
-            'module_unit_scope': module_unit_scope,
-            'unit_scopable_modules': sorted(_UNIT_SCOPABLE_MODULES),
-        })
 
 
 def handle_get_configuration_framework(handler, parsed, payload, match):
@@ -272,31 +256,6 @@ def handle_post_module_visibility(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'role': role, 'before': before, 'after': after})
 
 
-def handle_post_module_unit_scope(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
-        require_configuration_admin(actor)
-        # Mesmo escopo de company_id de handle_post_module_visibility: só
-        # general_admin/registry_admin usam este endpoint (sempre têm
-        # company_id próprio); master_admin sem seleção cai em 'global'.
-        company_id = _resolve_settings_company_id(connection, actor, payload.get('company_id'), require=False)
-        module = payload.get('module')
-        unit_ids = payload.get('unit_ids')
-        before, after = save_module_unit_scope(connection, company_id, module, unit_ids)
-        from modules.companies.service import register_company_audit
-        register_company_audit(
-            connection, company_id, actor, 'module_unit_scope_updated',
-            f'Escopo por unidade do módulo "{module}" atualizado.',
-            {
-                'module': module,
-                'before': before,
-                'after': after,
-            },
-        )
-        connection.commit()
-        return send_json(handler, 200, {'ok': True, 'module': module, 'before': before, 'after': after})
-
-
 def handle_post_configuration_framework(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_VIEW)
@@ -385,8 +344,6 @@ def register_routes(router):
     router.register('GET',  '/api/configuration-framework',   handle_get_configuration_framework)
     router.register('GET',  '/api/module-visibility',         handle_get_module_visibility)
     router.register('POST', '/api/module-visibility',         handle_post_module_visibility)
-    router.register('GET',  '/api/module-unit-scope',         handle_get_module_unit_scope)
-    router.register('POST', '/api/module-unit-scope',         handle_post_module_unit_scope)
     router.register('GET',  '/api/rules-engine/diagnostics',  handle_get_rules_engine_diagnostics)
     router.register('GET',  '/api/rules-engine/status',       handle_get_rules_engine_status)
     router.register('GET',  '/api/rules-engine/shadow-diff',   handle_get_rules_engine_shadow_diff)

@@ -241,19 +241,30 @@ def handle_post_module_visibility(handler, parsed, payload, match):
         company_id = _resolve_settings_company_id(connection, actor, payload.get('company_id'), require=False)
         role = payload.get('role')
         modules = payload.get('modules')
-        before, after = save_module_visibility(connection, company_id, role, modules)
+        unit_id = payload.get('unit_id')
+        before, after = save_module_visibility(connection, company_id, role, modules, unit_id=unit_id)
         from modules.companies.service import register_company_audit
+        summary = f'Visibilidade de módulos atualizada para o perfil "{role}".'
+        if unit_id not in (None, '', 0, '0'):
+            summary = f'Visibilidade de módulos atualizada para o perfil "{role}" na unidade {unit_id}.'
         register_company_audit(
             connection, company_id, actor, 'visibility_config_updated',
-            f'Visibilidade de módulos atualizada para o perfil "{role}".',
+            summary,
             {
                 'role': role,
+                'unit_id': int(unit_id) if unit_id not in (None, '', 0, '0') else None,
                 'before': before,
                 'after': after,
             },
         )
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'role': role, 'before': before, 'after': after})
+        return send_json(handler, 200, {
+            'ok': True,
+            'role': role,
+            'unit_id': int(unit_id) if unit_id not in (None, '', 0, '0') else None,
+            'before': before,
+            'after': after,
+        })
 
 
 def handle_post_configuration_framework(handler, parsed, payload, match):

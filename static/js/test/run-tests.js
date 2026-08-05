@@ -59,6 +59,7 @@ function loadModule(relPath) {
   'views/legal-entity-fields.js',
   'views/legal-entities-view.js',
   'views/outsourced-companies-view.js',
+  'views/outsourced-employees-view.js',
   'views/dashboard-scope.js'
 ].forEach(loadModule);
 
@@ -1290,6 +1291,39 @@ test('outsourced-companies-view: lista ausente não quebra', () => {
   const V = _OCV();
   eq(V.visibleOutsourcedCompanies(undefined, {}).length, 0);
   eq(V.visibleOutsourcedCompanies(null, { kind: 'outsourced' }).length, 0);
+});
+
+// ── Cadastro de Colaboradores simplificado (web legado, ADR-0002 §10.2) ───
+const _OE_VIEW = [
+  { id: 1, name: 'Fulano Terceirizado', role_name: 'Auxiliar', tipo_vinculo: 'Terceirizado', outsourced_company_id: 100 },
+  { id: 2, name: 'Beltrano Prestador', role_name: 'Técnico', tipo_vinculo: 'Prestador de Serviço', outsourced_company_id: 200 },
+  { id: 3, name: 'Ciclano CLT', role_name: 'Analista', tipo_vinculo: 'CLT', outsourced_company_id: null },
+  { id: 4, name: 'Sem vínculo definido', role_name: 'Auxiliar', tipo_vinculo: '', outsourced_company_id: null },
+];
+function _OEV() { return globalThis.__EPI_OUTSOURCED_EMPLOYEES_VIEW__; }
+
+test('outsourced-employees-view: rótulo do tipo de vínculo', () => {
+  const V = _OEV();
+  eq(V.tipoVinculoLabel('Terceirizado'), 'Terceirizado');
+  eq(V.tipoVinculoLabel('Prestador de Serviço'), 'Prestador de Serviço');
+  eq(V.tipoVinculoLabel(''), 'Outro');
+});
+test('outsourced-employees-view: outsourcedEmployeesOnly exclui CLT e sem empresa vinculada', () => {
+  const V = _OEV();
+  const filtered = V.outsourcedEmployeesOnly(_OE_VIEW);
+  eq(filtered.length, 2);
+  eq(filtered.map((item) => item.id).sort().join(','), '1,2');
+});
+test('outsourced-employees-view: busca cobre nome e função', () => {
+  const V = _OEV();
+  const filtered = V.outsourcedEmployeesOnly(_OE_VIEW);
+  eq(V.visibleOutsourcedEmployees(filtered, { search: 'beltrano' })[0].id, 2);
+  eq(V.visibleOutsourcedEmployees(filtered, { search: 'auxiliar' })[0].id, 1);
+});
+test('outsourced-employees-view: lista ausente não quebra', () => {
+  const V = _OEV();
+  eq(V.outsourcedEmployeesOnly(undefined).length, 0);
+  eq(V.visibleOutsourcedEmployees(null, {}).length, 0);
 });
 
 // ── Filtro em cascata do dashboard (web legado) ───────────────────────────

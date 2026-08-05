@@ -8,6 +8,10 @@
         <nav class="view-tabs" data-vtabs="terceirizados" aria-label="Terceirizados e Prestadores">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
+          <button type="button" class="vtab" data-vtab="colaboradores" data-i18n="outsourcedCompany.employeesTab">Cadastro de Colaboradores</button>
+          <button type="button" class="vtab" data-vtab="arquivados-empresas" data-i18n="outsourcedCompany.archivedCompaniesTab">Empresas Arquivadas</button>
+          <button type="button" class="vtab" data-vtab="arquivados-colaboradores" data-i18n="outsourcedCompany.archivedEmployeesTab">Colaboradores Arquivados</button>
+          <button type="button" class="vtab" data-vtab="relatorios" data-i18n="outsourcedCompany.reportsTab">Relatórios</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="outsourced-company-form" class="card form-stack" data-update-permission="employees:update">
@@ -59,6 +63,107 @@
               <th scope="col" data-i18n="outsourcedCompany.registrationMode">Cadastro</th>
               <th scope="col" data-i18n="unit.tableActions">Ações</th>
             </tr></thead><tbody id="outsourced-companies-table"></tbody></table></div>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="colaboradores">
+          <form id="outsourced-employee-form" class="card form-stack" data-update-permission="employees:update_simplified">
+            <h3 data-i18n="outsourcedCompany.employeeCreate">Cadastro de Colaborador Terceirizado/Prestador</h3>
+            <input type="hidden" name="id">
+            <fieldset class="form-fieldset">
+              <legend data-i18n="legalEntity.identification">Identificação</legend>
+              <label><span data-i18n="company.title">Empresa</span><select name="company_id" id="outsourced-employee-company" required></select></label>
+              <label><span data-i18n="outsourcedCompany.employeeUnitLabel">Unidade</span><select name="unit_id" id="outsourced-employee-unit" required></select></label>
+              <label><span data-i18n="outsourcedCompany.employeeCompanyLabel">Empresa terceirizada/prestadora</span><select name="outsourced_company_id" id="outsourced-employee-outsourced-company" required></select></label>
+              <label><span data-i18n="outsourcedCompany.employeeNameLabel">Nome completo</span><input name="name" type="text" autocomplete="off" required></label>
+              <label><span data-i18n="outsourcedCompany.employeeCpfLabel">CPF</span><input name="cpf" type="text" placeholder="Somente números" required></label>
+              <label><span data-i18n="outsourcedCompany.employeeRoleLabel">Função</span><input name="role_name" type="text" required></label>
+              <label><span data-i18n="outsourcedCompany.employeeVincLabel">Tipo de vínculo</span>
+                <select name="tipo_vinculo" required>
+                  <option value="Terceirizado" data-i18n="employee.vincOutsourced">Terceirizado</option>
+                  <option value="Prestador de Serviço" data-i18n="employee.vincServiceProvider">Prestador de Serviço</option>
+                </select>
+              </label>
+              <label><span data-i18n="outsourcedCompany.employeeAdmissionLabel">Data de início</span><input name="admission_date" type="date" required></label>
+            </fieldset>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="tabs.details">Detalhes</legend>
+              <label><span data-i18n="outsourcedCompany.employeeOriginRegistrationLabel">Matrícula da empresa de origem</span><input name="origin_company_registration" type="text" autocomplete="off"></label>
+              <label><span data-i18n="outsourcedCompany.employeeBadgeLabel">Crachá</span><input name="badge_number" type="text" autocomplete="off"></label>
+              <label><span data-i18n="outsourcedCompany.employeeNotesLabel">Observações</span><textarea name="notes" rows="2"></textarea></label>
+            </fieldset>
+            <div class="action-group">
+              <button class="primary" type="submit" data-i18n="outsourcedCompany.employeeSave">Salvar Colaborador</button>
+              <button id="outsourced-employee-cancel-edit" class="ghost" type="button" hidden data-i18n="outsourcedCompany.employeeNewEntity">Novo Colaborador</button>
+            </div>
+          </form>
+          <article class="card">
+            <h3 data-i18n="outsourcedCompany.employeesTab">Cadastro de Colaboradores</h3>
+            <div class="form-grid">
+              <label><span data-i18n="outsourcedCompany.employeesFilterSearch">Buscar</span><input id="outsourced-employees-filter-search" type="search" placeholder="Nome ou função"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="employee.tableName">Colaborador</th>
+              <th scope="col" data-i18n="outsourcedCompany.employeeRoleLabel">Função</th>
+              <th scope="col" data-i18n="outsourcedCompany.employeeVincLabel">Tipo de vínculo</th>
+              <th scope="col" data-i18n="outsourcedCompany.employeeCompanyLabel">Empresa terceirizada/prestadora</th>
+              <th scope="col" data-i18n="employee.tableUnit">Unidade</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="outsourced-employees-table"></tbody></table></div>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="arquivados-empresas">
+          <article class="card" id="archived-outsourced-companies-card">
+            <h3 data-i18n="outsourcedCompany.archivedCompaniesTab">Empresas Arquivadas</h3>
+            <p class="muted" data-i18n="outsourcedCompany.archiveConfirm">Esta empresa será arquivada: colaboradores já vinculados não são afetados, mas novos colaboradores e novas entregas contra esta empresa passam a ser bloqueados enquanto ela estiver arquivada. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.</p>
+            <div class="form-grid">
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-outsourced-companies-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-outsourced-companies-filter-date" type="date"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-companies-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-companies-filter-user" type="search" placeholder="Usuário responsável"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
+              <th scope="col" data-i18n="outsourcedCompany.legalName">Razão social</th>
+              <th scope="col" data-i18n="outsourcedCompany.cnpj">CNPJ</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivado em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.retentionRemaining">Retenção restante</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="archived-outsourced-companies-table"></tbody></table></div>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="arquivados-colaboradores">
+          <article class="card" id="archived-outsourced-employees-card">
+            <h3 data-i18n="outsourcedCompany.archivedEmployeesTab">Colaboradores Arquivados</h3>
+            <p class="muted" data-i18n="employee.archivedHint">Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).</p>
+            <div class="form-grid">
+              <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-outsourced-employees-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
+              <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-outsourced-employees-filter-date" type="date"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-employees-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-employees-filter-user" type="search" placeholder="Usuário responsável"></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
+              <th scope="col" data-i18n="employee.tableName">Colaborador</th>
+              <th scope="col" data-i18n="employee.tableUnit">Unidade</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivado em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.retentionRemaining">Retenção restante</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="archived-outsourced-employees-table"></tbody></table></div>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="relatorios">
+          <article class="card">
+            <h3 data-i18n="outsourcedCompany.reportsTab">Relatórios</h3>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th>
+              <th scope="col" data-i18n="outsourcedCompany.reportsActive">Ativos</th>
+              <th scope="col" data-i18n="outsourcedCompany.reportsArchived">Arquivados</th>
+              <th scope="col" data-i18n="outsourcedCompany.employeeVincLabel">Tipo de vínculo</th>
+            </tr></thead><tbody id="outsourced-employees-summary-table"></tbody></table></div>
           </article>
         </div>
       </section>

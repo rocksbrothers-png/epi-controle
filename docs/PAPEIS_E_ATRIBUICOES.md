@@ -655,8 +655,19 @@ nunca ultrapassa (`MODULE_REQUIRED_PERMISSIONS` em `rule_engine.py`):
 teto técnico): todos os módulos acima, por perfil, por tenant, via
 `GET/POST /api/module-visibility`. Cada alteração é auditada
 (`company_audit_logs`, evento `visibility_config_updated`, com tenant/
-empresa, perfil, módulo, estado anterior, novo estado, admin responsável e
-data/hora).
+empresa, perfil, módulo, unidade (quando aplicável), estado anterior, novo
+estado, admin responsável e data/hora).
+
+**Override por Unidade**: para os perfis `admin` (Administrador Local) e
+`user` (Gestor de EPI) — os únicos com vínculo de unidade única —
+`POST /api/module-visibility` aceita um `unit_id` opcional para gravar a
+configuração num bucket específico da unidade em vez do bucket padrão
+(`"*"`). Um módulo ausente do bucket da unidade herda o valor do bucket
+`"*"` do mesmo perfil. `unit_id` para um perfil fora de `admin`/`user`, ou
+para uma unidade fora do tenant do ator, é rejeitado (`ValueError` → HTTP
+400). `module_visibility` é a única fonte de verdade para
+`tenant + perfil + unidade + módulo` — não existe mais um mecanismo
+paralelo (`module_unit_scope` foi retirado no PR18).
 
 **Escopo da configuração**: por tenant (`company_id`), reaproveitando a
 mesma chave `configuration_framework:{company_id}` já usada pela

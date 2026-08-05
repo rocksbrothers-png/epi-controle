@@ -3,6 +3,7 @@
 from epi_backend.http_utils import structured_log
 from epi_backend.db import row_to_dict
 from core.auth import ensure_resource_company
+from core.repository import actor_operational_unit_id  # noqa: F401 - reexportado (ver nota abaixo)
 
 
 def normalize_cpf(value):
@@ -435,13 +436,13 @@ def get_employee_current_unit(connection, employee_id):
     return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
 
 
-def actor_operational_unit_id(connection, actor):
-    if not actor or actor.get('role') not in ('admin', 'user'):
-        return None
-    linked_employee_id = actor.get('linked_employee_id')
-    if not linked_employee_id:
-        return None
-    return get_employee_current_unit(connection, int(linked_employee_id))
+# actor_operational_unit_id vive em core.repository (não aqui) e é
+# reexportado no topo deste arquivo: core.repository não importa nenhum
+# módulo de domínio, então módulos como legal_entities/units podem resolver
+# a unidade operacional do ator sem importar modules.employees.service de
+# volta — a causa raiz do ciclo employees<->units<->legal_entities (issue
+# #148). Os ~15 chamadores existentes (`from modules.employees.service
+# import actor_operational_unit_id`) continuam funcionando sem alteração.
 
 
 def actor_has_no_operational_unit(actor, scope_unit_id):

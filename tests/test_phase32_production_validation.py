@@ -189,7 +189,7 @@ def test_ubx_golive_marker_idempotent():
 
 
 def test_ubx_golive_declared_in_init_db_sequence():
-    from core.schema import init_db
+    from core.bootstrap import init_db
     src = inspect.getsource(init_db)
     assert 'ensure_ubx_golive_declared' in src
 

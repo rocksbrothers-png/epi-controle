@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from core.repository import actor_operational_unit_id
 from epi_backend.db import row_to_dict
 from modules.commercial.service import only_digits, validate_cnpj
 
@@ -94,7 +95,6 @@ def resolve_actor_legal_entity_ids(connection, actor):
         return [int(entity_id)] if entity_id else []
 
     if role == 'admin':
-        from modules.employees.service import actor_operational_unit_id
         unit_id = actor_operational_unit_id(connection, actor)
         if not unit_id:
             return []

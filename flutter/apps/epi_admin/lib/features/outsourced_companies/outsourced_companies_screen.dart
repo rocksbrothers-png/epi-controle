@@ -3,6 +3,7 @@ import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/api/api_client.dart';
 import '../../core/bloc/auth_cubit.dart';
 import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/outsourced_companies_cubit.dart';
@@ -40,7 +41,8 @@ class _OutsourcedCompaniesScreenState extends State<OutsourcedCompaniesScreen>
     super.initState();
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
-      _canCompanies = authState.permissions.contains('employees:create') &&
+      _canCompanies = (authState.permissions.contains('employees:create') ||
+              authState.permissions.contains('employees:create_simplified')) &&
           authState.isModuleVisible('terceirizados');
       _canEmployees = authState.permissions.contains('employees:create_simplified') &&
           authState.isModuleVisible('terceirizados_colaboradores');
@@ -390,6 +392,8 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
   late final TextEditingController _cnpj;
   late String _companyKind;
   late String _epiResponsibility;
+  List<Map<String, dynamic>> _units = const [];
+  Map<String, dynamic>? _unit;
   bool _submitting = false;
 
   bool get _editing => widget.company != null;
@@ -403,6 +407,28 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
     _cnpj = TextEditingController(text: c?.cnpj ?? '');
     _companyKind = c?.companyKind ?? 'outsourced';
     _epiResponsibility = c?.epiResponsibility ?? 'Conforme Contrato';
+    _loadUnits();
+  }
+
+  Future<void> _loadUnits() async {
+    try {
+      final bootstrap = await ApiClient.auth.bootstrap();
+      if (!mounted) return;
+      final unitId = widget.company?.unitId;
+      setState(() {
+        _units = bootstrap.units;
+        _unit = unitId == null
+            ? null
+            : _units.cast<Map<String, dynamic>?>().firstWhere(
+                (u) => u?['id'] == unitId,
+                orElse: () => null,
+              );
+      });
+    } on Exception {
+      // Sem unidades disponíveis (ou falha ao carregar): o campo fica
+      // vazio/desabilitado e o formulário segue com unit_id nulo — o
+      // backend (resolve_outsourced_company_unit_id) é a autoridade final.
+    }
   }
 
   @override
@@ -431,6 +457,7 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
       'cnpj': _cnpj.text.trim(),
       'company_kind': _companyKind,
       'epi_responsibility': _epiResponsibility,
+      'unit_id': _unit?['id'],
     };
     final ok = _editing
         ? await cubit.updateCompany(widget.company!.id, body)
@@ -488,6 +515,18 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
                     .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                     .toList(),
                 onChanged: (v) => setState(() => _epiResponsibility = v ?? 'Conforme Contrato'),
+              ),
+              const SizedBox(height: EpiSpacing.md),
+              DropdownButtonFormField<Map<String, dynamic>?>(
+                value: _unit,
+                decoration: InputDecoration(labelText: l10n.outsourcedCompanyUnitLabel),
+                items: [
+                  DropdownMenuItem(value: null, child: Text(l10n.outsourcedCompanyUnitAll)),
+                  ..._units.map(
+                    (u) => DropdownMenuItem(value: u, child: Text('${u['name'] ?? ''}')),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _unit = v),
               ),
             ],
           ),

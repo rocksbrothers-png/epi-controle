@@ -14,7 +14,7 @@
           <button type="button" class="vtab" data-vtab="relatorios" data-i18n="outsourcedCompany.reportsTab">Relatórios</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
-          <form id="outsourced-company-form" class="card form-stack" data-update-permission="employees:update">
+          <form id="outsourced-company-form" class="card form-stack" data-update-permission="employees:update employees:update_simplified">
             <h3 data-i18n="outsourcedCompany.create">Cadastro de Empresa Terceirizada</h3>
             <input type="hidden" name="id">
             <fieldset class="form-fieldset">
@@ -35,6 +35,7 @@
                 <option value="Conforme Contrato" selected>Conforme Contrato</option>
                 <option value="Não Definido">Não Definido</option>
               </select></label>
+              <label><span data-i18n="outsourcedCompany.unit">Unidade</span><select name="unit_id" id="outsourced-company-unit"></select><small class="muted" data-i18n="outsourcedCompany.unitHint">Perfis de unidade (Administrador Local/Gestor de EPI) ficam restritos à própria unidade automaticamente.</small></label>
             </fieldset>
             <div class="action-group">
               <button class="primary" type="submit" data-i18n="outsourcedCompany.save">Salvar Empresa</button>

@@ -13,7 +13,7 @@ from core.permissions import (
     PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
     PERM_EMPLOYEES_VIEW,
 )
-from core.repository import authorize_action, get_employee_by_id, get_unit_by_id
+from core.repository import authorize_action, authorize_action_any, get_employee_by_id, get_unit_by_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
@@ -216,12 +216,32 @@ def handle_put_employee_outsourced_simplified(handler, parsed, payload, match):
 
 # ── Arquivamento (Soft Delete) — mesma política das Unidades ─────────────────
 
-def _load_employee_for_lifecycle(connection, handler, parsed, payload, match, permission):
-    actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), permission)
+def _load_employee_for_lifecycle(connection, handler, parsed, payload, match, permission, *, outsourced_alternative=None):
+    """``outsourced_alternative`` (ADR-0002 §10.5): Administrador Local/
+    Gestor de EPI não têm `employees:delete`/`employees:update` completos —
+    só `employees:update_simplified`, suficiente para arquivar/desarquivar
+    o PRÓPRIO Cadastro de Colaboradores (terceirizado/prestador, nunca
+    CLT), na própria Unidade, quando o Administrador Geral autorizar o
+    módulo `terceirizados_colaboradores` para ela. Mesmo mecanismo de
+    module_visibility já usado no create/update deste mesmo cadastro —
+    nenhuma autorização nova."""
+    actor_user_id = resolve_actor_user_id(handler, parsed, payload)
+    if outsourced_alternative:
+        actor = authorize_action_any(connection, actor_user_id, (permission, outsourced_alternative))
+    else:
+        actor = authorize_action(connection, actor_user_id, permission)
     employee = get_employee_lifecycle(connection, int(match.group(1)))
     if not employee:
         raise ValueError('Colaborador não encontrado.')
     ensure_resource_company(actor, employee, 'Colaborador')
+    if outsourced_alternative and actor.get('role') in ('admin', 'user'):
+        is_outsourced = str(employee.get('tipo_vinculo') or '') != 'CLT' and bool(employee.get('outsourced_company_id'))
+        if not is_outsourced:
+            raise PermissionError(
+                'Esta operação é restrita a colaboradores terceirizados/prestadores para o seu perfil.'
+            )
+        ensure_actor_employee_scope(connection, actor, employee)
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', employee.get('unit_id'))
     return actor, employee
 
 
@@ -232,7 +252,10 @@ def handle_delete_employee(handler, parsed, payload, match):
     """Política de retenção: DELETE não remove — arquiva (soft delete)."""
     from urllib.parse import parse_qs
     with closing(get_connection()) as connection:
-        actor, employee = _load_employee_for_lifecycle(connection, handler, parsed, payload, match, 'employees:delete')
+        actor, employee = _load_employee_for_lifecycle(
+            connection, handler, parsed, payload, match, 'employees:delete',
+            outsourced_alternative=PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
+        )
         reason = str(parse_qs(parsed.query).get('reason', [''])[0] or '')
         result = archival.archive_record(
             connection, 'employees', employee, actor,
@@ -245,7 +268,10 @@ def handle_delete_employee(handler, parsed, payload, match):
 
 def handle_post_employee_archive(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
-        actor, employee = _load_employee_for_lifecycle(connection, handler, parsed, payload, match, 'employees:delete')
+        actor, employee = _load_employee_for_lifecycle(
+            connection, handler, parsed, payload, match, 'employees:delete',
+            outsourced_alternative=PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
+        )
         result = archival.archive_record(
             connection, 'employees', employee, actor,
             record_label=employee['name'],
@@ -258,7 +284,10 @@ def handle_post_employee_archive(handler, parsed, payload, match):
 
 def handle_post_employee_restore(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
-        actor, employee = _load_employee_for_lifecycle(connection, handler, parsed, payload, match, 'employees:update')
+        actor, employee = _load_employee_for_lifecycle(
+            connection, handler, parsed, payload, match, 'employees:update',
+            outsourced_alternative=PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
+        )
         archival.restore_record(
             connection, 'employees', employee, actor,
             record_label=employee['name'], ip=_client_ip(handler),

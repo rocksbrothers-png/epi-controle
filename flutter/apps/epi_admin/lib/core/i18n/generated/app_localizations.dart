@@ -2718,6 +2718,18 @@ abstract class AppLocalizations {
   /// **'Responsabilidade pelo Fornecimento de EPI'**
   String get outsourcedCompanyResponsibilityLabel;
 
+  /// No description provided for @outsourcedCompanyUnitLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get outsourcedCompanyUnitLabel;
+
+  /// No description provided for @outsourcedCompanyUnitAll.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as unidades (padrão)'**
+  String get outsourcedCompanyUnitAll;
+
   /// No description provided for @outsourcedCompanyStatusLabel.
   ///
   /// In pt_BR, this message translates to:

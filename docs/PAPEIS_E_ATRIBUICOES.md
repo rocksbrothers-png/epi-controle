@@ -274,9 +274,33 @@ mas não realiza a movimentação física.
 - Administrar apenas a própria unidade.
 - Transferir colaboradores da própria unidade para outra unidade.
 
+**Terceirizados e Prestadores (condicional, por Unidade — ADR-0002 §11)**
+
+Por padrão o Administrador Local não cadastra colaboradores — mas o
+Administrador Geral pode, pelas mesmas telas de visibilidade por perfil e
+Unidade já usadas para os demais módulos (Configuração → Regras →
+Visualização), autorizar explicitamente a própria unidade dele para o
+módulo "Terceirizados e Prestadores". Quando (e somente quando) essa
+autorização estiver ativa para a unidade em que atua, o Administrador
+Local passa a poder, sempre restrito à própria unidade:
+- Cadastrar empresas terceirizadas e prestadoras de serviço (Cadastro
+  Simplificado).
+- Editar, arquivar e reativar essas empresas.
+- Cadastrar, editar, arquivar e reativar colaboradores terceirizados e
+  prestadores de serviço vinculados a essas empresas.
+
+Isto não abre o cadastro completo de colaborador CLT (continua exclusivo
+do Administrador de Registro) nem a promoção da empresa ao Cadastro
+Padrão (continua exclusiva de Administrador Geral/de Registro) — só o
+recorte simplificado descrito acima, sempre auditado, sempre restrito à
+unidade autorizada, e nunca visível ou editável para outra unidade.
+
 **Não faz**
-- Não cadastra colaboradores.
-- Não atualiza cadastro de colaboradores.
+- Não cadastra colaboradores CLT.
+- Não atualiza cadastro de colaboradores CLT.
+- Não cadastra/edita empresas terceirizadas ou seus colaboradores fora da
+  própria unidade, nem sem autorização explícita do Administrador Geral
+  (ver "Terceirizados e Prestadores" acima).
 - Não entrega EPI.
 - Não captura assinatura.
 - Não captura biometria.
@@ -386,9 +410,21 @@ EPI trata o impacto operacional dessa mudança sobre os EPIs.
 - Atualizar histórico do colaborador.
 - Movimentar o estoque conforme a regra aplicável.
 
+**Terceirizados e Prestadores (condicional, por Unidade — ADR-0002 §11)**
+
+Mesma regra e mesmo mecanismo de autorização do Administrador Local (ver
+§4): o Gestor de EPI só cadastra/edita/arquiva/reativa empresas
+terceirizadas, prestadoras de serviço e seus colaboradores quando o
+Administrador Geral autorizar explicitamente o módulo "Terceirizados e
+Prestadores" para a unidade em que atua — e mesmo assim, sempre restrito
+à própria unidade, sempre auditado.
+
 **Não faz**
-- Não cadastra colaboradores.
-- Não altera dados cadastrais.
+- Não cadastra colaboradores CLT.
+- Não altera dados cadastrais de colaboradores CLT.
+- Não cadastra/edita empresas terceirizadas ou seus colaboradores fora da
+  própria unidade, nem sem autorização explícita do Administrador Geral
+  (ver "Terceirizados e Prestadores" acima).
 - Não aprova compras.
 - Não cria usuários.
 - Não altera permissões.

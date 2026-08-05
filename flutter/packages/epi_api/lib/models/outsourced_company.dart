@@ -18,6 +18,7 @@ class OutsourcedCompany {
     this.status = 'Ativa',
     this.promotedAt = '',
     this.createdAt = '',
+    this.unitId,
   });
 
   final int id;
@@ -25,6 +26,14 @@ class OutsourcedCompany {
   final String legalName;
   final String tradeName;
   final String cnpj;
+
+  /// Unidade a que o cadastro está restrito. `null` = escopo de toda a
+  /// empresa (tenant) — só quem tem permissão além do escopo de unidade
+  /// (Administrador Geral etc.) pode deixar em branco; Administrador
+  /// Local/Gestor de EPI são sempre forçados à própria unidade pelo backend
+  /// (`resolve_outsourced_company_unit_id`), independentemente do que for
+  /// enviado aqui.
+  final int? unitId;
 
   /// Valor técnico estável (inglês) — `outsourced`, `service_provider` ou
   /// `other_contracted`. O rótulo em português vive só na UI, nunca é
@@ -89,6 +98,7 @@ class OutsourcedCompany {
         status: _asString(json['status']).isEmpty ? 'Ativa' : _asString(json['status']),
         promotedAt: _asString(json['promoted_at']),
         createdAt: _asString(json['created_at']),
+        unitId: (json['unit_id'] as num?)?.toInt(),
       );
 
   /// Corpo aceito por POST/PUT `/api/outsourced-companies`.
@@ -100,5 +110,6 @@ class OutsourcedCompany {
         'epi_responsibility': epiResponsibility,
         'registration_mode': registrationMode,
         'status': status,
+        if (unitId != null) 'unit_id': unitId,
       };
 }

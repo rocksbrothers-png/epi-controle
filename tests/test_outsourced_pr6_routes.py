@@ -71,7 +71,7 @@ def test_get_outsourced_employees_summary_returns_service_data(monkeypatch):
     monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
     monkeypatch.setattr(
         oc_routes, 'fetch_outsourced_employees_summary',
-        lambda _c, cid: [{'outsourced_company_id': 9, 'active_count': 2, 'archived_count': 1}],
+        lambda _c, cid, **k: [{'outsourced_company_id': 9, 'active_count': 2, 'archived_count': 1}],
     )
     h = _FakeHandler()
     oc_routes.handle_get_outsourced_employees_summary(h, _parsed(), None, None)
@@ -174,8 +174,9 @@ def test_post_archive_calls_archival_and_audits(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'ensure_module_enabled_for_unit', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_lifecycle', lambda _c, eid: dict(_ENTITY))
     archive_calls = []
     monkeypatch.setattr(
@@ -195,8 +196,9 @@ def test_post_restore_calls_archival(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'ensure_module_enabled_for_unit', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_lifecycle', lambda _c, eid: dict(_ENTITY, status='archived'))
     restore_calls = []
     monkeypatch.setattr(oc_routes.archival, 'restore_record', lambda *a, **k: restore_calls.append(k))
@@ -211,8 +213,9 @@ def test_delete_outsourced_company_archives_instead_of_deleting(monkeypatch):
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'ensure_module_enabled_for_unit', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_lifecycle', lambda _c, eid: dict(_ENTITY))
     monkeypatch.setattr(
         oc_routes.archival, 'archive_record',
@@ -228,7 +231,7 @@ def test_archive_raises_when_entity_not_found(monkeypatch):
     actor = {'id': 1, 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_lifecycle', lambda _c, eid: None)
     h = _FakeHandler()
     with pytest.raises(ValueError):
@@ -240,7 +243,7 @@ def test_archive_blocked_without_permission(monkeypatch):
         raise PermissionError('Permissão negada.')
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 3)
-    monkeypatch.setattr(oc_routes, 'authorize_action', _deny)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', _deny)
     h = _FakeHandler()
     with pytest.raises(PermissionError):
         oc_routes.handle_post_outsourced_company_archive(h, _parsed(), {'actor_user_id': 3}, _match())

@@ -281,7 +281,7 @@ def create_employee_outsourced_simplified(connection, payload, *, actor):
     ensure_actor_unit_scope_for_target(connection, actor, unit_id)
 
     outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
-        validate_employee_outsourced_reference(connection, payload, company_id)
+        validate_employee_outsourced_reference(connection, payload, company_id, unit_id=unit_id)
     )
     if not outsourced_company_id:
         raise ValueError('Empresa terceirizada/prestadora é obrigatória.')
@@ -359,7 +359,7 @@ def update_employee_outsourced_simplified(connection, employee_id, payload, *, a
     ensure_actor_unit_scope_for_target(connection, actor, unit_id)
 
     outsourced_company_id, service_contract_id, epi_override, epi_override_reason = (
-        validate_employee_outsourced_reference(connection, payload, company_id)
+        validate_employee_outsourced_reference(connection, payload, company_id, unit_id=unit_id)
     )
     if not outsourced_company_id:
         raise ValueError('Empresa terceirizada/prestadora é obrigatória.')
@@ -718,11 +718,26 @@ def fetch_employee_legal_entity_movements(connection, employee_id):
 # ── Arquivamento (Soft Delete) com retenção — mesma política das Unidades ────
 
 def get_employee_lifecycle(connection, employee_id):
-    """Colaborador com os campos de ciclo de vida (para fluxos de arquivo)."""
+    """Colaborador com os campos de ciclo de vida (para fluxos de arquivo).
+
+    ``tipo_vinculo``/``outsourced_company_id`` entram para
+    ``authorize_employee_lifecycle_action`` (modules/employees/routes.py)
+    distinguir colaborador terceirizado/prestador (Cadastro de Colaboradores
+    simplificado, ADR-0002 §10.2) de colaborador CLT — Administrador Local/
+    Gestor de EPI só podem arquivar/desarquivar o primeiro. `tipo_vinculo`
+    sempre existiu; `outsourced_company_id` é condicional, mesma janela de
+    retrocompatibilidade usada em fetch_employees/fetch_archived_employees
+    acima.
+    """
     from core.archival import LIFECYCLE_FIELD_NAMES, lifecycle_enabled
+    from epi_backend.db import table_columns
     extra = (', ' + ', '.join(LIFECYCLE_FIELD_NAMES)) if lifecycle_enabled(connection, 'employees') else ''
+    outsourced_select = (
+        ', outsourced_company_id' if 'outsourced_company_id' in table_columns(connection, 'employees') else ''
+    )
     row = connection.execute(
-        f'SELECT id, company_id, unit_id, employee_id_code, cpf, name{extra} '
+        f'SELECT id, company_id, unit_id, employee_id_code, cpf, name, '
+        f'tipo_vinculo{outsourced_select}{extra} '
         'FROM employees WHERE id = ?',
         (int(employee_id),),
     ).fetchone()

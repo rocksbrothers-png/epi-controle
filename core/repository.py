@@ -278,6 +278,29 @@ def authorize_action(connection, actor_user_id, action, company_id=None):
     return actor
 
 
+def authorize_action_any(connection, actor_user_id, actions, company_id=None):
+    """Como `authorize_action`, mas aceita qualquer uma das permissões em
+    `actions` — usado quando dois perfis distintos alcançam a mesma rota por
+    permissões técnicas diferentes (ex.: Administrador Geral via
+    employees:create, Administrador Local/Gestor de EPI via
+    employees:create_simplified, ambos operando Empresas Terceirizadas
+    dentro do próprio escopo). Levanta o erro da última permissão tentada
+    quando nenhuma é concedida."""
+    actor = require_actor(connection, actor_user_id)
+    error = PermissionError('Nenhuma permissão informada.')
+    for action in actions:
+        try:
+            ensure_permission(actor, action)
+            break
+        except PermissionError as exc:
+            error = exc
+    else:
+        raise error
+    if company_id is not None:
+        ensure_company_access(actor, company_id)
+    return actor
+
+
 def require_master_actor(connection, actor_user_id):
     actor = authorize_action(connection, actor_user_id, 'commercial:view')
     if actor['role'] != 'master_admin':

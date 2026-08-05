@@ -110,7 +110,7 @@ def test_pure_rules_module_covered_by_js_test_harness():
 
 def test_form_submit_posts_to_outsourced_companies_endpoint():
     app_js = _read('static', 'app.js')
-    assert "saveSimpleForm(event, '/api/outsourced-companies', 'employees:create')" in app_js
+    assert "saveSimpleForm(event, '/api/outsourced-companies', ['employees:create', 'employees:create_simplified'])" in app_js
 
 
 def test_promote_calls_promote_endpoint():

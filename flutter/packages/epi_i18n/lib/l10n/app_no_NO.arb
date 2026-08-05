@@ -505,6 +505,8 @@
   "outsourcedCompanyKindServiceProvider": "Tjenesteyter",
   "outsourcedCompanyKindOther": "Annet",
   "outsourcedCompanyResponsibilityLabel": "Ansvar for Levering av Verneutstyr",
+  "outsourcedCompanyUnitLabel": "Enhet",
+  "outsourcedCompanyUnitAll": "Alle enheter (standard)",
   "outsourcedCompanyStatusLabel": "Status",
   "outsourcedCompanySave": "Lagre",
   "outsourcedCompanyCancel": "Avbryt",

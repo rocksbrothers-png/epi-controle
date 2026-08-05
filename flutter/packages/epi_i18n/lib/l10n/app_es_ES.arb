@@ -505,6 +505,8 @@
   "outsourcedCompanyKindServiceProvider": "Prestadora de Servicio",
   "outsourcedCompanyKindOther": "Otro",
   "outsourcedCompanyResponsibilityLabel": "Responsabilidad por el Suministro de EPP",
+  "outsourcedCompanyUnitLabel": "Unidad",
+  "outsourcedCompanyUnitAll": "Todas las unidades (predeterminado)",
   "outsourcedCompanyStatusLabel": "Situación",
   "outsourcedCompanySave": "Guardar",
   "outsourcedCompanyCancel": "Cancelar",

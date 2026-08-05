@@ -1940,6 +1940,13 @@ const state = {
   // o ator logado, usada por canAccessView). Esta é a matriz completa que a
   // tela "Configuração → Regras → Visualização" edita.
   moduleVisibilityAdminConfig: {},
+  // Padrão IMUTÁVEL do sistema por perfil (perfil -> módulo -> bool),
+  // calculado só a partir da permissão técnica — nunca reflete
+  // personalização do Administrador Geral. Usado só para exibir o painel
+  // "Permissões padrão deste perfil"; a decisão real de acesso continua
+  // vindo de moduleVisibilityAdminConfig + resolve_module_visibility no
+  // backend.
+  moduleVisibilityDefault: {},
   fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
@@ -2254,6 +2261,8 @@ const refs = {
   configRulesTable: document.getElementById('config-rules-table'),
   moduleVisibilityForm: document.getElementById('module-visibility-form'),
   moduleVisibilityRole: document.getElementById('module-visibility-role'),
+  moduleVisibilityDefaultPanel: document.getElementById('module-visibility-default-panel'),
+  moduleVisibilityDefaultList: document.getElementById('module-visibility-default-list'),
   moduleVisibilityUnitWrap: document.getElementById('module-visibility-unit-wrap'),
   moduleVisibilityUnit: document.getElementById('module-visibility-unit'),
   moduleVisibilityUnitHint: document.getElementById('module-visibility-unit-hint'),
@@ -5135,6 +5144,9 @@ async function loadBootstrap() {
       state.moduleVisibilityAdminConfig = (moduleVisibilityPayload.module_visibility && typeof moduleVisibilityPayload.module_visibility === 'object')
         ? moduleVisibilityPayload.module_visibility
         : {};
+      state.moduleVisibilityDefault = (moduleVisibilityPayload.default_module_visibility && typeof moduleVisibilityPayload.default_module_visibility === 'object')
+        ? moduleVisibilityPayload.default_module_visibility
+        : {};
 
       if (hasHardeningAccess()) {
         const frameworkPayload = await loadOptionalBootstrapSection(
@@ -5155,6 +5167,7 @@ async function loadBootstrap() {
       state.configurationRules = [];
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
       state.moduleVisibilityAdminConfig = {};
+      state.moduleVisibilityDefault = {};
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
@@ -11702,6 +11715,27 @@ function hydrateModuleVisibilityForm() {
   populateModuleVisibilityUnitSelect();
   syncModuleVisibilityUnitVisibility();
   renderModuleVisibilityCheckboxes();
+  renderModuleVisibilityDefaultPanel();
+}
+
+// Painel "Permissões padrão deste perfil": mostra o padrão IMUTÁVEL do
+// sistema (state.moduleVisibilityDefault, nunca a configuração
+// personalizada) para o perfil selecionado — deixa explícito que a
+// matriz de checkboxes abaixo é uma PERSONALIZAÇÃO sobre esse padrão, não
+// a definição do perfil.
+function renderModuleVisibilityDefaultPanel() {
+  if (!refs.moduleVisibilityRole || !refs.moduleVisibilityDefaultPanel || !refs.moduleVisibilityDefaultList) return;
+  const role = refs.moduleVisibilityRole.value;
+  const defaults = (state.moduleVisibilityDefault || {})[role];
+  if (!defaults) {
+    refs.moduleVisibilityDefaultPanel.hidden = true;
+    return;
+  }
+  refs.moduleVisibilityDefaultPanel.hidden = false;
+  const enabledModules = Object.keys(MODULE_VISIBILITY_LABELS).filter((moduleKey) => Boolean(defaults[moduleKey]));
+  refs.moduleVisibilityDefaultList.innerHTML = enabledModules.length
+    ? enabledModules.map((moduleKey) => `<span class="badge badge-status-active">✔ ${MODULE_VISIBILITY_LABELS[moduleKey]}</span>`).join('')
+    : `<span class="badge badge-module-off">${tr('moduleVisibility.noDefaultModules', 'Nenhum módulo por padrão')}</span>`;
 }
 
 // Seletor de Unidade: só faz sentido para os papéis em
@@ -12518,7 +12552,7 @@ async function init() {
     void removeConfigurationRule(button.dataset.removeConfigRule);
   });
   bindAppListener(refs.configFrameworkForm, 'submit', (event) => { void saveConfigurationFramework(event); });
-  bindAppListener(refs.moduleVisibilityRole, 'change', () => { syncModuleVisibilityUnitVisibility(); renderModuleVisibilityCheckboxes(); });
+  bindAppListener(refs.moduleVisibilityRole, 'change', () => { syncModuleVisibilityUnitVisibility(); renderModuleVisibilityCheckboxes(); renderModuleVisibilityDefaultPanel(); });
   bindAppListener(refs.moduleVisibilityUnit, 'change', () => { renderModuleVisibilityCheckboxes(); });
   bindAppListener(refs.moduleVisibilityForm, 'submit', (event) => { void onSubmitModuleVisibility(event); });
   [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]

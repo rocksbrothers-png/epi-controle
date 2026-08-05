@@ -1473,7 +1473,8 @@
     "unitHint": "A module not specifically set for this Unit inherits the value from \"All units\".",
     "allUnitsOption": "All units (default)",
     "savedForRole": "Module visibility saved for {role}.",
-    "savedForRoleUnit": "Module visibility saved for {role} in Unit {unit}."
+    "savedForRoleUnit": "Module visibility saved for {role} in Unit {unit}.",
+    "noDefaultModules": "No modules by default"
   },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",

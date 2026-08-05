@@ -1473,7 +1473,8 @@
     "unitHint": "Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".",
     "allUnitsOption": "Todas as unidades (padrão)",
     "savedForRole": "Visibilidade de módulos salva para {role}.",
-    "savedForRoleUnit": "Visibilidade de módulos salva para {role} na Unidade {unit}."
+    "savedForRoleUnit": "Visibilidade de módulos salva para {role} na Unidade {unit}.",
+    "noDefaultModules": "Nenhum módulo por padrão"
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",

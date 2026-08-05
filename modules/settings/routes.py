@@ -19,6 +19,7 @@ from modules.settings.service import (
     fetch_shadow_log_health,
     get_configuration_framework,
     get_configuration_rules,
+    get_default_module_visibility,
     get_ficha_config,
     get_ficha_retention_policy,
     get_module_visibility_config,
@@ -91,7 +92,11 @@ def handle_get_module_visibility(handler, parsed, payload, match):
         company_id = _resolve_settings_company_id(connection, actor, query.get('company_id', [None])[0], require=False)
         module_visibility = get_module_visibility_config(connection, company_id)
         from epi_backend.rule_engine import MODULE_KEYS
-        return send_json(handler, 200, {'module_visibility': module_visibility, 'modules': list(MODULE_KEYS)})
+        return send_json(handler, 200, {
+            'module_visibility': module_visibility,
+            'modules': list(MODULE_KEYS),
+            'default_module_visibility': get_default_module_visibility(),
+        })
 
 
 def handle_get_configuration_framework(handler, parsed, payload, match):

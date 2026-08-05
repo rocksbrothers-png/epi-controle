@@ -543,8 +543,11 @@
   "outsourcedReportsActive": "Activos",
   "outsourcedReportsArchived": "Archivados",
   "moduleVisibilityTitle": "Visibilidad de Módulos",
-  "moduleVisibilityDescription": "Controle qué módulos aparecen para cada perfil, y por Unidad para Administrador Local y Gestor de EPI. Los módulos opcionales (como Subcontratados y Registro de Colaboradores) nacen ocultos por defecto en todo tenant.",
+  "moduleVisibilityDescription": "Permisos predeterminados: cada perfil tiene permisos predeterminados definidos por el sistema. Personalizaciones: el Administrador General puede personalizar la visualización y el uso de los módulos por perfil y por unidad, sin alterar la estructura predeterminada del sistema.",
   "moduleVisibilityRoleLabel": "Perfil",
+  "moduleVisibilityDefaultPanelTitle": "Permisos predeterminados de este perfil",
+  "moduleVisibilityDefaultPanelHint": "Estos permisos representan el comportamiento predeterminado del sistema. Las configuraciones siguientes solo permiten personalizaciones realizadas por el Administrador General.",
+  "moduleVisibilityNoDefaultModules": "Ningún módulo por defecto",
   "moduleVisibilityUnitLabel": "Unidad",
   "moduleVisibilityUnitHint": "Un módulo no marcado específicamente para esta Unidad hereda el valor de \"Todas las unidades\".",
   "moduleVisibilityAllUnitsOption": "Todas las unidades (predeterminado)"

@@ -653,6 +653,22 @@ Acesso Final = Regra Padrão AND Configuração Administrativa AND Permissões T
   exclusivamente nas rotas de API, gateadas por `ensure_permission`/
   `authorize_action`, sem qualquer acoplamento a `module_visibility`.
 
+**Tela de Configuração como camada de personalização, não como definição do
+perfil**: a tela "Visibilidade por Módulo" existe para que o Administrador
+Geral **personalize** o comportamento padrão acima — ela nunca é a única
+fonte das permissões de um perfil. Para deixar isso explícito na própria
+UI (Web Legado e Flutter), `GET /api/module-visibility` devolve, ao lado
+de `module_visibility` (a configuração atual, já com qualquer
+personalização aplicada), um segundo campo
+`default_module_visibility: {role: {module: bool}}` — calculado por
+`modules.settings.service.get_default_module_visibility()` só a partir da
+"Regra Padrão" descrita acima, **sem nunca olhar** o que foi salvo. É o
+que alimenta o painel "Permissões padrão deste perfil", exibido logo
+abaixo do seletor de Perfil: mostra os módulos que aquele perfil tem por
+padrão no sistema, antes de qualquer personalização, deixando claro que a
+matriz de switches/checkboxes abaixo dele é a camada de personalização —
+nunca a definição do perfil.
+
 ### Matriz oficial
 
 | Perfil | Dashboard | Compras | Estoque | Entregas | Solicitações | Fichas de EPI | Relatórios | Administração | Configurações |

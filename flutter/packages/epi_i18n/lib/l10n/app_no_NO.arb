@@ -543,8 +543,11 @@
   "outsourcedReportsActive": "Aktive",
   "outsourcedReportsArchived": "Arkiverte",
   "moduleVisibilityTitle": "Modulsynlighet",
-  "moduleVisibilityDescription": "Kontroller hvilke moduler som vises for hver rolle, og per Enhet for rollene Lokal Administrator og EPI-ansvarlig. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.",
+  "moduleVisibilityDescription": "Standardtillatelser: hver rolle har standardtillatelser definert av systemet. Tilpasninger: Hovedadministratoren kan tilpasse synlighet og bruk av moduler per rolle og per enhet, uten å endre systemets standardstruktur.",
   "moduleVisibilityRoleLabel": "Rolle",
+  "moduleVisibilityDefaultPanelTitle": "Standardtillatelser for denne rollen",
+  "moduleVisibilityDefaultPanelHint": "Disse tillatelsene representerer systemets standardoppførsel. Innstillingene nedenfor tillater kun tilpasninger utført av Hovedadministratoren.",
+  "moduleVisibilityNoDefaultModules": "Ingen moduler som standard",
   "moduleVisibilityUnitLabel": "Enhet",
   "moduleVisibilityUnitHint": "En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".",
   "moduleVisibilityAllUnitsOption": "Alle enheter (standard)"

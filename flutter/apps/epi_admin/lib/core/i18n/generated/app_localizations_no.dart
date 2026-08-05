@@ -1477,10 +1477,21 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
+      'Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelTitle =>
+      'Permissões padrão deste perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelHint =>
+      'Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.';
+
+  @override
+  String get moduleVisibilityNoDefaultModules => 'Nenhum módulo por padrão';
 
   @override
   String get moduleVisibilityUnitLabel => 'Unidade';
@@ -2962,10 +2973,21 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get moduleVisibilityDescription =>
-      'Kontroller hvilke moduler som vises for hver rolle, og per Enhet for rollene Lokal Administrator og EPI-ansvarlig. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.';
+      'Standardtillatelser: hver rolle har standardtillatelser definert av systemet. Tilpasninger: Hovedadministratoren kan tilpasse synlighet og bruk av moduler per rolle og per enhet, uten å endre systemets standardstruktur.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Rolle';
+
+  @override
+  String get moduleVisibilityDefaultPanelTitle =>
+      'Standardtillatelser for denne rollen';
+
+  @override
+  String get moduleVisibilityDefaultPanelHint =>
+      'Disse tillatelsene representerer systemets standardoppførsel. Innstillingene nedenfor tillater kun tilpasninger utført av Hovedadministratoren.';
+
+  @override
+  String get moduleVisibilityNoDefaultModules => 'Ingen moduler som standard';
 
   @override
   String get moduleVisibilityUnitLabel => 'Enhet';

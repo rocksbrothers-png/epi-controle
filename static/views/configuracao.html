@@ -252,10 +252,16 @@
             <div class="section-intro">
               <span class="eyebrow">Regras</span>
               <h3>Visibilidade por Módulo</h3>
-              <p class="hint">Defina quais módulos cada perfil poderá visualizar em cada unidade da empresa. O Administrador Geral pode habilitar ou restringir a visualização por perfil e por unidade, respeitando as permissões técnicas do sistema e as regras organizacionais da empresa. Essa configuração permite personalizar o acesso conforme a estrutura operacional de cada unidade.</p>
+              <p class="hint"><strong>Permissões padrão.</strong> Cada perfil possui permissões padrão definidas pelo sistema.</p>
+              <p class="hint"><strong>Personalizações.</strong> O Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.</p>
             </div>
             <form id="module-visibility-form" class="form-stack">
               <label>Perfil<select id="module-visibility-role" name="role" required></select></label>
+              <div id="module-visibility-default-panel" class="default-permissions-panel" hidden>
+                <h4>Permissões padrão deste perfil</h4>
+                <div class="chips-row" id="module-visibility-default-list"></div>
+                <p class="hint">Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.</p>
+              </div>
               <label id="module-visibility-unit-wrap" hidden>
                 <span data-i18n="moduleVisibility.unitLabel">Unidade</span>
                 <select id="module-visibility-unit" name="unit_id"></select>

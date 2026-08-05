@@ -1477,10 +1477,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
+      'Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelTitle =>
+      'Permissões padrão deste perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelHint =>
+      'Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.';
+
+  @override
+  String get moduleVisibilityNoDefaultModules => 'Nenhum módulo por padrão';
 
   @override
   String get moduleVisibilityUnitLabel => 'Unidade';
@@ -2967,10 +2978,21 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle qué módulos aparecen para cada perfil, y por Unidad para Administrador Local y Gestor de EPI. Los módulos opcionales (como Subcontratados y Registro de Colaboradores) nacen ocultos por defecto en todo tenant.';
+      'Permisos predeterminados: cada perfil tiene permisos predeterminados definidos por el sistema. Personalizaciones: el Administrador General puede personalizar la visualización y el uso de los módulos por perfil y por unidad, sin alterar la estructura predeterminada del sistema.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelTitle =>
+      'Permisos predeterminados de este perfil';
+
+  @override
+  String get moduleVisibilityDefaultPanelHint =>
+      'Estos permisos representan el comportamiento predeterminado del sistema. Las configuraciones siguientes solo permiten personalizaciones realizadas por el Administrador General.';
+
+  @override
+  String get moduleVisibilityNoDefaultModules => 'Ningún módulo por defecto';
 
   @override
   String get moduleVisibilityUnitLabel => 'Unidad';

@@ -589,6 +589,10 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
   int? _unitId;
   // role -> bucket ("*" ou "<unit_id>") -> module -> bool
   Map<String, Map<String, Map<String, bool>>> _visibility = const {};
+  // role -> module -> bool — padrão IMUTÁVEL do sistema (permissão técnica),
+  // nunca a personalização salva. Usado só pelo painel "Permissões padrão
+  // deste perfil"; a matriz de switches abaixo continua lendo _visibility.
+  Map<String, Map<String, bool>> _defaultVisibility = const {};
   List<Map<String, dynamic>> _units = const [];
   bool _loading = true;
   bool _saving = false;
@@ -608,6 +612,7 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
     try {
       final res = await ApiClient.settings.getModuleVisibility();
       final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
+      final rawDefault = (res['default_module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
       final bootstrap = await ApiClient.auth.bootstrap();
       if (!mounted) return;
       setState(() {
@@ -623,6 +628,12 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
                     const {},
               ),
             ),
+          ),
+        );
+        _defaultVisibility = rawDefault.map(
+          (role, modules) => MapEntry(
+            role,
+            (modules as Map?)?.cast<String, dynamic>().map((k, v) => MapEntry(k, v == true)) ?? const {},
           ),
         );
         _units = bootstrap.units;
@@ -722,6 +733,11 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
                     })
                 : null,
           ),
+          const SizedBox(height: EpiSpacing.sm),
+          _DefaultPermissionsPanel(
+            modules: _defaultVisibility[_role] ?? const {},
+            moduleLabels: _kModuleVisibilityModules,
+          ),
           if (unitScoped) ...[
             const SizedBox(height: EpiSpacing.sm),
             DropdownButtonFormField<int?>(
@@ -762,6 +778,57 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
             const SizedBox(height: EpiSpacing.sm),
             Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Painel "Permissões padrão deste perfil": mostra o padrão IMUTÁVEL do
+/// sistema (`_ModuleVisibilityCardState._defaultVisibility`, nunca a
+/// personalização salva pelo Administrador Geral) para o perfil
+/// selecionado — deixa explícito que a matriz de switches abaixo é uma
+/// PERSONALIZAÇÃO sobre esse padrão, não a definição do perfil.
+class _DefaultPermissionsPanel extends StatelessWidget {
+  const _DefaultPermissionsPanel({required this.modules, required this.moduleLabels});
+
+  final Map<String, bool> modules;
+  final List<(String value, String label)> moduleLabels;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final enabled = moduleLabels.where((m) => modules[m.$1] == true).toList();
+    return Container(
+      padding: const EdgeInsets.all(EpiSpacing.md),
+      decoration: BoxDecoration(
+        color: EpiColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: EpiColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.moduleVisibilityDefaultPanelTitle, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: EpiSpacing.xs),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: enabled.isEmpty
+                ? [Chip(label: Text(l10n.moduleVisibilityNoDefaultModules))]
+                : enabled
+                    .map((m) => Chip(
+                          avatar: const Icon(Icons.check, size: 16),
+                          label: Text(m.$2),
+                          backgroundColor: EpiColors.successSoft,
+                        ))
+                    .toList(),
+          ),
+          const SizedBox(height: EpiSpacing.xs),
+          Text(
+            l10n.moduleVisibilityDefaultPanelHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+          ),
         ],
       ),
     );

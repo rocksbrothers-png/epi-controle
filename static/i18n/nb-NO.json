@@ -1473,7 +1473,8 @@
     "unitHint": "En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".",
     "allUnitsOption": "Alle enheter (standard)",
     "savedForRole": "Modulsynlighet lagret for {role}.",
-    "savedForRoleUnit": "Modulsynlighet lagret for {role} i Enhet {unit}."
+    "savedForRoleUnit": "Modulsynlighet lagret for {role} i Enhet {unit}.",
+    "noDefaultModules": "Ingen moduler som standard"
   },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",

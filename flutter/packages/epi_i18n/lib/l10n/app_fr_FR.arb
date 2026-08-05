@@ -543,8 +543,11 @@
   "outsourcedReportsActive": "Actifs",
   "outsourcedReportsArchived": "Archivés",
   "moduleVisibilityTitle": "Visibilité des Modules",
-  "moduleVisibilityDescription": "Contrôlez quels modules apparaissent pour chaque profil, et par Unité pour les profils Administrateur Local et Gestionnaire EPI. Les modules optionnels (comme Sous-traitants et Inscription des Collaborateurs) naissent masqués par défaut pour chaque tenant.",
+  "moduleVisibilityDescription": "Permissions par défaut : chaque profil possède des permissions par défaut définies par le système. Personnalisations : l'Administrateur Général peut personnaliser la visualisation et l'utilisation des modules par profil et par unité, sans modifier la structure par défaut du système.",
   "moduleVisibilityRoleLabel": "Profil",
+  "moduleVisibilityDefaultPanelTitle": "Permissions par défaut de ce profil",
+  "moduleVisibilityDefaultPanelHint": "Ces permissions représentent le comportement par défaut du système. Les paramètres ci-dessous ne permettent que des personnalisations effectuées par l'Administrateur Général.",
+  "moduleVisibilityNoDefaultModules": "Aucun module par défaut",
   "moduleVisibilityUnitLabel": "Unité",
   "moduleVisibilityUnitHint": "Un module non défini spécifiquement pour cette Unité hérite de la valeur de \"Toutes les unités\".",
   "moduleVisibilityAllUnitsOption": "Toutes les unités (par défaut)"

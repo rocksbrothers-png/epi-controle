@@ -1473,7 +1473,8 @@
     "unitHint": "Un module non défini spécifiquement pour cette Unité hérite de la valeur de \"Toutes les unités\".",
     "allUnitsOption": "Toutes les unités (par défaut)",
     "savedForRole": "Visibilité des modules enregistrée pour {role}.",
-    "savedForRoleUnit": "Visibilité des modules enregistrée pour {role} dans l'Unité {unit}."
+    "savedForRoleUnit": "Visibilité des modules enregistrée pour {role} dans l'Unité {unit}.",
+    "noDefaultModules": "Aucun module par défaut"
   },
   "myCompany": {
     "stockScope": "Consolider les soldes de stock par",

@@ -111,6 +111,58 @@ def test_general_admin_can_read_module_visibility(monkeypatch):
     assert body['module_visibility']['buyer']['*']['estoque'] is False
 
 
+def test_get_module_visibility_includes_immutable_system_default(monkeypatch):
+    """Painel "Permissões padrão deste perfil" (reestruturação da tela —
+    Configuração deixa de parecer a ÚNICA fonte das permissões, vira uma
+    camada de personalização sobre o padrão do sistema): o GET precisa
+    devolver o padrão técnico puro, calculado só a partir de
+    core.permissions.PERMISSIONS/MODULE_REQUIRED_PERMISSIONS, sem nenhuma
+    personalização salva pelo Administrador Geral."""
+    _fake_meta_store(monkeypatch)
+    _patch_common(monkeypatch, GENERAL_ADMIN)
+    handler = _FakeHandler()
+    routes.handle_get_module_visibility(handler, _parsed(), {}, None)
+    body = handler.json()
+    default = body['default_module_visibility']
+    # Exemplo do próprio pedido de produto: Gestor de EPI só tem
+    # Dashboard/Estoque/Entregas/Fichas de EPI por padrão.
+    assert default['user'] == {
+        'dashboard': True, 'compras': False, 'estoque': True, 'entregas': True,
+        'solicitacoes': False, 'fichas': True, 'relatorios': False,
+        'administracao': False, 'configuracoes': False,
+        'terceirizados': False, 'terceirizados_colaboradores': False,
+    }
+    # Módulos opt-in nascem ocultos por padrão para todo perfil, mesmo o
+    # mais privilegiado.
+    assert default['master_admin']['terceirizados'] is False
+
+
+def test_default_module_visibility_ignores_saved_customizations(monkeypatch):
+    """Depois que o Administrador Geral personaliza um perfil (sem
+    unit_id, então o bucket "*" é regravado in-place), o padrão exibido
+    continua sendo o técnico — nunca o valor personalizado. Confirma que
+    "Permissões padrão" não pode ser confundido com "valor atual"."""
+    store = _fake_meta_store(monkeypatch)
+    _patch_common(monkeypatch, GENERAL_ADMIN)
+    monkeypatch.setattr(
+        'modules.companies.service.register_company_audit',
+        lambda *a, **k: None,
+    )
+    post_handler = _FakeHandler()
+    post_handler.command = 'POST'
+    routes.handle_post_module_visibility(
+        post_handler, _parsed(), {'role': 'buyer', 'modules': {'estoque': True}}, None,
+    )
+    assert store  # confirma que algo foi persistido
+    get_handler = _FakeHandler()
+    routes.handle_get_module_visibility(get_handler, _parsed(), {}, None)
+    body = get_handler.json()
+    # A configuração ATUAL (module_visibility) reflete a personalização...
+    assert body['module_visibility']['buyer']['*']['estoque'] is True
+    # ...mas o padrão do sistema continua False (buyer não tem stock:view).
+    assert body['default_module_visibility']['buyer']['estoque'] is False
+
+
 def test_registry_admin_can_read_module_visibility(monkeypatch):
     # Mesma autoridade de /api/configuration-rules — não é master_admin-only
     # como o framework de hardening.

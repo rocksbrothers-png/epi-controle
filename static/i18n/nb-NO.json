@@ -1465,6 +1465,13 @@
     "reportsEmpty": "Ingen innleide/tjenesteytende selskaper registrert.",
     "reportsError": "Kunne ikke laste rapporten."
   },
+  "moduleVisibility": {
+    "unitLabel": "Enhet",
+    "unitHint": "En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".",
+    "allUnitsOption": "Alle enheter (standard)",
+    "savedForRole": "Modulsynlighet lagret for {role}.",
+    "savedForRoleUnit": "Modulsynlighet lagret for {role} i Enhet {unit}."
+  },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",
     "stockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet."

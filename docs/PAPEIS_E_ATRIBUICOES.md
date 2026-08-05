@@ -676,6 +676,19 @@ de Registro operam sempre na própria empresa; Admin Master sem seleção
 explícita de empresa grava no escopo `global` (mesma limitação pré-existente
 da aba de regras por unidade).
 
+**Web Legado (admin UI)**: Configuração → Regras → Visualização →
+"Visibilidade por Módulo" (`static/views/configuracao.html`). Um seletor de
+Unidade (`#module-visibility-unit`) aparece só quando o perfil selecionado
+está em `MODULE_VISIBILITY_UNIT_SCOPED_ROLES` (espelha `_UNIT_SCOPED_ROLES`
+do backend — `admin`/`user`); com "Todas as unidades" (padrão) grava no
+bucket `"*"`, com uma Unidade específica grava no bucket daquela unidade.
+As checkboxes exibem o valor efetivo (`moduleVisibilityEffectiveValue`,
+mesma regra de fallback do backend). Isto corrige uma regressão silenciosa
+introduzida pelo PR18: as checkboxes liam `roleConfig[moduleKey]`
+diretamente, formato que deixou de existir quando `module_visibility`
+passou a ser aninhado por bucket — toda checkbox aparecia sempre marcada,
+independentemente do valor salvo.
+
 **Regra Flutter**: `NavigationPolicy`
 (`flutter/apps/epi_admin/lib/core/router/navigation_policy.dart`) — mapa
 `routeModules` (rota → módulo) e `isModuleLocationAccessible()`, único

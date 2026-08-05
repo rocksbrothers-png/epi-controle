@@ -1465,6 +1465,13 @@
     "reportsEmpty": "Aucune entreprise sous-traitante/prestataire enregistrée.",
     "reportsError": "Impossible de charger le rapport."
   },
+  "moduleVisibility": {
+    "unitLabel": "Unité",
+    "unitHint": "Un module non défini spécifiquement pour cette Unité hérite de la valeur de \"Toutes les unités\".",
+    "allUnitsOption": "Toutes les unités (par défaut)",
+    "savedForRole": "Visibilité des modules enregistrée pour {role}.",
+    "savedForRoleUnit": "Visibilité des modules enregistrée pour {role} dans l'Unité {unit}."
+  },
   "myCompany": {
     "stockScope": "Consolider les soldes de stock par",
     "stockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité."

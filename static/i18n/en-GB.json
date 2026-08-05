@@ -1465,6 +1465,13 @@
     "reportsEmpty": "No outsourced/contracted companies registered.",
     "reportsError": "Could not load the report."
   },
+  "moduleVisibility": {
+    "unitLabel": "Unit",
+    "unitHint": "A module not specifically set for this Unit inherits the value from \"All units\".",
+    "allUnitsOption": "All units (default)",
+    "savedForRole": "Module visibility saved for {role}.",
+    "savedForRoleUnit": "Module visibility saved for {role} in Unit {unit}."
+  },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",
     "stockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock."

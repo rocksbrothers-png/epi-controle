@@ -72,6 +72,19 @@ def test_can_access_view_checks_both_alternatives():
     assert 'VIEW_MODULE_ALTERNATIVES' in fn
 
 
+def test_show_view_second_permission_gate_also_checks_the_alternative():
+    """Regressão: showView() tem um segundo gate de permissão (o que dispara
+    o alert "Seu perfil Não pode acessar esta área.") separado de
+    canAccessView() — antes desta correção ele não conhecia
+    VIEW_PERMISSION_ALTERNATIVES, então Administrador Local/Gestor de EPI
+    viam "Terceirizados e Prestadores" no menu (canAccessView liberava pela
+    alternativa) mas eram bloqueados com o alerta ao clicar (este segundo
+    gate só checava employees:create, que eles não têm)."""
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('function showView(view, options = {}) {'):app_js.index("if (view === 'configuracao' && !hasConfigurationAccess())")]
+    assert 'VIEW_PERMISSION_ALTERNATIVES' in fn
+
+
 def test_module_visibility_label_registered_for_colaboradores_module():
     app_js = _read('static', 'app.js')
     assert "terceirizados_colaboradores: 'Cadastro de Colaboradores'" in app_js

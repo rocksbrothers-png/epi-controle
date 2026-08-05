@@ -3119,7 +3119,15 @@ function showView(view, options = {}) {
     view = defaultView();
   }
   const permission = VIEW_PERMISSIONS[view];
-  if (permission && !hasPermission(permission)) {
+  // Mesma regra de alternativa de canAccessView() (ADR-0002 §10/§11): sem
+  // isto, este segundo gate — mais estrito, só checa a permissão primária —
+  // bloqueava com o alerta abaixo mesmo depois de canAccessView() já ter
+  // liberado a view pela permissão alternativa (ex.: Gestor de EPI/
+  // Administrador Local em Terceirizados e Prestadores, que só têm
+  // employees:create_simplified). O item ficava visível no menu mas
+  // inacessível ao clique.
+  const altPermission = VIEW_PERMISSION_ALTERNATIVES[view];
+  if (permission && !hasPermission(permission) && !(altPermission && hasPermission(altPermission))) {
     alert('Seu perfil Não pode acessar esta área.');
     console.warn('[RBAC]', {
       rota: view,

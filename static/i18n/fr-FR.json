@@ -1452,6 +1452,7 @@
     "employeeNewEntity": "Nouveau Collaborateur",
     "employeeCompanyLabel": "Entreprise sous-traitante/prestataire",
     "employeeUnitLabel": "Unité",
+    "employeeUnitLockedHint": "Unité définie par votre profil d'accès.",
     "employeeNameLabel": "Nom complet",
     "employeeCpfLabel": "CPF",
     "employeeRoleLabel": "Fonction",

@@ -87,6 +87,7 @@
   "employeeSectorLabel": "Avdeling",
   "employeeRoleLabel": "Stilling",
   "employeeUnitLabel": "Enhet",
+  "employeeUnitLockedHint": "Enhet fastsatt av din tilgangsprofil.",
   "employeeLegalEntityLabel": "CNPJ",
   "employeeAdmissionLabel": "Ansettelsesdato",
   "employeeScheduleLabel": "Arbeidsplan",

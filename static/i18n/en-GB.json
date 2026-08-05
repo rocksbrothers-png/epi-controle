@@ -1452,6 +1452,7 @@
     "employeeNewEntity": "New Employee",
     "employeeCompanyLabel": "Outsourced/contracted company",
     "employeeUnitLabel": "Unit",
+    "employeeUnitLockedHint": "Unit set by your access profile.",
     "employeeNameLabel": "Full name",
     "employeeCpfLabel": "Tax ID (CPF)",
     "employeeRoleLabel": "Role",

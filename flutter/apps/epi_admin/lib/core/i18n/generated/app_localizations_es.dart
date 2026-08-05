@@ -258,6 +258,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeUnitLabel => 'Unidade';
 
   @override
+  String get employeeUnitLockedHint =>
+      'Unidade definida pelo seu perfil de acesso.';
+
+  @override
   String get employeeLegalEntityLabel => 'CNPJ';
 
   @override
@@ -1756,6 +1760,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get employeeUnitLabel => 'Unidad';
+
+  @override
+  String get employeeUnitLockedHint =>
+      'Unidad definida por su perfil de acceso.';
 
   @override
   String get employeeLegalEntityLabel => 'CNPJ';

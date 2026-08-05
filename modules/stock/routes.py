@@ -296,8 +296,24 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
         scope_unit_id = actor_operational_unit_id(connection, actor)
         if not scope_unit_id:
             raise PermissionError('Perfil sem unidade operacional ativa para editar estoque mínimo.')
-        if scope_unit_id and int(epi.get('unit_id') or 0) != int(scope_unit_id):
-            raise PermissionError('Perfil só pode editar estoque mínimo da unidade operacional ativa.')
+        # Mesma checagem de visibilidade já usada por GET /api/stock/epis e
+        # pelos alertas de estoque baixo (fetch_low_stock_items) — não a
+        # comparação ingênua epi.unit_id == scope_unit_id, que só é
+        # verdadeira para EPI de escopo UNIT. Um EPI GLOBAL (unit_id nulo,
+        # visível em toda unidade fora de JV) ou de Joint Venture nunca teria
+        # epi.unit_id == scope_unit_id mesmo quando o ator está, de fato,
+        # dentro da própria unidade — bloqueando indevidamente Administrador
+        # Local/Gestor de EPI de editar o estoque mínimo de um item que eles
+        # legitimamente veem e operam na tela de Controle de Estoque.
+        scope_unit_jv_name = get_unit_active_jv_name(connection, scope_unit_id)
+        epi_jv_name = get_epi_effective_jv_name(epi, lambda uid: get_unit_active_jv_name(connection, uid))
+        if not is_epi_visible_for_unit(
+            epi_unit_id=epi.get('unit_id'),
+            epi_joint_venture_name=epi_jv_name,
+            target_unit_id=scope_unit_id,
+            target_unit_joint_venture_name=scope_unit_jv_name,
+        ):
+            raise PermissionError('Perfil só pode editar estoque mínimo de EPIs visíveis na unidade operacional ativa.')
         minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
         set_epi_minimum_stock(connection, int(payload['epi_id']), minimum_stock)
         connection.commit()

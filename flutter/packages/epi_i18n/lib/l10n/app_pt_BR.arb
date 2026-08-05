@@ -117,6 +117,7 @@
   "employeeSectorLabel": "Setor",
   "employeeRoleLabel": "Função",
   "employeeUnitLabel": "Unidade",
+  "employeeUnitLockedHint": "Unidade definida pelo seu perfil de acesso.",
   "employeeLegalEntityLabel": "CNPJ",
   "employeeAdmissionLabel": "Admissão",
   "employeeScheduleLabel": "Escala",

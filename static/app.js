@@ -7799,16 +7799,36 @@ function syncOutsourcedEmployeeCompanySelect() {
   if (previous && companies.some((item) => String(item.id) === previous)) field.value = previous;
 }
 
+// Administrador Local/Gestor de EPI (isOperationalProfile()) só operam
+// dentro da própria unidade operacional — o backend já força isso em
+// create/update_employee_outsourced_simplified
+// (ensure_actor_unit_scope_for_target), mas até esta correção o campo
+// aparecia como um seletor livre, deixando esses perfis escolherem outra
+// unidade na UI e só descobrirem o bloqueio depois de tentar salvar.
+// Mesmo padrão já usado em syncEpiUnitOptions/hint de Unidade nos filtros
+// de Ficha/Entregas: preenche com a própria unidade e desabilita o campo.
 function syncOutsourcedEmployeeUnitOptions() {
   const companyField = document.getElementById('outsourced-employee-company');
   const unitField = document.getElementById('outsourced-employee-unit');
+  const unitHint = document.getElementById('outsourced-employee-unit-hint');
   if (!companyField || !unitField) return;
   const companyId = companyField.value || state.user?.company_id || '';
   const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
-    unitField.value = String(units[0].id);
+  const lockByOperationalProfile = isOperationalProfile();
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  const scopedUnits = lockByOperationalProfile
+    ? units.filter((item) => String(item.id) === operationalUnitId)
+    : units;
+  unitField.innerHTML = scopedUnits.length
+    ? scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
+    : '<option value="">Sem unidade operacional ativa</option>';
+  if (scopedUnits.length && !scopedUnits.some((item) => String(item.id) === String(unitField.value))) {
+    unitField.value = String(scopedUnits[0].id);
+  } else if (!scopedUnits.length) {
+    unitField.value = '';
   }
+  unitField.disabled = lockByOperationalProfile;
+  if (unitHint) unitHint.hidden = !lockByOperationalProfile;
 }
 
 // ── Cadastro de Colaboradores simplificado (ADR-0002 §10.2) ─────────────────

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/outsourced_employees_cubit.dart';
 
 /// Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — só
@@ -263,11 +265,27 @@ class _OutsourcedEmployeeFormDialogState extends State<_OutsourcedEmployeeFormDi
   bool _loading = true;
   bool _submitting = false;
 
+  // Administrador Local/Gestor de EPI só podem operar dentro da própria
+  // unidade operacional — o backend já força isso em
+  // create/update_employee_outsourced_simplified
+  // (ensure_actor_unit_scope_for_target), mas até esta correção o campo
+  // aparecia como um seletor livre com todas as unidades do tenant,
+  // deixando esses perfis escolherem outra unidade na UI e só descobrirem
+  // o bloqueio depois de tentar salvar.
+  bool _lockUnitToOwnScope = false;
+  int? _ownUnitId;
+
   bool get _editing => widget.employeeId != null;
 
   @override
   void initState() {
     super.initState();
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthAuthenticated) {
+      final role = authState.sessionContext.role;
+      _lockUnitToOwnScope = role == 'admin' || role == 'user';
+      _ownUnitId = authState.sessionContext.unitId;
+    }
     _load();
   }
 
@@ -276,14 +294,20 @@ class _OutsourcedEmployeeFormDialogState extends State<_OutsourcedEmployeeFormDi
       final bootstrap = await ApiClient.auth.bootstrap();
       final companies = await ApiClient.outsourcedCompanies
           .getOutsourcedCompanies(actorUserId: ApiClient.actorUserId);
+      var units = bootstrap.units;
+      if (_lockUnitToOwnScope) {
+        units = units.where((u) => (u['id'] as num?)?.toInt() == _ownUnitId).toList();
+      }
       if (_editing) {
         final emp = await ApiClient.employees
             .getEmployee(widget.employeeId!, actorUserId: ApiClient.actorUserId);
-        _prefill(emp, bootstrap.units, companies);
+        _prefill(emp, units, companies);
+      } else if (_lockUnitToOwnScope && units.isNotEmpty) {
+        _unit = units.first;
       }
       if (!mounted) return;
       setState(() {
-        _units = bootstrap.units;
+        _units = units;
         _outsourcedCompanies = companies;
         _loading = false;
       });
@@ -421,8 +445,15 @@ class _OutsourcedEmployeeFormDialogState extends State<_OutsourcedEmployeeFormDi
                                 ))
                             .toList(),
                         validator: (v) => v == null ? l10n.required : null,
-                        onChanged: (v) => setState(() => _unit = v),
+                        onChanged: _lockUnitToOwnScope ? null : (v) => setState(() => _unit = v),
                       ),
+                      if (_lockUnitToOwnScope) ...[
+                        const SizedBox(height: EpiSpacing.xs),
+                        Text(
+                          l10n.employeeUnitLockedHint,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+                        ),
+                      ],
                       const SizedBox(height: EpiSpacing.md),
                       TextFormField(
                         controller: _role,

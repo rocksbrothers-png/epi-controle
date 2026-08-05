@@ -2949,7 +2949,7 @@ abstract class AppLocalizations {
   /// No description provided for @moduleVisibilityDescription.
   ///
   /// In pt_BR, this message translates to:
-  /// **'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.'**
+  /// **'Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.'**
   String get moduleVisibilityDescription;
 
   /// No description provided for @moduleVisibilityRoleLabel.
@@ -2957,6 +2957,24 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Perfil'**
   String get moduleVisibilityRoleLabel;
+
+  /// No description provided for @moduleVisibilityDefaultPanelTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Permissões padrão deste perfil'**
+  String get moduleVisibilityDefaultPanelTitle;
+
+  /// No description provided for @moduleVisibilityDefaultPanelHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.'**
+  String get moduleVisibilityDefaultPanelHint;
+
+  /// No description provided for @moduleVisibilityNoDefaultModules.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum módulo por padrão'**
+  String get moduleVisibilityNoDefaultModules;
 
   /// No description provided for @moduleVisibilityUnitLabel.
   ///

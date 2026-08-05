@@ -978,6 +978,10 @@ body.phase3-modern-enabled [data-phase3-filters] {
 .badge-status-active { background: rgba(34,107,76,.12); color: var(--success); }
 .badge-status-inactive { background: rgba(161,59,43,.12); color: var(--danger); }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
+.default-permissions-panel { background: var(--panel-strong); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; }
+.default-permissions-panel h4 { margin: 0; font-size: .95rem; }
+.default-permissions-panel .chips-row { margin-top: 0; }
+.default-permissions-panel .badge-module-off { background: transparent; border: 1px solid var(--line); color: var(--muted); }
 .action-group { display: flex; flex-wrap: wrap; gap: 6px; }
 .action-group .ghost { padding: 8px 12px; background: white; border: 1px solid rgba(29,42,36,.08); }
 

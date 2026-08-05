@@ -570,8 +570,11 @@
   "outsourcedReportsActive": "Active",
   "outsourcedReportsArchived": "Archived",
   "moduleVisibilityTitle": "Module Visibility",
-  "moduleVisibilityDescription": "Control which modules appear for each role, and per Unit for the Local Admin and EPI Manager roles. Opt-in modules (like Outsourced Companies and Employee Registration) start hidden by default for every tenant.",
+  "moduleVisibilityDescription": "Default permissions: each role has default permissions defined by the system. Customizations: the General Admin can customize module visibility and usage per role and per unit, without changing the system's default structure.",
   "moduleVisibilityRoleLabel": "Role",
+  "moduleVisibilityDefaultPanelTitle": "Default permissions for this role",
+  "moduleVisibilityDefaultPanelHint": "These permissions represent the system's default behavior. The settings below only allow customizations made by the General Admin.",
+  "moduleVisibilityNoDefaultModules": "No modules by default",
   "moduleVisibilityUnitLabel": "Unit",
   "moduleVisibilityUnitHint": "A module not specifically set for this Unit inherits the value from \"All units\".",
   "moduleVisibilityAllUnitsOption": "All units (default)"

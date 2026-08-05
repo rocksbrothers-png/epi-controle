@@ -12,6 +12,7 @@ from epi_backend.rule_engine import (
     MODULE_KEYS,
     _DEFAULT_UNIT_BUCKET,
     _UNIT_SCOPED_ROLES,
+    _default_module_visibility,
     build_context as build_rule_context,
     compute_visibility_diff,
     resolve_execution_plan,
@@ -283,6 +284,28 @@ def get_module_visibility_config(connection, company_id):
     get_effective_module_visibility."""
     framework = get_configuration_framework(connection, company_id)
     return framework.get('module_visibility', {})
+
+
+def get_default_module_visibility():
+    """Visibilidade padrão do sistema por perfil — {role: {module: bool}},
+    calculada apenas a partir das permissões técnicas de cada perfil
+    (`core.permissions.PERMISSIONS`) e do piso técnico de cada módulo
+    (`MODULE_REQUIRED_PERMISSIONS`), SEM olhar nenhuma personalização
+    salva pelo Administrador Geral.
+
+    Existe separada de `get_module_visibility_config` porque o bucket "*"
+    ali é regravado in-place por `save_module_visibility` quando o
+    Administrador Geral personaliza um perfil sem informar `unit_id` — ou
+    seja, depois da primeira personalização, "*" deixa de refletir o
+    padrão do sistema e passa a refletir a personalização. Esta função
+    nunca lê o que foi salvo: é o "chão" imutável que a tela de
+    Configuração usa para mostrar "Permissões padrão deste perfil",
+    deixando claro que a personalização é uma camada sobre esse padrão,
+    não a definição do perfil."""
+    return {
+        role: dict(buckets.get(_DEFAULT_UNIT_BUCKET, {}))
+        for role, buckets in _default_module_visibility().items()
+    }
 
 
 def get_effective_module_visibility(connection, actor, unit_id=None):

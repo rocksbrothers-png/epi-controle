@@ -88,7 +88,9 @@ def _build_import_graph():
                 path = os.path.join(dirpath, filename)
                 module = _module_name_for(path)
                 try:
-                    tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+                    with open(path, encoding='utf-8') as source_file:
+                        source = source_file.read()
+                    tree = ast.parse(source, filename=path)
                 except SyntaxError:
                     continue
 

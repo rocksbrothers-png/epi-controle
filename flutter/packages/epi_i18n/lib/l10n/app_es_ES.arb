@@ -541,10 +541,9 @@
   "outsourcedReportsActive": "Activos",
   "outsourcedReportsArchived": "Archivados",
   "moduleVisibilityTitle": "Visibilidad de Módulos",
-  "moduleVisibilityDescription": "Controle qué módulos aparecen para cada perfil. Los módulos opcionales (como Subcontratados y Registro de Colaboradores) nacen ocultos por defecto en todo tenant.",
-  "moduleUnitScopeTitle": "Alcance por Unidad",
-  "moduleUnitScopeDescription": "Restrinja un módulo a Unidades específicas para los perfiles Administrador Local y Gestor de EPI. Sin ninguna Unidad marcada, el módulo queda liberado en todas las Unidades (respetando la Visibilidad anterior).",
-  "moduleUnitScopeModuleLabel": "Módulo",
-  "moduleUnitScopeNoUnits": "Ninguna Unidad registrada.",
-  "moduleVisibilityRoleLabel": "Perfil"
+  "moduleVisibilityDescription": "Controle qué módulos aparecen para cada perfil, y por Unidad para Administrador Local y Gestor de EPI. Los módulos opcionales (como Subcontratados y Registro de Colaboradores) nacen ocultos por defecto en todo tenant.",
+  "moduleVisibilityRoleLabel": "Perfil",
+  "moduleVisibilityUnitLabel": "Unidad",
+  "moduleVisibilityUnitHint": "Un módulo no marcado específicamente para esta Unidad hereda el valor de \"Todas las unidades\".",
+  "moduleVisibilityAllUnitsOption": "Todas las unidades (predeterminado)"
 }

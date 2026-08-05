@@ -1467,27 +1467,24 @@ class AppLocalizationsNo extends AppLocalizations {
   String get outsourcedReportsArchived => 'Arquivados';
 
   @override
-  String get moduleVisibilityTitle => 'Visualização de Módulos';
+  String get moduleVisibilityTitle => 'Visibilidade por Módulo';
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Escopo por Unidade';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Módulo';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'Nenhuma Unidade cadastrada.';
+      'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Unidade';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -2953,21 +2950,18 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get moduleVisibilityDescription =>
-      'Kontroller hvilke moduler som vises for hver rolle. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Enhetsomfang';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Begrens en modul til bestemte Enheter for rollene Lokal Administrator og EPI-ansvarlig. Uten noen valgt Enhet er modulen tilgjengelig i alle Enheter (fortsatt underlagt Synlighet ovenfor).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Modul';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'Ingen Enheter registrert.';
+      'Kontroller hvilke moduler som vises for hver rolle, og per Enhet for rollene Lokal Administrator og EPI-ansvarlig. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Rolle';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Enhet';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'Alle enheter (standard)';
 }

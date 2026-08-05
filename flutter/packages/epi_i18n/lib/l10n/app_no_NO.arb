@@ -541,10 +541,9 @@
   "outsourcedReportsActive": "Aktive",
   "outsourcedReportsArchived": "Arkiverte",
   "moduleVisibilityTitle": "Modulsynlighet",
-  "moduleVisibilityDescription": "Kontroller hvilke moduler som vises for hver rolle. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.",
-  "moduleUnitScopeTitle": "Enhetsomfang",
-  "moduleUnitScopeDescription": "Begrens en modul til bestemte Enheter for rollene Lokal Administrator og EPI-ansvarlig. Uten noen valgt Enhet er modulen tilgjengelig i alle Enheter (fortsatt underlagt Synlighet ovenfor).",
-  "moduleUnitScopeModuleLabel": "Modul",
-  "moduleUnitScopeNoUnits": "Ingen Enheter registrert.",
-  "moduleVisibilityRoleLabel": "Rolle"
+  "moduleVisibilityDescription": "Kontroller hvilke moduler som vises for hver rolle, og per Enhet for rollene Lokal Administrator og EPI-ansvarlig. Valgfrie moduler (som Innleide selskaper og Registrering av Medarbeidere) er skjult som standard for alle kunder.",
+  "moduleVisibilityRoleLabel": "Rolle",
+  "moduleVisibilityUnitLabel": "Enhet",
+  "moduleVisibilityUnitHint": "En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".",
+  "moduleVisibilityAllUnitsOption": "Alle enheter (standard)"
 }

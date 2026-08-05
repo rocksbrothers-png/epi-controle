@@ -46,12 +46,17 @@ class SettingsApi {
     return res.data ?? {};
   }
 
-  /// Visibilidade de módulo por perfil (Configuração → Regras →
-  /// Visualização) — mesmo mecanismo que já gateia CNPJs/Estoque/Entregas,
-  /// reaproveitado para os módulos opt-in `terceirizados` e
-  /// `terceirizados_colaboradores` (ADR-0002 §10.3).
+  /// Visibilidade de módulo por perfil e, para `admin`/`user`, por Unidade
+  /// (Configuração → Regras → Visualização) — mesmo mecanismo que já gateia
+  /// CNPJs/Estoque/Entregas, cobrindo todos os módulos (issue #148),
+  /// `module_visibility` é a única fonte de verdade para
+  /// `tenant + perfil + unidade + módulo` (substituiu o antigo
+  /// `module_unit_scope`, retirado do backend).
   ///
-  /// Retorna `{module_visibility: {role: {module: bool}}, modules: [...]}`.
+  /// Retorna `{module_visibility: {role: {"*": {module: bool},
+  /// "unit_id": {module: bool}}}, modules: [...]}` (a chave do bucket por
+  /// Unidade é o id numérico da Unidade, como string). Um módulo ausente do
+  /// bucket da Unidade herda o valor do bucket `"*"` do mesmo perfil.
   Future<Map<String, dynamic>> getModuleVisibility({int? companyId}) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/module-visibility',
@@ -60,10 +65,16 @@ class SettingsApi {
     return res.data ?? {};
   }
 
+  /// [unitId] é opcional e só é aceito pelo backend para os perfis com
+  /// vínculo de unidade única (`admin`/`user`) — grava no bucket daquela
+  /// Unidade em vez do bucket padrão `"*"`. Omitido (ou `null`), grava no
+  /// bucket `"*"`, preservando o comportamento anterior à extensão por
+  /// Unidade.
   Future<Map<String, dynamic>> saveModuleVisibility({
     required int actorUserId,
     required String role,
     required Map<String, bool> modules,
+    int? unitId,
     int? companyId,
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
@@ -72,38 +83,7 @@ class SettingsApi {
         'actor_user_id': actorUserId,
         'role': role,
         'modules': modules,
-        if (companyId != null) 'company_id': companyId,
-      },
-    );
-    return res.data ?? {};
-  }
-
-  /// Escopo por Unidade dos módulos opt-in unit-scopable (`terceirizados`,
-  /// `terceirizados_colaboradores`) — ampliação do `module_visibility`
-  /// (correção do ADR-0002 §10.3): quando a lista de unidades de um módulo
-  /// não está vazia, `admin`/`user` só o veem nas unidades autorizadas.
-  ///
-  /// Retorna `{module_unit_scope: {module: [unit_id,...]}, unit_scopable_modules: [...]}`.
-  Future<Map<String, dynamic>> getModuleUnitScope({int? companyId}) async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '/api/module-unit-scope',
-      queryParameters: companyId != null ? {'company_id': companyId} : null,
-    );
-    return res.data ?? {};
-  }
-
-  Future<Map<String, dynamic>> saveModuleUnitScope({
-    required int actorUserId,
-    required String module,
-    required List<int> unitIds,
-    int? companyId,
-  }) async {
-    final res = await _dio.post<Map<String, dynamic>>(
-      '/api/module-unit-scope',
-      data: {
-        'actor_user_id': actorUserId,
-        'module': module,
-        'unit_ids': unitIds,
+        if (unitId != null) 'unit_id': unitId,
         if (companyId != null) 'company_id': companyId,
       },
     );

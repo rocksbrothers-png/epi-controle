@@ -697,6 +697,22 @@ ponto de verdade consumido por três lugares: o `redirect` do `GoRouter`
 menu lateral (`AppShell`) e os atalhos do FAB no dashboard. `module_visibility`
 chega ao app no login, em `/api/auth/me` e em `/api/bootstrap`.
 
+**Flutter (admin UI)**: Configurações → Regras → `_ModuleVisibilityCard`
+(`flutter/apps/epi_admin/lib/features/settings/settings_screen.dart`) —
+mesma experiência unificada do Web Legado: cobre os 11 módulos
+(`_kModuleVisibilityModules`, espelha `MODULE_KEYS`) e mostra um seletor de
+Unidade quando o perfil está em `_kModuleVisibilityUnitScopedRoles`
+(`admin`/`user`). `_isVisible()` aplica o mesmo fallback
+Unidade → `"*"` → visível-por-padrão do backend. O antigo card separado
+"Escopo por Unidade" (`_ModuleUnitScopeCard`, restrito aos dois módulos
+opt-in de Terceirizados) foi retirado — apontava para `/api/module-unit-scope`,
+rota removida no PR18; ficou quebrado (chamada 404) entre o merge do PR18 e
+este PR. Também corrigido aqui: `_ModuleVisibilityCard` lia
+`_visibility[role][module]` diretamente, formato que deixou de existir
+quando `module_visibility` passou a ser aninhado por bucket — toda checkbox
+aparecia sempre **desmarcada** (o `??` do Dart caía no `false` default,
+diferente do bug equivalente no Web Legado, que caía no `true` default).
+
 **Regra backend**: `resolve_module_visibility()` em `epi_backend/
 rule_engine.py`, consumido por `get_effective_module_visibility()` em
 `modules/settings/service.py` — chamado a partir de `authenticate_login`,

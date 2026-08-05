@@ -541,10 +541,9 @@
   "outsourcedReportsActive": "Actifs",
   "outsourcedReportsArchived": "Archivés",
   "moduleVisibilityTitle": "Visibilité des Modules",
-  "moduleVisibilityDescription": "Contrôlez quels modules apparaissent pour chaque profil. Les modules optionnels (comme Sous-traitants et Inscription des Collaborateurs) naissent masqués par défaut pour chaque tenant.",
-  "moduleUnitScopeTitle": "Portée par Unité",
-  "moduleUnitScopeDescription": "Restreignez un module à des Unités spécifiques pour les profils Administrateur Local et Gestionnaire EPI. Sans aucune Unité sélectionnée, le module reste disponible dans toutes les Unités (en respectant la Visibilité ci-dessus).",
-  "moduleUnitScopeModuleLabel": "Module",
-  "moduleUnitScopeNoUnits": "Aucune Unité enregistrée.",
-  "moduleVisibilityRoleLabel": "Profil"
+  "moduleVisibilityDescription": "Contrôlez quels modules apparaissent pour chaque profil, et par Unité pour les profils Administrateur Local et Gestionnaire EPI. Les modules optionnels (comme Sous-traitants et Inscription des Collaborateurs) naissent masqués par défaut pour chaque tenant.",
+  "moduleVisibilityRoleLabel": "Profil",
+  "moduleVisibilityUnitLabel": "Unité",
+  "moduleVisibilityUnitHint": "Un module non défini spécifiquement pour cette Unité hérite de la valeur de \"Toutes les unités\".",
+  "moduleVisibilityAllUnitsOption": "Toutes les unités (par défaut)"
 }

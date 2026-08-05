@@ -18,8 +18,9 @@ import 'outsourced_employees_tab.dart';
 /// `employees:create_simplified` — cada uma dessas duas permissões abre uma
 /// aba diferente (Empresas / Cadastro de Colaboradores). module_visibility
 /// (`terceirizados`/`terceirizados_colaboradores`) segue a mesma regra:
-/// oculto por padrão em todo tenant até o Administrador Geral ligar,
-/// agora também configurável por Unidade (module_unit_scope). O backend é a
+/// oculto por padrão em todo tenant até o Administrador Geral ligar, agora
+/// também configurável por Unidade (bucket por unit_id dentro do próprio
+/// module_visibility — Configuração → Regras → Visualização). O backend é a
 /// autoridade final em ambos os casos — esta tela só orienta a navegação.
 class OutsourcedCompaniesScreen extends StatefulWidget {
   const OutsourcedCompaniesScreen({super.key});

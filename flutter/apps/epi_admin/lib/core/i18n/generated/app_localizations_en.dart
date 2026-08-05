@@ -1467,27 +1467,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get outsourcedReportsArchived => 'Arquivados';
 
   @override
-  String get moduleVisibilityTitle => 'Visualização de Módulos';
+  String get moduleVisibilityTitle => 'Visibilidade por Módulo';
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Escopo por Unidade';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Módulo';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'Nenhuma Unidade cadastrada.';
+      'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Unidade';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -2948,21 +2945,18 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get moduleVisibilityDescription =>
-      'Control which modules appear for each role. Opt-in modules (like Outsourced Companies and Employee Registration) start hidden by default for every tenant.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Unit Scope';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Restrict a module to specific Units for the Local Admin and EPI Manager roles. With no Unit selected, the module is available in all Units (still subject to the Visibility above).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Module';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'No Units registered.';
+      'Control which modules appear for each role, and per Unit for the Local Admin and EPI Manager roles. Opt-in modules (like Outsourced Companies and Employee Registration) start hidden by default for every tenant.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Role';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Unit';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'A module not specifically set for this Unit inherits the value from \"All units\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'All units (default)';
 }

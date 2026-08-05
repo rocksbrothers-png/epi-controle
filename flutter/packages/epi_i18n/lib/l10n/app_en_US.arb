@@ -568,10 +568,9 @@
   "outsourcedReportsActive": "Active",
   "outsourcedReportsArchived": "Archived",
   "moduleVisibilityTitle": "Module Visibility",
-  "moduleVisibilityDescription": "Control which modules appear for each role. Opt-in modules (like Outsourced Companies and Employee Registration) start hidden by default for every tenant.",
-  "moduleUnitScopeTitle": "Unit Scope",
-  "moduleUnitScopeDescription": "Restrict a module to specific Units for the Local Admin and EPI Manager roles. With no Unit selected, the module is available in all Units (still subject to the Visibility above).",
-  "moduleUnitScopeModuleLabel": "Module",
-  "moduleUnitScopeNoUnits": "No Units registered.",
-  "moduleVisibilityRoleLabel": "Role"
+  "moduleVisibilityDescription": "Control which modules appear for each role, and per Unit for the Local Admin and EPI Manager roles. Opt-in modules (like Outsourced Companies and Employee Registration) start hidden by default for every tenant.",
+  "moduleVisibilityRoleLabel": "Role",
+  "moduleVisibilityUnitLabel": "Unit",
+  "moduleVisibilityUnitHint": "A module not specifically set for this Unit inherits the value from \"All units\".",
+  "moduleVisibilityAllUnitsOption": "All units (default)"
 }

@@ -16,17 +16,26 @@ O teste lê a ordem declarada em `init_db` porque é ela que decide a execução
 import inspect
 import re
 
-from core import schema
+from core import bootstrap, schema
 
 
 def _bootstrap_order() -> list:
-    """Nomes das funções `ensure_*` na ordem em que `init_db` as executa."""
-    source = inspect.getsource(schema.init_db)
+    """Nomes das funções `ensure_*` na ordem em que `init_db` as executa.
+
+    `init_db` mora em core.bootstrap (não em core.schema — ver issue #148: a
+    função orquestrava core.schema + modules.* de dentro do próprio
+    core.schema, o que fechava um ciclo de import). As funções nativas de
+    core.schema aparecem como `schema.ensure_xxx` na lista (prefixo
+    necessário desde que a função mudou de arquivo); o prefixo é removido
+    aqui para manter os nomes "nus" que o resto deste arquivo usa.
+    """
+    source = inspect.getsource(bootstrap.init_db)
     block = source[source.index('_ensure_fns = ['):]
     block = block[:block.index(']')]
     # Ignora comentários: só o que está na lista conta como execução.
     lines = [line.split('#', 1)[0].strip() for line in block.splitlines()]
-    return [name.rstrip(',') for name in lines if re.fullmatch(r'_?ensure_\w+,', name)]
+    names = [name.rstrip(',') for name in lines if re.fullmatch(r'(schema\.)?_?ensure_\w+,', name)]
+    return [name.split('.', 1)[-1] for name in names]
 
 
 def _referenced_tables(fn) -> set:

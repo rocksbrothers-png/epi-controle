@@ -67,7 +67,6 @@ from core.schema import (
     ensure_stock_columns,
     ensure_stock_movement_size_columns,
     ensure_user_columns,
-    init_db,
     migrate_role_hierarchy,
     _operational_error_code,
     run_pending_migrations,
@@ -76,6 +75,7 @@ from core.schema import (
     MIGRATION_RUNTIME_STATE,
     MIGRATION_RUNTIME_STATE_LOCK,
 )
+from core.bootstrap import init_db
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
 from core.security import (

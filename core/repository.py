@@ -125,6 +125,52 @@ def get_employee_current_unit(connection, employee_id):
     return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
 
 
+def actor_operational_unit_id(connection, actor):
+    """Unidade operacional atual do ator (Administrador Local/Gestor de EPI
+    têm vínculo único com UMA unidade — nunca uma carteira; ver
+    docs/PAPEIS_E_ATRIBUICOES.md). Vive aqui (não em
+    modules.employees.service) para que módulos de domínio (legal_entities,
+    units, employees) possam resolver o escopo do ator sem importar uns aos
+    outros — a causa raiz do ciclo de import fechado por
+    modules.legal_entities.service -> modules.employees.service (issue #148).
+
+    Consulta direto com placeholders `?` (como o resto do projeto — o
+    wrapper de Postgres os traduz para `%s`; sqlite não entende `%s` sem
+    passar por esse wrapper) em vez de reaproveitar get_employee_by_id/
+    get_employee_current_unit deste mesmo módulo, que usam `%s` fixo no
+    texto da query — inconsistência pré-existente e fora do escopo desta
+    correção, que quebraria com conexões sqlite diretas (usadas em vários
+    testes) se reaproveitada aqui.
+    """
+    if not actor or actor.get('role') not in ('admin', 'user'):
+        return None
+    linked_employee_id = actor.get('linked_employee_id')
+    if not linked_employee_id:
+        return None
+    employee_id = int(linked_employee_id)
+    employee_row = connection.execute(
+        'SELECT unit_id FROM employees WHERE id = ?', (employee_id,)
+    ).fetchone()
+    if not employee_row:
+        return None
+    employee = row_to_dict(employee_row)
+    today_iso = date.today().isoformat()
+    movement = connection.execute(
+        '''
+        SELECT target_unit_id
+        FROM employee_unit_movements
+        WHERE employee_id = ?
+          AND movement_type = 'temporary'
+          AND start_date <= ?
+          AND COALESCE(NULLIF(end_date, ''), '9999-12-31') >= ?
+        ORDER BY start_date DESC, id DESC
+        LIMIT 1
+        ''',
+        (employee_id, today_iso, today_iso),
+    ).fetchone()
+    return int(movement['target_unit_id']) if movement else int(employee['unit_id'])
+
+
 # ── Bloqueio comercial ────────────────────────────────────────────────────────
 
 def evaluate_company_block_status(connection, company_id, persist_expiration=True):

@@ -1465,14 +1465,6 @@
     "reportsEmpty": "Nenhuma empresa terceirizada/prestadora cadastrada.",
     "reportsError": "Não foi possível carregar o relatório."
   },
-  "moduleUnitScope": {
-    "title": "Escopo por Unidade",
-    "description": "Restrinja um módulo opt-in (Terceirizados e Prestadores / Cadastro de Colaboradores) a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).",
-    "moduleLabel": "Módulo",
-    "noUnits": "Nenhuma Unidade cadastrada.",
-    "save": "Salvar escopo por Unidade",
-    "saved": "Escopo por Unidade salvo."
-  },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",
     "stockScopeHint": "Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade."

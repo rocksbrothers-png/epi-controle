@@ -78,7 +78,7 @@ def test_general_admin_can_read_module_visibility(monkeypatch):
     body = handler.json()
     assert handler.status == 200
     assert 'buyer' in body['module_visibility']
-    assert body['module_visibility']['buyer']['estoque'] is False
+    assert body['module_visibility']['buyer']['*']['estoque'] is False
 
 
 def test_registry_admin_can_read_module_visibility(monkeypatch):

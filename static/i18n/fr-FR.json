@@ -1465,14 +1465,6 @@
     "reportsEmpty": "Aucune entreprise sous-traitante/prestataire enregistrée.",
     "reportsError": "Impossible de charger le rapport."
   },
-  "moduleUnitScope": {
-    "title": "Portée par Unité",
-    "description": "Restreignez un module optionnel (Sous-traitants / Inscription des Collaborateurs) à des Unités spécifiques pour les profils Administrateur Local et Gestionnaire EPI. Sans aucune Unité sélectionnée, le module reste disponible dans toutes les Unités (en respectant la Visibilité ci-dessus).",
-    "moduleLabel": "Module",
-    "noUnits": "Aucune Unité enregistrée.",
-    "save": "Enregistrer la portée par Unité",
-    "saved": "Portée par Unité enregistrée."
-  },
   "myCompany": {
     "stockScope": "Consolider les soldes de stock par",
     "stockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité."

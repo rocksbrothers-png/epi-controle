@@ -104,29 +104,51 @@ _STRUCTURALLY_HIDDEN_BY_DEFAULT: dict[str, frozenset[str]] = {
 # "terceirizados_colaboradores" (ADR-0002 §10, mesma regra).
 _OPT_IN_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
 
-# Módulos que suportam restrição adicional por Unidade (ADR-0002 §10.3) —
-# além de perfil/tenant, o Administrador Geral pode restringir a um
-# subconjunto de unidades. Vazio/ausente em module_unit_scope (o padrão
-# para todo módulo fora desta lista) significa "sem restrição de unidade" —
-# nenhum módulo existente muda de comportamento com esta extensão.
-_UNIT_SCOPABLE_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
+# Papéis com unidade operacional própria (Administrador Local/Gestor de EPI
+# — vínculo único com UMA unidade, nunca uma carteira; ver
+# docs/PAPEIS_E_ATRIBUICOES.md). São os únicos cujo module_visibility pode
+# ter override por Unidade — general_admin/registry_admin/master_admin não
+# são escopados por unidade em nenhum outro fluxo do sistema, então sempre
+# leem a configuração "*" (independente de context.unit_id).
+_UNIT_SCOPED_ROLES: frozenset[str] = frozenset({"admin", "user"})
+
+# Bucket usado dentro de module_visibility[role] para a configuração "sem
+# unidade específica" — o padrão do sistema e o valor efetivo para papéis
+# que não são escopados por unidade. Toda configuração pré-existente à
+# extensão de visibilidade por Unidade nasce inteira neste bucket.
+_DEFAULT_UNIT_BUCKET = "*"
+
+# Módulos que suportavam restrição por Unidade sob o modelo antigo
+# (module_unit_scope, um dicionário separado {module: [unit_id, ...]},
+# aplicado igualmente a admin e user). Mantido só como referência para a
+# conversão de dados legados em normalize_framework_payload — o modelo
+# atual não tem mais essa restrição: TODO módulo suporta override por
+# Unidade dentro de module_visibility[role][str(unit_id)].
+_LEGACY_UNIT_SCOPABLE_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
 
 
-def _default_module_visibility() -> dict[str, dict[str, bool]]:
+def _default_module_visibility() -> dict[str, dict[str, dict[str, bool]]]:
     """Visibilidade padrão do sistema: módulo visível sse o perfil tem ao
     menos uma permissão técnica exigida, menos as restrições estruturais
     explícitas acima, menos os módulos opt-in (sempre ocultos por padrão).
     É o ponto de partida que a configuração do Administrador Geral (por
-    tenant) pode restringir ou liberar — sempre reclampada pela permissão
-    técnica em resolve_module_visibility().
+    tenant, por perfil e — para admin/user — por Unidade) pode restringir
+    ou liberar — sempre reclampada pela permissão técnica em
+    resolve_module_visibility().
+
+    Forma: {role: {"*": {module: bool}}} — todo módulo nasce só no bucket
+    "*" (sem override de Unidade); overrides específicos de Unidade só
+    existem quando o Administrador Geral os configura explicitamente.
     """
     hidden_by_role = _STRUCTURALLY_HIDDEN_BY_DEFAULT
-    visibility: dict[str, dict[str, bool]] = {}
+    visibility: dict[str, dict[str, dict[str, bool]]] = {}
     for role, granted in PERMISSIONS.items():
         hidden = hidden_by_role.get(role, frozenset()) | _OPT_IN_MODULES
         visibility[role] = {
-            module: bool(required & granted) and module not in hidden
-            for module, required in MODULE_REQUIRED_PERMISSIONS.items()
+            _DEFAULT_UNIT_BUCKET: {
+                module: bool(required & granted) and module not in hidden
+                for module, required in MODULE_REQUIRED_PERMISSIONS.items()
+            }
         }
     return visibility
 
@@ -173,11 +195,13 @@ def default_framework_payload() -> dict[str, Any]:
             },
         },
         "visibility_rules": [],
+        # {role: {"*": {module: bool}, "<unit_id>": {module: bool}}} — "*" é
+        # o padrão (toda configuração pré-existente à visibilidade por
+        # Unidade vive só aqui); buckets por unit_id são overrides
+        # específicos, só efetivos para papéis em _UNIT_SCOPED_ROLES. Fonte
+        # única de verdade para tenant+perfil+unidade+módulo — não há mais
+        # um module_unit_scope separado (ver resolve_module_visibility).
         "module_visibility": _default_module_visibility(),
-        # Restrição adicional por Unidade (ADR-0002 §10.3), só para módulos
-        # em _UNIT_SCOPABLE_MODULES — {module: [unit_id, ...]}. Vazio/ausente
-        # é o padrão de todo módulo: sem restrição de unidade.
-        "module_unit_scope": {},
         "report_scopes": {
             report_type: {
                 "enabled": True,
@@ -257,31 +281,70 @@ def normalize_framework_payload(candidate: dict[str, Any] | None) -> dict[str, A
     payload["hierarchy"]["who_can_view_what"] = _merge(default_framework_payload()["hierarchy"]["who_can_view_what"], cleaned_hierarchy)
 
     valid_module_roles = set(PERMISSIONS.keys())
-    cleaned_module_visibility: dict[str, dict[str, bool]] = {}
-    for role, modules in (payload.get("module_visibility", {}) or {}).items():
+
+    def _clean_unit_bucket(raw_modules: Any) -> dict[str, bool]:
+        if not isinstance(raw_modules, dict):
+            return {}
+        return {module: bool(raw_modules[module]) for module in MODULE_KEYS if module in raw_modules}
+
+    cleaned_module_visibility: dict[str, dict[str, dict[str, bool]]] = {}
+    for role, role_config in (payload.get("module_visibility", {}) or {}).items():
         role_name = str(role or "").strip()
-        if role_name not in valid_module_roles or not isinstance(modules, dict):
+        if role_name not in valid_module_roles or not isinstance(role_config, dict):
             continue
-        cleaned_module_visibility[role_name] = {
-            module: bool(modules[module]) for module in MODULE_KEYS if module in modules
-        }
+        # Formato legado (antes da visibilidade por Unidade): {module: bool}
+        # direto, sem bucket de unidade — qualquer valor bool aqui denuncia o
+        # formato antigo (no formato atual todo valor de role_config é, por
+        # sua vez, um dict). Migração automática em memória: tudo vira o
+        # bucket "*" (mesma leitura de sempre para quem nunca configurou
+        # visibilidade por Unidade).
+        if any(isinstance(value, bool) for value in role_config.values()):
+            cleaned_module_visibility[role_name] = {_DEFAULT_UNIT_BUCKET: _clean_unit_bucket(role_config)}
+            continue
+        role_buckets: dict[str, dict[str, bool]] = {}
+        for unit_key, unit_modules in role_config.items():
+            unit_key = str(unit_key or "").strip()
+            if unit_key != _DEFAULT_UNIT_BUCKET and not unit_key.isdigit():
+                continue
+            cleaned = _clean_unit_bucket(unit_modules)
+            if cleaned:
+                role_buckets[unit_key] = cleaned
+        if role_buckets:
+            cleaned_module_visibility[role_name] = role_buckets
     payload["module_visibility"] = _merge(_default_module_visibility(), cleaned_module_visibility)
 
-    # Restrição por Unidade (ADR-0002 §10.3) — só módulos declarados
-    # unit-scopable aceitam entrada; ids não numéricos/duplicados são
-    # descartados. Validação de que a unidade pertence ao tenant é
-    # responsabilidade do chamador (modules.settings.service.
-    # save_module_unit_scope), que tem o company_id — esta função é pura e
-    # não consulta o banco.
-    cleaned_module_unit_scope: dict[str, list[int]] = {}
-    for module, unit_ids in (payload.get("module_unit_scope", {}) or {}).items():
-        module_name = str(module or "").strip()
-        if module_name not in _UNIT_SCOPABLE_MODULES or not isinstance(unit_ids, list):
-            continue
-        cleaned_module_unit_scope[module_name] = sorted({
-            int(item) for item in unit_ids if str(item).strip().isdigit() and int(item) > 0
-        })
-    payload["module_unit_scope"] = cleaned_module_unit_scope
+    # Migração automática do modelo legado (module_unit_scope, um
+    # dicionário {module: [unit_id, ...]} SEPARADO de module_visibility,
+    # aplicado igualmente a admin e user) para overrides por Unidade dentro
+    # de module_visibility — fonte única de verdade para
+    # tenant+perfil+unidade+módulo. Roda em toda normalização (idempotente,
+    # sem acesso a banco): quando o payload vem do armazenamento antigo, o
+    # resultado final já não tem mais module_unit_scope — a próxima
+    # gravação persiste só o modelo novo. Ver também
+    # modules.settings.service.migrate_module_visibility_unit_model, a
+    # migração explícita que reescreve o armazenamento de todo tenant.
+    legacy_unit_scope = payload.get("module_unit_scope")
+    if isinstance(legacy_unit_scope, dict):
+        for module, unit_ids in legacy_unit_scope.items():
+            module_name = str(module or "").strip()
+            if module_name not in _LEGACY_UNIT_SCOPABLE_MODULES or not isinstance(unit_ids, list):
+                continue
+            cleaned_unit_ids = sorted({
+                int(item) for item in unit_ids if str(item).strip().isdigit() and int(item) > 0
+            })
+            if not cleaned_unit_ids:
+                continue
+            for role_name in _UNIT_SCOPED_ROLES:
+                role_buckets = payload["module_visibility"].setdefault(role_name, {})
+                base = role_buckets.setdefault(_DEFAULT_UNIT_BUCKET, {})
+                if not base.get(module_name, False):
+                    # Já estava oculto para todo mundo — o escopo antigo só
+                    # restringia um True, nunca concedia; nada a converter.
+                    continue
+                base[module_name] = False
+                for unit_id in cleaned_unit_ids:
+                    role_buckets.setdefault(str(unit_id), {})[module_name] = True
+    payload.pop("module_unit_scope", None)
 
     for report_type in SUPPORTED_REPORT_TYPES:
         scope = payload["report_scopes"].setdefault(report_type, {})
@@ -402,32 +465,41 @@ def resolve_module_visibility(context: RuleContext, framework: dict[str, Any], a
     """Visibilidade estrutural efetiva de cada módulo para o ator.
 
     Combinação: configuração (padrão do sistema + override do tenant, já
-    mesclados em `framework["module_visibility"]` por normalize_framework_payload)
-    AND permissão técnica (piso que a configuração nunca ultrapassa) AND,
-    para módulos em `_UNIT_SCOPABLE_MODULES` com lista configurada em
-    `framework["module_unit_scope"]`, a unidade operacional do ator
-    (Administrador Local/Gestor de EPI — únicos papéis escopados por
-    unidade, `context.unit_id`) precisa estar na lista autorizada
-    (ADR-0002 §10.3). `general_admin`/`registry_admin`/`master_admin` não
-    são escopados por unidade em nenhum outro fluxo do sistema e não são
-    afetados por esta checagem. O backend segue sendo a autoridade final:
-    este resultado só orienta menu/rotas/deep links no Flutter e no web
-    legado — nenhuma rota de dados passa a confiar nele para autorizar
-    leitura/escrita.
+    mesclados em `framework["module_visibility"]` por
+    normalize_framework_payload) AND permissão técnica (piso que a
+    configuração nunca ultrapassa).
+
+    A configuração é lida em duas camadas — `framework["module_visibility"]
+    [role]` é `{"*": {module: bool}, "<unit_id>": {module: bool}, ...}`:
+    - bucket `"*"`: valor padrão do perfil, usado sempre para papéis fora
+      de `_UNIT_SCOPED_ROLES` (general_admin/registry_admin/master_admin —
+      não são escopados por unidade em nenhum outro fluxo do sistema) e
+      como fallback, módulo a módulo, para admin/user quando não há
+      override específico da Unidade atual (`context.unit_id`);
+    - bucket `"<unit_id>"`: só lido para admin/user, só quando existe e só
+      módulo a módulo — um módulo ausente do bucket da Unidade cai para o
+      valor de `"*"`, não para `False`. Todo módulo suporta este override
+      (não só um subconjunto fixo): é a mesma configuração
+      tenant+perfil+unidade+módulo para o sistema inteiro.
+
+    O backend segue sendo a autoridade final: este resultado só orienta
+    menu/rotas/deep links no Flutter e no web legado — nenhuma rota de
+    dados passa a confiar nele para autorizar leitura/escrita.
     """
     role_config = framework.get("module_visibility", {}).get(context.role, {})
-    unit_scope = framework.get("module_unit_scope", {}) or {}
+    base = role_config.get(_DEFAULT_UNIT_BUCKET, {})
+    unit_override: dict[str, bool] = {}
+    if context.role in _UNIT_SCOPED_ROLES and context.unit_id is not None:
+        unit_override = role_config.get(str(context.unit_id), {})
     granted = set(actor_permissions or [])
     resolved: dict[str, bool] = {}
     for module, required in MODULE_REQUIRED_PERMISSIONS.items():
         has_technical_permission = bool(required & granted)
-        configured = bool(role_config.get(module, False))
-        unit_ok = True
-        if module in _UNIT_SCOPABLE_MODULES and context.role in ("admin", "user"):
-            allowed_units = unit_scope.get(module) or []
-            if allowed_units:
-                unit_ok = context.unit_id is not None and int(context.unit_id) in set(allowed_units)
-        resolved[module] = configured and has_technical_permission and unit_ok
+        if module in unit_override:
+            configured = bool(unit_override[module])
+        else:
+            configured = bool(base.get(module, False))
+        resolved[module] = configured and has_technical_permission
     return resolved
 
 

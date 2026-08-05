@@ -3,12 +3,16 @@
 Cobre a extensão que faltava do web legado dentro da mesma tela de
 Terceirizados e Prestadores: aba "Cadastro de Colaboradores" (só
 terceirizado/prestador, nunca CLT), arquivamento de empresas e
-colaboradores, relatório de headcount, a correção de escopo (rota/menu
+colaboradores, relatório de headcount, e a correção de escopo (rota/menu
 aceita employees:create OU employees:create_simplified, e o módulo
-terceirizados OU terceirizados_colaboradores) e a admin UI de
-module_unit_scope. Mesma lógica de tests/test_outsourced_companies_legacy_web_wiring.py:
-`index.html` é gerado a partir de `static/views/*.html`, então os testes
-olham o arquivo gerado — é ele que o navegador carrega.
+terceirizados OU terceirizados_colaboradores). Mesma lógica de
+tests/test_outsourced_companies_legacy_web_wiring.py: `index.html` é
+gerado a partir de `static/views/*.html`, então os testes olham o arquivo
+gerado — é ele que o navegador carrega.
+
+A antiga admin UI de module_unit_scope foi retirada no PR18 (evolução para
+override por Unidade dentro de module_visibility) — o web legado ganha a
+nova experiência unificada no PR20.
 """
 
 import json
@@ -184,27 +188,6 @@ def test_terceirizados_showview_hook_loads_new_sections():
     assert 'loadOutsourcedEmployeesSummary()' in hook
 
 
-# ── module_unit_scope admin UI ───────────────────────────────────────────────
-
-def test_module_unit_scope_form_exists_in_generated_index_and_fragment():
-    for path in (('static', 'index.html'), ('static', 'views', 'configuracao.html')):
-        html = _read(*path)
-        assert 'id="module-unit-scope-form"' in html
-        assert 'id="module-unit-scope-module"' in html
-        assert 'id="module-unit-scope-units"' in html
-
-
-def test_module_unit_scope_submit_posts_to_endpoint():
-    app_js = _read('static', 'app.js')
-    assert "await api('/api/module-unit-scope'" in app_js
-
-
-def test_module_unit_scope_loaded_in_bootstrap_guarded_by_configuration_access():
-    app_js = _read('static', 'app.js')
-    assert '/api/module-unit-scope?' in app_js
-    assert 'state.moduleUnitScopeAdminConfig' in app_js
-
-
 # ── script registrado (pure-view-helpers) ────────────────────────────────────
 
 def test_pure_rules_script_is_registered_and_precedes_app_js():
@@ -231,27 +214,11 @@ def test_pure_rules_module_covered_by_js_test_harness():
 
 # ── i18n ──────────────────────────────────────────────────────────────────
 
-def test_all_locales_have_module_unit_scope_block():
-    for locale in LOCALES:
-        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
-        assert 'moduleUnitScope' in data, f'{locale}: bloco moduleUnitScope ausente'
-
-
 def test_all_locales_have_the_same_outsourced_company_keys():
     key_sets = {}
     for locale in LOCALES:
         data = json.loads(_read('static', 'i18n', f'{locale}.json'))
         key_sets[locale] = set(data['outsourcedCompany'].keys())
-    base = key_sets[LOCALES[0]]
-    for locale, keys in key_sets.items():
-        assert keys == base, f'{locale} diverge de {LOCALES[0]}: {keys.symmetric_difference(base)}'
-
-
-def test_all_locales_have_the_same_module_unit_scope_keys():
-    key_sets = {}
-    for locale in LOCALES:
-        data = json.loads(_read('static', 'i18n', f'{locale}.json'))
-        key_sets[locale] = set(data['moduleUnitScope'].keys())
     base = key_sets[LOCALES[0]]
     for locale, keys in key_sets.items():
         assert keys == base, f'{locale} diverge de {LOCALES[0]}: {keys.symmetric_difference(base)}'

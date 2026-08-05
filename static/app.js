@@ -1933,11 +1933,6 @@ const state = {
   // o ator logado, usada por canAccessView). Esta é a matriz completa que a
   // tela "Configuração → Regras → Visualização" edita.
   moduleVisibilityAdminConfig: {},
-  // Escopo por Unidade dos módulos opt-in unit-scopable (ADR-0002 §10.3
-  // corrigido) — {module: [unit_id, ...]}. Distinta de moduleVisibility
-  // (já resolvida para o ator logado), mesma relação de
-  // moduleVisibilityAdminConfig acima com module_visibility.
-  moduleUnitScopeAdminConfig: {},
   fichaRetentionPolicy: { retention_years: 5, purge_enabled: false, timeline: [] },
   platformBrand: { ...DEFAULT_PLATFORM_BRAND },
   commercialSettings: cloneDefaultCommercialSettings(),
@@ -2254,10 +2249,6 @@ const refs = {
   moduleVisibilityRole: document.getElementById('module-visibility-role'),
   moduleVisibilityCheckboxes: document.getElementById('module-visibility-checkboxes'),
   moduleVisibilityFeedback: document.getElementById('module-visibility-feedback'),
-  moduleUnitScopeForm: document.getElementById('module-unit-scope-form'),
-  moduleUnitScopeModule: document.getElementById('module-unit-scope-module'),
-  moduleUnitScopeUnits: document.getElementById('module-unit-scope-units'),
-  moduleUnitScopeFeedback: document.getElementById('module-unit-scope-feedback'),
   configFrameworkForm: document.getElementById('config-framework-form'),
   configEnableNewEngine: document.getElementById('config-enable-new-engine'),
   configExecutionMode: document.getElementById('config-execution-mode'),
@@ -5116,16 +5107,6 @@ async function loadBootstrap() {
         ? moduleVisibilityPayload.module_visibility
         : {};
 
-      const moduleUnitScopePayload = await loadOptionalBootstrapSection(
-        'configuration',
-        { module_unit_scope: {} },
-        () => api(`/api/module-unit-scope?${actorQuery()}`),
-        { permission: 'settings:view' }
-      );
-      state.moduleUnitScopeAdminConfig = (moduleUnitScopePayload.module_unit_scope && typeof moduleUnitScopePayload.module_unit_scope === 'object')
-        ? moduleUnitScopePayload.module_unit_scope
-        : {};
-
       if (hasHardeningAccess()) {
         const frameworkPayload = await loadOptionalBootstrapSection(
           'configuration',
@@ -5145,7 +5126,6 @@ async function loadBootstrap() {
       state.configurationRules = [];
       state.configurationFramework = deepClone(DEFAULT_CONFIGURATION_FRAMEWORK);
       state.moduleVisibilityAdminConfig = {};
-      state.moduleUnitScopeAdminConfig = {};
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
@@ -7912,69 +7892,6 @@ function renderOutsourcedEmployeesSummary() {
     colspan: 4,
     message: tr('outsourcedCompany.reportsEmpty', 'Nenhuma empresa terceirizada/prestadora cadastrada.'),
   });
-}
-
-// ── Escopo por Unidade dos módulos opt-in (module_unit_scope, correção do
-// ADR-0002 §10.3) — ampliação do mesmo mecanismo de module_visibility:
-// quando a lista de Unidades autorizadas para um módulo não está vazia,
-// Administrador Local e Gestor de EPI só o veem nas Unidades marcadas.
-// ─────────────────────────────────────────────────────────────────────────
-const MODULE_UNIT_SCOPE_LABELS = {
-  terceirizados: 'Terceirizados e Prestadores (Empresas)',
-  terceirizados_colaboradores: 'Cadastro de Colaboradores',
-};
-let _moduleUnitScopeSelectedIds = new Set();
-
-function hydrateModuleUnitScopeForm() {
-  if (!refs.moduleUnitScopeModule || !refs.moduleUnitScopeUnits) return;
-  const previous = refs.moduleUnitScopeModule.value;
-  refs.moduleUnitScopeModule.innerHTML = Object.keys(MODULE_UNIT_SCOPE_LABELS)
-    .map((moduleKey) => `<option value="${moduleKey}">${MODULE_UNIT_SCOPE_LABELS[moduleKey]}</option>`).join('');
-  refs.moduleUnitScopeModule.value = previous && refs.moduleUnitScopeModule.querySelector(`option[value="${previous}"]`)
-    ? previous
-    : refs.moduleUnitScopeModule.value;
-  syncModuleUnitScopeSelection();
-  renderModuleUnitScopeUnits();
-}
-
-function syncModuleUnitScopeSelection() {
-  const moduleKey = refs.moduleUnitScopeModule?.value || '';
-  const current = (state.moduleUnitScopeAdminConfig || {})[moduleKey] || [];
-  _moduleUnitScopeSelectedIds = new Set(current.map((id) => String(id)));
-}
-
-function renderModuleUnitScopeUnits() {
-  if (!refs.moduleUnitScopeUnits) return;
-  const units = filterByUserCompany(state.units || []);
-  if (!units.length) {
-    refs.moduleUnitScopeUnits.innerHTML = `<p class="hint">${tr('moduleUnitScope.noUnits', 'Nenhuma Unidade cadastrada.')}</p>`;
-    return;
-  }
-  refs.moduleUnitScopeUnits.innerHTML = units.map((unit) => {
-    const checked = _moduleUnitScopeSelectedIds.has(String(unit.id)) ? 'checked' : '';
-    return `<label class="unit-link-option"><input type="checkbox" data-module-unit-scope-unit="${unit.id}" ${checked}> ${escapeHtml(unit.name)}</label>`;
-  }).join('');
-}
-
-async function onSubmitModuleUnitScope(event) {
-  event.preventDefault();
-  if (!hasConfigurationAccess() || !refs.moduleUnitScopeModule) return;
-  const moduleKey = refs.moduleUnitScopeModule.value;
-  const unitIds = Array.from(_moduleUnitScopeSelectedIds).map((id) => Number(id)).filter((id) => Number.isFinite(id));
-  try {
-    const body = { actor_user_id: state.user.id, module: moduleKey, unit_ids: unitIds };
-    const result = await api('/api/module-unit-scope', { method: 'POST', body: JSON.stringify(body) });
-    state.moduleUnitScopeAdminConfig = {
-      ...state.moduleUnitScopeAdminConfig,
-      [moduleKey]: result.after != null ? result.after : unitIds,
-    };
-    syncModuleUnitScopeSelection();
-    renderModuleUnitScopeUnits();
-    if (refs.moduleUnitScopeFeedback) refs.moduleUnitScopeFeedback.textContent = tr('moduleUnitScope.saved', 'Escopo por Unidade salvo.');
-  } catch (e) {
-    if (refs.moduleUnitScopeFeedback) refs.moduleUnitScopeFeedback.textContent = '';
-    alert(e.message);
-  }
 }
 
 // Vínculo jurídico da unidade.
@@ -11712,7 +11629,6 @@ function hydrateConfigurationForms() {
   renderConfigurationRules();
   renderConfigurationFramework();
   hydrateModuleVisibilityForm();
-  hydrateModuleUnitScopeForm();
   renderFichaAuditLogs();
 }
 
@@ -12327,17 +12243,6 @@ async function init() {
     if (edit) { void startEditOutsourcedEmployee(edit); return; }
     const archive = event.target.dataset.outsourcedEmployeeArchive;
     if (archive) void archiveOutsourcedEmployee(archive);
-  });
-  bindAppListener(document.getElementById('module-unit-scope-form'), 'submit', onSubmitModuleUnitScope);
-  bindAppListener(refs.moduleUnitScopeModule, 'change', () => {
-    syncModuleUnitScopeSelection();
-    renderModuleUnitScopeUnits();
-  });
-  bindAppListener(refs.moduleUnitScopeUnits, 'change', (event) => {
-    const unitId = event.target?.dataset?.moduleUnitScopeUnit;
-    if (!unitId) return;
-    if (event.target.checked) _moduleUnitScopeSelectedIds.add(String(unitId));
-    else _moduleUnitScopeSelectedIds.delete(String(unitId));
   });
   bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
   bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);

@@ -4,7 +4,13 @@
   colaborador), PR 4 (snapshot na entrega), PR 5 (auditoria de
   responsabilidade), PR 6 (relatórios, ressarcimento, alerta de migração),
   PR 7 (Flutter), PR 8 (Web Legado) e PR 9 (regressão de ponta a ponta e
-  documentação final) — sequência completa
+  documentação final) — sequência completa. Estendido pela §10 (Cadastro de
+  Colaboradores, Arquivamento e Escopo por Unidade): PR 10 (fundação —
+  módulo `terceirizados_colaboradores`, permissões simplificadas, schema de
+  `module_unit_scope`), PR 11 (rota do Cadastro de Colaboradores
+  simplificado), PR 12 (arquivamento de `outsourced_companies`), PR 13
+  (Colaboradores Arquivados + relatório de headcount + bloqueio de entrega),
+  PR 14 (Flutter) e PR 15 (Web Legado) — sequência completa, ver §10.6
 - **Data:** 2026-07-29
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
@@ -548,3 +554,64 @@ sem tabela nova, sem estado novo. Não existe conceito equivalente para
 colaboradores: o formulário simplificado já exige todos os campos
 obrigatórios na criação, então não há colaborador "incompleto" a
 rastrear — só a empresa pode nascer incompleta (CNPJ pendente).
+
+### 10.6 Plano de implementação — PRs 10-15 (implementado)
+
+1. **PR 10 — Fundação.** Novo módulo `terceirizados_colaboradores` em
+   `MODULE_KEYS`/`MODULE_REQUIRED_PERMISSIONS` (piso técnico
+   `employees:create_simplified`), permissões
+   `employees:create_simplified`/`employees:update_simplified` concedidas a
+   `admin`/`user` e listadas em `MASTER_ADMIN_OPERATIONAL_EXCLUSIONS` (mesma
+   regra que já excluía `employees:create`/`update` do `master_admin`),
+   chave `module_unit_scope: {module: [unit_id, ...]}` no mesmo
+   `configuration_framework` que já guarda `module_visibility`, e a terceira
+   condição em `resolve_module_visibility()` descrita no §10.3. Corrigido,
+   nesta mesma leva, um import cíclico sinalizado pelo CodeQL entre
+   `modules/settings` e `modules/employees`. Zero mudança de comportamento
+   visível até alguém configurar `module_unit_scope` para um módulo
+   existente.
+2. **PR 11 — Rota do Cadastro de Colaboradores simplificado.**
+   `POST/PUT /api/employees/outsourced-simplified(/{id})`, piso
+   `employees:create_simplified`/`update_simplified`, delegando para as
+   mesmas `create_employee`/`update_employee` do §10.1 — sem caminho de
+   gravação paralelo. Validação dedicada
+   (`validate_employee_outsourced_simplified_payload`) recusa CLT e exige
+   `outsourced_company_id`, mantendo o formulário completo (`employees:
+   create`) inalterado para quem já o usa.
+3. **PR 12 — Arquivamento de `outsourced_companies`.**
+   `POST /api/outsourced-companies/{id}/archive` e `.../restore` sobre o
+   motor genérico `core/archival.py` (§10.4); redefinição de
+   `outsourced_companies.status` de texto livre para o enum de lifecycle
+   compartilhado, com backfill antes do `CHECK` constraint.
+4. **PR 13 — Colaboradores Arquivados + relatório de headcount.** Filtro
+   `outsourced_only=1` em `GET /api/employees/archived` (reaproveita
+   `fetch_archived_employees`, sem rota nova);
+   `GET /api/outsourced-companies/employees-summary` para o headcount por
+   empresa; `core.archival.ensure_record_operational` passa a bloquear (com
+   aviso) novo cadastro/entrega contra empresa arquivada, conforme §10.4.
+5. **PR 14 — Flutter.** `OutsourcedCompaniesScreen` ganha abas
+   Empresas/Colaboradores/Empresas Arquivadas/Colaboradores Arquivados/
+   Relatórios; API client e cubits para arquivar/restaurar/relatório;
+   roteamento e menu corrigidos para aceitar `employees:create` OU
+   `employees:create_simplified` **e** o módulo `terceirizados` OU
+   `terceirizados_colaboradores` (`routePermissionAlternatives`/
+   `routeModuleAlternatives`) — sem essa correção `admin`/`user`, que só têm
+   a versão simplificada, nunca alcançavam a tela mesmo com o módulo
+   habilitado. Card de administração de `module_unit_scope` na tela de
+   Configurações, irmão do card de `module_visibility` já existente.
+6. **PR 15 — Web Legado.** Mesma paridade de funcionalidades do PR 14 na
+   tela `#terceirizados-view` (`static/`): aba "Cadastro de Colaboradores",
+   abas de arquivamento com filtros, aba de relatórios, e a mesma correção
+   de escopo de acesso (`VIEW_PERMISSION_ALTERNATIVES`/
+   `VIEW_MODULE_ALTERNATIVES` consumidos em `canAccessView()`). Listagem de
+   colaboradores terceirizados derivada client-side de `state.employees`
+   (já carregado pelo bootstrap) — sem rota de listagem nova, mesma
+   estratégia do Flutter. Sistema genérico `ARCHIVAL_ENTITIES` estendido com
+   `supportsPurge`/`identityKind`/`archivedQueryExtra` para cobrir empresas
+   (sem expurgo) e colaboradores (listagem filtrada) sem duplicar código do
+   arquivamento já existente de `employees`/`epis`.
+
+Critério de aceite em cada PR desta extensão: suíte completa (`pytest`,
+`flutter analyze`/`test`, runner JS `static/js/test/run-tests.js`) verde,
+mais teste manual em navegador antes de qualquer PR de UI ir para revisão —
+mesmo critério do §7.

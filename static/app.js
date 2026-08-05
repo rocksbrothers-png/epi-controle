@@ -128,6 +128,13 @@ const MODULE_VISIBILITY_LABELS = {
   // permissão técnica deste, nunca do de Empresas).
   terceirizados_colaboradores: 'Cadastro de Colaboradores'
 };
+// Espelha _UNIT_SCOPED_ROLES de epi_backend/rule_engine.py: só admin
+// (Administrador Local) e user (Gestor de EPI) têm vínculo de unidade
+// única, então só eles fazem sentido com override por Unidade. É só
+// controle de exibição do seletor — o backend valida de novo e é quem
+// decide de fato (save_module_visibility rejeita unit_id para qualquer
+// outro perfil).
+const MODULE_VISIBILITY_UNIT_SCOPED_ROLES = ['admin', 'user'];
 // Módulo alternativo que também libera a view (correção do ADR-0002 §10.3):
 // Terceirizados e Prestadores tem duas abas com módulos opt-in distintos —
 // qualquer um dos dois ligado libera a view; a aba em si ainda respeita seu
@@ -2247,6 +2254,9 @@ const refs = {
   configRulesTable: document.getElementById('config-rules-table'),
   moduleVisibilityForm: document.getElementById('module-visibility-form'),
   moduleVisibilityRole: document.getElementById('module-visibility-role'),
+  moduleVisibilityUnitWrap: document.getElementById('module-visibility-unit-wrap'),
+  moduleVisibilityUnit: document.getElementById('module-visibility-unit'),
+  moduleVisibilityUnitHint: document.getElementById('module-visibility-unit-hint'),
   moduleVisibilityCheckboxes: document.getElementById('module-visibility-checkboxes'),
   moduleVisibilityFeedback: document.getElementById('module-visibility-feedback'),
   configFrameworkForm: document.getElementById('config-framework-form'),
@@ -11647,17 +11657,57 @@ function hydrateModuleVisibilityForm() {
   refs.moduleVisibilityRole.value = previous && refs.moduleVisibilityRole.querySelector(`option[value="${previous}"]`)
     ? previous
     : refs.moduleVisibilityRole.value;
+  populateModuleVisibilityUnitSelect();
+  syncModuleVisibilityUnitVisibility();
   renderModuleVisibilityCheckboxes();
+}
+
+// Seletor de Unidade: só faz sentido para os papéis em
+// MODULE_VISIBILITY_UNIT_SCOPED_ROLES (admin/user). Mesma fonte de
+// unidades usada em hydrateConfigurationForms — já filtrada para a
+// empresa do ator (filterByUserCompany, dentro de populateSelect).
+function populateModuleVisibilityUnitSelect() {
+  if (!refs.moduleVisibilityUnit) return;
+  const previous = refs.moduleVisibilityUnit.value;
+  populateSelect('module-visibility-unit', state.units, (item) => item.name, 'id', true,
+    tr('moduleVisibility.allUnitsOption', 'Todas as unidades (padrão)'));
+  refs.moduleVisibilityUnit.value = previous && refs.moduleVisibilityUnit.querySelector(`option[value="${previous}"]`)
+    ? previous
+    : '';
+}
+
+function syncModuleVisibilityUnitVisibility() {
+  if (!refs.moduleVisibilityRole || !refs.moduleVisibilityUnitWrap) return;
+  const role = refs.moduleVisibilityRole.value;
+  const scoped = MODULE_VISIBILITY_UNIT_SCOPED_ROLES.includes(role);
+  refs.moduleVisibilityUnitWrap.hidden = !scoped;
+  if (refs.moduleVisibilityUnitHint) refs.moduleVisibilityUnitHint.hidden = !scoped;
+  if (!scoped && refs.moduleVisibilityUnit) refs.moduleVisibilityUnit.value = '';
+}
+
+// Valor efetivo módulo a módulo para o par (perfil, unidade), espelhando
+// resolve_module_visibility em epi_backend/rule_engine.py: um módulo
+// ausente do bucket da Unidade herda do bucket "*"; ausente de ambos,
+// assume visível (regra padrão do sistema).
+function moduleVisibilityEffectiveValue(roleConfig, unitId, moduleKey) {
+  const base = roleConfig['*'] || {};
+  if (unitId) {
+    const bucket = roleConfig[String(unitId)] || {};
+    if (Object.prototype.hasOwnProperty.call(bucket, moduleKey)) return Boolean(bucket[moduleKey]);
+  }
+  if (Object.prototype.hasOwnProperty.call(base, moduleKey)) return Boolean(base[moduleKey]);
+  return true;
 }
 
 function renderModuleVisibilityCheckboxes() {
   if (!refs.moduleVisibilityCheckboxes || !refs.moduleVisibilityRole) return;
   const role = refs.moduleVisibilityRole.value;
-  const current = (state.moduleVisibilityAdminConfig || {})[role] || {};
+  const unitId = (refs.moduleVisibilityUnitWrap && !refs.moduleVisibilityUnitWrap.hidden && refs.moduleVisibilityUnit)
+    ? refs.moduleVisibilityUnit.value
+    : '';
+  const roleConfig = (state.moduleVisibilityAdminConfig || {})[role] || {};
   refs.moduleVisibilityCheckboxes.innerHTML = Object.keys(MODULE_VISIBILITY_LABELS).map((moduleKey) => {
-    // Sem entrada salva ainda: assume visível (regra padrão do sistema,
-    // igual ao que o backend calcula em default_framework_payload()).
-    const checked = Object.prototype.hasOwnProperty.call(current, moduleKey) ? Boolean(current[moduleKey]) : true;
+    const checked = moduleVisibilityEffectiveValue(roleConfig, unitId, moduleKey);
     return `<label><input type="checkbox" name="module_${moduleKey}" data-module-key="${moduleKey}" ${checked ? 'checked' : ''}> ${MODULE_VISIBILITY_LABELS[moduleKey]}</label>`;
   }).join('');
 }
@@ -11666,6 +11716,9 @@ async function onSubmitModuleVisibility(event) {
   event.preventDefault();
   if (!hasConfigurationAccess() || !refs.moduleVisibilityRole || !refs.moduleVisibilityCheckboxes) return;
   const role = refs.moduleVisibilityRole.value;
+  const unitId = (refs.moduleVisibilityUnitWrap && !refs.moduleVisibilityUnitWrap.hidden && refs.moduleVisibilityUnit)
+    ? refs.moduleVisibilityUnit.value
+    : '';
   const modules = {};
   refs.moduleVisibilityCheckboxes.querySelectorAll('input[data-module-key]').forEach((input) => {
     modules[input.dataset.moduleKey] = input.checked;
@@ -11675,12 +11728,21 @@ async function onSubmitModuleVisibility(event) {
     // própria empresa (resolvida no backend); master_admin sem seleção grava
     // no escopo global, mesma limitação herdada da aba de regras por unidade.
     const body = { actor_user_id: state.user.id, role, modules };
+    if (unitId) body.unit_id = Number(unitId);
     const result = await api('/api/module-visibility', { method: 'POST', body: JSON.stringify(body) });
+    const bucket = unitId ? String(unitId) : '*';
+    const roleConfig = state.moduleVisibilityAdminConfig[role] || {};
     state.moduleVisibilityAdminConfig = {
       ...state.moduleVisibilityAdminConfig,
-      [role]: { ...(state.moduleVisibilityAdminConfig[role] || {}), ...(result.after || modules) }
+      [role]: { ...roleConfig, [bucket]: { ...(roleConfig[bucket] || {}), ...(result.after || modules) } }
     };
-    if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = `Visibilidade de módulos salva para ${roleLabel(role)}.`;
+    if (refs.moduleVisibilityFeedback) {
+      refs.moduleVisibilityFeedback.textContent = unitId
+        ? tr('moduleVisibility.savedForRoleUnit', 'Visibilidade de módulos salva para {role} na Unidade {unit}.')
+          .replace('{role}', roleLabel(role))
+          .replace('{unit}', (state.units.find((item) => String(item.id) === unitId) || {}).name || `#${unitId}`)
+        : tr('moduleVisibility.savedForRole', 'Visibilidade de módulos salva para {role}.').replace('{role}', roleLabel(role));
+    }
   } catch (e) {
     if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = '';
     alert(e.message);
@@ -12414,7 +12476,8 @@ async function init() {
     void removeConfigurationRule(button.dataset.removeConfigRule);
   });
   bindAppListener(refs.configFrameworkForm, 'submit', (event) => { void saveConfigurationFramework(event); });
-  bindAppListener(refs.moduleVisibilityRole, 'change', () => { renderModuleVisibilityCheckboxes(); });
+  bindAppListener(refs.moduleVisibilityRole, 'change', () => { syncModuleVisibilityUnitVisibility(); renderModuleVisibilityCheckboxes(); });
+  bindAppListener(refs.moduleVisibilityUnit, 'change', () => { renderModuleVisibilityCheckboxes(); });
   bindAppListener(refs.moduleVisibilityForm, 'submit', (event) => { void onSubmitModuleVisibility(event); });
   [refs.fichaAuditEmployee, refs.fichaAuditManager, refs.fichaAuditAction, refs.fichaAuditDateFrom, refs.fichaAuditDateTo]
     .forEach((el) => bindAppListener(el, 'change', () => { void loadFichaAuditLogs(); }));

@@ -1465,6 +1465,13 @@
     "reportsEmpty": "Nenhuma empresa terceirizada/prestadora cadastrada.",
     "reportsError": "Não foi possível carregar o relatório."
   },
+  "moduleVisibility": {
+    "unitLabel": "Unidade",
+    "unitHint": "Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".",
+    "allUnitsOption": "Todas as unidades (padrão)",
+    "savedForRole": "Visibilidade de módulos salva para {role}.",
+    "savedForRoleUnit": "Visibilidade de módulos salva para {role} na Unidade {unit}."
+  },
   "myCompany": {
     "stockScope": "Consolidar saldos de estoque por",
     "stockScopeHint": "Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade."

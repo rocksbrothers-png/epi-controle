@@ -256,6 +256,11 @@
             </div>
             <form id="module-visibility-form" class="form-stack">
               <label>Perfil<select id="module-visibility-role" name="role" required></select></label>
+              <label id="module-visibility-unit-wrap" hidden>
+                <span data-i18n="moduleVisibility.unitLabel">Unidade</span>
+                <select id="module-visibility-unit" name="unit_id"></select>
+              </label>
+              <p class="hint" id="module-visibility-unit-hint" data-i18n="moduleVisibility.unitHint" hidden>Um módulo não marcado especificamente para esta Unidade herda o valor de "Todas as unidades".</p>
               <div class="form-grid" id="module-visibility-checkboxes"></div>
               <button class="primary" type="submit">Salvar visibilidade de módulos</button>
             </form>

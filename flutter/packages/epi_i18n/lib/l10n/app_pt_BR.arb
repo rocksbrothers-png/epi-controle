@@ -570,11 +570,10 @@
   "outsourcedReportsEmpty": "Nenhuma empresa terceirizada/prestadora cadastrada.",
   "outsourcedReportsActive": "Ativos",
   "outsourcedReportsArchived": "Arquivados",
-  "moduleVisibilityTitle": "Visualização de Módulos",
-  "moduleVisibilityDescription": "Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.",
-  "moduleUnitScopeTitle": "Escopo por Unidade",
-  "moduleUnitScopeDescription": "Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).",
-  "moduleUnitScopeModuleLabel": "Módulo",
-  "moduleUnitScopeNoUnits": "Nenhuma Unidade cadastrada.",
-  "moduleVisibilityRoleLabel": "Perfil"
+  "moduleVisibilityTitle": "Visibilidade por Módulo",
+  "moduleVisibilityDescription": "Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.",
+  "moduleVisibilityRoleLabel": "Perfil",
+  "moduleVisibilityUnitLabel": "Unidade",
+  "moduleVisibilityUnitHint": "Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".",
+  "moduleVisibilityAllUnitsOption": "Todas as unidades (padrão)"
 }

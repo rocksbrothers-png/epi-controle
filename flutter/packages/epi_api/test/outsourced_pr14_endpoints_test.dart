@@ -139,12 +139,14 @@ void main() {
     });
   });
 
-  group('SettingsApi — module_visibility / module_unit_scope (ADR-0002 §10.3)', () {
+  group('SettingsApi — module_visibility (issue #148 / visibilidade por Unidade)', () {
     test('getModuleVisibility chama GET /api/module-visibility', () async {
       final adapter = _RecordingAdapter(responseByPath: {
         '/api/module-visibility': {
           'module_visibility': {
-            'admin': {'terceirizados_colaboradores': true},
+            'admin': {
+              '*': {'terceirizados_colaboradores': true},
+            },
           },
         },
       });
@@ -154,7 +156,7 @@ void main() {
       expect(result['module_visibility'], isNotEmpty);
     });
 
-    test('saveModuleVisibility faz POST com role e modules', () async {
+    test('saveModuleVisibility faz POST com role e modules, sem unit_id por padrão', () async {
       final adapter = _RecordingAdapter();
       final api = SettingsApi(Dio()..httpClientAdapter = adapter);
       await api.saveModuleVisibility(
@@ -167,32 +169,20 @@ void main() {
       final body = adapter.bodies.single! as Map<String, dynamic>;
       expect(body['role'], 'admin');
       expect(body['modules'], {'terceirizados_colaboradores': true});
+      expect(body.containsKey('unit_id'), isFalse);
     });
 
-    test('getModuleUnitScope chama GET /api/module-unit-scope', () async {
-      final adapter = _RecordingAdapter(responseByPath: {
-        '/api/module-unit-scope': {
-          'module_unit_scope': {'terceirizados_colaboradores': <int>[]},
-        },
-      });
-      final api = SettingsApi(Dio()..httpClientAdapter = adapter);
-      final result = await api.getModuleUnitScope();
-      expect(adapter.paths.single, '/api/module-unit-scope');
-      expect(result['module_unit_scope'], isNotEmpty);
-    });
-
-    test('saveModuleUnitScope faz POST com module e unit_ids', () async {
+    test('saveModuleVisibility inclui unit_id no POST quando informado', () async {
       final adapter = _RecordingAdapter();
       final api = SettingsApi(Dio()..httpClientAdapter = adapter);
-      await api.saveModuleUnitScope(
+      await api.saveModuleVisibility(
         actorUserId: 1,
-        module: 'terceirizados_colaboradores',
-        unitIds: [10, 11],
+        role: 'admin',
+        modules: {'estoque': false},
+        unitId: 10,
       );
-      expect(adapter.paths.single, '/api/module-unit-scope');
       final body = adapter.bodies.single! as Map<String, dynamic>;
-      expect(body['module'], 'terceirizados_colaboradores');
-      expect(body['unit_ids'], [10, 11]);
+      expect(body['unit_id'], 10);
     });
   });
 }

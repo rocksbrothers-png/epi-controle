@@ -1467,27 +1467,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get outsourcedReportsArchived => 'Arquivados';
 
   @override
-  String get moduleVisibilityTitle => 'Visualização de Módulos';
+  String get moduleVisibilityTitle => 'Visibilidade por Módulo';
 
   @override
   String get moduleVisibilityDescription =>
-      'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Escopo por Unidade';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Módulo';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'Nenhuma Unidade cadastrada.';
+      'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Unidade';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2962,21 +2959,18 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get moduleVisibilityDescription =>
-      'Contrôlez quels modules apparaissent pour chaque profil. Les modules optionnels (comme Sous-traitants et Inscription des Collaborateurs) naissent masqués par défaut pour chaque tenant.';
-
-  @override
-  String get moduleUnitScopeTitle => 'Portée par Unité';
-
-  @override
-  String get moduleUnitScopeDescription =>
-      'Restreignez un module à des Unités spécifiques pour les profils Administrateur Local et Gestionnaire EPI. Sans aucune Unité sélectionnée, le module reste disponible dans toutes les Unités (en respectant la Visibilité ci-dessus).';
-
-  @override
-  String get moduleUnitScopeModuleLabel => 'Module';
-
-  @override
-  String get moduleUnitScopeNoUnits => 'Aucune Unité enregistrée.';
+      'Contrôlez quels modules apparaissent pour chaque profil, et par Unité pour les profils Administrateur Local et Gestionnaire EPI. Les modules optionnels (comme Sous-traitants et Inscription des Collaborateurs) naissent masqués par défaut pour chaque tenant.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Profil';
+
+  @override
+  String get moduleVisibilityUnitLabel => 'Unité';
+
+  @override
+  String get moduleVisibilityUnitHint =>
+      'Un module non défini spécifiquement pour cette Unité hérite de la valeur de \"Toutes les unités\".';
+
+  @override
+  String get moduleVisibilityAllUnitsOption => 'Toutes les unités (par défaut)';
 }

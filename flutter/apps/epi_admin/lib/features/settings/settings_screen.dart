@@ -115,8 +115,6 @@ class _SettingsBody extends StatelessWidget {
               const _ArchivalPolicyCard(),
               const SizedBox(height: EpiSpacing.xl),
               const _ModuleVisibilityCard(),
-              const SizedBox(height: EpiSpacing.xl),
-              const _ModuleUnitScopeCard(),
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),
               if (state.isLoading)
@@ -536,13 +534,19 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
     );
   }
 }
-// ── Regras → Visualização de Módulos (ADR-0002 §10.3) ───────────────────────
-// Reaproveita integralmente o mecanismo já existente de module_visibility
-// (o mesmo que já gateia CNPJs/Estoque/Entregas) — aqui só a UI de
-// administração para os dois módulos opt-in do Cadastro de Colaboradores:
-// `terceirizados` (aba Empresas) e `terceirizados_colaboradores` (aba
-// Cadastro de Colaboradores). Nasce oculto por padrão em todo tenant até o
-// Administrador Geral ligar, por perfil.
+// ── Regras → Visibilidade por Módulo (issue #148 / visibilidade por Unidade)
+// ────────────────────────────────────────────────────────────────────────────
+// Cobre todos os módulos configuráveis (MODULE_KEYS em epi_backend/
+// rule_engine.py), não só os dois opt-in de Terceirizados — module_visibility
+// é a única fonte de verdade para tenant + perfil + unidade + módulo desde a
+// evolução do backend (issue #148). Para os perfis com vínculo de unidade
+// única (admin/user), um seletor de Unidade permite editar o bucket daquela
+// Unidade em vez do bucket padrão "*"; um módulo ausente do bucket da
+// Unidade herda o valor do bucket "*" do mesmo perfil — mesma regra de
+// resolve_module_visibility() no backend. O antigo card separado de "Escopo
+// por Unidade" (module_unit_scope, restrito aos dois módulos opt-in) foi
+// retirado: o backend removeu suas rotas quando module_unit_scope deixou de
+// existir como mecanismo paralelo.
 const _kModuleVisibilityRoles = <(String value, String label)>[
   ('admin', 'Administrador Local'),
   ('user', 'Gestor de EPI'),
@@ -550,10 +554,28 @@ const _kModuleVisibilityRoles = <(String value, String label)>[
   ('registry_admin', 'Administrador de Registro'),
 ];
 
-const _kOutsourcedModules = <(String value, String label)>[
-  ('terceirizados', 'Terceirizados e Prestadores (Empresas)'),
+// Espelha MODULE_KEYS de epi_backend/rule_engine.py.
+const _kModuleVisibilityModules = <(String value, String label)>[
+  ('dashboard', 'Dashboard'),
+  ('compras', 'Compras'),
+  ('estoque', 'Estoque'),
+  ('entregas', 'Entregas'),
+  ('solicitacoes', 'Solicitações'),
+  ('fichas', 'Fichas de EPI'),
+  ('relatorios', 'Relatórios'),
+  ('administracao', 'Administração'),
+  ('configuracoes', 'Configurações'),
+  ('terceirizados', 'Terceirizados e Prestadores'),
   ('terceirizados_colaboradores', 'Cadastro de Colaboradores'),
 ];
+
+// Espelha _UNIT_SCOPED_ROLES de epi_backend/rule_engine.py: só admin
+// (Administrador Local) e user (Gestor de EPI) têm vínculo de unidade
+// única, então só eles fazem sentido com override por Unidade. É só
+// controle de exibição do seletor — o backend valida de novo e é quem
+// decide de fato (save_module_visibility rejeita unit_id para qualquer
+// outro perfil).
+const _kModuleVisibilityUnitScopedRoles = <String>{'admin', 'user'};
 
 class _ModuleVisibilityCard extends StatefulWidget {
   const _ModuleVisibilityCard();
@@ -564,7 +586,10 @@ class _ModuleVisibilityCard extends StatefulWidget {
 
 class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
   String _role = _kModuleVisibilityRoles.first.$1;
-  Map<String, Map<String, bool>> _visibility = const {};
+  int? _unitId;
+  // role -> bucket ("*" ou "<unit_id>") -> module -> bool
+  Map<String, Map<String, Map<String, bool>>> _visibility = const {};
+  List<Map<String, dynamic>> _units = const [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -583,17 +608,24 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
     try {
       final res = await ApiClient.settings.getModuleVisibility();
       final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
+      final bootstrap = await ApiClient.auth.bootstrap();
       if (!mounted) return;
       setState(() {
         _visibility = raw.map(
-          (role, modules) => MapEntry(
+          (role, buckets) => MapEntry(
             role,
-            (modules as Map?)?.cast<String, dynamic>().map(
-                  (k, v) => MapEntry(k, v == true),
-                ) ??
-                const {},
+            ((buckets as Map?)?.cast<String, dynamic>() ?? const {}).map(
+              (bucket, modules) => MapEntry(
+                bucket,
+                (modules as Map?)?.cast<String, dynamic>().map(
+                      (k, v) => MapEntry(k, v == true),
+                    ) ??
+                    const {},
+              ),
+            ),
           ),
         );
+        _units = bootstrap.units;
         _loading = false;
       });
     } on Exception {
@@ -605,7 +637,19 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
     }
   }
 
-  bool _isVisible(String module) => _visibility[_role]?[module] ?? false;
+  // Espelha resolve_module_visibility() em epi_backend/rule_engine.py: um
+  // módulo ausente do bucket da Unidade herda do bucket "*"; ausente de
+  // ambos, assume visível (regra padrão do sistema).
+  bool _isVisible(String module) {
+    final roleConfig = _visibility[_role] ?? const {};
+    final base = roleConfig['*'] ?? const {};
+    if (_unitId != null) {
+      final bucket = roleConfig['$_unitId'] ?? const {};
+      if (bucket.containsKey(module)) return bucket[module]!;
+    }
+    if (base.containsKey(module)) return base[module]!;
+    return true;
+  }
 
   Future<void> _toggle(String module, bool value) async {
     setState(() {
@@ -617,13 +661,14 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
         actorUserId: ApiClient.actorUserId,
         role: _role,
         modules: {module: value},
+        unitId: _unitId,
       );
       if (!mounted) return;
+      final bucketKey = _unitId != null ? '$_unitId' : '*';
       setState(() {
-        _visibility = {
-          ..._visibility,
-          _role: {...(_visibility[_role] ?? const {}), module: value},
-        };
+        final roleConfig = Map<String, Map<String, bool>>.from(_visibility[_role] ?? const {});
+        roleConfig[bucketKey] = {...(roleConfig[bucketKey] ?? const {}), module: value};
+        _visibility = {..._visibility, _role: roleConfig};
         _saving = false;
       });
     } on Exception catch (e) {
@@ -647,6 +692,7 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
         child: Center(child: CircularProgressIndicator()),
       );
     }
+    final unitScoped = _kModuleVisibilityUnitScopedRoles.contains(_role);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
       child: Column(
@@ -669,173 +715,49 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
             items: _kModuleVisibilityRoles
                 .map((r) => DropdownMenuItem(value: r.$1, child: Text(r.$2)))
                 .toList(),
-            onChanged: canEdit && !_saving ? (v) => setState(() => _role = v ?? _role) : null,
+            onChanged: canEdit && !_saving
+                ? (v) => setState(() {
+                      _role = v ?? _role;
+                      if (!_kModuleVisibilityUnitScopedRoles.contains(_role)) _unitId = null;
+                    })
+                : null,
           ),
+          if (unitScoped) ...[
+            const SizedBox(height: EpiSpacing.sm),
+            DropdownButtonFormField<int?>(
+              value: _unitId,
+              decoration: InputDecoration(
+                labelText: l10n.moduleVisibilityUnitLabel,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text(l10n.moduleVisibilityAllUnitsOption),
+                ),
+                for (final unit in _units)
+                  DropdownMenuItem<int?>(
+                    value: (unit['id'] as num).toInt(),
+                    child: Text('${unit['name'] ?? ''}'),
+                  ),
+              ],
+              onChanged: canEdit && !_saving ? (v) => setState(() => _unitId = v) : null,
+            ),
+            const SizedBox(height: EpiSpacing.xs),
+            Text(
+              l10n.moduleVisibilityUnitHint,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+            ),
+          ],
           const SizedBox(height: EpiSpacing.sm),
-          for (final module in _kOutsourcedModules)
+          for (final module in _kModuleVisibilityModules)
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(module.$2),
               value: _isVisible(module.$1),
               onChanged: canEdit && !_saving ? (v) => _toggle(module.$1, v) : null,
             ),
-          if (_error != null) ...[
-            const SizedBox(height: EpiSpacing.sm),
-            Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Regras → Escopo por Unidade dos módulos opt-in (correção do ADR-0002
-// §10.3) ──────────────────────────────────────────────────────────────────
-// Ampliação do mesmo mecanismo de module_visibility: quando a lista de
-// Unidades autorizadas para um módulo não está vazia, Administrador Local e
-// Gestor de EPI só o veem nas Unidades marcadas. Lista vazia = liberado em
-// todas as Unidades (respeitando a Visualização por perfil acima).
-class _ModuleUnitScopeCard extends StatefulWidget {
-  const _ModuleUnitScopeCard();
-
-  @override
-  State<_ModuleUnitScopeCard> createState() => _ModuleUnitScopeCardState();
-}
-
-class _ModuleUnitScopeCardState extends State<_ModuleUnitScopeCard> {
-  String _module = _kOutsourcedModules.first.$1;
-  Map<String, List<int>> _scope = const {};
-  List<Map<String, dynamic>> _units = const [];
-  bool _loading = true;
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final res = await ApiClient.settings.getModuleUnitScope();
-      final raw = (res['module_unit_scope'] as Map?)?.cast<String, dynamic>() ?? const {};
-      final bootstrap = await ApiClient.auth.bootstrap();
-      if (!mounted) return;
-      setState(() {
-        _scope = raw.map(
-          (module, ids) => MapEntry(
-            module,
-            ((ids as List?) ?? const [])
-                .map((id) => (id as num).toInt())
-                .toList(growable: false),
-          ),
-        );
-        _units = bootstrap.units;
-        _loading = false;
-      });
-    } on Exception {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = 'Não foi possível carregar o escopo por Unidade.';
-      });
-    }
-  }
-
-  List<int> get _selectedUnitIds => _scope[_module] ?? const [];
-
-  Future<void> _toggleUnit(int unitId, bool selected) async {
-    final current = List<int>.from(_selectedUnitIds);
-    if (selected) {
-      if (!current.contains(unitId)) current.add(unitId);
-    } else {
-      current.remove(unitId);
-    }
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      await ApiClient.settings.saveModuleUnitScope(
-        actorUserId: ApiClient.actorUserId,
-        module: _module,
-        unitIds: current,
-      );
-      if (!mounted) return;
-      setState(() {
-        _scope = {..._scope, _module: current};
-        _saving = false;
-      });
-    } on Exception catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = e.toString();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final authState = context.watch<AuthCubit>().state;
-    final role = authState is AuthAuthenticated ? authState.sessionContext.role : '';
-    final canEdit = role == 'master_admin' || role == 'general_admin' || role == 'registry_admin';
-    if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.all(EpiSpacing.lg),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l10n.moduleUnitScopeTitle, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: EpiSpacing.xs),
-          Text(
-            l10n.moduleUnitScopeDescription,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
-          ),
-          const SizedBox(height: EpiSpacing.md),
-          DropdownButtonFormField<String>(
-            value: _module,
-            decoration: InputDecoration(
-              labelText: l10n.moduleUnitScopeModuleLabel,
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            items: _kOutsourcedModules
-                .map((m) => DropdownMenuItem(value: m.$1, child: Text(m.$2)))
-                .toList(),
-            onChanged: canEdit && !_saving ? (v) => setState(() => _module = v ?? _module) : null,
-          ),
-          const SizedBox(height: EpiSpacing.sm),
-          if (_units.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: EpiSpacing.sm),
-              child: Text(
-                l10n.moduleUnitScopeNoUnits,
-                style: const TextStyle(color: EpiColors.textMuted),
-              ),
-            )
-          else
-            for (final unit in _units)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text('${unit['name'] ?? ''}'),
-                value: _selectedUnitIds.contains((unit['id'] as num).toInt()),
-                onChanged: canEdit && !_saving
-                    ? (v) => _toggleUnit((unit['id'] as num).toInt(), v ?? false)
-                    : null,
-              ),
           if (_error != null) ...[
             const SizedBox(height: EpiSpacing.sm),
             Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),

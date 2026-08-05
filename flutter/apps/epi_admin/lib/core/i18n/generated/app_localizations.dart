@@ -65,7 +65,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -88,11 +88,11 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +105,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR'),
+    Locale('pt', 'BR')
   ];
 
   /// Nome da aplicação
@@ -2931,44 +2931,38 @@ abstract class AppLocalizations {
   /// No description provided for @moduleVisibilityTitle.
   ///
   /// In pt_BR, this message translates to:
-  /// **'Visualização de Módulos'**
+  /// **'Visibilidade por Módulo'**
   String get moduleVisibilityTitle;
 
   /// No description provided for @moduleVisibilityDescription.
   ///
   /// In pt_BR, this message translates to:
-  /// **'Controle quais módulos aparecem para cada perfil. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.'**
+  /// **'Controle quais módulos aparecem para cada perfil, e por Unidade para Administrador Local e Gestor de EPI. Módulos opt-in (como Terceirizados e Cadastro de Colaboradores) nascem ocultos por padrão em todo tenant.'**
   String get moduleVisibilityDescription;
-
-  /// No description provided for @moduleUnitScopeTitle.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Escopo por Unidade'**
-  String get moduleUnitScopeTitle;
-
-  /// No description provided for @moduleUnitScopeDescription.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Restrinja um módulo a Unidades específicas para os perfis Administrador Local e Gestor de EPI. Sem nenhuma Unidade marcada, o módulo fica liberado em todas as Unidades (respeitando a Visualização acima).'**
-  String get moduleUnitScopeDescription;
-
-  /// No description provided for @moduleUnitScopeModuleLabel.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Módulo'**
-  String get moduleUnitScopeModuleLabel;
-
-  /// No description provided for @moduleUnitScopeNoUnits.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Nenhuma Unidade cadastrada.'**
-  String get moduleUnitScopeNoUnits;
 
   /// No description provided for @moduleVisibilityRoleLabel.
   ///
   /// In pt_BR, this message translates to:
   /// **'Perfil'**
   String get moduleVisibilityRoleLabel;
+
+  /// No description provided for @moduleVisibilityUnitLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get moduleVisibilityUnitLabel;
+
+  /// No description provided for @moduleVisibilityUnitHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".'**
+  String get moduleVisibilityUnitHint;
+
+  /// No description provided for @moduleVisibilityAllUnitsOption.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as unidades (padrão)'**
+  String get moduleVisibilityAllUnitsOption;
 }
 
 class _AppLocalizationsDelegate
@@ -2996,8 +2990,7 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'US':
             return app_localizations_en.loadLibrary().then(
-              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
-            );
+                (dynamic _) => app_localizations_en.AppLocalizationsEnUs());
         }
         break;
       }
@@ -3006,8 +2999,7 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'ES':
             return app_localizations_es.loadLibrary().then(
-              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
-            );
+                (dynamic _) => app_localizations_es.AppLocalizationsEsEs());
         }
         break;
       }
@@ -3016,8 +3008,7 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'FR':
             return app_localizations_fr.loadLibrary().then(
-              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
-            );
+                (dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
         }
         break;
       }
@@ -3026,8 +3017,7 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'NO':
             return app_localizations_no.loadLibrary().then(
-              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
-            );
+                (dynamic _) => app_localizations_no.AppLocalizationsNoNo());
         }
         break;
       }
@@ -3036,8 +3026,7 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'BR':
             return app_localizations_pt.loadLibrary().then(
-              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
-            );
+                (dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
         }
         break;
       }
@@ -3046,31 +3035,30 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'en':
-      return app_localizations_en.loadLibrary().then(
-        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
-      );
+      return app_localizations_en
+          .loadLibrary()
+          .then((dynamic _) => app_localizations_en.AppLocalizationsEn());
     case 'es':
-      return app_localizations_es.loadLibrary().then(
-        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
-      );
+      return app_localizations_es
+          .loadLibrary()
+          .then((dynamic _) => app_localizations_es.AppLocalizationsEs());
     case 'fr':
-      return app_localizations_fr.loadLibrary().then(
-        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
-      );
+      return app_localizations_fr
+          .loadLibrary()
+          .then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
     case 'no':
-      return app_localizations_no.loadLibrary().then(
-        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
-      );
+      return app_localizations_no
+          .loadLibrary()
+          .then((dynamic _) => app_localizations_no.AppLocalizationsNo());
     case 'pt':
-      return app_localizations_pt.loadLibrary().then(
-        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
-      );
+      return app_localizations_pt
+          .loadLibrary()
+          .then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
   }
 
   throw FlutterError(
-    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-    'an issue with the localizations generation tool. Please file an issue '
-    'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
-  );
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
 }

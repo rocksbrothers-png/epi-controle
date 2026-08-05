@@ -2518,6 +2518,7 @@ def ensure_outsourced_companies(connection) -> None:
             CREATE TABLE IF NOT EXISTS outsourced_companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,
+                unit_id INTEGER,
                 legal_name TEXT NOT NULL,
                 trade_name TEXT NOT NULL DEFAULT '',
                 cnpj TEXT NOT NULL DEFAULT '',
@@ -2675,6 +2676,27 @@ def ensure_employee_simplified_registration_columns(connection) -> None:
     _safe_add_column(connection, 'employees', 'origin_company_registration', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'employees', 'badge_number', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'employees', 'notes', "TEXT NOT NULL DEFAULT ''")
+
+
+def ensure_outsourced_company_unit_scope_column(connection) -> None:
+    """Descentralização do cadastro de Empresas Terceirizadas/Prestadoras
+    por Unidade (ADR-0002 §10.5): coluna nullable — `NULL` preserva o
+    comportamento anterior (empresa "de todo o tenant", cadastrada pelo
+    Administrador Geral/de Registro, visível em qualquer Unidade); um valor
+    define a empresa como pertencente àquela Unidade especificamente,
+    cadastrada por Administrador Local/Gestor de EPI quando o Administrador
+    Geral autorizar o módulo "terceirizados" para aquele perfil naquela
+    Unidade (Configuração > Regras > Visualização). Aditiva: nenhuma
+    empresa existente muda de comportamento.
+    """
+    _safe_add_column(connection, 'outsourced_companies', 'unit_id', 'INTEGER')
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_outsourced_companies_unit '
+            'ON outsourced_companies (unit_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_stock_reservations(connection) -> None:

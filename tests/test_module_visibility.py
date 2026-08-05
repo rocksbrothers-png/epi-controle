@@ -94,13 +94,29 @@ def test_terceirizados_can_be_turned_on_within_the_technical_ceiling():
     assert resolved['terceirizados'] is True
 
 
-def test_terceirizados_stays_hidden_for_roles_without_employees_create_even_if_configured():
-    # 'user' (Gestor de EPI) não tem employees:create — mesmo que alguém
-    # tente ligar o módulo para este papel, o teto técnico bloqueia.
-    framework = normalize_framework_payload({'module_visibility': {'user': {'terceirizados': True}}})
-    context = build_context({'company_id': 1, 'id': 5, 'role': 'user'})
-    resolved = resolve_module_visibility(context, framework, PERMISSIONS['user'])
+def test_terceirizados_stays_hidden_for_roles_without_either_technical_permission_even_if_configured():
+    # 'buyer' não tem employees:create NEM employees:create_simplified —
+    # mesmo que alguém tente ligar o módulo para este papel, o teto técnico
+    # bloqueia (nenhuma das duas permissões alternativas presente).
+    framework = normalize_framework_payload({'module_visibility': {'buyer': {'terceirizados': True}}})
+    context = build_context({'company_id': 1, 'id': 5, 'role': 'buyer'})
+    resolved = resolve_module_visibility(context, framework, PERMISSIONS['buyer'])
     assert resolved['terceirizados'] is False
+
+
+def test_terceirizados_can_be_turned_on_for_unit_scoped_roles_via_simplified_permission():
+    # ADR-0002 §10.5: Administrador Local/Gestor de EPI não têm
+    # employees:create (piso histórico do módulo) — só
+    # employees:create_simplified. O piso técnico aceita qualquer uma das
+    # duas (ver MODULE_REQUIRED_PERMISSIONS em epi_backend/rule_engine.py),
+    # então ligar o módulo para estes papéis passa a valer de fato,
+    # descentralizando o cadastro de Empresas Terceirizadas para a Unidade
+    # quando o Administrador Geral autorizar.
+    for role in ('admin', 'user'):
+        framework = normalize_framework_payload({'module_visibility': {role: {'terceirizados': True}}})
+        context = build_context({'company_id': 1, 'id': 5, 'role': role})
+        resolved = resolve_module_visibility(context, framework, PERMISSIONS[role])
+        assert resolved['terceirizados'] is True, role
 
 
 def test_normalize_merges_partial_override_without_wiping_other_modules():

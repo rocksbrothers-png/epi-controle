@@ -272,6 +272,10 @@ def init_db():
             # Depende de schema.ensure_outsourced_companies (tabela/coluna status
             # precisam existir antes do backfill/lifecycle).
             schema.ensure_outsourced_company_archival_lifecycle_columns,
+            # Depende de schema.ensure_outsourced_companies (a coluna precisa da
+            # tabela já criada) e de schema.ensure_units_table (indiretamente, via
+            # ensure_tenant_domain_tables acima) para a Unidade existir.
+            schema.ensure_outsourced_company_unit_scope_column,
             schema.ensure_employee_simplified_registration_columns,
             schema.ensure_unit_lifecycle_columns,
             schema.ensure_archival_lifecycle_columns,

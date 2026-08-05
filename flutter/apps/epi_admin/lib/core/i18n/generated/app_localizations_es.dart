@@ -1351,6 +1351,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Responsabilidade pelo Fornecimento de EPI';
 
   @override
+  String get outsourcedCompanyUnitLabel => 'Unidade';
+
+  @override
+  String get outsourcedCompanyUnitAll => 'Todas as unidades (padrão)';
+
+  @override
   String get outsourcedCompanyStatusLabel => 'Situação';
 
   @override
@@ -2834,6 +2840,12 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   @override
   String get outsourcedCompanyResponsibilityLabel =>
       'Responsabilidad por el Suministro de EPP';
+
+  @override
+  String get outsourcedCompanyUnitLabel => 'Unidad';
+
+  @override
+  String get outsourcedCompanyUnitAll => 'Todas las unidades (predeterminado)';
 
   @override
   String get outsourcedCompanyStatusLabel => 'Situación';

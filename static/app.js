@@ -2541,9 +2541,20 @@ async function retryBootstrap() {
   }
 }
 
+// Aceita uma permissão só (string), uma lista (array) ou uma string com
+// várias separadas por espaço (uso comum em atributos data-* no HTML, que
+// só guardam string) — verdadeiro se QUALQUER uma estiver presente. Cobre o
+// caso de duas permissões alternativas liberarem a mesma ação (ex.:
+// employees:create/employees:create_simplified em Empresas Terceirizadas,
+// ADR-0002 §10.5) sem duplicar toda a lógica de checagem.
+function normalizePermissionList(permission) {
+  if (Array.isArray(permission)) return permission;
+  return String(permission || '').split(/\s+/).filter(Boolean);
+}
+
 function hasPermission(permission) {
   const activePermissions = state.permissions.length ? state.permissions : normalizePermissions(state.user, []);
-  return activePermissions.includes(permission);
+  return normalizePermissionList(permission).some((p) => activePermissions.includes(p));
 }
 
 function requirePermission(permission, message = 'Você não tem permissão para realizar esta ação.') {
@@ -5176,6 +5187,7 @@ function bindDependentSelects() {
   populateSelect('employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('outsourced-employee-company', companies, (item) => `${item.name} - ${item.cnpj}`);
   populateSelect('outsourced-employee-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
+  populateSelect('outsourced-company-unit', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`, 'id', true, tr('outsourcedCompany.allUnits', 'Todas as unidades (padrão)'));
   populateSelect('movement-target-unit-id', state.units, (item) => `${item.name} - ${unitTypeLabel(item.unit_type)}`);
   populateSelect('movement-employee-id', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
   populateSelect('delivery-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`);
@@ -6807,13 +6819,18 @@ const ARCHIVAL_ENTITIES = {
       purchase_request_items: 'Itens de requisição de compra', purchase_order_items: 'Itens de pedido de compra',
     },
   },
-  // Empresa terceirizada/prestadora (ADR-0002 §10.4) — mesma política de
-  // arquivamento de Colaboradores/Unidades/EPIs, mas SEM purge: o backend
-  // não oferece exclusão definitiva aqui de propósito (risco de referência
-  // pendente em employees.outsourced_company_id/service_contracts sem FK
-  // garantida). `identityKind` existe porque `kind` aqui não é 'employee'
-  // nem 'epi' — reaproveita a mesma coluna de identidade que o EPI usa
-  // (nome + segunda coluna), só trocando o texto da segunda coluna.
+  // Empresa terceirizada/prestadora (ADR-0002 §10.4/§10.5) — mesma política
+  // de arquivamento de Colaboradores/Unidades/EPIs, mas SEM purge: o
+  // backend não oferece exclusão definitiva aqui de propósito (risco de
+  // referência pendente em employees.outsourced_company_id/
+  // service_contracts sem FK garantida). `identityKind` existe porque
+  // `kind` aqui não é 'employee' nem 'epi' — reaproveita a mesma coluna de
+  // identidade que o EPI usa (nome + segunda coluna), só trocando o texto
+  // da segunda coluna. Segunda permissão (`employees:update_simplified`):
+  // Administrador Local/Gestor de EPI, restrito à própria Unidade
+  // operacional — o backend (ensure_actor_outsourced_company_scope +
+  // ensure_module_enabled_for_unit, modules/outsourced_companies/routes.py)
+  // valida de novo e é quem decide de fato.
   outsourcedCompany: {
     path: '/api/outsourced-companies',
     stateList: 'outsourcedCompanies',
@@ -6823,22 +6840,25 @@ const ARCHIVAL_ENTITIES = {
     i18nPrefix: 'outsourcedCompany',
     labelFallback: 'Empresa terceirizada',
     responseKey: 'outsourced_companies',
-    // Reaproveita o mesmo piso técnico de editar colaborador (ADR-0002) —
-    // sem permissão dedicada, por decisão explícita do ADR (mesma regra do
-    // backend: handle_post_outsourced_company_archive/restore usam
-    // PERM_EMPLOYEES_UPDATE).
-    deletePermission: 'employees:update',
-    updatePermission: 'employees:update',
+    deletePermission: 'employees:update employees:update_simplified',
+    updatePermission: 'employees:update employees:update_simplified',
     supportsPurge: false,
     identityKind: 'outsourcedCompanyLike',
   },
-  // Colaborador terceirizado/prestador (ADR-0002 §10.4) — MESMA tabela/rota
-  // de arquivamento do colaborador CLT (`/api/employees/<id>/archive` etc.),
-  // só a LISTAGEM de arquivados é filtrada (?outsourced_only=1, via
-  // archivedQueryExtra) para não misturar com "Colaboradores Arquivados" do
-  // cadastro completo. `identityKind: 'employee'` reaproveita a mesma
-  // formatação de linha e os mesmos textos i18n (`employee.*`) do
-  // colaborador CLT — é o mesmo tipo de registro, só filtrado.
+  // Colaborador terceirizado/prestador (ADR-0002 §10.4/§10.5) — MESMA
+  // tabela/rota de arquivamento do colaborador CLT
+  // (`/api/employees/<id>/archive` etc.), só a LISTAGEM de arquivados é
+  // filtrada (?outsourced_only=1, via archivedQueryExtra) para não
+  // misturar com "Colaboradores Arquivados" do cadastro completo.
+  // `identityKind: 'employee'` reaproveita a mesma formatação de linha e os
+  // mesmos textos i18n (`employee.*`) do colaborador CLT — é o mesmo tipo
+  // de registro, só filtrado. Segunda permissão
+  // (`employees:update_simplified`): Administrador Local/Gestor de EPI só
+  // arquivam/desarquivam o PRÓPRIO Cadastro de Colaboradores (terceirizado/
+  // prestador, nunca CLT) — o backend
+  // (_load_employee_for_lifecycle/outsourced_alternative,
+  // modules/employees/routes.py) recusa qualquer tentativa contra um
+  // colaborador CLT ou de outra Unidade.
   outsourcedEmployee: {
     path: '/api/employees',
     stateList: 'employees',
@@ -6848,8 +6868,8 @@ const ARCHIVAL_ENTITIES = {
     i18nPrefix: 'employee',
     labelFallback: 'Colaborador',
     responseKey: 'employees',
-    deletePermission: 'employees:delete',
-    updatePermission: 'employees:update',
+    deletePermission: 'employees:delete employees:update_simplified',
+    updatePermission: 'employees:update employees:update_simplified',
     identityKind: 'employee',
     archivedQueryExtra: '&outsourced_only=1',
     purgeLabels: {
@@ -6974,7 +6994,16 @@ function renderArchivedRecords(kind) {
   const cfg = ARCHIVAL_ENTITIES[kind];
   const table = refs[cfg.tableRef];
   if (!table) return;
-  const canManage = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
+  // Administrador Local/Gestor de EPI (ADR-0002 §10.5): só desarquivam
+  // Empresas Terceirizadas/Colaboradores terceirizados/prestadores da
+  // própria Unidade — nunca exclusão definitiva (purge continua exclusivo
+  // de master_admin/general_admin, em qualquer kind). O backend
+  // (ensure_actor_outsourced_company_scope / _load_employee_for_lifecycle)
+  // é quem decide de fato; isto só evita mostrar um botão que o backend
+  // vai recusar para os demais kinds (employee CLT / epi).
+  const unitScopedManageKinds = ['outsourcedCompany', 'outsourcedEmployee'];
+  const canManage = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)
+    || (unitScopedManageKinds.includes(kind) && ['admin', 'user'].includes(state.user?.role));
   const canPurge = ['master_admin', 'general_admin'].includes(state.user?.role);
   const filters = state[cfg.filters];
   const items = filterByUserCompany(state[cfg.archivedList] || []).filter((item) => {
@@ -7633,7 +7662,7 @@ function renderOutsourcedCompanies() {
   const visible = helpers.visibleOutsourcedCompanies
     ? helpers.visibleOutsourcedCompanies(state.outsourcedCompanies, state.outsourcedCompaniesFilters)
     : (state.outsourcedCompanies || []);
-  const canUpdate = hasPermission('employees:update');
+  const canUpdate = hasPermission(['employees:update', 'employees:update_simplified']);
   refs.outsourcedCompaniesTable.innerHTML = visible
     .map((item) => formatOutsourcedCompanyRow(item, { canUpdate }))
     .join('') || globalThis.dsTableState({
@@ -7653,8 +7682,12 @@ function formatOutsourcedCompanyRow(item, permissions) {
   const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
   // Promover só faz sentido para quem ainda está no Simplificado — o backend
   // também recusa promover quem já é Padrão, mas oferecer o botão sempre só
-  // geraria mensagem de erro sem efeito.
-  const showPromote = permissions.canUpdate
+  // geraria mensagem de erro sem efeito. Ação exclusiva de Administrador
+  // Geral/de Registro (employees:update completo) — Administrador Local/
+  // Gestor de EPI (só employees:update_simplified) nunca a alcançam no
+  // backend (handle_post_outsourced_company_promote não foi ampliada de
+  // propósito, ADR-0002 §10.5), então o botão fica fora para eles também.
+  const showPromote = hasPermission('employees:update')
     && (helpers.canPromote ? helpers.canPromote(item) : true);
   const entityId = escapeHtml(String(item.id ?? ''));
   const buttons = [];
@@ -7702,6 +7735,7 @@ function startEditOutsourcedCompany(entityId) {
   form.elements.cnpj.value = item.cnpj || '';
   form.elements.company_kind.value = item.company_kind || 'outsourced';
   form.elements.epi_responsibility.value = item.epi_responsibility || 'Conforme Contrato';
+  if (form.elements.unit_id) form.elements.unit_id.value = item.unit_id != null ? String(item.unit_id) : '';
   setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.update', 'Atualizar Empresa'));
   setOutsourcedCompanyFormMode('edit');
   showView('terceirizados');
@@ -12110,7 +12144,7 @@ async function init() {
 
   bindAppListener(document.getElementById('unit-form'), 'submit', (event) => saveSimpleForm(event, '/api/units', 'units:create'));
   bindAppListener(document.getElementById('legal-entity-form'), 'submit', (event) => saveSimpleForm(event, '/api/legal-entities', 'legal_entities:create'));
-  bindAppListener(document.getElementById('outsourced-company-form'), 'submit', (event) => saveSimpleForm(event, '/api/outsourced-companies', 'employees:create'));
+  bindAppListener(document.getElementById('outsourced-company-form'), 'submit', (event) => saveSimpleForm(event, '/api/outsourced-companies', ['employees:create', 'employees:create_simplified']));
   bindAppListener(document.getElementById('outsourced-employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees/outsourced-simplified', 'employees:create_simplified'));
   bindAppListener(document.getElementById('outsourced-employee-company'), 'change', syncOutsourcedEmployeeUnitOptions);
   bindAppListener(document.getElementById('employee-form'), 'submit', (event) => saveSimpleForm(event, '/api/employees', 'employees:create'));

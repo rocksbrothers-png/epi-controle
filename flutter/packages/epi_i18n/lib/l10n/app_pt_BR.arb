@@ -535,6 +535,8 @@
   "outsourcedCompanyKindServiceProvider": "Prestadora de Serviço",
   "outsourcedCompanyKindOther": "Outro",
   "outsourcedCompanyResponsibilityLabel": "Responsabilidade pelo Fornecimento de EPI",
+  "outsourcedCompanyUnitLabel": "Unidade",
+  "outsourcedCompanyUnitAll": "Todas as unidades (padrão)",
   "outsourcedCompanyStatusLabel": "Situação",
   "outsourcedCompanySave": "Salvar",
   "outsourcedCompanyCancel": "Cancelar",

@@ -74,12 +74,21 @@ MODULE_REQUIRED_PERMISSIONS: dict[str, frozenset[str]] = {
     # gateia por units:view, amplamente concedido) e não "Administração".
     "administracao": frozenset({PERM_USERS_VIEW, PERM_COMPANIES_VIEW, PERM_LEGAL_ENTITIES_VIEW}),
     "configuracoes": frozenset({PERM_SETTINGS_VIEW}),
-    # Cadastro Simplificado de Terceirizados e Prestadores (ADR-014). Piso
-    # técnico igual ao de criar colaborador: quem já pode `employees:create`
-    # (master_admin/general_admin/registry_admin) pode, em tese, operar esta
-    # subpasta — mas ver _OPT_IN_MODULES abaixo: ela nasce oculta para todos,
-    # inclusive esses papéis, até o Administrador Geral ligá-la por tenant.
-    "terceirizados": frozenset({PERM_EMPLOYEES_CREATE}),
+    # Cadastro de Empresas Terceirizadas e Prestadoras (ADR-014/ADR-0002
+    # §10.5). Piso técnico com DUAS permissões alternativas — qualquer uma
+    # delas basta (ver `bool(required & granted)` em resolve_module_visibility
+    # abaixo): `employees:create` (general_admin/registry_admin, cadastro
+    # Padrão/Simplificado completo) OU `employees:create_simplified`
+    # (Administrador Local/Gestor de EPI, restrito à própria Unidade
+    # operacional — cadastro de curta duração, nunca o CLT completo; ver
+    # ensure_actor_outsourced_company_scope em
+    # modules/outsourced_companies/service.py e o gate real de módulo por
+    # Unidade em modules/settings/service.py:ensure_module_enabled_for_unit,
+    # chamado a partir de modules/outsourced_companies/routes.py). Ver
+    # _OPT_IN_MODULES abaixo: nasce oculto para todos os perfis, inclusive
+    # os dois acima, até o Administrador Geral ligá-la por tenant/perfil/
+    # Unidade.
+    "terceirizados": frozenset({PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_CREATE_SIMPLIFIED}),
     # Aba "Cadastro de Colaboradores" simplificado (ADR-0002 §10) — piso
     # próprio (não reaproveita PERM_EMPLOYEES_CREATE): dá ao Administrador
     # Local/Gestor de EPI só o cadastro simplificado de terceirizado/

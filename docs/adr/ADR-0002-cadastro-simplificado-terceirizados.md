@@ -10,8 +10,14 @@
   `module_unit_scope`), PR 11 (rota do Cadastro de Colaboradores
   simplificado), PR 12 (arquivamento de `outsourced_companies`), PR 13
   (Colaboradores Arquivados + relatório de headcount + bloqueio de entrega),
-  PR 14 (Flutter) e PR 15 (Web Legado) — sequência completa, ver §10.6
-- **Data:** 2026-07-29
+  PR 14 (Flutter) e PR 15 (Web Legado) — sequência completa, ver §10.6.
+  Estendido novamente pela §11 (CRUD de empresas terceirizadas
+  descentralizado por Unidade): piso técnico com OR entre
+  `employees:create`/`create_simplified`, `ensure_module_enabled_for_unit`
+  como autoridade real de escrita em `outsourced_companies`, coluna
+  `outsourced_companies.unit_id`, e correção da lacuna de
+  arquivar/reativar Colaborador Terceirizado por `admin`/`user`.
+- **Data:** 2026-08-05
 - **Contexto de conformidade:** trabalhista, previdenciária, fiscal e operacional (EPI)
 - **Escopo desta fase (PR 1):** auditoria da arquitetura existente, modelo de
   dados, migração idempotente, entidade `outsourced_companies` +
@@ -615,3 +621,131 @@ Critério de aceite em cada PR desta extensão: suíte completa (`pytest`,
 `flutter analyze`/`test`, runner JS `static/js/test/run-tests.js`) verde,
 mais teste manual em navegador antes de qualquer PR de UI ir para revisão —
 mesmo critério do §7.
+
+## 11. Extensão — CRUD de empresas terceirizadas descentralizado por Unidade
+
+Até aqui, `module_visibility`/`module_unit_scope` (§10.3) só controlavam se
+Administrador Local/Gestor de EPI **enxergavam** o módulo — a rota de
+escrita de `outsourced_companies` continuava exigindo `employees:create`/
+`employees:update` completos, que esses dois papéis nunca têm (decisão do
+§10.2). Resultado: mesmo com o módulo ligado para a unidade, esses perfis
+não conseguiam de fato cadastrar/editar/arquivar/reativar empresas
+terceirizadas — só o Cadastro de Colaboradores (§10.1) já funcionava de
+ponta a ponta. Esta extensão fecha essa lacuna, mantendo a mesma condição
+vinculante das extensões anteriores: **reaproveitar o mecanismo já
+existente de visibilidade/permissão por perfil e unidade, sem criar um
+novo mecanismo de autorização.**
+
+### 11.1 Piso técnico ampliado com OR, não substituído
+
+`MODULE_REQUIRED_PERMISSIONS['terceirizados']` passa de
+`{employees:create}` para `{employees:create, employees:create_simplified}`
+— basta UMA das duas (semântica OR, igual a
+`routePermissionAlternatives` no Flutter e `VIEW_PERMISSION_ALTERNATIVES`
+no Web Legado). Isso não amplia o que `admin`/`user` já podiam fazer em
+qualquer outro módulo: eles só ganham `employees:create_simplified` desde
+o §10.2, e essa permissão já era deles. O que muda é que agora ela também
+abre a rota de CRUD de `outsourced_companies`, não só o Cadastro de
+Colaboradores. Novo helper `core.repository.authorize_action_any(
+connection, actor_user_id, actions, company_id=None)` tenta cada permissão
+da lista e sucede na primeira que bater — usado nas rotas de
+`outsourced_companies` e nas de arquivamento de colaborador terceirizado
+(§11.4). Mantido fora de `core/auth.py`/`core/permissions.py`/
+qualquer módulo referenciado pelo teste estrutural
+`test_module_visibility_is_not_referenced_by_real_authorization_code` —
+ele não referencia `module_visibility`, só resolve permissão.
+
+### 11.2 `ensure_module_enabled_for_unit` como autoridade real de escrita
+
+`modules.settings.service.ensure_module_enabled_for_unit(connection, actor,
+module, unit_id)` já existia (§10.3, usado pelo Cadastro de Colaboradores)
+e é exatamente o gate que faltava nas rotas de `outsourced_companies`:
+levanta `PermissionError` a menos que o módulo esteja habilitado para a
+unidade do ator (ou o ator não seja escopado por unidade). Passa a ser
+chamado em `POST/PUT /api/outsourced-companies` e em
+`archive/restore/delete`, sempre com o módulo `'terceirizados'` e a
+unidade resolvida da empresa (ver §11.3). Nenhuma rota nova de
+autorização — a mesma função, os mesmos dados de configuração que o
+Administrador Geral já edita em Configuração → Regras → Visualização.
+
+### 11.3 Escopo por Unidade na própria empresa terceirizada
+
+Nova coluna `outsourced_companies.unit_id` (nullable — `NULL` = "do
+tenant", sem Unidade, comportamento anterior a esta extensão preservado
+para quem não usa o recurso). `resolve_outsourced_company_unit_id(
+connection, actor, payload, company_id)` decide o valor: para
+`admin`/`user` é **sempre** a unidade operacional do ator
+(`actor_operational_unit_id`, o mesmo resolvedor de `employees`/entregas/
+fichas) — o valor enviado no payload é ignorado, igual ao padrão já
+estabelecido em `modules.employees.service.
+ensure_actor_unit_scope_for_target`; para os demais perfis, o payload pode
+informar uma unidade (validada contra a mesma empresa/tenant) ou omitir
+(empresa "do tenant"). `ensure_actor_outsourced_company_scope` bloqueia
+`admin`/`user` de ler, editar ou arquivar/reativar uma empresa que não
+seja da própria unidade — inclusive empresas "do tenant" (`unit_id IS
+NULL`), que ficam visíveis só para quem não é escopado por unidade.
+`fetch_outsourced_companies`/`fetch_archived_outsourced_companies`/
+`fetch_outsourced_employees_summary` recebem o mesmo filtro por unidade
+quando chamadas por `admin`/`user`. Promoção a Cadastro Padrão
+(`promote_outsourced_company`) e criação avulsa de Ordem de Serviço
+(`POST /service-contracts`) permanecem **fora** desta extensão — seguem
+exigindo `employees:update` completo (Administrador Geral/de Registro),
+por decisão explícita: descentralizar cadastro e ciclo de vida básico não
+significa descentralizar a promoção formal ao Cadastro Padrão.
+
+### 11.4 Lacuna colateral corrigida: arquivar/reativar Colaborador Terceirizado
+
+Ao implementar o item acima ficou evidente uma segunda lacuna, dentro do
+escopo do mesmo pedido ("arquivar e reativar colaboradores terceirizados"):
+o Cadastro de Colaboradores simplificado (§10.1) já permitia criar/editar,
+mas as rotas de arquivar/reativar/excluir colaborador
+(`DELETE/POST .../archive/.../restore /api/employees/{id}`) continuavam
+exigindo `employees:delete`/`employees:update` completos — `admin`/`user`
+nunca tinham essas permissões, então um colaborador terceirizado criado
+por eles não podia ser arquivado por eles. Corrigido do mesmo jeito: essas
+três rotas aceitam agora `employees:update_simplified` como alternativa
+(via `authorize_action_any`), mas SÓ quando o colaborador-alvo é de fato
+terceirizado/prestador (`tipo_vinculo != 'CLT' AND outsourced_company_id`)
+— um colaborador CLT nunca pode ser arquivado por essa permissão estreita,
+preservando o limite do §10.2. Após essa checagem,
+`ensure_actor_employee_scope` (já existente) e
+`ensure_module_enabled_for_unit(connection, actor,
+'terceirizados_colaboradores', ...)` aplicam o mesmo par
+escopo-de-unidade + módulo-habilitado do restante desta extensão.
+
+### 11.5 Auditoria e relatórios — sem mudança de contrato
+
+Toda gravação já passava por `record_audit_log`/`action_type` existentes
+(`outsourced_company_created/updated/archived/restored`,
+`employee_archived/restored`) — nenhuma tabela de auditoria nova. O
+`unit_id` (quando presente) entra nos `details`/`changes` do log de
+auditoria já existente. Relatórios de terceirizados/prestadores/
+colaboradores (§10.4, headcount por empresa) já filtravam por
+`company_id`; ganham o mesmo filtro por `unit_id` que as rotas de leitura
+(§11.3) — sem rota de relatório nova.
+
+### 11.6 Frontend — Web Legado e Flutter
+
+Web Legado (`static/`): `hasPermission()` passa a aceitar lista/string
+com múltiplas permissões alternativas (`normalizePermissionList`), usada
+no envio do formulário de empresa e no `data-update-permission` de
+`outsourced-company-form`; `ARCHIVAL_ENTITIES.outsourcedCompany`/
+`outsourcedEmployee` ganham a mesma alternativa `employees:update_simplified`;
+`renderArchivedRecords` amplia a lista de papéis que podem
+arquivar/restaurar para incluir `admin`/`user` nesses dois tipos.
+Formulário de empresa ganha um seletor de Unidade (`outsourced-company-
+unit`), populado como qualquer outro seletor de Unidade já existente
+(`outsourced-employee-unit`) — sem restrição client-side por papel, porque
+`resolve_outsourced_company_unit_id` (§11.3) já força `admin`/`user` à
+própria unidade no backend independente do que o formulário envie.
+
+Flutter (`epi_admin`): mesmo ajuste de piso alternativo na visibilidade da
+aba "Empresas" dentro de `OutsourcedCompaniesScreen`
+(`employees:create` OU `employees:create_simplified`, já que o roteamento
+para a tela como um todo já aceitava as duas desde o PR 14 — a lacuna era
+só dentro da própria tela); `OutsourcedCompany.unitId` novo no modelo
+(`epi_api`), com seletor de Unidade no formulário de criar/editar,
+carregado via `ApiClient.auth.bootstrap()` no mesmo padrão do formulário
+de Colaborador Terceirizado. Nenhuma tela nova, nenhuma rota de API
+cliente nova além do campo `unit_id` no corpo já existente de
+POST/PUT `/api/outsourced-companies`.

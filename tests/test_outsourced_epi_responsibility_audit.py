@@ -174,8 +174,9 @@ def test_put_outsourced_company_audits_responsibility_change_as_dedicated_event(
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'ensure_module_enabled_for_unit', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'update_outsourced_company', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_by_id', lambda _c, eid: {
         'id': eid, 'company_id': 1, 'legal_name': 'Terceirizada X', 'cnpj': '', 'company_kind': 'outsourced',
@@ -200,8 +201,9 @@ def test_put_outsourced_company_no_dedicated_event_when_responsibility_unchanged
     actor = {'id': 1, 'full_name': 'Admin', 'role': 'general_admin', 'company_id': 1}
     monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
     monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 1)
-    monkeypatch.setattr(oc_routes, 'authorize_action', lambda *a, **k: actor)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: actor)
     monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'ensure_module_enabled_for_unit', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'update_outsourced_company', lambda *a, **k: None)
     monkeypatch.setattr(oc_routes, 'get_outsourced_company_by_id', lambda _c, eid: {
         'id': eid, 'company_id': 1, 'legal_name': 'Terceirizada X', 'cnpj': '', 'company_kind': 'outsourced',

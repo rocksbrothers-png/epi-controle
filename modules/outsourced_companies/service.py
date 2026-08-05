@@ -56,7 +56,7 @@ REIMBURSEMENT_STATUSES: tuple[str, ...] = (
 )
 
 _SELECT_COLUMNS = (
-    'id, company_id, legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
+    'id, company_id, unit_id, legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
     'epi_responsibility, registration_mode, registration_status, status, promoted_at, '
     'created_by_user_id, created_at, updated_at'
 )
@@ -145,16 +145,17 @@ def validate_outsourced_company_payload(connection, payload, company_id, entity_
     }
 
 
-def create_outsourced_company(connection, payload, company_id, actor_user_id=None):
+def create_outsourced_company(connection, payload, company_id, actor_user_id=None, unit_id=None):
     validated = validate_outsourced_company_payload(connection, payload, company_id)
     now_iso = datetime.now(UTC).isoformat()
     cursor = connection.execute(
-        'INSERT INTO outsourced_companies (company_id, legal_name, trade_name, cnpj, '
+        'INSERT INTO outsourced_companies (company_id, unit_id, legal_name, trade_name, cnpj, '
         'cnpj_normalized, company_kind, epi_responsibility, registration_mode, '
         'registration_status, status, created_by_user_id, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
-            validated['company_id'], validated['legal_name'], validated['trade_name'],
+            validated['company_id'], int(unit_id) if unit_id else None,
+            validated['legal_name'], validated['trade_name'],
             validated['cnpj'], validated['cnpj_normalized'], validated['company_kind'],
             validated['epi_responsibility'], validated['registration_mode'],
             validated['registration_status'], 'active',
@@ -165,14 +166,15 @@ def create_outsourced_company(connection, payload, company_id, actor_user_id=Non
     return int(cursor.lastrowid)
 
 
-def update_outsourced_company(connection, entity_id, payload, company_id):
+def update_outsourced_company(connection, entity_id, payload, company_id, unit_id=None):
     validated = validate_outsourced_company_payload(connection, payload, company_id, entity_id=entity_id)
     now_iso = datetime.now(UTC).isoformat()
     connection.execute(
-        'UPDATE outsourced_companies SET legal_name = ?, trade_name = ?, cnpj = ?, '
+        'UPDATE outsourced_companies SET unit_id = ?, legal_name = ?, trade_name = ?, cnpj = ?, '
         'cnpj_normalized = ?, company_kind = ?, epi_responsibility = ?, registration_mode = ?, '
         'registration_status = ?, updated_at = ? WHERE id = ? AND company_id = ?',
         (
+            int(unit_id) if unit_id else None,
             validated['legal_name'], validated['trade_name'], validated['cnpj'],
             validated['cnpj_normalized'], validated['company_kind'], validated['epi_responsibility'],
             validated['registration_mode'], validated['registration_status'],
@@ -180,6 +182,66 @@ def update_outsourced_company(connection, entity_id, payload, company_id):
         ),
     )
     connection.commit()
+
+
+# ── Escopo por Unidade (ADR-0002 §10.5) ────────────────────────────────────
+# Descentraliza o cadastro de Empresas Terceirizadas/Prestadoras para
+# Administrador Local/Gestor de EPI, sem novo mecanismo de autorização:
+# reaproveita o vínculo de Unidade operacional única já usado pelo Cadastro
+# de Colaboradores simplificado (actor_operational_unit_id, em
+# core/repository.py — vive lá, não em modules.employees.service, pelo
+# mesmo motivo de ciclo de import já documentado ali) e o gate de módulo
+# por Unidade já existente (modules.settings.service.
+# ensure_module_enabled_for_unit, chamado nas rotas antes de qualquer
+# escrita). Os demais perfis (general_admin/registry_admin/master_admin,
+# checados por employees:create/update) não são restritos por Unidade —
+# `unit_id=None` preserva o comportamento anterior a esta extensão (empresa
+# "de todo o tenant").
+
+def resolve_outsourced_company_unit_id(connection, actor, payload, company_id):
+    """Resolve o unit_id de uma Empresa Terceirizada a partir do ator e do
+    payload. Administrador Local/Gestor de EPI são sempre forçados à
+    própria Unidade operacional — o valor do payload (se vier) é ignorado,
+    exatamente como em
+    modules.employees.service.ensure_actor_unit_scope_for_target: não dá
+    para burlar o escopo mandando um unit_id diferente. Os demais perfis
+    podem informar uma Unidade (empresa passa a ser "daquela Unidade") ou
+    omitir (empresa "do tenant", sem Unidade).
+    """
+    from core.repository import actor_operational_unit_id
+    if actor.get('role') in ('admin', 'user'):
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        return int(scope_unit_id)
+    raw = (payload or {}).get('unit_id')
+    if raw in (None, '', 0, '0'):
+        return None
+    unit_id = int(raw)
+    unit = connection.execute(
+        'SELECT id FROM units WHERE id = ? AND company_id = ? LIMIT 1', (unit_id, company_id),
+    ).fetchone()
+    if not unit:
+        raise ValueError('Unidade não encontrada nesta empresa.')
+    return unit_id
+
+
+def ensure_actor_outsourced_company_scope(connection, actor, entity):
+    """Administrador Local/Gestor de EPI só podem ver/editar/arquivar
+    Empresas Terceirizadas cadastradas na própria Unidade operacional —
+    nunca uma empresa "do tenant" (unit_id nulo, cadastrada por
+    Administrador Geral/de Registro) nem de outra Unidade. Os demais
+    perfis, já filtrados por employees:create/update (mais amplo), não são
+    restritos aqui."""
+    if actor.get('role') not in ('admin', 'user'):
+        return
+    from core.repository import actor_operational_unit_id
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    entity_unit_id = entity.get('unit_id')
+    if not scope_unit_id or not entity_unit_id or int(entity_unit_id) != int(scope_unit_id):
+        raise PermissionError(
+            'Operação permitida somente para Empresas Terceirizadas da sua Unidade operacional.'
+        )
 
 
 def promote_outsourced_company(connection, entity_id, company_id):
@@ -200,7 +262,7 @@ def promote_outsourced_company(connection, entity_id, company_id):
     connection.commit()
 
 
-def fetch_outsourced_companies(connection, company_id):
+def fetch_outsourced_companies(connection, company_id, *, actor=None):
     from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
     sql = f'SELECT {_SELECT_COLUMNS} FROM outsourced_companies WHERE company_id = ?'  # noqa: S608
     params = [company_id]
@@ -208,6 +270,14 @@ def fetch_outsourced_companies(connection, company_id):
         placeholders = ', '.join(['?'] * len(NON_OPERATIONAL_STATUSES))
         sql += f' AND status NOT IN ({placeholders})'
         params.extend(NON_OPERATIONAL_STATUSES)
+    # Administrador Local/Gestor de EPI só enxergam as Empresas Terceirizadas
+    # da própria Unidade — nunca as "do tenant" (unit_id nulo) nem de outra
+    # Unidade (mesmo escopo de ensure_actor_outsourced_company_scope acima).
+    if actor and actor.get('role') in ('admin', 'user'):
+        from core.repository import actor_operational_unit_id
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        sql += ' AND unit_id = ?'
+        params.append(scope_unit_id or 0)
     rows = connection.execute(sql + ' ORDER BY legal_name', tuple(params)).fetchall()
     return [row_to_dict(row) for row in rows]
 
@@ -233,7 +303,7 @@ def get_outsourced_company_lifecycle(connection, entity_id):
     from core.archival import LIFECYCLE_FIELD_NAMES, lifecycle_enabled
     extra = (', ' + ', '.join(LIFECYCLE_FIELD_NAMES)) if lifecycle_enabled(connection, 'outsourced_companies') else ''
     row = connection.execute(
-        f'SELECT id, company_id, legal_name, trade_name{extra} '  # noqa: S608
+        f'SELECT id, company_id, unit_id, legal_name, trade_name{extra} '  # noqa: S608
         'FROM outsourced_companies WHERE id = ?',
         (int(entity_id),),
     ).fetchone()
@@ -245,6 +315,7 @@ def fetch_archived_outsourced_companies(connection, actor):
     from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
     sql = (
         'SELECT outsourced_companies.id, outsourced_companies.company_id, '
+        'outsourced_companies.unit_id, '
         'outsourced_companies.legal_name, outsourced_companies.trade_name, '
         'outsourced_companies.cnpj, outsourced_companies.company_kind, '
         'outsourced_companies.status, outsourced_companies.archived_at, '
@@ -259,6 +330,13 @@ def fetch_archived_outsourced_companies(connection, actor):
     if actor and actor.get('role') != 'master_admin':
         sql += ' AND outsourced_companies.company_id = ?'
         params.append(actor['company_id'])
+    # Mesmo escopo por Unidade da listagem ativa (fetch_outsourced_companies)
+    # e de ensure_actor_outsourced_company_scope.
+    if actor and actor.get('role') in ('admin', 'user'):
+        from core.repository import actor_operational_unit_id
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        sql += ' AND outsourced_companies.unit_id = ?'
+        params.append(scope_unit_id or 0)
     rows = connection.execute(
         sql + ' ORDER BY outsourced_companies.archived_at DESC', tuple(params),
     ).fetchall()
@@ -272,7 +350,7 @@ def fetch_archived_outsourced_companies(connection, actor):
 
 # ── Vínculo do colaborador (Cadastro Simplificado, ADR-014 PR 3) ──────────
 
-def validate_employee_outsourced_reference(connection, payload, company_id):
+def validate_employee_outsourced_reference(connection, payload, company_id, *, unit_id=None):
     """Valida os campos opcionais que ligam um colaborador (``employees``) a
     uma empresa terceirizada/prestadora e, opcionalmente, a um contrato.
 
@@ -285,7 +363,10 @@ def validate_employee_outsourced_reference(connection, payload, company_id):
     informados) precisam pertencer ao mesmo tenant do colaborador — nunca a
     outro; um contrato informado precisa pertencer à empresa terceirizada
     informada, quando as duas vêm juntas; exceção individual de
-    responsabilidade pelo EPI exige motivo.
+    responsabilidade pelo EPI exige motivo. Quando ``unit_id`` é informado
+    (Unidade-alvo do colaborador) e a empresa terceirizada tem uma Unidade
+    própria (ADR-0002 §10.5), as duas precisam ser a mesma — nunca vincula
+    um colaborador de uma Unidade a uma empresa cadastrada por outra.
     """
     payload = payload or {}
     outsourced_company_id = payload.get('outsourced_company_id')
@@ -296,6 +377,11 @@ def validate_employee_outsourced_reference(connection, payload, company_id):
         company_row = get_outsourced_company_by_id(connection, outsourced_company_id)
         if not company_row or int(company_row['company_id']) != int(company_id):
             raise ValueError('Empresa terceirizada não encontrada nesta empresa.')
+        company_unit_id = company_row.get('unit_id')
+        if unit_id is not None and company_unit_id is not None and int(company_unit_id) != int(unit_id):
+            raise ValueError(
+                'Empresa terceirizada pertence a outra Unidade — selecione uma empresa da Unidade do colaborador.'
+            )
 
     service_contract_id = payload.get('service_contract_id')
     if service_contract_id in (None, '', 0, '0'):
@@ -649,17 +735,20 @@ def fetch_migration_suggestions(connection, company_id):
 # arquivado e distribuição por tipo de vínculo, para a aba "Relatórios" do
 # Cadastro de Colaboradores.
 
-def fetch_outsourced_employees_summary(connection, company_id):
+def fetch_outsourced_employees_summary(connection, company_id, *, actor=None):
     """Resumo de colaboradores (ativos + arquivados) por empresa terceirizada
     do tenant: total, contagem ativa/arquivada e distribuição por
     tipo_vinculo. Empresas sem nenhum colaborador vinculado aparecem com
-    contagens zeradas (não somem do relatório)."""
+    contagens zeradas (não somem do relatório). Administrador Local/Gestor
+    de EPI só veem o resumo das Empresas Terceirizadas da própria Unidade
+    (mesmo escopo de fetch_outsourced_companies/
+    ensure_actor_outsourced_company_scope)."""
     from epi_backend.db import table_columns
     if 'outsourced_company_id' not in table_columns(connection, 'employees'):
         return []
     lifecycle = 'status' in table_columns(connection, 'employees')
     status_col = 'employees.status' if lifecycle else "'active'"
-    rows = connection.execute(
+    sql = (
         f'SELECT outsourced_companies.id AS outsourced_company_id, '  # noqa: S608
         'outsourced_companies.legal_name, outsourced_companies.trade_name, '
         'employees.id AS employee_id, employees.tipo_vinculo, '
@@ -667,8 +756,15 @@ def fetch_outsourced_employees_summary(connection, company_id):
         'FROM outsourced_companies '
         'LEFT JOIN employees ON employees.outsourced_company_id = outsourced_companies.id '
         'WHERE outsourced_companies.company_id = ? '
-        'ORDER BY outsourced_companies.legal_name',
-        (int(company_id),),
+    )
+    params = [int(company_id)]
+    if actor and actor.get('role') in ('admin', 'user'):
+        from core.repository import actor_operational_unit_id
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        sql += ' AND outsourced_companies.unit_id = ? '
+        params.append(scope_unit_id or 0)
+    rows = connection.execute(
+        sql + 'ORDER BY outsourced_companies.legal_name', tuple(params),
     ).fetchall()
     summary = {}
     order = []

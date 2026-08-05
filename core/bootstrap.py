@@ -315,13 +315,13 @@ def init_db():
                 try:
                     connection.rollback()
                 except Exception:
-                    pass
+                    pass  # melhor esforço: se o rollback falhar, o erro original (relançado abaixo) já basta
                 raise
             except Exception as _e:
                 try:
                     connection.rollback()
                 except Exception:
-                    pass
+                    pass  # melhor esforço: se o rollback falhar, SchemaMigrationError abaixo já reporta a causa
                 kind = schema._classify_db_error(_e)
                 structured_log('error', 'db.ensure_fn_failed', fn=_fn.__name__, error=str(_e), kind=kind)
                 raise schema.SchemaMigrationError(
@@ -344,7 +344,7 @@ def init_db():
             try:
                 connection.rollback()
             except Exception:
-                pass
+                pass  # melhor esforço: connection já está em estado de erro após o commit falhar
         try:
             _companies_count = connection.execute('SELECT COUNT(*) FROM companies').fetchone()[0]
         except Exception as _e:
@@ -374,7 +374,7 @@ def init_db():
         try:
             connection.rollback()
         except Exception:
-            pass
+            pass  # melhor esforço: só libera uma transação eventualmente pendente, nada a reportar
         try:
             existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
         except Exception as _e:
@@ -382,7 +382,7 @@ def init_db():
             try:
                 connection.rollback()
             except Exception:
-                pass
+                pass  # melhor esforço: a query é reexecutada logo abaixo, o rollback só limpa a transação
             try:
                 existing_usernames = {row['username'] for row in connection.execute('SELECT username FROM users').fetchall()}
             except Exception:

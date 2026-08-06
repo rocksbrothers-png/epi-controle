@@ -147,6 +147,27 @@ def test_all_locales_have_the_same_outsourced_company_keys():
         assert keys == base, f'{locale} diverge de {LOCALES[0]}: {keys.symmetric_difference(base)}'
 
 
+# ── Gate de listagem alinhado ao backend (bug reportado em produção) ────────
+# Administrador Local/Gestor de EPI conseguiam CADASTRAR uma empresa
+# terceirizada (POST aceita employees:create OU employees:create_simplified,
+# que estes perfis têm), mas ela nunca aparecia na aba "Lista" nem no
+# seletor "Empresa terceirizada/prestadora" do Cadastro de Colaboradores
+# (syncOutsourcedEmployeeCompanySelect depende de state.outsourcedCompanies,
+# populado por loadOutsourcedCompanies) — só na aba "Relatórios"
+# (loadOutsourcedEmployeesSummary). Causa: loadOutsourcedCompanies() checava
+# só 'employees:create' (permissão que admin/user nunca têm), enquanto o
+# GET /api/outsourced-companies do backend (handle_get_outsourced_companies)
+# exige apenas PERM_EMPLOYEES_VIEW — a mesma permissão que
+# loadOutsourcedEmployeesSummary já usava corretamente.
+
+def test_load_outsourced_companies_gate_matches_backend_view_permission():
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('async function loadOutsourcedCompanies()'):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert "hasPermission('employees:view')" in fn
+    assert "hasPermission('employees:create')" not in fn
+
+
 # ── build reproduz o index.html a partir dos fragmentos ─────────────────────
 
 def test_build_index_view_ids_include_terceirizados_in_correct_position():

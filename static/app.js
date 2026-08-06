@@ -7666,7 +7666,14 @@ function outsourcedCompaniesViewHelpers() {
 // módulo nasce oculto por padrão, então só busca quando a tela é aberta
 // (chamado a partir de showView).
 async function loadOutsourcedCompanies() {
-  if (!hasPermission('employees:create')) return;
+  // Gate alinhado ao backend (handle_get_outsourced_companies exige só
+  // PERM_EMPLOYEES_VIEW, igual a loadOutsourcedEmployeesSummary logo abaixo)
+  // — 'employees:create' era restritivo demais e nunca é concedido a
+  // Administrador Local/Gestor de EPI (só têm employees:create_simplified),
+  // então a lista nunca carregava para esses perfis: nem a aba "Lista" nem o
+  // seletor de empresa do Cadastro de Colaboradores (syncOutsourcedEmployeeCompanySelect,
+  // chamado por renderOutsourcedCompanies logo abaixo) recebiam dados.
+  if (!hasPermission('employees:view')) return;
   try {
     const data = await api(`/api/outsourced-companies?${actorQuery()}`);
     state.outsourcedCompanies = data.outsourced_companies || data.items || [];

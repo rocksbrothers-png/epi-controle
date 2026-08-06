@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=c802b5554ba8">
+  <link rel="stylesheet" href="/styles.css?v=fcf98834f3b6">
   <script>/* Bootstrap de tema (P2-2) — aplica antes do paint para evitar flash. */try{if(localStorage.getItem('epi-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
 </head>
 <body>
@@ -193,6 +193,14 @@
         <button class="menu-link" data-view="relatorios" aria-label="Relatórios" data-i18n="nav.reports">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Relatórios
+        </button>
+        <!-- Migração de Dados (ADR-0003) — só Administrador Master e
+             Administrador Geral têm a permissão técnica, e o módulo ainda
+             nasce oculto até o Administrador Geral ligá-lo em Configuração >
+             Regras > Visualização (ver VIEW_MODULE.migracao em app.js). -->
+        <button class="menu-link" data-view="migracao" aria-label="Migração de Dados" data-i18n="nav.dataMigration">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          Migração de Dados
         </button>
         <button class="menu-link" data-view="avaliacoes" aria-label="Avaliações e Sugestões" data-i18n="nav.evaluations">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -3462,6 +3470,138 @@
           </div>
         </div>
       </section>
+      <section id="migracao-view" class="view">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="dataMigration.pageTitle">Migração de Dados</h2>
+            <p class="page-desc" data-i18n="dataMigration.pageDesc">Centro de Migração de Dados: leia uma planilha ou export do sistema antigo, confira o que o sistema entendeu, veja o resultado antes de gravar e desfaça a importação se precisar.</p>
+          </div>
+        </header>
+        <nav class="view-tabs" data-vtabs="migracao" aria-label="Migração de Dados">
+          <button type="button" class="vtab" data-vtab="painel" data-i18n="dataMigration.panelTab">Painel</button>
+          <button type="button" class="vtab" data-vtab="assistente" data-i18n="dataMigration.wizardTab">Assistente de Importação</button>
+          <button type="button" class="vtab" data-vtab="historico" data-i18n="dataMigration.historyTab">Histórico</button>
+        </nav>
+
+        <!-- ── Painel: os cartões do catálogo ────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="painel">
+          <article class="card">
+            <h3 data-i18n="dataMigration.catalogTitle">O que você quer importar</h3>
+            <p class="muted" data-i18n="dataMigration.catalogHint">Escolha um cartão para abrir o assistente já com a entidade selecionada. Cartões marcados como “Em breve” fazem parte do roadmap e ainda são recusados pelo servidor.</p>
+            <div class="form-grid">
+              <label><span data-i18n="dataMigration.catalogFilter">Buscar</span><input id="migracao-catalog-filter" type="search" placeholder="Colaboradores, EPIs, estoque..."></label>
+            </div>
+            <div id="migracao-catalog-cards" class="migracao-card-grid"></div>
+          </article>
+        </div>
+
+        <!-- ── Assistente: as 4 etapas ───────────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="assistente">
+          <article class="card">
+            <ol id="migracao-steps" class="migracao-steps" aria-label="Etapas da importação">
+              <li data-step="entidade" class="active"><span class="migracao-step-num">1</span><span data-i18n="dataMigration.step1">O que importar</span></li>
+              <li data-step="origem"><span class="migracao-step-num">2</span><span data-i18n="dataMigration.step2">Origem dos dados</span></li>
+              <li data-step="leitura"><span class="migracao-step-num">3</span><span data-i18n="dataMigration.step3">Leitura automática</span></li>
+              <li data-step="mapeamento"><span class="migracao-step-num">4</span><span data-i18n="dataMigration.step4">Mapeamento das colunas</span></li>
+            </ol>
+          </article>
+
+          <!-- Etapa 1 -->
+          <article class="card migracao-step-panel" data-step-panel="entidade">
+            <h3 data-i18n="dataMigration.step1Title">Etapa 1 — O que importar</h3>
+            <label><span data-i18n="dataMigration.entityLabel">Entidade de destino</span>
+              <select id="migracao-entity"></select>
+            </label>
+            <p class="muted" id="migracao-entity-fields"></p>
+          </article>
+
+          <!-- Etapa 2 -->
+          <article class="card migracao-step-panel" data-step-panel="origem" hidden>
+            <h3 data-i18n="dataMigration.step2Title">Etapa 2 — Origem dos dados</h3>
+            <label><span data-i18n="dataMigration.sourceLabel">Tipo de origem</span>
+              <select id="migracao-source-kind"></select>
+            </label>
+            <div id="migracao-dropzone" class="migracao-dropzone" tabindex="0" role="button" aria-describedby="migracao-file-hint">
+              <p data-i18n="dataMigration.dropzone">Arraste o arquivo aqui ou clique para escolher</p>
+              <p class="muted" id="migracao-file-name"></p>
+              <input id="migracao-file" type="file" hidden accept=".xlsx,.xls,.csv,.ods,.json,.xml,.txt,.tsv">
+            </div>
+            <small class="muted" id="migracao-file-hint" data-i18n="dataMigration.fileHint">Formatos aceitos nesta fase: XLSX, XLS, CSV, TSV, ODS, JSON, XML e TXT. Limite de 25 MB por arquivo.</small>
+            <label id="migracao-sheet-wrap" hidden><span data-i18n="dataMigration.sheetLabel">Planilha (aba)</span><input id="migracao-sheet" type="text" placeholder="Deixe vazio para a primeira"></label>
+          </article>
+
+          <!-- Etapa 3 -->
+          <article class="card migracao-step-panel" data-step-panel="leitura" hidden>
+            <h3 data-i18n="dataMigration.step3Title">Etapa 3 — Leitura automática</h3>
+            <p class="muted" data-i18n="dataMigration.step3Hint">O sistema detecta sozinho a codificação, o separador e o tipo de cada coluna. Confira antes de seguir.</p>
+            <dl id="migracao-detected" class="migracao-detected"></dl>
+            <div class="table-wrap"><table><thead id="migracao-sample-head"></thead><tbody id="migracao-sample-body"></tbody></table></div>
+          </article>
+
+          <!-- Etapa 4 -->
+          <article class="card migracao-step-panel" data-step-panel="mapeamento" hidden>
+            <h3 data-i18n="dataMigration.step4Title">Etapa 4 — Mapeamento das colunas</h3>
+            <p class="muted" id="migracao-mapping-summary"></p>
+            <p class="muted" id="migracao-mapping-source" hidden data-i18n="dataMigration.mappingSaved">Mapeamento reaproveitado de uma importação anterior deste mesmo layout.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.mapColumn">Coluna do arquivo</th>
+              <th scope="col" data-i18n="dataMigration.mapTarget">Campo de destino</th>
+              <th scope="col" data-i18n="dataMigration.mapConfidence">Reconhecimento</th>
+            </tr></thead><tbody id="migracao-mapping-table"></tbody></table></div>
+          </article>
+
+          <!-- Navegação + preview + execução -->
+          <article class="card">
+            <div class="action-group">
+              <button id="migracao-back" class="ghost" type="button" data-i18n="dataMigration.back">Voltar</button>
+              <button id="migracao-next" class="primary" type="button" data-i18n="dataMigration.next">Avançar</button>
+              <button id="migracao-preview" class="ghost" type="button" hidden data-i18n="dataMigration.preview">Simular importação</button>
+              <button id="migracao-restart" class="ghost" type="button" data-i18n="dataMigration.restart">Recomeçar</button>
+            </div>
+          </article>
+
+          <article class="card" id="migracao-preview-card" hidden>
+            <h3 data-i18n="dataMigration.previewTitle">Prévia da importação</h3>
+            <p class="muted" data-i18n="dataMigration.previewHint">Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.</p>
+            <div id="migracao-preview-counters" class="migracao-counters"></div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.diagKind">Problema</th>
+              <th scope="col" data-i18n="dataMigration.diagCount">Ocorrências</th>
+              <th scope="col" data-i18n="dataMigration.diagRows">Linhas</th>
+            </tr></thead><tbody id="migracao-preview-diagnostics"></tbody></table></div>
+            <div class="action-group">
+              <button id="migracao-download-report" class="ghost" type="button" data-i18n="dataMigration.downloadReport">Baixar relatório (CSV)</button>
+            </div>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="dataMigration.strategyLegend">Como aplicar</legend>
+              <label><span data-i18n="dataMigration.strategyLabel">Estratégia</span><select id="migracao-strategy"></select></label>
+              <small class="muted" id="migracao-strategy-hint"></small>
+            </fieldset>
+            <div class="action-group">
+              <button id="migracao-apply" class="primary" type="button" data-i18n="dataMigration.apply">Confirmar importação</button>
+            </div>
+          </article>
+        </div>
+
+        <!-- ── Histórico ─────────────────────────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="historico">
+          <article class="card">
+            <h3 data-i18n="dataMigration.historyTitle">Importações realizadas</h3>
+            <p class="muted" data-i18n="dataMigration.historyHint">Cada importação guarda o estado anterior de todo registro que tocou. Por isso “Reverter Importação” devolve exatamente como estava — uma vez só, por importação concluída.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.jobId">#</th>
+              <th scope="col" data-i18n="dataMigration.jobEntity">Entidade</th>
+              <th scope="col" data-i18n="dataMigration.jobSource">Origem</th>
+              <th scope="col" data-i18n="dataMigration.jobStrategy">Estratégia</th>
+              <th scope="col" data-i18n="dataMigration.jobStatus">Situação</th>
+              <th scope="col" data-i18n="dataMigration.jobCounters">Resultado</th>
+              <th scope="col" data-i18n="dataMigration.jobActor">Responsável</th>
+              <th scope="col" data-i18n="dataMigration.jobWhen">Quando</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="migracao-jobs-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>
 
     </main>
   </section>
@@ -3652,53 +3792,54 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=c802b5554ba8"></script>
-  <script defer src="/i18n-helper.js?v=c802b5554ba8"></script>
-  <script defer src="/tenant-init.js?v=c802b5554ba8"></script>
+  <script defer src="/i18n.js?v=fcf98834f3b6"></script>
+  <script defer src="/i18n-helper.js?v=fcf98834f3b6"></script>
+  <script defer src="/tenant-init.js?v=fcf98834f3b6"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=c802b5554ba8"></script>
-  <script defer src="/js/core/permissions.js?v=c802b5554ba8"></script>
-  <script defer src="/js/core/feature-flags.js?v=c802b5554ba8"></script>
-  <script defer src="/js/core/config.js?v=c802b5554ba8"></script>
-  <script defer src="/js/utils/storage.js?v=c802b5554ba8"></script>
-  <script defer src="/js/utils/debug.js?v=c802b5554ba8"></script>
-  <script defer src="/js/utils/dom.js?v=c802b5554ba8"></script>
-  <script defer src="/js/utils/perf.js?v=c802b5554ba8"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=c802b5554ba8"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=c802b5554ba8"></script>
-  <script defer src="/js/modules/auth.js?v=c802b5554ba8"></script>
-  <script defer src="/js/modules/api-client.js?v=c802b5554ba8"></script>
-  <script defer src="/js/modules/router.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/ui-helpers.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/view-helpers.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/dashboard.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/epis.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/estoque.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/employee-portal.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/purchases.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/procurement.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/feedback.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/devolution.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/fichas.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/feedback-detail.js?v=c802b5554ba8"></script>
-  <script defer src="/js/views/profile.js?v=c802b5554ba8"></script>
-  <script defer src="/colab-list.js?v=c802b5554ba8"></script>
-  <script defer src="/gestao-colab.js?v=c802b5554ba8"></script>
-  <script defer src="/estoque.js?v=c802b5554ba8"></script>
-  <script defer src="/ux-global.js?v=c802b5554ba8"></script>
-  <script defer src="/app.js?v=c802b5554ba8"></script>
-  <script defer src="/share-modal.js?v=c802b5554ba8"></script>
-  <script defer src="/entrega-epi.js?v=c802b5554ba8"></script>
-  <script defer src="/ux-phase41.js?v=c802b5554ba8"></script>
-  <script defer src="/navigation.js?v=c802b5554ba8"></script>
-  <script defer src="/navigation-controls.js?v=c802b5554ba8"></script>
-  <script defer src="/multitab-navigation.js?v=c802b5554ba8"></script>
-  <script defer src="/error-monitor.js?v=c802b5554ba8"></script>
-  <script defer src="/ux-analytics.js?v=c802b5554ba8"></script>
+  <script defer src="/js/core/constants.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/core/permissions.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/core/feature-flags.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/core/config.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/utils/storage.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/utils/debug.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/utils/dom.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/utils/perf.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/modules/auth.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/modules/api-client.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/modules/router.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/ui-helpers.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/view-helpers.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/dashboard.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/epis.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/estoque.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/employee-portal.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/data-migration-view.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/purchases.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/procurement.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/feedback.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/devolution.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/fichas.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/feedback-detail.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/views/profile.js?v=fcf98834f3b6"></script>
+  <script defer src="/colab-list.js?v=fcf98834f3b6"></script>
+  <script defer src="/gestao-colab.js?v=fcf98834f3b6"></script>
+  <script defer src="/estoque.js?v=fcf98834f3b6"></script>
+  <script defer src="/ux-global.js?v=fcf98834f3b6"></script>
+  <script defer src="/app.js?v=fcf98834f3b6"></script>
+  <script defer src="/share-modal.js?v=fcf98834f3b6"></script>
+  <script defer src="/entrega-epi.js?v=fcf98834f3b6"></script>
+  <script defer src="/ux-phase41.js?v=fcf98834f3b6"></script>
+  <script defer src="/navigation.js?v=fcf98834f3b6"></script>
+  <script defer src="/navigation-controls.js?v=fcf98834f3b6"></script>
+  <script defer src="/multitab-navigation.js?v=fcf98834f3b6"></script>
+  <script defer src="/error-monitor.js?v=fcf98834f3b6"></script>
+  <script defer src="/ux-analytics.js?v=fcf98834f3b6"></script>
 </body>
 </html>

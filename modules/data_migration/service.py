@@ -13,6 +13,7 @@ estruturalmente impossível neste caminho.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from epi_backend.db import row_to_dict, table_columns
@@ -142,6 +143,162 @@ def _existing_index(connection, descriptor, company_id: int) -> dict[str, dict]:
 
 # ── Job ─────────────────────────────────────────────────────────────────────
 
+def _reference_index(connection, table: str, name_column: str, company_id: int) -> dict[str, list[int]]:
+    """Mapa ``nome normalizado -> [ids]`` da tabela, **dentro do tenant**.
+
+    Devolve lista, não id único, para que ambiguidade (duas unidades com o
+    mesmo nome na mesma empresa) seja detectável em vez de resolvida em
+    silêncio para a primeira que aparecer.
+
+    O filtro por ``company_id`` é o que impede que "Produção" de um tenant
+    resolva para a unidade de outro.
+    """
+    rows = connection.execute(
+        f'SELECT id, {name_column} FROM {table} WHERE company_id = %s',  # noqa: S608 - allowlist do catálogo
+        (int(company_id),),
+    ).fetchall()
+    index: dict[str, list[int]] = {}
+    for row in rows:
+        data = row_to_dict(row)
+        key = normalize_reference(data.get(name_column))
+        if key:
+            index.setdefault(key, []).append(int(data['id']))
+    return index
+
+
+def normalize_reference(value: object) -> str:
+    """Comparação tolerante ao que vem de planilha: caixa, espaços nas pontas,
+    espaços internos repetidos e acentuação.
+
+    "  PRODUÇÃO " e "producao" precisam encontrar a mesma unidade — é o caso
+    normal de um export legado digitado à mão ao longo dos anos.
+    """
+    text = ' '.join(str(value or '').strip().lower().split())
+    for accented, plain in (
+        ('á', 'a'), ('à', 'a'), ('ã', 'a'), ('â', 'a'), ('ä', 'a'),
+        ('é', 'e'), ('ê', 'e'), ('è', 'e'), ('ë', 'e'),
+        ('í', 'i'), ('î', 'i'), ('ì', 'i'), ('ï', 'i'),
+        ('ó', 'o'), ('ô', 'o'), ('õ', 'o'), ('ò', 'o'), ('ö', 'o'),
+        ('ú', 'u'), ('û', 'u'), ('ù', 'u'), ('ü', 'u'),
+        ('ç', 'c'), ('ñ', 'n'),
+    ):
+        text = text.replace(accented, plain)
+    return text
+
+
+def resolve_references(connection, descriptor, company_id: int, records: list[dict]) -> list[dict]:
+    """Converte nome → id nos campos com ``resolves_to``.
+
+    O arquivo legado traz "Produção", não o id interno. Regras:
+
+    - valor já numérico é aceito como id, mas **só se pertencer ao tenant** —
+      um id de outra empresa é tratado como desconhecido;
+    - nome que resolve para exatamente um registro vira o id;
+    - nome desconhecido ou **ambíguo** deixa o campo vazio e guarda o valor
+      original em ``__unresolved__`` para o preview transformar em erro de
+      linha, com o texto exato da planilha, antes de qualquer gravação.
+    """
+    resolvable = [spec for spec in descriptor.fields if spec.resolves_to]
+    if not resolvable:
+        return records
+    indexes = {
+        spec.name: _reference_index(connection, spec.resolves_to[0], spec.resolves_to[1], company_id)
+        for spec in resolvable
+    }
+    known_ids = {
+        spec.name: {value for ids in indexes[spec.name].values() for value in ids}
+        for spec in resolvable
+    }
+    resolved = []
+    for record in records:
+        updated = dict(record)
+        unresolved: dict[str, dict] = {}
+        for spec in resolvable:
+            raw = str(updated.get(spec.name) or '').strip()
+            if not raw:
+                continue
+            if raw.isdigit():
+                # Id explícito só vale dentro do tenant (isolamento multi-tenant).
+                if int(raw) in known_ids[spec.name]:
+                    updated[spec.name] = int(raw)
+                else:
+                    updated[spec.name] = ''
+                    unresolved[spec.name] = {'value': raw, 'reason': 'unknown'}
+                continue
+            matches = indexes[spec.name].get(normalize_reference(raw), [])
+            if len(matches) == 1:
+                updated[spec.name] = matches[0]
+            else:
+                updated[spec.name] = ''
+                unresolved[spec.name] = {
+                    'value': raw,
+                    'reason': 'ambiguous' if len(matches) > 1 else 'unknown',
+                    'matches': len(matches),
+                }
+        if unresolved:
+            updated['__unresolved__'] = unresolved
+        resolved.append(updated)
+    return resolved
+
+
+def _load_normalizer(descriptor):
+    """Resolve o normalizador de domínio declarado no catálogo.
+
+    Import tardio de propósito: o motor de migração não pode depender em
+    tempo de import de cada módulo de domínio (evita ciclo e mantém o
+    catálogo declarativo).
+    """
+    reference = getattr(descriptor, 'normalizer', '')
+    if not reference:
+        return None
+    module_name, _, function_name = reference.partition(':')
+    from importlib import import_module
+    return getattr(import_module(module_name), function_name)
+
+
+def apply_domain_rules(descriptor, records: list[dict]) -> list[dict]:
+    """Passa cada linha pelas MESMAS regras do cadastro manual.
+
+    Uma linha recusada não interrompe a análise: o motivo vira
+    ``__domain_error__`` e o preview o transforma em erro daquela linha, com
+    as outras seguindo normalmente.
+    """
+    normalizer = _load_normalizer(descriptor)
+    if normalizer is None:
+        return records
+    processed = []
+    for record in records:
+        try:
+            updated = normalizer(record)
+            updated.pop('__domain_error__', None)
+        except ValueError as exc:
+            updated = dict(record)
+            updated['__domain_error__'] = str(exc)
+        processed.append(updated)
+    return processed
+
+
+@contextmanager
+def _row_guard(connection):
+    """Isola a gravação de UMA linha da transação do job.
+
+    Sem isto o ``try/except`` por linha abaixo não isola nada no PostgreSQL:
+    o primeiro erro aborta a transação inteira, todo comando seguinte falha
+    com "current transaction is aborted" — inclusive o INSERT do diagnóstico
+    e o UPDATE final do job — e a conexão volta envenenada para o pool,
+    derrubando a *próxima* requisição, sem relação com esta. SQLite e
+    PostgreSQL suportam SAVEPOINT.
+    """
+    connection.execute('SAVEPOINT sp_migration_row')
+    try:
+        yield
+    except Exception:
+        connection.execute('ROLLBACK TO SAVEPOINT sp_migration_row')
+        connection.execute('RELEASE SAVEPOINT sp_migration_row')
+        raise
+    connection.execute('RELEASE SAVEPOINT sp_migration_row')
+
+
 def create_job(connection, *, company_id, entity, source_kind, source_name, hash_value,
                strategy, actor, actor_ip='') -> int:
     cursor = connection.execute(
@@ -207,6 +364,14 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     dataset = read_source(source_kind, raw, sheet=sheet)
     normalized_mapping = normalize_manual_mapping(descriptor, mapping, dataset.columns)
     records = apply_mapping(normalized_mapping, dataset.rows)
+    # Nome → id ANTES do preview: assim "Unidade inexistente" aparece como
+    # obrigatório ausente na simulação, não como erro de banco na gravação.
+    records = resolve_references(connection, descriptor, company_id, records)
+    # Regras de vínculo iguais às do cadastro manual (ADR-0003 §12.2): CPF
+    # normalizado para dígitos, empresa de origem exigida/limpa conforme o
+    # vínculo. Sem isto a importação gravaria CPF formatado e o upsert nunca
+    # reconheceria quem foi cadastrado à mão.
+    records = apply_domain_rules(descriptor, records)
 
     existing = _existing_index(connection, descriptor, company_id)
     preview = build_preview(descriptor, records, existing_keys=existing.keys())
@@ -231,67 +396,130 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     writable = _writable_columns(connection, descriptor)
     totals = {'total': len(records), 'processed': 0, 'inserted': 0, 'updated': 0, 'skipped': 0, 'failed': 0}
 
+    # Só aplica defaults de colunas que a tabela realmente tem — mesmo
+    # cuidado de _writable_columns com tenant em schema anterior.
+    available = set(table_columns(connection, descriptor.target_table))
+    defaults = {
+        name: value
+        for name, value in (getattr(descriptor, 'column_defaults', ()) or ())
+        if name in available
+    }
+
     try:
         for index, record in enumerate(records, start=1):
-            key = natural_key_of(descriptor, record)
-            current = existing.get(key)
-            payload = {
-                name: value for name, value in record.items()
-                if name in writable and str(value or '').strip()
-            }
-            totals['processed'] += 1
-
-            if not payload:
-                totals['skipped'] += 1
-                _record(connection, job_id=job_id, company_id=company_id, row_number=index,
-                        action='skip', table=descriptor.target_table, target_id=None,
-                        before=None, after=None, error='Nenhum campo gravável.')
-                continue
-
+            outcome = None
             try:
-                if current is None:
-                    if strategy == 'update_only':
-                        totals['skipped'] += 1
-                        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
-                                action='skip', table=descriptor.target_table, target_id=None,
-                                before=None, after=None, error='Registro inexistente (update_only).')
-                        continue
-                    new_id = _insert(connection, descriptor, company_id, payload)
-                    existing[key] = {'id': new_id, **payload}
-                    totals['inserted'] += 1
-                    _record(connection, job_id=job_id, company_id=company_id, row_number=index,
-                            action='insert', table=descriptor.target_table, target_id=new_id,
-                            before=None, after=payload)
-                else:
-                    if strategy in ('insert_only', 'skip_duplicates'):
-                        totals['skipped'] += 1
-                        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
-                                action='skip', table=descriptor.target_table,
-                                target_id=int(current['id']), before=None, after=None,
-                                error=f'Registro já existente ({strategy}).')
-                        continue
-                    before = _snapshot(connection, descriptor, int(current['id']), writable)
-                    _update(connection, descriptor, int(current['id']), company_id, payload)
-                    totals['updated'] += 1
-                    _record(connection, job_id=job_id, company_id=company_id, row_number=index,
-                            action='update', table=descriptor.target_table,
-                            target_id=int(current['id']), before=before, after=payload)
+                # TODA a gravação da linha — snapshot, INSERT/UPDATE e o
+                # próprio registro de auditoria — acontece dentro do mesmo
+                # SAVEPOINT. Cobrir só o INSERT não bastava: se o _record
+                # falhasse, a transação era abortada do mesmo jeito e o job
+                # não conseguia sequer fechar (ADR-0003 §12.1).
+                with _row_guard(connection):
+                    outcome = _apply_row(
+                        connection, descriptor, company_id, job_id, index, record,
+                        strategy=strategy, writable=writable, defaults=defaults,
+                        existing=existing,
+                    )
             except Exception as exc:  # linha ruim não derruba o job inteiro
+                # Aqui a transação já voltou ao ponto anterior à linha, então
+                # gravar o diagnóstico é seguro.
                 totals['failed'] += 1
                 _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                         action='error', table=descriptor.target_table, target_id=None,
                         before=None, after=None, error=str(exc)[:500])
+                continue
+            totals['processed'] += 1
+            totals[outcome] += 1
 
         if persist_mapping:
             save_mapping(connection, company_id, descriptor.key, dataset.signature(), normalized_mapping)
         _finish_job(connection, job_id, status='completed', totals=totals, preview=preview)
         connection.commit()
     except Exception as exc:
-        _finish_job(connection, job_id, status='failed', totals=totals, preview=preview, error=str(exc)[:500])
+        # Falha estrutural (não de linha): a transação pode estar abortada, e
+        # tentar escrever nela levantaria "current transaction is aborted",
+        # mascarando o erro real e devolvendo conexão envenenada ao pool.
+        # Desfaz tudo e registra o fracasso numa transação limpa.
+        connection.rollback()
+        _record_failed_job(
+            connection, company_id=company_id, entity=descriptor.key, source_kind=source_kind,
+            source_name=source_name, hash_value=source_hash(raw), strategy=strategy,
+            actor=actor, actor_ip=actor_ip, totals=totals, error=str(exc)[:500],
+        )
         connection.commit()
         raise
 
     return {'job_id': job_id, 'strategy': strategy, 'applied': True, 'totals': totals, 'preview': preview}
+
+
+def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
+               strategy, writable, defaults, existing) -> str:
+    """Grava UMA linha e devolve o contador que ela alimenta.
+
+    Roda inteira dentro do SAVEPOINT aberto por quem chama.
+    """
+    key = natural_key_of(descriptor, record)
+    current = existing.get(key)
+    payload = {
+        name: value for name, value in record.items()
+        if name in writable and str(value or '').strip()
+    }
+    if not payload:
+        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+                action='skip', table=descriptor.target_table, target_id=None,
+                before=None, after=None, error='Nenhum campo gravável.')
+        return 'skipped'
+
+    if current is None:
+        if strategy == 'update_only':
+            _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+                    action='skip', table=descriptor.target_table, target_id=None,
+                    before=None, after=None, error='Registro inexistente (update_only).')
+            return 'skipped'
+        new_id = _insert(connection, descriptor, company_id, defaults, payload)
+        existing[key] = {'id': new_id, **payload}
+        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+                action='insert', table=descriptor.target_table, target_id=new_id,
+                before=None, after=payload)
+        return 'inserted'
+
+    if strategy in ('insert_only', 'skip_duplicates'):
+        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+                action='skip', table=descriptor.target_table,
+                target_id=int(current['id']), before=None, after=None,
+                error=f'Registro já existente ({strategy}).')
+        return 'skipped'
+
+    before = _snapshot(connection, descriptor, int(current['id']), writable)
+    _update(connection, descriptor, int(current['id']), company_id, payload)
+    _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+            action='update', table=descriptor.target_table,
+            target_id=int(current['id']), before=before, after=payload)
+    return 'updated'
+
+
+def _record_failed_job(connection, *, company_id, entity, source_kind, source_name,
+                       hash_value, strategy, actor, actor_ip, totals, error) -> int:
+    """Registra o job como falho depois de um rollback total.
+
+    O job original foi desfeito junto com os dados; recriamos a linha de
+    histórico para o usuário enxergar a tentativa e o motivo.
+    """
+    cursor = connection.execute(
+        'INSERT INTO migration_jobs '
+        '(company_id, entity, source_kind, source_name, source_hash, strategy, status, '
+        ' total_rows, processed_rows, inserted_rows, updated_rows, skipped_rows, failed_rows, '
+        ' actor_user_id, actor_name, actor_ip, error_message, started_at, finished_at, created_at) '
+        'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
+        (
+            int(company_id), str(entity), str(source_kind), str(source_name or ''),
+            str(hash_value or ''), str(strategy), 'failed',
+            int(totals.get('total', 0)), 0, 0, 0, 0, int(totals.get('total', 0)),
+            int(actor.get('id') or 0), str(actor.get('full_name') or ''), str(actor_ip or ''),
+            str(error or ''), _now(), _now(), _now(),
+        ),
+    )
+    return int(cursor.lastrowid or 0)
 
 
 def _snapshot(connection, descriptor, target_id: int, writable: set[str]) -> dict:
@@ -304,7 +532,11 @@ def _snapshot(connection, descriptor, target_id: int, writable: set[str]) -> dic
     return row_to_dict(row) if row else {}
 
 
-def _insert(connection, descriptor, company_id: int, payload: dict) -> int:
+def _insert(connection, descriptor, company_id: int, defaults: dict, payload: dict) -> int:
+    # Defaults DECLARADOS no catálogo (`column_defaults`), não um preenchimento
+    # automático de toda coluna NOT NULL: cada um é uma decisão de domínio
+    # documentada e coberta pelo teste de contrato (ADR-0003 §12.3).
+    payload = {**{name: value for name, value in defaults.items() if name not in payload}, **payload}
     columns = ['company_id', *sorted(payload)]
     values = [int(company_id), *[payload[name] for name in sorted(payload)]]
     placeholders = ', '.join(['%s'] * len(values))

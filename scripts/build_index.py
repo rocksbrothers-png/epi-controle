@@ -59,6 +59,7 @@ VIEW_IDS = [
     "compras",
     "relatorios",
     "avaliacoes",
+    "migracao",
 ]
 
 # Indentação das tags <section id="X-view"> de abertura no index.html.

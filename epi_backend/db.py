@@ -245,6 +245,38 @@ def table_exists(connection, table) -> bool:
         return False
 
 
+def mandatory_db_columns(connection, table: str) -> set[str]:
+    """Colunas NOT NULL sem DEFAULT — o banco exige um valor explícito.
+
+    O motor só grava os campos que a linha preencheu. Numa tabela madura
+    como ``employees`` há colunas NOT NULL sem default (``sector``) que
+    nenhum export legado traz: sem preencher, o INSERT falha no banco. Aqui
+    descobrimos quais são para dar-lhes string vazia — o mesmo valor que o
+    cadastro manual do próprio sistema grava.
+    """
+    table_name = str(table or '').strip()
+    if not table_name:
+        return set()
+    try:
+        if _is_sqlite_connection(connection):
+            rows = connection.execute(f'PRAGMA table_info({table_name})').fetchall()
+            return {
+                str(row['name'] if isinstance(row, dict) else row[1])
+                for row in rows
+                if int(row['notnull'] if isinstance(row, dict) else row[3]) == 1
+                and (row['dflt_value'] if isinstance(row, dict) else row[4]) is None
+                and str(row['name'] if isinstance(row, dict) else row[1]) != 'id'
+            }
+        rows = connection.execute(
+            'SELECT column_name FROM information_schema.columns '
+            "WHERE table_name = %s AND is_nullable = 'NO' AND column_default IS NULL",
+            (table_name,),
+        ).fetchall()
+        return {str(row_to_dict(row).get('column_name') or '') for row in rows} - {'id'}
+    except Exception:  # introspecção é best-effort, como em table_columns
+        return set()
+
+
 def table_columns(connection, table) -> set:
     """Conjunto de colunas de uma tabela (SQLite ou Postgres). Ver
     ``table_exists`` para a justificativa de residir em ``db``."""

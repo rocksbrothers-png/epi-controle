@@ -1872,9 +1872,9 @@ def ensure_epi_operational_tables(connection) -> None:
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_notes', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'marca_modelo_sugerido', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_eval_at', "TEXT NOT NULL DEFAULT ''")
-    for _rc in ('excelente', 'otimo', 'muito_bom', 'ruim', 'muito_ruim', 'pessimo',
-                'excelente_sug', 'otima_sug', 'muito_boa_sug', 'pessima_sug', 'muito_ruim_sug', 'ruim_sug'):
-        _safe_add_column(connection, 'epi_evaluation_summary', f'rank_{_rc}', 'INTEGER NOT NULL DEFAULT 0')
+    # Cria a tabela ANTES de adicionar colunas (rank_*). Em banco existente o
+    # CREATE IF NOT EXISTS é no-op; em banco novo (ex.: SaaS) garante que os
+    # _safe_add_column abaixo não falhem por tabela ausente.
     try:
         connection.execute(
             '''
@@ -1904,6 +1904,9 @@ def ensure_epi_operational_tables(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    for _rc in ('excelente', 'otimo', 'muito_bom', 'ruim', 'muito_ruim', 'pessimo',
+                'excelente_sug', 'otima_sug', 'muito_boa_sug', 'pessima_sug', 'muito_ruim_sug', 'ruim_sug'):
+        _safe_add_column(connection, 'epi_evaluation_summary', f'rank_{_rc}', 'INTEGER NOT NULL DEFAULT 0')
     try:
         connection.execute(
             '''

@@ -1,0 +1,132 @@
+      <section id="migracao-view" class="view">
+        <header class="page-head">
+          <div>
+            <h2 data-i18n="dataMigration.pageTitle">Migração de Dados</h2>
+            <p class="page-desc" data-i18n="dataMigration.pageDesc">Centro de Migração de Dados: leia uma planilha ou export do sistema antigo, confira o que o sistema entendeu, veja o resultado antes de gravar e desfaça a importação se precisar.</p>
+          </div>
+        </header>
+        <nav class="view-tabs" data-vtabs="migracao" aria-label="Migração de Dados">
+          <button type="button" class="vtab" data-vtab="painel" data-i18n="dataMigration.panelTab">Painel</button>
+          <button type="button" class="vtab" data-vtab="assistente" data-i18n="dataMigration.wizardTab">Assistente de Importação</button>
+          <button type="button" class="vtab" data-vtab="historico" data-i18n="dataMigration.historyTab">Histórico</button>
+        </nav>
+
+        <!-- ── Painel: os cartões do catálogo ────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="painel">
+          <article class="card">
+            <h3 data-i18n="dataMigration.catalogTitle">O que você quer importar</h3>
+            <p class="muted" data-i18n="dataMigration.catalogHint">Escolha um cartão para abrir o assistente já com a entidade selecionada. Cartões marcados como “Em breve” fazem parte do roadmap e ainda são recusados pelo servidor.</p>
+            <div class="form-grid">
+              <label><span data-i18n="dataMigration.catalogFilter">Buscar</span><input id="migracao-catalog-filter" type="search" placeholder="Colaboradores, EPIs, estoque..."></label>
+            </div>
+            <div id="migracao-catalog-cards" class="migracao-card-grid"></div>
+          </article>
+        </div>
+
+        <!-- ── Assistente: as 4 etapas ───────────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="assistente">
+          <article class="card">
+            <ol id="migracao-steps" class="migracao-steps" aria-label="Etapas da importação">
+              <li data-step="entidade" class="active"><span class="migracao-step-num">1</span><span data-i18n="dataMigration.step1">O que importar</span></li>
+              <li data-step="origem"><span class="migracao-step-num">2</span><span data-i18n="dataMigration.step2">Origem dos dados</span></li>
+              <li data-step="leitura"><span class="migracao-step-num">3</span><span data-i18n="dataMigration.step3">Leitura automática</span></li>
+              <li data-step="mapeamento"><span class="migracao-step-num">4</span><span data-i18n="dataMigration.step4">Mapeamento das colunas</span></li>
+            </ol>
+          </article>
+
+          <!-- Etapa 1 -->
+          <article class="card migracao-step-panel" data-step-panel="entidade">
+            <h3 data-i18n="dataMigration.step1Title">Etapa 1 — O que importar</h3>
+            <label><span data-i18n="dataMigration.entityLabel">Entidade de destino</span>
+              <select id="migracao-entity"></select>
+            </label>
+            <p class="muted" id="migracao-entity-fields"></p>
+          </article>
+
+          <!-- Etapa 2 -->
+          <article class="card migracao-step-panel" data-step-panel="origem" hidden>
+            <h3 data-i18n="dataMigration.step2Title">Etapa 2 — Origem dos dados</h3>
+            <label><span data-i18n="dataMigration.sourceLabel">Tipo de origem</span>
+              <select id="migracao-source-kind"></select>
+            </label>
+            <div id="migracao-dropzone" class="migracao-dropzone" tabindex="0" role="button" aria-describedby="migracao-file-hint">
+              <p data-i18n="dataMigration.dropzone">Arraste o arquivo aqui ou clique para escolher</p>
+              <p class="muted" id="migracao-file-name"></p>
+              <input id="migracao-file" type="file" hidden accept=".xlsx,.xls,.csv,.ods,.json,.xml,.txt,.tsv">
+            </div>
+            <small class="muted" id="migracao-file-hint" data-i18n="dataMigration.fileHint">Formatos aceitos nesta fase: XLSX, XLS, CSV, TSV, ODS, JSON, XML e TXT. Limite de 25 MB por arquivo.</small>
+            <label id="migracao-sheet-wrap" hidden><span data-i18n="dataMigration.sheetLabel">Planilha (aba)</span><input id="migracao-sheet" type="text" placeholder="Deixe vazio para a primeira"></label>
+          </article>
+
+          <!-- Etapa 3 -->
+          <article class="card migracao-step-panel" data-step-panel="leitura" hidden>
+            <h3 data-i18n="dataMigration.step3Title">Etapa 3 — Leitura automática</h3>
+            <p class="muted" data-i18n="dataMigration.step3Hint">O sistema detecta sozinho a codificação, o separador e o tipo de cada coluna. Confira antes de seguir.</p>
+            <dl id="migracao-detected" class="migracao-detected"></dl>
+            <div class="table-wrap"><table><thead id="migracao-sample-head"></thead><tbody id="migracao-sample-body"></tbody></table></div>
+          </article>
+
+          <!-- Etapa 4 -->
+          <article class="card migracao-step-panel" data-step-panel="mapeamento" hidden>
+            <h3 data-i18n="dataMigration.step4Title">Etapa 4 — Mapeamento das colunas</h3>
+            <p class="muted" id="migracao-mapping-summary"></p>
+            <p class="muted" id="migracao-mapping-source" hidden data-i18n="dataMigration.mappingSaved">Mapeamento reaproveitado de uma importação anterior deste mesmo layout.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.mapColumn">Coluna do arquivo</th>
+              <th scope="col" data-i18n="dataMigration.mapTarget">Campo de destino</th>
+              <th scope="col" data-i18n="dataMigration.mapConfidence">Reconhecimento</th>
+            </tr></thead><tbody id="migracao-mapping-table"></tbody></table></div>
+          </article>
+
+          <!-- Navegação + preview + execução -->
+          <article class="card">
+            <div class="action-group">
+              <button id="migracao-back" class="ghost" type="button" data-i18n="dataMigration.back">Voltar</button>
+              <button id="migracao-next" class="primary" type="button" data-i18n="dataMigration.next">Avançar</button>
+              <button id="migracao-preview" class="ghost" type="button" hidden data-i18n="dataMigration.preview">Simular importação</button>
+              <button id="migracao-restart" class="ghost" type="button" data-i18n="dataMigration.restart">Recomeçar</button>
+            </div>
+          </article>
+
+          <article class="card" id="migracao-preview-card" hidden>
+            <h3 data-i18n="dataMigration.previewTitle">Prévia da importação</h3>
+            <p class="muted" data-i18n="dataMigration.previewHint">Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.</p>
+            <div id="migracao-preview-counters" class="migracao-counters"></div>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.diagKind">Problema</th>
+              <th scope="col" data-i18n="dataMigration.diagCount">Ocorrências</th>
+              <th scope="col" data-i18n="dataMigration.diagRows">Linhas</th>
+            </tr></thead><tbody id="migracao-preview-diagnostics"></tbody></table></div>
+            <div class="action-group">
+              <button id="migracao-download-report" class="ghost" type="button" data-i18n="dataMigration.downloadReport">Baixar relatório (CSV)</button>
+            </div>
+            <fieldset class="form-fieldset">
+              <legend data-i18n="dataMigration.strategyLegend">Como aplicar</legend>
+              <label><span data-i18n="dataMigration.strategyLabel">Estratégia</span><select id="migracao-strategy"></select></label>
+              <small class="muted" id="migracao-strategy-hint"></small>
+            </fieldset>
+            <div class="action-group">
+              <button id="migracao-apply" class="primary" type="button" data-i18n="dataMigration.apply">Confirmar importação</button>
+            </div>
+          </article>
+        </div>
+
+        <!-- ── Histórico ─────────────────────────────────────────────────── -->
+        <div class="vtab-panel" data-vtab-panel="historico">
+          <article class="card">
+            <h3 data-i18n="dataMigration.historyTitle">Importações realizadas</h3>
+            <p class="muted" data-i18n="dataMigration.historyHint">Cada importação guarda o estado anterior de todo registro que tocou. Por isso “Reverter Importação” devolve exatamente como estava — uma vez só, por importação concluída.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="dataMigration.jobId">#</th>
+              <th scope="col" data-i18n="dataMigration.jobEntity">Entidade</th>
+              <th scope="col" data-i18n="dataMigration.jobSource">Origem</th>
+              <th scope="col" data-i18n="dataMigration.jobStrategy">Estratégia</th>
+              <th scope="col" data-i18n="dataMigration.jobStatus">Situação</th>
+              <th scope="col" data-i18n="dataMigration.jobCounters">Resultado</th>
+              <th scope="col" data-i18n="dataMigration.jobActor">Responsável</th>
+              <th scope="col" data-i18n="dataMigration.jobWhen">Quando</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="migracao-jobs-table"></tbody></table></div>
+          </article>
+        </div>
+      </section>

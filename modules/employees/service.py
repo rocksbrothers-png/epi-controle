@@ -18,6 +18,62 @@ def normalize_preferred_contact_channel(value):
     return normalized if normalized in ('whatsapp', 'email') else 'whatsapp'
 
 
+# ── Regras de vínculo do colaborador (fonte única) ─────────────────────────
+#
+# Cadastro manual e importação em massa gravam na MESMA tabela e precisam
+# obedecer às MESMAS regras. Manter duas normalizações divergentes já causou
+# um defeito real: a importação gravava o CPF como veio da planilha
+# ("111.444.777-35") enquanto o cadastro manual grava só os dígitos
+# ("11144477735"). Consequências: a mesma pessoa virava dois registros, o
+# upsert nunca reconhecia quem já existia, e ensure_employee_identity_unique
+# não enxergava a duplicidade. Por isso a normalização mora aqui, num único
+# lugar, e a importação a chama (ADR-0003 §12).
+
+# Vínculos que caracterizam mão de obra própria. Para eles a empresa de
+# origem não se aplica; para os demais, ela é a identificação do contratado.
+OWN_WORKFORCE_VINCULOS = ('CLT',)
+
+
+def normalize_employee_domain_fields(payload: dict) -> dict:
+    """Aplica as regras de vínculo e a normalização de identidade.
+
+    Devolve um novo dicionário — não muda o original. Levanta ``ValueError``
+    com mensagem de negócio quando a combinação é inválida, que é o que o
+    preview da importação transforma em diagnóstico de linha.
+    """
+    normalized = dict(payload)
+
+    if 'cpf' in normalized and str(normalized.get('cpf') or '').strip():
+        normalized['cpf'] = normalize_cpf(normalized['cpf'])
+
+    tipo_vinculo = str(normalized.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
+    normalized['tipo_vinculo'] = tipo_vinculo
+
+    empresa_origem = str(normalized.get('empresa_origem') or '').strip()
+    if tipo_vinculo in OWN_WORKFORCE_VINCULOS:
+        # Colaborador próprio não tem empresa de origem — mesma regra de
+        # create_employee/update_employee.
+        normalized['empresa_origem'] = ''
+    else:
+        if not empresa_origem:
+            raise ValueError(
+                f'Empresa de origem é obrigatória para o vínculo "{tipo_vinculo}".'
+            )
+        normalized['empresa_origem'] = empresa_origem
+
+    if 'email' in normalized:
+        normalized['email'] = str(normalized.get('email') or '').strip().lower()
+    if 'whatsapp' in normalized:
+        normalized['whatsapp'] = ''.join(
+            ch for ch in str(normalized.get('whatsapp') or '') if ch.isdigit()
+        )
+    if 'preferred_contact_channel' in normalized:
+        normalized['preferred_contact_channel'] = normalize_preferred_contact_channel(
+            normalized.get('preferred_contact_channel')
+        )
+    return normalized
+
+
 def ensure_employee_identity_unique(connection, company_id, employee_id_code, cpf, exclude_id=None):
     try:
         code_row = connection.execute(

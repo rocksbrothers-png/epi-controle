@@ -49,6 +49,16 @@ class EntityDescriptor:
     label: str
     target_table: str
     fields: tuple[FieldSpec, ...]
+    # Colunas que o banco exige (NOT NULL, sem DEFAULT) e que este cadastro
+    # deliberadamente NÃO coleta, com o valor que o próprio sistema já grava
+    # nesse caso. É uma decisão de domínio declarada e testada — não um
+    # preenchimento automático para calar uma constraint. O teste de contrato
+    # (tests/test_data_migration_contract.py) falha se aparecer uma coluna
+    # obrigatória que não esteja nem nos `fields` nem aqui.
+    column_defaults: tuple[tuple[str, object], ...] = ()
+    # Normalizador de domínio compartilhado com o cadastro manual. Referência
+    # tardia ("modulo:funcao") para não criar ciclo de import.
+    normalizer: str = ''
     # Identidade do registro para deduplicação e UPDATE. Nunca o ID interno
     # do sistema legado — CPF/matrícula/código é o que sobrevive à migração.
     natural_keys: tuple[str, ...] = ()
@@ -77,13 +87,25 @@ _COLABORADORES = EntityDescriptor(
     natural_keys=('cpf', 'employee_id_code'),
     enabled=True,
     phase='1',
+    # `sector` e `schedule_type` são NOT NULL sem default em `employees`, mas
+    # nenhum export legado os traz e o próprio sistema já grava string vazia
+    # neles no Cadastro Simplificado (modules/employees/service.py §10.2).
+    # A importação segue a MESMA convenção, explicitamente — em vez de
+    # inventar "CLT"/"Integral", que seriam afirmações de negócio falsas
+    # sobre a jornada e o setor de cada pessoa (ADR-0003 §12.3).
+    column_defaults=(('sector', ''), ('schedule_type', '')),
+    normalizer='modules.employees.service:normalize_employee_domain_fields',
     fields=(
         FieldSpec('name', 'Nome', required=True,
                   aliases=('nome', 'nome completo', 'funcionario', 'funcionário', 'empregado',
                            'colaborador', 'employee', 'employee name', 'full name', 'trabalhador')),
         FieldSpec('cpf', 'CPF', required=True, validator='cpf',
                   aliases=('cpf', 'documento', 'doc', 'national id', 'tax id', 'ssn')),
-        FieldSpec('employee_id_code', 'Matrícula',
+        # required=True porque `employees.employee_id_code` é NOT NULL sem default
+        # e o cadastro manual também a exige. Atenção: o índice único é GLOBAL
+        # (employees_employee_id_code_key), não por empresa — ver risco no
+        # ADR-0003 §11.
+        FieldSpec('employee_id_code', 'Matrícula', required=True,
                   aliases=('matricula', 'matrícula', 'registro', 'registration',
                            'employee id', 'employee code', 'chapa', 'codigo', 'código')),
         # required=True porque `employees.unit_id` é NOT NULL no schema real:
@@ -94,9 +116,11 @@ _COLABORADORES = EntityDescriptor(
                            'lotacao', 'lotação', 'filial', 'base', 'site', 'local de trabalho')),
         FieldSpec('sector', 'Setor',
                   aliases=('setor', 'sector', 'area', 'área', 'departamento')),
-        FieldSpec('role_name', 'Função',
+        # required=True: NOT NULL sem default no banco e obrigatórios também no
+        # cadastro manual (create_employee) — a paridade é intencional.
+        FieldSpec('role_name', 'Função', required=True,
                   aliases=('funcao', 'função', 'cargo', 'role', 'job title', 'position', 'ocupacao')),
-        FieldSpec('admission_date', 'Data de admissão', validator='date',
+        FieldSpec('admission_date', 'Data de admissão', required=True, validator='date',
                   aliases=('admissao', 'admissão', 'data admissao', 'data de admissao',
                            'hire date', 'admission date', 'start date', 'data de inicio')),
         FieldSpec('email', 'E-mail',
@@ -123,9 +147,13 @@ _UNIDADES = EntityDescriptor(
         FieldSpec('name', 'Nome da unidade', required=True,
                   aliases=('unidade', 'nome', 'nome da unidade', 'department', 'departamento',
                            'filial', 'site', 'base', 'location', 'local')),
-        FieldSpec('unit_type', 'Tipo',
+        # required=True porque `units.unit_type` e `units.city` são NOT NULL sem
+        # default no banco e NÃO têm valor determinístico honesto: "base" seria
+        # afirmar que a unidade é terrestre, e cidade nenhuma se adivinha.
+        # Exigir no preview é melhor do que inventar (ADR-0003 §12.3).
+        FieldSpec('unit_type', 'Tipo', required=True,
                   aliases=('tipo', 'tipo de unidade', 'type', 'unit type', 'categoria')),
-        FieldSpec('city', 'Cidade',
+        FieldSpec('city', 'Cidade', required=True,
                   aliases=('cidade', 'city', 'municipio', 'município', 'localidade')),
         FieldSpec('notes', 'Observações',
                   aliases=('observacao', 'observação', 'observacoes', 'notes', 'obs', 'comentario')),
@@ -139,30 +167,38 @@ _EPIS = EntityDescriptor(
     natural_keys=('purchase_code', 'name'),
     enabled=True,
     phase='1',
+    # `create_epi` grava manufacture_date='' e validity_days=0 por conta própria
+    # (parse_int_flexible(..., 0)). A importação segue o MESMO comportamento —
+    # não é um valor inventado, é o que o cadastro do sistema já faz.
+    column_defaults=(('manufacture_date', ''), ('validity_days', 0)),
     fields=(
         FieldSpec('name', 'Descrição', required=True,
                   aliases=('epi', 'ppe', 'descricao', 'descrição', 'nome', 'item', 'produto',
                            'equipamento', 'material', 'description', 'product')),
-        FieldSpec('purchase_code', 'Código',
+        # Todos NOT NULL sem default no banco e exigidos por create_epi.
+        FieldSpec('purchase_code', 'Código', required=True,
                   aliases=('codigo', 'código', 'code', 'sku', 'part number', 'codigo interno',
                            'referencia', 'referência', 'item code')),
-        FieldSpec('ca', 'CA', validator='ca',
+        FieldSpec('ca', 'CA', required=True, validator='ca',
                   aliases=('ca', 'certificado', 'certificado de aprovacao',
                            'certificado de aprovação', 'certificate', 'approval')),
-        FieldSpec('ca_expiry', 'Validade do CA', validator='date',
+        FieldSpec('ca_expiry', 'Validade do CA', required=True, validator='date',
                   aliases=('validade ca', 'vencimento ca', 'ca expiry', 'validade do certificado',
                            'expiration', 'vencimento')),
+        FieldSpec('epi_validity_date', 'Validade do EPI', required=True, validator='date',
+                  aliases=('validade', 'validade do epi', 'epi validity', 'shelf life',
+                           'data de validade', 'vencimento do epi')),
         FieldSpec('manufacturer', 'Fabricante',
                   aliases=('fabricante', 'manufacturer', 'marca', 'brand', 'maker')),
         FieldSpec('model_reference', 'Modelo',
                   aliases=('modelo', 'model', 'referencia', 'referência', 'model reference')),
         FieldSpec('supplier_company', 'Fornecedor',
                   aliases=('fornecedor', 'supplier', 'vendor', 'distribuidor')),
-        FieldSpec('unit_measure', 'Unidade de medida',
+        FieldSpec('unit_measure', 'Unidade de medida', required=True,
                   aliases=('unidade de medida', 'um', 'unit', 'measure', 'uom', 'medida')),
         FieldSpec('epi_section', 'Categoria',
                   aliases=('categoria', 'category', 'grupo', 'group', 'classe', 'secao', 'seção')),
-        FieldSpec('sector', 'Setor',
+        FieldSpec('sector', 'Setor', required=True,
                   aliases=('setor', 'sector', 'area', 'área')),
     ),
 )

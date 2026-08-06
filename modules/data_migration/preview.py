@@ -115,9 +115,52 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
     missing_required = 0
     invalid_values = 0
     no_identity = 0
+    unresolved_reference = 0
+    domain_rejected = 0
 
     for index, record in enumerate(records, start=1):
         row_ok = True
+
+        # Referência que não resolveu (ADR-0003 §12.4). O diagnóstico mostra o
+        # texto EXATO da planilha para o usuário poder corrigir a origem ou
+        # cadastrar a unidade que falta antes de reexecutar.
+        for name, detail in (record.get('__unresolved__') or {}).items():
+            spec = descriptor.spec_for(name)
+            label = spec.label if spec else name
+            if detail.get('reason') == 'ambiguous':
+                message = (
+                    f'{label} "{detail.get("value")}" corresponde a '
+                    f'{detail.get("matches")} cadastros nesta empresa. '
+                    'Desfaça a ambiguidade ou informe o identificador.'
+                )
+            else:
+                message = (
+                    f'{label} "{detail.get("value")}" não existe nesta empresa. '
+                    'Cadastre antes de importar ou corrija a planilha.'
+                )
+            diagnostics.append({
+                'row': index,
+                'level': 'error',
+                'code': f'unresolved_{detail.get("reason", "unknown")}',
+                'field': name,
+                'source_value': detail.get('value'),
+                'message': message,
+            })
+            unresolved_reference += 1
+            row_ok = False
+
+        # Regras de vínculo do domínio, as MESMAS do cadastro manual.
+        domain_error = record.get('__domain_error__')
+        if domain_error:
+            diagnostics.append({
+                'row': index,
+                'level': 'error',
+                'code': 'domain_rule',
+                'field': '',
+                'message': str(domain_error),
+            })
+            domain_rejected += 1
+            row_ok = False
 
         for name in descriptor.required_fields():
             if not str(record.get(name) or '').strip():
@@ -203,6 +246,8 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
             'missing_required': missing_required,
             'invalid_values': invalid_values,
             'no_natural_key': no_identity,
+            'unresolved_reference': unresolved_reference,
+            'domain_rule': domain_rejected,
         },
         'diagnostics': diagnostics,
         'blocking': any(item['level'] == 'error' for item in diagnostics),

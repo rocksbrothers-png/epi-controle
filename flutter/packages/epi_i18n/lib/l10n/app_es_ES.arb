@@ -87,6 +87,7 @@
   "employeeSectorLabel": "Área",
   "employeeRoleLabel": "Cargo",
   "employeeUnitLabel": "Unidad",
+  "employeeUnitLockedHint": "Unidad definida por su perfil de acceso.",
   "employeeLegalEntityLabel": "CNPJ",
   "employeeAdmissionLabel": "Fecha de ingreso",
   "employeeScheduleLabel": "Turno",

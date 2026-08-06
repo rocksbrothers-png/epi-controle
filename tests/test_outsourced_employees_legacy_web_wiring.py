@@ -235,3 +235,26 @@ def test_all_locales_have_the_same_outsourced_company_keys():
     base = key_sets[LOCALES[0]]
     for locale, keys in key_sets.items():
         assert keys == base, f'{locale} diverge de {LOCALES[0]}: {keys.symmetric_difference(base)}'
+
+
+# ── Unidade travada para Administrador Local/Gestor de EPI (PR24-1) ────────
+# Bug reportado em produção: o campo Unidade do Cadastro de Colaboradores
+# aparecia como um seletor livre com todas as unidades do tenant para
+# admin/user, que só podem operar na própria unidade operacional
+# (backend já força isso em ensure_actor_unit_scope_for_target — esta é só
+# a correção de UX que faltava, para não deixar o perfil escolher algo que
+# o backend vai recusar).
+
+def test_unit_field_hint_exists_in_fragment_and_generated_index():
+    for path in (('static', 'views', 'terceirizados.html'), ('static', 'index.html')):
+        html = _read(*path)
+        assert 'id="outsourced-employee-unit-hint"' in html
+
+
+def test_sync_outsourced_employee_unit_options_locks_the_field_for_operational_profiles():
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('function syncOutsourcedEmployeeUnitOptions('):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert 'isOperationalProfile()' in fn
+    assert 'operational_unit_id' in fn
+    assert 'unitField.disabled = lockByOperationalProfile' in fn

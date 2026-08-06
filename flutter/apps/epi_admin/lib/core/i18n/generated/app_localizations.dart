@@ -606,6 +606,12 @@ abstract class AppLocalizations {
   /// **'Unidade'**
   String get employeeUnitLabel;
 
+  /// No description provided for @employeeUnitLockedHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade definida pelo seu perfil de acesso.'**
+  String get employeeUnitLockedHint;
+
   /// No description provided for @employeeLegalEntityLabel.
   ///
   /// In pt_BR, this message translates to:

@@ -1452,6 +1452,7 @@
     "employeeNewEntity": "Ny Medarbeider",
     "employeeCompanyLabel": "Innleid/tjenesteytende selskap",
     "employeeUnitLabel": "Enhet",
+    "employeeUnitLockedHint": "Enhet fastsatt av din tilgangsprofil.",
     "employeeNameLabel": "Fullt navn",
     "employeeCpfLabel": "CPF",
     "employeeRoleLabel": "Rolle",

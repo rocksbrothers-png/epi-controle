@@ -87,6 +87,7 @@
   "employeeSectorLabel": "Département",
   "employeeRoleLabel": "Poste",
   "employeeUnitLabel": "Unité",
+  "employeeUnitLockedHint": "Unité définie par votre profil d'accès.",
   "employeeLegalEntityLabel": "CNPJ",
   "employeeAdmissionLabel": "Date d'embauche",
   "employeeScheduleLabel": "Planning",

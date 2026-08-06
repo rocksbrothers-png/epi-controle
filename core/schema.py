@@ -1872,6 +1872,9 @@ def ensure_epi_operational_tables(connection) -> None:
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_notes', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'marca_modelo_sugerido', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_feedbacks', 'admin_tech_eval_at', "TEXT NOT NULL DEFAULT ''")
+    # Cria a tabela ANTES de adicionar colunas (rank_*). Em banco existente o
+    # CREATE IF NOT EXISTS é no-op; em banco novo (ex.: SaaS) garante que os
+    # _safe_add_column abaixo não falhem por tabela ausente.
     try:
         connection.execute(
             '''

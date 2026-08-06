@@ -459,6 +459,7 @@ from modules.payments.routes import register_routes as _reg_payments
 from modules.ppe_tests.routes import register_routes as _reg_ppe_tests
 from modules.legal_entities.routes import register_routes as _reg_legal_entities
 from modules.outsourced_companies.routes import register_routes as _reg_outsourced_companies
+from modules.data_migration.routes import register_routes as _reg_data_migration
 
 _reg_settings(router)
 _reg_devolutions(router)
@@ -483,6 +484,7 @@ _reg_payments(router)
 _reg_ppe_tests(router)
 _reg_legal_entities(router)
 _reg_outsourced_companies(router)
+_reg_data_migration(router)
 
 from epi_backend.bootstrap import (
     DB_BOOTSTRAP_STATE,

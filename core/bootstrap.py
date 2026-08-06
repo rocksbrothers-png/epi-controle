@@ -276,6 +276,10 @@ def init_db():
             # tabela já criada) e de schema.ensure_units_table (indiretamente, via
             # ensure_tenant_domain_tables acima) para a Unidade existir.
             schema.ensure_outsourced_company_unit_scope_column,
+            # Centro de Migração de Dados (ADR-0003) — tabelas próprias,
+            # independentes das demais: não dependem de nenhuma entidade de
+            # negócio existir, só guardam jobs/registros/mapeamentos.
+            schema.ensure_data_migration_tables,
             schema.ensure_employee_simplified_registration_columns,
             schema.ensure_unit_lifecycle_columns,
             schema.ensure_archival_lifecycle_columns,

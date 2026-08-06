@@ -3125,3 +3125,108 @@ def _operational_error_code(kind: str) -> str:
         'corrupted_database': 'DB_CORRUPTION_SUSPECTED',
         'io_error': 'DB_IO_ERROR',
     }.get(str(kind or ''), 'DB_DRIVER_UNEXPECTED')
+
+
+def ensure_data_migration_tables(connection) -> None:
+    """Intelligent Data Migration Center (ADR-0003).
+
+    Três tabelas, todas isoladas por tenant (``company_id``) e puramente
+    aditivas — nenhuma tabela existente é tocada:
+
+    - ``migration_jobs``: um job = uma importação. Guarda entidade, fonte,
+      hash do arquivo (deduplicação/auditoria), estratégia, status,
+      contagens, tempos, ator e IP.
+    - ``migration_job_records``: uma linha por registro tocado, com
+      ``before_json``/``after_json``. NÃO é log: é o estado necessário para
+      **desfazer** a importação (``DELETE`` no que foi inserido, restaurar
+      o ``before_json`` no que foi atualizado) e é o mesmo dado que
+      satisfaz a exigência de auditoria antes/depois, sem uma segunda
+      estrutura.
+    - ``migration_field_mappings``: o mapeamento coluna-de-origem →
+      campo-do-sistema confirmado pelo usuário, por tenant + entidade +
+      assinatura das colunas de origem. Reaplicado automaticamente na
+      próxima importação do mesmo layout — é o ganho real de
+      produtividade em implantação recorrente.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS migration_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                entity TEXT NOT NULL,
+                source_kind TEXT NOT NULL,
+                source_name TEXT NOT NULL DEFAULT '',
+                source_hash TEXT NOT NULL DEFAULT '',
+                strategy TEXT NOT NULL DEFAULT 'dry_run',
+                status TEXT NOT NULL DEFAULT 'pending',
+                total_rows INTEGER NOT NULL DEFAULT 0,
+                processed_rows INTEGER NOT NULL DEFAULT 0,
+                inserted_rows INTEGER NOT NULL DEFAULT 0,
+                updated_rows INTEGER NOT NULL DEFAULT 0,
+                skipped_rows INTEGER NOT NULL DEFAULT 0,
+                failed_rows INTEGER NOT NULL DEFAULT 0,
+                mapping_json TEXT NOT NULL DEFAULT '{}',
+                diagnostics_json TEXT NOT NULL DEFAULT '[]',
+                error_message TEXT NOT NULL DEFAULT '',
+                actor_user_id INTEGER,
+                actor_name TEXT NOT NULL DEFAULT '',
+                actor_ip TEXT NOT NULL DEFAULT '',
+                started_at TEXT,
+                finished_at TEXT,
+                reverted_at TEXT,
+                reverted_by INTEGER,
+                created_at TEXT NOT NULL DEFAULT ''
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.table_skip', table='migration_jobs', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS migration_job_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL,
+                company_id INTEGER NOT NULL,
+                row_number INTEGER NOT NULL DEFAULT 0,
+                action TEXT NOT NULL DEFAULT 'skip',
+                target_table TEXT NOT NULL DEFAULT '',
+                target_id INTEGER,
+                before_json TEXT,
+                after_json TEXT,
+                error_message TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT ''
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.table_skip', table='migration_job_records', error=str(_e))
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS migration_field_mappings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                entity TEXT NOT NULL,
+                source_signature TEXT NOT NULL,
+                mapping_json TEXT NOT NULL DEFAULT '{}',
+                usage_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT ''
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.table_skip', table='migration_field_mappings', error=str(_e))
+    for statement in (
+        'CREATE INDEX IF NOT EXISTS idx_migration_jobs_company ON migration_jobs (company_id, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_migration_jobs_entity ON migration_jobs (company_id, entity)',
+        'CREATE INDEX IF NOT EXISTS idx_migration_records_job ON migration_job_records (job_id)',
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_migration_mappings_key '
+        'ON migration_field_mappings (company_id, entity, source_signature)',
+    ):
+        try:
+            connection.execute(statement)
+        except Exception as _e:
+            structured_log('warning', 'db.index_skip', error=str(_e))

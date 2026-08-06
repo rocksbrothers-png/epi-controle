@@ -62,18 +62,19 @@ def test_default_visibility_matches_technical_permission_floor():
 
 
 def test_master_and_general_admin_see_every_module_by_default():
-    # "terceirizados" (ADR-014) e "terceirizados_colaboradores" (ADR-0002
-    # §10) são opt-in: ocultos por padrão até para quem tem o piso técnico,
-    # porque a subpasta só deve aparecer quando o Administrador Geral a liga
-    # explicitamente por tenant.
+    # Módulos opt-in ("terceirizados"/ADR-014,
+    # "terceirizados_colaboradores"/ADR-0002 §10, "migracao"/ADR-0003) são
+    # ocultos por padrão até para quem tem o piso técnico: só aparecem
+    # quando o Administrador Geral os liga explicitamente por tenant.
+    # Dirigido por _OPT_IN_MODULES em vez de uma lista repetida aqui — sem
+    # isso, todo módulo opt-in novo quebra este teste por engano.
+    from epi_backend.rule_engine import _OPT_IN_MODULES
     visibility = default_framework_payload()['module_visibility']
     for role in ('master_admin', 'general_admin'):
         modules = dict(visibility[role]['*'])
-        opt_in_terceirizados = modules.pop('terceirizados')
-        opt_in_colaboradores = modules.pop('terceirizados_colaboradores')
+        opt_in = {module: modules.pop(module) for module in _OPT_IN_MODULES}
         assert all(modules.values()), role
-        assert opt_in_terceirizados is False, role
-        assert opt_in_colaboradores is False, role
+        assert not any(opt_in.values()), (role, opt_in)
 
 
 def test_terceirizados_is_opt_in_hidden_for_every_role_by_default():

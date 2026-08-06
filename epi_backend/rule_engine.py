@@ -15,6 +15,7 @@ import os
 from core.permissions import (
     PERM_COMPANIES_VIEW,
     PERM_DASHBOARD_VIEW,
+    PERM_DATA_MIGRATION_MANAGE,
     PERM_DELIVERIES_VIEW,
     PERM_EMPLOYEES_CREATE,
     PERM_EMPLOYEES_CREATE_SIMPLIFIED,
@@ -55,6 +56,7 @@ MODULE_KEYS = (
     "configuracoes",
     "terceirizados",
     "terceirizados_colaboradores",
+    "migracao",
 )
 
 # Piso técnico de cada módulo: o ator só pode enxergá-lo se tiver ao menos
@@ -94,6 +96,13 @@ MODULE_REQUIRED_PERMISSIONS: dict[str, frozenset[str]] = {
     # Local/Gestor de EPI só o cadastro simplificado de terceirizado/
     # prestador, nunca o cadastro completo de CLT.
     "terceirizados_colaboradores": frozenset({PERM_EMPLOYEES_CREATE_SIMPLIFIED}),
+    # Centro de Migração de Dados (ADR-0003). Piso técnico próprio e
+    # exclusivo: só master_admin/general_admin têm data_migration:manage
+    # (core/permissions.py). Como é opt-in (_OPT_IN_MODULES abaixo), nasce
+    # oculto mesmo para esses dois até o Administrador Geral ligar por
+    # tenant — importar base legada reescreve cadastro em massa e não deve
+    # ficar exposto por padrão.
+    "migracao": frozenset({PERM_DATA_MIGRATION_MANAGE}),
 }
 
 # Comprador e Aprovador enxergam stock:view/deliveries:view apenas como
@@ -111,7 +120,12 @@ _STRUCTURALLY_HIDDEN_BY_DEFAULT: dict[str, frozenset[str]] = {
 # configuração por tenant (module_visibility). "terceirizados" (ADR-014,
 # condição de aprovação: subpasta oculta por padrão) e
 # "terceirizados_colaboradores" (ADR-0002 §10, mesma regra).
-_OPT_IN_MODULES: frozenset[str] = frozenset({"terceirizados", "terceirizados_colaboradores"})
+_OPT_IN_MODULES: frozenset[str] = frozenset({
+    "terceirizados", "terceirizados_colaboradores",
+    # Migração de Dados (ADR-0003): nasce oculta mesmo para master_admin/
+    # general_admin — importar base legada reescreve cadastro em massa.
+    "migracao",
+})
 
 # Papéis com unidade operacional própria (Administrador Local/Gestor de EPI
 # — vínculo único com UMA unidade, nunca uma carteira; ver

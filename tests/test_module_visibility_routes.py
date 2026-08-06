@@ -125,12 +125,11 @@ def test_get_module_visibility_includes_immutable_system_default(monkeypatch):
     body = handler.json()
     default = body['default_module_visibility']
     # Exemplo do próprio pedido de produto: Gestor de EPI só tem
-    # Dashboard/Estoque/Entregas/Fichas de EPI por padrão.
-    assert default['user'] == {
-        'dashboard': True, 'compras': False, 'estoque': True, 'entregas': True,
-        'solicitacoes': False, 'fichas': True, 'relatorios': False,
-        'administracao': False, 'configuracoes': False,
-        'terceirizados': False, 'terceirizados_colaboradores': False,
+    # Dashboard/Estoque/Entregas/Fichas de EPI por padrão. Comparado como
+    # CONJUNTO dos módulos habilitados (não dict exato) para que um módulo
+    # novo — sempre oculto para este perfil — não quebre o teste por engano.
+    assert {module for module, visible in default['user'].items() if visible} == {
+        'dashboard', 'estoque', 'entregas', 'fichas',
     }
     # Módulos opt-in nascem ocultos por padrão para todo perfil, mesmo o
     # mais privilegiado.

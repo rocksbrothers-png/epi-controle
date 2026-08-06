@@ -72,6 +72,14 @@ PERM_USAGE_VIEW = 'usage:view'
 PERM_STOCK_VIEW = 'stock:view'
 PERM_STOCK_ADJUST = 'stock:adjust'
 
+# Centro de Migração de Dados (ADR-0003) — permissão única e estreita,
+# concedida SÓ a master_admin e general_admin. Importar base legada reescreve
+# cadastro trabalhista/fiscal em massa: Administrador Local, Gestor de EPI,
+# Comprador, Aprovador e Colaborador nunca a recebem. Diferente das demais
+# permissões de escrita, não existe variante "por unidade" — migração é
+# sempre uma operação de tenant inteiro.
+PERM_DATA_MIGRATION_MANAGE = 'data_migration:manage'
+
 PERM_SETTINGS_VIEW = 'settings:view'
 PERM_SETTINGS_UPDATE = 'settings:update'
 
@@ -223,6 +231,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE,
             PERM_COMPANIES_SUPPORT,
             PERM_PPE_TEST_VIEW,
+            PERM_DATA_MIGRATION_MANAGE,
         })
     ) - MASTER_ADMIN_OPERATIONAL_EXCLUSIONS,
     'general_admin': (
@@ -236,6 +245,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_SUPPLIERS_MANAGE, PERM_UNIT_LINKS_MANAGE,
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_CREATE,
             PERM_EPI_FEEDBACK_MANAGER_EVAL,
+            PERM_DATA_MIGRATION_MANAGE,
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE, PERM_EPI_SUGGESTION_ACCEPT,
             PERM_COMPANY_SETTINGS_VIEW, PERM_COMPANY_SETTINGS_UPDATE,
         })

@@ -168,6 +168,45 @@ def test_load_outsourced_companies_gate_matches_backend_view_permission():
     assert "hasPermission('employees:create')" not in fn
 
 
+# ── Unidade travada para Administrador Local/Gestor de EPI no Cadastro de
+# Empresa Terceirizada (bug reportado em produção, análogo ao PR24-1 já
+# aplicado no Cadastro de Colaboradores) ────────────────────────────────────
+# O campo Unidade do form "Cadastro de Empresa Terceirizada" aparecia como
+# seletor livre (com "Todas as unidades (padrão)" + todas as Unidades do
+# tenant) mesmo para Administrador Local/Gestor de EPI, que só podem
+# cadastrar/editar na própria Unidade operacional — o backend já força isso
+# em resolve_outsourced_company_unit_id (ignora unit_id do payload para
+# estes perfis), mas a UI deixava escolher uma opção sem nenhum efeito real.
+
+def test_sync_outsourced_company_unit_options_function_exists_and_locks_the_field():
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('function syncOutsourcedCompanyUnitOptions('):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert 'isOperationalProfile()' in fn
+    assert 'operational_unit_id' in fn
+    assert 'unitField.disabled = true' in fn
+
+
+def test_sync_outsourced_company_unit_options_wired_into_bind_dependent_selects():
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('function bindDependentSelects()'):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert 'syncOutsourcedCompanyUnitOptions();' in fn
+
+
+def test_sync_outsourced_company_unit_options_wired_into_form_reset_paths():
+    app_js = _read('static', 'app.js')
+    reset_fn = app_js[app_js.index('function resetOutsourcedCompanyForm()'):]
+    reset_fn = reset_fn[:reset_fn.index('\n}\n') + 2]
+    assert 'syncOutsourcedCompanyUnitOptions();' in reset_fn
+    edit_fn = app_js[app_js.index('function startEditOutsourcedCompany('):]
+    edit_fn = edit_fn[:edit_fn.index('\n}\n') + 2]
+    assert 'syncOutsourcedCompanyUnitOptions();' in edit_fn
+    handle_reset = app_js[app_js.index('function handleFormReset('):]
+    handle_reset = handle_reset[:handle_reset.index("form.id === 'outsourced-employee-form'")]
+    assert 'syncOutsourcedCompanyUnitOptions();' in handle_reset
+
+
 # ── build reproduz o index.html a partir dos fragmentos ─────────────────────
 
 def test_build_index_view_ids_include_terceirizados_in_correct_position():

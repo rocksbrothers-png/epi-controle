@@ -5232,6 +5232,7 @@ function bindDependentSelects() {
   populateLinkedEmployeeOptions();
   syncEmployeeUnitOptions();
   syncOutsourcedEmployeeUnitOptions();
+  syncOutsourcedCompanyUnitOptions();
   syncUnitLegalEntityOptions();
   syncEpiUnitOptions();
   syncDeliveryOptions();
@@ -7744,11 +7745,39 @@ function setOutsourcedCompanyFormMode(mode) {
   if (cancel) cancel.hidden = mode !== 'edit';
 }
 
+// Administrador Local/Gestor de EPI (isOperationalProfile()) só podem
+// cadastrar/editar Empresas Terceirizadas na própria Unidade operacional —
+// o backend já força isso em resolve_outsourced_company_unit_id (ignora
+// unit_id do payload para estes perfis, tanto no create quanto no update,
+// modules/outsourced_companies/service.py), mas até esta correção o campo
+// aparecia como um seletor livre — inclusive com a opção "Todas as
+// unidades (padrão)" — deixando esses perfis escolherem uma opção sem
+// nenhum efeito real na gravação. Mesmo padrão de
+// syncOutsourcedEmployeeUnitOptions: preenche com a própria unidade e
+// desabilita o campo.
+function syncOutsourcedCompanyUnitOptions() {
+  const unitField = document.getElementById('outsourced-company-unit');
+  if (!unitField) return;
+  const lockByOperationalProfile = isOperationalProfile();
+  if (!lockByOperationalProfile) {
+    unitField.disabled = false;
+    return;
+  }
+  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
+  const scopedUnit = filterByUserCompany(state.units || []).find((item) => String(item.id) === operationalUnitId);
+  unitField.innerHTML = scopedUnit
+    ? `<option value="${scopedUnit.id}">${scopedUnit.name} - ${unitTypeLabel(scopedUnit.unit_type)}</option>`
+    : '<option value="">Sem unidade operacional ativa</option>';
+  unitField.value = scopedUnit ? String(scopedUnit.id) : '';
+  unitField.disabled = true;
+}
+
 function resetOutsourcedCompanyForm() {
   const form = document.getElementById('outsourced-company-form');
   if (!form) return;
   form.reset();
   form.elements.id.value = '';
+  syncOutsourcedCompanyUnitOptions();
   setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
   setOutsourcedCompanyFormMode('create');
 }
@@ -7763,6 +7792,7 @@ function startEditOutsourcedCompany(entityId) {
   form.elements.cnpj.value = item.cnpj || '';
   form.elements.company_kind.value = item.company_kind || 'outsourced';
   form.elements.epi_responsibility.value = item.epi_responsibility || 'Conforme Contrato';
+  syncOutsourcedCompanyUnitOptions();
   if (form.elements.unit_id) form.elements.unit_id.value = item.unit_id != null ? String(item.unit_id) : '';
   setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.update', 'Atualizar Empresa'));
   setOutsourcedCompanyFormMode('edit');
@@ -10699,6 +10729,7 @@ function handleFormReset(form) {
   } else if (form.id === 'outsourced-company-form') {
     setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
     setOutsourcedCompanyFormMode('create');
+    syncOutsourcedCompanyUnitOptions();
   } else if (form.id === 'outsourced-employee-form') {
     setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
     setOutsourcedEmployeeFormMode('create');

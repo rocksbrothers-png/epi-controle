@@ -32,8 +32,6 @@ STRATEGIES = (
     'overwrite',        # atualiza existentes sobrescrevendo todos os campos mapeados
 )
 
-_WRITE_STRATEGIES = frozenset({'insert_only', 'update_only', 'upsert', 'skip_duplicates', 'overwrite'})
-
 
 def _now() -> str:
     return datetime.now(UTC).isoformat(timespec='seconds')

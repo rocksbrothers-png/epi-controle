@@ -55,7 +55,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U epi"
+          --health-cmd "pg_isready -U epi -d epi_migration_journey"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -85,7 +85,7 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           for i in $(seq 1 30); do
-            pg_isready -h localhost -U epi && break
+            pg_isready -h localhost -U epi -d epi_migration_journey && break
             sleep 2
           done
           psql -h localhost -U epi -d epi_migration_journey -c "SELECT version();"

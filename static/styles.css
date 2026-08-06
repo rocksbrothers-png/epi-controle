@@ -4171,3 +4171,98 @@ body.ux-density-compact th { padding: 6px 10px; font-size: 12.5px; }
   .vtab { padding: 10px 12px; font-size: 0.9rem; }
   .vtab-panel > form.card { max-width: none; }
 }
+
+/* ── Centro de Migração de Dados (ADR-0003 fase 2) ───────────────────────── */
+.migracao-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.migracao-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  text-align: left;
+  cursor: pointer;
+}
+.migracao-card:hover:not(.is-disabled) { border-color: var(--accent); }
+.migracao-card.is-disabled { opacity: .6; cursor: not-allowed; }
+
+.migracao-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.migracao-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(29, 42, 36, .06);
+  color: var(--muted);
+  font-size: .9rem;
+}
+.migracao-steps li.active { background: var(--accent-soft); color: #96401c; font-weight: 700; }
+.migracao-steps li.done { background: rgba(34, 107, 76, .12); color: var(--success); }
+.migracao-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .7);
+  font-weight: 700;
+}
+
+.migracao-dropzone {
+  margin-top: 12px;
+  padding: 28px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+.migracao-dropzone:hover,
+.migracao-dropzone:focus-visible,
+.migracao-dropzone.is-dragging { border-color: var(--accent); background: rgba(200, 92, 44, .05); }
+
+.migracao-detected {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 4px 16px;
+  margin: 12px 0;
+}
+.migracao-detected dt { color: var(--muted); font-size: .82rem; }
+.migracao-detected dd { margin: 0 0 8px; font-weight: 700; }
+
+.migracao-counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.migracao-counter {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(29, 42, 36, .05);
+}
+.migracao-counter strong { font-size: 1.5rem; line-height: 1.1; }
+.migracao-counter span { color: var(--muted); font-size: .82rem; }
+
+@media (max-width: 720px) {
+  .migracao-card-grid { grid-template-columns: 1fr; }
+  .migracao-steps li { flex: 1 1 100%; }
+}

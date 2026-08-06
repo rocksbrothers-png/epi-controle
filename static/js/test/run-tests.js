@@ -60,7 +60,8 @@ function loadModule(relPath) {
   'views/legal-entities-view.js',
   'views/outsourced-companies-view.js',
   'views/outsourced-employees-view.js',
-  'views/dashboard-scope.js'
+  'views/dashboard-scope.js',
+  'views/data-migration-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -1399,6 +1400,148 @@ test('dashboard-scope: hasActiveFilter reconhece qualquer nível', () => {
 test('dashboard-scope: ids como string (vindos de <select>) funcionam', () => {
   const ids = _S().scopedUnitIds(_SC_UNITS, '10', '');
   eq(JSON.stringify(Array.from(ids)), JSON.stringify([1, 2]));
+});
+
+
+// ── views/data-migration-view (ADR-0003 fase 2) ───────────────────────────
+const _DM = () => globalThis.__EPI_DATA_MIGRATION_VIEW__;
+
+const _DM_FIELDS = [
+  { name: 'name', label: 'Nome', required: true },
+  { name: 'cpf', label: 'CPF', required: true },
+  { name: 'role_name', label: 'Função', required: false },
+  { name: 'empresa_origem', label: 'Empresa de origem', required: false }
+];
+
+test('data-migration: confidenceLevel separa exato de aproximado', () => {
+  eq(_DM().confidenceLevel(1), 'exact');
+  eq(_DM().confidenceLevel(0.95), 'high');
+  eq(_DM().confidenceLevel(0.85), 'medium');
+  eq(_DM().confidenceLevel(0.5), 'low');
+  eq(_DM().confidenceLevel(0), 'none');
+  eq(_DM().confidenceLevel(null), 'none');
+});
+
+test('data-migration: needsReview marca coluna sem destino', () => {
+  assert(_DM().needsReview({ source_column: 'X', target_field: null }), 'sem destino');
+  assert(!_DM().needsReview({ target_field: 'name', strategy: 'exact' }), 'exato dispensa revisão');
+  assert(!_DM().needsReview({ target_field: 'name', strategy: 'synonym' }), 'sinônimo dispensa revisão');
+});
+
+test('data-migration: needsReview marca duplicate_target', () => {
+  // O motor não degrada para o segundo melhor destino (ADR-0003 §2.3): a
+  // coluna fica sem destino e precisa de decisão humana.
+  assert(_DM().needsReview({ source_column: 'Employee', target_field: null, strategy: 'duplicate_target' }), 'duplicado');
+  assert(_DM().needsReview({ target_field: 'empresa_origem', strategy: 'fuzzy' }), 'fuzzy pede conferência');
+});
+
+test('data-migration: mappingSummary conta reconhecidas e a conferir', () => {
+  const summary = _DM().mappingSummary([
+    { source_column: 'Nome', target_field: 'name', strategy: 'exact' },
+    { source_column: 'CPF', target_field: 'cpf', strategy: 'synonym' },
+    { source_column: 'Cargo', target_field: 'role_name', strategy: 'fuzzy' },
+    { source_column: 'Employee', target_field: null, strategy: 'duplicate_target' }
+  ], []);
+  eq(summary.total, 4);
+  eq(summary.mapped, 3);
+  eq(summary.unmapped, 1);
+  eq(summary.review, 2);
+  assert(summary.ready, 'sem obrigatório faltando fica pronto');
+});
+
+test('data-migration: mappingSummary não fica pronto com obrigatório faltando', () => {
+  const summary = _DM().mappingSummary([], ['cpf']);
+  assert(!summary.ready, 'obrigatório ausente trava');
+  eq(JSON.stringify(summary.missingRequired), JSON.stringify(['cpf']));
+});
+
+test('data-migration: availableTargets esconde destino já usado por outra coluna', () => {
+  const mapping = { 'Nome': 'name', 'CPF': 'cpf' };
+  const forOther = _DM().availableTargets(_DM_FIELDS, mapping, 'Cargo').map((f) => f.name);
+  eq(JSON.stringify(forOther), JSON.stringify(['role_name', 'empresa_origem']));
+});
+
+test('data-migration: availableTargets mantém o destino da própria coluna', () => {
+  // Sem isso o <select> da coluna perderia a própria opção selecionada.
+  const mapping = { 'Nome': 'name' };
+  const forSelf = _DM().availableTargets(_DM_FIELDS, mapping, 'Nome').map((f) => f.name);
+  assert(forSelf.includes('name'), 'destino próprio continua disponível');
+});
+
+test('data-migration: missingRequiredFields aponta obrigatório sem coluna', () => {
+  eq(JSON.stringify(_DM().missingRequiredFields(_DM_FIELDS, { 'Nome': 'name' })), JSON.stringify(['cpf']));
+  eq(_DM().missingRequiredFields(_DM_FIELDS, { 'Nome': 'name', 'Doc': 'cpf' }).length, 0);
+});
+
+test('data-migration: canAdvance exige o que cada etapa precisa', () => {
+  assert(!_DM().canAdvance('entidade', {}), 'sem entidade não avança');
+  assert(_DM().canAdvance('entidade', { entity: 'colaboradores' }), 'com entidade avança');
+  assert(!_DM().canAdvance('origem', { sourceKind: 'csv' }), 'sem arquivo não avança');
+  assert(_DM().canAdvance('origem', { sourceKind: 'csv', fileName: 'a.csv' }), 'com arquivo avança');
+  assert(!_DM().canAdvance('leitura', { totalRows: 0 }), 'arquivo vazio não avança');
+  assert(_DM().canAdvance('leitura', { totalRows: 3 }), 'com linhas avança');
+});
+
+test('data-migration: canAdvance no mapeamento trava com obrigatório faltando', () => {
+  const draft = { fields: _DM_FIELDS, mapping: { 'Nome': 'name' } };
+  assert(!_DM().canAdvance('mapeamento', draft), 'falta cpf');
+  draft.mapping['Doc'] = 'cpf';
+  assert(_DM().canAdvance('mapeamento', draft), 'obrigatórios completos');
+});
+
+test('data-migration: nextStep/previousStep respeitam as pontas', () => {
+  eq(_DM().nextStep('entidade'), 'origem');
+  eq(_DM().nextStep('mapeamento'), 'mapeamento');
+  eq(_DM().previousStep('origem'), 'entidade');
+  eq(_DM().previousStep('entidade'), 'entidade');
+});
+
+test('data-migration: dashboardCards preserva entidades de roadmap marcadas', () => {
+  const cards = _DM().dashboardCards([
+    { key: 'colaboradores', label: 'Colaboradores', enabled: true, phase: 1, fields: [{}, {}] },
+    { key: 'estoque', label: 'Estoque', enabled: false, phase: 4, fields: [] }
+  ]);
+  eq(cards.length, 2);
+  assert(cards[0].enabled, 'habilitada');
+  assert(!cards[1].enabled, 'roadmap aparece mas desabilitada');
+  eq(cards[0].fieldCount, 2);
+});
+
+test('data-migration: canRevert só aceita concluída e não revertida', () => {
+  assert(_DM().canRevert({ status: 'completed', reverted_at: null }), 'concluída');
+  assert(!_DM().canRevert({ status: 'completed', reverted_at: '2026-01-01' }), 'já revertida');
+  assert(!_DM().canRevert({ status: 'failed' }), 'com falha');
+  assert(!_DM().canRevert({ status: 'reverted' }), 'revertida');
+  assert(!_DM().canRevert(null), 'sem job');
+});
+
+test('data-migration: jobCounters normaliza ausentes para zero', () => {
+  const counters = _DM().jobCounters({ total_rows: 10, inserted_rows: 7 });
+  eq(counters.total, 10);
+  eq(counters.inserted, 7);
+  eq(counters.updated, 0);
+  eq(counters.failed, 0);
+});
+
+test('data-migration: groupDiagnostics agrupa por tipo e ordena por volume', () => {
+  const grouped = _DM().groupDiagnostics([
+    { kind: 'invalid_value', row_number: 2 },
+    { kind: 'missing_required', row_number: 3 },
+    { kind: 'invalid_value', row_number: 5 },
+    { kind: 'invalid_value', row_number: 9 }
+  ]);
+  eq(grouped.length, 2);
+  eq(grouped[0].kind, 'invalid_value');
+  eq(grouped[0].count, 3);
+  eq(JSON.stringify(grouped[0].rows), JSON.stringify([2, 5, 9]));
+  eq(grouped[1].kind, 'missing_required');
+});
+
+test('data-migration: APPLY_STRATEGIES não oferece dry_run como escolha', () => {
+  // dry_run é o preview, disparado automaticamente — nunca uma opção de
+  // "como aplicar" no seletor.
+  assert(!_DM().APPLY_STRATEGIES.includes('dry_run'), 'dry_run fora do seletor');
+  eq(_DM().APPLY_STRATEGIES.length, 5);
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

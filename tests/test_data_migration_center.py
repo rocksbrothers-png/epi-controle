@@ -28,6 +28,7 @@ import pytest
 
 from core.permissions import PERMISSIONS, PERM_DATA_MIGRATION_MANAGE
 from core.schema import ensure_data_migration_tables
+from epi_backend.db import mandatory_db_columns
 from epi_backend.rule_engine import (
     MODULE_REQUIRED_PERMISSIONS,
     _OPT_IN_MODULES,
@@ -101,10 +102,14 @@ def _conn():
     return wrapped
 
 
-def _seed_company(conn, name='ACME'):
+def _seed_company(conn, name='ACME', unit_name='Base Macaé'):
     cur = conn.execute('INSERT INTO companies (name) VALUES (?)', (name,))
+    company_id = int(cur.lastrowid)
+    # employees.unit_id é NOT NULL no schema real: todo tenant de teste nasce
+    # com a unidade que o CSV das fixtures referencia por nome.
+    conn.execute('INSERT INTO units (company_id, name) VALUES (?, ?)', (company_id, unit_name))
     conn.commit()
-    return int(cur.lastrowid)
+    return company_id
 
 
 def _actor(company_id, role='general_admin', user_id=1):
@@ -116,15 +121,16 @@ def _csv(rows_text: str) -> bytes:
 
 
 _CSV_THREE = (
-    'Funcionário;CPF;Registration;Função\n'
-    f'Maria Silva;{VALID_CPF_A};M-001;Soldadora\n'
-    f'João Souza;{VALID_CPF_B};M-002;Eletricista\n'
-    f'Ana Lima;{VALID_CPF_C};M-003;Mecânica\n'
+    'Funcionário;CPF;Registration;Função;Unidade\n'
+    f'Maria Silva;{VALID_CPF_A};M-001;Soldadora;Base Macaé\n'
+    f'João Souza;{VALID_CPF_B};M-002;Eletricista;Base Macaé\n'
+    f'Ana Lima;{VALID_CPF_C};M-003;Mecânica;Base Macaé\n'
 )
 
 _MAPPING_THREE = {
     'Funcionário': 'name', 'CPF': 'cpf',
     'Registration': 'employee_id_code', 'Função': 'role_name',
+    'Unidade': 'unit_id',
 }
 
 
@@ -194,7 +200,7 @@ def test_csv_detects_delimiter_encoding_columns_and_row_count():
     assert dataset.detected['delimiter'] == ';'
     assert dataset.detected['encoding'].startswith('utf-8')
     assert dataset.total_rows == 3
-    assert dataset.columns == ['Funcionário', 'CPF', 'Registration', 'Função']
+    assert dataset.columns == ['Funcionário', 'CPF', 'Registration', 'Função', 'Unidade']
 
 
 def test_json_accepts_both_bare_list_and_wrapped_payload():
@@ -274,7 +280,9 @@ def test_unrecognized_column_falls_back_to_manual_mapping():
 
 def test_mapper_reports_missing_required_fields():
     result = suggest_mapping(get_entity('colaboradores'), ['Função'])
-    assert set(result['missing_required']) == {'name', 'cpf'}
+    # unit_id entra aqui porque employees.unit_id é NOT NULL: colaborador sem
+    # unidade não existe neste sistema.
+    assert set(result['missing_required']) == {'name', 'cpf', 'unit_id'}
 
 
 def test_manual_mapping_rejects_a_field_outside_the_descriptor():
@@ -322,7 +330,9 @@ def test_preview_reports_invalid_cpf_with_the_row_number():
 
 
 def test_preview_reports_missing_required_field():
-    preview = build_preview(get_entity('colaboradores'), [{'name': '', 'cpf': VALID_CPF_A}])
+    preview = build_preview(
+        get_entity('colaboradores'), [{'name': '', 'cpf': VALID_CPF_A, 'unit_id': 7}],
+    )
     assert preview['counters']['missing_required'] == 1
     assert preview['blocking'] is True
 
@@ -399,10 +409,11 @@ def test_update_only_does_not_create_anything():
 def test_import_is_blocked_when_the_file_has_errors():
     conn = _conn()
     cid = _seed_company(conn)
-    bad = 'Funcionário;CPF\nMaria;111.444.777-00\n'
+    # CPF com dígito verificador errado: chega ao preview e é ele que bloqueia.
+    bad = 'Funcionário;CPF;Unidade\nMaria;111.444.777-00;Base Macaé\n'
     with pytest.raises(ValueError, match='bloqueada'):
         _run(conn, cid, strategy='insert_only', raw=_csv(bad),
-             mapping={'Funcionário': 'name', 'CPF': 'cpf'})
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id'})
     assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
 
 
@@ -528,7 +539,106 @@ def test_apply_mapping_translates_rows_into_system_vocabulary():
     assert records[0] == {
         'name': 'Maria Silva', 'cpf': VALID_CPF_A,
         'employee_id_code': 'M-001', 'role_name': 'Soldadora',
+        'unit_id': 'Base Macaé',
     }
+
+
+# ── Referências e isolamento por linha (achados do teste de navegador) ───────
+
+def test_unit_name_from_the_legacy_file_is_resolved_to_the_unit_id():
+    """O export legado diz "Base Macaé", nunca o id interno do sistema."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (cid,),
+    ).fetchone()['id']
+    _run(conn, cid, strategy='insert_only')
+    rows = conn.execute(
+        'SELECT unit_id FROM employees WHERE company_id = ?', (cid,),
+    ).fetchall()
+    assert [row['unit_id'] for row in rows] == [unit_id, unit_id, unit_id]
+
+
+def test_unit_name_that_does_not_exist_blocks_before_writing_anything():
+    """Referência inexistente vira erro no preview — nunca um INSERT que
+    estoura no banco depois de a importação já ter começado."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    csv = (
+        'Funcionário;CPF;Unidade\n'
+        f'Maria Silva;{VALID_CPF_A};Unidade Que Nao Existe\n'
+    )
+    with pytest.raises(ValueError, match='bloqueada'):
+        _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id'})
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
+
+
+def test_a_numeric_unit_value_is_accepted_as_an_id():
+    """Planilha exportada do próprio sistema já traz o id."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (cid,),
+    ).fetchone()['id']
+    csv = (
+        'Funcionário;CPF;Unidade\n'
+        f'Maria Silva;{VALID_CPF_A};{unit_id}\n'
+    )
+    _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+         mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id'})
+    assert conn.execute(
+        'SELECT unit_id FROM employees WHERE company_id = ?', (cid,),
+    ).fetchone()['unit_id'] == unit_id
+
+
+def test_one_bad_row_does_not_abort_the_whole_job():
+    """A linha ruim é isolada num SAVEPOINT.
+
+    Sem isso, no PostgreSQL o primeiro erro aborta a transação e todo comando
+    seguinte falha — inclusive o registro do diagnóstico e o UPDATE final do
+    job — deixando a conexão envenenada para a próxima requisição.
+    """
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (cid,),
+    ).fetchone()['id']
+    # A coluna `name` é NOT NULL na tabela; forçamos o erro no meio do lote.
+    conn.execute('CREATE TABLE employees_backup AS SELECT * FROM employees')
+    records = [
+        {'name': 'Maria Silva', 'cpf': VALID_CPF_A, 'unit_id': unit_id},
+        {'name': 'Ana Lima', 'cpf': VALID_CPF_C, 'unit_id': unit_id},
+    ]
+    descriptor = get_entity('colaboradores')
+    job_id = service.create_job(
+        conn, company_id=cid, entity=descriptor.key, source_kind='csv',
+        source_name='x.csv', hash_value='h', strategy='insert_only', actor=_actor(cid),
+    )
+    writable = service._writable_columns(conn, descriptor)
+    mandatory = mandatory_db_columns(conn, descriptor.target_table) - {'company_id'}
+    ok = 0
+    for index, record in enumerate(records, start=1):
+        payload = {k: v for k, v in record.items() if k in writable}
+        try:
+            with service._row_guard(conn):
+                if index == 1:
+                    # Erro deliberado dentro do savepoint.
+                    conn.execute('INSERT INTO employees (id, company_id) VALUES (1, 1)')
+                    conn.execute('INSERT INTO employees (id, company_id) VALUES (1, 1)')
+                else:
+                    service._insert(conn, descriptor, cid, mandatory, payload)
+                    ok += 1
+        except Exception:  # noqa: BLE001 - é exatamente o caso sob teste
+            pass
+    # A conexão continua utilizável depois do erro: o job fecha normalmente.
+    service._finish_job(
+        conn, job_id, status='completed',
+        totals={'total': 2, 'processed': 2, 'inserted': ok, 'updated': 0, 'skipped': 0, 'failed': 1},
+        preview={'diagnostics': []},
+    )
+    assert ok == 1
+    assert service.get_job(conn, job_id, cid)['status'] == 'completed'
 
 
 # ── Auditoria (ADR-0003 §6) ─────────────────────────────────────────────────

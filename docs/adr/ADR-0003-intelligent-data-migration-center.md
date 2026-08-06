@@ -172,8 +172,8 @@ importação de 100k linhas seja tentada de forma síncrona.
 
 | Fase | Escopo | Estado |
 |---|---|---|
-| **1 — Fundação (PR 25)** | Permissão + módulo opt-in, schema, catálogo declarativo das 20 entidades, fontes de arquivo (XLSX/CSV/ODS/JSON/XML/TXT), motor de mapeamento inteligente, preview/validação, 6 estratégias, apply + rollback, rotas REST, testes | **esta PR** |
-| 2 — Web Legado | Wizard de 4 etapas, dashboard com os 20 cartões, drag-and-drop, preview, progresso, download dos relatórios | próxima |
+| 1 — Fundação (PR 25) | Permissão + módulo opt-in, schema, catálogo declarativo das 20 entidades, fontes de arquivo (XLSX/CSV/ODS/JSON/XML/TXT), motor de mapeamento inteligente, preview/validação, 6 estratégias, apply + rollback, rotas REST, testes | concluída |
+| **2 — Web Legado (PR 26)** | Wizard de 4 etapas, dashboard com os 20 cartões, drag-and-drop, preview, download do relatório, histórico e rollback | **esta PR** |
 | 3 — Flutter (Web/Android/iOS) | Mesma jornada, Material 3, responsivo, dark/light | seguinte |
 | 4 — Escala | Executor em background, progresso incremental, importação parcial/incremental | seguinte |
 | 5 — Fontes de banco | SQL Server, Oracle, MySQL, PostgreSQL, SQLite: testar conexão, listar tabelas, prever, migrar | seguinte |
@@ -184,7 +184,45 @@ As entidades do catálogo já declaradas mas ainda sem writer vetado entram
 como `enabled=False` e aparecem na UI como "em breve" — a alternativa
 (expor um importador não validado para dado trabalhista) seria pior.
 
-## 10. Riscos
+## 10. O que só apareceu rodando de verdade (PR 26)
+
+A Fase 1 passou com 2 086 testes verdes e ainda assim **não importava um
+único colaborador** no banco de produção. Três defeitos ficaram invisíveis
+porque a suíte roda em SQLite e o produto roda em PostgreSQL. Ficam
+registrados porque a causa é estrutural, não um descuido pontual.
+
+**1. O `try/except` por linha não isolava nada no PostgreSQL.** O motor
+promete que "uma linha ruim não derruba o job". No SQLite isso funciona; no
+PostgreSQL o primeiro erro aborta a transação inteira e todo comando
+seguinte falha com *current transaction is aborted* — inclusive o INSERT do
+próprio diagnóstico e o UPDATE final do job. Pior: a conexão voltava
+envenenada para o pool e derrubava a **requisição seguinte**, sem relação
+com a importação. Corrigido com `SAVEPOINT` por linha (`_row_guard`), que é
+o que torna a promessa real nos dois bancos.
+
+**2. O preview mentia sobre o que ia acontecer.** `employees.unit_id` é NOT
+NULL, mas o catálogo declarava a Unidade como opcional: a simulação dizia
+"3 válidas, 0 problemas" e a gravação estourava em seguida. Um preview que
+não prevê não serve para nada — o campo virou `required=True`.
+
+**3. Nenhum export legado traz o ID interno deste sistema.** A planilha diz
+"Produção", não "3". Sem tradução nome → id, a Unidade obrigatória tornaria
+a importação impossível. Daí `FieldSpec.resolves_to`: o motor resolve pelo
+nome dentro do tenant, aceita valor numérico como id (planilha exportada do
+próprio sistema) e transforma nome inexistente em erro **no preview**, antes
+de gravar.
+
+Ainda derivado de (2): há colunas NOT NULL sem default que o catálogo nem
+conhece (`employees.schedule_type`). O motor passou a introspectar a tabela
+e preencher essas colunas com string vazia — o mesmo valor que o cadastro
+manual do sistema grava. A introspecção mora em `epi_backend/db.py`
+(`mandatory_db_columns`), único lugar autorizado a executar `PRAGMA`.
+
+**Consequência de processo:** cobertura de teste alta não substitui exercitar
+o produto contra o banco real. As fases seguintes devem incluir uma passagem
+ponta a ponta em PostgreSQL antes de serem consideradas prontas.
+
+## 11. Riscos
 
 | Risco | Mitigação |
 |---|---|

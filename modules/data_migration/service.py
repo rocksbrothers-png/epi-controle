@@ -13,9 +13,10 @@ estruturalmente impossível neste caminho.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
-from epi_backend.db import row_to_dict, table_columns
+from epi_backend.db import mandatory_db_columns, row_to_dict, table_columns
 from modules.data_migration.catalog import get_entity, require_enabled_entity
 from modules.data_migration.mapper import apply_mapping, normalize_manual_mapping, suggest_mapping
 from modules.data_migration.preview import build_preview, natural_key_of
@@ -142,6 +143,77 @@ def _existing_index(connection, descriptor, company_id: int) -> dict[str, dict]:
 
 # ── Job ─────────────────────────────────────────────────────────────────────
 
+def _reference_index(connection, table: str, name_column: str, company_id: int) -> dict[str, int]:
+    """Mapa ``nome normalizado -> id`` de uma tabela do tenant."""
+    rows = connection.execute(
+        f'SELECT id, {name_column} FROM {table} WHERE company_id = %s',  # noqa: S608 - allowlist do catálogo
+        (int(company_id),),
+    ).fetchall()
+    index: dict[str, int] = {}
+    for row in rows:
+        data = row_to_dict(row)
+        key = _normalize_reference(data.get(name_column))
+        if key:
+            index[key] = int(data['id'])
+    return index
+
+
+def _normalize_reference(value: object) -> str:
+    return ' '.join(str(value or '').strip().lower().split())
+
+
+def resolve_references(connection, descriptor, company_id: int, records: list[dict]) -> list[dict]:
+    """Converte nome → id nos campos com ``resolves_to``.
+
+    O arquivo legado traz "Produção", não o id interno. Um valor que já é
+    numérico é aceito como id (planilha exportada do próprio sistema); um
+    nome que não existe na base fica **vazio**, e a validação de obrigatório
+    do preview o transforma em erro visível — em vez de um INSERT que falha
+    no banco depois de a importação já ter começado.
+    """
+    resolvable = [spec for spec in descriptor.fields if spec.resolves_to]
+    if not resolvable:
+        return records
+    indexes = {
+        spec.name: _reference_index(connection, spec.resolves_to[0], spec.resolves_to[1], company_id)
+        for spec in resolvable
+    }
+    resolved = []
+    for record in records:
+        updated = dict(record)
+        for spec in resolvable:
+            raw = str(updated.get(spec.name) or '').strip()
+            if not raw:
+                continue
+            if raw.isdigit():
+                updated[spec.name] = int(raw)
+                continue
+            updated[spec.name] = indexes[spec.name].get(_normalize_reference(raw), '')
+        resolved.append(updated)
+    return resolved
+
+
+@contextmanager
+def _row_guard(connection):
+    """Isola a gravação de UMA linha da transação do job.
+
+    Sem isto o ``try/except`` por linha abaixo não isola nada no PostgreSQL:
+    o primeiro erro aborta a transação inteira, todo comando seguinte falha
+    com "current transaction is aborted" — inclusive o INSERT do diagnóstico
+    e o UPDATE final do job — e a conexão volta envenenada para o pool,
+    derrubando a *próxima* requisição, sem relação com esta. SQLite e
+    PostgreSQL suportam SAVEPOINT.
+    """
+    connection.execute('SAVEPOINT sp_migration_row')
+    try:
+        yield
+    except Exception:
+        connection.execute('ROLLBACK TO SAVEPOINT sp_migration_row')
+        connection.execute('RELEASE SAVEPOINT sp_migration_row')
+        raise
+    connection.execute('RELEASE SAVEPOINT sp_migration_row')
+
+
 def create_job(connection, *, company_id, entity, source_kind, source_name, hash_value,
                strategy, actor, actor_ip='') -> int:
     cursor = connection.execute(
@@ -207,6 +279,9 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     dataset = read_source(source_kind, raw, sheet=sheet)
     normalized_mapping = normalize_manual_mapping(descriptor, mapping, dataset.columns)
     records = apply_mapping(normalized_mapping, dataset.rows)
+    # Nome → id ANTES do preview: assim "Unidade inexistente" aparece como
+    # obrigatório ausente na simulação, não como erro de banco na gravação.
+    records = resolve_references(connection, descriptor, company_id, records)
 
     existing = _existing_index(connection, descriptor, company_id)
     preview = build_preview(descriptor, records, existing_keys=existing.keys())
@@ -229,6 +304,10 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     )
 
     writable = _writable_columns(connection, descriptor)
+    # Sem interseção com `writable`: a exigência é do banco, não do catálogo.
+    # `employees.schedule_type` é NOT NULL e não está no descritor — se só
+    # completássemos campos conhecidos, o INSERT continuaria falhando.
+    mandatory = mandatory_db_columns(connection, descriptor.target_table) - {'company_id'}
     totals = {'total': len(records), 'processed': 0, 'inserted': 0, 'updated': 0, 'skipped': 0, 'failed': 0}
 
     try:
@@ -256,7 +335,8 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
                                 action='skip', table=descriptor.target_table, target_id=None,
                                 before=None, after=None, error='Registro inexistente (update_only).')
                         continue
-                    new_id = _insert(connection, descriptor, company_id, payload)
+                    with _row_guard(connection):
+                        new_id = _insert(connection, descriptor, company_id, mandatory, payload)
                     existing[key] = {'id': new_id, **payload}
                     totals['inserted'] += 1
                     _record(connection, job_id=job_id, company_id=company_id, row_number=index,
@@ -271,7 +351,8 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
                                 error=f'Registro já existente ({strategy}).')
                         continue
                     before = _snapshot(connection, descriptor, int(current['id']), writable)
-                    _update(connection, descriptor, int(current['id']), company_id, payload)
+                    with _row_guard(connection):
+                        _update(connection, descriptor, int(current['id']), company_id, payload)
                     totals['updated'] += 1
                     _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                             action='update', table=descriptor.target_table,
@@ -304,7 +385,12 @@ def _snapshot(connection, descriptor, target_id: int, writable: set[str]) -> dic
     return row_to_dict(row) if row else {}
 
 
-def _insert(connection, descriptor, company_id: int, payload: dict) -> int:
+def _insert(connection, descriptor, company_id: int, mandatory: set[str], payload: dict) -> int:
+    # Coluna que o banco exige e o arquivo não trouxe recebe string vazia —
+    # é o que o cadastro manual do sistema já grava. Sem isto o INSERT
+    # falharia com NOT NULL para campos que são legitimamente opcionais no
+    # negócio (ex.: `sector`).
+    payload = {**{name: '' for name in mandatory if name not in payload}, **payload}
     columns = ['company_id', *sorted(payload)]
     values = [int(company_id), *[payload[name] for name in sorted(payload)]]
     placeholders = ', '.join(['%s'] * len(values))

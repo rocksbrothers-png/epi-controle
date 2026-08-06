@@ -35,6 +35,12 @@ class FieldSpec:
     required: bool = False
     aliases: tuple[str, ...] = ()
     validator: str = ''  # chave em preview.VALIDATORS ('cpf', 'cnpj', 'date', 'int', 'ca')
+    # Campo que guarda um ID mas cuja origem traz um *nome*. Nenhum export
+    # legado tem o id interno deste sistema: a planilha diz "Produção", não
+    # "3". ``(tabela, coluna_de_nome)`` diz ao motor como converter — e o que
+    # não converter vira diagnóstico de referência inexistente, nunca um
+    # INSERT que estoura no banco.
+    resolves_to: tuple[str, str] = ()
 
 
 @dataclass(frozen=True)
@@ -80,7 +86,10 @@ _COLABORADORES = EntityDescriptor(
         FieldSpec('employee_id_code', 'Matrícula',
                   aliases=('matricula', 'matrícula', 'registro', 'registration',
                            'employee id', 'employee code', 'chapa', 'codigo', 'código')),
-        FieldSpec('unit_id', 'Unidade',
+        # required=True porque `employees.unit_id` é NOT NULL no schema real:
+        # colaborador sem unidade não existe neste sistema. Sem isto o preview
+        # dizia "3 válidas, 0 problemas" e a gravação estourava depois.
+        FieldSpec('unit_id', 'Unidade', required=True, resolves_to=('units', 'name'),
                   aliases=('unidade', 'department', 'departamento', 'setor de lotacao',
                            'lotacao', 'lotação', 'filial', 'base', 'site', 'local de trabalho')),
         FieldSpec('sector', 'Setor',

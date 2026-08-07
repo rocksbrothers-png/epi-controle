@@ -127,6 +127,18 @@
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="arquivados-empresas">
+          <article class="card" id="outsourced-company-unit-archived-card" hidden>
+            <h3 data-i18n="outsourcedCompany.unitArchivedTitle">Empresas arquivadas nesta Unidade</h3>
+            <p class="muted" data-i18n="outsourcedCompany.unitArchivedHint">Arquivar aqui afeta só a sua Unidade — o cadastro corporativo não é alterado, colaboradores já vinculados não são afetados, e nenhum outro dado é apagado. Outras Unidades vinculadas à mesma empresa continuam enxergando-a normalmente. Enquanto arquivada nesta Unidade, a empresa não aparece no seletor de novos colaboradores.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="outsourcedCompany.legalName">Razão social</th>
+              <th scope="col" data-i18n="outsourcedCompany.cnpj">CNPJ</th>
+              <th scope="col" data-i18n="unit.archivedAt">Arquivado em</th>
+              <th scope="col" data-i18n="unit.archivedReason">Motivo</th>
+              <th scope="col" data-i18n="unit.archivedBy">Responsável</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="outsourced-company-unit-archived-table"></tbody></table></div>
+          </article>
           <article class="card" id="archived-outsourced-companies-card">
             <h3 data-i18n="outsourcedCompany.archivedCompaniesTab">Empresas Arquivadas</h3>
             <p class="muted" data-i18n="outsourcedCompany.archiveConfirm">Esta empresa será arquivada: colaboradores já vinculados não são afetados, mas novos colaboradores e novas entregas contra esta empresa passam a ser bloqueados enquanto ela estiver arquivada. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.</p>

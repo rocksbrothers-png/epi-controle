@@ -440,13 +440,21 @@ def is_outsourced_company_available_to_unit(connection, entity, unit_id):
     """True quando uma Empresa Terceirizada pode ser REFERENCIADA (não
     editada) por uma Unidade: empresa "do tenant" (``unit_id`` de origem
     nulo — sempre disponível, mesmo comportamento de antes da extensão de
-    compartilhamento) OU já vinculada a essa Unidade especificamente.
+    compartilhamento) OU já vinculada a essa Unidade especificamente — E,
+    quando vinculada, com o vínculo LOCAL ativo (``local_status ==
+    'active'``). "Arquivar" uma empresa nesta Unidade (ex-"Desativar
+    vínculo local", ver ``set_outsourced_company_unit_link_status``) precisa
+    tirá-la do seletor de novos colaboradores DESTA Unidade — sem afetar
+    nenhuma outra Unidade vinculada à mesma empresa, cujo vínculo é uma
+    linha independente.
+
     Usado só para leitura/uso (ex.: colaborador terceirizado apontando para
-    a empresa) — edição/arquivamento do corporativo continua exigindo o
+    a empresa) — edição/arquivamento do CORPORATIVO continua exigindo o
     vínculo explícito, ver ``ensure_actor_outsourced_company_scope``."""
-    if entity.get('unit_id') is None:
-        return True
-    return bool(fetch_outsourced_company_unit_link(connection, entity['id'], unit_id))
+    link = fetch_outsourced_company_unit_link(connection, entity['id'], unit_id)
+    if link is not None:
+        return str(link.get('local_status') or 'active') != 'inactive'
+    return entity.get('unit_id') is None
 
 
 # ── "Solicitar atualização cadastral" (ADR-0002 §12) ───────────────────────
@@ -625,6 +633,13 @@ def annotate_outsourced_company_visibility(connection, companies, unit_id, *, sp
             if link:
                 enriched['local_status'] = link.get('local_status')
                 enriched['unit_link_id'] = link.get('id')
+                # Só têm sentido quando local_status == 'inactive' (aba
+                # "Empresas Arquivadas" por Unidade, item 2 do pedido) — o
+                # nome de quem arquivou é resolvido no cliente via
+                # state.users, sem precisar de outro JOIN aqui.
+                enriched['unit_link_deactivated_at'] = link.get('deactivated_at')
+                enriched['unit_link_deactivation_reason'] = link.get('deactivation_reason')
+                enriched['unit_link_deactivated_by_user_id'] = link.get('deactivated_by_user_id')
             linked.append(enriched)
         else:
             available.append(_mask_outsourced_company_public_fields(item))

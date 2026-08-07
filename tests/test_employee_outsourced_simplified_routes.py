@@ -156,6 +156,44 @@ def test_create_requires_all_fields(monkeypatch):
         routes.handle_post_employee_outsourced_simplified(handler, _parsed(), incomplete, None)
 
 
+def test_create_does_not_require_unit_id_in_raw_payload(monkeypatch):
+    """Regressão: o campo Unidade fica `disabled` na tela para
+    Administrador Local/Gestor de EPI e FormData nunca inclui campos
+    `disabled` — o payload real que chega do navegador não tem unit_id.
+    A rota não pode mais barrar isso em require_fields (que roda antes do
+    actor ser conhecido); resolve_employee_outsourced_unit_id resolve
+    depois, pela sessão do ator, e seu retorno é o que alimenta o gate de
+    módulo/Unidade — não a chave ausente do payload."""
+    monkeypatch.setattr(routes, 'get_connection', _FakeConn)
+    monkeypatch.setattr(routes, 'resolve_actor_user_id', lambda *a, **k: LOCAL_ADMIN['id'])
+    monkeypatch.setattr(routes, 'authorize_action', lambda *a, **k: LOCAL_ADMIN)
+    resolve_calls = []
+
+    def _fake_resolve(connection, actor, payload):
+        resolve_calls.append(actor)
+        assert 'unit_id' not in payload
+        return 5
+
+    monkeypatch.setattr(routes, 'resolve_employee_outsourced_unit_id', _fake_resolve)
+    gate_calls = []
+    monkeypatch.setattr(
+        routes, 'ensure_module_enabled_for_unit',
+        lambda connection, actor, module, unit_id: gate_calls.append(unit_id),
+    )
+    monkeypatch.setattr(routes, 'create_employee_outsourced_simplified', lambda connection, payload, actor: 42)
+    monkeypatch.setattr(routes, 'get_employee_by_id', lambda connection, employee_id: EMPLOYEE_RECORD)
+    _patch_audit(monkeypatch)
+
+    handler = _FakeHandler()
+    payload = dict(CREATE_PAYLOAD)
+    del payload['unit_id']
+    routes.handle_post_employee_outsourced_simplified(handler, _parsed(), payload, None)
+
+    assert resolve_calls == [LOCAL_ADMIN]
+    assert gate_calls == [5]
+    assert handler.status == 201
+
+
 # ── PUT: edição ──────────────────────────────────────────────────────────────
 
 def test_general_admin_updates_simplified_employee_and_it_is_audited(monkeypatch):
@@ -215,3 +253,39 @@ def test_update_blocked_when_module_not_authorized_for_unit(monkeypatch):
     with pytest.raises(PermissionError):
         routes.handle_put_employee_outsourced_simplified(handler, _parsed(), update_payload, match)
     assert called['update'] is False
+
+
+def test_update_does_not_require_unit_id_in_raw_payload(monkeypatch):
+    """Mesma regressão do POST, na edição."""
+    monkeypatch.setattr(routes, 'get_connection', _FakeConn)
+    monkeypatch.setattr(routes, 'get_employee_by_id', lambda connection, employee_id: EMPLOYEE_RECORD)
+    monkeypatch.setattr(routes, 'resolve_actor_user_id', lambda *a, **k: LOCAL_ADMIN['id'])
+    monkeypatch.setattr(routes, 'authorize_action', lambda *a, **k: LOCAL_ADMIN)
+    resolve_calls = []
+
+    def _fake_resolve(connection, actor, payload):
+        resolve_calls.append(actor)
+        assert 'unit_id' not in payload
+        return 5
+
+    monkeypatch.setattr(routes, 'resolve_employee_outsourced_unit_id', _fake_resolve)
+    gate_calls = []
+    monkeypatch.setattr(
+        routes, 'ensure_module_enabled_for_unit',
+        lambda connection, actor, module, unit_id: gate_calls.append(unit_id),
+    )
+    monkeypatch.setattr(routes, 'update_employee_outsourced_simplified', lambda *a, **k: None)
+    _patch_audit(monkeypatch)
+
+    handler = _FakeHandler()
+    update_payload = {
+        'actor_user_id': 3, 'outsourced_company_id': 9,
+        'name': 'X', 'cpf': '111.444.777-35', 'role_name': 'Auxiliar',
+        'tipo_vinculo': 'Terceirizado', 'admission_date': '2026-01-01',
+    }
+    match = type('M', (), {'group': lambda self, i: '42'})()
+    routes.handle_put_employee_outsourced_simplified(handler, _parsed(), update_payload, match)
+
+    assert resolve_calls == [LOCAL_ADMIN]
+    assert gate_calls == [5]
+    assert handler.status == 200

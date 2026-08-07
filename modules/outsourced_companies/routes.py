@@ -326,8 +326,12 @@ def handle_post_outsourced_company_unit_link_activate(handler, parsed, payload, 
         set_outsourced_company_unit_link_status(connection, link['id'], int(current['company_id']), 'active', actor['id'])
         _audit(
             connection, current['company_id'], actor, 'outsourced_company_unit_link_status_changed',
-            f"Vínculo local ativado: {current.get('legal_name')}.",
-            [{'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'active'}],
+            f"Empresa desarquivada nesta Unidade: {current.get('legal_name')}.",
+            [
+                {'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'active'},
+                {'field': 'unit_id', 'before': '', 'after': str(link.get('unit_id') or '')},
+                {'field': 'actor_role', 'before': '', 'after': str(actor.get('role') or '')},
+            ],
         )
         connection.commit()
         structured_log('info', 'outsourced_company.unit_link_activated', outsourced_company_id=current['id'], actor_user_id=actor['id'])
@@ -343,8 +347,13 @@ def handle_post_outsourced_company_unit_link_deactivate(handler, parsed, payload
         )
         _audit(
             connection, current['company_id'], actor, 'outsourced_company_unit_link_status_changed',
-            f"Vínculo local desativado: {current.get('legal_name')}.",
-            [{'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'inactive'}],
+            f"Empresa arquivada nesta Unidade: {current.get('legal_name')}.",
+            [
+                {'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'inactive'},
+                {'field': 'unit_id', 'before': '', 'after': str(link.get('unit_id') or '')},
+                {'field': 'actor_role', 'before': '', 'after': str(actor.get('role') or '')},
+                {'field': 'reason', 'before': '', 'after': reason},
+            ],
         )
         connection.commit()
         structured_log('info', 'outsourced_company.unit_link_deactivated', outsourced_company_id=current['id'], actor_user_id=actor['id'])

@@ -175,6 +175,77 @@ def test_unit_link_action_raises_when_link_missing(monkeypatch):
         oc_routes.handle_post_outsourced_company_unit_link_activate(h, _parsed(), {'actor_user_id': 2}, _match())
 
 
+def _full_audit_spy(monkeypatch):
+    """Como _audit_spy, mas guarda a chamada inteira — usado quando o teste
+    precisa conferir o conteúdo de `details` (usuário/perfil/unidade), não
+    só o action_type."""
+    calls = []
+    monkeypatch.setattr(
+        'core.audit.register_company_audit',
+        lambda _c, cid, actor, action_type, summary, details=None, **k:
+            calls.append({'company_id': cid, 'actor': actor, 'action_type': action_type,
+                          'summary': summary, 'details': details or []}),
+    )
+    return calls
+
+
+def _details_field(entry, field):
+    return next((item['after'] for item in entry['details'] if item['field'] == field), None)
+
+
+def test_unit_link_deactivate_route_audits_unit_and_role(monkeypatch):
+    """Arquivar nesta Unidade precisa registrar usuário, perfil, tenant e
+    Unidade — não só "algo mudou" (requisito de auditoria do pedido)."""
+    monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
+    monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 2)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: _ACTOR_LOCAL)
+    monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'get_outsourced_company_by_id', lambda _c, eid: dict(_ENTITY))
+    monkeypatch.setattr(oc_routes, 'actor_operational_unit_id', lambda *a, **k: 55)
+    monkeypatch.setattr(
+        oc_routes, 'fetch_outsourced_company_unit_link',
+        lambda *a, **k: {'id': 3, 'unit_id': 55, 'local_status': 'active'},
+    )
+    monkeypatch.setattr(oc_routes, 'set_outsourced_company_unit_link_status', lambda *a, **k: None)
+    calls = _full_audit_spy(monkeypatch)
+    h = _FakeHandler()
+    oc_routes.handle_post_outsourced_company_unit_link_deactivate(
+        h, _parsed(), {'actor_user_id': 2, 'reason': 'Fim de contrato'}, _match(),
+    )
+    assert h.status == 200
+    assert len(calls) == 1
+    entry = calls[0]
+    assert entry['company_id'] == _ACTOR_LOCAL['company_id']
+    assert entry['actor'] == _ACTOR_LOCAL
+    assert entry['action_type'] == 'outsourced_company_unit_link_status_changed'
+    assert _details_field(entry, 'local_status') == 'inactive'
+    assert _details_field(entry, 'unit_id') == '55'
+    assert _details_field(entry, 'actor_role') == 'user'
+    assert _details_field(entry, 'reason') == 'Fim de contrato'
+
+
+def test_unit_link_activate_route_audits_unit_and_role(monkeypatch):
+    monkeypatch.setattr(oc_routes, 'get_connection', _DummyConnection)
+    monkeypatch.setattr(oc_routes, 'resolve_actor_user_id', lambda *a, **k: 2)
+    monkeypatch.setattr(oc_routes, 'authorize_action_any', lambda *a, **k: _ACTOR_LOCAL)
+    monkeypatch.setattr(oc_routes, 'ensure_company_access', lambda *a, **k: None)
+    monkeypatch.setattr(oc_routes, 'get_outsourced_company_by_id', lambda _c, eid: dict(_ENTITY))
+    monkeypatch.setattr(oc_routes, 'actor_operational_unit_id', lambda *a, **k: 55)
+    monkeypatch.setattr(
+        oc_routes, 'fetch_outsourced_company_unit_link',
+        lambda *a, **k: {'id': 3, 'unit_id': 55, 'local_status': 'inactive'},
+    )
+    monkeypatch.setattr(oc_routes, 'set_outsourced_company_unit_link_status', lambda *a, **k: None)
+    calls = _full_audit_spy(monkeypatch)
+    h = _FakeHandler()
+    oc_routes.handle_post_outsourced_company_unit_link_activate(h, _parsed(), {'actor_user_id': 2}, _match())
+    assert h.status == 200
+    entry = calls[0]
+    assert _details_field(entry, 'local_status') == 'active'
+    assert _details_field(entry, 'unit_id') == '55'
+    assert _details_field(entry, 'actor_role') == 'user'
+
+
 # ── Duplicidade de CNPJ/nome (POST/PUT) ─────────────────────────────────────
 
 def test_post_outsourced_company_returns_409_on_duplicate_cnpj(monkeypatch):

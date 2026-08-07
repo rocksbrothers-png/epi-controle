@@ -919,3 +919,479 @@ o §11.6. Nova aba "Solicitações" (só visível para quem tem
 `employees:update` completo, §12.5). Regras puras (`isCorporateLocked`,
 `canEditCorporateFields`) vivem em `js/views/outsourced-companies-view.js`,
 testadas no harness — mesmo padrão do restante do módulo.
+
+## 13. Extensão — Reutilização de Colaborador entre Unidades, CNPJ opcional/obrigatório por estágio e arquivamento local (pessoa)
+
+**Status desta seção: proposta em avaliação — nenhum código deste escopo foi
+escrito. Implementação aguarda aprovação explícita da arquitetura descrita
+aqui.**
+
+### 13.1 Contexto — dois problemas reais, um padrão já testado
+
+O §12 resolveu o compartilhamento do cadastro corporativo (a *empresa*
+terceirizada) entre Unidades. Esta extensão pede o mesmo tratamento para a
+*pessoa* (o colaborador terceirizado/prestador) e fecha uma lacuna de
+Multi-CNPJ que ficou exposta pelo mesmo motivo — código genérico demais
+sendo aplicado a um caso que não é o dele.
+
+**Problema A — alerta de bloqueio de CNPJ em produção.**
+`create_employee_outsourced_simplified` (`modules/employees/service.py:399-402`)
+chama incondicionalmente
+`resolve_employee_legal_entity_id(connection, company_id, payload.get('legal_entity_id'))`
+(`modules/legal_entities/service.py:593-613`) sempre que
+`legal_entities_ready(connection)` é verdadeiro. Essa função pergunta "a
+qual CNPJ **do próprio tenant** (`legal_entities.company_id → companies.id`)
+este colaborador pertence" e levanta
+`ValueError('Informe o CNPJ ao qual este colaborador pertence (a empresa
+possui mais de um CNPJ ativo).')` sempre que a empresa contratante tem mais
+de um `legal_entities` ativo e o payload não informou um. A pergunta é
+legítima para um colaborador CLT (`create_employee`/`update_employee`
+compartilham o mesmo bloco de código, linhas 155-160 e 223-229) — faz
+sentido perguntar em qual filial do PRÓPRIO tenant a carteira de trabalho
+está registrada. Para um colaborador terceirizado/prestador a pergunta não
+se aplica: ele é empregado juridicamente pela **empresa terceirizada**
+(`outsourced_companies`, uma pessoa jurídica diferente, com seu próprio
+`cnpj`, sem nenhuma relação com `legal_entities`), nunca por um CNPJ do
+tenant. O formulário de Cadastro Simplificado nunca teve (nem deveria ter)
+um campo `legal_entity_id` — por isso o `alert()` que apareceu em produção
+não tinha como ser satisfeito pela tela: é um beco sem saída herdado de um
+código pensado para outro fluxo.
+
+**Problema B — sem caminho para reaproveitar a mesma pessoa em outra
+Unidade.** `employees.unit_id` é hoje posse única — uma linha de
+`employees` pertence a exatamente uma Unidade. Quando a mesma empresa
+terceirizada já está vinculada a duas Unidades (§12.2) e a segunda Unidade
+precisa alocar operacionalmente a MESMA pessoa real (um técnico que atende
+dois contratos do mesmo prestador, por exemplo), o sistema hoje nem sequer
+deixa duplicar o cadastro silenciosamente: `ensure_employee_identity_unique`
+(`modules/employees/service.py:77-97`) verifica CPF por `company_id`
+(tenant inteiro, não por Unidade) e levanta `ValueError('CPF do
+colaborador já cadastrado nesta empresa.')`. A segunda Unidade fica travada
+sem alternativa — exatamente o mesmo formato de beco sem saída que o §12.4
+já resolveu para CNPJ de empresa ("encontrada, vincule" em vez de bloqueio
+surdo), só que ainda não existe para pessoa.
+
+Os dois problemas têm a mesma causa-raiz (lógica pensada para "um só dono"
+sendo aplicada onde agora existe compartilhamento) e o §12 já validou, em
+produção, o padrão de solução: cadastro único por tenant + tabela de
+vínculo operacional por Unidade. Esta extensão aplica o mesmo padrão à
+pessoa e, separadamente, remove a pergunta de CNPJ do tenant de um fluxo
+onde ela nunca fez sentido.
+
+### 13.2 Decisões consolidadas
+
+Lista fechada pelo usuário, preservada aqui na íntegra para rastreabilidade
+(cada item referenciado como D1-D22 no restante desta seção):
+
+1. **D1.** Cadastro Simplificado: CNPJ da empresa terceirizada/prestadora pode permanecer opcional.
+2. **D2.** Cadastro Padrão/promoção: CNPJ passa a ser obrigatório.
+3. **D3.** Empresa sem CNPJ: colaborador pode ser vinculado por `outsourced_company_id`, sem exigir `legal_entity_id`.
+4. **D4.** Empresa com um único CNPJ: associação automática.
+5. **D5.** Empresa com múltiplos CNPJs: seleção obrigatória do CNPJ empregador do colaborador.
+6. **D6.** Empresa terceirizada/prestadora deve ser cadastrada uma única vez dentro do tenant.
+7. **D7.** Colaborador terceirizado/prestador deve ser cadastrado uma única vez dentro do tenant.
+8. **D8.** Outras Unidades reutilizam o cadastro existente, criando apenas vínculo/alocação operacional local.
+9. **D9.** Vincular uma empresa a uma nova Unidade não deve vincular automaticamente todos os colaboradores.
+10. **D10.** Cada Unidade escolhe quais colaboradores daquela empresa irão atuar localmente.
+11. **D11.** Arquivamento da empresa é local por Unidade.
+12. **D12.** Desarquivamento da empresa também é local por Unidade.
+13. **D13.** Arquivamento do colaborador é local por Unidade.
+14. **D14.** Desarquivamento do colaborador também é local por Unidade.
+15. **D15.** Arquivar em uma Unidade não pode afetar outra Unidade onde empresa ou colaborador estejam ativos.
+16. **D16.** Empresa/colaborador arquivados localmente devem desaparecer dos seletores operacionais daquela Unidade.
+17. **D17.** Desarquivamento deve restaurar o uso apenas naquela Unidade.
+18. **D18.** Exclusão definitiva não é função do Gestor de EPI nem do Administrador Local.
+19. **D19.** Exclusão definitiva fica sob governança do Administrador Geral e da política de retenção já existente.
+20. **D20.** Deve existir aviso antecipado quando registros estiverem próximos da data de elegibilidade para exclusão.
+21. **D21.** Não excluir definitivamente se ainda existir vínculo ativo em outra Unidade.
+22. **D22.** Preservar histórico, entregas de EPI, auditoria, contratos e registros obrigatórios conforme a política de retenção.
+
+D6, D9, D11, D12, D15, D16, D17 já são exatamente o que o §12 entregou para
+a *empresa* — nada muda nelas nesta extensão. D7, D8, D10, D13, D14 pedem o
+equivalente para a *pessoa*. D18-D22 pedem que a exclusão definitiva
+continue centralizada, reaproveitando um mecanismo que — como o §13.4
+mostra — já existe quase inteiro. D1-D5 são especificamente sobre o CNPJ da
+empresa terceirizada (não do tenant) e, como o §13.8 mostra, D1/D2 já estão
+implementadas hoje.
+
+### 13.3 Modelo de dados atual
+
+**`employees`** (colunas relevantes a este escopo): `company_id`, `unit_id`
+(posse única, não anulável na prática), `cpf`/`employee_id_code` (unicidade
+verificada por `company_id` — `employee_id_code` por índice de banco
+`uq_employees_company_employee_code`; CPF por checagem de aplicação em
+`ensure_employee_identity_unique`, não por constraint), `outsourced_company_id`
+e `service_contract_id` (nuláveis, `NULL` = colaborador CLT),
+`legal_entity_id` (nulável, CNPJ **do tenant**, Multi-CNPJ — sem nenhuma
+relação com `outsourced_companies.cnpj`). Além disso, `employees` já carrega
+o conjunto completo de colunas de ciclo de vida genérico definido em
+`core/archival.py` (`LIFECYCLE_COLUMNS`): `status`, `archived_at`,
+`archived_by`, `archive_reason`, `retention_until`, `legal_hold`,
+`legal_hold_reason`, `deleted_at`, `deleted_by`, `delete_reason`.
+
+**`outsourced_companies`** (§3, §12): cadastro único por tenant desde o
+§12.1 (`unit_id` = metadado histórico imutável de origem), `cnpj` nulável
+(Cadastro Simplificado), `registration_mode` (`simplified`/`standard`),
+mesmo conjunto de colunas de ciclo de vida do parágrafo anterior (migração
+própria, `ensure_outsourced_company_archival_lifecycle_columns`, mesmo
+formato de `core.archival.LIFECYCLE_COLUMNS` mas não a reaproveita
+diretamente — duplicação já existente, anterior a esta extensão).
+
+**`outsourced_company_unit_links`** (§12.2): o vínculo operacional por
+Unidade já em produção — `id, company_id, outsourced_company_id, unit_id,
+local_status ('active'|'inactive'), deactivated_at, deactivation_reason,
+deactivated_by_user_id`, `UNIQUE(company_id, outsourced_company_id,
+unit_id)`.
+
+**`legal_entities`** (Multi-CNPJ, arquitetura irmã construída em paralelo
+nesta mesma sessão, já mergeada): `company_id` (FK para `companies`, o
+**tenant**, nunca para `outsourced_companies`), `cnpj`, `entity_type`
+(`matriz`/`filial`/`subsidiaria`/`spe`/`jv_partner`/`consorciada`/`outro`),
+`active`, `is_headquarters`, `parent_entity_id`. Existe para representar os
+CNPJs **do próprio tenant**, não os de terceiros que prestam serviço a ele.
+
+**`core/archival.py`**: ciclo de vida genérico (arquivar → desarquivar →
+exclusão definitiva em duas etapas) já ligado a `units`/`employees`/`epis`/
+`outsourced_companies`. Pontos relevantes: `MIN_RETENTION_YEARS = 5`,
+retenção configurável por tenant e por entidade via `RETENTION_COLUMNS`
+(já inclui `'employees': 'employee_retention_years'` e
+`'outsourced_companies': 'outsourced_company_retention_years'`),
+`ensure_purge_allowed` já bloqueia exclusão sob `legal_hold` ou dentro do
+período de retenção, e já restringe a etapa de exclusão
+(`request_purge`/`confirm_purge`) a `actor.get('role') in ('master_admin',
+'general_admin')` (`_require_deletion_admin`, `modules/employees/routes.py:50-51`,
+replicado em `modules/outsourced_companies/routes.py`). `archive_record`/
+`restore_record` operam **sempre sobre a linha inteira** (`employees`/
+`outsourced_companies`), nunca por Unidade — hoje isso é seguro para
+`employees` só porque cada linha já pertence a uma única Unidade.
+
+**O que não existe hoje:** nenhuma tabela equivalente a
+`outsourced_company_unit_links` para pessoas. Confirmado por busca no
+código (`employee_unit_link`, `employee_company_link` e variantes não
+retornam nenhuma tabela) — é exatamente a peça que falta para D7/D8/D10/
+D13/D14.
+
+### 13.4 Estruturas reaproveitáveis
+
+- **Forma de `outsourced_company_unit_links`** como molde direto de uma
+  tabela nova `employee_unit_links` — mesmas colunas, mesmo papel
+  (`local_status`, motivo/ator/data de desativação, `UNIQUE(company_id,
+  employee_id, unit_id)` para a mesma proteção contra corrida entre
+  Unidades vinculando a mesma pessoa quase ao mesmo tempo).
+- **`core/archival.py` inteiro, sem alteração de contrato**, para D18-D22:
+  a "política de retenção já existente" que o usuário pediu para reaproveitar
+  é exatamente este módulo. `ensure_purge_allowed` só precisa ganhar UMA
+  precondição nova (nenhum vínculo ativo em nenhuma Unidade — §13.5), não
+  um mecanismo novo.
+- **`resolve_employee_outsourced_unit_id`/`resolve_outsourced_company_unit_id`**
+  (construídos nesta mesma sessão, §11): o padrão "o backend deriva o valor
+  a partir do ator para perfis escopados e ignora o payload" é reaproveitado
+  para a rota nova de criação de vínculo local do colaborador.
+- **`is_outsourced_company_available_to_unit`** (§12.7) como molde de
+  `is_employee_available_to_unit` — mesma forma: disponível quando "sem
+  Unidade de origem" (não se aplica a pessoa, já que toda `employees` tem
+  `unit_id`, ver §13.11) OU quando existe vínculo ativo para a Unidade do
+  ator.
+- **`annotate_outsourced_company_visibility` + lista dividida `linked`/
+  `available` + `DuplicateOutsourcedCompanyError` → 409 "encontrada,
+  vincule"** (§12.3/§12.4): molde direto do fluxo de busca+vínculo de
+  colaborador. O gatilho já existe e já é testado: o `ValueError('CPF do
+  colaborador já cadastrado nesta empresa.')` de
+  `ensure_employee_identity_unique` (§13.1, Problema B) é hoje um erro
+  surdo; passa a carregar o `id` do colaborador encontrado, do mesmo jeito
+  que `DuplicateOutsourcedCompanyError` já faz para CNPJ.
+- **`employees.outsourced_company_id`, `employees.cpf`,
+  `employees.employee_id_code`** — inalterados; continuam sendo a
+  identidade única da pessoa no tenant (D7).
+
+### 13.5 Estruturas que não devem ser duplicadas
+
+- **Não criar um segundo mecanismo de retenção/exclusão definitiva.** A
+  exclusão continua acontecendo na linha `employees`/`outsourced_companies`
+  inteira, nunca por Unidade — arquivar/desarquivar por Unidade
+  (`employee_unit_links.local_status`) e excluir definitivamente
+  (`core.archival`) são conceitos em camadas diferentes e não devem se
+  fundir. A única mudança em `core/archival.py` é `ensure_purge_allowed`
+  ganhar uma checagem de "nenhum `employee_unit_links`/
+  `outsourced_company_unit_links` com `local_status='active'` em qualquer
+  Unidade" antes de liberar a etapa 1 (D21) — sem tocar em
+  `archive_record`/`restore_record`/`request_purge`/`confirm_purge`, que
+  continuam corretos como estão.
+- **Não duplicar `registration_mode`/promoção em `employees`.** Nenhuma das
+  22 decisões pede um "Cadastro Simplificado/Padrão" para pessoa — D1/D2
+  são sobre o CNPJ da empresa terceirizada, não sobre o colaborador.
+- **Não duplicar a resolução de `legal_entity_id` para colaborador
+  terceirizado.** O Multi-CNPJ (`legal_entities`) continua servindo
+  exclusivamente colaborador CLT/nativo do tenant (§13.7) — nenhuma versão
+  paralela dessa lógica nasce para o fluxo terceirizado.
+- **Não criar um conceito de "empresa" para pessoa.** `employee_unit_links`
+  liga `employee_id` + `unit_id`, ponto — `employees` continua sendo a
+  única fonte de identidade da pessoa no tenant, sem duplicar nada que
+  `outsourced_companies`/`outsourced_company_unit_links` já resolvem para
+  empresa.
+
+### 13.6 Relacionamento proposto pessoa/empresa/unidade
+
+`companies` (tenant) é o topo de duas árvores independentes que hoje só se
+tocam por acidente de código (§13.1, Problema A): a árvore de
+`legal_entities` (CNPJs **próprios** do tenant, servindo `units` e
+colaboradores **CLT**) e a árvore de `outsourced_companies` (CNPJs de
+**terceiros**, servindo colaboradores **terceirizados/prestadores**). Um
+colaborador terceirizado nunca deveria atravessar para a primeira árvore —
+seu vínculo jurídico é com `outsourced_company_id`, não com
+`legal_entity_id`.
+
+Dentro da árvore de terceirização, a proposta é que `outsourced_companies`
+e `employees` (quando `outsourced_company_id` não é nulo) sigam exatamente
+o mesmo formato: um cadastro único no tenant (D6/D7), e uma tabela de
+vínculo (`outsourced_company_unit_links`/`employee_unit_links`) que cada
+Unidade povoa deliberadamente (D8/D9/D10). Vincular a empresa a uma nova
+Unidade não pré-popula `employee_unit_links` para os colaboradores dessa
+empresa — cada Unidade escolhe as pessoas, não herda a lista inteira
+(D9/D10), inclusive porque a mesma empresa pode ter dezenas de
+colaboradores e só alguns atendem cada contrato/Unidade específica.
+
+### 13.7 Impacto no Multi-CNPJ — a correção do alerta de bloqueio (D3)
+
+Correção proposta, mínima e isolada: `create_employee_outsourced_simplified`
+e `update_employee_outsourced_simplified` (`modules/employees/service.py`)
+param de importar/chamar `resolve_employee_legal_entity_id` e param de
+incluir `legal_entity_id` nas colunas gravadas — pelo mesmo motivo que
+`empresa_origem`/`outsourced_company_id` já ficam de fora do fluxo CLT,
+`legal_entity_id` fica de fora do fluxo terceirizado. `employees.legal_entity_id`
+permanece `NULL` para toda linha com `outsourced_company_id` preenchido,
+exatamente como já é `NULL` hoje para toda linha sem Multi-CNPJ provisionado
+— nenhuma migração de dado necessária, é remoção de uma chamada, não
+mudança de schema.
+
+`create_employee`/`update_employee` (colaborador CLT) **não são tocados**
+— continuam chamando `resolve_employee_legal_entity_id` exatamente como
+hoje. Mesma disciplina de escopo já aplicada a `#175`/`#177` nesta sessão:
+não refatorar código fora do problema relatado.
+
+### 13.8 Impacto no Cadastro Simplificado/Padrão — CNPJ da empresa terceirizada (D1, D2, D4, D5)
+
+**D1 e D2 já estão implementadas.** `validate_outsourced_company_payload`
+(`modules/outsourced_companies/service.py:186-187`) já levanta
+`ValueError('CNPJ é obrigatório para o Cadastro Padrão.')` quando
+`registration_mode == 'standard'` e `cnpj` está vazio; `promote_outsourced_company`
+(linhas 538-539) já bloqueia a promoção com
+`ValueError('CNPJ é obrigatório para promover ao Cadastro Padrão.')` se
+`cnpj` ainda não foi preenchido. Cadastro Simplificado já aceita `cnpj`
+vazio (`outsourced_companies.cnpj TEXT NOT NULL DEFAULT ''`, índice único
+parcial que ignora `cnpj_normalized = ''`). Nada a construir aqui — esta
+seção apenas registra a confirmação.
+
+**D3** é a mesma correção do §13.7, só reafirmada do ângulo da empresa:
+quando a empresa terceirizada não tem CNPJ (Cadastro Simplificado),
+`outsourced_company_id` já é suficiente para vincular o colaborador — não
+existe (nem nunca existiu, de fato) uma exigência de `legal_entity_id` que
+faça sentido aqui.
+
+**D4/D5 têm duas leituras possíveis** e a diferença entre elas é grande o
+bastante para precisar de confirmação explícita antes de qualquer PR:
+
+- **Leitura mínima (recomendada):** `outsourced_companies` já permite hoje
+  duas linhas com o mesmo `legal_name`/`trade_name` (CNPJs diferentes, ou
+  ambas sem CNPJ — o índice único é por `cnpj_normalized`, não por nome).
+  D4/D5 descreveriam então a busca/seleção de empresa no Cadastro de
+  Colaborador: se a busca por nome encontra uma única `outsourced_companies`
+  correspondente, associa automaticamente (D4, já é o comportamento atual);
+  se encontra mais de uma (filiais/CNPJs distintos cadastrados como linhas
+  separadas do mesmo prestador), a tela passa a exigir escolha explícita de
+  qual `outsourced_company_id` em vez de pegar a primeira (D5) — reforço de
+  UX/precisão sobre uma estrutura que já existe, sem tabela nova.
+- **Leitura estrutural (mais pesada):** um Multi-CNPJ dedicado para empresa
+  terceirizada, espelhando `legal_entities` mas para `outsourced_companies`
+  (uma "prestadora" com N filiais/CNPJs formalmente agrupadas). Isso exigiria
+  uma tabela nova (ex.: `outsourced_company_legal_entities`) e não tem
+  menção explícita em nenhuma das 22 decisões — seria introduzir um conceito
+  novo, o que vai contra a disciplina desta sessão ("não criar novos
+  conceitos" já aplicado nas rodadas anteriores).
+
+Recomendação: seguir a leitura mínima. Peço confirmação explícita antes de
+incluir D4/D5 em qualquer PR (§13.15, PR C).
+
+### 13.9 Impacto no fluxo existente de entrega de EPI
+
+Entregas referenciam `employees.id` diretamente. Como D7 mantém uma única
+linha `employees` por pessoa no tenant (nunca duplicada entre Unidades), o
+histórico de entregas de um colaborador compartilhado passa a ser **um
+único trilho**, de qualquer Unidade em que ele tenha atuado — o oposto do
+risco atual, em que o beco sem saída do Problema B (§13.1) levaria, na
+prática, a cadastros duplicados manuais e histórico de entrega fragmentado
+em duas pessoas "diferentes" no sistema caso alguém contornasse o bloqueio
+criando uma segunda pessoa com CPF ligeiramente diferente digitado.
+
+O snapshot histórico da entrega (§3.5, já registra Unidade/empresa no
+momento da entrega) não muda de comportamento — uma entrega feita enquanto
+o colaborador estava vinculado à Unidade A continua mostrando a Unidade A
+mesmo que esse vínculo seja arquivado depois (D22, preservar histórico).
+O novo gate necessário é em tempo de **criação** de entrega: hoje
+`ensure_record_operational`/checagens equivalentes bloqueiam operação
+contra colaborador arquivado (globalmente); passam a também bloquear
+quando o vínculo específico da Unidade que está lançando a entrega está
+`inactive` em `employee_unit_links`, mesmo que o colaborador esteja ativo
+em outra Unidade (D15/D16).
+
+### 13.10 Impacto nos relatórios
+
+`fetch_outsourced_employees_summary` (§11.5/§12.7) e qualquer relatório que
+hoje filtra por `employees.unit_id` assumem implicitamente "1 linha = 1
+Unidade". Com D7/D8, isso deixa de ser verdade: um relatório de headcount
+por empresa/Unidade precisa decidir explicitamente se lê `employees.unit_id`
+(Unidade de origem, histórica) ou faz `JOIN employee_unit_links WHERE
+local_status = 'active'` (vínculo operacional atual) — a mesma distinção
+que o §12.1 já introduziu para empresa, agora necessária para pessoa
+também. Não é possível enumerar exaustivamente todos os relatórios afetados
+nesta ADR; a implementação (§13.15, PR D) precisa de um passo de auditoria
+dedicado nesses call sites antes de considerar o trabalho completo — risco
+registrado em §13.13.
+
+### 13.11 Migração necessária
+
+- **Tabela nova `employee_unit_links`** (mesmo par dual-track já usado em
+  todas as migrações desta sessão): SQLite via `core/schema.py`
+  (`ensure_employee_unit_links`) + `core/bootstrap.py`; Postgres/Supabase
+  via `epi_backend/migrations/0NN_employee_unit_links.py` +
+  `supabase/migrations/*.sql` irmão, RLS habilitado desde a criação. Forma:
+  `id, company_id, employee_id, unit_id, local_status ('active'|'inactive'),
+  activated_at, activated_by_user_id, deactivated_at, deactivation_reason,
+  deactivated_by_user_id, created_at, updated_at`, `UNIQUE(company_id,
+  employee_id, unit_id)`.
+- **Backfill**: toda `employees` com `unit_id` preenchido ganha uma linha
+  `employee_unit_links` ativa para essa Unidade — idêntico em espírito ao
+  backfill do §12.8, mesma exigência de idempotência.
+- **`employees.unit_id` como metadado histórico imutável**: por analogia
+  direta com o §12.1 (`outsourced_companies.unit_id`), a consequência
+  natural de D7/D8 é que `employees.unit_id` também deveria congelar como
+  "Unidade de origem" (gravado só na criação, nunca mais alterado), e o
+  vínculo operacional passa a viver inteiramente em `employee_unit_links`.
+  **Isto não está explicitamente nas 22 decisões** — é uma inferência por
+  simetria com o que já foi decidido para empresa, não uma instrução
+  verbatim. Peço confirmação explícita (§13.15 depende desta resposta para
+  o desenho exato de PR B).
+- **Correção de `create_employee_outsourced_simplified`/
+  `update_employee_outsourced_simplified`** (§13.7) — mudança de código
+  isolada, sem migração de schema associada.
+- **UX de desambiguação D4/D5** (§13.8) — depende da leitura escolhida.
+
+### 13.12 Rollback
+
+Tabela nova e sem alteração de colunas existentes (aditiva, nulável onde
+aplicável) — remover `employee_unit_links` e sua migração é reversível sem
+perda de dado em `employees` (a tabela só guarda o vínculo derivado, nunca
+identidade). A correção de `legal_entity_id` (§13.7) é reversão de função
+única (reintroduzir as 4 linhas removidas) sem migração de dado envolvida
+— não há necessidade de rollback de schema para desfazer essa parte
+isoladamente. Backfill é idempotente (`IF NOT EXISTS`/`NOT EXISTS`) —
+reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
+§12.8.
+
+### 13.13 Riscos
+
+- **Mascaramento de dado pessoal é mais sensível que mascaramento de CNPJ.**
+  O molde do §12.3 (`annotate_outsourced_company_visibility`, lista
+  "disponíveis" com campos públicos) expõe CNPJ mascarado de uma empresa —
+  dado corporativo. Uma lista "colaboradores disponíveis para vincular"
+  tenant-wide expõe potencialmente nome e CPF de uma **pessoa física**.
+  Recomendo expor menos do que o equivalente de empresa expôs (nome e
+  função, CPF mascarado ou omitido até o vínculo ser criado) — decisão de
+  design explícita a confirmar, não herdar o padrão de empresa sem ajuste.
+- **Relatórios não mapeados** (§13.10) — o levantamento de todos os pontos
+  que leem `employees.unit_id` hoje só é confiável durante a implementação
+  (grep dirigido + teste de regressão por relatório), não nesta ADR.
+- **Ambiguidade D4/D5** (§13.8) — a leitura errada infla o escopo com uma
+  tabela nova não pedida explicitamente.
+- **Inclusão de `master_admin` na governança de exclusão definitiva** é
+  comportamento **pré-existente** (`_require_deletion_admin` já permite
+  `master_admin` e `general_admin`, não só o segundo) e está **fora do
+  escopo desta extensão** — D19 pede "governança do Administrador Geral",
+  o que não exclui Master explicitamente do jeito que o §12.5 excluiu Master
+  da edição de dado corporativo por doutrina. Não estou alterando esse gate
+  como parte deste ADR; registro aqui como pergunta em aberto, não como
+  mudança proposta.
+- **Corrida entre Unidades vinculando a mesma pessoa quase simultaneamente**
+  — mesma proteção que `outsourced_company_unit_links` já usa
+  (`UNIQUE(company_id, employee_id, unit_id)` + tratamento de conflito como
+  "já vinculado", não erro).
+
+### 13.14 Critérios de aceite
+
+- Cadastrar um colaborador terceirizado/prestador via Cadastro Simplificado
+  não levanta mais alerta de CNPJ do tenant, independentemente de quantos
+  `legal_entities` ativos a empresa contratante tiver (corrige o bug de
+  produção relatado; D3).
+- `create_employee`/`update_employee` (colaborador CLT) continuam exigindo
+  `legal_entity_id` exatamente como hoje — nenhuma regressão no fluxo
+  Multi-CNPJ nativo (§13.7).
+- CNPJ da empresa terceirizada continua opcional no Simplificado e
+  obrigatório para promoção/Padrão (D1/D2 — já cobertos por teste
+  existente; esta ADR não adiciona comportamento novo aqui).
+- Uma segunda Unidade consegue localizar e vincular operacionalmente um
+  colaborador terceirizado já cadastrado por outra Unidade (mesmo CPF), sem
+  duplicar a linha `employees` e sem erro surdo (D6/D7/D8).
+- Vincular uma empresa a uma nova Unidade não cria vínculo automático para
+  nenhum colaborador dessa empresa — cada um precisa ser escolhido
+  explicitamente (D9/D10).
+- Arquivar um colaborador (ou empresa) em uma Unidade não altera sua
+  visibilidade/uso em nenhuma outra Unidade onde o vínculo continue ativo
+  (D11-D15).
+- Colaborador/empresa arquivados localmente somem dos seletores
+  operacionais daquela Unidade especificamente, e só daquela (D16/D17).
+- Exclusão definitiva de colaborador/empresa continua restrita a
+  `general_admin` (e, até decisão em contrário, `master_admin` — risco
+  registrado em §13.13) e ao fluxo de duas etapas já existente em
+  `core/archival.py`; passa a também exigir ausência de vínculo ativo em
+  qualquer Unidade (D18/D19/D21).
+- Existe aviso antecipado quando um registro se aproxima da data de
+  elegibilidade para exclusão definitiva (D20).
+- Histórico de entregas, auditoria, contratos e demais registros
+  obrigatórios permanecem intactos e consultáveis após qualquer
+  arquivamento local (D22).
+- Suíte de testes (backend + frontend, `pytest tests/ -q` e
+  `node static/js/test/run-tests.js`) verde nos dois repositórios, incluindo
+  testes novos para cada decisão D1-D22 tocada por código.
+
+### 13.15 Divisão sugerida em PRs
+
+- **PR A — correção isolada do alerta de CNPJ (§13.7).** Remove a chamada a
+  `resolve_employee_legal_entity_id` do fluxo terceirizado simplificado.
+  Menor PR possível, corrige o bug com reprodução real em produção, sem
+  depender de nenhuma tabela nova. Candidato a seguir sozinho e primeiro.
+- **PR B — `employee_unit_links`.** Schema + backfill (dual-track) +
+  `is_employee_available_to_unit` + rotas de vincular/ativar/desativar
+  vínculo local + testes, mesma forma do §12.2. Inclui a decisão sobre
+  `employees.unit_id` virar metadado imutável (§13.11) — bloqueado até
+  confirmação.
+- **PR C — busca + vínculo no Cadastro de Colaborador.** CPF duplicado
+  passa a oferecer "vincular" em vez de bloqueio surdo (mesma forma do
+  §12.4); inclui a resolução de D4/D5 conforme a leitura confirmada
+  (§13.8).
+- **PR D — arquivar/desarquivar colaborador por Unidade.** Frontend +
+  backend; seletores operacionais (Cadastro de Colaborador, entrega de EPI)
+  passam a filtrar por `employee_unit_links.local_status`; inclui a
+  auditoria de relatórios afetados (§13.10).
+- **PR E — governança de exclusão definitiva.** Nova precondição em
+  `ensure_purge_allowed` (nenhum vínculo ativo em nenhuma Unidade, D21) +
+  aviso antecipado de elegibilidade (D20). Depende do PR B já estar
+  mergeado.
+- **PR F (condicional)** — só nasce se a leitura estrutural de D4/D5 for
+  confirmada em vez da mínima: subsistema de Multi-CNPJ para
+  `outsourced_companies`.
+
+### 13.16 Não-metas desta rodada
+
+- **Consolidação retroativa** de colaboradores que já foram cadastrados
+  duas vezes (uma por Unidade) por não terem tido, até aqui, como se
+  vincular — mesma decisão já registrada em §12 para empresa duplicada, e
+  pela mesma razão: é uma operação de migração de dado mais pesada
+  (merge de duas linhas `employees` + repointing de entregas/auditoria),
+  candidata a um pedido dedicado.
+- **Qualquer mudança em `create_employee`/`update_employee`** (colaborador
+  CLT/nativo do tenant) — o escopo inteiro desta extensão é o colaborador
+  terceirizado/prestador; o fluxo Multi-CNPJ nativo permanece intocado.
+- **Qualquer mudança no gate de `master_admin`** em `ensure_purge_allowed`/
+  `_require_deletion_admin` (§13.13) sem confirmação explícita — é
+  comportamento pré-existente, fora do que as 22 decisões pediram
+  literalmente.

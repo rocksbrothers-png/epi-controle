@@ -60,11 +60,25 @@ class PostgresConnectionWrapper:
                 inserted_id = row[0] if row else None
                 cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
             except Exception as exc:
-                message = str(exc).lower()
-                if 'column "id" does not exist' not in message and 'undefinedcolumn' not in message:
-                    raise
+                # Precisa acontecer para QUALQUER exceção aqui, não só a
+                # tolerada abaixo — sem isso a transação fica "aborted" e um
+                # commit() posterior (ex.: depois de um try/except que engole
+                # essa exceção, como modules/*/routes.py:_audit) descarta
+                # silenciosamente toda a transação, sem levantar erro
+                # (issue #177/#842).
                 cursor.execute('ROLLBACK TO SAVEPOINT sp_insert_returning_id')
                 cursor.execute('RELEASE SAVEPOINT sp_insert_returning_id')
+                message = str(exc).lower()
+                # SQLSTATE 42703 (undefined_column) é independente de locale;
+                # o texto em inglês fica como fallback para drivers/versões
+                # que não populem pgcode.
+                missing_id_column = (
+                    getattr(exc, 'pgcode', None) == '42703'
+                    or 'column "id" does not exist' in message
+                    or 'undefinedcolumn' in message
+                )
+                if not missing_id_column:
+                    raise
                 cursor.execute(sql, params or ())
         else:
             if params is not None:

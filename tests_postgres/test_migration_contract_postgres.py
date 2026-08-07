@@ -308,3 +308,174 @@ def test_registration_code_collision_message_names_the_company_scope(_rollback_a
     _conn().execute('RELEASE SAVEPOINT sp_msg')
 
     assert humanize_integrity_error(excinfo.value) == 'ID do colaborador já cadastrado para esta empresa.'
+
+
+# ── Paridade importação × cadastro manual: fornecedores (issue #169) ────────
+#
+# O motor de importação grava DIRETO na tabela: não passa por rota nem por
+# `create_*`. Tudo que o cadastro manual transforma fora de um `normalizer`
+# declarado se perde. Em `outsourced_companies` isso não era só divergência
+# cosmética — `cnpj_normalized` sustenta um índice único PARCIAL
+# (`WHERE cnpj_normalized <> ''`), então a linha importada ficava FORA do
+# índice e o mesmo CNPJ podia entrar duas vezes.
+
+def _valid_cnpj_from(base12: str) -> str:
+    """CNPJ com dígito verificador correto — o produto valida de verdade, e
+    afrouxar o validador para o teste passar não é opção."""
+    digits = base12
+    for weights in ([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+                    [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]):
+        total = sum(int(digits[i]) * weights[i] for i in range(len(weights)))
+        rest = total % 11
+        digits += str(0 if rest < 2 else 11 - rest)
+    return digits
+
+
+@pytest.fixture
+def _isolated_tenant():
+    """Tenant descartável com nome e CNPJ únicos.
+
+    Não dá para usar o SAVEPOINT de ``_rollback_after`` nestes testes:
+    ``create_outsourced_company`` faz ``commit()`` interno, o que descarta o
+    savepoint e persiste as linhas. Aqui o tenant é único por execução e é
+    apagado no teardown — o ``ON DELETE CASCADE`` de ``companies`` leva junto
+    unidades e empresas terceirizadas.
+    """
+    import uuid
+    tag = uuid.uuid4().hex[:8]
+    conn = _conn()
+    cnpj = _valid_cnpj_from(f'{int(tag, 16) % 10**12:012d}')
+    company_id = int(conn.execute(
+        'INSERT INTO companies (name, legal_name, cnpj, logo_type, plan_name, user_limit, '
+        'license_status, active, commercial_notes, contract_start, contract_end, '
+        "monthly_value, addendum_enabled) VALUES (?, ?, ?, 'text', 'basic', 10, 'active', 1, '', '', '', 0, 0)",
+        (f'Tenant 169 {tag}', f'Tenant 169 {tag}', cnpj),
+    ).lastrowid)
+    conn.commit()
+    try:
+        yield company_id
+    finally:
+        conn.execute('DELETE FROM outsourced_companies WHERE company_id = ?', (company_id,))
+        conn.execute('DELETE FROM companies WHERE id = ?', (company_id,))
+        conn.commit()
+
+
+def _import_outsourced(company_id, record):
+    """Grava como o motor grava: normalizador do catálogo + colunas graváveis."""
+    from modules.data_migration.catalog import get_entity
+    from modules.data_migration.service import apply_domain_rules, _writable_columns
+    descriptor = get_entity('fornecedores')
+    normalized = apply_domain_rules(descriptor, [record])[0]
+    assert not normalized.get('__domain_error__'), normalized.get('__domain_error__')
+    writable = _writable_columns(_conn(), descriptor)
+    payload = {k: v for k, v in normalized.items() if k in writable and str(v or '').strip()}
+    columns = ['company_id', *sorted(payload)]
+    values = [company_id, *[payload[k] for k in sorted(payload)]]
+    placeholders = ', '.join(['?'] * len(values))
+    return int(_conn().execute(
+        f"INSERT INTO outsourced_companies ({', '.join(columns)}, created_at, updated_at) "  # noqa: S608 - allowlist do catálogo
+        f"VALUES ({placeholders}, '', '')",
+        tuple(values),
+    ).lastrowid)
+
+
+def test_import_and_manual_registration_store_the_same_canonical_cnpj(_isolated_tenant):
+    """O defeito que originou a issue: a importação gravava o CNPJ como veio
+    da planilha e deixava a coluna canônica vazia."""
+    from modules.outsourced_companies.service import create_outsourced_company
+    company_id = _isolated_tenant
+
+    imported = _import_outsourced(company_id, {
+        'legal_name': 'Alfa Servicos LTDA', 'cnpj': '11.222.333/0001-81',
+        'company_kind': 'Terceirizada',
+    })
+    manual = create_outsourced_company(_conn(), {
+        'legal_name': 'Beta Servicos LTDA', 'cnpj': '44.555.666/0001-81',
+        'company_kind': 'Terceirizada',
+    }, company_id)
+
+    rows = {int(r[0]): dict(r) for r in _conn().execute(
+        'SELECT id, cnpj, cnpj_normalized, company_kind FROM outsourced_companies '
+        'WHERE company_id = ? AND id IN (?, ?)', (company_id, imported, manual)).fetchall()}
+
+    assert rows[imported]['cnpj_normalized'] == '11222333000181', (
+        'Importação deixou a coluna canônica vazia — a linha fica fora do índice '
+        'parcial de deduplicação.'
+    )
+    # Mesma forma canônica dos dois lados: formatado em `cnpj`, dígitos em
+    # `cnpj_normalized`, vocabulário controlado em `company_kind`.
+    for row in rows.values():
+        assert row['cnpj'] == row['cnpj'].strip() and '/' in row['cnpj']
+        assert row['cnpj_normalized'].isdigit() and len(row['cnpj_normalized']) == 14
+        assert row['company_kind'] == 'outsourced', (
+            f"company_kind={row['company_kind']!r} fora do vocabulário controlado."
+        )
+
+
+def test_manual_registration_detects_a_company_that_was_imported(_isolated_tenant):
+    """Antes desta correção o cadastro manual aceitava o MESMO CNPJ de uma
+    empresa importada, porque procura por `cnpj_normalized` — que a
+    importação deixava vazio. Duas empresas, mesmo CNPJ, mesmo tenant."""
+    from modules.outsourced_companies.service import (
+        DuplicateOutsourcedCompanyError,
+        create_outsourced_company,
+        find_outsourced_company_by_cnpj,
+    )
+    company_id = _isolated_tenant
+    imported = _import_outsourced(company_id, {
+        'legal_name': 'Gama Servicos LTDA', 'cnpj': '11.222.333/0001-81',
+    })
+
+    assert find_outsourced_company_by_cnpj(_conn(), company_id, '11222333000181') == imported
+
+    _conn().execute('SAVEPOINT sp_dup_cnpj')
+    with pytest.raises(DuplicateOutsourcedCompanyError):
+        create_outsourced_company(_conn(), {
+            'legal_name': 'Gama Servicos LTDA (duplicata)', 'cnpj': '11222333000181',
+        }, company_id)
+    _conn().execute('ROLLBACK TO SAVEPOINT sp_dup_cnpj')
+    _conn().execute('RELEASE SAVEPOINT sp_dup_cnpj')
+
+
+def test_the_partial_unique_index_now_covers_imported_rows(_isolated_tenant):
+    """Prova no banco, não na aplicação: com a coluna canônica preenchida, o
+    índice parcial passa a valer para a linha importada."""
+    company_id = _isolated_tenant
+    _import_outsourced(company_id, {'legal_name': 'Delta LTDA', 'cnpj': '11.222.333/0001-81'})
+
+    _conn().execute('SAVEPOINT sp_idx')
+    with pytest.raises(Exception) as excinfo:
+        _import_outsourced(company_id, {'legal_name': 'Delta LTDA (outro nome)', 'cnpj': '11222333000181'})
+    _conn().execute('ROLLBACK TO SAVEPOINT sp_idx')
+    _conn().execute('RELEASE SAVEPOINT sp_idx')
+    assert 'cnpj_normalized' in str(excinfo.value), (
+        f'A violação deveria citar o índice de cnpj_normalized; veio: {excinfo.value}'
+    )
+
+
+def test_import_uses_the_same_domain_function_as_manual_registration():
+    """Uma definição só. Se alguém criar uma segunda cópia da regra, este
+    teste continua passando — mas o de paridade acima quebra na primeira
+    divergência de comportamento."""
+    from importlib import import_module
+    from modules.data_migration.catalog import get_entity
+    from modules.outsourced_companies.service import normalize_outsourced_company_domain_fields
+    descriptor = get_entity('fornecedores')
+    module_name, _, function_name = descriptor.normalizer.partition(':')
+    assert getattr(import_module(module_name), function_name) is normalize_outsourced_company_domain_fields
+
+
+def test_server_defaults_match_what_the_normalizer_would_produce_when_empty():
+    """A importação não coleta `epi_responsibility`, `registration_mode` nem
+    `registration_status`: eles caem no default do servidor. Isso só é
+    aceitável enquanto o default do servidor for IGUAL ao que o normalizador
+    produziria — senão importado e manual divergem de novo, em silêncio."""
+    from modules.outsourced_companies.service import normalize_outsourced_company_domain_fields
+    produced = normalize_outsourced_company_domain_fields({'legal_name': 'X'})
+    columns = _columns('outsourced_companies')
+    for name in ('epi_responsibility', 'registration_mode', 'registration_status'):
+        server_default = str(columns[name]['column_default'] or '').split('::')[0].strip("'")
+        assert produced[name] == server_default, (
+            f'{name}: normalizador produz {produced[name]!r} mas o servidor grava '
+            f'{server_default!r} — importado e manual divergiriam.'
+        )

@@ -12,28 +12,16 @@ name: PostgreSQL Migration Journey
 # Este job é BLOQUEANTE de propósito: nada de `continue-on-error`. Ele foi
 # escrito para ser marcado como required status check em Settings → Branches →
 # Branch protection rules → main.
+#
+# Sem filtro `paths` DE PROPÓSITO. Um required status check filtrado por
+# caminho não gera check run quando o PR não toca nenhum deles, e o GitHub não
+# distingue "pulado" de "ainda não reportou": o PR fica pendente para sempre,
+# sem nada vermelho para corrigir. Rodar em todo PR custa ~1 minuto e é o que
+# torna este check obrigatório de verdade.
 on:
   push:
     branches: [main, "claude/**"]
-    paths:
-      - "modules/data_migration/**"
-      - "modules/employees/**"
-      - "core/schema.py"
-      - "core/bootstrap.py"
-      - "core/database.py"
-      - "epi_backend/db.py"
-      - "tests_postgres/**"
-      - ".github/workflows/postgres-migration-journey.yml"
   pull_request:
-    paths:
-      - "modules/data_migration/**"
-      - "modules/employees/**"
-      - "core/schema.py"
-      - "core/bootstrap.py"
-      - "core/database.py"
-      - "epi_backend/db.py"
-      - "tests_postgres/**"
-      - ".github/workflows/postgres-migration-journey.yml"
   workflow_dispatch:
 
 concurrency:

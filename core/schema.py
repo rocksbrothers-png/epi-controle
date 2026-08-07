@@ -2417,6 +2417,42 @@ def ensure_legal_entities(connection) -> None:
     _safe_add_column(connection, 'companies', 'org_structure_type', "TEXT NOT NULL DEFAULT 'single_cnpj'")
     _safe_add_column(connection, 'companies', 'stock_control_scope', "TEXT NOT NULL DEFAULT 'company'")
 
+    # Matrícula única POR TENANT, não globalmente (issue #168).
+    #
+    # `employees_employee_id_code_key` era UNIQUE(employee_id_code) seco — o
+    # único desvio entre as entidades irmãs, que usam company_id no escopo
+    # (units: UNIQUE(company_id, name); epis: UNIQUE(company_id, purchase_code)).
+    # Matrícula "1001" é banal: o escopo global impedia o segundo cliente de
+    # cadastrá-la e, ao recusar, revelava que ela já existia em OUTRO tenant.
+    #
+    # Toda a camada de aplicação já assumia escopo por tenant —
+    # ensure_employee_identity_unique filtra por company_id, o índice de upsert
+    # da importação também, e a mensagem em app.py já dizia "para esta empresa".
+    # Esta migração alinha o banco ao que o produto sempre afirmou.
+    #
+    # NÃO usar UNIQUE(legal_entity_id, employee_id_code): a coluna é nullable e
+    # no PostgreSQL NULLs são distintos entre si, de modo que a constraint não
+    # se aplicaria a nenhuma linha sem CNPJ vinculado — e a transferência entre
+    # CNPJs (transfer_employee_legal_entity) preserva a matrícula de propósito.
+    #
+    # A constraint nova é ESTRITAMENTE MAIS PERMISSIVA que a antiga: nenhum dado
+    # existente pode violá-la. SQLite não remove o UNIQUE inline por nome e cai
+    # no except — inofensivo, porque produção é PostgreSQL e bancos novos já
+    # nascem com a chave composta (core/bootstrap.py).
+    try:
+        connection.execute(
+            'ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_employee_id_code_key'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_company_employee_code '
+            'ON employees (company_id, employee_id_code)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
     # Vínculo do colaborador e da unidade ao CNPJ (nullable: retrocompatível).
     _safe_add_column(connection, 'employees', 'legal_entity_id', 'INTEGER')
     _safe_add_column(connection, 'units', 'legal_entity_id', 'INTEGER')

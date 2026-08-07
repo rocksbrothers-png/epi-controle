@@ -133,9 +133,16 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
             raise ValueError('Empresa sem unidade cadastrada para criar colaborador.')
         unit_id = int(default_unit['id'])
 
-    existing_code = connection.execute('SELECT id FROM employees WHERE employee_id_code = ?', (employee_id_code,)).fetchone()
+    # Escopo por tenant, igual a ensure_employee_identity_unique e ao índice de
+    # upsert da importação. Sem o company_id este caminho recusava matrícula que
+    # o banco aceita — e a recusa revelava a existência de um colaborador de
+    # OUTRO tenant (issue #168).
+    existing_code = connection.execute(
+        'SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ?',
+        (int(company_id), employee_id_code),
+    ).fetchone()
     if existing_code:
-        raise ValueError('ID do colaborador já cadastrado.')
+        raise ValueError('ID do colaborador já cadastrado nesta empresa.')
 
     cursor = connection.execute(
         '''

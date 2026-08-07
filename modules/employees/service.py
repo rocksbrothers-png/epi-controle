@@ -260,7 +260,8 @@ def _generate_simplified_employee_code(connection, company_id):
     for _ in range(5):
         candidate = f"TERC-{int(company_id)}-{secrets.token_hex(4).upper()}"
         exists = connection.execute(
-            'SELECT id FROM employees WHERE employee_id_code = ? LIMIT 1', (candidate,),
+            'SELECT id FROM employees WHERE company_id = ? AND employee_id_code = ? LIMIT 1',
+            (int(company_id), candidate),
         ).fetchone()
         if not exists:
             return candidate

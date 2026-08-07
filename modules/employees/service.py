@@ -280,6 +280,35 @@ def ensure_actor_unit_scope_for_target(connection, actor, unit_id):
         raise PermissionError('Operação permitida somente para a sua unidade operacional.')
 
 
+def resolve_employee_outsourced_unit_id(connection, actor, payload):
+    """Resolve o unit_id do Cadastro de Colaboradores simplificado a partir
+    do ator e do payload — mesmo padrão de
+    modules.outsourced_companies.service.resolve_outsourced_company_unit_id.
+    Administrador Local/Gestor de EPI são sempre forçados à própria
+    Unidade operacional (o valor do payload, se vier, é ignorado — não dá
+    para burlar o escopo mandando um unit_id diferente); os demais perfis
+    precisam informar a Unidade explicitamente no payload.
+
+    Existe porque o campo Unidade deste formulário fica `disabled` na tela
+    para estes perfis (trava de UX já existente — eles só podem cadastrar
+    na própria unidade), e campos `disabled` nunca são incluídos por
+    `FormData`/serialização de formulário no navegador: exigir `unit_id`
+    no payload bruto (como antes) tornava o cadastro impossível para
+    exatamente os perfis que a trava deveria só orientar visualmente —
+    o payload chegava sem o campo e a API respondia 400 "Campo
+    obrigatório: unit_id", mesmo com a Unidade certa visível na tela.
+    """
+    if actor.get('role') in ('admin', 'user'):
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if not scope_unit_id:
+            raise PermissionError('Seu perfil não possui unidade operacional ativa.')
+        return int(scope_unit_id)
+    raw = (payload or {}).get('unit_id')
+    if raw in (None, '', 0, '0'):
+        raise ValueError('Unidade é obrigatória.')
+    return int(raw)
+
+
 def validate_employee_outsourced_simplified_payload(payload):
     """Campos obrigatórios/opcionais do Cadastro de Colaboradores (ADR-0002
     §10.2, prompt do produto) — nunca aceita tipo_vinculo == 'CLT'."""
@@ -327,8 +356,9 @@ def create_employee_outsourced_simplified(connection, payload, *, actor):
     if not company_id:
         raise ValueError('Empresa é obrigatória.')
 
+    unit_id = resolve_employee_outsourced_unit_id(connection, actor, payload)
+    payload = {**payload, 'unit_id': unit_id}
     validated = validate_employee_outsourced_simplified_payload(payload)
-    unit_id = int(payload['unit_id'])
     unit = get_unit_by_id(connection, unit_id)
     ensure_resource_company(actor, unit, 'Unidade')
     if str(unit['company_id']) != str(company_id):
@@ -400,8 +430,9 @@ def update_employee_outsourced_simplified(connection, employee_id, payload, *, a
     if str(company_id) != str(current['company_id']):
         raise ValueError('Empresa do colaborador é imutável nesta edição.')
 
+    unit_id = resolve_employee_outsourced_unit_id(connection, actor, payload)
+    payload = {**payload, 'unit_id': unit_id}
     validated = validate_employee_outsourced_simplified_payload(payload)
-    unit_id = int(payload['unit_id'])
     unit = get_unit_by_id(connection, unit_id)
     ensure_resource_company(actor, unit, 'Unidade')
     if str(unit['company_id']) != str(company_id):

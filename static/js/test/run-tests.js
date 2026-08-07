@@ -1310,10 +1310,37 @@ test('outsourced-companies-view: canEditCorporateFields libera Simplificado semp
   assert(!V.canEditCorporateFields(_OC_VIEW[2], false), 'padrão bloqueia sem employees:update completo');
   assert(V.canEditCorporateFields(_OC_VIEW[2], true), 'padrão libera com employees:update completo');
 });
+test('outsourced-companies-view: isArchivedInUnit reflete local_status, nunca outros campos', () => {
+  const V = _OCV();
+  assert(V.isArchivedInUnit({ local_status: 'inactive' }), 'local_status inactive é arquivada nesta Unidade');
+  assert(!V.isArchivedInUnit({ local_status: 'active' }), 'local_status active não é arquivada');
+  assert(!V.isArchivedInUnit({}), 'sem local_status (perfil sem escopo ou não vinculada) não é arquivada');
+  assert(!V.isArchivedInUnit({ local_status: undefined }), 'local_status undefined não é arquivada');
+  // registration_mode/status do CORPORATIVO nunca deve ser confundido com o
+  // vínculo local (Problema 4 do pedido: são conceitos deliberadamente
+  // diferentes) — só local_status importa aqui.
+  assert(!V.isArchivedInUnit({ local_status: 'active', status: 'archived' }), 'arquivamento global não é o vínculo local');
+});
 test('outsourced-companies-view: lista ausente não quebra', () => {
   const V = _OCV();
   eq(V.visibleOutsourcedCompanies(undefined, {}).length, 0);
   eq(V.visibleOutsourcedCompanies(null, { kind: 'outsourced' }).length, 0);
+});
+test('terceirizados: botão "Arquivar/Desarquivar nesta Unidade" tem listener nas DUAS tabelas (Lista + Empresas arquivadas)', () => {
+  // Regressão real encontrada em verificação manual: o botão da tabela
+  // "Empresas arquivadas nesta Unidade" (Problema 2/4 do pedido) foi
+  // renderizado mas ficou sem bindAppListener próprio — clique não fazia
+  // nada (nenhum erro, nenhuma chamada de API), porque o listener
+  // existente só cobria refs.outsourcedCompaniesTable (a Lista principal).
+  const js = _read('app.js');
+  assert(
+    js.includes("bindAppListener(refs.outsourcedCompaniesTable, 'click',"),
+    'listener da Lista principal ausente',
+  );
+  assert(
+    js.includes("bindAppListener(refs.outsourcedCompanyUnitArchivedTable, 'click',"),
+    'listener da tabela "Empresas arquivadas nesta Unidade" ausente — botão Desarquivar fica morto',
+  );
 });
 
 // ── Cadastro de Colaboradores simplificado (web legado, ADR-0002 §10.2) ───

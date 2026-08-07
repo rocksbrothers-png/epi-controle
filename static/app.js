@@ -2191,9 +2191,12 @@ const refs = {
   outsourcedCompanyUpdateRequestsTable: document.getElementById('outsourced-company-update-requests-table'),
   outsourcedCompanyUpdateRequestsCard: document.getElementById('outsourced-company-update-requests-card'),
   outsourcedCompanyCorporateLockBanner: document.getElementById('outsourced-company-corporate-lock-banner'),
+  outsourcedCompanyUnitArchivedCard: document.getElementById('outsourced-company-unit-archived-card'),
+  outsourcedCompanyUnitArchivedTable: document.getElementById('outsourced-company-unit-archived-table'),
   outsourcedEmployeesTable: document.getElementById('outsourced-employees-table'),
   outsourcedEmployeesFilterSearch: document.getElementById('outsourced-employees-filter-search'),
   outsourcedEmployeesSummaryTable: document.getElementById('outsourced-employees-summary-table'),
+  archivedOutsourcedCompaniesCard: document.getElementById('archived-outsourced-companies-card'),
   archivedOutsourcedCompaniesTable: document.getElementById('archived-outsourced-companies-table'),
   archivedOutsourcedCompaniesFilterCompany: document.getElementById('archived-outsourced-companies-filter-company'),
   archivedOutsourcedCompaniesFilterDate: document.getElementById('archived-outsourced-companies-filter-date'),
@@ -7772,9 +7775,20 @@ async function loadOutsourcedCompanies() {
 function renderOutsourcedCompanies() {
   if (!refs.outsourcedCompaniesTable) return;
   const helpers = outsourcedCompaniesViewHelpers();
+  // Perfis escopados por Unidade (Administrador Local/Gestor de EPI) são os
+  // únicos cujos itens vêm com local_status (annotate_outsourced_company_visibility,
+  // só roda para eles) — é o que diferencia "arquivar nesta Unidade" (por
+  // vínculo) do arquivamento global do corporativo, que continua exclusivo
+  // de quem não é escopado.
+  const isUnitScoped = ['admin', 'user'].includes(state.user?.role);
+  const allLinked = state.outsourcedCompanies || [];
+  const isArchivedInUnit = helpers.isArchivedInUnit || ((item) => String(item?.local_status || '') === 'inactive');
+  const activeLinked = isUnitScoped
+    ? allLinked.filter((item) => !isArchivedInUnit(item))
+    : allLinked;
   const visible = helpers.visibleOutsourcedCompanies
-    ? helpers.visibleOutsourcedCompanies(state.outsourcedCompanies, state.outsourcedCompaniesFilters)
-    : (state.outsourcedCompanies || []);
+    ? helpers.visibleOutsourcedCompanies(activeLinked, state.outsourcedCompaniesFilters)
+    : activeLinked;
   const canUpdate = hasPermission(['employees:update', 'employees:update_simplified']);
   refs.outsourcedCompaniesTable.innerHTML = visible
     .map((item) => formatOutsourcedCompanyRow(item, { canUpdate }))
@@ -7795,11 +7809,43 @@ function renderOutsourcedCompanies() {
         message: tr('outsourcedCompany.availableEmpty', 'Nenhuma empresa disponível para vincular.'),
       });
   }
+  // Empresas arquivadas NESTA Unidade (Administrador Local/Gestor de EPI) —
+  // mesma ação de vínculo local (toggleOutsourcedCompanyUnitLink), só
+  // exibida em seção separada da Lista principal; nunca duplica o
+  // arquivamento global (ARCHIVAL_ENTITIES.outsourcedCompany/"restaurar"),
+  // que continua exclusivo de quem não é escopado por Unidade — os dois
+  // cartões da aba "Empresas Arquivadas" são mutuamente exclusivos por
+  // perfil, nunca mostrados juntos.
+  if (refs.outsourcedCompanyUnitArchivedCard) refs.outsourcedCompanyUnitArchivedCard.hidden = !isUnitScoped;
+  if (refs.archivedOutsourcedCompaniesCard) refs.archivedOutsourcedCompaniesCard.hidden = isUnitScoped;
+  if (isUnitScoped && refs.outsourcedCompanyUnitArchivedTable) {
+    const archived = allLinked.filter((item) => isArchivedInUnit(item));
+    refs.outsourcedCompanyUnitArchivedTable.innerHTML = archived
+      .map((item) => formatOutsourcedCompanyUnitArchivedRow(item))
+      .join('') || globalThis.dsTableState({
+        colspan: 6,
+        message: tr('outsourcedCompany.unitArchivedEmpty', 'Nenhuma empresa arquivada nesta Unidade.'),
+      });
+  }
   // O seletor de empresa do Cadastro de Colaboradores depende da mesma
   // lista — resincroniza sempre que ela muda (mesma lógica de
   // bindDependentSelects, mas esta lista não vem do bootstrap).
   syncOutsourcedEmployeeCompanySelect();
   renderOutsourcedEmployees();
+}
+
+// Linha de "Empresas arquivadas nesta Unidade" — mesmos dados do vínculo
+// local (unit_link_deactivated_at/reason/by_user_id, anexados por
+// annotate_outsourced_company_visibility), só que renderizados numa seção
+// separada da Lista, com "Desarquivar" em vez de "Editar".
+function formatOutsourcedCompanyUnitArchivedRow(item) {
+  const entityId = escapeHtml(String(item.id ?? ''));
+  const responsible = (state.users || []).find((u) => String(u.id) === String(item.unit_link_deactivated_by_user_id));
+  const responsibleName = responsible ? (responsible.full_name || '') : '';
+  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
+    + `<td>${formatDate(item.unit_link_deactivated_at)}</td><td>${escapeHtml(item.unit_link_deactivation_reason || '') || '-'}</td>`
+    + `<td>${escapeHtml(responsibleName) || '-'}</td>`
+    + `<td><button class="ghost" data-outsourced-company-toggle-link="${entityId}" data-activate="1">${escapeHtml(tr('outsourcedCompany.activateLink', 'Desarquivar nesta Unidade'))}</button></td></tr>`;
 }
 
 function formatOutsourcedCompanyRow(item, permissions) {
@@ -7833,24 +7879,30 @@ function formatOutsourcedCompanyRow(item, permissions) {
   if (showPromote) {
     buttons.push(`<button class="ghost" data-outsourced-company-promote="${entityId}">${escapeHtml(tr('outsourcedCompany.promote', 'Promover a Cadastro Padrão'))}</button>`);
   }
-  // Vínculo local (ativar/desativar) — nunca a mesma coisa que arquivar o
-  // corporativo (ADR-0002 §12 item 8 do pedido): sempre liberado para quem
-  // já gerencia a empresa, independente de registration_mode/trava acima.
+  // "Arquivar nesta Unidade" (vínculo local, ex-"Desativar vínculo local" —
+  // ADR-0002 §12 item 8/Problema 4 do pedido): nunca a mesma coisa que
+  // arquivar o corporativo (ARCHIVAL_ENTITIES.outsourcedCompany, exclusivo
+  // de quem não é escopado por Unidade) — sempre liberado para quem já
+  // gerencia a empresa, independente de registration_mode/trava acima.
   // `local_status` só vem preenchido para quem é escopado por Unidade
   // (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
   // ausente para Geral/Registro, que não têm UMA Unidade só para alternar.
+  // Na prática só chega aqui com linkActive === true: renderOutsourcedCompanies
+  // já filtra local_status === 'inactive' para fora desta tabela (formatOutsourcedCompanyUnitArchivedRow
+  // cobre a seção "Empresas arquivadas nesta Unidade") — o ramo inativo
+  // segue aqui só como defesa, nunca alcançado no fluxo normal.
   const linkStatus = item.local_status;
   if (permissions.canUpdate && linkStatus !== undefined && linkStatus !== null) {
     const linkActive = String(linkStatus) !== 'inactive';
     const toggleLabel = linkActive
-      ? tr('outsourcedCompany.deactivateLink', 'Desativar vínculo local')
-      : tr('outsourcedCompany.activateLink', 'Ativar vínculo local');
+      ? tr('outsourcedCompany.deactivateLink', 'Arquivar nesta Unidade')
+      : tr('outsourcedCompany.activateLink', 'Desarquivar nesta Unidade');
     buttons.push(`<button class="ghost" data-outsourced-company-toggle-link="${entityId}" data-activate="${linkActive ? '0' : '1'}">${escapeHtml(toggleLabel)}</button>`);
   }
   const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
   const linkStatusLabel = linkStatus === undefined || linkStatus === null
     ? '-'
-    : (String(linkStatus) === 'inactive' ? tr('outsourcedCompany.linkInactive', 'Inativo') : tr('outsourcedCompany.linkActive', 'Ativo'));
+    : (String(linkStatus) === 'inactive' ? tr('outsourcedCompany.linkInactive', 'Arquivado') : tr('outsourcedCompany.linkActive', 'Ativo'));
   return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
     + `<td>${escapeHtml(kindLabel)}</td><td>${escapeHtml(item.epi_responsibility || '')}</td>`
     + `<td>${escapeHtml(modeLabel)}</td><td>${escapeHtml(linkStatusLabel)}</td><td>${actions}</td></tr>`;
@@ -7994,14 +8046,16 @@ async function linkOutsourcedCompanyToMyUnit(entityId) {
   }
 }
 
-// Ativa/desativa o vínculo LOCAL da própria Unidade — nunca arquiva o
-// cadastro corporativo (ADR-0002 §12 item 8 do pedido: não confundir com
-// arquivamento global).
+// Arquiva/desarquiva a empresa NESTA Unidade (vínculo local) — nunca o
+// cadastro corporativo (ADR-0002 §12 item 8 do pedido: não confundir com o
+// arquivamento global de ARCHIVAL_ENTITIES.outsourcedCompany, exclusivo de
+// quem não é escopado por Unidade). Some da Lista e do seletor de novos
+// colaboradores desta Unidade; outras Unidades vinculadas não são afetadas.
 async function toggleOutsourcedCompanyUnitLink(entityId, activate) {
   if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
   let reason = '';
   if (!activate) {
-    reason = prompt(tr('outsourcedCompany.deactivateLinkReasonPrompt', 'Motivo da desativação (opcional):')) || '';
+    reason = prompt(tr('outsourcedCompany.deactivateLinkReasonPrompt', 'Motivo do arquivamento (opcional):')) || '';
     if (reason === null) return;
   }
   // Caminho literal em cada ramo (em vez de interpolar activate/deactivate
@@ -8154,7 +8208,16 @@ function syncOutsourcedEmployeeCompanySelect() {
   const field = document.getElementById('outsourced-employee-outsourced-company');
   if (!field) return;
   const previous = field.value;
-  const companies = filterByUserCompany(state.outsourcedCompanies || []);
+  // Empresa arquivada NESTA Unidade não pode ser oferecida para novos
+  // colaboradores — mesmo espelho do backend
+  // (is_outsourced_company_available_to_unit, Problema 3 do pedido): some
+  // do seletor assim que arquivada, volta assim que desarquivada. Some
+  // sozinho quando o próprio state.outsourcedCompanies muda (toggleOutsourcedCompanyUnitLink
+  // recarrega a lista), sem precisar de lógica extra aqui.
+  const helpers = outsourcedCompaniesViewHelpers();
+  const isArchivedInUnit = helpers.isArchivedInUnit || ((item) => String(item?.local_status || '') === 'inactive');
+  const companies = filterByUserCompany(state.outsourcedCompanies || [])
+    .filter((item) => !isArchivedInUnit(item));
   field.innerHTML = companies
     .map((item) => `<option value="${item.id}">${escapeHtml(item.trade_name || item.legal_name || '')}</option>`)
     .join('');
@@ -13331,6 +13394,10 @@ async function init() {
     if (promote) { void promoteOutsourcedCompany(promote); return; }
     const requestUpdate = event.target.dataset.outsourcedCompanyRequestUpdate;
     if (requestUpdate) { void requestOutsourcedCompanyUpdate(requestUpdate); return; }
+    const toggleLink = event.target.dataset.outsourcedCompanyToggleLink;
+    if (toggleLink) void toggleOutsourcedCompanyUnitLink(toggleLink, event.target.dataset.activate === '1');
+  });
+  bindAppListener(refs.outsourcedCompanyUnitArchivedTable, 'click', (event) => {
     const toggleLink = event.target.dataset.outsourcedCompanyToggleLink;
     if (toggleLink) void toggleOutsourcedCompanyUnitLink(toggleLink, event.target.dataset.activate === '1');
   });

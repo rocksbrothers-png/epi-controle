@@ -304,7 +304,16 @@ def test_create_rejects_archived_outsourced_company():
 
 # ── escopo por Unidade do ator (Administrador Local/Gestor de EPI) ─────────
 
-def test_create_blocked_for_admin_role_outside_operational_unit():
+def test_create_ignores_spoofed_unit_id_for_admin_role_outside_operational_unit():
+    """resolve_employee_outsourced_unit_id ignora por completo o unit_id do
+    payload para Administrador Local/Gestor de EPI — não é mais "aceita e
+    depois rejeita se não bater", é "nunca confia no payload": o campo
+    Unidade do formulário fica `disabled` na tela para estes perfis e
+    `FormData` nunca inclui campos `disabled`, então o payload real que
+    chega do navegador não tem unit_id algum. Testar com unit_id_other
+    ainda vale — prova que mesmo um payload malicioso/manual com uma
+    Unidade estranha não desvia o colaborador para lá; ele sempre cai na
+    própria unidade operacional do ator."""
     conn = _PgStyleConn(_conn())
     cid = _seed_company(conn)
     _bootstrap(conn)
@@ -318,6 +327,21 @@ def test_create_blocked_for_admin_role_outside_operational_unit():
     )
     linked_employee_id = int(linked_cur.lastrowid)
     actor = _actor(cid, role='admin', linked_employee_id=linked_employee_id)
+    payload = _minimal_payload(cid, unit_id_other, oc_id)
+    employee_id = create_employee_outsourced_simplified(conn, payload, actor=actor)
+    row = conn.execute('SELECT unit_id FROM employees WHERE id = %s', (employee_id,)).fetchone()
+    assert int(row['unit_id']) == unit_id_op
+
+
+def test_create_blocked_for_admin_role_without_operational_unit():
+    """Sem unidade operacional ativa, o resolver recusa antes de chegar
+    a qualquer unit_id — nem o próprio, nem um de terceiros."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id_other = _seed_unit(conn, cid, name='Outra Unidade')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    actor = _actor(cid, role='admin', linked_employee_id=None)
     payload = _minimal_payload(cid, unit_id_other, oc_id)
     with pytest.raises(PermissionError):
         create_employee_outsourced_simplified(conn, payload, actor=actor)
@@ -338,6 +362,48 @@ def test_create_allowed_for_admin_role_inside_operational_unit():
     payload = _minimal_payload(cid, unit_id_op, oc_id)
     employee_id = create_employee_outsourced_simplified(conn, payload, actor=actor)
     assert employee_id
+
+
+@pytest.mark.parametrize('role', ['admin', 'user'])
+def test_create_resolves_unit_id_automatically_when_absent_from_payload(role):
+    """Reproduz o bug real: o campo Unidade fica `disabled` na tela para
+    Administrador Local/Gestor de EPI, e campos `disabled` nunca são
+    incluídos por FormData — o payload que o navegador envia não tem
+    unit_id nenhum (chave ausente, não vazia). Antes da correção isso
+    batia em "Unidade é obrigatória." mesmo com a Unidade certa visível
+    na tela; agora o backend resolve pela sessão do ator."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id_op = _seed_unit(conn, cid, name='Unidade Operacional')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    linked_cur = conn.execute(
+        "INSERT INTO employees (company_id, unit_id, name) VALUES (%s, %s, 'Vínculo do ator')",
+        (cid, unit_id_op),
+    )
+    linked_employee_id = int(linked_cur.lastrowid)
+    actor = _actor(cid, role=role, linked_employee_id=linked_employee_id)
+    payload = _minimal_payload(cid, unit_id_op, oc_id)
+    del payload['unit_id']
+    assert 'unit_id' not in payload
+    employee_id = create_employee_outsourced_simplified(conn, payload, actor=actor)
+    row = conn.execute('SELECT unit_id FROM employees WHERE id = %s', (employee_id,)).fetchone()
+    assert int(row['unit_id']) == unit_id_op
+
+
+def test_create_still_requires_explicit_unit_id_for_unrestricted_profile():
+    """Administrador Geral/de Registro não têm unidade operacional única —
+    o campo Unidade continua livre (não `disabled`) na tela para eles, e o
+    backend continua exigindo que o payload informe qual Unidade."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id = _seed_unit(conn, cid)
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    payload = _minimal_payload(cid, unit_id, oc_id)
+    del payload['unit_id']
+    with pytest.raises(ValueError):
+        create_employee_outsourced_simplified(conn, payload, actor=_actor(cid, role='general_admin'))
 
 
 # ── update ────────────────────────────────────────────────────────────────
@@ -405,3 +471,30 @@ def test_update_can_move_employee_to_another_unit_within_tenant():
     update_employee_outsourced_simplified(conn, employee_id, update_payload, actor=_actor(cid))
     employee = get_employee_by_id(conn, employee_id)
     assert employee['unit_id'] == unit_id_2
+
+
+@pytest.mark.parametrize('role', ['admin', 'user'])
+def test_update_resolves_unit_id_automatically_when_absent_from_payload(role):
+    """Mesmo bug do create, reproduzido na edição: o campo Unidade também
+    fica `disabled` no formulário de edição para estes perfis."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id_op = _seed_unit(conn, cid, name='Unidade Operacional')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    linked_cur = conn.execute(
+        "INSERT INTO employees (company_id, unit_id, name) VALUES (%s, %s, 'Vínculo do ator')",
+        (cid, unit_id_op),
+    )
+    linked_employee_id = int(linked_cur.lastrowid)
+    actor = _actor(cid, role=role, linked_employee_id=linked_employee_id)
+    employee_id = create_employee_outsourced_simplified(
+        conn, _minimal_payload(cid, unit_id_op, oc_id), actor=actor,
+    )
+    update_payload = _minimal_payload(cid, unit_id_op, oc_id, name='Nome Atualizado')
+    del update_payload['unit_id']
+    assert 'unit_id' not in update_payload
+    update_employee_outsourced_simplified(conn, employee_id, update_payload, actor=actor)
+    employee = get_employee_by_id(conn, employee_id)
+    assert employee['unit_id'] == unit_id_op
+    assert employee['name'] == 'Nome Atualizado'

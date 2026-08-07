@@ -82,6 +82,22 @@
     return !isCorporateLocked(entity) || Boolean(hasFullUpdatePermission);
   }
 
+  /**
+   * "Arquivada nesta Unidade" (vínculo local desativado — Problemas 2/3/4
+   * do pedido de auditoria: "Desativar vínculo local" É o arquivamento por
+   * Unidade, só renomeado). `local_status` só existe em itens já
+   * vinculados de perfis escopados por Unidade
+   * (annotate_outsourced_company_visibility) — ausente (undefined/null,
+   * perfil sem escopo ou item ainda não vinculado) nunca conta como
+   * arquivado. Espelha `is_outsourced_company_available_to_unit` do
+   * backend (modules/outsourced_companies/service.py), que é quem decide
+   * de fato; usada tanto para tirar a empresa da Lista principal quanto do
+   * seletor de novos colaboradores desta Unidade.
+   */
+  function isArchivedInUnit(entity) {
+    return String(entity?.local_status || '') === 'inactive';
+  }
+
   globalThis.__EPI_OUTSOURCED_COMPANIES_VIEW__ = Object.freeze({
     companyKindLabel,
     isSimplified,
@@ -90,5 +106,6 @@
     canPromote,
     isCorporateLocked,
     canEditCorporateFields,
+    isArchivedInUnit,
   });
 })();

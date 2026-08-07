@@ -31,6 +31,7 @@ from modules.employees.service import (
     fetch_employees,
     get_employee_lifecycle,
     purge_employee_history,
+    resolve_employee_outsourced_unit_id,
     summarize_employee_history,
     update_employee,
     update_employee_outsourced_simplified,
@@ -152,8 +153,15 @@ def handle_put_employee(handler, parsed, payload, match):
 # estado do menu do cliente).
 
 def handle_post_employee_outsourced_simplified(handler, parsed, payload, match):
+    # unit_id NÃO entra aqui: para Administrador Local/Gestor de EPI o
+    # campo Unidade do formulário fica `disabled` na tela (trava de UX já
+    # existente) e campos `disabled` nunca são incluídos por FormData —
+    # exigir unit_id no payload bruto tornava o cadastro impossível para
+    # exatamente esses perfis. resolve_employee_outsourced_unit_id (abaixo,
+    # já com o actor resolvido) deriva a Unidade pela sessão para eles;
+    # os demais perfis continuam precisando informá-la explicitamente.
     require_fields(payload, [
-        'actor_user_id', 'company_id', 'unit_id', 'outsourced_company_id',
+        'actor_user_id', 'company_id', 'outsourced_company_id',
         'name', 'cpf', 'role_name', 'tipo_vinculo', 'admission_date',
     ])
     with closing(get_connection()) as connection:
@@ -161,7 +169,8 @@ def handle_post_employee_outsourced_simplified(handler, parsed, payload, match):
             connection, resolve_actor_user_id(handler, parsed, payload),
             PERM_EMPLOYEES_CREATE_SIMPLIFIED, int(payload['company_id']),
         )
-        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', int(payload['unit_id']))
+        unit_id = resolve_employee_outsourced_unit_id(connection, actor, payload)
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', unit_id)
         employee_id = create_employee_outsourced_simplified(connection, payload, actor=actor)
         employee = get_employee_by_id(connection, employee_id)
         from modules.companies.service import register_company_audit
@@ -182,8 +191,10 @@ def handle_post_employee_outsourced_simplified(handler, parsed, payload, match):
 
 def handle_put_employee_outsourced_simplified(handler, parsed, payload, match):
     employee_id = int(match.group(1))
+    # unit_id fora da lista — ver comentário equivalente em
+    # handle_post_employee_outsourced_simplified.
     require_fields(payload, [
-        'actor_user_id', 'unit_id', 'outsourced_company_id',
+        'actor_user_id', 'outsourced_company_id',
         'name', 'cpf', 'role_name', 'tipo_vinculo', 'admission_date',
     ])
     with closing(get_connection()) as connection:
@@ -195,7 +206,8 @@ def handle_put_employee_outsourced_simplified(handler, parsed, payload, match):
             connection, resolve_actor_user_id(handler, parsed, payload),
             PERM_EMPLOYEES_UPDATE_SIMPLIFIED, company_id,
         )
-        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', int(payload['unit_id']))
+        unit_id = resolve_employee_outsourced_unit_id(connection, actor, payload)
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', unit_id)
         update_employee_outsourced_simplified(connection, employee_id, payload, actor=actor)
         employee = get_employee_by_id(connection, employee_id)
         from modules.companies.service import register_company_audit

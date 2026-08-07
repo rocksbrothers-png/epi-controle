@@ -100,6 +100,17 @@ test('permissions: employee sem permissões', () => {
 test('permissions: master_admin tem license', () => {
   assert(globalThis.ROLE_PERMISSIONS.master_admin.includes('companies:license'));
 });
+test('permissions: user (Gestor de EPI) nunca tem employees:update completo', () => {
+  // Achado em verificação de navegador real (ADR-0002 §12): este array tinha
+  // 'employees:update' por engano, herdado pelo Gestor de EPI a mais desde o
+  // login — o backend (core/permissions.py, PERMISSIONS['user']) nunca
+  // concedeu isso, só as variantes _simplified. Regressão real: fazia
+  // hasPermission('employees:update') isolado mentir "sim" no cliente,
+  // oferecendo UI (ex.: aba "Solicitações" de Terceirizados) para uma ação
+  // que o backend sempre rejeitava (403).
+  assert(!globalThis.ROLE_PERMISSIONS.user.includes('employees:update'));
+  assert(globalThis.ROLE_PERMISSIONS.admin && !globalThis.ROLE_PERMISSIONS.admin.includes('employees:update'));
+});
 test('permissions: VIEW_PERMISSIONS mapeia dashboard', () => {
   eq(globalThis.VIEW_PERMISSIONS.dashboard, 'dashboard:view');
 });
@@ -1286,6 +1297,17 @@ test('outsourced-companies-view: promover só aparece para quem ainda está no S
   const V = _OCV();
   assert(V.canPromote(_OC_VIEW[0]), 'simplificado pode promover');
   assert(!V.canPromote(_OC_VIEW[2]), 'já padrão não promove de novo');
+});
+test('outsourced-companies-view: trava corporativa só depois da promoção ao Padrão', () => {
+  const V = _OCV();
+  assert(!V.isCorporateLocked(_OC_VIEW[0]), 'simplificado nunca trava');
+  assert(V.isCorporateLocked(_OC_VIEW[2]), 'padrão trava por padrão');
+});
+test('outsourced-companies-view: canEditCorporateFields libera Simplificado sempre, Padrão só com permissão completa', () => {
+  const V = _OCV();
+  assert(V.canEditCorporateFields(_OC_VIEW[0], false), 'simplificado edita mesmo sem employees:update completo');
+  assert(!V.canEditCorporateFields(_OC_VIEW[2], false), 'padrão bloqueia sem employees:update completo');
+  assert(V.canEditCorporateFields(_OC_VIEW[2], true), 'padrão libera com employees:update completo');
 });
 test('outsourced-companies-view: lista ausente não quebra', () => {
   const V = _OCV();

@@ -749,3 +749,173 @@ carregado via `ApiClient.auth.bootstrap()` no mesmo padrão do formulário
 de Colaborador Terceirizado. Nenhuma tela nova, nenhuma rota de API
 cliente nova além do campo `unit_id` no corpo já existente de
 POST/PUT `/api/outsourced-companies`.
+
+## 12. Extensão — Compartilhamento do cadastro corporativo por tenant + trava pós-promoção
+
+O §11 resolveu a descentralização do CRUD, mas manteve `outsourced_
+companies.unit_id` como fronteira de **visibilidade**: cada empresa
+terceirizada pertencia a exatamente uma Unidade (ou a nenhuma, "do
+tenant"), e uma Unidade que contratasse a mesma empresa terceirizada que
+outra Unidade já usava (mesmo CNPJ) não tinha como enxergá-la — só
+cadastrar de novo, duplicando o registro corporativo e fragmentando
+histórico/auditoria/ressarcimento do mesmo CNPJ em duas linhas
+independentes. Esta extensão corrige isso: o cadastro corporativo passa a
+ser único por tenant (por CNPJ, como sempre foi a intenção do §3), e cada
+Unidade que precisa usá-lo cria o próprio **vínculo operacional**, sem
+depender de qual Unidade cadastrou primeiro.
+
+### 12.1 `unit_id` vira metadado histórico imutável
+
+`outsourced_companies.unit_id` deixa de ser lido/escrito em qualquer
+`UPDATE` — `update_outsourced_company` não aceita mais o parâmetro
+`unit_id` (removido da assinatura; o payload nunca é consultado para esse
+campo). Continua gravado uma única vez, na criação
+(`resolve_outsourced_company_unit_id`, inalterado desde o §11.3), como
+"Unidade de origem": só metadado histórico de quem cadastrou primeiro,
+nunca mais a fronteira de quem pode usar o registro. Nenhuma migração de
+dado é necessária — o valor já gravado simplesmente passa a significar
+"origem", não "dono exclusivo".
+
+### 12.2 `outsourced_company_unit_links` — vínculo operacional por Unidade
+
+Tabela nova (`core.schema.ensure_outsourced_company_unit_links`,
+`supabase/migrations/20260806000000_outsourced_company_unit_links.sql`,
+migration Postgres `021_outsourced_company_unit_links`): liga uma
+`outsourced_company_id` a uma `unit_id`, com `local_status`
+(`active`/`inactive`), motivo de desativação e auditoria de quem
+criou/alterou. `create_outsourced_company` (service.py) já cria o vínculo
+da própria Unidade de origem automaticamente ao cadastrar — nenhum passo
+extra para o fluxo já existente. Uma Unidade *diferente* da origem cria o
+vínculo explicitamente com a ação "Vincular à minha unidade"
+(`POST /api/outsourced-companies/{id}/link`,
+`create_outsourced_company_unit_link`) — idempotente: vincular de novo
+reaproveita o vínculo existente em vez de duplicar (`UNIQUE (company_id,
+outsourced_company_id, unit_id)`).
+
+### 12.3 Descoberta: lista dividida + busca
+
+`fetch_outsourced_companies` (service.py) devolve `{'linked': [...],
+'available': [...]}` em vez de uma lista só — mudança de contrato
+deliberada, refletida em `GET /api/outsourced-companies` como
+`outsourced_companies`/`items` (linked) + `available_outsourced_companies`
+(available). `linked` = empresas com vínculo ativo para a Unidade do ator
+(via `outsourced_company_unit_links`) — dados completos, iguais a antes.
+`available` = as demais empresas do tenant que a Unidade ainda não
+vinculou — só campos públicos, via `_mask_outsourced_company_public_fields`
+(CNPJ mascarado tipo `11.***.***/****-81`, sem contrato/nota/observação
+interna). Para quem não é escopado por Unidade (general_admin/
+registry_admin/master_admin), `linked` continua sendo TODAS as empresas do
+tenant e `available` fica sempre vazio — comportamento inalterado desde
+antes desta extensão. `GET /api/outsourced-companies/search?q=` (
+`search_outsourced_companies_by_name`) permite localizar uma empresa já
+cadastrada por outra Unidade antes de cadastrar de novo, com a mesma regra
+de mascaramento (`annotate_outsourced_company_visibility`, reaproveitada
+entre a lista principal e a busca).
+
+### 12.4 Duplicidade de CNPJ vira "encontrada, vincule" em vez de bloqueio surdo
+
+Antes desta extensão, tentar cadastrar um CNPJ já usado por outra Unidade
+do mesmo tenant caía no `UNIQUE (company_id, cnpj_normalized)` como erro
+genérico de banco. `validate_outsourced_company_payload` agora detecta a
+duplicata ANTES do `INSERT` e levanta `DuplicateOutsourcedCompanyError`
+(com `existing_company_id`), traduzida pela rota em
+`409 {"error": <mensagem>, "code": "duplicate_cnpj", "existing_company_id":
+<id>}`. O frontend (`handleOutsourcedCompanyDuplicateError`, app.js)
+oferece vincular à empresa já existente em vez de insistir no cadastro.
+Sem CNPJ (Cadastro Simplificado), a mesma checagem não é possível por
+identidade exata — `POST /api/outsourced-companies` faz uma busca por nome
+antes de criar e devolve `409 {"code": "possible_duplicate", "matches":
+[...]}` quando encontra parecidos; o operador confirma explicitamente
+(`confirm_duplicate: true` no payload) para seguir cadastrando mesmo assim,
+sem travar o caso legítimo de duas empresas com nome parecido e CNPJ
+diferente.
+
+### 12.5 Trava pós-promoção — edição corporativa exclusiva de Geral/Registro
+
+Enquanto a empresa está no Cadastro Simplificado (`registration_mode ==
+'simplified'`), qualquer Unidade vinculada continua editando/arquivando
+normalmente (mesma regra do §11.3). A partir da promoção ao Cadastro
+Padrão (`registration_mode == 'standard'`, §2), os dados corporativos
+(razão social, CNPJ, tipo, responsabilidade pelo EPI) passam a exigir
+`employees:update` completo — `ensure_actor_can_edit_outsourced_company_
+corporate_fields(actor, entity)` é a nova checagem, chamada em
+`PUT /api/outsourced-companies/{id}` e em archive/restore/delete, sempre
+**depois** de `ensure_actor_outsourced_company_scope` (a checagem de
+vínculo continua valendo primeiro — sem vínculo, nem chega a saber se está
+travado). Master fica de fora da exceção por doutrina já documentada
+(`PAPEIS_E_ATRIBUICOES.md` #1: Master é operacional/suporte, nunca
+substitui Geral/Registro em decisão de dado corporativo). Motivo da trava:
+uma vez que o cadastro é "de verdade" (Padrão, usado por potencialmente
+várias Unidades), uma edição feita por uma Unidade não deveria mudar dado
+que outras Unidades também dependem sem revisão central.
+
+Administrador Local/Gestor de EPI que precisa de uma correção usa
+"Solicitar atualização cadastral" (`POST /api/outsourced-companies/{id}/
+update-requests`, tabela nova `outsourced_company_update_requests`) — um
+pedido em texto livre, nunca uma edição automática. Administrador Geral/de
+Registro resolve pela aba "Solicitações"
+(`GET .../update-requests`, `POST .../update-requests/{id}/resolve`),
+que só aparece para quem tem `employees:update` completo
+(`syncViewTabsVisibility` esconde a aba quando o card correspondente fica
+`hidden`, mesmo mecanismo genérico de abas do resto do Web Legado — nenhum
+código de visibilidade novo). Modelo deliberadamente enxuto (pedido +
+resolução), não uma máquina de estados de aprovação em várias etapas.
+
+### 12.6 Vínculo local nunca é arquivamento corporativo
+
+Ativar/desativar o vínculo de uma Unidade (`POST .../unit-link/activate`
+`.../unit-link/deactivate`, `set_outsourced_company_unit_link_status`)
+muda só `outsourced_company_unit_links.local_status` daquela Unidade —
+nunca `outsourced_companies.status`. Uma Unidade que encerrou o contrato
+com a terceirizada desativa o próprio vínculo (com motivo opcional) sem
+afetar as demais Unidades que ainda a usam, nem exigir arquivar o cadastro
+corporativo (que só faz sentido quando NENHUMA Unidade mais usa a
+empresa — decisão operacional de cada Unidade, fora do escopo automático
+desta extensão). Liberado para Administrador Local/Gestor de EPI
+independente de `registration_mode` — a trava do §12.5 é só sobre dado
+corporativo, o vínculo é sempre local.
+
+### 12.7 Colaborador terceirizado: referência exige vínculo, não mais Unidade de origem
+
+`validate_employee_outsourced_reference` (chamada por
+`modules.employees.service.create_employee`/`update_employee`) trocou a
+checagem "mesma Unidade de origem" por
+`is_outsourced_company_available_to_unit(connection, entity, unit_id)`:
+disponível quando a empresa é "do tenant" (`unit_id` de origem nulo —
+mesmo comportamento de sempre) OU quando a Unidade do colaborador tem
+vínculo ativo com ela. Um colaborador da Unidade B só pode referenciar uma
+empresa que a Unidade B já vinculou — nunca herda automaticamente o
+vínculo de outra Unidade. Mesma regra em `fetch_outsourced_employees_
+summary` (relatório headcount por empresa, §11.5): Administrador Local/
+Gestor de EPI só vê o resumo das empresas vinculadas à própria Unidade e,
+dentro delas, só os PRÓPRIOS colaboradores (`employees.unit_id` igual à
+Unidade do ator) — nunca o headcount de outra Unidade que também vinculou
+a mesma empresa compartilhada.
+
+### 12.8 Migração e backfill
+
+`supabase/migrations/20260806000000_outsourced_company_unit_links.sql`
+cria as duas tabelas com RLS habilitado desde a criação (`block_direct_
+api_access`, mesma policy restritiva do resto do backend) e faz backfill:
+toda empresa terceirizada já cadastrada com `unit_id` preenchido ganha o
+vínculo ativo correspondente para essa Unidade — sem isso, registros
+criados antes desta extensão apareceriam como "não vinculados" mesmo para
+a própria Unidade que os cadastrou, depois do deploy. Idempotente (`IF NOT
+EXISTS`/`NOT EXISTS`), reexecução segura.
+
+### 12.9 Frontend — Web Legado
+
+Aba "Lista" (`terceirizados.html`) ganha uma segunda seção, "Empresas
+disponíveis para vinculação", com os campos mascarados e o botão "Vincular
+à minha unidade"; a tabela principal ganha a coluna "Vínculo Local"
+(ativo/inativo + botão ativar/desativar). Formulário de cadastro/edição
+ganha um aviso (`outsourced-company-corporate-lock-banner`) e os campos
+corporativos ficam `disabled` quando a trava do §12.5 se aplica ao ator
+atual — mesma decisão que o backend já tomaria, só evitando o roundtrip de
+erro. Campo "Unidade" renomeado para "Unidade de origem" e sempre
+`disabled` ao editar um registro existente (imutável, §12.1) — livre
+apenas no cadastro, mesma trava por perfil operacional já existente desde
+o §11.6. Nova aba "Solicitações" (só visível para quem tem
+`employees:update` completo, §12.5). Regras puras (`isCorporateLocked`,
+`canEditCorporateFields`) vivem em `js/views/outsourced-companies-view.js`,
+testadas no harness — mesmo padrão do restante do módulo.

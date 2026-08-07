@@ -28,6 +28,7 @@ from core.schema import (
     ensure_employee_simplified_registration_columns,
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
     ensure_outsourced_company_archival_lifecycle_columns,
 )
 from epi_backend.rule_engine import MODULE_REQUIRED_PERMISSIONS
@@ -117,6 +118,7 @@ def _conn():
 def _bootstrap(conn):
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     ensure_outsourced_company_archival_lifecycle_columns(conn)
     ensure_employee_simplified_registration_columns(conn)
 
@@ -329,6 +331,9 @@ def test_ensure_actor_scope_never_restricts_general_admin():
 
 
 def test_fetch_outsourced_companies_admin_sees_only_own_unit():
+    """ADR-0002 §12 (compartilhamento por tenant): B e a "Global" não somem
+    — aparecem em ``available`` (mascaradas), oferecendo vínculo, em vez de
+    ficarem totalmente invisíveis como antes da extensão."""
     conn = _PgStyleConn(_conn())
     cid = _seed_company(conn)
     _bootstrap(conn)
@@ -341,8 +346,13 @@ def test_fetch_outsourced_companies_admin_sees_only_own_unit():
     create_outsourced_company(conn, {'legal_name': 'Terceirizada Global'}, cid)  # unit_id=None
 
     visible = fetch_outsourced_companies(conn, cid, actor=local_admin_a)
-    names = {item['legal_name'] for item in visible}
-    assert names == {'Terceirizada A'}
+    linked_names = {item['legal_name'] for item in visible['linked']}
+    available_names = {item['legal_name'] for item in visible['available']}
+    assert linked_names == {'Terceirizada A'}
+    assert available_names == {'Terceirizada B', 'Terceirizada Global'}
+    # Empresa disponível (não vinculada) nunca expõe CNPJ em claro.
+    for item in visible['available']:
+        assert 'notes' not in item
 
 
 def test_fetch_outsourced_companies_general_admin_sees_everything():
@@ -358,8 +368,9 @@ def test_fetch_outsourced_companies_general_admin_sees_everything():
     create_outsourced_company(conn, {'legal_name': 'Terceirizada Global'}, cid)
 
     visible = fetch_outsourced_companies(conn, cid, actor=general_admin)
-    names = {item['legal_name'] for item in visible}
+    names = {item['legal_name'] for item in visible['linked']}
     assert names == {'Terceirizada A', 'Terceirizada B', 'Terceirizada Global'}
+    assert visible['available'] == []
 
 
 def test_fetch_archived_outsourced_companies_is_scoped_by_unit_for_admin():
@@ -386,23 +397,22 @@ def test_fetch_archived_outsourced_companies_is_scoped_by_unit_for_admin():
     assert names == {'Terceirizada A'}
 
 
-def test_admin_cannot_reassign_company_to_another_unit_on_update():
+def test_update_outsourced_company_never_changes_origin_unit():
+    """Unidade de origem é imutável após a criação (ADR-0002 §12) —
+    `update_outsourced_company` não aceita mais `unit_id` (nem como
+    parâmetro, nem lido do payload): mesmo mandando um `unit_id` diferente
+    no payload, o valor gravado na criação nunca muda — nem para
+    Administrador Geral, que também não tem mais como reatribuir a Unidade
+    de origem por aqui."""
     conn = _PgStyleConn(_conn())
     cid = _seed_company(conn)
     _bootstrap(conn)
     unit_a = _seed_unit(conn, cid, 'Unidade A')
     unit_b = _seed_unit(conn, cid, 'Unidade B')
-    local_admin = _seed_unit_scoped_actor(conn, cid, unit_a, role='admin')
 
     entity_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada A'}, cid, unit_id=unit_a)
-    # resolve_outsourced_company_unit_id ignora o unit_id do payload para
-    # admin/user — sempre recalcula a partir do vínculo operacional do ator.
-    forced_unit_id = resolve_outsourced_company_unit_id(
-        conn, local_admin, {'legal_name': 'Terceirizada A', 'unit_id': unit_b}, cid,
-    )
-    assert forced_unit_id == unit_a
     update_outsourced_company(
-        conn, entity_id, {'legal_name': 'Terceirizada A Renomeada'}, cid, unit_id=forced_unit_id,
+        conn, entity_id, {'legal_name': 'Terceirizada A Renomeada', 'unit_id': unit_b}, cid,
     )
     entity = get_outsourced_company_by_id(conn, entity_id)
     assert entity['unit_id'] == unit_a

@@ -67,9 +67,16 @@
       'epi_evaluation:view', 'epi_evaluation:decide'
     ]),
 
+    // Mesmo achado do 'user' abaixo: 'employees:update' completo aqui era
+    // engano, não decisão — Administrador Local edita cadastro de
+    // colaborador só via employees:update_simplified/employees:transfer
+    // (core/permissions.py, PERMISSIONS['admin']; ver também o comentário
+    // equivalente em ROLE_PERMISSIONS.admin de app.js, que já estava correto
+    // sem employees:update — só esta cópia em core/permissions.js estava
+    // desatualizada).
     admin: Object.freeze([
       'dashboard:view', 'users:view', 'units:view',
-      'employees:view', 'employees:update',
+      'employees:view',
       'epis:view', 'deliveries:view', 'deliveries:create', 'fichas:view',
       'reports:view', 'alerts:view', 'stock:view', 'stock:adjust',
       'purchase_requests:view', 'purchase_requests:create', 'purchase_requests:update',
@@ -90,9 +97,23 @@
       'finance:view'
     ]),
 
+    // Achado em verificação de navegador real (ADR-0002 §12): tinha
+    // 'employees:update' (completo) por engano — este é o `ROLE_PERMISSIONS`
+    // que de fato importa em runtime (globalThis.ROLE_PERMISSIONS, lido por
+    // normalizePermissions em js/modules/auth.js). A cópia local em app.js
+    // (dentro do bloco `if (!globalThis.__EPI_APP_RUNTIME_LOADED__)`) é
+    // block-scoped e nunca chega a `globalThis` — puramente decorativa para
+    // qualquer consumidor fora do próprio app.js. O backend
+    // (core/permissions.py, PERMISSIONS['user']) nunca concedeu
+    // employees:update completo, só as variantes _simplified (ADR-0002
+    // §10.2). Com o bug, hasPermission('employees:update') isolado (fora de
+    // uma lista OR) mentia "sim" no cliente para o Gestor de EPI — a rota
+    // protegida no backend sempre rejeitava (403), mas o cliente chegava a
+    // oferecer UI para uma ação sem efeito, como a aba "Solicitações" de
+    // Terceirizados (ADR-0002 §12.5).
     user: Object.freeze([
       'dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view',
-      'alerts:view', 'units:view', 'employees:view', 'employees:update',
+      'alerts:view', 'units:view', 'employees:view',
       'epis:view', 'stock:view', 'stock:adjust',
       'epi_feedback:view', 'epi_feedback:manager_eval', 'epi_evaluation:view'
     ]),

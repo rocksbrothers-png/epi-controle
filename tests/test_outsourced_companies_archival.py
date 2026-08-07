@@ -15,6 +15,7 @@ from core import archival
 from core.schema import (
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
     ensure_outsourced_company_archival_lifecycle_columns,
 )
 from modules.outsourced_companies.service import (
@@ -53,6 +54,7 @@ def conn():
     )
     ensure_legal_entities(connection)
     ensure_outsourced_companies(connection)
+    ensure_outsourced_company_unit_links(connection)
     ensure_outsourced_company_archival_lifecycle_columns(connection)
     yield connection
     connection.close()
@@ -90,7 +92,7 @@ def test_archive_sets_status_archived_and_retention(conn):
 def test_archived_company_disappears_from_active_list(conn):
     entity_id = _create(conn)
     _archive(conn, entity_id)
-    assert all(c['id'] != entity_id for c in fetch_outsourced_companies(conn, 1))
+    assert all(c['id'] != entity_id for c in fetch_outsourced_companies(conn, 1)['linked'])
 
 
 def test_archived_company_appears_in_archived_list_with_retention_info(conn):
@@ -144,7 +146,7 @@ def test_restore_reactivates_company(conn):
     assert restored['archived_at'] is None
     # Volta a operar normalmente.
     archival.ensure_record_operational(conn, 'outsourced_companies', entity_id, 'Empresa terceirizada', 'novos colaboradores')
-    assert any(c['id'] == entity_id for c in fetch_outsourced_companies(conn, 1))
+    assert any(c['id'] == entity_id for c in fetch_outsourced_companies(conn, 1)['linked'])
 
 
 def test_restore_rejects_non_archived_company(conn):

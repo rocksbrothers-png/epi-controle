@@ -26,6 +26,7 @@ from core.schema import (
     ensure_epi_reimbursements,
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
 )
 from modules.deliveries.service import create_delivery_service
 from modules.outsourced_companies.service import (
@@ -88,6 +89,7 @@ def _conn():
     ensure_delivery_outsourced_snapshot_columns(conn)
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     ensure_epi_reimbursements(conn)
     conn.commit()
     return conn
@@ -269,8 +271,8 @@ def test_outsourced_companies_cnpj_reuse_and_data_isolation_across_tenants():
 
     companies_a = fetch_outsourced_companies(conn, company_a)
     companies_b = fetch_outsourced_companies(conn, company_b)
-    assert {c['id'] for c in companies_a} == {oc_a}
-    assert {c['id'] for c in companies_b} == {oc_b}
+    assert {c['id'] for c in companies_a['linked']} == {oc_a}
+    assert {c['id'] for c in companies_b['linked']} == {oc_b}
 
     # Ressarcimento de A não aparece na lista de B, mesmo consultando sem
     # nenhum filtro de outsourced_company_id.

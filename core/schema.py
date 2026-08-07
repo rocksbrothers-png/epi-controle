@@ -2697,6 +2697,130 @@ def ensure_outsourced_company_unit_scope_column(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    # `unit_id` agora é "Unidade de origem" — gravado só na criação, nunca
+    # mais alterado (nem por Administrador Geral). O cadastro corporativo é
+    # único por tenant (por CNPJ); quem usa a empresa em cada Unidade é
+    # `outsourced_company_unit_links`, abaixo — a Unidade de origem não
+    # limita mais quem enxerga/usa o registro, é só metadado histórico.
+
+
+def ensure_outsourced_company_unit_links(connection) -> None:
+    """Vínculo operacional de uma Empresa Terceirizada/Prestadora com uma
+    Unidade (extensão ao ADR-0002 §12): o cadastro corporativo
+    (``outsourced_companies``) é único por tenant — a Unidade de origem
+    (``outsourced_companies.unit_id``) só registra quem cadastrou primeiro,
+    nunca mais muda. Qualquer Unidade do tenant pode localizar o cadastro
+    existente e criar seu próprio vínculo aqui via ação "Vincular à minha
+    unidade" — sem duplicar a empresa, sem herdar vínculo/contratos/
+    colaboradores de outra Unidade.
+
+    ``local_status`` é deliberadamente separado do ``status`` de
+    arquivamento corporativo de ``outsourced_companies`` (ADR-0002 §10.4):
+    desativar o vínculo local de uma Unidade nunca arquiva o cadastro
+    corporativo nem afeta outras Unidades vinculadas à mesma empresa.
+
+    Migração idempotente, apenas aditiva.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS outsourced_company_unit_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                outsourced_company_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                local_status TEXT NOT NULL DEFAULT 'active',
+                contract_number TEXT NOT NULL DEFAULT '',
+                contract_start_date TEXT NOT NULL DEFAULT '',
+                contract_end_date TEXT NOT NULL DEFAULT '',
+                local_responsible_id INTEGER,
+                cost_center_ref TEXT NOT NULL DEFAULT '',
+                notes TEXT NOT NULL DEFAULT '',
+                activated_at TEXT NOT NULL DEFAULT '',
+                deactivated_at TEXT,
+                deactivated_by_user_id INTEGER,
+                deactivation_reason TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER,
+                updated_by_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (outsourced_company_id) REFERENCES outsourced_companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+                FOREIGN KEY (local_responsible_id) REFERENCES employees(id) ON DELETE SET NULL,
+                FOREIGN KEY (deactivated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_outsourced_company_unit_links '
+            'ON outsourced_company_unit_links (company_id, outsourced_company_id, unit_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_outsourced_company_unit_links_unit '
+            'ON outsourced_company_unit_links (unit_id, local_status)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
+def ensure_outsourced_company_update_requests(connection) -> None:
+    """"Solicitar atualização cadastral" — extensão ao ADR-0002 §12: quando o
+    cadastro corporativo de uma Empresa Terceirizada/Prestadora já foi
+    promovido a Cadastro Padrão, Administrador Local/Gestor de EPI perdem a
+    edição direta (ver ``ensure_actor_can_edit_outsourced_company_corporate_fields``
+    em ``modules/outsourced_companies/service.py``) e passam a registrar aqui
+    um pedido de correção, para Administrador Geral/de Registro revisar —
+    nunca uma edição automática, sempre revisão humana.
+
+    Modelo enxuto (pedido + resolução) — não é uma máquina de estados de
+    várias etapas como ``epi_feedback``, desproporcional para "avisar que um
+    campo precisa de correção".
+
+    Migração idempotente, apenas aditiva.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS outsourced_company_update_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                outsourced_company_id INTEGER NOT NULL,
+                unit_id INTEGER,
+                requested_by_user_id INTEGER,
+                requested_by_name TEXT NOT NULL DEFAULT '',
+                message TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pending',
+                resolved_by_user_id INTEGER,
+                resolved_at TEXT,
+                resolution_notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (outsourced_company_id) REFERENCES outsourced_companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL,
+                FOREIGN KEY (requested_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (resolved_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_outsourced_company_update_requests_company '
+            'ON outsourced_company_update_requests (company_id, status)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
 
 
 def ensure_stock_reservations(connection) -> None:

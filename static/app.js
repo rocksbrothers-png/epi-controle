@@ -61,7 +61,17 @@ const ROLE_PERMISSIONS = {
   // mesmo papel Gestor de EPI, que também triagem/revê tecnicamente o EPI em
   // teste e faz a revisão HSEQ do feedback. Ganha employees:create_simplified/
   // update_simplified pelo mesmo motivo do Administrador Local acima.
-  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:update', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:create', 'epi_feedback:hseq_review', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:triage', 'ppe_test:tech_review'],
+  // Achado em verificação de navegador real (ADR-0002 §12): este array
+  // incluía 'employees:update' (completo) por engano — o comentário acima
+  // já dizia que o Gestor de EPI ganha só as variantes _simplified, pelo
+  // mesmo motivo do Administrador Local; o backend (core/permissions.py,
+  // PERMISSIONS['user']) nunca concedeu employees:update completo. Mais
+  // que cosmético: com o array errado, hasPermission('employees:update')
+  // isolado (não numa lista OR) mentia "sim" no cliente para o Gestor de
+  // EPI — a rota protegida no backend sempre rejeitava (403), mas o
+  // cliente tentava a chamada e chegava a oferecer UI para uma ação sem
+  // efeito, como a aba "Solicitações" de Terceirizados (ADR-0002 §12.5).
+  user: ['dashboard:view', 'deliveries:view', 'deliveries:create', 'fichas:view', 'alerts:view', 'units:view', 'employees:view', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'stock:view', 'stock:adjust', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:create', 'epi_feedback:hseq_review', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:triage', 'ppe_test:tech_review'],
   employee: []
 };
 const VIEW_PERMISSIONS = {
@@ -1966,6 +1976,8 @@ const state = {
   // acima, não chega no bootstrap — o módulo é opt-in/oculto por padrão, então
   // a lista só é buscada sob demanda quando a tela é aberta (ver showView).
   outsourcedCompanies: [],
+  outsourcedCompaniesAvailable: [],
+  outsourcedCompanyUpdateRequests: [],
   outsourcedCompaniesFilters: { search: '', kind: '' },
   // Cadastro de Colaboradores simplificado (ADR-0002 §10.2) — derivado por
   // filtro client-side sobre `state.employees` (tipo_vinculo != CLT), sem
@@ -2160,6 +2172,10 @@ const refs = {
   outsourcedCompaniesTable: document.getElementById('outsourced-companies-table'),
   outsourcedCompaniesFilterSearch: document.getElementById('outsourced-companies-filter-search'),
   outsourcedCompaniesFilterKind: document.getElementById('outsourced-companies-filter-kind'),
+  outsourcedCompaniesAvailableTable: document.getElementById('outsourced-companies-available-table'),
+  outsourcedCompanyUpdateRequestsTable: document.getElementById('outsourced-company-update-requests-table'),
+  outsourcedCompanyUpdateRequestsCard: document.getElementById('outsourced-company-update-requests-card'),
+  outsourcedCompanyCorporateLockBanner: document.getElementById('outsourced-company-corporate-lock-banner'),
   outsourcedEmployeesTable: document.getElementById('outsourced-employees-table'),
   outsourcedEmployeesFilterSearch: document.getElementById('outsourced-employees-filter-search'),
   outsourcedEmployeesSummaryTable: document.getElementById('outsourced-employees-summary-table'),
@@ -3212,6 +3228,10 @@ function showView(view, options = {}) {
     void loadArchivedRecords('outsourcedCompany');
     void loadArchivedRecords('outsourcedEmployee');
     void loadOutsourcedEmployeesSummary();
+    // Inbox de "Solicitar atualização cadastral" (ADR-0002 §12) — só quem
+    // tem employees:update completo (Geral/Registro) recebe algo; a própria
+    // loadOutsourcedCompanyUpdateRequests já checa o gate e sai cedo.
+    void loadOutsourcedCompanyUpdateRequests();
   }
   if (view === 'configuracao' && typeof loadArchivalPolicy === 'function') {
     void loadArchivalPolicy();
@@ -7678,8 +7698,15 @@ async function loadOutsourcedCompanies() {
   try {
     const data = await api(`/api/outsourced-companies?${actorQuery()}`);
     state.outsourcedCompanies = data.outsourced_companies || data.items || [];
+    // Empresas do tenant ainda não vinculadas à própria Unidade (ADR-0002
+    // §12 — compartilhamento por tenant): campos públicos só, mascarados no
+    // backend (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
+    // nunca contrato/nota/colaborador de outra Unidade. Vazio para quem não
+    // é escopado por Unidade (já vê tudo em outsourcedCompanies).
+    state.outsourcedCompaniesAvailable = data.available_outsourced_companies || [];
   } catch (error) {
     state.outsourcedCompanies = [];
+    state.outsourcedCompaniesAvailable = [];
     reportNonCriticalError('[terceirizados] falha ao carregar empresas terceirizadas', error);
   }
   renderOutsourcedCompanies();
@@ -7695,9 +7722,22 @@ function renderOutsourcedCompanies() {
   refs.outsourcedCompaniesTable.innerHTML = visible
     .map((item) => formatOutsourcedCompanyRow(item, { canUpdate }))
     .join('') || globalThis.dsTableState({
-      colspan: 6,
+      colspan: 7,
       message: tr('outsourcedCompany.empty', 'Nenhuma empresa terceirizada cadastrada.'),
     });
+  // Empresas do tenant que a própria Unidade ainda não vinculou (ADR-0002
+  // §12) — seção separada da "Lista" principal, nunca junto: mostrar como
+  // "vinculável" algo que ainda não é gerenciável evitaria confundir com o
+  // que já está sob a Unidade do ator.
+  if (refs.outsourcedCompaniesAvailableTable) {
+    const available = state.outsourcedCompaniesAvailable || [];
+    refs.outsourcedCompaniesAvailableTable.innerHTML = available
+      .map((item) => formatOutsourcedCompanyAvailableRow(item))
+      .join('') || globalThis.dsTableState({
+        colspan: 5,
+        message: tr('outsourcedCompany.availableEmpty', 'Nenhuma empresa disponível para vincular.'),
+      });
+  }
   // O seletor de empresa do Cadastro de Colaboradores depende da mesma
   // lista — resincroniza sempre que ela muda (mesma lógica de
   // bindDependentSelects, mas esta lista não vem do bootstrap).
@@ -7709,6 +7749,7 @@ function formatOutsourcedCompanyRow(item, permissions) {
   const helpers = outsourcedCompaniesViewHelpers();
   const kindLabel = helpers.companyKindLabel ? helpers.companyKindLabel(item.company_kind) : (item.company_kind || '');
   const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
+  const hasFullUpdate = hasPermission('employees:update');
   // Promover só faz sentido para quem ainda está no Simplificado — o backend
   // também recusa promover quem já é Padrão, mas oferecer o botão sempre só
   // geraria mensagem de erro sem efeito. Ação exclusiva de Administrador
@@ -7716,20 +7757,58 @@ function formatOutsourcedCompanyRow(item, permissions) {
   // Gestor de EPI (só employees:update_simplified) nunca a alcançam no
   // backend (handle_post_outsourced_company_promote não foi ampliada de
   // propósito, ADR-0002 §10.5), então o botão fica fora para eles também.
-  const showPromote = hasPermission('employees:update')
-    && (helpers.canPromote ? helpers.canPromote(item) : true);
+  const showPromote = hasFullUpdate && (helpers.canPromote ? helpers.canPromote(item) : true);
+  // Trava pós-promoção (ADR-0002 §12): "Editar" só continua valendo se o
+  // ator tem employees:update completo OU a empresa ainda está no
+  // Simplificado — espelha ensure_actor_can_edit_outsourced_company_corporate_fields
+  // do backend, que é quem decide de fato. Travado + ainda pode gerenciar
+  // (permissions.canUpdate) → oferece "Solicitar atualização" no lugar.
+  const corporateLocked = helpers.isCorporateLocked ? helpers.isCorporateLocked(item) : false;
+  const canEditCorporate = helpers.canEditCorporateFields
+    ? helpers.canEditCorporateFields(item, hasFullUpdate) : true;
   const entityId = escapeHtml(String(item.id ?? ''));
   const buttons = [];
-  if (permissions.canUpdate) {
+  if (permissions.canUpdate && canEditCorporate) {
     buttons.push(`<button class="ghost" data-outsourced-company-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
+  } else if (permissions.canUpdate && corporateLocked) {
+    buttons.push(`<button class="ghost" data-outsourced-company-request-update="${entityId}">${escapeHtml(tr('outsourcedCompany.requestUpdate', 'Solicitar atualização cadastral'))}</button>`);
   }
   if (showPromote) {
     buttons.push(`<button class="ghost" data-outsourced-company-promote="${entityId}">${escapeHtml(tr('outsourcedCompany.promote', 'Promover a Cadastro Padrão'))}</button>`);
   }
+  // Vínculo local (ativar/desativar) — nunca a mesma coisa que arquivar o
+  // corporativo (ADR-0002 §12 item 8 do pedido): sempre liberado para quem
+  // já gerencia a empresa, independente de registration_mode/trava acima.
+  // `local_status` só vem preenchido para quem é escopado por Unidade
+  // (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
+  // ausente para Geral/Registro, que não têm UMA Unidade só para alternar.
+  const linkStatus = item.local_status;
+  if (permissions.canUpdate && linkStatus !== undefined && linkStatus !== null) {
+    const linkActive = String(linkStatus) !== 'inactive';
+    const toggleLabel = linkActive
+      ? tr('outsourcedCompany.deactivateLink', 'Desativar vínculo local')
+      : tr('outsourcedCompany.activateLink', 'Ativar vínculo local');
+    buttons.push(`<button class="ghost" data-outsourced-company-toggle-link="${entityId}" data-activate="${linkActive ? '0' : '1'}">${escapeHtml(toggleLabel)}</button>`);
+  }
   const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
+  const linkStatusLabel = linkStatus === undefined || linkStatus === null
+    ? '-'
+    : (String(linkStatus) === 'inactive' ? tr('outsourcedCompany.linkInactive', 'Inativo') : tr('outsourcedCompany.linkActive', 'Ativo'));
   return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
     + `<td>${escapeHtml(kindLabel)}</td><td>${escapeHtml(item.epi_responsibility || '')}</td>`
-    + `<td>${escapeHtml(modeLabel)}</td><td>${actions}</td></tr>`;
+    + `<td>${escapeHtml(modeLabel)}</td><td>${escapeHtml(linkStatusLabel)}</td><td>${actions}</td></tr>`;
+}
+
+// Empresas do tenant ainda não vinculadas à Unidade do ator — linha com só
+// os campos públicos (ADR-0002 §12 item 12 do pedido: nunca contrato, nota
+// ou colaborador de outra Unidade) + a ação "Vincular à minha unidade".
+function formatOutsourcedCompanyAvailableRow(item) {
+  const helpers = outsourcedCompaniesViewHelpers();
+  const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
+  const entityId = escapeHtml(String(item.id ?? ''));
+  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.trade_name || '') || '-'}</td>`
+    + `<td>${escapeHtml(item.cnpj || '') || '-'}</td><td>${escapeHtml(modeLabel)}</td>`
+    + `<td><button class="ghost" data-outsourced-company-link="${entityId}">${escapeHtml(tr('outsourcedCompany.linkToMyUnit', 'Vincular à minha unidade'))}</button></td></tr>`;
 }
 
 function syncOutsourcedCompaniesFilters() {
@@ -7745,19 +7824,33 @@ function setOutsourcedCompanyFormMode(mode) {
   if (cancel) cancel.hidden = mode !== 'edit';
 }
 
-// Administrador Local/Gestor de EPI (isOperationalProfile()) só podem
-// cadastrar/editar Empresas Terceirizadas na própria Unidade operacional —
-// o backend já força isso em resolve_outsourced_company_unit_id (ignora
-// unit_id do payload para estes perfis, tanto no create quanto no update,
-// modules/outsourced_companies/service.py), mas até esta correção o campo
-// aparecia como um seletor livre — inclusive com a opção "Todas as
-// unidades (padrão)" — deixando esses perfis escolherem uma opção sem
-// nenhum efeito real na gravação. Mesmo padrão de
-// syncOutsourcedEmployeeUnitOptions: preenche com a própria unidade e
-// desabilita o campo.
+// Unidade de origem (ADR-0002 §12): imutável depois de criada — nem
+// Administrador Geral reatribui por aqui, o backend nem lê mais esse campo
+// no update. No CADASTRO (sem id ainda), continua o comportamento de
+// sempre: Administrador Local/Gestor de EPI (isOperationalProfile())
+// travados na própria unidade operacional (resolve_outsourced_company_unit_id
+// só roda no create), demais perfis com seletor livre. Auto-detecta o modo
+// pelo próprio estado do formulário (mesmo `editingId` que saveSimpleForm
+// usa), então funciona tanto chamado por startEditOutsourcedCompany/
+// resetOutsourcedCompanyForm quanto por bindDependentSelects (que não sabe
+// se há uma edição em andamento).
 function syncOutsourcedCompanyUnitOptions() {
   const unitField = document.getElementById('outsourced-company-unit');
   if (!unitField) return;
+  const form = document.getElementById('outsourced-company-form');
+  const editingId = form?.elements?.id?.value ? String(form.elements.id.value) : '';
+  if (editingId) {
+    const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === editingId);
+    const origin = item?.unit_id != null
+      ? (state.units || []).find((unit) => String(unit.id) === String(item.unit_id))
+      : null;
+    unitField.innerHTML = origin
+      ? `<option value="${origin.id}">${escapeHtml(origin.name)} - ${escapeHtml(unitTypeLabel(origin.unit_type))}</option>`
+      : `<option value="">${escapeHtml(tr('outsourcedCompany.allUnits', 'Todas as unidades (padrão)'))}</option>`;
+    unitField.value = origin ? String(origin.id) : '';
+    unitField.disabled = true;
+    return;
+  }
   const lockByOperationalProfile = isOperationalProfile();
   if (!lockByOperationalProfile) {
     unitField.disabled = false;
@@ -7772,12 +7865,39 @@ function syncOutsourcedCompanyUnitOptions() {
   unitField.disabled = true;
 }
 
+// Trava pós-promoção (ADR-0002 §12): quando o ator não tem employees:update
+// completo e a empresa já é Cadastro Padrão, os campos corporativos ficam
+// só-leitura com um aviso — mesma decisão que
+// ensure_actor_can_edit_outsourced_company_corporate_fields toma no
+// backend (que é quem decide de fato); aqui só evita deixar o formulário
+// "sumir" sem explicação quando "Solicitar atualização" é a única ação
+// oferecida na linha (formatOutsourcedCompanyRow).
+const OUTSOURCED_COMPANY_CORPORATE_FIELDS = ['legal_name', 'trade_name', 'cnpj', 'company_kind', 'epi_responsibility'];
+
+function applyOutsourcedCompanyCorporateLock(item) {
+  const form = document.getElementById('outsourced-company-form');
+  const banner = refs.outsourcedCompanyCorporateLockBanner;
+  const helpers = outsourcedCompaniesViewHelpers();
+  const locked = Boolean(item) && helpers.isCorporateLocked
+    && helpers.isCorporateLocked(item) && !hasPermission('employees:update');
+  if (form) {
+    OUTSOURCED_COMPANY_CORPORATE_FIELDS.forEach((name) => {
+      const field = form.elements[name];
+      if (field) field.disabled = locked;
+    });
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.hidden = locked;
+  }
+  if (banner) banner.hidden = !locked;
+}
+
 function resetOutsourcedCompanyForm() {
   const form = document.getElementById('outsourced-company-form');
   if (!form) return;
   form.reset();
   form.elements.id.value = '';
   syncOutsourcedCompanyUnitOptions();
+  applyOutsourcedCompanyCorporateLock(null);
   setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
   setOutsourcedCompanyFormMode('create');
 }
@@ -7793,11 +7913,159 @@ function startEditOutsourcedCompany(entityId) {
   form.elements.company_kind.value = item.company_kind || 'outsourced';
   form.elements.epi_responsibility.value = item.epi_responsibility || 'Conforme Contrato';
   syncOutsourcedCompanyUnitOptions();
-  if (form.elements.unit_id) form.elements.unit_id.value = item.unit_id != null ? String(item.unit_id) : '';
+  applyOutsourcedCompanyCorporateLock(item);
   setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.update', 'Atualizar Empresa'));
   setOutsourcedCompanyFormMode('edit');
   showView('terceirizados');
   focusRegistrationTab('terceirizados');
+}
+
+// "Vincular à minha unidade" (ADR-0002 §12) — cria o vínculo local sem
+// duplicar o cadastro corporativo; usado tanto pelo botão na seção
+// "Empresas disponíveis para vinculação" quanto pelo fluxo de duplicidade
+// de CNPJ (handleOutsourcedCompanyDuplicateError, perto de saveSimpleForm).
+async function linkOutsourcedCompanyToMyUnit(entityId) {
+  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
+  try {
+    await api(`/api/outsourced-companies/${entityId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id }),
+    });
+    await loadOutsourcedCompanies();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// Ativa/desativa o vínculo LOCAL da própria Unidade — nunca arquiva o
+// cadastro corporativo (ADR-0002 §12 item 8 do pedido: não confundir com
+// arquivamento global).
+async function toggleOutsourcedCompanyUnitLink(entityId, activate) {
+  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
+  let reason = '';
+  if (!activate) {
+    reason = prompt(tr('outsourcedCompany.deactivateLinkReasonPrompt', 'Motivo da desativação (opcional):')) || '';
+    if (reason === null) return;
+  }
+  // Caminho literal em cada ramo (em vez de interpolar activate/deactivate
+  // na URL) — mesma convenção do resto do app.js, path dinâmico só para
+  // IDs numéricos; test_frontend_api_contract.py confronta cada chamada
+  // com as rotas registradas no router e não resolve enum-em-path.
+  const path = activate
+    ? `/api/outsourced-companies/${entityId}/unit-link/activate`
+    : `/api/outsourced-companies/${entityId}/unit-link/deactivate`;
+  try {
+    await api(path, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+    });
+    await loadOutsourcedCompanies();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// "Solicitar atualização cadastral" (ADR-0002 §12) — modal simples
+// (mensagem livre), mesmo padrão de openRequestReportModal/submitReportRequest
+// (estoque.html), só que sem tela dedicada: usa prompt() para manter o
+// escopo proporcional a "avisar que um campo precisa de correção".
+async function requestOutsourcedCompanyUpdate(entityId) {
+  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
+  const message = prompt(tr(
+    'outsourcedCompany.requestUpdatePrompt',
+    'Descreva o que precisa ser corrigido/atualizado no cadastro corporativo:',
+  ));
+  if (!message || !message.trim()) return;
+  try {
+    await api(`/api/outsourced-companies/${entityId}/update-requests`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, message: message.trim() }),
+    });
+    alert(tr('outsourcedCompany.requestUpdateSent', 'Solicitação enviada ao Administrador Geral/de Registro.'));
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// ── Inbox de "Solicitações" (Geral/Registro, ADR-0002 §12) ────────────────
+async function loadOutsourcedCompanyUpdateRequests() {
+  // Card (e por tabela, a própria aba "Solicitações" — syncViewTabsVisibility
+  // esconde uma aba cujo painel não tem nenhum filho visível) só existe para
+  // quem tem employees:update completo (Geral/Registro): Administrador
+  // Local/Gestor de EPI só REGISTRAM pedido (requestOutsourcedCompanyUpdate),
+  // nunca veem a fila de resolução dos outros.
+  const allowed = hasPermission('employees:update');
+  if (refs.outsourcedCompanyUpdateRequestsCard) refs.outsourcedCompanyUpdateRequestsCard.hidden = !allowed;
+  const nav = document.querySelector('[data-vtabs="terceirizados"]');
+  if (nav && typeof syncViewTabsVisibility === 'function') syncViewTabsVisibility(nav);
+  if (!allowed) return;
+  try {
+    const data = await api(`/api/outsourced-companies/update-requests?status=pending&${actorQuery()}`);
+    state.outsourcedCompanyUpdateRequests = data.outsourced_company_update_requests || data.items || [];
+  } catch (error) {
+    state.outsourcedCompanyUpdateRequests = [];
+    reportNonCriticalError('[terceirizados] falha ao carregar solicitações de atualização', error);
+  }
+  renderOutsourcedCompanyUpdateRequests();
+}
+
+function renderOutsourcedCompanyUpdateRequests() {
+  if (!refs.outsourcedCompanyUpdateRequestsTable) return;
+  const items = state.outsourcedCompanyUpdateRequests || [];
+  refs.outsourcedCompanyUpdateRequestsTable.innerHTML = items.map((request) => {
+    const companyName = (state.outsourcedCompanies || [])
+      .find((c) => String(c.id) === String(request.outsourced_company_id))?.legal_name || `#${request.outsourced_company_id}`;
+    return `<tr><td>${escapeHtml(companyName)}</td><td>${escapeHtml(request.requested_by_name || '')}</td>`
+      + `<td>${escapeHtml(request.message || '')}</td><td>${escapeHtml(request.created_at || '')}</td>`
+      + `<td><button class="ghost" data-outsourced-company-update-request-resolve="${escapeHtml(String(request.id))}">${escapeHtml(tr('outsourcedCompany.resolveRequest', 'Resolver'))}</button></td></tr>`;
+  }).join('') || globalThis.dsTableState({
+    colspan: 5,
+    message: tr('outsourcedCompany.requestsEmpty', 'Nenhuma solicitação pendente.'),
+  });
+}
+
+async function resolveOutsourcedCompanyUpdateRequest(requestId) {
+  if (!requirePermission('employees:update')) return;
+  const notes = prompt(tr('outsourcedCompany.resolveRequestNotesPrompt', 'Notas da resolução (opcional):')) || '';
+  try {
+    await api(`/api/outsourced-companies/update-requests/${requestId}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, status: 'resolved', resolution_notes: notes }),
+    });
+    await loadOutsourcedCompanyUpdateRequests();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// Chamado só pelo catch de saveSimpleForm para o outsourced-company-form
+// (ADR-0002 §12 itens 14-15 do pedido). Devolve `true` quando já tratou o
+// erro (a mensagem genérica não deve mais aparecer via alert()).
+async function handleOutsourcedCompanyDuplicateError(error, form) {
+  if (error?.code === 'duplicate_cnpj') {
+    const existingId = error.payload?.existing_company_id;
+    const confirmed = confirm(
+      `${error.message}\n\n${tr('outsourcedCompany.duplicateCnpjLinkPrompt', 'Deseja vincular essa empresa à sua Unidade em vez de cadastrar de novo?')}`,
+    );
+    if (confirmed && existingId) {
+      await linkOutsourcedCompanyToMyUnit(existingId);
+    }
+    return true;
+  }
+  if (error?.code === 'possible_duplicate') {
+    const matches = error.payload?.matches || [];
+    const names = matches.map((item) => `- ${item.legal_name}${item.trade_name ? ` (${item.trade_name})` : ''}`).join('\n');
+    const confirmed = confirm(
+      `${error.message}\n\n${names}\n\n${tr('outsourcedCompany.confirmCreateAnyway', 'Cadastrar mesmo assim?')}`,
+    );
+    if (confirmed) {
+      form.dataset.confirmDuplicate = '1';
+      if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
+    return true;
+  }
+  return false;
 }
 
 async function promoteOutsourcedCompany(entityId) {
@@ -10570,6 +10838,14 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'epi-form') {
       await prepareEpiFormValues(values, editingId, event);
     }
+    // Reenvio depois do aviso de possível duplicata por nome (ADR-0002
+    // §12 item 15 do pedido) — handleOutsourcedCompanyDuplicateError arma
+    // esta flag e resubmete o formulário; consumo único, nunca herda para
+    // o próximo cadastro.
+    if (event.target.id === 'outsourced-company-form') {
+      if (event.target.dataset.confirmDuplicate === '1') values.confirm_duplicate = true;
+      delete event.target.dataset.confirmDuplicate;
+    }
     let deliveryHandledInBatch = false;
     if (event.target.id === 'delivery-form') {
       const companyField = document.getElementById('delivery-company');
@@ -10702,6 +10978,9 @@ async function saveSimpleForm(event, path, permission) {
     if (event.target.id === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
     }
+    if (event.target.id === 'outsourced-company-form' && await handleOutsourcedCompanyDuplicateError(error, event.target)) {
+      return;
+    }
     alert(error.message);
   } finally {
     event.target.dataset.submitting = '0';
@@ -10730,6 +11009,7 @@ function handleFormReset(form) {
     setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
     setOutsourcedCompanyFormMode('create');
     syncOutsourcedCompanyUnitOptions();
+    applyOutsourcedCompanyCorporateLock(null);
   } else if (form.id === 'outsourced-employee-form') {
     setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
     setOutsourcedEmployeeFormMode('create');
@@ -12430,7 +12710,19 @@ async function init() {
     const edit = event.target.dataset.outsourcedCompanyEdit;
     if (edit) { startEditOutsourcedCompany(edit); return; }
     const promote = event.target.dataset.outsourcedCompanyPromote;
-    if (promote) void promoteOutsourcedCompany(promote);
+    if (promote) { void promoteOutsourcedCompany(promote); return; }
+    const requestUpdate = event.target.dataset.outsourcedCompanyRequestUpdate;
+    if (requestUpdate) { void requestOutsourcedCompanyUpdate(requestUpdate); return; }
+    const toggleLink = event.target.dataset.outsourcedCompanyToggleLink;
+    if (toggleLink) void toggleOutsourcedCompanyUnitLink(toggleLink, event.target.dataset.activate === '1');
+  });
+  bindAppListener(refs.outsourcedCompaniesAvailableTable, 'click', (event) => {
+    const link = event.target.dataset.outsourcedCompanyLink;
+    if (link) void linkOutsourcedCompanyToMyUnit(link);
+  });
+  bindAppListener(refs.outsourcedCompanyUpdateRequestsTable, 'click', (event) => {
+    const resolveId = event.target.dataset.outsourcedCompanyUpdateRequestResolve;
+    if (resolveId) void resolveOutsourcedCompanyUpdateRequest(resolveId);
   });
   bindSearchInput(refs.outsourcedEmployeesFilterSearch, syncOutsourcedEmployeesFilters, 120);
   bindAppListener(document.getElementById('outsourced-employee-cancel-edit'), 'click', resetOutsourcedEmployeeForm);

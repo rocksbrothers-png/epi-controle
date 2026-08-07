@@ -19,7 +19,7 @@ import sqlite3
 
 import pytest
 
-from core.schema import ensure_epi_reimbursements, ensure_legal_entities, ensure_outsourced_companies
+from core.schema import ensure_epi_reimbursements, ensure_legal_entities, ensure_outsourced_companies, ensure_outsourced_company_unit_links
 from modules.outsourced_companies.service import (
     REIMBURSEMENT_STATUSES,
     create_outsourced_company,
@@ -86,6 +86,7 @@ def _seed_delivery(conn, company_id, quantity=1):
 def _bootstrap(conn):
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     ensure_epi_reimbursements(conn)
 
 

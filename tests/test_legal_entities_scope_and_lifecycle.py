@@ -96,9 +96,14 @@ def _add_unit(conn, *, legal_entity_id=None, name='Base Santos'):
 
 
 def _add_local_admin(conn, user_id=7, *, unit_id=None):
+    # Matrícula distinta por colaborador: ela é NOT NULL e única dentro da
+    # empresa (uq_employees_company_employee_code). Dois admins locais com
+    # matrícula vazia não existem em produção — o cadastro manual, a importação
+    # e o autocadastro exigem o campo (issue #168).
     cur = conn.execute(
-        "INSERT INTO employees (id, company_id, unit_id, name) VALUES (?, 1, ?, 'Admin Local')",
-        (user_id, unit_id),
+        "INSERT INTO employees (id, company_id, unit_id, employee_id_code, name) "
+        "VALUES (?, 1, ?, ?, 'Admin Local')",
+        (user_id, unit_id, f'ADM-{user_id}'),
     )
     conn.execute(
         "INSERT INTO users (id, username, company_id, role, linked_employee_id) VALUES (?, 'local', 1, 'admin', ?)",

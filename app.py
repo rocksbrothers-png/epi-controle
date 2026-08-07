@@ -594,7 +594,14 @@ def not_found(handler):
 def humanize_integrity_error(exc):
     message = str(exc or '')
     lowered = message.lower()
-    if 'employees_employee_id_code_key' in lowered:
+    # `uq_employees_company_employee_code` é o índice por tenant (issue #168);
+    # `employees_employee_id_code_key` é o antigo UNIQUE global, mantido aqui
+    # para bases que ainda não rodaram a migração.
+    if 'uq_employees_company_employee_code' in lowered or 'employees_employee_id_code_key' in lowered:
+        return 'ID do colaborador já cadastrado para esta empresa.'
+    if 'employees_company_id_employee_id_code_key' in lowered:
+        return 'ID do colaborador já cadastrado para esta empresa.'
+    if 'unique constraint failed: employees.company_id, employees.employee_id_code' in lowered:
         return 'ID do colaborador já cadastrado para esta empresa.'
     if 'unique constraint failed: employees.employee_id_code' in lowered:
         return 'ID do colaborador já cadastrado. Use outro identificador para este colaborador.'

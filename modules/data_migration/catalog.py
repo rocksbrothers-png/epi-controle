@@ -102,9 +102,9 @@ _COLABORADORES = EntityDescriptor(
         FieldSpec('cpf', 'CPF', required=True, validator='cpf',
                   aliases=('cpf', 'documento', 'doc', 'national id', 'tax id', 'ssn')),
         # required=True porque `employees.employee_id_code` é NOT NULL sem default
-        # e o cadastro manual também a exige. Atenção: o índice único é GLOBAL
-        # (employees_employee_id_code_key), não por empresa — ver risco no
-        # ADR-0003 §11.
+        # e o cadastro manual também a exige. O índice único é POR TENANT
+        # (uq_employees_company_employee_code), coerente com o índice de upsert
+        # desta importação, que já era carregado com WHERE company_id (#168).
         FieldSpec('employee_id_code', 'Matrícula', required=True,
                   aliases=('matricula', 'matrícula', 'registro', 'registration',
                            'employee id', 'employee code', 'chapa', 'codigo', 'código')),

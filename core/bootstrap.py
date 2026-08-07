@@ -170,7 +170,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 company_id INTEGER NOT NULL,
                 unit_id INTEGER NOT NULL,
-                employee_id_code TEXT NOT NULL UNIQUE,
+                employee_id_code TEXT NOT NULL,
                 cpf TEXT NOT NULL DEFAULT '',
                 name TEXT NOT NULL,
                 email TEXT NOT NULL DEFAULT '',
@@ -182,6 +182,12 @@ def init_db():
                 schedule_type TEXT NOT NULL,
                 tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
                 empresa_origem TEXT NOT NULL DEFAULT '',
+                -- Matrícula é única POR TENANT, mas a chave NÃO é declarada
+                -- aqui: quem a cria é `uq_employees_company_employee_code`, em
+                -- core/schema.py, que também remove o UNIQUE global antigo das
+                -- bases existentes. Um dono só, um nome só — declarar inline
+                -- também deixaria toda base nova com dois índices únicos
+                -- equivalentes (issue #168).
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT,
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE RESTRICT
             );

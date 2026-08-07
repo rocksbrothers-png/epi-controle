@@ -112,6 +112,10 @@ e a visão consolidada da empresa.
 - Acompanhar unidades, CNPJs, usuários, solicitações, compras e estoques.
 - Supervisionar o funcionamento geral do sistema.
 - Corrigir configurações organizacionais quando necessário.
+- Editar diretamente os dados corporativos de empresas terceirizadas já
+  promovidas ao Cadastro Padrão e resolver pedidos de "Solicitar
+  atualização cadastral" abertos por Administrador Local/Gestor de EPI
+  (mesma exclusividade do Administrador de Registro — ADR-0002 §12).
 
 **Não faz normalmente**
 
@@ -187,6 +191,11 @@ riscos, vínculos organizacionais e dados complementares da estrutura.
 - Auxiliar o Administrador Geral em cadastros organizacionais.
 - Corrigir dados que impactam os fluxos de EPI.
 - Atualizar informações de colaboradores já existentes.
+- Editar diretamente os dados corporativos de uma empresa terceirizada já
+  promovida ao Cadastro Padrão (Administrador Local/Gestor de EPI perdem
+  essa edição direta e só solicitam — ver §4) e resolver, na aba
+  "Solicitações" de Terceirizados e Prestadores, os pedidos de correção
+  registrados por essas unidades (ADR-0002 §12).
 
 **Não faz**
 - Não aprova solicitações de EPI.
@@ -295,12 +304,29 @@ Padrão (continua exclusiva de Administrador Geral/de Registro) — só o
 recorte simplificado descrito acima, sempre auditado, sempre restrito à
 unidade autorizada, e nunca visível ou editável para outra unidade.
 
+Desde a extensão de compartilhamento por tenant (ADR-0002 §12), "própria
+unidade" não é mais sinônimo de "Unidade que cadastrou primeiro": uma
+empresa terceirizada já cadastrada por outra unidade do mesmo CNPJ
+contratante aparece para ele como "disponível para vincular" (dados
+públicos só, CNPJ mascarado) — "Vincular à minha unidade" cria o próprio
+vínculo operacional sem duplicar o cadastro corporativo nem herdar
+contrato/colaborador de outra unidade. Ele também pode ativar/desativar
+esse vínculo local a qualquer momento (contrato encerrado, por exemplo)
+sem que isso arquive o cadastro corporativo para as demais unidades que
+também o usam. E se a empresa já foi promovida ao Cadastro Padrão, ele
+perde a edição direta dos dados corporativos (razão social, CNPJ, tipo,
+responsabilidade pelo EPI) — usa "Solicitar atualização cadastral" para
+pedir a correção ao Administrador Geral/de Registro, nunca edita
+diretamente um cadastro que outras unidades também dependem.
+
 **Não faz**
 - Não cadastra colaboradores CLT.
 - Não atualiza cadastro de colaboradores CLT.
 - Não cadastra/edita empresas terceirizadas ou seus colaboradores fora da
   própria unidade, nem sem autorização explícita do Administrador Geral
   (ver "Terceirizados e Prestadores" acima).
+- Não edita diretamente os dados corporativos de uma empresa terceirizada
+  já promovida ao Cadastro Padrão — só solicita atualização (ver acima).
 - Não entrega EPI.
 - Não captura assinatura.
 - Não captura biometria.
@@ -417,7 +443,13 @@ Mesma regra e mesmo mecanismo de autorização do Administrador Local (ver
 terceirizadas, prestadoras de serviço e seus colaboradores quando o
 Administrador Geral autorizar explicitamente o módulo "Terceirizados e
 Prestadores" para a unidade em que atua — e mesmo assim, sempre restrito
-à própria unidade, sempre auditado.
+à própria unidade, sempre auditado. Também herda do Administrador Local o
+compartilhamento do cadastro corporativo por tenant e a trava pós-promoção
+(ADR-0002 §12): pode "Vincular à minha unidade" uma empresa já cadastrada
+por outra unidade em vez de duplicar, ativa/desativa o próprio vínculo
+local sem afetar outras unidades, e usa "Solicitar atualização cadastral"
+em vez de editar diretamente uma empresa já promovida ao Cadastro Padrão
+(detalhe completo em §4).
 
 **Não faz**
 - Não cadastra colaboradores CLT.
@@ -425,6 +457,8 @@ Prestadores" para a unidade em que atua — e mesmo assim, sempre restrito
 - Não cadastra/edita empresas terceirizadas ou seus colaboradores fora da
   própria unidade, nem sem autorização explícita do Administrador Geral
   (ver "Terceirizados e Prestadores" acima).
+- Não edita diretamente os dados corporativos de uma empresa terceirizada
+  já promovida ao Cadastro Padrão — só solicita atualização (ver acima).
 - Não aprova compras.
 - Não cria usuários.
 - Não altera permissões.

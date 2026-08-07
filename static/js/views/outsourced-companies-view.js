@@ -60,11 +60,35 @@
     return isSimplified(entity);
   }
 
+  /**
+   * Trava pós-promoção (ADR-0002 §12): uma vez promovida ao Cadastro
+   * Padrão, editar dados corporativos e arquivar/reativar passam a ser
+   * exclusivos de Administrador Geral/de Registro — espelha exatamente
+   * `ensure_actor_can_edit_outsourced_company_corporate_fields` do backend
+   * (modules/outsourced_companies/service.py), que é quem decide de fato;
+   * esta função só evita oferecer "Editar"/"Arquivar" sem efeito na UI.
+   */
+  function isCorporateLocked(entity) {
+    return !isSimplified(entity);
+  }
+
+  /**
+   * Só quem tem `employees:update` completo (Administrador Geral/de
+   * Registro) segue liberado para editar/arquivar um registro travado —
+   * `permissions` é o array já resolvido por `hasPermission`/`state.permissions`
+   * do chamador, esta função não sabe nada de `state`.
+   */
+  function canEditCorporateFields(entity, hasFullUpdatePermission) {
+    return !isCorporateLocked(entity) || Boolean(hasFullUpdatePermission);
+  }
+
   globalThis.__EPI_OUTSOURCED_COMPANIES_VIEW__ = Object.freeze({
     companyKindLabel,
     isSimplified,
     registrationModeLabel,
     visibleOutsourcedCompanies,
     canPromote,
+    isCorporateLocked,
+    canEditCorporateFields,
   });
 })();

@@ -24,6 +24,7 @@ from core.schema import (
     ensure_delivery_signature_columns,
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
     ensure_outsourced_company_archival_lifecycle_columns,
 )
 from modules.deliveries.service import create_delivery_service
@@ -76,6 +77,7 @@ def _oc_conn():
     cid = int(cur.lastrowid)
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     return conn, cid
 
 
@@ -200,6 +202,7 @@ def _delivery_conn():
     ensure_delivery_outsourced_snapshot_columns(conn)
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     ensure_outsourced_company_archival_lifecycle_columns(conn)
     conn.commit()
     return conn, cid

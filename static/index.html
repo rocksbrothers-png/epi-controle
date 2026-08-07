@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=fcf98834f3b6">
+  <link rel="stylesheet" href="/styles.css?v=a09916b3a9cc">
   <script>/* Bootstrap de tema (P2-2) — aplica antes do paint para evitar flash. */try{if(localStorage.getItem('epi-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
 </head>
 <body>
@@ -848,10 +848,12 @@
           <button type="button" class="vtab" data-vtab="arquivados-empresas" data-i18n="outsourcedCompany.archivedCompaniesTab">Empresas Arquivadas</button>
           <button type="button" class="vtab" data-vtab="arquivados-colaboradores" data-i18n="outsourcedCompany.archivedEmployeesTab">Colaboradores Arquivados</button>
           <button type="button" class="vtab" data-vtab="relatorios" data-i18n="outsourcedCompany.reportsTab">Relatórios</button>
+          <button type="button" class="vtab" data-vtab="solicitacoes" data-i18n="outsourcedCompany.requestsTab">Solicitações</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="outsourced-company-form" class="card form-stack" data-update-permission="employees:update employees:update_simplified">
             <h3 data-i18n="outsourcedCompany.create">Cadastro de Empresa Terceirizada</h3>
+            <p id="outsourced-company-corporate-lock-banner" class="alert-item warning" hidden data-i18n="outsourcedCompany.corporateLockBanner">Esta empresa já está no Cadastro Padrão — os dados corporativos só podem ser alterados por Administrador Geral ou Administrador de Registro. Use "Solicitar atualização cadastral" na Lista para pedir uma correção.</p>
             <input type="hidden" name="id">
             <fieldset class="form-fieldset">
               <legend data-i18n="legalEntity.identification">Identificação</legend>
@@ -871,7 +873,7 @@
                 <option value="Conforme Contrato" selected>Conforme Contrato</option>
                 <option value="Não Definido">Não Definido</option>
               </select></label>
-              <label><span data-i18n="outsourcedCompany.unit">Unidade</span><select name="unit_id" id="outsourced-company-unit"></select><small class="muted" data-i18n="outsourcedCompany.unitHint">Perfis de unidade (Administrador Local/Gestor de EPI) ficam restritos à própria unidade automaticamente.</small></label>
+              <label><span data-i18n="outsourcedCompany.unit">Unidade de origem</span><select name="unit_id" id="outsourced-company-unit"></select><small class="muted" data-i18n="outsourcedCompany.unitHint">Só no cadastro: perfis de unidade (Administrador Local/Gestor de EPI) ficam restritos à própria unidade automaticamente. Depois de criada, a empresa fica disponível para o tenant inteiro vincular (aba Lista) e a Unidade de origem não muda mais.</small></label>
             </fieldset>
             <div class="action-group">
               <button class="primary" type="submit" data-i18n="outsourcedCompany.save">Salvar Empresa</button>
@@ -898,8 +900,20 @@
               <th scope="col" data-i18n="outsourcedCompany.companyKind">Tipo</th>
               <th scope="col" data-i18n="outsourcedCompany.responsibility">Responsabilidade pelo EPI</th>
               <th scope="col" data-i18n="outsourcedCompany.registrationMode">Cadastro</th>
+              <th scope="col" data-i18n="outsourcedCompany.localLinkStatus">Vínculo Local</th>
               <th scope="col" data-i18n="unit.tableActions">Ações</th>
             </tr></thead><tbody id="outsourced-companies-table"></tbody></table></div>
+          </article>
+          <article class="card">
+            <h3 data-i18n="outsourcedCompany.availableTitle">Empresas disponíveis para vinculação</h3>
+            <p class="muted" data-i18n="outsourcedCompany.availableHint">Empresas já cadastradas por outra Unidade do mesmo tenant (mesmo CNPJ, sem duplicar o cadastro) — vincule à sua Unidade para passar a gerenciá-las e apontar colaboradores para elas.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="outsourcedCompany.legalName">Razão social</th>
+              <th scope="col" data-i18n="outsourcedCompany.tradeName">Nome fantasia</th>
+              <th scope="col" data-i18n="outsourcedCompany.cnpj">CNPJ</th>
+              <th scope="col" data-i18n="outsourcedCompany.registrationMode">Cadastro</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="outsourced-companies-available-table"></tbody></table></div>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="colaboradores">
@@ -1001,6 +1015,19 @@
               <th scope="col" data-i18n="outsourcedCompany.reportsArchived">Arquivados</th>
               <th scope="col" data-i18n="outsourcedCompany.employeeVincLabel">Tipo de vínculo</th>
             </tr></thead><tbody id="outsourced-employees-summary-table"></tbody></table></div>
+          </article>
+        </div>
+        <div class="vtab-panel" data-vtab-panel="solicitacoes">
+          <article class="card" id="outsourced-company-update-requests-card">
+            <h3 data-i18n="outsourcedCompany.requestsTab">Solicitações</h3>
+            <p class="muted" data-i18n="outsourcedCompany.requestsHint">Pedidos de correção no cadastro corporativo de Empresas Terceirizadas já promovidas ao Cadastro Padrão — Administrador Local/Gestor de EPI perdem a edição direta desses campos e registram aqui o que precisa mudar (aba Lista, botão "Solicitar atualização cadastral"). Visível só para Administrador Geral/de Registro.</p>
+            <div class="table-wrap"><table><thead><tr>
+              <th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th>
+              <th scope="col" data-i18n="outsourcedCompany.requestedBy">Solicitante</th>
+              <th scope="col" data-i18n="outsourcedCompany.requestMessage">Mensagem</th>
+              <th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th>
+              <th scope="col" data-i18n="unit.tableActions">Ações</th>
+            </tr></thead><tbody id="outsourced-company-update-requests-table"></tbody></table></div>
           </article>
         </div>
       </section>
@@ -3792,54 +3819,54 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=fcf98834f3b6"></script>
-  <script defer src="/i18n-helper.js?v=fcf98834f3b6"></script>
-  <script defer src="/tenant-init.js?v=fcf98834f3b6"></script>
+  <script defer src="/i18n.js?v=a09916b3a9cc"></script>
+  <script defer src="/i18n-helper.js?v=a09916b3a9cc"></script>
+  <script defer src="/tenant-init.js?v=a09916b3a9cc"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/core/permissions.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/core/feature-flags.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/core/config.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/utils/storage.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/utils/debug.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/utils/dom.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/utils/perf.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/modules/auth.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/modules/api-client.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/modules/router.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/ui-helpers.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/view-helpers.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/dashboard.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/epis.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/estoque.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/employee-portal.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/data-migration-view.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/purchases.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/procurement.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/feedback.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/devolution.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/fichas.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/feedback-detail.js?v=fcf98834f3b6"></script>
-  <script defer src="/js/views/profile.js?v=fcf98834f3b6"></script>
-  <script defer src="/colab-list.js?v=fcf98834f3b6"></script>
-  <script defer src="/gestao-colab.js?v=fcf98834f3b6"></script>
-  <script defer src="/estoque.js?v=fcf98834f3b6"></script>
-  <script defer src="/ux-global.js?v=fcf98834f3b6"></script>
-  <script defer src="/app.js?v=fcf98834f3b6"></script>
-  <script defer src="/share-modal.js?v=fcf98834f3b6"></script>
-  <script defer src="/entrega-epi.js?v=fcf98834f3b6"></script>
-  <script defer src="/ux-phase41.js?v=fcf98834f3b6"></script>
-  <script defer src="/navigation.js?v=fcf98834f3b6"></script>
-  <script defer src="/navigation-controls.js?v=fcf98834f3b6"></script>
-  <script defer src="/multitab-navigation.js?v=fcf98834f3b6"></script>
-  <script defer src="/error-monitor.js?v=fcf98834f3b6"></script>
-  <script defer src="/ux-analytics.js?v=fcf98834f3b6"></script>
+  <script defer src="/js/core/constants.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/core/permissions.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/core/feature-flags.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/core/config.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/utils/storage.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/utils/debug.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/utils/dom.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/utils/perf.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/modules/auth.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/modules/api-client.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/modules/router.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/ui-helpers.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/view-helpers.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/dashboard.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/epis.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/estoque.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/employee-portal.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/data-migration-view.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/purchases.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/procurement.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/feedback.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/devolution.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/fichas.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/feedback-detail.js?v=a09916b3a9cc"></script>
+  <script defer src="/js/views/profile.js?v=a09916b3a9cc"></script>
+  <script defer src="/colab-list.js?v=a09916b3a9cc"></script>
+  <script defer src="/gestao-colab.js?v=a09916b3a9cc"></script>
+  <script defer src="/estoque.js?v=a09916b3a9cc"></script>
+  <script defer src="/ux-global.js?v=a09916b3a9cc"></script>
+  <script defer src="/app.js?v=a09916b3a9cc"></script>
+  <script defer src="/share-modal.js?v=a09916b3a9cc"></script>
+  <script defer src="/entrega-epi.js?v=a09916b3a9cc"></script>
+  <script defer src="/ux-phase41.js?v=a09916b3a9cc"></script>
+  <script defer src="/navigation.js?v=a09916b3a9cc"></script>
+  <script defer src="/navigation-controls.js?v=a09916b3a9cc"></script>
+  <script defer src="/multitab-navigation.js?v=a09916b3a9cc"></script>
+  <script defer src="/error-monitor.js?v=a09916b3a9cc"></script>
+  <script defer src="/ux-analytics.js?v=a09916b3a9cc"></script>
 </body>
 </html>

@@ -33,6 +33,7 @@ from core.schema import (
     ensure_employee_simplified_registration_columns,
     ensure_legal_entities,
     ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
     ensure_outsourced_company_archival_lifecycle_columns,
 )
 from modules.employees.service import (
@@ -126,6 +127,7 @@ def _conn():
 def _bootstrap(conn):
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
     ensure_outsourced_company_archival_lifecycle_columns(conn)
     ensure_employee_simplified_registration_columns(conn)
 

@@ -276,6 +276,11 @@ def init_db():
             # tabela já criada) e de schema.ensure_units_table (indiretamente, via
             # ensure_tenant_domain_tables acima) para a Unidade existir.
             schema.ensure_outsourced_company_unit_scope_column,
+            # Depende de schema.ensure_outsourced_companies/ensure_units_table
+            # (FKs outsourced_company_id/unit_id) — vínculo operacional por
+            # Unidade + pedido de atualização cadastral (extensão ADR-0002 §12).
+            schema.ensure_outsourced_company_unit_links,
+            schema.ensure_outsourced_company_update_requests,
             # Centro de Migração de Dados (ADR-0003) — tabelas próprias,
             # independentes das demais: não dependem de nenhuma entidade de
             # negócio existir, só guardam jobs/registros/mapeamentos.

@@ -18,7 +18,7 @@ import sqlite3
 
 import pytest
 
-from core.schema import ensure_legal_entities, ensure_outsourced_companies
+from core.schema import ensure_legal_entities, ensure_outsourced_companies, ensure_outsourced_company_unit_links
 from modules.outsourced_companies.service import (
     COMPANY_KINDS,
     create_outsourced_company,
@@ -75,6 +75,7 @@ def _bootstrap(conn):
     # criados por ensure_legal_entities — mesma ordem do init_db real.
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
 
 
 # ── migração ────────────────────────────────────────────────────────────────
@@ -220,7 +221,8 @@ def test_fetch_outsourced_companies_is_scoped_by_tenant():
     create_outsourced_company(conn, {'legal_name': 'Empresa A'}, cid_a)
     create_outsourced_company(conn, {'legal_name': 'Empresa B'}, cid_b)
     result_a = fetch_outsourced_companies(conn, cid_a)
-    assert [r['legal_name'] for r in result_a] == ['Empresa A']
+    assert [r['legal_name'] for r in result_a['linked']] == ['Empresa A']
+    assert result_a['available'] == []
 
 
 def test_update_outsourced_company_does_not_cross_tenant_boundary():

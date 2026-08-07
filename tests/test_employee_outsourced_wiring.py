@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from core.schema import ensure_legal_entities, ensure_outsourced_companies
+from core.schema import ensure_legal_entities, ensure_outsourced_companies, ensure_outsourced_company_unit_links
 from modules.employees.service import create_employee, get_employee_by_id, fetch_employees, update_employee
 from modules.outsourced_companies.service import create_outsourced_company, create_service_contract
 
@@ -75,6 +75,7 @@ def _seed_company(conn, name='ACME', cnpj='00.000.000/0001-00'):
 def _bootstrap(conn):
     ensure_legal_entities(conn)
     ensure_outsourced_companies(conn)
+    ensure_outsourced_company_unit_links(conn)
 
 
 def _actor(company_id, role='general_admin', user_id=1):

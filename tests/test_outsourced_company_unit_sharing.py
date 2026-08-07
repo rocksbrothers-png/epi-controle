@@ -155,8 +155,6 @@ def scoped_units(monkeypatch):
         return mapping.get(actor.get('id'))
 
     monkeypatch.setattr(repository, 'actor_operational_unit_id', _fake)
-    import modules.outsourced_companies.service as service
-    monkeypatch.setattr(service, 'actor_operational_unit_id', _fake, raising=False)
     return mapping
 
 

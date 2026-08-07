@@ -1,0 +1,121 @@
+name: PostgreSQL Migration Journey
+
+# Jornada completa do Centro de Migração de Dados contra PostgreSQL REAL.
+#
+# Por que este workflow existe, separado do Backend CI: a suíte padrão roda em
+# SQLite, e a Fase 1 do módulo passou com ela inteira verde sem conseguir
+# importar um único colaborador em produção. Três defeitos — transação abortada
+# em cascata, preview mentindo sobre NOT NULL e nenhuma tradução de nome para
+# id — só existem no PostgreSQL. Cobertura em SQLite não substitui exercitar o
+# produto contra o banco real (ADR-0003 §10 e §12).
+#
+# Este job é BLOQUEANTE de propósito: nada de `continue-on-error`. Ele foi
+# escrito para ser marcado como required status check em Settings → Branches →
+# Branch protection rules → main.
+#
+# Sem filtro `paths` DE PROPÓSITO. Um required status check filtrado por
+# caminho não gera check run quando o PR não toca nenhum deles, e o GitHub não
+# distingue "pulado" de "ainda não reportou": o PR fica pendente para sempre,
+# sem nada vermelho para corrigir. Rodar em todo PR custa ~1 minuto e é o que
+# torna este check obrigatório de verdade.
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pg-migration-journey-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-journey:
+    name: Migration Journey (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: epi
+          POSTGRES_PASSWORD: epi
+          POSTGRES_DB: epi_migration_journey
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U epi -d epi_migration_journey"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Banco VAZIO: a jornada aplica todas as migrations do zero, que é o
+      # cenário de um cliente novo migrando do sistema antigo.
+      DATABASE_URL: postgresql://epi:epi@localhost:5432/epi_migration_journey
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: epi
+      PGPASSWORD: epi
+      PGDATABASE: epi_migration_journey
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U epi -d epi_migration_journey && break
+            sleep 2
+          done
+          psql -h localhost -U epi -d epi_migration_journey -c "SELECT version();"
+
+      - name: Confirm the database starts empty
+        run: |
+          set -e
+          count=$(psql -h localhost -U epi -d epi_migration_journey -tAc \
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
+          echo "Tabelas no schema public antes das migrations: $count"
+          if [ "$count" != "0" ]; then
+            echo "::error::O banco da jornada precisa começar vazio."
+            exit 1
+          fi
+
+      # Contrato catálogo × schema real. Roda ANTES da jornada: se o catálogo
+      # divergir do banco, a jornada falharia por consequência e a mensagem
+      # seria pior.
+      - name: Catalog × schema contract
+        run: pytest tests_postgres/test_migration_contract_postgres.py -v
+
+      # Jornada ponta a ponta: leitura de export legado latin-1 → mapeamento →
+      # preview sem escrita → referência desconhecida bloqueando → importação →
+      # isolamento multi-tenant → upsert → linha inválida isolada → requisição
+      # seguinte sadia → rollback → segundo rollback recusado → auditoria.
+      - name: End-to-end migration journey
+        run: pytest tests_postgres/test_migration_journey_postgres.py -v
+
+      - name: Confirm migrations actually created the schema
+        if: always()
+        run: |
+          psql -h localhost -U epi -d epi_migration_journey -tAc \
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'" \
+            | xargs -I{} echo "Tabelas criadas pelas migrations: {}"
+          psql -h localhost -U epi -d epi_migration_journey -c \
+            "SELECT id, entity, strategy, status, total_rows, inserted_rows, updated_rows,
+                    failed_rows, reverted_at
+             FROM migration_jobs ORDER BY id"
+
+      - name: Dump migration diagnostics on failure
+        if: failure()
+        run: |
+          psql -h localhost -U epi -d epi_migration_journey -c \
+            "SELECT job_id, row_number, action, left(error_message, 200) AS error
+             FROM migration_job_records WHERE error_message <> '' ORDER BY job_id, row_number"

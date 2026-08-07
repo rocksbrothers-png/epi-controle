@@ -44,9 +44,14 @@ const PPE_TEST_ALL_PERMS = ['ppe_test:view', 'ppe_test:suggest', 'ppe_test:triag
 // também não retém employees:create_simplified/update_simplified de forma
 // permanente — mesma razão dos pares completos acima.
 const MASTER_ADMIN_OPERATIONAL_EXCLUSIONS = ['employees:create', 'employees:update', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'deliveries:create', 'stock:adjust', 'purchase_requests:create', 'purchase_requests:update'];
+// Centro de Migração de Dados (ADR-0003 §2.5): só master_admin e
+// general_admin, exatamente como PERM_DATA_MIGRATION_MANAGE em
+// core/permissions.py. Administrador Local, Gestores e Colaboradores nunca
+// recebem — o backend é quem decide, isto aqui é só fallback de bootstrap.
+const DATA_MIGRATION_PERM = 'data_migration:manage';
 const ROLE_PERMISSIONS = {
-  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view'].filter(p => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p)),
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', ...PPE_TEST_ALL_PERMS],
+  master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view', DATA_MIGRATION_PERM].filter(p => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p)),
+  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', DATA_MIGRATION_PERM, ...PPE_TEST_ALL_PERMS],
   registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_orders:view', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
   // Sem employees:update: edição de cadastro e reativação são atribuição do
   // Administrador de Registro. O Administrador Local transfere colaboradores
@@ -96,7 +101,11 @@ const VIEW_PERMISSIONS = {
   compras: 'purchase_requests:view',
   configuracao: 'settings:view',
   relatorios: 'reports:view',
-  avaliacoes: 'epi_evaluation:view'
+  avaliacoes: 'epi_evaluation:view',
+  // Centro de Migração de Dados (ADR-0003). Permissão exclusiva de
+  // master_admin/general_admin — nunca Administrador Local, Gestores ou
+  // Colaboradores, que não a têm em core/permissions.py.
+  migracao: 'data_migration:manage'
 };
 // Mapa view → módulo estrutural (espelha `MODULE_REQUIRED_PERMISSIONS`/
 // `routeModules` do backend e do Flutter). Só as views cobertas pela
@@ -117,7 +126,11 @@ const VIEW_MODULE = {
   fichas: 'fichas',
   compras: 'compras',
   configuracao: 'configuracoes',
-  relatorios: 'relatorios'
+  relatorios: 'relatorios',
+  // Opt-in como `terceirizados`: mesmo o Administrador Geral só vê depois de
+  // ligar em Configuração → Regras → Visualização (_OPT_IN_MODULES no
+  // rule_engine.py).
+  migracao: 'migracao'
 };
 // Rótulos dos módulos configuráveis na aba Visualização — mesmas chaves de
 // `VIEW_MODULE` acima e de `MODULE_KEYS` em epi_backend/rule_engine.py.
@@ -132,6 +145,7 @@ const MODULE_VISIBILITY_LABELS = {
   administracao: 'Administração',
   configuracoes: 'Configurações',
   terceirizados: 'Terceirizados e Prestadores',
+  migracao: 'Migração de Dados',
   // Módulo opt-in irmão (ADR-0002 §10.3): Cadastro de Colaboradores
   // simplificado dentro da mesma tela de Terceirizados e Prestadores —
   // liga/desliga independente do módulo acima (admin/user só têm a
@@ -177,7 +191,8 @@ const VIEW_EYEBROW = {
   compras: 'Compras',
   configuracao: 'Configuração',
   relatorios: 'Relatórios',
-  avaliacoes: 'Avaliações'
+  avaliacoes: 'Avaliações',
+  migracao: 'Administração'
 };
 const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
 const DEFAULT_CONFIGURATION_FRAMEWORK = Object.freeze({
@@ -2189,6 +2204,36 @@ const refs = {
   archivedOutsourcedEmployeesFilterDate: document.getElementById('archived-outsourced-employees-filter-date'),
   archivedOutsourcedEmployeesFilterReason: document.getElementById('archived-outsourced-employees-filter-reason'),
   archivedOutsourcedEmployeesFilterUser: document.getElementById('archived-outsourced-employees-filter-user'),
+  // Centro de Migração de Dados (ADR-0003 fase 2)
+  migracaoCatalogCards: document.getElementById('migracao-catalog-cards'),
+  migracaoCatalogFilter: document.getElementById('migracao-catalog-filter'),
+  migracaoSteps: document.getElementById('migracao-steps'),
+  migracaoEntity: document.getElementById('migracao-entity'),
+  migracaoEntityFields: document.getElementById('migracao-entity-fields'),
+  migracaoSourceKind: document.getElementById('migracao-source-kind'),
+  migracaoDropzone: document.getElementById('migracao-dropzone'),
+  migracaoFile: document.getElementById('migracao-file'),
+  migracaoFileName: document.getElementById('migracao-file-name'),
+  migracaoSheetWrap: document.getElementById('migracao-sheet-wrap'),
+  migracaoSheet: document.getElementById('migracao-sheet'),
+  migracaoDetected: document.getElementById('migracao-detected'),
+  migracaoSampleHead: document.getElementById('migracao-sample-head'),
+  migracaoSampleBody: document.getElementById('migracao-sample-body'),
+  migracaoMappingSummary: document.getElementById('migracao-mapping-summary'),
+  migracaoMappingSource: document.getElementById('migracao-mapping-source'),
+  migracaoMappingTable: document.getElementById('migracao-mapping-table'),
+  migracaoBack: document.getElementById('migracao-back'),
+  migracaoNext: document.getElementById('migracao-next'),
+  migracaoPreview: document.getElementById('migracao-preview'),
+  migracaoRestart: document.getElementById('migracao-restart'),
+  migracaoPreviewCard: document.getElementById('migracao-preview-card'),
+  migracaoPreviewCounters: document.getElementById('migracao-preview-counters'),
+  migracaoPreviewDiagnostics: document.getElementById('migracao-preview-diagnostics'),
+  migracaoDownloadReport: document.getElementById('migracao-download-report'),
+  migracaoStrategy: document.getElementById('migracao-strategy'),
+  migracaoStrategyHint: document.getElementById('migracao-strategy-hint'),
+  migracaoApply: document.getElementById('migracao-apply'),
+  migracaoJobsTable: document.getElementById('migracao-jobs-table'),
   unitsFilterType: document.getElementById('units-filter-type'),
   unitsFilterCity: document.getElementById('units-filter-city'),
   archivedUnitsTable: document.getElementById('archived-units-table'),
@@ -3235,6 +3280,11 @@ function showView(view, options = {}) {
   }
   if (view === 'configuracao' && typeof loadArchivalPolicy === 'function') {
     void loadArchivalPolicy();
+  }
+  if (view === 'migracao' && typeof loadDataMigrationCatalog === 'function') {
+    void loadDataMigrationCatalog();
+    void loadDataMigrationJobs();
+    renderDataMigrationSteps();
   }
   trackInteractiveViewHistory(view);
   trackNavBackHistory(currentActiveView.replace(/-view$/, ''), view);
@@ -6578,8 +6628,15 @@ function setFormSubmitLabel(formId, text) {
 // cadastro depois, aparecia um formulário em modo de atualização sem
 // explicação.
 function focusRegistrationTab(group) {
+  focusViewTab(group, 'cadastro');
+}
+
+// Mesma ideia de focusRegistrationTab, para qualquer aba interna: o
+// assistente de migração precisa levar o operador do cartão até a aba do
+// assistente, e do "Confirmar importação" até o histórico.
+function focusViewTab(group, key) {
   const nav = document.querySelector(`[data-vtabs="${group}"]`);
-  if (nav) activateViewTab(nav, 'cadastro');
+  if (nav) activateViewTab(nav, key);
 }
 
 function startEditUnit(unitId) {
@@ -8281,6 +8338,567 @@ function renderOutsourcedEmployeesSummary() {
   }).join('') || globalThis.dsTableState({
     colspan: 4,
     message: tr('outsourcedCompany.reportsEmpty', 'Nenhuma empresa terceirizada/prestadora cadastrada.'),
+  });
+}
+
+// ── Centro de Migração de Dados (ADR-0003, fase 2) ─────────────────────────
+//
+// O assistente monta um rascunho local (`state.migracao`) e só conversa com o
+// servidor em três momentos: analisar o arquivo, simular (dry-run) e aplicar.
+// Nenhuma decisão de autorização acontece aqui — o backend revalida permissão,
+// módulo, catálogo e mapeamento a cada chamada.
+
+function dataMigrationHelpers() {
+  return globalThis.__EPI_DATA_MIGRATION_VIEW__ || {};
+}
+
+function migracaoState() {
+  if (!state.migracao) {
+    state.migracao = {
+      entities: [], sources: [], jobs: [],
+      step: 'entidade', entity: '', sourceKind: 'xlsx',
+      fileName: '', fileBase64: '', sheet: '',
+      columns: [], sample: [], detected: {}, details: [],
+      mapping: {}, mappingSource: '', totalRows: 0,
+      preview: null, busy: false,
+    };
+  }
+  return state.migracao;
+}
+
+function migracaoEntityDescriptor() {
+  const draft = migracaoState();
+  return (draft.entities || []).find((item) => item.key === draft.entity) || null;
+}
+
+async function loadDataMigrationCatalog() {
+  if (!hasPermission('data_migration:manage')) return;
+  const draft = migracaoState();
+  try {
+    const data = await api(`/api/data-migration/catalog?${actorQuery()}`);
+    draft.entities = data.entities || [];
+    draft.sources = data.sources || [];
+  } catch (error) {
+    draft.entities = [];
+    draft.sources = [];
+    reportNonCriticalError('[migracao] falha ao carregar o catálogo', error);
+  }
+  renderDataMigrationCatalog();
+  syncDataMigrationSelectors();
+}
+
+function renderDataMigrationCatalog() {
+  if (!refs.migracaoCatalogCards) return;
+  const helpers = dataMigrationHelpers();
+  const draft = migracaoState();
+  const term = String(refs.migracaoCatalogFilter?.value || '').trim().toLowerCase();
+  const cards = (helpers.dashboardCards ? helpers.dashboardCards(draft.entities) : [])
+    .filter((card) => !term || card.label.toLowerCase().includes(term) || card.key.includes(term));
+  refs.migracaoCatalogCards.innerHTML = cards.map((card) => {
+    const badge = card.enabled
+      ? `<span class="badge badge-status-active">${escapeHtml(tr('dataMigration.cardReady', 'Disponível'))}</span>`
+      : `<span class="badge badge-role-user">${escapeHtml(tr('dataMigration.cardSoon', 'Em breve'))}</span>`;
+    const fields = tr('dataMigration.cardFields', '{n} campos').replace('{n}', String(card.fieldCount));
+    return `<button type="button" class="migracao-card${card.enabled ? '' : ' is-disabled'}"`
+      + ` data-migracao-card="${escapeHtml(card.key)}"${card.enabled ? '' : ' disabled'}>`
+      + `<strong>${escapeHtml(card.label)}</strong>${badge}`
+      + `<small class="muted">${escapeHtml(fields)}</small></button>`;
+  }).join('') || `<p class="muted">${escapeHtml(tr('dataMigration.catalogEmpty', 'Nenhuma entidade encontrada.'))}</p>`;
+}
+
+function syncDataMigrationSelectors() {
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  if (refs.migracaoEntity) {
+    refs.migracaoEntity.innerHTML = (draft.entities || [])
+      .filter((entity) => entity.enabled)
+      .map((entity) => `<option value="${escapeHtml(entity.key)}">${escapeHtml(entity.label)}</option>`)
+      .join('');
+    if (draft.entity) refs.migracaoEntity.value = draft.entity;
+    else draft.entity = refs.migracaoEntity.value || '';
+  }
+  if (refs.migracaoSourceKind) {
+    refs.migracaoSourceKind.innerHTML = (draft.sources || []).map((source) => {
+      const label = source.enabled
+        ? source.kind.toUpperCase()
+        : `${source.kind.toUpperCase()} — ${tr('dataMigration.cardSoon', 'Em breve')}`;
+      return `<option value="${escapeHtml(source.kind)}"${source.enabled ? '' : ' disabled'}>${escapeHtml(label)}</option>`;
+    }).join('');
+    if (draft.sourceKind) refs.migracaoSourceKind.value = draft.sourceKind;
+  }
+  if (refs.migracaoStrategy && !refs.migracaoStrategy.options.length) {
+    refs.migracaoStrategy.innerHTML = (helpers.APPLY_STRATEGIES || []).map((strategy) => {
+      const label = tr(`dataMigration.strategy.${strategy}`, strategy);
+      return `<option value="${escapeHtml(strategy)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    refs.migracaoStrategy.value = 'upsert';
+  }
+  renderDataMigrationEntityFields();
+  syncDataMigrationStrategyHint();
+}
+
+function renderDataMigrationEntityFields() {
+  if (!refs.migracaoEntityFields) return;
+  const descriptor = migracaoEntityDescriptor();
+  if (!descriptor) { refs.migracaoEntityFields.textContent = ''; return; }
+  const required = (descriptor.fields || []).filter((field) => field.required).map((field) => field.label);
+  const optional = (descriptor.fields || []).filter((field) => !field.required).length;
+  refs.migracaoEntityFields.textContent = tr(
+    'dataMigration.entityFieldsHint',
+    'Obrigatórios: {required}. Mais {optional} campos opcionais.',
+  ).replace('{required}', required.join(', ') || '-').replace('{optional}', String(optional));
+}
+
+function syncDataMigrationStrategyHint() {
+  if (!refs.migracaoStrategyHint || !refs.migracaoStrategy) return;
+  const strategy = refs.migracaoStrategy.value || 'upsert';
+  refs.migracaoStrategyHint.textContent = tr(`dataMigration.strategyHint.${strategy}`, '');
+}
+
+function renderDataMigrationSteps() {
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  const steps = helpers.WIZARD_STEPS || [];
+  if (refs.migracaoSteps) {
+    Array.from(refs.migracaoSteps.querySelectorAll('[data-step]')).forEach((node) => {
+      const index = steps.indexOf(node.dataset.step);
+      const current = steps.indexOf(draft.step);
+      node.classList.toggle('active', node.dataset.step === draft.step);
+      node.classList.toggle('done', index >= 0 && current >= 0 && index < current);
+    });
+  }
+  document.querySelectorAll('[data-step-panel]').forEach((node) => {
+    node.hidden = node.dataset.stepPanel !== draft.step;
+  });
+  if (refs.migracaoBack) refs.migracaoBack.disabled = draft.step === steps[0];
+  const isLast = draft.step === steps[steps.length - 1];
+  if (refs.migracaoNext) refs.migracaoNext.hidden = isLast;
+  if (refs.migracaoPreview) refs.migracaoPreview.hidden = !isLast;
+  if (refs.migracaoNext) {
+    refs.migracaoNext.disabled = draft.busy
+      || !(helpers.canAdvance ? helpers.canAdvance(draft.step, migracaoDraftForRules()) : false);
+  }
+  if (refs.migracaoPreview) {
+    refs.migracaoPreview.disabled = draft.busy
+      || !(helpers.canAdvance ? helpers.canAdvance('mapeamento', migracaoDraftForRules()) : false);
+  }
+}
+
+function migracaoDraftForRules() {
+  const draft = migracaoState();
+  const descriptor = migracaoEntityDescriptor();
+  return {
+    entity: draft.entity,
+    sourceKind: draft.sourceKind,
+    fileName: draft.fileName,
+    totalRows: draft.totalRows,
+    fields: descriptor ? descriptor.fields : [],
+    mapping: draft.mapping,
+  };
+}
+
+function renderDataMigrationReading() {
+  const draft = migracaoState();
+  if (refs.migracaoDetected) {
+    const detected = draft.detected || {};
+    const rows = [
+      ['dataMigration.detEncoding', 'Codificação', detected.encoding],
+      ['dataMigration.detDelimiter', 'Separador', detected.delimiter],
+      ['dataMigration.detRows', 'Linhas', detected.total_rows],
+      ['dataMigration.detColumns', 'Colunas', detected.column_count],
+    ];
+    refs.migracaoDetected.innerHTML = rows
+      .filter(([, , value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, fallback, value]) => `<dt>${escapeHtml(tr(key, fallback))}</dt><dd>${escapeHtml(String(value))}</dd>`)
+      .join('');
+  }
+  if (refs.migracaoSampleHead) {
+    refs.migracaoSampleHead.innerHTML = `<tr>${(draft.columns || [])
+      .map((column) => `<th scope="col">${escapeHtml(column)}</th>`).join('')}</tr>`;
+  }
+  if (refs.migracaoSampleBody) {
+    refs.migracaoSampleBody.innerHTML = (draft.sample || []).slice(0, 10).map((row) => {
+      const cells = (draft.columns || []).map((column) => `<td>${escapeHtml(String(row[column] ?? ''))}</td>`);
+      return `<tr>${cells.join('')}</tr>`;
+    }).join('') || globalThis.dsTableState({
+      colspan: Math.max((draft.columns || []).length, 1),
+      message: tr('dataMigration.sampleEmpty', 'Nenhuma linha lida.'),
+    });
+  }
+}
+
+function renderDataMigrationMapping() {
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  const descriptor = migracaoEntityDescriptor();
+  const fields = descriptor ? descriptor.fields || [] : [];
+  const missing = helpers.missingRequiredFields ? helpers.missingRequiredFields(fields, draft.mapping) : [];
+  if (refs.migracaoMappingSummary) {
+    const summary = helpers.mappingSummary ? helpers.mappingSummary(draft.details, missing) : null;
+    refs.migracaoMappingSummary.textContent = summary
+      ? tr('dataMigration.mappingSummary', '{mapped} de {total} colunas reconhecidas · {review} para conferir')
+        .replace('{mapped}', String(summary.mapped))
+        .replace('{total}', String(summary.total))
+        .replace('{review}', String(summary.review))
+      : '';
+  }
+  if (refs.migracaoMappingSource) {
+    refs.migracaoMappingSource.hidden = draft.mappingSource !== 'saved';
+  }
+  if (!refs.migracaoMappingTable) return;
+  refs.migracaoMappingTable.innerHTML = (draft.columns || []).map((column) => {
+    const detail = (draft.details || []).find((item) => item.source_column === column) || {};
+    const selected = draft.mapping[column] || '';
+    const options = helpers.availableTargets ? helpers.availableTargets(fields, draft.mapping, column) : fields;
+    const optionHtml = [`<option value="">${escapeHtml(tr('dataMigration.mapIgnore', '— não importar —'))}</option>`]
+      .concat(options.map((field) => {
+        const flag = field.required ? ' *' : '';
+        return `<option value="${escapeHtml(field.name)}"${field.name === selected ? ' selected' : ''}>`
+          + `${escapeHtml(field.label + flag)}</option>`;
+      })).join('');
+    const level = helpers.confidenceLevel ? helpers.confidenceLevel(detail.confidence) : 'none';
+    const badgeClass = level === 'exact' || level === 'high' ? 'badge-status-active'
+      : (level === 'medium' ? 'badge-status-warning' : 'badge-role-user');
+    const strategyLabel = detail.strategy
+      ? tr(`dataMigration.mapStrategy.${detail.strategy}`, detail.strategy)
+      : tr('dataMigration.mapStrategy.none', 'Sem correspondência');
+    return `<tr><td>${escapeHtml(column)}</td>`
+      + `<td><select data-migracao-map="${escapeHtml(column)}">${optionHtml}</select></td>`
+      + `<td><span class="badge ${badgeClass}">${escapeHtml(strategyLabel)}</span></td></tr>`;
+  }).join('') || globalThis.dsTableState({
+    colspan: 3,
+    message: tr('dataMigration.mappingEmpty', 'Nenhuma coluna lida.'),
+  });
+}
+
+function renderDataMigrationPreview() {
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  const preview = draft.preview;
+  if (refs.migracaoPreviewCard) refs.migracaoPreviewCard.hidden = !preview;
+  if (!preview) return;
+  if (refs.migracaoPreviewCounters) {
+    const counters = [
+      ['dataMigration.pvTotal', 'Linhas lidas', preview.total_rows],
+      ['dataMigration.pvValid', 'Válidas', preview.valid_rows],
+      ['dataMigration.pvInvalid', 'Com problema', preview.invalid_rows],
+      ['dataMigration.pvInsert', 'Serão criadas', preview.will_insert],
+      ['dataMigration.pvUpdate', 'Serão atualizadas', preview.will_update],
+    ];
+    refs.migracaoPreviewCounters.innerHTML = counters.map(([key, fallback, value]) => (
+      `<div class="migracao-counter"><strong>${escapeHtml(String(value ?? 0))}</strong>`
+      + `<span>${escapeHtml(tr(key, fallback))}</span></div>`
+    )).join('');
+  }
+  if (refs.migracaoPreviewDiagnostics) {
+    const grouped = helpers.groupDiagnostics ? helpers.groupDiagnostics(preview.diagnostics) : [];
+    refs.migracaoPreviewDiagnostics.innerHTML = grouped.map((bucket) => (
+      `<tr><td>${escapeHtml(tr(`dataMigration.diag.${bucket.kind}`, bucket.kind))}</td>`
+      + `<td>${bucket.count}</td><td>${escapeHtml(bucket.rows.join(', '))}</td></tr>`
+    )).join('') || globalThis.dsTableState({
+      colspan: 3,
+      message: tr('dataMigration.diagEmpty', 'Nenhum problema encontrado.'),
+    });
+  }
+  if (refs.migracaoApply) refs.migracaoApply.disabled = Boolean(preview.blocking) || draft.busy;
+}
+
+async function analyzeDataMigrationSource() {
+  const draft = migracaoState();
+  if (!draft.fileBase64) return;
+  draft.busy = true;
+  renderDataMigrationSteps();
+  try {
+    const data = await api('/api/data-migration/analyze', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        entity: draft.entity,
+        source_kind: draft.sourceKind,
+        source_name: draft.fileName,
+        sheet: draft.sheet || null,
+        content_base64: draft.fileBase64,
+      }),
+    });
+    draft.columns = data.columns || [];
+    draft.sample = data.sample || [];
+    draft.detected = data.detected || {};
+    draft.details = data.details || [];
+    draft.mapping = { ...(data.mapping || {}) };
+    draft.mappingSource = data.mapping_source || '';
+    draft.totalRows = Number(data.detected?.total_rows || 0);
+    draft.preview = null;
+  } catch (error) {
+    draft.totalRows = 0;
+    showToast(migracaoErrorMessage(error), 'error');
+  } finally {
+    draft.busy = false;
+  }
+  renderDataMigrationReading();
+  renderDataMigrationMapping();
+  renderDataMigrationPreview();
+  renderDataMigrationSteps();
+}
+
+async function runDataMigration(strategy) {
+  const draft = migracaoState();
+  draft.busy = true;
+  renderDataMigrationSteps();
+  try {
+    const result = await api('/api/data-migration/run', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user?.id,
+        entity: draft.entity,
+        source_kind: draft.sourceKind,
+        source_name: draft.fileName,
+        sheet: draft.sheet || null,
+        content_base64: draft.fileBase64,
+        mapping: draft.mapping,
+        strategy,
+      }),
+    });
+    draft.preview = result.preview || null;
+    if (result.applied) {
+      const totals = result.totals || {};
+      showToast(tr(
+        'dataMigration.applied',
+        'Importação #{job} concluída: {inserted} criados, {updated} atualizados, {skipped} ignorados, {failed} com erro.',
+      ).replace('{job}', String(result.job_id))
+        .replace('{inserted}', String(totals.inserted ?? 0))
+        .replace('{updated}', String(totals.updated ?? 0))
+        .replace('{skipped}', String(totals.skipped ?? 0))
+        .replace('{failed}', String(totals.failed ?? 0)), 'success');
+      await loadDataMigrationJobs();
+      focusViewTab('migracao', 'historico');
+    }
+  } catch (error) {
+    showToast(migracaoErrorMessage(error), 'error');
+  } finally {
+    draft.busy = false;
+  }
+  renderDataMigrationPreview();
+  renderDataMigrationSteps();
+}
+
+async function loadDataMigrationJobs() {
+  if (!hasPermission('data_migration:manage')) return;
+  const draft = migracaoState();
+  try {
+    const data = await api(`/api/data-migration/jobs?${actorQuery()}`);
+    draft.jobs = data.jobs || [];
+  } catch (error) {
+    draft.jobs = [];
+    reportNonCriticalError('[migracao] falha ao carregar o histórico', error);
+  }
+  renderDataMigrationJobs();
+}
+
+function renderDataMigrationJobs() {
+  if (!refs.migracaoJobsTable) return;
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  refs.migracaoJobsTable.innerHTML = (draft.jobs || []).map((job) => {
+    const counters = helpers.jobCounters ? helpers.jobCounters(job) : {};
+    const summary = tr('dataMigration.jobSummary', '{inserted} criados · {updated} atualizados · {failed} com erro')
+      .replace('{inserted}', String(counters.inserted ?? 0))
+      .replace('{updated}', String(counters.updated ?? 0))
+      .replace('{failed}', String(counters.failed ?? 0));
+    const revertible = helpers.canRevert ? helpers.canRevert(job) : false;
+    const action = revertible
+      ? `<button type="button" class="ghost" data-migracao-revert="${escapeHtml(String(job.id))}">`
+        + `${escapeHtml(tr('dataMigration.revert', 'Reverter Importação'))}</button>`
+      : `<span class="muted">${escapeHtml(job.reverted_at
+        ? tr('dataMigration.alreadyReverted', 'Já revertida')
+        : tr('dataMigration.notRevertible', '-'))}</span>`;
+    return `<tr><td>${escapeHtml(String(job.id))}</td>`
+      + `<td>${escapeHtml(String(job.entity || ''))}</td>`
+      + `<td>${escapeHtml(String(job.source_name || job.source_kind || ''))}</td>`
+      + `<td>${escapeHtml(tr(`dataMigration.strategy.${job.strategy}`, String(job.strategy || '')))}</td>`
+      + `<td>${escapeHtml(tr(`dataMigration.status.${job.status}`, String(job.status || '')))}</td>`
+      + `<td>${escapeHtml(summary)}</td>`
+      + `<td>${escapeHtml(String(job.actor_name || ''))}</td>`
+      + `<td>${escapeHtml(formatDateTime(job.finished_at || job.created_at))}</td>`
+      + `<td>${action}</td></tr>`;
+  }).join('') || globalThis.dsTableState({
+    colspan: 9,
+    message: tr('dataMigration.historyEmpty', 'Nenhuma importação realizada ainda.'),
+  });
+}
+
+async function revertDataMigrationJob(jobId) {
+  if (!confirm(tr('dataMigration.revertConfirm', 'Reverter esta importação? Os registros criados serão removidos e os atualizados voltarão ao valor anterior.'))) return;
+  try {
+    const result = await api(`/api/data-migration/jobs/${encodeURIComponent(jobId)}/revert`, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user?.id }),
+    });
+    showToast(tr(
+      'dataMigration.reverted',
+      'Importação revertida: {deleted} removidos, {restored} restaurados.',
+    ).replace('{deleted}', String(result.deleted ?? 0)).replace('{restored}', String(result.restored ?? 0)), 'success');
+  } catch (error) {
+    showToast(migracaoErrorMessage(error), 'error');
+  }
+  await loadDataMigrationJobs();
+}
+
+function migracaoErrorMessage(error) {
+  const raw = String(error?.message || error || '').trim();
+  return raw || tr('dataMigration.genericError', 'Não foi possível concluir a operação de migração.');
+}
+
+function downloadDataMigrationReport() {
+  const draft = migracaoState();
+  const helpers = dataMigrationHelpers();
+  const preview = draft.preview;
+  if (!preview) return;
+  const grouped = helpers.groupDiagnostics ? helpers.groupDiagnostics(preview.diagnostics) : [];
+  const header = ['problema', 'ocorrencias', 'linhas'];
+  const lines = [header.join(';')].concat(grouped.map((bucket) => [
+    tr(`dataMigration.diag.${bucket.kind}`, bucket.kind),
+    String(bucket.count),
+    bucket.rows.join(' '),
+  ].join(';')));
+  const blob = new Blob([`﻿${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `migracao-${draft.entity || 'preview'}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function readDataMigrationFile(file) {
+  const draft = migracaoState();
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = String(reader.result || '');
+    draft.fileBase64 = result.includes(',') ? result.slice(result.indexOf(',') + 1) : result;
+    draft.fileName = file.name || '';
+    if (refs.migracaoFileName) refs.migracaoFileName.textContent = draft.fileName;
+    renderDataMigrationSteps();
+  };
+  reader.onerror = () => {
+    showToast(tr('dataMigration.fileError', 'Não foi possível ler o arquivo escolhido.'), 'error');
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetDataMigrationWizard() {
+  const draft = migracaoState();
+  draft.step = 'entidade';
+  draft.fileName = '';
+  draft.fileBase64 = '';
+  draft.sheet = '';
+  draft.columns = [];
+  draft.sample = [];
+  draft.detected = {};
+  draft.details = [];
+  draft.mapping = {};
+  draft.mappingSource = '';
+  draft.totalRows = 0;
+  draft.preview = null;
+  if (refs.migracaoFile) refs.migracaoFile.value = '';
+  if (refs.migracaoFileName) refs.migracaoFileName.textContent = '';
+  if (refs.migracaoSheet) refs.migracaoSheet.value = '';
+  renderDataMigrationReading();
+  renderDataMigrationMapping();
+  renderDataMigrationPreview();
+  renderDataMigrationSteps();
+}
+
+function bindDataMigrationEvents() {
+  const helpers = dataMigrationHelpers();
+  const draft = migracaoState();
+
+  // Tudo via bindAppListener: ele delega a safeOn, que registra o listener
+  // no AbortController de escopo da aplicação. addEventListener direto aqui
+  // vazaria o listener a cada re-render (regra verificada em
+  // tests/test_phase52a_runtime_stability.py).
+  bindAppListener(refs.migracaoCatalogFilter, 'input', renderDataMigrationCatalog);
+  bindAppListener(refs.migracaoCatalogCards, 'click', (event) => {
+    const button = event.target.closest('[data-migracao-card]');
+    if (!button || button.disabled) return;
+    draft.entity = button.dataset.migracaoCard;
+    if (refs.migracaoEntity) refs.migracaoEntity.value = draft.entity;
+    renderDataMigrationEntityFields();
+    resetDataMigrationWizard();
+    focusViewTab('migracao', 'assistente');
+  });
+  bindAppListener(refs.migracaoEntity, 'change', () => {
+    draft.entity = refs.migracaoEntity.value || '';
+    renderDataMigrationEntityFields();
+    resetDataMigrationWizard();
+  });
+  bindAppListener(refs.migracaoSourceKind, 'change', () => {
+    draft.sourceKind = refs.migracaoSourceKind.value || 'xlsx';
+    if (refs.migracaoSheetWrap) {
+      refs.migracaoSheetWrap.hidden = !['xlsx', 'xls', 'ods'].includes(draft.sourceKind);
+    }
+    renderDataMigrationSteps();
+  });
+  bindAppListener(refs.migracaoSheet, 'input', () => { draft.sheet = refs.migracaoSheet.value || ''; });
+
+  bindAppListener(refs.migracaoDropzone, 'click', () => refs.migracaoFile?.click());
+  bindAppListener(refs.migracaoDropzone, 'keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); refs.migracaoFile?.click(); }
+  });
+  ['dragenter', 'dragover'].forEach((name) => {
+    bindAppListener(refs.migracaoDropzone, name, (event) => {
+      event.preventDefault();
+      refs.migracaoDropzone.classList.add('is-dragging');
+    });
+  });
+  ['dragleave', 'drop'].forEach((name) => {
+    bindAppListener(refs.migracaoDropzone, name, (event) => {
+      event.preventDefault();
+      refs.migracaoDropzone.classList.remove('is-dragging');
+    });
+  });
+  bindAppListener(refs.migracaoDropzone, 'drop', (event) => {
+    readDataMigrationFile(event.dataTransfer?.files?.[0]);
+  });
+  bindAppListener(refs.migracaoFile, 'change', () => readDataMigrationFile(refs.migracaoFile.files?.[0]));
+
+  bindAppListener(refs.migracaoNext, 'click', () => {
+    const steps = helpers.WIZARD_STEPS || [];
+    const wasOrigin = draft.step === 'origem';
+    draft.step = helpers.nextStep ? helpers.nextStep(draft.step) : steps[0];
+    renderDataMigrationSteps();
+    // Sair da etapa 2 é o gatilho da leitura automática: o usuário acabou de
+    // escolher o arquivo e espera ver o que o sistema entendeu dele.
+    if (wasOrigin) void analyzeDataMigrationSource();
+  });
+  bindAppListener(refs.migracaoBack, 'click', () => {
+    draft.step = helpers.previousStep ? helpers.previousStep(draft.step) : draft.step;
+    renderDataMigrationSteps();
+  });
+  bindAppListener(refs.migracaoRestart, 'click', resetDataMigrationWizard);
+  bindAppListener(refs.migracaoPreview, 'click', () => void runDataMigration('dry_run'));
+  bindAppListener(refs.migracaoApply, 'click', () => void runDataMigration(refs.migracaoStrategy?.value || 'upsert'));
+  bindAppListener(refs.migracaoStrategy, 'change', syncDataMigrationStrategyHint);
+  bindAppListener(refs.migracaoDownloadReport, 'click', downloadDataMigrationReport);
+
+  bindAppListener(refs.migracaoMappingTable, 'change', (event) => {
+    const select = event.target.closest('[data-migracao-map]');
+    if (!select) return;
+    const column = select.dataset.migracaoMap;
+    if (select.value) draft.mapping[column] = select.value;
+    else delete draft.mapping[column];
+    // Redesenha porque um destino escolhido some das opções das demais
+    // colunas — é a mesma unicidade que normalize_manual_mapping exige.
+    renderDataMigrationMapping();
+    renderDataMigrationSteps();
+  });
+
+  bindAppListener(refs.migracaoJobsTable, 'click', (event) => {
+    const button = event.target.closest('[data-migracao-revert]');
+    if (!button) return;
+    void revertDataMigrationJob(button.dataset.migracaoRevert);
   });
 }
 
@@ -12725,6 +13343,7 @@ async function init() {
     if (resolveId) void resolveOutsourcedCompanyUpdateRequest(resolveId);
   });
   bindSearchInput(refs.outsourcedEmployeesFilterSearch, syncOutsourcedEmployeesFilters, 120);
+  bindDataMigrationEvents();
   bindAppListener(document.getElementById('outsourced-employee-cancel-edit'), 'click', resetOutsourcedEmployeeForm);
   bindAppListener(refs.outsourcedEmployeesTable, 'click', (event) => {
     const edit = event.target.dataset.outsourcedEmployeeEdit;

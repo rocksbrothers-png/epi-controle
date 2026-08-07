@@ -47,6 +47,10 @@ VALID_CPF_A = '111.444.777-35'
 VALID_CPF_B = '529.982.247-25'
 VALID_CPF_C = '390.533.447-05'
 
+# Como o CPF fica gravado: só dígitos, exatamente como o cadastro manual
+# grava (normalize_cpf). A importação usa a MESMA normalização.
+STORED_CPF_A = '11144477735'
+
 
 @pytest.fixture(autouse=True)
 def _sqlite_detection(monkeypatch):
@@ -86,12 +90,18 @@ def _conn():
             name TEXT DEFAULT '', unit_type TEXT DEFAULT '', city TEXT DEFAULT '',
             notes TEXT DEFAULT ''
         );
+        -- Espelha as constraints REAIS de `employees` em produção
+        -- (core/bootstrap.py). Um fixture mais frouxo que a produção foi
+        -- exatamente o que deixou passar a fase 1: NOT NULL em unit_id,
+        -- sector e schedule_type só apareceu no PostgreSQL.
         CREATE TABLE employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
-            unit_id INTEGER, name TEXT DEFAULT '', employee_id_code TEXT DEFAULT '',
-            cpf TEXT DEFAULT '', email TEXT DEFAULT '', whatsapp TEXT DEFAULT '',
-            sector TEXT DEFAULT '', role_name TEXT DEFAULT '', admission_date TEXT DEFAULT '',
-            tipo_vinculo TEXT DEFAULT 'CLT', empresa_origem TEXT DEFAULT ''
+            unit_id INTEGER NOT NULL, name TEXT NOT NULL, employee_id_code TEXT NOT NULL,
+            cpf TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '',
+            whatsapp TEXT NOT NULL DEFAULT '', sector TEXT NOT NULL,
+            role_name TEXT NOT NULL, admission_date TEXT NOT NULL,
+            schedule_type TEXT NOT NULL,
+            tipo_vinculo TEXT NOT NULL DEFAULT 'CLT', empresa_origem TEXT DEFAULT ''
         );
         """
     )
@@ -101,10 +111,14 @@ def _conn():
     return wrapped
 
 
-def _seed_company(conn, name='ACME'):
+def _seed_company(conn, name='ACME', unit_name='Base Macaé'):
     cur = conn.execute('INSERT INTO companies (name) VALUES (?)', (name,))
+    company_id = int(cur.lastrowid)
+    # employees.unit_id é NOT NULL no schema real: todo tenant de teste nasce
+    # com a unidade que o CSV das fixtures referencia por nome.
+    conn.execute('INSERT INTO units (company_id, name) VALUES (?, ?)', (company_id, unit_name))
     conn.commit()
-    return int(cur.lastrowid)
+    return company_id
 
 
 def _actor(company_id, role='general_admin', user_id=1):
@@ -116,15 +130,16 @@ def _csv(rows_text: str) -> bytes:
 
 
 _CSV_THREE = (
-    'Funcionário;CPF;Registration;Função\n'
-    f'Maria Silva;{VALID_CPF_A};M-001;Soldadora\n'
-    f'João Souza;{VALID_CPF_B};M-002;Eletricista\n'
-    f'Ana Lima;{VALID_CPF_C};M-003;Mecânica\n'
+    'Funcionário;CPF;Registration;Função;Unidade;Admissão\n'
+    f'Maria Silva;{VALID_CPF_A};M-001;Soldadora;Base Macaé;2023-04-01\n'
+    f'João Souza;{VALID_CPF_B};M-002;Eletricista;Base Macaé;2022-11-15\n'
+    f'Ana Lima;{VALID_CPF_C};M-003;Mecânica;Base Macaé;2024-02-20\n'
 )
 
 _MAPPING_THREE = {
     'Funcionário': 'name', 'CPF': 'cpf',
     'Registration': 'employee_id_code', 'Função': 'role_name',
+    'Unidade': 'unit_id', 'Admissão': 'admission_date',
 }
 
 
@@ -194,7 +209,9 @@ def test_csv_detects_delimiter_encoding_columns_and_row_count():
     assert dataset.detected['delimiter'] == ';'
     assert dataset.detected['encoding'].startswith('utf-8')
     assert dataset.total_rows == 3
-    assert dataset.columns == ['Funcionário', 'CPF', 'Registration', 'Função']
+    assert dataset.columns == [
+        'Funcionário', 'CPF', 'Registration', 'Função', 'Unidade', 'Admissão',
+    ]
 
 
 def test_json_accepts_both_bare_list_and_wrapped_payload():
@@ -274,7 +291,11 @@ def test_unrecognized_column_falls_back_to_manual_mapping():
 
 def test_mapper_reports_missing_required_fields():
     result = suggest_mapping(get_entity('colaboradores'), ['Função'])
-    assert set(result['missing_required']) == {'name', 'cpf'}
+    # unit_id entra aqui porque employees.unit_id é NOT NULL: colaborador sem
+    # unidade não existe neste sistema.
+    assert set(result['missing_required']) == {
+        'name', 'cpf', 'unit_id', 'employee_id_code', 'admission_date',
+    }
 
 
 def test_manual_mapping_rejects_a_field_outside_the_descriptor():
@@ -322,7 +343,11 @@ def test_preview_reports_invalid_cpf_with_the_row_number():
 
 
 def test_preview_reports_missing_required_field():
-    preview = build_preview(get_entity('colaboradores'), [{'name': '', 'cpf': VALID_CPF_A}])
+    preview = build_preview(
+        get_entity('colaboradores'),
+        [{'name': '', 'cpf': VALID_CPF_A, 'unit_id': 7, 'employee_id_code': 'M-1',
+          'role_name': 'Soldadora', 'admission_date': '2023-04-01'}],
+    )
     assert preview['counters']['missing_required'] == 1
     assert preview['blocking'] is True
 
@@ -383,7 +408,7 @@ def test_upsert_updates_the_existing_record_matched_by_natural_key():
     changed = _CSV_THREE.replace('Soldadora', 'Soldadora Sênior')
     result = _run(conn, cid, strategy='upsert', raw=_csv(changed))
     assert result['totals']['updated'] == 3
-    row = conn.execute('SELECT role_name FROM employees WHERE cpf = ?', (VALID_CPF_A,)).fetchone()
+    row = conn.execute('SELECT role_name FROM employees WHERE cpf = ?', (STORED_CPF_A,)).fetchone()
     assert row['role_name'] == 'Soldadora Sênior'
 
 
@@ -399,10 +424,14 @@ def test_update_only_does_not_create_anything():
 def test_import_is_blocked_when_the_file_has_errors():
     conn = _conn()
     cid = _seed_company(conn)
-    bad = 'Funcionário;CPF\nMaria;111.444.777-00\n'
+    # CPF com dígito verificador errado: chega ao preview e é ele que bloqueia.
+    bad = ('Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+           'Maria;111.444.777-00;Base Macaé;MX-BAD;Operador;2023-01-02\n')
     with pytest.raises(ValueError, match='bloqueada'):
         _run(conn, cid, strategy='insert_only', raw=_csv(bad),
-             mapping={'Funcionário': 'name', 'CPF': 'cpf'})
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
     assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
 
 
@@ -432,7 +461,7 @@ def test_revert_restores_the_previous_value_of_updated_records():
     upsert = _run(conn, cid, strategy='upsert',
                   raw=_csv(_CSV_THREE.replace('Soldadora', 'Soldadora Sênior')))
     service.revert_job(conn, upsert['job_id'], cid, _actor(cid))
-    row = conn.execute('SELECT role_name FROM employees WHERE cpf = ?', (VALID_CPF_A,)).fetchone()
+    row = conn.execute('SELECT role_name FROM employees WHERE cpf = ?', (STORED_CPF_A,)).fetchone()
     assert row['role_name'] == 'Soldadora'      # valor anterior de volta
     assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 3
 
@@ -528,7 +557,367 @@ def test_apply_mapping_translates_rows_into_system_vocabulary():
     assert records[0] == {
         'name': 'Maria Silva', 'cpf': VALID_CPF_A,
         'employee_id_code': 'M-001', 'role_name': 'Soldadora',
+        'unit_id': 'Base Macaé', 'admission_date': '2023-04-01',
     }
+
+
+# ── Referências e isolamento por linha (achados do teste de navegador) ───────
+
+def test_unit_name_from_the_legacy_file_is_resolved_to_the_unit_id():
+    """O export legado diz "Base Macaé", nunca o id interno do sistema."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (cid,),
+    ).fetchone()['id']
+    _run(conn, cid, strategy='insert_only')
+    rows = conn.execute(
+        'SELECT unit_id FROM employees WHERE company_id = ?', (cid,),
+    ).fetchall()
+    assert [row['unit_id'] for row in rows] == [unit_id, unit_id, unit_id]
+
+
+def test_unit_name_that_does_not_exist_blocks_before_writing_anything():
+    """Referência inexistente vira erro no preview — nunca um INSERT que
+    estoura no banco depois de a importação já ter começado."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Unidade Que Nao Existe;MX-A;Operador;2023-01-02\n'
+    )
+    with pytest.raises(ValueError, match='bloqueada'):
+        _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
+
+
+def test_a_numeric_unit_value_is_accepted_as_an_id():
+    """Planilha exportada do próprio sistema já traz o id."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (cid,),
+    ).fetchone()['id']
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};{unit_id};MX-A;Operador;2023-01-02\n'
+    )
+    _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+         mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert conn.execute(
+        'SELECT unit_id FROM employees WHERE company_id = ?', (cid,),
+    ).fetchone()['unit_id'] == unit_id
+
+
+def test_one_bad_row_does_not_abort_the_whole_job():
+    """A linha ruim é isolada num SAVEPOINT, pelo caminho real do motor.
+
+    Sem isso, no PostgreSQL o primeiro erro aborta a transação e todo comando
+    seguinte falha — inclusive o registro do diagnóstico e o UPDATE final do
+    job — deixando a conexão envenenada para a próxima requisição.
+    """
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute('SELECT id FROM units WHERE company_id = ?', (cid,)).fetchone()['id']
+    # As 3 linhas passam na validação; a do meio só falha na hora de GRAVAR,
+    # por um erro de banco — que é exatamente o caso que o SAVEPOINT isola.
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};{unit_id};MX-A;Operador;2023-01-02\n'
+        f'João Souza;{VALID_CPF_B};{unit_id};MX-B;Operador;2023-01-02\n'
+        f'Ana Lima;{VALID_CPF_C};{unit_id};MX-C;Operador;2023-01-02\n'
+    )
+    conn.execute('CREATE TRIGGER reject_joao BEFORE INSERT ON employees '
+                 "WHEN NEW.cpf = '52998224725' "
+                 "BEGIN SELECT RAISE(ABORT, 'falha proposital de banco'); END")
+    result = _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+
+    # A linha ruim falhou sozinha; as outras duas foram gravadas.
+    assert result['totals']['failed'] == 1
+    assert result['totals']['inserted'] == 2
+    # O job chegou ao status final apesar do erro.
+    assert service.get_job(conn, result['job_id'], cid)['status'] == 'completed'
+    # O diagnóstico da linha ruim foi gravado.
+    errors = [r for r in service.fetch_job_records(conn, result['job_id'], cid) if r['action'] == 'error']
+    assert len(errors) == 1
+    assert 'falha proposital' in (errors[0]['error_message'] or '')
+    # As linhas boas estão commitadas.
+    assert conn.execute(
+        'SELECT COUNT(*) AS n FROM employees WHERE company_id = ?', (cid,),
+    ).fetchone()['n'] == 2
+
+
+def test_connection_stays_usable_for_an_unrelated_query_after_a_row_failure():
+    """A conexão não volta envenenada: a requisição seguinte funciona."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute('SELECT id FROM units WHERE company_id = ?', (cid,)).fetchone()['id']
+    conn.execute('CREATE TRIGGER reject_all BEFORE INSERT ON employees '
+                 "BEGIN SELECT RAISE(ABORT, 'falha proposital de banco'); END")
+    csv = ('Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+           f'Maria Silva;{VALID_CPF_A};{unit_id};MX-A;Operador;2023-01-02\n')
+    result = _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert result['totals']['failed'] == 1
+    # Consulta seguinte, sem relação com a importação, continua funcionando.
+    assert conn.execute('SELECT COUNT(*) AS n FROM companies').fetchone()['n'] >= 1
+    assert service.fetch_jobs(conn, cid)[0]['status'] == 'completed'
+
+
+# ── Resolução de referências: casos exigidos na revisão de produção ─────────
+
+def test_two_units_with_the_same_name_in_one_tenant_are_reported_as_ambiguous():
+    """Ambiguidade nunca é resolvida em silêncio para a primeira que aparecer:
+    isso alocaria a pessoa na unidade errada sem ninguém perceber."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    conn.execute('INSERT INTO units (company_id, name) VALUES (?, ?)', (cid, 'Base Macaé'))
+    conn.commit()
+    with pytest.raises(ValueError, match='bloqueada'):
+        _run(conn, cid, strategy='insert_only')
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
+
+
+def test_ambiguous_reference_diagnostic_shows_the_original_spreadsheet_value():
+    conn = _conn()
+    cid = _seed_company(conn)
+    conn.execute('INSERT INTO units (company_id, name) VALUES (?, ?)', (cid, 'Base Macaé'))
+    conn.commit()
+    result = _run(conn, cid, strategy='dry_run')
+    ambiguous = [d for d in result['preview']['diagnostics'] if d['code'] == 'unresolved_ambiguous']
+    assert ambiguous
+    assert ambiguous[0]['source_value'] == 'Base Macaé'
+    assert '2 cadastros' in ambiguous[0]['message']
+
+
+def test_the_same_unit_name_in_another_tenant_never_resolves():
+    """Isolamento multi-tenant no resolver: "Base Macaé" da empresa B não pode
+    virar a unidade da empresa A."""
+    conn = _conn()
+    tenant_a = _seed_company(conn, 'A')
+    tenant_b = _seed_company(conn, 'B', unit_name='Base Exclusiva B')
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Base Exclusiva B;MX-A;Operador;2023-01-02\n'
+    )
+    with pytest.raises(ValueError, match='bloqueada'):
+        _run(conn, tenant_a, strategy='insert_only', raw=_csv(csv),
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
+    # E continua resolvendo normalmente para o dono.
+    _run(conn, tenant_b, strategy='insert_only', raw=_csv(csv),
+         mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert conn.execute(
+        'SELECT COUNT(*) AS n FROM employees WHERE company_id = ?', (tenant_b,),
+    ).fetchone()['n'] == 1
+
+
+def test_a_unit_id_from_another_tenant_is_refused():
+    """Id numérico explícito também respeita o tenant — senão a planilha
+    poderia apontar para o id de outra empresa."""
+    conn = _conn()
+    tenant_a = _seed_company(conn, 'A')
+    tenant_b = _seed_company(conn, 'B')
+    foreign_unit = conn.execute(
+        'SELECT id FROM units WHERE company_id = ?', (tenant_b,),
+    ).fetchone()['id']
+    csv = ('Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+           f'Maria Silva;{VALID_CPF_A};{foreign_unit};MX-A;Operador;2023-01-02\n')
+    with pytest.raises(ValueError, match='bloqueada'):
+        _run(conn, tenant_a, strategy='insert_only', raw=_csv(csv),
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+
+
+@pytest.mark.parametrize('written', [
+    'base macae', 'BASE MACAÉ', '  Base Macaé  ', 'Base    Macaé', 'bAsE mAcAe',
+])
+def test_unit_name_matching_tolerates_case_accents_and_spacing(written):
+    """Export legado digitado à mão ao longo de anos: caixa, acento e espaço
+    sobrando não podem impedir o reconhecimento."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute('SELECT id FROM units WHERE company_id = ?', (cid,)).fetchone()['id']
+    csv = ('Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+           f'Maria Silva;{VALID_CPF_A};{written};MX-A;Operador;2023-01-02\n')
+    _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+         mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert conn.execute(
+        'SELECT unit_id FROM employees WHERE company_id = ?', (cid,),
+    ).fetchone()['unit_id'] == unit_id
+
+
+# ── Regras de vínculo compartilhadas com o cadastro manual ──────────────────
+
+def test_contractor_without_origin_company_is_rejected_by_the_domain_rule():
+    conn = _conn()
+    cid = _seed_company(conn)
+    csv = (
+        'Funcionário;CPF;Unidade;Vínculo;Empresa;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Base Macaé;Terceirizado;;MX-T;Soldador;2023-01-02\n'
+    )
+    mapping = {'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+               'Vínculo': 'tipo_vinculo', 'Empresa': 'empresa_origem',
+               'Matrícula': 'employee_id_code', 'Função': 'role_name',
+               'Admissão': 'admission_date'}
+    result = _run(conn, cid, strategy='dry_run', raw=_csv(csv), mapping=mapping)
+    codes = {d['code'] for d in result['preview']['diagnostics']}
+    assert 'domain_rule' in codes
+    assert result['preview']['blocking'] is True
+
+
+def test_own_employee_never_keeps_an_origin_company():
+    conn = _conn()
+    cid = _seed_company(conn)
+    csv = (
+        'Funcionário;CPF;Unidade;Vínculo;Empresa;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Base Macaé;CLT;Alguma Terceira;MX-C;Soldador;2023-01-02\n'
+    )
+    mapping = {'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+               'Vínculo': 'tipo_vinculo', 'Empresa': 'empresa_origem',
+               'Matrícula': 'employee_id_code', 'Função': 'role_name',
+               'Admissão': 'admission_date'}
+    _run(conn, cid, strategy='insert_only', raw=_csv(csv), mapping=mapping)
+    row = conn.execute('SELECT empresa_origem FROM employees').fetchone()
+    assert row['empresa_origem'] == ''
+
+
+def test_imported_cpf_matches_a_manually_created_employee():
+    """O defeito que motivou unificar a normalização: com CPF formatado na
+    importação e só dígitos no cadastro manual, o upsert criava um segundo
+    registro para a mesma pessoa."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute('SELECT id FROM units WHERE company_id = ?', (cid,)).fetchone()['id']
+    # "Cadastro manual": grava o CPF só com dígitos, como create_employee faz.
+    conn.execute(
+        'INSERT INTO employees (company_id, unit_id, name, cpf, employee_id_code, '
+        'sector, schedule_type, role_name, admission_date) '
+        "VALUES (?, ?, ?, ?, ?, '', '', ?, ?)",
+        (cid, unit_id, 'Maria Silva', '11144477735', 'M-001', 'Soldadora', '2023-04-01'),
+    )
+    conn.commit()
+    csv = ('Funcionário;CPF;Unidade;Função;Matrícula;Admissão\n'
+           f'Maria Silva;{VALID_CPF_A};Base Macaé;Soldadora Sênior;M-001;2023-04-01\n')
+    result = _run(conn, cid, strategy='upsert', raw=_csv(csv),
+                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                           'Função': 'role_name', 'Matrícula': 'employee_id_code',
+                           'Admissão': 'admission_date'})
+    assert result['totals']['updated'] == 1
+    assert result['totals']['inserted'] == 0
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 1
+
+
+# ── Codificação e arquivos malformados ─────────────────────────────────────
+
+def test_latin1_and_utf8_produce_the_same_records():
+    text = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'João Conceição;{VALID_CPF_A};Base Macaé;MX-A;Operador;2023-01-02\n'
+    )
+    mapping = {'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+           'Matrícula': 'employee_id_code', 'Função': 'role_name',
+           'Admissão': 'admission_date'}
+    names = []
+    for raw in (text.encode('utf-8'), text.encode('latin-1')):
+        conn = _conn()
+        cid = _seed_company(conn)
+        _run(conn, cid, strategy='insert_only', raw=raw, mapping=mapping)
+        names.append(conn.execute('SELECT name FROM employees').fetchone()['name'])
+    assert names[0] == names[1] == 'João Conceição'
+
+
+def test_a_file_without_usable_columns_is_refused_with_a_clear_message():
+    conn = _conn()
+    _seed_company(conn)
+    with pytest.raises(ValueError):
+        read_source('csv', b'')
+
+
+def test_a_row_with_fewer_columns_than_the_header_does_not_crash_the_import():
+    """CSV malformado é comum em export legado: a linha curta vira erro de
+    linha, não exceção do job."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Base Macaé;MX-A;Operador;2023-01-02\n'
+        'Linha Curta\n'
+    )
+    result = _run(conn, cid, strategy='dry_run', raw=_csv(csv),
+                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert result['preview']['total_rows'] == 2
+    assert result['preview']['blocking'] is True
+
+
+# ── Pureza do dry-run e idempotência do rollback ───────────────────────────
+
+def test_dry_run_writes_nothing_at_all_not_even_a_job():
+    conn = _conn()
+    cid = _seed_company(conn)
+    result = _run(conn, cid, strategy='dry_run')
+    assert result['job_id'] is None
+    assert result['applied'] is False
+    for table in ('employees', 'migration_jobs', 'migration_job_records', 'migration_field_mappings'):
+        assert conn.execute(f'SELECT COUNT(*) AS n FROM {table}').fetchone()['n'] == 0, table
+
+
+def test_reverting_twice_changes_nothing_the_second_time():
+    conn = _conn()
+    cid = _seed_company(conn)
+    result = _run(conn, cid, strategy='insert_only')
+    service.revert_job(conn, result['job_id'], cid, _actor(cid))
+    remaining = conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n']
+    with pytest.raises(ValueError, match='já foi revertida'):
+        service.revert_job(conn, result['job_id'], cid, _actor(cid))
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == remaining
+
+
+def test_revert_only_removes_what_that_job_created():
+    """Rollback cirúrgico: registros anteriores à importação continuam lá."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    unit_id = conn.execute('SELECT id FROM units WHERE company_id = ?', (cid,)).fetchone()['id']
+    conn.execute(
+        'INSERT INTO employees (company_id, unit_id, name, cpf, employee_id_code, '
+        'sector, schedule_type, role_name, admission_date) '
+        "VALUES (?, ?, ?, ?, ?, '', '', ?, ?)",
+        (cid, unit_id, 'Preexistente', '39053344705', 'PRE-1', 'Almoxarife', '2020-01-01'),
+    )
+    conn.commit()
+    csv = (
+        'Funcionário;CPF;Unidade;Matrícula;Função;Admissão\n'
+        f'Maria Silva;{VALID_CPF_A};Base Macaé;MX-A;Operador;2023-01-02\n'
+        f'João Souza;{VALID_CPF_B};Base Macaé;MX-B;Operador;2023-01-02\n'
+    )
+    result = _run(conn, cid, strategy='insert_only', raw=_csv(csv),
+                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                  'Admissão': 'admission_date'})
+    assert result['totals']['inserted'] == 2
+    service.revert_job(conn, result['job_id'], cid, _actor(cid))
+    rows = conn.execute('SELECT name FROM employees').fetchall()
+    assert [row['name'] for row in rows] == ['Preexistente']
+
 
 
 # ── Auditoria (ADR-0003 §6) ─────────────────────────────────────────────────

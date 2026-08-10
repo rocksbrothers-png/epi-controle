@@ -334,6 +334,86 @@ bidirecional. O escopo de produção continua sendo arquivo (CSV/XLSX e
 correlatos), mapeamento, preview, execução, diagnóstico, histórico de
 auditoria e rollback.
 
+### 12.7 Normalizadores de domínio: fornecedores, unidades e epis (issue #169)
+
+§12.2 cobriu `colaboradores`. As outras três entidades habilitadas
+(`fornecedores`, `unidades`, `epis`) ficaram sem `normalizer` até aqui —
+importavam gravando o valor exatamente como veio da planilha, enquanto o
+cadastro manual (quando normalizava algo) aplicava outra regra. Mesma
+classe de defeito do CPF em §12.2, em três lugares diferentes.
+
+**`fornecedores`** (commit `1127122`, 2026-08-07): `normalize_outsourced_
+company_domain_fields`, extraída de `validate_outsourced_company_payload`
+(`modules/outsourced_companies/service.py`), que passou a chamá-la — mesmo
+padrão de `colaboradores`. Normaliza:
+
+- `cnpj`/`cnpj_normalized`: formatado e só dígitos, respectivamente. A
+  coluna `cnpj_normalized` é **derivada** — a planilha não a traz, e sem
+  declarar `derived_columns=('cnpj_normalized',)` o motor descartava o
+  valor calculado (`_writable_columns` só grava o que está em `fields` ou
+  `derived_columns`). Ela sustenta o índice único PARCIAL de deduplicação
+  (`WHERE cnpj_normalized <> ''`): sem preenchê-la, a linha importada
+  ficava fora do índice e o mesmo CNPJ podia ser cadastrado duas vezes —
+  verificado contra PostgreSQL real antes da correção.
+- vocabulário controlado de `company_kind`, `epi_responsibility`,
+  `registration_mode` e `registration_status` — a importação gravava, por
+  exemplo, `"Terceirizada"` onde o sistema usa `"outsourced"`, invisível
+  para qualquer filtro/relatório que compare por igualdade.
+
+Coberto por 5 testes de paridade em `tests_postgres/test_migration_contract_
+postgres.py` (linhas 313-481, contra PostgreSQL real de verdade — índice
+parcial, detecção de duplicidade pelo cadastro manual) e, desde esta PR,
+por cobertura equivalente sem banco em `tests/test_data_migration_contract.py`
+— a suíte rápida (a que roda a cada push) não tinha nenhuma cobertura de
+`fornecedores`, só de `colaboradores`, apesar do normalizer já existir.
+
+**`unidades`**: `normalize_unit_domain_fields` (`modules/units/service.py`)
+aplica `normalize_unit_type` — a mesma função que `handle_post_units`/
+`handle_put_unit` (`modules/units/routes.py`) já chamavam antes de
+`create_unit`/`update_unit` — apenas quando `unit_type` está presente no
+payload. Não existe normalização de `city` em lugar nenhum do sistema hoje,
+cadastro manual incluído: não foi inventada uma aqui — o critério de aceite
+da issue pede extrair lógica existente, não criar regra nova.
+
+**`epis`**: `normalize_epi_domain_fields` (`modules/epis/service.py`) —
+diferente das outras duas, isto **não é extração**. Nenhuma normalização de
+CA ou de data existe hoje, nem no cadastro manual (`create_epi`/
+`update_epi` gravam `ca`, `ca_expiry` e `epi_validity_date` exatamente como
+chegam no payload). Decisão de escopo: comportamento novo, restrito à
+importação, porque só ela recebe texto de origem arbitrária — planilha
+legada, nunca o formulário do sistema. Aplica, apenas aos campos presentes
+no payload:
+
+- `ca`: só dígitos, mesmo estilo de `normalize_cpf`/`only_digits` — casca
+  fora, vazio permanece vazio (CA nem sempre é obrigatório em todo
+  contexto);
+- `ca_expiry`/`epi_validity_date`: convertidas para ISO (`YYYY-MM-DD`) a
+  partir dos MESMOS formatos que `modules.data_migration.preview.
+  validate_date` já aceita no preview. O parsing de seis formatos, antes
+  inline em `validate_date`, foi extraído para `preview.parse_date_flexible`
+  e é reaproveitado — não duplicado — por `normalize_epi_domain_fields`:
+  uma só implementação de parsing, para as duas pontas nunca divergirem
+  sobre o que é uma data válida.
+
+Por quê: `validate_date` aceitava `"15/03/2024"` como válido no preview,
+mas sem canonizar a importação gravava esse texto **literal**, e
+`modules.epis.validity.parse_iso_date` — que só entende ISO — devolvia
+`None` em silêncio para qualquer outro formato, quebrando o cálculo de
+vencimento do CA/EPI e o PEPS sem erro visível em lugar nenhum. Data
+presente e não reconhecida em nenhum dos formatos aceitos agora levanta
+`ValueError`, que o preview transforma em diagnóstico `domain_rule` — uma
+linha recusada, nunca mais um dado corrompido gravado em silêncio.
+Estritamente melhor que o comportamento anterior; nenhuma constraint nem
+vocabulário foi enfraquecido.
+
+**`resolves_to`**: auditado para `epis` e `fornecedores` contra o schema
+real (FKs via `information_schema`, mais o teste de contrato genérico
+`test_every_foreign_key_the_import_writes_is_either_resolvable_or_defaulted`).
+Nenhuma das duas tem referência obrigatória por nome sem resolver hoje: os
+únicos FKs (`company_id`, `unit_id`) ou não são cross-referenciados por
+nome no catálogo, ou são nullable e corretamente ausentes de `fields`.
+Nada foi adicionado nesta PR.
+
 ## 11. Riscos
 
 | Risco | Mitigação |

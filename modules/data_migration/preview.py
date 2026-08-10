@@ -51,20 +51,35 @@ def validate_cnpj(value: object) -> bool:
     return True
 
 
-def validate_date(value: object) -> bool:
+def parse_date_flexible(value: object) -> datetime | None:
+    """Tenta cada formato aceito (``_DATE_FORMATS``) e devolve o ``datetime``
+    correspondente, ou ``None`` se nenhum bater (vazio incluído).
+
+    Fonte única do parsing de data flexível: ``validate_date`` (abaixo) só
+    confirma o formato para o preview; ``modules.epis.service.
+    normalize_epi_domain_fields`` reaproveita esta mesma função para gravar
+    o valor canônico ISO na importação (issue #169). Duplicar o parsing
+    criaria dois parsers que podem divergir sobre o que é uma data válida.
+    """
     text = str(value or '').strip()
     if not text:
-        return True
+        return None
     for fmt in _DATE_FORMATS:
         # Formato com hora tolera sobra à direita: export JSON costuma trazer
         # "2024-03-01T08:30:00.000Z", que é uma data perfeitamente válida.
         candidate = text[:_TRUNCATE_TO[fmt]] if fmt in _TRUNCATE_TO else text
         try:
-            datetime.strptime(candidate, fmt)
-            return True
+            return datetime.strptime(candidate, fmt)
         except ValueError:
             continue
-    return False
+    return None
+
+
+def validate_date(value: object) -> bool:
+    text = str(value or '').strip()
+    if not text:
+        return True
+    return parse_date_flexible(text) is not None
 
 
 def validate_ca(value: object) -> bool:

@@ -45,6 +45,25 @@ def normalize_unit_type(value):
     return aliases.get(raw, raw or 'base')
 
 
+def normalize_unit_domain_fields(payload: dict) -> dict:
+    """Normalização de domínio da unidade, compartilhada com a importação em
+    massa (``EntityDescriptor.normalizer`` de `unidades`, issue #169).
+
+    Só `unit_type` tem regra a extrair — o mesmo alias (`navio`/`embarcação`
+    → `embarcacao`, etc.) que ``handle_post_units``/``handle_put_unit``
+    (``modules/units/routes.py``) já aplicam via ``normalize_unit_type``
+    acima, antes de chamar ``create_unit``/``update_unit``. `city` não tem
+    nenhuma normalização em lugar nenhum do sistema hoje — não é inventada
+    aqui, só o que já existe é extraído.
+
+    Devolve um novo dicionário — não muda o original.
+    """
+    normalized = dict(payload)
+    if 'unit_type' in normalized:
+        normalized['unit_type'] = normalize_unit_type(normalized.get('unit_type'))
+    return normalized
+
+
 def unit_lifecycle_enabled(connection):
     """Indica se as colunas de ciclo de vida já existem (bancos legados/tests)."""
     return _col_exists(connection, 'units', 'status')

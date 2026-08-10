@@ -20,7 +20,11 @@ if (keystorePropsFile.exists()) {
 
 android {
     namespace "com.rocksbrothers.epicontrole"
-    compileSdk 36
+    // 37 porque flutter_secure_storage 11.x compila contra o SDK 37 e o
+    // Gradle recusa a build com "Failed to find Platform SDK with path:
+    // platforms;android-37". compileSdk é retrocompatível: subir não muda
+    // o minSdk nem o targetSdk, só contra qual API o código é compilado.
+    compileSdk 37
     ndkVersion flutter.ndkVersion
 
     compileOptions {

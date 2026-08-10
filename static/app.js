@@ -8301,7 +8301,11 @@ function formatOutsourcedEmployeeRow(item, permissions) {
   if (permissions.canUpdate) {
     buttons.push(`<button class="ghost" data-outsourced-employee-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
   }
-  if (hasPermission('employees:delete')) {
+  // Mesma dupla de permissões de ARCHIVAL_ENTITIES.outsourcedEmployee.deletePermission
+  // (ADR-0002 §10.5): Administrador Local/Gestor de EPI só têm
+  // employees:update_simplified, nunca employees:delete — sem a segunda
+  // permissão o botão nunca aparecia para o perfil que mais usa esta tela.
+  if (hasPermission('employees:delete') || permissions.canUpdate) {
     buttons.push(`<button class="ghost" data-outsourced-employee-archive="${entityId}">${escapeHtml(tr('employee.archive', 'Arquivar'))}</button>`);
   }
   const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
@@ -8367,10 +8371,15 @@ async function startEditOutsourcedEmployee(entityId) {
 
 // Arquivar reaproveita a MESMA rota/regra do colaborador CLT
 // (/api/employees/:id/archive) — é o mesmo registro, só filtrado nesta
-// tela; reusa archiveEntityRecord('employee', ...) para não duplicar o
-// fluxo de motivo/confirmação/auditoria.
+// tela; reusa archiveEntityRecord(...) para não duplicar o fluxo de
+// motivo/confirmação/auditoria. kind é 'outsourcedEmployee', não 'employee':
+// só o primeiro tem deletePermission com a alternativa
+// employees:update_simplified (ADR-0002 §10.5) e recarrega a lista de
+// arquivados CERTA (archivedOutsourcedEmployees, filtrada outsourced_only=1)
+// — com 'employee' o arquivamento funcionava para quem tinha
+// employees:delete completo, mas atualizava a lista de arquivados errada.
 async function archiveOutsourcedEmployee(entityId) {
-  await archiveEntityRecord('employee', entityId);
+  await archiveEntityRecord('outsourcedEmployee', entityId);
   renderOutsourcedEmployees();
 }
 

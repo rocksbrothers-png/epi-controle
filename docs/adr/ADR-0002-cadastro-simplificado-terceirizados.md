@@ -2141,3 +2141,88 @@ estabelecidos — sem classe nova de problema:
   `employee_unit_links` ativo de qualquer colaborador cujo
   `outsourced_company_id` seja o da empresa sendo excluída, não só os
   vínculos diretos da empresa.
+
+### 13.24 Revisão automatizada (Codex) — rodada 6
+
+Sexta rodada. Seis achados; os dois mais sérios verificados diretamente
+antes de aceitar — ambos confirmados com precisão.
+
+**Achado mais grave até aqui (P1) — exclusão de Unidade apaga colaborador
+compartilhado.** `delete_unit_dependencies`
+(`modules/units/service.py`) já existe e, ao excluir definitivamente uma
+Unidade, faz `DELETE FROM employees WHERE id IN (...)` para toda linha com
+`unit_id` = a Unidade sendo excluída — confirmado lendo o código. Diferente
+de todos os achados anteriores (que eram sobre *disponibilidade*
+desaparecer), este é sobre a **linha `employees` inteira ser apagada
+fisicamente**. Se um colaborador compartilhado tem sua Unidade base (A)
+excluída definitivamente, ele é apagado do banco — inclusive para a
+Unidade B, onde ainda está ativo via `employee_unit_links`. Nenhum PR do
+plano atual (A-E) toca `delete_unit_dependencies`. Ajuste necessário
+(escopo a decidir num PR próprio de purge de Unidade, não nos PRs B-E já
+descritos): antes de excluir definitivamente uma Unidade, bloquear ou
+exigir realocação de todo colaborador com vínculo ativo em qualquer outra
+Unidade — mesmo princípio já aplicado ao purge de `outsourced_companies`
+(§13.20/§13.23), agora precisa se estender ao purge de `units`.
+
+**Achado confirmado — ficha por período usa a Unidade errada para
+autorização e renderização.** Verificado linha a linha:
+`build_ficha_epi_html_by_period` (`modules/ficha/service.py:523-547`) já
+busca `fp.unit_id` (a Unidade **autoritativa**, gravada no momento da
+entrega, em `epi_ficha_periods`) — mas a checagem de autorização
+(`if int(employee['unit_id']) != int(scope_unit_id)`) e a Unidade
+renderizada no HTML (`SELECT ... FROM units WHERE id = ?
+(employee['unit_id'])`) usam o `unit_id` **mutável do colaborador**, não o
+`fp.unit_id` já carregado. Isto é um defeito **pré-existente**, não
+introduzido por esta extensão — mas a §13.9 original errou ao dizer que o
+snapshot histórico "não muda de comportamento": ele já está incorreto hoje
+para qualquer colaborador que sofreu transferência definitiva, e vai
+piorar em frequência quando colaborador compartilhado virar comum. Ajuste
+do PR D: `build_ficha_epi_html_by_period` passa a comparar/renderizar
+`fp.unit_id` (já buscado, só não usado), não `employee['unit_id']` —
+corrige o defeito pré-existente e evita que a Unidade B (só vinculada)
+ganhe acesso a período histórico da Unidade A por causa da ampliação do
+gate.
+
+**Demais achados, mesma classe dos já registrados:**
+
+- **Vínculo inicial na criação (§13.20) só cobria o Cadastro
+  Simplificado.** `create_employee` (endpoint geral, §13.21 já confirmou
+  que aceita colaborador terceirizado) também precisa criar o vínculo
+  local inicial atomicamente — mesma correção, segundo caminho de criação.
+- **Predicado de disponibilidade (§13.22) e backfill (§13.19) usam
+  discriminadores diferentes para colaborador legado sem
+  `outsourced_company_id`.** O backfill cobre `tipo_vinculo <> 'CLT'` OU
+  `outsourced_company_id` preenchido; o predicado (depois do ajuste do
+  §13.22) só verificava `outsourced_company_id IS NOT NULL` — uma linha
+  legada só com `tipo_vinculo` não-CLT (sem `outsourced_company_id`) recebe
+  vínculo no backfill mas o predicado a ignora, deixando o vínculo criado
+  inutilizável. Ajuste: predicado usa o mesmo discriminador do backfill
+  (`tipo_vinculo <> 'CLT'`), omitindo só a validação de vínculo do
+  fornecedor para quem não tem `outsourced_company_id` (não há fornecedor
+  para validar).
+- **Transferência criando vínculo no destino precisa do consentimento da
+  Unidade de destino.** A correção proposta no §13.21/§13.22 (transferência
+  cria/exige vínculo ativo na Unidade de destino) tem uma lacuna de
+  governança: a rota de movimentação hoje só verifica que a Unidade destino
+  pertence ao tenant e está operacional
+  (`modules/employees/routes.py:403-407`) — um Administrador Local de A com
+  `employees:transfer` poderia empurrar a transferência e, com a correção
+  proposta sem mais nada, criar/reativar um vínculo em B sem o
+  consentimento de B, inclusive revertendo uma desativação deliberada de B
+  (contradiz D10/D14: cada Unidade escolhe/controla seus próprios
+  vínculos). Ajuste: exigir vínculo já ativo em B, aprovação de B, ou um
+  ator com autoridade centralizada — não criar/reativar unilateralmente a
+  partir do pedido de transferência de A.
+
+**Nota de escopo, revisada.** A profundidade desta rodada (a exclusão de
+Unidade apagando colaborador compartilhado é um achado genuinamente novo
+de classe diferente, não incremental) mostra que a revisão automatizada
+ainda está encontrando problemas reais, não só refinando o que já foi
+registrado — a nota de "retorno decrescente" do §13.22 foi prematura.
+Comprometo-me a continuar incorporando achados novos que cheguem, mas o
+ritmo de atualização passa a ser: achados que bloqueariam PR A/já
+implementado continuam corrigidos imediatamente em código; achados sobre
+PR B-E (ainda não iniciado) continuam documentados aqui, e a decisão de
+quando parar de refinar o desenho versus começar a escrever o PR B
+propriamente é do usuário, não minha — não vou presumir esse corte de
+novo.

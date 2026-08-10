@@ -156,12 +156,22 @@ def mask_cnpj(cnpj) -> str:
     return f'{digits[:2]}.***.***/****-{digits[-2:]}'
 
 
-def validate_outsourced_company_payload(connection, payload, company_id, entity_id=None):
-    """Valida e normaliza o payload de uma empresa terceirizada/prestadora.
+def normalize_outsourced_company_domain_fields(payload: dict) -> dict:
+    """Regras de domínio de empresa terceirizada, SEM tocar o banco.
 
-    CNPJ é opcional no Cadastro Simplificado (o pedido inicial pode ser
-    emergencial, sem CNPJ em mãos) — quando informado, precisa ser válido e
-    único dentro do tenant. Razão social é sempre obrigatória.
+    Fonte única compartilhada entre o cadastro manual
+    (``validate_outsourced_company_payload``, que chama esta função) e a
+    importação (``EntityDescriptor.normalizer`` de `fornecedores`). Antes
+    disso a importação gravava o CNPJ como veio da planilha e deixava
+    ``cnpj_normalized`` vazio — e como o índice de deduplicação é PARCIAL
+    (``WHERE cnpj_normalized <> ''``), a empresa importada ficava fora dele:
+    o mesmo CNPJ podia ser cadastrado de novo, e o cadastro manual nunca
+    encontrava a importada, porque busca por ``cnpj_normalized`` (issue #169).
+
+    O que fica de fora, de propósito: a checagem de duplicidade contra o
+    banco. Ela exige conexão e continua em
+    ``validate_outsourced_company_payload``; na importação quem deduplica é
+    o upsert por chave natural do motor.
     """
     payload = payload or {}
     legal_name = str(payload.get('legal_name') or '').strip()
@@ -170,13 +180,11 @@ def validate_outsourced_company_payload(connection, payload, company_id, entity_
 
     raw_cnpj = str(payload.get('cnpj') or '').strip()
     if raw_cnpj:
+        # `validate_cnpj` devolve o CNPJ FORMATADO e levanta erro se inválido;
+        # `cnpj_normalized` é a forma canônica (só dígitos) que sustenta o
+        # índice único e a busca. As duas colunas andam sempre juntas.
         cnpj = validate_cnpj(raw_cnpj)
         cnpj_normalized = only_digits(cnpj)
-        duplicate_id = find_outsourced_company_by_cnpj(connection, company_id, cnpj_normalized, exclude_id=entity_id)
-        if duplicate_id:
-            raise DuplicateOutsourcedCompanyError(
-                duplicate_id, 'Já existe uma empresa terceirizada com este CNPJ neste tenant.'
-            )
     else:
         cnpj = ''
         cnpj_normalized = ''
@@ -186,8 +194,8 @@ def validate_outsourced_company_payload(connection, payload, company_id, entity_
     if registration_mode == 'standard' and not cnpj:
         raise ValueError('CNPJ é obrigatório para o Cadastro Padrão.')
 
-    return {
-        'company_id': int(company_id),
+    normalized = dict(payload)
+    normalized.update({
         'legal_name': legal_name,
         'trade_name': str(payload.get('trade_name') or '').strip(),
         'cnpj': cnpj,
@@ -196,6 +204,42 @@ def validate_outsourced_company_payload(connection, payload, company_id, entity_
         'epi_responsibility': normalize_epi_responsibility(payload.get('epi_responsibility')),
         'registration_mode': registration_mode,
         'registration_status': registration_status,
+    })
+    return normalized
+
+
+def validate_outsourced_company_payload(connection, payload, company_id, entity_id=None):
+    """Valida e normaliza o payload de uma empresa terceirizada/prestadora.
+
+    CNPJ é opcional no Cadastro Simplificado (o pedido inicial pode ser
+    emergencial, sem CNPJ em mãos) — quando informado, precisa ser válido e
+    único dentro do tenant. Razão social é sempre obrigatória.
+
+    As regras de domínio em si vivem em
+    ``normalize_outsourced_company_domain_fields``, compartilhada com a
+    importação. Aqui fica só o que depende do banco: a duplicidade de CNPJ.
+    """
+    normalized = normalize_outsourced_company_domain_fields(payload)
+
+    if normalized['cnpj_normalized']:
+        duplicate_id = find_outsourced_company_by_cnpj(
+            connection, company_id, normalized['cnpj_normalized'], exclude_id=entity_id,
+        )
+        if duplicate_id:
+            raise DuplicateOutsourcedCompanyError(
+                duplicate_id, 'Já existe uma empresa terceirizada com este CNPJ neste tenant.'
+            )
+
+    return {
+        'company_id': int(company_id),
+        'legal_name': normalized['legal_name'],
+        'trade_name': normalized['trade_name'],
+        'cnpj': normalized['cnpj'],
+        'cnpj_normalized': normalized['cnpj_normalized'],
+        'company_kind': normalized['company_kind'],
+        'epi_responsibility': normalized['epi_responsibility'],
+        'registration_mode': normalized['registration_mode'],
+        'registration_status': normalized['registration_status'],
         # `status` (ciclo de vida: active/archived/...) NÃO é aceito do
         # payload do cliente (ADR-0002 §10.4) — só as rotas de arquivar/
         # restaurar/expurgar (core.archival) mudam esse campo.

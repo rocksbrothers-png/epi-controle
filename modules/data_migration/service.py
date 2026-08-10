@@ -47,7 +47,12 @@ def _writable_columns(connection, descriptor) -> set[str]:
     fetch_employees/get_employee_lifecycle.
     """
     available = set(table_columns(connection, descriptor.target_table))
-    return {name for name in descriptor.field_names() if name in available}
+    # `derived_columns` entram aqui — e só aqui. Elas são graváveis mas não
+    # mapeáveis: o normalizador as calcula, a planilha nunca as traz. Ficar de
+    # fora significava o valor calculado ser descartado na montagem do payload
+    # (issue #169).
+    declared = set(descriptor.field_names()) | set(descriptor.derived_columns)
+    return {name for name in declared if name in available}
 
 
 # ── Etapas 3 e 4 do assistente: leitura + mapeamento ────────────────────────

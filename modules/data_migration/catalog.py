@@ -59,6 +59,16 @@ class EntityDescriptor:
     # Normalizador de domínio compartilhado com o cadastro manual. Referência
     # tardia ("modulo:funcao") para não criar ciclo de import.
     normalizer: str = ''
+    # Colunas que o NORMALIZADOR calcula a partir de outras — nunca vêm da
+    # planilha e por isso não aparecem no assistente de mapeamento, mas
+    # precisam ser gravadas. Sem isto o motor descartava o valor: só grava
+    # colunas declaradas em `fields` (ver _writable_columns).
+    #
+    # O caso que motivou: `outsourced_companies.cnpj_normalized` é derivada de
+    # `cnpj` e sustenta o índice único PARCIAL de deduplicação
+    # (`WHERE cnpj_normalized <> ''`). Deixá-la vazia tirava a linha importada
+    # de dentro do índice — o mesmo CNPJ podia entrar duas vezes (issue #169).
+    derived_columns: tuple[str, ...] = ()
     # Identidade do registro para deduplicação e UPDATE. Nunca o ID interno
     # do sistema legado — CPF/matrícula/código é o que sobrevive à migração.
     natural_keys: tuple[str, ...] = ()
@@ -210,6 +220,15 @@ _FORNECEDORES = EntityDescriptor(
     natural_keys=('cnpj', 'legal_name'),
     enabled=True,
     phase='1',
+    # Mesmas regras do cadastro manual: CNPJ canônico (formatado em `cnpj`,
+    # só dígitos em `cnpj_normalized`) e os vocabulários controlados de
+    # `company_kind` / `epi_responsibility` / `registration_mode` /
+    # `registration_status`. Sem isto a importação gravava "Terceirizada" onde
+    # o sistema usa "outsourced", e deixava `cnpj_normalized` vazio.
+    normalizer='modules.outsourced_companies.service:normalize_outsourced_company_domain_fields',
+    # `cnpj_normalized` não vem da planilha: o normalizador a deriva de `cnpj`.
+    # É ela que sustenta o índice único parcial de deduplicação.
+    derived_columns=('cnpj_normalized',),
     fields=(
         FieldSpec('legal_name', 'Razão social', required=True,
                   aliases=('razao social', 'razão social', 'fornecedor', 'empresa', 'supplier',

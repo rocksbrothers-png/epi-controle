@@ -117,7 +117,13 @@ def _minimal_payload(company_id, **overrides):
         'admission_date': '2026-01-01',
         'schedule_type': 'integral',
         'tipo_vinculo': 'Terceirizado',
-        'empresa_origem': '',
+        # Terceirizado precisa ter o contratado identificado — por
+        # `outsourced_company_id` (estruturado) ou `empresa_origem` (texto
+        # livre). Um terceirizado sem nenhum dos dois não existe em produção:
+        # é o registro que a regra de vínculo recusa (issue #192). Os testes
+        # que exercitam o vínculo estruturado sobrescrevem com
+        # `outsourced_company_id`.
+        'empresa_origem': 'Prestadora Legada LTDA',
     }
     payload.update(overrides)
     return payload

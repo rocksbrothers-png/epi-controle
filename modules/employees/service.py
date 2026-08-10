@@ -55,22 +55,37 @@ def normalize_employee_domain_fields(payload: dict) -> dict:
         # create_employee/update_employee.
         normalized['empresa_origem'] = ''
     else:
-        if not empresa_origem:
+        # O contratado precisa estar identificado, mas há DUAS formas de
+        # identificá-lo e as duas são legítimas (issue #192):
+        #
+        #   - `outsourced_company_id` — vínculo estruturado com
+        #     `outsourced_companies`, introduzido pelo ADR-0002. É o caminho do
+        #     cadastro manual, e é o mais forte: aponta para um cadastro real,
+        #     com CNPJ e contrato.
+        #   - `empresa_origem` — texto livre, o campo legado. É o único
+        #     disponível na importação, porque nenhum export traz o id interno
+        #     deste sistema (a mesma razão de `resolves_to` existir).
+        #
+        # Exigir `empresa_origem` mesmo com o vínculo estruturado presente
+        # recusaria um terceirizado perfeitamente identificado.
+        has_structured_company = str(normalized.get('outsourced_company_id') or '').strip() not in ('', '0')
+        if not empresa_origem and not has_structured_company:
             raise ValueError(
                 f'Empresa de origem é obrigatória para o vínculo "{tipo_vinculo}".'
             )
         normalized['empresa_origem'] = empresa_origem
 
-    if 'email' in normalized:
-        normalized['email'] = str(normalized.get('email') or '').strip().lower()
-    if 'whatsapp' in normalized:
-        normalized['whatsapp'] = ''.join(
-            ch for ch in str(normalized.get('whatsapp') or '') if ch.isdigit()
-        )
-    if 'preferred_contact_channel' in normalized:
-        normalized['preferred_contact_channel'] = normalize_preferred_contact_channel(
-            normalized.get('preferred_contact_channel')
-        )
+    # Sempre presentes na saída, mesmo ausentes na entrada: os chamadores
+    # (create_employee/update_employee e a importação) leem estas chaves
+    # diretamente. Valor vazio é inofensivo na importação — o motor descarta
+    # campo vazio ao montar o payload, deixando o default do servidor valer.
+    normalized['email'] = str(normalized.get('email') or '').strip().lower()
+    normalized['whatsapp'] = ''.join(
+        ch for ch in str(normalized.get('whatsapp') or '') if ch.isdigit()
+    )
+    normalized['preferred_contact_channel'] = normalize_preferred_contact_channel(
+        normalized.get('preferred_contact_channel')
+    )
     return normalized
 
 
@@ -123,11 +138,18 @@ def create_employee(connection, payload, *, actor):
     ensure_unit_operational(connection, unit['id'], 'novos colaboradores')
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+    # Mesma função que a importação usa (catalog.normalizer). Antes daqui a
+    # regra de vínculo estava reimplementada inline e DIVERGIA: um vínculo
+    # terceirizado sem empresa de origem era recusado na importação e aceito
+    # em silêncio no cadastro manual, gravando string vazia (issue #192).
+    normalized = normalize_employee_domain_fields(payload)
+    # CPF continua explícito: `normalize_cpf` levanta erro quando ausente ou
+    # com menos de 11 dígitos, e esse comportamento não pode mudar aqui.
     cpf_digits = normalize_cpf(payload.get('cpf'))
     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits)
-    preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
-    tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
-    empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
+    preferred_channel = normalized['preferred_contact_channel']
+    tipo_vinculo = normalized['tipo_vinculo']
+    empresa_origem = normalized['empresa_origem']
     columns = [
         'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'email', 'whatsapp',
         'preferred_contact_channel', 'sector', 'role_name', 'admission_date', 'schedule_type',
@@ -201,13 +223,15 @@ def update_employee(connection, employee_id, payload, *, actor):
         ensure_unit_operational(connection, unit['id'], 'transferência de colaboradores')
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
+    # Mesma função que a importação e create_employee usam (issue #192).
+    normalized = normalize_employee_domain_fields(payload)
     cpf_digits = normalize_cpf(payload.get('cpf'))
     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
-    preferred_channel = normalize_preferred_contact_channel(payload.get('preferred_contact_channel'))
-    tipo_vinculo = str(payload.get('tipo_vinculo') or 'CLT').strip() or 'CLT'
-    empresa_origem = str(payload.get('empresa_origem') or '').strip() if tipo_vinculo != 'CLT' else ''
-    whatsapp = ''.join(ch for ch in str(payload.get('whatsapp') or '') if ch.isdigit())
-    email = str(payload.get('email') or '').strip().lower()
+    preferred_channel = normalized['preferred_contact_channel']
+    tipo_vinculo = normalized['tipo_vinculo']
+    empresa_origem = normalized['empresa_origem']
+    whatsapp = normalized['whatsapp']
+    email = normalized['email']
     set_columns = [
         'company_id', 'unit_id', 'employee_id_code', 'cpf', 'name', 'email', 'whatsapp',
         'preferred_contact_channel', 'sector', 'role_name', 'admission_date', 'schedule_type',

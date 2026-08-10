@@ -1001,7 +1001,7 @@ Lista fechada pelo usuário, preservada aqui na íntegra para rastreabilidade
 16. **D16.** Empresa/colaborador arquivados localmente devem desaparecer dos seletores operacionais daquela Unidade.
 17. **D17.** Desarquivamento deve restaurar o uso apenas naquela Unidade.
 18. **D18.** Exclusão definitiva não é função do Gestor de EPI nem do Administrador Local.
-19. **D19.** Exclusão definitiva fica sob governança do Administrador Geral e da política de retenção já existente.
+19. **D19 (redação atualizada — aprovada pelo usuário).** A exclusão definitiva não pode ser executada por Administrador Local, Gestor de EPI ou outros perfis operacionais. A operação é restrita ao Administrador Geral dentro do seu tenant e ao Administrador Master dentro do seu escopo administrativo, sempre condicionada à política de retenção e às validações do sistema.
 20. **D20.** Deve existir aviso antecipado quando registros estiverem próximos da data de elegibilidade para exclusão.
 21. **D21.** Não excluir definitivamente se ainda existir vínculo ativo em outra Unidade.
 22. **D22.** Preservar histórico, entregas de EPI, auditoria, contratos e registros obrigatórios conforme a política de retenção.
@@ -1013,6 +1013,14 @@ continue centralizada, reaproveitando um mecanismo que — como o §13.4
 mostra — já existe quase inteiro. D1-D5 são especificamente sobre o CNPJ da
 empresa terceirizada (não do tenant) e, como o §13.8 mostra, D1/D2 já estão
 implementadas hoje.
+
+**Status pós-revisão do usuário (rodada 2):** D4/D5 fechados na leitura
+mínima (§13.8), D19 com redação atualizada acima (`general_admin` E
+`master_admin` mantidos, comportamento já implementado — nada a mudar em
+código), e a proposta de congelar `employees.unit_id` foi **rejeitada** em
+favor de uma arquitetura que não toca esse campo (§13.11, agora informado
+por um levantamento completo de uso do campo). Nenhuma pergunta em aberto
+restante bloqueando o desenho — ver §13.17 para as confirmações finais.
 
 ### 13.3 Modelo de dados atual
 
@@ -1188,51 +1196,88 @@ quando a empresa terceirizada não tem CNPJ (Cadastro Simplificado),
 existe (nem nunca existiu, de fato) uma exigência de `legal_entity_id` que
 faça sentido aqui.
 
-**D4/D5 têm duas leituras possíveis** e a diferença entre elas é grande o
-bastante para precisar de confirmação explícita antes de qualquer PR:
+**D4/D5 — fechado pelo usuário: leitura mínima, sem Multi-CNPJ para
+terceirizadas.** Não nasce tabela nova, não nasce conceito novo.
+`outsourced_companies` continua sendo reaproveitada como está; o que muda é
+a qualidade da busca/seleção no Cadastro de Colaborador:
 
-- **Leitura mínima (recomendada):** `outsourced_companies` já permite hoje
-  duas linhas com o mesmo `legal_name`/`trade_name` (CNPJs diferentes, ou
-  ambas sem CNPJ — o índice único é por `cnpj_normalized`, não por nome).
-  D4/D5 descreveriam então a busca/seleção de empresa no Cadastro de
-  Colaborador: se a busca por nome encontra uma única `outsourced_companies`
-  correspondente, associa automaticamente (D4, já é o comportamento atual);
-  se encontra mais de uma (filiais/CNPJs distintos cadastrados como linhas
-  separadas do mesmo prestador), a tela passa a exigir escolha explícita de
-  qual `outsourced_company_id` em vez de pegar a primeira (D5) — reforço de
-  UX/precisão sobre uma estrutura que já existe, sem tabela nova.
-- **Leitura estrutural (mais pesada):** um Multi-CNPJ dedicado para empresa
-  terceirizada, espelhando `legal_entities` mas para `outsourced_companies`
-  (uma "prestadora" com N filiais/CNPJs formalmente agrupadas). Isso exigiria
-  uma tabela nova (ex.: `outsourced_company_legal_entities`) e não tem
-  menção explícita em nenhuma das 22 decisões — seria introduzir um conceito
-  novo, o que vai contra a disciplina desta sessão ("não criar novos
-  conceitos" já aplicado nas rodadas anteriores).
+- Continua existindo hoje mais de uma linha `outsourced_companies` com o
+  mesmo `legal_name`/`trade_name` (CNPJs diferentes, ou ambas sem CNPJ — o
+  índice único é por `cnpj_normalized`, não por nome) — isso não muda.
+- Se a busca por nome encontra uma única `outsourced_companies`
+  correspondente, seleciona automaticamente (D4 — já é o comportamento
+  atual, nada a mudar).
+- Se encontra mais de uma, a tela passa a exigir escolha explícita — em vez
+  de pegar a primeira — mostrando informação suficiente para identificar a
+  empresa correta (D5). Campos exibidos na desambiguação, por decisão do
+  usuário:
+  - Razão Social;
+  - Nome Fantasia;
+  - CNPJ, quando cadastrado (Cadastro Simplificado sem CNPJ continua
+    permitido — D1 — e aparece como "CNPJ não informado", nunca bloqueia a
+    escolha);
+  - tipo da empresa (`company_kind`);
+  - contrato, quando aplicável (`service_contracts.contract_ref`/
+    `service_order_ref`, quando já existir um contrato ativo associado à
+    `outsourced_companies` candidata).
+- Nenhuma tabela de CNPJs de terceirizadas é criada nesta rodada. Se no
+  futuro surgir necessidade funcional comprovada de uma terceirizada com
+  múltiplos CNPJs formalmente agrupados sob um único cadastro, isso é
+  escopo de ADR próprio — não desta extensão.
 
-Recomendação: seguir a leitura mínima. Peço confirmação explícita antes de
-incluir D4/D5 em qualquer PR (§13.15, PR C).
+PR C (§13.15) implementa só isso: melhora a query/UI de busca de
+`outsourced_companies` no Cadastro de Colaborador para retornar e exibir
+esses campos, e passa a exigir seleção explícita quando há mais de um
+resultado. Nenhuma mudança de schema.
 
 ### 13.9 Impacto no fluxo existente de entrega de EPI
 
-Entregas referenciam `employees.id` diretamente. Como D7 mantém uma única
-linha `employees` por pessoa no tenant (nunca duplicada entre Unidades), o
-histórico de entregas de um colaborador compartilhado passa a ser **um
-único trilho**, de qualquer Unidade em que ele tenha atuado — o oposto do
-risco atual, em que o beco sem saída do Problema B (§13.1) levaria, na
-prática, a cadastros duplicados manuais e histórico de entrega fragmentado
-em duas pessoas "diferentes" no sistema caso alguém contornasse o bloqueio
-criando uma segunda pessoa com CPF ligeiramente diferente digitado.
+**Não há novo fluxo de entrega.** O mecanismo de registro, baixa de
+estoque e auditoria (`modules/deliveries/service.py`) permanece exatamente
+o mesmo — nenhuma tabela nova, nenhuma tela nova, nenhum endpoint novo de
+entrega. O único ponto de possível toque é uma condição de autorização já
+existente, precisamente localizada:
+
+```
+modules/deliveries/service.py:114-117
+employee_current_unit_id = get_employee_current_unit(connection, int(employee['id']))
+requested_unit_id = int(payload.get('unit_id') or 0)
+delivery_unit_id = int(requested_unit_id or employee_current_unit_id)
+if int(employee_current_unit_id) != int(delivery_unit_id):
+    raise ValueError(...)  # entrega só é aceita na Unidade ATUAL do colaborador
+```
+
+`employee_current_unit_id` vem de `get_employee_current_unit` — a mesma
+função de movimentação descrita em §13.11 (retorna a Unidade da
+movimentação temporária ativa hoje, senão `employees.unit_id`). Ou seja:
+**hoje, entrega só é aceita na única Unidade onde o colaborador
+"fisicamente está" segundo o sistema de transferência — um vínculo local
+em `employee_unit_links` não basta por si só.**
+
+Isso é uma decisão de design explícita, não uma consequência automática de
+D7/D8/D10, e está sinalizada para confirmação em §13.17: ampliar essa
+condição por OR (aceitar também quando existe `employee_unit_links` ativo
+para `delivery_unit_id`, além da Unidade atual de movimentação) é a leitura
+que faz D10 ("colaborador... pode ser utilizado no fluxo de entrega
+daquela Unidade") funcionar de fato — sem essa ampliação, o vínculo local
+só serviria para listagem/seleção, mas a entrega em si continuaria
+recusando qualquer Unidade que não seja a Unidade de movimentação. Se
+confirmada, é uma linha (`or is_employee_available_to_unit(connection,
+employee, delivery_unit_id)`) — não uma reescrita do fluxo.
+
+Como D7 mantém uma única linha `employees` por pessoa no tenant (nunca
+duplicada entre Unidades), o histórico de entregas de um colaborador
+compartilhado passa a ser **um único trilho**, de qualquer Unidade em que
+ele tenha atuado — o oposto do risco atual, em que o beco sem saída do
+Problema B (§13.1) levaria, na prática, a cadastros duplicados manuais e
+histórico de entrega fragmentado em duas pessoas "diferentes" no sistema
+caso alguém contornasse o bloqueio criando uma segunda pessoa com CPF
+ligeiramente diferente digitado.
 
 O snapshot histórico da entrega (§3.5, já registra Unidade/empresa no
 momento da entrega) não muda de comportamento — uma entrega feita enquanto
 o colaborador estava vinculado à Unidade A continua mostrando a Unidade A
 mesmo que esse vínculo seja arquivado depois (D22, preservar histórico).
-O novo gate necessário é em tempo de **criação** de entrega: hoje
-`ensure_record_operational`/checagens equivalentes bloqueiam operação
-contra colaborador arquivado (globalmente); passam a também bloquear
-quando o vínculo específico da Unidade que está lançando a entrega está
-`inactive` em `employee_unit_links`, mesmo que o colaborador esteja ativo
-em outra Unidade (D15/D16).
 
 ### 13.10 Impacto nos relatórios
 
@@ -1250,31 +1295,120 @@ registrado em §13.13.
 
 ### 13.11 Migração necessária
 
-- **Tabela nova `employee_unit_links`** (mesmo par dual-track já usado em
-  todas as migrações desta sessão): SQLite via `core/schema.py`
-  (`ensure_employee_unit_links`) + `core/bootstrap.py`; Postgres/Supabase
-  via `epi_backend/migrations/0NN_employee_unit_links.py` +
-  `supabase/migrations/*.sql` irmão, RLS habilitado desde a criação. Forma:
-  `id, company_id, employee_id, unit_id, local_status ('active'|'inactive'),
+**Correção da rodada anterior:** a proposta original desta ADR (congelar
+`employees.unit_id` como "Unidade de origem" imutável, por simetria com
+`outsourced_companies.unit_id` do §12.1) foi **rejeitada pelo usuário** —
+corretamente: `employees.unit_id` não é análogo ao campo de empresa. O
+levantamento abaixo (mapa de uso completo, pedido explicitamente antes de
+qualquer mudança de semântica) mostra por quê, e substitui a proposta
+antiga por uma arquitetura que não toca o campo.
+
+#### Mapa de uso de `employees.unit_id` (auditoria completa)
+
+`employees.unit_id` já tem um significado preciso e ativo hoje —
+**"Unidade base/permanente do colaborador"**, mutável ao longo do tempo —
+e já convive com um sistema de transferência de dois modos,
+`employee_unit_movements` (`movement_type`: `'temporary'` |
+`'definitive'`):
+
+1. **Único ponto de escrita direta**: `update_employee_unit(connection,
+   employee_id, unit_id)` (`modules/employees/service.py:701-707`,
+   `UPDATE employees SET unit_id = ?`). Comentário no próprio código:
+   "Lotação operacional apenas. NUNCA altera `legal_entity_id`." Chamado
+   por dois caminhos:
+   - Diretamente na criação (`create_employee`/`create_employee_outsourced_simplified`)
+     e na edição comum (`update_employee`/`update_employee_outsourced_simplified`,
+     quando o payload muda `unit_id`).
+   - Pela rota dedicada `POST /api/employee-unit-movements`
+     (`handle_post_employee_unit_movements`,
+     `modules/employees/routes.py:394-443`) quando `movement_type ==
+     'definitive'` — a **"transferência permanente"** que o usuário citou.
+     Grava também uma linha em `employee_unit_movements` (auditoria/
+     histórico) e fecha qualquer movimentação temporária em andamento.
+2. **"Transferência temporária"**: mesma rota, `movement_type ==
+   'temporary'` — insere uma linha em `employee_unit_movements` com
+   `source_unit_id`/`target_unit_id`/`start_date`/`end_date`, **sem tocar
+   `employees.unit_id`**. É uma janela de data com início e fim.
+3. **"Unidade atual" computada** (não é uma coluna, é derivada):
+   `get_employee_current_unit(connection, employee_id)`
+   (`modules/employees/service.py:505-524`) — se existe uma movimentação
+   `temporary` com `start_date <= hoje <= end_date`, devolve o
+   `target_unit_id` dela; senão devolve `employees.unit_id`.
+   `apply_current_unit_allocation` faz a mesma coisa em lote (anota
+   `current_unit_id`/`current_unit_name`/`unit_allocation_type` em listas
+   de colaboradores).
+4. **Consumidores da Unidade atual computada** (não do `unit_id` cru):
+   - `ensure_actor_employee_scope` (`modules/employees/service.py:549-557`)
+     — gate de autorização por item: Administrador Local/Gestor de EPI só
+     age sobre colaborador cuja Unidade atual computada seja a própria.
+   - Gate de entrega de EPI (`modules/deliveries/service.py:114-117`,
+     detalhado em §13.9) — só aceita entrega na Unidade atual computada.
+5. **Consumidor do `unit_id` cru, sem olhar movimentação**:
+   `fetch_employees` (listagem, `PERM_EMPLOYEES_VIEW`) filtra só por
+   `company_id` para todo papel não-`master_admin` — não filtra por
+   Unidade na query; a Unidade atual é só anotada para exibição via
+   `apply_current_unit_allocation`. Comportamento pré-existente, não
+   tocado por esta extensão.
+6. **Conclusão da auditoria**: não existe hoje uma separação entre
+   "Unidade de origem" (histórica, imutável) e "Unidade atual" — existe
+   **"Unidade base"** (`unit_id`, mutável via transferência definitiva) e
+   **"Unidade atual efetiva"** (base, a menos que haja uma transferência
+   temporária ativa). Não existe "vínculos adicionais por Unidade" —
+   é exatamente essa peça que falta e que `employee_unit_links` adiciona,
+   **como uma dimensão nova, não como substituição de nenhuma das duas
+   acima**. Congelar `unit_id` quebraria a transferência definitiva
+   (`update_employee_unit` deixaria de fazer sentido); o pedido do usuário
+   de auditar antes de mexer estava certo — não mexer é a decisão correta.
+
+#### Arquitetura aprovada (não toca `unit_id`/movimentações)
+
+- **Identidade da pessoa**: `employees` continua sendo o único cadastro do
+  colaborador terceirizado/prestador no tenant (D7) — inalterado por esta
+  extensão.
+- **Empresa empregadora/origem**: `employees.outsourced_company_id`
+  continua vinculado à pessoa e não muda quando ela passa a atuar em outra
+  Unidade — já é assim hoje (nenhum código toca esse campo fora do
+  cadastro/edição explícitos), esta extensão não adiciona nem remove
+  nenhuma regra aqui.
+- **Disponibilidade por Unidade**: tabela nova `employee_unit_links` —
+  `employee + unit + local_status`, mesmo par dual-track de todas as
+  migrações desta sessão (SQLite via `core/schema.py`
+  `ensure_employee_unit_links` + `core/bootstrap.py`; Postgres/Supabase via
+  `epi_backend/migrations/0NN_employee_unit_links.py` +
+  `supabase/migrations/*.sql` irmão, RLS desde a criação). Forma: `id,
+  company_id, employee_id, unit_id, local_status ('active'|'inactive'),
   activated_at, activated_by_user_id, deactivated_at, deactivation_reason,
   deactivated_by_user_id, created_at, updated_at`, `UNIQUE(company_id,
-  employee_id, unit_id)`.
-- **Backfill**: toda `employees` com `unit_id` preenchido ganha uma linha
-  `employee_unit_links` ativa para essa Unidade — idêntico em espírito ao
-  backfill do §12.8, mesma exigência de idempotência.
-- **`employees.unit_id` como metadado histórico imutável**: por analogia
-  direta com o §12.1 (`outsourced_companies.unit_id`), a consequência
-  natural de D7/D8 é que `employees.unit_id` também deveria congelar como
-  "Unidade de origem" (gravado só na criação, nunca mais alterado), e o
-  vínculo operacional passa a viver inteiramente em `employee_unit_links`.
-  **Isto não está explicitamente nas 22 decisões** — é uma inferência por
-  simetria com o que já foi decidido para empresa, não uma instrução
-  verbatim. Peço confirmação explícita (§13.15 depende desta resposta para
-  o desenho exato de PR B).
+  employee_id, unit_id)`. Essa relação, e só ela, determina disponibilidade/
+  arquivamento/uso em entrega **por Unidade** (D13-D17); é uma dimensão
+  **paralela e independente** de `unit_id`/`employee_unit_movements` — os
+  dois sistemas respondem perguntas diferentes e não se cruzam: um diz
+  "onde a pessoa está alocada/se deslocou" (existente, intocado), o outro
+  diz "em quais Unidades ela está disponível para uso operacional
+  terceirizado" (novo).
+- **Backfill**: toda `employees` com `outsourced_company_id` preenchido
+  ganha uma linha `employee_unit_links` ativa para a sua Unidade atual
+  computada (`get_employee_current_unit` no momento do backfill, não o
+  `unit_id` cru — para nascer consistente com o que o colaborador já
+  reflete hoje) — idêntico em espírito ao backfill do §12.8, mesma
+  exigência de idempotência. É um valor inicial, não uma sincronização
+  contínua: depois do backfill, `employee_unit_links` só muda por ação
+  explícita de vincular/arquivar/desarquivar — uma transferência definitiva
+  subsequente **não** move automaticamente o vínculo local.
+- **Transferências existentes**: `employee_unit_movements`,
+  `update_employee_unit`, `get_employee_current_unit`,
+  `apply_current_unit_allocation`, as rotas de
+  `/api/employee-unit-movements` — **nenhuma linha alterada**. Nenhuma
+  lógica nova concorre com esses fluxos (não-meta explícita, §13.16).
+- **Gates que precisam de ampliação por OR** (não substituição — mesmo
+  espírito do restante desta ADR): `ensure_actor_employee_scope` e,
+  condicionalmente, o gate de entrega (§13.9) — ver risco em §13.13 e
+  confirmação pedida em §13.17.
 - **Correção de `create_employee_outsourced_simplified`/
   `update_employee_outsourced_simplified`** (§13.7) — mudança de código
-  isolada, sem migração de schema associada.
-- **UX de desambiguação D4/D5** (§13.8) — depende da leitura escolhida.
+  isolada, sem migração de schema associada, sem relação com
+  `employee_unit_links`.
+- **UX de desambiguação D4/D5** (§13.8) — sem migração de schema.
 
 ### 13.12 Rollback
 
@@ -1301,20 +1435,33 @@ reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
 - **Relatórios não mapeados** (§13.10) — o levantamento de todos os pontos
   que leem `employees.unit_id` hoje só é confiável durante a implementação
   (grep dirigido + teste de regressão por relatório), não nesta ADR.
-- **Ambiguidade D4/D5** (§13.8) — a leitura errada infla o escopo com uma
-  tabela nova não pedida explicitamente.
-- **Inclusão de `master_admin` na governança de exclusão definitiva** é
-  comportamento **pré-existente** (`_require_deletion_admin` já permite
-  `master_admin` e `general_admin`, não só o segundo) e está **fora do
-  escopo desta extensão** — D19 pede "governança do Administrador Geral",
-  o que não exclui Master explicitamente do jeito que o §12.5 excluiu Master
-  da edição de dado corporativo por doutrina. Não estou alterando esse gate
-  como parte deste ADR; registro aqui como pergunta em aberto, não como
-  mudança proposta.
 - **Corrida entre Unidades vinculando a mesma pessoa quase simultaneamente**
   — mesma proteção que `outsourced_company_unit_links` já usa
   (`UNIQUE(company_id, employee_id, unit_id)` + tratamento de conflito como
   "já vinculado", não erro).
+- **Gates de escopo existentes não sabem de `employee_unit_links` e
+  precisam de ampliação por OR, não substituição** (§13.11): pelo menos
+  `ensure_actor_employee_scope` (`modules/employees/service.py:549-557`)
+  compara contra a Unidade atual computada (`get_employee_current_unit`) e
+  rejeita qualquer Unidade diferente — sem a ampliação, um Administrador
+  Local/Gestor de EPI da Unidade B nunca vai conseguir abrir/editar um
+  colaborador vinculado localmente a B cuja Unidade atual (base ou
+  movimentação) seja A, mesmo depois do PR B. É trabalho real do PR D, não
+  um detalhe.
+- **Gate de entrega de EPI é uma decisão de design explícita, não
+  resolvida por D8/D10 sozinhas** (§13.9): hoje
+  `modules/deliveries/service.py:114-122` exige
+  `delivery_unit_id == employee_current_unit_id` (a Unidade atual
+  calculada a partir de `employees.unit_id` + `employee_unit_movements`) —
+  um vínculo local ativo em `employee_unit_links` **não** basta, por si só,
+  para liberar entrega na Unidade vinculada se a pessoa não estiver
+  fisicamente "naquela Unidade atual" segundo o sistema de movimentação.
+  Recomendo ampliar esse gate por OR (permitir também quando existe
+  `employee_unit_links` ativo para `delivery_unit_id`), pela leitura mais
+  natural de D10 ("se pode ser utilizado no fluxo de entrega daquela
+  Unidade"), mas é uma mudança real de comportamento num fluxo que hoje é
+  estritamente de uma Unidade por vez — sinalizado para confirmação
+  explícita do usuário em §13.17, não decidido silenciosamente aqui.
 
 ### 13.14 Critérios de aceite
 
@@ -1340,45 +1487,72 @@ reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
 - Colaborador/empresa arquivados localmente somem dos seletores
   operacionais daquela Unidade especificamente, e só daquela (D16/D17).
 - Exclusão definitiva de colaborador/empresa continua restrita a
-  `general_admin` (e, até decisão em contrário, `master_admin` — risco
-  registrado em §13.13) e ao fluxo de duas etapas já existente em
-  `core/archival.py`; passa a também exigir ausência de vínculo ativo em
-  qualquer Unidade (D18/D19/D21).
+  `general_admin` (no próprio tenant) e `master_admin` (no seu escopo
+  administrativo) — ninguém mais — e ao fluxo já existente em
+  `core/archival.py`: registro arquivado, prazo de retenção cumprido,
+  confirmação explícita em duas etapas, auditoria imutável; passa a também
+  exigir inexistência de vínculo ativo em qualquer Unidade (D18/D19/D21).
 - Existe aviso antecipado quando um registro se aproxima da data de
   elegibilidade para exclusão definitiva (D20).
 - Histórico de entregas, auditoria, contratos e demais registros
   obrigatórios permanecem intactos e consultáveis após qualquer
   arquivamento local (D22).
+- **Não regressão em transferência temporária**: criar uma movimentação
+  `temporary` para um colaborador terceirizado continua funcionando
+  exatamente como hoje (`employee_unit_movements`, `unit_id` da `employees`
+  intocado, `get_employee_current_unit` reflete a Unidade de destino
+  durante a janela de datas) — nenhum comportamento novo de
+  `employee_unit_links` interfere.
+- **Não regressão em transferência definitiva**: criar uma movimentação
+  `definitive` continua atualizando `employees.unit_id` via
+  `update_employee_unit` exatamente como hoje — `employee_unit_links` não
+  muda automaticamente como efeito colateral dessa transferência (o vínculo
+  local permanece o que foi explicitamente configurado até uma Unidade
+  arquivar/desarquivar/vincular de novo).
+- **Não regressão no cadastro CLT**: `create_employee`/`update_employee`
+  (colaborador nativo do tenant, sem `outsourced_company_id`) não sofrem
+  nenhuma mudança de comportamento — `employee_unit_links` só é populada
+  para colaboradores com `outsourced_company_id` preenchido.
 - Suíte de testes (backend + frontend, `pytest tests/ -q` e
   `node static/js/test/run-tests.js`) verde nos dois repositórios, incluindo
-  testes novos para cada decisão D1-D22 tocada por código.
+  testes novos para cada decisão D1-D22 tocada por código e para os três
+  itens de não regressão acima.
 
 ### 13.15 Divisão sugerida em PRs
+
+Nenhuma pendência bloqueia mais o desenho — as três decisões da rodada 2
+já estão incorporadas em cada PR abaixo. PR F (condicional, Multi-CNPJ
+para terceirizada) foi **removido**: D4/D5 fecharam na leitura mínima, sem
+tabela nova.
 
 - **PR A — correção isolada do alerta de CNPJ (§13.7).** Remove a chamada a
   `resolve_employee_legal_entity_id` do fluxo terceirizado simplificado.
   Menor PR possível, corrige o bug com reprodução real em produção, sem
-  depender de nenhuma tabela nova. Candidato a seguir sozinho e primeiro.
-- **PR B — `employee_unit_links`.** Schema + backfill (dual-track) +
+  depender de nenhuma tabela nova, sem relação com nenhuma das outras
+  decisões desta rodada. Candidato a seguir sozinho e primeiro.
+- **PR B — `employee_unit_links`.** Schema + backfill (dual-track,
+  semeando a partir da Unidade atual computada, §13.11) +
   `is_employee_available_to_unit` + rotas de vincular/ativar/desativar
-  vínculo local + testes, mesma forma do §12.2. Inclui a decisão sobre
-  `employees.unit_id` virar metadado imutável (§13.11) — bloqueado até
-  confirmação.
-- **PR C — busca + vínculo no Cadastro de Colaborador.** CPF duplicado
-  passa a oferecer "vincular" em vez de bloqueio surdo (mesma forma do
-  §12.4); inclui a resolução de D4/D5 conforme a leitura confirmada
-  (§13.8).
-- **PR D — arquivar/desarquivar colaborador por Unidade.** Frontend +
-  backend; seletores operacionais (Cadastro de Colaborador, entrega de EPI)
-  passam a filtrar por `employee_unit_links.local_status`; inclui a
-  auditoria de relatórios afetados (§13.10).
+  vínculo local + testes, mesma forma do §12.2. Inclui os três testes de
+  não regressão de transferência (§13.14) provando que
+  `employee_unit_movements`/`update_employee_unit` continuam intocados.
+  Não depende de nenhuma decisão em aberto.
+- **PR C — busca + desambiguação no Cadastro de Colaborador (D4/D5).**
+  Exibe Razão Social/Nome Fantasia/CNPJ (quando cadastrado)/tipo/contrato
+  na busca de `outsourced_companies`; exige escolha explícita quando há
+  mais de um resultado. Sem mudança de schema. Independente do PR B.
+- **PR D — arquivar/desarquivar colaborador por Unidade + ampliação dos
+  gates por OR.** Depende do PR B. Frontend + backend para D13-D17;
+  amplia `ensure_actor_employee_scope` por OR (Unidade atual **ou**
+  `employee_unit_links` ativo, §13.13); inclui a decisão confirmada sobre
+  o gate de entrega (§13.9/§13.17) se aprovada; auditoria dos relatórios
+  afetados (§13.10).
 - **PR E — governança de exclusão definitiva.** Nova precondição em
   `ensure_purge_allowed` (nenhum vínculo ativo em nenhuma Unidade, D21) +
-  aviso antecipado de elegibilidade (D20). Depende do PR B já estar
-  mergeado.
-- **PR F (condicional)** — só nasce se a leitura estrutural de D4/D5 for
-  confirmada em vez da mínima: subsistema de Multi-CNPJ para
-  `outsourced_companies`.
+  aviso antecipado de elegibilidade (D20) + redação atualizada de D19
+  refletida em mensagens de erro/auditoria. Depende do PR B já estar
+  mergeado. Nenhuma mudança no gate `master_admin`/`general_admin` em si
+  (já correto).
 
 ### 13.16 Não-metas desta rodada
 
@@ -1392,6 +1566,88 @@ reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
   CLT/nativo do tenant) — o escopo inteiro desta extensão é o colaborador
   terceirizado/prestador; o fluxo Multi-CNPJ nativo permanece intocado.
 - **Qualquer mudança no gate de `master_admin`** em `ensure_purge_allowed`/
-  `_require_deletion_admin` (§13.13) sem confirmação explícita — é
-  comportamento pré-existente, fora do que as 22 decisões pediram
-  literalmente.
+  `_require_deletion_admin` — comportamento pré-existente e explicitamente
+  mantido por decisão do usuário (D19 atualizado, §13.2); nada a mudar em
+  código aqui.
+- **Qualquer mudança em `employees.unit_id`, `update_employee_unit` ou
+  `employee_unit_movements`** (transferência temporária/definitiva) —
+  rejeitado explicitamente pelo usuário na revisão do ADR. `employee_unit_links`
+  é uma estrutura paralela e independente; não substitui, não sincroniza
+  com e não intercepta o fluxo de transferência existente (§13.11).
+- **Multi-CNPJ para empresa terceirizada/prestadora** (leitura estrutural
+  de D4/D5, descartada) — fica para um ADR próprio se e quando houver
+  necessidade funcional comprovada (§13.8).
+
+### 13.17 Confirmações solicitadas antes da implementação
+
+Resposta direta aos itens 3-7 pedidos antes do primeiro PR de código
+(itens 1 e 2 são este próprio documento e a divisão de PRs do §13.15):
+
+**3. Estruturas reaproveitadas** (detalhe em §13.4): forma de
+`outsourced_company_unit_links` (molde de `employee_unit_links`);
+`core/archival.py` inteiro e sem alteração de contrato (só uma precondição
+nova em `ensure_purge_allowed`); `resolve_employee_outsourced_unit_id`/
+`resolve_outsourced_company_unit_id` (padrão de resolver Unidade a partir
+do ator); `is_outsourced_company_available_to_unit` (molde de
+`is_employee_available_to_unit`); `DuplicateOutsourcedCompanyError` → 409
+"encontrada, vincule" (molde para o CPF duplicado); `employees.cpf`/
+`employee_id_code`/`outsourced_company_id` (identidade, inalterados).
+
+**4. Confirmo que não haverá segunda base de colaboradores.**
+`employees` continua sendo o único cadastro por pessoa no tenant (D7).
+`employee_unit_links` guarda só `employee_id + unit_id + local_status` —
+uma linha de vínculo, nunca uma cópia de identidade, nome, CPF ou qualquer
+outro dado pessoal. Duas Unidades vinculadas à mesma pessoa apontam para a
+mesma linha `employees.id`.
+
+**5. Confirmo que não haverá novo fluxo de entrega de EPI.** O mecanismo
+de registro, estoque e auditoria de entrega (`modules/deliveries/service.py`)
+não ganha tabela, tela ou endpoint novo. O único ponto de possível toque é
+a condição de autorização já existente em
+`modules/deliveries/service.py:114-117` (§13.9) — e mesmo essa mudança
+(ampliar por OR para aceitar vínculo local, não só Unidade atual de
+movimentação) é uma pergunta em aberto, não uma decisão já tomada:
+
+> **Pergunta 1**: confirma ampliar o gate de entrega por OR (Unidade atual
+> de movimentação **ou** `employee_unit_links` ativo), ou prefere que
+> entrega continue exigindo estritamente a Unidade atual de movimentação
+> (e o vínculo local sirva só para listagem/seleção/arquivamento, não para
+> autorizar entrega)?
+
+**6. Representação do vínculo local colaborador × Unidade.** Tabela nova
+`employee_unit_links` (`id, company_id, employee_id, unit_id, local_status
+('active'|'inactive'), activated_at, activated_by_user_id, deactivated_at,
+deactivation_reason, deactivated_by_user_id, created_at, updated_at`,
+`UNIQUE(company_id, employee_id, unit_id)`) — detalhe completo em §13.11.
+**Paralela e independente** de `employees.unit_id`/`employee_unit_movements`:
+não sincroniza, não é atualizada por transferência temporária ou
+definitiva, não intercepta nenhuma rota existente de movimentação. Muda
+somente por ação explícita de vincular/arquivar/desarquivar por Unidade.
+
+**7. Testes de não regressão para transferências** (já incorporados como
+critério de aceite em §13.14, resumo aqui):
+- Transferência **temporária** de um colaborador terceirizado: cria linha
+  em `employee_unit_movements` (`movement_type='temporary'`),
+  `employees.unit_id` não muda, `get_employee_current_unit` passa a
+  refletir a Unidade de destino só durante a janela `start_date`/`end_date`,
+  volta à Unidade base depois — sem qualquer interferência de
+  `employee_unit_links`.
+- Transferência **definitiva**: `update_employee_unit` continua sendo o
+  único caminho que altera `employees.unit_id`; a linha de auditoria em
+  `employee_unit_movements` (`movement_type='definitive'`) continua sendo
+  gravada; `employee_unit_links` permanece exatamente como estava antes da
+  transferência (não é criada, alterada nem removida como efeito
+  colateral).
+- Colaborador **CLT** (sem `outsourced_company_id`): nenhum comportamento
+  novo — `employee_unit_links` nunca é populada para ele, backfill não o
+  toca, `create_employee`/`update_employee` não mudam uma linha.
+- **Ambos os testes de transferência rodam antes e depois do PR B** (mesmo
+  resultado) — a prova de que a tabela nova não interfere.
+
+**Pergunta 2 (menor, não bloqueia início da implementação):** ordem de PRs
+proposta em §13.15 é A → B → (C e D podem ser paralelos, D depende só de
+B) → E. Confirma essa ordem, ou prefere C antes de B (corrigir a UX de
+busca antes de introduzir a tabela de vínculo)?
+
+Com a Pergunta 1 respondida (Pergunta 2 é só sobre sequenciamento, não
+bloqueia), a implementação começa por PR A.

@@ -2113,3 +2113,31 @@ achado a achado se chegarem, mas a partir daqui a implementação real do PR
 B com sua própria suíte de testes é o próximo passo mais produtivo para
 achar o que resta — não mais uma revisão adicional de um documento sem
 código.
+
+### 13.23 Revisão automatizada (Codex) — rodada 5
+
+Quinta rodada, dois achados, ambos extensões estreitas de princípios já
+estabelecidos — sem classe nova de problema:
+
+- **Backfill de movimentação temporária futura.** O ajuste do §13.22
+  (backfill cobre transferência temporária, não só definitiva) ainda
+  assume "a movimentação ativa hoje" — uma movimentação `temporary` já
+  **agendada** para o futuro (`start_date` posterior à data do backfill,
+  já permitido pela rota de movimentação existente) fica de fora, porque
+  `get_employee_current_unit` só considera janelas ativas na data da
+  consulta. Quando essa janela futura começar, o destino ainda não terá
+  vínculo. Ajuste: o backfill do PR B semeia vínculo (colaborador + empresa
+  empregadora) para **toda** movimentação temporária não expirada — a
+  ativa hoje e qualquer agendada para começar depois —, não só a atual.
+- **Purge de empresa terceirizada não olha vínculo de colaborador.**
+  A precondição de exclusão definitiva de `outsourced_companies` (§13.20,
+  "nenhum vínculo ativo em nenhuma Unidade") checa
+  `outsourced_company_unit_links`, mas desativar todos os vínculos da
+  *empresa* não desativa os vínculos dos *colaboradores* dela —
+  `employee_unit_links` é independente. Excluir a empresa nessas
+  condições deixaria colaboradores com vínculo local ativo apontando para
+  um fornecedor que não existe mais. Ajuste: o purge de
+  `outsourced_companies` (PR E) também rejeita quando existe
+  `employee_unit_links` ativo de qualquer colaborador cujo
+  `outsourced_company_id` seja o da empresa sendo excluída, não só os
+  vínculos diretos da empresa.

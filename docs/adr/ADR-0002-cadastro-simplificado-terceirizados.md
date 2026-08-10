@@ -1249,21 +1249,32 @@ if int(employee_current_unit_id) != int(delivery_unit_id):
 
 `employee_current_unit_id` vem de `get_employee_current_unit` — a mesma
 função de movimentação descrita em §13.11 (retorna a Unidade da
-movimentação temporária ativa hoje, senão `employees.unit_id`). Ou seja:
-**hoje, entrega só é aceita na única Unidade onde o colaborador
-"fisicamente está" segundo o sistema de transferência — um vínculo local
-em `employee_unit_links` não basta por si só.**
+movimentação temporária ativa hoje, senão `employees.unit_id`).
 
-Isso é uma decisão de design explícita, não uma consequência automática de
-D7/D8/D10, e está sinalizada para confirmação em §13.17: ampliar essa
-condição por OR (aceitar também quando existe `employee_unit_links` ativo
-para `delivery_unit_id`, além da Unidade atual de movimentação) é a leitura
-que faz D10 ("colaborador... pode ser utilizado no fluxo de entrega
-daquela Unidade") funcionar de fato — sem essa ampliação, o vínculo local
-só serviria para listagem/seleção, mas a entrega em si continuaria
-recusando qualquer Unidade que não seja a Unidade de movimentação. Se
-confirmada, é uma linha (`or is_employee_available_to_unit(connection,
-employee, delivery_unit_id)`) — não uma reescrita do fluxo.
+**Decisão final do usuário: este gate NÃO é ampliado.** A condição
+permanece exatamente `delivery_unit_id == employee_current_unit_id`,
+calculada exclusivamente por `get_employee_current_unit` — transferência
+temporária ativa quando existir, senão `employees.unit_id`. `employee_unit_links`
+**não** entra nessa conta, para não criar uma segunda fonte de verdade
+para "Unidade operacional do colaborador". PR D (§13.15) não toca
+`modules/deliveries/service.py` em nenhuma linha.
+
+Consequência prática, explícita por decisão do usuário: um colaborador
+terceirizado vinculado administrativamente à Unidade B
+(`employee_unit_links` ativo) cuja Unidade operacional atual ainda seja A
+**não pode receber EPI em B** até passar pelo fluxo já existente de
+transferência temporária ou definitiva (`POST /api/employee-unit-movements`,
+§13.11). O vínculo local resolve disponibilidade administrativa,
+reutilização de cadastro entre Unidades e arquivamento/desarquivamento
+local (D8/D10/D13-D17) — **não** resolve "onde a pessoa está fisicamente
+hoje para fins de entrega", que continua sendo exclusivamente o sistema de
+movimentação, intocado.
+
+Releitura de D10 à luz desta decisão: "colaborador... pode ser utilizado no
+fluxo de entrega daquela Unidade" passa a ser lido como "pode ser
+selecionado/listado naquela Unidade, sujeito à mesma condição de entrega
+que já existe" — não como uma autorização de entrega adicional. Nenhum
+código de `modules/deliveries/` muda nesta extensão.
 
 Como D7 mantém uma única linha `employees` por pessoa no tenant (nunca
 duplicada entre Unidades), o histórico de entregas de um colaborador
@@ -1448,20 +1459,14 @@ reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
   colaborador vinculado localmente a B cuja Unidade atual (base ou
   movimentação) seja A, mesmo depois do PR B. É trabalho real do PR D, não
   um detalhe.
-- **Gate de entrega de EPI é uma decisão de design explícita, não
-  resolvida por D8/D10 sozinhas** (§13.9): hoje
-  `modules/deliveries/service.py:114-122` exige
-  `delivery_unit_id == employee_current_unit_id` (a Unidade atual
-  calculada a partir de `employees.unit_id` + `employee_unit_movements`) —
-  um vínculo local ativo em `employee_unit_links` **não** basta, por si só,
-  para liberar entrega na Unidade vinculada se a pessoa não estiver
-  fisicamente "naquela Unidade atual" segundo o sistema de movimentação.
-  Recomendo ampliar esse gate por OR (permitir também quando existe
-  `employee_unit_links` ativo para `delivery_unit_id`), pela leitura mais
-  natural de D10 ("se pode ser utilizado no fluxo de entrega daquela
-  Unidade"), mas é uma mudança real de comportamento num fluxo que hoje é
-  estritamente de uma Unidade por vez — sinalizado para confirmação
-  explícita do usuário em §13.17, não decidido silenciosamente aqui.
+- ~~**Gate de entrega de EPI...**~~ **Resolvido pelo usuário (§13.9):** o
+  gate **não** é ampliado. `delivery_unit_id == employee_current_unit_id`
+  continua sendo a única condição, exclusivamente via
+  `get_employee_current_unit` (transferência temporária ativa, senão
+  `employees.unit_id`) — `employee_unit_links` nunca entra nessa conta, por
+  decisão explícita de não criar uma segunda fonte de verdade para Unidade
+  operacional. `modules/deliveries/service.py` não é tocado por nenhum PR
+  desta extensão.
 
 ### 13.14 Critérios de aceite
 
@@ -1541,12 +1546,13 @@ tabela nova.
   Exibe Razão Social/Nome Fantasia/CNPJ (quando cadastrado)/tipo/contrato
   na busca de `outsourced_companies`; exige escolha explícita quando há
   mais de um resultado. Sem mudança de schema. Independente do PR B.
-- **PR D — arquivar/desarquivar colaborador por Unidade + ampliação dos
-  gates por OR.** Depende do PR B. Frontend + backend para D13-D17;
-  amplia `ensure_actor_employee_scope` por OR (Unidade atual **ou**
-  `employee_unit_links` ativo, §13.13); inclui a decisão confirmada sobre
-  o gate de entrega (§13.9/§13.17) se aprovada; auditoria dos relatórios
-  afetados (§13.10).
+- **PR D — arquivar/desarquivar colaborador por Unidade + ampliação do
+  gate de escopo administrativo por OR.** Depende do PR B. Frontend +
+  backend para D13-D17; amplia `ensure_actor_employee_scope` por OR
+  (Unidade atual **ou** `employee_unit_links` ativo, §13.13) — só esse
+  gate administrativo, não o de entrega (decidido em §13.9: gate de
+  entrega não muda, `modules/deliveries/` fora do escopo de todo PR desta
+  extensão); auditoria dos relatórios afetados (§13.10).
 - **PR E — governança de exclusão definitiva.** Nova precondição em
   `ensure_purge_allowed` (nenhum vínculo ativo em nenhuma Unidade, D21) +
   aviso antecipado de elegibilidade (D20) + redação atualizada de D19
@@ -1578,10 +1584,13 @@ tabela nova.
   de D4/D5, descartada) — fica para um ADR próprio se e quando houver
   necessidade funcional comprovada (§13.8).
 
-### 13.17 Confirmações solicitadas antes da implementação
+### 13.17 Confirmações solicitadas antes da implementação — todas fechadas
 
 Resposta direta aos itens 3-7 pedidos antes do primeiro PR de código
-(itens 1 e 2 são este próprio documento e a divisão de PRs do §13.15):
+(itens 1 e 2 são este próprio documento e a divisão de PRs do §13.15). As
+duas perguntas em aberto da rodada anterior (gate de entrega e ordem de
+PRs) foram respondidas pelo usuário — **nenhuma pendência restante**;
+implementação liberada a partir do PR A.
 
 **3. Estruturas reaproveitadas** (detalhe em §13.4): forma de
 `outsourced_company_unit_links` (molde de `employee_unit_links`);
@@ -1600,19 +1609,18 @@ uma linha de vínculo, nunca uma cópia de identidade, nome, CPF ou qualquer
 outro dado pessoal. Duas Unidades vinculadas à mesma pessoa apontam para a
 mesma linha `employees.id`.
 
-**5. Confirmo que não haverá novo fluxo de entrega de EPI.** O mecanismo
-de registro, estoque e auditoria de entrega (`modules/deliveries/service.py`)
-não ganha tabela, tela ou endpoint novo. O único ponto de possível toque é
-a condição de autorização já existente em
-`modules/deliveries/service.py:114-117` (§13.9) — e mesmo essa mudança
-(ampliar por OR para aceitar vínculo local, não só Unidade atual de
-movimentação) é uma pergunta em aberto, não uma decisão já tomada:
-
-> **Pergunta 1**: confirma ampliar o gate de entrega por OR (Unidade atual
-> de movimentação **ou** `employee_unit_links` ativo), ou prefere que
-> entrega continue exigindo estritamente a Unidade atual de movimentação
-> (e o vínculo local sirva só para listagem/seleção/arquivamento, não para
-> autorizar entrega)?
+**5. Confirmado: não haverá novo fluxo de entrega de EPI.** O mecanismo de
+registro, estoque e auditoria de entrega (`modules/deliveries/service.py`)
+não ganha tabela, tela ou endpoint novo — e, por decisão final do usuário
+(§13.9), **nem a condição de autorização é tocada**: `delivery_unit_id ==
+employee_current_unit_id` continua sendo calculada exclusivamente por
+`get_employee_current_unit` (transferência temporária ativa, senão
+`employees.unit_id`). `employee_unit_links` não entra nessa conta — não
+haveria duas fontes de verdade para Unidade operacional. Um colaborador
+vinculado administrativamente à Unidade B cuja Unidade operacional atual
+ainda seja A não recebe EPI em B sem passar pela transferência já
+existente. `modules/deliveries/` não é tocado por nenhum PR desta
+extensão.
 
 **6. Representação do vínculo local colaborador × Unidade.** Tabela nova
 `employee_unit_links` (`id, company_id, employee_id, unit_id, local_status
@@ -1644,10 +1652,17 @@ critério de aceite em §13.14, resumo aqui):
 - **Ambos os testes de transferência rodam antes e depois do PR B** (mesmo
   resultado) — a prova de que a tabela nova não interfere.
 
-**Pergunta 2 (menor, não bloqueia início da implementação):** ordem de PRs
-proposta em §13.15 é A → B → (C e D podem ser paralelos, D depende só de
-B) → E. Confirma essa ordem, ou prefere C antes de B (corrigir a UX de
-busca antes de introduzir a tabela de vínculo)?
+**Ordem de PRs — aprovada pelo usuário:** A → B → (C e D em paralelo,
+condicionado a permanecerem realmente independentes depois do PR B) → E.
+Implementação começa por PR A.
 
-Com a Pergunta 1 respondida (Pergunta 2 é só sobre sequenciamento, não
-bloqueia), a implementação começa por PR A.
+### 13.18 Governança de CI — issue separada, fora deste escopo
+
+`API Contract & Multi-Tenant Scope`, `Lint (ruff)` e `PostgreSQL Schema &
+Multi-Tenant` são required checks com `paths:` filter — nunca reportam em
+PR que não toca `epi_backend/**`/`modules/**`/`tests/**`/etc., deixando o
+PR bloqueado indefinidamente mesmo sem nenhum problema real (constatado
+nos próprios PRs #181/#846 deste ADR). Correção dessa governança de CI é
+tratada em issue própria, deliberadamente fora do escopo desta extensão —
+não misturar. Ver issue de rastreamento aberta para esse problema
+especificamente.

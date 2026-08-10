@@ -15,6 +15,20 @@ import sqlite3
 import pytest
 
 from core.schema import ensure_company_audit_columns, ensure_legal_entities
+
+
+@pytest.fixture(autouse=True)
+def _sqlite_detection(monkeypatch):
+    # create_employee/update_employee sempre passam por core.repository
+    # (placeholders "%s", via _PgStyleConn) -- epi_backend.db._is_sqlite_connection
+    # detecta o dialeto pelo nome da classe da conexão, e _PgStyleConn não
+    # "parece" sqlite. Sem isto, table_exists/table_columns cairiam no branch
+    # Postgres contra um banco SQLite de teste e legal_entities_ready()
+    # retornaria False silenciosamente. Produção nunca usa este adaptador —
+    # só existe em testes (mesmo padrão de test_employee_outsourced_simplified.py).
+    import epi_backend.db as db_module
+    monkeypatch.setattr(db_module, '_is_sqlite_connection', lambda _conn: True)
+
 from modules.employees.service import (
     fetch_employee_legal_entity_movements,
     transfer_employee_legal_entity,
@@ -217,3 +231,71 @@ def test_transfer_permission_is_restricted_to_structural_admins():
         assert perm in PERMISSIONS[role], role
     for role in ('admin', 'user', 'buyer', 'approver'):
         assert perm not in PERMISSIONS[role], role
+
+
+# ── Multi-CNPJ do tenant não se aplica a terceirizado/prestador, mesmo via
+# create_employee/update_employee (ADR-0002 §13.7/§13.21) ──────────────────
+#
+# O fix original (PR A) só tocava create_employee_outsourced_simplified.
+# Revisão automatizada encontrou que create_employee/update_employee (o
+# endpoint GERAL de colaborador) também aceitam tipo_vinculo != 'CLT' e
+# também chamavam resolve_employee_legal_entity_id incondicionalmente --
+# mesma reprodução do alerta de produção, só que por um caminho diferente,
+# e update_employee podia inclusive REPOPULAR legal_entity_id numa linha
+# que a migração de limpeza tinha acabado de zerar.
+
+def _base_payload(**overrides):
+    payload = {
+        'company_id': 1, 'unit_id': 1, 'employee_id_code': 'E-900', 'cpf': '98765432100',
+        'name': 'Carlos Terceirizado', 'sector': 'Operação', 'role_name': 'Auxiliar',
+        'admission_date': '2026-01-01', 'schedule_type': 'diurno',
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_create_employee_skips_legal_entity_resolution_for_non_clt():
+    from modules.employees.service import create_employee
+    conn = _PgStyleConn(_conn())
+    create_legal_entity(conn, {'cnpj': CNPJ_B, 'legal_name': 'Filial', 'entity_type': 'filial'}, 1)
+    # 2 CNPJs ativos -- exatamente o cenário que disparava o alerta em
+    # produção para o fluxo simplificado; aqui é o endpoint geral.
+    employee_id = create_employee(
+        conn, _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'), actor=ACTOR,
+    )
+    row = conn.execute('SELECT legal_entity_id FROM employees WHERE id = ?', (employee_id,)).fetchone()
+    assert not row['legal_entity_id']
+
+
+def test_create_employee_still_requires_legal_entity_for_clt_with_multiple_cnpjs():
+    """Não regressão: colaborador CLT continua exigindo escolha explícita de
+    CNPJ quando o tenant tem mais de um ativo -- só o terceirizado é isento.
+
+    A fixture já cria a matriz (CNPJ_A, a partir de companies.cnpj) ao
+    montar o employee id=5 -- basta criar mais uma (CNPJ_B) para ter 2 ativos.
+    """
+    from modules.employees.service import create_employee
+    conn = _PgStyleConn(_conn())
+    create_legal_entity(conn, {'cnpj': CNPJ_B, 'legal_name': 'Filial', 'entity_type': 'filial'}, 1)
+    with pytest.raises(ValueError, match='CNPJ'):
+        create_employee(conn, _base_payload(tipo_vinculo='CLT'), actor=ACTOR)
+
+
+def test_update_employee_does_not_repopulate_legal_entity_for_non_clt():
+    """Colaborador terceirizado sem legal_entity_id (já limpo pela migração,
+    ou nunca teve) não pode ter o campo repopulado por uma edição comum via
+    update_employee -- mesmo com múltiplos CNPJs ativos no tenant."""
+    from modules.employees.service import create_employee, update_employee
+    conn = _PgStyleConn(_conn())
+    employee_id = create_employee(
+        conn, _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'), actor=ACTOR,
+    )
+    create_legal_entity(conn, {'cnpj': CNPJ_B, 'legal_name': 'Filial', 'entity_type': 'filial'}, 1)
+    update_employee(
+        conn, employee_id,
+        _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X', name='Carlos Editado'),
+        actor=ACTOR,
+    )
+    row = conn.execute('SELECT name, legal_entity_id FROM employees WHERE id = ?', (employee_id,)).fetchone()
+    assert row['name'] == 'Carlos Editado'
+    assert not row['legal_entity_id']

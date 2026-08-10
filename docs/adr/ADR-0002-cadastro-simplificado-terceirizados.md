@@ -922,9 +922,14 @@ testadas no harness — mesmo padrão do restante do módulo.
 
 ## 13. Extensão — Reutilização de Colaborador entre Unidades, CNPJ opcional/obrigatório por estágio e arquivamento local (pessoa)
 
-**Status desta seção: proposta em avaliação — nenhum código deste escopo foi
-escrito. Implementação aguarda aprovação explícita da arquitetura descrita
-aqui.**
+**Status desta seção (atualizado — rodada 8): PR A implementado e
+mergeado** (`create_employee`/`update_employee`/
+`create_employee_outsourced_simplified` já não exigem CNPJ do tenant para
+colaborador terceirizado — epi-controle-app#188/epi-controle#852,
+revisado em 3 rodadas de Codex antes do merge). **PRs B-E continuam
+propostos, nenhum código escrito** — implementação de cada um aguarda
+autorização explícita do usuário, PR a PR, seguindo o desenho revisado
+nas §13.19-§13.26.
 
 ### 13.1 Contexto — dois problemas reais, um padrão já testado
 
@@ -2226,3 +2231,146 @@ PR B-E (ainda não iniciado) continuam documentados aqui, e a decisão de
 quando parar de refinar o desenho versus começar a escrever o PR B
 propriamente é do usuário, não minha — não vou presumir esse corte de
 novo.
+
+### 13.25 Revisão automatizada (Codex) — rodada 7
+
+Sétima rodada, quatro achados. Diferente de todas as anteriores, um deles
+não se confirmou — verificação direta mostrou que o gap apontado já está
+fechado por código existente, não documentado como tal.
+
+**Achado confirmado — endpoint agregado da ficha não recebe a correção do
+§13.24.** `handle_get_ficha_html` (`modules/ficha/routes.py:319-343`) chama
+o mesmo `ensure_actor_employee_scope` que o PR D amplia por OR, e então
+`build_ficha_epi_html` (`modules/ficha/service.py:470-512`) — verificado
+lendo o corpo da função — busca `deliveries`/`epi_devolutions` filtrando só
+por `employee_id` (e `company_id` nas devoluções), sem nenhuma cláusula de
+Unidade. Diferente do achado do §13.24 (que tinha `fp.unit_id` disponível e
+só não usado), aqui não há sequer um período/registro para comparar: é o
+histórico completo, todas as Unidades, desde a admissão, num documento só.
+A correção do §13.24 conserta só `build_ficha_epi_html_by_period` — este
+endpoint (agregado) fica descoberto. Confirma-se ainda que `deliveries` tem
+coluna `unit_id` própria (`core/schema.py:862`, não usada nesta consulta),
+o que abriria a opção de filtrar por Unidade — mas fazer isso mudaria o
+significado do documento (deixaria de ser "a ficha completa" para quem
+legitimamente precisa vê-la assim, ex.: Unidade atual ou perfil central).
+Ajuste, mesmo princípio já usado para arquivamento/restauração/portal: o
+endpoint agregado (`fichas:view` → `build_ficha_epi_html`) entra na lista de
+rotas que **não** recebem a ampliação por OR — só Unidade atual ou perfil
+central o acessam. A visão por período (`build_ficha_epi_html_by_period`,
+já corrigida no §13.24 para usar `fp.unit_id`) continua sendo a única
+exposta ao gate ampliado, porque é a única com fronteira de Unidade real
+para aplicar.
+
+**Achado confirmado — disponibilidade do colaborador não deve reagir
+retroativamente à desativação do vínculo do fornecedor.** O §13.20 já exige
+que `is_employee_available_to_unit` repita a checagem de
+`outsourced_company_unit_links` ativo da empresa empregadora (D9/D16). O
+achado desta rodada mostra que, se essa checagem for reavaliada em toda
+consulta operacional (não só na ativação do vínculo do colaborador), ela
+quebra um comportamento já em produção: `is_outsourced_company_available_to_unit`
+(`modules/outsourced_companies/service.py:439-449`, §12, já lida e
+confirmada) documenta explicitamente que desativar o vínculo local do
+*fornecedor* remove-o só do seletor de **novos** colaboradores — nunca
+afeta relação já ativa. Repetir a checagem de fornecedor de forma contínua
+em `is_employee_available_to_unit` desconectaria silenciosamente toda a
+equipe já ativa de um fornecedor no momento em que a Unidade desativasse
+esse vínculo — mudança de comportamento maior do que a ação sugere ("tirar
+do seletor de novo cadastro" vira, sem aviso, "desligar quem já trabalha
+aqui"). Ajuste: a checagem de vínculo ativo do fornecedor
+(`outsourced_company_unit_links`) na disponibilidade do colaborador
+acontece só na **ativação/criação** do `employee_unit_links` (D9/D16
+continuam satisfeitas — não se cria vínculo novo sob fornecedor inativo),
+nunca como predicado revalidado a cada leitura — mesma regra que já vale
+para o fornecedor, agora consistente também para o colaborador.
+
+**Achado confirmado — Unidade atual ainda pode arquivar globalmente um
+colaborador ativo em outra Unidade.** O §13.21 já tinha impedido a
+ampliação por OR de vazar para `_load_employee_for_lifecycle`
+(arquivamento/restauração globais) — mas isso só bloqueia Unidades
+vinculadas-porém-não-atuais. Verificado diretamente
+(`modules/employees/routes.py:231-257`): mesmo sem a ampliação, a Unidade
+**atual** sempre teve acesso a essa rota, e ela aciona
+`archival.archive_record` na linha inteira de `employees` — compartilhada.
+Antes desta extensão isso nunca era um problema porque só existia uma
+Unidade por colaborador; agora, com colaborador compartilhado, a Unidade
+atual arquivar globalmente apaga a disponibilidade também para qualquer
+outra Unidade com `employee_unit_links` ativo — o mesmo efeito
+inter-Unidades que D13-D15 foram escritas para proibir, só que a partir da
+Unidade atual em vez de uma vinculada. Ajuste: quando um colaborador tem
+mais de um `employee_unit_links` ativo (compartilhado, de fato, não só em
+tese), as rotas globais de arquivamento/restauração deixam de aceitar
+perfis com escopo de Unidade (mesmo a atual) — ficam restritas a
+Administrador Geral/de Registro, mesmo padrão já usado para a trava
+corporativa de `outsourced_companies` promovida (§12). Com um único vínculo
+ativo (o caso comum, colaborador não compartilhado), o comportamento atual
+continua idêntico — a restrição adicional só entra em jogo quando
+compartilhamento é real.
+
+**Achado não confirmado — D6 sem CNPJ já está fechado, não aberto.** A
+§13.19 (rodada 1) tinha registrado D6-sem-CNPJ como gap "fora do escopo de
+código deste ADR, precisa de verificação independente". Fiz agora essa
+verificação: `handle_post_outsourced_companies`
+(`modules/outsourced_companies/routes.py:186-198`) já chama
+`search_outsourced_companies_by_name` antes de criar um registro sem CNPJ e
+devolve `409 possible_duplicate` com as correspondências encontradas, a
+menos que o payload traga `confirm_duplicate: true` — exatamente o
+mecanismo de busca+confirmação que este achado pede. Já está em produção
+desde o §12, não é uma lacuna do PR A-E. Correção: a nota de "gap aberto"
+da §13.19 estava certa em pedir verificação independente, mas a conclusão
+mudou — D6 está fechado também para o caso sem CNPJ; não é um item
+pendente para o PR B-E.
+
+**Nota.** Dos quatro achados desta rodada, três (documento agregado da
+ficha, disponibilidade não deve reagir à desativação do fornecedor,
+arquivamento global de colaborador compartilhado) são do desenho do PR D,
+ainda não implementado — incorporados aqui, não em código. O quarto (D6)
+foi a primeira vez nesta revisão que verificação direta descartou um
+achado em vez de confirmá-lo — registrado para manter o padrão de nunca
+aceitar afirmação sem checar contra o código real, nas duas direções.
+
+### 13.26 Revisão automatizada (Codex) — rodada 8
+
+Oitava rodada, disparada pelo merge-commit que atualizou os PRs #181/#846
+com a `main` (PR A + fix de CI). Dois achados.
+
+**Achado de documentação, corrigido.** O status desta seção (topo do §13)
+ainda dizia "nenhum código deste escopo foi escrito", contradizendo o
+próprio §13.15/§13.17 (PR A implementado) e o estado real do repositório
+(PR A mergeado). Corrigido acima: PR A distinguido como implementado,
+PRs B-E seguem propostos.
+
+**Achado confirmado, mesma classe do token único de portal já registrada
+(P1) — segundo chamador independente.** `handle_post_ficha_finalize`
+(`modules/ficha/routes.py:190-238`, verificado linha a linha) já tem sua
+própria checagem de Unidade, correta e mais específica que a genérica:
+`if int(ficha['unit_id']) != int(scope_unit_id): raise PermissionError(...)`
+— usa `ficha['unit_id']` (autoritativo, gravado no período) para decidir
+se o ator pode finalizar *aquele período*. Logo depois, a rota chama
+**também** `ensure_actor_employee_scope(connection, actor, employee)` — a
+mesma função que o PR D amplia por OR — e, ao final, chama
+`upsert_employee_portal_link`, que sobrescreve **o único token de portal
+do colaborador** (`modules/portal/service.py:462-472` — mesma tabela,
+mesma limitação de "um token por pessoa" já identificada para as rotas
+diretas de portal em §13.21/§13.22, aqui alcançada por um caminho
+diferente). Dois problemas distintos, não um só:
+
+1. **Checagem duplicada e potencialmente conflitante.** Se a Unidade B
+   tem o período **dela própria** para finalizar (`ficha['unit_id'] ==
+   scope_unit_id`, checagem já correta) mas o colaborador já foi
+   transferido e sua Unidade atual é A, `ensure_actor_employee_scope` sem
+   ampliação rejeitaria B mesmo a checagem específica já tendo provado que
+   B tem o direito histórico correto sobre *aquele período*. Ajuste: esta
+   rota passa a confiar na checagem já feita contra `ficha['unit_id']`
+   como autorização suficiente — a chamada a `ensure_actor_employee_scope`
+   aqui é redundante (quando concorda) ou incorreta (quando diverge), não
+   deve ser uma segunda porta com critério próprio.
+2. **Efeito colateral entre Unidades no token único.** Independente de
+   como a checagem acima for resolvida, finalizar um período **legítimo**
+   de B sobrescreve o token de portal que A possa ter emitido/entregue ao
+   colaborador — invalidando o acesso de A sem relação nenhuma com a ação
+   de B. Mesma limitação estrutural já registrada, agora com uma segunda
+   rota de acesso confirmada. Ajuste do PR D: `employee_portal_links`
+   passa a ser por (colaborador, Unidade) em vez de um único registro por
+   colaborador, ou a emissão/rotação do token deixa de ser efeito
+   colateral da finalização — vira ação própria, explícita, fora do fluxo
+   de finalizar período.

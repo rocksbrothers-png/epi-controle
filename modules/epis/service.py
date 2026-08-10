@@ -1,10 +1,69 @@
 import json
+import re
 from epi_backend.db import row_to_dict
 from modules.units.service import get_unit_by_id, get_unit_active_jv_name
 from core.auth import ensure_resource_company
 
 MSG_JOINVENTURE_INVALID = 'JoinVenture inválida.'
 EPI_ALL_UNITS_VALUE = 'ALL'
+
+_EPI_DATE_FIELD_LABELS = (
+    ('ca_expiry', 'Validade do CA'),
+    ('epi_validity_date', 'Validade do EPI'),
+)
+
+
+def normalize_epi_domain_fields(payload: dict) -> dict:
+    """Normalização de domínio do EPI, usada pela importação em massa
+    (``EntityDescriptor.normalizer`` de `epis`, issue #169).
+
+    Diferente de `colaboradores`/`fornecedores`, isto NÃO é extração de uma
+    regra já aplicada no cadastro manual: hoje ``create_epi``/``update_epi``
+    gravam `ca`, `ca_expiry` e `epi_validity_date` exatamente como chegam no
+    payload, sem normalização alguma. É comportamento NOVO, restrito à
+    importação — só ela recebe texto de origem arbitrária (planilha legada);
+    o formulário do sistema não tem esse problema na prática.
+
+    Fecha um buraco real: ``modules.data_migration.preview.validate_date``
+    aceita "15/03/2024" como válido no preview, mas sem canonizar a
+    importação grava esse texto LITERAL — e
+    ``modules.epis.validity.parse_iso_date``, que só entende ISO, devolve
+    ``None`` em silêncio para qualquer outro formato, quebrando o cálculo de
+    vencimento do CA/EPI e o PEPS sem erro visível em lugar nenhum.
+    Canonizar aqui troca essa corrupção silenciosa por uma linha recusada no
+    preview (``domain_rule``) — estritamente melhor, nunca mais fraco.
+
+    Devolve um novo dicionário — não muda o original. Levanta ``ValueError``
+    quando uma data presente não bate com nenhum formato aceito, que é o que
+    o preview da importação transforma em diagnóstico daquela linha.
+    """
+    # Import tardio: reaproveita o MESMO parsing que o preview já usa para
+    # validar o formato, em vez de duplicar um segundo parser de data.
+    from modules.data_migration.preview import parse_date_flexible
+
+    normalized = dict(payload)
+
+    if 'ca' in normalized:
+        # Mesmo estilo de normalize_cpf/only_digits: só dígitos, vazio
+        # permanece vazio (CA nem sempre é obrigatório em todo contexto).
+        normalized['ca'] = re.sub(r'\D', '', str(normalized.get('ca') or ''))
+
+    for field, label in _EPI_DATE_FIELD_LABELS:
+        if field not in normalized:
+            continue
+        raw_value = str(normalized.get(field) or '').strip()
+        if not raw_value:
+            normalized[field] = ''
+            continue
+        parsed = parse_date_flexible(raw_value)
+        if parsed is None:
+            raise ValueError(
+                f'{label} "{raw_value}" não é uma data reconhecida '
+                '(use AAAA-MM-DD ou DD/MM/AAAA).'
+            )
+        normalized[field] = parsed.strftime('%Y-%m-%d')
+
+    return normalized
 
 
 def create_epi(connection, payload, *, authorize_action, resolve_actor_user_id, require_structural_admin, next_company_qr_sequence, build_master_epi_qr, parse_epi_joinventures, normalize_active_joinventure_name, resolve_epi_scope_unit, resolve_epi_scope_metadata, validate_epi_uniqueness, parse_int_flexible, upsert_unit_stock):

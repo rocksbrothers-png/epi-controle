@@ -153,6 +153,11 @@ _UNIDADES = EntityDescriptor(
     natural_keys=('name',),
     enabled=True,
     phase='1',
+    # Mesma regra do cadastro manual: alias de `unit_type` (`navio`/
+    # `embarcação` → `embarcacao`, etc.) via `normalize_unit_type`. `city`
+    # não tem normalização em lugar nenhum do sistema hoje — não é
+    # inventada aqui (issue #169).
+    normalizer='modules.units.service:normalize_unit_domain_fields',
     fields=(
         FieldSpec('name', 'Nome da unidade', required=True,
                   aliases=('unidade', 'nome', 'nome da unidade', 'department', 'departamento',
@@ -181,6 +186,14 @@ _EPIS = EntityDescriptor(
     # (parse_int_flexible(..., 0)). A importação segue o MESMO comportamento —
     # não é um valor inventado, é o que o cadastro do sistema já faz.
     column_defaults=(('manufacture_date', ''), ('validity_days', 0)),
+    # CA só com dígitos e `ca_expiry`/`epi_validity_date` canonizadas para
+    # ISO (`YYYY-MM-DD`) antes de gravar — comportamento NOVO, só da
+    # importação (nenhum cadastro manual normaliza isto hoje): sem isto uma
+    # data "dd/mm/yyyy" importada passava no preview como válida mas era
+    # gravada como texto literal, e `epis.validity.parse_iso_date` a
+    # ignorava em silêncio, quebrando o cálculo de vencimento/PEPS (issue
+    # #169).
+    normalizer='modules.epis.service:normalize_epi_domain_fields',
     fields=(
         FieldSpec('name', 'Descrição', required=True,
                   aliases=('epi', 'ppe', 'descricao', 'descrição', 'nome', 'item', 'produto',

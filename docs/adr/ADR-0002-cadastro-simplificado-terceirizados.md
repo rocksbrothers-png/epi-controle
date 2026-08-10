@@ -1715,9 +1715,13 @@ critério de aceite em §13.14, resumo aqui):
 - **Ambos os testes de transferência rodam antes e depois do PR B** (mesmo
   resultado) — a prova de que a tabela nova não interfere.
 
-**Ordem de PRs — aprovada pelo usuário:** A → B → (C e D em paralelo,
-condicionado a permanecerem realmente independentes depois do PR B) → E.
-Implementação começa por PR A.
+**Ordem de PRs — aprovada pelo usuário, condição resolvida em §13.22:**
+A → B → (C e D, ambos dependentes de B, mas paralelos *entre si*) → E. A
+condição que a aprovação original deixou em aberto ("C e D em paralelo,
+condicionado a permanecerem realmente independentes depois do PR B") se
+resolveu como **não** para C (precisa de `employee_unit_links` do PR B
+para persistir o vínculo do fluxo "encontrada, vincule") — corrigido no
+§13.22. PR A já implementado; PR B é o próximo passo de código.
 
 ### 13.18 Governança de CI — issue separada, fora deste escopo
 
@@ -2040,3 +2044,72 @@ impede *novas* gravações indevidas mas não recupera o que já foi limpo.
   o gate ampliado. A ampliação por OR serve para visualizar/editar dados
   básicos e o vínculo local em si — nunca para acionar
   `core.archival`/`request_purge`/`confirm_purge` na linha compartilhada.
+
+### 13.22 Revisão automatizada (Codex) — rodada 4
+
+Quarta rodada, disparada pelo push do §13.21. Nenhum achado desta rodada
+aponta para o PR A (já corrigido e estável nas duas rodadas anteriores) —
+todos são sobre o desenho do PR B/C/D, ainda não implementado. Cinco
+achados, todos aceitos:
+
+- **A correção de disponibilidade por Unidade (§13.21) cobriu só
+  transferência definitiva — temporária tem a mesma regressão.** Quando a
+  janela de uma movimentação `temporary` começa, `get_employee_current_unit`
+  passa a devolver a Unidade de destino — se ela não tiver vínculo ativo, o
+  colaborador some do seletor lá mesmo estando operacionalmente presente,
+  e a Unidade de origem pode recusar a entrega por já não ser mais a
+  Unidade atual. Ajuste: a mesma exigência de vínculo ativo (colaborador +
+  empresa empregadora) na Unidade de destino se aplica a transferência
+  temporária, não só definitiva.
+- **Achado crítico: o helper de disponibilidade, aplicado sem condição a
+  `fetch_employees`, apagaria todo o quadro CLT dos seletores.** Todo
+  colaborador CLT tem `unit_id` preenchido (nunca é "sem Unidade de
+  origem") e, por D7/§13.11, nunca recebe `employee_unit_links` — as duas
+  coisas juntas significam que um predicado "disponível só com vínculo
+  ativo", aplicado genericamente, rejeitaria **100% do quadro próprio**,
+  não só quem deveria. Isto já estava implícito no §13.4 ("não se aplica a
+  pessoa, já que toda `employees` tem `unit_id`") mas a consequência nunca
+  foi declarada explicitamente. Ajuste, agora explícito: o predicado de
+  disponibilidade só se aplica a linhas com `outsourced_company_id`
+  preenchido — colaborador CLT continua exatamente na lógica atual de
+  Unidade atual computada, sem depender de `employee_unit_links` em nenhum
+  momento. PR D precisa condicionar a chamada do helper a
+  `outsourced_company_id IS NOT NULL`, não aplicá-lo à lista inteira.
+- **Mesma classe de vazamento do gate por OR (terceira e quarta
+  ocorrência) — rotas de portal do colaborador.** `modules/portal/routes.py:297-395`
+  (gerar/contatar/revogar vínculo de portal) também chama
+  `ensure_actor_employee_scope` e opera sobre um token único por
+  colaborador (não por Unidade). Sem a mesma restrição já aplicada a
+  arquivamento/restauração (§13.21), a Unidade B (só vinculada) poderia
+  revogar/regenerar o token que a Unidade A está usando. Ajuste: mesma
+  regra geral, agora reafirmada como princípio — **a ampliação por OR de
+  `ensure_actor_employee_scope` vale só para leitura/edição de dados
+  básicos e o vínculo local em si; qualquer rota que mute um recurso único
+  e compartilhado por colaborador (ciclo de vida global, token de portal, e
+  qualquer outra que a auditoria do PR D encontrar) mantém a exigência da
+  Unidade atual, sem a ampliação.**
+- **Dados de contrato na desambiguação (D4/D5) podem vazar entre
+  Unidades.** Mostrar `contract_ref`/`service_order_ref` na lista de
+  empresas "disponíveis" (ainda não vinculadas) exporia dado operacional de
+  contrato de uma Unidade para outra — o oposto do que
+  `annotate_outsourced_company_visibility` já mascara deliberadamente para
+  empresa não vinculada (§12.3). Ajuste: PR C só mostra contrato quando já
+  existe vínculo local ativo do ator com a empresa candidata; caso
+  contrário omite esse campo específico na desambiguação (Razão Social/
+  Nome Fantasia/CNPJ/tipo continuam aparecendo normalmente).
+- **PR C depende do PR B, não é independente como a ordem sugeria.** O
+  fluxo "CPF já cadastrado → vincular" (§13.4/§13.19) precisa gravar a
+  ativação em `employee_unit_links` — schema e rota que só existem depois
+  do PR B. Ajuste: ordem revisada para **A → B → (C depende de B; D
+  depende de B) → E** — C e D deixam de ser posicionados como paralelos
+  livres a B; ambos dependem dele, podem ser paralelos *entre si*.
+
+**Nota de escopo:** as quatro rodadas de revisão até aqui já cobriram o
+desenho do PR B-E com bastante profundidade — os achados desta rodada são
+refinamentos incrementais de princípios já estabelecidos (disponibilidade
+por Unidade, contenção do OR a rotas seguras), não descobertas de uma
+classe nova de problema. Novas rodadas continuarão sendo endereçadas
+achado a achado se chegarem, mas a partir daqui a implementação real do PR
+B com sua própria suíte de testes é o próximo passo mais produtivo para
+achar o que resta — não mais uma revisão adicional de um documento sem
+código.

@@ -1955,3 +1955,88 @@ entrega — registrado para confirmação:
 > mas sem dentes na entrega — e o bloqueio real de entrega para gente
 > arquivada localmente fica para um PR futuro dedicado a
 > `modules/deliveries/`?
+
+### 13.21 Revisão automatizada (Codex) — rodada 3
+
+Terceira rodada, disparada pelo push do §13.20. Dois achados apontavam para
+o **PR A já implementado e aberto** (não só desenho futuro) — verificados
+diretamente no código e **corrigidos de fato**, não só documentados aqui.
+
+**Achado que expunha o PR A incompleto (P1) — corrigido.**
+`create_employee`/`update_employee` (endpoint **geral** de colaborador,
+`/api/employees`, não o Cadastro Simplificado) sempre aceitaram
+`tipo_vinculo != 'CLT'` com `outsourced_company_id` preenchido — nada
+nessas duas funções rejeitava a combinação — e ambas chamavam
+`resolve_employee_legal_entity_id` **incondicionalmente**, exatamente como
+`create_employee_outsourced_simplified` chamava antes do §13.7. Ou seja: o
+mesmo alerta de produção podia ser reproduzido por um caminho diferente que
+o PR A original nunca tocou. Pior: `update_employee` fazia
+`current.get('legal_entity_id') or resolve_employee_legal_entity_id(...)`
+— uma linha terceirizada já limpa pela migração (`legal_entity_id = NULL`)
+tinha esse valor **repopulado** só por sofrer uma edição comum via este
+endpoint. Corrigido: as duas funções só resolvem/gravam `legal_entity_id`
+quando `tipo_vinculo == 'CLT'` — mesmo discriminador que `empresa_origem`
+já usa nessas mesmas funções, nenhum conceito novo. Testado (4 testes
+novos, incluindo não regressão para CLT com múltiplos CNPJs ativos) e já
+enviado como novo commit no PR A.
+
+**Achado sobre a migração de limpeza (P2) — corrigido.**
+`outsourced_company_id IS NOT NULL` sozinho não é um discriminador seguro
+para a migração: como o achado acima confirma, `create_employee` sempre
+aceitou gravar `outsourced_company_id` **independente** de `tipo_vinculo`
+— uma linha genuinamente CLT pode ter `outsourced_company_id` preenchido
+(motivo legítimo ou não, não é desta ADR decidir) e continuar precisando do
+seu `legal_entity_id`. Corrigido: a migração passa a exigir também
+`tipo_vinculo <> 'CLT'` — só a combinação real do bug (terceirizado com
+CNPJ do tenant indevidamente gravado) é limpa; qualquer linha CLT mantém
+seu vínculo jurídico intacto, testado explicitamente.
+
+**Achado de documentação (P2) — corrigido.** A seção original do PR A
+descrevia o rollback como "reverter o commit, sem migração de dado
+envolvida" — impreciso: a migração de limpeza (`UPDATE ... SET
+legal_entity_id = NULL`) **não é reversível por rollback de código** — os
+valores originais são perdidos, não há backup automático. Corrigido: PR A
+documenta a limpeza como irreversível sem backup prévio; reverter o código
+impede *novas* gravações indevidas mas não recupera o que já foi limpo.
+
+**Achados de desenho (PR B/D, ainda não implementados) — incorporados:**
+
+- **Transferência definitiva quebra disponibilidade depois do rollout do
+  PR D.** Quando um colaborador vinculado só à Unidade A é definitivamente
+  transferido para B (fluxo de movimentação existente, intocado por
+  desenho), `employee_unit_links` continua apontando só para A —
+  exatamente como projetado (§13.11: vínculo local não sincroniza com
+  transferência). Mas depois que o PR D fizer os seletores dependerem de
+  vínculo ativo, isso vira uma regressão real: a transferência "sucede" do
+  ponto de vista do movimento, só que B não consegue selecionar o
+  colaborador e A pode continuar listando-o — diferente do comportamento
+  atual, guiado por `current_unit_id`. Ajuste: PR D precisa exigir/criar um
+  vínculo ativo para a Unidade de destino como parte do fluxo de
+  transferência definitiva (não como sincronização automática contínua,
+  só neste ponto específico — na conclusão da transferência), ou definir
+  explicitamente esse comportamento como aceito, não como "não regressão".
+- **Backfill do PR B pode orfanar colaborador já transferido antes do
+  rollout.** Combinado com a exigência do §13.20 (vínculo do colaborador
+  requer vínculo ativo da empresa empregadora na mesma Unidade): se o
+  colaborador foi transferido de A para B **antes** do PR B rodar, mas o
+  vínculo da empresa terceirizada (§12.8) só existe para A, o backfill cria
+  o vínculo do colaborador em B e ele é imediatamente rejeitado por falta
+  de vínculo de empresa ativo ali. Ajuste: o backfill do PR B precisa
+  também backfillar o vínculo de empresa correspondente para cada Unidade
+  onde um colaborador seedado aterrissa, não só replicar o que o §12.8 já
+  fez.
+- **Ampliação do gate por OR vazaria para as rotas de ciclo de vida
+  globais.** `_load_employee_for_lifecycle` (usada por
+  `handle_post_employee_archive`/`restore`) chama
+  `ensure_actor_employee_scope` — a mesma função que o PR D amplia por OR.
+  Sem uma restrição adicional, um Administrador Local da Unidade B com
+  vínculo ativo a um colaborador baseado em A ganharia acesso às rotas de
+  arquivamento/restauração **globais** (`archive_record`/`restore_record`
+  na linha inteira de `employees`), arquivando/restaurando o colaborador
+  para **todas** as Unidades — contradizendo D13-D15 ("efeito só local").
+  Ajuste: as rotas de ciclo de vida globais continuam exigindo a Unidade
+  atual (sem a ampliação por OR); só as rotas novas de
+  arquivar/desarquivar **local** (`employee_unit_links.local_status`) usam
+  o gate ampliado. A ampliação por OR serve para visualizar/editar dados
+  básicos e o vínculo local em si — nunca para acionar
+  `core.archival`/`request_purge`/`confirm_purge` na linha compartilhada.

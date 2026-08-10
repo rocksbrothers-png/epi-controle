@@ -2670,6 +2670,36 @@ def ensure_outsourced_companies(connection) -> None:
     # com fallback, seguindo o mesmo padrão de outras chaves do framework.
 
 
+def ensure_employee_outsourced_legal_entity_cleanup(connection) -> None:
+    """Limpa `employees.legal_entity_id` gravado indevidamente em colaborador
+    terceirizado/prestador (ADR-0002 §13.7).
+
+    `resolve_employee_legal_entity_id` era chamado por
+    `create_employee_outsourced_simplified` mesmo sem sentido para esse
+    fluxo — o vínculo jurídico de um colaborador terceirizado é com
+    `outsourced_company_id` (pessoa jurídica terceira), nunca com um CNPJ do
+    próprio tenant (`legal_entities`). Toda linha criada antes da correção
+    pode ter `legal_entity_id` apontando para a matriz do tenant (o
+    fallback de `resolve_employee_legal_entity_id` quando a empresa tem só
+    um CNPJ ativo), fazendo esse colaborador aparecer indevidamente como
+    vinculado ao CNPJ do tenant e podendo bloquear `deactivate_legal_entity`
+    por causa de gente que nunca deveria ter sido contada ali.
+
+    Idempotente e só afeta linhas com `outsourced_company_id` preenchido —
+    colaborador CLT (`outsourced_company_id IS NULL`) não é tocado.
+    """
+    columns = _table_columns(connection, 'employees')
+    if 'legal_entity_id' not in columns or 'outsourced_company_id' not in columns:
+        return
+    try:
+        connection.execute(
+            'UPDATE employees SET legal_entity_id = NULL '
+            'WHERE outsourced_company_id IS NOT NULL AND legal_entity_id IS NOT NULL'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_outsourced_company_archival_lifecycle_columns(connection) -> None:
     """Ciclo de vida de arquivamento (soft delete) para Empresa Terceirizada/
     Prestadora (ADR-0002 §10.4) — mesma política de Colaboradores/Unidades/

@@ -396,10 +396,14 @@ def create_employee_outsourced_simplified(connection, payload, *, actor):
         outsourced_company_id, service_contract_id, epi_override, epi_override_reason,
         validated['origin_company_registration'], validated['badge_number'], validated['notes'],
     ]
-    from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection):
-        columns.append('legal_entity_id')
-        values.append(resolve_employee_legal_entity_id(connection, company_id, payload.get('legal_entity_id')))
+    # legal_entity_id (Multi-CNPJ) NÃO se aplica ao colaborador terceirizado/
+    # prestador: o vínculo jurídico dele é com outsourced_company_id (uma
+    # pessoa jurídica terceira), nunca com um CNPJ do próprio tenant
+    # (legal_entities). Chamar resolve_employee_legal_entity_id aqui
+    # perguntava, sem sentido, "a qual CNPJ do tenant este colaborador
+    # pertence" e bloqueava o Cadastro Simplificado com um alerta que a tela
+    # não tinha como satisfazer sempre que o tenant tivesse mais de um CNPJ
+    # ativo (ADR-0002 §13.7).
 
     placeholders = ', '.join(['?'] * len(values))
     cursor = connection.execute(

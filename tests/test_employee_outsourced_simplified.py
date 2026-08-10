@@ -18,6 +18,7 @@ import sqlite3
 import pytest
 
 from core.schema import (
+    ensure_employee_outsourced_legal_entity_cleanup,
     ensure_employee_simplified_registration_columns,
     ensure_legal_entities,
     ensure_outsourced_companies,
@@ -29,6 +30,7 @@ from modules.employees.service import (
     get_employee_by_id,
     update_employee_outsourced_simplified,
 )
+from modules.legal_entities.service import create_legal_entity
 from modules.outsourced_companies.service import create_outsourced_company, create_service_contract
 
 VALID_CPF = '111.444.777-35'
@@ -233,6 +235,112 @@ def test_create_optional_fields_default_to_empty():
     assert employee['origin_company_registration'] == ''
     assert employee['badge_number'] == ''
     assert employee['notes'] == ''
+
+
+# ── Multi-CNPJ do tenant não se aplica a terceirizado (ADR-0002 §13.7) ──────
+#
+# Bug de produção: create_employee_outsourced_simplified chamava
+# resolve_employee_legal_entity_id (Multi-CNPJ DO TENANT) mesmo sendo um
+# fluxo onde essa pergunta nunca fez sentido — o colaborador terceirizado é
+# empregado pela outsourced_company (pessoa jurídica terceira), nunca por
+# um legal_entities do tenant. Sempre que o tenant tinha 2+ CNPJs ativos, o
+# cadastro simplificado levantava 'Informe o CNPJ ao qual este colaborador
+# pertence' sem ter campo nenhum na tela para satisfazer o pedido.
+
+def _seed_legal_entity(conn, company_id, cnpj, legal_name='Matriz'):
+    return create_legal_entity(
+        conn, {'cnpj': cnpj, 'legal_name': legal_name}, company_id,
+    )
+
+
+def test_create_does_not_require_legal_entity_id_with_multiple_active_cnpjs():
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id = _seed_unit(conn, cid)
+    # Tenant com Multi-CNPJ provisionado e 2+ CNPJs ativos -- exatamente o
+    # cenário que disparava o alerta em produção.
+    _seed_legal_entity(conn, cid, '11.222.333/0001-81', 'Matriz')
+    _seed_legal_entity(conn, cid, '45.723.174/0001-10', 'Filial')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    payload = _minimal_payload(cid, unit_id, oc_id)
+    assert 'legal_entity_id' not in payload
+    employee_id = create_employee_outsourced_simplified(conn, payload, actor=_actor(cid))
+    employee = get_employee_by_id(conn, employee_id)
+    assert not employee.get('legal_entity_id')
+
+
+def test_create_ignores_legal_entity_id_sent_in_payload():
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id = _seed_unit(conn, cid)
+    entity_id = _seed_legal_entity(conn, cid, '11.222.333/0001-81', 'Matriz')
+    _seed_legal_entity(conn, cid, '45.723.174/0001-10', 'Filial')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    # Cliente legado/desatualizado que ainda manda legal_entity_id: deve ser
+    # ignorado -- terceirizado nunca se vincula a um CNPJ do tenant.
+    payload = _minimal_payload(cid, unit_id, oc_id, legal_entity_id=entity_id)
+    employee_id = create_employee_outsourced_simplified(conn, payload, actor=_actor(cid))
+    employee = get_employee_by_id(conn, employee_id)
+    assert not employee.get('legal_entity_id')
+
+
+def test_legal_entity_cleanup_migration_nulls_legacy_outsourced_employee_only():
+    """Dado legado: colaborador terceirizado criado ANTES desta correção pode
+    ter legal_entity_id apontando para a matriz do tenant (fallback de
+    resolve_employee_legal_entity_id quando havia só 1 CNPJ ativo -- não
+    exigia os 2+ que disparavam o alerta, mas gravava do mesmo jeito).
+    ensure_employee_outsourced_legal_entity_cleanup precisa limpar essas
+    linhas sem tocar colaborador CLT."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id = _seed_unit(conn, cid)
+    entity_id = _seed_legal_entity(conn, cid, '11.222.333/0001-81', 'Matriz')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    outsourced_employee_id = create_employee_outsourced_simplified(
+        conn, _minimal_payload(cid, unit_id, oc_id), actor=_actor(cid),
+    )
+    # Simula o estado legado: grava legal_entity_id como o código antigo
+    # fazia, direto no banco (a correção já impede isso em código novo).
+    conn.execute('UPDATE employees SET legal_entity_id = ? WHERE id = ?', (entity_id, outsourced_employee_id))
+    conn.commit()
+    clt_employee_id = conn.execute(
+        "INSERT INTO employees (company_id, unit_id, name, tipo_vinculo, legal_entity_id) "
+        "VALUES (?, ?, 'Colaborador CLT', 'CLT', ?)",
+        (cid, unit_id, entity_id),
+    ).lastrowid
+    conn.commit()
+
+    ensure_employee_outsourced_legal_entity_cleanup(conn)
+
+    outsourced_employee = get_employee_by_id(conn, outsourced_employee_id)
+    assert not outsourced_employee.get('legal_entity_id')
+    clt_employee = conn.execute(
+        'SELECT legal_entity_id FROM employees WHERE id = ?', (clt_employee_id,),
+    ).fetchone()
+    assert clt_employee['legal_entity_id'] == entity_id
+
+
+def test_legal_entity_cleanup_migration_is_idempotent():
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    unit_id = _seed_unit(conn, cid)
+    entity_id = _seed_legal_entity(conn, cid, '11.222.333/0001-81', 'Matriz')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    employee_id = create_employee_outsourced_simplified(
+        conn, _minimal_payload(cid, unit_id, oc_id), actor=_actor(cid),
+    )
+    conn.execute('UPDATE employees SET legal_entity_id = ? WHERE id = ?', (entity_id, employee_id))
+    conn.commit()
+
+    ensure_employee_outsourced_legal_entity_cleanup(conn)
+    ensure_employee_outsourced_legal_entity_cleanup(conn)  # reexecutar não deve levantar nem mudar nada
+
+    employee = get_employee_by_id(conn, employee_id)
+    assert not employee.get('legal_entity_id')
 
 
 def test_create_links_service_contract_matching_company():

@@ -414,6 +414,54 @@ Nenhuma das duas tem referência obrigatória por nome sem resolver hoje: os
 nome no catálogo, ou são nullable e corretamente ausentes de `fields`.
 Nada foi adicionado nesta PR.
 
+### 12.8 Jornada PostgreSQL das três entidades restantes (issue #170)
+
+A jornada de §12.5 (`tests_postgres/test_migration_journey_postgres.py`)
+cobria só `colaboradores`. As outras três entidades habilitadas por §12.7 —
+`unidades`, `epis`, `fornecedores` — tinham exatamente o tipo de lacuna que
+`colaboradores` tinha antes de a jornada existir: contrato catálogo × schema
+verde (§12.3) e normalizer testado em isolamento (§12.7), mas nunca
+exercitadas pelo motor de importação de ponta a ponta contra PostgreSQL
+real. É a mesma situação de §10 — suíte inteira verde, zero linha
+importável — só que ainda não descoberta porque ninguém tinha rodado a
+jornada completa para estas três.
+
+Cada entidade ganhou uma fixture de export legado PRÓPRIA — separador,
+acentuação e cabeçalho diferentes entre si, para não validar o motor só
+contra um layout — e os testes provam, contra o schema real:
+
+- **`unidades`**: a importação real grava `unit_type` já normalizado
+  (`normalize_unit_type` — "Navio" → "embarcacao"), não o literal da
+  planilha; upsert casa pela chave natural `name`.
+- **`epis`**: `ca_expiry`/`epi_validity_date` chegam em `dd/mm/aaaa` (formato
+  comum de planilha legada brasileira) e são lidas de volta do banco em
+  ISO, nunca no literal da origem; `manufacture_date`/`validity_days` (NOT
+  NULL sem default, não coletados da planilha) vêm de `column_defaults`,
+  não de um NULL que o PostgreSQL teria recusado; upsert casa por
+  `purchase_code`.
+- **`fornecedores`**: o defeito de §12.7 (CNPJ gravado cru, `cnpj_normalized`
+  vazia) provado agora pelo motor de importação de ponta a ponta
+  (`run_migration`), não pela chamada isolada a `apply_domain_rules` que já
+  cobria `tests_postgres/test_migration_contract_postgres.py`; upsert
+  exercitando as duas metades da chave natural composta — `cnpj` quando
+  presente, `legal_name` quando `cnpj` (opcional no catálogo) está ausente.
+
+Nas três: o mesmo gatilho de banco proposital de §12.5 (agora contra
+`units`/`epis`/`outsourced_companies`, não só `employees`) prova que o
+SAVEPOINT por linha isola a falha sem envenenar a conexão, e que o job
+termina `completed` com o diagnóstico da linha ruim gravado.
+
+Fora do escopo, de propósito: "referência desconhecida bloqueando" (o 3º
+defeito de §10) não ganhou teste equivalente para estas três entidades
+porque nenhum campo delas declara `resolves_to` no catálogo hoje — só
+`colaboradores.unit_id` resolve nome→id. Forjar uma referência que o
+catálogo não tem seria testar comportamento inventado, não o produto real.
+
+Nenhuma constraint, fixture ou normalizador foi alterado para o teste
+passar — a lacuna era só de cobertura. `tests_postgres/` inteiro (contrato +
+jornada, 57 casos) roda em poucos segundos localmente; o orçamento de ~1 min
+do workflow (§12.5) segue com folga.
+
 ## 11. Riscos
 
 | Risco | Mitigação |

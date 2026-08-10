@@ -166,12 +166,12 @@ def tenant(bootstrapped_schema):
     }
 
 
-def _run(tenant, *, strategy, raw=None, mapping=None, company_id=None):
+def _run(tenant, *, strategy, raw=None, mapping=None, company_id=None, entity='colaboradores'):
     from modules.data_migration.service import run_migration
     return run_migration(
         _conn(),
         company_id=company_id or tenant['company_id'],
-        entity='colaboradores',
+        entity=entity,
         source_kind='csv',
         raw=raw if raw is not None else LEGACY_CSV.encode('latin-1'),
         mapping=mapping or MAPPING,
@@ -457,3 +457,440 @@ def test_the_audit_trail_records_actor_source_and_every_touched_row(tenant):
     for record in records:
         if record['action'] == 'update':
             assert record['before_json'] and record['after_json']
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# unidades, epis e fornecedores (issue #170)
+#
+# A suíte acima só provava o motor genérico contra `colaboradores`. Nada
+# garantia que `unidades`, `epis` e `fornecedores` — habilitadas no mesmo
+# catálogo (issue #169) — sobrevivem ao PostgreSQL real: é exatamente a
+# situação que a Fase 1 já viveu, com a suíte inteira verde e zero
+# colaborador importável (ADR-0003 §10). Cada bloco abaixo usa uma fixture de
+# export legado PRÓPRIA (separador, acentuação e cabeçalho fora do padrão de
+# destino) e prova, contra o banco real, os mesmos pontos que pegaram os 3
+# defeitos originais — onde eles se aplicam a esta entidade:
+#
+#   - preview coerente com o schema real: o teste de importação real (não só
+#     o dry_run) confirma que toda coluna NOT NULL foi satisfeita e que o
+#     normalizador de domínio gravou o valor CANÔNICO, não o literal da
+#     planilha (é onde "preview mentindo" se materializava);
+#   - linha inválida isolada sem envenenar a conexão: mesmo gatilho de banco
+#     proposital usado para `colaboradores`, agora contra a tabela própria de
+#     cada entidade;
+#   - upsert por chave natural própria da entidade.
+#
+# "Referência desconhecida bloqueando" (o 3º defeito original) fica de fora
+# de propósito: nenhum campo de `unidades`, `epis` ou `fornecedores` no
+# catálogo hoje declara `resolves_to` — só `colaboradores.unit_id` resolve
+# nome→id. Forjar uma referência que o catálogo não tem seria testar
+# comportamento inventado, não o produto real.
+
+
+# ── Unidades ─────────────────────────────────────────────────────────────
+
+# Export legado de unidades: separador ',' (diferente do ';' de
+# colaboradores, para não validar o motor só contra um delimitador) e
+# cabeçalho com acentuação — força a mesma detecção latin-1.
+LEGACY_CSV_UNIDADES = (
+    'Nome da Unidade,Tipo de Unidade,Municipio,Observacoes\n'
+    'Plataforma Netuno,Plataforma,Macaé,Antiga FPSO\n'
+    'Base Vitória,Base,Vitória,\n'
+    'Navio Search VII,Navio,Rio das Ostras,Em operação\n'
+)
+
+MAPPING_UNIDADES = {
+    'Nome da Unidade': 'name',
+    'Tipo de Unidade': 'unit_type',
+    'Municipio': 'city',
+    'Observacoes': 'notes',
+}
+
+
+def test_unidades_legacy_export_is_read_and_every_column_is_recognised(tenant):
+    from modules.data_migration.service import analyze_source
+    analysis = analyze_source('csv', LEGACY_CSV_UNIDADES.encode('latin-1'), 'unidades')
+    assert analysis['detected']['delimiter'] == ','
+    assert analysis['detected']['total_rows'] == 3
+    assert analysis['mapping'] == MAPPING_UNIDADES
+    assert analysis['missing_required'] == []
+
+
+def test_unidades_import_applies_the_same_unit_type_aliases_as_manual_registration(tenant):
+    """Prova que o normalizador (`normalize_unit_type`) roda dentro do motor de
+    importação de verdade — 'Navio' precisa virar 'embarcacao' gravado, não
+    o literal da planilha, exatamente como o cadastro manual grava."""
+    result = _run(tenant, entity='unidades', strategy='insert_only',
+                  raw=LEGACY_CSV_UNIDADES.encode('latin-1'), mapping=MAPPING_UNIDADES)
+    assert result['totals']['inserted'] == 3
+    assert result['totals']['failed'] == 0
+
+    connection = _conn()
+    from epi_backend.db import row_to_dict
+    rows = {row_to_dict(r)['name']: row_to_dict(r) for r in connection.execute(
+        'SELECT name, unit_type, city, notes FROM units WHERE company_id = %s '
+        "AND name IN ('Plataforma Netuno', 'Base Vitória', 'Navio Search VII')",
+        (tenant['company_id'],),
+    ).fetchall()}
+    assert set(rows) == {'Plataforma Netuno', 'Base Vitória', 'Navio Search VII'}
+    assert rows['Plataforma Netuno']['unit_type'] == 'plataforma'
+    assert rows['Base Vitória']['unit_type'] == 'base'
+    # 'Navio' é alias de 'embarcacao' — o mesmo que create_unit/update_unit
+    # aplicam via normalize_unit_type antes de gravar.
+    assert rows['Navio Search VII']['unit_type'] == 'embarcacao'
+    assert rows['Plataforma Netuno']['city'] == 'Macaé'
+    assert (rows['Base Vitória']['notes'] or '') == ''
+
+
+def test_unidades_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
+    """Mesmo gatilho de falha de banco da jornada de colaboradores, agora
+    contra `units` — prova que o SAVEPOINT por linha não foi validado só
+    para a tabela `employees`."""
+    connection = _conn()
+    connection.execute(
+        'CREATE OR REPLACE FUNCTION reject_one_unit() RETURNS trigger AS $$ '
+        "BEGIN IF NEW.name = 'Unidade Rejeitada Propositalmente' THEN "
+        "RAISE EXCEPTION 'falha proposital de banco'; END IF; RETURN NEW; END; "
+        '$$ LANGUAGE plpgsql;'
+    )
+    connection.execute('DROP TRIGGER IF EXISTS reject_one_unit_trg ON units')
+    connection.execute(
+        'CREATE TRIGGER reject_one_unit_trg BEFORE INSERT ON units '
+        'FOR EACH ROW EXECUTE FUNCTION reject_one_unit()'
+    )
+    connection.commit()
+    try:
+        csv = (
+            'Nome da Unidade,Tipo de Unidade,Municipio,Observacoes\n'
+            'Terminal Guanabara,Base,Rio de Janeiro,\n'
+            'Unidade Rejeitada Propositalmente,Base,Niterói,\n'
+            'Sonda Aurora Nova,Plataforma,Macaé,\n'
+        ).encode('latin-1')
+        result = _run(tenant, entity='unidades', strategy='insert_only',
+                      raw=csv, mapping=MAPPING_UNIDADES)
+
+        assert result['totals']['failed'] == 1
+        assert result['totals']['inserted'] == 2
+        from modules.data_migration.service import fetch_job_records, get_job
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
+                  if r['action'] == 'error']
+        assert len(errors) == 1
+        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s AND name = %s',
+                       (tenant['company_id'], 'Terminal Guanabara')) == 1
+        assert _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s AND name = %s',
+                       (tenant['company_id'], 'Sonda Aurora Nova')) == 1
+        assert _scalar(connection, "SELECT COUNT(*) FROM units WHERE name = 'Unidade Rejeitada Propositalmente'") == 0
+    finally:
+        connection.execute('DROP TRIGGER IF EXISTS reject_one_unit_trg ON units')
+        connection.commit()
+
+    # A conexão não voltou envenenada: uma consulta sem relação com a
+    # importação, logo depois da falha, continua funcionando.
+    assert _scalar(connection, 'SELECT COUNT(*) FROM companies') >= 2
+
+
+def test_unidades_upsert_matches_by_name_and_updates_instead_of_duplicating(tenant):
+    connection = _conn()
+    before = _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s',
+                     (tenant['company_id'],))
+    changed = LEGACY_CSV_UNIDADES.replace('Antiga FPSO', 'Antiga FPSO - desativada em 2025').encode('latin-1')
+    result = _run(tenant, entity='unidades', strategy='upsert',
+                  raw=changed, mapping=MAPPING_UNIDADES)
+    assert result['totals']['updated'] == 3
+    assert result['totals']['inserted'] == 0
+    assert _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s',
+                   (tenant['company_id'],)) == before
+    assert _scalar(connection, "SELECT notes FROM units WHERE company_id = %s AND name = 'Plataforma Netuno'",
+                   (tenant['company_id'],)) == 'Antiga FPSO - desativada em 2025'
+
+
+# ── EPIs ─────────────────────────────────────────────────────────────────
+
+# Export legado de EPIs: separador ';' com datas em dd/mm/aaaa — o formato
+# brasileiro comum em planilha antiga, e exatamente o que
+# `normalize_epi_domain_fields` precisa canonizar para ISO antes de gravar
+# (issue #169). Nome com acentuação força latin-1, como no export real.
+LEGACY_CSV_EPIS = (
+    'Description;Part Number;CA;CA Expiry;Shelf Life;UOM;Sector;Brand\n'
+    'Luva Nitrílica Tam. M;LU-1001;12345;15/03/2028;15/03/2030;PAR;Produção;3M\n'
+    'Óculos de Proteção Ampla Visão;OC-2002;67.890;20/11/2027;20/11/2029;UN;Manutenção;Steelflex\n'
+    'Capacete de Segurança Classe B;CP-3003;34521;01/06/2027;01/06/2032;UN;Produção;MSA\n'
+)
+
+MAPPING_EPIS = {
+    'Description': 'name',
+    'Part Number': 'purchase_code',
+    'CA': 'ca',
+    'CA Expiry': 'ca_expiry',
+    'Shelf Life': 'epi_validity_date',
+    'UOM': 'unit_measure',
+    'Sector': 'sector',
+    'Brand': 'manufacturer',
+}
+
+
+def test_epis_legacy_export_is_read_and_every_column_is_recognised(tenant):
+    from modules.data_migration.service import analyze_source
+    analysis = analyze_source('csv', LEGACY_CSV_EPIS.encode('latin-1'), 'epis')
+    assert analysis['detected']['delimiter'] == ';'
+    assert analysis['detected']['total_rows'] == 3
+    assert analysis['mapping'] == MAPPING_EPIS
+    assert analysis['missing_required'] == []
+
+
+def test_epis_import_canonizes_dates_to_iso_and_applies_column_defaults(tenant):
+    """O defeito original, específico de `epis` (issue #170): o preview aceita
+    'dd/mm/aaaa' como data válida, mas sem canonizar a gravação salvava o
+    texto LITERAL e `epis.validity.parse_iso_date` o ignorava em silêncio.
+    Este teste prova, contra o schema real, que o valor gravado é ISO — e
+    que `manufacture_date`/`validity_days` (NOT NULL sem default, não
+    coletados da planilha) vieram de `column_defaults`, não de um NULL que
+    o PostgreSQL teria recusado."""
+    result = _run(tenant, entity='epis', strategy='insert_only',
+                  raw=LEGACY_CSV_EPIS.encode('latin-1'), mapping=MAPPING_EPIS)
+    assert result['totals']['inserted'] == 3
+    assert result['totals']['failed'] == 0
+
+    connection = _conn()
+    from epi_backend.db import row_to_dict
+    rows = {row_to_dict(r)['purchase_code']: row_to_dict(r) for r in connection.execute(
+        'SELECT purchase_code, name, ca, ca_expiry, epi_validity_date, manufacture_date, '
+        'validity_days, unit_measure, sector, manufacturer FROM epis WHERE company_id = %s '
+        "AND purchase_code IN ('LU-1001', 'OC-2002', 'CP-3003')",
+        (tenant['company_id'],),
+    ).fetchall()}
+    assert set(rows) == {'LU-1001', 'OC-2002', 'CP-3003'}
+
+    luva = rows['LU-1001']
+    assert luva['name'] == 'Luva Nitrílica Tam. M'
+    assert luva['ca'] == '12345'
+    # Canonizado para ISO — não o "15/03/2028" que veio da planilha.
+    assert luva['ca_expiry'] == '2028-03-15'
+    assert luva['epi_validity_date'] == '2030-03-15'
+    assert luva['unit_measure'] == 'PAR'
+    assert luva['sector'] == 'Produção'
+    assert luva['manufacturer'] == '3M'
+    # column_defaults do catálogo — o mesmo comportamento de create_epi.
+    assert luva['manufacture_date'] == ''
+    assert luva['validity_days'] == 0
+
+    # CA com pontuação de planilha ('67.890') vira só dígitos, como o
+    # normalizador de employees já faz para CPF.
+    assert rows['OC-2002']['ca'] == '67890'
+    assert rows['OC-2002']['ca_expiry'] == '2027-11-20'
+
+
+def test_epis_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
+    connection = _conn()
+    connection.execute(
+        'CREATE OR REPLACE FUNCTION reject_one_epi() RETURNS trigger AS $$ '
+        "BEGIN IF NEW.purchase_code = 'REJ-9999' THEN "
+        "RAISE EXCEPTION 'falha proposital de banco'; END IF; RETURN NEW; END; "
+        '$$ LANGUAGE plpgsql;'
+    )
+    connection.execute('DROP TRIGGER IF EXISTS reject_one_epi_trg ON epis')
+    connection.execute(
+        'CREATE TRIGGER reject_one_epi_trg BEFORE INSERT ON epis '
+        'FOR EACH ROW EXECUTE FUNCTION reject_one_epi()'
+    )
+    connection.commit()
+    try:
+        csv = (
+            'Description;Part Number;CA;CA Expiry;Shelf Life;UOM;Sector;Brand\n'
+            'Bota de Segurança;BT-4001;11111;10/01/2028;10/01/2031;PAR;Produção;Marluvas\n'
+            'Item Rejeitado;REJ-9999;22222;10/01/2028;10/01/2031;UN;Produção;X\n'
+            'Protetor Auricular;PA-5001;33333;10/01/2028;10/01/2031;PAR;Manutenção;3M\n'
+        ).encode('latin-1')
+        result = _run(tenant, entity='epis', strategy='insert_only',
+                      raw=csv, mapping=MAPPING_EPIS)
+
+        assert result['totals']['failed'] == 1
+        assert result['totals']['inserted'] == 2
+        from modules.data_migration.service import fetch_job_records, get_job
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
+                  if r['action'] == 'error']
+        assert len(errors) == 1
+        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s AND purchase_code = %s',
+                       (tenant['company_id'], 'BT-4001')) == 1
+        assert _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s AND purchase_code = %s',
+                       (tenant['company_id'], 'PA-5001')) == 1
+        assert _scalar(connection, "SELECT COUNT(*) FROM epis WHERE purchase_code = 'REJ-9999'") == 0
+    finally:
+        connection.execute('DROP TRIGGER IF EXISTS reject_one_epi_trg ON epis')
+        connection.commit()
+
+    assert _scalar(connection, 'SELECT COUNT(*) FROM companies') >= 2
+
+
+def test_epis_upsert_matches_by_purchase_code_and_updates_instead_of_duplicating(tenant):
+    connection = _conn()
+    before = _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s',
+                     (tenant['company_id'],))
+    changed = LEGACY_CSV_EPIS.replace('3M', '3M do Brasil')
+    result = _run(tenant, entity='epis', strategy='upsert',
+                  raw=changed.encode('latin-1'), mapping=MAPPING_EPIS)
+    assert result['totals']['updated'] == 3
+    assert result['totals']['inserted'] == 0
+    assert _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s',
+                   (tenant['company_id'],)) == before
+    assert _scalar(connection, "SELECT manufacturer FROM epis WHERE company_id = %s AND purchase_code = 'LU-1001'",
+                   (tenant['company_id'],)) == '3M do Brasil'
+
+
+# ── Fornecedores ─────────────────────────────────────────────────────────
+
+# Export legado de fornecedores: separador TAB (nenhuma outra fixture desta
+# jornada usa tab) e SEM CNPJ na terceira linha — o caso em que a chave
+# natural cai para `legal_name`, já que `cnpj` é opcional no catálogo.
+LEGACY_TSV_FORNECEDORES = (
+    'Razão Social\tNome Fantasia\tCNPJ\tTipo de Empresa\n'
+    'Alfa Manutenção Industrial LTDA\tAlfa Manutenção\t12.345.678/0001-95\tTerceirizada\n'
+    'Beta Segurança do Trabalho EIRELI\tBeta EPI\t55.667.788/0001-86\tPrestador de Serviço\n'
+    'Gama Consultoria Técnica\t\t\t\n'
+)
+
+MAPPING_FORNECEDORES = {
+    'Razão Social': 'legal_name',
+    'Nome Fantasia': 'trade_name',
+    'CNPJ': 'cnpj',
+    'Tipo de Empresa': 'company_kind',
+}
+
+
+def test_fornecedores_legacy_export_is_read_and_every_column_is_recognised(tenant):
+    from modules.data_migration.service import analyze_source
+    analysis = analyze_source('csv', LEGACY_TSV_FORNECEDORES.encode('latin-1'), 'fornecedores')
+    assert analysis['detected']['delimiter'] == '\t'
+    assert analysis['detected']['total_rows'] == 3
+    assert analysis['mapping'] == MAPPING_FORNECEDORES
+    assert analysis['missing_required'] == []
+
+
+def test_fornecedores_import_derives_cnpj_normalized_and_controlled_vocabulary(tenant):
+    """O defeito original de `fornecedores` (issue #169, provado até agora só
+    pela chamada isolada a `apply_domain_rules` em
+    test_migration_contract_postgres.py): a importação gravava o CNPJ como
+    veio da planilha e deixava `cnpj_normalized` vazia, tirando a linha do
+    índice único PARCIAL de deduplicação. Este teste prova o mesmo através
+    do motor de importação de ponta a ponta (`run_migration`), não de uma
+    chamada direta à função de normalização."""
+    result = _run(tenant, entity='fornecedores', strategy='insert_only',
+                  raw=LEGACY_TSV_FORNECEDORES.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
+    assert result['totals']['inserted'] == 3
+    assert result['totals']['failed'] == 0
+
+    connection = _conn()
+    from epi_backend.db import row_to_dict
+    rows = {row_to_dict(r)['legal_name']: row_to_dict(r) for r in connection.execute(
+        'SELECT legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
+        'epi_responsibility, registration_mode, registration_status, status '
+        'FROM outsourced_companies WHERE company_id = %s',
+        (tenant['company_id'],),
+    ).fetchall()}
+    alfa = rows['Alfa Manutenção Industrial LTDA']
+    assert alfa['cnpj'] == '12.345.678/0001-95'
+    assert alfa['cnpj_normalized'] == '12345678000195'
+    # Vocabulário controlado: 'Terceirizada' não está na lista de valores
+    # aceitos, então normaliza para o default do domínio — igual ao cadastro
+    # manual (normalize_company_kind).
+    assert alfa['company_kind'] == 'outsourced'
+
+    gama = rows['Gama Consultoria Técnica']
+    assert (gama['cnpj'] or '') == ''
+    assert (gama['cnpj_normalized'] or '') == ''
+
+    # Colunas que a importação não coleta (não existem no catálogo de
+    # `fornecedores`) e por isso o motor não grava: caem no DEFAULT do
+    # servidor, que test_server_defaults_match_what_the_normalizer_would_
+    # produce_when_empty (contrato) já prova ser igual ao que o
+    # normalizador produziria. Aqui fechamos o loop pelo caminho real.
+    for row in rows.values():
+        assert row['epi_responsibility'] == 'Conforme Contrato'
+        assert row['registration_mode'] == 'simplified'
+        assert row['registration_status'] == 'pending_completion'
+        assert row['status'] == 'active'
+
+
+def test_fornecedores_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
+    connection = _conn()
+    connection.execute(
+        'CREATE OR REPLACE FUNCTION reject_one_supplier() RETURNS trigger AS $$ '
+        "BEGIN IF NEW.legal_name = 'Fornecedor Rejeitado Propositalmente' THEN "
+        "RAISE EXCEPTION 'falha proposital de banco'; END IF; RETURN NEW; END; "
+        '$$ LANGUAGE plpgsql;'
+    )
+    connection.execute('DROP TRIGGER IF EXISTS reject_one_supplier_trg ON outsourced_companies')
+    connection.execute(
+        'CREATE TRIGGER reject_one_supplier_trg BEFORE INSERT ON outsourced_companies '
+        'FOR EACH ROW EXECUTE FUNCTION reject_one_supplier()'
+    )
+    connection.commit()
+    try:
+        csv = (
+            'Razão Social\tNome Fantasia\tCNPJ\tTipo de Empresa\n'
+            'Delta Andaimes LTDA\t\t\t\n'
+            'Fornecedor Rejeitado Propositalmente\t\t\t\n'
+            'Épsilon Elétrica ME\t\t\t\n'
+        ).encode('latin-1')
+        result = _run(tenant, entity='fornecedores', strategy='insert_only',
+                      raw=csv, mapping=MAPPING_FORNECEDORES)
+
+        assert result['totals']['failed'] == 1
+        assert result['totals']['inserted'] == 2
+        from modules.data_migration.service import fetch_job_records, get_job
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
+                  if r['action'] == 'error']
+        assert len(errors) == 1
+        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert _scalar(connection,
+                       'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s AND legal_name = %s',
+                       (tenant['company_id'], 'Delta Andaimes LTDA')) == 1
+        assert _scalar(connection,
+                       'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s AND legal_name = %s',
+                       (tenant['company_id'], 'Épsilon Elétrica ME')) == 1
+        assert _scalar(
+            connection,
+            "SELECT COUNT(*) FROM outsourced_companies WHERE legal_name = 'Fornecedor Rejeitado Propositalmente'",
+        ) == 0
+    finally:
+        connection.execute('DROP TRIGGER IF EXISTS reject_one_supplier_trg ON outsourced_companies')
+        connection.commit()
+
+    assert _scalar(connection, 'SELECT COUNT(*) FROM companies') >= 2
+
+
+def test_fornecedores_upsert_matches_by_cnpj_or_by_legal_name_when_cnpj_is_absent(tenant):
+    """As duas metades da chave natural composta (`cnpj`, `legal_name`) numa
+    só reexecução: as duas primeiras linhas casam por CNPJ, a terceira —
+    sem CNPJ nunca — só pode ter casado por `legal_name`."""
+    connection = _conn()
+    before = _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
+                     (tenant['company_id'],))
+    changed = (
+        LEGACY_TSV_FORNECEDORES
+        .replace('Alfa Manutenção\t', 'Alfa Manutenção Predial\t')
+        .replace('Gama Consultoria Técnica\t\t\t',
+                 'Gama Consultoria Técnica\tGama Consultoria\t\t')
+    )
+    result = _run(tenant, entity='fornecedores', strategy='upsert',
+                  raw=changed.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
+    assert result['totals']['updated'] == 3
+    assert result['totals']['inserted'] == 0
+    assert _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
+                   (tenant['company_id'],)) == before
+    assert _scalar(
+        connection,
+        "SELECT trade_name FROM outsourced_companies WHERE company_id = %s AND cnpj_normalized = '12345678000195'",
+        (tenant['company_id'],),
+    ) == 'Alfa Manutenção Predial'
+    assert _scalar(
+        connection,
+        "SELECT trade_name FROM outsourced_companies WHERE company_id = %s "
+        "AND legal_name = 'Gama Consultoria Técnica'",
+        (tenant['company_id'],),
+    ) == 'Gama Consultoria'

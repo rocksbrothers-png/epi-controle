@@ -275,6 +275,11 @@ def init_db():
             # Depende de schema.ensure_legal_entities: usa a FK de companies e o
             # padrão de employees já criado por essa migração.
             schema.ensure_outsourced_companies,
+            # Depende de schema.ensure_legal_entities (coluna legal_entity_id) e
+            # schema.ensure_outsourced_companies (coluna outsourced_company_id) —
+            # limpa legal_entity_id gravado indevidamente em colaborador
+            # terceirizado antes da correção do alerta de CNPJ (ADR-0002 §13.7).
+            schema.ensure_employee_outsourced_legal_entity_cleanup,
             # Depende de schema.ensure_outsourced_companies (tabela/coluna status
             # precisam existir antes do backfill/lifecycle).
             schema.ensure_outsourced_company_archival_lifecycle_columns,

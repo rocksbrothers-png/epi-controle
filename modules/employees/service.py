@@ -151,9 +151,13 @@ def create_employee(connection, payload, *, actor):
     ]
     # CNPJ (LegalEntity) ao qual o colaborador pertence. Se o cliente não enviar
     # (retrocompatibilidade), cai para a matriz padrão da empresa. Só é gravado
-    # quando o schema Multi-CNPJ já está provisionado.
+    # quando o schema Multi-CNPJ já está provisionado, e só para colaborador
+    # CLT — terceirizado/prestador (tipo_vinculo != 'CLT') é empregado pela
+    # outsourced_company (pessoa jurídica terceira), nunca por um CNPJ do
+    # próprio tenant, mesmo quando cadastrado via este endpoint geral em vez
+    # do Cadastro Simplificado (ADR-0002 §13.7/§13.21).
     from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection):
+    if legal_entities_ready(connection) and tipo_vinculo == 'CLT':
         columns.append('legal_entity_id')
         values.append(resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), payload.get('legal_entity_id')
@@ -219,9 +223,12 @@ def update_employee(connection, employee_id, payload, *, actor):
     # comum do cadastro. Um legal_entity_id enviado no payload é ignorado — a
     # mudança só ocorre pelo processo administrativo auditado
     # (transfer_employee_legal_entity). Colaborador legado sem vínculo recebe o
-    # backfill na primeira edição.
+    # backfill na primeira edição. Só se aplica a colaborador CLT — terceirizado/
+    # prestador nunca tem legal_entity_id resolvido/gravado aqui, mesmo que a
+    # linha já tivesse um valor legado (edição via este endpoint não deve
+    # repopular o que a limpeza do ADR-0002 §13.7/§13.21 removeu).
     from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection):
+    if legal_entities_ready(connection) and tipo_vinculo == 'CLT':
         legal_entity_id = current.get('legal_entity_id') or resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), None
         )
@@ -396,10 +403,14 @@ def create_employee_outsourced_simplified(connection, payload, *, actor):
         outsourced_company_id, service_contract_id, epi_override, epi_override_reason,
         validated['origin_company_registration'], validated['badge_number'], validated['notes'],
     ]
-    from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection):
-        columns.append('legal_entity_id')
-        values.append(resolve_employee_legal_entity_id(connection, company_id, payload.get('legal_entity_id')))
+    # legal_entity_id (Multi-CNPJ) NÃO se aplica ao colaborador terceirizado/
+    # prestador: o vínculo jurídico dele é com outsourced_company_id (uma
+    # pessoa jurídica terceira), nunca com um CNPJ do próprio tenant
+    # (legal_entities). Chamar resolve_employee_legal_entity_id aqui
+    # perguntava, sem sentido, "a qual CNPJ do tenant este colaborador
+    # pertence" e bloqueava o Cadastro Simplificado com um alerta que a tela
+    # não tinha como satisfazer sempre que o tenant tivesse mais de um CNPJ
+    # ativo (ADR-0002 §13.7).
 
     placeholders = ', '.join(['?'] * len(values))
     cursor = connection.execute(

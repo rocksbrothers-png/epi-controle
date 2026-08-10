@@ -72,6 +72,19 @@ jobs:
           gradle-version: wrapper
           cache-read-only: false
 
+      # A AGP 8.9.1 NÃO baixa platform de SDK sozinha, e o runner do GitHub não
+      # traz o android-37 pré-instalado. Sem este passo o Gradle para com
+      # "Failed to find Platform SDK with path: platforms;android-37" — que é o
+      # SDK exigido pelo flutter_secure_storage 11.x e declarado em compileSdk.
+      - name: Install Android SDK platform 37
+        run: |
+          set -e
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$sdkmanager" "platforms;android-37"
+          test -d "$sdk_root/platforms/android-37"
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -127,6 +140,19 @@ jobs:
         with:
           gradle-version: wrapper
           cache-read-only: false
+
+      # A AGP 8.9.1 NÃO baixa platform de SDK sozinha, e o runner do GitHub não
+      # traz o android-37 pré-instalado. Sem este passo o Gradle para com
+      # "Failed to find Platform SDK with path: platforms;android-37" — que é o
+      # SDK exigido pelo flutter_secure_storage 11.x e declarado em compileSdk.
+      - name: Install Android SDK platform 37
+        run: |
+          set -e
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$sdkmanager" "platforms;android-37"
+          test -d "$sdk_root/platforms/android-37"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -246,6 +272,19 @@ jobs:
         with:
           gradle-version: wrapper
           cache-read-only: false
+
+      # A AGP 8.9.1 NÃO baixa platform de SDK sozinha, e o runner do GitHub não
+      # traz o android-37 pré-instalado. Sem este passo o Gradle para com
+      # "Failed to find Platform SDK with path: platforms;android-37" — que é o
+      # SDK exigido pelo flutter_secure_storage 11.x e declarado em compileSdk.
+      - name: Install Android SDK platform 37
+        run: |
+          set -e
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$sdkmanager" "platforms;android-37"
+          test -d "$sdk_root/platforms/android-37"
 
       - uses: subosito/flutter-action@v2
         with:

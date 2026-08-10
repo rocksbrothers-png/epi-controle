@@ -1167,10 +1167,25 @@ param de importar/chamar `resolve_employee_legal_entity_id` e param de
 incluir `legal_entity_id` nas colunas gravadas — pelo mesmo motivo que
 `empresa_origem`/`outsourced_company_id` já ficam de fora do fluxo CLT,
 `legal_entity_id` fica de fora do fluxo terceirizado. `employees.legal_entity_id`
-permanece `NULL` para toda linha com `outsourced_company_id` preenchido,
-exatamente como já é `NULL` hoje para toda linha sem Multi-CNPJ provisionado
-— nenhuma migração de dado necessária, é remoção de uma chamada, não
-mudança de schema.
+permanece `NULL` para toda linha **nova** com `outsourced_company_id`
+preenchido.
+
+**Dado legado precisa de migração, não só a remoção da chamada (achado da
+revisão Codex, §13.19).** `resolve_employee_legal_entity_id` já gravava um
+`legal_entity_id` não nulo mesmo quando a empresa tinha só **um** CNPJ
+ativo (o caminho de fallback `ensure_default_legal_entity`, que só é
+evitado quando há mais de um — o alerta reportado só aparece no caso de
+múltiplos, mas o vínculo indevido acontece em qualquer caso). Toda linha
+`employees` com `outsourced_company_id` preenchido criada/editada antes
+desta correção pode ter um `legal_entity_id` apontando para a matriz do
+tenant — o que faz esse colaborador terceirizado aparecer indevidamente
+como vinculado ao CNPJ do próprio tenant, e pode bloquear
+`deactivate_legal_entity` (que recusa inativar CNPJ com colaborador ativo
+vinculado) por causa de gente que nunca deveria ter sido contada ali. PR A
+inclui uma migração adicional, aditiva e idempotente: `UPDATE employees SET
+legal_entity_id = NULL WHERE outsourced_company_id IS NOT NULL AND
+legal_entity_id IS NOT NULL` — mesmo padrão dual-track (SQLite +
+Postgres/Supabase) das demais migrações desta sessão.
 
 `create_employee`/`update_employee` (colaborador CLT) **não são tocados**
 — continuam chamando `resolve_employee_legal_entity_id` exatamente como
@@ -1292,15 +1307,33 @@ mesmo que esse vínculo seja arquivado depois (D22, preservar histórico).
 
 ### 13.10 Impacto nos relatórios
 
+**Correção (revisão Codex, §13.19): a frase original desta seção descrevia
+`employees.unit_id` como "Unidade de origem, histórica" — inconsistente com
+o próprio §13.11, que estabelece que o campo é a Unidade base/permanente,
+**mutável** por transferência definitiva.** Corrigido abaixo.
+
 `fetch_outsourced_employees_summary` (§11.5/§12.7) e qualquer relatório que
 hoje filtra por `employees.unit_id` assumem implicitamente "1 linha = 1
 Unidade". Com D7/D8, isso deixa de ser verdade: um relatório de headcount
-por empresa/Unidade precisa decidir explicitamente se lê `employees.unit_id`
-(Unidade de origem, histórica) ou faz `JOIN employee_unit_links WHERE
-local_status = 'active'` (vínculo operacional atual) — a mesma distinção
-que o §12.1 já introduziu para empresa, agora necessária para pessoa
-também. Não é possível enumerar exaustivamente todos os relatórios afetados
-nesta ADR; a implementação (§13.15, PR D) precisa de um passo de auditoria
+por empresa/Unidade precisa decidir explicitamente entre três leituras, não
+duas — `employees.unit_id` (Unidade base/permanente, mutável), a Unidade
+atual efetiva (`get_employee_current_unit`, considera movimentação
+temporária ativa) ou `JOIN employee_unit_links WHERE local_status =
+'active'` (vínculos administrativos adicionais, potencialmente vários por
+pessoa) — cada relatório precisa declarar qual das três responde à pergunta
+que ele faz.
+
+Exemplo concreto já identificado (não hipotético): `build_ficha_epi_html_by_period`
+(`modules/ficha/service.py:538-543`) compara `employee['unit_id']` (bruto,
+nem sequer a Unidade atual computada) contra a Unidade do ator e rejeita
+qualquer diferença — um Administrador Local/Gestor de EPI da Unidade B
+vinculado administrativamente a um colaborador cuja `unit_id` seja A
+continua sem acesso à ficha por período dele, mesmo depois da ampliação de
+`ensure_actor_employee_scope` (§13.13/§13.19). Entra explicitamente no
+escopo de auditoria do PR D.
+
+Não é possível enumerar exaustivamente todos os relatórios afetados nesta
+ADR; a implementação (§13.15, PR D) precisa de um passo de auditoria
 dedicado nesses call sites antes de considerar o trabalho completo — risco
 registrado em §13.13.
 
@@ -1531,34 +1564,51 @@ para terceirizada) foi **removido**: D4/D5 fecharam na leitura mínima, sem
 tabela nova.
 
 - **PR A — correção isolada do alerta de CNPJ (§13.7).** Remove a chamada a
-  `resolve_employee_legal_entity_id` do fluxo terceirizado simplificado.
-  Menor PR possível, corrige o bug com reprodução real em produção, sem
-  depender de nenhuma tabela nova, sem relação com nenhuma das outras
-  decisões desta rodada. Candidato a seguir sozinho e primeiro.
+  `resolve_employee_legal_entity_id` do fluxo terceirizado simplificado +
+  migração de limpeza para linhas legadas (`legal_entity_id = NULL WHERE
+  outsourced_company_id IS NOT NULL`, achado da revisão Codex, §13.19).
+  Ainda o menor PR possível — a migração é aditiva/idempotente, mesmo
+  padrão dual-track de sempre — corrige o bug com reprodução real em
+  produção, sem depender de nenhuma tabela nova, sem relação com nenhuma
+  das outras decisões desta rodada. Candidato a seguir sozinho e primeiro.
 - **PR B — `employee_unit_links`.** Schema + backfill (dual-track,
-  semeando a partir da Unidade atual computada, §13.11) +
-  `is_employee_available_to_unit` + rotas de vincular/ativar/desativar
-  vínculo local + testes, mesma forma do §12.2. Inclui os três testes de
-  não regressão de transferência (§13.14) provando que
-  `employee_unit_movements`/`update_employee_unit` continuam intocados.
-  Não depende de nenhuma decisão em aberto.
+  semeando a Unidade base **e** a atual computada quando diferentes, e
+  cobrindo colaborador terceirizado legado sem `outsourced_company_id` —
+  ambos os ajustes do §13.19) + `is_employee_available_to_unit` (exige
+  vínculo ativo correspondente em `outsourced_company_unit_links` da mesma
+  Unidade, §13.19) + rotas de vincular/ativar/desativar vínculo local +
+  testes, mesma forma do §12.2. Inclui os três testes de não regressão de
+  transferência (§13.14) provando que `employee_unit_movements`/
+  `update_employee_unit` continuam intocados. Não depende de nenhuma
+  decisão em aberto.
 - **PR C — busca + desambiguação no Cadastro de Colaborador (D4/D5).**
   Exibe Razão Social/Nome Fantasia/CNPJ (quando cadastrado)/tipo/contrato
   na busca de `outsourced_companies`; exige escolha explícita quando há
-  mais de um resultado. Sem mudança de schema. Independente do PR B.
+  mais de um resultado; fluxo "CPF já cadastrado → vincular" passa a exigir
+  que o colaborador encontrado já seja terceirizado da mesma
+  `outsourced_company_id` sendo escolhida (§13.19), caso contrário trata
+  como conflito genuíno. Sem mudança de schema. Independente do PR B.
 - **PR D — arquivar/desarquivar colaborador por Unidade + ampliação do
   gate de escopo administrativo por OR.** Depende do PR B. Frontend +
   backend para D13-D17; amplia `ensure_actor_employee_scope` por OR
   (Unidade atual **ou** `employee_unit_links` ativo, §13.13) — só esse
   gate administrativo, não o de entrega (decidido em §13.9: gate de
   entrega não muda, `modules/deliveries/` fora do escopo de todo PR desta
-  extensão); auditoria dos relatórios afetados (§13.10).
-- **PR E — governança de exclusão definitiva.** Nova precondição em
-  `ensure_purge_allowed` (nenhum vínculo ativo em nenhuma Unidade, D21) +
-  aviso antecipado de elegibilidade (D20) + redação atualizada de D19
-  refletida em mensagens de erro/auditoria. Depende do PR B já estar
-  mergeado. Nenhuma mudança no gate `master_admin`/`general_admin` em si
-  (já correto).
+  extensão). **Inclui a correção P1 do §13.19**:
+  `update_employee_outsourced_simplified` para de resolver/gravar `unit_id`
+  a partir do ator — preserva `current['unit_id']`, só a transferência
+  dedicada muda essa coluna — sem essa correção a ampliação do gate
+  administrativo transferiria colaboradores silenciosamente. Auditoria dos
+  relatórios afetados (§13.10), incluindo o gate de `build_ficha_epi_html_by_period`
+  identificado nominalmente.
+- **PR E — governança de exclusão definitiva.** `ensure_purge_allowed`
+  ganha o parâmetro `connection` (não tinha, §13.19) para consultar
+  ausência de vínculo ativo em qualquer Unidade (D21) — checagem chamada
+  tanto em `request_purge` quanto em `confirm_purge` (não só na primeira
+  etapa, §13.19) + aviso antecipado de elegibilidade (D20) + redação
+  atualizada de D19 refletida em mensagens de erro/auditoria. Depende do
+  PR B já estar mergeado. Nenhuma mudança no gate `master_admin`/
+  `general_admin` em si (já correto).
 
 ### 13.16 Não-metas desta rodada
 
@@ -1666,3 +1716,128 @@ nos próprios PRs #181/#846 deste ADR). Correção dessa governança de CI é
 tratada em issue própria, deliberadamente fora do escopo desta extensão —
 não misturar. Ver issue de rastreamento aberta para esse problema
 especificamente.
+
+### 13.19 Revisão automatizada (Codex) — achados incorporados
+
+O bot de review do Codex analisou o design desta seção antes de qualquer
+código existir — exatamente o ponto em que uma revisão custa menos. Três
+das afirmações mais centrais foram verificadas diretamente contra o código
+antes de aceitar: `ensure_purge_allowed(record, actor, entity_label)`
+(`core/archival.py:228`) de fato não recebe `connection`;
+`build_ficha_epi_html_by_period` (`modules/ficha/service.py:538-543`) de
+fato compara `employee['unit_id']` bruto contra a Unidade do ator;
+`create_employee` (`modules/employees/service.py:100-130`) de fato permite
+`tipo_vinculo != 'CLT'` com só `empresa_origem` livre, sem
+`outsourced_company_id`. As três confirmadas — o restante dos achados
+abaixo tem o mesmo nível de precisão e foi aceito com a mesma confiança.
+
+**Achado mais importante (P1) — corrige um erro de design real antes que
+vire código.** A ampliação por OR de `ensure_actor_employee_scope`
+(proposta em §13.13/§13.15, PR D) autoriza um Administrador Local/Gestor de
+EPI da Unidade B a agir sobre um colaborador vinculado localmente a B cuja
+Unidade base ainda seja A. Mas `update_employee_outsourced_simplified`
+(`modules/employees/service.py:434-480`) resolve `unit_id` a partir do
+**ator** (`resolve_employee_outsourced_unit_id`) e grava
+incondicionalmente essa Unidade em **toda** edição — inclusive uma edição
+que só muda o nome. Combinados, os dois pontos significam que o primeiro
+Administrador Local da Unidade B que editar qualquer campo desse
+colaborador **transferiria silenciosamente sua Unidade base de A para B**,
+sem passar pelo endpoint de transferência (`/api/employee-unit-movements`)
+— exatamente o "criar lógica que concorra com os fluxos de transferência"
+que a §13.16 lista como não-meta, só que como efeito colateral não
+percebido, não como código escrito de propósito.
+
+**Correção de design adotada para o PR D:** `update_employee_outsourced_simplified`
+deixa de resolver/gravar `unit_id` a partir do payload/ator nesta edição —
+preserva `current['unit_id']` inalterado, no mesmo padrão que
+`legal_entity_id` já segue na edição comum ("um valor enviado no payload é
+ignorado — a mudança só ocorre pelo processo administrativo auditado").
+`unit_id` só muda por `POST /api/employee-unit-movements`, nunca por este
+endpoint. A autorização da edição passa a depender só de
+`ensure_actor_employee_scope` (já ampliado por OR) — não precisa mais
+resolver um `unit_id`-alvo para autorizar, porque a edição não altera mais
+essa coluna.
+
+**Demais achados aceitos, com o ajuste correspondente:**
+
+- **Backfill de `employee_unit_links` perde a Unidade base quando há
+  movimentação temporária ativa no momento da migração.** `get_employee_current_unit`
+  no momento do backfill devolve só a Unidade de destino da movimentação
+  temporária; quando ela expirar naturalmente, a pessoa volta a
+  `employees.unit_id`, mas sem vínculo lá (só no destino expirado). Ajuste:
+  backfill semeia **as duas** Unidades quando forem diferentes — a base
+  (`employees.unit_id`) e a atual computada — nunca só uma.
+- **Critério do backfill/disponibilidade não cobre colaborador terceirizado
+  legado sem `outsourced_company_id`.** `create_employee` sempre permitiu
+  `tipo_vinculo` não-CLT com só `empresa_origem` livre, anterior ao
+  `outsourced_companies` estruturado do ADR-0002. Backfill e toda lógica de
+  disponibilidade baseada só em `outsourced_company_id IS NOT NULL`
+  deixariam essas linhas legadas sem vínculo algum, somem dos seletores
+  operacionais no rollout. Ajuste: critério do backfill passa a ser
+  `outsourced_company_id IS NOT NULL OR tipo_vinculo <> 'CLT'`; linhas só
+  com `empresa_origem` livre (sem `outsourced_company_id`) recebem vínculo
+  igual, mas ficam de fora de qualquer validação que dependa de uma
+  `outsourced_companies` real (não têm uma) — tratamento exato a refinar no
+  PR B, registrado aqui como requisito, não como solução fechada.
+- **`employee_unit_links` não exige vínculo ativo da própria empresa
+  empregadora na mesma Unidade.** Nada impede hoje, no desenho original,
+  vincular/reativar um colaborador numa Unidade onde
+  `outsourced_company_unit_links` da sua `outsourced_company_id` esteja
+  ausente ou arquivado — o colaborador ficaria operacional com o
+  fornecedor indisponível ali, contradizendo D9/D16. Ajuste: criar/ativar
+  `employee_unit_links` passa a exigir uma linha ativa correspondente em
+  `outsourced_company_unit_links` para `(company_id, outsourced_company_id,
+  unit_id)` — mesma Unidade, mesma checagem repetida nas consultas
+  operacionais (`is_employee_available_to_unit`).
+- **Fluxo "CPF já cadastrado → oferecer vincular" (§13.4) não valida que o
+  registro encontrado é elegível.** Sem checar que o colaborador
+  encontrado pelo CPF já é terceirizado **da mesma** `outsourced_company_id`
+  sendo selecionada, o fluxo poderia oferecer reaproveitar um colaborador
+  CLT ou de outro fornecedor. Ajuste: a resposta "encontrada, vincule" só é
+  oferecida quando o colaborador encontrado tem `outsourced_company_id`
+  preenchido **e** igual ao da empresa sendo escolhida na tela; qualquer
+  outro caso (CLT, ou terceirizado de outro fornecedor) é tratado como
+  conflito genuíno, sem oferta de vínculo automático.
+- **`ensure_purge_allowed(record, actor, entity_label)` não recebe
+  `connection`** — não tem como consultar as tabelas de vínculo para a
+  precondição de D21 como proposto em §13.5. Ajuste: assinatura passa a
+  receber `connection` (e os dados necessários para localizar vínculos),
+  chamada tanto em `request_purge` quanto em `confirm_purge` — não só na
+  primeira etapa, porque uma Unidade pode reativar um vínculo entre a
+  solicitação e a confirmação do purge.
+- **D6 (empresa cadastrada uma única vez) não está de fato garantido para
+  o caso sem CNPJ**, mesmo após a melhoria de desambiguação de D4/D5: nada
+  impede a criação de uma segunda `outsourced_companies` com nome parecido
+  e `cnpj` vazio — a desambiguação ajuda a *encontrar e escolher* entre
+  duplicatas depois de criadas, não *impede* a criação da segunda. Isto é
+  mais precisamente um gap do §12 (que introduziu D6) do que desta
+  extensão, mas fica registrado aqui: D6 continua parcialmente aberto para
+  o caso sem CNPJ — prevenção de duplicidade nesse caso (busca+confirmação
+  antes de criar, no padrão já desenhado no plano original desta sessão)
+  não está confirmada como implementada e precisa de verificação
+  independente, fora do escopo de código deste ADR.
+
+**Achados aceitos como riscos reais, deliberadamente fora do escopo desta
+extensão (não internalizados como trabalho do PR B-E):**
+
+- **`employees.service_contract_id` é único por pessoa, não por vínculo.**
+  Se o mesmo colaborador compartilhado atende a Unidade A sob um contrato e
+  a Unidade B sob outro, o contrato/responsabilidade por EPI ficam presos
+  ao que foi gravado por último — pré-existente ao sistema de movimentação
+  (nem `update_employee_unit` toca `service_contract_id` hoje), mas esta
+  extensão torna a situação de "mesma pessoa, Unidades diferentes" comum em
+  vez de rara. Como o gate de entrega não é tocado (§13.9 — decisão do
+  usuário), o pior caso prático é responsabilidade/contrato desatualizados
+  no snapshot da entrega quando a pessoa é efetivamente transferida — não
+  corrigido aqui; candidato a issue própria se e quando isso se mostrar um
+  problema real em produção.
+- **Unicidade de CPF é checagem de aplicação (SELECT-então-INSERT), não
+  constraint de banco.** Duas Unidades submetendo o mesmo CPF novo quase
+  simultaneamente podem, em tese, ambas passar `ensure_employee_identity_unique`
+  e criar duas linhas `employees` para a mesma pessoa — pré-existente a
+  esta extensão (a mesma corrida já existiria hoje entre duas criações
+  quaisquer com o mesmo CPF), só que o D7/D8 aumenta o quanto isso importa
+  na prática. Corrigir exigiria um índice único normalizado por
+  `(company_id, cpf)` a nível de banco — mudança maior, com migração de
+  dado preexistente potencialmente conflitante, fora do escopo deste ADR;
+  registrado como risco a avaliar separadamente.

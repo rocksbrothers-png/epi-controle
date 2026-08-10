@@ -7,24 +7,21 @@ name: Contract Tests
 # Objetivo: qualquer alteração incompatível na API DEVE quebrar a CI aqui,
 # antes de chegar ao app Flutter. Os testes de contrato vivem em `tests/` e
 # são selecionados por nome (marcador de convenção).
+#
+# Governança de required status check (issue de rastreamento: rocksbrothers-png/
+# epi-controle#851 / epi-controle-app#187): `contract` é required check. Até
+# esta mudança, o filtro de path vivia em `on:`, então um PR que não tocasse
+# nenhum desses paths (docs-only, dependência do Flutter, workflow não-backend)
+# nunca disparava o workflow inteiro — e um required check que nunca dispara
+# fica "Expected" para sempre, bloqueando o merge sem nenhum problema real
+# (evidência completa na issue). Agora o workflow SEMPRE dispara; o job
+# `changes` decide via dorny/paths-filter se o path é relevante, e o job real
+# roda condicionado a esse resultado — irrelevante = "skipped" (satisfaz um
+# required check), relevante = roda de verdade.
 on:
   push:
     branches: [main, "claude/**"]
-    paths:
-      - "epi_backend/**"
-      - "modules/**"
-      - "tests/test_*contract*.py"
-      - "tests/test_*scope*.py"
-      - "tests/test_auth_*.py"
-      - ".github/workflows/contract-tests.yml"
   pull_request:
-    paths:
-      - "epi_backend/**"
-      - "modules/**"
-      - "tests/test_*contract*.py"
-      - "tests/test_*scope*.py"
-      - "tests/test_auth_*.py"
-      - ".github/workflows/contract-tests.yml"
   workflow_dispatch:
 
 permissions:
@@ -35,8 +32,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    outputs:
+      contract: ${{ steps.filter.outputs.contract }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contract:
+              - "epi_backend/**"
+              - "modules/**"
+              - "tests/test_*contract*.py"
+              - "tests/test_*scope*.py"
+              - "tests/test_auth_*.py"
+              - ".github/workflows/contract-tests.yml"
+
   contract:
     name: API Contract & Multi-Tenant Scope
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

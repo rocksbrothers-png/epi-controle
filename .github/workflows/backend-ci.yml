@@ -10,26 +10,21 @@ name: Backend CI
 # DATABASE_URL). NÃO defina DATABASE_URL no job `test`, senão o backend alterna
 # para o driver Postgres e quebra os testes de schema em SQLite. A validação
 # Postgres real vive no job dedicado `postgres-schema`.
+#
+# Governança de required status check (issue de rastreamento: rocksbrothers-png/
+# epi-controle#851 / epi-controle-app#187): `lint`/`postgres-schema` são
+# required checks. Até esta mudança, o filtro de path vivia em `on:`, então um
+# PR que não tocasse nenhum desses paths (docs-only, dependência do Flutter,
+# workflow não-backend) nunca disparava o workflow inteiro — e um required
+# check que nunca dispara fica "Expected" para sempre, bloqueando o merge sem
+# nenhum problema real (evidência completa na issue). Agora o workflow SEMPRE
+# dispara; o job `changes` decide via dorny/paths-filter se o path é relevante,
+# e cada job real roda condicionado a esse resultado — irrelevante = "skipped"
+# (satisfaz um required check), relevante = roda de verdade.
 on:
   push:
     branches: [main, "claude/**"]
-    paths:
-      - "epi_backend/**"
-      - "modules/**"
-      - "tests/**"
-      - "app.py"
-      - "requirements.txt"
-      - "supabase/migrations/**"
-      - ".github/workflows/backend-ci.yml"
   pull_request:
-    paths:
-      - "epi_backend/**"
-      - "modules/**"
-      - "tests/**"
-      - "app.py"
-      - "requirements.txt"
-      - "supabase/migrations/**"
-      - ".github/workflows/backend-ci.yml"
   workflow_dispatch:
 
 permissions:
@@ -40,8 +35,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "epi_backend/**"
+              - "modules/**"
+              - "tests/**"
+              - "app.py"
+              - "requirements.txt"
+              - "supabase/migrations/**"
+              - ".github/workflows/backend-ci.yml"
+
   test:
     name: Test & Coverage
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -88,6 +105,8 @@ jobs:
 
   lint:
     name: Lint (ruff)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -106,6 +125,8 @@ jobs:
 
   postgres-schema:
     name: PostgreSQL Schema & Multi-Tenant
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:

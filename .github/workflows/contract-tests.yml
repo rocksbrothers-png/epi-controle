@@ -54,7 +54,7 @@ jobs:
   contract:
     name: API Contract & Multi-Tenant Scope
     needs: changes
-    if: needs.changes.outputs.contract == 'true'
+    if: needs.changes.outputs.contract == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

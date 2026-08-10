@@ -171,6 +171,32 @@ def test_archival_bindings_cover_new_kinds():
     assert "['outsourcedEmployee', 'archivedOutsourcedEmployees']" in app_js
 
 
+# ── Arquivar na lista ativa: mesma dupla de permissões do restaurar ────────
+# Bug reportado em produção: o botão "Arquivar" desta tela nunca aparecia
+# para Administrador Local/Gestor de EPI, que só têm
+# employees:update_simplified (nunca employees:delete). O botão "Restaurar"
+# da aba "Colaboradores Arquivados" já usava a dupla de permissões correta
+# (ARCHIVAL_ENTITIES.outsourcedEmployee.deletePermission) — só o "Arquivar"
+# da lista ativa tinha ficado de fora.
+
+def test_archive_button_accepts_the_update_simplified_alternative():
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('function formatOutsourcedEmployeeRow('):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert "hasPermission('employees:delete') || permissions.canUpdate" in fn
+
+
+def test_archive_outsourced_employee_uses_the_outsourced_kind_not_plain_employee():
+    """kind errado ('employee') usava ARCHIVAL_ENTITIES.employee —
+    deletePermission só 'employees:delete' (sem a alternativa) e recarregava
+    a lista de arquivados do Cadastro de Colaboradores completo, não a desta
+    tela (archivedOutsourcedEmployees, filtrada outsourced_only=1)."""
+    app_js = _read('static', 'app.js')
+    fn = app_js[app_js.index('async function archiveOutsourcedEmployee('):]
+    fn = fn[:fn.index('\n}\n') + 2]
+    assert "archiveEntityRecord('outsourcedEmployee', entityId)" in fn
+
+
 # ── CRUD wiring em app.js ────────────────────────────────────────────────────
 
 def test_employee_form_submit_posts_to_outsourced_simplified_endpoint():

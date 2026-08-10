@@ -1558,27 +1558,27 @@ reaplicar depois de um rollback é seguro, mesmo padrão já documentado no
 
 ### 13.15 Divisão sugerida em PRs
 
-Nenhuma pendência bloqueia mais o desenho — as três decisões da rodada 2
-já estão incorporadas em cada PR abaixo. PR F (condicional, Multi-CNPJ
-para terceirizada) foi **removido**: D4/D5 fecharam na leitura mínima, sem
-tabela nova.
+PR F (condicional, Multi-CNPJ para terceirizada) foi **removido**: D4/D5
+fecharam na leitura mínima, sem tabela nova.
 
-- **PR A — correção isolada do alerta de CNPJ (§13.7).** Remove a chamada a
-  `resolve_employee_legal_entity_id` do fluxo terceirizado simplificado +
-  migração de limpeza para linhas legadas (`legal_entity_id = NULL WHERE
-  outsourced_company_id IS NOT NULL`, achado da revisão Codex, §13.19).
-  Ainda o menor PR possível — a migração é aditiva/idempotente, mesmo
-  padrão dual-track de sempre — corrige o bug com reprodução real em
-  produção, sem depender de nenhuma tabela nova, sem relação com nenhuma
-  das outras decisões desta rodada. Candidato a seguir sozinho e primeiro.
+- **PR A — correção isolada do alerta de CNPJ (§13.7). Implementado,
+  testado (32 testes, suíte completa 2178 verde) e enviado — não é mais
+  proposta.** Removeu a chamada a `resolve_employee_legal_entity_id` do
+  fluxo terceirizado simplificado + migração de limpeza para linhas
+  legadas (`legal_entity_id = NULL WHERE outsourced_company_id IS NOT
+  NULL`, achado da revisão Codex, §13.19).
 - **PR B — `employee_unit_links`.** Schema + backfill (dual-track,
-  semeando a Unidade base **e** a atual computada quando diferentes, e
-  cobrindo colaborador terceirizado legado sem `outsourced_company_id` —
-  ambos os ajustes do §13.19) + `is_employee_available_to_unit` (exige
+  semeando a Unidade base **e** a atual computada quando diferentes,
+  cobrindo colaborador terceirizado legado sem `outsourced_company_id`, e
+  **não** ativando vínculo para colaborador já arquivado globalmente —
+  três ajustes do §13.19/§13.20) + `is_employee_available_to_unit` (exige
   vínculo ativo correspondente em `outsourced_company_unit_links` da mesma
   Unidade, §13.19) + rotas de vincular/ativar/desativar vínculo local +
-  testes, mesma forma do §12.2. Inclui os três testes de não regressão de
-  transferência (§13.14) provando que `employee_unit_movements`/
+  **criação do vínculo local inicial atomicamente com o colaborador, na
+  própria Unidade que o cadastrou** (achado P1 do §13.20 — sem isso, todo
+  colaborador cadastrado depois deste PR nasce indisponível até para quem
+  o cadastrou) + testes, mesma forma do §12.2. Inclui os três testes de não
+  regressão de transferência (§13.14) provando que `employee_unit_movements`/
   `update_employee_unit` continuam intocados. Não depende de nenhuma
   decisão em aberto.
 - **PR C — busca + desambiguação no Cadastro de Colaborador (D4/D5).**
@@ -1593,22 +1593,35 @@ tabela nova.
   backend para D13-D17; amplia `ensure_actor_employee_scope` por OR
   (Unidade atual **ou** `employee_unit_links` ativo, §13.13) — só esse
   gate administrativo, não o de entrega (decidido em §13.9: gate de
-  entrega não muda, `modules/deliveries/` fora do escopo de todo PR desta
-  extensão). **Inclui a correção P1 do §13.19**:
+  entrega não muda por padrão nesta rodada — ver pergunta em aberto no
+  §13.20 sobre uma precondição negativa específica de arquivamento).
+  **Inclui as duas correções P1 do §13.19/§13.20**:
   `update_employee_outsourced_simplified` para de resolver/gravar `unit_id`
-  a partir do ator — preserva `current['unit_id']`, só a transferência
-  dedicada muda essa coluna — sem essa correção a ampliação do gate
-  administrativo transferiria colaboradores silenciosamente. Auditoria dos
-  relatórios afetados (§13.10), incluindo o gate de `build_ficha_epi_html_by_period`
+  **e** `outsourced_company_id` a partir do payload/ator — preserva
+  `current['unit_id']`/`current['outsourced_company_id']`, só fluxos
+  administrativos dedicados (transferência de Unidade, troca de fornecedor)
+  mudam essas colunas — sem essa correção a ampliação do gate administrativo
+  transferiria colaboradores e trocaria seu empregador silenciosamente.
+  **Inclui também conectar `is_employee_available_to_unit` no endpoint real
+  que alimenta os seletores de colaborador** (achado P1 do §13.20 — a
+  função só existir não filtra nada sozinha). Auditoria dos relatórios
+  afetados (§13.10), incluindo o gate de `build_ficha_epi_html_by_period`
   identificado nominalmente.
 - **PR E — governança de exclusão definitiva.** `ensure_purge_allowed`
   ganha o parâmetro `connection` (não tinha, §13.19) para consultar
   ausência de vínculo ativo em qualquer Unidade (D21) — checagem chamada
   tanto em `request_purge` quanto em `confirm_purge` (não só na primeira
-  etapa, §13.19) + aviso antecipado de elegibilidade (D20) + redação
-  atualizada de D19 refletida em mensagens de erro/auditoria. Depende do
-  PR B já estar mergeado. Nenhuma mudança no gate `master_admin`/
-  `general_admin` em si (já correto).
+  etapa, §13.19; atomicidade dentro do `confirm_purge` fica como risco
+  registrado, §13.20, não resolvida aqui) + aviso antecipado de
+  elegibilidade (D20) + redação atualizada de D19 refletida em mensagens de
+  erro/auditoria. **Escopo maior do que a rodada anterior previa (achado
+  P1 do §13.20): `outsourced_companies` não tem hoje nenhuma rota de
+  exclusão definitiva em duas etapas — PR E constrói `request`/`cancel`/
+  `confirm`/resumo de histórico para `outsourced_companies`, no mesmo
+  padrão já usado em `modules/employees/routes.py`, não só ajusta uma
+  precondição compartilhada que já existia.** Depende do PR B já estar
+  mergeado. Nenhuma mudança no gate `master_admin`/`general_admin` em si
+  (já correto).
 
 ### 13.16 Não-metas desta rodada
 
@@ -1841,3 +1854,104 @@ extensão (não internalizados como trabalho do PR B-E):**
   `(company_id, cpf)` a nível de banco — mudança maior, com migração de
   dado preexistente potencialmente conflitante, fora do escopo deste ADR;
   registrado como risco a avaliar separadamente.
+
+### 13.20 Revisão automatizada (Codex) — rodada 2
+
+Segunda rodada, disparada pelo push do §13.19. Verifiquei diretamente os
+dois achados mais consequentes antes de aceitar: não existe nenhuma rota
+`request_purge`/`confirm_purge` para `outsourced_companies` hoje (só para
+`employees`/`epis` — busca no repositório inteiro confirma) e
+`modules/deliveries/service.py:68-123` de fato não consulta
+`employee_unit_links` em nenhuma direção. As duas confirmadas.
+
+**Achado que corrige um "dia 1" quebrado (P1).** Nada no desenho do PR B/C
+faz `create_employee_outsourced_simplified` criar a linha inicial de
+`employee_unit_links` para a própria Unidade que acabou de cadastrar o
+colaborador. Como a disponibilidade passa a depender de vínculo ativo, todo
+colaborador terceirizado cadastrado depois do deploy do PR B ficaria
+indisponível até para quem acabou de cadastrá-lo. Ajuste: PR B/C cria o
+vínculo local ativo atomicamente com o colaborador, na mesma transação —
+mesmo padrão de qualquer operação criar+vincular já visto nesta ADR.
+
+**Achado que expõe uma lacuna real de aplicação (P1).** A ADR propõe
+`is_employee_available_to_unit` mas nunca especifica **onde** ele é
+efetivamente consultado. Sem isso, os seletores que hoje consomem a lista
+de colaboradores (bootstrap de `state.employees`, filtros por
+`current_unit_id`/`unit_id` no Web Legado) continuam do jeito que estão
+hoje — um colaborador vinculado a B mas com Unidade atual em A continua
+ausente do seletor de B, e um colaborador desativado localmente em A
+continua selecionável lá. Ajuste: PR D precisa **explicitamente** trocar
+(ou envolver) o endpoint que alimenta esses seletores para aplicar
+`is_employee_available_to_unit`, não só disponibilizar a função — mesmo
+tipo de lacuna que o §13.19 já tinha identificado para
+`ensure_actor_employee_scope`/ficha, agora encontrada também na listagem.
+
+**Achado que corrige o escopo do PR E — mais fundo do que eu havia
+desenhado (P1).** `outsourced_companies` **não tem hoje** nenhuma rota de
+exclusão definitiva em duas etapas — `modules/outsourced_companies/routes.py`
+só tem archive/restore e um DELETE que arquiva. `request_purge`/
+`confirm_purge` só existem hoje para `employees`/`epis`. D18-D22 pedem
+governança de exclusão definitiva para "colaborador/empresa" — mas para
+empresa terceirizada isso simplesmente não existe ainda para ajustar. PR E
+passa a incluir construir as rotas de exclusão definitiva de
+`outsourced_companies` (`request`/`cancel`/`confirm`/resumo de histórico),
+não só a precondição compartilhada em `ensure_purge_allowed` — mesmo padrão
+já usado em `modules/employees/routes.py`.
+
+**Mesmo bug do §13.19 (unit_id), agora em `outsourced_company_id` (P1).**
+`update_employee_outsourced_simplified` valida e grava
+`outsourced_company_id` do payload incondicionalmente, validado só contra
+o vínculo da Unidade **do ator**. Depois que o PR D amplia o gate
+administrativo por OR, a Unidade B (vinculada) poderia editar o
+colaborador e trocar o fornecedor de X para Y — validado só para B — e essa
+troca é **global**: a Unidade A perde a pessoa se Y não estiver vinculada
+lá, e o empregador do colaborador muda para todo mundo a partir de uma
+edição feita por uma Unidade que não é nem a de origem. Mesma correção do
+achado P1 do §13.19: `update_employee_outsourced_simplified` preserva
+`current['outsourced_company_id']` nesta edição — trocar de empresa
+terceirizada exige um fluxo administrativo dedicado e auditado, não a
+edição comum de um vínculo local.
+
+**Achados de robustez de migração/concorrência, aceitos com ajuste:**
+
+- **Backfill não deveria ativar vínculo para colaborador já arquivado
+  globalmente.** Semear `employee_unit_links` ativo para toda `employees`
+  com `outsourced_company_id`, sem olhar `status`, dá vínculo ativo a quem
+  já estava arquivado/pendente de exclusão antes desta extensão sequer
+  existir — e a nova precondição do PR E (nenhum vínculo ativo) passaria a
+  bloquear a exclusão de gente que já estava no caminho certo. Ajuste:
+  backfill filtra por status operacional (mesmo `NON_OPERATIONAL_STATUSES`
+  já usado em `fetch_employees`) ou semeia `local_status = 'inactive'` para
+  quem já não é operacional.
+- **Checagem de vínculo ativo no purge não é atômica dentro de
+  `confirm_purge`.** Rodar a checagem nas duas etapas (§13.19) fecha a
+  janela ENTRE as etapas, não a janela DENTRO da confirmação — em
+  PostgreSQL, uma Unidade pode ativar/criar vínculo entre o `SELECT` que
+  confirma "nenhum ativo" e o `UPDATE` que marca a exclusão. Aceito como
+  risco real, mesmo tratamento da corrida de CPF (§13.19): resolver de
+  verdade exige lock explícito (`SELECT ... FOR UPDATE`) ou constraint a
+  nível de banco no momento do `confirm_purge` — direção registrada, não
+  implementada nesta ADR; decisão de design a confirmar no PR E.
+
+**Pergunta nova em aberto — não decidida aqui, ao contrário do gate de
+entrega em si (§13.9), que já foi fechado.** Arquivamento local
+(`employee_unit_links.local_status = 'inactive'`) não bloqueia entrega
+mesmo quando a Unidade arquivada **é** a Unidade atual de movimentação do
+colaborador — `modules/deliveries/service.py` não consulta
+`employee_unit_links` em nenhuma direção. Isto é diferente da pergunta já
+fechada sobre ampliar o gate por OR (autorizar MAIS): aqui a pergunta é se
+o gate precisa de uma restrição a MAIS (uma precondição negativa: bloquear
+quando a Unidade atual está localmente arquivada), o que tecnicamente
+ainda respeita "não ampliar por OR" mas contraria "`modules/deliveries/`
+não é tocado por nenhum PR desta extensão" (§13.9/§13.16). Não decido isto
+unilateralmente, dado que o usuário já foi explícito sobre não tocar
+entrega — registrado para confirmação:
+
+> **Pergunta**: arquivar localmente um colaborador na Unidade onde ele está
+> atualmente alocado deve bloquear novas entregas ali (exige tocar
+> `modules/deliveries/service.py` com uma checagem adicional, só
+> restritiva, nunca uma nova autorização), ou o arquivamento local continua
+> sendo só administrativo/de seleção nesta rodada — coerente com D13-D17
+> mas sem dentes na entrega — e o bloqueio real de entrega para gente
+> arquivada localmente fica para um PR futuro dedicado a
+> `modules/deliveries/`?

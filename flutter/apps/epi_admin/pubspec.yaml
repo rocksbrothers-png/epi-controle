@@ -37,7 +37,7 @@ dependencies:
   retrofit: ^4.9.2
 
   # Storage seguro (tokens JWT)
-  flutter_secure_storage: ^11.0.0
+  flutter_secure_storage: ^10.3.1
 
   # Offline DB
   drift: ^2.20.3

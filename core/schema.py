@@ -2685,16 +2685,25 @@ def ensure_employee_outsourced_legal_entity_cleanup(connection) -> None:
     vinculado ao CNPJ do tenant e podendo bloquear `deactivate_legal_entity`
     por causa de gente que nunca deveria ter sido contada ali.
 
-    Idempotente e só afeta linhas com `outsourced_company_id` preenchido —
-    colaborador CLT (`outsourced_company_id IS NULL`) não é tocado.
+    Idempotente e só afeta linhas de colaborador terceirizado/prestador
+    (`tipo_vinculo <> 'CLT'` **e** `outsourced_company_id` preenchido) — as
+    duas condições juntas, não só a segunda. `outsourced_company_id` sozinho
+    não é um discriminador seguro: `create_employee`/`update_employee`
+    (fluxo CLT) sempre aceitaram gravar `outsourced_company_id` independente
+    de `tipo_vinculo` (achado da revisão Codex, §13.21) — uma linha CLT que
+    também tenha `outsourced_company_id` preenchido mantém seu
+    `legal_entity_id` intacto, só a combinação real do bug (terceirizado com
+    CNPJ do tenant indevidamente gravado) é limpa.
     """
     columns = _table_columns(connection, 'employees')
-    if 'legal_entity_id' not in columns or 'outsourced_company_id' not in columns:
+    required = {'legal_entity_id', 'outsourced_company_id', 'tipo_vinculo'}
+    if not required.issubset(columns):
         return
     try:
         connection.execute(
-            'UPDATE employees SET legal_entity_id = NULL '
-            'WHERE outsourced_company_id IS NOT NULL AND legal_entity_id IS NOT NULL'
+            "UPDATE employees SET legal_entity_id = NULL "
+            "WHERE outsourced_company_id IS NOT NULL AND legal_entity_id IS NOT NULL "
+            "AND COALESCE(tipo_vinculo, 'CLT') <> 'CLT'"
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))

@@ -12,12 +12,17 @@
 -- tenant e podendo bloquear deactivate_legal_entity por causa de gente que
 -- nunca deveria ter sido contada ali.
 --
--- Idempotente: so afeta linhas com outsourced_company_id preenchido e
--- legal_entity_id nao nulo -- reexecutar nao tem efeito adicional depois da
--- primeira aplicacao. Colaborador CLT (outsourced_company_id NULL) nao e
--- tocado.
+-- Idempotente: so afeta linhas de colaborador terceirizado/prestador
+-- (tipo_vinculo <> 'CLT' E outsourced_company_id preenchido) -- as duas
+-- condicoes juntas, nao so a segunda. outsourced_company_id sozinho nao e
+-- um discriminador seguro: create_employee/update_employee (fluxo CLT)
+-- sempre aceitaram gravar outsourced_company_id independente de
+-- tipo_vinculo (achado da revisao Codex, ADR-0002 §13.21) -- uma linha CLT
+-- que tambem tenha outsourced_company_id preenchido mantem seu
+-- legal_entity_id intacto.
 
 UPDATE employees
 SET legal_entity_id = NULL
 WHERE outsourced_company_id IS NOT NULL
-  AND legal_entity_id IS NOT NULL;
+  AND legal_entity_id IS NOT NULL
+  AND COALESCE(tipo_vinculo, 'CLT') <> 'CLT';

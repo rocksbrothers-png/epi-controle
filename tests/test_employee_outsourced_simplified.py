@@ -343,6 +343,30 @@ def test_legal_entity_cleanup_migration_is_idempotent():
     assert not employee.get('legal_entity_id')
 
 
+def test_legal_entity_cleanup_migration_preserves_clt_rows():
+    """achado da revisão Codex: outsourced_company_id sozinho não é um
+    discriminador seguro -- create_employee/update_employee (fluxo CLT)
+    sempre aceitaram gravar outsourced_company_id independente de
+    tipo_vinculo. Uma linha CLT com outsourced_company_id preenchido mantém
+    seu legal_entity_id -- só terceirizado (tipo_vinculo <> 'CLT') é limpo."""
+    conn = _PgStyleConn(_conn())
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    entity_id = _seed_legal_entity(conn, cid, '11.222.333/0001-81', 'Matriz')
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
+    clt_employee_id = conn.execute(
+        "INSERT INTO employees (company_id, name, tipo_vinculo, outsourced_company_id, legal_entity_id) "
+        "VALUES (?, 'Colaborador CLT', 'CLT', ?, ?)",
+        (cid, oc_id, entity_id),
+    ).lastrowid
+    conn.commit()
+
+    ensure_employee_outsourced_legal_entity_cleanup(conn)
+
+    row = conn.execute('SELECT legal_entity_id FROM employees WHERE id = ?', (clt_employee_id,)).fetchone()
+    assert row['legal_entity_id'] == entity_id
+
+
 def test_create_links_service_contract_matching_company():
     conn = _PgStyleConn(_conn())
     cid = _seed_company(conn)

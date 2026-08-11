@@ -57,11 +57,11 @@ def _sqlite_detection(monkeypatch):
     """`_PgStyleConn` esconde o tipo da conexão, e `core.schema` decide entre
     `sqlite_master` e `information_schema` por ele. Mesmo fixture das demais
     suítes que usam o adaptador."""
-    import epi_backend.db as db_module
-    monkeypatch.setattr(db_module, '_is_sqlite_connection', lambda _conn: True)
-    import core.schema as schema_module
-    if hasattr(schema_module, '_is_sqlite_connection'):
-        monkeypatch.setattr(schema_module, '_is_sqlite_connection', lambda _conn: True)
+    monkeypatch.setattr('epi_backend.db._is_sqlite_connection', lambda _conn: True)
+    # Alvo em string: `core.schema` já entra neste arquivo por `from ... import`,
+    # e um segundo `import core.schema as ...` só para ter o objeto do módulo
+    # deixaria o mesmo módulo importado das duas formas (apontado pelo CodeQL).
+    monkeypatch.setattr('core.schema._is_sqlite_connection', lambda _conn: True)
 
 
 def _dict_factory(cursor, row):

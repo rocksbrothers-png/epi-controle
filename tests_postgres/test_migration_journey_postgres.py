@@ -17,6 +17,7 @@ criado no início — é uma jornada, não casos independentes.
 
 import os
 import sys
+import uuid
 
 import pytest
 
@@ -55,6 +56,64 @@ MAPPING = {
     'Job Title': 'role_name',
     'Hire Date': 'admission_date',
 }
+
+
+# ── Isolamento entre execuções (issue #186) ────────────────────────────────
+# A jornada é module-scoped e compartilha um tenant de propósito. O problema é
+# que três colunas que ela grava têm UNIQUE **global**, sem company_id:
+#
+#     companies_name_key      (name)
+#     companies_cnpj_key      (cnpj)
+#     users_username_key      (username)
+#
+# Com valores fixos, rodar a suíte duas vezes contra o mesmo banco quebra logo
+# no setup do fixture ``tenant`` — e, como ele é module-scoped, *todas* as
+# etapas viram erro de fixture de uma vez.
+#
+# A correção é unicidade por execução, e não limpeza no teardown, porque o
+# grafo de chaves estrangeiras não permite um teardown simples:
+#
+#     units, employees, epis, deliveries  ->  companies   ON DELETE RESTRICT
+#     users                               ->  companies   ON DELETE SET NULL
+#
+# Um ``DELETE FROM companies`` falha enquanto existir uma unidade, e apagar a
+# empresa **não** libera o ``username``: o usuário sobrevive com company_id
+# NULL e continua ocupando o índice único global. Um teardown correto exigiria
+# ordem topológica e passaria a crescer a cada entidade nova habilitada (#172),
+# quebrando de novo assim que alguém esquecesse uma tabela. Unicidade é O(1) e
+# não depende do schema.
+#
+# Todo o resto que a jornada grava já é escopado por company_id
+# (``units_company_id_name_key``, ``uq_employees_company_employee_code``,
+# ``epis_company_id_*``, ``uq_outsourced_companies_company_cnpj``), então um
+# company_id novo isola o resto automaticamente.
+_RUN_TAG = uuid.uuid4().hex[:8]
+
+
+def _valid_cnpj_from(base12: str) -> str:
+    """CNPJ com dígitos verificadores corretos.
+
+    O CNPJ do tenant precisa ser único por execução, mas continuar válido: a
+    migration de Multi-CNPJ deriva ``legal_entities`` a partir dele. Gerar 14
+    dígitos aleatórios passaria no INSERT direto e escondería um problema real
+    mais adiante.
+    """
+    digits = base12
+    for weights in ([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2],
+                    [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]):
+        total = sum(int(digits[i]) * weights[i] for i in range(len(weights)))
+        rest = total % 11
+        digits += str(0 if rest < 2 else 11 - rest)
+    return digits
+
+
+def _run_cnpj(prefix: str) -> str:
+    """CNPJ válido e único por execução, derivado de ``_RUN_TAG``.
+
+    ``prefix`` distingue as empresas dentro da mesma execução (o tenant da
+    jornada e o tenant vizinho usado nas provas de isolamento).
+    """
+    return _valid_cnpj_from(f'{prefix}{int(_RUN_TAG, 16) % 10 ** 11:011d}')
 
 
 _CONNECTION = None
@@ -112,15 +171,18 @@ def tenant(bootstrapped_schema):
     """Tenant completo: empresa, CNPJ (quando disponível), unidades e usuário."""
     from core.security import hash_password
     connection = _conn()
+    # Nome e CNPJ carregam _RUN_TAG porque são UNIQUE globais — ver o bloco de
+    # isolamento no topo do arquivo. O resto dos dados segue fixo de propósito:
+    # é o que torna a jornada legível como cenário.
     company_id = _scalar(
         connection,
         "INSERT INTO companies (name, cnpj, logo_type) VALUES (%s, %s, '') RETURNING id",
-        ('Metalúrgica Aurora', '11222333000181'),
+        (f'Metalúrgica Aurora {_RUN_TAG}', _run_cnpj('1')),
     )
     other_company_id = _scalar(
         connection,
         "INSERT INTO companies (name, cnpj, logo_type) VALUES (%s, %s, '') RETURNING id",
-        ('Concorrente S.A.', '99888777000166'),
+        (f'Concorrente S.A. {_RUN_TAG}', _run_cnpj('9')),
     )
     units = {}
     for name in ('Produção', 'Manutenção'):
@@ -141,7 +203,9 @@ def tenant(bootstrapped_schema):
         connection,
         'INSERT INTO users (username, password, full_name, role, company_id, active) '
         'VALUES (%s, %s, %s, %s, %s, 1) RETURNING id',
-        ('rita.geral', hash_password('Teste@12345'), 'Rita Admin Geral',
+        # username é UNIQUE global; full_name não é, e segue fixo porque a
+        # etapa de auditoria afirma sobre ele.
+        (f'rita.geral.{_RUN_TAG}', hash_password('Teste@12345'), 'Rita Admin Geral',
          'general_admin', company_id),
     )
     legal_entity_id = None
@@ -209,8 +273,14 @@ def test_legacy_latin1_export_is_read_and_every_column_is_recognised(tenant):
 
 def test_preview_reports_the_outcome_without_writing_anything(tenant):
     connection = _conn()
-    before_employees = _scalar(connection, 'SELECT COUNT(*) FROM employees')
-    before_jobs = _scalar(connection, 'SELECT COUNT(*) FROM migration_jobs')
+    # Contagem escopada no tenant, não na tabela inteira: o que precisa ser
+    # provado é que o preview não gravou nada *desta* importação, e o número
+    # não pode depender do que exista no banco por outros motivos (#186).
+    scope = (tenant['company_id'],)
+    before_employees = _scalar(
+        connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s', scope)
+    before_jobs = _scalar(
+        connection, 'SELECT COUNT(*) FROM migration_jobs WHERE company_id = %s', scope)
 
     result = _run(tenant, strategy='dry_run')
     preview = result['preview']
@@ -221,8 +291,12 @@ def test_preview_reports_the_outcome_without_writing_anything(tenant):
     assert preview['will_insert'] == 3
     assert preview['blocking'] is False
 
-    assert _scalar(connection, 'SELECT COUNT(*) FROM employees') == before_employees
-    assert _scalar(connection, 'SELECT COUNT(*) FROM migration_jobs') == before_jobs
+    assert _scalar(
+        connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s', scope
+    ) == before_employees
+    assert _scalar(
+        connection, 'SELECT COUNT(*) FROM migration_jobs WHERE company_id = %s', scope
+    ) == before_jobs
 
 
 # ── 3. Referência desconhecida vira erro de preview ────────────────────────
@@ -894,3 +968,104 @@ def test_fornecedores_upsert_matches_by_cnpj_or_by_legal_name_when_cnpj_is_absen
         "AND legal_name = 'Gama Consultoria Técnica'",
         (tenant['company_id'],),
     ) == 'Gama Consultoria'
+
+
+# ── 8. A jornada roda duas vezes no mesmo banco (issue #186) ───────────────
+#
+# Esta seção não testa o produto: testa a própria suíte. A jornada é
+# module-scoped e semeia um tenant; se esse setup não for reexecutável, rodar
+# `pytest tests_postgres/` duas vezes contra o mesmo banco derruba TODAS as
+# etapas de uma vez, como erro de fixture. Foi o que a #186 registrou.
+
+def _global_unique_columns(connection, table):
+    """Colunas cobertas por UNIQUE que **não** inclui company_id.
+
+    Descoberto do catálogo do PostgreSQL, não de uma lista escrita à mão: um
+    UNIQUE global novo passa a ser vigiado sozinho.
+    """
+    from epi_backend.db import row_to_dict
+    rows = connection.execute(
+        """
+        SELECT pg_get_indexdef(i.oid) AS indexdef
+          FROM pg_index x
+          JOIN pg_class c ON c.oid = x.indrelid
+          JOIN pg_class i ON i.oid = x.indexrelid
+         WHERE x.indisunique AND c.relname = %s
+        """,
+        (table,),
+    ).fetchall()
+    found = set()
+    for row in rows:
+        definition = row_to_dict(row)['indexdef']
+        cols = definition[definition.index('(') + 1:definition.rindex(')')]
+        cols = [c.strip() for c in cols.split(',')]
+        if 'company_id' in cols or cols == ['id']:
+            continue
+        found.update(cols)
+    return found
+
+
+def test_the_tenant_seed_only_writes_run_scoped_values_into_global_unique_columns(tenant):
+    """Todo UNIQUE global que o tenant grava carrega o tag da execução.
+
+    É o invariante que torna a suíte reexecutável. Se alguém voltar a fixar um
+    nome, um CNPJ ou um username, este teste falha — em vez de a suíte inteira
+    virar erro de fixture só na segunda rodada, que é como o problema aparecia.
+    """
+    connection = _conn()
+
+    assert _global_unique_columns(connection, 'companies') == {'name', 'cnpj'}
+    assert _global_unique_columns(connection, 'users') == {'username'}
+
+    row = _scalar(connection, 'SELECT name FROM companies WHERE id = %s', (tenant['company_id'],))
+    assert _RUN_TAG in row
+    other = _scalar(connection, 'SELECT name FROM companies WHERE id = %s', (tenant['other_company_id'],))
+    assert _RUN_TAG in other
+    username = _scalar(connection, 'SELECT username FROM users WHERE id = %s', (tenant['user_id'],))
+    assert _RUN_TAG in username
+
+    # O CNPJ é único por execução E continua válido: a migration de Multi-CNPJ
+    # deriva legal_entities dele, então 14 dígitos aleatórios não serviriam.
+    cnpj = _scalar(connection, 'SELECT cnpj FROM companies WHERE id = %s', (tenant['company_id'],))
+    assert cnpj == _valid_cnpj_from(cnpj[:12])
+    assert cnpj != _scalar(
+        connection, 'SELECT cnpj FROM companies WHERE id = %s', (tenant['other_company_id'],))
+
+
+def test_seeding_the_same_tenant_shape_again_does_not_collide(tenant):
+    """Prova comportamental: uma segunda execução consegue semear de novo.
+
+    Repete os INSERTs do fixture com um tag diferente — que é exatamente o que
+    a próxima execução do pytest faz — e confirma que o banco aceita. Antes da
+    correção, este INSERT estourava `companies_name_key`.
+    """
+    connection = _conn()
+    next_tag = uuid.uuid4().hex[:8]
+    assert next_tag != _RUN_TAG
+
+    company_id = _scalar(
+        connection,
+        "INSERT INTO companies (name, cnpj, logo_type) VALUES (%s, %s, '') RETURNING id",
+        (f'Metalúrgica Aurora {next_tag}',
+         _valid_cnpj_from(f'1{int(next_tag, 16) % 10 ** 11:011d}')),
+    )
+    assert company_id and company_id != tenant['company_id']
+
+    # Mesmo nome de unidade do tenant da jornada: só não colide porque o
+    # UNIQUE de units é escopado por company_id. É essa a razão de bastar
+    # tornar únicos os três identificadores globais.
+    unit_id = _scalar(
+        connection,
+        'INSERT INTO units (company_id, name, unit_type, city) '
+        "VALUES (%s, 'Produção', 'base', 'Macaé') RETURNING id",
+        (company_id,),
+    )
+    assert unit_id
+
+    # Este tenant sintético não tem employees/epis, então o DELETE em ordem
+    # funciona. O tenant da jornada não é apagável assim — units, employees e
+    # epis apontam para companies com ON DELETE RESTRICT — e é justamente por
+    # isso que a correção da #186 é unicidade, não limpeza no teardown.
+    connection.execute('DELETE FROM units WHERE company_id = %s', (company_id,))
+    connection.execute('DELETE FROM companies WHERE id = %s', (company_id,))
+    connection.commit()

@@ -183,18 +183,45 @@ def test_migration_module_is_opt_in_and_hidden_by_default_for_every_role():
 
 # ── Catálogo (ADR-0003 §2.1) ────────────────────────────────────────────────
 
-def test_catalog_exposes_the_twenty_dashboard_cards():
-    entities = list_entities()
-    assert len(entities) == 20
-    assert {'colaboradores', 'epis', 'unidades', 'fornecedores'} <= {e['key'] for e in entities}
+def test_catalog_only_offers_entities_with_a_real_domain_model():
+    """O catálogo deixou de perseguir a contagem de 20 (issue #172).
+
+    Cada entrada vira um cartão no painel. Dez apontavam para tabelas
+    inexistentes e viraram promessa vazia para o usuário; `demandas` é
+    derivada pelo motor de estoque mínimo. Todas saíram.
+
+    Este teste não trava um número — trava a *regra*: os conceitos removidos
+    não voltam sem decisão de produto, e as habilitadas continuam presentes.
+    A verificação de que toda entrada tem tabela real vive em
+    `tests_postgres/test_migration_contract_postgres.py`, onde há schema.
+    """
+    keys = {e['key'] for e in list_entities()}
+
+    assert {'colaboradores', 'epis', 'unidades', 'fornecedores'} <= keys
+
+    sem_tabela = {
+        'centros_custo', 'funcoes', 'cargos', 'fabricantes', 'categorias',
+        'certificados_ca', 'permissoes', 'assinaturas', 'fotos', 'documentos',
+    }
+    assert not (sem_tabela & keys), (
+        'Conceitos sem tabela própria voltaram ao catálogo: '
+        f'{sorted(sem_tabela & keys)}. Viram entidade só depois de existir '
+        'decisão de produto e modelo de domínio.'
+    )
+    assert 'demandas' not in keys, (
+        '`demandas` é derivada (motor de estoque mínimo) e não deve ser '
+        'oferecida para importação.'
+    )
 
 
 def test_roadmap_entity_never_reaches_the_writer():
     # Segurança: entidade modelada mas sem writer validado é recusada no
     # gate, mesmo que a UI (ou um cliente hostil) tente chamá-la.
-    assert get_entity('documentos').enabled is False
+    # `historico_entregas` tem tabela (`deliveries`) e é o próximo lote — o
+    # caso certo para este teste depois da limpeza da #172.
+    assert get_entity('historico_entregas').enabled is False
     with pytest.raises(ValueError, match='ainda não está disponível'):
-        require_enabled_entity('documentos')
+        require_enabled_entity('historico_entregas')
 
 
 def test_unknown_entity_is_rejected():

@@ -257,28 +257,49 @@ _FORNECEDORES = EntityDescriptor(
 
 
 # ── Entidades modeladas, writer na fila (ADR-0003 §9) ───────────────────────
+#
+# O catálogo declarava 20 entidades. A auditoria da issue #172 verificou cada
+# uma contra o schema PostgreSQL real e encontrou o seguinte:
+#
+#   • 10 apontavam para tabelas que NÃO EXISTEM — `delivery_signatures`,
+#     `employee_positions`, `epi_categories`, `cost_centers`,
+#     `epi_certificates`, `documents`, `manufacturers`, `employee_photos`,
+#     `employee_roles`, `user_permissions`. Eram cartões de painel sem modelo
+#     por trás.
+#   • Vários desses dados JÁ SÃO IMPORTADOS hoje, como coluna de outra
+#     entidade: função/cargo em `employees.role_name`, fabricante em
+#     `epis.manufacturer`, CA em `epis.ca`, categoria e centro de custo como
+#     texto, assinatura nas colunas `signature_*` da própria entrega.
+#   • `demandas` (`stock_replenishment_needs`) é DERIVADA: o motor de estoque
+#     mínimo a recalcula a partir do estoque atual. Importar produziria
+#     números que o próprio motor contradiz no primeiro recálculo.
+#
+# Transformar qualquer um desses conceitos em tabela é decisão de produto e
+# arquitetura, não trabalho de migração — e nenhum schema será criado só para
+# manter a contagem de 20 no painel. O objetivo é suportar corretamente as
+# entidades com modelo de domínio real e valor de migração.
+#
+# Sobram aqui as que têm tabela e ainda não têm writer. Cada uma segue
+# bloqueada por um motivo próprio, registrado em #172.
 
 def _roadmap(key: str, label: str, table: str, phase: str) -> EntityDescriptor:
     return EntityDescriptor(key=key, label=label, target_table=table, fields=(), phase=phase)
 
 
 _ROADMAP_ENTITIES = (
-    _roadmap('estoque', 'Estoque', 'unit_epi_stock', '4'),
-    _roadmap('empresas', 'Empresas', 'companies', '4'),
-    _roadmap('centros_custo', 'Centros de Custo', 'cost_centers', '4'),
-    _roadmap('funcoes', 'Funções', 'employee_roles', '4'),
-    _roadmap('cargos', 'Cargos', 'employee_positions', '4'),
-    _roadmap('fabricantes', 'Fabricantes', 'manufacturers', '4'),
-    _roadmap('categorias', 'Categorias', 'epi_categories', '4'),
-    _roadmap('certificados_ca', 'Certificados de Aprovação (CA)', 'epi_certificates', '4'),
+    # Prioridade alta: é o registro legal que o cliente não consegue recriar.
     _roadmap('historico_entregas', 'Histórico de Entregas', 'deliveries', '4'),
-    _roadmap('usuarios', 'Usuários', 'users', '4'),
-    _roadmap('permissoes', 'Permissões', 'user_permissions', '4'),
-    _roadmap('demandas', 'Demandas', 'stock_replenishment_needs', '4'),
+    # Importável, mas como MOVIMENTO de ajuste — nunca como saldo, que é
+    # derivado de `stock_movements`.
+    _roadmap('estoque', 'Estoque', 'unit_epi_stock', '4'),
+    # Baixo valor e sem UNIQUE de negócio: reavaliar antes de habilitar.
     _roadmap('solicitacoes', 'Solicitações', 'epi_requests', '4'),
-    _roadmap('assinaturas', 'Assinaturas', 'delivery_signatures', '7'),
-    _roadmap('fotos', 'Fotos', 'employee_photos', '7'),
-    _roadmap('documentos', 'Documentos', 'documents', '7'),
+    # Bloqueada: `password` é hash e `role` livre é escalada de privilégio.
+    # Depende de definir senha temporária obrigatória e lista fechada de roles.
+    _roadmap('usuarios', 'Usuários', 'users', '4'),
+    # Bloqueada: importar empresa equivale a CRIAR TENANT, operação de Admin
+    # Master. `name` e `cnpj` são UNIQUE globais.
+    _roadmap('empresas', 'Empresas', 'companies', '4'),
 )
 
 

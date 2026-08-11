@@ -479,3 +479,60 @@ def test_server_defaults_match_what_the_normalizer_would_produce_when_empty():
             f'{name}: normalizador produz {produced[name]!r} mas o servidor grava '
             f'{server_default!r} — importado e manual divergiriam.'
         )
+
+
+# ── O catálogo não pode prometer entidade sem tabela (issue #172) ───────────
+
+def test_every_catalog_entity_points_at_a_table_that_exists(bootstrapped_schema):
+    """Cada entrada do catálogo vira um cartão no painel do Centro de Migração.
+
+    O catálogo declarava 20 entidades e 10 apontavam para tabelas inexistentes
+    — `cost_centers`, `employee_roles`, `manufacturers`, `epi_categories` e
+    outras. Eram promessas de UI sem modelo por trás, e o usuário via caminhos
+    que não levavam a lugar nenhum.
+
+    Entidade sem tabela não é entidade "na fila": é decisão de produto que
+    ainda não foi tomada. Enquanto não for, não figura no catálogo.
+    """
+    from epi_backend.db import row_to_dict
+    from modules.data_migration.catalog import ENTITIES
+
+    existing = {
+        row_to_dict(r)['table_name']
+        for r in _conn().execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        ).fetchall()
+    }
+    missing = sorted(
+        f'{key} -> {d.target_table}'
+        for key, d in ENTITIES.items()
+        if d.target_table not in existing
+    )
+    assert not missing, (
+        'Entidades do catálogo apontando para tabela inexistente: '
+        + '; '.join(missing)
+        + '. Ou a tabela é criada por migration, ou a entidade sai do catálogo '
+          '— o painel não deve oferecer o que não existe.'
+    )
+
+
+def test_derived_entities_are_not_offered_for_import():
+    """Dado calculado pelo sistema não entra por planilha.
+
+    `stock_replenishment_needs` é produzida por `modules/stock/replenishment.py`
+    a partir do estoque atual: importá-la geraria números que o próprio motor
+    contradiz no primeiro recálculo. Ficou fora do catálogo por isso, e este
+    teste impede que volte por engano.
+    """
+    from modules.data_migration.catalog import ENTITIES
+
+    derived_tables = {'stock_replenishment_needs'}
+    offered = sorted(
+        f'{key} -> {d.target_table}'
+        for key, d in ENTITIES.items()
+        if d.target_table in derived_tables
+    )
+    assert not offered, (
+        'Entidade derivada oferecida para importação: ' + '; '.join(offered)
+        + '. O sistema recalcula esses dados; importá-los cria divergência.'
+    )

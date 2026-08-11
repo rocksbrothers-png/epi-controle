@@ -6674,6 +6674,13 @@ function startEditUnit(unitId) {
 // empresa de origem que não existe.
 const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário'];
 
+// Vínculos de mão de obra CONTRATADA — espelha CONTRACTED_VINCULOS do backend.
+// Existem exclusivamente no módulo Terceirizados e Prestadores; o Cadastro
+// Principal não os oferece e o backend os recusa, na criação e na edição.
+// Continuam listados no FILTRO de relatórios, porque colaboradores com esses
+// vínculos existem e precisam ser consultáveis.
+const CONTRACTED_VINCULOS = ['Terceirizado', 'Prestador de Serviço', 'Temporário'];
+
 function isOwnWorkforceVinculo(value) {
   return OWN_WORKFORCE_VINCULOS.includes(String(value || 'CLT').trim());
 }

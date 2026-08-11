@@ -46,6 +46,52 @@ def normalize_preferred_contact_channel(value):
 OWN_WORKFORCE_VINCULOS = ('CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário')
 
 
+# Vínculos de mão de obra CONTRATADA — pessoas empregadas por um terceiro
+# (empresa terceirizada, prestadora ou de trabalho temporário), não por este
+# tenant.
+#
+# Eles existem EXCLUSIVAMENTE no módulo Terceirizados e Prestadores. O Cadastro
+# Principal os recusa: manter os dois caminhos capazes de criar um contratado
+# significava duas regras para o mesmo fato, e só um dos caminhos monta o
+# vínculo estruturado com `outsourced_companies` (CNPJ, contrato, escopo por
+# Unidade). O que o Cadastro Principal produzia era um contratado identificado
+# apenas por um texto livre em `empresa_origem` — sem CNPJ, sem contrato, sem
+# como responsabilizar ninguém pelo EPI.
+#
+# "Temporário" está aqui pela Lei 6.019/74: o trabalhador temporário é
+# contratado por empresa de trabalho temporário e cedido à tomadora. O vínculo
+# empregatício é com a empresa de trabalho temporário, não com esta.
+CONTRACTED_VINCULOS = ('Terceirizado', 'Prestador de Serviço', 'Temporário')
+
+
+def is_contracted_workforce(tipo_vinculo) -> bool:
+    """Vínculo que só existe no módulo Terceirizados e Prestadores."""
+    return str(tipo_vinculo or '').strip() in CONTRACTED_VINCULOS
+
+
+def ensure_vinculo_allowed_in_main_registration(tipo_vinculo) -> None:
+    """Gate do Cadastro Principal — recusa mão de obra contratada.
+
+    Simétrico ao que `validate_employee_outsourced_simplified_payload` já faz
+    do outro lado: cada cadastro aceita exatamente um dos dois universos, e
+    nenhum registro pode nascer pelo caminho errado.
+
+    Vale para criação **e** edição. Permitir editar um contratado por aqui
+    manteria vivo o formulário que não sabe montar o vínculo estruturado — e a
+    pessoa continuaria identificada só por texto livre.
+
+    A importação em massa (`modules/data_migration`) NÃO passa por este gate:
+    ela é ferramenta de migração, não o formulário de cadastro, e recusar ali
+    inviabilizaria trazer o histórico de um cliente novo.
+    """
+    if is_contracted_workforce(tipo_vinculo):
+        raise ValueError(
+            f'O vínculo "{tipo_vinculo}" não pertence ao Cadastro Principal — '
+            f'use o módulo Terceirizados e Prestadores, que registra a empresa '
+            f'contratante, o CNPJ e o contrato.'
+        )
+
+
 def is_own_workforce(tipo_vinculo) -> bool:
     """Mão de obra própria (a empresa é a empregadora) vs contratada.
 
@@ -169,6 +215,12 @@ def create_employee(connection, payload, *, actor):
     # regra de vínculo estava reimplementada inline e DIVERGIA: um vínculo
     # terceirizado sem empresa de origem era recusado na importação e aceito
     # em silêncio no cadastro manual, gravando string vazia (issue #192).
+    # ANTES da normalização, de propósito: para vínculo contratado o
+    # normalizador exigiria a identificação do contratado e falharia primeiro,
+    # mandando o operador preencher um campo que não resolve o problema dele.
+    # A recusa de vínculo é a regra mais fundamental e precisa ser a mensagem
+    # que ele lê.
+    ensure_vinculo_allowed_in_main_registration(payload.get('tipo_vinculo'))
     normalized = normalize_employee_domain_fields(payload)
     # CPF continua explícito: `normalize_cpf` levanta erro quando ausente ou
     # com menos de 11 dígitos, e esse comportamento não pode mudar aqui.
@@ -251,6 +303,10 @@ def update_employee(connection, employee_id, payload, *, actor):
     if str(unit['company_id']) != str(payload['company_id']):
         raise ValueError('Unidade e empresa do colaborador precisam ser compatíveis.')
     # Mesma função que a importação e create_employee usam (issue #192).
+    # A recusa vale também na EDIÇÃO, e vem antes da normalização pelo mesmo
+    # motivo de `create_employee`: a mensagem útil é "use o módulo
+    # Terceirizados", não "preencha a empresa de origem".
+    ensure_vinculo_allowed_in_main_registration(payload.get('tipo_vinculo'))
     normalized = normalize_employee_domain_fields(payload)
     cpf_digits = normalize_cpf(payload.get('cpf'))
     ensure_employee_identity_unique(connection, int(payload['company_id']), payload['employee_id_code'], cpf_digits, exclude_id=employee_id)
@@ -378,11 +434,22 @@ def validate_employee_outsourced_simplified_payload(payload):
     tipo_vinculo = str(payload.get('tipo_vinculo') or '').strip()
     if not tipo_vinculo:
         raise ValueError('Tipo de vínculo é obrigatório.')
-    if is_own_workforce(tipo_vinculo):
+    # Allowlist, não "tudo que não for próprio": os dois cadastros agora
+    # cobrem universos fechados e complementares, e um vínculo novo que não
+    # entre em nenhuma das duas listas precisa ser recusado nos DOIS lados até
+    # alguém decidir a qual ele pertence — em vez de cair no simplificado por
+    # omissão.
+    if tipo_vinculo not in CONTRACTED_VINCULOS:
+        if is_own_workforce(tipo_vinculo):
+            raise ValueError(
+                f'Cadastro de Colaboradores simplificado não aceita vínculo '
+                f'"{tipo_vinculo}" — é mão de obra própria da empresa, use o '
+                f'Cadastro Principal.'
+            )
         raise ValueError(
-            f'Cadastro de Colaboradores simplificado não aceita vínculo '
-            f'"{tipo_vinculo}" — é mão de obra própria da empresa, use o '
-            f'cadastro completo.'
+            f'Vínculo "{tipo_vinculo}" não é reconhecido como mão de obra '
+            f'contratada. Vínculos aceitos aqui: '
+            f'{", ".join(CONTRACTED_VINCULOS)}.'
         )
     role_name = str(payload.get('role_name') or '').strip()
     if not role_name:

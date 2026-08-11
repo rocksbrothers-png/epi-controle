@@ -269,10 +269,28 @@ def test_manual_registration_calls_the_shared_normalizer_instead_of_reimplementi
         assert 'normalize_employee_domain_fields(payload)' in source, (
             f'{function.__name__} não chama o normalizador compartilhado.'
         )
-        assert "payload.get('tipo_vinculo')" not in source, (
-            f'{function.__name__} voltou a derivar tipo_vinculo do payload em vez de '
-            f'usar normalize_employee_domain_fields.'
-        )
+        # O que está proibido é REIMPLEMENTAR a regra, não tocar na chave.
+        #
+        # A checagem anterior procurava a string `payload.get('tipo_vinculo')`
+        # e proibia qualquer leitura do campo cru. Isso passou a barrar um uso
+        # legítimo: o gate que recusa mão de obra contratada no Cadastro
+        # Principal precisa rodar ANTES do normalizador, senão o operador lê
+        # "Empresa de origem é obrigatória" — um campo que não vai resolver o
+        # problema dele — em vez de "use o módulo Terceirizados".
+        #
+        # A regra em si (quem tem empresa de origem, qual é o default, o que
+        # torna um contratado identificado) continua existindo em UM lugar só,
+        # e é isso que as asserções abaixo garantem.
+        # Ler `normalized['empresa_origem']` é legítimo — é consumir o
+        # resultado. O que denuncia reimplementação é a REGRA aparecer aqui:
+        # a lista de vínculos próprios, o default 'CLT' refeito à mão, ou a
+        # mensagem de erro que só o normalizador deveria emitir.
+        for signal in ('OWN_WORKFORCE_VINCULOS', "or 'CLT'", 'Empresa de origem é obrigatória'):
+            assert signal not in source, (
+                f'{function.__name__} reimplementa a regra de vínculo '
+                f'({signal!r}) em vez de delegar a '
+                f'normalize_employee_domain_fields.'
+            )
 
 
 def test_contractor_must_be_identified_structurally_or_by_free_text():

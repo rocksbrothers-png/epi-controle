@@ -305,3 +305,68 @@ def test_the_normalizer_always_returns_the_keys_its_callers_read():
     normalized = normalize_employee_domain_fields({'cpf': '11144477735'})
     for key in ('tipo_vinculo', 'empresa_origem', 'email', 'whatsapp', 'preferred_contact_channel'):
         assert key in normalized, f'{key} ausente na saída do normalizador.'
+
+
+# ── Entidades bloqueadas por DECISÃO, não por fila ──────────────────────────
+#
+# Nada guardava isso antes: desabilitar uma entidade era uma linha que
+# qualquer PR futuro podia reverter sem nenhum teste reclamar. Como a decisão
+# é de produto e o motivo é sutil (o alargamento de escopo abaixo), a razão
+# precisa estar travada em teste, não só num comentário.
+
+BLOCKED_BY_DECISION = ('fornecedores', 'usuarios', 'empresas')
+
+
+@pytest.mark.parametrize('entity_key', BLOCKED_BY_DECISION)
+def test_entities_blocked_by_decision_never_reach_the_writer(entity_key):
+    from modules.data_migration.catalog import require_enabled_entity
+    descriptor = get_entity(entity_key)
+    assert descriptor.enabled is False, (
+        f'{entity_key} foi reabilitada. Se a decisão de produto mudou, '
+        f'atualize este teste junto — mas leia antes o motivo em '
+        f'`descriptor.blocked_reason`.'
+    )
+    with pytest.raises(ValueError, match='não está disponível'):
+        require_enabled_entity(entity_key)
+
+
+@pytest.mark.parametrize('entity_key', BLOCKED_BY_DECISION)
+def test_a_blocked_entity_explains_itself_instead_of_promising_a_future_phase(entity_key):
+    """"Prevista para a fase 4" sobre uma decisão de produto faz o usuário
+    esperar por algo que ninguém pretende entregar. O bloqueio por decisão
+    precisa dizer o que fazer no lugar."""
+    from modules.data_migration.catalog import require_enabled_entity
+    descriptor = get_entity(entity_key)
+    assert descriptor.blocked_reason, (
+        f'{entity_key} está desabilitada sem `blocked_reason` — a UI só '
+        f'consegue dizer "em breve", que é falso.'
+    )
+    try:
+        require_enabled_entity(entity_key)
+    except ValueError as exc:
+        assert 'prevista para a fase' not in str(exc), (
+            f'{entity_key} promete uma fase futura para uma decisão de produto.'
+        )
+        assert descriptor.blocked_reason in str(exc)
+
+
+def test_fornecedores_is_blocked_because_the_import_cannot_create_the_unit_link():
+    """O motivo concreto, travado para não se perder.
+
+    Um `EntityDescriptor` escreve em UMA tabela. `outsourced_company_unit_links`
+    é outra, e está fora do alcance do motor — então a empresa importada
+    nasceria sem vínculo E sem `unit_id`, e
+    `is_outsourced_company_available_to_unit` lê exatamente essa combinação
+    como "empresa do tenant, disponível para TODAS as Unidades".
+
+    Uma planilha alargaria o escopo de uso em todas as Unidades sem ninguém ter
+    escolhido — o oposto do modelo de vínculo deliberado do ADR-0002 §13.6.
+    """
+    descriptor = get_entity('fornecedores')
+    assert descriptor.target_table == 'outsourced_companies'
+    assert 'unit_id' not in descriptor.field_names(), (
+        'Se `unit_id` virar campo importável, esta análise muda — mas o '
+        'vínculo por Unidade continua sendo outra tabela.'
+    )
+    assert 'outsourced_company_unit_links' not in descriptor.target_table
+    assert 'vínculo por Unidade' in descriptor.blocked_reason

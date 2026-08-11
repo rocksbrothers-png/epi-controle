@@ -536,6 +536,13 @@ def test_the_audit_trail_records_actor_source_and_every_touched_row(tenant):
 # ═══════════════════════════════════════════════════════════════════════════
 # unidades, epis e fornecedores (issue #170)
 #
+# NOTA (2026-08-11): `fornecedores` foi DESABILITADA por decisão de produto —
+# cadastro de empresa terceirizada não se faz por planilha, porque a
+# importação não consegue criar o vínculo por Unidade. Os testes de gravação
+# dela viraram testes de RECUSA (ver o bloco "Fornecedores" adiante). O texto
+# abaixo descreve o desenho original desta seção e continua valendo para
+# `unidades` e `epis`.
+#
 # A suíte acima só provava o motor genérico contra `colaboradores`. Nada
 # garantia que `unidades`, `epis` e `fornecedores` — habilitadas no mesmo
 # catálogo (issue #169) — sobrevivem ao PostgreSQL real: é exatamente a
@@ -835,7 +842,12 @@ MAPPING_FORNECEDORES = {
 }
 
 
-def test_fornecedores_legacy_export_is_read_and_every_column_is_recognised(tenant):
+def test_fornecedores_legacy_export_is_still_read_and_mapped_even_though_blocked(tenant):
+    """A LEITURA e o MAPEAMENTO continuam funcionando — só a gravação está
+    bloqueada. Vale manter: se `fornecedores` for reabilitada um dia com o
+    vínculo por Unidade resolvido, o assistente já reconhece o export legado
+    (TAB como separador, latin-1, CNPJ ausente na terceira linha).
+    """
     from modules.data_migration.service import analyze_source
     analysis = analyze_source('csv', LEGACY_TSV_FORNECEDORES.encode('latin-1'), 'fornecedores')
     assert analysis['detected']['delimiter'] == '\t'
@@ -844,130 +856,41 @@ def test_fornecedores_legacy_export_is_read_and_every_column_is_recognised(tenan
     assert analysis['missing_required'] == []
 
 
-def test_fornecedores_import_derives_cnpj_normalized_and_controlled_vocabulary(tenant):
-    """O defeito original de `fornecedores` (issue #169, provado até agora só
-    pela chamada isolada a `apply_domain_rules` em
-    test_migration_contract_postgres.py): a importação gravava o CNPJ como
-    veio da planilha e deixava `cnpj_normalized` vazia, tirando a linha do
-    índice único PARCIAL de deduplicação. Este teste prova o mesmo através
-    do motor de importação de ponta a ponta (`run_migration`), não de uma
-    chamada direta à função de normalização."""
-    result = _run(tenant, entity='fornecedores', strategy='insert_only',
-                  raw=LEGACY_TSV_FORNECEDORES.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
-    assert result['totals']['inserted'] == 3
-    assert result['totals']['failed'] == 0
+def test_fornecedores_import_is_refused_and_writes_nothing(tenant):
+    """Empresa terceirizada não se cadastra por planilha (decisão de produto).
 
-    connection = _conn()
-    from epi_backend.db import row_to_dict
-    rows = {row_to_dict(r)['legal_name']: row_to_dict(r) for r in connection.execute(
-        'SELECT legal_name, trade_name, cnpj, cnpj_normalized, company_kind, '
-        'epi_responsibility, registration_mode, registration_status, status '
-        'FROM outsourced_companies WHERE company_id = %s',
-        (tenant['company_id'],),
-    ).fetchall()}
-    alfa = rows['Alfa Manutenção Industrial LTDA']
-    assert alfa['cnpj'] == '12.345.678/0001-95'
-    assert alfa['cnpj_normalized'] == '12345678000195'
-    # Vocabulário controlado: 'Terceirizada' não está na lista de valores
-    # aceitos, então normaliza para o default do domínio — igual ao cadastro
-    # manual (normalize_company_kind).
-    assert alfa['company_kind'] == 'outsourced'
+    O motivo não é campo faltando: o motor escreve em UMA tabela, e o vínculo
+    por Unidade vive em `outsourced_company_unit_links`. Sem ele — e sem
+    `unit_id`, que a importação também não grava —
+    `is_outsourced_company_available_to_unit` leria a linha importada como
+    "empresa do tenant" e a deixaria disponível para TODAS as Unidades, sem
+    ninguém ter escolhido.
 
-    gama = rows['Gama Consultoria Técnica']
-    assert (gama['cnpj'] or '') == ''
-    assert (gama['cnpj_normalized'] or '') == ''
-
-    # Colunas que a importação não coleta (não existem no catálogo de
-    # `fornecedores`) e por isso o motor não grava: caem no DEFAULT do
-    # servidor, que test_server_defaults_match_what_the_normalizer_would_
-    # produce_when_empty (contrato) já prova ser igual ao que o
-    # normalizador produziria. Aqui fechamos o loop pelo caminho real.
-    for row in rows.values():
-        assert row['epi_responsibility'] == 'Conforme Contrato'
-        assert row['registration_mode'] == 'simplified'
-        assert row['registration_status'] == 'pending_completion'
-        assert row['status'] == 'active'
-
-
-def test_fornecedores_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
-    connection = _conn()
-    connection.execute(
-        'CREATE OR REPLACE FUNCTION reject_one_supplier() RETURNS trigger AS $$ '
-        "BEGIN IF NEW.legal_name = 'Fornecedor Rejeitado Propositalmente' THEN "
-        "RAISE EXCEPTION 'falha proposital de banco'; END IF; RETURN NEW; END; "
-        '$$ LANGUAGE plpgsql;'
-    )
-    connection.execute('DROP TRIGGER IF EXISTS reject_one_supplier_trg ON outsourced_companies')
-    connection.execute(
-        'CREATE TRIGGER reject_one_supplier_trg BEFORE INSERT ON outsourced_companies '
-        'FOR EACH ROW EXECUTE FUNCTION reject_one_supplier()'
-    )
-    connection.commit()
-    try:
-        csv = (
-            'Razão Social\tNome Fantasia\tCNPJ\tTipo de Empresa\n'
-            'Delta Andaimes LTDA\t\t\t\n'
-            'Fornecedor Rejeitado Propositalmente\t\t\t\n'
-            'Épsilon Elétrica ME\t\t\t\n'
-        ).encode('latin-1')
-        result = _run(tenant, entity='fornecedores', strategy='insert_only',
-                      raw=csv, mapping=MAPPING_FORNECEDORES)
-
-        assert result['totals']['failed'] == 1
-        assert result['totals']['inserted'] == 2
-        from modules.data_migration.service import fetch_job_records, get_job
-        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
-        errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
-                  if r['action'] == 'error']
-        assert len(errors) == 1
-        assert 'falha proposital' in (errors[0]['error_message'] or '')
-        assert _scalar(connection,
-                       'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s AND legal_name = %s',
-                       (tenant['company_id'], 'Delta Andaimes LTDA')) == 1
-        assert _scalar(connection,
-                       'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s AND legal_name = %s',
-                       (tenant['company_id'], 'Épsilon Elétrica ME')) == 1
-        assert _scalar(
-            connection,
-            "SELECT COUNT(*) FROM outsourced_companies WHERE legal_name = 'Fornecedor Rejeitado Propositalmente'",
-        ) == 0
-    finally:
-        connection.execute('DROP TRIGGER IF EXISTS reject_one_supplier_trg ON outsourced_companies')
-        connection.commit()
-
-    assert _scalar(connection, 'SELECT COUNT(*) FROM companies') >= 2
-
-
-def test_fornecedores_upsert_matches_by_cnpj_or_by_legal_name_when_cnpj_is_absent(tenant):
-    """As duas metades da chave natural composta (`cnpj`, `legal_name`) numa
-    só reexecução: as duas primeiras linhas casam por CNPJ, a terceira —
-    sem CNPJ nunca — só pode ter casado por `legal_name`."""
+    Este teste prova contra banco REAL que a recusa acontece ANTES de qualquer
+    escrita: a contagem de `outsourced_companies` não se move.
+    """
     connection = _conn()
     before = _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
                      (tenant['company_id'],))
-    changed = (
-        LEGACY_TSV_FORNECEDORES
-        .replace('Alfa Manutenção\t', 'Alfa Manutenção Predial\t')
-        .replace('Gama Consultoria Técnica\t\t\t',
-                 'Gama Consultoria Técnica\tGama Consultoria\t\t')
-    )
-    result = _run(tenant, entity='fornecedores', strategy='upsert',
-                  raw=changed.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
-    assert result['totals']['updated'] == 3
-    assert result['totals']['inserted'] == 0
+    with pytest.raises(ValueError, match='não está disponível'):
+        _run(tenant, entity='fornecedores', strategy='insert_only',
+             raw=LEGACY_TSV_FORNECEDORES.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
     assert _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
                    (tenant['company_id'],)) == before
-    assert _scalar(
-        connection,
-        "SELECT trade_name FROM outsourced_companies WHERE company_id = %s AND cnpj_normalized = '12345678000195'",
-        (tenant['company_id'],),
-    ) == 'Alfa Manutenção Predial'
-    assert _scalar(
-        connection,
-        "SELECT trade_name FROM outsourced_companies WHERE company_id = %s "
-        "AND legal_name = 'Gama Consultoria Técnica'",
-        (tenant['company_id'],),
-    ) == 'Gama Consultoria'
+
+
+def test_no_migration_job_is_even_created_for_a_blocked_entity(tenant):
+    """A recusa precisa vir antes de `create_job`. Um job registrado para uma
+    importação que nunca aconteceu poluiria o histórico do cliente e daria a
+    impressão de que a operação chegou a ser tentada de verdade."""
+    connection = _conn()
+    before = _scalar(connection, "SELECT COUNT(*) FROM migration_jobs WHERE company_id = %s AND entity = 'fornecedores'",
+                     (tenant['company_id'],))
+    with pytest.raises(ValueError):
+        _run(tenant, entity='fornecedores', strategy='insert_only',
+             raw=LEGACY_TSV_FORNECEDORES.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
+    assert _scalar(connection, "SELECT COUNT(*) FROM migration_jobs WHERE company_id = %s AND entity = 'fornecedores'",
+                   (tenant['company_id'],)) == before
 
 
 # ── 8. A jornada roda duas vezes no mesmo banco (issue #186) ───────────────

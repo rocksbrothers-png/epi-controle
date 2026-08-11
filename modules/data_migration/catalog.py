@@ -96,6 +96,12 @@ class EntityDescriptor:
     # forma determinística para que reimportar o mesmo arquivo colida no índice
     # único em vez de duplicar o histórico.
     computed_columns: tuple[str, ...] = ()
+    # Motivo de a entidade estar DESABILITADA POR DECISÃO, e não por estar na
+    # fila. São coisas diferentes e a UI precisa dizer qual é: "ainda não
+    # chegou a vez" convida a esperar; "não se faz por importação" convida a
+    # usar o cadastro. Prometer uma fase futura para algo que ninguém pretende
+    # entregar é a mesma promessa vazia que a #172 removeu do painel.
+    blocked_reason: str = ''
     enabled: bool = False
     phase: str = 'roadmap'
 
@@ -250,13 +256,58 @@ _EPIS = EntityDescriptor(
     ),
 )
 
+# DESABILITADA por decisão de produto: cadastro de empresa terceirizada não
+# se faz por importação.
+#
+# O motivo não é campo faltando — é ALARGAMENTO SILENCIOSO DE ESCOPO. O
+# importador grava `legal_name`, `trade_name`, `cnpj` e `company_kind`, e mais
+# nada. Não grava `unit_id` e não tem como criar linha em
+# `outsourced_company_unit_links`, que é uma tabela diferente da tabela-alvo e
+# está fora do alcance do motor (um `EntityDescriptor` escreve em UMA tabela).
+#
+# A consequência está em `is_outsourced_company_available_to_unit`
+# (modules/outsourced_companies/service.py):
+#
+#     link = fetch_outsourced_company_unit_link(...)
+#     if link is not None:
+#         return link['local_status'] != 'inactive'
+#     return entity.get('unit_id') is None        # <- a linha importada cai aqui
+#
+# Sem vínculo e sem `unit_id`, a empresa importada é lida como "empresa do
+# tenant" e fica disponível para TODAS as Unidades, permanentemente, sem
+# ninguém ter escolhido vínculo nenhum. É o oposto exato do modelo do
+# ADR-0002 §13.6: cada Unidade povoa deliberadamente os seus vínculos, e
+# vincular a empresa a uma Unidade nova não herda nada automaticamente.
+#
+# Confirmado contra produção antes de desabilitar: as 4 empresas reais têm
+# `unit_id` preenchido E vínculo explícito — nenhuma tem o formato que a
+# importação produziria. E `registration_status` cairia no DEFAULT
+# `pending_completion`: cadastro pela metade, que depois precisa ser
+# completado à mão de qualquer forma.
+#
+# Nenhum job de migração jamais rodou em produção quando esta entidade foi
+# desabilitada, então nada em uso foi afetado.
+#
+# O descritor fica AQUI, inteiro, em vez de virar um `_roadmap(...)` de
+# `fields=()`: o mapeamento e o normalizador são análise correta e cara, e
+# apagá-los faria a próxima pessoa refazer o trabalho para chegar à mesma
+# conclusão. Reabilitar exigiria o motor saber escrever a tabela de vínculo —
+# decisão de arquitetura, não de migração.
 _FORNECEDORES = EntityDescriptor(
     key='fornecedores',
     label='Fornecedores',
     target_table='outsourced_companies',
     natural_keys=('cnpj', 'legal_name'),
-    enabled=True,
-    phase='1',
+    enabled=False,
+    phase='bloqueada',
+    blocked_reason=(
+        'o cadastro de empresa terceirizada não se faz por planilha. A '
+        'importação não consegue criar o vínculo por Unidade '
+        '(`outsourced_company_unit_links`), e sem ele a empresa ficaria '
+        'disponível para todas as Unidades sem ninguém ter escolhido. '
+        'Cadastre pela tela de Empresas Terceirizadas, na Unidade que vai '
+        'usá-la.'
+    ),
     # Mesmas regras do cadastro manual: CNPJ canônico (formatado em `cnpj`,
     # só dígitos em `cnpj_normalized`) e os vocabulários controlados de
     # `company_kind` / `epi_responsibility` / `registration_mode` /
@@ -392,8 +443,9 @@ _HISTORICO_ENTREGAS = EntityDescriptor(
 # Sobram aqui as que têm tabela e ainda não têm writer. Cada uma segue
 # bloqueada por um motivo próprio, registrado em #172.
 
-def _roadmap(key: str, label: str, table: str, phase: str) -> EntityDescriptor:
-    return EntityDescriptor(key=key, label=label, target_table=table, fields=(), phase=phase)
+def _roadmap(key: str, label: str, table: str, phase: str, *, blocked: str = '') -> EntityDescriptor:
+    return EntityDescriptor(key=key, label=label, target_table=table, fields=(),
+                            phase=phase, blocked_reason=blocked)
 
 
 _ROADMAP_ENTITIES = (
@@ -402,12 +454,20 @@ _ROADMAP_ENTITIES = (
     _roadmap('estoque', 'Estoque', 'unit_epi_stock', '4'),
     # Baixo valor e sem UNIQUE de negócio: reavaliar antes de habilitar.
     _roadmap('solicitacoes', 'Solicitações', 'epi_requests', '4'),
-    # Bloqueada: `password` é hash e `role` livre é escalada de privilégio.
-    # Depende de definir senha temporária obrigatória e lista fechada de roles.
-    _roadmap('usuarios', 'Usuários', 'users', '4'),
-    # Bloqueada: importar empresa equivale a CRIAR TENANT, operação de Admin
-    # Master. `name` e `cnpj` são UNIQUE globais.
-    _roadmap('empresas', 'Empresas', 'companies', '4'),
+    # Bloqueada POR DECISÃO, não por fila: `password` é hash e `role` livre é
+    # escalada de privilégio. Depende de definir senha temporária obrigatória
+    # e lista fechada de roles — decisão de produto e segurança.
+    _roadmap('usuarios', 'Usuários', 'users', 'bloqueada', blocked=(
+        'importar usuário é criar acesso ao sistema. A senha é hash e o perfil '
+        'livre é escalada de privilégio. Depende de definir senha temporária '
+        'obrigatória e lista fechada de perfis.'
+    )),
+    # Bloqueada POR DECISÃO: importar empresa equivale a CRIAR TENANT, operação
+    # de Admin Master. `name` e `cnpj` são UNIQUE globais.
+    _roadmap('empresas', 'Empresas', 'companies', 'bloqueada', blocked=(
+        'importar empresa equivale a criar um novo cliente no sistema — '
+        'operação do Administrador Master, não de migração de dados.'
+    )),
 )
 
 
@@ -429,10 +489,21 @@ def get_entity(key: str) -> EntityDescriptor:
 
 
 def require_enabled_entity(key: str) -> EntityDescriptor:
-    """Gate único para qualquer escrita: entidade de roadmap nunca chega ao
-    writer, mesmo que a UI (ou um cliente hostil) tente."""
+    """Gate único para qualquer escrita: entidade desabilitada nunca chega ao
+    writer, mesmo que a UI (ou um cliente hostil) tente.
+
+    Duas mensagens, porque são duas situações: entidade na FILA ainda vai
+    existir, entidade BLOQUEADA não vai. Dizer "prevista para a fase X" sobre
+    uma decisão de produto faria o usuário esperar por algo que ninguém
+    pretende entregar.
+    """
     descriptor = get_entity(key)
     if not descriptor.enabled:
+        if descriptor.blocked_reason:
+            raise ValueError(
+                f'A importação de "{descriptor.label}" ainda não está '
+                f'disponível: {descriptor.blocked_reason}'
+            )
         raise ValueError(
             f'A importação de "{descriptor.label}" ainda não está disponível '
             f'(prevista para a fase {descriptor.phase} do Centro de Migração).'
@@ -441,13 +512,21 @@ def require_enabled_entity(key: str) -> EntityDescriptor:
 
 
 def list_entities() -> list[dict]:
-    """Catálogo para o dashboard: os 20 cartões, com o que já está liberado."""
+    """Catálogo para o dashboard: um cartão por entidade com modelo real.
+
+    ``blocked_reason`` vai junto para a UI poder dizer ao usuário *por que* uma
+    entidade não pode ser importada, em vez de só desabilitar o cartão. Sem
+    isso, "Fornecedores — em breve" faz a pessoa esperar por algo que ninguém
+    pretende entregar, quando a resposta útil é "cadastre pela tela de Empresas
+    Terceirizadas".
+    """
     return [
         {
             'key': descriptor.key,
             'label': descriptor.label,
             'enabled': descriptor.enabled,
             'phase': descriptor.phase,
+            'blocked_reason': descriptor.blocked_reason,
             'fields': [
                 {'name': spec.name, 'label': spec.label, 'required': spec.required}
                 for spec in descriptor.fields

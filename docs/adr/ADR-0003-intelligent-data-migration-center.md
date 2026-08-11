@@ -234,10 +234,47 @@ Depois da auditoria da #172, a habilitação de entidades deixou de ser "chegar 
 |---|---|---|
 | 0 (#205) | — (RLS das tabelas do Centro de Migração) | concluído |
 | 1 (#172) | limpeza do catálogo: 20 → 9 entradas com tabela real | concluído |
-| **2 (#211)** | **`historico_entregas` → `deliveries`** | **este PR** |
+| 2 (#211) | `historico_entregas` → `deliveries` | concluído |
 | 3 | `estoque` → `unit_epi_stock`, só como movimento de ajuste | seguinte |
 | — | `solicitacoes` | reavaliar depois do Lote 3 |
-| — | `usuarios`, `empresas` | bloqueadas por decisão de produto |
+| — | `usuarios`, `empresas`, `fornecedores` | bloqueadas por decisão de produto |
+
+#### Bloqueio por decisão ≠ bloqueio por fila
+
+São situações diferentes e a UI precisa dizer qual é. "Ainda não chegou a vez"
+convida a esperar; "não se faz por importação" convida a usar o cadastro.
+Prometer uma fase futura para algo que ninguém pretende entregar é a mesma
+promessa vazia que a #172 removeu do painel.
+
+`EntityDescriptor.blocked_reason` marca o segundo caso e vai no payload de
+`list_entities()`, para o cartão explicar o motivo em vez de só ficar cinza.
+
+**`fornecedores` entrou nessa lista em 2026-08-11.** O motivo não é campo
+faltando — é alargamento silencioso de escopo:
+
+- um `EntityDescriptor` escreve em **uma** tabela, e o vínculo por Unidade
+  vive em `outsourced_company_unit_links`, fora do alcance do motor;
+- a importação também não grava `unit_id`;
+- `is_outsourced_company_available_to_unit` lê exatamente essa combinação
+  (sem vínculo, `unit_id` nulo) como "empresa do tenant" e a libera para
+  **todas** as Unidades.
+
+Ou seja: uma planilha ampliaria o uso da empresa em todas as Unidades sem
+ninguém ter escolhido vínculo nenhum — o oposto do modelo do ADR-0002 §13.6,
+onde cada Unidade povoa deliberadamente os seus. Some-se a isso que
+`registration_status` cairia no DEFAULT `pending_completion`: cadastro pela
+metade, que precisaria ser completado à mão de qualquer forma.
+
+Verificado em produção antes de desabilitar: as 4 empresas reais têm `unit_id`
+preenchido **e** vínculo explícito — nenhuma tem o formato que a importação
+produziria — e nenhum job de migração jamais rodou, então nada em uso foi
+afetado.
+
+Reabilitar exigiria o motor saber escrever a tabela de vínculo, o que é
+decisão de arquitetura e não de migração. O descritor foi mantido inteiro
+(campos, aliases, normalizador) em vez de virar um placeholder: a análise é
+correta e cara, e apagá-la faria a próxima pessoa refazê-la para chegar à
+mesma conclusão.
 
 #### Lote 2 — histórico de entregas
 

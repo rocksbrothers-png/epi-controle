@@ -121,6 +121,14 @@ jobs:
       - name: End-to-end migration journey
         run: pytest tests_postgres/test_migration_journey_postgres.py -v
 
+      # Diretório inteiro, e não uma lista de arquivos: os dois passos acima
+      # existem só para dar mensagem melhor na ordem certa. Este garante que
+      # NENHUM arquivo de tests_postgres/ fique fora do CI por esquecimento —
+      # foi o que aconteceu com o guarda de cobertura de RLS, que nasceu sem
+      # rodar em lugar nenhum. O contrato roda duas vezes; custa segundos.
+      - name: Full tests_postgres suite (catches files not listed above)
+        run: pytest tests_postgres/ -v
+
       - name: Confirm migrations actually created the schema
         if: always()
         run: |

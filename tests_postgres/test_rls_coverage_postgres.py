@@ -80,7 +80,7 @@ def test_every_public_table_has_rls_enabled(connection):
             SELECT c.relname
               FROM pg_class c
               JOIN pg_namespace n ON n.oid = c.relnamespace
-             WHERE n.nspname = 'public' AND c.relkind = 'r'
+             WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
                AND NOT c.relrowsecurity
              ORDER BY 1
             """,
@@ -108,7 +108,7 @@ def test_every_public_table_has_the_blocking_policy(connection):
             SELECT c.relname
               FROM pg_class c
               JOIN pg_namespace n ON n.oid = c.relnamespace
-             WHERE n.nspname = 'public' AND c.relkind = 'r'
+             WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
                AND NOT EXISTS (
                      SELECT 1 FROM pg_policies p
                       WHERE p.schemaname = 'public'
@@ -124,6 +124,41 @@ def test_every_public_table_has_the_blocking_policy(connection):
         f'Tabelas em `public` sem a policy `{POLICY_NAME}`: '
         + ', '.join(missing)
         + '. Acrescente-as à migration de RLS hardening mais recente.'
+    )
+
+
+def test_the_blocking_policy_actually_blocks_both_api_roles(connection):
+    """Conferir o NOME da policy não prova que ela bloqueia.
+
+    Uma policy recriada como PERMISSIVE, cobrindo só `anon`, restrita a um
+    comando, ou com condição que deixe linhas passarem, mantém o nome e
+    continuaria satisfazendo o teste anterior — com o acesso via PostgREST
+    liberado. Aqui se verifica a definição efetiva, do catálogo.
+    """
+    wrong = [
+        f"{row['tablename']} (permissive={row['permissive']}, roles={row['roles']}, "
+        f"cmd={row['cmd']}, qual={row['qual']})"
+        for row in _rows(
+            connection,
+            f"""
+            SELECT tablename, permissive, roles::text AS roles, cmd, COALESCE(qual, '') AS qual
+              FROM pg_policies
+             WHERE schemaname = 'public' AND policyname = '{POLICY_NAME}'
+               AND (
+                     permissive <> 'RESTRICTIVE'
+                  OR cmd <> 'ALL'
+                  OR replace(COALESCE(qual, ''), ' ', '') <> 'false'
+                  OR NOT (roles @> ARRAY['anon', 'authenticated']::name[])
+                   )
+             ORDER BY 1
+            """,
+        )
+    ]
+    assert not wrong, (
+        f'A policy `{POLICY_NAME}` existe mas não bloqueia como deveria em: '
+        + '; '.join(wrong)
+        + '. O esperado é RESTRICTIVE, FOR ALL, USING (false), cobrindo '
+          '`anon` E `authenticated`.'
     )
 
 

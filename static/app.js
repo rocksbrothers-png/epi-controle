@@ -6665,10 +6665,23 @@ function startEditUnit(unitId) {
 // Único ponto que decide a visibilidade de "Empresa de Origem": chamado no
 // setup inicial, no 'change' do select, na edição e no reset do formulário —
 // nunca `row.hidden = ...` duplicado nesses lugares, para não divergir.
+// Vínculos de mão de obra própria — espelha OWN_WORKFORCE_VINCULOS do backend
+// (modules/employees/service.py). Para eles a empresa é a própria empregadora
+// e responsável pelo EPI, então "Empresa de Origem" não se aplica.
+//
+// Era `tv === 'CLT'`: com Menor Aprendiz, Praticante e Estagiário no seletor,
+// o campo aparecia para os três e o backend recusava o cadastro pedindo uma
+// empresa de origem que não existe.
+const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário'];
+
+function isOwnWorkforceVinculo(value) {
+  return OWN_WORKFORCE_VINCULOS.includes(String(value || 'CLT').trim());
+}
+
 function syncEmpresaOrigemVisibility() {
   const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
   const row = document.getElementById('employee-empresa-origem-row');
-  if (row) row.hidden = tv === 'CLT';
+  if (row) row.hidden = isOwnWorkforceVinculo(tv);
 }
 
 function startEditEmployee(employeeId) {

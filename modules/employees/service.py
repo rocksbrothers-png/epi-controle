@@ -31,7 +31,34 @@ def normalize_preferred_contact_channel(value):
 
 # Vínculos que caracterizam mão de obra própria. Para eles a empresa de
 # origem não se aplica; para os demais, ela é a identificação do contratado.
-OWN_WORKFORCE_VINCULOS = ('CLT',)
+#
+# Menor Aprendiz, Praticante e Estagiário entraram aqui em 2026-08-11: são
+# vínculos DIRETOS com a empresa. Mesmo sendo aprendiz ou estagiário, quem
+# responde pelo EPI é a própria empresa — não existe empresa de origem a
+# informar, porque não há terceiro na relação.
+#
+# Antes disso a lista era só ('CLT',), e as três opções que o sistema oferece
+# na tela de cadastro eram RECUSADAS pelo backend com "Empresa de origem é
+# obrigatória para o vínculo X". Ou seja: existiam no seletor e não podiam ser
+# salvas — o operador só conseguiria cadastrar um aprendiz inventando uma
+# empresa terceirizada que não existe, o que gravaria uma afirmação falsa
+# sobre a responsabilidade pelo EPI.
+OWN_WORKFORCE_VINCULOS = ('CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário')
+
+
+def is_own_workforce(tipo_vinculo) -> bool:
+    """Mão de obra própria (a empresa é a empregadora) vs contratada.
+
+    Existe porque o código usava `tipo_vinculo == 'CLT'` como sinônimo de
+    "próprio" em uma dúzia de lugares. Enquanto CLT era o único vínculo
+    próprio, os dois eram equivalentes; com aprendiz/praticante/estagiário
+    deixaram de ser, e cada `== 'CLT'` virou um bug em potencial — o aprendiz
+    sendo tratado como terceirizado, aparecendo na aba de arquivados de
+    terceirizados, ficando sem CNPJ vinculado.
+
+    Um predicado nomeado torna a intenção explícita e o conserto único.
+    """
+    return str(tipo_vinculo or 'CLT').strip() in OWN_WORKFORCE_VINCULOS
 
 
 def normalize_employee_domain_fields(payload: dict) -> dict:
@@ -179,7 +206,7 @@ def create_employee(connection, payload, *, actor):
     # próprio tenant, mesmo quando cadastrado via este endpoint geral em vez
     # do Cadastro Simplificado (ADR-0002 §13.7/§13.21).
     from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection) and tipo_vinculo == 'CLT':
+    if legal_entities_ready(connection) and is_own_workforce(tipo_vinculo):
         columns.append('legal_entity_id')
         values.append(resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), payload.get('legal_entity_id')
@@ -252,7 +279,7 @@ def update_employee(connection, employee_id, payload, *, actor):
     # linha já tivesse um valor legado (edição via este endpoint não deve
     # repopular o que a limpeza do ADR-0002 §13.7/§13.21 removeu).
     from modules.legal_entities.service import legal_entities_ready, resolve_employee_legal_entity_id
-    if legal_entities_ready(connection) and tipo_vinculo == 'CLT':
+    if legal_entities_ready(connection) and is_own_workforce(tipo_vinculo):
         legal_entity_id = current.get('legal_entity_id') or resolve_employee_legal_entity_id(
             connection, int(payload['company_id']), None
         )
@@ -351,9 +378,11 @@ def validate_employee_outsourced_simplified_payload(payload):
     tipo_vinculo = str(payload.get('tipo_vinculo') or '').strip()
     if not tipo_vinculo:
         raise ValueError('Tipo de vínculo é obrigatório.')
-    if tipo_vinculo == 'CLT':
+    if is_own_workforce(tipo_vinculo):
         raise ValueError(
-            'Cadastro de Colaboradores simplificado não aceita vínculo CLT — use o cadastro completo.'
+            f'Cadastro de Colaboradores simplificado não aceita vínculo '
+            f'"{tipo_vinculo}" — é mão de obra própria da empresa, use o '
+            f'cadastro completo.'
         )
     role_name = str(payload.get('role_name') or '').strip()
     if not role_name:
@@ -457,7 +486,7 @@ def update_employee_outsourced_simplified(connection, employee_id, payload, *, a
     if not current:
         raise ValueError('Colaborador não encontrado.')
     ensure_resource_company(actor, current, 'Colaborador')
-    if str(current.get('tipo_vinculo') or '') == 'CLT' or not current.get('outsourced_company_id'):
+    if is_own_workforce(current.get('tipo_vinculo')) or not current.get('outsourced_company_id'):
         raise PermissionError(
             'Este colaborador não pertence ao Cadastro de Colaboradores simplificado — use o cadastro completo.'
         )
@@ -908,7 +937,12 @@ def fetch_archived_employees(connection, actor, *, outsourced_only=False):
         sql += ' AND employees.company_id = ?'
         params.append(actor['company_id'])
     if outsourced_only and outsourced_cols:
-        sql += " AND employees.tipo_vinculo != 'CLT'"
+        # NOT IN da lista de mão de obra própria, não `!= 'CLT'`: com aprendiz,
+        # praticante e estagiário sendo vínculos próprios, `!= 'CLT'` os traria
+        # para a aba de terceirizados arquivados, onde não pertencem.
+        placeholders = ', '.join(['?'] * len(OWN_WORKFORCE_VINCULOS))
+        sql += f' AND COALESCE(employees.tipo_vinculo, \'CLT\') NOT IN ({placeholders})'
+        params.extend(OWN_WORKFORCE_VINCULOS)
     rows = connection.execute(sql + ' ORDER BY employees.archived_at DESC', tuple(params)).fetchall()
     result = []
     for row in rows:

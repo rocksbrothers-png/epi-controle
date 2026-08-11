@@ -27,6 +27,113 @@ if UTC is None:
 
 MSG_SIGNED_DIGITALLY = 'Assinado digitalmente'
 
+
+def _normalize_history_date(value: object, field_label: str) -> str:
+    """Data de planilha → ISO ``YYYY-MM-DD``.
+
+    Export legado traz data em qualquer coisa: ``31/12/2024``, ``2024-12-31``,
+    ``31-12-2024``, às vezes com hora colada. Gravar o texto cru quebraria toda
+    comparação de período da ficha de EPI, que usa ``date(d.delivery_date)``.
+
+    Formato ambíguo é ERRO, nunca um chute. ``03/04/2024`` pode ser 3 de abril
+    ou 4 de março; num histórico de entrega de EPI, errar o mês desloca a
+    entrega de período de ficha e pode fazê-la cair fora da vigência do CA.
+    Este sistema é brasileiro e assume dia/mês — o que precisa estar escrito,
+    não implícito.
+    """
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    raw = raw.split('T')[0].split(' ')[0]
+    if len(raw) == 10 and raw[4] == '-' and raw[7] == '-':
+        candidate = raw
+    else:
+        separator = '/' if '/' in raw else ('-' if '-' in raw else '')
+        parts = raw.split(separator) if separator else []
+        if len(parts) != 3:
+            raise ValueError(
+                f'{field_label} em formato não reconhecido: "{value}". '
+                'Use DD/MM/AAAA ou AAAA-MM-DD.'
+            )
+        day, month, year = parts
+        if len(year) == 2:
+            # Janela de 2 dígitos: histórico de EPI é passado, e um "50" aqui é
+            # 1950, não 2050. Fixar o corte evita que a interpretação mude com
+            # o relógio da máquina.
+            year = f'19{year}' if int(year) > 50 else f'20{year}'
+        candidate = f'{int(year):04d}-{int(month):02d}-{int(day):02d}'
+    try:
+        datetime.strptime(candidate, '%Y-%m-%d')
+    except ValueError as exc:
+        raise ValueError(f'{field_label} inválida: "{value}".') from exc
+    return candidate
+
+
+def normalize_delivery_history_fields(payload: dict) -> dict:
+    """Normalização de domínio do HISTÓRICO importado (issue #211).
+
+    Deliberadamente **não** é a regra do cadastro manual. `create_delivery_service`
+    exige leitura de QR, item de estoque, unidade operacional atual e quantidade
+    unitária — tudo aplicável a uma entrega acontecendo agora, e nenhum deles
+    verificável numa entrega de 2019 que o cliente está trazendo de outro
+    sistema. Reaproveitá-lo obrigaria a inventar um item de estoque para cada
+    linha do histórico, que é exatamente o que a #211 proíbe.
+
+    O que continua valendo, e é o que esta função garante:
+
+    - datas em ISO, para que os períodos da ficha continuem comparáveis;
+    - quantidade inteira e positiva;
+    - `signature_name` preservado mesmo sem imagem de assinatura. No fluxo
+      manual, `signature_name` sem `signature_data` é zerado — porque lá o nome
+      só existe se houve assinatura na tela. No histórico é o contrário: o nome
+      de quem recebeu é o único registro que sobreviveu à migração, e apagá-lo
+      destruiria a informação que dá valor ao dado importado;
+    - `signature_data`/`signature_at` ficam VAZIOS. Uma entrega importada não
+      tem assinatura coletada por este sistema, e preenchê-los afirmaria uma
+      prova que não existe.
+
+    Devolve um novo dicionário. Levanta ``ValueError`` com mensagem de negócio
+    — que é o que o preview transforma em diagnóstico de linha, antes de
+    qualquer gravação.
+    """
+    normalized = dict(payload)
+
+    normalized['delivery_date'] = _normalize_history_date(
+        normalized.get('delivery_date'), 'Data da entrega'
+    )
+    if not normalized['delivery_date']:
+        raise ValueError('Data da entrega é obrigatória no histórico importado.')
+
+    if str(normalized.get('returned_date') or '').strip():
+        normalized['returned_date'] = _normalize_history_date(
+            normalized.get('returned_date'), 'Data de devolução'
+        )
+        if normalized['returned_date'] < normalized['delivery_date']:
+            raise ValueError(
+                'Data de devolução anterior à data da entrega '
+                f"({normalized['returned_date']} < {normalized['delivery_date']})."
+            )
+
+    raw_quantity = str(normalized.get('quantity') or '').strip()
+    if raw_quantity:
+        try:
+            quantity = int(float(raw_quantity.replace(',', '.')))
+        except ValueError as exc:
+            raise ValueError(f'Quantidade inválida: "{normalized.get("quantity")}".') from exc
+        if quantity < 1:
+            raise ValueError('Quantidade da entrega precisa ser pelo menos 1.')
+        normalized['quantity'] = quantity
+
+    normalized['signature_name'] = ' '.join(
+        str(normalized.get('signature_name') or '').split()
+    )
+
+    # A entrega importada não traz prova coletada por este sistema.
+    normalized['signature_data'] = ''
+    normalized['signature_at'] = ''
+    normalized['signature_ip'] = ''
+    return normalized
+
 def ensure_stock_movement_size_columns(connection):
     # Delega para a versão canônica e agnóstica de banco (SQLite + PostgreSQL).
     # A implementação anterior usava `PRAGMA table_info(stock_movements)` — sintaxe
@@ -516,6 +623,13 @@ def fetch_deliveries(connection, actor=None, where_clause='', params=()):
     if where_clause:
         clean = where_clause.strip()
         clauses.append(clean[6:] if clean.upper().startswith('WHERE ') else clean)
+    # Entrega revertida por rollback lógico (#211) sai de toda leitura
+    # operacional: continua no banco para auditoria, mas não conta como posse
+    # ativa de EPI nem pode ser devolvida.
+    from modules.deliveries.visibility import active_delivery_sql
+    reversal = active_delivery_sql(connection, 'deliveries', prefix='')
+    if reversal:
+        clauses.append(reversal)
     final_where = f"WHERE {' AND '.join(clauses)}" if clauses else ''
     rows = connection.execute(
         f'''SELECT deliveries.id, deliveries.company_id, deliveries.employee_id, deliveries.epi_id, deliveries.quantity, deliveries.quantity_label, deliveries.sector, deliveries.role_name, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.notes, deliveries.signature_name, deliveries.signature_data, deliveries.signature_at, deliveries.signature_comment, deliveries.unit_id, deliveries.stock_movement_id, deliveries.glove_size, deliveries.size, deliveries.uniform_size, deliveries.returned_date, deliveries.returned_condition, deliveries.returned_notes, deliveries.return_movement_id,

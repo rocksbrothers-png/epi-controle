@@ -209,7 +209,13 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
                 row_ok = False
 
         key = natural_key_of(descriptor, record)
-        if not key:
+        # Só cobra identificador de quem DECLARA um. Entidade sem chave natural
+        # é legítima desde o Lote 2 (issue #211): em `historico_entregas`, duas
+        # entregas iguais no mesmo dia são registros distintos e válidos, e a
+        # proteção contra reimportação é a `idempotency_key` computada, não uma
+        # chave de negócio. Sem esta condição, toda linha era bloqueada com a
+        # mensagem "preencha ao menos ." — a lista vazia formatada como texto.
+        if not key and descriptor.natural_keys:
             diagnostics.append({
                 'row': index,
                 'level': 'error',

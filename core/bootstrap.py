@@ -318,6 +318,10 @@ def init_db():
             schema.ensure_delivery_evidence,
             schema.ensure_devolution_columns,
             schema.ensure_delivery_outsourced_snapshot_columns,
+            # Depende de `deliveries` e de `migration_jobs` (criada acima em
+            # schema.ensure_data_migration_tables) por causa da FK de
+            # rastreabilidade da importação.
+            schema.ensure_delivery_migration_origin_columns,
             # Depende de deliveries (colunas snapshot acima) e de
             # outsourced_companies (schema.ensure_outsourced_companies, já
             # executada antes na sequência via schema.ensure_legal_entities).

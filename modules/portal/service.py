@@ -236,13 +236,18 @@ def resolve_external_employee_context(connection, token, cpf_last3=None, *, ip_a
 
 def build_employee_ficha_pdf(connection, employee_user):
     employee_id = int(employee_user['linked_employee_id'])
+    # Entrega revertida por rollback lógico (#211) sai do PDF da ficha: o
+    # colaborador não pode receber um documento afirmando que recebeu um EPI
+    # cuja importação foi desfeita.
+    from modules.deliveries.visibility import active_delivery_sql
+    reversal = active_delivery_sql(connection, 'deliveries')
     deliveries = connection.execute(
-        '''
+        f'''
         SELECT deliveries.delivery_date, deliveries.quantity, deliveries.quantity_label, deliveries.signature_name,
                deliveries.signature_at, epis.name AS epi_name, epis.purchase_code
         FROM deliveries
         JOIN epis ON epis.id = deliveries.epi_id
-        WHERE deliveries.employee_id = ?
+        WHERE deliveries.employee_id = ?{reversal}
         ORDER BY deliveries.delivery_date DESC, deliveries.id DESC
         ''',
         (employee_id,)
@@ -291,6 +296,9 @@ def build_portal_link_from_cpf(base_url, funcionario_cpf, secret_key):
 # ── Portal data queries ───────────────────────────────────────────────────────
 
 def get_portal_employee_deliveries(connection, employee_id):
+    # Entrega revertida por rollback lógico (#211) não aparece no portal
+    # do colaborador: ela deixou de valer como entrega.
+    from modules.deliveries.visibility import active_delivery_sql
     return connection.execute(
         (
             'SELECT deliveries.id, deliveries.delivery_date, deliveries.next_replacement_date, deliveries.quantity, deliveries.quantity_label, '
@@ -302,6 +310,7 @@ def get_portal_employee_deliveries(connection, employee_id):
             'LEFT JOIN epi_ficha_items fi ON fi.delivery_id = deliveries.id '
             'JOIN epis ON epis.id = deliveries.epi_id '
             'WHERE deliveries.employee_id = ? '
+            + active_delivery_sql(connection, 'deliveries') + ' '
             'ORDER BY deliveries.delivery_date DESC, deliveries.id DESC'
         ),
         (int(employee_id),)

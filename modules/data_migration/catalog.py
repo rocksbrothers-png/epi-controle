@@ -41,6 +41,16 @@ class FieldSpec:
     # não converter vira diagnóstico de referência inexistente, nunca um
     # INSERT que estoura no banco.
     resolves_to: tuple[str, str] = ()
+    # Se um valor puramente numérico pode ser aceito como id interno deste
+    # sistema. Verdadeiro por padrão porque era o comportamento original.
+    #
+    # Precisa ser desligável: `historico_entregas` resolve o colaborador pela
+    # MATRÍCULA, e matrícula costuma ser só dígitos. Com o atalho ligado,
+    # "1234" seria procurado como `employees.id = 1234` — e, se esse id
+    # existisse no tenant, a entrega seria gravada para a PESSOA ERRADA, em
+    # silêncio, sem nenhum diagnóstico. Num histórico de entrega de EPI isso é
+    # atribuir a alguém um equipamento que essa pessoa nunca recebeu.
+    accepts_internal_id: bool = True
 
 
 @dataclass(frozen=True)
@@ -72,6 +82,20 @@ class EntityDescriptor:
     # Identidade do registro para deduplicação e UPDATE. Nunca o ID interno
     # do sistema legado — CPF/matrícula/código é o que sobrevive à migração.
     natural_keys: tuple[str, ...] = ()
+    # Carimba `origin`/`source_system`/`migration_job_id` na linha gravada
+    # (issue #211). Só faz sentido em tabelas que têm essas colunas — hoje,
+    # `deliveries`. O motor confere contra o schema real antes de escrever.
+    stamps_migration_origin: bool = False
+    # Coluna de reversão LÓGICA. Enquanto o job não é homologado, reverter
+    # apaga a linha; depois da homologação, apagar histórico com valor
+    # probatório deixa de ser aceitável e o rollback passa a marcar esta
+    # coluna. Vazio = a entidade só admite reversão física.
+    reversal_column: str = ''
+    # Colunas cujo valor a IMPORTAÇÃO calcula por linha (não vêm da planilha e
+    # não são constantes do catálogo). Hoje só `idempotency_key`, gerada de
+    # forma determinística para que reimportar o mesmo arquivo colida no índice
+    # único em vez de duplicar o histórico.
+    computed_columns: tuple[str, ...] = ()
     enabled: bool = False
     phase: str = 'roadmap'
 
@@ -255,6 +279,92 @@ _FORNECEDORES = EntityDescriptor(
     ),
 )
 
+# ── Lote 2: histórico de entregas (issue #211) ──────────────────────────────
+
+_HISTORICO_ENTREGAS = EntityDescriptor(
+    key='historico_entregas',
+    label='Histórico de Entregas',
+    target_table='deliveries',
+    enabled=True,
+    phase='2',
+    # A entrega importada NÃO é uma entrega feita no sistema: ninguém assinou
+    # no aparelho, nenhum estoque se moveu, a data é retroativa. As três
+    # colunas de procedência gravam isso na própria linha, para sempre.
+    stamps_migration_origin=True,
+    # Depois que o cliente homologa a migração, desfazê-la não pode mais
+    # APAGAR entrega — é registro de valor probatório em auditoria trabalhista.
+    # O rollback passa a marcar esta coluna.
+    reversal_column='migration_reverted_at',
+    # `deliveries` não tem UNIQUE de negócio, e não deveria ter: duas luvas
+    # para a mesma pessoa, do mesmo EPI, no mesmo dia são legítimas. Sem uma
+    # chave, porém, reimportar o mesmo arquivo DUPLICA o histórico — e o
+    # cliente não tem como perceber. A importação gera `idempotency_key`
+    # determinística (ver `_migration_idempotency_key`), que cai no índice
+    # único parcial já existente `(company_id, idempotency_key)`.
+    computed_columns=('idempotency_key',),
+    # Normalização de domínio própria do histórico — NÃO a do cadastro manual.
+    # `create_delivery_service` exige leitura de QR, item de estoque e unidade
+    # operacional atual; nada disso é verificável numa entrega de 2019 vinda de
+    # outro sistema. Ver a docstring de `normalize_delivery_history_fields`.
+    normalizer='modules.deliveries.service:normalize_delivery_history_fields',
+    # `signature_data`/`signature_at`/`signature_ip` são zeradas pelo
+    # normalizador (a entrega importada não tem prova coletada por este
+    # sistema) e precisam ser graváveis para que esse zeramento chegue ao banco.
+    derived_columns=('signature_data', 'signature_at', 'signature_ip'),
+    # `natural_keys` fica VAZIO de propósito. Chave natural aqui ativaria o
+    # caminho de UPDATE do motor, e histórico de entrega não se atualiza por
+    # reimportação: ou a linha é nova, ou é a mesma linha de antes — e essa
+    # segunda hipótese é o que `idempotency_key` resolve, pulando em vez de
+    # sobrescrever. Um UPDATE aqui reescreveria data ou quantidade de um
+    # registro que talvez já tenha sido usado como prova.
+    natural_keys=(),
+    # Colunas NOT NULL sem default que o export legado não traz de forma
+    # confiável. Mesma convenção de `colaboradores`: declarar a ausência em
+    # vez de inventar um valor de negócio falso. `next_replacement_date` em
+    # branco é "não informado"; preenchê-la com uma data calculada afirmaria
+    # uma troca programada que ninguém programou.
+    column_defaults=(
+        ('quantity_label', ''),
+        ('sector', ''),
+        ('role_name', ''),
+        ('next_replacement_date', ''),
+    ),
+    fields=(
+        # Resolve pela MATRÍCULA, não pelo nome: nome se repete e a ambiguidade
+        # viraria erro de linha em massa num export real. `accepts_internal_id`
+        # desligado porque matrícula costuma ser só dígitos — com o atalho
+        # numérico ligado, "1234" seria lido como `employees.id`.
+        FieldSpec('employee_id', 'Colaborador (matrícula)', required=True,
+                  resolves_to=('employees', 'employee_id_code'), accepts_internal_id=False,
+                  aliases=('matricula', 'matrícula', 'registro', 'chapa', 'colaborador',
+                           'funcionario', 'funcionário', 'employee', 'employee id',
+                           'employee code', 'codigo do funcionario')),
+        FieldSpec('epi_id', 'EPI', required=True, resolves_to=('epis', 'name'),
+                  aliases=('epi', 'equipamento', 'item', 'produto', 'descricao do epi',
+                           'descrição do epi', 'ppe', 'equipment')),
+        # A data ORIGINAL da entrega — o motivo de a importação existir. Nunca
+        # é substituída pela data de hoje.
+        FieldSpec('delivery_date', 'Data da entrega', required=True, validator='date',
+                  aliases=('data', 'data da entrega', 'data entrega', 'delivery date',
+                           'dt entrega', 'emissao', 'emissão')),
+        FieldSpec('quantity', 'Quantidade', required=True, validator='int',
+                  aliases=('quantidade', 'qtd', 'qtde', 'quantity', 'qty')),
+        # Obrigatório porque é o nome de quem recebeu — a própria prova de que
+        # a entrega ocorreu. Histórico sem isso não sustenta nada.
+        FieldSpec('signature_name', 'Recebido por', required=True,
+                  aliases=('recebido por', 'assinatura', 'assinado por', 'responsavel',
+                           'responsável', 'signature', 'signed by', 'recebedor')),
+        FieldSpec('unit_id', 'Unidade', resolves_to=('units', 'name'),
+                  aliases=('unidade', 'filial', 'base', 'site', 'local', 'departamento')),
+        FieldSpec('returned_date', 'Data de devolução', validator='date',
+                  aliases=('devolucao', 'devolução', 'data devolucao', 'data de devolução',
+                           'return date', 'returned')),
+        FieldSpec('notes', 'Observações',
+                  aliases=('observacao', 'observação', 'observacoes', 'observações',
+                           'obs', 'notes', 'comentario', 'comentário')),
+    ),
+)
+
 
 # ── Entidades modeladas, writer na fila (ADR-0003 §9) ───────────────────────
 #
@@ -287,8 +397,6 @@ def _roadmap(key: str, label: str, table: str, phase: str) -> EntityDescriptor:
 
 
 _ROADMAP_ENTITIES = (
-    # Prioridade alta: é o registro legal que o cliente não consegue recriar.
-    _roadmap('historico_entregas', 'Histórico de Entregas', 'deliveries', '4'),
     # Importável, mas como MOVIMENTO de ajuste — nunca como saldo, que é
     # derivado de `stock_movements`.
     _roadmap('estoque', 'Estoque', 'unit_epi_stock', '4'),
@@ -305,7 +413,11 @@ _ROADMAP_ENTITIES = (
 
 ENTITIES: dict[str, EntityDescriptor] = {
     descriptor.key: descriptor
-    for descriptor in (_COLABORADORES, _UNIDADES, _EPIS, _FORNECEDORES, *_ROADMAP_ENTITIES)
+    for descriptor in (
+        _COLABORADORES, _UNIDADES, _EPIS, _FORNECEDORES,
+        _HISTORICO_ENTREGAS,
+        *_ROADMAP_ENTITIES,
+    )
 }
 
 

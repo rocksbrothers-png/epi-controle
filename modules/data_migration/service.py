@@ -51,8 +51,83 @@ def _writable_columns(connection, descriptor) -> set[str]:
     # mapeáveis: o normalizador as calcula, a planilha nunca as traz. Ficar de
     # fora significava o valor calculado ser descartado na montagem do payload
     # (issue #169).
-    declared = set(descriptor.field_names()) | set(descriptor.derived_columns)
+    # `computed_columns` seguem a mesma lógica das derivadas: a importação as
+    # calcula por linha (hoje, `idempotency_key`) e elas precisam ser graváveis
+    # sem serem mapeáveis.
+    declared = (
+        set(descriptor.field_names())
+        | set(descriptor.derived_columns)
+        | set(descriptor.computed_columns)
+    )
     return {name for name in declared if name in available}
+
+
+# ── Procedência do registro importado (issue #211) ──────────────────────────
+
+#: Colunas de procedência gravadas em toda linha importada de uma entidade com
+#: ``stamps_migration_origin``. Nomes ficam aqui, e não espalhados pelo código,
+#: porque são a allowlist conferida contra o schema real antes de qualquer
+#: INSERT — mesma disciplina do resto do motor (ADR-0003 §7).
+ORIGIN_COLUMNS = ('origin', 'source_system', 'migration_job_id')
+
+#: Valor de ``deliveries.origin`` para o que o próprio sistema criou. É o
+#: DEFAULT da coluna, então toda linha anterior à migração 023 já nasce com
+#: ele — o que é factualmente verdadeiro: nenhuma importação de entregas
+#: jamais rodou antes deste lote.
+ORIGIN_SYSTEM = 'sistema'
+ORIGIN_MIGRATION = 'migracao'
+
+
+def _origin_stamp(connection, descriptor, job_id: int, source_kind: str) -> dict:
+    """Carimbo de procedência a aplicar em cada linha inserida.
+
+    Vazio quando a entidade não declara ``stamps_migration_origin`` — o
+    comportamento de todas as entidades dos lotes anteriores fica intacto.
+
+    Colunas ausentes no schema do tenant são silenciosamente omitidas, pelo
+    mesmo motivo de ``_writable_columns``: um tenant em versão anterior deve
+    importar sem carimbo em vez de falhar inteiro.
+    """
+    if not getattr(descriptor, 'stamps_migration_origin', False):
+        return {}
+    from modules.data_migration.sources import source_system_for
+    available = set(table_columns(connection, descriptor.target_table))
+    stamp = {
+        'origin': ORIGIN_MIGRATION,
+        'source_system': source_system_for(source_kind),
+        'migration_job_id': int(job_id),
+    }
+    return {name: value for name, value in stamp.items() if name in available}
+
+
+def _migration_idempotency_key(row_number: int, payload: dict) -> str:
+    """Chave determinística que impede reimportação duplicar histórico.
+
+    ``deliveries`` não tem UNIQUE de negócio — e não deveria ter: duas luvas
+    para a mesma pessoa, do mesmo EPI, no mesmo dia são legítimas. A
+    consequência é que reimportar o mesmo arquivo duplicaria o histórico sem
+    que nada no banco reclamasse.
+
+    A chave combina o conteúdo que identifica a entrega (colaborador, EPI,
+    data) com a POSIÇÃO na planilha. Duas decisões nisso:
+
+    - **inclui o número da linha** para que duas entregas legitimamente iguais
+      dentro do mesmo arquivo continuem entrando as duas;
+    - **não recebe o ``job_id``**, de propósito. Incluí-lo faria cada
+      reimportação gerar chaves novas — o índice único nunca colidiria e a
+      proteção não existiria. Ele fica de fora exatamente para que o segundo
+      envio do mesmo arquivo bata no primeiro.
+
+    Cai no índice único parcial já existente
+    ``(company_id, idempotency_key) WHERE idempotency_key <> ''``.
+    """
+    import hashlib
+    parts = '|'.join(
+        str(payload.get(name) or '')
+        for name in ('employee_id', 'epi_id', 'delivery_date', 'quantity')
+    )
+    digest = hashlib.sha256(f'{parts}|{int(row_number)}'.encode()).hexdigest()
+    return f'mig:{digest[:40]}'
 
 
 # ── Etapas 3 e 4 do assistente: leitura + mapeamento ────────────────────────
@@ -222,7 +297,7 @@ def resolve_references(connection, descriptor, company_id: int, records: list[di
             raw = str(updated.get(spec.name) or '').strip()
             if not raw:
                 continue
-            if raw.isdigit():
+            if raw.isdigit() and spec.accepts_internal_id:
                 # Id explícito só vale dentro do tenant (isolamento multi-tenant).
                 if int(raw) in known_ids[spec.name]:
                     updated[spec.name] = int(raw)
@@ -409,6 +484,7 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
         for name, value in (getattr(descriptor, 'column_defaults', ()) or ())
         if name in available
     }
+    stamp = _origin_stamp(connection, descriptor, job_id, source_kind)
 
     try:
         for index, record in enumerate(records, start=1):
@@ -423,7 +499,7 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
                     outcome = _apply_row(
                         connection, descriptor, company_id, job_id, index, record,
                         strategy=strategy, writable=writable, defaults=defaults,
-                        existing=existing,
+                        existing=existing, stamp=stamp,
                     )
             except Exception as exc:  # linha ruim não derruba o job inteiro
                 # Aqui a transação já voltou ao ponto anterior à linha, então
@@ -458,13 +534,19 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
 
 
 def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
-               strategy, writable, defaults, existing) -> str:
+               strategy, writable, defaults, existing, stamp=None) -> str:
     """Grava UMA linha e devolve o contador que ela alimenta.
 
     Roda inteira dentro do SAVEPOINT aberto por quem chama.
     """
     key = natural_key_of(descriptor, record)
-    current = existing.get(key)
+    # Entidade SEM chave natural (issue #211): `natural_key_of` devolve string
+    # vazia para toda linha, e sem esta guarda todas colidiriam entre si — a
+    # primeira entrega entrava e as demais eram tratadas como "já existente".
+    # Sem chave natural não existe registro correspondente por definição: cada
+    # linha é um fato novo, e a proteção contra reimportação é a
+    # `idempotency_key` computada logo abaixo.
+    current = existing.get(key) if key else None
     payload = {
         name: value for name, value in record.items()
         if name in writable and str(value or '').strip()
@@ -475,14 +557,36 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
                 before=None, after=None, error='Nenhum campo gravável.')
         return 'skipped'
 
+    # Chave determinística de reimportação (issue #211). Calculada ANTES do
+    # INSERT e verificada explicitamente: deixar o índice único estourar
+    # contaria a linha como "falha", e uma reimportação inteira apareceria
+    # para o usuário como um arquivo cheio de erros em vez de um arquivo já
+    # importado. `skipped` é a resposta correta e é o que ele precisa ler.
+    if 'idempotency_key' in getattr(descriptor, 'computed_columns', ()) \
+            and 'idempotency_key' in writable:
+        computed_key = _migration_idempotency_key(index, payload)
+        duplicate = connection.execute(
+            f'SELECT id FROM {descriptor.target_table} '  # noqa: S608 - allowlist do catálogo
+            'WHERE company_id = %s AND idempotency_key = %s LIMIT 1',
+            (int(company_id), computed_key),
+        ).fetchone()
+        if duplicate:
+            _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+                    action='skip', table=descriptor.target_table,
+                    target_id=int(row_to_dict(duplicate)['id']), before=None, after=None,
+                    error='Linha já importada anteriormente (reimportação do mesmo arquivo).')
+            return 'skipped'
+        payload['idempotency_key'] = computed_key
+
     if current is None:
         if strategy == 'update_only':
             _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                     action='skip', table=descriptor.target_table, target_id=None,
                     before=None, after=None, error='Registro inexistente (update_only).')
             return 'skipped'
-        new_id = _insert(connection, descriptor, company_id, defaults, payload)
-        existing[key] = {'id': new_id, **payload}
+        new_id = _insert(connection, descriptor, company_id, defaults, payload, stamp=stamp)
+        if key:
+            existing[key] = {'id': new_id, **payload}
         _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                 action='insert', table=descriptor.target_table, target_id=new_id,
                 before=None, after=payload)
@@ -537,11 +641,16 @@ def _snapshot(connection, descriptor, target_id: int, writable: set[str]) -> dic
     return row_to_dict(row) if row else {}
 
 
-def _insert(connection, descriptor, company_id: int, defaults: dict, payload: dict) -> int:
+def _insert(connection, descriptor, company_id: int, defaults: dict, payload: dict,
+            *, stamp: dict | None = None) -> int:
     # Defaults DECLARADOS no catálogo (`column_defaults`), não um preenchimento
     # automático de toda coluna NOT NULL: cada um é uma decisão de domínio
     # documentada e coberta pelo teste de contrato (ADR-0003 §12.3).
     payload = {**{name: value for name, value in defaults.items() if name not in payload}, **payload}
+    # O carimbo de procedência vem POR ÚLTIMO e sobrescreve: nem a planilha nem
+    # o catálogo podem declarar que uma linha importada nasceu no sistema.
+    if stamp:
+        payload = {**payload, **stamp}
     columns = ['company_id', *sorted(payload)]
     values = [int(company_id), *[payload[name] for name in sorted(payload)]]
     placeholders = ', '.join(['%s'] * len(values))
@@ -563,9 +672,63 @@ def _update(connection, descriptor, target_id: int, company_id: int, payload: di
 
 # ── Rollback (ADR-0003 §2.4) ────────────────────────────────────────────────
 
+def homologate_job(connection, job_id: int, company_id: int, actor) -> dict:
+    """Homologa a importação — o cliente conferiu e aceitou o resultado.
+
+    A homologação é a fronteira entre dois regimes de rollback (issue #211):
+
+    - **antes**: a importação ainda está em avaliação, e desfazê-la APAGA o
+      que ela inseriu. É o que se quer — são linhas que ninguém validou e que
+      podem estar erradas;
+    - **depois**: o dado passou a ser o histórico oficial do cliente. Uma
+      entrega de EPI homologada é peça de prova em auditoria trabalhista, e
+      apagá-la deixa de ser aceitável mesmo quando a importação toda se
+      revelou equivocada. O rollback passa a ser lógico.
+
+    Operação de mão única de propósito: não existe "des-homologar". Poder
+    voltar o job ao estado apagável reabriria exatamente a porta que a
+    homologação fecha, e transformaria a trava numa formalidade.
+    """
+    job = get_job(connection, job_id, company_id)
+    if not job:
+        raise ValueError('Importação não encontrada.')
+    # "já revertida" ANTES do status, pela mesma razão de `revert_job`: depois
+    # da reversão o status vira 'reverted', e a mensagem genérica de status
+    # esconderia o motivo real.
+    if job.get('reverted_at'):
+        raise ValueError('Esta importação foi revertida e não pode ser homologada.')
+    if job.get('status') != 'completed':
+        raise ValueError('Só é possível homologar uma importação concluída.')
+    if job.get('homologated_at'):
+        raise ValueError('Esta importação já foi homologada.')
+
+    connection.execute(
+        'UPDATE migration_jobs SET homologated_at = %s, homologated_by = %s '
+        'WHERE id = %s AND company_id = %s',
+        (_now(), int(actor.get('id') or 0), int(job_id), int(company_id)),
+    )
+    connection.commit()
+    return {'job_id': int(job_id), 'homologated': True}
+
+
 def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
-    """Desfaz uma importação: apaga o que foi inserido e restaura o
-    ``before_json`` do que foi atualizado, em ordem inversa."""
+    """Desfaz uma importação.
+
+    Dois regimes, decididos pelo estado de homologação do job (issue #211):
+
+    **Reversão física** (job ainda não homologado): apaga o que foi inserido e
+    restaura o ``before_json`` do que foi atualizado, em ordem inversa.
+
+    **Reversão lógica** (job homologado): as linhas inseridas são MARCADAS na
+    coluna declarada em ``EntityDescriptor.reversal_column`` e param de contar
+    como registro ativo, mas continuam existindo. Auditoria e histórico ficam
+    preservados — é o ponto todo de homologar.
+
+    Se o job foi homologado e a entidade não declara ``reversal_column``, a
+    reversão é RECUSADA em vez de cair no caminho físico. Apagar histórico
+    homologado por falta de suporte a rollback lógico seria escolher o pior
+    resultado justamente onde o dado é mais sensível.
+    """
     job = get_job(connection, job_id, company_id)
     if not job:
         raise ValueError('Importação não encontrada.')
@@ -577,14 +740,31 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
     if job.get('status') != 'completed':
         raise ValueError('Só é possível reverter uma importação concluída.')
 
+    descriptor = get_entity(job['entity'])
+    homologated = bool(str(job.get('homologated_at') or '').strip())
+    reversal_column = str(getattr(descriptor, 'reversal_column', '') or '')
+    if homologated and not reversal_column:
+        raise ValueError(
+            f'Esta importação de "{descriptor.label}" já foi homologada e a '
+            'reversão apagaria os registros. Reversão lógica não está '
+            'disponível para esta entidade.'
+        )
+    # Coluna do catálogo, mas conferida contra o schema real: tenant em versão
+    # anterior não pode acabar caindo no DELETE por a coluna não existir.
+    if homologated and reversal_column not in set(table_columns(connection, descriptor.target_table)):
+        raise ValueError(
+            'Esta importação já foi homologada e a coluna de reversão lógica '
+            f'({reversal_column}) não existe neste banco. Aplique as migrations '
+            'pendentes antes de reverter.'
+        )
+
     rows = connection.execute(
         'SELECT id, row_number, action, target_table, target_id, before_json '
         'FROM migration_job_records WHERE job_id = %s AND company_id = %s ORDER BY id DESC',
         (int(job_id), int(company_id)),
     ).fetchall()
 
-    descriptor = get_entity(job['entity'])
-    reverted = {'deleted': 0, 'restored': 0, 'skipped': 0}
+    reverted = {'deleted': 0, 'restored': 0, 'skipped': 0, 'marked': 0}
 
     for raw_row in rows:
         record = row_to_dict(raw_row)
@@ -600,11 +780,22 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
             reverted['skipped'] += 1
             continue
         if action == 'insert':
-            connection.execute(
-                f'DELETE FROM {descriptor.target_table} WHERE id = %s AND company_id = %s',  # noqa: S608 - allowlist do catálogo
-                (int(target_id), int(company_id)),
-            )
-            reverted['deleted'] += 1
+            if homologated:
+                # Reversão LÓGICA: a linha some das leituras operacionais e
+                # continua existindo para a auditoria. `reversal_column` vem do
+                # catálogo, nunca do payload.
+                connection.execute(
+                    f'UPDATE {descriptor.target_table} SET {reversal_column} = %s '  # noqa: S608 - allowlist do catálogo
+                    'WHERE id = %s AND company_id = %s',
+                    (_now(), int(target_id), int(company_id)),
+                )
+                reverted['marked'] += 1
+            else:
+                connection.execute(
+                    f'DELETE FROM {descriptor.target_table} WHERE id = %s AND company_id = %s',  # noqa: S608 - allowlist do catálogo
+                    (int(target_id), int(company_id)),
+                )
+                reverted['deleted'] += 1
         else:
             try:
                 before = json.loads(record.get('before_json') or '{}')
@@ -648,7 +839,7 @@ def fetch_jobs(connection, company_id: int, *, entity: str = '', limit: int = 50
     rows = connection.execute(
         'SELECT id, entity, source_kind, source_name, strategy, status, total_rows, '
         'inserted_rows, updated_rows, skipped_rows, failed_rows, actor_name, '
-        'started_at, finished_at, reverted_at, created_at '
+        'started_at, finished_at, reverted_at, homologated_at, created_at '
         f'FROM migration_jobs WHERE {" AND ".join(clauses)} '  # noqa: S608 - cláusulas fixas
         'ORDER BY id DESC LIMIT %s',
         (*params, int(limit)),

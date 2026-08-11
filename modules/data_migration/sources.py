@@ -39,6 +39,52 @@ ROADMAP_SOURCE_KINDS = (
     'rest', 'graphql', 'sap', 'totvs', 'senior', 'benner', 'dominio',
 )
 
+# Sistema de origem gravado no registro importado (issue #211).
+#
+# É DERIVADO do `source_kind`, não pedido ao usuário: a alternativa seria um
+# campo novo na API que alguém preencheria errado, ou não preencheria. Aqui,
+# uma fonte nova só precisa entrar neste mapa uma vez e todo registro que ela
+# produzir nasce carimbado corretamente.
+#
+# Distinto de `origin`: `origin` responde "veio de fora?" e tem duas respostas
+# estáveis; `source_system` responde "de fora a partir de quê?" e o inventário
+# cresce a cada integração. Misturar os dois obrigaria a mexer na semântica de
+# `origin` toda vez que um ERP novo entrasse.
+_SOURCE_SYSTEM_BY_KIND = {
+    'sap': 'sap',
+    'totvs': 'totvs',
+    'senior': 'senior',
+    'benner': 'benner',
+    'dominio': 'dominio',
+    'rest': 'api',
+    'graphql': 'api',
+    'sqlserver': 'banco',
+    'mysql': 'banco',
+    'postgresql': 'banco',
+    'sqlite': 'banco',
+    'oracle': 'banco',
+}
+
+
+def source_system_for(source_kind: str) -> str:
+    """Sistema de origem correspondente a um ``source_kind``.
+
+    Arquivo (xlsx/csv/ods/json/xml/txt) é sempre ``'planilha'`` — do ponto de
+    vista da auditoria, o que importa é que um humano exportou e enviou um
+    arquivo, não qual extensão ele tinha.
+
+    Um `source_kind` desconhecido devolve o próprio valor normalizado em vez de
+    string vazia: registro carimbado com uma fonte estranha é diagnosticável;
+    registro sem carimbo nenhum é indistinguível de um bug.
+    """
+    kind = str(source_kind or '').strip().lower()
+    if not kind:
+        return ''
+    if kind in FILE_SOURCE_KINDS:
+        return 'planilha'
+    return _SOURCE_SYSTEM_BY_KIND.get(kind, kind)
+
+
 _ENCODING_CANDIDATES = ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252')
 _DELIMITER_CANDIDATES = (';', ',', '\t', '|')
 

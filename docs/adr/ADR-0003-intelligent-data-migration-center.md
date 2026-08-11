@@ -109,6 +109,35 @@ registros do job em ordem inversa, `DELETE` no que foi inserido e restaurar
 `before_json` no que foi atualizado. Também é o que satisfaz "auditoria com
 antes/depois" sem uma segunda estrutura.
 
+> **Revisão de 2026-08-11 (issue #211).** O rollback passou a ter **dois
+> regimes**, separados pela homologação do job:
+>
+> | Estado do job | Reverter faz | Por quê |
+> |---|---|---|
+> | não homologado | `DELETE` das linhas inseridas | são linhas que ninguém validou e que podem estar erradas |
+> | homologado | marca `EntityDescriptor.reversal_column` | o dado virou o histórico oficial do cliente |
+>
+> A homologação (`migration_jobs.homologated_at`) é o momento em que o cliente
+> confere e aceita o resultado. Depois dela, uma entrega de EPI importada é
+> peça de prova em auditoria trabalhista, e apagá-la deixa de ser aceitável
+> mesmo quando a importação toda se revelou equivocada.
+>
+> Duas travas que fazem a regra valer:
+>
+> 1. **Homologar é mão única.** Não existe "des-homologar" — poder voltar o
+>    job ao estado apagável reabriria exatamente a porta que a homologação
+>    fecha.
+> 2. **Job homologado de entidade sem `reversal_column` é RECUSADO**, não cai
+>    no caminho físico. Apagar histórico homologado por falta de suporte a
+>    rollback lógico seria escolher o pior resultado justamente onde o dado é
+>    mais sensível.
+>
+> O rollback lógico só é rollback se a linha marcada **parar de contar**. As
+> leituras operacionais (ficha de EPI, portal do colaborador, listagem de
+> entregas, elegibilidade de devolução) passam pelo predicado único de
+> `modules/deliveries/visibility.py`. Sem isso a marcação seria decoração — e
+> um rollback que parece ter funcionado é pior do que rollback nenhum.
+
 ### 2.5 Autorização — reaproveita o mecanismo existente, não cria um novo
 
 - Permissão técnica nova e estreita: `data_migration:manage`, concedida
@@ -195,6 +224,72 @@ importação de 100k linhas seja tentada de forma síncrona.
 As entidades do catálogo já declaradas mas ainda sem writer vetado entram
 como `enabled=False` e aparecem na UI como "em breve" — a alternativa
 (expor um importador não validado para dado trabalhista) seria pior.
+
+### 9.1 Lotes de habilitação de entidade (issues #172 → #211)
+
+Depois da auditoria da #172, a habilitação de entidades deixou de ser "chegar a
+20" e passou a ser feita em lotes pequenos, um PR cada:
+
+| Lote | Entidade | Estado |
+|---|---|---|
+| 0 (#205) | — (RLS das tabelas do Centro de Migração) | concluído |
+| 1 (#172) | limpeza do catálogo: 20 → 9 entradas com tabela real | concluído |
+| **2 (#211)** | **`historico_entregas` → `deliveries`** | **este PR** |
+| 3 | `estoque` → `unit_epi_stock`, só como movimento de ajuste | seguinte |
+| — | `solicitacoes` | reavaliar depois do Lote 3 |
+| — | `usuarios`, `empresas` | bloqueadas por decisão de produto |
+
+#### Lote 2 — histórico de entregas
+
+Importar histórico cria linhas em `deliveries` que **não** nasceram de uma
+entrega feita no sistema: ninguém assinou no aparelho, nenhum estoque se moveu,
+a data é retroativa. Em auditoria trabalhista, a diferença entre "o sistema
+registrou a entrega" e "o cliente afirmou que a entrega ocorreu" é a diferença
+entre prova e declaração — e precisa ser legível no dado, não só no processo.
+
+Três colunas para três perguntas distintas, deliberadamente separadas:
+
+| Coluna | Pergunta | Sobrevive ao expurgo do job? |
+|---|---|---|
+| `origin` | nasceu aqui ou veio de fora? | sim |
+| `source_system` | veio de fora a partir de quê? | sim |
+| `migration_job_id` | qual importação a trouxe? | não (`ON DELETE SET NULL`) |
+
+É esse "não" da última linha que justifica as duas primeiras existirem. Se a
+classificação morasse só na FK, expurgar `migration_jobs` por retenção ou LGPD
+faria a entrega **voltar a parecer criada pelo sistema**.
+
+`source_system` é derivada do `source_kind`, não pedida ao usuário: uma
+integração nova entra no mapa de `sources.py` uma vez e todo registro que ela
+produzir nasce carimbado certo.
+
+**Regras do lote**, todas cobertas por teste:
+
+- nunca movimenta estoque atual (`stock_movement_id` fica nulo);
+- preserva a data original, normalizada para ISO; formato ambíguo é **erro**,
+  nunca chute — `03/04/2024` errado desloca a entrega de período de ficha;
+- não escreve nenhuma coluna `snapshot_*`: elas congelam o vínculo **no
+  momento** da entrega, e preenchê-las com o cadastro de hoje afirmaria que o
+  vínculo atual valia em 2019;
+- `signature_name` é obrigatório (é a prova de quem recebeu) e
+  `signature_data`/`signature_at`/`signature_ip` ficam vazios — este sistema
+  não coletou assinatura nenhuma;
+- reimportar o mesmo arquivo **pula** em vez de duplicar.
+
+#### Duas mudanças no motor que este lote exigiu
+
+1. **`natural_keys` deixou de ser obrigatório.** `deliveries` não tem UNIQUE de
+   negócio, e não deveria ter: duas luvas para a mesma pessoa, do mesmo EPI, no
+   mesmo dia são entregas legítimas e distintas. Declarar uma chave ali faria a
+   segunda sobrescrever a primeira — perdendo histórico em vez de protegê-lo. A
+   proteção contra reimportação virou `idempotency_key` determinística
+   (`computed_columns`), que cai no índice único parcial já existente.
+
+2. **`FieldSpec.accepts_internal_id` pode ser desligado.** O motor aceitava
+   qualquer valor numérico como id interno deste sistema. `historico_entregas`
+   resolve o colaborador pela **matrícula**, que costuma ser só dígitos: com o
+   atalho ligado, a matrícula `2` seria procurada como `employees.id = 2` e a
+   entrega iria para a **pessoa errada**, em silêncio, sem diagnóstico.
 
 ## 10. O que só apareceu rodando de verdade (PR 26)
 

@@ -68,7 +68,10 @@ def fetch_open_deliveries_for_devolution(connection, actor, employee_id, epi_id,
     if str(unit_id or '').strip():
         clauses.append('d.unit_id = ?')
         params.append(int(unit_id))
-    where_sql = f"WHERE {' AND '.join(clauses)}"
+    # Entrega revertida por rollback lógico (#211) não é devolvível: ela deixou
+    # de valer como entrega, mesmo continuando no banco para auditoria.
+    from modules.deliveries.visibility import active_delivery_sql
+    where_sql = f"WHERE {' AND '.join(clauses)}" + active_delivery_sql(connection, 'd')
     rows = connection.execute(
         f'''
         SELECT d.id, d.employee_id, d.epi_id, d.unit_id, d.delivery_date, d.quantity, d.quantity_label,
@@ -155,8 +158,13 @@ def register_epi_devolution(connection, payload, actor):
     if destination not in DEVOLUTION_DESTINATION_LABELS:
         raise ValueError('Destino inválido.')
 
+    # O mesmo predicado da listagem, aplicado também na busca por id: sem isso,
+    # um cliente que já tivesse o id da entrega na tela conseguiria devolver
+    # uma entrega revertida — o filtro da lista viraria só cosmético (#211).
+    from modules.deliveries.visibility import active_delivery_sql
     delivery = connection.execute(
-        'SELECT d.*, e.name AS epi_name FROM deliveries d JOIN epis e ON e.id = d.epi_id WHERE d.id = ?',
+        'SELECT d.*, e.name AS epi_name FROM deliveries d JOIN epis e ON e.id = d.epi_id '
+        'WHERE d.id = ?' + active_delivery_sql(connection, 'd'),
         (delivery_id,)
     ).fetchone()
     if not delivery:

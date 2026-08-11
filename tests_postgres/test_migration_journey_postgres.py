@@ -997,7 +997,12 @@ def _global_unique_columns(connection, table):
     found = set()
     for row in rows:
         definition = row_to_dict(row)['indexdef']
-        cols = definition[definition.index('(') + 1:definition.rindex(')')]
+        # Índice parcial tem ` WHERE ...` depois da lista de colunas; sem cortar
+        # aqui, a condição entra no nome da coluna. `companies` tem dois desses
+        # (`subdomain`, `custom_domain`), e eles só apareceram quando o CI passou
+        # a aplicar as migrations de verdade (#205).
+        head = definition.split(' WHERE ', 1)[0]
+        cols = head[head.index('(') + 1:head.rindex(')')]
         cols = [c.strip() for c in cols.split(',')]
         if 'company_id' in cols or cols == ['id']:
             continue
@@ -1014,15 +1019,38 @@ def test_the_tenant_seed_only_writes_run_scoped_values_into_global_unique_column
     """
     connection = _conn()
 
-    assert _global_unique_columns(connection, 'companies') == {'name', 'cnpj'}
-    assert _global_unique_columns(connection, 'users') == {'username'}
+    # As que a jornada sabidamente grava — travadas por nome, para que remover
+    # o tag de qualquer uma delas falhe aqui.
+    assert {'name', 'cnpj'} <= _global_unique_columns(connection, 'companies')
+    assert {'username'} <= _global_unique_columns(connection, 'users')
 
-    row = _scalar(connection, 'SELECT name FROM companies WHERE id = %s', (tenant['company_id'],))
-    assert _RUN_TAG in row
-    other = _scalar(connection, 'SELECT name FROM companies WHERE id = %s', (tenant['other_company_id'],))
-    assert _RUN_TAG in other
-    username = _scalar(connection, 'SELECT username FROM users WHERE id = %s', (tenant['user_id'],))
-    assert _RUN_TAG in username
+    # E a regra geral: QUALQUER coluna de UNIQUE global que o tenant preencha
+    # precisa ter valor DERIVADO desta execução. Uma coluna nova que passe a
+    # ser gravada entra nesta checagem sozinha, sem precisar ser listada acima.
+    #
+    # Não basta procurar o tag dentro do valor: o CNPJ deriva de `_RUN_TAG` mas
+    # é numérico e não o contém como texto. O que se verifica é pertencer ao
+    # conjunto que ESTA execução produz.
+    derived_this_run = {
+        f'Metalúrgica Aurora {_RUN_TAG}',
+        f'Concorrente S.A. {_RUN_TAG}',
+        f'rita.geral.{_RUN_TAG}',
+        _run_cnpj('1'),
+        _run_cnpj('9'),
+    }
+    for table, row_id in (('companies', tenant['company_id']),
+                          ('companies', tenant['other_company_id']),
+                          ('users', tenant['user_id'])):
+        for column in sorted(_global_unique_columns(connection, table)):
+            value = _scalar(
+                connection, f'SELECT {column} FROM {table} WHERE id = %s', (row_id,))  # noqa: S608
+            if value is None or str(value).strip() == '':
+                continue  # não preenchido pelo fixture: não pode colidir
+            assert str(value) in derived_this_run, (
+                f'{table}.{column} tem UNIQUE global e foi gravado como {value!r}, '
+                f'que não deriva do tag desta execução — a suíte deixa de ser '
+                f'reexecutável no mesmo banco.'
+            )
 
     # O CNPJ é único por execução E continua válido: a migration de Multi-CNPJ
     # deriva legal_entities dele, então 14 dígitos aleatórios não serviriam.

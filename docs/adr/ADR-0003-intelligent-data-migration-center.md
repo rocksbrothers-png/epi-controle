@@ -56,8 +56,20 @@ EntityDescriptor(
 
 O motor (parse → mapeia → valida → aplica → reverte) é **um só**, dirigido
 por esses descritores. Adicionar uma entidade nova passa a ser adicionar um
-descritor, não escrever um pipeline — é isso que torna as 20 entidades
-viáveis e é o que permite às fases seguintes serem baratas.
+descritor, não escrever um pipeline — é isso que mantém o custo por entidade
+baixo e o que permite às fases seguintes serem baratas.
+
+> **Revisão de 2026-08-11 (issue #172).** O catálogo nasceu com 20 entidades.
+> A auditoria contra o schema PostgreSQL real mostrou que **10 apontavam para
+> tabelas inexistentes** e que vários daqueles dados já entram hoje como
+> coluna de outra entidade (função e cargo em `employees.role_name`,
+> fabricante em `epis.manufacturer`, CA em `epis.ca`, assinatura nas colunas
+> `signature_*` da entrega). Uma outra, `demandas`, é **derivada** pelo motor
+> de estoque mínimo. Todas saíram do catálogo: transformar esses conceitos em
+> tabela é decisão de produto e arquitetura, não migração, e nenhum schema
+> será criado para preservar a contagem de 20. O objetivo passou a ser
+> **suportar corretamente as entidades com modelo de domínio real e valor de
+> migração** — hoje 9 no catálogo, 4 habilitadas.
 
 ### 2.2 Fonte = plugin com uma interface só
 
@@ -172,8 +184,8 @@ importação de 100k linhas seja tentada de forma síncrona.
 
 | Fase | Escopo | Estado |
 |---|---|---|
-| 1 — Fundação (PR 25) | Permissão + módulo opt-in, schema, catálogo declarativo das 20 entidades, fontes de arquivo (XLSX/CSV/ODS/JSON/XML/TXT), motor de mapeamento inteligente, preview/validação, 6 estratégias, apply + rollback, rotas REST, testes | concluída |
-| **2 — Web Legado (PR 26)** | Wizard de 4 etapas, dashboard com os 20 cartões, drag-and-drop, preview, download do relatório, histórico e rollback | **esta PR** |
+| 1 — Fundação (PR 25) | Permissão + módulo opt-in, schema, catálogo declarativo de entidades, fontes de arquivo (XLSX/CSV/ODS/JSON/XML/TXT), motor de mapeamento inteligente, preview/validação, 6 estratégias, apply + rollback, rotas REST, testes | concluída |
+| **2 — Web Legado (PR 26)** | Wizard de 4 etapas, dashboard com um cartão por entidade do catálogo, drag-and-drop, preview, download do relatório, histórico e rollback | **esta PR** |
 | 3 — Flutter (Web/Android/iOS) | Mesma jornada, Material 3, responsivo, dark/light | seguinte |
 | 4 — Escala | Executor em background, progresso incremental, importação parcial/incremental | seguinte |
 | 5 — Fontes de banco | SQL Server, Oracle, MySQL, PostgreSQL, SQLite: testar conexão, listar tabelas, prever, migrar | seguinte |

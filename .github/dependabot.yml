@@ -42,6 +42,16 @@ updates:
     groups:
       dart-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # flutter_secure_storage 11.x exige `compileSdk 37` — que não existe no
+      # repositório do Android SDK, nem via sdkmanager nem pelo auto-download
+      # do AGP — e `minSdk 24`, enquanto o app declara 21. O bump automático
+      # para 11.0.0 (#185) deixou os três jobs Android vermelhos e precisou ser
+      # revertido (#198). Ignore TEMPORÁRIO e restrito a major: minor/patch da
+      # série 10.x continuam chegando normalmente, inclusive correções de
+      # segurança dentro da série. Remova ao concluir #199.
+      - dependency-name: "flutter_secure_storage"
+        update-types: ["version-update:semver-major"]
 
   # ── GitHub Actions (mantém as actions dos workflows atualizadas) ─────────────
   - package-ecosystem: github-actions

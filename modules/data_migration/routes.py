@@ -28,6 +28,7 @@ from modules.data_migration.service import (
     fetch_job_records,
     fetch_jobs,
     get_job,
+    homologate_job,
     load_saved_mapping,
     revert_job,
     run_migration,
@@ -181,7 +182,31 @@ def handle_post_migration_revert(handler, parsed, payload, match):
         register_company_audit(
             connection, int(actor['company_id']), actor, 'data_migration_reverted',
             f'Importação #{job_id} revertida: {result["deleted"]} removidos, '
+            f'{result["marked"]} marcados como revertidos, '
             f'{result["restored"]} restaurados.',
+            {'job_id': job_id, **result},
+        )
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_post_migration_homologate(handler, parsed, payload, match):
+    """Homologa a importação — o cliente conferiu e aceitou o resultado.
+
+    A partir daqui a reversão deixa de apagar e passa a ser lógica (#211).
+    Fica na auditoria da empresa porque é decisão de negócio, não operação
+    técnica: é o momento em que o dado importado vira o histórico oficial.
+    """
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = _authorize(connection, handler, parsed, payload)
+        job_id = int(match.group(1))
+        result = homologate_job(connection, job_id, int(actor['company_id']), actor)
+        from modules.companies.service import register_company_audit
+        register_company_audit(
+            connection, int(actor['company_id']), actor, 'data_migration_homologated',
+            f'Importação #{job_id} homologada. A partir de agora a reversão '
+            'preserva os registros (rollback lógico).',
             {'job_id': job_id, **result},
         )
         connection.commit()
@@ -195,3 +220,4 @@ def register_routes(router):
     router.register('POST', '/api/data-migration/analyze',                 handle_post_migration_analyze)
     router.register('POST', '/api/data-migration/run',                     handle_post_migration_run)
     router.register('POST', r'^/api/data-migration/jobs/(\d+)/revert$',    handle_post_migration_revert, regex=True)
+    router.register('POST', r'^/api/data-migration/jobs/(\d+)/homologate$', handle_post_migration_homologate, regex=True)

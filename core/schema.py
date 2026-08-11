@@ -899,6 +899,83 @@ def ensure_delivery_handover_columns(connection) -> None:
 
 
 
+def ensure_delivery_migration_origin_columns(connection) -> None:
+    """Procedência da entrega — Lote 2 da migração (ADR-0003, issue #211).
+
+    Importar histórico de entregas cria linhas em ``deliveries`` que **não**
+    nasceram de uma entrega real feita no sistema: ninguém assinou no
+    aparelho, nenhum estoque foi movimentado, a data é retroativa. Uma entrega
+    migrada e uma entrega criada normalmente precisam ser distinguíveis para
+    sempre — em auditoria trabalhista a diferença entre "o sistema registrou a
+    entrega" e "o cliente afirmou que a entrega ocorreu" é a diferença entre
+    prova e declaração.
+
+    Três colunas, três perguntas distintas — e é de propósito que não sejam
+    uma só:
+
+    ``origin``
+        *A entrega nasceu aqui ou veio de fora?* Classificação permanente.
+        ``'sistema'`` | ``'migracao'``. É ``TEXT`` e não booleano porque um
+        booleano não conseguiria, depois, distinguir importação de planilha de
+        importação por integração sem uma segunda migration.
+
+    ``source_system``
+        *Veio de fora a partir de QUÊ?* ``'planilha'``, ``'sap'``, ``'totvs'``,
+        ``'api'``… Fica vazio no que o sistema criou. Separada de ``origin``
+        porque a classificação é estável e o inventário de sistemas de origem
+        cresce: acrescentar um ERP novo não pode exigir tocar na semântica de
+        ``origin``.
+
+    ``migration_job_id``
+        *Qual importação a trouxe?* Rastreabilidade — liga a entrega ao job,
+        que carrega arquivo, hash, autor, IP e horário. ``ON DELETE SET NULL``,
+        e não ``RESTRICT``/``CASCADE``: se o job for expurgado por retenção ou
+        LGPD, a limpeza não pode ser bloqueada nem levar a entrega junto. A
+        rastreabilidade some, a classificação (``origin``) permanece — que é
+        exatamente o motivo de existirem duas colunas em vez de só a FK.
+
+    ``migration_reverted_at`` é o rollback lógico. Depois que uma importação é
+    homologada, desfazê-la não pode mais apagar linha de tabela com valor
+    probatório: a entrega é marcada, para de contar como posse ativa de EPI, e
+    continua existindo para auditoria.
+    """
+    _safe_add_column(connection, 'deliveries', 'origin', "TEXT NOT NULL DEFAULT 'sistema'")
+    _safe_add_column(connection, 'deliveries', 'source_system', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'deliveries', 'migration_job_id', 'INTEGER')
+    _safe_add_column(connection, 'deliveries', 'migration_reverted_at', "TEXT NOT NULL DEFAULT ''")
+
+    # FK em passo próprio: `ALTER TABLE ... ADD COLUMN` não aceita REFERENCES
+    # no SQLite, e no PostgreSQL a constraint precisa vir depois da coluna.
+    # Falhar aqui não pode derrubar o bootstrap — a coluna já existe e o
+    # sistema funciona sem a constraint; ela é integridade referencial, não
+    # requisito de escrita.
+    try:
+        connection.execute(
+            'ALTER TABLE deliveries ADD CONSTRAINT fk_deliveries_migration_job '
+            'FOREIGN KEY (migration_job_id) REFERENCES migration_jobs(id) ON DELETE SET NULL'
+        )
+        connection.commit()
+    except Exception as _e:  # noqa: BLE001 - SQLite não suporta; PG já pode ter a constraint
+        structured_log('info', 'db.constraint_skip',
+                       constraint='fk_deliveries_migration_job', error=str(_e))
+
+    # Índice PARCIAL: o caso comum é `origin = 'sistema'`, e indexá-lo seria
+    # indexar a tabela inteira sem ganho. Quem consulta procura o que foi
+    # migrado — relatório de importação, tela de auditoria, o próprio rollback.
+    try:
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_deliveries_migrated "
+            "ON deliveries (company_id, migration_job_id) WHERE origin <> 'sistema'"
+        )
+        connection.commit()
+    except Exception as _e:  # noqa: BLE001 - base sem suporte a índice parcial
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+    # As colunas de homologação do job vivem em `ensure_data_migration_tables`,
+    # junto de `migration_jobs` — são estado do ciclo de vida do JOB, não da
+    # tabela de destino.
+
+
 def ensure_delivery_evidence(connection) -> None:
     """Registro de evidências da entrega — append-only.
 
@@ -3421,6 +3498,14 @@ def ensure_data_migration_tables(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.table_skip', table='migration_field_mappings', error=str(_e))
+    # Homologação do job (issue #211): a fronteira entre "ainda dá para
+    # apagar" e "agora só rollback lógico". Vazio = fisicamente reversível.
+    #
+    # Fica aqui, junto de `migration_jobs`, e não na função das entregas: é
+    # estado do CICLO DE VIDA DO JOB, não da tabela de destino. Um tenant que
+    # ainda não importou entregas continua tendo jobs homologáveis.
+    _safe_add_column(connection, 'migration_jobs', 'homologated_at', "TEXT NOT NULL DEFAULT ''")
+    _safe_add_column(connection, 'migration_jobs', 'homologated_by', 'INTEGER')
     for statement in (
         'CREATE INDEX IF NOT EXISTS idx_migration_jobs_company ON migration_jobs (company_id, created_at)',
         'CREATE INDEX IF NOT EXISTS idx_migration_jobs_entity ON migration_jobs (company_id, entity)',

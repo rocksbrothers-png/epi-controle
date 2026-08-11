@@ -34,7 +34,12 @@ from epi_backend.rule_engine import (
     default_framework_payload,
 )
 from modules.data_migration import service
-from modules.data_migration.catalog import get_entity, list_entities, require_enabled_entity
+from modules.data_migration.catalog import (
+    ENTITIES,
+    get_entity,
+    list_entities,
+    require_enabled_entity,
+)
 from modules.data_migration.mapper import (
     apply_mapping,
     normalize_manual_mapping,
@@ -215,13 +220,24 @@ def test_catalog_only_offers_entities_with_a_real_domain_model():
 
 
 def test_roadmap_entity_never_reaches_the_writer():
-    # Segurança: entidade modelada mas sem writer validado é recusada no
-    # gate, mesmo que a UI (ou um cliente hostil) tente chamá-la.
-    # `historico_entregas` tem tabela (`deliveries`) e é o próximo lote — o
-    # caso certo para este teste depois da limpeza da #172.
-    assert get_entity('historico_entregas').enabled is False
-    with pytest.raises(ValueError, match='ainda não está disponível'):
-        require_enabled_entity('historico_entregas')
+    """Segurança: entidade modelada mas sem writer validado é recusada no gate,
+    mesmo que a UI (ou um cliente hostil) tente chamá-la.
+
+    Percorre as entidades de roadmap em vez de citar uma pelo nome. A versão
+    anterior fixava `documentos`, precisou virar `historico_entregas` quando a
+    #172 removeu os placeholders, e precisaria mudar de novo agora que o Lote 2
+    habilitou essa. Um teste que exige edição a cada lote acaba editado sem
+    ninguém reler o que ele garante — e é justamente um gate de segurança.
+    """
+    roadmap = [key for key, entity in ENTITIES.items() if not entity.enabled]
+    assert roadmap, (
+        'Nenhuma entidade de roadmap restante. Se isso for verdade, o gate '
+        'ficou sem cobertura: reescreva o teste em vez de apagá-lo.'
+    )
+    for key in roadmap:
+        assert get_entity(key).enabled is False
+        with pytest.raises(ValueError, match='ainda não está disponível'):
+            require_enabled_entity(key)
 
 
 def test_unknown_entity_is_rejected():

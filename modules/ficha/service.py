@@ -481,6 +481,11 @@ def build_ficha_epi_html(connection, employee_id, actor, *, get_employee_fn=None
     has_stock_items_table = _table_exists(connection, 'epi_stock_items')
     manufacture_expr = "COALESCE(NULLIF(esi.manufacture_date, ''), e.manufacture_date)" if has_stock_items_table else 'e.manufacture_date'
     join_stock_items = 'LEFT JOIN epi_stock_items esi ON esi.delivery_id = d.id' if has_stock_items_table else ''
+    # A ficha de EPI é documento com valor probatório: entrega revertida por
+    # rollback lógico (#211) não pode continuar aparecendo nela como se tivesse
+    # sido entregue. A linha segue no banco, para a auditoria da importação.
+    from modules.deliveries.visibility import active_delivery_sql
+    reversal_d = active_delivery_sql(connection, 'd')
     deliveries = connection.execute(
         f"""
         SELECT d.id, d.quantity, d.delivery_date, d.next_replacement_date,
@@ -490,7 +495,7 @@ def build_ficha_epi_html(connection, employee_id, actor, *, get_employee_fn=None
         FROM deliveries d
         JOIN epis e ON e.id = d.epi_id
         {join_stock_items}
-        WHERE d.employee_id = ?
+        WHERE d.employee_id = ?{reversal_d}
         ORDER BY d.delivery_date DESC, d.id DESC
         """,
         (int(employee_id),)
@@ -1181,6 +1186,10 @@ def get_ficha_period_full(connection, ficha_period_id):
 
 
 def sync_deliveries_to_ficha_period(connection, ficha_id, company_id, employee_id, period_start, period_end, now):
+    # Entrega revertida (#211) não entra em período de ficha: uma vez
+    # dentro de um período fechado, ela viraria prova assinada de uma
+    # entrega cuja importação foi desfeita.
+    from modules.deliveries.visibility import active_delivery_sql
     connection.execute(
         (
             'INSERT INTO epi_ficha_items ('
@@ -1195,6 +1204,7 @@ def sync_deliveries_to_ficha_period(connection, ficha_id, company_id, employee_i
             'FROM deliveries d '
             'WHERE d.company_id = ? '
             'AND d.employee_id = ? '
+            + active_delivery_sql(connection, 'd') + ' ' +
             'AND date(d.delivery_date) >= date(?) '
             'AND date(d.delivery_date) <= date(?) '
             'ON CONFLICT (delivery_id) DO NOTHING'

@@ -20,12 +20,32 @@ def _enabled_entities():
     return [descriptor for descriptor in ENTITIES.values() if descriptor.enabled]
 
 
-def test_every_enabled_entity_declares_a_target_table_and_natural_keys():
+def test_every_enabled_entity_declares_a_way_to_avoid_duplicating_on_reimport():
+    """A invariante real: **nenhuma** entidade habilitada pode duplicar quando
+    o mesmo arquivo é enviado duas vezes.
+
+    Antes este teste exigia `natural_keys`, que é UM dos mecanismos possíveis —
+    o de cadastro, onde CPF ou matrícula identificam a pessoa e a reimportação
+    vira UPDATE. `historico_entregas` não pode ter chave natural: duas luvas
+    para a mesma pessoa, do mesmo EPI, no mesmo dia são entregas legítimas e
+    distintas, e declarar uma chave ali faria a segunda sobrescrever a primeira
+    — perdendo histórico em vez de protegê-lo.
+
+    A proteção lá é `idempotency_key` determinística em `computed_columns`, que
+    faz a reimportação PULAR em vez de duplicar ou sobrescrever.
+
+    Exigir um dos dois, e não `natural_keys` especificamente, é o que mantém o
+    teste guardando a propriedade que importa em vez do mecanismo que a
+    primeira entidade por acaso usou.
+    """
     for descriptor in _enabled_entities():
         assert descriptor.target_table, descriptor.key
-        assert descriptor.natural_keys, (
-            f'{descriptor.key}: sem chave natural não há como deduplicar nem '
-            f'atualizar — só inserir cegamente.'
+        has_natural_keys = bool(descriptor.natural_keys)
+        has_computed_key = 'idempotency_key' in (descriptor.computed_columns or ())
+        assert has_natural_keys or has_computed_key, (
+            f'{descriptor.key}: sem chave natural nem `idempotency_key` '
+            f'computada, reimportar o mesmo arquivo duplica os registros e '
+            f'nada no banco reclama.'
         )
 
 

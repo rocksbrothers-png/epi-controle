@@ -61,3 +61,15 @@ logs/imports/
 # remove-lo apagaria o arquivo de quem o usa.
 flutter/**/.dart_tool/
 flutter/pubspec.lock
+
+# Android — material de assinatura (issue rocksbrothers-png/epi-controle-app#200).
+#
+# O keystore e o `key.properties` nascem dentro do runner a partir dos secrets
+# e morrem com ele; localmente, quem gera uma chave de upload para testar o
+# build de release não pode commitá-la por acidente. Chave de upload perdida ou
+# vazada custa o controle sobre as atualizações do app já publicado.
+#
+# Ver docs/ci-cd/ANDROID_SIGNING.md.
+*.jks
+*.keystore
+**/key.properties

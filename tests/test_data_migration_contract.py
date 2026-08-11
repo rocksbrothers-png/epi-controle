@@ -227,3 +227,61 @@ def test_epis_domain_normalizer_rejects_an_unparseable_date_instead_of_storing_i
         normalize_epi_domain_fields({'ca_expiry': 'não é uma data'})
     with pytest.raises(ValueError, match='Validade do EPI'):
         normalize_epi_domain_fields({'epi_validity_date': 'não é uma data'})
+
+
+# ── Uma definição só da regra de vínculo (issue #192) ───────────────────────
+#
+# O normalizador existia e a IMPORTAÇÃO o usava, mas create_employee e
+# update_employee reimplementavam a regra inline — e divergiam: um vínculo
+# terceirizado sem identificação do contratado era recusado na importação e
+# aceito em silêncio no cadastro manual, gravando string vazia.
+
+def test_manual_registration_calls_the_shared_normalizer_instead_of_reimplementing():
+    """Grep proposital: a regra não pode voltar a ser reescrita inline.
+
+    O teste de comportamento abaixo pega a divergência semântica; este pega a
+    duplicação estrutural antes de ela divergir de novo.
+    """
+    import inspect
+    from modules.employees import service
+    for function in (service.create_employee, service.update_employee):
+        source = inspect.getsource(function)
+        assert 'normalize_employee_domain_fields(payload)' in source, (
+            f'{function.__name__} não chama o normalizador compartilhado.'
+        )
+        assert "payload.get('tipo_vinculo')" not in source, (
+            f'{function.__name__} voltou a derivar tipo_vinculo do payload em vez de '
+            f'usar normalize_employee_domain_fields.'
+        )
+
+
+def test_contractor_must_be_identified_structurally_or_by_free_text():
+    """Duas formas legítimas de identificar o contratado, e nenhuma delas é
+    opcional em conjunto: `outsourced_company_id` (ADR-0002, cadastro manual)
+    ou `empresa_origem` (texto livre, único caminho da importação)."""
+    from modules.employees.service import normalize_employee_domain_fields
+    base = {'cpf': '11144477735', 'tipo_vinculo': 'Terceirizado'}
+
+    # Só texto livre: aceito (é o caso da importação).
+    assert normalize_employee_domain_fields(
+        {**base, 'empresa_origem': 'Alfa Servicos'},
+    )['empresa_origem'] == 'Alfa Servicos'
+
+    # Só vínculo estruturado: aceito, e `empresa_origem` pode ficar vazia.
+    assert normalize_employee_domain_fields(
+        {**base, 'outsourced_company_id': 42},
+    )['empresa_origem'] == ''
+
+    # Nenhum dos dois: recusado. É o registro que não pode existir.
+    with pytest.raises(ValueError, match='Empresa de origem'):
+        normalize_employee_domain_fields(base)
+
+
+def test_the_normalizer_always_returns_the_keys_its_callers_read():
+    """create_employee/update_employee leem estas chaves direto do resultado.
+    Se o normalizador voltar a emiti-las condicionalmente, o cadastro manual
+    quebra com KeyError em vez de gravar o default."""
+    from modules.employees.service import normalize_employee_domain_fields
+    normalized = normalize_employee_domain_fields({'cpf': '11144477735'})
+    for key in ('tipo_vinculo', 'empresa_origem', 'email', 'whatsapp', 'preferred_contact_channel'):
+        assert key in normalized, f'{key} ausente na saída do normalizador.'

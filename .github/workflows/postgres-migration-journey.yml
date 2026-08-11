@@ -78,6 +78,25 @@ jobs:
           done
           psql -h localhost -U epi -d epi_migration_journey -c "SELECT version();"
 
+      # As migrations de RLS criam policies `TO anon, authenticated` — roles que
+      # o Supabase provê e um PostgreSQL puro não tem. Sem eles, a migration 002
+      # falha com `role "anon" does not exist`, o runner entra em modo degradado
+      # e PARA: das 22 migrations, só 1 é aplicada, e o CI validava um schema
+      # que nunca passou por migration nenhuma. Criar os roles aqui replica o
+      # ambiente Supabase e faz as migrations serem realmente exercitadas.
+      - name: Create Supabase-equivalent roles (anon, authenticated)
+        run: |
+          set -e
+          psql -h localhost -U epi -d epi_migration_journey -v ON_ERROR_STOP=1 -c "
+            DO \$\$ BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+                CREATE ROLE anon NOLOGIN;
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                CREATE ROLE authenticated NOLOGIN;
+              END IF;
+            END \$\$;"
+
       - name: Confirm the database starts empty
         run: |
           set -e
@@ -101,6 +120,14 @@ jobs:
       # seguinte sadia → rollback → segundo rollback recusado → auditoria.
       - name: End-to-end migration journey
         run: pytest tests_postgres/test_migration_journey_postgres.py -v
+
+      # Diretório inteiro, e não uma lista de arquivos: os dois passos acima
+      # existem só para dar mensagem melhor na ordem certa. Este garante que
+      # NENHUM arquivo de tests_postgres/ fique fora do CI por esquecimento —
+      # foi o que aconteceu com o guarda de cobertura de RLS, que nasceu sem
+      # rodar em lugar nenhum. O contrato roda duas vezes; custa segundos.
+      - name: Full tests_postgres suite (catches files not listed above)
+        run: pytest tests_postgres/ -v
 
       - name: Confirm migrations actually created the schema
         if: always()

@@ -110,11 +110,61 @@ jobs:
           path: flutter/apps/epi_admin/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
 
+  # Sonda os secrets de assinatura. Existe porque `secrets` NÃO é acessível num
+  # `if:` de job — só dentro de um step. Sem esta sonda, a única forma de
+  # reagir à ausência dos secrets seria dentro do próprio job de build, que a
+  # essa altura já teria sido marcado como executado.
+  #
+  # O que isto resolve (rocksbrothers-png/epi-controle-app#200): antes, `Build Android (AAB)` rodava sempre
+  # na `main`, o passo de assinatura imprimia "skipping" e saía 0, e o
+  # `flutter build appbundle --release` falhava depois com `storeFile` nulo. O
+  # resultado era um job VERMELHO por falta de configuração — indistinguível,
+  # no painel, de um job vermelho por código quebrado.
+  android-signing:
+    name: Check Android signing secrets
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.probe.outputs.configured }}
+    steps:
+      - id: probe
+        working-directory: ${{ github.workspace }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          # Os quatro são exigidos juntos: um keystore sem alias/senha produz
+          # exatamente a mesma falha de build que keystore nenhum, e é bem mais
+          # difícil de diagnosticar. Parcialmente configurado conta como NÃO
+          # configurado — e o resumo abaixo diz qual falta.
+          missing=""
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -z "$missing" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Secrets de assinatura presentes — o AAB será gerado assinado." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "⏭️ **Build Android (AAB) será pulado.**"
+              echo ""
+              echo 'Secrets ausentes:'"$missing"
+              echo ""
+              echo 'Isto não é uma falha: sem chave de assinatura não existe AAB de release.'
+              echo 'Para habilitar, veja `docs/ci-cd/ANDROID_SIGNING.md`.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   build-android:
     name: Build Android (AAB)
     runs-on: ubuntu-latest
-    needs: analyze-and-test
-    if: github.ref == 'refs/heads/main'
+    needs: [analyze-and-test, android-signing]
+    # Sem secrets o job fica SKIPPED, nunca vermelho (rocksbrothers-png/epi-controle-app#200). O `skipped` é
+    # honesto: o artefato realmente não pôde ser produzido, e a razão está no
+    # resumo do job `android-signing`.
+    if: github.ref == 'refs/heads/main' && needs.android-signing.outputs.configured == 'true'
     steps:
       - uses: actions/checkout@v7
 
@@ -155,15 +205,20 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > apps/epi_admin/android/upload-keystore.jks
-            printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=../upload-keystore.jks\n' \
-              "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" \
-              > apps/epi_admin/android/key.properties
-            echo "Signing configured."
-          else
-            echo "ANDROID_KEYSTORE_BASE64 not set — skipping signing setup."
+          # O job `android-signing` já garantiu que os quatro existem. Este
+          # `exit 1` é defesa em profundidade: se alguém remover o gate no
+          # futuro, a falha aponta o secret ausente em vez de reaparecer três
+          # passos adiante como um erro de Gradle sobre `storeFile` nulo — que
+          # foi exatamente o que tornou aquela issue difícil de diagnosticar.
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 ausente. Este job só deveria rodar com os secrets configurados (ver job android-signing e docs/ci-cd/ANDROID_SIGNING.md)."
+            exit 1
           fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > apps/epi_admin/android/upload-keystore.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=../upload-keystore.jks\n' \
+            "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" \
+            > apps/epi_admin/android/key.properties
+          echo "Signing configured."
 
       - name: Build AAB
         run: melos run build:android

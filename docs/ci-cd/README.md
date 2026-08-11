@@ -88,10 +88,24 @@ evitar duplicidade, conforme a diretriz de auditoria.
 Configurar em **Settings → Secrets and variables → Actions**.
 
 ### Build/Deploy Android
+
+> Guia completo (como gerar a chave, o que cada secret contém, como conferir a
+> assinatura do artefato): **[`ANDROID_SIGNING.md`](ANDROID_SIGNING.md)**.
+
 - `ANDROID_KEYSTORE_BASE64` — keystore de upload em base64
 - `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD`
 - `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (usados por `deploy-android.yml`)
 - `GOOGLE_PLAY_JSON_KEY` — service account JSON do Google Play
+
+Os quatro `ANDROID_*` são os que habilitam o job `Build Android (AAB)` do
+`flutter.yml`. **Sem eles o job fica `skipped`, não vermelho**
+(rocksbrothers-png/epi-controle-app#200): sem chave de assinatura não existe AAB
+de release, e `skipped` é a descrição honesta disso. Com os quatro presentes, o
+AAB assinado passa a ser gerado automaticamente em todo push na `main`.
+
+Os dois conjuntos de nomes (`ANDROID_*` e `KEYSTORE_*`/`KEY_*`) apontam para a
+mesma chave física; a unificação é trabalho da issue de padronização de
+artefatos Android.
 
 ### Build/Deploy iOS
 - `BUILD_CERTIFICATE_BASE64`, `P12_PASSWORD`

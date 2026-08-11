@@ -226,9 +226,9 @@ def restore_record(connection, table, record, actor, *, entity_label, audit_pref
 
 
 def ensure_purge_allowed(record, actor, entity_label):
-    if actor.get('role') not in ('master_admin', 'general_admin'):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
         raise PermissionError(
-            'Apenas Administrador Geral ou Administrador Master podem excluir definitivamente.'
+            'Apenas Administrador Geral ou Administrador de Registro podem excluir definitivamente.'
         )
     status = str(record.get('status') or STATUS_ACTIVE)
     if status not in (STATUS_ARCHIVED, STATUS_PENDING_DELETION):

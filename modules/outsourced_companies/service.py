@@ -596,13 +596,33 @@ _PUBLIC_OUTSOURCED_COMPANY_FIELDS = (
 )
 
 
-def _mask_outsourced_company_public_fields(item):
+def _active_linked_unit_count(connection, outsourced_company_id):
+    row = connection.execute(
+        "SELECT COUNT(*) AS total FROM outsourced_company_unit_links "
+        "WHERE outsourced_company_id = ? AND local_status = 'active'",
+        (int(outsourced_company_id),),
+    ).fetchone()
+    return int(row_to_dict(row)['total']) if row else 0
+
+
+def _mask_outsourced_company_public_fields(connection, item):
     """Campos visíveis de uma empresa terceirizada AINDA NÃO vinculada à
     Unidade do ator (bloco "disponíveis para vinculação") — nunca notas,
-    contratos, colaboradores ou a Unidade de origem, que são dado
-    operacional de outra Unidade (ADR-0002 §12 item 12/13 do pedido)."""
+    contratos ou colaboradores de outra Unidade, que continuam dado
+    operacional (ADR-0002 §12 item 12/13 do pedido). ``origin_unit_name`` e
+    ``linked_units_count`` (Unidades com vínculo local ativo) SÃO expostos
+    aqui de propósito — decisão explícita do usuário revertendo a máscara
+    original: a Unidade que está decidindo se vincula precisa saber quem
+    já usa a empresa antes de reaproveitar o cadastro."""
     masked = {field: item.get(field) or '' for field in _PUBLIC_OUTSOURCED_COMPANY_FIELDS}
     masked['cnpj'] = mask_cnpj(item.get('cnpj'))
+    origin_unit_name = ''
+    if item.get('unit_id'):
+        from core.repository import get_unit_by_id
+        origin_unit = get_unit_by_id(connection, item['unit_id'])
+        origin_unit_name = (origin_unit or {}).get('name') or ''
+    masked['origin_unit_name'] = origin_unit_name
+    masked['linked_units_count'] = _active_linked_unit_count(connection, item['id'])
     return masked
 
 
@@ -686,7 +706,7 @@ def annotate_outsourced_company_visibility(connection, companies, unit_id, *, sp
                 enriched['unit_link_deactivated_by_user_id'] = link.get('deactivated_by_user_id')
             linked.append(enriched)
         else:
-            available.append(_mask_outsourced_company_public_fields(item))
+            available.append(_mask_outsourced_company_public_fields(connection, item))
     if split:
         return {'linked': linked, 'available': available}
     return linked + available
@@ -1223,3 +1243,52 @@ def fetch_outsourced_employees_summary(connection, company_id, *, actor=None):
         tipo = str(item.get('tipo_vinculo') or 'Não informado')
         entry['by_tipo_vinculo'][tipo] = entry['by_tipo_vinculo'].get(tipo, 0) + 1
     return [summary[oc_id] for oc_id in order]
+
+
+# ── Exclusão definitiva (Purge) ────────────────────────────────────────────
+# Mesmo framework de 2 etapas de Colaboradores/EPIs (core.archival.request_
+# purge/confirm_purge/cancel_purge) — arquivamento global precisa estar
+# vigente, sem legal_hold, com o período de retenção do tenant já vencido.
+#
+# `purge_history` só remove o que é histórico OPERACIONAL PRÓPRIO da empresa
+# terceirizada (contratos, vínculos por Unidade, solicitações de atualização,
+# ressarcimentos) — nunca ``employees``: um colaborador não é "histórico" da
+# empresa que o contratou, é um registro independente que sobrevive à
+# exclusão definitiva do cadastro corporativo (ADR-0002 §12 — "Colaboradores
+# nunca são excluídos... ficam indisponíveis"). ``employees.outsourced_
+# company_id`` continua apontando para o tombstone (``confirm_purge`` só
+# muda ``status``, nunca faz DELETE da linha em si) — sem FK declarada nessa
+# coluna, mas sem referência pendente: a linha continua existindo, com
+# ``legal_name``/``cnpj`` intactos, e todo lookup existente (``get_
+# outsourced_company_by_id``, o LEFT JOIN de ``fetch_archived_employees``,
+# os snapshots em ``deliveries.snapshot_outsourced_company_*``) resolve por
+# id, sem filtrar por status — não há tela que quebre ou fique em branco.
+def summarize_outsourced_company_history(connection, outsourced_company_id):
+    """Resumo do que será removido na exclusão definitiva (etapa 1 — preview)."""
+    from core.archival import count_where
+    outsourced_company_id = int(outsourced_company_id)
+    return {
+        'service_contracts': count_where(
+            connection, 'service_contracts', 'outsourced_company_id = ?', (outsourced_company_id,)
+        ),
+        'unit_links': count_where(
+            connection, 'outsourced_company_unit_links', 'outsourced_company_id = ?', (outsourced_company_id,)
+        ),
+        'update_requests': count_where(
+            connection, 'outsourced_company_update_requests', 'outsourced_company_id = ?', (outsourced_company_id,)
+        ),
+        'epi_reimbursements': count_where(
+            connection, 'epi_reimbursements', 'outsourced_company_id = ?', (outsourced_company_id,)
+        ),
+    }
+
+
+def purge_outsourced_company_history(connection, outsourced_company_id):
+    """Expurga os dados operacionais da empresa terceirizada (tombstone
+    permanece). Nunca toca ``employees`` — ver nota acima."""
+    from core.archival import delete_where
+    outsourced_company_id = int(outsourced_company_id)
+    delete_where(connection, 'service_contracts', 'outsourced_company_id = ?', (outsourced_company_id,))
+    delete_where(connection, 'outsourced_company_unit_links', 'outsourced_company_id = ?', (outsourced_company_id,))
+    delete_where(connection, 'outsourced_company_update_requests', 'outsourced_company_id = ?', (outsourced_company_id,))
+    delete_where(connection, 'epi_reimbursements', 'outsourced_company_id = ?', (outsourced_company_id,))

@@ -210,11 +210,13 @@ def test_purge_blocked_without_archive(conn):
         request_unit_purge(conn, get_unit_by_id(conn, 10), ACTOR_GENERAL)
 
 
-def test_purge_requires_general_or_master_admin(conn):
+def test_purge_requires_general_or_registry_admin(conn):
     _archive(conn)
     _expire_retention(conn)
     with pytest.raises(PermissionError):
-        request_unit_purge(conn, get_unit_by_id(conn, 10), ACTOR_REGISTRY)
+        request_unit_purge(conn, get_unit_by_id(conn, 10), ACTOR_MASTER)
+    summary = request_unit_purge(conn, get_unit_by_id(conn, 10), ACTOR_REGISTRY)
+    assert summary['employees'] == 1
 
 
 def test_purge_blocked_by_legal_hold(conn):

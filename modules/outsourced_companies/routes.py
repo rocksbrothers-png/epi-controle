@@ -95,12 +95,25 @@ from modules.outsourced_companies.service import (
     resolve_outsourced_company_update_request,
     search_outsourced_companies_by_name,
     set_outsourced_company_unit_link_status,
+    summarize_outsourced_company_history,
+    purge_outsourced_company_history,
     update_outsourced_company,
     update_reimbursement_status,
 )
 from modules.settings.service import ensure_module_enabled_for_unit
 
 from core import archival
+
+
+def _client_ip(handler):
+    return str(getattr(handler, 'client_address', ('',))[0] or '')
+
+
+def _require_deletion_admin(actor):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
+        raise PermissionError(
+            'Apenas Administrador Geral ou Administrador de Registro podem gerenciar a exclusão definitiva.'
+        )
 
 
 def _audit(connection, company_id, actor, action_type, summary, details=None):
@@ -615,6 +628,84 @@ def handle_delete_outsourced_company(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'archived': True, **result})
 
 
+def handle_get_outsourced_company_deletion_summary(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+        )
+        return send_json(handler, 200, {
+            'outsourced_company': {
+                'id': entity['id'],
+                'legal_name': entity['legal_name'],
+                'status': entity.get('status'),
+                'archived_at': entity.get('archived_at'),
+                'retention_until': entity.get('retention_until'),
+                'legal_hold': int(entity.get('legal_hold') or 0),
+            },
+            'records': summarize_outsourced_company_history(connection, int(entity['id'])),
+        })
+
+
+def handle_post_outsourced_company_purge_request(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+        )
+        _require_deletion_admin(actor)
+        summary = archival.request_purge(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'],
+            summary=summarize_outsourced_company_history(connection, int(entity['id'])),
+            ip=_client_ip(handler), **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.purge_requested', outsourced_company_id=entity['id'], actor_user_id=actor['id'])
+        return send_json(handler, 200, {
+            'ok': True,
+            'status': 'pending_deletion',
+            'records': summary,
+            'next_step': 'Confirme a exclusão definitiva com justificativa e o nome exato da empresa.',
+        })
+
+
+def handle_post_outsourced_company_purge_cancel(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+        )
+        _require_deletion_admin(actor)
+        archival.cancel_purge(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'], ip=_client_ip(handler), **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.purge_cancelled', outsourced_company_id=entity['id'], actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'status': 'archived'})
+
+
+def handle_post_outsourced_company_purge_confirm(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id', 'justification', 'confirm_name'])
+    with closing(get_connection()) as connection:
+        actor, entity = _load_outsourced_company_for_lifecycle(
+            connection, handler, parsed, payload, match, (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+        )
+        _require_deletion_admin(actor)
+        summary = archival.confirm_purge(
+            connection, 'outsourced_companies', entity, actor,
+            record_label=entity['legal_name'],
+            justification=payload.get('justification'),
+            confirm_name=payload.get('confirm_name'),
+            summary=summarize_outsourced_company_history(connection, int(entity['id'])),
+            purge_history=purge_outsourced_company_history,
+            ip=_client_ip(handler), **_OUTSOURCED_COMPANY_ARCHIVAL,
+        )
+        connection.commit()
+        structured_log('info', 'outsourced_company.purged', outsourced_company_id=entity['id'], actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'status': 'deleted', 'records_removed': summary})
+
+
 def register_routes(router):
     router.register('GET',  '/api/outsourced-companies/migration-suggestions',               handle_get_migration_suggestions)
     router.register('GET',  '/api/outsourced-companies/employees-summary',                   handle_get_outsourced_employees_summary)
@@ -634,6 +725,10 @@ def register_routes(router):
     router.register('POST', r'^/api/outsourced-companies/(\d+)/service-contracts$',          handle_post_service_contracts, regex=True)
     router.register('POST', r'^/api/outsourced-companies/(\d+)/archive$',                    handle_post_outsourced_company_archive, regex=True)
     router.register('POST', r'^/api/outsourced-companies/(\d+)/restore$',                    handle_post_outsourced_company_restore, regex=True)
+    router.register('GET',  r'^/api/outsourced-companies/(\d+)/deletion-summary$',           handle_get_outsourced_company_deletion_summary, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/purge-request$',              handle_post_outsourced_company_purge_request, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/purge-cancel$',               handle_post_outsourced_company_purge_cancel, regex=True)
+    router.register('POST', r'^/api/outsourced-companies/(\d+)/purge-confirm$',              handle_post_outsourced_company_purge_confirm, regex=True)
     router.register('PUT',  r'^/api/outsourced-companies/(\d+)$',                            handle_put_outsourced_company, regex=True)
     router.register('DELETE', r'^/api/outsourced-companies/(\d+)$',                          handle_delete_outsourced_company, regex=True)
     router.register('GET',  '/api/epi-reimbursements',                                       handle_get_reimbursements)

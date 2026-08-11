@@ -309,6 +309,12 @@ def test_fetch_outsourced_companies_available_section_is_masked(scoped_units):
     assert available['id'] == entity_id
     assert available['cnpj'] == '11.***.***/****-81'
     assert 'notes' not in available
+    # Unidade de Origem + Unidades Vinculadas SÃO expostas de propósito na
+    # seção "disponíveis para vinculação" (reversão explícita da máscara
+    # original) — a Unidade B originou o cadastro e já tem seu próprio
+    # vínculo ativo automático (create_outsourced_company).
+    assert available['origin_unit_name'] == 'Unidade B'
+    assert available['linked_units_count'] == 1
 
 
 def test_annotate_outsourced_company_visibility_split_and_local_status(scoped_units):

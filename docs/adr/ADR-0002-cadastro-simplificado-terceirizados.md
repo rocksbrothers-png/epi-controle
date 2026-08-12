@@ -2374,3 +2374,134 @@ diferente). Dois problemas distintos, não um só:
    colaborador, ou a emissão/rotação do token deixa de ser efeito
    colateral da finalização — vira ação própria, explícita, fora do fluxo
    de finalizar período.
+
+### 13.27 Encerramento — o que foi efetivamente implementado (issue #180)
+
+Seção de fechamento. As anteriores registram a **proposta**; esta registra o
+que foi **construído, testado e validado na `main` dos dois repositórios**,
+incluindo onde a implementação divergiu do texto proposto e por quê.
+
+#### Entregas
+
+| PR | Escopo | epi-controle-app | epi-controle |
+|---|---|---|---|
+| A | Correção do alerta de CNPJ (§13.7) | mesclado | mesclado |
+| B | `employee_unit_links`: schema + backfill | #216 | #874 |
+| B | Rotas vincular/ativar/desativar | #217 | #875 |
+| **C1** | Estado do vínculo na listagem (backend) | #219 | #876 |
+| **C2** | Consumo no Web Legado | #220 | #877 |
+| D | Visibilidade administrativa por vínculo local | #222 | #879 |
+| E | Governança de exclusão definitiva | #223 | #880 |
+
+Suíte final: **2365** testes no `epi-controle-app`, **2335** no espelho.
+
+#### Divergência 1 — o "PR C" virou C1 + C2
+
+O §13.15 previa um único PR C. Durante a execução ficou claro que a tela do
+Web Legado deriva a lista de `state.employees` **client-side**, e que
+`fetch_employees` não devolvia nada sobre `employee_unit_links` — as três
+rotas do PR B são todas POST, sem caminho de leitura. Sem isso a tela não
+teria como decidir entre "Vincular" e "Arquivar nesta Unidade".
+
+Dividido por **decisão arquitetural**, para manter um PR por camada:
+
+- **C1 (backend)** — expõe `local_unit_link_status` e
+  `is_linked_to_actor_unit` no payload do colaborador, calculados no
+  servidor a partir de `employee_unit_links` e do contexto de Unidade do
+  ator. Uma consulta para a lista inteira, fatiada em blocos de 500; a
+  alternativa (rota por colaborador) foi descartada por ser N+1 na tela.
+- **C2 (Web Legado)** — consome o valor pronto. **O frontend não reconstrói
+  a regra**: não compara `unit_id`, não infere por empresa. Há teste
+  travando que os literais comparados vêm de `UNIT_LINK_STATUS_*`.
+
+Semântica de `local_unit_link_status`, com `None` distinto de `'none'`:
+
+| Valor | Significado |
+|---|---|
+| `'active'` | vinculado e ativo nesta Unidade |
+| `'inactive'` | vínculo arquivado nesta Unidade |
+| `'none'` | há contexto de Unidade e não há vínculo |
+| `None` | **não se aplica** — sem Unidade selecionada, ou mão de obra própria |
+
+#### Divergência 2 — a precondição de purga NÃO entrou em `ensure_purge_allowed`
+
+O §13.4 e o §13.5 diziam que `ensure_purge_allowed` "só precisa ganhar UMA
+precondição nova". **A auditoria dos chamadores mostrou que isso estaria
+errado**, e a regra foi implementada em outro lugar.
+
+`core.archival.ensure_purge_allowed` é **genérica**: `request_purge` e
+`confirm_purge` a usam para **colaborador, EPI e empresa terceirizada**.
+Uma consulta a `employee_unit_links` com o id de um EPI compararia ids de
+**tabelas diferentes** — um EPI de id 5 seria bloqueado pelo vínculo do
+colaborador de id 5. Colisão silenciosa, no caminho da exclusão definitiva.
+Ela também é **pura** (não recebe `connection`), e os chamadores dependem
+disso, inclusive o wrapper próprio de `modules/units/service.py`.
+
+A regra ficou em **`ensure_employee_purge_allowed`**, específica de
+colaborador, em `modules/employees/service.py`. `core/archival.py` **não foi
+tocado**, e há teste que falha se alguém puser `employee_unit_links` lá
+dentro ou adicionar `connection` à assinatura.
+
+As rotas de purga em duas etapas de `outsourced_companies`, que o §13.15
+atribuía ao PR E, **já existiam** — foram construídas em rodada anterior
+(`modules/outsourced_companies/routes.py`). O PR E não precisou criá-las.
+
+#### Fronteiras preservadas
+
+- **O gate de entrega de EPI permaneceu inalterado.**
+  `modules/deliveries/service.py` compara a Unidade operacional atual por
+  conta própria e **nunca chamou** nenhuma das funções de escopo. Verificado
+  na `main`: zero ocorrências de `ensure_actor_employee_scope` ou
+  `ensure_actor_employee_visibility_scope` naquele módulo. A decisão do
+  §13.17 se sustenta na estrutura, não só na intenção.
+- **`employee_unit_links` não é fonte de autorização operacional.** Vínculo
+  ativo amplia *sobre quem* um perfil consulta; nunca *o que* ele pode
+  fazer. A permissão funcional continua sendo exigida antes, pelo
+  `authorize_action` do chamador.
+- **Visibilidade separada das operações sensíveis.** A auditoria classificou
+  os 10 chamadores de `ensure_actor_employee_scope`: 4 leitura, 6 sensíveis.
+  `ensure_actor_employee_visibility_scope` foi aplicada só nos 4 de leitura
+  (`handle_get_employee`, filtro de assinaturas, impressão da ficha, filtro
+  de relatório). Update, transferência, arquivamento, restauração, exclusão,
+  as três etapas de purga, finalização de ficha e os links de portal seguem
+  na função estrita.
+  - `_load_employee_for_lifecycle` sozinho atende **sete rotas**, cinco com
+    `employees:delete`. Um `OR` na função central teria liberado exclusão e
+    purga por vínculo local.
+  - A função de visibilidade **chama a estrita primeiro** e só consulta o
+    vínculo se ela negar — a regra operacional não é duplicada. O tenant é
+    verificado **antes e fora do `try`**, porque envolvê-lo faria uma
+    negativa por tenant cair no relaxamento.
+- **Arquivamento, desarquivamento, retenção e purga com regras definidas:**
+  - arquivar/desarquivar o vínculo **local** é por Unidade e não toca
+    `employees.unit_id`, nem transferência temporária, nem definitiva, nem
+    a empresa empregadora;
+  - vínculo local **ativo em qualquer Unidade do tenant bloqueia a purga**;
+  - vínculo **arquivado não bloqueia** por si só — as demais regras de
+    retenção seguem valendo e podem bloquear por conta própria;
+  - o vínculo **nunca é apagado automaticamente** para liberar a purga;
+  - a precondição é verificada nas **duas etapas**: entre pedir e confirmar,
+    uma Unidade pode ter criado vínculo novo;
+  - **não** é verificada no cancelamento, que é desescalada;
+  - a decisão de purga continua restrita a Administrador Geral e de
+    Registro;
+  - a **negativa é auditada** (`employee_purge_blocked`) com motivo,
+    Unidades vinculadas e IP, além da execução.
+- **Aviso antecipado** (`deletion_readiness` no resumo de exclusão): data
+  prevista, dias restantes, bloqueio jurídico, Unidades ainda vinculadas e a
+  ação disponível — **todos os impedimentos de uma vez**, para o operador
+  não descobrir um a cada tentativa.
+
+#### Nota de processo
+
+A verificação de *review threads* do PR #880 (espelho do E) ficou
+indisponível por rate limit da API do GitHub no momento do merge. O CI
+estava verde (20 checks + `Supabase Preview` skipped) e a `main` foi
+validada depois com a suíte completa. Registrado por transparência; não
+motiva reabertura.
+
+#### Fora do escopo, em aberto
+
+- **Paridade Flutter** (Web, Android, iOS): a gestão por Unidade existe hoje
+  **apenas no Web Legado**. Issue própria.
+- Refatoração global do idioma `return send_json(...)`: issue #218.

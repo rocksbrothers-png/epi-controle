@@ -347,7 +347,15 @@
     "vincIntern": "Estagiário",
     "employmentApprentice": "Menor Aprendiz",
     "employmentTrainee": "Praticante",
-    "employmentIntern": "Estagiário"
+    "employmentIntern": "Estagiário",
+    "unitLinkColumn": "Vínculo local",
+    "unitLink": "Vincular à minha unidade",
+    "unitLinkActivate": "Reativar nesta Unidade",
+    "unitLinkDeactivate": "Arquivar nesta Unidade",
+    "unitLinkDeactivateReason": "Motivo do arquivamento (opcional):",
+    "unitLinkActive": "Vinculado",
+    "unitLinkArchived": "Arquivado nesta Unidade",
+    "unitLinkAbsent": "Não vinculado"
   },
   "epi": {
     "title": "EPI",

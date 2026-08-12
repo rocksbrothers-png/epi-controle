@@ -347,7 +347,15 @@
     "vincIntern": "Stagiaire (scolaire)",
     "employmentApprentice": "Apprenti Mineur",
     "employmentTrainee": "Stagiaire (pratique)",
-    "employmentIntern": "Stagiaire (scolaire)"
+    "employmentIntern": "Stagiaire (scolaire)",
+    "unitLinkColumn": "Lien local",
+    "unitLink": "Rattacher à mon unité",
+    "unitLinkActivate": "Réactiver dans cette Unité",
+    "unitLinkDeactivate": "Archiver dans cette Unité",
+    "unitLinkDeactivateReason": "Motif de l'archivage (facultatif) :",
+    "unitLinkActive": "Rattaché",
+    "unitLinkArchived": "Archivé dans cette Unité",
+    "unitLinkAbsent": "Non rattaché"
   },
   "epi": {
     "title": "EPI",

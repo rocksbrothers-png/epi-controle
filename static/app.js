@@ -8310,6 +8310,11 @@ function syncOutsourcedEmployeeUnitOptions() {
 // bootstrap, `fetch_employees` inclui tipo_vinculo/outsourced_company_id),
 // mesma estratégia do app Flutter: filtro client-side, sem endpoint novo.
 
+// Último recurso, para o caso de `js/views/outsourced-employees-view.js` não
+// carregar. A FONTE é aquele módulo (export `CONTRACTED_VINCULOS`); aqui só
+// existe para a tela não quebrar sem ele, e o teste de paridade cobre as duas.
+const CONTRACTED_VINCULOS_FALLBACK = ['Terceirizado', 'Prestador de Serviço', 'Temporário'];
+
 function outsourcedEmployeesViewHelpers() {
   return globalThis.__EPI_OUTSOURCED_EMPLOYEES_VIEW__ || {};
 }
@@ -8317,10 +8322,12 @@ function outsourcedEmployeesViewHelpers() {
 function outsourcedEmployeesList() {
   const helpers = outsourcedEmployeesViewHelpers();
   const all = filterByUserCompany(state.employees || []);
-  return helpers.outsourcedEmployeesOnly ? helpers.outsourcedEmployeesOnly(all) : all.filter((item) => {
-    const tipo = String(item.tipo_vinculo || '').trim();
-    return Boolean(tipo) && tipo !== 'CLT' && Boolean(item.outsourced_company_id);
-  });
+  if (helpers.outsourcedEmployeesOnly) return helpers.outsourcedEmployeesOnly(all);
+  // Fallback só vale se o módulo de regras não carregou. Mesmo predicado do
+  // módulo — lista explícita, nunca `tipo !== 'CLT'` (ver PR #214).
+  const contracted = helpers.CONTRACTED_VINCULOS || CONTRACTED_VINCULOS_FALLBACK;
+  return all.filter((item) => contracted.includes(String(item.tipo_vinculo || '').trim())
+    && Boolean(item.outsourced_company_id));
 }
 
 function renderOutsourcedEmployees() {
@@ -8334,10 +8341,57 @@ function renderOutsourcedEmployees() {
   refs.outsourcedEmployeesTable.innerHTML = visible
     .map((item) => formatOutsourcedEmployeeRow(item, { canUpdate }))
     .join('') || globalThis.dsTableState({
-      colspan: 6,
+      colspan: 7,
       message: tr('outsourcedCompany.employeesEmpty', 'Nenhum colaborador terceirizado/prestador cadastrado.'),
     });
 }
+
+// Rótulo do vínculo local. Traduz o valor que o BACKEND mandou — não decide
+// nada. Os quatro estados vêm de `local_unit_link_status` (ADR-0002 §13):
+// `null`/ausente = não se aplica; 'none' = aplicável e inexistente nesta
+// Unidade; 'active' = vinculado; 'inactive' = arquivado nesta Unidade.
+function outsourcedEmployeeLinkLabel(status) {
+  if (!status) return '-';
+  if (status === 'active') return tr('employee.unitLinkActive', 'Vinculado');
+  if (status === 'inactive') return tr('employee.unitLinkArchived', 'Arquivado nesta Unidade');
+  return tr('employee.unitLinkAbsent', 'Não vinculado');
+}
+
+// Vincular/ativar/desativar o colaborador NESTA Unidade (ADR-0002 §13, PR B).
+// Não arquiva a pessoa (isso é ARCHIVAL_ENTITIES.outsourcedEmployee) e não
+// autoriza entrega de EPI — o gate continua decidindo pela Unidade atual de
+// movimentação. Some da lista desta Unidade; outras Unidades não são afetadas.
+async function toggleEmployeeUnitLink(entityId, action) {
+  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
+  let reason = '';
+  if (action === 'deactivate') {
+    const answer = prompt(tr('employee.unitLinkDeactivateReason', 'Motivo do arquivamento (opcional):'));
+    if (answer === null) return;
+    reason = answer || '';
+  }
+  // Caminho literal em cada ramo, nunca interpolando a ação na URL: o
+  // test_frontend_api_contract.py confronta cada chamada com as rotas
+  // registradas no router e não resolve enum-em-path.
+  let path;
+  if (action === 'link') {
+    path = `/api/employees/${entityId}/link`;
+  } else if (action === 'activate') {
+    path = `/api/employees/${entityId}/unit-link/activate`;
+  } else {
+    path = `/api/employees/${entityId}/unit-link/deactivate`;
+  }
+  try {
+    await api(path, {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+    });
+    await loadEmployees();
+    renderOutsourcedEmployees();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 
 function formatOutsourcedEmployeeRow(item, permissions) {
   const helpers = outsourcedEmployeesViewHelpers();
@@ -8356,10 +8410,29 @@ function formatOutsourcedEmployeeRow(item, permissions) {
   if (hasPermission('employees:delete') || permissions.canUpdate) {
     buttons.push(`<button class="ghost" data-outsourced-employee-archive="${entityId}">${escapeHtml(tr('employee.archive', 'Arquivar'))}</button>`);
   }
+  // Vínculo local com a Unidade selecionada (ADR-0002 §13, PR C1/C2). O estado
+  // vem PRONTO do backend em `local_unit_link_status` — a tela não deduz nada:
+  // não compara unit_id, não infere por empresa, não adivinha. `null`/ausente
+  // significa "não se aplica" (sem Unidade selecionada, ou mão de obra
+  // própria) e nenhuma ação por Unidade aparece.
+  const linkStatus = item.local_unit_link_status;
+  if (permissions.canUpdate && linkStatus) {
+    if (linkStatus === 'active') {
+      buttons.push(`<button class="ghost" data-employee-unit-link-deactivate="${entityId}">`
+        + `${escapeHtml(tr('employee.unitLinkDeactivate', 'Arquivar nesta Unidade'))}</button>`);
+    } else if (linkStatus === 'inactive') {
+      buttons.push(`<button class="ghost" data-employee-unit-link-activate="${entityId}">`
+        + `${escapeHtml(tr('employee.unitLinkActivate', 'Reativar nesta Unidade'))}</button>`);
+    } else {
+      buttons.push(`<button class="ghost" data-employee-unit-link="${entityId}">`
+        + `${escapeHtml(tr('employee.unitLink', 'Vincular à minha unidade'))}</button>`);
+    }
+  }
   const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
   return `<tr><td>${escapeHtml(item.name || '')}</td><td>${escapeHtml(item.role_name || '')}</td>`
     + `<td>${escapeHtml(vincLabel)}</td><td>${escapeHtml(companyLabel)}</td>`
-    + `<td>${escapeHtml(item.unit_name || '')}</td><td>${actions}</td></tr>`;
+    + `<td>${escapeHtml(item.unit_name || '')}</td>`
+    + `<td>${escapeHtml(outsourcedEmployeeLinkLabel(linkStatus))}</td><td>${actions}</td></tr>`;
 }
 
 function syncOutsourcedEmployeesFilters() {
@@ -13473,7 +13546,13 @@ async function init() {
     const edit = event.target.dataset.outsourcedEmployeeEdit;
     if (edit) { void startEditOutsourcedEmployee(edit); return; }
     const archive = event.target.dataset.outsourcedEmployeeArchive;
-    if (archive) void archiveOutsourcedEmployee(archive);
+    if (archive) { void archiveOutsourcedEmployee(archive); return; }
+    const link = event.target.dataset.employeeUnitLink;
+    if (link) { void toggleEmployeeUnitLink(link, 'link'); return; }
+    const activate = event.target.dataset.employeeUnitLinkActivate;
+    if (activate) { void toggleEmployeeUnitLink(activate, 'activate'); return; }
+    const deactivate = event.target.dataset.employeeUnitLinkDeactivate;
+    if (deactivate) void toggleEmployeeUnitLink(deactivate, 'deactivate');
   });
   bindAppListener(refs.archivedUnitsFilterCompany, 'change', syncArchivedUnitsFilters);
   bindAppListener(refs.archivedUnitsFilterDate, 'change', syncArchivedUnitsFilters);

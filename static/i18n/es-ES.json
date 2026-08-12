@@ -347,7 +347,15 @@
     "vincIntern": "Becario",
     "employmentApprentice": "Aprendiz Menor",
     "employmentTrainee": "Practicante",
-    "employmentIntern": "Becario"
+    "employmentIntern": "Becario",
+    "unitLinkColumn": "Vínculo local",
+    "unitLink": "Vincular a mi unidad",
+    "unitLinkActivate": "Reactivar en esta Unidad",
+    "unitLinkDeactivate": "Archivar en esta Unidad",
+    "unitLinkDeactivateReason": "Motivo del archivado (opcional):",
+    "unitLinkActive": "Vinculado",
+    "unitLinkArchived": "Archivado en esta Unidad",
+    "unitLinkAbsent": "No vinculado"
   },
   "epi": {
     "title": "EPP",

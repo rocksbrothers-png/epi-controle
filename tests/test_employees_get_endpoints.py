@@ -141,15 +141,20 @@ def test_get_employees_returns_list(monkeypatch):
     _patch(monkeypatch, actor)
     seen = {}
 
-    def _fetch(_c, a):
+    def _fetch(_c, a, *, unit_context_id=None):
         seen['actor'] = a
+        seen['unit_context_id'] = unit_context_id
         return [{'id': 100}, {'id': 200}]
 
     monkeypatch.setattr(routes, 'fetch_employees', _fetch)
+    monkeypatch.setattr(routes, 'resolve_actor_unit_context', lambda *a, **k: None)
     h = _FakeHandler()
     routes.handle_get_employees(h, _parsed(), None, None)
     assert h.status == 200 and seen['actor'] is actor
     assert len(h.json()['employees']) == 2
+    # Sem Unidade selecionada, a listagem não reporta vínculo (ADR-0002 §13,
+    # PR C1) — em vez de despejar todos os vínculos do tenant.
+    assert seen['unit_context_id'] is None
 
 
 def test_get_employee_single_enriched(monkeypatch):

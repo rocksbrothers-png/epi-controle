@@ -1423,6 +1423,31 @@ test('outsourced-employees-view: outsourcedEmployeesOnly exclui CLT e sem empres
   eq(filtered.length, 2);
   eq(filtered.map((item) => item.id).sort().join(','), '1,2');
 });
+test('outsourced-employees-view: lista de contratados é explícita, não "!= CLT"', () => {
+  const V = _OEV();
+  eq(V.CONTRACTED_VINCULOS.join(','), 'Terceirizado,Prestador de Serviço,Temporário');
+  eq(V.isContractedVinculo('Terceirizado'), true);
+  eq(V.isContractedVinculo('Temporário'), true);
+  // O ponto do conserto: aprendiz/praticante/estagiário NÃO são contratados.
+  // Com `!= 'CLT'` os três passavam.
+  eq(V.isContractedVinculo('Menor Aprendiz'), false);
+  eq(V.isContractedVinculo('Praticante'), false);
+  eq(V.isContractedVinculo('Estagiário'), false);
+  eq(V.isContractedVinculo('CLT'), false);
+});
+test('outsourced-employees-view: aprendiz com empresa vinculada não entra na lista', () => {
+  const V = _OEV();
+  // Combinação que o `!= 'CLT'` deixaria passar. Não deveria existir no banco
+  // (o backend recusa), mas o filtro não pode depender disso.
+  const filtered = V.outsourcedEmployeesOnly([
+    { id: 9, tipo_vinculo: 'Menor Aprendiz', outsourced_company_id: 3 },
+  ]);
+  eq(filtered.length, 0);
+});
+test('outsourced-employees-view: Temporário é rotulado', () => {
+  const V = _OEV();
+  eq(V.tipoVinculoLabel('Temporário'), 'Temporário');
+});
 test('outsourced-employees-view: busca cobre nome e função', () => {
   const V = _OEV();
   const filtered = V.outsourcedEmployeesOnly(_OE_VIEW);

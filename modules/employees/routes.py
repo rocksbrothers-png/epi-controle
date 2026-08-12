@@ -26,6 +26,7 @@ from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
     create_employee_unit_link,
+    resolve_actor_unit_context,
     ensure_employee_is_linkable_to_units,
     fetch_employee_unit_link,
     set_employee_unit_link_status,
@@ -70,9 +71,19 @@ _EMPLOYEE_ID_RE = re.compile(r'^/api/employees/(\d+)$')
 # ── GET ───────────────────────────────────────────────────────────────────────
 
 def handle_get_employees(handler, parsed, payload, match):
+    from urllib.parse import parse_qs
+
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
-        return send_json(handler, 200, {'employees': fetch_employees(connection, actor)})
+        # `unit_id` é uma SUGESTÃO de contexto, não uma escolha: para perfis
+        # escopados por Unidade o resolvedor a descarta e usa a Unidade do
+        # ator (ADR-0002 §13, PR C1). Passar o valor cru adiante deixaria o
+        # escopo por Unidade nas mãos de quem monta o request.
+        requested_unit_id = parse_qs(parsed.query).get('unit_id', [''])[0]
+        unit_context_id = resolve_actor_unit_context(connection, actor, requested_unit_id)
+        return send_json(handler, 200, {
+            'employees': fetch_employees(connection, actor, unit_context_id=unit_context_id),
+        })
 
 
 def handle_get_employee(handler, parsed, payload, match):

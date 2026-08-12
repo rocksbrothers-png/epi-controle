@@ -575,9 +575,9 @@ def summarize_unit_history(connection, unit_id):
 
 
 def _ensure_purge_allowed(connection, unit, actor):
-    if actor.get('role') not in ('master_admin', 'general_admin'):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
         raise PermissionError(
-            'Apenas Administrador Geral ou Administrador Master podem excluir definitivamente uma unidade.'
+            'Apenas Administrador Geral ou Administrador de Registro podem excluir definitivamente uma unidade.'
         )
     status = str(unit.get('status') or UNIT_STATUS_ACTIVE)
     if status not in (UNIT_STATUS_ARCHIVED, UNIT_STATUS_PENDING_DELETION):

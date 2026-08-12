@@ -6839,7 +6839,7 @@ function formatArchivedUnitRow(item, canManage, canPurge) {
 function renderArchivedUnits() {
   if (!refs.archivedUnitsTable) return;
   const canManage = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  const canPurge = ['master_admin', 'general_admin'].includes(state.user?.role);
+  const canPurge = ['general_admin', 'registry_admin'].includes(state.user?.role);
   const items = applyArchivedUnitsFilters(filterByUserCompany(state.archivedUnits));
   refs.archivedUnitsTable.innerHTML = items.map((item) => formatArchivedUnitRow(item, canManage, canPurge)).join('')
     || globalThis.dsTableState({ colspan: 7, message: tr('unit.archivedEmpty', 'Nenhuma unidade arquivada.') });
@@ -6945,18 +6945,24 @@ const ARCHIVAL_ENTITIES = {
       purchase_request_items: 'Itens de requisição de compra', purchase_order_items: 'Itens de pedido de compra',
     },
   },
-  // Empresa terceirizada/prestadora (ADR-0002 §10.4/§10.5) — mesma política
-  // de arquivamento de Colaboradores/Unidades/EPIs, mas SEM purge: o
-  // backend não oferece exclusão definitiva aqui de propósito (risco de
-  // referência pendente em employees.outsourced_company_id/
-  // service_contracts sem FK garantida). `identityKind` existe porque
-  // `kind` aqui não é 'employee' nem 'epi' — reaproveita a mesma coluna de
-  // identidade que o EPI usa (nome + segunda coluna), só trocando o texto
-  // da segunda coluna. Segunda permissão (`employees:update_simplified`):
-  // Administrador Local/Gestor de EPI, restrito à própria Unidade
-  // operacional — o backend (ensure_actor_outsourced_company_scope +
-  // ensure_module_enabled_for_unit, modules/outsourced_companies/routes.py)
-  // valida de novo e é quem decide de fato.
+  // Empresa terceirizada/prestadora (ADR-0002 §10.4/§10.5/§12) — mesma
+  // política de arquivamento de Colaboradores/Unidades/EPIs. Purge exclui
+  // deliberadamente `employees`: um colaborador não é "histórico" da
+  // empresa que o contratou, sobrevive à exclusão definitiva do cadastro
+  // corporativo (ver nota em modules/outsourced_companies/service.py,
+  // purge_outsourced_company_history) — só contratos/vínculos por
+  // Unidade/solicitações de atualização/ressarcimentos são removidos.
+  // Botão de excluir definitivamente só aparece para Administrador Geral/
+  // de Registro (o backend, _require_deletion_admin em
+  // modules/outsourced_companies/routes.py, é quem decide de fato).
+  // `identityKind` existe porque `kind` aqui não é 'employee' nem 'epi' —
+  // reaproveita a mesma coluna de identidade que o EPI usa (nome + segunda
+  // coluna), só trocando o texto da segunda coluna. Segunda permissão
+  // (`employees:update_simplified`): Administrador Local/Gestor de EPI,
+  // restrito à própria Unidade operacional — o backend
+  // (ensure_actor_outsourced_company_scope + ensure_module_enabled_for_unit,
+  // modules/outsourced_companies/routes.py) valida de novo e é quem decide
+  // de fato.
   outsourcedCompany: {
     path: '/api/outsourced-companies',
     stateList: 'outsourcedCompanies',
@@ -6968,8 +6974,11 @@ const ARCHIVAL_ENTITIES = {
     responseKey: 'outsourced_companies',
     deletePermission: 'employees:update employees:update_simplified',
     updatePermission: 'employees:update employees:update_simplified',
-    supportsPurge: false,
     identityKind: 'outsourcedCompanyLike',
+    purgeLabels: {
+      service_contracts: 'Contratos de prestação de serviço', unit_links: 'Vínculos com Unidades',
+      update_requests: 'Solicitações de atualização cadastral', epi_reimbursements: 'Ressarcimentos de EPI',
+    },
   },
   // Colaborador terceirizado/prestador (ADR-0002 §10.4/§10.5) — MESMA
   // tabela/rota de arquivamento do colaborador CLT
@@ -7123,14 +7132,16 @@ function renderArchivedRecords(kind) {
   // Administrador Local/Gestor de EPI (ADR-0002 §10.5): só desarquivam
   // Empresas Terceirizadas/Colaboradores terceirizados/prestadores da
   // própria Unidade — nunca exclusão definitiva (purge continua exclusivo
-  // de master_admin/general_admin, em qualquer kind). O backend
-  // (ensure_actor_outsourced_company_scope / _load_employee_for_lifecycle)
-  // é quem decide de fato; isto só evita mostrar um botão que o backend
-  // vai recusar para os demais kinds (employee CLT / epi).
+  // de general_admin/registry_admin, em qualquer kind — nunca master_admin,
+  // doutrina PAPEIS_E_ATRIBUICOES.md #1). O backend
+  // (ensure_actor_outsourced_company_scope / _load_employee_for_lifecycle /
+  // _require_deletion_admin) é quem decide de fato; isto só evita mostrar
+  // um botão que o backend vai recusar para os demais kinds (employee CLT
+  // / epi).
   const unitScopedManageKinds = ['outsourcedCompany', 'outsourcedEmployee'];
   const canManage = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)
     || (unitScopedManageKinds.includes(kind) && ['admin', 'user'].includes(state.user?.role));
-  const canPurge = ['master_admin', 'general_admin'].includes(state.user?.role);
+  const canPurge = ['general_admin', 'registry_admin'].includes(state.user?.role);
   const filters = state[cfg.filters];
   const items = filterByUserCompany(state[cfg.archivedList] || []).filter((item) => {
     if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
@@ -7187,8 +7198,13 @@ async function purgeArchivedRecord(kind, recordId) {
       await loadArchivedRecords(kind);
       return;
     }
+    // `record.name` não existe para outsourcedCompany/outsourcedCompanyLike
+    // (a linha vem com `legal_name`/`trade_name`, ver identityKind acima) —
+    // sem o fallback, o prompt mostrava "undefined" e o backend nunca
+    // recebia o `confirm_name` exato que ele mesmo exibiu.
+    const recordDisplayName = record.name || record.legal_name || record.trade_name || '';
     const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
-    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${record.name}"`, '') ?? '';
+    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${recordDisplayName}"`, '') ?? '';
     if (!justification.trim() || !confirmName.trim()) {
       await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
       await loadArchivedRecords(kind);
@@ -7829,7 +7845,7 @@ function renderOutsourcedCompanies() {
     refs.outsourcedCompaniesAvailableTable.innerHTML = available
       .map((item) => formatOutsourcedCompanyAvailableRow(item))
       .join('') || globalThis.dsTableState({
-        colspan: 5,
+        colspan: 7,
         message: tr('outsourcedCompany.availableEmpty', 'Nenhuma empresa disponível para vincular.'),
       });
   }
@@ -7939,8 +7955,16 @@ function formatOutsourcedCompanyAvailableRow(item) {
   const helpers = outsourcedCompaniesViewHelpers();
   const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
   const entityId = escapeHtml(String(item.id ?? ''));
+  // origin_unit_name/linked_units_count (decisão explícita do usuário,
+  // reversão da máscara original — ver _mask_outsourced_company_public_fields
+  // em modules/outsourced_companies/service.py). Só a Unidade de origem fica
+  // '-' quando a empresa é "do tenant" (sem origem) — a contagem de vínculos
+  // vale para qualquer empresa, com ou sem origem.
+  const originUnitLabel = escapeHtml(item.origin_unit_name || '') || '-';
+  const linkedUnitsLabel = String(Number(item.linked_units_count || 0));
   return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.trade_name || '') || '-'}</td>`
-    + `<td>${escapeHtml(item.cnpj || '') || '-'}</td><td>${escapeHtml(modeLabel)}</td>`
+    + `<td>${escapeHtml(item.cnpj || '') || '-'}</td><td>${originUnitLabel}</td><td>${linkedUnitsLabel}</td>`
+    + `<td>${escapeHtml(modeLabel)}</td>`
     + `<td><button class="ghost" data-outsourced-company-link="${entityId}">${escapeHtml(tr('outsourcedCompany.linkToMyUnit', 'Vincular à minha unidade'))}</button></td></tr>`;
 }
 

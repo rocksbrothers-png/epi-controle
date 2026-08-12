@@ -48,9 +48,9 @@ def _client_ip(handler):
 
 
 def _require_deletion_admin(actor):
-    if actor.get('role') not in ('master_admin', 'general_admin'):
+    if actor.get('role') not in ('general_admin', 'registry_admin'):
         raise PermissionError(
-            'Apenas Administrador Geral ou Administrador Master podem gerenciar a exclusão definitiva.'
+            'Apenas Administrador Geral ou Administrador de Registro podem gerenciar a exclusão definitiva.'
         )
 
 _EMPLOYEE_ID_RE = re.compile(r'^/api/employees/(\d+)$')

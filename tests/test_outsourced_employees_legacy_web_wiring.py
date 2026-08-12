@@ -136,13 +136,14 @@ def test_reports_table_exists():
 
 # ── ARCHIVAL_ENTITIES extension ──────────────────────────────────────────────
 
-def test_archival_entities_has_outsourced_company_without_purge():
+def test_archival_entities_has_outsourced_company_with_purge():
     app_js = _read('static', 'app.js')
     entities_block = app_js[app_js.index('const ARCHIVAL_ENTITIES = {'):app_js.index('async function _epiArchivalPreflight')]
     assert 'outsourcedCompany: {' in entities_block
     outsourced_company_block = entities_block[entities_block.index('outsourcedCompany: {'):entities_block.index('outsourcedEmployee: {')]
     assert "path: '/api/outsourced-companies'" in outsourced_company_block
-    assert 'supportsPurge: false' in outsourced_company_block
+    assert 'supportsPurge: false' not in outsourced_company_block
+    assert 'purgeLabels' in outsourced_company_block
 
 
 def test_archival_entities_has_outsourced_employee_filtered_by_query():

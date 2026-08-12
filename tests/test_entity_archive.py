@@ -30,6 +30,7 @@ UTC = timezone.utc
 
 ACTOR_GENERAL = {'id': 1, 'full_name': 'Admin Geral', 'role': 'general_admin', 'company_id': 1}
 ACTOR_REGISTRY = {'id': 2, 'full_name': 'Admin Registro', 'role': 'registry_admin', 'company_id': 1}
+ACTOR_MASTER = {'id': 3, 'full_name': 'Admin Master', 'role': 'master_admin', 'company_id': None}
 
 LIFECYCLE_COLS = """
     status TEXT NOT NULL DEFAULT 'active', archived_at TEXT, archived_by INTEGER,
@@ -204,16 +205,22 @@ def test_employee_purge_only_after_retention(conn):
     assert actions == ['employee_archived', 'employee_purge_requested', 'employee_purged']
 
 
-def test_employee_purge_requires_admin_role(conn):
+def test_employee_purge_requires_general_or_registry_admin(conn):
     _archive_employee(conn)
     _expire_retention(conn, 'employees', 100)
     employee = get_employee_lifecycle(conn, 100)
     with pytest.raises(PermissionError):
         archival.request_purge(
-            conn, 'employees', employee, ACTOR_REGISTRY,
+            conn, 'employees', employee, ACTOR_MASTER,
             entity_label='Colaborador', audit_prefix='employee',
             record_label=employee['name'], summary={},
         )
+    summary = archival.request_purge(
+        conn, 'employees', employee, ACTOR_REGISTRY,
+        entity_label='Colaborador', audit_prefix='employee',
+        record_label=employee['name'], summary=summarize_employee_history(conn, 100),
+    )
+    assert summary['deliveries'] == 1
 
 
 # ── EPIs ─────────────────────────────────────────────────────────────────────

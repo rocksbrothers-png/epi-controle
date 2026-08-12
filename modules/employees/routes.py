@@ -26,6 +26,7 @@ from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
     create_employee_unit_link,
+    ensure_actor_employee_visibility_scope,
     resolve_actor_unit_context,
     ensure_employee_is_linkable_to_units,
     fetch_employee_unit_link,
@@ -93,7 +94,8 @@ def handle_get_employee(handler, parsed, payload, match):
         employee = get_employee_by_id(connection, employee_id)
         if not employee:
             return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
-        ensure_actor_employee_scope(connection, actor, employee)
+        # LEITURA: vínculo local ativo amplia sobre quem se consulta (PR D).
+        ensure_actor_employee_visibility_scope(connection, actor, employee)
         base_unit = get_unit_by_id(connection, int(employee['unit_id'])) if employee.get('unit_id') else None
         employee['unit_name'] = base_unit['name'] if base_unit else None
         apply_current_unit_allocation(connection, [employee])

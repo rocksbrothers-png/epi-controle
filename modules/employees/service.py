@@ -801,6 +801,60 @@ def ensure_actor_employee_scope(connection, actor, employee):
             raise PermissionError('Operação permitida somente para colaboradores da sua unidade operacional.')
 
 
+def ensure_actor_employee_visibility_scope(connection, actor, employee):
+    """Escopo de VISIBILIDADE administrativa (ADR-0002 §13, PR D).
+
+    Vínculo local ativo amplia sobre QUEM o perfil pode consultar — nunca O
+    QUE ele pode fazer. A permissão funcional continua sendo verificada antes,
+    pelo chamador (`authorize_action`): quem não tem `fichas:view` não imprime
+    ficha por ter vínculo local, e quem não tem `employees:delete` não exclui.
+
+    Use somente em LEITURA. Foi criada em vez de um `OR` dentro de
+    `ensure_actor_employee_scope` porque aquela função também protege
+    atualização, transferência, arquivamento, restauração, exclusão, as três
+    etapas de purga, finalização de ficha e os links de portal — ampliar lá
+    liberaria tudo isso de uma vez.
+
+    NÃO usar em: update, transferência, arquivamento, restauração, exclusão,
+    purge, finalização de ficha, criação/revogação de portal, entrega de EPI.
+    O gate de entrega sequer passa por aqui: `modules/deliveries/service.py`
+    compara a Unidade operacional atual por conta própria (§13.17).
+
+    A regra operacional NÃO é duplicada: a função existente é chamada primeiro
+    e só se ela negar é que o vínculo local é consultado. Assim um
+    endurecimento futuro em `ensure_actor_employee_scope` vale para as duas.
+    """
+    from epi_backend.db import table_exists
+
+    # Tenant PRIMEIRO e FORA do try: `ensure_resource_company` levanta
+    # PermissionError, e envolvê-la no try faria uma negativa por tenant cair
+    # no relaxamento abaixo. Fronteira de tenant não é ampliável por vínculo.
+    ensure_resource_company(actor, employee, 'Colaborador')
+
+    try:
+        ensure_actor_employee_scope(connection, actor, employee)
+        return
+    except PermissionError:
+        pass
+
+    scope_unit_id = actor_operational_unit_id(connection, actor)
+    if not scope_unit_id or not table_exists(connection, 'employee_unit_links'):
+        raise PermissionError(
+            'Operação permitida somente para colaboradores da sua unidade operacional.'
+        )
+    row = connection.execute(
+        'SELECT id FROM employee_unit_links '
+        "WHERE company_id = ? AND employee_id = ? AND unit_id = ? AND local_status = 'active' "
+        'LIMIT 1',
+        (int(employee['company_id']), int(employee['id']), int(scope_unit_id)),
+    ).fetchone()
+    if not row:
+        raise PermissionError(
+            'Operação permitida somente para colaboradores da sua unidade operacional '
+            'ou com vínculo ativo nela.'
+        )
+
+
 def active_temporary_unit_allocations(connection, today_iso=None):
     """Mapa {employee_id: {'unit_id', 'unit_name'}} das movimentações temporárias
     ativas hoje, numa única query (evita N+1 ao enriquecer listas)."""

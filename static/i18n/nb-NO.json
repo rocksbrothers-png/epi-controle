@@ -347,7 +347,15 @@
     "vincIntern": "Praktikant",
     "employmentApprentice": "Ung lærling",
     "employmentTrainee": "Hospitant",
-    "employmentIntern": "Praktikant"
+    "employmentIntern": "Praktikant",
+    "unitLinkColumn": "Lokal tilknytning",
+    "unitLink": "Knytt til min enhet",
+    "unitLinkActivate": "Reaktiver i denne enheten",
+    "unitLinkDeactivate": "Arkiver i denne enheten",
+    "unitLinkDeactivateReason": "Årsak til arkivering (valgfritt):",
+    "unitLinkActive": "Tilknyttet",
+    "unitLinkArchived": "Arkivert i denne enheten",
+    "unitLinkAbsent": "Ikke tilknyttet"
   },
   "epi": {
     "title": "PVU",

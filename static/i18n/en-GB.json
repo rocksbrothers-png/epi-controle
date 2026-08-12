@@ -347,7 +347,15 @@
     "vincIntern": "Intern",
     "employmentApprentice": "Young Apprentice",
     "employmentTrainee": "Trainee",
-    "employmentIntern": "Intern"
+    "employmentIntern": "Intern",
+    "unitLinkColumn": "Local link",
+    "unitLink": "Link to my unit",
+    "unitLinkActivate": "Reactivate in this Unit",
+    "unitLinkDeactivate": "Archive in this Unit",
+    "unitLinkDeactivateReason": "Reason for archiving (optional):",
+    "unitLinkActive": "Linked",
+    "unitLinkArchived": "Archived in this Unit",
+    "unitLinkAbsent": "Not linked"
   },
   "epi": {
     "title": "PPE",

@@ -292,6 +292,10 @@ def init_db():
             # Unidade + pedido de atualização cadastral (extensão ADR-0002 §12).
             schema.ensure_outsourced_company_unit_links,
             schema.ensure_outsourced_company_update_requests,
+            # Depende de `employees` (schema.ensure_employee_columns) e de
+            # `units`; o backfill vem logo depois da tabela, na mesma ordem.
+            schema.ensure_employee_unit_links,
+            schema.ensure_employee_unit_links_backfill,
             # Centro de Migração de Dados (ADR-0003) — tabelas próprias,
             # independentes das demais: não dependem de nenhuma entidade de
             # negócio existir, só guardam jobs/registros/mapeamentos.

@@ -2927,6 +2927,136 @@ def ensure_outsourced_company_unit_links(connection) -> None:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_employee_unit_links(connection) -> None:
+    """Vínculo operacional de um colaborador terceirizado com uma Unidade
+    (ADR-0002 §13, PR B). Molde direto de ``outsourced_company_unit_links``:
+    o cadastro da pessoa (``employees``) é único por tenant, e qualquer
+    Unidade pode criar seu próprio vínculo local sem duplicar a pessoa.
+
+    Estrutura PARALELA e INDEPENDENTE de ``employees.unit_id`` — não a
+    substitui, não a torna imutável e não toca os fluxos de transferência
+    (``update_employee_unit``) nem a movimentação temporária
+    (``employee_unit_movements``/``get_employee_current_unit``). A proposta de
+    tornar ``unit_id`` imutável foi explicitamente REJEITADA na rodada 2 da
+    issue #180; quem quiser mudar isso precisa reabrir aquela decisão.
+
+    O vínculo local serve exclusivamente para listagem, seleção e
+    arquivamento por Unidade. Ele **nunca autoriza entrega de EPI**: o gate em
+    ``modules/deliveries/service.py`` continua decidindo apenas pela Unidade
+    atual de movimentação (ADR-0002 §13.17, pergunta 1 — decisão registrada de
+    NÃO ampliar o gate). Um vínculo ativo aqui não é permissão para entregar.
+
+    ``local_status`` é deliberadamente separado do ``status`` de arquivamento
+    do colaborador: desativar o vínculo de uma Unidade não arquiva a pessoa
+    nem afeta outras Unidades.
+
+    Sem as colunas de contrato do molde (``contract_number``, datas,
+    ``cost_center_ref``): o contrato é da EMPRESA com a Unidade e já vive em
+    ``outsourced_company_unit_links``. Repeti-lo por pessoa criaria uma
+    segunda verdade sobre o mesmo contrato.
+
+    Migração idempotente, apenas aditiva.
+    """
+    try:
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS employee_unit_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                company_id INTEGER NOT NULL,
+                employee_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                local_status TEXT NOT NULL DEFAULT 'active',
+                notes TEXT NOT NULL DEFAULT '',
+                activated_at TEXT NOT NULL DEFAULT '',
+                deactivated_at TEXT,
+                deactivated_by_user_id INTEGER,
+                deactivation_reason TEXT NOT NULL DEFAULT '',
+                created_by_user_id INTEGER,
+                updated_by_user_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+                FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+                FOREIGN KEY (deactivated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        # Mesma proteção do molde contra corrida entre duas Unidades
+        # vinculando a mesma pessoa quase ao mesmo tempo (ADR-0002 §13.4).
+        connection.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS uq_employee_unit_links '
+            'ON employee_unit_links (company_id, employee_id, unit_id)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+    try:
+        connection.execute(
+            'CREATE INDEX IF NOT EXISTS idx_employee_unit_links_unit '
+            'ON employee_unit_links (unit_id, local_status)'
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
+def ensure_employee_unit_links_backfill(connection) -> None:
+    """Popula ``employee_unit_links`` para os colaboradores terceirizados que
+    já existiam antes da tabela (ADR-0002 §13, PR B).
+
+    Predicado: quem é mão de obra CONTRATADA, identificado por
+    ``outsourced_company_id`` (vínculo estruturado do ADR-0002) OU por
+    ``empresa_origem`` não vazia (o campo legado, única identificação
+    disponível para quem veio de importação). Colaborador próprio fica de
+    fora: ``normalize_employee_domain_fields`` força ``empresa_origem = ''``
+    para ele, então CLT, aprendiz, praticante e estagiário não são alcançados
+    pelo predicado — e não deveriam ser, porque o vínculo local existe para
+    resolver reuso de terceirizado entre Unidades.
+
+    A Unidade do vínculo inicial é ``employees.unit_id``, a Unidade onde a
+    pessoa já estava. O backfill não inventa vínculo em Unidade nenhuma além
+    dessa: cada Unidade povoa a sua deliberadamente (D9/D10), e pré-popular
+    seria exatamente a herança de lista inteira que o ADR §13.6 proíbe.
+
+    Idempotente: o ``NOT EXISTS`` evita duplicar em cada boot, e o índice
+    único ``uq_employee_unit_links`` é a rede abaixo dele. Rodar duas vezes
+    não cria nada novo nem reativa vínculo que alguém desativou de propósito.
+    """
+    try:
+        connection.execute(
+            '''
+            INSERT INTO employee_unit_links (
+                company_id, employee_id, unit_id, local_status, notes, activated_at
+            )
+            SELECT
+                e.company_id,
+                e.id,
+                e.unit_id,
+                'active',
+                'Vínculo criado automaticamente a partir da Unidade de cadastro.',
+                ''
+            FROM employees e
+            WHERE e.unit_id IS NOT NULL
+              AND (
+                    (e.outsourced_company_id IS NOT NULL AND e.outsourced_company_id <> 0)
+                 OR (e.empresa_origem IS NOT NULL AND e.empresa_origem <> '')
+              )
+              AND NOT EXISTS (
+                    SELECT 1 FROM employee_unit_links l
+                     WHERE l.company_id = e.company_id
+                       AND l.employee_id = e.id
+                       AND l.unit_id = e.unit_id
+              )
+            '''
+        )
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_outsourced_company_update_requests(connection) -> None:
     """"Solicitar atualização cadastral" — extensão ao ADR-0002 §12: quando o
     cadastro corporativo de uma Empresa Terceirizada/Prestadora já foi

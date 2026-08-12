@@ -846,7 +846,127 @@ def apply_current_unit_allocation(connection, employees):
     return employees
 
 
-def fetch_employees(connection, actor=None):
+# ── Estado do vínculo local na listagem (ADR-0002 §13, PR C1) ──────────────
+#
+# O frontend NÃO reconstrói esta regra: ele lê o que vem daqui. Foi decisão
+# explícita do projeto — a lista do Web Legado já deriva de `state.employees`
+# client-side, e adicionar ali uma segunda leitura de "está vinculado?" criaria
+# duas verdades sobre o mesmo fato.
+
+# `local_unit_link_status` só assume estes valores. `None` é diferente de
+# 'none': `None` significa "não se aplica" (sem contexto de Unidade, ou mão de
+# obra própria, que não pode ser vinculada), e a UI não deve oferecer ação
+# nenhuma por Unidade. 'none' significa "há contexto e esta pessoa não tem
+# vínculo aqui" — é o caso em que "Vincular à minha unidade" faz sentido.
+UNIT_LINK_STATUS_ACTIVE = 'active'
+UNIT_LINK_STATUS_INACTIVE = 'inactive'
+UNIT_LINK_STATUS_NONE = 'none'
+
+
+def resolve_actor_unit_context(connection, actor, requested_unit_id=None):
+    """Unidade cujo vínculo deve ser reportado na listagem.
+
+    Perfis escopados por Unidade (`admin`, `user`): sempre a Unidade
+    operacional do ator, IGNORANDO o que veio na requisição — mesma regra das
+    rotas de escrita do PR B. Quem é escopado não escolhe Unidade.
+
+    Perfis não escopados (Geral/Registro/Master): a Unidade selecionada na
+    requisição, quando informada. Sem seleção, devolve `None` — e a listagem
+    não traz vínculo nenhum, em vez de despejar todos. Foi decisão explícita:
+    esta é a listagem de colaboradores, não um relatório de vínculos.
+
+    A Unidade informada é conferida contra o tenant do ator; de outro tenant,
+    é tratada como ausente.
+    """
+    if (actor or {}).get('role') in ('admin', 'user'):
+        return actor_operational_unit_id(connection, actor)
+    if not requested_unit_id:
+        return None
+    try:
+        unit_id = int(requested_unit_id)
+    except (TypeError, ValueError):
+        return None
+    row = connection.execute(
+        'SELECT id, company_id FROM units WHERE id = ? LIMIT 1', (unit_id,)
+    ).fetchone()
+    if not row:
+        return None
+    if (str((actor or {}).get('role')) != 'master_admin'
+            and str(row['company_id']) != str((actor or {}).get('company_id'))):
+        return None
+    return unit_id
+
+
+def annotate_employee_unit_link_state(connection, employees, unit_id):
+    """Acrescenta `local_unit_link_status` e `is_linked_to_actor_unit`.
+
+    UMA consulta para a lista inteira, não uma por colaborador: a alternativa
+    (rota por colaborador) seria N+1 na tela e foi descartada por isso.
+
+    Mão de obra própria recebe `None` nos dois campos — ela não pode ser
+    vinculada (`ensure_employee_is_linkable_to_units` recusa), e reportar
+    'none' faria a UI oferecer um botão que o backend rejeitaria.
+    """
+    from epi_backend.db import table_exists
+
+    rows = list(employees or [])
+    for employee in rows:
+        employee['local_unit_link_status'] = None
+        employee['is_linked_to_actor_unit'] = False
+    if not unit_id or not rows or not table_exists(connection, 'employee_unit_links'):
+        return rows
+
+    linkable_ids = [
+        int(employee['id']) for employee in rows
+        if employee.get('id') is not None and not is_own_workforce(employee.get('tipo_vinculo'))
+    ]
+    if not linkable_ids:
+        return rows
+
+    status_by_employee = {}
+    # Fatiado para não estourar o limite de parâmetros do driver em tenants
+    # grandes — a listagem não tem paginação hoje.
+    chunk = 500
+    for start in range(0, len(linkable_ids), chunk):
+        piece = linkable_ids[start:start + chunk]
+        placeholders = ', '.join(['?'] * len(piece))
+        try:
+            found = connection.execute(
+                'SELECT employee_id, local_status FROM employee_unit_links '
+                f'WHERE unit_id = ? AND employee_id IN ({placeholders})',
+                (int(unit_id), *piece),
+            ).fetchall()
+        except Exception as _e:
+            structured_log('warning', 'employee.unit_link_state_skip', error=str(_e))
+            return rows
+        for row in found:
+            record = row_to_dict(row)
+            status_by_employee[int(record['employee_id'])] = str(record.get('local_status') or '')
+
+    linkable = set(linkable_ids)
+    for employee in rows:
+        if employee.get('id') is None or int(employee['id']) not in linkable:
+            continue
+        status = status_by_employee.get(int(employee['id']))
+        if status == UNIT_LINK_STATUS_ACTIVE:
+            employee['local_unit_link_status'] = UNIT_LINK_STATUS_ACTIVE
+            employee['is_linked_to_actor_unit'] = True
+        elif status:
+            employee['local_unit_link_status'] = UNIT_LINK_STATUS_INACTIVE
+        else:
+            employee['local_unit_link_status'] = UNIT_LINK_STATUS_NONE
+    return rows
+
+
+def fetch_employees(connection, actor=None, *, unit_context_id=None):
+    """Listagem de colaboradores.
+
+    ``unit_context_id`` é a Unidade cujo vínculo local deve ser reportado
+    (ADR-0002 §13, PR C1). Já vem resolvido por ``resolve_actor_unit_context``
+    — este parâmetro NÃO é o `unit_id` cru da requisição, e não deve ser
+    passado direto do payload: para perfis escopados a Unidade é derivada do
+    ator, nunca escolhida por quem monta o request.
+    """
     from core.archival import NON_OPERATIONAL_STATUSES, lifecycle_enabled
     from epi_backend.db import table_columns
     from modules.legal_entities.service import employee_legal_entity_sql
@@ -889,7 +1009,8 @@ def fetch_employees(connection, actor=None):
         sql += ' WHERE ' + ' AND '.join(where)
     rows = connection.execute(sql + ' ORDER BY employees.name', tuple(params)).fetchall()
     employees = [row_to_dict(row) for row in rows]
-    return apply_current_unit_allocation(connection, employees)
+    employees = apply_current_unit_allocation(connection, employees)
+    return annotate_employee_unit_link_state(connection, employees, unit_context_id)
 
 
 def fetch_employee_movements(connection, actor=None):

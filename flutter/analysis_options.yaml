@@ -5,6 +5,13 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "**/generated/**"
+    # Saída de build (gitignored, nunca é código-fonte). Plugins iOS com Swift
+    # Package Manager (ex.: firebase_messaging >= 16.x) sincronizam o pacote
+    # inteiro — incluindo a própria pasta test/ do pacote — para dentro de
+    # build/ios/SourcePackages/. Sem este exclude, `flutter analyze` varre
+    # esses testes vendorizados e falha em dependências (ex.: mockito) que só
+    # existem no dev_dependencies do pacote de terceiros, não no app.
+    - "**/build/**"
 
 linter:
   rules:

@@ -20,8 +20,19 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Papel e unidade operacional do ator, para o mesmo travamento de
+    // CNPJ/Unidade que o resto do app já aplica a Administrador Local/Gestor
+    // de EPI (ver DashboardCubit.isLockedProfile). Lido uma única vez aqui —
+    // a sessão não troca de papel no meio do uso do dashboard.
+    final authState = context.read<AuthCubit>().state;
+    final sessionContext =
+        authState is AuthAuthenticated ? authState.sessionContext : null;
     return BlocProvider(
-      create: (_) => DashboardCubit(localeProvider: localeProvider)..load(),
+      create: (_) => DashboardCubit(
+        localeProvider: localeProvider,
+        role: sessionContext?.role ?? '',
+        operationalUnitId: sessionContext?.unitId,
+      )..load(),
       child: const _DashboardBody(),
     );
   }
@@ -409,6 +420,30 @@ class _DashboardFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<DashboardCubit>();
+    // Administrador Local / Gestor de EPI: CNPJ e Unidade ficam travados na
+    // própria unidade (DashboardCubit.isLockedProfile — mesma regra do resto
+    // do app). Sem opção "Todos", campo desabilitado, e a lista mostra só a
+    // própria opção (nunca a cascata inteira do CNPJ) — o estado já garante
+    // que o valor selecionado é sempre o travado.
+    final locked = cubit.isLockedProfile;
+    final lockedEntities = locked
+        ? state.legalEntities
+            .where((e) => (e['id'] as num?)?.toInt() == state.selectedLegalEntityId)
+            .toList(growable: false)
+        : state.legalEntities;
+    final lockedUnits = locked
+        ? state.units
+            .where((u) => (u['id'] as num?)?.toInt() == state.selectedUnitId)
+            .toList(growable: false)
+        : state.availableUnits;
+    // DropdownButtonFormField exige que `initialValue` combine com exatamente
+    // um item da lista (ou seja null). Sem a própria unidade/CNPJ na lista
+    // (ex.: unidade arquivada depois de vincular o usuário), cai pra null em
+    // vez de violar essa regra — mesmo com o campo travado/desabilitado.
+    final entityValue =
+        (locked && lockedEntities.isEmpty) ? null : state.selectedLegalEntityId;
+    final unitValue =
+        (locked && lockedUnits.isEmpty) ? null : state.selectedUnitId;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.md),
@@ -420,36 +455,38 @@ class _DashboardFilterBar extends StatelessWidget {
             SizedBox(
               width: 260,
               child: DropdownButtonFormField<int?>(
-                initialValue: state.selectedLegalEntityId,
+                initialValue: entityValue,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: l10n.dashboardFilterLegalEntity,
                 ),
                 items: [
-                  DropdownMenuItem<int?>(
-                    child: Text(l10n.dashboardFilterAll),
-                  ),
-                  ...state.legalEntities.map(
+                  if (!locked)
+                    DropdownMenuItem<int?>(
+                      child: Text(l10n.dashboardFilterAll),
+                    ),
+                  ...lockedEntities.map(
                     (e) => DropdownMenuItem<int?>(
                       value: (e['id'] as num).toInt(),
                       child: Text(_entityLabel(e), overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],
-                onChanged: cubit.selectLegalEntity,
+                onChanged: locked ? null : cubit.selectLegalEntity,
               ),
             ),
             SizedBox(
               width: 200,
               child: DropdownButtonFormField<int?>(
-                initialValue: state.selectedUnitId,
+                initialValue: unitValue,
                 isExpanded: true,
                 decoration: InputDecoration(labelText: l10n.dashboardFilterUnit),
                 items: [
-                  DropdownMenuItem<int?>(
-                    child: Text(l10n.dashboardFilterAll),
-                  ),
-                  ...state.availableUnits.map(
+                  if (!locked)
+                    DropdownMenuItem<int?>(
+                      child: Text(l10n.dashboardFilterAll),
+                    ),
+                  ...lockedUnits.map(
                     (u) => DropdownMenuItem<int?>(
                       value: (u['id'] as num).toInt(),
                       child: Text('${u['name'] ?? ''}',
@@ -457,7 +494,7 @@ class _DashboardFilterBar extends StatelessWidget {
                     ),
                   ),
                 ],
-                onChanged: cubit.selectUnit,
+                onChanged: locked ? null : cubit.selectUnit,
               ),
             ),
             SizedBox(
@@ -481,7 +518,7 @@ class _DashboardFilterBar extends StatelessWidget {
                 onChanged: cubit.selectSector,
               ),
             ),
-            if (state.hasActiveFilter)
+            if (!locked && state.hasActiveFilter)
               TextButton.icon(
                 onPressed: cubit.clearFilters,
                 icon: const Icon(Icons.filter_alt_off_outlined),

@@ -110,7 +110,40 @@
     );
   }
 
+  /**
+   * Perfis com vínculo único de unidade — mesma regra de `isOperationalProfile()`
+   * (app.js) e de `actor_operational_unit_id()` (backend, core/repository.py):
+   * Administrador Local (`admin`) e Gestor de EPI (`user`) nunca têm carteira
+   * de N unidades, sempre exatamente uma. Para o filtro do dashboard isto não
+   * é uma escolha: CNPJ e Unidade ficam travados na unidade do próprio ator.
+   *
+   * `general_admin`/`registry_admin` ficam de fora de propósito: administram
+   * múltiplos CNPJs e a hierarquia inteira da empresa (docs/
+   * PAPEIS_E_ATRIBUICOES.md #2/#3; `resolve_actor_legal_entity_ids` no
+   * backend devolve `None` — sem restrição — para os dois).
+   */
+  function isLockedProfile(role) {
+    return role === 'admin' || role === 'user';
+  }
+
+  /**
+   * CNPJ da unidade travada, para perfis de `isLockedProfile`.
+   *
+   * O CNPJ nunca é escolhido por estes perfis — decorre da unidade
+   * (`units.legal_entity_id`), igual à regra do backend
+   * (`resolve_actor_legal_entity_ids`). `null` quando a unidade não é
+   * encontrada (ex.: sem `operational_unit_id`, ou unidade sem CNPJ
+   * vinculado na janela de migração).
+   */
+  function lockedLegalEntityId(units, operationalUnitId) {
+    const unitId = toId(operationalUnitId);
+    if (unitId === null) { return null; }
+    const unit = (Array.isArray(units) ? units : []).find((item) => toId(item?.id) === unitId);
+    return unit ? toId(unit.legal_entity_id) : null;
+  }
+
   globalThis.__EPI_DASHBOARD_SCOPE__ = Object.freeze({
+    toId,
     availableUnits,
     scopedUnitIds,
     inScope,
@@ -118,5 +151,7 @@
     applyScopeKeepingCompanyWide,
     sectorsOf,
     hasActiveFilter,
+    isLockedProfile,
+    lockedLegalEntityId,
   });
 })();

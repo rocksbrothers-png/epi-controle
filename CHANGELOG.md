@@ -80,3 +80,25 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 
 ### Changed
 - Removido `node.js.yml` (Python CI) em favor de `backend-ci.yml`.
+
+### Fixed
+- Dashboard — filtro CNPJ/Unidade agora trava para Administrador Local e
+  Gestor de EPI: os dois perfis têm vínculo único com uma unidade (mesma
+  regra de `isOperationalProfile()`/`lockByOperationalProfile` já usada no
+  resto do app), mas o filtro em cascata do dashboard (Fase 6, Multi-CNPJ)
+  ainda deixava "Todos" selecionável e mostrava unidades de fora da carteira
+  do ator — inclusive nos indicadores, que somavam a empresa inteira em vez
+  de só a própria unidade. `general_admin`/`registry_admin` continuam sem
+  restrição (administram múltiplos CNPJs). Corrigido em web (`dashboard.js`/
+  `dashboard-scope.js`) e Flutter (`DashboardCubit`/`DashboardScreen`).
+- CI — `flutter analyze` falhava em "Analyze, Test & Build iOS (no codesign)"
+  varrendo `build/ios/SourcePackages/firebase_messaging-*/example` e `/test`
+  (pacote de terceiros vendorizado pelo Swift Package Manager, com
+  dependências como `mockito` que não existem no app). Adicionado
+  `**/build/**` ao `exclude` do `analysis_options.yaml` — mesma correção já
+  existente no repositório espelho `epi-controle-app`, agora portada aqui.
+- CI — `Build Android APK (debug)`/`Integration (Android emulator)` falhavam
+  sempre: `flutter.yml` usa `channel: stable` sem fixar versão, e o Flutter
+  `stable` atual (3.47.0) exige Android Gradle Plugin ≥ 8.11.1, enquanto
+  `android/settings.gradle` fixava 8.9.1. Atualizado para 8.11.1 — dentro do
+  Gradle (8.14) e do JDK (17) já usados pelo projeto, sem exigir outro bump.

@@ -72,9 +72,46 @@ class DashboardState extends Equatable {
 }
 
 class DashboardCubit extends Cubit<DashboardState> {
-  DashboardCubit({this.localeProvider}) : super(const DashboardState());
+  DashboardCubit({
+    this.localeProvider,
+    this.role = '',
+    this.operationalUnitId,
+  }) : super(const DashboardState());
 
   final LocaleProvider? localeProvider;
+
+  /// Papel e unidade operacional do ator autenticado (lidos de
+  /// `SessionContext` pelo `DashboardScreen` no momento da criação).
+  ///
+  /// Administrador Local (`admin`) e Gestor de EPI (`user`) têm vínculo
+  /// único com UMA unidade — nunca uma carteira — mesma regra de
+  /// `isLockedProfile`/`lockedLegalEntityId` em dashboard-scope.js (web) e de
+  /// `isOperationalProfile()`/`actor_operational_unit_id()` no resto do app.
+  /// Para eles o filtro do dashboard não é escolha: CNPJ e Unidade ficam
+  /// travados na própria unidade. `general_admin`/`registry_admin` ficam de
+  /// fora de propósito — administram múltiplos CNPJs e a hierarquia inteira
+  /// da empresa (docs/PAPEIS_E_ATRIBUICOES.md #2/#3;
+  /// `resolve_actor_legal_entity_ids` no backend devolve `None`, sem
+  /// restrição, para os dois).
+  final String role;
+  final int? operationalUnitId;
+
+  bool get isLockedProfile => role == 'admin' || role == 'user';
+
+  /// CNPJ da unidade travada — deriva de `units.legal_entity_id`, nunca
+  /// escolhido por perfis travados (mesma regra do backend,
+  /// `resolve_actor_legal_entity_ids`, e de `lockedLegalEntityId` em
+  /// dashboard-scope.js no web).
+  int? _lockedLegalEntityId(List<Map<String, dynamic>> units) {
+    if (operationalUnitId == null) return null;
+    for (final unit in units) {
+      if ((unit['id'] as num?)?.toInt() == operationalUnitId) {
+        final entity = unit['legal_entity_id'];
+        return entity == null ? null : (entity as num).toInt();
+      }
+    }
+    return null;
+  }
 
   // Dados crus do bootstrap: o filtro recomputa os KPIs localmente, sem nova
   // chamada de rede a cada troca de CNPJ/unidade/setor.
@@ -88,7 +125,6 @@ class DashboardCubit extends Cubit<DashboardState> {
     emit(const DashboardState(isLoading: true));
     try {
       final bootstrap = await ApiClient.auth.bootstrap();
-      final now = DateTime.now();
 
       // Apply locale preference from bootstrap
       if (localeProvider != null) {
@@ -98,28 +134,6 @@ class DashboardCubit extends Cubit<DashboardState> {
         );
       }
 
-      // Usa o modelo Epi (que entende as chaves canônicas do backend) para
-      // computar os indicadores. "Vencendo" considera tanto o CA quanto a
-      // validade do fabricante próximos do vencimento (NT 146/2015).
-      final epis = bootstrap.epis.map(Epi.fromJson).toList();
-      final expiringCount = epis
-          .where((e) =>
-              e.caStatus == 'expiring' ||
-              e.manufacturerValidityStatus == 'expiring')
-          .length;
-
-      final criticalCount = epis.where((e) => e.isCriticalStock).length;
-
-      // Count deliveries made today
-      final todayStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final deliveriesTodayCount = bootstrap.deliveries.where((d) {
-        final dateStr = d['delivery_date'] as String? ??
-            d['created_at'] as String? ??
-            '';
-        return dateStr.startsWith(todayStr);
-      }).length;
-
       // Requisições de compra pendentes: agora vêm do bootstrap
       // (pending_purchases), já escopadas e gateadas por permissão no backend.
       _rawDeliveries = bootstrap.deliveries;
@@ -128,16 +142,18 @@ class DashboardCubit extends Cubit<DashboardState> {
       _rawPendingPurchases = bootstrap.pendingPurchases;
       _rawAlerts = bootstrap.alerts;
 
-      emit(DashboardState(
-        isLoading: false,
-        deliveriesToday: deliveriesTodayCount,
-        expiringEpis: expiringCount,
-        criticalStock: criticalCount,
-        pendingPurchases: bootstrap.pendingPurchases,
-        alerts: bootstrap.alerts,
+      // Indicadores computados por _buildState (mesma lógica de
+      // _applyFilter, reaproveitada — ver abaixo). Perfis travados
+      // (isLockedProfile) nascem travados: o recorte já sai aplicado no
+      // primeiro carregamento, sem depender de uma interação do usuário no
+      // filtro (que, para eles, nem fica habilitado).
+      emit(_buildState(
         legalEntities: bootstrap.legalEntities,
         units: bootstrap.units,
-        sectors: _sectorsOf(bootstrap.employees),
+        legalEntityId:
+            isLockedProfile ? _lockedLegalEntityId(bootstrap.units) : null,
+        unitId: isLockedProfile ? operationalUnitId : null,
+        sector: null,
       ));
     } on Exception catch (e) {
       emit(DashboardState(isLoading: false, error: e.toString()));
@@ -174,7 +190,16 @@ class DashboardCubit extends Cubit<DashboardState> {
   /// Sem CNPJ nem unidade selecionados devolve `null`, que significa "sem
   /// restrição" — diferente de lista vazia, que significa "nenhuma unidade
   /// casa" e deve zerar os indicadores.
+  ///
+  /// Perfis travados (`isLockedProfile`) ignoram os argumentos: nunca "sem
+  /// restrição". Sem unidade operacional resolvida o Set fica vazio (fecha o
+  /// recorte, zera os indicadores) — nunca `null` (que abriria pra empresa
+  /// inteira). Mesma política fail-closed de `actor_operational_unit_id()`
+  /// no backend.
   Set<int>? _scopedUnitIds(int? legalEntityId, int? unitId) {
+    if (isLockedProfile) {
+      return operationalUnitId == null ? <int>{} : {operationalUnitId!};
+    }
     if (unitId != null) return {unitId};
     if (legalEntityId == null) return null;
     return state.units
@@ -184,6 +209,29 @@ class DashboardCubit extends Cubit<DashboardState> {
   }
 
   void _applyFilter({int? legalEntityId, int? unitId, String? sector}) {
+    emit(_buildState(
+      legalEntities: state.legalEntities,
+      units: state.units,
+      // Perfis travados não escolhem CNPJ/Unidade: os argumentos recebidos
+      // (de selectLegalEntity/selectUnit/clearFilters) são ignorados e a
+      // seleção exibida continua sempre a da própria unidade.
+      legalEntityId:
+          isLockedProfile ? _lockedLegalEntityId(state.units) : legalEntityId,
+      unitId: isLockedProfile ? operationalUnitId : unitId,
+      sector: sector,
+    ));
+  }
+
+  /// Monta o estado a partir dos dados crus + o recorte escolhido. Reaproveitada
+  /// por `load()` (primeiro carregamento) e `_applyFilter()` (troca de
+  /// filtro) para computar os KPIs exatamente da mesma forma nos dois casos.
+  DashboardState _buildState({
+    required List<Map<String, dynamic>> legalEntities,
+    required List<Map<String, dynamic>> units,
+    required int? legalEntityId,
+    required int? unitId,
+    required String? sector,
+  }) {
     final scopedUnits = _scopedUnitIds(legalEntityId, unitId);
 
     bool inScope(Object? rawUnitId) {
@@ -210,7 +258,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     final todayStr =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    emit(DashboardState(
+    return DashboardState(
       isLoading: false,
       deliveriesToday: deliveries.where((d) {
         final dateStr =
@@ -228,13 +276,13 @@ class DashboardCubit extends Cubit<DashboardState> {
       // o filtro.
       pendingPurchases: _rawPendingPurchases,
       alerts: _rawAlerts,
-      legalEntities: state.legalEntities,
-      units: state.units,
+      legalEntities: legalEntities,
+      units: units,
       sectors: _sectorsOf(_rawEmployees, scopedUnits: scopedUnits),
       selectedLegalEntityId: legalEntityId,
       selectedUnitId: unitId,
       selectedSector: sector,
-    ));
+    );
   }
 
   /// Setores distintos dos colaboradores no escopo, ordenados.

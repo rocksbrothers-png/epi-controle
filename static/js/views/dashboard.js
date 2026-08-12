@@ -40,6 +40,15 @@
   function scopedUnits() {
     const api = scopeApi();
     if (!api) { return null; }
+    if (api.isLockedProfile(getState().user?.role)) {
+      // Administrador Local / Gestor de EPI: nunca "sem restrição". Sem
+      // unidade operacional resolvida o Set fica vazio (fecha o recorte,
+      // zera os indicadores) — nunca `null` (que abriria pra empresa
+      // inteira). Mesma política fail-closed de actor_operational_unit_id()
+      // no backend.
+      const unitId = api.toId(getState().user?.operational_unit_id);
+      return new Set(unitId === null ? [] : [unitId]);
+    }
     return api.scopedUnitIds(filterByCompany(getState().units || []), _scope.legalEntityId, _scope.unitId);
   }
 
@@ -77,13 +86,29 @@
     return helper ? helper.legalEntityLabel(entity) : String(entity?.cnpj || '');
   }
 
-  function optionsHtml(items, valueKey, labelFn, allLabel, selected) {
-    const head = `<option value="">${esc(allLabel)}</option>`;
+  function optionsHtml(items, valueKey, labelFn, allLabel, selected, { includeAll = true } = {}) {
+    const head = includeAll ? `<option value="">${esc(allLabel)}</option>` : '';
     return head + items.map((item) => {
       const value = item?.[valueKey];
       const isSelected = String(selected ?? '') === String(value ?? '') ? ' selected' : '';
       return `<option value="${esc(value)}"${isSelected}>${esc(labelFn(item))}</option>`;
     }).join('');
+  }
+
+  /**
+   * Preenche um <select> do filtro do dashboard. Perfis travados
+   * (`isLockedProfile`) não veem "Todos": mostram só a própria opção, já
+   * desabilitada. Sem nenhuma opção resolvida (sem unidade operacional
+   * ativa), cai no mesmo aviso do resto do app em vez de uma lista vazia.
+   */
+  function fillScopeSelect(field, items, valueKey, labelFn, allLabel, selected, locked) {
+    if (!field) { return; }
+    if (locked && !items.length) {
+      field.innerHTML = `<option value="">${tr('employee.noActiveOperationalUnit', 'Sem unidade operacional ativa')}</option>`;
+    } else {
+      field.innerHTML = optionsHtml(items, valueKey, labelFn, allLabel, selected, { includeAll: !locked });
+    }
+    field.disabled = locked;
   }
 
   /**
@@ -104,15 +129,28 @@
     const units = filterByCompany(state.units || []);
     const allLabel = tr('employee.filterAll', 'Todos');
 
+    // Administrador Local / Gestor de EPI: CNPJ e Unidade ficam travados na
+    // própria unidade (isLockedProfile — mesma regra de lockByOperationalProfile
+    // em app.js). A seleção deixa de ser escolha do usuário e passa a
+    // refletir sempre a unidade do ator; Setor continua livre.
+    const locked = api.isLockedProfile(state.user?.role);
+    if (locked) {
+      _scope.unitId = api.toId(state.user?.operational_unit_id);
+      _scope.legalEntityId = api.lockedLegalEntityId(units, state.user?.operational_unit_id);
+    }
+
     const entityField = document.getElementById('dashboard-scope-legal-entity');
-    if (entityField) {
-      entityField.innerHTML = optionsHtml(entities, 'id', legalEntityLabel, allLabel, _scope.legalEntityId);
-    }
+    const entityOptions = locked
+      ? entities.filter((item) => api.toId(item?.id) === _scope.legalEntityId)
+      : entities;
+    fillScopeSelect(entityField, entityOptions, 'id', legalEntityLabel, allLabel, _scope.legalEntityId, locked);
+
     const unitField = document.getElementById('dashboard-scope-unit');
-    if (unitField) {
-      const available = api.availableUnits(units, _scope.legalEntityId);
-      unitField.innerHTML = optionsHtml(available, 'id', (u) => u?.name || '', allLabel, _scope.unitId);
-    }
+    const unitOptions = locked
+      ? units.filter((item) => api.toId(item?.id) === _scope.unitId)
+      : api.availableUnits(units, _scope.legalEntityId);
+    fillScopeSelect(unitField, unitOptions, 'id', (u) => u?.name || '', allLabel, _scope.unitId, locked);
+
     const sectorField = document.getElementById('dashboard-scope-sector');
     if (sectorField) {
       const sectors = api.sectorsOf(filterByCompany(state.employees || []), scopedUnits());
@@ -121,7 +159,7 @@
       );
     }
     const clearButton = document.getElementById('dashboard-scope-clear');
-    if (clearButton) { clearButton.hidden = !api.hasActiveFilter(_scope); }
+    if (clearButton) { clearButton.hidden = locked || !api.hasActiveFilter(_scope); }
   }
 
   function rerenderDashboard() {

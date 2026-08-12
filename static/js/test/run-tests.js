@@ -750,6 +750,65 @@ test('dashboard: renderStats consolida em grupos por prioridade (sem duplicar KP
   // navegação vinculada uma única vez
   eq(grid.dataset.navBound, '1');
 });
+test('dashboard: renderStats trava KPIs na própria unidade para Gestor de EPI (user)', () => {
+  // Achado no dashboard real (screenshot): Gestor de EPI via "Todos" nos
+  // filtros de CNPJ/Unidade e os KPIs somavam a empresa inteira (3
+  // unidades), não só a unidade dele. isLockedProfile('user') === true deve
+  // fechar o recorte na própria unidade mesmo sem a barra de filtro (aqui
+  // document.getElementById sempre devolve null — ver mocks do topo do
+  // arquivo), provando que a trava vive no cálculo dos KPIs, não só na UI.
+  const grid = { innerHTML: '', dataset: {}, addEventListener() {} };
+  globalThis.__EPI_REFS__ = { statsGrid: grid };
+  globalThis.currentUserHasPermission = () => true;
+  globalThis.filterByUserCompany = (items) => items;
+  const units = [
+    { id: 1, company_id: 1, legal_entity_id: 10 },
+    { id: 2, company_id: 1, legal_entity_id: 10 },
+    { id: 3, company_id: 1, legal_entity_id: 20 },
+  ];
+  globalThis.__EPI_APP_STATE__ = {
+    user: { role: 'user', operational_unit_id: 2, company_id: 1 },
+    companies: [{ id: 1 }],
+    units,
+    employees: [{ id: 1, unit_id: 1 }, { id: 2, unit_id: 2 }, { id: 3, unit_id: 2 }, { id: 4, unit_id: 3 }],
+    deliveries: [{ id: 1, unit_id: 1, returned_date: '' }, { id: 2, unit_id: 2, returned_date: '' }, { id: 3, unit_id: 3, returned_date: '' }],
+    epis: [], alerts: [], lowStock: [], feedbacks: [],
+    stockCompliance: { summary: {} },
+  };
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  const html = grid.innerHTML;
+  assert(/Colaboradores ativos<\/span><strong>2</.test(html), `esperado 2 colaboradores (só unidade 2); html: ${html}`);
+  assert(/Entregas<\/span><strong>1</.test(html), 'esperada 1 entrega (só unidade 2)');
+  assert(/Unidades<\/span><strong>1</.test(html), 'esperada 1 unidade (só a travada)');
+});
+test('dashboard: renderStats NÃO trava KPIs para general_admin (multi-CNPJ)', () => {
+  // Administrador Geral administra múltiplos CNPJs e a hierarquia inteira
+  // (docs/PAPEIS_E_ATRIBUICOES.md #2) — precisa continuar vendo a empresa
+  // toda, nunca uma unidade só.
+  const grid = { innerHTML: '', dataset: {}, addEventListener() {} };
+  globalThis.__EPI_REFS__ = { statsGrid: grid };
+  globalThis.currentUserHasPermission = () => true;
+  globalThis.filterByUserCompany = (items) => items;
+  const units = [
+    { id: 1, company_id: 1, legal_entity_id: 10 },
+    { id: 2, company_id: 1, legal_entity_id: 10 },
+    { id: 3, company_id: 1, legal_entity_id: 20 },
+  ];
+  globalThis.__EPI_APP_STATE__ = {
+    user: { role: 'general_admin', company_id: 1 },
+    companies: [{ id: 1 }],
+    units,
+    employees: [{ id: 1, unit_id: 1 }, { id: 2, unit_id: 2 }, { id: 3, unit_id: 2 }, { id: 4, unit_id: 3 }],
+    deliveries: [{ id: 1, unit_id: 1, returned_date: '' }, { id: 2, unit_id: 2, returned_date: '' }, { id: 3, unit_id: 3, returned_date: '' }],
+    epis: [], alerts: [], lowStock: [], feedbacks: [],
+    stockCompliance: { summary: {} },
+  };
+  globalThis.__EPI_DASHBOARD__.renderStats();
+  const html = grid.innerHTML;
+  assert(/Colaboradores ativos<\/span><strong>4</.test(html), 'general_admin deveria ver todos os colaboradores da empresa');
+  assert(/Entregas<\/span><strong>3</.test(html), 'general_admin deveria ver todas as entregas da empresa');
+  assert(/Unidades<\/span><strong>3</.test(html), 'general_admin deveria ver todas as unidades da empresa');
+});
 test('dashboard: renderAlerts monta botões de ação com deep-link por categoria', () => {
   const list = { innerHTML: '', dataset: {}, addEventListener() {} };
   globalThis.__EPI_REFS__ = { alertsList: list };
@@ -1449,6 +1508,25 @@ test('dashboard-scope: hasActiveFilter reconhece qualquer nível', () => {
 test('dashboard-scope: ids como string (vindos de <select>) funcionam', () => {
   const ids = _S().scopedUnitIds(_SC_UNITS, '10', '');
   eq(JSON.stringify(Array.from(ids)), JSON.stringify([1, 2]));
+});
+
+// ── Trava do filtro por perfil (Administrador Local / Gestor de EPI) ─────
+test('dashboard-scope: isLockedProfile só trava admin e user', () => {
+  assert(_S().isLockedProfile('admin'), 'admin deveria travar');
+  assert(_S().isLockedProfile('user'), 'user (Gestor de EPI) deveria travar');
+  assert(!_S().isLockedProfile('general_admin'), 'general_admin administra múltiplos CNPJs — não trava');
+  assert(!_S().isLockedProfile('registry_admin'), 'registry_admin não trava');
+  assert(!_S().isLockedProfile('master_admin'), 'master_admin não trava');
+  assert(!_S().isLockedProfile(undefined), 'papel ausente não trava');
+});
+test('dashboard-scope: lockedLegalEntityId deriva o CNPJ da unidade do ator', () => {
+  eq(_S().lockedLegalEntityId(_SC_UNITS, 2), 10);
+  eq(_S().lockedLegalEntityId(_SC_UNITS, 3), 20);
+});
+test('dashboard-scope: lockedLegalEntityId é null sem unidade operacional ou sem vínculo', () => {
+  eq(_S().lockedLegalEntityId(_SC_UNITS, null), null);
+  eq(_S().lockedLegalEntityId(_SC_UNITS, 4), null); // unidade 4 é "Sem CNPJ"
+  eq(_S().lockedLegalEntityId(_SC_UNITS, 999), null); // unidade inexistente
 });
 
 

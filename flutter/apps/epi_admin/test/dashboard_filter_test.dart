@@ -122,4 +122,61 @@ void main() {
       expect(cubit.state.hasActiveFilter, isFalse);
     });
   });
+
+  group('DashboardCubit.isLockedProfile', () {
+    test('só admin e user (Administrador Local / Gestor de EPI) travam', () {
+      expect(DashboardCubit(role: 'admin').isLockedProfile, isTrue);
+      expect(DashboardCubit(role: 'user').isLockedProfile, isTrue);
+      // general_admin/registry_admin administram múltiplos CNPJs e a
+      // hierarquia inteira (docs/PAPEIS_E_ATRIBUICOES.md #2/#3) — não travam.
+      expect(DashboardCubit(role: 'general_admin').isLockedProfile, isFalse);
+      expect(DashboardCubit(role: 'registry_admin').isLockedProfile, isFalse);
+      expect(DashboardCubit(role: 'master_admin').isLockedProfile, isFalse);
+      expect(DashboardCubit().isLockedProfile, isFalse);
+    });
+  });
+
+  group('DashboardCubit — perfis travados (Administrador Local / Gestor de EPI)', () {
+    // Achado no dashboard real (web): Gestor de EPI via "Todos" nos filtros
+    // de CNPJ/Unidade e os KPIs somavam a empresa inteira, não só a própria
+    // unidade. Estes testes travam a mesma regra no lado Flutter.
+    test('user (Gestor de EPI) ignora seleção de CNPJ/Unidade — sempre a própria unidade', () {
+      final cubit = DashboardCubit(role: 'user', operationalUnitId: 2);
+      cubit.emit(const DashboardState(units: units, legalEntities: legalEntities));
+
+      cubit.selectLegalEntity(20);
+      // Unidade 2 pertence ao CNPJ 10 — a trava nunca aceita o CNPJ 20.
+      expect(cubit.state.selectedLegalEntityId, 10);
+      expect(cubit.state.selectedUnitId, 2);
+
+      cubit.selectUnit(3);
+      expect(cubit.state.selectedUnitId, 2);
+      expect(cubit.state.selectedLegalEntityId, 10);
+
+      cubit.clearFilters();
+      expect(cubit.state.selectedUnitId, 2);
+      expect(cubit.state.selectedLegalEntityId, 10);
+      expect(cubit.state.hasActiveFilter, isTrue);
+    });
+
+    test('admin (Administrador Local) trava igual a user, na sua própria unidade', () {
+      final cubit = DashboardCubit(role: 'admin', operationalUnitId: 3);
+      cubit.emit(const DashboardState(units: units, legalEntities: legalEntities));
+
+      cubit.selectUnit(1);
+
+      expect(cubit.state.selectedUnitId, 3);
+      expect(cubit.state.selectedLegalEntityId, 20); // unidade 3 -> CNPJ 20
+    });
+
+    test('general_admin continua livre (multi-CNPJ, sem trava)', () {
+      final cubit = DashboardCubit(role: 'general_admin', operationalUnitId: 2);
+      cubit.emit(const DashboardState(units: units, legalEntities: legalEntities));
+
+      cubit.selectLegalEntity(20);
+
+      expect(cubit.state.selectedLegalEntityId, 20);
+      expect(cubit.state.selectedUnitId, isNull);
+    });
+  });
 }

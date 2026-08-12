@@ -6665,10 +6665,34 @@ function startEditUnit(unitId) {
 // Único ponto que decide a visibilidade de "Empresa de Origem": chamado no
 // setup inicial, no 'change' do select, na edição e no reset do formulário —
 // nunca `row.hidden = ...` duplicado nesses lugares, para não divergir.
+// Vínculos de mão de obra própria — espelha OWN_WORKFORCE_VINCULOS do backend
+// (modules/employees/service.py). Para eles a empresa é a própria empregadora
+// e responsável pelo EPI, então "Empresa de Origem" não se aplica.
+//
+// Era `tv === 'CLT'`: com Menor Aprendiz, Praticante e Estagiário no seletor,
+// o campo aparecia para os três e o backend recusava o cadastro pedindo uma
+// empresa de origem que não existe.
+const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário'];
+
+// Os vínculos de mão de obra CONTRATADA (Terceirizado, Prestador de Serviço,
+// Temporário) existem exclusivamente no módulo Terceirizados e Prestadores: o
+// Cadastro Principal não os oferece no seletor e o backend os recusa, na
+// criação e na edição (CONTRACTED_VINCULOS em modules/employees/service.py).
+// Continuam no FILTRO de relatórios, porque colaboradores com esses vínculos
+// existem e precisam ser consultáveis.
+//
+// Não há constante aqui de propósito: nada no front consome a lista — o
+// formulário simplesmente não tem as opções. Declará-la "para espelhar o
+// backend" era código morto, e foi o que o CodeQL apontou.
+
+function isOwnWorkforceVinculo(value) {
+  return OWN_WORKFORCE_VINCULOS.includes(String(value || 'CLT').trim());
+}
+
 function syncEmpresaOrigemVisibility() {
   const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
   const row = document.getElementById('employee-empresa-origem-row');
-  if (row) row.hidden = tv === 'CLT';
+  if (row) row.hidden = isOwnWorkforceVinculo(tv);
 }
 
 function startEditEmployee(employeeId) {

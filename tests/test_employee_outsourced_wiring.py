@@ -1,75 +1,133 @@
-"""Cadastro Simplificado de Terceirizados e Prestadores — PR 3 (ADR-0002).
+"""O Cadastro Principal recusa mão de obra CONTRATADA (ADR-0002).
 
-Cobre a wiring do lado do colaborador: ``create_employee``/``update_employee``
-aceitam, opcionalmente, ``outsourced_company_id``/``service_contract_id``/
-``epi_responsibility_override(_reason)`` — validados por
-``modules.outsourced_companies.service.validate_employee_outsourced_reference``
-— e ``get_employee_by_id``/``fetch_employees`` devolvem essas colunas.
+Este arquivo testava o contrário: que ``create_employee``/``update_employee``
+aceitavam ``outsourced_company_id``/``service_contract_id``/
+``epi_responsibility_override(_reason)``. Era o segundo caminho capaz de criar
+um terceirizado — e o pior dos dois, porque o formulário do Cadastro Principal
+não monta o vínculo estruturado: identificava o contratado apenas por um texto
+livre em ``empresa_origem``, sem CNPJ, sem contrato e sem escopo por Unidade.
 
-Não testa o endpoint HTTP (isso já é coberto por ``core.repository.authorize_action``
-em outros testes) — foco na camada de serviço, isolamento multi-tenant e
-retrocompatibilidade (colaborador CLT sem nenhum campo novo continua
-funcionando exatamente como antes).
+Por decisão de produto (2026-08-11), Terceirizado, Prestador de Serviço e
+Temporário passam a existir **exclusivamente** no módulo Terceirizados e
+Prestadores. Manter os dois caminhos significava duas regras para o mesmo fato.
+
+**A cobertura dos campos de terceirizado não se perdeu** — ela mora, e sempre
+morou melhor, em ``tests/test_employee_outsourced_simplified.py``, que exercita
+o fluxo definitivo: os quatro campos, a recusa de empresa de outro tenant, a
+recusa de unidade de outro tenant, e o bloqueio por empresa arquivada.
+
+Uma armadilha encontrada ao converter, que vale registrar: o antigo
+``test_create_employee_rejects_outsourced_company_from_another_tenant``
+**continuava passando** depois da mudança — mas pelo motivo errado. Ele
+esperava um ``ValueError`` genérico, que antes vinha da checagem de tenant e
+passou a vir da recusa de vínculo, disparada antes. Verde, e sem testar mais
+nada. Por isso os testes abaixo casam com a MENSAGEM, não com o tipo da
+exceção.
 """
 
 import sqlite3
 
 import pytest
 
-from core.schema import ensure_legal_entities, ensure_outsourced_companies, ensure_outsourced_company_unit_links
-from modules.employees.service import create_employee, get_employee_by_id, fetch_employees, update_employee
-from modules.outsourced_companies.service import create_outsourced_company, create_service_contract
+from core.schema import (
+    ensure_legal_entities,
+    ensure_outsourced_companies,
+    ensure_outsourced_company_unit_links,
+)
+from modules.employees.service import (
+    CONTRACTED_VINCULOS,
+    OWN_WORKFORCE_VINCULOS,
+    create_employee,
+    fetch_employees,
+    get_employee_by_id,
+    update_employee,
+)
+from modules.outsourced_companies.service import create_outsourced_company
 
 CNPJ_A = '11.222.333/0001-81'
+
+#: Trecho estável da mensagem de recusa. Casar com ele — e não com
+#: `pytest.raises(ValueError)` — é o que impede este teste de ficar verde
+#: quando outra validação qualquer disparar primeiro.
+REFUSAL = 'não pertence ao Cadastro Principal'
+
+
+@pytest.fixture(autouse=True)
+def _sqlite_detection(monkeypatch):
+    """`_PgStyleConn` esconde o tipo da conexão, e `core.schema` decide entre
+    `sqlite_master` e `information_schema` por ele. Mesmo fixture das demais
+    suítes que usam o adaptador."""
+    monkeypatch.setattr('epi_backend.db._is_sqlite_connection', lambda _conn: True)
+    # Alvo em string: `core.schema` já entra neste arquivo por `from ... import`,
+    # e um segundo `import core.schema as ...` só para ter o objeto do módulo
+    # deixaria o mesmo módulo importado das duas formas (apontado pelo CodeQL).
+    monkeypatch.setattr('core.schema._is_sqlite_connection', lambda _conn: True)
 
 
 def _dict_factory(cursor, row):
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
+class _PgStyleConn:
+    """Traduz o dialeto Postgres (%s) para SQLite (?) — mesmo adaptador das
+    demais suítes. `update_employee` resolve a unidade por
+    `core.repository.get_unit_by_id`, que usa `%s`."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        return self._conn.execute(str(sql).replace('%s', '?'), params)
+
+    def commit(self):
+        self._conn.commit()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 def _conn():
     conn = sqlite3.connect(':memory:')
-    # dict-like rows (com .get()), não sqlite3.Row: core.auth.ensure_resource_company
-    # e outras funções de produção assumem o mapping-like DictRow do psycopg2
-    # (Postgres real). sqlite3.Row não tem .get(); o dict puro tem.
     conn.row_factory = _dict_factory
     conn.executescript(
         """
         CREATE TABLE companies (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, legal_name TEXT DEFAULT '', cnpj TEXT, logo_type TEXT DEFAULT ''
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, cnpj TEXT,
+            logo_type TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE units (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL, name TEXT, unit_type TEXT DEFAULT '',
-            city TEXT DEFAULT '', notes TEXT DEFAULT ''
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            name TEXT DEFAULT '', unit_type TEXT DEFAULT '', city TEXT DEFAULT '',
+            notes TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'active'
         );
         CREATE TABLE employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company_id INTEGER NOT NULL, unit_id INTEGER, name TEXT,
-            employee_id_code TEXT DEFAULT '', cpf TEXT DEFAULT '', email TEXT DEFAULT '',
-            whatsapp TEXT DEFAULT '', preferred_contact_channel TEXT DEFAULT '',
-            sector TEXT DEFAULT '', role_name TEXT DEFAULT '', admission_date TEXT DEFAULT '',
-            schedule_type TEXT DEFAULT '', tipo_vinculo TEXT DEFAULT 'CLT', empresa_origem TEXT DEFAULT ''
-        );
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT, company_id INTEGER, role TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL, employee_id_code TEXT NOT NULL,
+            cpf TEXT NOT NULL DEFAULT '', name TEXT NOT NULL,
+            email TEXT NOT NULL DEFAULT '', whatsapp TEXT NOT NULL DEFAULT '',
+            preferred_contact_channel TEXT NOT NULL DEFAULT 'whatsapp',
+            sector TEXT NOT NULL, role_name TEXT NOT NULL,
+            admission_date TEXT NOT NULL, schedule_type TEXT NOT NULL,
+            tipo_vinculo TEXT NOT NULL DEFAULT 'CLT',
+            empresa_origem TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active'
         );
         CREATE TABLE employee_unit_movements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            employee_id INTEGER, movement_type TEXT, start_date TEXT, end_date TEXT DEFAULT '',
-            target_unit_id INTEGER
+            id INTEGER PRIMARY KEY AUTOINCREMENT, employee_id INTEGER NOT NULL,
+            company_id INTEGER NOT NULL, source_unit_id INTEGER NOT NULL,
+            target_unit_id INTEGER NOT NULL, movement_type TEXT NOT NULL,
+            start_date TEXT NOT NULL, end_date TEXT NOT NULL DEFAULT ''
         );
         """
     )
-    return conn
+    return _PgStyleConn(conn)
 
 
 def _seed_company(conn, name='ACME', cnpj='00.000.000/0001-00'):
-    cur = conn.execute('INSERT INTO companies (name, legal_name, cnpj) VALUES (?, ?, ?)', (name, name, cnpj))
-    conn.commit()
-    return int(cur.lastrowid)
+    cursor = conn.execute(
+        'INSERT INTO companies (name, cnpj) VALUES (?, ?)', (name, cnpj)
+    )
+    return int(cursor.lastrowid)
 
 
 def _bootstrap(conn):
@@ -79,31 +137,15 @@ def _bootstrap(conn):
 
 
 def _actor(company_id, role='general_admin', user_id=1):
-    return {'id': user_id, 'role': role, 'company_id': company_id}
+    return {
+        'id': user_id, 'role': role, 'company_id': company_id,
+        'full_name': 'Ana Geral', 'unit_id': None,
+    }
 
 
-class _PgStyleConn:
-    """Adaptador de teste: traduz os placeholders ``%s`` (estilo Postgres,
-    usados em ``core.repository`` — ``update_employee`` busca o colaborador/
-    unidade atuais por lá) para ``?`` do SQLite. Em produção quem faz essa
-    normalização é o ``PostgresConnectionWrapper``. Mesmo padrão de
-    ``tests/test_employee_legal_entity_immutability.py``."""
-
-    def __init__(self, conn):
-        self._conn = conn
-
-    def execute(self, sql, params=()):
-        return self._conn.execute(str(sql).replace('%s', '?'), params)
-
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
-
-
-def _minimal_payload(company_id, **overrides):
+def _payload(company_id, **overrides):
     # unit_id omitido de propósito: create_employee resolve/cria a unidade
-    # padrão via SQL com placeholder '?', compatível com SQLite. Passar
-    # unit_id explícito acionaria core.repository.get_unit_by_id, que usa
-    # placeholder '%s' (só Postgres) — fora do escopo deste teste de serviço.
+    # padrão via SQL com placeholder '?', compatível com SQLite.
     payload = {
         'company_id': company_id,
         'employee_id_code': 'E1',
@@ -116,158 +158,115 @@ def _minimal_payload(company_id, **overrides):
         'role_name': 'Auxiliar',
         'admission_date': '2026-01-01',
         'schedule_type': 'integral',
-        'tipo_vinculo': 'Terceirizado',
-        # Terceirizado precisa ter o contratado identificado — por
-        # `outsourced_company_id` (estruturado) ou `empresa_origem` (texto
-        # livre). Um terceirizado sem nenhum dos dois não existe em produção:
-        # é o registro que a regra de vínculo recusa (issue #192). Os testes
-        # que exercitam o vínculo estruturado sobrescrevem com
-        # `outsourced_company_id`.
-        'empresa_origem': 'Prestadora Legada LTDA',
+        'tipo_vinculo': 'CLT',
+        'empresa_origem': '',
     }
     payload.update(overrides)
     return payload
 
 
-# ── retrocompatibilidade: CLT sem nenhum campo novo ────────────────────────
+# ── mão de obra própria continua funcionando ───────────────────────────────
 
-def test_create_employee_clt_without_outsourced_fields_still_works():
+@pytest.mark.parametrize('vinculo', OWN_WORKFORCE_VINCULOS)
+def test_main_registration_accepts_every_own_workforce_vinculo(vinculo):
+    """O outro lado da regra. Fechar o cadastro para contratados não pode ter
+    fechado nada para quem a empresa emprega diretamente."""
     conn = _conn()
     cid = _seed_company(conn)
     _bootstrap(conn)
-    payload = _minimal_payload(cid, tipo_vinculo='CLT')
-    employee_id = create_employee(conn, payload, actor=_actor(cid))
-    employee = get_employee_by_id(conn, employee_id)
-    assert employee['outsourced_company_id'] is None
-    assert employee['service_contract_id'] is None
-    assert employee['epi_responsibility_override'] == ''
-
-
-# ── criação com vínculo a empresa terceirizada ─────────────────────────────
-
-def test_create_employee_with_outsourced_company_same_tenant():
-    conn = _conn()
-    cid = _seed_company(conn)
-    _bootstrap(conn)
-    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    payload = _minimal_payload(cid, outsourced_company_id=oc_id)
-    employee_id = create_employee(conn, payload, actor=_actor(cid))
-    employee = get_employee_by_id(conn, employee_id)
-    assert employee['outsourced_company_id'] == oc_id
-
-
-def test_create_employee_rejects_outsourced_company_from_another_tenant():
-    conn = _conn()
-    cid_a = _seed_company(conn, name='Tenant A')
-    cid_b = _seed_company(conn, name='Tenant B')
-    _bootstrap(conn)
-    oc_id_b = create_outsourced_company(conn, {'legal_name': 'Terceirizada de B'}, cid_b)
-    payload = _minimal_payload(cid_a, outsourced_company_id=oc_id_b)
-    with pytest.raises(ValueError):
-        create_employee(conn, payload, actor=_actor(cid_a))
-
-
-def test_create_employee_with_service_contract_requires_matching_outsourced_company():
-    conn = _conn()
-    cid = _seed_company(conn)
-    _bootstrap(conn)
-    oc_id_1 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 1'}, cid)
-    oc_id_2 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 2'}, cid)
-    contract_id = create_service_contract(conn, {}, cid, oc_id_1)
-    payload = _minimal_payload(cid, outsourced_company_id=oc_id_2, service_contract_id=contract_id)
-    with pytest.raises(ValueError):
-        create_employee(conn, payload, actor=_actor(cid))
-
-
-def test_create_employee_with_matching_service_contract_succeeds():
-    conn = _conn()
-    cid = _seed_company(conn)
-    _bootstrap(conn)
-    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    contract_id = create_service_contract(conn, {}, cid, oc_id)
-    payload = _minimal_payload(cid, outsourced_company_id=oc_id, service_contract_id=contract_id)
-    employee_id = create_employee(conn, payload, actor=_actor(cid))
-    employee = get_employee_by_id(conn, employee_id)
-    assert employee['service_contract_id'] == contract_id
-
-
-def test_create_employee_override_without_reason_is_rejected():
-    conn = _conn()
-    cid = _seed_company(conn)
-    _bootstrap(conn)
-    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    payload = _minimal_payload(
-        cid, outsourced_company_id=oc_id, epi_responsibility_override='Empresa Contratante',
+    employee_id = create_employee(
+        conn, _payload(cid, tipo_vinculo=vinculo), actor=_actor(cid)
     )
-    with pytest.raises(ValueError):
-        create_employee(conn, payload, actor=_actor(cid))
+    saved = get_employee_by_id(conn, employee_id)
+    assert saved['tipo_vinculo'] == vinculo
+    assert saved['empresa_origem'] == ''
 
 
-def test_create_employee_override_with_reason_succeeds():
+def test_fetch_employees_still_returns_own_workforce():
     conn = _conn()
     cid = _seed_company(conn)
     _bootstrap(conn)
-    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    payload = _minimal_payload(
-        cid, outsourced_company_id=oc_id,
-        epi_responsibility_override='Empresa Contratante',
-        epi_responsibility_override_reason='Acordo pontual',
-    )
-    employee_id = create_employee(conn, payload, actor=_actor(cid))
-    employee = get_employee_by_id(conn, employee_id)
-    assert employee['epi_responsibility_override'] == 'Empresa Contratante'
-    assert employee['epi_responsibility_override_reason'] == 'Acordo pontual'
+    create_employee(conn, _payload(cid), actor=_actor(cid))
+    rows = fetch_employees(conn, _actor(cid))
+    assert len(rows) == 1
+    assert rows[0]['tipo_vinculo'] == 'CLT'
 
 
-# ── update: mutável, mas ainda escopado por tenant ─────────────────────────
+# ── mão de obra contratada é recusada, na criação e na edição ──────────────
 
-def test_update_employee_can_change_outsourced_company_within_tenant(monkeypatch):
-    # _PgStyleConn não é reconhecida por epi_backend.db._is_sqlite_connection
-    # (checa o nome da classe) — sem isto, outsourced_companies_ready()
-    # cairia no branch Postgres (information_schema) contra uma conexão
-    # SQLite de teste e retornaria False silenciosamente, pulando a validação
-    # em vez de exercitá-la. Produção nunca usa este adaptador — só existe
-    # neste arquivo de teste.
-    import epi_backend.db as db_module
-    monkeypatch.setattr(db_module, '_is_sqlite_connection', lambda _conn: True)
+@pytest.mark.parametrize('vinculo', CONTRACTED_VINCULOS)
+def test_main_registration_refuses_every_contracted_vinculo_on_create(vinculo):
     conn = _conn()
     cid = _seed_company(conn)
     _bootstrap(conn)
-    oc_id_1 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 1'}, cid)
-    oc_id_2 = create_outsourced_company(conn, {'legal_name': 'Terceirizada 2'}, cid)
-    employee_id = create_employee(conn, _minimal_payload(cid, outsourced_company_id=oc_id_1), actor=_actor(cid))
-    current = get_employee_by_id(conn, employee_id)
-
-    update_payload = _minimal_payload(cid, outsourced_company_id=oc_id_2, unit_id=current['unit_id'])
-    update_employee(_PgStyleConn(conn), employee_id, update_payload, actor=_actor(cid))
-    updated = get_employee_by_id(conn, employee_id)
-    assert updated['outsourced_company_id'] == oc_id_2
+    with pytest.raises(ValueError, match=REFUSAL):
+        create_employee(
+            conn,
+            _payload(cid, tipo_vinculo=vinculo, empresa_origem='Prestadora Legada LTDA'),
+            actor=_actor(cid),
+        )
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees').fetchone()['n'] == 0
 
 
-def test_update_employee_rejects_outsourced_company_from_another_tenant(monkeypatch):
-    import epi_backend.db as db_module
-    monkeypatch.setattr(db_module, '_is_sqlite_connection', lambda _conn: True)
-    conn = _conn()
-    cid_a = _seed_company(conn, name='Tenant A')
-    cid_b = _seed_company(conn, name='Tenant B')
-    _bootstrap(conn)
-    oc_id_b = create_outsourced_company(conn, {'legal_name': 'Terceirizada de B'}, cid_b)
-    employee_id = create_employee(conn, _minimal_payload(cid_a), actor=_actor(cid_a))
-    current = get_employee_by_id(conn, employee_id)
-
-    update_payload = _minimal_payload(cid_a, outsourced_company_id=oc_id_b, unit_id=current['unit_id'])
-    with pytest.raises(ValueError):
-        update_employee(_PgStyleConn(conn), employee_id, update_payload, actor=_actor(cid_a))
-
-
-# ── fetch_employees devolve as colunas novas ───────────────────────────────
-
-def test_fetch_employees_includes_outsourced_columns():
+@pytest.mark.parametrize('vinculo', CONTRACTED_VINCULOS)
+def test_main_registration_refuses_every_contracted_vinculo_on_update(vinculo):
+    """A recusa vale na edição também — senão o formulário que não sabe montar
+    o vínculo estruturado continuaria vivo, e a pessoa seguiria identificada
+    só por texto livre."""
     conn = _conn()
     cid = _seed_company(conn)
     _bootstrap(conn)
-    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada X'}, cid)
-    create_employee(conn, _minimal_payload(cid, outsourced_company_id=oc_id), actor=_actor(cid))
-    employees = fetch_employees(conn, actor=_actor(cid))
-    assert len(employees) == 1
-    assert employees[0]['outsourced_company_id'] == oc_id
+    employee_id = create_employee(conn, _payload(cid), actor=_actor(cid))
+    # `update_employee` exige `unit_id` explícito (ao contrário de
+    # `create_employee`, que resolve a unidade padrão).
+    unit_id = get_employee_by_id(conn, employee_id)['unit_id']
+
+    with pytest.raises(ValueError, match=REFUSAL):
+        update_employee(
+            conn, employee_id,
+            _payload(cid, unit_id=unit_id, tipo_vinculo=vinculo,
+                     empresa_origem='Prestadora Legada LTDA'),
+            actor=_actor(cid),
+        )
+    assert get_employee_by_id(conn, employee_id)['tipo_vinculo'] == 'CLT'
+
+
+def test_the_structured_link_does_not_buy_a_way_in():
+    """Informar `outsourced_company_id` não reabre o caminho.
+
+    Era a tentação óbvia: "se o vínculo estruturado está presente, o Cadastro
+    Principal poderia aceitar". Não pode — o formulário não coleta contrato nem
+    escopo por Unidade, e aceitar aqui recriaria o segundo caminho com um
+    subconjunto dos dados.
+    """
+    conn = _conn()
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    oc_id = create_outsourced_company(conn, {'legal_name': 'Terceirizada A', 'cnpj': CNPJ_A}, cid)
+    with pytest.raises(ValueError, match=REFUSAL):
+        create_employee(
+            conn,
+            _payload(cid, tipo_vinculo='Terceirizado', outsourced_company_id=oc_id),
+            actor=_actor(cid),
+        )
+
+
+def test_the_refusal_names_the_module_that_should_be_used():
+    """Mensagem de erro que só diz "não pode" obriga o operador a adivinhar.
+    Esta precisa dizer para onde ir."""
+    conn = _conn()
+    cid = _seed_company(conn)
+    _bootstrap(conn)
+    with pytest.raises(ValueError) as excinfo:
+        create_employee(conn, _payload(cid, tipo_vinculo='Terceirizado'), actor=_actor(cid))
+    message = str(excinfo.value)
+    assert 'Terceirizados e Prestadores' in message
+    assert 'Terceirizado' in message
+
+
+def test_the_two_registrations_cover_disjoint_universes():
+    """Nenhum vínculo pode ser aceito pelos dois cadastros, nem recusado pelos
+    dois por omissão. Se um vínculo novo entrar em `OWN_WORKFORCE_VINCULOS` e
+    em `CONTRACTED_VINCULOS` ao mesmo tempo, o comportamento passa a depender
+    de qual validação roda primeiro — que é como bugs assim nascem."""
+    assert not set(OWN_WORKFORCE_VINCULOS) & set(CONTRACTED_VINCULOS)

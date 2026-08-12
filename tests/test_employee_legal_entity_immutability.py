@@ -254,17 +254,32 @@ def _base_payload(**overrides):
     return payload
 
 
-def test_create_employee_skips_legal_entity_resolution_for_non_clt():
+def test_create_employee_refuses_contracted_vinculo_entirely():
+    """Este teste provava que um terceirizado criado por `create_employee`
+    NÃO recebia `legal_entity_id`.
+
+    Desde 2026-08-11 o Cadastro Principal recusa mão de obra contratada — os
+    vínculos Terceirizado, Prestador de Serviço e Temporário existem só no
+    módulo Terceirizados e Prestadores. A propriedade original passou a ser
+    garantida de forma mais forte: não há linha criada, logo não há
+    `legal_entity_id` para vazar.
+
+    A garantia equivalente do lado do fluxo definitivo — terceirizado nunca
+    recebe CNPJ do tenant — vive em `test_employee_outsourced_simplified.py`
+    (ADR-0002 §13.7/§13.21, correção do alerta de produção).
+    """
     from modules.employees.service import create_employee
     conn = _PgStyleConn(_conn())
     create_legal_entity(conn, {'cnpj': CNPJ_B, 'legal_name': 'Filial', 'entity_type': 'filial'}, 1)
-    # 2 CNPJs ativos -- exatamente o cenário que disparava o alerta em
-    # produção para o fluxo simplificado; aqui é o endpoint geral.
-    employee_id = create_employee(
-        conn, _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'), actor=ACTOR,
-    )
-    row = conn.execute('SELECT legal_entity_id FROM employees WHERE id = ?', (employee_id,)).fetchone()
-    assert not row['legal_entity_id']
+    # 2 CNPJs ativos -- exatamente o cenário que disparava o alerta em produção.
+    with pytest.raises(ValueError, match='não pertence ao Cadastro Principal'):
+        create_employee(
+            conn, _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'),
+            actor=ACTOR,
+        )
+    assert conn.execute(
+        "SELECT COUNT(*) AS n FROM employees WHERE employee_id_code = 'E-900'"
+    ).fetchone()['n'] == 0
 
 
 def test_create_employee_still_requires_legal_entity_for_clt_with_multiple_cnpjs():
@@ -281,21 +296,16 @@ def test_create_employee_still_requires_legal_entity_for_clt_with_multiple_cnpjs
         create_employee(conn, _base_payload(tipo_vinculo='CLT'), actor=ACTOR)
 
 
-def test_update_employee_does_not_repopulate_legal_entity_for_non_clt():
-    """Colaborador terceirizado sem legal_entity_id (já limpo pela migração,
-    ou nunca teve) não pode ter o campo repopulado por uma edição comum via
-    update_employee -- mesmo com múltiplos CNPJs ativos no tenant."""
-    from modules.employees.service import create_employee, update_employee
+def test_update_employee_refuses_contracted_vinculo_entirely():
+    """Mesma conversão do teste de criação: a edição pelo Cadastro Principal
+    também recusa mão de obra contratada, o que subsume a propriedade antiga
+    (não repopular `legal_entity_id`) — nada é escrito."""
+    from modules.employees.service import update_employee
     conn = _PgStyleConn(_conn())
-    employee_id = create_employee(
-        conn, _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'), actor=ACTOR,
-    )
     create_legal_entity(conn, {'cnpj': CNPJ_B, 'legal_name': 'Filial', 'entity_type': 'filial'}, 1)
-    update_employee(
-        conn, employee_id,
-        _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X', name='Carlos Editado'),
-        actor=ACTOR,
-    )
-    row = conn.execute('SELECT name, legal_entity_id FROM employees WHERE id = ?', (employee_id,)).fetchone()
-    assert row['name'] == 'Carlos Editado'
-    assert not row['legal_entity_id']
+    with pytest.raises(ValueError, match='não pertence ao Cadastro Principal'):
+        update_employee(
+            conn, 5,
+            _base_payload(tipo_vinculo='Terceirizado', empresa_origem='Fornecedora X'),
+            actor=ACTOR,
+        )

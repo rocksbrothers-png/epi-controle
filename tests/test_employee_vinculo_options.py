@@ -3,17 +3,26 @@
 `index.html` é **gerado** a partir de `static/views/*.html` — estes testes olham
 o arquivo gerado de propósito: é ele que o navegador carrega.
 
-O campo "Empresa de Origem" é condicional a "Tipo de Vínculo" != CLT, e isso já
-existia antes deste trabalho (`syncEmpresaOrigemVisibility` compara só com
-`'CLT'`). As três opções novas herdam o comportamento sem exigir nenhum caso
-especial — é justamente essa generalidade que estes testes fixam: uma
-comparação nova hard-coded contra um valor específico (`=== 'Estagiário'`, por
-exemplo) reintroduziria o acoplamento que a implementação original evitou.
+O campo "Empresa de Origem" é condicional ao vínculo ser de MÃO DE OBRA
+CONTRATADA. Em 2026-08-11 a regra foi corrigida: Menor Aprendiz, Praticante e
+Estagiário são vínculo DIRETO com a empresa — mesmo sendo aprendiz ou
+estagiário, quem responde pelo EPI é a própria empresa, e não existe empresa de
+origem a informar.
+
+Até então `syncEmpresaOrigemVisibility` comparava só com `'CLT'`, e o backend
+exigia empresa de origem para tudo que não fosse CLT. Resultado: as três opções
+existiam no seletor e o cadastro era RECUSADO — só dava para salvar inventando
+uma empresa terceirizada, gravando uma afirmação falsa sobre a responsabilidade.
+
+A generalidade que estes testes fixam continua a mesma: a decisão sai de uma
+LISTA compartilhada com o backend, nunca de comparações hard-coded por opção.
 """
 
 import json
 import os
 import re
+
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -78,12 +87,20 @@ def test_employment_type_label_maps_the_new_values():
 
 # ── o campo condicional continua genérico ─────────────────────────────────────
 
-def test_empresa_origem_visibility_only_compares_against_clt():
+def test_empresa_origem_visibility_has_no_per_option_special_case():
     """Nenhuma opção nova pode virar um caso especial na visibilidade.
 
-    Se alguém adicionar `tv === 'Estagiário'` aqui, a próxima opção nova
-    (e há razão para crer que virá mais uma) vai exigir outra edição neste
-    trecho — o oposto do que a implementação original conquistou.
+    A versão anterior deste teste exigia `comparisons == ['CLT']` — e com isso
+    travava o BUG em vez da regra: enquanto CLT era o único vínculo próprio,
+    "comparar só com CLT" e "esconder para mão de obra própria" davam no mesmo.
+    Deixaram de dar quando Menor Aprendiz, Praticante e Estagiário entraram no
+    seletor: os três são vínculo DIRETO com a empresa (a responsabilidade pelo
+    EPI é dela), mas o campo aparecia para eles e o backend recusava o cadastro
+    pedindo uma empresa de origem inexistente.
+
+    O que continua valendo — e é o que este teste guarda — é a intenção
+    original: a decisão sai de uma LISTA, nunca de comparações encadeadas por
+    opção.
     """
     app_js = _read('static', 'app.js')
     fn_match = re.search(
@@ -91,8 +108,62 @@ def test_empresa_origem_visibility_only_compares_against_clt():
     )
     assert fn_match, 'syncEmpresaOrigemVisibility não encontrada'
     body = fn_match.group(1)
-    comparisons = re.findall(r"===\s*'([^']*)'", body)
-    assert comparisons == ['CLT'], comparisons
+    assert not re.findall(r"===\s*'([^']*)'", body), (
+        'Comparação literal por opção dentro de syncEmpresaOrigemVisibility — '
+        'use a lista de mão de obra própria.'
+    )
+    assert 'isOwnWorkforceVinculo' in body
+
+
+def test_frontend_and_backend_agree_on_who_is_own_workforce():
+    """A lista do `app.js` e a do backend precisam ser a MESMA.
+
+    Divergir aqui é o pior dos dois mundos: o formulário esconde "Empresa de
+    Origem" e o backend a exige (cadastro impossível), ou o formulário a pede e
+    o backend a descarta (o operador digita e o dado some).
+    """
+    from modules.employees.service import OWN_WORKFORCE_VINCULOS
+    app_js = _read('static', 'app.js')
+    match = re.search(r'const OWN_WORKFORCE_VINCULOS = \[(.*?)\];', app_js, re.S)
+    assert match, 'OWN_WORKFORCE_VINCULOS não encontrada em app.js'
+    frontend = tuple(re.findall(r"'([^']+)'", match.group(1)))
+    assert frontend == tuple(OWN_WORKFORCE_VINCULOS), (
+        f'app.js={frontend} vs backend={tuple(OWN_WORKFORCE_VINCULOS)}'
+    )
+
+
+def test_every_own_workforce_vinculo_can_actually_be_registered():
+    """O defeito concreto: as três opções do seletor eram RECUSADAS.
+
+    `normalize_employee_domain_fields` exigia empresa de origem para tudo que
+    não fosse CLT — então Menor Aprendiz, Praticante e Estagiário existiam na
+    tela e não podiam ser salvos. Cadastrá-los só seria possível inventando
+    uma empresa terceirizada, o que gravaria uma afirmação falsa sobre quem
+    responde pelo EPI.
+    """
+    from modules.employees.service import (
+        OWN_WORKFORCE_VINCULOS,
+        normalize_employee_domain_fields,
+    )
+    for vinculo in OWN_WORKFORCE_VINCULOS:
+        normalized = normalize_employee_domain_fields(
+            {'cpf': '11144477735', 'tipo_vinculo': vinculo},
+        )
+        assert normalized['tipo_vinculo'] == vinculo
+        assert normalized['empresa_origem'] == '', (
+            f'{vinculo} é mão de obra própria — não pode carregar empresa de origem.'
+        )
+
+
+def test_contracted_vinculos_still_require_the_contractor():
+    """A regra não pode ter sido afrouxada de lado: terceirizado e prestador
+    continuam exigindo a identificação de quem os contratou."""
+    from modules.employees.service import normalize_employee_domain_fields
+    for vinculo in ('Terceirizado', 'Prestador de Serviço'):
+        with pytest.raises(ValueError, match='Empresa de origem'):
+            normalize_employee_domain_fields(
+                {'cpf': '11144477735', 'tipo_vinculo': vinculo},
+            )
 
 
 def test_empresa_origem_visibility_has_a_single_source_of_truth():
@@ -112,11 +183,18 @@ def test_empresa_origem_visibility_has_a_single_source_of_truth():
     assert calls >= 4, calls
 
 
-def test_new_values_are_not_clt_so_they_show_the_field_by_construction():
-    """Não é o teste do DOM (isso é E2E) — é a garantia de que os valores
-    escolhidos não colidem com o único caso que esconde o campo."""
+def test_the_new_values_hide_the_field_because_they_are_own_workforce():
+    """Este teste dizia o CONTRÁRIO até 2026-08-11.
+
+    Chamava-se `..._so_they_show_the_field_by_construction` e afirmava que os
+    três valores novos, por não serem `'CLT'`, exibiam "Empresa de Origem".
+    Isso descrevia fielmente o que o código fazia — e o que o código fazia
+    estava errado: aprendiz, praticante e estagiário têm vínculo direto com a
+    empresa e não têm empresa de origem nenhuma.
+    """
+    from modules.employees.service import is_own_workforce
     for value in NEW_VALUES:
-        assert value != 'CLT'
+        assert is_own_workforce(value), value
 
 
 # ── i18n ─────────────────────────────────────────────────────────────────────

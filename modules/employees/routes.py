@@ -26,6 +26,8 @@ from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
     create_employee_unit_link,
+    employee_deletion_readiness,
+    ensure_employee_purge_allowed,
     ensure_actor_employee_visibility_scope,
     resolve_actor_unit_context,
     ensure_employee_is_linkable_to_units,
@@ -358,8 +360,38 @@ def handle_get_employee_deletion_summary(handler, parsed, payload, match):
                 'retention_until': employee.get('retention_until'),
                 'legal_hold': int(employee.get('legal_hold') or 0),
             },
+            # Aviso antecipado (ADR-0002 §13.5): data prevista, motivo do
+            # bloqueio, Unidades ainda vinculadas e a ação disponível.
+            'deletion_readiness': employee_deletion_readiness(connection, employee),
             'records': summarize_employee_history(connection, int(employee['id'])),
         })
+
+
+def _ensure_employee_purge_allowed_audited(connection, actor, employee, handler):
+    """Aplica a precondição de vínculo local e AUDITA a negativa.
+
+    Sem isto, um bloqueio não deixaria rastro: a exclusão definitiva é
+    justamente onde a trilha precisa registrar tanto o que foi executado
+    quanto o que foi impedido, e por quê (ADR-0002 §13.5).
+    """
+    try:
+        ensure_employee_purge_allowed(connection, employee)
+    except ValueError as exc:
+        readiness = employee_deletion_readiness(connection, employee)
+        _audit_employee_unit_link(
+            connection, employee['company_id'], actor, 'employee_purge_blocked',
+            f"Exclusão definitiva bloqueada para {employee.get('name')}: vínculo local ativo.",
+            [
+                {'field': 'motivo', 'before': '', 'after': str(exc)},
+                {'field': 'unidades_vinculadas', 'before': '', 'after': ', '.join(
+                    str(item['unit_name'] or item['unit_id'])
+                    for item in readiness['blocking_unit_links']
+                )},
+                {'field': 'ip', 'before': '', 'after': _client_ip(handler)},
+            ],
+        )
+        connection.commit()
+        raise
 
 
 def handle_post_employee_purge_request(handler, parsed, payload, match):
@@ -367,6 +399,7 @@ def handle_post_employee_purge_request(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor, employee = _load_employee_for_lifecycle(connection, handler, parsed, payload, match, 'employees:delete')
         _require_deletion_admin(actor)
+        _ensure_employee_purge_allowed_audited(connection, actor, employee, handler)
         summary = archival.request_purge(
             connection, 'employees', employee, actor,
             record_label=employee['name'],
@@ -400,6 +433,10 @@ def handle_post_employee_purge_confirm(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor, employee = _load_employee_for_lifecycle(connection, handler, parsed, payload, match, 'employees:delete')
         _require_deletion_admin(actor)
+        # Revalidado na etapa 2: entre pedir e confirmar, uma Unidade pode ter
+        # criado vínculo novo. Confirmar sem reconferir apagaria alguém que
+        # voltou a ser usado no intervalo.
+        _ensure_employee_purge_allowed_audited(connection, actor, employee, handler)
         summary = archival.confirm_purge(
             connection, 'employees', employee, actor,
             record_label=employee['name'],

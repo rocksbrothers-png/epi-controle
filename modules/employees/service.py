@@ -855,6 +855,119 @@ def ensure_actor_employee_visibility_scope(connection, actor, employee):
         )
 
 
+# ── Governança de exclusão definitiva (ADR-0002 §13.5, PR E) ───────────────
+
+
+def employee_blocking_unit_links(connection, employee):
+    """Unidades do tenant com vínculo local ATIVO para este colaborador.
+
+    Lista vazia significa que o vínculo local não bloqueia a purga — as demais
+    regras de retenção (`core.archival.ensure_purge_allowed`) seguem valendo
+    normalmente e podem bloquear por conta própria.
+
+    Vínculo arquivado NÃO bloqueia: arquivar é a forma de a Unidade declarar
+    que não usa mais aquela pessoa, e exigir a remoção da linha empurraria o
+    operador a apagar histórico só para liberar a exclusão.
+    """
+    from epi_backend.db import table_exists
+
+    if not employee or not table_exists(connection, 'employee_unit_links'):
+        return []
+    rows = connection.execute(
+        'SELECT l.unit_id, u.name AS unit_name FROM employee_unit_links l '
+        'LEFT JOIN units u ON u.id = l.unit_id '
+        "WHERE l.company_id = ? AND l.employee_id = ? AND l.local_status = 'active' "
+        'ORDER BY u.name, l.unit_id',
+        (int(employee['company_id']), int(employee['id'])),
+    ).fetchall()
+    return [
+        {'unit_id': int(row_to_dict(row)['unit_id']),
+         'unit_name': str(row_to_dict(row).get('unit_name') or '')}
+        for row in rows
+    ]
+
+
+def ensure_employee_purge_allowed(connection, employee):
+    """Precondição de purga específica de COLABORADOR (ADR-0002 §13.5).
+
+    Vive aqui, e não dentro de `core.archival.ensure_purge_allowed`, por dois
+    motivos:
+
+    1. Aquela função é genérica — atende colaborador, EPI e empresa
+       terceirizada. Consultar `employee_unit_links` com o id de um EPI
+       compararia ids de tabelas diferentes: um EPI de id 5 seria bloqueado
+       pelo vínculo do colaborador de id 5. Colisão silenciosa, e no caminho
+       da exclusão definitiva.
+    2. Ela é pura (não recebe `connection`), e todos os chamadores dependem
+       disso.
+
+    NÃO é chamada no cancelamento da purga: cancelar é desescalada, e exigir
+    ausência de vínculo para desistir da exclusão seria absurdo.
+
+    Nunca apaga vínculo automaticamente. Quem quiser excluir alguém arquiva o
+    vínculo em cada Unidade, deliberadamente — a decisão fica registrada, com
+    ator e motivo, em vez de sumir para destravar um botão.
+    """
+    blocking = employee_blocking_unit_links(connection, employee)
+    if not blocking:
+        return
+    names = ', '.join(
+        item['unit_name'] or f"Unidade {item['unit_id']}" for item in blocking
+    )
+    raise ValueError(
+        f'Exclusão bloqueada: o colaborador ainda tem vínculo ativo em '
+        f'{len(blocking)} Unidade(s) — {names}. Arquive o vínculo local em cada '
+        f'uma antes da exclusão definitiva.'
+    )
+
+
+def employee_deletion_readiness(connection, employee):
+    """Aviso antecipado (ADR-0002 §13.5): o que falta para a exclusão.
+
+    Devolve a data prevista, os dias restantes de retenção, se há vínculo
+    impeditivo, quais Unidades ainda vinculam a pessoa e o que o
+    Administrador Geral/de Registro pode fazer agora.
+
+    É leitura pura — não muda estado nem decide autorização. A decisão de
+    purga continua onde estava, restrita aos perfis já autorizados.
+    """
+    from core.archival import retention_days_remaining
+
+    blocking = employee_blocking_unit_links(connection, employee)
+    days = retention_days_remaining((employee or {}).get('retention_until'))
+    legal_hold = bool(int((employee or {}).get('legal_hold') or 0))
+
+    reasons = []
+    if legal_hold:
+        reasons.append('legal_hold')
+    if days > 0:
+        reasons.append('retention_period')
+    if blocking:
+        reasons.append('active_unit_links')
+
+    if blocking:
+        action = (
+            'Arquive o vínculo local do colaborador em cada Unidade listada. '
+            'O vínculo nunca é removido automaticamente.'
+        )
+    elif legal_hold:
+        action = 'Encerre o bloqueio jurídico/auditoria antes de prosseguir.'
+    elif days > 0:
+        action = f'Aguarde o término da retenção: faltam {days} dia(s).'
+    else:
+        action = 'Elegível para exclusão definitiva (etapa 1 de 2).'
+
+    return {
+        'eligible': not reasons,
+        'blocking_reasons': reasons,
+        'retention_until': (employee or {}).get('retention_until') or '',
+        'retention_days_remaining': days,
+        'legal_hold': legal_hold,
+        'blocking_unit_links': blocking,
+        'available_action': action,
+    }
+
+
 def active_temporary_unit_allocations(connection, today_iso=None):
     """Mapa {employee_id: {'unit_id', 'unit_name'}} das movimentações temporárias
     ativas hoje, numa única query (evita N+1 ao enriquecer listas)."""

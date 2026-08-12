@@ -4,7 +4,11 @@ from datetime import datetime
 
 from epi_backend.db import row_to_dict
 from core.auth import ensure_company_access, ensure_resource_company
-from modules.employees.service import get_employee_by_id, actor_operational_unit_id, ensure_actor_employee_scope
+from modules.employees.service import (
+    actor_operational_unit_id,
+    ensure_actor_employee_visibility_scope,
+    get_employee_by_id,
+)
 from modules.units.service import get_unit_by_id
 from modules.epis.service import get_epi_by_id
 
@@ -101,7 +105,8 @@ def build_reports(connection, actor, filters):
         employee = get_employee_by_id(connection, int(employee_id))
         ensure_resource_company(actor, employee, 'Colaborador')
         if scope_unit_id:
-            ensure_actor_employee_scope(connection, actor, employee)
+            # LEITURA: filtro de relatório (PR D).
+            ensure_actor_employee_visibility_scope(connection, actor, employee)
         clauses.append('deliveries.employee_id = ?')
         params.append(int(employee_id))
     if filters.get('sector'):

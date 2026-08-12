@@ -8,7 +8,12 @@ from epi_backend.http_utils import structured_log
 from core.auth import ensure_resource_company, ensure_company_access
 from core.schema import _col_exists
 from modules.settings.service import get_ficha_config, get_ficha_retention_policy
-from modules.employees.service import get_employee_by_id, actor_operational_unit_id, ensure_actor_employee_scope
+from modules.employees.service import (
+    actor_operational_unit_id,
+    ensure_actor_employee_scope,
+    ensure_actor_employee_visibility_scope,
+    get_employee_by_id,
+)
 from modules.units.service import get_unit_by_id
 
 UTC = timezone.utc
@@ -855,7 +860,8 @@ def fetch_ficha_archive_snapshots(connection, actor, raw_filters=None):
         employee = get_employee_by_id(connection, filters['employee_id'])
         ensure_resource_company(actor, employee, 'Colaborador')
         if scope_unit_id:
-            ensure_actor_employee_scope(connection, actor, employee)
+            # LEITURA: filtro de consulta, não ação (PR D).
+            ensure_actor_employee_visibility_scope(connection, actor, employee)
         clauses.append('s.employee_id = ?')
         params.append(filters['employee_id'])
     if filters['sector']:

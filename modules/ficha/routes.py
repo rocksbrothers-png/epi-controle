@@ -9,7 +9,11 @@ from core.auth import ensure_resource_company, require_configuration_admin
 from core.database import get_connection
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.repository import authorize_action, get_employee_by_id
-from modules.employees.service import actor_operational_unit_id, ensure_actor_employee_scope
+from modules.employees.service import (
+    actor_operational_unit_id,
+    ensure_actor_employee_scope,
+    ensure_actor_employee_visibility_scope,
+)
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import require_fields, request_base_url, send_json, structured_log
@@ -327,7 +331,9 @@ def handle_get_ficha_html(handler, parsed, payload, match):
         if not employee:
             raise ValueError('Colaborador não encontrado.')
         try:
-            ensure_actor_employee_scope(connection, actor, employee)
+            # LEITURA: `fichas:view` já foi exigida por authorize_action acima —
+            # o vínculo local amplia SOBRE QUEM, nunca concede a permissão (PR D).
+            ensure_actor_employee_visibility_scope(connection, actor, employee)
         except PermissionError:
             register_ficha_epi_audit(
                 connection, actor=actor, employee=employee, action='denied',
@@ -336,10 +342,14 @@ def handle_get_ficha_html(handler, parsed, payload, match):
             )
             connection.commit()
             raise
+        # O builder revalida o escopo por conta própria e, com `None`, cairia
+        # no default estrito — a rota liberaria por vínculo local e o builder
+        # negaria logo depois, deixando a ampliação inócua. Passa-se a MESMA
+        # função de visibilidade usada acima (PR D).
         html_content = build_ficha_epi_html(
             connection, employee_id, actor,
             get_employee_fn=get_employee_by_id,
-            ensure_actor_scope_fn=None,
+            ensure_actor_scope_fn=ensure_actor_employee_visibility_scope,
         )
         register_ficha_epi_audit(
             connection, actor=actor, employee=employee, action=action,

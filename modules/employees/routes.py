@@ -10,14 +10,25 @@ from core.permissions import (
     PERM_EMPLOYEES_CREATE_SIMPLIFIED,
     PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
     PERM_EMPLOYEES_TRANSFER,
+    PERM_EMPLOYEES_UPDATE,
     PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
     PERM_EMPLOYEES_VIEW,
 )
-from core.repository import authorize_action, authorize_action_any, get_employee_by_id, get_unit_by_id
+from core.repository import (
+    actor_operational_unit_id,
+    authorize_action,
+    authorize_action_any,
+    get_employee_by_id,
+    get_unit_by_id,
+)
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.units.service import ensure_unit_operational
 from modules.employees.service import (
+    create_employee_unit_link,
+    ensure_employee_is_linkable_to_units,
+    fetch_employee_unit_link,
+    set_employee_unit_link_status,
     apply_current_unit_allocation,
     close_temporary_unit_movements,
     create_employee,
@@ -488,6 +499,167 @@ def handle_post_employee_legal_entity_transfer(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, **result})
 
 
+# ── Vínculo local do colaborador com a Unidade (ADR-0002 §13, PR B) ─────────
+#
+# Molde direto das rotas de vínculo da empresa terceirizada
+# (`modules/outsourced_companies/routes.py`), inclusive na autorização: para
+# perfis escopados por Unidade o backend DERIVA a Unidade do ator e ignora o
+# `unit_id` do payload — quem é escopado não escolhe Unidade, senão o escopo
+# seria contornável por quem monta o request.
+#
+# Nenhuma destas rotas autoriza entrega de EPI: o gate continua decidindo
+# pela Unidade atual de movimentação (ADR-0002 §13.17, pergunta 1).
+
+
+def _audit_employee_unit_link(connection, company_id, actor, action, summary, details):
+    """Auditoria do vínculo local. Best-effort, como
+    `_audit_epi_responsibility_override`: falha de auditoria não desfaz a
+    operação já validada, mas fica registrada como aviso."""
+    try:
+        from core.audit import register_company_audit
+        register_company_audit(connection, int(company_id), actor, action, summary, details)
+    except Exception as exc:
+        structured_log('warning', 'employee.audit_failed', company_id=company_id, error=str(exc))
+
+
+def _resolve_unit_for_link(connection, actor, payload):
+    """Unidade do vínculo: derivada do ator quando ele é escopado, informada
+    no payload quando não é. Mesma regra do molde da empresa.
+
+    Devolve `(unit_id, erro)` onde erro é `(status, corpo)` — NÃO envia a
+    resposta. A primeira versão devolvia o retorno de `send_json`, que é
+    `None`; o `if erro is not None` do chamador nunca disparava e o handler
+    seguia em frente, escrevendo DUAS respostas no mesmo request (um 400
+    seguido de um 201). Quem decide sobre o erro tem que ser o handler.
+    """
+    if actor.get('role') in ('admin', 'user'):
+        unit_id = actor_operational_unit_id(connection, actor)
+        if not unit_id:
+            return None, (403, {'error': 'Seu perfil não possui unidade operacional ativa.'})
+        return int(unit_id), None
+    raw = (payload or {}).get('unit_id')
+    if not raw:
+        return None, (400, {'error': 'Informe a Unidade para vincular.'})
+    return int(raw), None
+
+
+def handle_post_employee_unit_link(handler, parsed, payload, match):
+    """"Vincular à minha unidade" — permite que a Unidade do ator use um
+    colaborador terceirizado já cadastrado em outra, sem duplicar a pessoa."""
+    employee_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action_any(
+            connection, resolve_actor_user_id(handler, parsed, payload),
+            (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+        )
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        ensure_resource_company(actor, employee, 'Colaborador')
+        try:
+            ensure_employee_is_linkable_to_units(employee)
+        except ValueError as exc:
+            return send_json(handler, 400, {'error': str(exc)})
+        unit_id, error = _resolve_unit_for_link(connection, actor, payload)
+        if error is not None:
+            return send_json(handler, error[0], error[1])
+        unit = get_unit_by_id(connection, unit_id)
+        if not unit:
+            return send_json(handler, 404, {'error': 'Unidade não encontrada.'})
+        # A Unidade precisa ser do MESMO tenant do colaborador. Sem isto, um
+        # ator não escopado poderia mandar a Unidade de outro tenant no
+        # payload e criar vínculo atravessando a fronteira.
+        ensure_resource_company(actor, unit, 'Unidade')
+        if str(unit['company_id']) != str(employee['company_id']):
+            return send_json(
+                handler, 400,
+                {'error': 'Unidade e empresa do colaborador precisam ser compatíveis.'},
+            )
+        ensure_module_enabled_for_unit(connection, actor, 'terceirizados_colaboradores', unit_id)
+        link_id = create_employee_unit_link(
+            connection, employee_id, int(employee['company_id']), unit_id, actor['id'],
+        )
+        _audit_employee_unit_link(
+            connection, employee['company_id'], actor, 'employee_linked_to_unit',
+            f"Colaborador vinculado à Unidade: {employee.get('name')}.",
+            [{'field': 'unit_id', 'before': '', 'after': str(unit_id)}],
+        )
+        connection.commit()
+        structured_log('info', 'employee.unit_link_created', employee_id=employee_id,
+                       unit_id=unit_id, actor_user_id=actor['id'])
+        return send_json(handler, 201, {'ok': True, 'id': link_id, 'unit_id': unit_id})
+
+
+def _load_employee_unit_link(connection, handler, parsed, payload, match):
+    employee_id = int(match.group(1))
+    actor = authorize_action_any(
+        connection, resolve_actor_user_id(handler, parsed, payload),
+        (PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_UPDATE_SIMPLIFIED),
+    )
+    employee = get_employee_by_id(connection, employee_id)
+    if not employee:
+        raise ValueError('Colaborador não encontrado.')
+    ensure_resource_company(actor, employee, 'Colaborador')
+    if actor.get('role') in ('admin', 'user'):
+        unit_id = actor_operational_unit_id(connection, actor)
+    else:
+        raw = (payload or {}).get('unit_id')
+        unit_id = int(raw) if raw else None
+    if not unit_id:
+        raise PermissionError('Informe a Unidade do vínculo.')
+    link = fetch_employee_unit_link(connection, employee_id, unit_id)
+    if not link:
+        raise ValueError('Vínculo não encontrado para esta Unidade — vincule o colaborador antes.')
+    # O vínculo também é conferido contra o tenant do ator, não só o
+    # colaborador: defesa em profundidade, barata e no lugar certo.
+    ensure_resource_company(actor, link, 'Vínculo')
+    return actor, employee, link
+
+
+def handle_post_employee_unit_link_activate(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, employee, link = _load_employee_unit_link(connection, handler, parsed, payload, match)
+        set_employee_unit_link_status(
+            connection, link['id'], int(employee['company_id']), 'active', actor['id'],
+        )
+        _audit_employee_unit_link(
+            connection, employee['company_id'], actor, 'employee_unit_link_status_changed',
+            f"Colaborador reativado nesta Unidade: {employee.get('name')}.",
+            [
+                {'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'active'},
+                {'field': 'unit_id', 'before': '', 'after': str(link.get('unit_id') or '')},
+                {'field': 'actor_role', 'before': '', 'after': str(actor.get('role') or '')},
+            ],
+        )
+        connection.commit()
+        structured_log('info', 'employee.unit_link_activated', employee_id=employee['id'],
+                       actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'local_status': 'active'})
+
+
+def handle_post_employee_unit_link_deactivate(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor, employee, link = _load_employee_unit_link(connection, handler, parsed, payload, match)
+        reason = str((payload or {}).get('reason') or '')
+        set_employee_unit_link_status(
+            connection, link['id'], int(employee['company_id']), 'inactive', actor['id'], reason=reason,
+        )
+        _audit_employee_unit_link(
+            connection, employee['company_id'], actor, 'employee_unit_link_status_changed',
+            f"Colaborador arquivado nesta Unidade: {employee.get('name')}.",
+            [
+                {'field': 'local_status', 'before': link.get('local_status') or '', 'after': 'inactive'},
+                {'field': 'unit_id', 'before': '', 'after': str(link.get('unit_id') or '')},
+                {'field': 'actor_role', 'before': '', 'after': str(actor.get('role') or '')},
+                {'field': 'reason', 'before': '', 'after': reason},
+            ],
+        )
+        connection.commit()
+        structured_log('info', 'employee.unit_link_deactivated', employee_id=employee['id'],
+                       actor_user_id=actor['id'])
+        return send_json(handler, 200, {'ok': True, 'local_status': 'inactive'})
+
+
 def register_routes(router):
     router.register('GET',  r'^/api/employees/(\d+)/legal-entity-movements$',
                     handle_get_employee_legal_entity_movements, regex=True)
@@ -505,6 +677,9 @@ def register_routes(router):
     router.register('POST',   r'/api/employees/(\d+)/purge-cancel$',  handle_post_employee_purge_cancel,  regex=True)
     router.register('POST',   r'/api/employees/(\d+)/purge-confirm$', handle_post_employee_purge_confirm, regex=True)
     router.register('POST',   '/api/employee-unit-movements',     handle_post_employee_unit_movements)
+    router.register('POST',   r'^/api/employees/(\d+)/link$',                 handle_post_employee_unit_link,            regex=True)
+    router.register('POST',   r'^/api/employees/(\d+)/unit-link/activate$',   handle_post_employee_unit_link_activate,   regex=True)
+    router.register('POST',   r'^/api/employees/(\d+)/unit-link/deactivate$', handle_post_employee_unit_link_deactivate, regex=True)
     router.register('POST',   '/api/employees/outsourced-simplified', handle_post_employee_outsourced_simplified)
     router.register('PUT',    r'/api/employees/(\d+)',             handle_put_employee,    regex=True)
     router.register('DELETE', r'/api/employees/(\d+)',             handle_delete_employee, regex=True)

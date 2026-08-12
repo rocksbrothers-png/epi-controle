@@ -185,6 +185,119 @@ def ensure_employee_identity_unique(connection, company_id, employee_id_code, cp
         raise ValueError('CPF do colaborador já cadastrado nesta empresa.')
 
 
+# ── Vínculo local do colaborador com a Unidade (ADR-0002 §13, PR B) ─────────
+#
+# Molde direto de `outsourced_company_unit_links` no módulo
+# outsourced_companies: mesmo papel, mesma idempotência, mesma separação
+# entre status local e arquivamento do cadastro.
+
+_UNIT_LINK_SELECT_COLUMNS = (
+    'id, company_id, employee_id, unit_id, local_status, notes, activated_at, '
+    'deactivated_at, deactivated_by_user_id, deactivation_reason, '
+    'created_by_user_id, updated_by_user_id, created_at, updated_at'
+)
+
+
+def ensure_employee_is_linkable_to_units(employee) -> None:
+    """Só mão de obra CONTRATADA ganha vínculo local.
+
+    A tabela existe para resolver reuso de terceirizado entre Unidades. Um
+    CLT pertence à empresa inteira e já é alcançável pelos fluxos normais —
+    criar vínculo local para ele produziria linha que o backfill jamais
+    criaria, e as duas fontes passariam a discordar sobre quem tem vínculo.
+
+    Recusar aqui é o que mantém a rota e o backfill contando a MESMA
+    história: o backfill filtra por mão de obra contratada, e a rota também.
+    """
+    if is_own_workforce((employee or {}).get('tipo_vinculo')):
+        raise ValueError(
+            f'Vínculo por Unidade não se aplica a "{(employee or {}).get("tipo_vinculo")}" — '
+            f'é mão de obra própria da empresa, alcançável em todas as Unidades '
+            f'pelos fluxos normais de colaborador.'
+        )
+
+
+def fetch_employee_unit_link(connection, employee_id, unit_id):
+    row = connection.execute(
+        f'SELECT {_UNIT_LINK_SELECT_COLUMNS} FROM employee_unit_links '
+        'WHERE employee_id = ? AND unit_id = ? LIMIT 1',
+        (int(employee_id), int(unit_id)),
+    ).fetchone()
+    return row_to_dict(row) if row else None
+
+
+def fetch_employee_unit_links(connection, employee_id):
+    """Todos os vínculos do colaborador. Como no molde da empresa, é para os
+    perfis NÃO escopados por Unidade (Geral/Registro/Master) — Administrador
+    Local e Gestor de EPI enxergam só o vínculo da própria Unidade."""
+    rows = connection.execute(
+        f'SELECT {_UNIT_LINK_SELECT_COLUMNS} FROM employee_unit_links '
+        'WHERE employee_id = ? ORDER BY created_at',
+        (int(employee_id),),
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]
+
+
+def create_employee_unit_link(connection, employee_id, company_id, unit_id, actor_user_id):
+    """"Vincular à minha unidade" — idempotente.
+
+    Vincular de novo devolve o vínculo existente, sem duplicar linha e sem
+    reativar um vínculo que a Unidade desativou de propósito. Mesma decisão
+    do molde: reativar é ação explícita, não efeito de clicar duas vezes.
+    """
+    from datetime import datetime, timezone
+
+    existing = fetch_employee_unit_link(connection, employee_id, unit_id)
+    if existing:
+        return int(existing['id'])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    cursor = connection.execute(
+        'INSERT INTO employee_unit_links (company_id, employee_id, unit_id, '
+        'local_status, activated_at, created_by_user_id, updated_by_user_id, created_at, updated_at) '
+        "VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)",
+        (
+            int(company_id), int(employee_id), int(unit_id), now_iso,
+            int(actor_user_id) if actor_user_id else None,
+            int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
+        ),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def set_employee_unit_link_status(connection, link_id, company_id, status, actor_user_id, reason=''):
+    """Ativa/desativa o vínculo LOCAL de uma Unidade.
+
+    Nunca arquiva o colaborador (isso é `core.archival`) e nunca afeta outra
+    Unidade vinculada à mesma pessoa. E não autoriza nem desautoriza entrega
+    de EPI: o gate decide pela Unidade atual de movimentação, não por aqui
+    (ADR-0002 §13.17).
+    """
+    from datetime import datetime, timezone
+
+    normalized = 'active' if str(status or '').strip().lower() == 'active' else 'inactive'
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if normalized == 'active':
+        connection.execute(
+            "UPDATE employee_unit_links SET local_status = 'active', activated_at = ?, "
+            "deactivated_at = NULL, deactivated_by_user_id = NULL, deactivation_reason = '', "
+            'updated_by_user_id = ?, updated_at = ? WHERE id = ? AND company_id = ?',
+            (now_iso, int(actor_user_id) if actor_user_id else None, now_iso, int(link_id), int(company_id)),
+        )
+    else:
+        connection.execute(
+            "UPDATE employee_unit_links SET local_status = 'inactive', deactivated_at = ?, "
+            'deactivated_by_user_id = ?, deactivation_reason = ?, updated_by_user_id = ?, updated_at = ? '
+            'WHERE id = ? AND company_id = ?',
+            (
+                now_iso, int(actor_user_id) if actor_user_id else None, str(reason or '').strip(),
+                int(actor_user_id) if actor_user_id else None, now_iso, int(link_id), int(company_id),
+            ),
+        )
+    connection.commit()
+    return normalized
+
+
 def create_employee(connection, payload, *, actor):
     from core.auth import ensure_resource_company
     from core.repository import get_unit_by_id

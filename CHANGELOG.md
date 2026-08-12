@@ -80,3 +80,14 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 
 ### Changed
 - Removido `node.js.yml` (Python CI) em favor de `backend-ci.yml`.
+
+### Fixed
+- Dashboard — filtro CNPJ/Unidade agora trava para Administrador Local e
+  Gestor de EPI: os dois perfis têm vínculo único com uma unidade (mesma
+  regra de `isOperationalProfile()`/`lockByOperationalProfile` já usada no
+  resto do app), mas o filtro em cascata do dashboard (Fase 6, Multi-CNPJ)
+  ainda deixava "Todos" selecionável e mostrava unidades de fora da carteira
+  do ator — inclusive nos indicadores, que somavam a empresa inteira em vez
+  de só a própria unidade. `general_admin`/`registry_admin` continuam sem
+  restrição (administram múltiplos CNPJs). Corrigido em web (`dashboard.js`/
+  `dashboard-scope.js`) e Flutter (`DashboardCubit`/`DashboardScreen`).

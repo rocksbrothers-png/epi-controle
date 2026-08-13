@@ -232,9 +232,15 @@ class _ArchivedEmployeeTile extends StatelessWidget {
 }
 
 /// Valores aceitos por `tipo_vinculo` no Cadastro de Colaboradores
-/// simplificado — só terceirizado/prestador; o backend recusa `CLT`
-/// (`validate_employee_outsourced_simplified_payload`).
-const _kOutsourcedEmploymentTypes = <String>['Terceirizado', 'Prestador de Serviço'];
+/// simplificado.
+///
+/// É a mesma `kContractedVinculos` do `epi_api`, que por sua vez espelha
+/// `CONTRACTED_VINCULOS` do backend — a lista não é redigitada aqui. A versão
+/// local anterior tinha só dois valores e omitia `Temporário`, que o backend
+/// sempre aceitou (`validate_employee_outsourced_simplified_payload`): o
+/// resultado era um vínculo válido que o app simplesmente não deixava
+/// cadastrar.
+const _kOutsourcedEmploymentTypes = kContractedVinculos;
 
 class _OutsourcedEmployeeFormDialog extends StatefulWidget {
   const _OutsourcedEmployeeFormDialog({this.employeeId});

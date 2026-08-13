@@ -5840,6 +5840,21 @@ function allocationTypeLabel(value) {
   return value === 'temporary' ? tr('employee.allocationTemporary', 'Temporário') : tr('employee.allocationPrimary', 'Principal');
 }
 
+// "É mão de obra contratada?" — a mesma pergunta que `outsourcedEmployeesList`
+// faz, com a mesma fonte: o módulo de regras, e o fallback só se ele não
+// carregou. Existe porque `buildEmployeeRow`/`buildEmployeeOpsRow` decidiam por
+// `tipoVinculoRaw !== 'CLT'`, que classifica Menor Aprendiz, Praticante e
+// Estagiário como contratados. Inofensivo enquanto o backend zera
+// `empresa_origem` para mão de obra própria e o `&&` seguinte filtra — mas é o
+// idioma que o PR #214 baniu, e ele sobreviveu aqui porque o teste de paridade
+// procurava `tipo !==`, que não casa com `tipoVinculoRaw !==`.
+function isContractedVinculoJs(tipoVinculo) {
+  const helpers = outsourcedEmployeesViewHelpers();
+  if (helpers.isContractedVinculo) return helpers.isContractedVinculo(tipoVinculo);
+  const contracted = helpers.CONTRACTED_VINCULOS || CONTRACTED_VINCULOS_FALLBACK;
+  return contracted.includes(String(tipoVinculo || '').trim());
+}
+
 function buildEmployeeRow(item, canManageRecords) {
   const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
   const allocation = allocationTypeLabel(item.unit_allocation_type);
@@ -5847,7 +5862,7 @@ function buildEmployeeRow(item, canManageRecords) {
   const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
   const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
   const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = tipoVinculoRaw !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
   const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
   return `<tr>${checkCell}<td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
 }
@@ -5856,7 +5871,7 @@ function buildEmployeeOpsRow(item) {
   const allocation = allocationTypeLabel(item.unit_allocation_type);
   const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
   const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = tipoVinculoRaw !== 'CLT' && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
+  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
 }
 

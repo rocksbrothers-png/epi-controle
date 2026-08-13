@@ -22,9 +22,17 @@ class OutsourcedEmployeesState extends Equatable {
   final bool isLoading;
   final String? error;
 
-  /// Colaboradores terceirizados/prestadores ativos — filtro client-side
-  /// (`employmentType != CLT`) sobre a lista de `employees` do bootstrap,
-  /// já escopada por tenant/unidade pelo backend.
+  /// Colaboradores de mão de obra **contratada** ativos, vindos de
+  /// `GET /api/employees` — já escopados por tenant/Unidade pelo backend.
+  ///
+  /// A rota (e não o bootstrap) é a fonte porque só ela carrega
+  /// `local_unit_link_status`: o bootstrap chama `fetch_employees` sem
+  /// contexto de Unidade e devolve o estado do vínculo vazio para todos.
+  ///
+  /// O filtro usa [isContractedVinculo], não `!= 'CLT'`. Os dois davam no
+  /// mesmo enquanto CLT era o único vínculo próprio; com Menor Aprendiz,
+  /// Praticante e Estagiário deixaram de dar, e essas três pessoas passavam a
+  /// aparecer nesta aba com ações que o backend rejeita.
   final List<Employee> employees;
 
   /// Arquivados: `GET /api/employees/archived?outsourced_only=1` (mesma
@@ -82,17 +90,19 @@ class OutsourcedEmployeesState extends Equatable {
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class OutsourcedEmployeesCubit extends Cubit<OutsourcedEmployeesState> {
-  /// [employeesApi]/[authApi] existem para o teste.
-  OutsourcedEmployeesCubit({EmployeesApi? employeesApi, AuthApi? authApi})
+  /// [employeesApi] existe para o teste.
+  ///
+  /// O `AuthApi` saiu junto com o consumo do bootstrap: a aba agora lê de
+  /// `GET /api/employees`, que é a única rota que devolve o estado do vínculo
+  /// local. Manter o parâmetro deixaria uma porta aberta para alguém voltar a
+  /// alimentar esta tela pelo bootstrap sem perceber o que se perde.
+  OutsourcedEmployeesCubit({EmployeesApi? employeesApi})
       : _employeesApi = employeesApi,
-        _authApi = authApi,
         super(const OutsourcedEmployeesState());
 
   final EmployeesApi? _employeesApi;
-  final AuthApi? _authApi;
 
   EmployeesApi get _employees => _employeesApi ?? ApiClient.employees;
-  AuthApi get _auth => _authApi ?? ApiClient.auth;
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true, clearError: true));
@@ -101,10 +111,14 @@ class OutsourcedEmployeesCubit extends Cubit<OutsourcedEmployeesState> {
 
   Future<void> _reload() async {
     try {
-      final bootstrap = await _auth.bootstrap();
-      final employees = bootstrap.employees
+      // `GET /api/employees`, NÃO o bootstrap: só esta rota resolve contexto
+      // de Unidade e devolve `local_unit_link_status`. Lendo do bootstrap a
+      // tela não falharia — apenas nunca ofereceria as ações de vínculo, em
+      // silêncio, o que é bem pior de descobrir.
+      final rows = await _employees.getEmployees(actorUserId: ApiClient.actorUserId);
+      final employees = rows
           .map(Employee.fromJson)
-          .where((e) => (e.employmentType ?? '').isNotEmpty && e.employmentType != 'CLT')
+          .where((e) => isContractedVinculo(e.employmentType))
           .toList(growable: false);
       final archived = await _loadArchivedSafe();
       emit(state.copyWith(

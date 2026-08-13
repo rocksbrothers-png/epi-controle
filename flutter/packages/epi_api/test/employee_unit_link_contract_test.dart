@@ -274,4 +274,56 @@ void main() {
       expect((readiness['blocking_unit_links'] as List).length, 2);
     });
   });
+
+  group('EmployeesApi.getEmployeeUnitLinks (F5B)', () {
+    test('chama GET /api/employees/{id}/unit-links', () async {
+      final adapter = _RecordingAdapter(responseByPath: {
+        '/api/employees/100/unit-links': {
+          'unit_links': [
+            {'unit_id': 10, 'unit_name': 'Base Santos', 'local_status': 'active'},
+            {'unit_id': 11, 'unit_name': 'Plataforma P-50', 'local_status': 'inactive'},
+          ],
+        },
+      });
+      final api = EmployeesApi(Dio()..httpClientAdapter = adapter);
+      final result = await api.getEmployeeUnitLinks(100, actorUserId: 7);
+      expect(adapter.paths.single, '/api/employees/100/unit-links');
+      expect(adapter.methods.single, 'GET');
+      expect(result.map((e) => e['unit_name']), ['Base Santos', 'Plataforma P-50']);
+    });
+
+    test('resposta sem a chave unit_links devolve lista vazia', () async {
+      final adapter = _RecordingAdapter(responseByPath: {
+        '/api/employees/100/unit-links': {},
+      });
+      final api = EmployeesApi(Dio()..httpClientAdapter = adapter);
+      expect(await api.getEmployeeUnitLinks(100, actorUserId: 7), isEmpty);
+    });
+
+    test('o cliente NÃO filtra o que o servidor devolveu', () {
+      // O recorte por Unidade é regra de AUTORIZAÇÃO, aplicada no backend
+      // antes da resposta. Refiltrar aqui sugeriria que a lista completa
+      // chegou e está só escondida — e a próxima pessoa a mexer removeria o
+      // filtro "redundante" achando que o servidor não protege.
+      final source = File('lib/endpoints/employees_api.dart').readAsStringSync();
+      final method = RegExp(
+        r'getEmployeeUnitLinks\(.*?\}\s*\)\s*async \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(source);
+      expect(method, isNotNull, reason: 'getEmployeeUnitLinks não encontrado');
+      final body = method!.group(1)!;
+      for (final forbidden in const ['.where(', 'unit_id ==', 'local_status ==']) {
+        expect(body, isNot(contains(forbidden)),
+            reason: 'o cliente não pode recortar a resposta: $forbidden');
+      }
+    });
+
+    test('não existe verbo de escrita para unit-links', () {
+      final source = File('lib/endpoints/employees_api.dart').readAsStringSync();
+      for (final verb in const ['_dio.post', '_dio.put', '_dio.patch', '_dio.delete']) {
+        final offenders = RegExp('$verb' r"[^;]*unit-links'").allMatches(source);
+        expect(offenders, isEmpty, reason: '$verb apontando para unit-links');
+      }
+    });
+  });
 }

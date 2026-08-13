@@ -206,6 +206,34 @@ class EmployeesApi {
     return res.data ?? {};
   }
 
+  /// Vínculos de Unidade do colaborador — **somente leitura**.
+  ///
+  /// A resposta já vem RECORTADA pelo servidor: perfis não escopados recebem
+  /// todos os vínculos do colaborador no tenant; Administrador Local e Gestor
+  /// de EPI recebem apenas o da própria Unidade.
+  ///
+  /// Por isso a tela **não filtra nada** do que chega aqui. O recorte é regra
+  /// de autorização, não de apresentação — refiltrar no cliente sugeriria que
+  /// a lista completa chegou e só está escondida, e a próxima pessoa a mexer
+  /// acabaria removendo o filtro "redundante" da tela achando que o backend
+  /// não protege.
+  ///
+  /// Cada item traz as colunas do vínculo mais `unit_name`.
+  Future<List<Map<String, dynamic>>> getEmployeeUnitLinks(
+    int id, {
+    required int actorUserId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/employees/$id/unit-links',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final items = res.data?['unit_links'];
+    if (items is List) {
+      return items.whereType<Map<String, dynamic>>().toList();
+    }
+    return const [];
+  }
+
   /// Resumo de exclusão do colaborador, incluindo o aviso antecipado
   /// `deletion_readiness` (ADR-0002 §13.5): elegibilidade, motivos de bloqueio
   /// e as Unidades com vínculo ativo que impedem a exclusão definitiva.

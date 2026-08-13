@@ -160,6 +160,25 @@ class OutsourcedEmployeesTab extends StatelessWidget {
     }
   }
 
+  /// "Vínculos por Unidade" — leitura pura (item 7 da #226, F5B).
+  ///
+  /// Mostra em QUAIS Unidades o colaborador tem vínculo, e em que estado. Não
+  /// oferece ação: arquivar e reativar continuam sendo por Unidade, na linha
+  /// da lista, sob o gate de permissão. Um botão de ação aqui daria a
+  /// impressão de alcance global — o oposto do que o vínculo local é.
+  ///
+  /// A lista chega recortada pelo servidor. A tela não filtra nada.
+  Future<void> _showUnitLinks(BuildContext context, Employee employee) async {
+    final cubit = context.read<OutsourcedEmployeesCubit>();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => _UnitLinksDialog(
+        employeeName: employee.name,
+        load: () => cubit.loadUnitLinks(employee.id),
+      ),
+    );
+  }
+
   Future<void> _confirmRestore(BuildContext context, Map<String, dynamic> employee) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedEmployeesCubit>();
@@ -271,6 +290,8 @@ class OutsourcedEmployeesTab extends StatelessWidget {
                                         .activateUnitLink(state.filtered[i].id),
                                     onDeactivateUnitLink: () =>
                                         _confirmUnitLinkDeactivate(ctx, state.filtered[i]),
+                                    onShowUnitLinks: () =>
+                                        _showUnitLinks(ctx, state.filtered[i]),
                                   ),
                                 )),
                     ),
@@ -293,6 +314,7 @@ class _EmployeeTile extends StatelessWidget {
     required this.onLinkToUnit,
     required this.onActivateUnitLink,
     required this.onDeactivateUnitLink,
+    required this.onShowUnitLinks,
   });
 
   final Employee employee;
@@ -304,6 +326,7 @@ class _EmployeeTile extends StatelessWidget {
   final VoidCallback onLinkToUnit;
   final VoidCallback onActivateUnitLink;
   final VoidCallback onDeactivateUnitLink;
+  final VoidCallback onShowUnitLinks;
 
   @override
   Widget build(BuildContext context) {
@@ -344,6 +367,16 @@ class _EmployeeTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Leitura pura — sem gate de permissão por ação além do
+          // `employees:view` que já protege a tela: quem enxerga o colaborador
+          // pode ver em quais Unidades ele tem vínculo, e o servidor recorta a
+          // lista para o que aquele ator pode consultar.
+          if (linkStatus != null)
+            IconButton(
+              tooltip: l10n.employeeUnitLinksTitle,
+              icon: const Icon(Icons.account_tree_outlined),
+              onPressed: onShowUnitLinks,
+            ),
           if (canManageUnitLink && linkStatus != null)
             _unitLinkAction(l10n, linkStatus),
           // Estes dois botões apareciam para QUALQUER perfil que tivesse
@@ -392,6 +425,89 @@ class _EmployeeTile extends StatelessWidget {
             onPressed: onLinkToUnit,
           ),
       };
+}
+
+/// "Vínculos por Unidade" — leitura pura, sem ação.
+///
+/// Carrega sob demanda (`GET /api/employees/{id}/unit-links`) em vez de vir
+/// junto da listagem: a lista mostra dezenas de colaboradores, e trazer os
+/// vínculos de todos para exibir os de um seria N consultas por tela.
+class _UnitLinksDialog extends StatefulWidget {
+  const _UnitLinksDialog({required this.employeeName, required this.load});
+
+  final String employeeName;
+  final Future<List<Map<String, dynamic>>> Function() load;
+
+  @override
+  State<_UnitLinksDialog> createState() => _UnitLinksDialogState();
+}
+
+class _UnitLinksDialogState extends State<_UnitLinksDialog> {
+  late Future<List<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.employeeUnitLinksTitle),
+      content: SizedBox(
+        width: 420,
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _future,
+          builder: (ctx, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 96,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return Text(l10n.employeeUnitLinksError);
+            }
+            final links = snapshot.data ?? const <Map<String, dynamic>>[];
+            if (links.isEmpty) {
+              // A mensagem diz "que você pode consultar" de propósito: para um
+              // perfil escopado, lista vazia significa "sem vínculo NA SUA
+              // Unidade", não "sem vínculo nenhum". Prometer a segunda coisa
+              // seria mentir sobre o que o recorte do servidor devolveu.
+              return Text(l10n.employeeUnitLinksEmpty);
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.employeeName),
+                const SizedBox(height: EpiSpacing.sm),
+                // A lista vem RECORTADA do servidor — nenhum `.where` aqui.
+                ...links.map(
+                  (link) => ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('${link['unit_name'] ?? ''}'),
+                    trailing: _UnitLinkBadge(
+                      status: '${link['local_status'] ?? kUnitLinkStatusNone}',
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.close),
+        ),
+      ],
+    );
+  }
 }
 
 /// Rótulo do estado do vínculo local com a Unidade em contexto.

@@ -233,4 +233,55 @@ void main() {
       expect(arb, contains('"employeeUnitLabel"'));
     });
   });
+
+  group('vínculos por Unidade é leitura pura (item 7, F5B)', () {
+    /// Corpo da classe do diálogo, isolado do resto do arquivo.
+    ///
+    /// Recortar a classe importa: uma varredura no arquivo inteiro pegaria os
+    /// callbacks de `_EmployeeTile` e acusaria o diálogo por associação — foi
+    /// o que aconteceu ao escrever esta verificação pela primeira vez.
+    String dialogBody() {
+      final match = RegExp(
+        r'class _UnitLinksDialogState extends State<_UnitLinksDialog> \{(.*?)\n\}',
+        dotAll: true,
+      ).firstMatch(_readTab());
+      expect(match, isNotNull, reason: '_UnitLinksDialogState não encontrado');
+      return match!.group(1)!;
+    }
+
+    test('o diálogo não oferece nenhuma ação além de fechar', () {
+      // Arquivar e reativar continuam por Unidade, na linha da lista, sob o
+      // gate de permissão. Um botão de ação aqui daria impressão de alcance
+      // global — o oposto do que o vínculo local é.
+      final body = dialogBody();
+      for (final action in const [
+        'onDeactivateUnitLink', 'onActivateUnitLink', 'onLinkToUnit',
+        'onArchive', 'onEdit', 'deactivateUnitLink', 'activateUnitLink',
+        'linkToUnit', 'archiveEmployee',
+      ]) {
+        expect(body, isNot(contains(action)), reason: 'ação no diálogo de leitura: $action');
+      }
+      final pressed = RegExp(r'onPressed:\s*([^,\n]+)').allMatches(body)
+          .map((m) => m.group(1)!.trim())
+          .toList();
+      expect(pressed, ['() => Navigator.of(context).pop()']);
+    });
+
+    test('a tela não refiltra o que o servidor recortou', () {
+      // O recorte por Unidade é autorização, aplicada no backend antes da
+      // resposta. Refiltrar aqui sugeriria que a lista completa chegou e só
+      // está escondida — e a próxima pessoa removeria o filtro "redundante"
+      // achando que o servidor não protege.
+      final body = dialogBody();
+      expect(body, contains('links.map('));
+      expect(body, isNot(contains('links.where(')));
+    });
+
+    test('a mensagem de lista vazia não promete mais do que o recorte devolveu', () {
+      // Para um perfil escopado, vazio significa "sem vínculo NA SUA Unidade",
+      // não "sem vínculo nenhum".
+      final arb = File('../../packages/epi_i18n/lib/l10n/app_pt_BR.arb').readAsStringSync();
+      expect(arb, contains('que você pode consultar'));
+    });
+  });
 }

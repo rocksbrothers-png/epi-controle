@@ -211,6 +211,17 @@ class OutsourcedEmployeesCubit extends Cubit<OutsourcedEmployeesState> {
         ),
       );
 
+  /// Vínculos de Unidade do colaborador — leitura sob demanda.
+  ///
+  /// Não entra no `state`: é consulta pontual de uma tela de detalhe, e
+  /// guardá-la no estado da lista criaria uma segunda cópia do vínculo para
+  /// manter em dia junto com `local_unit_link_status`. Duas cópias do mesmo
+  /// fato divergem no primeiro arquivamento que uma delas não observar.
+  ///
+  /// A lista devolvida já vem recortada pelo servidor. **Não filtre aqui.**
+  Future<List<Map<String, dynamic>>> loadUnitLinks(int id) =>
+      _employees.getEmployeeUnitLinks(id, actorUserId: ApiClient.actorUserId);
+
   /// Recarrega a lista depois de cada operação de vínculo.
   ///
   /// O recarregamento é obrigatório, não uma cortesia: o novo

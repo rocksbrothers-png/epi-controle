@@ -108,6 +108,25 @@ class _CompaniesTabBody extends StatelessWidget {
     if (saved == true && context.mounted) cubit.load();
   }
 
+  /// "Vincular empresa a esta Unidade" (ADR-0002 §12, F6B da #226).
+  ///
+  /// Abre a busca no tenant. É o caminho que faltava no app: a listagem comum
+  /// mostra só o que ESTA Unidade já vinculou, então uma Unidade que ainda não
+  /// trabalha com a empresa não a enxerga — justamente por não ter vínculo. Sem
+  /// esta porta, a saída do operador seria cadastrar a empresa de novo, e o
+  /// desenho existe para que o cadastro corporativo seja único no tenant.
+  Future<void> _openLinkFlow(BuildContext context) async {
+    final cubit = context.read<OutsourcedCompaniesCubit>();
+    await showDialog<void>(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: const _LinkCompanyToUnitDialog(),
+      ),
+    );
+    cubit.clearTenantSearch();
+  }
+
   Future<void> _confirmPromote(BuildContext context, OutsourcedCompany company) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedCompaniesCubit>();
@@ -203,10 +222,27 @@ class _CompaniesTabBody extends StatelessWidget {
         return Scaffold(
           floatingActionButton: state.showArchived
               ? null
-              : FloatingActionButton.extended(
-                  onPressed: () => _openForm(ctx),
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.outsourcedCompanyNew),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Vincular vem ANTES de criar, e é o botão discreto: a
+                    // ordem sugere a decisão certa — procurar o cadastro que
+                    // já existe no tenant antes de criar mais um.
+                    FloatingActionButton.small(
+                      heroTag: 'link-company-to-unit',
+                      tooltip: l10n.outsourcedCompanyLinkTitle,
+                      onPressed: () => _openLinkFlow(ctx),
+                      child: const Icon(Icons.add_link),
+                    ),
+                    const SizedBox(height: EpiSpacing.sm),
+                    FloatingActionButton.extended(
+                      heroTag: 'new-company',
+                      onPressed: () => _openForm(ctx),
+                      icon: const Icon(Icons.add),
+                      label: Text(l10n.outsourcedCompanyNew),
+                    ),
+                  ],
                 ),
           body: state.isLoading && state.companies.isEmpty && state.archivedCompanies.isEmpty
               ? const Center(child: CircularProgressIndicator())
@@ -357,6 +393,251 @@ class _ArchivedOutsourcedCompanyTile extends StatelessWidget {
         onPressed: onRestore,
       ),
     );
+  }
+}
+
+/// Busca no tenant + vínculo local com esta Unidade (F6B da #226).
+///
+/// A empresa terceirizada é ÚNICA no tenant e pode ter vínculo com várias
+/// Unidades, cada um com estado próprio. Este diálogo é o que permite a uma
+/// Unidade localizar o cadastro existente e criar **apenas o seu** vínculo —
+/// sem duplicar a empresa e sem herdar contratos, colaboradores ou notas de
+/// nenhuma outra Unidade.
+class _LinkCompanyToUnitDialog extends StatefulWidget {
+  const _LinkCompanyToUnitDialog();
+
+  @override
+  State<_LinkCompanyToUnitDialog> createState() => _LinkCompanyToUnitDialogState();
+}
+
+class _LinkCompanyToUnitDialogState extends State<_LinkCompanyToUnitDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmDeactivate(BuildContext context, OutsourcedCompany company) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<OutsourcedCompaniesCubit>();
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.outsourcedCompanyLinkDeactivate),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(company.displayLabel),
+            const SizedBox(height: EpiSpacing.md),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: l10n.outsourcedCompanyLinkDeactivateReason,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.outsourcedCompanyLinkDeactivate),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.deactivateCompanyUnitLink(
+        company.id,
+        reason: reasonController.text.trim(),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.outsourcedCompanyLinkTitle),
+      content: SizedBox(
+        width: 520,
+        child: BlocBuilder<OutsourcedCompaniesCubit, OutsourcedCompaniesState>(
+          builder: (ctx, state) {
+            final cubit = ctx.read<OutsourcedCompaniesCubit>();
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    labelText: l10n.outsourcedCompanyLinkHint,
+                  ),
+                  onSubmitted: cubit.searchInTenant,
+                  onChanged: cubit.searchInTenant,
+                ),
+                const SizedBox(height: EpiSpacing.md),
+                if (state.isSearching)
+                  const Padding(
+                    padding: EdgeInsets.all(EpiSpacing.md),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (state.searchQuery.isEmpty)
+                  const SizedBox.shrink()
+                else if (state.searchResults.isEmpty)
+                  Text(l10n.outsourcedCompanyLinkEmpty)
+                else
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Dois blocos, e a separação não é estética: os itens
+                          // "disponíveis" vêm MASCARADOS do backend — sem
+                          // contratos, colaboradores ou notas de outra Unidade.
+                          // Misturá-los com as vinculadas faria a tela mostrar
+                          // registros incompletos como se fossem gerenciáveis.
+                          if (state.searchLinked.isNotEmpty) ...[
+                            _SectionLabel(l10n.outsourcedCompanyLinkSectionLinked),
+                            ...state.searchLinked.map(
+                              (c) => _LinkableCompanyTile(
+                                company: c,
+                                onLink: () => cubit.linkCompanyToUnit(c.id),
+                                onActivate: () => cubit.activateCompanyUnitLink(c.id),
+                                onDeactivate: () => _confirmDeactivate(ctx, c),
+                              ),
+                            ),
+                          ],
+                          if (state.searchAvailable.isNotEmpty) ...[
+                            _SectionLabel(l10n.outsourcedCompanyLinkSectionAvailable),
+                            ...state.searchAvailable.map(
+                              (c) => _LinkableCompanyTile(
+                                company: c,
+                                onLink: () => cubit.linkCompanyToUnit(c.id),
+                                onActivate: () => cubit.activateCompanyUnitLink(c.id),
+                                onDeactivate: () => _confirmDeactivate(ctx, c),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.close),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: EpiSpacing.md, bottom: EpiSpacing.xs),
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        ),
+      );
+}
+
+/// Linha do fluxo de vinculação: identificação + estado + UMA ação.
+class _LinkableCompanyTile extends StatelessWidget {
+  const _LinkableCompanyTile({
+    required this.company,
+    required this.onLink,
+    required this.onActivate,
+    required this.onDeactivate,
+  });
+
+  final OutsourcedCompany company;
+  final VoidCallback onLink;
+  final VoidCallback onActivate;
+  final VoidCallback onDeactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      title: Text(company.displayLabel),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(company.cnpj, style: const TextStyle(fontSize: 12)),
+          // Só os itens disponíveis trazem estes dois. O backend os expõe de
+          // propósito: quem decide se reaproveita o cadastro precisa saber de
+          // onde ele veio e quantas Unidades já o usam.
+          if (company.isMaskedForLinking) ...[
+            if (company.originUnitName.isNotEmpty)
+              Text(
+                '${l10n.outsourcedCompanyLinkOriginUnit}: ${company.originUnitName}',
+                style: const TextStyle(fontSize: 12),
+              ),
+            if (company.linkedUnitsCount != null)
+              Text(
+                l10n.outsourcedCompanyLinkUsedByUnits(company.linkedUnitsCount!),
+                style: const TextStyle(fontSize: 12, color: EpiColors.textMuted),
+              ),
+          ],
+        ],
+      ),
+      isThreeLine: company.isMaskedForLinking,
+      trailing: _action(l10n),
+    );
+  }
+
+  /// Uma ação por estado. `null` é o caso que mais engana e por isso vem
+  /// primeiro: para Administrador Geral, de Registro e Master a busca **não
+  /// anota** o vínculo, e ausência ali significa "não informado", não "sem
+  /// vínculo". Oferecer "Vincular" nesse caso agiria sobre uma empresa que
+  /// pode já estar vinculada.
+  Widget _action(AppLocalizations l10n) {
+    if (!company.isMaskedForLinking && company.localUnitLinkStatus == null) {
+      return Text(
+        l10n.outsourcedCompanyLinkNotInformed,
+        style: const TextStyle(fontSize: 11, color: EpiColors.textMuted),
+      );
+    }
+    return switch (company.localUnitLinkStatus) {
+      kUnitLinkStatusActive => TextButton(
+          onPressed: onDeactivate,
+          child: Text(l10n.outsourcedCompanyLinkDeactivate),
+        ),
+      kUnitLinkStatusInactive => TextButton(
+          onPressed: onActivate,
+          child: Text(l10n.outsourcedCompanyLinkActivate),
+        ),
+      // Mascarada: disponível para vincular.
+      _ => FilledButton(
+          onPressed: onLink,
+          child: Text(l10n.outsourcedCompanyLinkLink),
+        ),
+    };
   }
 }
 

@@ -146,6 +146,40 @@ def test_the_flutter_list_comes_from_the_route_that_carries_the_link_state():
     )
 
 
+# Web Legado ↔ Flutter: mesmo idioma, mesma frase.
+_WEB_TO_ARB = {
+    'pt-BR': 'app_pt_BR.arb',
+    'en-GB': 'app_en_US.arb',
+    'es-ES': 'app_es_ES.arb',
+    'fr-FR': 'app_fr_FR.arb',
+    'nb-NO': 'app_no_NO.arb',
+}
+
+
+@pytest.mark.parametrize('web_locale,arb_file', sorted(_WEB_TO_ARB.items()))
+def test_flutter_and_web_say_the_same_thing_in_each_language(web_locale, arb_file):
+    """As oito mensagens do vínculo local são idênticas nos dois frontends.
+
+    Não é preciosismo de tradução: "Reativar nesta Unidade" e "Arquivar nesta
+    Unidade" descrevem uma operação de alcance LOCAL, e qualquer variação que
+    soe global — "Reativar colaborador", por exemplo — faria o operador achar
+    que está mexendo no cadastro inteiro. Duas telas do mesmo produto não
+    podem descrever a mesma ação com palavras de alcance diferente.
+    """
+    import json
+
+    web = json.loads(_read('static', 'i18n', f'{web_locale}.json'))['employee']
+    arb = json.loads(_read('flutter', 'packages', 'epi_i18n', 'lib', 'l10n', arb_file))
+    for suffix in _UNIT_LINK_KEYS:
+        # `unitLinkColumn` (aninhada sob `employee` no Web) vira
+        # `employeeUnitLinkColumn` (plana) no ARB do Flutter.
+        flutter_key = 'employee' + suffix[0].upper() + suffix[1:]
+        assert flutter_key in arb, f'{arb_file}: falta {flutter_key}'
+        assert arb[flutter_key] == web[suffix], (
+            f'{web_locale}/{suffix}: web={web[suffix]!r} vs flutter={arb[flutter_key]!r}'
+        )
+
+
 def test_the_flutter_screen_does_not_deduce_the_link_state():
     """Mesma proibição do Web Legado, do lado Dart: nada de reconstruir o
     estado comparando `unitId` com a Unidade do ator."""

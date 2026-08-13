@@ -177,8 +177,63 @@ class OutsourcedEmployeesCubit extends Cubit<OutsourcedEmployeesState> {
     }
   }
 
+  // ── Vínculo local por Unidade (ADR-0002 §13) ────────────────────────────
+  //
+  // As três operações são independentes do arquivamento GLOBAL logo abaixo, e
+  // a diferença é o ponto todo da funcionalidade: arquivar o vínculo tira a
+  // pessoa de UMA Unidade; arquivar o colaborador tira do tenant inteiro. A
+  // tela usa palavras diferentes para as duas, e o cubit também.
+  //
+  // Nenhuma delas manda `unit_id`: para perfis escopados o backend usa a
+  // Unidade operacional do ator, e para os demais a rota decide. Quem monta o
+  // request não escolhe o próprio escopo.
+
+  /// "Vincular à minha unidade" — `POST /api/employees/{id}/link`.
+  Future<bool> linkToUnit(int id) => _linkOperation(
+        () => _employees.linkEmployeeToUnit(id, actorUserId: ApiClient.actorUserId),
+      );
+
+  /// "Reativar nesta Unidade" — vínculo arquivado volta a ativo.
+  Future<bool> activateUnitLink(int id) => _linkOperation(
+        () => _employees.activateEmployeeUnitLink(id, actorUserId: ApiClient.actorUserId),
+      );
+
+  /// "Arquivar nesta Unidade" — o vínculo é arquivado, nunca apagado.
+  ///
+  /// [reason] vai para a auditoria junto com o ator. A linha permanece e
+  /// continua sendo o que bloqueia a exclusão definitiva enquanto houver
+  /// vínculo ativo em alguma Unidade.
+  Future<bool> deactivateUnitLink(int id, {String reason = ''}) => _linkOperation(
+        () => _employees.deactivateEmployeeUnitLink(
+          id,
+          actorUserId: ApiClient.actorUserId,
+          reason: reason,
+        ),
+      );
+
+  /// Recarrega a lista depois de cada operação de vínculo.
+  ///
+  /// O recarregamento é obrigatório, não uma cortesia: o novo
+  /// `local_unit_link_status` é decidido pelo backend. Atualizar o item em
+  /// memória a partir da resposta seria reconstruir o estado no cliente —
+  /// exatamente o que a separação C1/C2 existe para impedir.
+  Future<bool> _linkOperation(Future<void> Function() operation) async {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    try {
+      await operation();
+      await _reload();
+      return true;
+    } on Exception catch (e) {
+      emit(state.copyWith(isLoading: false, error: _errorMessage(e)));
+      return false;
+    }
+  }
+
   /// Arquiva o colaborador (soft delete) — mesma rota/regra dos colaboradores
   /// CLT: histórico preservado pelo período mínimo de retenção configurado.
+  ///
+  /// Não confundir com [deactivateUnitLink]: esta remove do tenant, aquela de
+  /// uma Unidade.
   Future<bool> archiveEmployee(int id, {String reason = ''}) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {

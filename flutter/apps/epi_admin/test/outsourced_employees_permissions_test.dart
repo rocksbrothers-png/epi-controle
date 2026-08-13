@@ -141,6 +141,85 @@ void main() {
     });
   });
 
+  group('não existe exclusão definitiva manual (item 7)', () {
+    // O produto não tem hard delete manual. O fluxo é: arquiva → fica retido
+    // pelo prazo que o Administrador configurou → a PURGA, automática, apaga
+    // o que ficou elegível. A tela de colaboradores não participa da última
+    // etapa, e estes testes existem para que ela nunca passe a participar.
+
+    test('a aba não oferece Excluir', () {
+      // Duas limpezas antes de varrer, e as duas são necessárias:
+      //
+      // 1. Os COMENTÁRIOS saem. Eles explicam por que a permissão se chama
+      //    `employees:delete` e por que ela hoje protege arquivamento — texto
+      //    que a varredura acusaria, empurrando a explicação para fora do
+      //    código. Foi o mesmo tropeço do teste de paridade do PR C2.
+      // 2. O literal `'employees:delete'` sai. É o único uso legítimo da
+      //    palavra em código: nome herdado da permissão. Sem removê-lo, a
+      //    presença dele mascararia qualquer `deleteEmployee` adicionado
+      //    depois — a varredura passaria por vigilância sendo cegueira.
+      final swept = _readTab()
+          .replaceAll(RegExp(r'^\s*///?.*$', multiLine: true), '')
+          .replaceAll("'employees:delete'", '');
+      for (final forbidden in const [
+        'delete', 'Delete', 'excluir', 'Excluir', 'purge', 'Purge', 'Remover',
+      ]) {
+        expect(
+          swept,
+          isNot(contains(forbidden)),
+          reason: 'a tela não pode oferecer exclusão definitiva: $forbidden',
+        );
+      }
+    });
+
+    test('o cubit não expõe exclusão nem purga', () {
+      final cubit = File('lib/core/bloc/outsourced_employees_cubit.dart').readAsStringSync();
+      for (final forbidden in const [
+        'deleteEmployee', 'purgeEmployee', 'purgeRequest', 'purgeConfirm', 'hardDelete',
+      ]) {
+        expect(cubit, isNot(contains(forbidden)), reason: forbidden);
+      }
+    });
+
+    test('arquivar vínculo e arquivar colaborador chamam operações diferentes', () {
+      // Arquivar NESTA UNIDADE inativa um vínculo e deixa os demais intactos;
+      // arquivar o COLABORADOR age no tenant. Se as duas apontassem para a
+      // mesma operação, desvincular de uma base tiraria a pessoa do sistema.
+      final cubit = File('lib/core/bloc/outsourced_employees_cubit.dart').readAsStringSync();
+      expect(cubit, contains('deactivateUnitLink'));
+      expect(cubit, contains('archiveEmployee'));
+      expect(cubit, contains('deactivateEmployeeUnitLink('));
+      expect(cubit, contains('archiveEmployee(id, actorUserId:'));
+    });
+
+    test('arquivar o vínculo não manda nada que alcance outras Unidades', () {
+      // A chamada carrega apenas o ator e o motivo. Sem `unit_id`, sem lista
+      // de Unidades, sem flag de cascata: o backend resolve a Unidade do ator
+      // e mexe só naquele vínculo. Os vínculos das outras Unidades continuam
+      // ativos por construção, não por promessa.
+      final api = File('../../packages/epi_api/lib/endpoints/employees_api.dart')
+          .readAsStringSync();
+      final method = RegExp(
+        r'deactivateEmployeeUnitLink\(.*?\}\s*\)\s*async \{(.*?)\n  \}',
+        dotAll: true,
+      ).firstMatch(api);
+      expect(method, isNotNull, reason: 'deactivateEmployeeUnitLink não encontrado');
+      final body = method!.group(1)!;
+      expect(body, contains("'actor_user_id'"));
+      expect(body, contains("'reason'"));
+      expect(body, isNot(contains("'unit_id'")));
+      expect(body, isNot(contains('cascade')));
+      expect(body, isNot(contains('all_units')));
+    });
+
+    test('o motivo do arquivamento local vai para a auditoria', () {
+      // Preservar auditoria é regra do domínio: quem arquivou, quando e por
+      // quê. Um diálogo sem campo de motivo perderia a terceira.
+      expect(_readTab(), contains('l10n.employeeUnitLinkDeactivateReason'));
+      expect(_readTab(), contains('reason: reasonController.text.trim()'));
+    });
+  });
+
   group('Unidade de origem (item 6)', () {
     test('a Unidade do colaborador aparece rotulada', () {
       // Sem rótulo, a tela mostra uma Unidade só e o operador não distingue a

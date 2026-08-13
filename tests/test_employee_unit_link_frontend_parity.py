@@ -63,20 +63,129 @@ def test_the_app_js_fallback_matches_too():
     )
 
 
+# ── Flutter (Web, Android e iOS) ────────────────────────────────────────────
+#
+# O app Flutter é o TERCEIRO consumidor da mesma regra, e por muito tempo o
+# único não coberto aqui. As duas divergências que a auditoria da #226 achou
+# viveram meses justamente porque nada confrontava o Dart com o Python.
+
+
+def test_flutter_and_backend_agree_on_contracted_vinculos():
+    """`kContractedVinculos` (Dart) == `CONTRACTED_VINCULOS` (Python).
+
+    A lista do Flutter tinha só dois valores e omitia `Temporário`, que o
+    backend sempre aceitou: um vínculo válido que o app não deixava cadastrar.
+    """
+    from modules.employees.service import CONTRACTED_VINCULOS
+
+    dart = _read('flutter', 'packages', 'epi_api', 'lib', 'models', 'employee.dart')
+    match = re.search(
+        r'const List<String> kContractedVinculos = <String>\[(.*?)\];', dart, re.DOTALL
+    )
+    assert match, 'kContractedVinculos não encontrada em employee.dart'
+    flutter = tuple(re.findall(r"'([^']+)'", match.group(1)))
+    assert flutter == tuple(CONTRACTED_VINCULOS), (
+        f'employee.dart={flutter} vs backend={tuple(CONTRACTED_VINCULOS)}'
+    )
+
+
+def test_the_flutter_form_offers_exactly_the_contracted_vinculos():
+    """O formulário simplificado não pode redigitar a lista.
+
+    Ele referencia `kContractedVinculos`; um literal Dart aqui recriaria a
+    divergência que este PR fecha, e ela voltaria a passar despercebida
+    porque o teste acima continuaria verde.
+    """
+    tab = _read(
+        'flutter', 'apps', 'epi_admin', 'lib', 'features', 'outsourced_companies',
+        'outsourced_employees_tab.dart',
+    )
+    match = re.search(r'const _kOutsourcedEmploymentTypes = ([^;]+);', tab)
+    assert match, '_kOutsourcedEmploymentTypes não encontrada'
+    assert match.group(1).strip() == 'kContractedVinculos', (
+        f'o formulário deve referenciar kContractedVinculos, achei: {match.group(1).strip()}'
+    )
+
+
+def test_the_flutter_status_literals_match_the_backend():
+    """Os literais que o Dart publica são os que o backend emite."""
+    from modules.employees.service import (
+        UNIT_LINK_STATUS_ACTIVE,
+        UNIT_LINK_STATUS_INACTIVE,
+        UNIT_LINK_STATUS_NONE,
+    )
+
+    dart = _read('flutter', 'packages', 'epi_api', 'lib', 'models', 'employee.dart')
+    for name, expected in (
+        ('kUnitLinkStatusActive', UNIT_LINK_STATUS_ACTIVE),
+        ('kUnitLinkStatusInactive', UNIT_LINK_STATUS_INACTIVE),
+        ('kUnitLinkStatusNone', UNIT_LINK_STATUS_NONE),
+    ):
+        match = re.search(rf"const String {name} = '([^']+)';", dart)
+        assert match, f'{name} não encontrada em employee.dart'
+        assert match.group(1) == expected, f'{name}={match.group(1)} vs backend={expected}'
+
+
+def test_the_flutter_list_comes_from_the_route_that_carries_the_link_state():
+    """A aba não pode voltar a se alimentar do bootstrap.
+
+    `modules/auth/service.py` chama `fetch_employees` SEM `unit_context_id`,
+    então o payload de bootstrap traz `local_unit_link_status` nulo para
+    todos. Uma tela alimentada por ele não quebra — apenas nunca oferece as
+    ações de vínculo, silenciosamente. É a pior forma de a paridade falhar:
+    sem erro, sem log, com a aparência de estar implementada.
+    """
+    cubit = _read(
+        'flutter', 'apps', 'epi_admin', 'lib', 'core', 'bloc',
+        'outsourced_employees_cubit.dart',
+    )
+    body = _strip_js_comments(cubit)
+    assert 'getEmployees(' in body, 'o cubit precisa consumir GET /api/employees'
+    assert '.bootstrap()' not in body, (
+        'o bootstrap não carrega o estado do vínculo local — a aba ficaria sem ações'
+    )
+
+
+def test_the_flutter_screen_does_not_deduce_the_link_state():
+    """Mesma proibição do Web Legado, do lado Dart: nada de reconstruir o
+    estado comparando `unitId` com a Unidade do ator."""
+    for parts in (
+        ('flutter', 'apps', 'epi_admin', 'lib', 'core', 'bloc',
+         'outsourced_employees_cubit.dart'),
+        ('flutter', 'apps', 'epi_admin', 'lib', 'features', 'outsourced_companies',
+         'outsourced_employees_tab.dart'),
+    ):
+        body = _strip_js_comments(_read(*parts))
+        offenders = re.findall(r'unitId\s*==\s*\w*[Uu]nit\w*', body)
+        assert not offenders, f'{parts[-1]}: dedução local do vínculo: {offenders}'
+
+
 @pytest.mark.parametrize('path', [
     ('static', 'js', 'views', 'outsourced-employees-view.js'),
     ('static', 'app.js'),
+    ('flutter', 'apps', 'epi_admin', 'lib', 'core', 'bloc',
+     'outsourced_employees_cubit.dart'),
+    ('flutter', 'apps', 'epi_admin', 'lib', 'features', 'employees',
+     'employee_detail_screen.dart'),
 ])
 def test_no_code_decides_who_is_outsourced_by_comparing_against_clt(path):
     """`tipo !== 'CLT'` como proxy de "é terceirizado" foi eliminado pelo PR
-    #214 no backend e sobreviveu neste módulo até o PR C2.
+    #214 no backend, sobreviveu no Web Legado até o PR C2 e no Flutter até o
+    F2 da #226.
 
     Enquanto CLT era o único vínculo próprio os dois davam no mesmo; com
     aprendiz, praticante e estagiário deixaram de dar. A decisão sai de uma
     lista, nunca de uma comparação contra uma única opção.
+
+    O padrão cobre os três nomes que a mesma propriedade recebe nas duas
+    linguagens: `tipo_vinculo` e `tipo` no JS, `employmentType` no Dart. Sem
+    o terceiro, este teste teria passado durante toda a vida das duas
+    ocorrências Dart que o F2 corrigiu.
     """
     body = _strip_js_comments(_read(*path))
-    offenders = re.findall(r"tipo_vinculo[^\n]*!==?\s*'CLT'|tipo\s*!==?\s*'CLT'", body)
+    offenders = re.findall(
+        r"(?:tipo_vinculo|tipo|employmentType)!?[^\n]{0,40}?!==?\s*'CLT'", body
+    )
     assert not offenders, f'comparação contra CLT reintroduzida em {path[-1]}: {offenders}'
 
 

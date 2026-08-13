@@ -117,10 +117,14 @@ class EmployeeDetailScreen extends StatelessWidget {
                   label: l10n.employeeEmploymentTypeLabel,
                   value: _employmentTypeLabel(l10n, employee.employmentType!),
                 ),
-              // Só faz sentido junto do vínculo não-CLT — mesma regra
-              // condicional do formulário e do web legado.
-              if (employee.employmentType != null &&
-                  employee.employmentType != 'CLT' &&
+              // Empresa de origem só existe para mão de obra CONTRATADA. A
+              // condição era `!= 'CLT'`, que classificava Menor Aprendiz,
+              // Praticante e Estagiário como contratados — inofensivo aqui
+              // apenas porque o backend zera `empresa_origem` para mão de
+              // obra própria e o `isNotEmpty` abaixo já filtrava. O idioma,
+              // porém, é o que o projeto baniu, e deixá-lo convida a cópia
+              // seguinte.
+              if (isContractedVinculo(employee.employmentType) &&
                   employee.sourceCompany != null &&
                   employee.sourceCompany!.isNotEmpty)
                 _DetailRow(

@@ -36,50 +36,106 @@ class _RecordingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-const _bootstrapPayload = {
-  'units': <Map<String, dynamic>>[],
+/// Resposta de `GET /api/employees` — a rota que a aba passou a consumir no
+/// F2 da #226, no lugar do bootstrap.
+///
+/// A amostra cobre os sete vínculos de propósito. Os três de mão de obra
+/// própria que NÃO são CLT (`Menor Aprendiz`, `Praticante`, `Estagiário`) são
+/// o motivo de o filtro ter deixado de ser `!= 'CLT'`: com a comparação
+/// antiga eles entravam nesta aba e ganhavam botões de Editar/Arquivar que
+/// batem nas rotas `.../outsourced-simplified`, que o backend recusa.
+const _employeesPayload = {
   'employees': [
     {'id': 1, 'name': 'CLT Fulano', 'tipo_vinculo': 'CLT'},
-    {'id': 2, 'name': 'Terceirizado Beltrano', 'tipo_vinculo': 'Terceirizado', 'role_name': 'Auxiliar'},
+    {
+      'id': 2,
+      'name': 'Terceirizado Beltrano',
+      'tipo_vinculo': 'Terceirizado',
+      'role_name': 'Auxiliar',
+      'local_unit_link_status': 'active',
+      'is_linked_to_actor_unit': true,
+    },
     {'id': 3, 'name': 'Prestador Ciclano', 'tipo_vinculo': 'Prestador de Serviço'},
+    {'id': 4, 'name': 'Temporário Deltrano', 'tipo_vinculo': 'Temporário'},
+    {'id': 5, 'name': 'Aprendiz Epsilano', 'tipo_vinculo': 'Menor Aprendiz'},
+    {'id': 6, 'name': 'Praticante Zetano', 'tipo_vinculo': 'Praticante'},
+    {'id': 7, 'name': 'Estagiário Etano', 'tipo_vinculo': 'Estagiário'},
   ],
-  'epis': <Map<String, dynamic>>[],
-  'users': <Map<String, dynamic>>[],
 };
 
 void main() {
   late _RecordingAdapter adapter;
-  late AuthApi authApi;
   late EmployeesApi employeesApi;
 
   setUp(() {
     adapter = _RecordingAdapter(responseByPath: {
-      '/api/bootstrap': _bootstrapPayload,
+      '/api/employees': _employeesPayload,
       '/api/employees/archived': {'employees': <Map<String, dynamic>>[]},
     });
-    final dio = Dio()..httpClientAdapter = adapter;
-    authApi = AuthApi(dio);
-    employeesApi = EmployeesApi(dio);
+    employeesApi = EmployeesApi(Dio()..httpClientAdapter = adapter);
   });
 
-  test('load filtra colaboradores CLT fora da lista (só terceirizado/prestador)', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+  test('load traz apenas mão de obra contratada — os três vínculos, e só eles', () async {
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     await cubit.load();
     await cubit.close();
-    expect(cubit.state.employees, hasLength(2));
-    expect(cubit.state.employees.map((e) => e.name), ['Terceirizado Beltrano', 'Prestador Ciclano']);
+    expect(cubit.state.employees.map((e) => e.name), [
+      'Terceirizado Beltrano',
+      'Prestador Ciclano',
+      'Temporário Deltrano',
+    ]);
+  });
+
+  test('mão de obra própria que não é CLT também fica fora', () async {
+    // O caso que `!= 'CLT'` deixava passar. Sem este teste, alguém pode
+    // reintroduzir a comparação antiga e os testes de "CLT fora" continuariam
+    // verdes — que foi exatamente como o defeito sobreviveu.
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
+    await cubit.load();
+    await cubit.close();
+    final names = cubit.state.employees.map((e) => e.name).toList();
+    for (final excluded in const [
+      'CLT Fulano',
+      'Aprendiz Epsilano',
+      'Praticante Zetano',
+      'Estagiário Etano',
+    ]) {
+      expect(names, isNot(contains(excluded)), reason: excluded);
+    }
+  });
+
+  test('a lista vem de GET /api/employees, não do bootstrap', () async {
+    // A distinção não é cosmética: o bootstrap chama `fetch_employees` sem
+    // contexto de Unidade, então `local_unit_link_status` viria nulo para
+    // todos e a tela nunca ofereceria ação de vínculo — em silêncio.
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
+    await cubit.load();
+    await cubit.close();
+    expect(adapter.paths, contains('/api/employees'));
+    expect(adapter.paths, isNot(contains('/api/bootstrap')));
+  });
+
+  test('o estado do vínculo local chega até o state', () async {
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
+    await cubit.load();
+    await cubit.close();
+    final beltrano = cubit.state.employees.firstWhere((e) => e.id == 2);
+    expect(beltrano.localUnitLinkStatus, kUnitLinkStatusActive);
+    expect(beltrano.isLinkedToActorUnit, isTrue);
+    // Quem veio sem o campo permanece em "não se aplica", sem virar 'none'.
+    final ciclano = cubit.state.employees.firstWhere((e) => e.id == 3);
+    expect(ciclano.localUnitLinkStatus, isNull);
   });
 
   test('load busca também os colaboradores arquivados com outsourced_only=1', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     await cubit.load();
     await cubit.close();
-    expect(adapter.paths, contains('/api/bootstrap'));
     expect(adapter.paths, contains('/api/employees/archived'));
   });
 
   test('search filtra por nome sem nova chamada de rede', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     await cubit.load();
     final callsBefore = adapter.paths.length;
     cubit.search('Beltrano');
@@ -90,7 +146,7 @@ void main() {
   });
 
   test('toggleArchivedView alterna a listagem', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     expect(cubit.state.showArchived, isFalse);
     cubit.toggleArchivedView();
     expect(cubit.state.showArchived, isTrue);
@@ -98,7 +154,7 @@ void main() {
   });
 
   test('createEmployee chama a rota simplificada e recarrega', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     final ok = await cubit.createEmployee({
       'company_id': 1,
       'unit_id': 2,
@@ -115,7 +171,7 @@ void main() {
   });
 
   test('archiveEmployee chama a rota de arquivamento e recarrega', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     final ok = await cubit.archiveEmployee(2, reason: 'Contrato encerrado');
     await cubit.close();
     expect(ok, isTrue);
@@ -123,7 +179,7 @@ void main() {
   });
 
   test('restoreEmployee chama a rota de restauração e recarrega', () async {
-    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi, authApi: authApi);
+    final cubit = OutsourcedEmployeesCubit(employeesApi: employeesApi);
     final ok = await cubit.restoreEmployee(2);
     await cubit.close();
     expect(ok, isTrue);

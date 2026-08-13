@@ -14,6 +14,24 @@ import '../../core/bloc/outsourced_employees_cubit.dart';
 class OutsourcedEmployeesTab extends StatelessWidget {
   const OutsourcedEmployeesTab({super.key});
 
+  /// Mesma dupla de permissões que o backend aceita nas três rotas de vínculo
+  /// (`authorize_action_any` com `employees:update` OU
+  /// `employees:update_simplified`).
+  ///
+  /// Administrador Local e Gestor de EPI — os perfis que mais usam esta tela —
+  /// só têm a segunda; exigir apenas `employees:update` esconderia a ação
+  /// justamente de quem precisa dela.
+  ///
+  /// Isto é defesa em profundidade, não a autorização: quem decide é o
+  /// backend. A tela só evita oferecer um botão que vai voltar como erro.
+  bool _canManageUnitLink(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! AuthAuthenticated) return false;
+    final session = authState.sessionContext;
+    return session.hasPermission('employees:update') ||
+        session.hasPermission('employees:update_simplified');
+  }
+
   Future<void> _openForm(BuildContext context, {Employee? employee}) async {
     final cubit = context.read<OutsourcedEmployeesCubit>();
     final saved = await showDialog<bool>(
@@ -60,6 +78,50 @@ class OutsourcedEmployeesTab extends StatelessWidget {
     );
     if (confirmed == true) {
       await cubit.archiveEmployee(employee.id, reason: reasonController.text.trim());
+    }
+  }
+
+  /// "Arquivar nesta Unidade" — pede o motivo, que vai para a auditoria.
+  ///
+  /// O texto do diálogo fala em Unidade, não em colaborador: é a distinção
+  /// entre sair de UMA Unidade e sair do tenant, e trocá-la faria alguém
+  /// arquivar globalmente achando que estava desvinculando localmente.
+  Future<void> _confirmUnitLinkDeactivate(BuildContext context, Employee employee) async {
+    final l10n = AppLocalizations.of(context);
+    final cubit = context.read<OutsourcedEmployeesCubit>();
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.employeeUnitLinkDeactivate),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(employee.name),
+            const SizedBox(height: EpiSpacing.md),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: l10n.employeeUnitLinkDeactivateReason,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.employeeUnitLinkDeactivate),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await cubit.deactivateUnitLink(employee.id, reason: reasonController.text.trim());
     }
   }
 
@@ -153,8 +215,17 @@ class OutsourcedEmployeesTab extends StatelessWidget {
                                   separatorBuilder: (_, __) => const Divider(height: 1),
                                   itemBuilder: (_, i) => _EmployeeTile(
                                     employee: state.filtered[i],
+                                    canManageUnitLink: _canManageUnitLink(ctx),
                                     onEdit: () => _openForm(ctx, employee: state.filtered[i]),
                                     onArchive: () => _confirmArchive(ctx, state.filtered[i]),
+                                    onLinkToUnit: () => ctx
+                                        .read<OutsourcedEmployeesCubit>()
+                                        .linkToUnit(state.filtered[i].id),
+                                    onActivateUnitLink: () => ctx
+                                        .read<OutsourcedEmployeesCubit>()
+                                        .activateUnitLink(state.filtered[i].id),
+                                    onDeactivateUnitLink: () =>
+                                        _confirmUnitLinkDeactivate(ctx, state.filtered[i]),
                                   ),
                                 )),
                     ),
@@ -167,27 +238,56 @@ class OutsourcedEmployeesTab extends StatelessWidget {
 }
 
 class _EmployeeTile extends StatelessWidget {
-  const _EmployeeTile({required this.employee, required this.onEdit, required this.onArchive});
+  const _EmployeeTile({
+    required this.employee,
+    required this.canManageUnitLink,
+    required this.onEdit,
+    required this.onArchive,
+    required this.onLinkToUnit,
+    required this.onActivateUnitLink,
+    required this.onDeactivateUnitLink,
+  });
 
   final Employee employee;
+  final bool canManageUnitLink;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
+  final VoidCallback onLinkToUnit;
+  final VoidCallback onActivateUnitLink;
+  final VoidCallback onDeactivateUnitLink;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // O estado vem PRONTO do backend. A tela não compara `unitId`, não infere
+    // pela empresa de origem, não adivinha — apenas lê e desenha.
+    final linkStatus = employee.localUnitLinkStatus;
     return ListTile(
       title: Text(employee.name),
-      subtitle: Text(
-        [
-          if (employee.role != null && employee.role!.isNotEmpty) employee.role!,
-          if (employee.employmentType != null) employee.employmentType!,
-          if (employee.sourceCompany != null && employee.sourceCompany!.isNotEmpty) employee.sourceCompany!,
-        ].join(' · '),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            [
+              if (employee.role != null && employee.role!.isNotEmpty) employee.role!,
+              if (employee.employmentType != null) employee.employmentType!,
+              if (employee.sourceCompany != null && employee.sourceCompany!.isNotEmpty)
+                employee.sourceCompany!,
+            ].join(' · '),
+          ),
+          // `null` = não se aplica: nem rótulo, nem ação. É o caso da mão de
+          // obra própria e o de não haver Unidade em contexto — e não deve
+          // parecer com "não vinculado", que é um estado acionável.
+          if (linkStatus != null) _UnitLinkBadge(status: linkStatus),
+        ],
       ),
+      isThreeLine: linkStatus != null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (canManageUnitLink && linkStatus != null)
+            _unitLinkAction(l10n, linkStatus),
           IconButton(
             tooltip: l10n.edit,
             icon: const Icon(Icons.edit_outlined),
@@ -199,6 +299,55 @@ class _EmployeeTile extends StatelessWidget {
             onPressed: onArchive,
           ),
         ],
+      ),
+    );
+  }
+
+  /// Uma ação por estado — e "arquivado" recebe **Reativar**, não "Vincular".
+  ///
+  /// Tratar arquivado como inexistente perderia a distinção que o backend faz
+  /// de propósito: reativar reaproveita a linha existente e o seu histórico,
+  /// enquanto vincular criaria outra. O ícone de arquivar é diferente do
+  /// `archive_outlined` ao lado justamente porque as duas ações têm alcances
+  /// diferentes — uma Unidade contra o tenant inteiro.
+  Widget _unitLinkAction(AppLocalizations l10n, String status) => switch (status) {
+        kUnitLinkStatusActive => IconButton(
+            tooltip: l10n.employeeUnitLinkDeactivate,
+            icon: const Icon(Icons.link_off),
+            onPressed: onDeactivateUnitLink,
+          ),
+        kUnitLinkStatusInactive => IconButton(
+            tooltip: l10n.employeeUnitLinkActivate,
+            icon: const Icon(Icons.link),
+            onPressed: onActivateUnitLink,
+          ),
+        _ => IconButton(
+            tooltip: l10n.employeeUnitLink,
+            icon: const Icon(Icons.add_link),
+            onPressed: onLinkToUnit,
+          ),
+      };
+}
+
+/// Rótulo do estado do vínculo local com a Unidade em contexto.
+class _UnitLinkBadge extends StatelessWidget {
+  const _UnitLinkBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final (label, color) = switch (status) {
+      kUnitLinkStatusActive => (l10n.employeeUnitLinkActive, EpiColors.success),
+      kUnitLinkStatusInactive => (l10n.employeeUnitLinkArchived, EpiColors.warning),
+      _ => (l10n.employeeUnitLinkAbsent, EpiColors.textMuted),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: EpiSpacing.xs),
+      child: Text(
+        '${l10n.employeeUnitLinkColumn}: $label',
+        style: TextStyle(color: color, fontSize: 12),
       ),
     );
   }

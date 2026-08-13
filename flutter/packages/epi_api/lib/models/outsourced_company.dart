@@ -19,6 +19,10 @@ class OutsourcedCompany {
     this.promotedAt = '',
     this.createdAt = '',
     this.unitId,
+    this.localUnitLinkStatus,
+    this.unitLinkId,
+    this.originUnitName = '',
+    this.linkedUnitsCount,
   });
 
   final int id;
@@ -34,6 +38,60 @@ class OutsourcedCompany {
   /// (`resolve_outsourced_company_unit_id`), independentemente do que for
   /// enviado aqui.
   final int? unitId;
+
+  // ── Vínculo da EMPRESA com a Unidade (ADR-0002 §12) ──────────────────────
+  //
+  // A empresa é única no tenant e pode ter vínculo com várias Unidades, cada
+  // um com estado próprio — mesmo desenho de `employee_unit_links`, tabela
+  // diferente (`outsourced_company_unit_links`).
+  //
+  // Duas assimetrias em relação ao colaborador que o cliente NÃO pode alisar:
+  //
+  // 1. O backend envia `local_status` aqui, e `local_unit_link_status` no
+  //    colaborador. O nome Dart é o mesmo nos dois por conveniência de quem
+  //    lê a UI; o mapeamento de JSON é que difere.
+  // 2. "Não vinculada" NÃO chega como `'none'`. Chega como AUSÊNCIA do campo
+  //    somada ao mascaramento dos dados operacionais — ver
+  //    [isMaskedForLinking].
+
+  /// `'active'` ou `'inactive'` quando o backend informou o vínculo desta
+  /// Unidade; `null` quando não informou.
+  ///
+  /// `null` **não** significa "sem vínculo". A rota de busca só anota o
+  /// estado para perfis escopados por Unidade (`admin`/`user`); para
+  /// Administrador Geral, de Registro e Master os itens voltam sem anotação.
+  /// Tratar `null` como "não vinculada" ofereceria "Vincular" para uma
+  /// empresa já vinculada, e criaria a impressão de que ninguém a usa.
+  final String? localUnitLinkStatus;
+
+  /// Id da linha em `outsourced_company_unit_links`, quando anotada.
+  final int? unitLinkId;
+
+  /// Unidade que cadastrou a empresa primeiro — metadado histórico.
+  ///
+  /// Desde a extensão de compartilhamento por tenant ela "não concede nem
+  /// restringe mais nada sozinha": quem autoriza é o vínculo explícito. Serve
+  /// para a Unidade que está decidindo se vincula saber de onde veio o
+  /// cadastro.
+  final String originUnitName;
+
+  /// Quantas Unidades mantêm vínculo ATIVO com esta empresa.
+  ///
+  /// O backend só envia este campo nos itens **mascarados** — os que a
+  /// Unidade ainda não vinculou. É, portanto, o discriminador de fato entre
+  /// "disponível para vincular" e "já vinculada"; ver [isMaskedForLinking].
+  final int? linkedUnitsCount;
+
+  /// `true` quando este item veio MASCARADO: a Unidade do ator ainda não tem
+  /// vínculo com a empresa, e o backend omitiu notas, contratos e
+  /// colaboradores de outras Unidades, mantendo só o suficiente para decidir
+  /// se vale reaproveitar o cadastro.
+  ///
+  /// A detecção é indireta — presença de [linkedUnitsCount] — porque o
+  /// backend não manda um sinalizador explícito. Fica isolada aqui, num lugar
+  /// só, em vez de espalhada pela UI: se o servidor passar a mandar um campo
+  /// próprio, muda esta linha e nada mais.
+  bool get isMaskedForLinking => linkedUnitsCount != null;
 
   /// Valor técnico estável (inglês) — `outsourced`, `service_provider` ou
   /// `other_contracted`. O rótulo em português vive só na UI, nunca é
@@ -99,6 +157,13 @@ class OutsourcedCompany {
         promotedAt: _asString(json['promoted_at']),
         createdAt: _asString(json['created_at']),
         unitId: (json['unit_id'] as num?)?.toInt(),
+        // `local_status` — nome do backend para empresa; ver a nota de
+        // assimetria acima. Ausente permanece `null` (não informado), nunca
+        // normalizado para 'none'.
+        localUnitLinkStatus: json['local_status'] as String?,
+        unitLinkId: (json['unit_link_id'] as num?)?.toInt(),
+        originUnitName: _asString(json['origin_unit_name']),
+        linkedUnitsCount: (json['linked_units_count'] as num?)?.toInt(),
       );
 
   /// Corpo aceito por POST/PUT `/api/outsourced-companies`.

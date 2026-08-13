@@ -30,6 +30,92 @@ class OutsourcedCompaniesApi {
     return _parseCompanies(res.data);
   }
 
+  // ── Vínculo da empresa com a Unidade (ADR-0002 §12) ─────────────────────
+  //
+  // Existe para resolver o mesmo problema do vínculo de colaborador, um nível
+  // acima: a empresa terceirizada é ÚNICA no tenant, e uma Unidade que ainda
+  // não trabalha com ela precisa localizar o cadastro existente e criar o seu
+  // próprio vínculo — sem duplicar a empresa e sem herdar contratos,
+  // colaboradores ou notas de outra Unidade.
+  //
+  // Não há rota de remoção, aqui como lá: arquivar o vínculo local é a forma
+  // de a Unidade declarar que não usa mais a empresa, e a exclusão definitiva
+  // segue exclusiva do fluxo de retenção e purga.
+
+  /// Busca empresas do tenant pelo nome, para o fluxo de vinculação.
+  ///
+  /// É o que permite a uma Unidade **sem vínculo** encontrar a empresa: a
+  /// listagem comum (`getOutsourcedCompanies`) mostra só o que a Unidade já
+  /// vinculou, então sem esta busca o cadastro existente seria invisível
+  /// justamente para quem precisa vinculá-lo — e a saída do operador seria
+  /// cadastrar a empresa de novo, que é o que o desenho existe para evitar.
+  ///
+  /// Os itens vêm de dois tipos, distinguidos por
+  /// [OutsourcedCompany.isMaskedForLinking]: já vinculados (completos, com
+  /// [OutsourcedCompany.localUnitLinkStatus]) e disponíveis para vincular
+  /// (mascarados — só identificação, CNPJ ofuscado, Unidade de origem e
+  /// quantas Unidades já usam).
+  Future<List<OutsourcedCompany>> searchOutsourcedCompanies({
+    required int actorUserId,
+    required String query,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/outsourced-companies/search',
+      queryParameters: {'actor_user_id': actorUserId, 'q': query},
+    );
+    return _parseCompanies(res.data);
+  }
+
+  /// "Vincular a esta Unidade" — `POST /api/outsourced-companies/{id}/link`.
+  ///
+  /// [unitId] é ignorado para perfis escopados, que sempre vinculam à própria
+  /// Unidade operacional. Não duplica cadastro: cria uma linha em
+  /// `outsourced_company_unit_links` apontando para a empresa existente.
+  Future<Map<String, dynamic>> linkOutsourcedCompanyToUnit(
+    int id, {
+    required int actorUserId,
+    int? unitId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/outsourced-companies/$id/link',
+      data: {
+        'actor_user_id': actorUserId,
+        if (unitId != null) 'unit_id': unitId,
+      },
+    );
+    return res.data ?? {};
+  }
+
+  /// "Reativar nesta Unidade" — reaproveita o vínculo existente e o seu
+  /// histórico, em vez de criar outro.
+  Future<Map<String, dynamic>> activateOutsourcedCompanyUnitLink(
+    int id, {
+    required int actorUserId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/outsourced-companies/$id/unit-link/activate',
+      data: {'actor_user_id': actorUserId},
+    );
+    return res.data ?? {};
+  }
+
+  /// "Arquivar nesta Unidade" — alcance de UMA Unidade.
+  ///
+  /// Não arquiva o cadastro corporativo nem afeta as outras Unidades
+  /// vinculadas: `local_status` é deliberadamente separado do `status` de
+  /// arquivamento corporativo.
+  Future<Map<String, dynamic>> deactivateOutsourcedCompanyUnitLink(
+    int id, {
+    required int actorUserId,
+    String reason = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/outsourced-companies/$id/unit-link/deactivate',
+      data: {'actor_user_id': actorUserId, 'reason': reason},
+    );
+    return res.data ?? {};
+  }
+
   Future<OutsourcedCompany?> getOutsourcedCompany(int id, {required int actorUserId}) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/outsourced-companies/$id',

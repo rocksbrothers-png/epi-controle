@@ -195,9 +195,21 @@ void main() {
       // A dupla espelha `authorize_action_any` do backend. Exigir só a
       // primeira esconderia a ação de Administrador Local e Gestor de EPI,
       // que têm apenas a segunda — e são quem mais usa esta tela.
-      final tab = _readTab();
-      expect(tab, contains("hasPermission('employees:update')"));
-      expect(tab, contains("hasPermission('employees:update_simplified')"));
+      //
+      // A verificação olha o CORPO do gate, não o formato da chamada. A versão
+      // anterior procurava o literal `hasPermission('employees:update')` e
+      // quebrou no F4, quando os quatro gates passaram a compartilhar um
+      // `_hasAny(context, const [...])` — refatoração que não mudou permissão
+      // nenhuma. Um teste que falha por causa da forma da chamada, e não da
+      // regra, é ruído: obriga a editá-lo a cada refatoração e ensina a
+      // ignorá-lo.
+      final gate = RegExp(
+        r'bool _canManageUnitLink\(BuildContext context\)\s*=>(.*?);',
+        dotAll: true,
+      ).firstMatch(_readTab());
+      expect(gate, isNotNull, reason: '_canManageUnitLink não encontrado');
+      expect(gate!.group(1), contains("'employees:update'"));
+      expect(gate.group(1), contains("'employees:update_simplified'"));
     });
 
     test('o cubit não expõe forma de APAGAR o vínculo', () {

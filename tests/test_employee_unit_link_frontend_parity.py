@@ -180,6 +180,63 @@ def test_flutter_and_web_say_the_same_thing_in_each_language(web_locale, arb_fil
         )
 
 
+def test_both_frontends_gate_archiving_with_the_same_pair_of_permissions():
+    """Arquivar colaborador terceirizado: `employees:delete` OU
+    `employees:update_simplified`, nas duas telas.
+
+    Administrador Local e Gestor de EPI nunca têm `employees:delete` e são
+    quem mais opera esta tela. Se um frontend exigir só a primeira, o botão
+    some para eles ali e continua aparecendo no outro — mesma pessoa, mesmo
+    perfil, telas discordando sobre o que ela pode fazer.
+    """
+    app_js = _read('static', 'app.js')
+    match = re.search(
+        r"outsourcedEmployee:.*?deletePermission:\s*'([^']+)'", app_js, re.DOTALL
+    )
+    assert match, 'deletePermission de outsourcedEmployee não encontrada em app.js'
+    web_pair = set(match.group(1).split())
+
+    tab = _read(
+        'flutter', 'apps', 'epi_admin', 'lib', 'features', 'outsourced_companies',
+        'outsourced_employees_tab.dart',
+    )
+    gate = re.search(r'bool _canArchive\(BuildContext context\)\s*=>(.*?);', tab, re.DOTALL)
+    assert gate, '_canArchive não encontrado no Flutter'
+    flutter_pair = set(re.findall(r"'([^']+)'", gate.group(1)))
+
+    assert flutter_pair == web_pair, f'web={sorted(web_pair)} vs flutter={sorted(flutter_pair)}'
+
+
+def test_the_flutter_create_gate_matches_the_backend_route():
+    """A rota simplificada usa `authorize_action` (não `_any`) com
+    `employees:create_simplified` — uma permissão só.
+
+    Gatear a tela por uma lista mais larga faria o formulário abrir para quem
+    o backend recusa no fim, depois de tudo preenchido.
+    """
+    from modules.employees.service import (  # noqa: F401  (garante o módulo carregável)
+        CONTRACTED_VINCULOS,
+    )
+
+    routes = _read('modules', 'employees', 'routes.py')
+    handler = re.search(
+        r'def handle_post_employee_outsourced_simplified.*?(?=\ndef )', routes, re.DOTALL
+    )
+    assert handler, 'rota de criação simplificada não encontrada'
+    assert 'PERM_EMPLOYEES_CREATE_SIMPLIFIED' in handler.group(0)
+    assert 'authorize_action_any' not in handler.group(0), (
+        'a rota passou a aceitar mais de uma permissão; o gate do Flutter precisa acompanhar'
+    )
+
+    tab = _read(
+        'flutter', 'apps', 'epi_admin', 'lib', 'features', 'outsourced_companies',
+        'outsourced_employees_tab.dart',
+    )
+    gate = re.search(r'bool _canCreate\(BuildContext context\)\s*=>(.*?);', tab, re.DOTALL)
+    assert gate, '_canCreate não encontrado no Flutter'
+    assert set(re.findall(r"'([^']+)'", gate.group(1))) == {'employees:create_simplified'}
+
+
 def test_the_flutter_screen_does_not_deduce_the_link_state():
     """Mesma proibição do Web Legado, do lado Dart: nada de reconstruir o
     estado comparando `unitId` com a Unidade do ator."""

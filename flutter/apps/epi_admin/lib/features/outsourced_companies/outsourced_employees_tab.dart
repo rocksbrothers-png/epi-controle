@@ -24,12 +24,47 @@ class OutsourcedEmployeesTab extends StatelessWidget {
   ///
   /// Isto é defesa em profundidade, não a autorização: quem decide é o
   /// backend. A tela só evita oferecer um botão que vai voltar como erro.
-  bool _canManageUnitLink(BuildContext context) {
+  bool _canManageUnitLink(BuildContext context) => _hasAny(context, const [
+        'employees:update',
+        'employees:update_simplified',
+      ]);
+
+  /// Criar colaborador no Cadastro Simplificado.
+  ///
+  /// A rota exige exatamente `employees:create_simplified`
+  /// (`authorize_action`, não `_any`) — é o piso técnico do módulo, e mesmo
+  /// Administrador Geral passa por ele.
+  bool _canCreate(BuildContext context) =>
+      _hasAny(context, const ['employees:create_simplified']);
+
+  /// Editar — mesma dupla que o Web Legado usa em `permissions.canUpdate`.
+  ///
+  /// A rota simplificada do backend é mais estrita (só
+  /// `employees:update_simplified`), mas nenhum perfil existente tem
+  /// `employees:update` sem ter também a simplificada, então as duas leituras
+  /// coincidem hoje. Mantenho o OR para que as duas telas do produto gateiem
+  /// pela mesma expressão — divergir aqui reintroduziria, no gating, o tipo de
+  /// dupla verdade que a #226 existe para eliminar.
+  bool _canEdit(BuildContext context) => _canManageUnitLink(context);
+
+  /// Arquivar e desarquivar o COLABORADOR (alcance: tenant inteiro).
+  ///
+  /// Espelha `ARCHIVAL_ENTITIES.outsourcedEmployee.deletePermission` do Web
+  /// Legado: `employees:delete` OU `employees:update_simplified`. Sem a
+  /// segunda, o botão sumiria para Administrador Local e Gestor de EPI, que
+  /// nunca têm `employees:delete` e são quem opera esta tela.
+  bool _canArchive(BuildContext context) => _hasAny(context, const [
+        'employees:delete',
+        'employees:update_simplified',
+      ]);
+
+  /// Gating de tela é defesa em profundidade, nunca a autorização: quem decide
+  /// é o backend. Serve só para não oferecer um botão que voltaria como 403.
+  bool _hasAny(BuildContext context, List<String> permissions) {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) return false;
     final session = authState.sessionContext;
-    return session.hasPermission('employees:update') ||
-        session.hasPermission('employees:update_simplified');
+    return permissions.any(session.hasPermission);
   }
 
   Future<void> _openForm(BuildContext context, {Employee? employee}) async {
@@ -158,7 +193,11 @@ class OutsourcedEmployeesTab extends StatelessWidget {
       },
       builder: (ctx, state) {
         return Scaffold(
-          floatingActionButton: state.showArchived
+          // Antes do F4 este botão aparecia para qualquer perfil que tivesse
+          // entrado na tela — o gate era só de rota. Quem não tem
+          // `employees:create_simplified` preenchia o formulário inteiro para
+          // receber 403 no fim.
+          floatingActionButton: state.showArchived || !_canCreate(ctx)
               ? null
               : FloatingActionButton.extended(
                   onPressed: () => _openForm(ctx),
@@ -205,6 +244,10 @@ class OutsourcedEmployeesTab extends StatelessWidget {
                                   separatorBuilder: (_, __) => const Divider(height: 1),
                                   itemBuilder: (_, i) => _ArchivedEmployeeTile(
                                     employee: state.filteredArchived[i],
+                                    // Desarquivar usa a mesma permissão de
+                                    // arquivar: as duas mexem no ciclo de vida
+                                    // do colaborador no tenant.
+                                    canRestore: _canArchive(ctx),
                                     onRestore: () => _confirmRestore(ctx, state.filteredArchived[i]),
                                   ),
                                 ))
@@ -216,6 +259,8 @@ class OutsourcedEmployeesTab extends StatelessWidget {
                                   itemBuilder: (_, i) => _EmployeeTile(
                                     employee: state.filtered[i],
                                     canManageUnitLink: _canManageUnitLink(ctx),
+                                    canEdit: _canEdit(ctx),
+                                    canArchive: _canArchive(ctx),
                                     onEdit: () => _openForm(ctx, employee: state.filtered[i]),
                                     onArchive: () => _confirmArchive(ctx, state.filtered[i]),
                                     onLinkToUnit: () => ctx
@@ -241,6 +286,8 @@ class _EmployeeTile extends StatelessWidget {
   const _EmployeeTile({
     required this.employee,
     required this.canManageUnitLink,
+    required this.canEdit,
+    required this.canArchive,
     required this.onEdit,
     required this.onArchive,
     required this.onLinkToUnit,
@@ -250,6 +297,8 @@ class _EmployeeTile extends StatelessWidget {
 
   final Employee employee;
   final bool canManageUnitLink;
+  final bool canEdit;
+  final bool canArchive;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
   final VoidCallback onLinkToUnit;
@@ -276,28 +325,44 @@ class _EmployeeTile extends StatelessWidget {
                 employee.sourceCompany!,
             ].join(' · '),
           ),
+          // Unidade DE ORIGEM do colaborador — a lotação dele, que é coisa
+          // diferente da Unidade que detém o vínculo local ("esta Unidade",
+          // implícita nas ações ao lado). Sem este rótulo a tela mostra uma
+          // Unidade só e o operador não tem como saber qual das duas é.
+          if (employee.unitName != null && employee.unitName!.isNotEmpty)
+            Text(
+              '${l10n.employeeUnitLabel}: ${employee.unitName}',
+              style: const TextStyle(fontSize: 12),
+            ),
           // `null` = não se aplica: nem rótulo, nem ação. É o caso da mão de
           // obra própria e o de não haver Unidade em contexto — e não deve
           // parecer com "não vinculado", que é um estado acionável.
           if (linkStatus != null) _UnitLinkBadge(status: linkStatus),
         ],
       ),
-      isThreeLine: linkStatus != null,
+      isThreeLine: true,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (canManageUnitLink && linkStatus != null)
             _unitLinkAction(l10n, linkStatus),
-          IconButton(
-            tooltip: l10n.edit,
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: onEdit,
-          ),
-          IconButton(
-            tooltip: l10n.archive,
-            icon: const Icon(Icons.archive_outlined),
-            onPressed: onArchive,
-          ),
+          // Estes dois botões apareciam para QUALQUER perfil que tivesse
+          // entrado na tela: o gate era só de rota, e `hasPermission` não era
+          // chamado em lugar nenhum do app. Um Gestor de EPI sem
+          // `employees:delete` via "Arquivar" e só descobria o bloqueio depois
+          // de confirmar.
+          if (canEdit)
+            IconButton(
+              tooltip: l10n.edit,
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: onEdit,
+            ),
+          if (canArchive)
+            IconButton(
+              tooltip: l10n.archive,
+              icon: const Icon(Icons.archive_outlined),
+              onPressed: onArchive,
+            ),
         ],
       ),
     );
@@ -354,7 +419,13 @@ class _UnitLinkBadge extends StatelessWidget {
 }
 
 class _ArchivedEmployeeTile extends StatelessWidget {
-  const _ArchivedEmployeeTile({required this.employee, required this.onRestore});
+  const _ArchivedEmployeeTile({
+    required this.employee,
+    required this.canRestore,
+    required this.onRestore,
+  });
+
+  final bool canRestore;
 
   final Map<String, dynamic> employee;
   final VoidCallback onRestore;
@@ -371,11 +442,13 @@ class _ArchivedEmployeeTile extends StatelessWidget {
           if (reason.isNotEmpty) reason,
         ].join(' · '),
       ),
-      trailing: TextButton.icon(
-        icon: const Icon(Icons.unarchive_outlined),
-        label: Text(l10n.restore),
-        onPressed: onRestore,
-      ),
+      trailing: canRestore
+          ? TextButton.icon(
+              icon: const Icon(Icons.unarchive_outlined),
+              label: Text(l10n.restore),
+              onPressed: onRestore,
+            )
+          : null,
     );
   }
 }

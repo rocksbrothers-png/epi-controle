@@ -213,8 +213,13 @@ def test_reading_paths_use_the_visibility_scope():
     """Os quatro pontos de leitura aprovados — e só eles."""
     import pathlib
 
+    # A contagem EXATA é o mecanismo: cada ponto de leitura novo tem de ser
+    # registrado aqui, conscientemente. Se um destes números subir sozinho num
+    # PR, é porque alguém ampliou o escopo sem passar por esta lista.
     expected = {
-        'modules/employees/routes.py': 1,   # handle_get_employee
+        # handle_get_employee + handle_get_employee_unit_links (F5A da #226),
+        # esta última aprovada pelo mesmo critério: é leitura.
+        'modules/employees/routes.py': 2,
         'modules/ficha/service.py': 1,      # filtro de assinaturas
         'modules/reports/service.py': 1,    # filtro de relatório
     }

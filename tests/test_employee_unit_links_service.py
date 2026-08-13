@@ -91,7 +91,7 @@ def test_linking_twice_returns_the_same_link_without_duplicating():
     first = create_employee_unit_link(conn, 100, 1, 11, 5)
     second = create_employee_unit_link(conn, 100, 1, 11, 5)
     assert first == second
-    assert len(fetch_employee_unit_links(conn, 100)) == 1
+    assert len(fetch_employee_unit_links(conn, 100, 1)) == 1
 
 
 def test_linking_again_does_not_revive_a_deactivated_link():
@@ -109,7 +109,7 @@ def test_the_same_person_can_be_linked_to_two_units():
     _base_schema(conn)
     create_employee_unit_link(conn, 100, 1, 10, 5)
     create_employee_unit_link(conn, 100, 1, 11, 5)
-    assert sorted(link['unit_id'] for link in fetch_employee_unit_links(conn, 100)) == [10, 11]
+    assert sorted(link['unit_id'] for link in fetch_employee_unit_links(conn, 100, 1)) == [10, 11]
 
 
 # ── ativar / desativar ──────────────────────────────────────────────────────

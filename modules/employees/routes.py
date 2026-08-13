@@ -43,6 +43,7 @@ from modules.employees.service import (
     fetch_archived_employees,
     fetch_employee_movements,
     fetch_employee_legal_entity_movements,
+    fetch_employee_unit_links_for_actor,
     fetch_employees,
     get_employee_lifecycle,
     purge_employee_history,
@@ -102,6 +103,40 @@ def handle_get_employee(handler, parsed, payload, match):
         employee['unit_name'] = base_unit['name'] if base_unit else None
         apply_current_unit_allocation(connection, [employee])
         return send_json(handler, 200, {'employee': employee})
+
+
+def handle_get_employee_unit_links(handler, parsed, payload, match):
+    """Vínculos de Unidade do colaborador — SOMENTE LEITURA (ADR-0002 §13).
+
+    Existe porque "vínculos ativos por Unidade" precisava de um dado que já
+    estava no service (`fetch_employee_unit_links`) e não era alcançável por
+    rota nenhuma.
+
+    Três coisas que esta rota deliberadamente NÃO faz:
+
+    1. Não cria, altera nem remove vínculo. Não há POST/PUT/PATCH/DELETE
+       equivalente, e as três rotas de escrita continuam sendo as únicas.
+    2. Não toca arquivamento nem purga. A exclusão definitiva segue exclusiva
+       do mecanismo de retenção, no prazo que o Administrador configurou.
+    3. Não devolve tudo para a tela filtrar. O recorte por Unidade acontece em
+       `fetch_employee_unit_links_for_actor`, no servidor, ANTES da resposta —
+       é regra de autorização, não de apresentação. Devolver a lista completa
+       e esconder no cliente deixaria o dado atravessar a fronteira, visível
+       em qualquer inspeção de rede.
+    """
+    employee_id = int(match.group(1))
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_EMPLOYEES_VIEW)
+        employee = get_employee_by_id(connection, employee_id)
+        if not employee:
+            return send_json(handler, 404, {'error': 'Colaborador não encontrado.'})
+        # LEITURA: mesma porta de `handle_get_employee`. Usar o escopo ESTRITO
+        # aqui negaria justamente a quem o vínculo local tornou visível — que
+        # é o caso de uso da rota.
+        ensure_actor_employee_visibility_scope(connection, actor, employee)
+        return send_json(handler, 200, {
+            'unit_links': fetch_employee_unit_links_for_actor(connection, actor, employee),
+        })
 
 
 def handle_get_employee_unit_movements(handler, parsed, payload, match):
@@ -727,6 +762,7 @@ def register_routes(router):
     router.register('POST',   r'/api/employees/(\d+)/purge-cancel$',  handle_post_employee_purge_cancel,  regex=True)
     router.register('POST',   r'/api/employees/(\d+)/purge-confirm$', handle_post_employee_purge_confirm, regex=True)
     router.register('POST',   '/api/employee-unit-movements',     handle_post_employee_unit_movements)
+    router.register('GET',    r'^/api/employees/(\d+)/unit-links$',           handle_get_employee_unit_links,            regex=True)
     router.register('POST',   r'^/api/employees/(\d+)/link$',                 handle_post_employee_unit_link,            regex=True)
     router.register('POST',   r'^/api/employees/(\d+)/unit-link/activate$',   handle_post_employee_unit_link_activate,   regex=True)
     router.register('POST',   r'^/api/employees/(\d+)/unit-link/deactivate$', handle_post_employee_unit_link_deactivate, regex=True)

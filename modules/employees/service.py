@@ -198,6 +198,16 @@ _UNIT_LINK_SELECT_COLUMNS = (
 )
 
 
+def _prefixed_unit_link_columns(alias):
+    """As mesmas colunas, qualificadas por alias, para consultas com JOIN.
+
+    Derivar da lista única evita a divergência clássica: alguém acrescenta uma
+    coluna em `_UNIT_LINK_SELECT_COLUMNS` e a consulta com JOIN continua
+    devolvendo o conjunto antigo, silenciosamente.
+    """
+    return ', '.join(f'{alias}.{column}' for column in _UNIT_LINK_SELECT_COLUMNS.split(', '))
+
+
 def ensure_employee_is_linkable_to_units(employee) -> None:
     """Só mão de obra CONTRATADA ganha vínculo local.
 
@@ -226,16 +236,64 @@ def fetch_employee_unit_link(connection, employee_id, unit_id):
     return row_to_dict(row) if row else None
 
 
-def fetch_employee_unit_links(connection, employee_id):
-    """Todos os vínculos do colaborador. Como no molde da empresa, é para os
-    perfis NÃO escopados por Unidade (Geral/Registro/Master) — Administrador
-    Local e Gestor de EPI enxergam só o vínculo da própria Unidade."""
+def fetch_employee_unit_links(connection, employee_id, company_id):
+    """Vínculos do colaborador dentro do tenant, com o nome da Unidade.
+
+    Consulta CRUA: devolve tudo o que o tenant tem, sem aplicar escopo por
+    Unidade. Quem aplica o escopo é `fetch_employee_unit_links_for_actor` —
+    e é por lá que as rotas devem passar.
+
+    `company_id` é obrigatório de propósito. A versão anterior filtrava só por
+    `employee_id`, deixando o isolamento de tenant por conta de quem chamasse;
+    como nunca houve chamador, o débito nunca apareceu. Exigir o tenant aqui
+    fecha a porta antes de a primeira rota existir, em vez de depois.
+    """
     rows = connection.execute(
-        f'SELECT {_UNIT_LINK_SELECT_COLUMNS} FROM employee_unit_links '
-        'WHERE employee_id = ? ORDER BY created_at',
-        (int(employee_id),),
+        f'SELECT {_prefixed_unit_link_columns("l")}, u.name AS unit_name '
+        'FROM employee_unit_links l '
+        'LEFT JOIN units u ON u.id = l.unit_id '
+        'WHERE l.company_id = ? AND l.employee_id = ? '
+        'ORDER BY u.name, l.unit_id',
+        (int(company_id), int(employee_id)),
     ).fetchall()
     return [row_to_dict(row) for row in rows]
+
+
+def fetch_employee_unit_links_for_actor(connection, actor, employee):
+    """Vínculos que ESTE ator pode ver — escopo aplicado no servidor.
+
+    A política já estava escrita, em prosa, no docstring da consulta crua:
+    perfis não escopados (Geral, Registro, Master) veem todos os vínculos do
+    colaborador; Administrador Local e Gestor de EPI veem apenas o da própria
+    Unidade. Ela nunca tinha sido implementada porque nenhuma rota expunha o
+    dado.
+
+    O recorte acontece AQUI, não na tela. Devolver a lista inteira e deixar o
+    frontend esconder transformaria uma regra de autorização em regra visual:
+    o dado já teria atravessado a fronteira, visível em qualquer inspeção de
+    rede, e cada novo consumidor precisaria reimplementar o filtro — até um
+    deles esquecer.
+
+    Ator escopado sem Unidade operacional resolvida devolve lista vazia, não a
+    lista completa: na dúvida sobre o escopo, mostra-se menos.
+    """
+    from epi_backend.db import table_exists
+
+    if not employee or not table_exists(connection, 'employee_unit_links'):
+        return []
+    company_id = int(employee['company_id'])
+    links = fetch_employee_unit_links(connection, employee['id'], company_id)
+    if (actor or {}).get('role') not in ('admin', 'user'):
+        return links
+    # Escopado: uma única Unidade, recortada da MESMA consulta. Buscar o
+    # vínculo por outro caminho traria outro formato de linha (sem
+    # `unit_name`) e uma segunda regra de tenant para manter em dia — dois
+    # jeitos de descrever a mesma coisa, que é como as duas descrições
+    # acabam divergindo.
+    unit_id = actor_operational_unit_id(connection, actor)
+    if not unit_id:
+        return []
+    return [link for link in links if int(link['unit_id']) == int(unit_id)]
 
 
 def create_employee_unit_link(connection, employee_id, company_id, unit_id, actor_user_id):

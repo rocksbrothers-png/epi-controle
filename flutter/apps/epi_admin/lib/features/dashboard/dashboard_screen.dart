@@ -170,6 +170,14 @@ class _DashboardContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: EpiSpacing.xl),
+        // Conformidade de estoque (item 2) — fonte única do backend.
+        Text(
+          l10n.dashboardComplianceTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: EpiSpacing.md),
+        _ComplianceSection(compliance: state.compliance),
+        const SizedBox(height: EpiSpacing.xl),
         // Weekly deliveries chart
         Text(
           l10n.dashboardWeeklyChartTitle,
@@ -194,6 +202,72 @@ class _DashboardContent extends StatelessWidget {
           )
         else
           ...state.alerts.map((a) => _AlertTile(alert: a)),
+      ],
+    );
+  }
+}
+
+/// Seção de conformidade de estoque (item 2). Mostra apenas as categorias com
+/// contagem > 0 (chips coloridos por severidade). Quando tudo está zerado (ou o
+/// backend não expõe o endpoint), exibe o estado "em conformidade".
+class _ComplianceSection extends StatelessWidget {
+  const _ComplianceSection({required this.compliance});
+  final Map<String, int> compliance;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    int c(String k) => compliance[k] ?? 0;
+
+    // (label, contagem, cor) — ordem por severidade.
+    final items = <(String, int, Color)>[
+      (l10n.complianceCaExpired, c('ca_expired'), EpiColors.danger),
+      (l10n.complianceProductExpired, c('product_expired'), EpiColors.danger),
+      (l10n.complianceAdminBlocked, c('admin_blocked'), EpiColors.danger),
+      (l10n.complianceCaExpiring, c('ca_expiring'), EpiColors.warning),
+      (l10n.complianceProductExpiring, c('product_expiring'), EpiColors.warning),
+      (l10n.complianceMissingManufacture, c('missing_manufacture'), EpiColors.info),
+      (l10n.complianceMissingLot, c('missing_lot'), EpiColors.info),
+    ].where((e) => e.$2 > 0).toList();
+
+    if (items.isEmpty) {
+      return EpiCard(
+        child: Row(
+          children: [
+            const Icon(Icons.verified_outlined,
+                color: EpiColors.success, size: 20),
+            const SizedBox(width: EpiSpacing.sm),
+            Expanded(child: Text(l10n.dashboardComplianceAllOk)),
+          ],
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: EpiSpacing.sm,
+      runSpacing: EpiSpacing.sm,
+      children: [
+        for (final it in items)
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: EpiSpacing.md, vertical: EpiSpacing.sm),
+            decoration: BoxDecoration(
+              color: it.$3.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(EpiRadius.sm),
+              border: Border.all(color: it.$3.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${it.$2}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: it.$3),
+                ),
+                const SizedBox(width: EpiSpacing.xs),
+                Text(it.$1),
+              ],
+            ),
+          ),
       ],
     );
   }

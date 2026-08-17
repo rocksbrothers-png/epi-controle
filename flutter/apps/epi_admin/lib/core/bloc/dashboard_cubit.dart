@@ -13,6 +13,7 @@ class DashboardState extends Equatable {
     this.criticalStock = 0,
     this.pendingPurchases = 0,
     this.alerts = const [],
+    this.compliance = const {},
     this.legalEntities = const [],
     this.units = const [],
     this.sectors = const [],
@@ -28,6 +29,11 @@ class DashboardState extends Equatable {
   final int criticalStock;
   final int pendingPurchases;
   final List<Map<String, dynamic>> alerts;
+
+  /// Resumo de conformidade de estoque (item 2): contagens por categoria vindas
+  /// da FONTE ÚNICA do backend (GET /api/stock/compliance → `summary`). A REGRA
+  /// é do backend; o dashboard apenas exibe. Vazio em backends antigos.
+  final Map<String, int> compliance;
 
   /// Fontes do filtro em cascata Empresa → CNPJ → Unidade → Setor. Vêm do
   /// bootstrap, já escopadas por papel pelo backend.
@@ -62,6 +68,7 @@ class DashboardState extends Equatable {
         criticalStock,
         pendingPurchases,
         alerts,
+        compliance,
         legalEntities,
         units,
         sectors,
@@ -118,6 +125,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   List<Map<String, dynamic>> _rawDeliveries = const [];
   List<Map<String, dynamic>> _rawEpis = const [];
   List<Map<String, dynamic>> _rawEmployees = const [];
+  Map<String, int> _rawCompliance = const {};
   int _rawPendingPurchases = 0;
   List<Map<String, dynamic>> _rawAlerts = const [];
 
@@ -134,11 +142,16 @@ class DashboardCubit extends Cubit<DashboardState> {
         );
       }
 
+      // Conformidade de estoque (item 2): fonte única do backend. Degrada
+      // graciosamente (mapa vazio) em backends sem o endpoint.
+      final compliance = await _loadComplianceSafe();
+
       // Requisições de compra pendentes: agora vêm do bootstrap
       // (pending_purchases), já escopadas e gateadas por permissão no backend.
       _rawDeliveries = bootstrap.deliveries;
       _rawEpis = bootstrap.epis;
       _rawEmployees = bootstrap.employees;
+      _rawCompliance = compliance;
       _rawPendingPurchases = bootstrap.pendingPurchases;
       _rawAlerts = bootstrap.alerts;
 
@@ -271,11 +284,12 @@ class DashboardCubit extends Cubit<DashboardState> {
               e.manufacturerValidityStatus == 'expiring')
           .length,
       criticalStock: epis.where((e) => e.isCriticalStock).length,
-      // Pendências de compra vêm agregadas do backend e não são recortáveis no
-      // cliente; mantidas como estão para não exibir número inconsistente com
-      // o filtro.
+      // Pendências de compra e conformidade vêm agregadas do backend e não são
+      // recortáveis no cliente; mantidas como estão para não exibir número
+      // inconsistente com o filtro.
       pendingPurchases: _rawPendingPurchases,
       alerts: _rawAlerts,
+      compliance: _rawCompliance,
       legalEntities: legalEntities,
       units: units,
       sectors: _sectorsOf(_rawEmployees, scopedUnits: scopedUnits),
@@ -300,5 +314,24 @@ class DashboardCubit extends Cubit<DashboardState> {
       if (sector.isNotEmpty) out.add(sector);
     }
     return out.toList()..sort();
+  }
+
+  /// Lê o resumo de conformidade da fonte única. Retorna `{}` se o endpoint não
+  /// existir ou falhar — a seção de conformidade some sem quebrar o dashboard.
+  Future<Map<String, int>> _loadComplianceSafe() async {
+    try {
+      final res = await ApiClient.stock.getStockCompliance(
+        actorUserId: ApiClient.actorUserId,
+      );
+      final summary = res['summary'];
+      if (summary is Map) {
+        return summary.map(
+          (k, v) => MapEntry('$k', v is int ? v : int.tryParse('$v') ?? 0),
+        );
+      }
+      return const {};
+    } on Exception {
+      return const {};
+    }
   }
 }

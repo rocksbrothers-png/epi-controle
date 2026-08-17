@@ -132,9 +132,9 @@ class _PasteImportDialogState extends State<PasteImportDialog> {
                 controller: _text,
                 minLines: 6,
                 maxLines: 12,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'CNPJ\tRazão social\tNome fantasia\tTipo',
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: l10n.legalEntitiesImportColumnsHint,
                 ),
               ),
               if (_summary != null) ...[

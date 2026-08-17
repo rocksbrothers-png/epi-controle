@@ -908,12 +908,40 @@ def create_service_contract(connection, payload, company_id, outsourced_company_
     return int(cursor.lastrowid)
 
 
-def fetch_service_contracts(connection, company_id, outsourced_company_id):
-    rows = connection.execute(
-        f'SELECT {_CONTRACT_SELECT_COLUMNS} FROM service_contracts '  # noqa: S608
-        'WHERE company_id = ? AND outsourced_company_id = ? ORDER BY created_at DESC',
-        (company_id, outsourced_company_id),
-    ).fetchall()
+def fetch_service_contracts(connection, company_id, outsourced_company_id, *, scope_unit_id=None):
+    """Contratos de serviço da empresa terceirizada, recortados por Unidade.
+
+    ``scope_unit_id`` restringe a leitura aos contratos da PRÓPRIA Unidade
+    mais os de alcance corporativo (``unit_id IS NULL``, que valem para o
+    tenant inteiro). Sem ele — perfis não escopados por Unidade — devolve
+    todos, como antes.
+
+    O recorte existe porque a empresa terceirizada é única no tenant e pode
+    ter vínculo com várias Unidades, cada uma com o SEU contrato: número,
+    vigência e, sobretudo, ``epi_responsibility_override``, que decide quem
+    paga o EPI. Devolver os contratos das outras Unidades a quem acabou de
+    vincular a empresa seria herdar o que não é seu — exatamente o que
+    ``_mask_outsourced_company_public_fields`` impede ANTES do vínculo, e que
+    ficava desprotegido depois dele.
+
+    Escopo aplicado aqui, no servidor, e não na tela: é regra de
+    autorização. Filtrar no cliente sugeriria que a lista completa chegou e
+    só está escondida — e a próxima pessoa a mexer removeria o filtro
+    "redundante" achando que o backend protege.
+    """
+    if scope_unit_id:
+        rows = connection.execute(
+            f'SELECT {_CONTRACT_SELECT_COLUMNS} FROM service_contracts '  # noqa: S608
+            'WHERE company_id = ? AND outsourced_company_id = ? '
+            'AND (unit_id IS NULL OR unit_id = ?) ORDER BY created_at DESC',
+            (company_id, outsourced_company_id, int(scope_unit_id)),
+        ).fetchall()
+    else:
+        rows = connection.execute(
+            f'SELECT {_CONTRACT_SELECT_COLUMNS} FROM service_contracts '  # noqa: S608
+            'WHERE company_id = ? AND outsourced_company_id = ? ORDER BY created_at DESC',
+            (company_id, outsourced_company_id),
+        ).fetchall()
     return [row_to_dict(row) for row in rows]
 
 

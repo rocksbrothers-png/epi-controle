@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../api/api_client.dart';
 import '../database/sync_database.dart';
@@ -13,6 +14,11 @@ class SyncService {
   bool _syncing = false;
 
   void startListening() {
+    // A fila de sync offline usa sqflite, que NÃO é suportado no Flutter Web
+    // (e no web o app está sempre online, chamando a API diretamente). Sem este
+    // guard, o listener dispara flush() → SyncDatabase/sqflite lança uma exceção
+    // não tratada que aparece como "Uncaught Error" no console de todas as telas.
+    if (kIsWeb) return;
     Connectivity().onConnectivityChanged.listen((results) {
       final online = results.any((r) => r != ConnectivityResult.none);
       if (online) flush();
@@ -20,6 +26,7 @@ class SyncService {
   }
 
   Future<void> flush() async {
+    if (kIsWeb) return;
     if (_syncing) return;
     _syncing = true;
     try {

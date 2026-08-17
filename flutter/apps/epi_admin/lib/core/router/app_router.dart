@@ -2,6 +2,7 @@ import 'package:epi_api/epi_api.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/change_password_screen.dart';
 import '../../features/companies/companies_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/deliveries/deliveries_screen.dart';
@@ -42,13 +43,14 @@ GoRouter buildRouter({
   required ValueNotifier<bool> isAuthenticated,
   required ValueNotifier<List<String>> permissions,
   required ValueNotifier<Map<String, bool>> moduleVisibility,
+  required ValueNotifier<bool> mustChangePassword,
   required LocaleProvider localeProvider,
   required ThemeModeNotifier themeNotifier,
 }) {
   return GoRouter(
     initialLocation: Routes.login,
-    refreshListenable:
-        Listenable.merge([isAuthenticated, permissions, moduleVisibility]),
+    refreshListenable: Listenable.merge(
+        [isAuthenticated, permissions, moduleVisibility, mustChangePassword]),
     redirect: (context, state) {
       if (!_kUsarFlutterLogin) return null;
       final isLoggedIn = isAuthenticated.value;
@@ -56,6 +58,19 @@ GoRouter buildRouter({
       final isPublicRoute = publicRoutes.contains(state.matchedLocation);
       if (!isLoggedIn && !isOnLogin && !isPublicRoute) return Routes.login;
       if (isLoggedIn && isOnLogin) return Routes.dashboard;
+      // Gate de senha temporária: enquanto a troca é obrigatória, prende o
+      // usuário na tela de troca e bloqueia qualquer outra rota privada.
+      if (isLoggedIn && mustChangePassword.value) {
+        return state.matchedLocation == Routes.changePassword
+            ? null
+            : Routes.changePassword;
+      }
+      // Já trocou (ou não precisa): não deixa ficar preso na tela de troca.
+      if (isLoggedIn &&
+          !mustChangePassword.value &&
+          state.matchedLocation == Routes.changePassword) {
+        return Routes.dashboard;
+      }
       // Permission guard: redirect to dashboard when the user lacks the
       // required permission for this route. Empty permissions never unlock
       // private screens; this prevents a transient permissive state during
@@ -82,6 +97,11 @@ GoRouter buildRouter({
         path: Routes.login,
         name: 'login',
         builder: (ctx, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: Routes.changePassword,
+        name: 'changePassword',
+        builder: (ctx, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: Routes.qr,

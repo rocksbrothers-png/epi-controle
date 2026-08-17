@@ -141,3 +141,22 @@ lib/features/subscription/subscription_screen.dart|Nenhuma assinatura ativa
 lib/features/subscription/subscription_screen.dart|Não foi possível carregar a assinatura.
 lib/features/subscription/subscription_screen.dart|Quando uma assinatura for contratada, os detalhes aparecerão aqui.
 lib/features/subscription/subscription_screen.dart|Seu acesso continuará disponível até o final do período já pago.\n
+
+# ─────────────────────────────────────────────────────────────────────────────
+# (B) DÉBITO TÉCNICO — tela de troca obrigatória de senha (Lote 1 de paridade).
+#
+# Vieram junto com `change_password_screen.dart` do epi-controle-app, onde já
+# constam na mesma lista com o mesmo texto. São débito herdado, não novo: o
+# arquivo chegou aqui como está lá, e migrá-lo para epi_i18n no mesmo PR que
+# traz a tela misturaria a sincronização com uma mudança de conteúdo — e
+# tornaria impossível revisar o diff contra o repositório de origem.
+#
+# Para zerar: migrar nos DOIS repositórios ao mesmo tempo, senão o gate de
+# drift passa a acusar a divergência que a migração criaria.
+lib/features/auth/change_password_screen.dart|Confirmar nova senha
+lib/features/auth/change_password_screen.dart|Defina uma nova senha
+lib/features/auth/change_password_screen.dart|Nova senha
+lib/features/auth/change_password_screen.dart|Sair
+lib/features/auth/change_password_screen.dart|Salvar nova senha
+lib/features/auth/change_password_screen.dart|Senha atual (temporária)
+lib/features/auth/change_password_screen.dart|Sua senha é temporária. Por segurança, defina uma nova senha para continuar.

@@ -1,5 +1,6 @@
 abstract final class Routes {
   static const login       = '/login';
+  static const changePassword = '/change-password';
   static const dashboard   = '/';
   static const employees   = '/employees';
   static const employeeDetail = '/employees/:id';
@@ -29,6 +30,7 @@ abstract final class Routes {
   /// aponta apenas para rotas existentes.
   static const all = <String>[
     login,
+    changePassword,
     dashboard,
     employees,
     employeeDetail,

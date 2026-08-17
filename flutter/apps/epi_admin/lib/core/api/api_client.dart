@@ -201,6 +201,47 @@ class ApiClient {
     final resp = await _dio.get<Map<String, dynamic>>('/api/auth/me');
     return resp.data ?? const {};
   }
+
+
+  /// Troca a senha do próprio usuário (encerra a política de senha temporária
+  /// no backend). Usado pela tela de troca obrigatória no 1º acesso.
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _dio.post<Map<String, dynamic>>('/api/change-password', data: {
+        'actor_user_id': actorUserId,
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      });
+    } on DioException catch (e) {
+      throw ApiException(_extractErrorMessage(e));
+    }
+  }
+
+  /// Extrai a mensagem do envelope de erro do backend. Tolera os dois formatos
+  /// em uso: `{"error":{"message":...}}` e `{"error":"..."}`.
+  static String _extractErrorMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final err = data['error'];
+      if (err is Map && err['message'] is String) {
+        return err['message'] as String;
+      }
+      if (err is String && err.isNotEmpty) return err;
+      if (data['message'] is String) return data['message'] as String;
+    }
+    return e.message ?? 'Erro ao comunicar com o servidor';
+  }
+}
+
+/// Erro de negócio devolvido pela API, já com a mensagem pronta para exibição.
+class ApiException implements Exception {
+  ApiException(this.message);
+  final String message;
+  @override
+  String toString() => message;
 }
 
 class _RetryInterceptor extends Interceptor {

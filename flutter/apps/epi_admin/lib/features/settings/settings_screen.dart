@@ -265,7 +265,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
   late final TextEditingController _titulo;
   late final TextEditingController _declaracao;
   late final TextEditingController _observacoes;
-  late bool _rastreabilidade;
+  late final TextEditingController _rastreabilidade;
 
   @override
   void initState() {
@@ -273,7 +273,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
     _titulo = TextEditingController(text: widget.config.titulo);
     _declaracao = TextEditingController(text: widget.config.declaracao);
     _observacoes = TextEditingController(text: widget.config.observacoes);
-    _rastreabilidade = widget.config.rastreabilidade;
+    _rastreabilidade = TextEditingController(text: widget.config.rastreabilidade);
   }
 
   @override
@@ -283,7 +283,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
       _titulo.text = widget.config.titulo;
       _declaracao.text = widget.config.declaracao;
       _observacoes.text = widget.config.observacoes;
-      _rastreabilidade = widget.config.rastreabilidade;
+      _rastreabilidade.text = widget.config.rastreabilidade;
     }
   }
 
@@ -292,6 +292,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
     _titulo.dispose();
     _declaracao.dispose();
     _observacoes.dispose();
+    _rastreabilidade.dispose();
     super.dispose();
   }
 
@@ -328,12 +329,15 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
             ),
             maxLines: 3,
           ),
-          const SizedBox(height: EpiSpacing.sm),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.settingsFichaTracking),
-            value: _rastreabilidade,
-            onChanged: (v) => setState(() => _rastreabilidade = v),
+          const SizedBox(height: EpiSpacing.md),
+          // Rótulo de rastreabilidade impresso no rodapé da ficha (texto
+          // livre — o backend trata como String, não como liga/desliga).
+          TextField(
+            controller: _rastreabilidade,
+            decoration: InputDecoration(
+              labelText: l10n.settingsFichaTracking,
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: EpiSpacing.lg),
           EpiButton(
@@ -354,7 +358,7 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
             titulo: _titulo.text,
             declaracao: _declaracao.text,
             observacoes: _observacoes.text,
-            rastreabilidade: _rastreabilidade,
+            rastreabilidade: _rastreabilidade.text,
           ),
         );
   }

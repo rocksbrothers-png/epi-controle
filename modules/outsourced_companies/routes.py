@@ -180,7 +180,18 @@ def handle_get_service_contracts(handler, parsed, payload, match):
             return send_json(handler, 404, {'error': 'Empresa terceirizada não encontrada.'})
         ensure_company_access(actor, entity['company_id'])
         ensure_actor_outsourced_company_scope(connection, actor, entity)
-        data = fetch_service_contracts(connection, int(actor['company_id']), entity_id)
+        # Administrador Local e Gestor de EPI leem só os contratos da própria
+        # Unidade (mais os de alcance corporativo). Antes do fluxo de vínculo
+        # da #226 isso não aparecia: só a Unidade de origem alcançava a
+        # empresa, então não havia uma segunda Unidade para vazar contrato
+        # para. Com o vínculo, passa a haver.
+        scope_unit_id = (
+            actor_operational_unit_id(connection, actor)
+            if actor.get('role') in ('admin', 'user') else None
+        )
+        data = fetch_service_contracts(
+            connection, int(actor['company_id']), entity_id, scope_unit_id=scope_unit_id,
+        )
         return send_json(handler, 200, {'service_contracts': data, 'items': data})
 
 

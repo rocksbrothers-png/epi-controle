@@ -182,6 +182,11 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
         'apps/epi_admin/lib/core/router/app_router.dart',
         'apps/epi_admin/lib/core/router/route_permissions.dart',
         'packages/epi_api/test/handover_contract_test.dart',
+        # Lote 5 — configurações, empresas e core/widgets/
+        'apps/epi_admin/lib/core/widgets/create_company_dialog.dart',
+        'apps/epi_admin/lib/core/bloc/settings_cubit.dart',
+        'apps/epi_admin/lib/features/settings/settings_screen.dart',
+        'packages/epi_api/lib/endpoints/settings_api.dart',
         # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
@@ -189,11 +194,9 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
 
 
 @pytest.mark.parametrize('lote_pendente', [
-    # Lote 5 — configurações, empresas e core/widgets/
-    'apps/epi_admin/lib/core/widgets/create_company_dialog.dart',
-    'apps/epi_admin/lib/core/bloc/settings_cubit.dart',
-    'apps/epi_admin/lib/features/settings/settings_screen.dart',
-    # Lote 6 — robustez de plataforma (botão "Sair" na AppBar)
+    # Lote 6 — robustez de plataforma (botão "Sair" na AppBar). Último dos 33
+    # arquivos divergentes mapeados na auditoria; quando ele entrar, esta lista
+    # fica vazia e o parametrize passa a receber uma lista vazia de propósito.
     'apps/epi_admin/lib/core/shell/app_shell.dart',
 ])
 def test_o_manifesto_nao_promete_o_que_ainda_nao_esta_sincronizado(lote_pendente):

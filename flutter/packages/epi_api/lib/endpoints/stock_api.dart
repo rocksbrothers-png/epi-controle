@@ -18,6 +18,28 @@ class StockApi {
     return (res.data?['manufacture_date'] as String?)?.trim() ?? '';
   }
 
+  /// Fonte ÚNICA de conformidade de estoque (item 2): a mesma base do Dashboard
+  /// e da tela "Validade e Bloqueios". Retorna `summary` (contagens por
+  /// categoria: ca_expired, ca_expiring, product_expired, product_expiring,
+  /// missing_manufacture, missing_lot, admin_blocked) e `categories` (registros
+  /// para o deep-link). A REGRA é do backend — o cliente só consome o contrato.
+  /// GET /api/stock/compliance.
+  Future<Map<String, dynamic>> getStockCompliance({
+    required int actorUserId,
+    int? companyId,
+    int? unitId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/compliance',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        if (companyId != null) 'company_id': companyId,
+        if (unitId != null) 'unit_id': unitId,
+      },
+    );
+    return res.data ?? {};
+  }
+
   Future<void> recordMovement({
     required int actorUserId,
     required int companyId,

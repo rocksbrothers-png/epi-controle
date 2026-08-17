@@ -41,8 +41,10 @@ void main() {
         'name': 'Ana',
         'unit_id': 5,
         'current_unit_id': 9,
+        'current_unit_name': 'Unidade B',
       });
       expect(employee.unitId, 9);
+      expect(employee.unitName, 'Unidade B');
     });
 
     test('cai para unit_id quando current_unit_id está ausente', () {

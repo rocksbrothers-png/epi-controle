@@ -171,6 +171,11 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
         'packages/epi_api/lib/models/ficha_config.dart',
         'packages/epi_api/test/clients_contract_test.dart',
         'packages/epi_api/test/employee_unit_movement_contract_test.dart',
+        # Lote 3 — conformidade de estoque (fonte única)
+        'packages/epi_api/lib/endpoints/stock_api.dart',
+        'apps/epi_admin/lib/core/bloc/dashboard_cubit.dart',
+        'apps/epi_admin/lib/features/dashboard/dashboard_screen.dart',
+        'packages/epi_api/test/audit_fixes_contract_test.dart',
         # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
@@ -178,9 +183,9 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
 
 
 @pytest.mark.parametrize('lote_pendente', [
-    # Lote 3 — gestão de EPI / conformidade de estoque
-    'apps/epi_admin/lib/features/dashboard/dashboard_screen.dart',
-    'apps/epi_admin/lib/core/bloc/dashboard_cubit.dart',
+    # Lote 4 — fluxo de entrega / conferência por QR
+    'apps/epi_admin/lib/features/deliveries/handover_conference_screen.dart',
+    'packages/epi_api/lib/endpoints/deliveries_api.dart',
     # Lote 5 — o consumidor da FichaConfig ainda carrega o seletor de empresa
     # do master_admin, que não faz parte do Lote 2.
     'apps/epi_admin/lib/features/settings/settings_screen.dart',

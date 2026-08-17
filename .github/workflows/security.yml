@@ -51,6 +51,11 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Estende a config padrão (não substitui) só para excluir o manifesto
+          # de paridade, que é uma lista de hashes SHA-256 de código-fonte —
+          # alta entropia por natureza, e derivável por qualquer um com
+          # `check_parity_drift.py --update`. Ver .gitleaks.toml.
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
 
   # ── pip-audit (CVEs em dependências Python) ─────────────────────────────────
   pip-audit:

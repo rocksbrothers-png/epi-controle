@@ -1,0 +1,31 @@
+# Configuração do gitleaks — estende a padrão, nunca a substitui.
+#
+# `useDefault = true` mantém TODAS as regras nativas. O que existe aqui é uma
+# exceção de caminho, deliberadamente estreita, e nada mais.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Manifesto de paridade entre epi-controle e epi-controle-app.
+
+O arquivo é uma lista de hashes SHA-256 do conteúdo NORMALIZADO de arquivos de
+código-fonte — o contrato que o gate de drift (tool/check_parity_drift.py) usa
+para detectar divergência entre os dois repositórios sem precisar ler o outro.
+
+São ~200 strings hexadecimais de 64 caracteres, e é exatamente isso que dispara
+a regra de alta entropia do gitleaks. Não há segredo aqui: cada hash é
+derivável por qualquer pessoa com acesso ao repositório, rodando
+`python3 tool/check_parity_drift.py --update`. Um hash de código público não é
+credencial.
+
+A exceção é por CAMINHO e cobre um arquivo só. Ampliá-la para o diretório
+`tool/` inteiro, ou para `*.json`, esconderia segredo de verdade — e a
+alternativa que se cogitou (encurtar os hashes até não parecerem segredo)
+enfraqueceria o gate para agradar o scanner, em vez de dizer a verdade sobre o
+arquivo.
+"""
+paths = [
+  '''flutter/tool/parity_manifest\.json''',
+]

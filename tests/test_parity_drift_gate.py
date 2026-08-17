@@ -150,18 +150,22 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
     # O manifesto não cobre tudo de propósito (ver docs/PARIDADE_ESPELHO.md),
     # mas precisa cobrir o que já foi entregue — senão o conjunto protegido
     # encolhe sozinho e o gate vira decoração.
-    #
-    # O Lote 1 (senha temporária) entra aqui assim que o seu PR mergear: o
-    # manifesto só pode listar arquivos que JÁ estão em paridade, e gerá-lo a
-    # partir de um branch não mergeado prometeria uma paridade que a `main` do
-    # outro repositório ainda não tem. Regenerar depois do merge é o fluxo
-    # normal da ferramenta, não uma exceção.
     manifesto = json.loads((TOOL / 'parity_manifest.json').read_text(encoding='utf-8'))
     for entregue in (
+        # F9 — paridade de EPIs e Usuários
         'apps/epi_admin/lib/features/epis/epis_screen.dart',
         'apps/epi_admin/lib/features/users/users_screen.dart',
         'packages/epi_api/lib/endpoints/epis_api.dart',
         'apps/epi_admin/lib/core/bloc/epis_cubit.dart',
+        # Lote 1 — senha temporária e guard kIsWeb
+        'apps/epi_admin/lib/features/auth/change_password_screen.dart',
+        'apps/epi_admin/lib/core/bloc/auth_cubit.dart',
+        'apps/epi_admin/lib/core/bloc/auth_state.dart',
+        'apps/epi_admin/lib/core/sync/sync_service.dart',
+        'packages/epi_api/lib/endpoints/auth_api.dart',
+        'packages/epi_api/test/auth_contract_test.dart',
+        'apps/epi_admin/lib/app.dart',
+        # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
         assert entregue in manifesto['files'], f'{entregue} saiu da proteção do gate'

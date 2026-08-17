@@ -4,7 +4,12 @@ import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class QrScannerScreen extends StatefulWidget {
-  const QrScannerScreen({super.key});
+  const QrScannerScreen({super.key, this.returnResult = false});
+
+  /// Quando `true`, ao detectar um código a tela fecha retornando a string lida
+  /// (`Navigator.pop<String>`), em vez de exibir o painel de resultado. Usado
+  /// como "picker" por fluxos como a conferência de entrega (item 4).
+  final bool returnResult;
 
   @override
   State<QrScannerScreen> createState() => _QrScannerScreenState();
@@ -80,6 +85,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     final barcode = capture.barcodes.firstOrNull;
     if (barcode?.rawValue == null) return;
     setState(() => _scanned = true);
+    if (widget.returnResult) {
+      Navigator.of(context).pop<String>(barcode!.rawValue);
+      return;
+    }
     _showResult(context, barcode!.rawValue!);
   }
 

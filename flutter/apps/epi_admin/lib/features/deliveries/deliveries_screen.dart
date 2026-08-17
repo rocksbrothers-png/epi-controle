@@ -2,7 +2,9 @@ import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/api/api_client.dart';
+import '../../core/router/routes.dart';
 import 'new_delivery_screen.dart';
 
 class DeliveriesScreen extends StatefulWidget {
@@ -74,6 +76,11 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> {
       appBar: AppBar(
         title: Text(l10n.deliveriesTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: l10n.handoverTitle,
+            onPressed: () => context.push(Routes.handover),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadDeliveries,

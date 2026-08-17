@@ -54,4 +54,42 @@ class DeliveriesApi {
     );
     return (res.data?['id'] ?? 0) as int;
   }
+
+  /// Item 4 — projeção SEGURA da entrega a partir do token opaco (QR da
+  /// entrega). Não expõe dado pessoal direto; a REGRA (multi-tenant, projeção)
+  /// é do backend. GET /api/deliveries/handover-lookup?code=…
+  Future<Map<String, dynamic>> handoverLookup({
+    required int actorUserId,
+    required String code,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/deliveries/handover-lookup',
+      queryParameters: {'actor_user_id': actorUserId, 'code': code},
+    );
+    return (res.data?['handover'] as Map?)?.cast<String, dynamic>() ?? {};
+  }
+
+  /// Item 4 — confirma o recebimento pelo QR da entrega e fecha o ciclo no
+  /// portal. IDEMPOTENTE no backend (não duplica entrega). Devolve o resultado
+  /// bruto (`confirmed`, `already_confirmed`, `confirmed_at`).
+  /// POST /api/deliveries/handover-confirm
+  Future<Map<String, dynamic>> handoverConfirm({
+    required int actorUserId,
+    required String code,
+    String signatureName = '',
+    String signatureData = '',
+    String signatureComment = '',
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/deliveries/handover-confirm',
+      data: {
+        'actor_user_id': actorUserId,
+        'code': code,
+        if (signatureName.isNotEmpty) 'signature_name': signatureName,
+        if (signatureData.isNotEmpty) 'signature_data': signatureData,
+        if (signatureComment.isNotEmpty) 'signature_comment': signatureComment,
+      },
+    );
+    return res.data ?? {};
+  }
 }

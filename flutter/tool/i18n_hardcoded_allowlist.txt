@@ -20,15 +20,7 @@ lib/features/settings/settings_screen.dart|Norsk
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO (migrar para epi_i18n em PRs futuros)
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
-lib/features/auth/change_password_screen.dart|Confirmar nova senha
-lib/features/auth/change_password_screen.dart|Nova senha
-lib/features/auth/change_password_screen.dart|Sair
-lib/features/auth/change_password_screen.dart|Salvar nova senha
-lib/features/auth/change_password_screen.dart|Senha atual (temporária)
-lib/features/auth/change_password_screen.dart|Defina uma nova senha
-lib/features/auth/change_password_screen.dart|Sua senha é temporária. Por segurança, defina uma nova senha para continuar.
 # Seletor de empresa da Ficha (master_admin) nas Configurações
-lib/features/settings/settings_screen.dart|Empresa
 # Avaliações / Feedback
 lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
 lib/features/feedback/feedback_screen.dart|Fechar
@@ -144,26 +136,8 @@ lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
 lib/features/qr/qr_scanner_screen.dart|Código detectado
 lib/features/settings/settings_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
 lib/features/settings/settings_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
-lib/features/settings/settings_screen.dart|Selecione uma empresa (na seção Ficha) para configurar as regras.
-lib/features/settings/settings_screen.dart|Selecione uma empresa para configurar a Ficha.
 lib/features/subscription/subscription_screen.dart|Assinatura cancelada. O acesso permanece ativo até o final do 
 lib/features/subscription/subscription_screen.dart|Nenhuma assinatura ativa
 lib/features/subscription/subscription_screen.dart|Não foi possível carregar a assinatura.
 lib/features/subscription/subscription_screen.dart|Quando uma assinatura for contratada, os detalhes aparecerão aqui.
 lib/features/subscription/subscription_screen.dart|Seu acesso continuará disponível até o final do período já pago.\n
-
-# ─────────────────────────────────────────────────────────────────────────────
-# (B) DÉBITO TÉCNICO — específico DESTE repositório.
-#
-# `epis_screen.dart` e `users_screen.dart` divergiram do epi-controle-app: dois
-# PRs (senha temporária no cadastro de usuário; "bloquear saldo e arquivar" em
-# EPIs) entraram lá e não foram replicados aqui. As três linhas abaixo são
-# strings dessas versões antigas — no outro repositório o texto é diferente, e
-# por isso a allowlist de lá não as cobre.
-#
-# Isto NÃO se resolve editando a allowlist: some quando as duas telas forem
-# sincronizadas. Registrado aqui para o gate não ficar vermelho por uma
-# divergência que é anterior a ele e de escopo próprio.
-lib/features/epis/epis_screen.dart|Motivo do arquivamento (auditoria)
-lib/features/users/users_screen.dart|ID do Colaborador (obrigatório para perfis admin/user)
-lib/features/users/users_screen.dart|Senha (opcional — gerada automaticamente se vazio)

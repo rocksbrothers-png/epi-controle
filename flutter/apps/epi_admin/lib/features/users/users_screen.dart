@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:dio/dio.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
@@ -245,6 +248,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   List<Company> _companies = [];
   bool _loadingCompanies = true;
   bool _saving = false;
+  bool _showPassword = false;
   String? _error;
 
   static const _roles = [
@@ -258,7 +262,46 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   ];
 
   bool get _isEdit => widget.user != null;
-  bool get _needsEmployee => _role == 'admin' || _role == 'user';
+  bool get _needsEmployee =>
+      _role == 'admin' || _role == 'user' || _role == 'employee';
+
+  /// Gera uma senha temporária com fonte criptograficamente segura
+  /// (Random.secure). Fica visível no campo para o administrador copiar e
+  /// repassar; o usuário deve trocá-la no primeiro acesso.
+  void _generatePassword() {
+    const chars =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#%&*';
+    final rng = Random.secure();
+    final pwd = List.generate(14, (_) => chars[rng.nextInt(chars.length)]).join();
+    setState(() {
+      _passwordCtrl.text = pwd;
+      _showPassword = true;
+    });
+  }
+
+  Future<void> _copyPassword() async {
+    if (_passwordCtrl.text.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: _passwordCtrl.text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Senha copiada para a área de transferência.')),
+      );
+    }
+  }
+
+  /// Extrai a mensagem real do envelope de erro do backend
+  /// ({error:{message}}, {error: '...'} ou {message: '...'}).
+  static String _errorMessageFrom(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final err = data['error'];
+      if (err is Map && err['message'] is String) return err['message'] as String;
+      if (err is String && err.isNotEmpty) return err;
+      if (data['message'] is String) return data['message'] as String;
+      if (data['detail'] is String) return data['detail'] as String;
+    }
+    return 'Erro ao salvar';
+  }
 
   @override
   void initState() {
@@ -345,11 +388,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
         Navigator.of(context).pop(true);
       }
     } on DioException catch (e) {
-      final data = e.response?.data;
-      final detail = data is Map ? data['detail']?.toString() : null;
       setState(() {
         _saving = false;
-        _error = detail ?? 'Erro ao salvar';
+        _error = _errorMessageFrom(e);
       });
     } catch (e) {
       setState(() {
@@ -425,7 +466,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               if (_needsEmployee) ...[
                 const SizedBox(height: EpiSpacing.md),
                 EpiInput(
-                  label: 'ID do Colaborador (obrigatório para perfis admin/user)',
+                  label: 'ID do Colaborador (obrigatório para admin/user/employee)',
                   hint: 'Ex: 42',
                   controller: _employeeIdCtrl,
                   keyboardType: TextInputType.number,
@@ -435,10 +476,42 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               if (!_isEdit) ...[
                 const SizedBox(height: EpiSpacing.md),
                 EpiInput(
-                  label: 'Senha (opcional — gerada automaticamente se vazio)',
+                  label: 'Senha temporária',
+                  hint: 'Digite ou use o botão para gerar',
                   controller: _passwordCtrl,
-                  obscureText: true,
+                  obscureText: !_showPassword,
                   enabled: !_saving,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: _showPassword ? 'Ocultar senha' : 'Mostrar senha',
+                        icon: Icon(
+                          _showPassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 20,
+                        ),
+                        onPressed: _saving
+                            ? null
+                            : () => setState(() => _showPassword = !_showPassword),
+                      ),
+                      IconButton(
+                        tooltip: 'Copiar senha',
+                        icon: const Icon(Icons.copy_rounded, size: 20),
+                        onPressed: _saving ? null : _copyPassword,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: EpiSpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _saving ? null : _generatePassword,
+                    icon: const Icon(Icons.password_rounded, size: 18),
+                    label: const Text('Gerar senha segura'),
+                  ),
                 ),
               ],
               if (_error != null) ...[

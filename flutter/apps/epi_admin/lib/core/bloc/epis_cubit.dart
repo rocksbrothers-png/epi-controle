@@ -131,15 +131,40 @@ class EpisCubit extends Cubit<EpisState> {
     }
   }
 
+  /// Estado de vínculos vivos do EPI (item 1). A REGRA é do backend
+  /// (`has_open_links`/`blockable`); a UI só decide entre arquivar direto ou
+  /// oferecer "bloquear saldo e arquivar". Retorna `{}` em backends antigos
+  /// sem o endpoint, deixando o fluxo seguir como arquivamento simples.
+  Future<Map<String, dynamic>> loadArchivalState(int id) async {
+    try {
+      return await ApiClient.epis.getEpiArchivalState(
+        id,
+        actorUserId: ApiClient.actorUserId,
+      );
+    } on Exception {
+      return const {};
+    }
+  }
+
   /// Arquiva o EPI (soft delete): o histórico permanece preservado pelo
   /// período mínimo de retenção configurado (>= 5 anos).
-  Future<void> archiveEpi(int id, {String reason = ''}) async {
+  ///
+  /// Quando o EPI tem saldo/vínculos vivos, o backend recusa o arquivamento
+  /// direto (409). Passe [blockAndArchive] = true (com [reason]) para autorizar
+  /// o bloqueio do saldo disponível — movido para Estoque Bloqueado, rastreável
+  /// — e então arquivar. A decisão de bloquear é sempre executada no backend.
+  Future<void> archiveEpi(
+    int id, {
+    String reason = '',
+    bool blockAndArchive = false,
+  }) async {
     emit(state._copyWith(isLoading: true));
     try {
       await ApiClient.epis.archiveEpi(
         id,
         actorUserId: ApiClient.actorUserId,
         reason: reason,
+        blockAndArchive: blockAndArchive,
       );
       await _reloadEpis();
     } on Exception catch (e) {

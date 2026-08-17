@@ -167,8 +167,25 @@ class _EpiTile extends StatelessWidget {
   final Epi epi;
 
   Future<void> _confirmArchive(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final cubit = context.read<EpisCubit>();
+    // Item 1: consulta o estado de vínculos vivos ANTES de abrir o diálogo.
+    // A REGRA (has_open_links/blockable) é do backend; a UI só ramifica entre
+    // arquivamento simples e "bloquear saldo e arquivar".
+    final state = await cubit.loadArchivalState(epi.id);
+    if (!context.mounted) return;
+    final hasOpenLinks = state['has_open_links'] == true;
+    if (hasOpenLinks) {
+      await _confirmBlockAndArchive(context, cubit, state);
+    } else {
+      await _confirmSimpleArchive(context, cubit);
+    }
+  }
+
+  Future<void> _confirmSimpleArchive(
+    BuildContext context,
+    EpisCubit cubit,
+  ) async {
+    final l10n = AppLocalizations.of(context);
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -188,9 +205,9 @@ class _EpiTile extends StatelessWidget {
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Motivo do arquivamento (auditoria)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.epiArchiveReasonLabel,
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
             ),
@@ -211,6 +228,24 @@ class _EpiTile extends StatelessWidget {
     );
     if (confirmed == true) {
       await cubit.archiveEpi(epi.id, reason: reasonCtrl.text.trim());
+    }
+  }
+
+  Future<void> _confirmBlockAndArchive(
+    BuildContext context,
+    EpisCubit cubit,
+    Map<String, dynamic> state,
+  ) async {
+    final result = await showDialog<_BlockArchiveResult>(
+      context: context,
+      builder: (_) => _BlockArchiveDialog(epi: epi, state: state),
+    );
+    if (result != null) {
+      await cubit.archiveEpi(
+        epi.id,
+        reason: result.reason,
+        blockAndArchive: true,
+      );
     }
   }
 
@@ -389,6 +424,147 @@ class _RetryView extends StatelessWidget {
           EpiButton(label: AppLocalizations.of(context).retry, onPressed: onRetry),
         ],
       ),
+    );
+  }
+}
+
+/// Resultado do diálogo de bloqueio+arquivamento: motivo informado.
+class _BlockArchiveResult {
+  const _BlockArchiveResult(this.reason);
+  final String reason;
+}
+
+/// Diálogo "bloquear saldo e arquivar" (item 1). Mostrado quando o backend
+/// reporta vínculos vivos (`has_open_links`). Exibe o saldo a bloquear e a
+/// quebra dos vínculos, exigindo motivo para auditoria. A execução do bloqueio
+/// é feita pelo backend em `archiveEpi(blockAndArchive: true)`.
+class _BlockArchiveDialog extends StatefulWidget {
+  const _BlockArchiveDialog({required this.epi, required this.state});
+  final Epi epi;
+  final Map<String, dynamic> state;
+
+  @override
+  State<_BlockArchiveDialog> createState() => _BlockArchiveDialogState();
+}
+
+class _BlockArchiveDialogState extends State<_BlockArchiveDialog> {
+  final _reasonCtrl = TextEditingController();
+  bool _reasonMissing = false;
+
+  @override
+  void dispose() {
+    _reasonCtrl.dispose();
+    super.dispose();
+  }
+
+  int _n(String key) {
+    final v = widget.state[key];
+    return v is int ? v : int.tryParse('$v') ?? 0;
+  }
+
+  void _submit() {
+    final reason = _reasonCtrl.text.trim();
+    if (reason.isEmpty) {
+      setState(() => _reasonMissing = true);
+      return;
+    }
+    Navigator.of(context).pop(_BlockArchiveResult(reason));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final blockable = _n('blockable');
+    final links = <MapEntry<String, int>>[
+      MapEntry(l10n.epiArchiveAvailable, _n('available')),
+      MapEntry(l10n.epiArchiveInTransit, _n('in_transit')),
+      MapEntry(l10n.epiArchiveInPossession, _n('in_possession')),
+      MapEntry(l10n.epiArchivePendingRequests, _n('pending_requests')),
+      MapEntry(l10n.epiArchivePendingPurchase, _n('pending_purchase')),
+    ].where((e) => e.value > 0).toList();
+
+    return AlertDialog(
+      title: Text(l10n.epiArchiveBlockTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(widget.epi.name,
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: EpiSpacing.sm),
+            Text(l10n.epiArchiveBlockBody),
+            const SizedBox(height: EpiSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(EpiSpacing.md),
+              decoration: BoxDecoration(
+                color: EpiColors.warningSoft,
+                borderRadius: BorderRadius.circular(EpiRadius.sm),
+                border: Border.all(color: EpiColors.warning),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(l10n.epiArchiveBlockableLabel),
+                      Text('$blockable',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: EpiColors.warning)),
+                    ],
+                  ),
+                  if (links.isNotEmpty) ...[
+                    const Divider(height: EpiSpacing.lg),
+                    Text(l10n.epiArchiveLiveLinksTitle,
+                        style: Theme.of(context).textTheme.labelMedium),
+                    const SizedBox(height: EpiSpacing.xs),
+                    ...links.map(
+                      (e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(e.key),
+                            Text('${e.value}'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: EpiSpacing.md),
+            TextField(
+              controller: _reasonCtrl,
+              maxLines: 2,
+              autofocus: true,
+              onChanged: (_) {
+                if (_reasonMissing) setState(() => _reasonMissing = false);
+              },
+              decoration: InputDecoration(
+                labelText: l10n.epiArchiveReasonLabel,
+                border: const OutlineInputBorder(),
+                isDense: true,
+                errorText: _reasonMissing ? l10n.epiArchiveReasonRequired : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(
+          onPressed: _submit,
+          style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+          child: Text(l10n.epiArchiveBlockConfirm),
+        ),
+      ],
     );
   }
 }

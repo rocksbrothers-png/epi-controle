@@ -149,6 +149,13 @@ class AppShell extends StatelessWidget {
         if (i < visibleRoutes.length) context.go(visibleRoutes[i]);
       },
       title:  _currentTitle(l10n, permissions, moduleVisibility),
+      actions: [
+        IconButton(
+          tooltip: 'Sair',
+          icon: const Icon(Icons.logout_rounded),
+          onPressed: () => context.read<AuthCubit>().logout(),
+        ),
+      ],
       child:  child,
     );
   }

@@ -202,6 +202,17 @@ class ApiClient {
     return resp.data ?? const {};
   }
 
+  /// Cria uma empresa (tenant) via `POST /api/companies`. Fora do retrofit de
+  /// propósito — evita regenerar o cliente gerado (`.g.dart`) apenas para um
+  /// endpoint de escrita. Retorna a mensagem de erro do backend (envelope
+  /// `{"error":{"message":...}}`) numa `ApiException` quando a request falha.
+  static Future<void> createCompany(Map<String, dynamic> data) async {
+    try {
+      await _dio.post<Map<String, dynamic>>('/api/companies', data: data);
+    } on DioException catch (e) {
+      throw ApiException(_extractErrorMessage(e));
+    }
+  }
 
   /// Troca a senha do próprio usuário (encerra a política de senha temporária
   /// no backend). Usado pela tela de troca obrigatória no 1º acesso.

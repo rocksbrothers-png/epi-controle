@@ -12,6 +12,9 @@ class SettingsState extends Equatable {
     this.error,
     this.config,
     this.successMessage,
+    this.isMaster = false,
+    this.companies = const [],
+    this.selectedCompanyId,
   });
 
   final bool isLoading;
@@ -20,12 +23,21 @@ class SettingsState extends Equatable {
   final FichaConfig? config;
   final String? successMessage;
 
+  /// master_admin não tem empresa própria: precisa escolher a empresa cuja
+  /// Ficha vai configurar (a Ficha é isolada por tenant).
+  final bool isMaster;
+  final List<Company> companies;
+  final int? selectedCompanyId;
+
   SettingsState _copyWith({
     bool? isLoading,
     bool? isSaving,
     String? error,
     FichaConfig? config,
     String? successMessage,
+    bool? isMaster,
+    List<Company>? companies,
+    int? selectedCompanyId,
     bool clearError = false,
     bool clearSuccess = false,
   }) =>
@@ -36,11 +48,22 @@ class SettingsState extends Equatable {
         config: config ?? this.config,
         successMessage:
             clearSuccess ? null : (successMessage ?? this.successMessage),
+        isMaster: isMaster ?? this.isMaster,
+        companies: companies ?? this.companies,
+        selectedCompanyId: selectedCompanyId ?? this.selectedCompanyId,
       );
 
   @override
-  List<Object?> get props =>
-      [isLoading, isSaving, error, config, successMessage];
+  List<Object?> get props => [
+        isLoading,
+        isSaving,
+        error,
+        config,
+        successMessage,
+        isMaster,
+        companies,
+        selectedCompanyId,
+      ];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
@@ -48,26 +71,62 @@ class SettingsState extends Equatable {
 class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit() : super(const SettingsState());
 
-  Future<void> load() async {
-    emit(state._copyWith(isLoading: true, clearError: true));
+  /// Ponto de entrada da tela. Para o master_admin carrega a lista de empresas
+  /// e exige a seleção de uma antes de carregar a Ficha; para admins de
+  /// empresa carrega direto a Ficha da própria empresa.
+  Future<void> init({required bool isMaster}) async {
+    if (!isMaster) {
+      emit(state._copyWith(isMaster: false));
+      await load();
+      return;
+    }
+    emit(state._copyWith(isMaster: true, isLoading: true, clearError: true));
     try {
-      final config = await ApiClient.settings.getFichaConfig();
-      emit(state._copyWith(isLoading: false, config: config));
-    } on Exception catch (e) {
+      final companies = await ApiClient.companies.getCompanies();
+      final firstId = companies.isNotEmpty ? companies.first.id : null;
+      emit(state._copyWith(companies: companies, selectedCompanyId: firstId));
+      if (firstId != null) {
+        await _loadFicha(companyId: firstId);
+      } else {
+        emit(state._copyWith(isLoading: false));
+      }
+    } catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  Future<void> load() async => _loadFicha(companyId: null);
+
+  Future<void> _loadFicha({required int? companyId}) async {
+    emit(state._copyWith(isLoading: true, clearError: true));
+    try {
+      final config =
+          await ApiClient.settings.getFichaConfig(companyId: companyId);
+      emit(state._copyWith(isLoading: false, config: config));
+    } catch (e) {
+      emit(state._copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  /// master_admin troca a empresa ativa → recarrega a Ficha do tenant.
+  Future<void> selectCompany(int companyId) async {
+    emit(state._copyWith(selectedCompanyId: companyId));
+    await _loadFicha(companyId: companyId);
   }
 
   Future<void> save(FichaConfig config) async {
     emit(state._copyWith(isSaving: true, clearError: true, clearSuccess: true));
     try {
-      await ApiClient.settings.updateFichaConfig(config);
+      await ApiClient.settings.updateFichaConfig(
+        config,
+        companyId: state.isMaster ? state.selectedCompanyId : null,
+      );
       emit(state._copyWith(
         isSaving: false,
         config: config,
         successMessage: 'ok',
       ));
-    } on Exception catch (e) {
+    } catch (e) {
       emit(state._copyWith(isSaving: false, error: e.toString()));
     }
   }

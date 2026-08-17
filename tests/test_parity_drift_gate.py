@@ -176,6 +176,12 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
         'apps/epi_admin/lib/core/bloc/dashboard_cubit.dart',
         'apps/epi_admin/lib/features/dashboard/dashboard_screen.dart',
         'packages/epi_api/test/audit_fixes_contract_test.dart',
+        # Lote 4 — conferência de entrega por QR
+        'apps/epi_admin/lib/features/deliveries/handover_conference_screen.dart',
+        'packages/epi_api/lib/endpoints/deliveries_api.dart',
+        'apps/epi_admin/lib/core/router/app_router.dart',
+        'apps/epi_admin/lib/core/router/route_permissions.dart',
+        'packages/epi_api/test/handover_contract_test.dart',
         # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
@@ -183,12 +189,12 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
 
 
 @pytest.mark.parametrize('lote_pendente', [
-    # Lote 4 — fluxo de entrega / conferência por QR
-    'apps/epi_admin/lib/features/deliveries/handover_conference_screen.dart',
-    'packages/epi_api/lib/endpoints/deliveries_api.dart',
-    # Lote 5 — o consumidor da FichaConfig ainda carrega o seletor de empresa
-    # do master_admin, que não faz parte do Lote 2.
+    # Lote 5 — configurações, empresas e core/widgets/
+    'apps/epi_admin/lib/core/widgets/create_company_dialog.dart',
+    'apps/epi_admin/lib/core/bloc/settings_cubit.dart',
     'apps/epi_admin/lib/features/settings/settings_screen.dart',
+    # Lote 6 — robustez de plataforma (botão "Sair" na AppBar)
+    'apps/epi_admin/lib/core/shell/app_shell.dart',
 ])
 def test_o_manifesto_nao_promete_o_que_ainda_nao_esta_sincronizado(lote_pendente):
     # Incluir um arquivo ainda divergente faria o gate nascer vermelho no outro

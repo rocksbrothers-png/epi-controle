@@ -26,15 +26,17 @@ cd "$(dirname "$0")/.."
 
 SCAN="$APP_DIR/lib/features"
 
-# Padrão 1: Text('literal') — exige ao menos uma letra e nenhuma interpolação ($).
-text_hits="$(grep -rnoE "Text\(\s*'[^'\$]*[A-Za-zÀ-ÿ][^'\$]*'" "$SCAN" 2>/dev/null \
-  | sed -E "s#^$APP_DIR/([^:]+):[0-9]+:Text\(\s*'(.*)'#\1|\2#" || true)"
+# A varredura vive em tool/i18n_scan.py. Ela já foi feita aqui com dois
+# `grep -rnoE`, e cada um escondia um defeito que só apareceu quando o gate foi
+# auditado: a classe `[A-Za-zÀ-ÿ]` abortava sob C.UTF-8 (o locale dos runners)
+# e o `|| true` transformava o erro em lista vazia — verde sem ter varrido
+# nada; e `grep`, sendo orientado a linha, nunca via um `Text(` quebrado em
+# várias linhas. Ver o cabeçalho do i18n_scan.py.
+#
+# Sem `|| true`: se a varredura falhar, o gate falha. Passar sem ter procurado
+# é o pior resultado possível para um gate.
+current="$(python3 tool/i18n_scan.py "$APP_DIR" "$SCAN" | sort -u)"
 
-# Padrão 2: atributo: 'literal' (label/labelText/hintText/helperText/tooltip).
-attr_hits="$(grep -rnoE "(labelText|hintText|helperText|label|tooltip)\s*:\s*'[^'\$]*[A-Za-zÀ-ÿ][^'\$]*'" "$SCAN" 2>/dev/null \
-  | sed -E "s#^$APP_DIR/([^:]+):[0-9]+:[a-zA-Z]+\s*:\s*'(.*)'#\1|\2#" || true)"
-
-current="$(printf '%s\n%s\n' "$text_hits" "$attr_hits" | grep -vE '^\s*$' | sort -u || true)"
 
 # Allowlist (ignora comentários e linhas em branco).
 allow="$(grep -vE '^\s*(#|$)' "$ALLOWLIST" | sort -u || true)"

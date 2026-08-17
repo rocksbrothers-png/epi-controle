@@ -304,7 +304,7 @@ class _LegalEntityFormDialogState extends State<_LegalEntityFormDialog> {
               TextFormField(
                 controller: _cnpj,
                 validator: req,
-                decoration: const InputDecoration(labelText: 'CNPJ'),
+                decoration: InputDecoration(labelText: l10n.legalEntityCnpjLabel),
               ),
               const SizedBox(height: EpiSpacing.md),
               TextFormField(
@@ -337,7 +337,7 @@ class _LegalEntityFormDialogState extends State<_LegalEntityFormDialog> {
               TextFormField(
                 controller: _uf,
                 maxLength: 2,
-                decoration: const InputDecoration(labelText: 'UF'),
+                decoration: InputDecoration(labelText: l10n.legalEntityUfLabel),
               ),
             ],
           ),

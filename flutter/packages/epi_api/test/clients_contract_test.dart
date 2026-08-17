@@ -356,14 +356,59 @@ void main() {
   });
 
   group('SettingsApi.getFichaConfig', () {
-    test('parseia FichaConfig', () async {
+    // O backend envia `rastreabilidade` como String (rótulo do rodapé da
+    // ficha) — o parse como bool corrompia a configuração com "true"/"false".
+    test('parseia FichaConfig com rastreabilidade String (payload real)', () async {
+      final api = SettingsApi(_dioReturning({
+        'titulo': 'Ficha de EPI',
+        'rastreabilidade': 'Ficha Individual de Controle de EPI - Ver. 01',
+      }));
+      final cfg = await api.getFichaConfig();
+      expect(cfg.titulo, 'Ficha de EPI');
+      expect(cfg.rastreabilidade, 'Ficha Individual de Controle de EPI - Ver. 01');
+    });
+
+    test('tolera bool salvo pela versão antiga', () async {
       final api = SettingsApi(_dioReturning({
         'titulo': 'Ficha de EPI',
         'rastreabilidade': true,
       }));
       final cfg = await api.getFichaConfig();
+      expect(cfg.rastreabilidade, isNotEmpty);
+    });
+
+    // Regressão: a troca de tipo de `rastreabilidade` não pode afetar os
+    // demais campos da FichaConfig, nem os seus defaults.
+    test('demais campos continuam íntegros ao redor da troca de tipo', () async {
+      final api = SettingsApi(_dioReturning({
+        'titulo': 'Ficha de EPI',
+        'declaracao': 'Declaro ter recebido os EPIs.',
+        'observacoes': 'Uso obrigatório.',
+        'rastreabilidade': 'R-01',
+      }));
+      final cfg = await api.getFichaConfig();
       expect(cfg.titulo, 'Ficha de EPI');
-      expect(cfg.rastreabilidade, isTrue);
+      expect(cfg.declaracao, 'Declaro ter recebido os EPIs.');
+      expect(cfg.observacoes, 'Uso obrigatório.');
+      expect(cfg.rastreabilidade, 'R-01');
+
+      // Campos ausentes seguem caindo no default vazio, sem lançar.
+      final vazio = await SettingsApi(_dioReturning(<String, dynamic>{}))
+          .getFichaConfig();
+      expect(vazio.titulo, '');
+      expect(vazio.declaracao, '');
+      expect(vazio.observacoes, '');
+      expect(vazio.rastreabilidade, '');
+    });
+
+    // O que o app ENVIA de volta é a metade do defeito que corrompia a ficha:
+    // com um bool no payload o backend persistia a string 'True' no rodapé.
+    test('toJson devolve rastreabilidade como String, nunca bool', () {
+      const cfg = FichaConfig(titulo: 'T', rastreabilidade: 'R-01');
+      final json = cfg.toJson();
+      expect(json['rastreabilidade'], isA<String>());
+      expect(json['rastreabilidade'], 'R-01');
+      expect(json['rastreabilidade'], isNot(anyOf(true, false)));
     });
   });
 

@@ -69,6 +69,31 @@ void main() {
       }));
       expect(await api.getCompanies(), isEmpty);
     });
+
+    // O backend serializa `active` como inteiro 0/1 (coluna INTEGER). O cast
+    // `as bool?` lançava _CastError e travava a tela de Empresas — inclusive o
+    // diálogo "Nova empresa", que ficava no spinner após criar a tenant.
+    test('parseia `active` como inteiro 0/1 (payload real do backend)', () async {
+      final api = CompaniesApi(_dioReturning({
+        'items': [
+          {
+            'id': 2,
+            'name': 'DOF Brasil',
+            'license_status': 'active',
+            'active': 1,
+            'plan_name': 'enterprise',
+            'user_limit': 500,
+            'user_count': 0,
+          },
+          {'id': 3, 'name': 'Inativa', 'license_status': 'active', 'active': 0},
+        ],
+      }));
+      final list = await api.getCompanies();
+      expect(list, hasLength(2));
+      expect(list.first.isActive, isTrue);
+      expect(list.first.userLimit, 500);
+      expect(list.last.isActive, isFalse);
+    });
   });
 
   group('DeliveriesApi', () {
@@ -351,7 +376,40 @@ void main() {
     });
   });
 
-  group('Employee.fromJson (tipo_vinculo / empresa_origem)', () {
+  group('Employee.fromJson (payload real do bootstrap)', () {
+    // fetch_employees/bootstrap usam employee_id_code, role_name e
+    // schedule_type; is_active/photo_url não existem no backend. As chaves
+    // curtas antigas (code/role/schedule) deixavam esses campos sempre vazios.
+    test('mapeia employee_id_code, role_name e schedule_type', () {
+      final employee = Employee.fromJson(const {
+        'id': 7,
+        'name': 'Maria Souza',
+        'employee_id_code': 'EMP-007',
+        'sector': 'Operações',
+        'role_name': 'Técnica de Segurança',
+        'schedule_type': '12x36',
+        'unit_name': 'Matriz',
+        'admission_date': '2025-03-01',
+      });
+      expect(employee.code, 'EMP-007');
+      expect(employee.role, 'Técnica de Segurança');
+      expect(employee.schedule, '12x36');
+      expect(employee.unitName, 'Matriz');
+      expect(employee.isActive, isTrue); // backend não envia flag — assume ativo
+    });
+
+    test('prioriza current_unit_name e aceita active como 0/1', () {
+      final employee = Employee.fromJson(const {
+        'id': 8,
+        'name': 'João Lima',
+        'unit_name': 'Matriz',
+        'current_unit_name': 'Base Norte',
+        'active': 0,
+      });
+      expect(employee.unitName, 'Base Norte');
+      expect(employee.isActive, isFalse);
+    });
+
     test('mapeia tipo_vinculo e empresa_origem', () {
       final employee = Employee.fromJson(const {
         'id': 9,

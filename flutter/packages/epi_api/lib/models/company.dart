@@ -28,11 +28,15 @@ class Company {
         id: (json['id'] as num).toInt(),
         name: json['name'] as String? ?? '',
         licenseStatus: json['license_status'] as String? ?? 'active',
-        active: (json['active'] as bool?) ?? true,
+        // O backend serializa `active` como inteiro 0/1 (coluna INTEGER);
+        // aceitar bool mantém compatibilidade com payloads antigos.
+        active: json['active'] is bool
+            ? json['active'] as bool
+            : ((json['active'] as num?)?.toInt() ?? 1) == 1,
         legalName: json['legal_name'] as String?,
         cnpj: json['cnpj'] as String?,
         planName: json['plan_name'] as String?,
-        userLimit: json['user_limit'] as int?,
-        userCount: json['user_count'] as int?,
+        userLimit: (json['user_limit'] as num?)?.toInt(),
+        userCount: (json['user_count'] as num?)?.toInt(),
       );
 }

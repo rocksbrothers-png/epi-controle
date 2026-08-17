@@ -45,6 +45,27 @@ void main() {
       // Permissões só valem quando no topo; o aninhamento em user é ignorado.
       expect(res.permissions, isEmpty);
     });
+
+    test('captura must_change_password (topo ou dentro de user)', () {
+      final top = LoginResponse.fromJson(const {
+        'token': 't',
+        'must_change_password': true,
+        'user': {'id': 1},
+      });
+      expect(top.mustChangePassword, isTrue);
+
+      final nested = LoginResponse.fromJson(const {
+        'token': 't',
+        'user': {'id': 1, 'must_change_password': 1},
+      });
+      expect(nested.mustChangePassword, isTrue);
+
+      final none = LoginResponse.fromJson(const {
+        'token': 't',
+        'user': {'id': 1},
+      });
+      expect(none.mustChangePassword, isFalse);
+    });
   });
 
   group('RefreshResponse.fromJson', () {

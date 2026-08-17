@@ -84,11 +84,27 @@ class AuthCubit extends Cubit<AuthState> {
         user: res.user,
         permissions: permissions,
         sessionContext: context,
+        mustChangePassword: res.mustChangePassword,
       ));
     } on Exception catch (e) {
       final isNetwork = e.toString().contains('SocketException') ||
           e.toString().contains('DioException');
       emit(AuthError(isNetwork ? 'network' : 'invalid'));
+    }
+  }
+
+  /// Chamado após a troca de senha obrigatória concluir com sucesso: libera a
+  /// navegação preservando a sessão (token/permissões/contexto atuais).
+  void completePasswordChange() {
+    final current = state;
+    if (current is AuthAuthenticated && current.mustChangePassword) {
+      emit(AuthAuthenticated(
+        token: current.token,
+        user: current.user,
+        permissions: current.permissions,
+        sessionContext: current.sessionContext,
+        mustChangePassword: false,
+      ));
     }
   }
 
@@ -112,6 +128,10 @@ class AuthCubit extends Cubit<AuthState> {
     final permissions = await ApiClient.getPermissions();
     final context = await ApiClient.getSessionContext();
     try {
+      // local_auth 3.x achatou `AuthenticationOptions` em parâmetros nomeados.
+      // `biometricOnly: false` continua explícito de propósito: é o que permite
+      // cair para PIN/padrão do aparelho quando a biometria não está disponível
+      // — sem isso o usuário ficaria travado fora do app.
       final ok = await localAuth.authenticate(
         localizedReason: localizedReason,
         biometricOnly: false,

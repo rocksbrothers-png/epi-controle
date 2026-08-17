@@ -15,6 +15,7 @@ void main() {
         Routes.purchases: 'compras',
         Routes.stock: 'estoque',
         Routes.deliveries: 'entregas',
+        Routes.handover: 'entregas',
         Routes.returns: 'entregas',
         Routes.records: 'fichas',
         Routes.reports: 'relatorios',

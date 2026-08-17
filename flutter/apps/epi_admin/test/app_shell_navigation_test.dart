@@ -25,6 +25,8 @@ void main() {
       '/my-company': 'settings_screen.dart → context.push(Routes.myCompany)',
       '/subscription': 'settings_screen.dart → context.push(Routes.subscription)',
       '/invoices': 'settings_screen.dart → context.push(Routes.invoices)',
+      '/deliveries/handover':
+          'deliveries_screen.dart → context.push(Routes.handover)',
     };
 
     test('toda rota gateada é alcançável por clique', () {

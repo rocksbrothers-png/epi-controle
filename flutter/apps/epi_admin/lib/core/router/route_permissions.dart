@@ -20,6 +20,7 @@ const Map<String, String> routePermissions = <String, String>{
   Routes.employees: 'employees:view',
   Routes.epis: 'epis:view',
   Routes.deliveries: 'deliveries:view',
+  Routes.handover: 'deliveries:view',
   Routes.returns: 'deliveries:view',
   Routes.records: 'fichas:view',
   Routes.stock: 'stock:view',

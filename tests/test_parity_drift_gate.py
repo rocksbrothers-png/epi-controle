@@ -165,6 +165,12 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
         'packages/epi_api/lib/endpoints/auth_api.dart',
         'packages/epi_api/test/auth_contract_test.dart',
         'apps/epi_admin/lib/app.dart',
+        # Lote 2 — models e parsing
+        'packages/epi_api/lib/models/employee.dart',
+        'packages/epi_api/lib/models/company.dart',
+        'packages/epi_api/lib/models/ficha_config.dart',
+        'packages/epi_api/test/clients_contract_test.dart',
+        'packages/epi_api/test/employee_unit_movement_contract_test.dart',
         # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
@@ -172,9 +178,12 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
 
 
 @pytest.mark.parametrize('lote_pendente', [
-    'packages/epi_api/lib/models/employee.dart',
-    'packages/epi_api/lib/models/ficha_config.dart',
+    # Lote 3 — gestão de EPI / conformidade de estoque
     'apps/epi_admin/lib/features/dashboard/dashboard_screen.dart',
+    'apps/epi_admin/lib/core/bloc/dashboard_cubit.dart',
+    # Lote 5 — o consumidor da FichaConfig ainda carrega o seletor de empresa
+    # do master_admin, que não faz parte do Lote 2.
+    'apps/epi_admin/lib/features/settings/settings_screen.dart',
 ])
 def test_o_manifesto_nao_promete_o_que_ainda_nao_esta_sincronizado(lote_pendente):
     # Incluir um arquivo ainda divergente faria o gate nascer vermelho no outro

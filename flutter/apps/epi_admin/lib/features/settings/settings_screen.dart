@@ -24,8 +24,11 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    final isMaster = authState is AuthAuthenticated &&
+        authState.sessionContext.role == 'master_admin';
     return BlocProvider(
-      create: (_) => SettingsCubit()..load(),
+      create: (_) => SettingsCubit()..init(isMaster: isMaster),
       child: _SettingsBody(
         localeProvider: localeProvider,
         themeNotifier: themeNotifier,
@@ -112,15 +115,38 @@ class _SettingsBody extends StatelessWidget {
               ),
               const SizedBox(height: EpiSpacing.lg),
               const _SectionHeader(label: 'Regras'),
-              const _ArchivalPolicyCard(),
-              const SizedBox(height: EpiSpacing.xl),
-              const _ModuleVisibilityCard(),
+              if (state.isMaster && state.selectedCompanyId == null)
+                const Padding(
+                  padding: EdgeInsets.all(EpiSpacing.lg),
+                  child: Text(
+                    'Selecione uma empresa (na seção Ficha) para configurar as regras.',
+                    style: TextStyle(color: EpiColors.textMuted),
+                  ),
+                )
+              else ...[
+                _ArchivalPolicyCard(
+                  companyId: state.isMaster ? state.selectedCompanyId : null,
+                ),
+                const SizedBox(height: EpiSpacing.xl),
+                _ModuleVisibilityCard(
+                  companyId: state.isMaster ? state.selectedCompanyId : null,
+                ),
+              ],
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),
+              if (state.isMaster) _CompanySelector(state: state),
               if (state.isLoading)
                 const Padding(
                   padding: EdgeInsets.all(EpiSpacing.xl),
                   child: Center(child: CircularProgressIndicator()),
+                )
+              else if (state.isMaster && state.selectedCompanyId == null)
+                const Padding(
+                  padding: EdgeInsets.all(EpiSpacing.lg),
+                  child: Text(
+                    'Selecione uma empresa para configurar a Ficha.',
+                    style: TextStyle(color: EpiColors.textMuted),
+                  ),
                 )
               else
                 _FichaConfigForm(
@@ -136,6 +162,77 @@ class _SettingsBody extends StatelessWidget {
 }
 
 // ── Section header ─────────────────────────────────────────────────────────
+
+// ── Seletor de empresa (master_admin) ───────────────────────────────────────
+// A Ficha é isolada por empresa. O master_admin, que não pertence a uma
+// empresa, escolhe explicitamente qual tenant está administrando; um banner
+// deixa a empresa ativa visível para evitar edição na empresa errada.
+class _CompanySelector extends StatelessWidget {
+  const _CompanySelector({required this.state});
+  final SettingsState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = state.companies
+        .where((c) => c.id == state.selectedCompanyId)
+        .toList();
+    final activeName = active.isNotEmpty ? active.first.name : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DropdownButtonFormField<int>(
+            value: state.selectedCompanyId,
+            decoration: const InputDecoration(
+              labelText: 'Empresa',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              for (final c in state.companies)
+                DropdownMenuItem(value: c.id, child: Text(c.name)),
+            ],
+            onChanged: state.isSaving
+                ? null
+                : (v) {
+                    if (v != null) {
+                      context.read<SettingsCubit>().selectCompany(v);
+                    }
+                  },
+          ),
+          if (activeName != null) ...[
+            const SizedBox(height: EpiSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(EpiSpacing.sm),
+              decoration: BoxDecoration(
+                color: EpiColors.brand.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.apartment_rounded,
+                      size: 18, color: EpiColors.brand),
+                  const SizedBox(width: EpiSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Administrando a empresa: $activeName',
+                      style: const TextStyle(
+                        color: EpiColors.brand,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: EpiSpacing.md),
+        ],
+      ),
+    );
+  }
+}
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label});
@@ -370,7 +467,8 @@ class _FichaConfigFormState extends State<_FichaConfigForm> {
 // conforme a política interna da empresa (mínimo legal: 5 anos). A retenção
 // da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.
 class _ArchivalPolicyCard extends StatefulWidget {
-  const _ArchivalPolicyCard();
+  const _ArchivalPolicyCard({this.companyId});
+  final int? companyId;
 
   @override
   State<_ArchivalPolicyCard> createState() => _ArchivalPolicyCardState();
@@ -391,6 +489,12 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
   }
 
   @override
+  void didUpdateWidget(_ArchivalPolicyCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.companyId != widget.companyId) _load();
+  }
+
+  @override
   void dispose() {
     _unitsCtrl.dispose();
     _episCtrl.dispose();
@@ -404,7 +508,8 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
       _error = null;
     });
     try {
-      final policy = await ApiClient.settings.getArchivalPolicy();
+      final policy = await ApiClient.settings
+          .getArchivalPolicy(companyId: widget.companyId);
       if (!mounted) return;
       setState(() {
         _unitsCtrl.text = '${policy['unit_retention_years'] ?? 5}';
@@ -445,6 +550,7 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
         unitRetentionYears: units,
         epiRetentionYears: epis,
         employeeRetentionYears: employees,
+        companyId: widget.companyId,
       );
       if (!mounted) return;
       setState(() => _saving = false);
@@ -538,6 +644,7 @@ class _ArchivalPolicyCardState extends State<_ArchivalPolicyCard> {
     );
   }
 }
+
 // ── Regras → Visibilidade por Módulo (issue #148 / visibilidade por Unidade)
 // ────────────────────────────────────────────────────────────────────────────
 // Cobre todos os módulos configuráveis (MODULE_KEYS em epi_backend/
@@ -582,7 +689,8 @@ const _kModuleVisibilityModules = <(String value, String label)>[
 const _kModuleVisibilityUnitScopedRoles = <String>{'admin', 'user'};
 
 class _ModuleVisibilityCard extends StatefulWidget {
-  const _ModuleVisibilityCard();
+  const _ModuleVisibilityCard({this.companyId});
+  final int? companyId;
 
   @override
   State<_ModuleVisibilityCard> createState() => _ModuleVisibilityCardState();
@@ -608,13 +716,19 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(_ModuleVisibilityCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.companyId != widget.companyId) _load();
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final res = await ApiClient.settings.getModuleVisibility();
+      final res = await ApiClient.settings.getModuleVisibility(companyId: widget.companyId);
       final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
       final rawDefault = (res['default_module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
       final bootstrap = await ApiClient.auth.bootstrap();
@@ -677,6 +791,7 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
         role: _role,
         modules: {module: value},
         unitId: _unitId,
+        companyId: widget.companyId,
       );
       if (!mounted) return;
       final bucketKey = _unitId != null ? '$_unitId' : '*';

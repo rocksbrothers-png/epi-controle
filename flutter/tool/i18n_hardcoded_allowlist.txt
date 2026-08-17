@@ -21,6 +21,7 @@ lib/features/settings/settings_screen.dart|Norsk
 # (B) DÉBITO TÉCNICO (migrar para epi_i18n em PRs futuros)
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
 # Seletor de empresa da Ficha (master_admin) nas Configurações
+lib/features/settings/settings_screen.dart|Empresa
 # Avaliações / Feedback
 lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
 lib/features/feedback/feedback_screen.dart|Fechar
@@ -136,6 +137,8 @@ lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
 lib/features/qr/qr_scanner_screen.dart|Código detectado
 lib/features/settings/settings_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
 lib/features/settings/settings_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
+lib/features/settings/settings_screen.dart|Selecione uma empresa (na seção Ficha) para configurar as regras.
+lib/features/settings/settings_screen.dart|Selecione uma empresa para configurar a Ficha.
 lib/features/subscription/subscription_screen.dart|Assinatura cancelada. O acesso permanece ativo até o final do 
 lib/features/subscription/subscription_screen.dart|Nenhuma assinatura ativa
 lib/features/subscription/subscription_screen.dart|Não foi possível carregar a assinatura.

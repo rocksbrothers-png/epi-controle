@@ -220,10 +220,59 @@ plataforma ativa aqui.
 
 ## Gate de drift
 
-`tool/check_mirror_drift.py`, rodando no CI dos dois repositórios, compara a
-lista obrigatória acima contra o outro repositório e falha quando um arquivo
-que deve permanecer sincronizado diverge sem estar na allowlist.
+`flutter/tool/check_parity_drift.py`, executado no CI dos dois repositórios.
 
-A allowlist documenta **por que** cada exceção é legítima — mesmo formato e
-mesma disciplina do `i18n_hardcoded_allowlist.txt`: uma entrada sem
-justificativa é uma entrada que alguém vai apagar sem entender.
+### Como funciona sem acesso ao outro repositório
+
+Por um **manifesto compartilhado**. `tool/parity_manifest.json` lista os
+arquivos que precisam permanecer funcionalmente sincronizados, cada um com o
+hash do conteúdo **normalizado**. O mesmo manifesto vive nos dois lados.
+
+```
+editou aqui → regenera o manifesto → commita nos DOIS
+                                   ↘ o outro repo fica vermelho até sincronizar
+```
+
+Isso importa porque o CI de um repositório não tem credencial para ler o outro.
+Fazer `actions/checkout` do repo vizinho exigiria um PAT compartilhado; o
+manifesto entrega a mesma garantia sem introduzir segredo novo.
+
+### Normalização — as diferenças legítimas
+
+`tool/parity_normalize.py` troca por um marcador canônico o que **deve**
+diferir. Hoje há uma regra só, e ela cobre toda a categoria 3:
+
+    <ORG>  ← prefixo da organização: applicationId, bundle identifier,
+             iosBundleId, namespace do pacote Kotlin e o --org do
+             flutter create.
+
+Só o **prefixo** é normalizado. `<ORG>.epicontrole` e `<ORG>.outro` continuam
+distintos — colapsar o sufixo faria dois pacotes diferentes produzirem o mesmo
+hash, e o gate deixaria de ver uma troca real.
+
+Espaço em branco e comentário **não** são normalizados, de propósito: uma
+reformatação que só um dos lados recebeu é drift. Ela torna o próximo diff entre
+os repositórios ilegível — que foi exatamente como a divergência de 33 arquivos
+chegou até aqui sem ninguém notar.
+
+### Cobertura
+
+O manifesto começa com **199 arquivos** — os que já estão em paridade — e cresce
+a cada lote. Não cobre os ainda divergentes, de propósito: um gate que exigisse
+paridade total hoje nasceria vermelho, e gate que nasce vermelho é gate que
+alguém desliga. O que falta está nas seções de lotes acima, não no gate.
+
+Dois arquivos ficaram de fora por estarem **em trânsito**, não por divergirem
+de verdade: os do Lote 1 e o `reports_screen.dart` (nota do fl_chart). O
+manifesto só pode listar o que já está em paridade nas DUAS `main` — gerá-lo a
+partir de um branch não mergeado prometeria uma paridade que o outro lado ainda
+não tem. Foi o próprio gate que barrou as duas tentativas de fazer isso, o que
+é uma demonstração razoável de que ele funciona.
+
+### Testes
+
+`tests/test_parity_drift_gate.py` cobre as duas formas de um gate assim ser
+inútil: **rígido demais** (acusar identidade de loja como drift — vermelho
+permanente) e **frouxo demais** (deixar passar mudança funcional). Inclui a
+prova viva de que `firebase_options.dart`, que difere entre os repositórios em
+exatamente uma linha, entra no manifesto.

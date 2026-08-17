@@ -28,6 +28,13 @@ jobs:
       - name: i18n gate (no new hardcoded strings)
         run: bash tool/check_hardcoded_strings.sh
 
+      # Drift entre epi-controle e epi-controle-app. Compara o conteúdo
+      # normalizado dos arquivos que precisam permanecer funcionalmente
+      # sincronizados contra o manifesto compartilhado pelos dois repositórios
+      # — sem precisar de credencial para ler o outro repo.
+      - name: Parity gate (mirror drift)
+        run: python3 tool/check_parity_drift.py
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

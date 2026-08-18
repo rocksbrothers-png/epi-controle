@@ -56,18 +56,25 @@ jobs:
           melos run gen:l10n
           melos run gen
 
-      # Resolve o bloqueador "projeto iOS ausente": gera o Runner.xcodeproj se
-      # faltar e aplica entitlements (APNs) + Privacy Manifest (mesma lógica do
-      # fastlane lane `prepare`). Preserva os arquivos versionados.
-      - name: Prepare iOS project (entitlements + Privacy Manifest)
+      # Gera o Runner.xcodeproj do zero e aplica bundle id + entitlements (APNs)
+      # + Privacy Manifest (mesma lógica do fastlane lane `prepare`). Preserva os
+      # arquivos versionados. Geração INCONDICIONAL: ver nota na #238 — o antigo
+      # `if [ ! -d ios/Runner.xcodeproj ]` deixava uma cópia versionada obsoleta
+      # substituir o caminho gerado sem ninguém perceber.
+      - name: Prepare iOS project (bundle id + entitlements + Privacy Manifest)
         working-directory: flutter/apps/epi_admin
         run: |
-          if [ ! -d ios/Runner.xcodeproj ]; then
-            flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
-          fi
+          flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
           git checkout -- ios/Runner/Info.plist ios/Runner/PrivacyInfo.xcprivacy ios/Runner/Runner.entitlements
           gem install xcodeproj --no-document
           ruby ios/fastlane/wire_xcode.rb
+
+      # O build assinado abaixo depende de o bundle id do projeto gerado bater
+      # com o provisioning profile. Falhar aqui dá uma mensagem clara; falhar no
+      # `flutter build ipa` dá um erro de code signing difícil de ler.
+      - name: Verify generated bundle id matches Info.plist
+        working-directory: flutter/apps/epi_admin
+        run: ruby ios/fastlane/verify_bundle_id.rb
 
       # ── Apple code-signing setup ───────────────────────────────────────────
       - name: Import distribution certificate

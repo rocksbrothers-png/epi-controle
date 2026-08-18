@@ -8,7 +8,12 @@ name: iOS CI (Flutter)
 # Por que não é um workflow "Xcode puro": este projeto é Flutter num monorepo
 # melos. O build precisa de `melos bootstrap` + geração de l10n/código ANTES de
 # analisar/testar, e o projeto iOS (Runner.xcodeproj/Podfile) NÃO é versionado —
-# é gerado por `flutter create . --platforms=ios` no passo "Prepare iOS project".
+# é gerado por `flutter create . --platforms=ios` no passo "Prepare iOS project",
+# a cada execução.
+#
+# Isso passou a ser verdade na #238: até então os artefatos geráveis estavam
+# versionados neste repositório e a geração nunca chegava a rodar. Ver
+# ios/fastlane/wire_xcode.rb e ios/fastlane/verify_bundle_id.rb.
 
 on:
   push:
@@ -133,18 +138,33 @@ jobs:
         run: flutter test
 
       # ── Materializa o projeto iOS (não versionado) ───────────────────────────
-      # Gera Runner.xcodeproj/Podfile se faltarem e restaura os arquivos
-      # versionados (Info.plist, Privacy Manifest, entitlements), depois fia
-      # entitlements/Privacy no pbxproj (mesma lógica do fastlane `prepare`).
-      - name: Prepare iOS project (entitlements + Privacy Manifest)
+      # Gera Runner.xcodeproj/Podfile do zero e restaura os arquivos versionados
+      # (Info.plist, Privacy Manifest, entitlements), depois fia bundle id,
+      # entitlements e Privacy no pbxproj (mesma lógica do fastlane `prepare`).
+      #
+      # A geração é INCONDICIONAL de propósito. Havia aqui um
+      # `if [ ! -d ios/Runner.xcodeproj ]` que só gerava o projeto quando ele
+      # faltava — e enquanto esses artefatos estiveram versionados, o `if` nunca
+      # disparou: o CI construía a cópia commitada e nunca exercitou a geração.
+      # Uma cópia obsoleta escondendo o caminho real é o defeito que a #238
+      # existe para eliminar; um guard que "pula quando já existe" o traria de
+      # volta no primeiro arquivo que voltasse ao versionamento.
+      - name: Prepare iOS project (bundle id + entitlements + Privacy Manifest)
         working-directory: flutter/apps/epi_admin
         run: |
-          if [ ! -d ios/Runner.xcodeproj ]; then
-            flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
-          fi
+          flutter create . --platforms=ios --org com.rocksbrothers --project-name epi_admin
           git checkout -- ios/Runner/Info.plist ios/Runner/PrivacyInfo.xcprivacy ios/Runner/Runner.entitlements
           gem install xcodeproj --no-document
           ruby ios/fastlane/wire_xcode.rb
+
+      # Confere que o projeto GERADO carrega o bundle id do Info.plist versionado.
+      # O build `--no-codesign` abaixo não pega essa divergência — o
+      # CFBundleIdentifier do app vem do Info.plist, e sem assinatura ninguém
+      # confere o build setting contra um provisioning profile. Sem este passo, o
+      # erro só apareceria no `deploy-ios.yml`, que roda apenas em tag vX.Y.Z.
+      - name: Verify generated bundle id matches Info.plist
+        working-directory: flutter/apps/epi_admin
+        run: ruby ios/fastlane/verify_bundle_id.rb
 
       # ── CocoaPods ────────────────────────────────────────────────────────────
       # `flutter build ios` já roda `pod install`, mas validamos aqui para

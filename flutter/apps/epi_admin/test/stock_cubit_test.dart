@@ -154,11 +154,23 @@ void main() {
       expect(cubit.state.actorUserId, 5);
     });
 
+    test('load() carimba o ator que a camada de dados resolveu', () async {
+      // Regressão da fatia 1.1B: o ator vinha junto do bootstrap. Sem ele, as
+      // consultas de itens, o movimento e a fila offline sairiam com
+      // `actor_user_id=0`. Um ator diferente do padrão prova que o valor
+      // atravessa de verdade, em vez de coincidir com um default do teste.
+      final repo = _FakeStockRepository([_ok(1, 'Capacete')], actorUserId: 99);
+      final cubit = StockCubit(repository: repo);
+      await cubit.load();
+
+      expect(cubit.state.actorUserId, 99);
+    });
+
     test('load() sem unidade resolvida não inventa escopo', () async {
       // master_admin/general_admin sem unidade selecionada: o backend manda
       // `unit_scope_id: null`. Cair num id qualquer faria a movimentação
       // incidir sobre uma unidade que ninguém escolheu.
-      final semUnidade = Epi(
+      const semUnidade = Epi(
         id: 1,
         name: 'Capacete',
         companyId: 7,
@@ -271,7 +283,7 @@ void main() {
     test('sem saldo de unidade o otimismo não inventa número', () async {
       // `unitStockQuantity == null` significa "não há unidade", não zero.
       // Somar delta a isso escreveria um saldo local que ninguém apurou.
-      final semUnidade = Epi(
+      const semUnidade = Epi(
         id: 1,
         name: 'Capacete',
         companyId: 7,
@@ -300,7 +312,7 @@ void main() {
       // O caso que motivou a mudança: mínimo 100, quatro unidades com 50 cada.
       // A empresa tem 200 e está saudável; comparar 50 <= 100 marcaria como
       // crítico um EPI que só está distribuído.
-      final distribuido = Epi(
+      const distribuido = Epi(
         id: 1,
         name: 'Capacete',
         companyId: 1,

@@ -37,6 +37,7 @@
     "apps/epi_admin/lib/core/router/route_permissions.dart": "4d4e1370a46c5f93e5c483e6f1bcf23160bb6392988fe3923b8073ff985d91ce",
     "apps/epi_admin/lib/core/router/routes.dart": "37d3765fcefe8c52b689cc7221f18d7ca78fa29087ac90f33c063200b5e2cae4",
     "apps/epi_admin/lib/core/session/session_context.dart": "29c133debf383fe3100a9551792a2a659206b8061963dfc36fb8b412b2bb94a6",
+    "apps/epi_admin/lib/core/shell/app_shell.dart": "9fba3de869e2f74f2389a7790aa3c5a9cbcbe8589268d70742de15723dbe38c5",
     "apps/epi_admin/lib/core/sync/offline_queue.dart": "033b2ddfe7c7c309995368fead268e076916de56303b0b8dd30edb87f2cbe857",
     "apps/epi_admin/lib/core/sync/sync_service.dart": "9b3c37fa6b3a24fb19de97197306d56afe4ecf4411788ad2ce0a152def1d209a",
     "apps/epi_admin/lib/core/utils/epi_status_utils.dart": "93c25091d8137c44aad182a2546375d1dab89c421e15cb5ff1ad7146f2ddc1eb",

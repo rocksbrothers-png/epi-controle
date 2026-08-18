@@ -134,7 +134,7 @@
     "apps/epi_admin/test/route_permissions_test.dart": "1758fe81f687cd8ed6685d18742bdc3d108a50847fad137e2128f9502e5c3597",
     "apps/epi_admin/test/session_context_test.dart": "65c4784c52cb3dca6d3bace0af285a2a9b0daa818498776d7f6f97cc5c53b613",
     "apps/epi_admin/test/stock_compliance_filter_test.dart": "0fbad6b06cfaade6d7495bfbd309ed96c0b971fcc2b0c8d1b24da97a4ec00a88",
-    "apps/epi_admin/test/stock_cubit_test.dart": "6cd60a11d93e9110dea2b01e4b2175ef561c2b6e4a9a72e8303043089ad5bbf8",
+    "apps/epi_admin/test/stock_cubit_test.dart": "2b2d179ddca62a8f97a4d1467839580d034713a0064ba40668c9a2c85fb3d646",
     "apps/epi_admin/test/stock_query_cubit_test.dart": "b0879df23d9ad1d3787fb36f99f1a0f22fc2aacc1dd344f1406c41799727ee22",
     "apps/epi_admin/test/unit_labels_test.dart": "566650ea7e47ce634a4a019d238fcd73fa7dc236c97de3790a0fbc90b2cfd779",
     "apps/epi_admin/test/widget_test.dart": "cf85159b3543f46fa521fd9dc104a11982fadefd8ae0e3d165e59f0dbdfd4113",

@@ -276,3 +276,50 @@ inútil: **rígido demais** (acusar identidade de loja como drift — vermelho
 permanente) e **frouxo demais** (deixar passar mudança funcional). Inclui a
 prova viva de que `firebase_options.dart`, que difere entre os repositórios em
 exatamente uma linha, entra no manifesto.
+
+---
+
+## Fechamento — Lotes 1 a 6 (concluídos)
+
+Os 33 arquivos `.dart` divergentes mapeados nesta auditoria chegaram a **zero**.
+
+| | |
+|---|---|
+| SHA final `epi-controle-app` | `7a9645d` |
+| SHA final `epi-controle` | `b161b8a` |
+| Manifesto | **236 arquivos**, byte a byte idêntico nos dois (sha256 `f07d90cd5dc2a26f`) |
+| Suítes | **2422 passed, 1 skipped** em cada repositório |
+| Gate de drift | ✅ nos dois lados |
+| Web / Android / iOS | Build Flutter Web ✅ · APK debug ✅ · AAB assinado ✅ · emulador Android ✅ · `flutter build ios --no-codesign` ✅ — nas duas `main` |
+
+### O que cada lote corrigiu
+
+| lote | defeito real (não cosmético) |
+|---|---|
+| 1 | `must_change_password` sem tela; `sqflite` derrubava **todas** as telas no Web |
+| 2a | `Employee` lia chaves inexistentes; `Company.active` lançava `_CastError` e **apagava a lista de Empresas** |
+| 2b | `FichaConfig.rastreabilidade` como `bool`: a aba nunca carregava, e o Switch gravava `'True'` no rodapé de documento de NR-6 |
+| 3 | Dashboard não consumia a fonte única de conformidade |
+| 4 | Conferência de entrega por QR ausente por inteiro |
+| 5 | `master_admin` não configurava a Ficha de **nenhum** tenant |
+| 6 | Sem botão de sair: encerrar sessão exigia limpar dados do app |
+
+### Divergências remanescentes, classificadas
+
+| # | arquivo(s) | categoria |
+|---|---|---|
+| 6 | `app_localizations*.dart` | **gerável** — os 10 ARBs são idênticos; `melos run gen:l10n` roda em todos os jobs e sobrescreve |
+| 1 | `firebase_options.dart` | **diferença legítima** — `iosBundleId`; normalizada, dentro do manifesto |
+| 4 | testes de `change_password_gate`, `ficha_rastreabilidade`, `sync_service_web_guard`, `epi_archival_contract` | **espelho à frente** em cobertura |
+
+### O padrão que este trabalho revelou
+
+Em **quatro lotes seguidos** (3, 4, 5 e o caso da Ficha) o achado foi idêntico:
+rota registrada no backend, serviço implementado, testes de backend passando e
+todas as chaves de i18n traduzidas nos 5 idiomas — e **nenhuma linha de Flutter
+consumindo**. Não era desatualização difusa do espelho: era um ponto cego
+reprodutível na camada Flutter do processo de replicação, invisível porque cada
+replicação *parecia* completa e tradução órfã não acusa nada.
+
+Daí a regra do ADR-0004. Ver também a issue de cobertura Flutter × Web Legado,
+que quantifica a mesma classe de lacuna no outro eixo.

@@ -163,15 +163,21 @@ jobs:
       # Validação estática Multi-Tenant: as migrations de RLS DEVEM referenciar
       # tenant_id/company_id e criar policies. Isto é sempre seguro (não aplica
       # SQL), garante que ninguém remova o isolamento por engano.
+      #
+      # O `--include=*.sql` não é detalhe de estilo: sem ele o grep varre o
+      # diretório inteiro, e qualquer arquivo de texto que mencione os termos
+      # (um README, por exemplo) satisfaz a verificação sozinho — o gate ficaria
+      # verde mesmo sem nenhuma migration. Restringir às migrations mantém a
+      # asserção sobre o que ela diz medir.
       - name: Validate Multi-Tenant invariants (static)
         run: |
           set -e
           echo "Verificando referências a tenant/company e RLS nas migrations…"
-          if ! grep -rilE "tenant_id|company_id" supabase/migrations >/dev/null; then
+          if ! grep -rilE --include='*.sql' "tenant_id|company_id" supabase/migrations >/dev/null; then
             echo "::error::Nenhuma migration referencia tenant_id/company_id — isolamento Multi-Tenant ausente."
             exit 1
           fi
-          if ! grep -rilE "ROW LEVEL SECURITY|CREATE POLICY" supabase/migrations >/dev/null; then
+          if ! grep -rilE --include='*.sql' "ROW LEVEL SECURITY|CREATE POLICY" supabase/migrations >/dev/null; then
             echo "::error::Nenhuma migration habilita RLS / CREATE POLICY."
             exit 1
           fi

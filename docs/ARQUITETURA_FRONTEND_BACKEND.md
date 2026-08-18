@@ -140,6 +140,17 @@ deste pedido:
 | 6 Virada oficial | ⬜ próximo | flag de cutover de `/` (default OFF) |
 | 7 Remoção do legado | ⬜ futuro | checklist (Entregável 8) |
 
+A Fase 4 continua **aberta**, e o critério para fechá-la está em
+`docs/adr/ADR-0004-feature-multiplataforma-concluida.md`: backend implementado,
+rota registrada e i18n existente **não** significam feature Flutter concluída —
+é preciso evidência do consumidor Flutter ou decisão explícita de exclusão.
+
+A auditoria de fechamento dos Lotes 1–6 quantificou o que falta neste eixo:
+**50 rotas** registradas no backend e usadas pelo Web Legado seguem sem
+consumidor Flutter, agrupadas por domínio na issue de cobertura
+Flutter × Web Legado. Note que isso é distinto do gate de drift, que compara os
+dois repositórios Flutter entre si e está verde em 236 arquivos.
+
 ---
 
 ## Entregável 5 — Plano de testes

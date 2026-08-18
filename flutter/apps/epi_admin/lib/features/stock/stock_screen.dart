@@ -399,14 +399,20 @@ class _StockTile extends StatelessWidget {
   final Epi epi;
   final void Function(int delta) onMove;
 
+  /// Saldo da UNIDADE — esta é a tela operacional. `null` só ocorre para perfil
+  /// sem unidade resolvida; nesse caso não há saldo local a exibir.
+  int? get _unitStock => epi.unitStockQuantity;
+
   double get _barValue {
     if (epi.minimumStock == 0) return 1.0;
-    return (epi.stockQuantity / (epi.minimumStock * 3)).clamp(0.0, 1.0);
+    return ((_unitStock ?? 0) / (epi.minimumStock * 3)).clamp(0.0, 1.0);
   }
 
   Color get _barColor {
-    if (epi.stockQuantity == 0) return EpiColors.danger;
-    if (epi.isCriticalStock) return EpiColors.warning;
+    if ((_unitStock ?? 0) == 0) return EpiColors.danger;
+    // Criticidade é CORPORATIVA e vem pronta do backend — o cliente não compara
+    // saldo da unidade com mínimo da empresa.
+    if (epi.isCompanyStockCritical == true) return EpiColors.warning;
     return EpiColors.success;
   }
 
@@ -449,14 +455,18 @@ class _StockTile extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '${epi.stockQuantity}',
+                  '${_unitStock ?? '—'}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: _barColor,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
                 Text(
-                  ' / mín ${epi.minimumStock}',
+                  ' ${AppLocalizations.of(context).stockUnitBalanceSuffix}'
+                  ' · ${AppLocalizations.of(context).stockCompanyBalanceLabel}'
+                  ' ${epi.companyStockQuantity ?? epi.stockQuantity}'
+                  ' / ${AppLocalizations.of(context).stockMinimumShort}'
+                  ' ${epi.minimumStock}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: EpiColors.textMuted,
                       ),

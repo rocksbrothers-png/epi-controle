@@ -637,5 +637,8 @@
   "stockStatusBlockedAnalysis": "En cours d'analyse",
   "stockStatusBlockedRejected": "Refusé",
   "stockStatusBlockedArchived": "EPI archivé",
-  "stockStatusUnknown": "Statut non reconnu"
+  "stockStatusUnknown": "Statut non reconnu",
+  "stockUnitBalanceSuffix": "dans l'unité",
+  "stockCompanyBalanceLabel": "entreprise",
+  "stockMinimumShort": "min"
 }

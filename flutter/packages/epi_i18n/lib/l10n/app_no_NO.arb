@@ -637,5 +637,8 @@
   "stockStatusBlockedAnalysis": "Til analyse",
   "stockStatusBlockedRejected": "Avvist",
   "stockStatusBlockedArchived": "Arkivert PVU",
-  "stockStatusUnknown": "Ukjent status"
+  "stockStatusUnknown": "Ukjent status",
+  "stockUnitBalanceSuffix": "ved denne enheten",
+  "stockCompanyBalanceLabel": "selskap",
+  "stockMinimumShort": "min"
 }

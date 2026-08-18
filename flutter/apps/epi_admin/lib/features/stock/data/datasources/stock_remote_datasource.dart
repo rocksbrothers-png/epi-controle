@@ -4,6 +4,14 @@ import '../../../../core/api/api_client.dart';
 import '../../domain/repositories/stock_repository.dart';
 
 abstract class StockRemoteDataSource {
+  Future<List<Epi>> fetchStockEpis({
+    String? name,
+    String? section,
+    String? manufacturer,
+    String? ca,
+    String? protection,
+  });
+  Future<int> currentActorUserId();
   Future<StockSnapshot> fetchStock();
   Future<List<StockItem>> fetchAvailableItems({
     required int actorUserId,
@@ -25,6 +33,12 @@ abstract class StockRemoteDataSource {
 class ApiStockRemoteDataSource implements StockRemoteDataSource {
   const ApiStockRemoteDataSource();
 
+  /// Sessão, não bootstrap: `ApiClient` mantém o ator do login corrente e o
+  /// zera no logout. Ler de `bootstrap.users.first` (como fazia `fetchStock`)
+  /// só acertava porque o backend devolve o próprio usuário primeiro.
+  @override
+  Future<int> currentActorUserId() async => ApiClient.actorUserId;
+
   @override
   Future<StockSnapshot> fetchStock() async {
     final bootstrap = await ApiClient.auth.bootstrap();
@@ -45,6 +59,25 @@ class ApiStockRemoteDataSource implements StockRemoteDataSource {
       actorUserId: actorUserId,
     );
   }
+
+  @override
+  Future<List<Epi>> fetchStockEpis({
+    String? name,
+    String? section,
+    String? manufacturer,
+    String? ca,
+    String? protection,
+  }) =>
+      ApiClient.stock.fetchStockEpis(
+        // Ator vem da SESSÃO, não de bootstrap: é aqui, na camada de dados,
+        // que o `actor_user_id` é resolvido — o cubit não conhece ApiClient.
+        actorUserId: ApiClient.actorUserId,
+        name: name,
+        section: section,
+        manufacturer: manufacturer,
+        ca: ca,
+        protection: protection,
+      );
 
   @override
   Future<List<StockItem>> fetchAvailableItems({

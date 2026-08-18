@@ -9,7 +9,26 @@ class StockRepositoryImpl implements StockRepository {
   final StockRemoteDataSource _remoteDataSource;
 
   @override
+  Future<int> currentActorUserId() => _remoteDataSource.currentActorUserId();
+
+  @override
   Future<StockSnapshot> fetchStock() => _remoteDataSource.fetchStock();
+
+  @override
+  Future<List<Epi>> fetchStockEpis({
+    String? name,
+    String? section,
+    String? manufacturer,
+    String? ca,
+    String? protection,
+  }) =>
+      _remoteDataSource.fetchStockEpis(
+        name: name,
+        section: section,
+        manufacturer: manufacturer,
+        ca: ca,
+        protection: protection,
+      );
 
   @override
   Future<List<StockItem>> fetchAvailableItems({

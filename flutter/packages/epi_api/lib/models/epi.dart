@@ -1,3 +1,43 @@
+/// Saldo por grade (tamanho) de um EPI numa unidade.
+///
+/// Vem de `fetch_epi_size_balance`, que agrupa `epi_stock_items` por
+/// glove_size/size/uniform_size. O backend usa `'N/A'` como marcador de grade
+/// ausente — o cliente não exibe esse marcador ao operador.
+class EpiSizeBalance {
+  const EpiSizeBalance({
+    required this.quantity,
+    this.gloveSize,
+    this.size,
+    this.uniformSize,
+  });
+
+  final int quantity;
+  final String? gloveSize;
+  final String? size;
+  final String? uniformSize;
+
+  /// Grade efetiva: a primeira preenchida, ignorando o `'N/A'` do backend.
+  String? get displaySize {
+    for (final valor in [gloveSize, size, uniformSize]) {
+      final texto = valor?.trim();
+      if (texto != null && texto.isNotEmpty && texto != 'N/A') return texto;
+    }
+    return null;
+  }
+
+  static String? _texto(Object? valor) {
+    final texto = valor?.toString().trim();
+    return (texto == null || texto.isEmpty) ? null : texto;
+  }
+
+  factory EpiSizeBalance.fromJson(Map<String, dynamic> json) => EpiSizeBalance(
+        quantity: (json['quantity'] as num?)?.toInt() ?? 0,
+        gloveSize: _texto(json['glove_size']),
+        size: _texto(json['size']),
+        uniformSize: _texto(json['uniform_size']),
+      );
+}
+
 class Epi {
   const Epi({
     required this.id,
@@ -10,6 +50,12 @@ class Epi {
     this.stockQuantity = 0,
     this.minimumStock = 0,
     this.photoUrl,
+    this.companyId,
+    this.unitStockQuantity,
+    this.companyStockQuantity,
+    this.isCompanyStockCritical,
+    this.unitScopeId,
+    this.sizeBalances = const [],
   });
 
   final int id;
@@ -31,6 +77,40 @@ class Epi {
   final int minimumStock;
   final String? photoUrl;
 
+  /// Empresa dona do EPI. Vem de `/api/stock/epis`; ausente no bootstrap.
+  final int? companyId;
+
+  /// Saldo da **unidade** resolvida pelo servidor (`/api/stock/epis`).
+  ///
+  /// `null` quando não há unidade resolvida — perfil sem unidade fixa que não
+  /// selecionou uma, ou payload que não carrega semântica de unidade (o
+  /// bootstrap). `null` NÃO é zero: zero afirma "esta unidade não tem estoque",
+  /// e null diz "não há unidade".
+  final int? unitStockQuantity;
+
+  /// Saldo **corporativo** — a soma sobre todas as unidades da empresa.
+  final int? companyStockQuantity;
+
+  /// Criticidade corporativa, calculada **no backend** comparando
+  /// `companyStockQuantity` com `minimumStock`, ambos do mesmo escopo.
+  ///
+  /// O cliente não recalcula: `minimum_stock` vive em `epis`, na empresa, e
+  /// compará-lo com o saldo de uma unidade marcaria como crítico todo EPI cujo
+  /// estoque esteja distribuído. Mínimo por unidade é outra frente.
+  final bool? isCompanyStockCritical;
+
+  /// A unidade que o servidor usou para calcular `unitStockQuantity`.
+  /// `null` exatamente quando `unitStockQuantity` é `null`.
+  final int? unitScopeId;
+
+  /// Grades por tamanho na unidade resolvida. Vazio quando não há unidade.
+  final List<EpiSizeBalance> sizeBalances;
+
+  @Deprecated(
+    'Compara campos que podem ter escopos diferentes. Use '
+    'isCompanyStockCritical, que vem calculado do backend. '
+    'Remoção prevista para a fatia 1.1E.',
+  )
   bool get isCriticalStock => stockQuantity <= minimumStock;
 
   /// 'expired' | 'expiring' | 'valid' | null (sem data) para uma data ISO.
@@ -67,7 +147,7 @@ class Epi {
   /// (NT 146/2015). CA vencido NÃO impede a entrega.
   bool get isBlockedForDelivery => manufacturerValidityStatus == 'expired';
 
-  Epi copyWith({int? stockQuantity}) => Epi(
+  Epi copyWith({int? stockQuantity, int? unitStockQuantity}) => Epi(
         id: id,
         name: name,
         code: code,
@@ -78,6 +158,12 @@ class Epi {
         stockQuantity: stockQuantity ?? this.stockQuantity,
         minimumStock: minimumStock,
         photoUrl: photoUrl,
+        companyId: companyId,
+        unitStockQuantity: unitStockQuantity ?? this.unitStockQuantity,
+        companyStockQuantity: companyStockQuantity,
+        isCompanyStockCritical: isCompanyStockCritical,
+        unitScopeId: unitScopeId,
+        sizeBalances: sizeBalances,
       );
 
   factory Epi.fromJson(Map<String, dynamic> json) => Epi(
@@ -94,5 +180,16 @@ class Epi {
             ((json['stock'] ?? json['stock_quantity']) as num?)?.toInt() ?? 0,
         minimumStock: (json['minimum_stock'] as num?)?.toInt() ?? 0,
         photoUrl: (json['epi_photo_data'] ?? json['photo_url']) as String?,
+        // Campos do contrato de /api/stock/epis. Ausentes no bootstrap, e por
+        // isso anuláveis: um payload sem semântica de unidade não deve produzir
+        // zero, que seria lido como "unidade sem estoque".
+        companyId: (json['company_id'] as num?)?.toInt(),
+        unitStockQuantity: (json['unit_stock_quantity'] as num?)?.toInt(),
+        companyStockQuantity: (json['company_stock_quantity'] as num?)?.toInt(),
+        isCompanyStockCritical: json['is_company_stock_critical'] as bool?,
+        unitScopeId: (json['unit_scope_id'] as num?)?.toInt(),
+        sizeBalances: ((json['size_balances'] as List<dynamic>?) ?? const [])
+            .map((e) => EpiSizeBalance.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }

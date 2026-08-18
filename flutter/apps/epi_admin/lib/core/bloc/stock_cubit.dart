@@ -65,7 +65,12 @@ class StockState extends Equatable {
   final List<String> blockedStatusKeys;
   final String? blockedError;
 
-  int get criticalCount => epis.where((e) => e.isCriticalStock).length;
+  /// Criticidade CORPORATIVA, calculada pelo backend (`is_company_stock_critical`).
+  /// O cliente não compara saldo com mínimo: `minimum_stock` é da empresa, e
+  /// compará-lo com o saldo de uma unidade marcaria como crítico todo EPI cujo
+  /// estoque esteja distribuído entre unidades.
+  int get criticalCount =>
+      epis.where((e) => e.isCompanyStockCritical == true).length;
 
   /// EPIs cuja validade do fabricante já venceu — não podem ser entregues e
   /// devem ser retirados do estoque (NT 146/2015).
@@ -91,17 +96,17 @@ class StockState extends Equatable {
       };
 
   List<Epi> get filtered {
-    var result = epis.where(_matchesCompliance);
-    if (query.isNotEmpty) {
-      final q = query.toLowerCase();
-      result = result.where((e) => e.name.toLowerCase().contains(q));
-    }
-    // Critical EPIs first, then alphabetical
+    // Só o filtro de conformidade fica no cliente: ele deriva de datas já
+    // presentes no payload e não tem equivalente no servidor. A busca por nome
+    // vai para `/api/stock/epis` — refazê-la aqui filtraria de novo o que o
+    // backend já filtrou, e divergiria dele em acentuação e maiúsculas.
+    final result = epis.where(_matchesCompliance);
+    // Críticos primeiro, depois alfabético.
     final sorted = result.toList()
       ..sort((a, b) {
-        if (a.isCriticalStock != b.isCriticalStock) {
-          return a.isCriticalStock ? -1 : 1;
-        }
+        final aCritico = a.isCompanyStockCritical == true;
+        final bCritico = b.isCompanyStockCritical == true;
+        if (aCritico != bCritico) return aCritico ? -1 : 1;
         return a.name.compareTo(b.name);
       });
     return sorted;
@@ -169,28 +174,45 @@ class StockCubit extends Cubit<StockState> {
   final ConnectivityChecker _connectivity;
   final OfflineQueue _offlineQueue;
 
+  /// Carrega o estoque a partir de `/api/stock/epis` — fonte ÚNICA.
+  ///
+  /// Antes vinha de `bootstrap.epis`, que trazia só o total da empresa,
+  /// resolvia a visibilidade GLOBAL/JV no login e envelhecia durante a sessão.
+  /// Agora saldo da unidade e saldo corporativo chegam em campos separados, a
+  /// visibilidade é reavaliada a cada consulta, e o filtro por nome é do
+  /// servidor.
   Future<void> load() async {
-    emit(const StockState(isLoading: true));
+    emit(state._copyWith(isLoading: true, error: null));
     try {
-      final snapshot = await _repository.fetchStock();
-      final epis = snapshot.epis;
-      emit(StockState(
+      final epis = await _repository.fetchStockEpis(
+        name: state.query.isEmpty ? null : state.query,
+      );
+      // Empresa e unidade saem do escopo que o SERVIDOR resolveu, não de um
+      // retrato do login: `unitScopeId` é a unidade usada para calcular o
+      // saldo, e é nela que a movimentação deve incidir.
+      final comEscopo = epis.where((e) => e.unitScopeId != null);
+      // O ator continua vindo da sessão (antes vinha junto do bootstrap). Sem
+      // isto as consultas de itens e o movimento sairiam com `actor_user_id=0`.
+      final actorUserId = await _repository.currentActorUserId();
+      emit(state._copyWith(
+        isLoading: false,
         epis: epis,
-        companyId: snapshot.companyId,
-        unitId: snapshot.unitId,
-        actorUserId: snapshot.actorUserId,
+        companyId: comEscopo.isEmpty ? 0 : (comEscopo.first.companyId ?? 0),
+        unitId: comEscopo.isEmpty ? 0 : (comEscopo.first.unitScopeId ?? 0),
+        actorUserId: actorUserId,
       ));
-      // Emit local notification if any EPI is below minimum stock
-      final critical = epis.where((e) => e.isCriticalStock).toList();
-      if (critical.isNotEmpty) {
+      // Alerta de estoque crítico — CORPORATIVO, calculado pelo backend.
+      final criticos =
+          epis.where((e) => e.isCompanyStockCritical == true).toList();
+      if (criticos.isNotEmpty) {
         NotificationService().simulateNotification(AppNotification(
           title: 'Estoque Crítico',
-          body: '${critical.length} EPI(s) abaixo do estoque mínimo',
+          body: '${criticos.length} EPI(s) abaixo do estoque mínimo',
           data: const {},
         ));
       }
     } on Exception catch (e) {
-      emit(StockState(error: e.toString()));
+      emit(state._copyWith(isLoading: false, error: e.toString()));
     }
   }
 
@@ -199,6 +221,19 @@ class StockCubit extends Cubit<StockState> {
   /// sem botão de "tentar de novo", que não resolveria nada.
   static bool _isForbidden(Object error) =>
       error is DioException && error.response?.statusCode == 403;
+
+  /// Ator da sessão, resolvido sob demanda.
+  ///
+  /// As abas de itens disponíveis/bloqueados podem ser abertas antes de
+  /// `load()` (deep-link, ou o operador tocando a aba primeiro). Depender de
+  /// `load()` ter rodado mandaria `actor_user_id=0` e o backend recusaria — o
+  /// mesmo defeito que a lista de colaboradores já teve.
+  Future<int> _actor() async {
+    if (state.actorUserId != 0) return state.actorUserId;
+    final actorUserId = await _repository.currentActorUserId();
+    if (actorUserId != 0) emit(state._copyWith(actorUserId: actorUserId));
+    return actorUserId;
+  }
 
   /// Carrega os QRs disponíveis do EPI. O backend devolve em ordem FEFO e
   /// aplica o escopo de empresa/unidade a partir do ator — por isso nenhum
@@ -211,7 +246,7 @@ class StockCubit extends Cubit<StockState> {
     ));
     try {
       final items = await _repository.fetchAvailableItems(
-        actorUserId: state.actorUserId,
+        actorUserId: await _actor(),
         epiId: epiId,
       );
       emit(state._copyWith(
@@ -231,7 +266,7 @@ class StockCubit extends Cubit<StockState> {
     emit(state._copyWith(blockedStatus: StockListStatus.loading));
     try {
       final result =
-          await _repository.fetchBlockedItems(actorUserId: state.actorUserId);
+          await _repository.fetchBlockedItems(actorUserId: await _actor());
       emit(state._copyWith(
         blockedStatus: StockListStatus.ready,
         blockedItems: result.items,
@@ -246,8 +281,10 @@ class StockCubit extends Cubit<StockState> {
     }
   }
 
-  void search(String query) {
+  /// Busca por nome. Reconsulta o servidor: o filtro é dele, não do cliente.
+  Future<void> search(String query) {
     emit(state._copyWith(query: query));
+    return load();
   }
 
   void setCompliance(StockComplianceFilter value) {
@@ -263,12 +300,21 @@ class StockCubit extends Cubit<StockState> {
   }) async {
     final movementType = delta > 0 ? 'in' : 'out';
     final quantity = delta.abs();
+    // Resolvido ANTES do enfileiramento: a operação offline é carimbada com
+    // quem a originou, não com quem estiver logado quando a fila drenar.
+    final actorUserId = await _actor();
 
-    // Optimistic UI update immediately
+    // O movimento incide sobre a unidade que o SERVIDOR resolveu para este EPI.
+    final alvo = state.epis.where((e) => e.id == epiId).toList();
+    final companyId = alvo.isEmpty ? state.companyId : (alvo.first.companyId ?? state.companyId);
+    final unitId = alvo.isEmpty ? state.unitId : (alvo.first.unitScopeId ?? state.unitId);
+
+    // Atualização otimista do saldo da UNIDADE — é ele que a tela mostra.
     final optimistic = state.epis.map((e) {
       if (e.id != epiId) return e;
-      final newQty = (e.stockQuantity + delta).clamp(0, 99999);
-      return e.copyWith(stockQuantity: newQty);
+      final atual = e.unitStockQuantity;
+      if (atual == null) return e;
+      return e.copyWith(unitStockQuantity: (atual + delta).clamp(0, 99999));
     }).toList();
     emit(state._copyWith(epis: optimistic));
 
@@ -280,9 +326,9 @@ class StockCubit extends Cubit<StockState> {
       await _offlineQueue.enqueue(
         opType: 'stock_movement',
         payload: {
-          'actor_user_id': state.actorUserId,
-          'company_id': state.companyId,
-          'unit_id': state.unitId,
+          'actor_user_id': actorUserId,
+          'company_id': companyId,
+          'unit_id': unitId,
           'epi_id': epiId,
           'movement_type': movementType,
           'quantity': quantity,
@@ -294,9 +340,9 @@ class StockCubit extends Cubit<StockState> {
     // Online path: persist to backend, queue on network failure
     try {
       await _repository.recordMovement(
-        actorUserId: state.actorUserId,
-        companyId: state.companyId,
-        unitId: state.unitId,
+        actorUserId: actorUserId,
+        companyId: companyId,
+        unitId: unitId,
         epiId: epiId,
         movementType: movementType,
         quantity: quantity,
@@ -306,9 +352,9 @@ class StockCubit extends Cubit<StockState> {
       await _offlineQueue.enqueue(
         opType: 'stock_movement',
         payload: {
-          'actor_user_id': state.actorUserId,
-          'company_id': state.companyId,
-          'unit_id': state.unitId,
+          'actor_user_id': actorUserId,
+          'company_id': companyId,
+          'unit_id': unitId,
           'epi_id': epiId,
           'movement_type': movementType,
           'quantity': quantity,

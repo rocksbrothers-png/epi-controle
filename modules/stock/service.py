@@ -218,6 +218,38 @@ def backfill_unit_stock_from_epis(connection, timestamp_iso):
     )
 
 
+DEFAULT_MINIMUM_STOCK = 10
+
+
+def resolve_minimum_stock(value):
+    """Mínimo efetivo de um EPI, com o mesmo default da coluna.
+
+    `epis.minimum_stock` é `INTEGER NOT NULL DEFAULT 10` (core/schema.py), então
+    NULL não é estado alcançável por linha normal — este fallback existe para
+    linhas anteriores à criação da coluna e para bancos em migração.
+
+    **Zero é valor configurado, não ausência.** A tela administrativa grava o
+    que o usuário digitar, inclusive 0, e nesse caso só saldo zerado dispara o
+    alerta. Tratar 0 como "não configurado" silenciaria o alerta de quem
+    deliberadamente pediu para ser avisado ao zerar.
+    """
+    return DEFAULT_MINIMUM_STOCK if value is None else int(value)
+
+
+def is_stock_critical(stock, minimum_stock):
+    """Regra ÚNICA de criticidade de estoque.
+
+    Extraída para que `/api/stock/low` e `/api/stock/epis` não possam divergir:
+    duas cópias da mesma comparação divergem no primeiro ajuste feito num lado
+    só, e o operador passaria a ver alertas diferentes conforme a tela.
+
+    Compara grandezas do MESMO escopo. Quem chama é responsável por passar
+    saldo corporativo com mínimo corporativo — nunca saldo de uma unidade
+    contra o mínimo da empresa.
+    """
+    return int(stock or 0) <= resolve_minimum_stock(minimum_stock)
+
+
 def fetch_low_stock_items(
     connection,
     actor=None,
@@ -274,8 +306,8 @@ def fetch_low_stock_items(
         ):
             continue
         stock = int(row['stock'] or 0)
-        minimum = int(row['minimum_stock']) if row['minimum_stock'] is not None else 10
-        if stock <= minimum:
+        minimum = resolve_minimum_stock(row['minimum_stock'])
+        if is_stock_critical(stock, minimum):
             size_balances = fetch_epi_size_balance(
                 connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id'])
             )
@@ -693,7 +725,7 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
       - missing_lot: item disponível sem lote (lacuna)
       - admin_blocked: bloqueio administrativo (status blocked_*)
     """
-    today = today or datetime.now(UTC).date()
+    today = today or datetime.now(timezone.utc).date()
     rows = connection.execute(
         'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '
         'esi.lot_code, esi.manufacture_date, esi.status, esi.qr_code_value, '

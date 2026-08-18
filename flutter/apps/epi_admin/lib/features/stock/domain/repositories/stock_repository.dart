@@ -19,6 +19,17 @@ class StockSnapshot {
 /// A orquestração offline (fila/conectividade/notificação) permanece no cubit.
 abstract class StockRepository {
   Future<StockSnapshot> fetchStock();
+
+  /// QRs disponíveis de um EPI, em ordem FEFO definida pelo backend.
+  /// Sem `companyId`/`unitId`: o escopo é derivado do ator no servidor.
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  });
+
+  /// Itens bloqueados no escopo do ator, com as chaves de status válidas.
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId});
+
   Future<void> recordMovement({
     required int actorUserId,
     required int companyId,

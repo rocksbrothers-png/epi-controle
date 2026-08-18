@@ -1,5 +1,20 @@
 import 'package:dio/dio.dart';
 
+import '../models/stock_item.dart';
+
+/// Itens de estoque bloqueados, agrupados pelas chaves de status do backend.
+///
+/// O backend devolve, junto dos itens, um mapa `statuses` com rótulos em
+/// português. Guardamos apenas as CHAVES: o rótulo exibido vem do ARB, senão o
+/// app falaria português nos outros quatro idiomas. As chaves desconhecidas
+/// são preservadas para a UI poder mostrar algo em vez de esconder o item.
+class BlockedStockItems {
+  const BlockedStockItems({required this.items, required this.statusKeys});
+
+  final List<StockItem> items;
+  final List<String> statusKeys;
+}
+
 class StockApi {
   const StockApi(this._dio);
   final Dio _dio;
@@ -38,6 +53,51 @@ class StockApi {
       },
     );
     return res.data ?? {};
+  }
+
+  /// QRs disponíveis de um EPI na unidade do ator, já em ordem FEFO (o lote que
+  /// vence primeiro sai primeiro). A ordenação é do backend — o cliente não
+  /// reordena, senão duplicaria a regra.
+  ///
+  /// **Não recebe `company_id` nem `unit_id`.** O backend deriva os dois do
+  /// ator: para perfis de empresa o `company_id` do cliente é ignorado, e
+  /// `admin`/`user` ficam presos à própria unidade operacional. Mandar esses
+  /// campos daqui moveria autorização para a tela.
+  /// GET /api/stock/available-items.
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/available-items',
+      queryParameters: {'actor_user_id': actorUserId, 'epi_id': epiId},
+    );
+    final items = (res.data?['items'] as List<dynamic>?) ?? const [];
+    return items
+        .map((e) => StockItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Itens bloqueados da empresa do ator (vencidos, aguardando descarte ou
+  /// devolução, em análise, reprovados, de EPI arquivado).
+  ///
+  /// Mesma regra de escopo do método acima: nada de `company_id` a partir da
+  /// UI. `admin`/`user` recebem apenas a própria unidade — a restrição é
+  /// aplicada no servidor, não escondida na tela.
+  /// GET /api/stock/blocked-items.
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/blocked-items',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    final items = (res.data?['items'] as List<dynamic>?) ?? const [];
+    final statuses = (res.data?['statuses'] as Map<String, dynamic>?) ?? const {};
+    return BlockedStockItems(
+      items: items
+          .map((e) => StockItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      statusKeys: statuses.keys.toList(),
+    );
   }
 
   Future<void> recordMovement({

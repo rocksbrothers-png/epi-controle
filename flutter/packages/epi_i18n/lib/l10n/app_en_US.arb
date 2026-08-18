@@ -586,7 +586,13 @@
   "outsourcedCompanyLinkDeactivate": "Archive in this Unit",
   "outsourcedCompanyLinkDeactivateReason": "Reason for archiving (optional):",
   "outsourcedCompanyLinkUsedByUnits": "Used by {count} Unit(s)",
-  "@outsourcedCompanyLinkUsedByUnits": {"placeholders": {"count": {"type": "int"}}},
+  "@outsourcedCompanyLinkUsedByUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "outsourcedCompanyLinkOriginUnit": "Origin Unit",
   "outsourcedCompanyLinkEmpty": "No company found for this term.",
   "outsourcedCompanyLinkNotInformed": "Link state not reported for your profile",
@@ -644,5 +650,19 @@
   "moduleVisibilityNoDefaultModules": "No modules by default",
   "moduleVisibilityUnitLabel": "Unit",
   "moduleVisibilityUnitHint": "A module not specifically set for this Unit inherits the value from \"All units\".",
-  "moduleVisibilityAllUnitsOption": "All units (default)"
+  "moduleVisibilityAllUnitsOption": "All units (default)",
+  "stockTabAvailable": "Available",
+  "stockTabBlocked": "Blocked",
+  "stockAvailableSelectEpi": "Select a PPE to see available items",
+  "stockAvailableEmpty": "No items available for this PPE at this unit",
+  "stockBlockedEmpty": "No blocked items",
+  "stockNoOperationalUnit": "Your profile has no active operational unit. Contact an administrator to get stock access.",
+  "stockItemLotLabel": "Lot",
+  "stockStatusBlockedExpired": "Expired",
+  "stockStatusBlockedDiscard": "Awaiting disposal",
+  "stockStatusBlockedReturn": "Awaiting return to supplier",
+  "stockStatusBlockedAnalysis": "Under analysis",
+  "stockStatusBlockedRejected": "Rejected",
+  "stockStatusBlockedArchived": "Archived PPE",
+  "stockStatusUnknown": "Unrecognized status"
 }

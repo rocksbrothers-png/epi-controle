@@ -1,0 +1,61 @@
+**/dgph
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+**/*sync/
+.sconsign.dblite
+.tags*
+**/.vagrant/
+**/DerivedData/
+Icon?
+**/Pods/
+**/.symlinks/
+profile
+xcuserdata
+**/.generated/
+Flutter/App.framework
+Flutter/Flutter.framework
+Flutter/Flutter.podspec
+Flutter/Generated.xcconfig
+Flutter/ephemeral/
+Flutter/app.flx
+Flutter/app.zip
+Flutter/flutter_assets/
+Flutter/flutter_export_environment.sh
+ServiceDefinitions.json
+Runner/GeneratedPluginRegistrant.*
+
+# Exceptions to above rules.
+!default.mode1v3
+!default.mode2v3
+!default.pbxuser
+!default.perspectivev3
+
+# ── #238: projeto Xcode é GERADO, não versionado ─────────────────────────────
+# `flutter create . --platforms=ios` recria tudo abaixo a cada execução do CI
+# (ver .github/workflows/ios_ci.yml, passo "Prepare iOS project"). Versionar
+# qualquer um deles faz a cópia commitada substituir o resultado da geração — e
+# ela para de refletir o pubspec/plugins sem nada acusar. Foi o que aconteceu
+# entre o merge 27611d3 e a #238.
+#
+# O que PERMANECE versionado, por não ser gerável: Runner/Info.plist (fonte do
+# bundle id), Runner/Runner.entitlements, Runner/PrivacyInfo.xcprivacy,
+# ExportOptions.plist, Gemfile e fastlane/.
+Runner.xcodeproj/
+Runner.xcworkspace/
+RunnerTests/
+Runner/AppDelegate.swift
+Runner/Assets.xcassets/
+Runner/Base.lproj/
+Runner/Runner-Bridging-Header.h
+Flutter/AppFrameworkInfo.plist
+Flutter/Debug.xcconfig
+Flutter/Release.xcconfig
+
+# CocoaPods: o Podfile é gerado por `flutter build ios --config-only` e depois
+# ajustado por fastlane/pin_ios_deployment_target.rb. Um Podfile versionado
+# sobreviveria à geração e mascararia mudanças de plugin, como acima.
+Podfile
+Podfile.lock

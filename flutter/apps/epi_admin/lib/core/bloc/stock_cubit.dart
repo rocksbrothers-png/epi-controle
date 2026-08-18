@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
@@ -12,6 +13,14 @@ import '../../features/stock/domain/repositories/stock_repository.dart';
 /// na compra, e a validade do fabricante rege a entrega do EPI.
 enum StockComplianceFilter { none, caExpired, manufacturerExpiring, manufacturerExpired }
 
+/// Estado de cada lista carregada sob demanda (itens disponíveis, bloqueados).
+///
+/// `forbidden` é separado de `error` de propósito: o backend responde 403 para
+/// perfil `admin`/`user` sem unidade operacional ativa, e isso não é falha —
+/// é ausência de contexto, que pede uma mensagem diferente e não oferece
+/// "tentar de novo", porque tentar de novo não resolve.
+enum StockListStatus { idle, loading, ready, error, forbidden }
+
 class StockState extends Equatable {
   const StockState({
     this.isLoading = false,
@@ -22,6 +31,14 @@ class StockState extends Equatable {
     this.companyId = 0,
     this.unitId = 0,
     this.actorUserId = 0,
+    this.availableStatus = StockListStatus.idle,
+    this.availableItems = const [],
+    this.availableEpiId = 0,
+    this.availableError,
+    this.blockedStatus = StockListStatus.idle,
+    this.blockedItems = const [],
+    this.blockedStatusKeys = const [],
+    this.blockedError,
   });
 
   final bool isLoading;
@@ -32,6 +49,21 @@ class StockState extends Equatable {
   final int companyId;
   final int unitId;
   final int actorUserId;
+
+  /// QRs disponíveis do EPI selecionado (`availableEpiId`). Vazio enquanto
+  /// nenhum EPI foi escolhido — `idle`, não `ready`, para a UI não mostrar
+  /// "nenhum item" antes de a consulta existir.
+  final StockListStatus availableStatus;
+  final List<StockItem> availableItems;
+  final int availableEpiId;
+  final String? availableError;
+
+  /// Itens bloqueados no escopo do ator, e as chaves de status que o backend
+  /// reconhece. Guardamos as CHAVES; o rótulo vem do ARB.
+  final StockListStatus blockedStatus;
+  final List<StockItem> blockedItems;
+  final List<String> blockedStatusKeys;
+  final String? blockedError;
 
   int get criticalCount => epis.where((e) => e.isCriticalStock).length;
 
@@ -84,6 +116,14 @@ class StockState extends Equatable {
     int? companyId,
     int? unitId,
     int? actorUserId,
+    StockListStatus? availableStatus,
+    List<StockItem>? availableItems,
+    int? availableEpiId,
+    String? availableError,
+    StockListStatus? blockedStatus,
+    List<StockItem>? blockedItems,
+    List<String>? blockedStatusKeys,
+    String? blockedError,
   }) =>
       StockState(
         isLoading: isLoading ?? this.isLoading,
@@ -94,11 +134,24 @@ class StockState extends Equatable {
         companyId: companyId ?? this.companyId,
         unitId: unitId ?? this.unitId,
         actorUserId: actorUserId ?? this.actorUserId,
+        availableStatus: availableStatus ?? this.availableStatus,
+        availableItems: availableItems ?? this.availableItems,
+        availableEpiId: availableEpiId ?? this.availableEpiId,
+        availableError: availableError,
+        blockedStatus: blockedStatus ?? this.blockedStatus,
+        blockedItems: blockedItems ?? this.blockedItems,
+        blockedStatusKeys: blockedStatusKeys ?? this.blockedStatusKeys,
+        blockedError: blockedError,
       );
 
   @override
-  List<Object?> get props =>
-      [isLoading, error, epis, query, compliance, companyId, unitId, actorUserId];
+  List<Object?> get props => [
+        isLoading, error, epis, query, compliance, companyId, unitId, actorUserId,
+        // Sem estes em props, trocar de aba ou recarregar uma lista não
+        // reconstruiria a tela: dois estados diferentes compararia como iguais.
+        availableStatus, availableItems, availableEpiId, availableError,
+        blockedStatus, blockedItems, blockedStatusKeys, blockedError,
+      ];
 }
 
 class StockCubit extends Cubit<StockState> {
@@ -138,6 +191,58 @@ class StockCubit extends Cubit<StockState> {
       }
     } on Exception catch (e) {
       emit(StockState(error: e.toString()));
+    }
+  }
+
+  /// 403 do backend = perfil sem unidade operacional ativa (`PermissionError`).
+  /// Não é falha de rede nem bug: é contexto ausente, e a UI trata diferente —
+  /// sem botão de "tentar de novo", que não resolveria nada.
+  static bool _isForbidden(Object error) =>
+      error is DioException && error.response?.statusCode == 403;
+
+  /// Carrega os QRs disponíveis do EPI. O backend devolve em ordem FEFO e
+  /// aplica o escopo de empresa/unidade a partir do ator — por isso nenhum
+  /// `companyId`/`unitId` sai daqui.
+  Future<void> loadAvailableItems(int epiId) async {
+    emit(state._copyWith(
+      availableStatus: StockListStatus.loading,
+      availableEpiId: epiId,
+      availableItems: const [],
+    ));
+    try {
+      final items = await _repository.fetchAvailableItems(
+        actorUserId: state.actorUserId,
+        epiId: epiId,
+      );
+      emit(state._copyWith(
+        availableStatus: StockListStatus.ready,
+        availableItems: items,
+      ));
+    } on Object catch (e) {
+      emit(state._copyWith(
+        availableStatus:
+            _isForbidden(e) ? StockListStatus.forbidden : StockListStatus.error,
+        availableError: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> loadBlockedItems() async {
+    emit(state._copyWith(blockedStatus: StockListStatus.loading));
+    try {
+      final result =
+          await _repository.fetchBlockedItems(actorUserId: state.actorUserId);
+      emit(state._copyWith(
+        blockedStatus: StockListStatus.ready,
+        blockedItems: result.items,
+        blockedStatusKeys: result.statusKeys,
+      ));
+    } on Object catch (e) {
+      emit(state._copyWith(
+        blockedStatus:
+            _isForbidden(e) ? StockListStatus.forbidden : StockListStatus.error,
+        blockedError: e.toString(),
+      ));
     }
   }
 

@@ -28,6 +28,20 @@ class _FakeStockRepository implements StockRepository {
     return snapshot;
   }
 
+  // Consultas da fatia 1.1 (#246). Estes testes cobrem bootstrap + movimento;
+  // lançar aqui é melhor que devolver lista vazia, que passaria despercebido
+  // se alguém escrevesse um teste de consulta por engano contra este fake.
+  @override
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  }) =>
+      throw UnimplementedError('ver stock_query_cubit_test.dart');
+
+  @override
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) =>
+      throw UnimplementedError('ver stock_query_cubit_test.dart');
+
   @override
   Future<void> recordMovement({
     required int actorUserId,

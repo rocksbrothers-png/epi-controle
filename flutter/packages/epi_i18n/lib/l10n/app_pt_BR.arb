@@ -589,7 +589,13 @@
   "outsourcedCompanyLinkDeactivate": "Arquivar nesta Unidade",
   "outsourcedCompanyLinkDeactivateReason": "Motivo do arquivamento (opcional):",
   "outsourcedCompanyLinkUsedByUnits": "Usada por {count} Unidade(s)",
-  "@outsourcedCompanyLinkUsedByUnits": {"placeholders": {"count": {"type": "int"}}},
+  "@outsourcedCompanyLinkUsedByUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "outsourcedCompanyLinkOriginUnit": "Unidade de origem",
   "outsourcedCompanyLinkEmpty": "Nenhuma empresa encontrada com esse termo.",
   "outsourcedCompanyLinkNotInformed": "Vínculo não informado para o seu perfil",
@@ -647,5 +653,19 @@
   "moduleVisibilityNoDefaultModules": "Nenhum módulo por padrão",
   "moduleVisibilityUnitLabel": "Unidade",
   "moduleVisibilityUnitHint": "Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".",
-  "moduleVisibilityAllUnitsOption": "Todas as unidades (padrão)"
+  "moduleVisibilityAllUnitsOption": "Todas as unidades (padrão)",
+  "stockTabAvailable": "Disponíveis",
+  "stockTabBlocked": "Bloqueados",
+  "stockAvailableSelectEpi": "Selecione um EPI para ver os itens disponíveis",
+  "stockAvailableEmpty": "Nenhum item disponível para este EPI nesta unidade",
+  "stockBlockedEmpty": "Nenhum item bloqueado",
+  "stockNoOperationalUnit": "Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.",
+  "stockItemLotLabel": "Lote",
+  "stockStatusBlockedExpired": "Vencido",
+  "stockStatusBlockedDiscard": "Aguardando descarte",
+  "stockStatusBlockedReturn": "Aguardando devolução ao fornecedor",
+  "stockStatusBlockedAnalysis": "Em análise",
+  "stockStatusBlockedRejected": "Reprovado",
+  "stockStatusBlockedArchived": "EPI arquivado",
+  "stockStatusUnknown": "Status não reconhecido"
 }

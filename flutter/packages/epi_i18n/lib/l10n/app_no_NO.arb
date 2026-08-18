@@ -559,7 +559,13 @@
   "outsourcedCompanyLinkDeactivate": "Arkiver i denne enheten",
   "outsourcedCompanyLinkDeactivateReason": "Årsak til arkivering (valgfritt):",
   "outsourcedCompanyLinkUsedByUnits": "Brukt av {count} enhet(er)",
-  "@outsourcedCompanyLinkUsedByUnits": {"placeholders": {"count": {"type": "int"}}},
+  "@outsourcedCompanyLinkUsedByUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "outsourcedCompanyLinkOriginUnit": "Opprinnelsesenhet",
   "outsourcedCompanyLinkEmpty": "Fant ingen selskaper for dette søket.",
   "outsourcedCompanyLinkNotInformed": "Tilknytning ikke oppgitt for profilen din",
@@ -617,5 +623,19 @@
   "moduleVisibilityNoDefaultModules": "Ingen moduler som standard",
   "moduleVisibilityUnitLabel": "Enhet",
   "moduleVisibilityUnitHint": "En modul som ikke er spesifikt satt for denne Enheten, arver verdien fra \"Alle enheter\".",
-  "moduleVisibilityAllUnitsOption": "Alle enheter (standard)"
+  "moduleVisibilityAllUnitsOption": "Alle enheter (standard)",
+  "stockTabAvailable": "Tilgjengelige",
+  "stockTabBlocked": "Blokkerte",
+  "stockAvailableSelectEpi": "Velg et PVU for å se tilgjengelige varer",
+  "stockAvailableEmpty": "Ingen tilgjengelige varer for dette PVU-et ved denne enheten",
+  "stockBlockedEmpty": "Ingen blokkerte varer",
+  "stockNoOperationalUnit": "Profilen din har ingen aktiv driftsenhet. Kontakt en administrator for å få tilgang til lageret.",
+  "stockItemLotLabel": "Parti",
+  "stockStatusBlockedExpired": "Utløpt",
+  "stockStatusBlockedDiscard": "Venter på kassering",
+  "stockStatusBlockedReturn": "Venter på retur til leverandør",
+  "stockStatusBlockedAnalysis": "Til analyse",
+  "stockStatusBlockedRejected": "Avvist",
+  "stockStatusBlockedArchived": "Arkivert PVU",
+  "stockStatusUnknown": "Ukjent status"
 }

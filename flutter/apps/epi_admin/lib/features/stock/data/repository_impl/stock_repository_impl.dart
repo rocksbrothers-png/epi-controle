@@ -1,3 +1,5 @@
+import 'package:epi_api/epi_api.dart';
+
 import '../../domain/repositories/stock_repository.dart';
 import '../datasources/stock_remote_datasource.dart';
 
@@ -8,6 +10,20 @@ class StockRepositoryImpl implements StockRepository {
 
   @override
   Future<StockSnapshot> fetchStock() => _remoteDataSource.fetchStock();
+
+  @override
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  }) =>
+      _remoteDataSource.fetchAvailableItems(
+        actorUserId: actorUserId,
+        epiId: epiId,
+      );
+
+  @override
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) =>
+      _remoteDataSource.fetchBlockedItems(actorUserId: actorUserId);
 
   @override
   Future<void> recordMovement({

@@ -5,6 +5,11 @@ import '../../domain/repositories/stock_repository.dart';
 
 abstract class StockRemoteDataSource {
   Future<StockSnapshot> fetchStock();
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  });
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId});
   Future<void> recordMovement({
     required int actorUserId,
     required int companyId,
@@ -40,6 +45,20 @@ class ApiStockRemoteDataSource implements StockRemoteDataSource {
       actorUserId: actorUserId,
     );
   }
+
+  @override
+  Future<List<StockItem>> fetchAvailableItems({
+    required int actorUserId,
+    required int epiId,
+  }) =>
+      ApiClient.stock.fetchAvailableItems(
+        actorUserId: actorUserId,
+        epiId: epiId,
+      );
+
+  @override
+  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) =>
+      ApiClient.stock.fetchBlockedItems(actorUserId: actorUserId);
 
   @override
   Future<void> recordMovement({

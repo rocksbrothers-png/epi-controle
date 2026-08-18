@@ -23,6 +23,7 @@ export 'models/portal_models.dart';
 export 'models/devolution.dart';
 export 'models/employee.dart';
 export 'models/epi.dart';
+export 'models/stock_item.dart';
 export 'models/ficha_config.dart';
 export 'models/ficha_period.dart';
 export 'models/purchase_request.dart';

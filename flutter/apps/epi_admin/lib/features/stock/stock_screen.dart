@@ -37,7 +37,9 @@ class _StockBodyState extends State<_StockBody> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Scaffold(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(l10n.stockTitle),
         actions: [
@@ -46,8 +48,36 @@ class _StockBodyState extends State<_StockBody> {
             onPressed: () => context.read<StockCubit>().load(),
           ),
         ],
+        bottom: TabBar(
+          // A aba de bloqueados carrega sob demanda: só o primeiro toque
+          // dispara a consulta, e trocar de aba não recarrega o que já veio.
+          onTap: (index) {
+            if (index == 1 &&
+                context.read<StockCubit>().state.blockedStatus ==
+                    StockListStatus.idle) {
+              context.read<StockCubit>().loadBlockedItems();
+            }
+          },
+          tabs: [
+            Tab(text: l10n.navEpis),
+            Tab(text: l10n.stockTabBlocked),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        children: [
+          _buildEpisTab(context, l10n),
+          const _BlockedTab(),
+        ],
+      ),
+    ));
+  }
+
+  /// Aba de EPIs — a lista que já existia, agora em aba própria para dar
+  /// lugar aos itens bloqueados sem empurrar a busca e os filtros de
+  /// conformidade para dentro de uma aba que não os usa.
+  Widget _buildEpisTab(BuildContext context, AppLocalizations l10n) {
+    return Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -137,6 +167,173 @@ class _StockBodyState extends State<_StockBody> {
                   ),
                 );
               },
+            ),
+          ),
+        ],
+    );
+  }
+}
+
+/// Rótulo traduzido para uma chave de status vinda do backend.
+///
+/// O backend envia junto um mapa `statuses` com textos em português. Usar
+/// aquele texto deixaria o app em português nos outros quatro idiomas — por
+/// isso a chave é o contrato e o rótulo sai do ARB. Chave desconhecida cai num
+/// rótulo genérico em vez de sumir da tela: um item bloqueado que não aparece
+/// é pior que um item com rótulo impreciso.
+String stockStatusLabel(AppLocalizations l10n, String statusKey) =>
+    switch (statusKey) {
+      'blocked_expired' => l10n.stockStatusBlockedExpired,
+      'blocked_discard' => l10n.stockStatusBlockedDiscard,
+      'blocked_return' => l10n.stockStatusBlockedReturn,
+      'blocked_analysis' => l10n.stockStatusBlockedAnalysis,
+      'blocked_rejected' => l10n.stockStatusBlockedRejected,
+      'blocked_archived' => l10n.stockStatusBlockedArchived,
+      _ => l10n.stockStatusUnknown,
+    };
+
+/// Estados de uma lista carregada sob demanda: carregando, sem permissão de
+/// contexto (403), erro com retry, vazio, ou a lista.
+class _StockListView extends StatelessWidget {
+  const _StockListView({
+    required this.status,
+    required this.items,
+    required this.emptyMessage,
+    required this.onRetry,
+    this.idleMessage,
+  });
+
+  final StockListStatus status;
+  final List<StockItem> items;
+  final String emptyMessage;
+  final VoidCallback onRetry;
+
+  /// Mensagem para `idle` — nada foi consultado ainda. Sem isto, a tela
+  /// mostraria "nenhum item" antes de existir consulta, o que é falso.
+  final String? idleMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (status) {
+      case StockListStatus.idle:
+        return EpiEmptyState(title: idleMessage ?? emptyMessage);
+      case StockListStatus.loading:
+        return const Center(child: CircularProgressIndicator());
+      case StockListStatus.forbidden:
+        // Sem botão de repetir: tentar de novo não cria uma unidade
+        // operacional para o perfil.
+        return EpiEmptyState(title: l10n.stockNoOperationalUnit);
+      case StockListStatus.error:
+        return _RetryView(onRetry: onRetry);
+      case StockListStatus.ready:
+        if (items.isEmpty) return EpiEmptyState(title: emptyMessage);
+        return ListView.separated(
+          padding: const EdgeInsets.only(
+            top: EpiSpacing.sm, bottom: EpiSpacing.xl5,
+          ),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
+          itemBuilder: (_, i) => _StockItemTile(item: items[i]),
+        );
+    }
+  }
+}
+
+class _StockItemTile extends StatelessWidget {
+  const _StockItemTile({required this.item});
+  final StockItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final detalhes = <String>[
+      if (item.qrCodeValue != null) item.qrCodeValue!,
+      if (item.displaySize != null) item.displaySize!,
+      if (item.lotCode != null) '${l10n.stockItemLotLabel} ${item.lotCode}',
+      if (item.unitName != null) item.unitName!,
+    ];
+    return ListTile(
+      title: Text(item.epiName),
+      subtitle: detalhes.isEmpty ? null : Text(detalhes.join(' · ')),
+      trailing: item.status == 'in_stock'
+          ? null
+          : Text(
+              stockStatusLabel(l10n, item.status),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+    );
+  }
+}
+
+/// Aba de itens bloqueados. A consulta é disparada pela TabBar no primeiro
+/// toque; aqui só se reage ao estado.
+class _BlockedTab extends StatelessWidget {
+  const _BlockedTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return BlocBuilder<StockCubit, StockState>(
+      buildWhen: (p, c) =>
+          p.blockedStatus != c.blockedStatus ||
+          p.blockedItems != c.blockedItems,
+      builder: (context, state) => _StockListView(
+        status: state.blockedStatus,
+        items: state.blockedItems,
+        emptyMessage: l10n.stockBlockedEmpty,
+        onRetry: () => context.read<StockCubit>().loadBlockedItems(),
+      ),
+    );
+  }
+}
+
+/// Itens disponíveis (QRs) de um EPI, em ordem FEFO definida pelo backend.
+/// Abre a partir da lista de EPIs porque a rota exige `epi_id` — uma aba
+/// própria nasceria vazia e sem como se preencher.
+class AvailableItemsSheet extends StatelessWidget {
+  const AvailableItemsSheet({super.key, required this.epi});
+  final Epi epi;
+
+  static Future<void> show(BuildContext context, Epi epi) {
+    final cubit = context.read<StockCubit>()..loadAvailableItems(epi.id);
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: AvailableItemsSheet(epi: epi),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return FractionallySizedBox(
+      heightFactor: 0.75,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(EpiSpacing.lg),
+            child: Text(
+              '${epi.name} · ${l10n.stockTabAvailable}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<StockCubit, StockState>(
+              buildWhen: (p, c) =>
+                  p.availableStatus != c.availableStatus ||
+                  p.availableItems != c.availableItems,
+              builder: (context, state) => _StockListView(
+                status: state.availableStatus,
+                items: state.availableItems,
+                emptyMessage: l10n.stockAvailableEmpty,
+                idleMessage: l10n.stockAvailableSelectEpi,
+                onRetry: () =>
+                    context.read<StockCubit>().loadAvailableItems(epi.id),
+              ),
             ),
           ),
         ],
@@ -237,6 +434,15 @@ class _StockTile extends StatelessWidget {
                 ),
                 const SizedBox(width: EpiSpacing.sm),
                 EpiBadge(status: badge),
+                // Abre os QRs disponíveis deste EPI. Botão próprio em vez de
+                // reaproveitar o toque do card, que já abre a movimentação —
+                // duas ações distintas não devem disputar o mesmo gesto.
+                IconButton(
+                  icon: const Icon(Icons.qr_code_2_rounded),
+                  tooltip: AppLocalizations.of(context).stockTabAvailable,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => AvailableItemsSheet.show(context, epi),
+                ),
               ],
             ),
             const SizedBox(height: EpiSpacing.xs),

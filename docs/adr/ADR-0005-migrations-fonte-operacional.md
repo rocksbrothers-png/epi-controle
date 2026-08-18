@@ -128,19 +128,29 @@ na #909. Um par que se separa em silêncio é exatamente o que precisa de guarda
 - Toda migration nova continua sendo escrita em `epi_backend/migrations/*.py`.
   Escrever apenas o `.sql` **não** altera nenhum banco.
 
-## Passo manual necessário
+## Passo manual — executado em 2026-08-18
 
-A desconexão em si **não é uma mudança de repositório**: o `Supabase Preview` é
-criado por um GitHub App externo, não por um workflow em `.github/workflows/`
-(o `details_url` do check aponta para o painel do Supabase). Este ADR registra a
-decisão; a execução é no painel:
+A desconexão em si **não foi uma mudança de repositório**: o `Supabase Preview`
+era criado por um GitHub App externo, não por um workflow em
+`.github/workflows/` (o `details_url` do check apontava para o painel do
+Supabase). Este ADR registrou a decisão; a execução foi no painel:
 
 1. Supabase → projeto `kkmskwmkhyssrxqbsrqv` → **Settings → Integrations →
-   GitHub** → desconectar o repositório `epi-controle`.
-2. Em seguida, conferir em **Settings → Branches** do GitHub se
-   `Supabase Preview` consta como *required status check* de `main`. Se constar,
-   removê-lo de lá também — do contrário toda PR passa a esperar
+   GitHub** → repositório `epi-controle` desconectado.
+2. GitHub → **Settings → Branches** → `Supabase Preview` removido dos
+   *required status checks* de `main` — sem isso, toda PR passaria a esperar
    indefinidamente por um check que nunca mais chega.
+
+### Como verificar que ficou desligado
+
+O `Supabase Preview` não é um workflow, então não aparece na listagem de
+Actions: a observação é feita pela **lista de checks de uma PR**. Se ele não
+constar ali, o App não está mais gerando o check.
+
+O par de referência já está no histórico: o check aparece na PR #913
+(`skipped`, pré-desconexão) e **não** aparece em `epi-controle-app#247` —
+repositório onde a integração nunca esteve conectada. A ausência numa PR aberta
+depois da desconexão fecha a verificação.
 
 ## Referências
 

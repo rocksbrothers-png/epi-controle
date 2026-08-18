@@ -17,8 +17,6 @@ import pathlib
 import subprocess
 import sys
 
-import pytest
-
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 FLUTTER = RAIZ / 'flutter'
 TOOL = FLUTTER / 'tool'
@@ -187,20 +185,40 @@ def test_o_manifesto_cobre_o_que_ja_foi_sincronizado():
         'apps/epi_admin/lib/core/bloc/settings_cubit.dart',
         'apps/epi_admin/lib/features/settings/settings_screen.dart',
         'packages/epi_api/lib/endpoints/settings_api.dart',
+        # Lote 6 — robustez de plataforma (último dos 33 arquivos)
+        'apps/epi_admin/lib/core/shell/app_shell.dart',
         # Diferença legítima que a normalização absorve
         'apps/epi_admin/lib/firebase_options.dart',
     ):
         assert entregue in manifesto['files'], f'{entregue} saiu da proteção do gate'
 
 
-@pytest.mark.parametrize('lote_pendente', [
-    # Lote 6 — robustez de plataforma (botão "Sair" na AppBar). Último dos 33
-    # arquivos divergentes mapeados na auditoria; quando ele entrar, esta lista
-    # fica vazia e o parametrize passa a receber uma lista vazia de propósito.
-    'apps/epi_admin/lib/core/shell/app_shell.dart',
-])
-def test_o_manifesto_nao_promete_o_que_ainda_nao_esta_sincronizado(lote_pendente):
+# Arquivos que a auditoria mapeou como divergentes e que AINDA não foram
+# sincronizados. Está vazia desde o Lote 6: os 33 arquivos chegaram a zero.
+#
+# Não virou `parametrize` justamente por isso — uma lista vazia num
+# `parametrize` faz o pytest coletar ZERO testes, e o teste some sem ninguém
+# perceber. É o mesmo modo de falha do `check_hardcoded_strings.sh`, que ficou
+# verde meses sem varrer nada. Como função única, ela roda sempre.
+PENDENTES: tuple[str, ...] = ()
+
+
+def test_o_manifesto_nao_promete_o_que_ainda_nao_esta_sincronizado():
     # Incluir um arquivo ainda divergente faria o gate nascer vermelho no outro
     # repositório — e um gate que nasce vermelho é um gate que se desliga.
     manifesto = json.loads((TOOL / 'parity_manifest.json').read_text(encoding='utf-8'))
-    assert lote_pendente not in manifesto['files']
+    for pendente in PENDENTES:
+        assert pendente not in manifesto['files'], \
+            f'{pendente} entrou no manifesto antes de estar em paridade'
+
+
+def test_a_lista_de_pendentes_e_um_registro_vivo():
+    # Ao abrir um novo lote de paridade, acrescente os arquivos a PENDENTES e
+    # remova-os quando entrarem no manifesto. O que impede a lista de virar
+    # ficção é a regra inversa: nada em PENDENTES pode já estar protegido.
+    manifesto = json.loads((TOOL / 'parity_manifest.json').read_text(encoding='utf-8'))
+    protegidos_indevidamente = [p for p in PENDENTES if p in manifesto['files']]
+    assert not protegidos_indevidamente, (
+        'estes arquivos constam como pendentes mas já estão no manifesto — '
+        f'remova-os de PENDENTES: {protegidos_indevidamente}'
+    )

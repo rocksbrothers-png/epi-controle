@@ -3,7 +3,13 @@
 import os
 import traceback as _traceback
 from urllib.parse import parse_qs
-from core.repository import enforce_company_block_rules
+# `get_user_password_policy` mora em core.repository (ver nota lá): reexportada
+# aqui para os importadores existentes deste módulo continuarem funcionando.
+from core.repository import (
+    enforce_company_block_rules,
+    get_user_password_policy,
+    require_actor as _require_actor,
+)
 from modules.employees.service import actor_operational_unit_id
 from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
@@ -222,15 +228,26 @@ def fetch_users(connection, actor=None):
             # email column not yet migrated — retry without it
 
 
-def require_actor(connection, actor_user_id):
-    actor = get_user_by_id(connection, int(actor_user_id))
-    if not actor or not int(actor['active']):
-        raise PermissionError('Usuário executor inválido.')
-    actor['role'] = normalize_role_name(actor.get('role'))
-    if actor.get('role') != 'master_admin' and actor.get('company_id'):
-        from modules.companies.service import enforce_company_block_rules as _enforce_block
-        _enforce_block(connection, int(actor['company_id']))
-    return actor
+def require_actor(connection, actor_user_id, *, allow_password_change_pending=False):
+    """Delega para `core.repository.require_actor` — implementação ÚNICA.
+
+    Isto aqui era uma segunda cópia, quase idêntica à de `core.repository`
+    (só divergia no nome de uma variável local dentro de
+    `enforce_company_block_rules`). Duas cópias da mesma regra divergem no
+    primeiro ajuste feito num lado só, e foi exatamente o que aconteceu: o
+    bloqueio de senha temporária entrou em `core.repository` e esta cópia
+    ficou sem ele — deixando `/api/users/{id}/email` e as rotas de 2FA
+    passarem por cima da proteção, em silêncio.
+
+    Mantida como função (e não substituída por um import direto) porque
+    `modules/auth/routes.py` e `modules/users/routes.py` a importam deste
+    módulo, e o `authorize_action` logo abaixo também a usa.
+    """
+    return _require_actor(
+        connection,
+        actor_user_id,
+        allow_password_change_pending=allow_password_change_pending,
+    )
 
 
 def authorize_action(connection, actor_user_id, action, company_id=None):
@@ -635,46 +652,6 @@ def clear_user_password_policy(connection, user_id):
             # ausente em base pré-migração) atrás de uma secundária. A troca de
             # senha em si já foi gravada e não pode ser perdida por causa disto.
             pass
-
-
-def get_user_password_policy(connection, user_id):
-    """Estado da política de senha temporária do usuário.
-
-    Retorna {'must_change': bool, 'expired': bool}. Tolerante a bases sem as
-    colunas (pré-migração) — nesse caso a política fica inativa (não bloqueia
-    ninguém), preservando o login dos usuários existentes.
-    """
-    from datetime import datetime
-    from epi_backend.config import UTC
-    try:
-        row = connection.execute(
-            'SELECT must_change_password, password_expires_at FROM users WHERE id = ?',
-            (int(user_id),),
-        ).fetchone()
-    except Exception:
-        try:
-            connection.rollback()
-        except Exception:
-            # Idem: conexão já inutilizável. O `return` abaixo é o que importa —
-            # base sem as colunas mantém a política inativa e PRESERVA o login
-            # dos usuários existentes, que é o objetivo desta tolerância.
-            pass
-        return {'must_change': False, 'expired': False}
-    if not row:
-        return {'must_change': False, 'expired': False}
-    data = row_to_dict(row)
-    must_change = int(data.get('must_change_password') or 0) == 1
-    expires_raw = str(data.get('password_expires_at') or '').strip()
-    expired = False
-    if expires_raw:
-        try:
-            exp = datetime.fromisoformat(expires_raw)
-            if exp.tzinfo is None:
-                exp = exp.replace(tzinfo=UTC)
-            expired = datetime.now(UTC) > exp
-        except Exception:
-            expired = False
-    return {'must_change': must_change, 'expired': expired}
 
 
 def get_user_totp_state(connection, user_id):

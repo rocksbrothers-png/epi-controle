@@ -317,18 +317,37 @@ def handle_post_auth_refresh(handler, parsed, payload, match):
 
 
 def handle_get_auth_me(handler, parsed, payload, match):
-    """Identidade enxuta do usuário autenticado (envelope {success,data,message})."""
+    """Identidade enxuta do usuário autenticado (envelope {success,data,message}).
+
+    ÚNICA rota que atravessa o bloqueio de senha temporária. É ela que informa
+    ao cliente por que as demais estão negadas: sem isso, um app reaberto com
+    token já emitido receberia 403 em tudo e não teria como descobrir que o
+    caminho é a tela de troca de senha.
+    """
     with closing(get_connection()) as connection:
-        actor = require_actor(connection, resolve_actor_user_id(handler, parsed))
+        actor = require_actor(
+            connection,
+            resolve_actor_user_id(handler, parsed),
+            allow_password_change_pending=True,
+        )
         user = dict(actor)
         user.pop('password', None)
+        from modules.auth.service import get_user_password_policy
         from modules.employees.service import actor_operational_unit_id
         from modules.settings.service import get_effective_module_visibility
         unit_id = actor_operational_unit_id(connection, actor)
+        # Mesmas duas chaves do login, com o mesmo valor: o Flutter lê
+        # `must_change_password` e o web legado `require_password_change`.
+        # Repetir aqui é o que permite decidir o redirect após um restart, sem
+        # exigir novo login.
+        must_change = bool(get_user_password_policy(connection, int(actor['id']))['must_change'])
+        user['must_change_password'] = must_change
         return send_api_response(handler, 200, data={
             'user': user,
             'permissions': sorted(PERMISSIONS.get(actor['role'], set())),
             'module_visibility': get_effective_module_visibility(connection, actor, unit_id=unit_id),
+            'must_change_password': must_change,
+            'require_password_change': must_change,
         })
 
 

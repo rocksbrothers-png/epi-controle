@@ -260,14 +260,101 @@ def get_user_by_id(connection, user_id):
     return item
 
 
-def require_actor(connection, actor_user_id):
+# Política de senha temporária. Vive AQUI, e não em modules.auth.service,
+# pelo mesmo motivo de `actor_operational_unit_id`: `require_actor` precisa
+# consultá-la, e `core.repository -> modules.auth.service` fecha exatamente o
+# ciclo de import da issue #148 (auth.service já importa deste módulo).
+def get_user_password_policy(connection, user_id):
+    """Estado da política de senha temporária do usuário.
+
+    Retorna {'must_change': bool, 'expired': bool}. Tolerante a bases sem as
+    colunas (pré-migração) — nesse caso a política fica inativa (não bloqueia
+    ninguém), preservando o login dos usuários existentes.
+    """
+    from datetime import datetime
+    from epi_backend.config import UTC
+    try:
+        row = connection.execute(
+            'SELECT must_change_password, password_expires_at FROM users WHERE id = ?',
+            (int(user_id),),
+        ).fetchone()
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            # Rollback que falha significa conexão já inutilizável: não há o que
+            # desfazer, e levantar aqui esconderia a falha original (coluna
+            # ausente em base pré-migração) atrás de uma secundária. O `return`
+            # abaixo é o que importa — base sem as colunas mantém a política
+            # inativa e PRESERVA o login dos usuários existentes.
+            pass
+        return {'must_change': False, 'expired': False}
+    if not row:
+        return {'must_change': False, 'expired': False}
+    data = row_to_dict(row)
+    must_change = int(data.get('must_change_password') or 0) == 1
+    expires_raw = str(data.get('password_expires_at') or '').strip()
+    expired = False
+    if expires_raw:
+        try:
+            exp = datetime.fromisoformat(expires_raw)
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=UTC)
+            expired = datetime.now(UTC) > exp
+        except Exception:
+            expired = False
+    return {'must_change': must_change, 'expired': expired}
+
+
+def require_actor(connection, actor_user_id, *, allow_password_change_pending=False):
+    """Ator válido para uma operação autenticada.
+
+    `allow_password_change_pending` é a exceção EXPLÍCITA ao bloqueio de senha
+    temporária. Fica como parâmetro, e não como lista de rotas permitidas, por
+    dois motivos: uma lista de strings envelhece calada quando alguém renomeia
+    uma rota, e a exceção precisa estar visível em quem a usa — não num arquivo
+    de configuração distante de onde a decisão importa.
+
+    Hoje só `/api/auth/me` a usa: é a rota que informa ao cliente POR QUE ele
+    está bloqueado. Negá-la deixaria o app sem meio de descobrir para onde ir
+    depois de um restart com token já emitido.
+    """
     actor = get_user_by_id(connection, int(actor_user_id))
     if not actor or not int(actor['active']):
         raise PermissionError('Usuário executor inválido.')
     actor['role'] = normalize_role_name(actor.get('role'))
     if actor.get('role') != 'master_admin' and actor.get('company_id'):
         enforce_company_block_rules(connection, int(actor['company_id']))
+    if not allow_password_change_pending:
+        _deny_while_password_change_pending(connection, actor)
     return actor
+
+
+def _deny_while_password_change_pending(connection, actor):
+    """Bloqueia operações autenticadas enquanto a senha temporária não for trocada.
+
+    Aqui, e não no login: o login PRECISA suceder para o cliente receber o
+    token e conseguir chamar `/api/change-password`. O que não pode é o token
+    servir para o resto — que era exatamente o furo, já que a obrigatoriedade
+    vivia só no redirect da UI e qualquer chamada direta à API passava por
+    cima.
+
+    `require_actor` é o ponto certo porque `authorize_action` e
+    `authorize_action_any` passam os dois por ele: uma checagem cobre as 242
+    chamadas dos 21 módulos, sem marcar rota a rota.
+
+    `/api/change-password` NÃO passa por aqui (usa `get_user_by_id` direto), e
+    é por isso que o caminho de saída não se tranca sozinho. Há teste para
+    isso — a garantia não pode depender de alguém lembrar.
+
+    Base pré-migração (colunas ausentes) devolve `must_change: False` e não
+    bloqueia ninguém: fail-open deliberado, para uma migration não aplicada não
+    derrubar o sistema inteiro.
+    """
+    from core.security import PasswordChangeRequiredError
+
+    if get_user_password_policy(connection, int(actor['id']))['must_change']:
+        raise PasswordChangeRequiredError()
 
 
 def authorize_action(connection, actor_user_id, action, company_id=None):

@@ -66,11 +66,45 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      # Timeout PRÓPRIO, menor que o do job (#264). Sem ele, um `apt-get`
+      # estolado consome os 15 min inteiros e o job morre `cancelled` — sem
+      # rodar teste nenhum e com um sinal que parece defeito do commit. Aqui a
+      # falha é do PASSO, com mensagem dizendo que a causa é dependência de
+      # sistema, e a conclusão do job vira `failure`, não `cancelled`.
+      #
+      # Orçamento: 3 tentativas x (45s update + 120s install) + 30s de espera
+      # = 525s no pior caso, dentro dos 10 min do passo. Os 5 min restantes do
+      # job sobram para pip + suíte (o espelho faz o job inteiro em ~4min30).
       - name: Install system dependencies
+        timeout-minutes: 10
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            tesseract-ocr tesseract-ocr-eng tesseract-ocr-por libgl1 libglib2.0-0
+          set -uo pipefail
+
+          # `timeout` por comando, não só no passo: o estol é uma conexão
+          # pendurada no mirror de pacotes, e sem limite por tentativa a
+          # primeira consumiria o orçamento todo e as outras duas nunca
+          # aconteceriam — o retry existiria só no papel.
+          instalar_dependencias() {
+            timeout 45 sudo apt-get update -qq \
+              && timeout 120 sudo apt-get install -y --no-install-recommends \
+                   tesseract-ocr tesseract-ocr-eng tesseract-ocr-por \
+                   libgl1 libglib2.0-0
+          }
+
+          for tentativa in 1 2 3; do
+            if instalar_dependencias; then
+              echo "Dependências de sistema instaladas (tentativa ${tentativa}/3)."
+              exit 0
+            fi
+            if [ "${tentativa}" -lt 3 ]; then
+              espera=$((tentativa * 10))
+              echo "::warning::apt-get não concluiu (tentativa ${tentativa}/3); repetindo em ${espera}s"
+              sleep "${espera}"
+            fi
+          done
+
+          echo "::error::Dependências de SISTEMA indisponíveis após 3 tentativas de apt-get. Isto NÃO é falha dos testes de contrato — ver #264."
+          exit 1
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt pytest

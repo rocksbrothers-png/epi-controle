@@ -1,14 +1,48 @@
 """Serviços de gestão de usuários sem DI."""
 
 import secrets as _secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core.auth import ensure_company_access, ensure_resource_company
 from core.repository import authorize_action, get_employee_by_id, get_user_by_id
 from core.roles import BILLABLE_ROLES, ROLE_WEIGHT, normalize_role_name
 from core.security import hash_password, is_bcrypt_hash
+from epi_backend.config import UTC
 from epi_backend.http_utils import require_fields
 from modules.companies.service import ensure_company_user_limit
+
+# Senha provisionada por administrador (definida ou gerada) é temporária: o
+# usuário deve trocá-la no 1º acesso e ela expira após esta janela.
+TEMP_PASSWORD_TTL_DAYS = 7
+
+
+def temp_password_expiry_iso(now=None):
+    base = now or datetime.now(UTC)
+    return (base + timedelta(days=TEMP_PASSWORD_TTL_DAYS)).isoformat()
+
+
+def mark_temp_password(connection, user_id, expires_at):
+    """Marca a senha como temporária (troca obrigatória + expiração).
+
+    Tolerante a bases pré-migração (colunas ausentes): a falha é silenciosa e
+    apenas desliga a política para aquele registro, sem quebrar a criação.
+    """
+    try:
+        connection.execute(
+            'UPDATE users SET must_change_password = 1, password_expires_at = ? WHERE id = ?',
+            (str(expires_at or ''), int(user_id)),
+        )
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            # Se o próprio rollback falha, a conexão já está inutilizável e não
+            # há o que desfazer. Levantar aqui trocaria a falha original — a
+            # coluna ausente, que é informativa — por uma secundária que não
+            # diz nada. A criação do usuário segue: sem a política, não sem o
+            # usuário.
+            pass
+
 
 SQL_UPDATE_USER = (
     "UPDATE users SET "
@@ -186,10 +220,14 @@ def create_user(connection, payload):
     if company_id and int(payload.get('active', 1)) == 1:
         ensure_company_user_limit(connection, company_id)
 
-    connection.execute(
+    cursor = connection.execute(
         'INSERT INTO users (username, password, full_name, role, company_id, active, linked_employee_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
         (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1) or 1), linked_employee_id)
     )
+    # Toda senha provisionada por admin (definida OU gerada) é temporária:
+    # exige troca no 1º acesso e expira. Só novos usuários são afetados.
+    new_user_id = int(cursor.lastrowid)
+    mark_temp_password(connection, new_user_id, temp_password_expiry_iso())
     connection.commit()
 
 
@@ -220,6 +258,10 @@ def update_user(connection, user_id, payload):
     if company_id and int(payload.get('active', 1)) == 1:
         ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
     connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, user_id))
+    # Reset de senha por admin também gera credencial temporária (troca no
+    # próximo acesso + expiração). Sem nova senha, a política fica intacta.
+    if incoming_password:
+        mark_temp_password(connection, user_id, temp_password_expiry_iso())
     connection.commit()
 
 

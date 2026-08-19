@@ -43,15 +43,20 @@ class EpiDetailScreen extends StatelessWidget {
           Center(child: EpiBadge(status: badgeStatus)),
           const SizedBox(height: EpiSpacing.xl2),
 
-          // Stock KPIs
+          // KPIs de estoque — CORPORATIVOS. Esta é a ficha do catálogo da
+          // empresa, não a tela de operação por unidade: o número é o total da
+          // empresa e a criticidade vem calculada do backend, contra o mesmo
+          // escopo. O saldo por unidade vive em Estoque.
           Row(
             children: [
               Expanded(
                 child: EpiKpiCard(
                   label: l10n.epiStockLabel,
-                  value: '${epi.stockQuantity}',
+                  value: '${epi.companyStock}',
                   icon: Icons.inventory_2_outlined,
-                  iconColor: epi.isCriticalStock ? EpiColors.danger : EpiColors.success,
+                  iconColor: epi.isCompanyStockCritical == true
+                      ? EpiColors.danger
+                      : EpiColors.success,
                 ),
               ),
               const SizedBox(width: EpiSpacing.md),

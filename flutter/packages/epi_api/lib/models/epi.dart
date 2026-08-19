@@ -106,6 +106,19 @@ class Epi {
   /// Grades por tamanho na unidade resolvida. Vazio quando não há unidade.
   final List<EpiSizeBalance> sizeBalances;
 
+  /// Saldo corporativo para exibição no catálogo da empresa.
+  ///
+  /// **Não é fallback entre escopos.** Os dois lados são o MESMO número: pelo
+  /// contrato da fatia 1.1B, `stock` (legado) carrega o valor corporativo, e
+  /// `company_stock_quantity` é esse valor com nome que diz de que escopo ele
+  /// é. `stock` some na 1.1E; até lá, payloads antigos (bootstrap de backends
+  /// anteriores, `/api/epis/{id}`) só têm o campo legado.
+  ///
+  /// `unitStockQuantity` nunca entra aqui. Saldo de unidade e saldo corporativo
+  /// são grandezas diferentes, e misturá-las é exatamente o defeito que a 1.1B
+  /// removeu.
+  int get companyStock => companyStockQuantity ?? stockQuantity;
+
   @Deprecated(
     'Compara campos que podem ter escopos diferentes. Use '
     'isCompanyStockCritical, que vem calculado do backend. '

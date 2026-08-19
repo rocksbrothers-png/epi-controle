@@ -253,7 +253,9 @@ class _EpiTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final badgeStatus = epiBadgeStatus(epi);
-    final stockLabel = '${l10n.epiStockLabel}: ${epi.stockQuantity}';
+    // Catálogo corporativo: o número é o total da EMPRESA. O saldo por
+    // unidade fica na tela de Estoque, com rótulo próprio.
+    final stockLabel = '${l10n.epiStockLabel}: ${epi.companyStock}';
     final caLabel = epi.caNumber != null ? 'CA ${epi.caNumber}' : null;
     final subtitle = [caLabel, stockLabel].whereType<String>().join(' • ');
     return ListTile(

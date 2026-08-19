@@ -265,6 +265,32 @@ def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, pat
         return fallback() if callable(fallback) else fallback
 
 
+def _with_company_stock_fields(epis):
+    """Nomeia o saldo corporativo do catálogo, sem mudar o conjunto de EPIs.
+
+    Aditivo e retrocompatível: `stock` permanece intacto, com o mesmo valor de
+    sempre, porque consumidores antigos do bootstrap ainda o leem. O que muda é
+    passar a existir um campo cujo nome diz de que escopo o número é.
+
+    A criticidade vem da MESMA função de `/api/stock/low` e `/api/stock/epis`.
+    Duas cópias da comparação divergem no primeiro ajuste feito num lado só, e
+    o operador passaria a ver alertas diferentes conforme a tela que abrisse.
+
+    Import tardio pelo mesmo motivo dos demais neste arquivo: `modules.stock`
+    alcança o auth por caminhos indiretos, e o ciclo já custou um achado de
+    CodeQL neste repositório.
+    """
+    from modules.stock.service import is_stock_critical, resolve_minimum_stock
+
+    for item in epis:
+        company_stock = int(item.get('stock') or 0)
+        minimum_stock = resolve_minimum_stock(item.get('minimum_stock'))
+        item['minimum_stock'] = minimum_stock
+        item['company_stock_quantity'] = company_stock
+        item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)
+    return epis
+
+
 def build_bootstrap(connection, actor):
     from modules.settings.service import canary_evaluate_visibility_dataset, get_effective_module_visibility
     from modules.units.service import fetch_units
@@ -347,6 +373,19 @@ def build_bootstrap(connection, actor):
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
         epis, warnings, actor, connection=connection,
     )
+    # Saldo CORPORATIVO em campo próprio (#258, fatia 1.1C).
+    #
+    # `bootstrap.epis` sempre trouxe o total da empresa no campo `stock` — mas
+    # `stock` é o nome ambíguo que a 1.1B aposentou, e o cliente vinha
+    # recalculando a criticidade por conta própria (`stockQuantity <=
+    # minimumStock`), duplicando uma regra que já existe no servidor.
+    #
+    # Aqui só se NOMEIA o que já vinha: mesma consulta, mesmo conjunto de EPIs,
+    # mesmo escopo. Nada de `unit_stock_quantity`/`unit_scope_id` — o bootstrap
+    # não tem semântica de unidade, e inventar zero afirmaria "esta unidade não
+    # tem estoque" sobre uma unidade que nem foi resolvida. Os dois ficam
+    # ausentes, e o cliente os lê como `null`, que é o par coerente.
+    epis = _with_company_stock_fields(epis)
 
     users_list = _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor, connection=connection)
     users_list = _safe_bootstrap_section(

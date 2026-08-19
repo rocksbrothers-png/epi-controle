@@ -198,4 +198,39 @@ void main() {
       expect(movido.isCompanyStockCritical, isTrue);
     });
   });
+
+  group('acessor corporativo do catálogo (1.1C)', () {
+    test('usa company_stock_quantity quando o backend o envia', () {
+      final epi = Epi.fromJson(
+        _payload(companyStock: 250, unitStock: 3, unitScopeId: 10),
+      );
+      expect(epi.companyStock, 250);
+      expect(epi.companyStock, isNot(epi.unitStockQuantity));
+    });
+
+    test('saldo corporativo 0 permanece 0', () {
+      // Zero é saldo, não ausência: `??` cobre só null. Com `||` o catálogo
+      // trocaria o zero da empresa por outro número.
+      final epi = Epi.fromJson(_payload(companyStock: 0, unitStock: 40,
+          unitScopeId: 10));
+      expect(epi.companyStock, 0);
+    });
+
+    test('payload antigo cai no campo legado, que também é corporativo', () {
+      // Bootstrap de backend anterior, ou /api/epis/{id}: só tem `stock`.
+      final epi = Epi.fromJson({'id': 1, 'name': 'Capacete', 'stock': 77});
+      expect(epi.companyStock, 77);
+      expect(epi.companyStockQuantity, isNull);
+    });
+
+    test('nunca devolve o saldo da unidade', () {
+      // O caso que quebraria o catálogo: empresa zerada, unidade com peças.
+      // Se o acessor caísse na unidade, o catálogo esconderia a ruptura.
+      final epi = Epi.fromJson(
+        _payload(companyStock: 0, unitStock: 40, unitScopeId: 10),
+      );
+      expect(epi.companyStock, 0);
+      expect(epi.unitStockQuantity, 40);
+    });
+  });
 }

@@ -96,6 +96,18 @@ def authenticate_login(connection, username, password, totp_code=None):
                 'code': 'TOTP_INVALID',
             }
 
+    # Política de senha temporária (provisionada por admin): se expirou e a
+    # troca ainda é obrigatória, bloqueia o login e orienta a recuperação.
+    # Não afeta usuários existentes (must_change_password default 0). Avaliado
+    # após o TOTP para não interferir no desafio de duas etapas.
+    password_policy = get_user_password_policy(connection, row['id'])
+    if password_policy['must_change'] and password_policy['expired']:
+        structured_log('warning', 'auth.temp_password_expired', user_id=row['id'])
+        return None, 403, {
+            'error': 'Sua senha temporária expirou. Use "Esqueci minha senha" para definir uma nova.',
+            'code': 'TEMP_PASSWORD_EXPIRED',
+        }
+
     if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
 
@@ -105,6 +117,9 @@ def authenticate_login(connection, username, password, totp_code=None):
     operational_unit_id = actor_operational_unit_id(connection, user_data)
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
+    # Sinaliza ao cliente que o 1º acesso exige troca de senha (credencial
+    # temporária provisionada por admin). O cliente força a tela de troca.
+    user_data['must_change_password'] = bool(password_policy['must_change'])
     structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     from modules.settings.service import get_effective_module_visibility
     return {
@@ -119,6 +134,11 @@ def authenticate_login(connection, username, password, totp_code=None):
         'token_expires_in': JWT_EXP_SECONDS,
         'refresh_token': create_refresh_token(user_data),
         'refresh_expires_in': JWT_REFRESH_EXP_SECONDS,
+        # Duas chaves com o MESMO valor: o Flutter lê `must_change_password`; o
+        # web legado já consome `require_password_change` (fluxo dormante até
+        # aqui). Manter ambas evita divergência entre os frontends.
+        'must_change_password': bool(password_policy['must_change']),
+        'require_password_change': bool(password_policy['must_change']),
     }, 200, None
 
 
@@ -265,11 +285,37 @@ def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, pat
         return fallback() if callable(fallback) else fallback
 
 
+def _with_company_stock_fields(epis):
+    """Nomeia o saldo corporativo do catálogo, sem mudar o conjunto de EPIs.
+
+    Aditivo e retrocompatível: `stock` permanece intacto, com o mesmo valor de
+    sempre, porque consumidores antigos do bootstrap ainda o leem. O que muda é
+    passar a existir um campo cujo nome diz de que escopo o número é.
+
+    A criticidade vem da MESMA função de `/api/stock/low` e `/api/stock/epis`.
+    Duas cópias da comparação divergem no primeiro ajuste feito num lado só, e
+    o operador passaria a ver alertas diferentes conforme a tela que abrisse.
+
+    Import tardio pelo mesmo motivo dos demais neste arquivo: `modules.stock`
+    alcança o auth por caminhos indiretos, e o ciclo já custou um achado de
+    CodeQL neste repositório.
+    """
+    from modules.stock.service import is_stock_critical, resolve_minimum_stock
+
+    for item in epis:
+        company_stock = int(item.get('stock') or 0)
+        minimum_stock = resolve_minimum_stock(item.get('minimum_stock'))
+        item['minimum_stock'] = minimum_stock
+        item['company_stock_quantity'] = company_stock
+        item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)
+    return epis
+
+
 def build_bootstrap(connection, actor):
     from modules.settings.service import canary_evaluate_visibility_dataset, get_effective_module_visibility
     from modules.units.service import fetch_units
-    from modules.legal_entities.service import fetch_legal_entities
     from modules.employees.service import fetch_employees, fetch_employee_movements
+    from modules.legal_entities.service import fetch_legal_entities
     from modules.epis.service import fetch_epis
     from modules.deliveries.service import fetch_deliveries
     from modules.feedback.service import fetch_feedbacks
@@ -347,6 +393,19 @@ def build_bootstrap(connection, actor):
         lambda: canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/bootstrap', dataset_name='epis', legacy_items=epis),
         epis, warnings, actor, connection=connection,
     )
+    # Saldo CORPORATIVO em campo próprio (#258, fatia 1.1C).
+    #
+    # `bootstrap.epis` sempre trouxe o total da empresa no campo `stock` — mas
+    # `stock` é o nome ambíguo que a 1.1B aposentou, e o cliente vinha
+    # recalculando a criticidade por conta própria (`stockQuantity <=
+    # minimumStock`), duplicando uma regra que já existe no servidor.
+    #
+    # Aqui só se NOMEIA o que já vinha: mesma consulta, mesmo conjunto de EPIs,
+    # mesmo escopo. Nada de `unit_stock_quantity`/`unit_scope_id` — o bootstrap
+    # não tem semântica de unidade, e inventar zero afirmaria "esta unidade não
+    # tem estoque" sobre uma unidade que nem foi resolvida. Os dois ficam
+    # ausentes, e o cliente os lê como `null`, que é o par coerente.
+    epis = _with_company_stock_fields(epis)
 
     users_list = _safe_bootstrap_section('users', lambda: fetch_users(connection, actor), [], warnings, actor, connection=connection)
     users_list = _safe_bootstrap_section(
@@ -554,6 +613,61 @@ def update_user_password(connection, user_id, hashed_password):
         'UPDATE users SET password = ? WHERE id = ?',
         (hashed_password, int(user_id))
     )
+    # Troca/recuperação define a senha ESCOLHIDA pelo próprio usuário: encerra a
+    # política de senha temporária (não exige nova troca nem carrega expiração).
+    clear_user_password_policy(connection, user_id)
+
+
+def clear_user_password_policy(connection, user_id):
+    """Zera a exigência de troca e a expiração da senha. Tolerante a bases
+    pré-migração (colunas ausentes)."""
+    try:
+        connection.execute(
+            "UPDATE users SET must_change_password = 0, password_expires_at = '' WHERE id = ?",
+            (int(user_id),),
+        )
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+
+
+def get_user_password_policy(connection, user_id):
+    """Estado da política de senha temporária do usuário.
+
+    Retorna {'must_change': bool, 'expired': bool}. Tolerante a bases sem as
+    colunas (pré-migração) — nesse caso a política fica inativa (não bloqueia
+    ninguém), preservando o login dos usuários existentes.
+    """
+    from datetime import datetime
+    from epi_backend.config import UTC
+    try:
+        row = connection.execute(
+            'SELECT must_change_password, password_expires_at FROM users WHERE id = ?',
+            (int(user_id),),
+        ).fetchone()
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        return {'must_change': False, 'expired': False}
+    if not row:
+        return {'must_change': False, 'expired': False}
+    data = row_to_dict(row)
+    must_change = int(data.get('must_change_password') or 0) == 1
+    expires_raw = str(data.get('password_expires_at') or '').strip()
+    expired = False
+    if expires_raw:
+        try:
+            exp = datetime.fromisoformat(expires_raw)
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=UTC)
+            expired = datetime.now(UTC) > exp
+        except Exception:
+            expired = False
+    return {'must_change': must_change, 'expired': expired}
 
 
 def get_user_totp_state(connection, user_id):

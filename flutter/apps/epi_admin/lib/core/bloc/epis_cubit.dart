@@ -41,7 +41,14 @@ class EpisState extends Equatable {
   List<Epi> get filtered {
     var result = epis;
     if (filterCritical) {
-      result = result.where((e) => e.isCriticalStock).toList();
+      // Criticidade CORPORATIVA, calculada pelo backend. Este é o catálogo da
+      // empresa: o mínimo mora em `epis`, na empresa, e é contra o saldo
+      // corporativo que ele deve ser comparado.
+      //
+      // Antes a comparação era feita aqui (`stockQuantity <= minimumStock`),
+      // duplicando uma regra que o servidor já aplica em `/api/stock/low`. O
+      // cliente não recalcula nem infere saldo.
+      result = result.where((e) => e.isCompanyStockCritical == true).toList();
     }
     if (query.isNotEmpty) {
       final q = query.toLowerCase();

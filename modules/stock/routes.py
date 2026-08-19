@@ -6,7 +6,13 @@ from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company
 from core.database import get_connection
-from core.repository import authorize_action, get_epi_by_id, get_unit_by_id, get_unit_active_jv_name
+from core.repository import (
+    authorize_action,
+    get_epi_by_id,
+    get_unit_by_id,
+    get_unit_active_jv_name,
+    resolve_unit_scope,
+)
 from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
 from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
@@ -530,10 +536,19 @@ def handle_get_stock_epis(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
         query = parse_qs(parsed.query)
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
-        unit_filter = scope_unit_id or query.get('unit_id', [''])[0]
+        # Resolução de Unidade centralizada (1.1D-A). Antes daqui saía
+        # `actor_operational_unit_id(...) or query.get('unit_id')`: o `or`
+        # escolhia a origem, e o `unit_id` do cliente entrava sem NENHUMA
+        # validação de tenant. Não vazava — `company_filter` recortava a lista
+        # depois — mas o isolamento dependia da composição incidental de dois
+        # filtros, e o saldo por unidade era lido da unidade pedida antes desse
+        # recorte. Agora a Unidade é validada na origem, contra a empresa do
+        # ator, e sai daqui já garantida.
+        unit_scope = resolve_unit_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            denial_message='Perfil sem unidade operacional ativa para consultar estoque.',
+        )
+        unit_filter = unit_scope.unit_id
         company_scope_id = int(company_filter or 0)
         if unit_filter and not company_scope_id:
             unit_row = get_unit_by_id(connection, int(unit_filter))

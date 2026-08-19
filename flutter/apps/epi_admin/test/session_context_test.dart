@@ -42,6 +42,28 @@ void main() {
       expect(context.companySettings['stock_negative'], isFalse);
     });
 
+    test('operational_unit_id vence unit_id cru quando os dois vêm', () {
+      // `unit_id` é o vínculo de origem do colaborador e não conhece
+      // movimentação temporária; `operational_unit_id` é o que o backend
+      // resolveu (`actor_operational_unit_id`, que já honra movimento
+      // vigente). Lendo o cru primeiro, um Gestor de EPI temporariamente em
+      // outra unidade teria na sessão a unidade de ONDE VEIO, enquanto o
+      // servidor recorta os dados pela unidade ONDE ESTÁ — a sessão passaria
+      // a divergir do escopo real das consultas.
+      final context = SessionContext.fromAuthPayload(
+        user: const {
+          'id': 5,
+          'role': 'user',
+          'company_id': 1,
+          'unit_id': 10,
+          'operational_unit_id': 11,
+        },
+        permissions: const ['stock:view'],
+      );
+
+      expect(context.unitId, 11);
+    });
+
     test('serializa e restaura sem perder escopo tenant', () {
       const original = SessionContext(
         userId: 1,

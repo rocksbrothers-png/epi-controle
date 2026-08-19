@@ -1,6 +1,7 @@
 """Repositório central: funções de DB e autorização compartilhadas entre módulos."""
 
 from datetime import date
+from typing import NamedTuple
 
 from core.auth import ensure_company_access, ensure_permission
 from core.roles import normalize_role_name
@@ -304,6 +305,94 @@ def get_user_password_policy(connection, user_id):
         except Exception:
             expired = False
     return {'must_change': must_change, 'expired': expired}
+
+
+class UnitScope(NamedTuple):
+    """Unidade que o SERVIDOR resolveu para uma consulta, e de onde ela veio.
+
+    `source` é o que permite ao chamador (e ao cliente) saber por que o
+    recorte é o que é, sem deduzir:
+
+    - `'actor'`   — perfil travado; veio de `actor_operational_unit_id`
+    - `'selected'`— perfil livre; veio do `unit_id` pedido, já validado
+    - `'none'`    — perfil livre sem seleção: visão corporativa
+
+    `unit_id` é `None` exatamente quando `source == 'none'`. Nunca 0: zero não
+    é unidade, e tratá-lo como "sem unidade" por ser falsy é a família de
+    defeito que a fatia 1.1B eliminou do saldo de estoque.
+    """
+
+    unit_id: int | None
+    source: str
+    locked: bool
+
+
+def resolve_unit_scope(connection, actor, requested_unit_id=None, *, denial_message=None):
+    """Contexto de Unidade de uma consulta — ponto ÚNICO de resolução.
+
+    Existia como sete cópias de `scope_unit_id or query.get('unit_id')`
+    espalhadas por `modules/stock/routes.py`. Cópias da mesma regra divergem no
+    primeiro ajuste feito num lado só, e nenhuma delas validava o `unit_id`
+    recebido do cliente.
+
+    Regras, nesta ordem:
+
+    1. **Perfil travado** (`admin`/`user`): a unidade vem de
+       `actor_operational_unit_id` — que já honra movimento temporário vigente
+       — e o `unit_id` do cliente é **descartado**, não recusado. Recusar
+       transformaria um cliente desatualizado em erro; descartar mantém a
+       autorização no servidor sem quebrar ninguém.
+    2. **Perfil travado sem unidade**: `PermissionError`. Fail-closed — nunca
+       cai para a empresa inteira.
+    3. **Perfil livre com `unit_id`**: a unidade precisa existir e pertencer à
+       empresa do ator, senão `ValueError` (→ 400). Antes, o isolamento
+       dependia da composição incidental de dois filtros: nada vazava, mas a
+       garantia não estava escrita em lugar nenhum.
+    4. **Perfil livre sem `unit_id`**: visão corporativa (`None`).
+
+    `master_admin` opera cross-tenant por desenho e não tem empresa própria:
+    a validação do item 3 é pulada para ele, porque não há tenant contra o qual
+    comparar.
+
+    `denial_message` só troca o texto do item 2, para que cada rota continue
+    dizendo ao usuário o que ele não conseguiu fazer ("para consultar estoque",
+    "para movimentar estoque"). A regra é a mesma; a mensagem é do chamador.
+    """
+    role = str((actor or {}).get('role') or '')
+    locked = role in ('admin', 'user')
+
+    if locked:
+        unit_id = actor_operational_unit_id(connection, actor)
+        if not unit_id:
+            raise PermissionError(denial_message or 'Perfil sem unidade operacional ativa.')
+        return UnitScope(int(unit_id), 'actor', True)
+
+    pedido = str(requested_unit_id or '').strip()
+    if not pedido:
+        return UnitScope(None, 'none', False)
+    try:
+        pedido_id = int(pedido)
+    except (TypeError, ValueError):
+        raise ValueError('Unidade inválida.')
+    if pedido_id <= 0:
+        raise ValueError('Unidade inválida.')
+
+    if role != 'master_admin':
+        row = connection.execute(
+            'SELECT company_id FROM units WHERE id = ?', (pedido_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError('Unidade não encontrada.')
+        unidade = row_to_dict(row)
+        empresa_ator = str(actor.get('company_id') or '').strip()
+        empresa_unidade = str(unidade.get('company_id') or '').strip()
+        # Empresa ausente em QUALQUER dos lados nega. Comparar direto faria
+        # `'' == ''` casar: um perfil sem empresa alcançaria toda unidade órfã,
+        # e vice-versa. "Desconhecido" nunca é "igual".
+        if not empresa_ator or not empresa_unidade or empresa_unidade != empresa_ator:
+            raise ValueError('Unidade não pertence à empresa do usuário.')
+
+    return UnitScope(pedido_id, 'selected', False)
 
 
 def require_actor(connection, actor_user_id, *, allow_password_change_pending=False):

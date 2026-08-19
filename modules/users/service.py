@@ -36,6 +36,11 @@ def mark_temp_password(connection, user_id, expires_at):
         try:
             connection.rollback()
         except Exception:
+            # Se o próprio rollback falha, a conexão já está inutilizável e não
+            # há o que desfazer. Levantar aqui trocaria a falha original — a
+            # coluna ausente, que é informativa — por uma secundária que não
+            # diz nada. A criação do usuário segue: sem a política, não sem o
+            # usuário.
             pass
 
 

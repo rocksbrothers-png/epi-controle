@@ -282,9 +282,11 @@ def get_user_password_policy(connection, user_id):
         try:
             connection.rollback()
         except Exception:
-            # Idem: conexão já inutilizável. O `return` abaixo é o que importa —
-            # base sem as colunas mantém a política inativa e PRESERVA o login
-            # dos usuários existentes, que é o objetivo desta tolerância.
+            # Rollback que falha significa conexão já inutilizável: não há o que
+            # desfazer, e levantar aqui esconderia a falha original (coluna
+            # ausente em base pré-migração) atrás de uma secundária. O `return`
+            # abaixo é o que importa — base sem as colunas mantém a política
+            # inativa e PRESERVA o login dos usuários existentes.
             pass
         return {'must_change': False, 'expired': False}
     if not row:

@@ -894,10 +894,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             # cliente receberia um 403 genérico, sem como distinguir "sem
             # permissão" de "troque a senha e tudo volta".
             structured_log('warning', 'http.password_change_required', path=parsed.path, user_error=str(exc))
-            return send_json(self, 403, {
+            send_json(self, 403, {
                 'error': str(exc),
                 'code': PasswordChangeRequiredError.CODE,
             })
+            return
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='GET', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))
@@ -960,10 +961,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             # cliente receberia um 403 genérico, sem como distinguir "sem
             # permissão" de "troque a senha e tudo volta".
             structured_log('warning', 'http.password_change_required', path=parsed.path, user_error=str(exc))
-            return send_json(self, 403, {
+            send_json(self, 403, {
                 'error': str(exc),
                 'code': PasswordChangeRequiredError.CODE,
             })
+            return
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='POST', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))
@@ -1002,10 +1004,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             # cliente receberia um 403 genérico, sem como distinguir "sem
             # permissão" de "troque a senha e tudo volta".
             structured_log('warning', 'http.password_change_required', path=parsed.path, user_error=str(exc))
-            return send_json(self, 403, {
+            send_json(self, 403, {
                 'error': str(exc),
                 'code': PasswordChangeRequiredError.CODE,
             })
+            return
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='PUT', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))
@@ -1038,10 +1041,11 @@ class EpiHandler(SimpleHTTPRequestHandler):
             # cliente receberia um 403 genérico, sem como distinguir "sem
             # permissão" de "troque a senha e tudo volta".
             structured_log('warning', 'http.password_change_required', path=parsed.path, user_error=str(exc))
-            return send_json(self, 403, {
+            send_json(self, 403, {
                 'error': str(exc),
                 'code': PasswordChangeRequiredError.CODE,
             })
+            return
         except PermissionError as exc:
             structured_log('warning', 'http.permission_error', method='DELETE', path=parsed.path, error=str(exc))
             return forbidden(self, str(exc))

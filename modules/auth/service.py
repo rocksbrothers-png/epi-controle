@@ -5,7 +5,11 @@ import traceback as _traceback
 from urllib.parse import parse_qs
 # `get_user_password_policy` mora em core.repository (ver nota lá): reexportada
 # aqui para os importadores existentes deste módulo continuarem funcionando.
-from core.repository import enforce_company_block_rules, get_user_password_policy
+from core.repository import (
+    enforce_company_block_rules,
+    get_user_password_policy,
+    require_actor as _require_actor,
+)
 from modules.employees.service import actor_operational_unit_id
 from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
@@ -224,15 +228,26 @@ def fetch_users(connection, actor=None):
             # email column not yet migrated — retry without it
 
 
-def require_actor(connection, actor_user_id):
-    actor = get_user_by_id(connection, int(actor_user_id))
-    if not actor or not int(actor['active']):
-        raise PermissionError('Usuário executor inválido.')
-    actor['role'] = normalize_role_name(actor.get('role'))
-    if actor.get('role') != 'master_admin' and actor.get('company_id'):
-        from modules.companies.service import enforce_company_block_rules as _enforce_block
-        _enforce_block(connection, int(actor['company_id']))
-    return actor
+def require_actor(connection, actor_user_id, *, allow_password_change_pending=False):
+    """Delega para `core.repository.require_actor` — implementação ÚNICA.
+
+    Isto aqui era uma segunda cópia, quase idêntica à de `core.repository`
+    (só divergia no nome de uma variável local dentro de
+    `enforce_company_block_rules`). Duas cópias da mesma regra divergem no
+    primeiro ajuste feito num lado só, e foi exatamente o que aconteceu: o
+    bloqueio de senha temporária entrou em `core.repository` e esta cópia
+    ficou sem ele — deixando `/api/users/{id}/email` e as rotas de 2FA
+    passarem por cima da proteção, em silêncio.
+
+    Mantida como função (e não substituída por um import direto) porque
+    `modules/auth/routes.py` e `modules/users/routes.py` a importam deste
+    módulo, e o `authorize_action` logo abaixo também a usa.
+    """
+    return _require_actor(
+        connection,
+        actor_user_id,
+        allow_password_change_pending=allow_password_change_pending,
+    )
 
 
 def authorize_action(connection, actor_user_id, action, company_id=None):

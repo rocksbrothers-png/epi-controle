@@ -23,7 +23,9 @@ import re
 import pytest
 
 import core.repository as repo
-from core.security import PasswordChangeRequiredError
+import core.security as seguranca
+
+PasswordChangeRequiredError = seguranca.PasswordChangeRequiredError
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 
@@ -100,11 +102,19 @@ def test_a_excecao_explicita_libera(sem_efeitos):
     assert ator['id'] == 42
 
 
-def test_a_excecao_e_keyword_only(sem_efeitos):
+def test_a_excecao_e_keyword_only():
     # Posicional seria fácil de passar por engano ao acrescentar um argumento
     # novo, e a exceção liberaria o bloqueio sem ninguém perceber.
-    with pytest.raises(TypeError):
-        repo.require_actor(_Conn(must_change=True), 42, True)
+    #
+    # A asserção é sobre a ASSINATURA, não sobre uma chamada malformada: além
+    # de dizer exatamente o que se quer garantir, evita escrever no teste uma
+    # chamada que a análise estática (com razão) reporta como errada.
+    import inspect
+    parametro = inspect.signature(repo.require_actor).parameters
+    assert 'allow_password_change_pending' in parametro
+    assert parametro['allow_password_change_pending'].kind is inspect.Parameter.KEYWORD_ONLY
+    assert parametro['allow_password_change_pending'].default is False, \
+        'o padrão precisa ser bloquear; um default True inverteria a proteção'
 
 
 def test_o_bloqueio_vem_depois_das_checagens_existentes(sem_efeitos):
@@ -140,7 +150,6 @@ def test_e_403_e_nao_401():
     # ainda responde 403 para falha de autenticação, divergência rastreada na
     # issue de allowlist backend. A asserção é condicional para que ESTE arquivo
     # seja idêntico nos dois repositórios, que é o que prova a equivalência.
-    import core.security as seguranca
     if hasattr(seguranca, 'AuthenticationError'):
         assert not issubclass(
             PasswordChangeRequiredError, seguranca.AuthenticationError,
@@ -156,7 +165,7 @@ def test_o_handler_http_responde_403_com_o_codigo():
     assert app.count('except PasswordChangeRequiredError as exc:') == 4, \
         'os quatro verbos HTTP precisam do tratamento'
     assert "'code': PasswordChangeRequiredError.CODE" in app
-    assert 'return send_json(self, 403, {' in app
+    assert 'send_json(self, 403, {' in app
 
 
 def test_o_except_especifico_vem_antes_do_generico():
@@ -204,17 +213,35 @@ def test_auth_me_informa_o_estado_ao_cliente():
     assert "'require_password_change': must_change" in corpo
 
 
-def test_somente_auth_me_usa_a_excecao():
+def test_somente_auth_me_liga_a_excecao():
     # A exceção é para o caso que precisa dela. Espalhá-la reabriria o furo em
     # silêncio, uma rota por vez.
-    usos = []
-    for caminho in (RAIZ / 'modules').rglob('*.py'):
+    #
+    # O que se procura é quem LIGA (`=True`), não quem menciona o parâmetro:
+    # `modules/auth/service.require_actor` o repassa por delegação, o que é
+    # legítimo e não libera nada por conta própria.
+    liga = []
+    for caminho in sorted((RAIZ / 'modules').rglob('*.py')):
         texto = caminho.read_text(encoding='utf-8')
-        if 'allow_password_change_pending' in texto:
-            usos.append(caminho.name)
-    assert usos == ['routes.py'], f'exceção usada fora de auth/routes.py: {usos}'
+        if 'allow_password_change_pending=True' in texto:
+            liga.append(str(caminho.relative_to(RAIZ)))
+    assert liga == ['modules/auth/routes.py'], f'exceção ligada fora do /auth/me: {liga}'
+
     rotas = (RAIZ / 'modules/auth/routes.py').read_text(encoding='utf-8')
     assert rotas.count('allow_password_change_pending=True') == 1
+
+
+def test_nao_ha_segunda_implementacao_de_require_actor():
+    # Havia uma cópia quase idêntica em `modules/auth/service.py`. O bloqueio
+    # entrou só na de `core.repository`, e a outra deixava `/api/users/{id}/email`
+    # e as rotas de 2FA passarem por cima — em silêncio. Uma regra de segurança
+    # não pode ter duas implementações.
+    servico = (RAIZ / 'modules/auth/service.py').read_text(encoding='utf-8')
+    inicio = servico.index('def require_actor(')
+    corpo = servico[inicio:servico.index('\ndef ', inicio + 1)]
+    assert '_require_actor(' in corpo, 'a delegação para core.repository sumiu'
+    assert 'get_user_by_id' not in corpo, \
+        'a segunda implementação voltou — o bloqueio ficaria só numa delas'
 
 
 # ── Cobertura do gargalo: API direta, deep link, cliente modificado ──────────

@@ -71,7 +71,9 @@ def test_auth_me_returns_user_and_permissions(monkeypatch):
     actor = {'id': 9, 'role': 'general_admin', 'company_id': 1, 'full_name': 'Jeff', 'password': 'segredo'}
     monkeypatch.setattr(auth_routes, 'get_connection', lambda: type('C', (), {'close': lambda self: None})())
     monkeypatch.setattr(auth_routes, 'resolve_actor_user_id', lambda *a, **k: 9)
-    monkeypatch.setattr(auth_routes, 'require_actor', lambda _c, _id: actor)
+    # `**_k` porque `/api/auth/me` passa `allow_password_change_pending=True`:
+    # é a única rota que atravessa o bloqueio de senha temporária (#909).
+    monkeypatch.setattr(auth_routes, 'require_actor', lambda _c, _id, **_k: actor)
 
     h = _FakeHandler('/api/auth/me')
     auth_routes.handle_get_auth_me(h, urlparse('/api/auth/me?actor_user_id=9'), None, None)
@@ -86,7 +88,7 @@ def test_auth_me_propagates_invalid_actor(monkeypatch):
     monkeypatch.setattr(auth_routes, 'get_connection', lambda: type('C', (), {'close': lambda self: None})())
     monkeypatch.setattr(auth_routes, 'resolve_actor_user_id', lambda *a, **k: 0)
 
-    def _raise(_c, _id):
+    def _raise(_c, _id, **_k):
         raise PermissionError('Usuário executor inválido.')
 
     monkeypatch.setattr(auth_routes, 'require_actor', _raise)

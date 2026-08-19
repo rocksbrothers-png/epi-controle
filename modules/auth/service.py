@@ -3,7 +3,9 @@
 import os
 import traceback as _traceback
 from urllib.parse import parse_qs
-from core.repository import enforce_company_block_rules
+# `get_user_password_policy` mora em core.repository (ver nota lá): reexportada
+# aqui para os importadores existentes deste módulo continuarem funcionando.
+from core.repository import enforce_company_block_rules, get_user_password_policy
 from modules.employees.service import actor_operational_unit_id
 from core.auth import ensure_permission, ensure_company_access
 from core.roles import normalize_role_name
@@ -635,46 +637,6 @@ def clear_user_password_policy(connection, user_id):
             # ausente em base pré-migração) atrás de uma secundária. A troca de
             # senha em si já foi gravada e não pode ser perdida por causa disto.
             pass
-
-
-def get_user_password_policy(connection, user_id):
-    """Estado da política de senha temporária do usuário.
-
-    Retorna {'must_change': bool, 'expired': bool}. Tolerante a bases sem as
-    colunas (pré-migração) — nesse caso a política fica inativa (não bloqueia
-    ninguém), preservando o login dos usuários existentes.
-    """
-    from datetime import datetime
-    from epi_backend.config import UTC
-    try:
-        row = connection.execute(
-            'SELECT must_change_password, password_expires_at FROM users WHERE id = ?',
-            (int(user_id),),
-        ).fetchone()
-    except Exception:
-        try:
-            connection.rollback()
-        except Exception:
-            # Idem: conexão já inutilizável. O `return` abaixo é o que importa —
-            # base sem as colunas mantém a política inativa e PRESERVA o login
-            # dos usuários existentes, que é o objetivo desta tolerância.
-            pass
-        return {'must_change': False, 'expired': False}
-    if not row:
-        return {'must_change': False, 'expired': False}
-    data = row_to_dict(row)
-    must_change = int(data.get('must_change_password') or 0) == 1
-    expires_raw = str(data.get('password_expires_at') or '').strip()
-    expired = False
-    if expires_raw:
-        try:
-            exp = datetime.fromisoformat(expires_raw)
-            if exp.tzinfo is None:
-                exp = exp.replace(tzinfo=UTC)
-            expired = datetime.now(UTC) > exp
-        except Exception:
-            expired = False
-    return {'must_change': must_change, 'expired': expired}
 
 
 def get_user_totp_state(connection, user_id):

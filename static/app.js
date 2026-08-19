@@ -5078,43 +5078,9 @@ function filteredUsers() {
   });
 }
 
-// Aguarda o backend ficar PRONTO antes de chamar /api/bootstrap.
-//
-// No cold-start do Render o backend sobe e roda as funções de schema (ensure_*)
-// por dezenas de segundos; durante essa janela o gate responde 503 em
-// /api/bootstrap, o que gerava uma tempestade de erros no console (bootstrap +
-// todos os loaders secundários). A sonda /health responde SEMPRE 200 (mesmo no
-// warmup) com { ready: bool }; então esperamos ready===true e só então seguimos.
-//
-// Caminho quente (backend já pronto): a primeira sonda retorna ready:true de
-// imediato — sem atraso e sem mudança de comportamento. Se estourar o tempo,
-// retorna false e o chamador segue no fluxo atual (retry/degradado) — sem
-// regressão.
-async function waitForBackendReady({ maxWaitMs = 90000, pollMs = 2000 } = {}) {
-  const deadline = Date.now() + Math.max(0, maxWaitMs);
-  for (;;) {
-    try {
-      const res = await fetch('/health', { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json().catch(() => null);
-        if (data && data.ready === true) return true;
-      }
-    } catch (_error) {
-      // Blip de rede durante o boot — continua tentando até o deadline.
-    }
-    if (Date.now() >= deadline) return false;
-    updatePhase3ContextStatus('dashboard', 'loading', 'Servidor iniciando...');
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
-  }
-}
-
 async function loadBootstrap() {
   try {
     updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
-    // Evita a tempestade de 503 no cold-start: espera o backend sinalizar
-    // readiness via /health antes de disparar o bootstrap (e, por consequência,
-    // o renderAll com seus loaders). Ver waitForBackendReady acima.
-    await waitForBackendReady();
     const payload = await apiWithBootstrapRetry(`/api/bootstrap?${actorQuery()}`, {}, { maxAttempts: 6, retryDelayMs: 3000 });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.platform_brand };
     state.commercialSettings = cloneCommercialSettings(payload.commercial_settings || DEFAULT_COMMERCIAL_SETTINGS);
@@ -6050,6 +6016,25 @@ async function loadStockEpis() {
   refreshStockMovementItemsFromLocal();
 }
 
+function unitStockOf(item) {
+  // Saldo da UNIDADE, nas telas que operam sobre uma unidade (Estoque,
+  // Movimentação, Entrega de EPI, Requisição de compra).
+  //
+  // Quando não há unidade resolvida — `unit_scope_id` nulo, caso de perfil sem
+  // unidade fixa que ainda não selecionou uma — não existe saldo local, e o
+  // corporativo é o único número real disponível.
+  //
+  // Isto NÃO é o fallback antigo, que ficava em `/api/stock/epis` e dizia:
+  //   item.stock = saldo_da_unidade || saldo_corporativo
+  // Aquele trocava de significado quando o saldo da unidade era ZERO (falsy), e
+  // uma unidade sem estoque exibia o total da empresa. Aqui a escolha depende de
+  // HAVER unidade, não do valor — uma unidade com zero mostra zero.
+  if (item?.unit_scope_id === null || item?.unit_scope_id === undefined) {
+    return Number(item?.company_stock_quantity ?? 0);
+  }
+  return Number(item?.unit_stock_quantity ?? 0);
+}
+
 function refreshStockMovementItemsFromLocal() {
   const companyId = document.getElementById('stock-company')?.value || state.user?.company_id || '';
   const unitId = document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '';
@@ -6062,7 +6047,7 @@ function refreshStockMovementItemsFromLocal() {
     const stockEntry = stockByEpiId.get(String(item.id));
     return {
       ...item,
-      stock: Number(stockEntry?.stock ?? 0),
+      stock: unitStockOf(stockEntry),
       size_balances: Array.isArray(stockEntry?.size_balances) ? stockEntry.size_balances : []
     };
   });
@@ -6449,7 +6434,7 @@ function renderStockEpiSearchResults() {
     return;
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
-    const summary = `${item.name || '-'} | ${tr('stock.fabShort', 'Fab')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('stock.protectionShort', 'Proteção')}: ${epiProtectionLabel(item.sector || '-')} | ${tr('stock.sizeShort', 'Tam')}: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | ${tr('stock.balanceShort', 'Saldo')}: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | ${tr('stock.fabShort', 'Fab')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('stock.protectionShort', 'Proteção')}: ${epiProtectionLabel(item.sector || '-')} | ${tr('stock.sizeShort', 'Tam')}: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | ${tr('stock.balanceShort', 'Saldo')}: ${unitStockOf(item)}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
   }).join('') || `<div class="summary-item">${tr('stock.typeNameManufacturer', 'Digite nome e/ou fabricante para buscar o EPI.')}</div>`;
 }
@@ -7470,7 +7455,7 @@ function populateDeliveryEmployeeField(employeeField, employees, search) {
 
 function populateDeliveryEpiField(epiField, epis) {
   epiField.innerHTML = epis.map((item) => {
-    const stock = Number(item.stock || 0);
+    const stock = unitStockOf(item);
     const stockLabel = stock > 0 ? `${stock} ${tr('delivery.inStock', 'em estoque')}` : tr('delivery.noStock', 'Sem saldo');
     const sizeLabel = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
     return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel}) - ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(sizeLabel)}</option>`;
@@ -7515,7 +7500,7 @@ function renderDeliveryEpiSearchResults() {
   }
   list.innerHTML = source.slice(0, 30).map((item) => {
     const sizeSummary = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
-    const summary = `${item.name || '-'} | ${tr('epi.manufacturer', 'Fabricante')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('delivery.protectionLabel', 'Proteção')}: ${item.sector || '-'} | ${tr('delivery.sizeShort', 'Tam.')}: ${sizeSummary} | ${tr('delivery.balanceLabel', 'Saldo')}: ${item.stock || 0}`;
+    const summary = `${item.name || '-'} | ${tr('epi.manufacturer', 'Fabricante')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('delivery.protectionLabel', 'Proteção')}: ${item.sector || '-'} | ${tr('delivery.sizeShort', 'Tam.')}: ${sizeSummary} | ${tr('delivery.balanceLabel', 'Saldo')}: ${unitStockOf(item)}`;
     return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
   }).join('');
 }
@@ -11105,16 +11090,9 @@ function renderRetentionPolicy() {
 
 async function loadRetentionPolicy() {
   if (!hasConfigurationAccess()) return;
-  // Captura o erro internamente (como os loaders irmãos): chamado via
-  // `void loadRetentionPolicy()` no renderAll, uma rejeição não tratada aqui
-  // vira "Uncaught (in promise)" no console. Falha é não-crítica.
-  try {
-    const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
-    state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
-    renderRetentionPolicy();
-  } catch (error) {
-    console.warn('[retention-policy] erro ao carregar', error);
-  }
+  const payload = await api(`/api/ficha-retention-policy?${actorQuery()}`);
+  state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
+  renderRetentionPolicy();
 }
 
 function collectReportFilters() {
@@ -11204,7 +11182,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
   document.getElementById('delivery-role').value = employee?.role_name || '';
   const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   const selectedEpi = (state.deliveryEpis || []).find((item) => String(item.id) === selectedEpiId);
-  if (selectedEpi && Number(selectedEpi.stock || 0) <= 0) {
+  if (selectedEpi && unitStockOf(selectedEpi) <= 0) {
     setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
   }
   const sizesPanel = document.getElementById('delivery-epi-sizes');
@@ -13382,7 +13360,6 @@ async function init() {
   bindAppListener(document.getElementById('unit-company'), 'change', () => {
     syncUnitLegalEntityOptions();
   });
-
   bindAppListener(document.getElementById('employee-tipo-vinculo'), 'change', syncEmpresaOrigemVisibility);
   // Estado inicial: cobre o caso de o valor do select já não ser 'CLT' sem
   // que um evento 'change' tenha disparado (ex.: valor restaurado pelo

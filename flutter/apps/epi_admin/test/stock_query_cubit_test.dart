@@ -22,6 +22,8 @@ class _FakeRepository implements StockRepository {
 
   int chamadasDisponiveis = 0;
   int? ultimoEpiId;
+  int? atorRecebidoDisponiveis;
+  int? atorRecebidoBloqueados;
 
   @override
   Future<List<StockItem>> fetchAvailableItems({
@@ -30,20 +32,38 @@ class _FakeRepository implements StockRepository {
   }) async {
     chamadasDisponiveis++;
     ultimoEpiId = epiId;
+    atorRecebidoDisponiveis = actorUserId;
     if (erro != null) throw erro!;
     return items ?? const [];
   }
 
   @override
   Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) async {
+    atorRecebidoBloqueados = actorUserId;
     if (erro != null) throw erro!;
     return blocked ?? const BlockedStockItems(items: [], statusKeys: []);
   }
 
+  /// Ator da sessão (fatia 1.1B): antes vinha junto do bootstrap carregado por
+  /// `load()`. Agora é resolvido na camada de dados, e estas consultas passaram
+  /// a funcionar mesmo sem `load()` ter rodado antes.
   @override
-  Future<StockSnapshot> fetchStock() async => const StockSnapshot(
-        epis: [], companyId: 1, unitId: 1, actorUserId: 1,
-      );
+  Future<int> currentActorUserId() async => 7;
+
+  @override
+  Future<List<Epi>> fetchStockEpis({
+    String? name,
+    String? section,
+    String? manufacturer,
+    String? ca,
+    String? protection,
+  }) async =>
+      const [];
+
+  @override
+  // ignore: deprecated_member_use_from_same_package
+  Future<StockSnapshot> fetchStock() =>
+      throw UnimplementedError('bootstrap.epis não é mais fonte de estoque');
 
   @override
   Future<void> recordMovement({
@@ -118,6 +138,21 @@ void main() {
       expect(cubit.state.availableStatus, StockListStatus.error);
     });
 
+    test('consulta com o ator da sessão mesmo sem load() antes', () async {
+      // Regressão da fatia 1.1B: o ator vinha do bootstrap carregado por
+      // `load()`. Sem `load()` (deep-link, ou o operador abrindo a aba antes),
+      // a consulta sairia com `actor_user_id=0` e o backend recusaria — o
+      // mesmo defeito que a lista de colaboradores já teve.
+      final repo = _FakeRepository(items: [_item(1)]);
+      final cubit = StockCubit(repository: repo);
+
+      await cubit.loadAvailableItems(42);
+
+      expect(repo.atorRecebidoDisponiveis, 7);
+      expect(cubit.state.actorUserId, 7, reason: 'ator resolvido fica no estado');
+      expect(cubit.state.availableStatus, StockListStatus.ready);
+    });
+
     test('trocar de EPI limpa a lista anterior antes de carregar', () async {
       // Sem limpar, a lista do EPI anterior fica visível sob o spinner e o
       // operador pode ler QRs que não são do EPI que ele acabou de abrir.
@@ -162,6 +197,13 @@ void main() {
       final cubit = StockCubit(repository: _FakeRepository(erro: _http(403)));
       await cubit.loadBlockedItems();
       expect(cubit.state.blockedStatus, StockListStatus.forbidden);
+    });
+
+    test('consulta com o ator da sessão mesmo sem load() antes', () async {
+      final repo = _FakeRepository();
+      final cubit = StockCubit(repository: repo);
+      await cubit.loadBlockedItems();
+      expect(repo.atorRecebidoBloqueados, 7);
     });
 
     test('vazio é ready com lista vazia', () async {

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../models/epi.dart';
 import '../models/stock_item.dart';
 
 /// Itens de estoque bloqueados, agrupados pelas chaves de status do backend.
@@ -53,6 +54,40 @@ class StockApi {
       },
     );
     return res.data ?? {};
+  }
+
+  /// EPIs visíveis para a unidade do ator, com saldo da unidade E saldo
+  /// corporativo em campos SEPARADOS.
+  ///
+  /// Fonte única de estoque (#258): substitui `bootstrap.epis`, que trazia
+  /// apenas o total da empresa e envelhecia durante a sessão. Aqui a
+  /// visibilidade GLOBAL/JV é reavaliada a cada consulta e os filtros são
+  /// aplicados no servidor — o cliente não refaz nenhuma das duas coisas.
+  ///
+  /// Sem `company_id`/`unit_id`: o escopo vem do ator. `unitStockQuantity` é
+  /// `null` quando não há unidade resolvida.
+  Future<List<Epi>> fetchStockEpis({
+    required int actorUserId,
+    String? name,
+    String? section,
+    String? manufacturer,
+    String? ca,
+    String? protection,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/epis',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (section != null && section.isNotEmpty) 'section': section,
+        if (manufacturer != null && manufacturer.isNotEmpty)
+          'manufacturer': manufacturer,
+        if (ca != null && ca.isNotEmpty) 'ca': ca,
+        if (protection != null && protection.isNotEmpty) 'protection': protection,
+      },
+    );
+    final items = (res.data?['items'] as List<dynamic>?) ?? const [];
+    return items.map((e) => Epi.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// QRs disponíveis de um EPI na unidade do ator, já em ordem FEFO (o lote que

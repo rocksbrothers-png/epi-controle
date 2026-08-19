@@ -664,5 +664,8 @@
   "stockStatusBlockedAnalysis": "Under analysis",
   "stockStatusBlockedRejected": "Rejected",
   "stockStatusBlockedArchived": "Archived PPE",
-  "stockStatusUnknown": "Unrecognized status"
+  "stockStatusUnknown": "Unrecognized status",
+  "stockUnitBalanceSuffix": "at this unit",
+  "stockCompanyBalanceLabel": "company",
+  "stockMinimumShort": "min"
 }

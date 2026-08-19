@@ -96,6 +96,18 @@ def authenticate_login(connection, username, password, totp_code=None):
                 'code': 'TOTP_INVALID',
             }
 
+    # Política de senha temporária (provisionada por admin): se expirou e a
+    # troca ainda é obrigatória, bloqueia o login e orienta a recuperação.
+    # Não afeta usuários existentes (must_change_password default 0). Avaliado
+    # após o TOTP para não interferir no desafio de duas etapas.
+    password_policy = get_user_password_policy(connection, row['id'])
+    if password_policy['must_change'] and password_policy['expired']:
+        structured_log('warning', 'auth.temp_password_expired', user_id=row['id'])
+        return None, 403, {
+            'error': 'Sua senha temporária expirou. Use "Esqueci minha senha" para definir uma nova.',
+            'code': 'TEMP_PASSWORD_EXPIRED',
+        }
+
     if resolved_role != 'master_admin' and row.get('company_id'):
         enforce_company_block_rules(connection, int(row['company_id']))
 
@@ -105,6 +117,9 @@ def authenticate_login(connection, username, password, totp_code=None):
     operational_unit_id = actor_operational_unit_id(connection, user_data)
     if operational_unit_id:
         user_data['operational_unit_id'] = operational_unit_id
+    # Sinaliza ao cliente que o 1º acesso exige troca de senha (credencial
+    # temporária provisionada por admin). O cliente força a tela de troca.
+    user_data['must_change_password'] = bool(password_policy['must_change'])
     structured_log('info', 'auth.login_success', username=row['username'], user_id=row['id'], role=resolved_role)
     from modules.settings.service import get_effective_module_visibility
     return {
@@ -119,6 +134,11 @@ def authenticate_login(connection, username, password, totp_code=None):
         'token_expires_in': JWT_EXP_SECONDS,
         'refresh_token': create_refresh_token(user_data),
         'refresh_expires_in': JWT_REFRESH_EXP_SECONDS,
+        # Duas chaves com o MESMO valor: o Flutter lê `must_change_password`; o
+        # web legado já consome `require_password_change` (fluxo dormante até
+        # aqui). Manter ambas evita divergência entre os frontends.
+        'must_change_password': bool(password_policy['must_change']),
+        'require_password_change': bool(password_policy['must_change']),
     }, 200, None
 
 
@@ -593,6 +613,61 @@ def update_user_password(connection, user_id, hashed_password):
         'UPDATE users SET password = ? WHERE id = ?',
         (hashed_password, int(user_id))
     )
+    # Troca/recuperação define a senha ESCOLHIDA pelo próprio usuário: encerra a
+    # política de senha temporária (não exige nova troca nem carrega expiração).
+    clear_user_password_policy(connection, user_id)
+
+
+def clear_user_password_policy(connection, user_id):
+    """Zera a exigência de troca e a expiração da senha. Tolerante a bases
+    pré-migração (colunas ausentes)."""
+    try:
+        connection.execute(
+            "UPDATE users SET must_change_password = 0, password_expires_at = '' WHERE id = ?",
+            (int(user_id),),
+        )
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+
+
+def get_user_password_policy(connection, user_id):
+    """Estado da política de senha temporária do usuário.
+
+    Retorna {'must_change': bool, 'expired': bool}. Tolerante a bases sem as
+    colunas (pré-migração) — nesse caso a política fica inativa (não bloqueia
+    ninguém), preservando o login dos usuários existentes.
+    """
+    from datetime import datetime
+    from epi_backend.config import UTC
+    try:
+        row = connection.execute(
+            'SELECT must_change_password, password_expires_at FROM users WHERE id = ?',
+            (int(user_id),),
+        ).fetchone()
+    except Exception:
+        try:
+            connection.rollback()
+        except Exception:
+            pass
+        return {'must_change': False, 'expired': False}
+    if not row:
+        return {'must_change': False, 'expired': False}
+    data = row_to_dict(row)
+    must_change = int(data.get('must_change_password') or 0) == 1
+    expires_raw = str(data.get('password_expires_at') or '').strip()
+    expired = False
+    if expires_raw:
+        try:
+            exp = datetime.fromisoformat(expires_raw)
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=UTC)
+            expired = datetime.now(UTC) > exp
+        except Exception:
+            expired = False
+    return {'must_change': must_change, 'expired': expired}
 
 
 def get_user_totp_state(connection, user_id):

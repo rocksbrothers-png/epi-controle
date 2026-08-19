@@ -831,6 +831,9 @@ def ensure_user_columns(connection) -> None:
         ('totp_secret', 'TEXT'),
         ('totp_enabled', 'INTEGER NOT NULL DEFAULT 0'),
         ('terms_accepted_at', 'TEXT'),
+        # Política de senha temporária (troca obrigatória no 1º acesso + expiração)
+        ('must_change_password', 'INTEGER NOT NULL DEFAULT 0'),
+        ('password_expires_at', 'TEXT'),
     ]:
         try:
             _safe_add_column(connection, 'users', _col, _defn)

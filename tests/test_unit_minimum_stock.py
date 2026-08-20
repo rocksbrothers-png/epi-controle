@@ -37,8 +37,6 @@ import pathlib
 import re
 import sqlite3
 
-import pytest
-
 from modules.stock.service import (
     MINIMUM_SOURCE_COMPANY,
     MINIMUM_SOURCE_UNIT,

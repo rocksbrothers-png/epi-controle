@@ -203,13 +203,40 @@ Future<void> _bootApp(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Preenche usuário/senha e entra, aguardando o dashboard estabilizar.
+/// Espera até que [caminho] tenha sido pedido ao backend, ou falha por timeout.
+///
+/// `pumpAndSettle` garante apenas que não há mais frames agendados — NÃO que
+/// uma requisição HTTP já saiu. Enquanto o Dashboard emitia o pedido no mesmo
+/// turno em que o cubit era criado, a diferença não aparecia; com o
+/// carregamento em duas etapas (idioma e resumo) ela vira corrida, e o teste
+/// passava ou falhava por sorte de escalonamento.
+Future<void> _aguardaPedido(
+  WidgetTester tester,
+  String caminho, {
+  Duration limite = const Duration(seconds: 15),
+}) async {
+  final fim = DateTime.now().add(limite);
+  while (!_requestedPaths.contains(caminho)) {
+    if (DateTime.now().isAfter(fim)) {
+      fail('A rota $caminho não foi pedida em ${limite.inSeconds}s. '
+          'Pedidas até aqui: $_requestedPaths');
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  await tester.pumpAndSettle();
+}
+
+/// Preenche usuário/senha e entra, aguardando o dashboard ficar PRONTO.
+///
+/// Pronto = o resumo já chegou. Sem isso, cada caso decidiria sobre uma tela
+/// ainda em carregamento.
 Future<void> _login(WidgetTester tester) async {
   final fields = find.byType(TextField);
   await tester.enterText(fields.at(0), 'admin');
   await tester.enterText(fields.at(1), 'senha');
   await tester.tap(find.byType(EpiButton));
   await tester.pumpAndSettle();
+  await _aguardaPedido(tester, '/api/dashboard/summary');
 }
 
 void main() {
@@ -239,11 +266,12 @@ void main() {
 
       // Saiu da tela de login (o app navegou para o dashboard).
       expect(find.byIcon(Icons.shield_outlined), findsNothing);
-      // A jornada real passou por login e bootstrap.
+      // A jornada real passou por login e bootstrap...
       expect(_requestedPaths, contains('/api/login'));
+      // ...e o bootstrap ainda é tocado, mas só pela preferência de idioma:
+      // os dados do painel não vêm mais de lá (fatia 1.1D-C2).
       expect(_requestedPaths, contains('/api/bootstrap'));
-      // E o painel foi montado pela rota do resumo, não recomputado do
-      // bootstrap (fatia 1.1D-C2).
+      // O painel foi montado pela rota do resumo.
       expect(_requestedPaths, contains('/api/dashboard/summary'));
     });
 

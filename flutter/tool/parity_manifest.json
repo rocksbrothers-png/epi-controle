@@ -6,7 +6,7 @@
     "apps/epi_admin/lib/core/bloc/auth_cubit.dart": "0afa04cfb60549e6816347fbd1994923007f2381326ff4936b0d2ac6ac0cd8a6",
     "apps/epi_admin/lib/core/bloc/auth_state.dart": "9e8dfaa15a6b4f02c9bba3542c41824d1eec9f4808b104a8e7fd0f7f0007a464",
     "apps/epi_admin/lib/core/bloc/companies_cubit.dart": "b0bc05731ad4f2b1b5f0dd91be9092baa76007f71704e65fc2c41951bb35f72b",
-    "apps/epi_admin/lib/core/bloc/dashboard_cubit.dart": "a4680d7b957c701ce3124908df44c80ccf2ce901eecf373ecc3bd125c16e118d",
+    "apps/epi_admin/lib/core/bloc/dashboard_cubit.dart": "c3d9c13c19d68806831dcadb4e519dc08156a2a363c1bbfe2ef30ab91c0cb169",
     "apps/epi_admin/lib/core/bloc/devolutions_cubit.dart": "c9e490678c101f19552353fb6e1548d947b5c4df5ca9d646be80056fc68a7027",
     "apps/epi_admin/lib/core/bloc/employees_cubit.dart": "589e91d80cb16e100aee590333927e284e0f576c6593cd6e6e614006ae5458b2",
     "apps/epi_admin/lib/core/bloc/epis_cubit.dart": "76893ab87a41f0a2213d3941b1c542d6e9d8db1b653870fefc3db312eba168e3",

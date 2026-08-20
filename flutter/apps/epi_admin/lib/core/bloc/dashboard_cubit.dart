@@ -184,8 +184,16 @@ class DashboardCubit extends Cubit<DashboardState> {
         unitId: unitId,
         sector: sector,
       );
+      // Sair da tela durante o carregamento fecha o cubit antes da resposta
+      // chegar. Emitir depois disso lança `Cannot emit new states after
+      // calling close` — barulho no log de produção por uma navegação
+      // perfeitamente normal. Não acontecia quando o painel carregava uma vez
+      // só; com a troca de filtro consultando o servidor, a janela existe a
+      // cada seleção.
+      if (isClosed) return;
       emit(state._copyWith(isLoading: false, summary: resumo));
     } on Exception catch (e) {
+      if (isClosed) return;
       emit(state._copyWith(isLoading: false, error: e.toString()));
     }
   }

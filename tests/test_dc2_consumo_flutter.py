@@ -248,6 +248,18 @@ def test_kpi_critico_nulo_nao_vira_zero_na_tela():
     assert 'state.criticalStock ?? 0' not in corpo
 
 
+def test_o_cubit_nao_emite_depois_de_fechado():
+    """Sair da tela durante o carregamento não pode virar exceção no log.
+
+    Cada troca de filtro consulta o servidor, então a janela entre o pedido e a
+    resposta existe muitas vezes por sessão — não só no primeiro carregamento.
+    """
+    corpo = _sem_comentarios(DASHBOARD_CUBIT.read_text(encoding='utf-8'))
+    trecho = corpo[corpo.index('Future<void> _fetch'):]
+    assert trecho.count('if (isClosed) return;') == 2, \
+        'os dois caminhos de `_fetch` (sucesso e erro) precisam do guarda'
+
+
 def test_o_kpi_critico_e_anulavel_no_estado():
     corpo = DASHBOARD_CUBIT.read_text(encoding='utf-8')
     assert 'int? get criticalStock' in corpo

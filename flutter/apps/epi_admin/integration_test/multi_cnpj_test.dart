@@ -78,10 +78,68 @@ const _permissions = [
 /// Rotas atendidas, com o caminho pedido registrado para asserção.
 final _requestedPaths = <String>[];
 
+/// URIs completas, com query. A fatia 1.1D-C2 moveu o recorte do Dashboard
+/// para o servidor: provar a cascata agora exige olhar o que o cliente PEDIU,
+/// não só qual rota ele tocou.
+final _requestedUris = <Uri>[];
+
+/// Resposta canônica de `GET /api/dashboard/summary`.
+///
+/// SEM envelope `{ok, data}` — o backend real responde
+/// `send_json(handler, 200, resumo)` (modules/dashboard/routes.py).
+///
+/// O recorte é do SERVIDOR: ele lê a seleção da query e devolve escopo, KPIs e
+/// as fontes do filtro. `filters.units` não é filtrado por CNPJ aqui, porque o
+/// backend só o restringe para perfil travado — a cascata CNPJ → Unidade é do
+/// cliente (`DashboardFilters.unitsFor`).
+Map<String, dynamic> _resumoDoDashboard(Uri uri) {
+  final cnpjId = int.tryParse(uri.queryParameters['legal_entity_id'] ?? '');
+  final unitId = int.tryParse(uri.queryParameters['unit_id'] ?? '');
+  final setor = uri.queryParameters['sector'];
+  return {
+    'scope': {
+      'unit_id': unitId,
+      'unit_scope_source': unitId == null ? 'none' : 'selected',
+      'locked': false,
+      'company_id': 1,
+      'legal_entity_id': cnpjId,
+      'sector': setor,
+    },
+    'kpis': {
+      'deliveries_today': 3,
+      'expiring_epis': 1,
+      // `null` sem Unidade resolvida — e não `0`. Zero afirmaria "nenhum EPI
+      // crítico"; sem Unidade escolhida a pergunta não se aplica.
+      'critical_stock': unitId == null ? null : 7,
+      'near_minimum_stock': unitId == null ? null : 2,
+      'pending_purchases': 0,
+    },
+    'filters': {
+      // Rótulo já composto pelo servidor (`_rotulo_cnpj`): nome fantasia,
+      // razão social ou o próprio CNPJ, nessa ordem.
+      'legal_entities': [
+        for (final e in _legalEntities) {'id': e['id'], 'name': e['trade_name']},
+      ],
+      'units': [
+        for (final u in _units)
+          {
+            'id': u['id'],
+            'name': u['name'],
+            'legal_entity_id': u['legal_entity_id'],
+          },
+      ],
+      'sectors': const ['Manutenção', 'Operação'],
+    },
+    'alerts': const [],
+    'compliance': const {'summary': <String, int>{}},
+  };
+}
+
 Future<HttpServer> _startFakeBackend() async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   server.listen((request) async {
     _requestedPaths.add(request.uri.path);
+    _requestedUris.add(request.uri);
     Object? body;
     switch (request.uri.path) {
       case '/api/login':
@@ -112,6 +170,8 @@ Future<HttpServer> _startFakeBackend() async {
             'pending_purchases': 0,
           },
         };
+      case '/api/dashboard/summary':
+        body = _resumoDoDashboard(request.uri);
       case '/api/legal-entities':
         body = {'legal_entities': _legalEntities};
       default:
@@ -143,13 +203,40 @@ Future<void> _bootApp(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Preenche usuário/senha e entra, aguardando o dashboard estabilizar.
+/// Espera até que [caminho] tenha sido pedido ao backend, ou falha por timeout.
+///
+/// `pumpAndSettle` garante apenas que não há mais frames agendados — NÃO que
+/// uma requisição HTTP já saiu. Enquanto o Dashboard emitia o pedido no mesmo
+/// turno em que o cubit era criado, a diferença não aparecia; com o
+/// carregamento em duas etapas (idioma e resumo) ela vira corrida, e o teste
+/// passava ou falhava por sorte de escalonamento.
+Future<void> _aguardaPedido(
+  WidgetTester tester,
+  String caminho, {
+  Duration limite = const Duration(seconds: 15),
+}) async {
+  final fim = DateTime.now().add(limite);
+  while (!_requestedPaths.contains(caminho)) {
+    if (DateTime.now().isAfter(fim)) {
+      fail('A rota $caminho não foi pedida em ${limite.inSeconds}s. '
+          'Pedidas até aqui: $_requestedPaths');
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+  await tester.pumpAndSettle();
+}
+
+/// Preenche usuário/senha e entra, aguardando o dashboard ficar PRONTO.
+///
+/// Pronto = o resumo já chegou. Sem isso, cada caso decidiria sobre uma tela
+/// ainda em carregamento.
 Future<void> _login(WidgetTester tester) async {
   final fields = find.byType(TextField);
   await tester.enterText(fields.at(0), 'admin');
   await tester.enterText(fields.at(1), 'senha');
   await tester.tap(find.byType(EpiButton));
   await tester.pumpAndSettle();
+  await _aguardaPedido(tester, '/api/dashboard/summary');
 }
 
 void main() {
@@ -166,6 +253,7 @@ void main() {
 
   setUp(() async {
     _requestedPaths.clear();
+    _requestedUris.clear();
     // Cada caso começa deslogado, na tela de login.
     await ApiClient.clearSession();
   });
@@ -178,9 +266,13 @@ void main() {
 
       // Saiu da tela de login (o app navegou para o dashboard).
       expect(find.byIcon(Icons.shield_outlined), findsNothing);
-      // A jornada real passou por login e bootstrap.
+      // A jornada real passou por login e bootstrap...
       expect(_requestedPaths, contains('/api/login'));
+      // ...e o bootstrap ainda é tocado, mas só pela preferência de idioma:
+      // os dados do painel não vêm mais de lá (fatia 1.1D-C2).
       expect(_requestedPaths, contains('/api/bootstrap'));
+      // O painel foi montado pela rota do resumo.
+      expect(_requestedPaths, contains('/api/dashboard/summary'));
     });
 
     testWidgets('dashboard mostra a barra de filtros quando há CNPJs',
@@ -202,8 +294,20 @@ void main() {
       // Abre o dropdown de CNPJ (o primeiro int? da barra) e escolhe a filial.
       await tester.tap(find.byType(DropdownButtonFormField<int?>).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('ACME Filial RJ — $_cnpjFilial').last);
+      // O rótulo vem PRONTO do servidor (`_rotulo_cnpj`). Antes o cliente o
+      // compunha como "nome — CNPJ"; compor rótulo virou responsabilidade de
+      // quem conhece os dados.
+      await tester.tap(find.text('ACME Filial RJ').last);
       await tester.pumpAndSettle();
+
+      // A escolha vira uma CONSULTA ao servidor, com o CNPJ na query e sem
+      // unidade nem setor — a cascata limpa os níveis abaixo.
+      final consulta = _requestedUris
+          .where((u) => u.path == '/api/dashboard/summary')
+          .last;
+      expect(consulta.queryParameters['legal_entity_id'], '20');
+      expect(consulta.queryParameters.containsKey('unit_id'), isFalse);
+      expect(consulta.queryParameters.containsKey('sector'), isFalse);
 
       // Abre o dropdown de Unidade: só a unidade da filial deve estar lá.
       await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
@@ -211,6 +315,35 @@ void main() {
       expect(find.text('Filial RJ'), findsWidgets);
       expect(find.text('Base Santos'), findsNothing);
       expect(find.text('Matriz SP'), findsNothing);
+    });
+
+    testWidgets('KPI de estoque crítico é "—" sem Unidade e número com ela',
+        (tester) async {
+      // O contrato da #271 atravessando a pilha inteira: sem Unidade resolvida
+      // o servidor manda `critical_stock: null`, e a tela mostra "—". Exibir 0
+      // ali afirmaria que nenhum EPI está crítico.
+      await _bootApp(tester);
+      await _login(tester);
+
+      expect(find.text('—'), findsWidgets);
+      expect(find.text('7'), findsNothing);
+
+      // Escolhe CNPJ e Unidade: agora existe contexto, e o número é o que o
+      // servidor contou — o cliente não recontou EPI nenhum.
+      await tester.tap(find.byType(DropdownButtonFormField<int?>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ACME Filial RJ').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Filial RJ').last);
+      await tester.pumpAndSettle();
+
+      final comUnidade = _requestedUris
+          .where((u) => u.path == '/api/dashboard/summary')
+          .last;
+      expect(comUnidade.queryParameters['unit_id'], '3');
+      expect(find.text('7'), findsOneWidget);
     });
   });
 }

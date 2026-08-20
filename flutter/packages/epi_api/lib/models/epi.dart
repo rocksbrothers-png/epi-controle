@@ -188,12 +188,20 @@ class Epi {
   /// removeu.
   int get companyStock => companyStockQuantity ?? stockQuantity;
 
-  @Deprecated(
-    'Compara campos que podem ter escopos diferentes. Use '
-    'isCompanyStockCritical, que vem calculado do backend. '
-    'Remoção prevista para a fatia 1.1E.',
-  )
-  bool get isCriticalStock => stockQuantity <= minimumStock;
+  // `isCriticalStock` (saldo <= mínimo) foi REMOVIDO na fatia 1.1D-C2 e não
+  // deve voltar em nenhuma forma.
+  //
+  // Ele comparava dois números de escopos diferentes: `stockQuantity` é o saldo
+  // corporativo e `minimumStock` passou a ser apenas o padrão corporativo
+  // herdado — o mínimo que vale para o operador é `unitMinimumStock`, daquela
+  // Unidade. Pior: a criticidade deixou de ser uma comparação. Ela depende do
+  // mínimo efetivo, da faixa de atenção e de o monitoramento estar ligado, e um
+  // EPI com alerta desligado é `disabled`, nunca `critical` — nada disso cabe
+  // num operador `<=`.
+  //
+  // Quem precisa da criticidade lê o que o backend já decidiu:
+  //   • `stockStatus` / `underlyingStatus` — por Unidade (`/api/stock/epis`);
+  //   • `isCompanyStockCritical` — corporativa (bootstrap, catálogo).
 
   /// 'expired' | 'expiring' | 'valid' | null (sem data) para uma data ISO.
   static String? _dateStatus(String? dateStr) {

@@ -403,22 +403,23 @@ class _StockTile extends StatelessWidget {
   /// sem unidade resolvida; nesse caso não há saldo local a exibir.
   int? get _unitStock => epi.unitStockQuantity;
 
-  double get _barValue {
-    if (epi.minimumStock == 0) return 1.0;
-    return ((_unitStock ?? 0) / (epi.minimumStock * 3)).clamp(0.0, 1.0);
-  }
+  /// Classificação da UNIDADE, decidida pelo backend. `null` = sem contexto de
+  /// Unidade; a tela então omite badge, cor e barra em vez de inventar
+  /// "normal".
+  EpiStockStatus? get _status => epiUnitBadgeStatus(epi);
 
-  Color get _barColor {
-    if ((_unitStock ?? 0) == 0) return EpiColors.danger;
-    // Criticidade é CORPORATIVA e vem pronta do backend — o cliente não compara
-    // saldo da unidade com mínimo da empresa.
-    if (epi.isCompanyStockCritical == true) return EpiColors.warning;
-    return EpiColors.success;
+  Color? _barColor(BuildContext context) {
+    final status = _status;
+    if (status == null) return null;
+    return EpiStockBadge.accentColor(status, context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final badge = epiBadgeStatus(epi);
+    final validade = epiValidityBadgeStatus(epi);
+    final status = _status;
+    final corSaldo = _barColor(context) ?? EpiColors.textMuted;
+    final progresso = epiUnitStockGauge(epi);
     return InkWell(
       onTap: () => _showMoveSheet(context),
       child: Padding(
@@ -439,7 +440,16 @@ class _StockTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: EpiSpacing.sm),
-                EpiBadge(status: badge),
+                // Validade (CA / fabricante) e estoque são eixos independentes:
+                // dois badges, cada um dizendo uma coisa. Antes uma única
+                // função devolvia os dois eixos misturados, e a criticidade que
+                // ela devolvia era a corporativa — nesta tela, que é da
+                // Unidade.
+                if (validade != null) ...[
+                  EpiBadge(status: validade),
+                  const SizedBox(width: EpiSpacing.xs),
+                ],
+                if (status != null) EpiStockBadge(status: status),
                 // Abre os QRs disponíveis deste EPI. Botão próprio em vez de
                 // reaproveitar o toque do card, que já abre a movimentação —
                 // duas ações distintas não devem disputar o mesmo gesto.
@@ -457,30 +467,38 @@ class _StockTile extends StatelessWidget {
                 Text(
                   '${_unitStock ?? '—'}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: _barColor,
+                        color: corSaldo,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
+                // O mínimo exibido é o DAQUELA Unidade (`unit_minimum_stock`).
+                // Exibir `minimumStock` mostrava o padrão corporativo: uma
+                // Unidade com mínimo 40 lia 100 e concluía errado sobre o
+                // próprio estoque.
                 Text(
                   ' ${AppLocalizations.of(context).stockUnitBalanceSuffix}'
                   ' · ${AppLocalizations.of(context).stockCompanyBalanceLabel}'
                   ' ${epi.companyStockQuantity ?? epi.stockQuantity}'
                   ' / ${AppLocalizations.of(context).stockMinimumShort}'
-                  ' ${epi.minimumStock}',
+                  ' ${epi.unitMinimumStock ?? '—'}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: EpiColors.textMuted,
                       ),
                 ),
               ],
             ),
-            const SizedBox(height: EpiSpacing.xs),
-            LinearProgressIndicator(
-              value: _barValue,
-              color: _barColor,
-              backgroundColor: EpiColors.border,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(EpiRadius.full),
-            ),
+            // Sem classificação por Unidade não há barra: uma barra vazia
+            // afirmaria estoque no fim da faixa, e uma cheia afirmaria folga.
+            if (progresso != null) ...[
+              const SizedBox(height: EpiSpacing.xs),
+              LinearProgressIndicator(
+                value: progresso,
+                color: corSaldo,
+                backgroundColor: EpiColors.border,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(EpiRadius.full),
+              ),
+            ],
             if (_manufacturerNote != null) ...[
               const SizedBox(height: EpiSpacing.xs),
               Row(

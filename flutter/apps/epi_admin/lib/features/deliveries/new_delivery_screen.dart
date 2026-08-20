@@ -300,9 +300,20 @@ class _EpiStepState extends State<_EpiStep> {
               return ListTile(
                 title: Text(epi.name),
                 subtitle: Text(l10n.deliveryStockAvailable(epi.stockQuantity)),
-                trailing: epi.isCriticalStock
-                    ? const EpiBadge(status: EpiBadgeStatus.critical)
-                    : const Icon(Icons.chevron_right_rounded),
+                // Sem badge de criticidade nesta lista (fatia 1.1D-C2).
+                //
+                // A entrega é uma operação DE UNIDADE, mas os EPIs aqui vêm de
+                // `/api/bootstrap` (ver `deliveries_screen._loadBootstrap`),
+                // que não classifica por Unidade. As opções eram: comparar
+                // saldo com mínimo no cliente — proibido, e errado, porque os
+                // dois têm escopos diferentes — ou mostrar a criticidade
+                // corporativa, que diria ao operador que um EPI está crítico
+                // sem que isso valha para o estoque dele.
+                //
+                // O saldo exibido acima e a habilitação abaixo também são
+                // corporativos. A correção pede a fonte certa de saldo da
+                // Unidade neste fluxo, e está registrada como lacuna própria.
+                trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: epi.stockQuantity > 0
                     ? () => context.read<NewDeliveryCubit>().selectEpi(epi)
                     : null,

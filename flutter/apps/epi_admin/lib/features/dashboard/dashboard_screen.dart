@@ -20,19 +20,12 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Papel e unidade operacional do ator, para o mesmo travamento de
-    // CNPJ/Unidade que o resto do app já aplica a Administrador Local/Gestor
-    // de EPI (ver DashboardCubit.isLockedProfile). Lido uma única vez aqui —
-    // a sessão não troca de papel no meio do uso do dashboard.
-    final authState = context.read<AuthCubit>().state;
-    final sessionContext =
-        authState is AuthAuthenticated ? authState.sessionContext : null;
+    // Papel e unidade operacional do ator NÃO são lidos aqui: o travamento de
+    // CNPJ/Unidade vem em `scope.locked` na resposta de
+    // `/api/dashboard/summary` (fatia 1.1D-C2). Deduzi-lo da sessão era
+    // reimplementar autorização no cliente.
     return BlocProvider(
-      create: (_) => DashboardCubit(
-        localeProvider: localeProvider,
-        role: sessionContext?.role ?? '',
-        operationalUnitId: sessionContext?.unitId,
-      )..load(),
+      create: (_) => DashboardCubit(localeProvider: localeProvider)..load(),
       child: const _DashboardBody(),
     );
   }
@@ -155,9 +148,12 @@ class _DashboardContent extends StatelessWidget {
               icon: Icons.warning_amber_rounded,
               iconColor: EpiColors.warning,
             ),
+            // `criticalStock` vem CONTADO do servidor. Sem Unidade resolvida
+            // ele é `null`, e o card mostra "—": exibir 0 afirmaria que
+            // nenhum EPI está crítico, quando a pergunta nem foi feita.
             EpiKpiCard(
               label: l10n.dashboardCriticalStock,
-              value: '${state.criticalStock}',
+              value: '${state.criticalStock ?? '—'}',
               icon: Icons.inventory_2_outlined,
               iconColor: EpiColors.danger,
             ),
@@ -474,40 +470,30 @@ class _FabAction extends StatelessWidget {
 
 /// Barra de filtros do dashboard: Empresa → CNPJ → Unidade → Setor.
 ///
-/// A cascata é do estado: escolher um CNPJ restringe as unidades
-/// (`availableUnits`), e escolher uma unidade restringe os setores. Os KPIs são
-/// recomputados localmente, sem nova chamada de rede.
+/// A cascata é do SERVIDOR: cada troca reconsulta `/api/dashboard/summary`, que
+/// devolve os KPIs já recortados e as opções válidas para o novo recorte. Antes
+/// os KPIs eram recomputados no cliente sobre os dados crus do bootstrap.
 class _DashboardFilterBar extends StatelessWidget {
   const _DashboardFilterBar({required this.state});
   final DashboardState state;
-
-  String _entityLabel(Map<String, dynamic> e) {
-    final trade = '${e['trade_name'] ?? ''}'.trim();
-    final legal = '${e['legal_name'] ?? ''}'.trim();
-    final name = trade.isNotEmpty ? trade : legal;
-    final cnpj = '${e['cnpj'] ?? ''}'.trim();
-    if (name.isEmpty) return cnpj;
-    return cnpj.isEmpty ? name : '$name — $cnpj';
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<DashboardCubit>();
     // Administrador Local / Gestor de EPI: CNPJ e Unidade ficam travados na
-    // própria unidade (DashboardCubit.isLockedProfile — mesma regra do resto
-    // do app). Sem opção "Todos", campo desabilitado, e a lista mostra só a
-    // própria opção (nunca a cascata inteira do CNPJ) — o estado já garante
-    // que o valor selecionado é sempre o travado.
-    final locked = cubit.isLockedProfile;
+    // própria Unidade. A trava vem em `scope.locked`, decidida pelo backend —
+    // o cliente não a deriva mais do papel da sessão. Sem opção "Todos", campo
+    // desabilitado, e a lista mostra só a própria opção.
+    final locked = state.isLocked;
     final lockedEntities = locked
         ? state.legalEntities
-            .where((e) => (e['id'] as num?)?.toInt() == state.selectedLegalEntityId)
+            .where((e) => e.id == state.selectedLegalEntityId)
             .toList(growable: false)
         : state.legalEntities;
     final lockedUnits = locked
         ? state.units
-            .where((u) => (u['id'] as num?)?.toInt() == state.selectedUnitId)
+            .where((u) => u.id == state.selectedUnitId)
             .toList(growable: false)
         : state.availableUnits;
     // DropdownButtonFormField exige que `initialValue` combine com exatamente
@@ -539,10 +525,13 @@ class _DashboardFilterBar extends StatelessWidget {
                     DropdownMenuItem<int?>(
                       child: Text(l10n.dashboardFilterAll),
                     ),
+                  // O rótulo do CNPJ já vem pronto do servidor
+                  // (`_rotulo_cnpj`): nome fantasia, razão social ou o próprio
+                  // CNPJ, na ordem em que o usuário reconhece.
                   ...lockedEntities.map(
                     (e) => DropdownMenuItem<int?>(
-                      value: (e['id'] as num).toInt(),
-                      child: Text(_entityLabel(e), overflow: TextOverflow.ellipsis),
+                      value: e.id,
+                      child: Text(e.name, overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],
@@ -562,9 +551,8 @@ class _DashboardFilterBar extends StatelessWidget {
                     ),
                   ...lockedUnits.map(
                     (u) => DropdownMenuItem<int?>(
-                      value: (u['id'] as num).toInt(),
-                      child: Text('${u['name'] ?? ''}',
-                          overflow: TextOverflow.ellipsis),
+                      value: u.id,
+                      child: Text(u.name, overflow: TextOverflow.ellipsis),
                     ),
                   ),
                 ],

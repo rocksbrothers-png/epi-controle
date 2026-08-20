@@ -14,6 +14,7 @@ export 'theme/epi_theme.dart';
 // Atoms
 export 'components/atoms/epi_button.dart';
 export 'components/atoms/epi_badge.dart';
+export 'components/atoms/epi_stock_badge.dart';
 export 'components/atoms/epi_avatar.dart';
 export 'components/atoms/epi_input.dart';
 export 'components/atoms/epi_chip.dart';

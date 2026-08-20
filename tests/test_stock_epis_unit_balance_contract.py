@@ -266,14 +266,22 @@ def test_o_cubit_nao_le_mais_o_bootstrap():
 
 
 def test_o_cubit_usa_a_criticidade_do_backend_e_nao_a_local():
+    """A criticidade vem do backend — e, desde a 1.1D-C2, é a DA UNIDADE.
+
+    Esta tela é operacional. Contar por `is_company_stock_critical` mostrava ao
+    operador de uma Unidade o estado agregado da empresa: um EPI podia aparecer
+    crítico com o estoque dele cheio, e saudável com o dele zerado.
+    """
     cubit = STOCK_CUBIT.read_text(encoding='utf-8')
     corpo = '\n'.join(
         linha for linha in cubit.split('\n')
         if not linha.lstrip().startswith(('///', '//'))
     )
-    assert 'isCompanyStockCritical' in corpo
+    assert 'epiIsUnitCritical' in corpo
+    assert 'isCompanyStockCritical' not in corpo, \
+        'a tela da Unidade voltou a contar pela criticidade da empresa'
     assert 'isCriticalStock' not in corpo, \
-        'o getter depreciado compara campos de escopos diferentes'
+        'o getter removido comparava campos de escopos diferentes'
 
 
 def test_a_tela_mostra_o_saldo_da_unidade_e_rotula_o_corporativo_a_parte():

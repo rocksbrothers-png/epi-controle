@@ -37,6 +37,7 @@ class ApiClient {
   static late final SettingsApi settings;
   static late final FeedbackApi feedback;
   static late final StockApi stock;
+  static late final DashboardApi dashboard;
   static late final UsersApi users;
   static late final UnitsApi units;
   static late final EmployeesApi employees;
@@ -100,6 +101,7 @@ class ApiClient {
     settings = SettingsApi(dio);
     feedback = FeedbackApi(dio);
     stock = StockApi(dio);
+    dashboard = DashboardApi(dio);
     users = UsersApi(dio);
     units = UnitsApi(dio);
     employees = EmployeesApi(dio);

@@ -389,6 +389,23 @@ STATUS_NEAR_MINIMUM = 'near_minimum'
 STATUS_CRITICAL = 'critical'
 STATUS_DISABLED = 'disabled'
 
+# Condição DESCRITIVA do saldo — informação, não severidade.
+#
+# O Web Legado tinha uma severidade própria (`critical`/`danger`/`warning`)
+# derivada de saldo negativo/zerado/abaixo do mínimo: uma segunda classificação
+# operacional, concorrente com `stock_status`. Duas classificações para a mesma
+# coisa criam ambiguidade — qual delas o operador deve acreditar?
+#
+# A severidade oficial passa a ser só `stock_status`. O que era útil naquela
+# escala (distinguir saldo zerado de negativo) sobrevive aqui, como campo
+# separado e sem hierarquia: `stock_condition` DESCREVE o saldo, `stock_status`
+# DECIDE o que fazer com ele.
+CONDITION_NEGATIVE = 'negative'
+CONDITION_ZERO = 'zero'
+CONDITION_BELOW_MINIMUM = 'below_minimum'
+CONDITION_AT_MINIMUM = 'at_minimum'
+CONDITION_ABOVE_MINIMUM = 'above_minimum'
+
 
 class UnitAttentionPercentage(NamedTuple):
     """Percentual de atenção efetivo do par (Unidade, EPI), e sua origem."""
@@ -432,6 +449,12 @@ class StockClassification(NamedTuple):
 
     Desabilitado **nunca** vira `normal`: `stock_status` fica `disabled`, que é
     um estado explícito, e os números reais continuam todos preenchidos.
+
+    `stock_condition` é a terceira dimensão, e não é severidade: descreve ONDE
+    o saldo está (negativo, zerado, abaixo, no mínimo, acima) sem opinar sobre
+    o que fazer. Existe para o operador continuar vendo "saldo zerado" e "saldo
+    negativo" — informação que a severidade legada do Web carregava — sem que
+    isso volte a ser uma classificação concorrente de `stock_status`.
     """
 
     unit_stock_quantity: int
@@ -444,6 +467,7 @@ class StockClassification(NamedTuple):
     alert_source: str
     underlying_status: str
     stock_status: str
+    stock_condition: str
 
 
 def resolve_company_attention_percentage(connection, company_id):
@@ -566,6 +590,17 @@ def classify_unit_epi_stock(connection, company_id, unit_id, epi_id, *, unit_sto
     else:
         subjacente = STATUS_NORMAL
 
+    if saldo < 0:
+        condicao = CONDITION_NEGATIVE
+    elif saldo == 0:
+        condicao = CONDITION_ZERO
+    elif saldo < minimo.value:
+        condicao = CONDITION_BELOW_MINIMUM
+    elif saldo == minimo.value:
+        condicao = CONDITION_AT_MINIMUM
+    else:
+        condicao = CONDITION_ABOVE_MINIMUM
+
     return StockClassification(
         unit_stock_quantity=saldo,
         effective_minimum_stock=minimo.value,
@@ -577,6 +612,7 @@ def classify_unit_epi_stock(connection, company_id, unit_id, epi_id, *, unit_sto
         alert_source=alerta.source,
         underlying_status=subjacente,
         stock_status=subjacente if alerta.enabled else STATUS_DISABLED,
+        stock_condition=condicao,
     )
 
 
@@ -790,6 +826,7 @@ def fetch_low_stock_items(
             'alert_source': classificacao.alert_source,
             'underlying_status': classificacao.underlying_status,
             'stock_status': classificacao.stock_status,
+            'stock_condition': classificacao.stock_condition,
             'unit_measure': row.get('unit_measure') or 'unidade',
             'severity': severity,
             'size_balances': size_balances,

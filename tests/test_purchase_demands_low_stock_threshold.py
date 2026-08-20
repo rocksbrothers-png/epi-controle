@@ -27,6 +27,41 @@ def _conn():
             active INTEGER, minimum_stock INTEGER);
         CREATE TABLE unit_epi_stock (
             company_id INTEGER, unit_id INTEGER, epi_id INTEGER, quantity INTEGER);
+        -- #271: parâmetros de classificação. Sem linhas — a ausência É a
+        -- herança (mínimo e percentual da empresa, alerta habilitado).
+        CREATE TABLE unit_epi_minimum_stock (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            minimum_stock INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id));
+        CREATE TABLE company_stock_attention_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL UNIQUE,
+            attention_percentage INTEGER NOT NULL DEFAULT 20, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '');
+        CREATE TABLE unit_epi_attention_percentage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            attention_percentage INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id));
+        CREATE TABLE unit_epi_stock_alert_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            alert_enabled INTEGER NOT NULL DEFAULT 1,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id));
+        CREATE TABLE unit_epi_stock_config_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL, parameter TEXT NOT NULL,
+            previous_value TEXT, new_value TEXT NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '', actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '', actor_role TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '', user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL);
         CREATE TABLE epi_requests (
             id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, employee_id INTEGER,
             epi_id INTEGER, quantity INTEGER, glove_size TEXT, size TEXT, uniform_size TEXT,

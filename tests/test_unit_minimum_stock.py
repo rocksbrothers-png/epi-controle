@@ -330,15 +330,28 @@ def test_a_escrita_corporativa_nao_existe_mais():
         'a função cuja semântica é a escrita proibida voltou a existir'
 
 
-def test_a_rota_grava_por_unidade_e_audita():
+def _corpo_de(nome: str) -> str:
     texto = ROUTES.read_text(encoding='utf-8')
-    inicio = texto.index('def handle_post_stock_minimum')
-    corpo = _sem_comentarios(texto[inicio:texto.index('\ndef ', inicio + 1)])
+    inicio = texto.index(f'def {nome}')
+    return _sem_comentarios(texto[inicio:texto.index('\ndef ', inicio + 1)])
+
+
+def test_a_rota_grava_por_unidade_e_audita():
+    corpo = _corpo_de('handle_post_stock_minimum')
     assert 'set_unit_epi_minimum_stock(' in corpo
     assert 'set_epi_minimum_stock(' not in corpo.replace('set_unit_epi_minimum_stock(', '')
-    assert 'resolve_unit_scope(' in corpo, \
-        'a unidade da escrita deixou de vir do ponto único de resolução (1.1D-A)'
     assert 'get_client_ip(handler)' in corpo and '_user_agent(handler)' in corpo
+    # A resolução da Unidade migrou para a guarda compartilhada na #271 — três
+    # rotas de configuração passaram a existir e três cópias da autorização
+    # divergiriam no primeiro ajuste feito num lado só. O ponto único continua
+    # sendo `resolve_unit_scope`; só mudou de altura.
+    assert '_authorize_stock_config_write(' in corpo, \
+        'a rota deixou de passar pela guarda de autorização compartilhada'
+    guarda = _corpo_de('_authorize_stock_config_write')
+    assert 'resolve_unit_scope(' in guarda, \
+        'a unidade da escrita deixou de vir do ponto único de resolução (1.1D-A)'
+    assert 'is_epi_visible_for_unit(' in guarda, \
+        'a guarda perdeu a checagem de visibilidade do EPI na unidade'
 
 
 def test_a_rota_devolve_a_unidade_e_a_origem():

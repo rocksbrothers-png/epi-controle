@@ -44,7 +44,11 @@ from core.repository import (
     resolve_unit_scope,
 )
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
-from modules.stock.service import is_stock_critical, resolve_unit_minimum_stock
+from modules.stock.service import (
+    STATUS_CRITICAL,
+    STATUS_NEAR_MINIMUM,
+    classify_unit_epi_stock,
+)
 
 UTC = timezone.utc
 
@@ -150,7 +154,10 @@ def build_dashboard_summary(
         'kpis': {
             'deliveries_today': _entregas_de_hoje(entregas, unidades_no_escopo, setor, hoje),
             'expiring_epis': _epis_a_vencer(epis, unidades_no_escopo, hoje),
-            'critical_stock': _estoque_critico(connection, actor, epis, escopo),
+            'critical_stock': _contagem_por_status(
+                connection, actor, epis, escopo, STATUS_CRITICAL),
+            'near_minimum_stock': _contagem_por_status(
+                connection, actor, epis, escopo, STATUS_NEAR_MINIMUM),
             'pending_purchases': count_pending_purchases(),
         },
         'filters': {
@@ -262,8 +269,8 @@ def _epis_a_vencer(epis, unidades_no_escopo, hoje):
     return total
 
 
-def _estoque_critico(connection, actor, epis, escopo):
-    """EPIs críticos NA UNIDADE: `unit_stock_quantity <= unit_minimum_stock`.
+def _contagem_por_status(connection, actor, epis, escopo, status_alvo):
+    """Conta EPIs da Unidade cujo `stock_status` é `status_alvo` (#271).
 
     Três estados distintos, e a diferença entre os dois primeiros é o ponto:
 
@@ -275,6 +282,12 @@ def _estoque_critico(connection, actor, epis, escopo):
 
     Deliberadamente NÃO equivale ao KPI antigo, que era
     `stockQuantity <= minimumStock` (saldo da empresa contra mínimo da empresa).
+
+    Conta por `stock_status`, não por `underlying_status`: um EPI com o
+    monitoramento desligado sai dos DOIS KPIs (crítico e atenção), porque a
+    Unidade decidiu não ser alertada sobre ele. Continua visível no Controle de
+    Estoque com os números reais e o rótulo de monitoramento desabilitado — o
+    que ele nunca vira é "normal".
     """
     if not escopo.unit_id:
         return None
@@ -300,9 +313,11 @@ def _estoque_critico(connection, actor, epis, escopo):
         epi_id = _int_ou_none(epi.get('id'))
         if not epi_id:
             continue
-        saldo = _saldo_da_unidade(connection, company_id, unit_id, epi_id)
-        minimo = resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id)
-        if is_stock_critical(saldo, minimo.value):
+        classificacao = classify_unit_epi_stock(
+            connection, company_id, unit_id, epi_id,
+            unit_stock=_saldo_da_unidade(connection, company_id, unit_id, epi_id),
+        )
+        if classificacao.stock_status == status_alvo:
             total += 1
     return total
 

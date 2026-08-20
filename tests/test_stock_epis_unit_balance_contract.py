@@ -166,25 +166,57 @@ def test_o_saldo_da_unidade_nunca_e_comparado_com_o_minimo_da_empresa():
 
 
 def test_a_criticidade_operacional_usa_o_minimo_da_propria_unidade():
+    """Na #271 a resolução do mínimo foi absorvida pelo classificador único.
+
+    O handler não chama mais `resolve_unit_minimum_stock` direto — chama
+    `classify_unit_epi_stock`, que o usa internamente junto com o percentual de
+    atenção e a habilitação do alerta. O contrato que importa é o mesmo: a
+    criticidade operacional não pode sair de um mínimo que não seja o da
+    unidade resolvida.
+    """
     corpo = _sem_comentarios_py(_handler())
-    assert 'resolve_unit_minimum_stock(' in corpo, (
-        'a criticidade operacional voltou a sair de um mínimo que não é o da '
-        'unidade resolvida'
+    assert 'classify_unit_epi_stock(' in corpo, (
+        'a criticidade operacional voltou a ser montada fora da fonte única'
     )
-    assert 'is_stock_critical(unit_stock, unit_minimum.value)' in corpo
+    assert "classificacao.stock_status == 'critical'" in corpo, (
+        '`is_unit_stock_critical` deixou de derivar do status classificado'
+    )
+    # E o handler não recalcula nenhuma das duas comparações por conta própria.
+    assert 'is_stock_critical(unit_stock' not in corpo
+    assert 'attention_limit =' not in corpo
 
 
-def test_os_tres_campos_por_unidade_sao_nulos_juntos():
-    """`unit_minimum_stock`, `minimum_stock_source` e `is_unit_stock_critical`
-    são `None` exatamente quando não há unidade — nunca 0/False isolados, que
-    afirmariam "mínimo zero" e "não crítico" onde não há unidade nenhuma."""
+def test_os_campos_por_unidade_sao_nulos_juntos():
+    """Todos os campos por Unidade são `None` exatamente quando não há unidade.
+
+    Nunca 0/False isolados: `0` afirmaria "mínimo zero", `False` afirmaria
+    "não crítico" e `'normal'` afirmaria "estoque saudável" — três mentiras
+    sobre uma unidade que nem foi resolvida.
+    """
     # Espaços colapsados: a atribuição pode estar quebrada em várias linhas por
     # comprimento, e isso não muda o contrato.
     corpo = re.sub(r'\s+', ' ', _sem_comentarios_py(_handler()))
-    for campo in ('unit_minimum_stock', 'minimum_stock_source', 'is_unit_stock_critical'):
+    campos = (
+        'unit_minimum_stock', 'minimum_stock_source',
+        'effective_attention_percentage', 'attention_percentage_source',
+        'attention_limit', 'stock_alert_enabled', 'alert_source',
+        'underlying_status', 'stock_status', 'is_unit_stock_critical',
+    )
+    for campo in campos:
         assert re.search(
-            rf"item\['{campo}'\] = [^;]*?if unit_minimum else None", corpo
+            rf"item\['{campo}'\] = [^;]*?if classificacao else None", corpo
         ), f'`{campo}` deixou de ser None quando não há unidade resolvida'
+
+
+def test_disabled_nunca_e_emitido_como_normal():
+    """O par `stock_status`/`underlying_status` é o que impede um EPI com
+    alerta desligado de aparecer como saudável."""
+    corpo = _sem_comentarios_py(_handler())
+    assert "item['stock_status'] = classificacao.stock_status" in corpo
+    assert "item['underlying_status'] = classificacao.underlying_status" in corpo, (
+        'sem `underlying_status` o cliente teria de comparar saldo com mínimo '
+        'para explicar um EPI desabilitado — a segunda fórmula que a #271 elimina'
+    )
 
 
 def test_o_minimo_efetivo_passa_pelo_helper_compartilhado():

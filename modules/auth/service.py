@@ -355,11 +355,16 @@ def build_bootstrap(connection, actor):
         return _compute_alerts_impl(
             connection,
             actor,
+            # `include_near_minimum=True`: a faixa laranja existe justamente
+            # para gerar alerta preventivo (#271). `/api/stock/low` segue com o
+            # padrão False, porque lá o card do Web Legado conta a lista inteira
+            # como "Estoque crítico".
             fetch_low_stock_items=lambda conn, act: _fetch_low_stock(
                 conn, act,
                 actor_operational_unit_id=_actor_op_unit_id,
                 get_unit_active_jv_name=_get_unit_jv_name,
                 is_epi_visible_for_unit=_is_epi_visible,
+                include_near_minimum=True,
             ),
             actor_operational_unit_id=_actor_op_unit_id,
             fetch_epis=fetch_epis,

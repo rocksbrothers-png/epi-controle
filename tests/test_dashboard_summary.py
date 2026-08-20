@@ -103,6 +103,38 @@ def _conexao():
             created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
             UNIQUE (company_id, unit_id, epi_id)
         );
+        -- #271: faixa de atenção e liga/desliga do alerta. Sem linhas — a
+        -- ausência É a herança (20% da empresa, alerta habilitado).
+        CREATE TABLE company_stock_attention_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER NOT NULL UNIQUE,
+            attention_percentage INTEGER NOT NULL DEFAULT 20, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE unit_epi_attention_percentage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            attention_percentage INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id)
+        );
+        CREATE TABLE unit_epi_stock_alert_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            alert_enabled INTEGER NOT NULL DEFAULT 1,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id)
+        );
+        CREATE TABLE unit_epi_stock_config_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            parameter TEXT NOT NULL, previous_value TEXT, new_value TEXT NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '', actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '', actor_role TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '', user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        );
         CREATE TABLE unit_joint_venture_periods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             unit_id INTEGER NOT NULL, joint_venture_name TEXT, started_at TEXT, ended_at TEXT
@@ -581,11 +613,31 @@ def test_a_unidade_vem_do_ponto_unico_de_resolucao():
 
 
 def test_a_criticidade_usa_o_minimo_da_unidade():
+    """Na #271 o KPI passou a contar por `stock_status`, da fonte única.
+
+    `resolve_unit_minimum_stock` continua sendo a origem do mínimo, mas agora
+    de dentro de `classify_unit_epi_stock` — que também aplica a faixa de
+    atenção e o liga/desliga do alerta. O painel não pode montar nenhuma das
+    três regras por conta própria.
+    """
     corpo = _sem_comentarios(SERVICE.read_text(encoding='utf-8'))
-    assert 'resolve_unit_minimum_stock(' in corpo, \
-        'o KPI voltou a sair de um mínimo que não é o da Unidade'
+    assert 'classify_unit_epi_stock(' in corpo, \
+        'o KPI voltou a sair de fora da fonte única de classificação'
     assert not re.search(r"minimum_stock['\"]\s*\)", corpo), \
         'o painel voltou a ler `epis.minimum_stock` direto'
+    assert 'is_stock_critical(' not in corpo, \
+        'o painel voltou a comparar saldo com mínimo por conta própria'
+
+
+def test_disabled_nao_entra_em_nenhum_dos_dois_kpis():
+    """Contar por `stock_status` (e não por `underlying_status`) é o que tira
+    o EPI desabilitado dos dois KPIs sem transformá-lo em `normal`."""
+    corpo = _sem_comentarios(SERVICE.read_text(encoding='utf-8'))
+    assert 'classificacao.stock_status == status_alvo' in corpo
+    # A docstring do contador CITA `underlying_status` para explicar a escolha;
+    # o que não pode existir é o uso dele como operando da contagem.
+    assert 'classificacao.underlying_status' not in corpo, \
+        'o KPI passou a contar pela condição física, ignorando o liga/desliga'
 
 
 def test_a_fatia_nao_migrou_nenhum_consumidor():

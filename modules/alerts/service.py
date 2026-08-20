@@ -2,6 +2,8 @@
 
 from datetime import date
 
+from modules.stock.service import STATUS_CRITICAL, STATUS_NEAR_MINIMUM
+
 from modules.epis.validity import (
     MANUFACTURER_VALIDITY_WARNING_DAYS,
     days_until,
@@ -25,7 +27,20 @@ def compute_alerts(
     for item in low_stock_items:
         stock = int(item['stock'])
         minimum = int(item['minimum_stock'])
-        if stock < 0:
+        # Severidade derivada de `stock_status`, que vem da fonte única (#271).
+        # Antes daqui saía uma comparação própria (`stock < minimum`) sobre o
+        # saldo da Unidade e o mínimo da EMPRESA — segunda implementação da
+        # mesma regra, e com o operando errado.
+        #
+        # `disabled` nunca chega aqui: `fetch_low_stock_items` já o descarta.
+        # O rótulo textual continua distinguindo saldo negativo/zerado, que é
+        # informação útil ao operador e não é uma classificação concorrente —
+        # os três casos são todos `critical`.
+        status = item.get('stock_status') or STATUS_CRITICAL
+        if status == STATUS_NEAR_MINIMUM:
+            type_label = 'warning'
+            prefix = 'Estoque próximo do mínimo'
+        elif stock < 0:
             type_label = 'danger'
             prefix = 'Saldo negativo'
         elif stock == 0:
@@ -127,11 +142,15 @@ def compute_alerts_wired(connection, actor=None):
     return compute_alerts(
         connection,
         actor,
+        # `include_near_minimum=True`: a faixa laranja existe justamente para
+        # gerar alerta preventivo. `/api/stock/low` segue com o padrão False,
+        # porque lá o card do Web Legado conta a lista como "Estoque crítico".
         fetch_low_stock_items=lambda conn, act: _fetch_ls(
             conn, act,
             actor_operational_unit_id=_op_unit,
             get_unit_active_jv_name=_jv_name,
             is_epi_visible_for_unit=_vis,
+            include_near_minimum=True,
         ),
         actor_operational_unit_id=_op_unit,
         fetch_epis=_fetch_epis,

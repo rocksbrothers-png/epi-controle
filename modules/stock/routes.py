@@ -46,7 +46,10 @@ from modules.stock.service import (
     parse_stock_qr_lookup_value,
     resolve_item_size,
     resolve_minimum_stock,
+    classify_unit_epi_stock,
     resolve_unit_minimum_stock,
+    set_unit_epi_alert_enabled,
+    set_unit_epi_attention_percentage,
     set_unit_epi_minimum_stock,
     upsert_unit_stock,
 )
@@ -302,38 +305,55 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
 
 # ── POST /api/stock/minimum ───────────────────────────────────────────────────
 
+def _authorize_stock_config_write(handler, parsed, payload, connection, *, acao):
+    """Guarda comum das rotas que configuram um EPI numa Unidade (#271).
+
+    Mínimo, percentual de atenção e liga/desliga do alerta são parâmetros
+    diferentes, mas a autorização é a mesma — e três cópias dela divergiriam no
+    primeiro ajuste feito num lado só. Devolve `(actor, epi, scope_unit_id)`.
+
+    `acao` entra só nas mensagens de erro, para o usuário saber o que não
+    conseguiu fazer.
+    """
+    actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust')
+    if actor.get('role') not in ('admin', 'user'):
+        raise PermissionError(f'Apenas Administrador Local e Gestor de EPI podem {acao}.')
+    epi = get_epi_by_id(connection, int(payload['epi_id']))
+    ensure_resource_company(actor, epi, 'EPI')
+    # Perfil travado: a Unidade é a do ator, e o `unit_id` que o cliente
+    # eventualmente mande é descartado (1.1D-A). Fail-closed sem Unidade — o
+    # backend é a autoridade, nunca a Unidade enviada pelo frontend.
+    scope_unit_id = resolve_unit_scope(
+        connection, actor,
+        denial_message=f'Perfil sem unidade operacional ativa para {acao}.',
+    ).unit_id
+    # Mesma checagem de visibilidade já usada por GET /api/stock/epis e
+    # pelos alertas de estoque baixo (fetch_low_stock_items) — não a
+    # comparação ingênua epi.unit_id == scope_unit_id, que só é
+    # verdadeira para EPI de escopo UNIT. Um EPI GLOBAL (unit_id nulo,
+    # visível em toda unidade fora de JV) ou de Joint Venture nunca teria
+    # epi.unit_id == scope_unit_id mesmo quando o ator está, de fato,
+    # dentro da própria unidade — bloqueando indevidamente Administrador
+    # Local/Gestor de EPI de configurar um item que eles legitimamente veem
+    # e operam na tela de Controle de Estoque.
+    scope_unit_jv_name = get_unit_active_jv_name(connection, scope_unit_id)
+    epi_jv_name = get_epi_effective_jv_name(epi, lambda uid: get_unit_active_jv_name(connection, uid))
+    if not is_epi_visible_for_unit(
+        epi_unit_id=epi.get('unit_id'),
+        epi_joint_venture_name=epi_jv_name,
+        target_unit_id=scope_unit_id,
+        target_unit_joint_venture_name=scope_unit_jv_name,
+    ):
+        raise PermissionError(f'Perfil só pode {acao} de EPIs visíveis na unidade operacional ativa.')
+    return actor, epi, scope_unit_id
+
+
 def handle_post_stock_minimum(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'epi_id', 'minimum_stock'])
     with closing(get_connection()) as connection:
-        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust')
-        if actor.get('role') not in ('admin', 'user'):
-            raise PermissionError('Apenas Administrador Local e Gestor de EPI podem definir estoque mínimo.')
-        epi = get_epi_by_id(connection, int(payload['epi_id']))
-        ensure_resource_company(actor, epi, 'EPI')
-        # Perfil travado: a Unidade é a do ator, e o `unit_id` que o cliente
-        # eventualmente mande é descartado (1.1D-A). Fail-closed sem Unidade.
-        scope_unit_id = resolve_unit_scope(
-            connection, actor,
-            denial_message='Perfil sem unidade operacional ativa para editar estoque mínimo.',
-        ).unit_id
-        # Mesma checagem de visibilidade já usada por GET /api/stock/epis e
-        # pelos alertas de estoque baixo (fetch_low_stock_items) — não a
-        # comparação ingênua epi.unit_id == scope_unit_id, que só é
-        # verdadeira para EPI de escopo UNIT. Um EPI GLOBAL (unit_id nulo,
-        # visível em toda unidade fora de JV) ou de Joint Venture nunca teria
-        # epi.unit_id == scope_unit_id mesmo quando o ator está, de fato,
-        # dentro da própria unidade — bloqueando indevidamente Administrador
-        # Local/Gestor de EPI de editar o estoque mínimo de um item que eles
-        # legitimamente veem e operam na tela de Controle de Estoque.
-        scope_unit_jv_name = get_unit_active_jv_name(connection, scope_unit_id)
-        epi_jv_name = get_epi_effective_jv_name(epi, lambda uid: get_unit_active_jv_name(connection, uid))
-        if not is_epi_visible_for_unit(
-            epi_unit_id=epi.get('unit_id'),
-            epi_joint_venture_name=epi_jv_name,
-            target_unit_id=scope_unit_id,
-            target_unit_joint_venture_name=scope_unit_jv_name,
-        ):
-            raise PermissionError('Perfil só pode editar estoque mínimo de EPIs visíveis na unidade operacional ativa.')
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='editar estoque mínimo',
+        )
         # O mínimo é DAQUELA Unidade (1.1D-B0). Antes daqui saía
         # `UPDATE epis SET minimum_stock`, numa rota que já resolvia e validava
         # a Unidade do ator: o Gestor da Unidade A reescrevia, em silêncio, o
@@ -353,6 +373,66 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
             'minimum_stock': minimo.value,
             'unit_id': int(scope_unit_id),
             'minimum_stock_source': minimo.source,
+        })
+
+
+def handle_post_stock_attention_percentage(handler, parsed, payload, match):
+    """Percentual da faixa de atenção DAQUELA Unidade para um EPI (#271).
+
+    Independente do mínimo: gravar aqui não toca `unit_epi_minimum_stock`.
+    """
+    require_fields(payload, ['actor_user_id', 'epi_id', 'attention_percentage'])
+    with closing(get_connection()) as connection:
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='editar a faixa de atenção',
+        )
+        percentual = set_unit_epi_attention_percentage(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            payload.get('attention_percentage'),
+            actor=actor,
+            ip_address=get_client_ip(handler),
+            user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'unit_id': int(scope_unit_id),
+            'attention_percentage': percentual.value,
+            'attention_percentage_source': percentual.source,
+        })
+
+
+def handle_post_stock_alert_enabled(handler, parsed, payload, match):
+    """Liga/desliga o monitoramento de estoque DAQUELA Unidade para um EPI.
+
+    Desligar não altera saldo, mínimo, percentual, nenhuma origem nem o
+    cadastro do EPI — só a decisão operacional de alertar e de gerar reposição
+    automática. Compra manual por usuário autorizado segue independente.
+    """
+    require_fields(payload, ['actor_user_id', 'epi_id', 'alert_enabled'])
+    with closing(get_connection()) as connection:
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='alterar o alerta de estoque',
+        )
+        bruto = payload.get('alert_enabled')
+        # Aceita bool, 0/1 e as strings que os dois clientes mandam. `'false'`
+        # chegando como string não-vazia seria True numa conversão ingênua — e
+        # o toggle desligado ligaria o alerta de volta.
+        habilitado = bruto if isinstance(bruto, bool) else \
+            str(bruto).strip().lower() not in ('', '0', 'false', 'no', 'nao', 'não')
+        alerta = set_unit_epi_alert_enabled(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            habilitado,
+            actor=actor,
+            ip_address=get_client_ip(handler),
+            user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'unit_id': int(scope_unit_id),
+            'stock_alert_enabled': alerta.enabled,
+            'alert_source': alerta.source,
         })
 
 
@@ -631,8 +711,11 @@ def handle_get_stock_epis(handler, parsed, payload, match):
                 size_rows = fetch_epi_size_balance(
                     connection, int(epi['company_id']), stock_unit_id, int(epi['id'])
                 )
-                unit_minimum = resolve_unit_minimum_stock(
-                    connection, int(epi['company_id']), stock_unit_id, int(epi['id'])
+                # Classificação completa pela fonte única (#271): mínimo,
+                # percentual, limite da faixa, habilitação e os dois status.
+                classificacao = classify_unit_epi_stock(
+                    connection, int(epi['company_id']), stock_unit_id, int(epi['id']),
+                    unit_stock=unit_stock,
                 )
             else:
                 # Nenhuma unidade resolvida (master_admin/general_admin sem
@@ -640,7 +723,7 @@ def handle_get_stock_epis(handler, parsed, payload, match):
                 # estoque"; None diz "não há unidade".
                 unit_stock = None
                 size_rows = []
-                unit_minimum = None
+                classificacao = None
 
             minimum_stock = resolve_minimum_stock(item.get('minimum_stock'))
             item['minimum_stock'] = minimum_stock
@@ -660,10 +743,26 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             #
             # Os três campos são `None` JUNTOS quando não há Unidade resolvida —
             # nunca 0/False isolados, pelo mesmo motivo de `unit_stock_quantity`.
-            item['unit_minimum_stock'] = unit_minimum.value if unit_minimum else None
-            item['minimum_stock_source'] = unit_minimum.source if unit_minimum else None
+            # `stock_status` é o estado OPERACIONAL (pode ser `disabled`);
+            # `underlying_status` é a condição física, que segue dizendo a
+            # verdade mesmo com o monitoramento desligado. Um EPI desabilitado
+            # NUNCA aparece como `normal` — e nenhum cliente precisa comparar
+            # saldo com mínimo para explicar o caso ao operador.
+            item['unit_minimum_stock'] = classificacao.effective_minimum_stock if classificacao else None
+            item['minimum_stock_source'] = classificacao.minimum_stock_source if classificacao else None
+            item['effective_attention_percentage'] = (
+                classificacao.effective_attention_percentage if classificacao else None
+            )
+            item['attention_percentage_source'] = (
+                classificacao.attention_percentage_source if classificacao else None
+            )
+            item['attention_limit'] = classificacao.attention_limit if classificacao else None
+            item['stock_alert_enabled'] = classificacao.stock_alert_enabled if classificacao else None
+            item['alert_source'] = classificacao.alert_source if classificacao else None
+            item['underlying_status'] = classificacao.underlying_status if classificacao else None
+            item['stock_status'] = classificacao.stock_status if classificacao else None
             item['is_unit_stock_critical'] = (
-                is_stock_critical(unit_stock, unit_minimum.value) if unit_minimum else None
+                classificacao.stock_status == 'critical' if classificacao else None
             )
             # Leitura CORPORATIVA do catálogo, mantida com o mesmo valor de
             # sempre até os consumidores migrarem (prevista para a 1.1E).
@@ -689,6 +788,8 @@ def register_routes(router):
     router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
     router.register('GET',  '/api/stock/movements/report',       handle_get_stock_movements_report)
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)
+    router.register('POST', '/api/stock/attention-percentage',   handle_post_stock_attention_percentage)
+    router.register('POST', '/api/stock/alert-enabled',          handle_post_stock_alert_enabled)
     router.register('POST', '/api/stock/movements',              handle_post_stock_movements)
     router.register('POST', '/api/stock/manufacture-date-ocr',   handle_post_stock_manufacture_date_ocr)
     router.register('POST', '/api/stock/labels/reprint',         handle_post_stock_labels_reprint)

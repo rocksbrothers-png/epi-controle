@@ -761,6 +761,7 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             item['alert_source'] = classificacao.alert_source if classificacao else None
             item['underlying_status'] = classificacao.underlying_status if classificacao else None
             item['stock_status'] = classificacao.stock_status if classificacao else None
+            item['stock_condition'] = classificacao.stock_condition if classificacao else None
             item['is_unit_stock_critical'] = (
                 classificacao.stock_status == 'critical' if classificacao else None
             )

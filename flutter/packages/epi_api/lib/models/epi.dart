@@ -56,6 +56,16 @@ class Epi {
     this.isCompanyStockCritical,
     this.unitScopeId,
     this.sizeBalances = const [],
+    this.unitMinimumStock,
+    this.minimumStockSource,
+    this.effectiveAttentionPercentage,
+    this.attentionPercentageSource,
+    this.attentionLimit,
+    this.stockAlertEnabled,
+    this.alertSource,
+    this.underlyingStatus,
+    this.stockStatus,
+    this.stockCondition,
   });
 
   final int id;
@@ -105,6 +115,65 @@ class Epi {
 
   /// Grades por tamanho na unidade resolvida. Vazio quando não há unidade.
   final List<EpiSizeBalance> sizeBalances;
+
+  // ── Classificação por Unidade (#271) ───────────────────────────────────────
+  //
+  // TODOS estes campos vêm calculados do backend, por
+  // `classify_unit_epi_stock`. O cliente **não recalcula nenhum deles** — nem o
+  // mínimo efetivo, nem o percentual, nem o limite da faixa, nem os status.
+  //
+  // São `null` JUNTOS quando não há unidade resolvida (bootstrap, ou perfil
+  // livre sem seleção). `null` não é zero nem `normal`: é "a pergunta não se
+  // aplica".
+
+  /// Mínimo efetivo NAQUELA unidade — pode diferir de [minimumStock], que é o
+  /// padrão da empresa.
+  final int? unitMinimumStock;
+
+  /// `unit_configured` quando a unidade definiu o próprio mínimo;
+  /// `company_default` quando ainda herda o padrão da empresa.
+  final String? minimumStockSource;
+
+  /// Percentual da faixa de atenção efetivo naquela unidade.
+  final int? effectiveAttentionPercentage;
+
+  /// `unit_configured` ou `company_default`, como acima.
+  final String? attentionPercentageSource;
+
+  /// Teto da faixa de atenção: `ceil(mínimo × (1 + pct/100))`, já arredondado
+  /// pelo servidor. Usar este valor — reproduzir a fórmula em Dart traria de
+  /// volta a divergência de arredondamento entre `Decimal` e `double`.
+  final int? attentionLimit;
+
+  /// Se a unidade mantém o monitoramento deste EPI ligado.
+  final bool? stockAlertEnabled;
+
+  /// `unit_configured` quando a unidade decidiu explicitamente (ligar OU
+  /// desligar); `system_default` quando nunca configurou. **Não** é
+  /// `company_default`: não existe liga/desliga corporativo.
+  final String? alertSource;
+
+  /// Condição FÍSICA do estoque: `normal` | `near_minimum` | `critical`.
+  ///
+  /// Continua dizendo a verdade mesmo com o monitoramento desligado. É
+  /// **informativo**: serve para explicar ao operador que o EPI *estaria*
+  /// crítico. Nunca pode ser usado para recolocar um EPI `disabled` em KPI,
+  /// alerta ou automação — para isso existe [stockStatus].
+  final String? underlyingStatus;
+
+  /// Estado OPERACIONAL: `normal` | `near_minimum` | `critical` | `disabled`.
+  ///
+  /// É a severidade oficial e única. KPIs, alertas e reposição automática
+  /// consomem este campo.
+  final String? stockStatus;
+
+  /// Condição descritiva do saldo: `negative` | `zero` | `below_minimum` |
+  /// `at_minimum` | `above_minimum`.
+  ///
+  /// **Não é severidade.** Descreve onde o saldo está; quem decide o que fazer
+  /// é [stockStatus]. Substitui a escala legada `critical/danger/warning` do
+  /// Web, que era uma classificação concorrente.
+  final String? stockCondition;
 
   /// Saldo corporativo para exibição no catálogo da empresa.
   ///
@@ -177,6 +246,16 @@ class Epi {
         isCompanyStockCritical: isCompanyStockCritical,
         unitScopeId: unitScopeId,
         sizeBalances: sizeBalances,
+        unitMinimumStock: unitMinimumStock,
+        minimumStockSource: minimumStockSource,
+        effectiveAttentionPercentage: effectiveAttentionPercentage,
+        attentionPercentageSource: attentionPercentageSource,
+        attentionLimit: attentionLimit,
+        stockAlertEnabled: stockAlertEnabled,
+        alertSource: alertSource,
+        underlyingStatus: underlyingStatus,
+        stockStatus: stockStatus,
+        stockCondition: stockCondition,
       );
 
   factory Epi.fromJson(Map<String, dynamic> json) => Epi(
@@ -204,5 +283,18 @@ class Epi {
         sizeBalances: ((json['size_balances'] as List<dynamic>?) ?? const [])
             .map((e) => EpiSizeBalance.fromJson(e as Map<String, dynamic>))
             .toList(),
+        // Classificação por Unidade (#271). Anuláveis pelo mesmo motivo dos
+        // campos acima: o bootstrap não carrega semântica de unidade.
+        unitMinimumStock: (json['unit_minimum_stock'] as num?)?.toInt(),
+        minimumStockSource: json['minimum_stock_source'] as String?,
+        effectiveAttentionPercentage:
+            (json['effective_attention_percentage'] as num?)?.toInt(),
+        attentionPercentageSource: json['attention_percentage_source'] as String?,
+        attentionLimit: (json['attention_limit'] as num?)?.toInt(),
+        stockAlertEnabled: json['stock_alert_enabled'] as bool?,
+        alertSource: json['alert_source'] as String?,
+        underlyingStatus: json['underlying_status'] as String?,
+        stockStatus: json['stock_status'] as String?,
+        stockCondition: json['stock_condition'] as String?,
       );
 }

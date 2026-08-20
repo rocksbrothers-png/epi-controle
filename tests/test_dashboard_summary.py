@@ -27,6 +27,7 @@ from datetime import date, timedelta
 import pytest
 
 from modules.dashboard.service import build_dashboard_summary
+from modules.stock.service import is_stock_critical
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SERVICE = RAIZ / 'modules/dashboard/service.py'
@@ -249,7 +250,10 @@ def test_critical_stock_null_sem_contexto_de_unidade():
     with _conexao() as conn:
         kpis = _resumo(conn, GERAL)['kpis']
     assert kpis['critical_stock'] is None
-    assert kpis['critical_stock'] is not 0  # noqa: F632 - a distinção é o teste
+    # Não é 0 disfarçado: `0 == False` e `None == False` são ambos falsos em
+    # Python, mas só `None` sobrevive ao JSON como `null`. Checar o TIPO é o
+    # que distingue "sem resposta" de "resposta zero" na serialização.
+    assert not isinstance(kpis['critical_stock'], int)
 
 
 def test_critical_stock_zero_com_unidade_e_nenhum_epi_critico():
@@ -334,9 +338,27 @@ def test_o_caso_100_30_30_40_com_a_regra_nova():
     assert novo == {10: 1, 11: 0, 12: 1}, \
         'saldos 30/30/40 contra mínimos 40/25/40 — a Unidade 11 não é crítica'
 
-    # O KPI antigo (corporativo) daria 1 para as três, indistintamente.
-    antigo = 1 if 100 <= 100 else 0
-    assert novo[11] != antigo, \
+    # A regra ANTIGA, computada de verdade sobre os mesmos dados: saldo
+    # corporativo (soma das Unidades) contra `epis.minimum_stock`. Não é
+    # literal — sai do banco, senão a comparação abaixo seria tautologia.
+    with _conexao() as conn:
+        corporativo = conn.execute(
+            'SELECT SUM(quantity) AS saldo FROM unit_epi_stock '
+            'WHERE company_id = 1 AND epi_id = 7'
+        ).fetchone()['saldo']
+        minimo_da_empresa = conn.execute(
+            'SELECT minimum_stock FROM epis WHERE id = 7'
+        ).fetchone()['minimum_stock']
+
+    # O veredito antigo é UM SÓ para as três Unidades — ele não conseguia
+    # distingui-las, porque nenhum dos dois operandos era delas.
+    antigo = is_stock_critical(corporativo, minimo_da_empresa)
+    assert antigo is True, 'o cenário perdeu a propriedade que o torna interessante'
+    # A regra antiga daria ESTE MESMO veredito para as três Unidades — nenhum
+    # dos seus operandos era delas. A nova não pode colapsar de volta nisso.
+    assert set(novo.values()) != {1 if antigo else 0}, \
+        'a regra nova voltou a dar o mesmo veredito para todas as Unidades'
+    assert novo[11] == 0, \
         'o KPI voltou a usar o mínimo corporativo e a Unidade 11 virou crítica de novo'
 
 

@@ -4,334 +4,206 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../api/api_client.dart';
 import '../i18n/locale_provider.dart';
 
+/// Carrega o resumo do painel. Injetável para que os testes exercitem a
+/// cascata e os KPIs sem rede.
+typedef DashboardSummaryLoader = Future<DashboardSummary> Function({
+  int? legalEntityId,
+  int? unitId,
+  String? sector,
+});
+
+/// Estado do painel — **transporte** do que o servidor decidiu.
+///
+/// Até a fatia 1.1D-C2 este estado guardava as listas cruas do `/api/bootstrap`
+/// (entregas, EPIs, colaboradores) e recomputava em Dart os KPIs, o recorte por
+/// CNPJ/Unidade/Setor, os setores do dropdown e a dedução de perfil travado.
+/// Agora tudo isso vem pronto de `GET /api/dashboard/summary`: o recorte é uma
+/// resposta do servidor, não uma regra reimplementada aqui.
 class DashboardState extends Equatable {
   const DashboardState({
     this.isLoading = false,
     this.error,
-    this.deliveriesToday = 0,
-    this.expiringEpis = 0,
-    this.criticalStock = 0,
-    this.pendingPurchases = 0,
+    this.scope = const DashboardScope(),
+    this.kpis = const DashboardKpis(),
+    this.filters = const DashboardFilters(),
     this.alerts = const [],
     this.compliance = const {},
-    this.legalEntities = const [],
-    this.units = const [],
-    this.sectors = const [],
-    this.selectedLegalEntityId,
-    this.selectedUnitId,
-    this.selectedSector,
   });
 
   final bool isLoading;
   final String? error;
-  final int deliveriesToday;
-  final int expiringEpis;
-  final int criticalStock;
-  final int pendingPurchases;
+
+  /// Contexto de Unidade RESOLVIDO PELO SERVIDOR, inclusive `locked`.
+  final DashboardScope scope;
+
+  final DashboardKpis kpis;
+
+  /// Fontes do filtro em cascata, já escopadas por papel e tenant no backend.
+  final DashboardFilters filters;
+
   final List<Map<String, dynamic>> alerts;
 
-  /// Resumo de conformidade de estoque (item 2): contagens por categoria vindas
-  /// da FONTE ÚNICA do backend (GET /api/stock/compliance → `summary`). A REGRA
-  /// é do backend; o dashboard apenas exibe. Vazio em backends antigos.
+  /// Resumo de conformidade de estoque, repassado do backend sem interpretação.
   final Map<String, int> compliance;
 
-  /// Fontes do filtro em cascata Empresa → CNPJ → Unidade → Setor. Vêm do
-  /// bootstrap, já escopadas por papel pelo backend.
-  final List<Map<String, dynamic>> legalEntities;
-  final List<Map<String, dynamic>> units;
-  final List<String> sectors;
+  int get deliveriesToday => kpis.deliveriesToday;
+  int get expiringEpis => kpis.expiringEpis;
+  int get pendingPurchases => kpis.pendingPurchases;
 
-  final int? selectedLegalEntityId;
-  final int? selectedUnitId;
-  final String? selectedSector;
+  /// EPIs críticos na Unidade em escopo. `null` — nunca `0` — quando nenhuma
+  /// Unidade foi resolvida: zero afirmaria "nenhum EPI crítico", e a pergunta
+  /// simplesmente não se aplica a um recorte corporativo.
+  int? get criticalStock => kpis.criticalStock;
 
-  /// Unidades exibíveis: quando um CNPJ está selecionado, só as dele. É o elo
-  /// da cascata — a unidade pertence a um CNPJ (`units.legal_entity_id`).
-  List<Map<String, dynamic>> get availableUnits {
-    if (selectedLegalEntityId == null) return units;
-    return units
-        .where((u) => u['legal_entity_id'] == selectedLegalEntityId)
-        .toList(growable: false);
-  }
+  /// EPIs na faixa de atenção. Mesma semântica de `null` do anterior.
+  int? get nearMinimumStock => kpis.nearMinimumStock;
+
+  List<DashboardFilterOption> get legalEntities => filters.legalEntities;
+  List<DashboardFilterOption> get units => filters.units;
+  List<String> get sectors => filters.sectors;
+
+  int? get selectedLegalEntityId => scope.legalEntityId;
+  int? get selectedUnitId => scope.unitId;
+  String? get selectedSector => scope.sector;
+
+  /// Perfil travado numa única Unidade. **Vem do servidor** (`scope.locked`).
+  /// Era deduzido com `role == 'admin' || role == 'user'` — autorização
+  /// espelhada em Dart, que envelhecia separada do backend.
+  bool get isLocked => scope.locked;
+
+  /// Unidades exibíveis: com um CNPJ selecionado, só as dele.
+  List<DashboardFilterOption> get availableUnits =>
+      filters.unitsFor(selectedLegalEntityId);
 
   bool get hasActiveFilter =>
       selectedLegalEntityId != null ||
       selectedUnitId != null ||
       selectedSector != null;
 
+  DashboardState _copyWith({
+    bool? isLoading,
+    String? error,
+    DashboardSummary? summary,
+  }) =>
+      DashboardState(
+        isLoading: isLoading ?? this.isLoading,
+        // `error` NÃO cai no padrão `?? this.error`: omiti-lo limpa o erro.
+        // Uma nova consulta começa sem a falha da anterior pendurada na tela.
+        error: error,
+        scope: summary?.scope ?? scope,
+        kpis: summary?.kpis ?? kpis,
+        filters: summary?.filters ?? filters,
+        alerts: summary?.alerts ?? alerts,
+        compliance: summary?.compliance ?? compliance,
+      );
+
   @override
   List<Object?> get props => [
         isLoading,
         error,
-        deliveriesToday,
-        expiringEpis,
-        criticalStock,
-        pendingPurchases,
+        scope.unitId,
+        scope.unitScopeSource,
+        scope.locked,
+        scope.legalEntityId,
+        scope.sector,
+        kpis.deliveriesToday,
+        kpis.expiringEpis,
+        kpis.criticalStock,
+        kpis.nearMinimumStock,
+        kpis.pendingPurchases,
+        filters.legalEntities.map((e) => e.id).toList(),
+        filters.units.map((u) => u.id).toList(),
+        filters.sectors,
         alerts,
         compliance,
-        legalEntities,
-        units,
-        sectors,
-        selectedLegalEntityId,
-        selectedUnitId,
-        selectedSector,
       ];
 }
 
 class DashboardCubit extends Cubit<DashboardState> {
-  DashboardCubit({
-    this.localeProvider,
-    this.role = '',
-    this.operationalUnitId,
-  }) : super(const DashboardState());
+  DashboardCubit({this.localeProvider, DashboardSummaryLoader? loader})
+      : _loader = loader ?? _defaultLoader,
+        super(const DashboardState());
 
   final LocaleProvider? localeProvider;
+  final DashboardSummaryLoader _loader;
 
-  /// Papel e unidade operacional do ator autenticado (lidos de
-  /// `SessionContext` pelo `DashboardScreen` no momento da criação).
-  ///
-  /// Administrador Local (`admin`) e Gestor de EPI (`user`) têm vínculo
-  /// único com UMA unidade — nunca uma carteira — mesma regra de
-  /// `isLockedProfile`/`lockedLegalEntityId` em dashboard-scope.js (web) e de
-  /// `isOperationalProfile()`/`actor_operational_unit_id()` no resto do app.
-  /// Para eles o filtro do dashboard não é escolha: CNPJ e Unidade ficam
-  /// travados na própria unidade. `general_admin`/`registry_admin` ficam de
-  /// fora de propósito — administram múltiplos CNPJs e a hierarquia inteira
-  /// da empresa (docs/PAPEIS_E_ATRIBUICOES.md #2/#3;
-  /// `resolve_actor_legal_entity_ids` no backend devolve `None`, sem
-  /// restrição, para os dois).
-  final String role;
-  final int? operationalUnitId;
-
-  bool get isLockedProfile => role == 'admin' || role == 'user';
-
-  /// CNPJ da unidade travada — deriva de `units.legal_entity_id`, nunca
-  /// escolhido por perfis travados (mesma regra do backend,
-  /// `resolve_actor_legal_entity_ids`, e de `lockedLegalEntityId` em
-  /// dashboard-scope.js no web).
-  int? _lockedLegalEntityId(List<Map<String, dynamic>> units) {
-    if (operationalUnitId == null) return null;
-    for (final unit in units) {
-      if ((unit['id'] as num?)?.toInt() == operationalUnitId) {
-        final entity = unit['legal_entity_id'];
-        return entity == null ? null : (entity as num).toInt();
-      }
-    }
-    return null;
-  }
-
-  // Dados crus do bootstrap: o filtro recomputa os KPIs localmente, sem nova
-  // chamada de rede a cada troca de CNPJ/unidade/setor.
-  List<Map<String, dynamic>> _rawDeliveries = const [];
-  List<Map<String, dynamic>> _rawEpis = const [];
-  List<Map<String, dynamic>> _rawEmployees = const [];
-  Map<String, int> _rawCompliance = const {};
-  int _rawPendingPurchases = 0;
-  List<Map<String, dynamic>> _rawAlerts = const [];
+  static Future<DashboardSummary> _defaultLoader({
+    int? legalEntityId,
+    int? unitId,
+    String? sector,
+  }) =>
+      ApiClient.dashboard.summary(
+        actorUserId: ApiClient.actorUserId,
+        legalEntityId: legalEntityId,
+        unitId: unitId,
+        sector: sector,
+      );
 
   Future<void> load() async {
-    emit(const DashboardState(isLoading: true));
-    try {
-      final bootstrap = await ApiClient.auth.bootstrap();
-
-      // Apply locale preference from bootstrap
-      if (localeProvider != null) {
-        localeProvider!.applyUserPreference(
-          bootstrap.preferredLocale,
-          bootstrap.companyLocale,
-        );
-      }
-
-      // Conformidade de estoque (item 2): fonte única do backend. Degrada
-      // graciosamente (mapa vazio) em backends sem o endpoint.
-      final compliance = await _loadComplianceSafe();
-
-      // Requisições de compra pendentes: agora vêm do bootstrap
-      // (pending_purchases), já escopadas e gateadas por permissão no backend.
-      _rawDeliveries = bootstrap.deliveries;
-      _rawEpis = bootstrap.epis;
-      _rawEmployees = bootstrap.employees;
-      _rawCompliance = compliance;
-      _rawPendingPurchases = bootstrap.pendingPurchases;
-      _rawAlerts = bootstrap.alerts;
-
-      // Indicadores computados por _buildState (mesma lógica de
-      // _applyFilter, reaproveitada — ver abaixo). Perfis travados
-      // (isLockedProfile) nascem travados: o recorte já sai aplicado no
-      // primeiro carregamento, sem depender de uma interação do usuário no
-      // filtro (que, para eles, nem fica habilitado).
-      emit(_buildState(
-        legalEntities: bootstrap.legalEntities,
-        units: bootstrap.units,
-        legalEntityId:
-            isLockedProfile ? _lockedLegalEntityId(bootstrap.units) : null,
-        unitId: isLockedProfile ? operationalUnitId : null,
-        sector: null,
-      ));
-    } on Exception catch (e) {
-      emit(DashboardState(isLoading: false, error: e.toString()));
-    }
+    await _applyLocale();
+    await _fetch();
   }
 
-  // ── Filtro em cascata: Empresa → CNPJ → Unidade → Setor ──────────────────
+  // ── Filtro em cascata: CNPJ → Unidade → Setor ────────────────────────────
+  //
+  // Cada troca consulta o servidor de novo. O recorte é dele: reaplicá-lo aqui
+  // sobre dados crus foi o que fez o painel divergir do resto do sistema.
+  //
+  // Perfil travado não precisa de tratamento especial no cliente. O backend
+  // ignora o `unit_id` pedido e devolve a Unidade do ator (`resolve_unit_scope`),
+  // e a resposta chega com `scope.locked`.
 
-  /// Seleciona o CNPJ. Limpa unidade e setor porque a cascata muda: a unidade
+  /// Seleciona o CNPJ. Limpa Unidade e setor: a cascata muda, e a Unidade
   /// escolhida pode não pertencer ao novo CNPJ.
-  void selectLegalEntity(int? legalEntityId) => _applyFilter(
-        legalEntityId: legalEntityId,
-        unitId: null,
-        sector: null,
-      );
+  void selectLegalEntity(int? legalEntityId) =>
+      _fetch(legalEntityId: legalEntityId);
 
-  /// Seleciona a unidade. Limpa o setor, que é o nível abaixo.
-  void selectUnit(int? unitId) => _applyFilter(
+  /// Seleciona a Unidade. Limpa o setor, que é o nível abaixo.
+  void selectUnit(int? unitId) => _fetch(
         legalEntityId: state.selectedLegalEntityId,
         unitId: unitId,
-        sector: null,
       );
 
-  void selectSector(String? sector) => _applyFilter(
+  void selectSector(String? sector) => _fetch(
         legalEntityId: state.selectedLegalEntityId,
         unitId: state.selectedUnitId,
         sector: sector,
       );
 
-  void clearFilters() => _applyFilter();
+  void clearFilters() => _fetch();
 
-  /// Ids das unidades no escopo do filtro atual.
-  ///
-  /// Sem CNPJ nem unidade selecionados devolve `null`, que significa "sem
-  /// restrição" — diferente de lista vazia, que significa "nenhuma unidade
-  /// casa" e deve zerar os indicadores.
-  ///
-  /// Perfis travados (`isLockedProfile`) ignoram os argumentos: nunca "sem
-  /// restrição". Sem unidade operacional resolvida o Set fica vazio (fecha o
-  /// recorte, zera os indicadores) — nunca `null` (que abriria pra empresa
-  /// inteira). Mesma política fail-closed de `actor_operational_unit_id()`
-  /// no backend.
-  Set<int>? _scopedUnitIds(int? legalEntityId, int? unitId) {
-    if (isLockedProfile) {
-      return operationalUnitId == null ? <int>{} : {operationalUnitId!};
-    }
-    if (unitId != null) return {unitId};
-    if (legalEntityId == null) return null;
-    return state.units
-        .where((u) => u['legal_entity_id'] == legalEntityId)
-        .map((u) => (u['id'] as num).toInt())
-        .toSet();
-  }
-
-  void _applyFilter({int? legalEntityId, int? unitId, String? sector}) {
-    emit(_buildState(
-      legalEntities: state.legalEntities,
-      units: state.units,
-      // Perfis travados não escolhem CNPJ/Unidade: os argumentos recebidos
-      // (de selectLegalEntity/selectUnit/clearFilters) são ignorados e a
-      // seleção exibida continua sempre a da própria unidade.
-      legalEntityId:
-          isLockedProfile ? _lockedLegalEntityId(state.units) : legalEntityId,
-      unitId: isLockedProfile ? operationalUnitId : unitId,
-      sector: sector,
-    ));
-  }
-
-  /// Monta o estado a partir dos dados crus + o recorte escolhido. Reaproveitada
-  /// por `load()` (primeiro carregamento) e `_applyFilter()` (troca de
-  /// filtro) para computar os KPIs exatamente da mesma forma nos dois casos.
-  DashboardState _buildState({
-    required List<Map<String, dynamic>> legalEntities,
-    required List<Map<String, dynamic>> units,
-    required int? legalEntityId,
-    required int? unitId,
-    required String? sector,
-  }) {
-    final scopedUnits = _scopedUnitIds(legalEntityId, unitId);
-
-    bool inScope(Object? rawUnitId) {
-      if (scopedUnits == null) return true;
-      if (rawUnitId is! num) return false;
-      return scopedUnits.contains(rawUnitId.toInt());
-    }
-
-    final deliveries = _rawDeliveries.where((d) {
-      if (!inScope(d['unit_id'])) return false;
-      if (sector != null && '${d['sector'] ?? ''}' != sector) return false;
-      return true;
-    }).toList(growable: false);
-
-    // EPI de nível empresa (unit_id nulo) permanece visível em qualquer
-    // recorte: ele não pertence a uma unidade específica. Filtramos os mapas
-    // crus porque o modelo Epi não expõe unit_id.
-    final epis = _rawEpis
-        .where((e) => e['unit_id'] == null || inScope(e['unit_id']))
-        .map(Epi.fromJson)
-        .toList(growable: false);
-
-    final now = DateTime.now();
-    final todayStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-    return DashboardState(
-      isLoading: false,
-      deliveriesToday: deliveries.where((d) {
-        final dateStr =
-            d['delivery_date'] as String? ?? d['created_at'] as String? ?? '';
-        return dateStr.startsWith(todayStr);
-      }).length,
-      expiringEpis: epis
-          .where((e) =>
-              e.caStatus == 'expiring' ||
-              e.manufacturerValidityStatus == 'expiring')
-          .length,
-      criticalStock: epis.where((e) => e.isCriticalStock).length,
-      // Pendências de compra e conformidade vêm agregadas do backend e não são
-      // recortáveis no cliente; mantidas como estão para não exibir número
-      // inconsistente com o filtro.
-      pendingPurchases: _rawPendingPurchases,
-      alerts: _rawAlerts,
-      compliance: _rawCompliance,
-      legalEntities: legalEntities,
-      units: units,
-      sectors: _sectorsOf(_rawEmployees, scopedUnits: scopedUnits),
-      selectedLegalEntityId: legalEntityId,
-      selectedUnitId: unitId,
-      selectedSector: sector,
-    );
-  }
-
-  /// Setores distintos dos colaboradores no escopo, ordenados.
-  static List<String> _sectorsOf(
-    List<Map<String, dynamic>> employees, {
-    Set<int>? scopedUnits,
-  }) {
-    final out = <String>{};
-    for (final e in employees) {
-      if (scopedUnits != null) {
-        final unit = e['unit_id'];
-        if (unit is! num || !scopedUnits.contains(unit.toInt())) continue;
-      }
-      final sector = '${e['sector'] ?? ''}'.trim();
-      if (sector.isNotEmpty) out.add(sector);
-    }
-    return out.toList()..sort();
-  }
-
-  /// Lê o resumo de conformidade da fonte única. Retorna `{}` se o endpoint não
-  /// existir ou falhar — a seção de conformidade some sem quebrar o dashboard.
-  Future<Map<String, int>> _loadComplianceSafe() async {
+  Future<void> _fetch({
+    int? legalEntityId,
+    int? unitId,
+    String? sector,
+  }) async {
+    emit(state._copyWith(isLoading: true));
     try {
-      final res = await ApiClient.stock.getStockCompliance(
-        actorUserId: ApiClient.actorUserId,
+      final resumo = await _loader(
+        legalEntityId: legalEntityId,
+        unitId: unitId,
+        sector: sector,
       );
-      final summary = res['summary'];
-      if (summary is Map) {
-        return summary.map(
-          (k, v) => MapEntry('$k', v is int ? v : int.tryParse('$v') ?? 0),
-        );
-      }
-      return const {};
+      emit(state._copyWith(isLoading: false, summary: resumo));
+    } on Exception catch (e) {
+      emit(state._copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  /// Preferência de idioma do usuário/empresa — única razão pela qual o painel
+  /// ainda toca o `/api/bootstrap`. Falha silenciosa: o idioma padrão vale, e
+  /// o painel não deve quebrar por causa dela.
+  Future<void> _applyLocale() async {
+    final provider = localeProvider;
+    if (provider == null) return;
+    try {
+      final bootstrap = await ApiClient.auth.bootstrap();
+      provider.applyUserPreference(
+        bootstrap.preferredLocale,
+        bootstrap.companyLocale,
+      );
     } on Exception {
-      return const {};
+      return;
     }
   }
 }

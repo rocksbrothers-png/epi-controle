@@ -24,6 +24,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 DASHBOARD = RAIZ / 'flutter/apps/epi_admin/lib/features/dashboard/dashboard_screen.dart'
 CUBIT = RAIZ / 'flutter/apps/epi_admin/lib/core/bloc/dashboard_cubit.dart'
 STOCK_API = RAIZ / 'flutter/packages/epi_api/lib/endpoints/stock_api.dart'
+MODELO_SUMMARY = RAIZ / 'flutter/packages/epi_api/lib/models/dashboard_summary.dart'
 
 CATEGORIAS = (
     'ca_expired', 'ca_expiring',
@@ -68,20 +69,38 @@ def test_o_cliente_flutter_consome_a_rota_registrada():
 
 
 def test_o_dashboard_le_o_summary_e_nao_recalcula_no_cliente():
-    # A REGRA é do backend. O cubit consome `summary` e nada mais — se um dia
-    # alguém recontar `categories` no cliente, os dois números divergem.
+    # A REGRA é do backend. Desde a fatia 1.1D-C2 a conformidade chega dentro
+    # de `/api/dashboard/summary` — o cubit não faz mais a chamada separada a
+    # `/api/stock/compliance`, e continua sem recontar `categories`.
+    modelo = MODELO_SUMMARY.read_text(encoding='utf-8')
+    assert "conformidade['summary']" in modelo, \
+        'o modelo do resumo deixou de ler `summary`'
+    assert 'categories' not in modelo, \
+        'o cliente passou a mexer em `categories` — a contagem é do backend'
+
+    servico = (RAIZ / 'modules/dashboard/service.py').read_text(encoding='utf-8')
+    assert 'compute_stock_compliance' in servico, \
+        'o resumo deixou de repassar a fonte única da conformidade'
+
     cubit = CUBIT.read_text(encoding='utf-8')
-    assert "res['summary']" in cubit
-    assert 'getStockCompliance' in cubit
+    assert 'summary?.compliance' in cubit, \
+        'o cubit deixou de tirar a conformidade do resumo'
+    assert 'getStockCompliance' not in cubit, \
+        'o dashboard voltou a fazer uma segunda chamada para a conformidade'
 
 
 def test_o_dashboard_degrada_sem_derrubar_a_tela():
-    # Backends antigos não têm a rota. O dashboard inteiro não pode cair por
-    # causa de uma seção — o modo de falha aceitável é a seção sumir.
+    # Backends antigos não têm a rota nem o campo. O dashboard inteiro não pode
+    # cair por causa de uma seção — o modo de falha aceitável é a seção sumir.
+    modelo = MODELO_SUMMARY.read_text(encoding='utf-8')
+    trecho = modelo[modelo.index('factory DashboardSummary.fromJson'):]
+    assert 'resumo is Map' in trecho, 'sem o guarda, payload sem compliance quebra'
+    assert 'const {}' in trecho
+
+    # E a falha de rede do resumo inteiro vira mensagem, não exceção solta.
     cubit = CUBIT.read_text(encoding='utf-8')
-    trecho = cubit[cubit.index('_loadComplianceSafe'):]
-    assert 'on Exception' in trecho
-    assert 'return const {};' in trecho
+    trecho_cubit = cubit[cubit.index('Future<void> _fetch'):]
+    assert 'on Exception catch' in trecho_cubit
 
 
 def test_summary_e_contagem_e_categories_traz_os_registros():

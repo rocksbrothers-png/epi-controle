@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
 import '../connectivity/connectivity_checker.dart';
+import '../utils/epi_status_utils.dart';
 import '../notifications/notification_service.dart';
 import '../sync/offline_queue.dart';
 import '../../features/stock/data/datasources/stock_remote_datasource.dart';
@@ -65,12 +66,16 @@ class StockState extends Equatable {
   final List<String> blockedStatusKeys;
   final String? blockedError;
 
-  /// Criticidade CORPORATIVA, calculada pelo backend (`is_company_stock_critical`).
-  /// O cliente não compara saldo com mínimo: `minimum_stock` é da empresa, e
-  /// compará-lo com o saldo de uma unidade marcaria como crítico todo EPI cujo
-  /// estoque esteja distribuído entre unidades.
-  int get criticalCount =>
-      epis.where((e) => e.isCompanyStockCritical == true).length;
+  /// EPIs críticos NA UNIDADE, pela classificação do backend (`stock_status`).
+  ///
+  /// Esta tela é operacional: o número tem de ser o da Unidade. Até a fatia
+  /// 1.1D-C2 contava por `is_company_stock_critical` — criticidade da empresa
+  /// inteira exibida a quem opera uma Unidade só.
+  ///
+  /// EPI com alerta desligado é `disabled` e **não** entra na contagem, mesmo
+  /// com `underlying_status == 'critical'`: o operador daquela Unidade decidiu
+  /// não ser alertado sobre ele.
+  int get criticalCount => epis.where(epiIsUnitCritical).length;
 
   /// EPIs cuja validade do fabricante já venceu — não podem ser entregues e
   /// devem ser retirados do estoque (NT 146/2015).
@@ -104,8 +109,8 @@ class StockState extends Equatable {
     // Críticos primeiro, depois alfabético.
     final sorted = result.toList()
       ..sort((a, b) {
-        final aCritico = a.isCompanyStockCritical == true;
-        final bCritico = b.isCompanyStockCritical == true;
+        final aCritico = epiIsUnitCritical(a);
+        final bCritico = epiIsUnitCritical(b);
         if (aCritico != bCritico) return aCritico ? -1 : 1;
         return a.name.compareTo(b.name);
       });
@@ -201,9 +206,10 @@ class StockCubit extends Cubit<StockState> {
         unitId: comEscopo.isEmpty ? 0 : (comEscopo.first.unitScopeId ?? 0),
         actorUserId: actorUserId,
       ));
-      // Alerta de estoque crítico — CORPORATIVO, calculado pelo backend.
-      final criticos =
-          epis.where((e) => e.isCompanyStockCritical == true).toList();
+      // Alerta de estoque crítico — DA UNIDADE, classificado pelo backend.
+      // Notificar por criticidade corporativa avisava o operador sobre um
+      // problema que podia não existir no estoque dele.
+      final criticos = epis.where(epiIsUnitCritical).toList();
       if (criticos.isNotEmpty) {
         NotificationService().simulateNotification(AppNotification(
           title: 'Estoque Crítico',

@@ -111,8 +111,8 @@ class _RecordingQueue implements OfflineQueue {
   }
 }
 
-// Saldo da unidade 10 dentro da empresa 1; criticidade CORPORATIVA vem pronta
-// do backend — o cliente não recalcula.
+// Saldo da unidade 10 dentro da empresa 1. A classificação de estoque vem
+// pronta do backend em `stock_status` (#271) — o cliente não recalcula.
 Epi _ok(int id, String name) => Epi(
       id: id,
       name: name,
@@ -121,8 +121,12 @@ Epi _ok(int id, String name) => Epi(
       unitStockQuantity: 10,
       companyStockQuantity: 40,
       minimumStock: 2,
+      unitMinimumStock: 2,
+      attentionLimit: 3,
       stockQuantity: 40,
       isCompanyStockCritical: false,
+      stockStatus: 'normal',
+      underlyingStatus: 'normal',
     );
 
 Epi _critical(int id, String name) => Epi(
@@ -133,8 +137,12 @@ Epi _critical(int id, String name) => Epi(
       unitStockQuantity: 0,
       companyStockQuantity: 3,
       minimumStock: 5,
+      unitMinimumStock: 5,
+      attentionLimit: 6,
       stockQuantity: 3,
       isCompanyStockCritical: true,
+      stockStatus: 'critical',
+      underlyingStatus: 'critical',
     );
 
 void main() {
@@ -303,27 +311,67 @@ void main() {
   });
 
   group('StockState (getters)', () {
-    test('criticalCount usa a criticidade corporativa do backend', () {
+    test('criticalCount usa a classificação da UNIDADE (stock_status)', () {
       final state = StockState(epis: [_critical(2, 'Luva'), _ok(1, 'Capacete')]);
       expect(state.criticalCount, 1);
     });
 
-    test('criticalCount não recalcula a partir do saldo da unidade', () {
-      // O caso que motivou a mudança: mínimo 100, quatro unidades com 50 cada.
-      // A empresa tem 200 e está saudável; comparar 50 <= 100 marcaria como
-      // crítico um EPI que só está distribuído.
-      const distribuido = Epi(
+    test('criticalCount ignora a criticidade corporativa', () {
+      // Esta tela é operacional: o número tem de ser o da Unidade. A empresa
+      // pode estar crítica no agregado enquanto esta Unidade está abastecida —
+      // e o contrário também acontece.
+      const empresaCriticaUnidadeOk = Epi(
         id: 1,
         name: 'Capacete',
         companyId: 1,
         unitScopeId: 10,
-        unitStockQuantity: 50,
-        companyStockQuantity: 200,
-        stockQuantity: 200,
+        unitStockQuantity: 80,
+        companyStockQuantity: 90,
+        stockQuantity: 90,
         minimumStock: 100,
-        isCompanyStockCritical: false,
+        unitMinimumStock: 20,
+        attentionLimit: 24,
+        isCompanyStockCritical: true,
+        stockStatus: 'normal',
       );
-      expect(StockState(epis: [distribuido]).criticalCount, 0);
+      expect(StockState(epis: [empresaCriticaUnidadeOk]).criticalCount, 0);
+    });
+
+    test('criticalCount não compara saldo com mínimo', () {
+      // 2 <= 20 na Unidade, e ainda assim não conta: o alerta deste par
+      // Unidade + EPI está desligado, então o estado é `disabled`. Reintroduzir
+      // a comparação em Dart desfaria a escolha da Unidade.
+      const alertaDesligado = Epi(
+        id: 1,
+        name: 'Capacete',
+        companyId: 1,
+        unitScopeId: 10,
+        unitStockQuantity: 2,
+        companyStockQuantity: 2,
+        stockQuantity: 2,
+        minimumStock: 100,
+        unitMinimumStock: 20,
+        attentionLimit: 24,
+        stockAlertEnabled: false,
+        underlyingStatus: 'critical',
+        stockStatus: 'disabled',
+      );
+      expect(StockState(epis: [alertaDesligado]).criticalCount, 0);
+    });
+
+    test('sem classificação por Unidade nada é contado como crítico', () {
+      // Payload sem `stock_status` (bootstrap, backend antigo): ausência de
+      // veredicto, não veredicto de normalidade — e também não de criticidade.
+      const semClassificacao = Epi(
+        id: 1,
+        name: 'Capacete',
+        companyId: 1,
+        unitScopeId: 10,
+        unitStockQuantity: 1,
+        stockQuantity: 1,
+        minimumStock: 100,
+      );
+      expect(StockState(epis: [semClassificacao]).criticalCount, 0);
     });
 
     test('filtered ordena críticos primeiro', () {

@@ -274,22 +274,22 @@ def test_a_rota_esta_ligada_no_cliente():
 # Escopo da D-C1: contrato, nenhum consumidor migrado
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test_a_fatia_nao_migrou_nenhum_consumidor():
-    """A D-C1 entrega só o contrato. Se algo já consome, a fatia cresceu.
+def test_o_contrato_dart_da_dc1_esta_em_uso_pela_dc2():
+    """A D-C1 entregou só o modelo; a D-C2 ligou os consumidores Flutter nele.
 
-    Estes números caem na D-C2/D-C3, e o teste falha pedindo a atualização —
-    que é o objetivo: a migração acontece por decisão, não por acidente.
+    O Web Legado é a D-C3 e continua no bootstrap. A migração acontece por
+    decisão, não por acidente — por isso o limite fica travado aqui.
     """
     cubit = (RAIZ / 'flutter/apps/epi_admin/lib/core/bloc/dashboard_cubit.dart') \
         .read_text(encoding='utf-8')
-    assert 'ApiClient.dashboard' not in cubit, \
-        'o DashboardCubit já consome a rota nova — isso é D-C2'
-    assert 'isCriticalStock' in cubit, \
-        'o cálculo antigo saiu do Cubit — isso é D-C2'
+    assert 'ApiClient.dashboard' in cubit, \
+        'o DashboardCubit deixou de consumir a rota nova'
+    assert 'isCriticalStock' not in cubit, \
+        'o cálculo antigo voltou ao Cubit'
 
     utils = (RAIZ / 'flutter/apps/epi_admin/lib/core/utils/epi_status_utils.dart') \
         .read_text(encoding='utf-8')
-    assert 'stockStatus' not in utils, 'o badge já lê stock_status — isso é D-C2'
+    assert 'stockStatus' in utils, 'o badge da Unidade deixou de ler stock_status'
 
     dashboard_js = (RAIZ / 'static/js/views/dashboard.js').read_text(encoding='utf-8')
     assert '/api/dashboard/summary' not in dashboard_js, \

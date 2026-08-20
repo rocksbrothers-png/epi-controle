@@ -640,17 +640,23 @@ def test_disabled_nao_entra_em_nenhum_dos_dois_kpis():
         'o KPI passou a contar pela condição física, ignorando o liga/desliga'
 
 
-def test_a_fatia_nao_migrou_nenhum_consumidor():
-    """Escopo da 1.1D-B: rota nova, nada trocado.
+def test_a_migracao_dos_consumidores_para_onde_foi_decidida():
+    """Quem já consome a rota nova, e quem ainda não.
 
-    `DashboardCubit` e `dashboard.js` seguem no bootstrap, e nenhum campo sai
-    de lá. Quando forem migrados, este teste falha pedindo a atualização.
+    A 1.1D-B entregou a rota sem trocar nada. A 1.1D-C2 migrou o Flutter. O Web
+    Legado (`dashboard.js`) é a 1.1D-C3 e continua no bootstrap — migrá-lo por
+    acidente faria os dois clientes divergirem no meio da janela.
     """
     cubit = (RAIZ / 'flutter/apps/epi_admin/lib/core/bloc/dashboard_cubit.dart').read_text(encoding='utf-8')
-    assert 'ApiClient.auth.bootstrap()' in cubit, \
-        'o DashboardCubit foi migrado — atualize este teste e a fatia 1.1D-C'
-    assert '/api/dashboard/summary' not in cubit
+    assert 'ApiClient.dashboard.summary' in cubit, \
+        'o DashboardCubit deixou de consumir /api/dashboard/summary (1.1D-C2)'
 
+    dashboard_js = (RAIZ / 'static/js/views/dashboard.js').read_text(encoding='utf-8')
+    assert '/api/dashboard/summary' not in dashboard_js, \
+        'o Web Legado foi migrado — isso é a 1.1D-C3, com o W5 junto'
+
+    # Remover campo do bootstrap é 1.1E: enquanto o Web Legado depender dele,
+    # tirar qualquer um aqui derruba o painel antigo.
     bootstrap = (RAIZ / 'modules/auth/service.py').read_text(encoding='utf-8')
     for campo in ("'deliveries'", "'epis'", "'employees'", "'legal_entities'",
                   "'units'", "'alerts'", "'pending_purchases'"):

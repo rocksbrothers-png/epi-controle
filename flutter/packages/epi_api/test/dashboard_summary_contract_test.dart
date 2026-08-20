@@ -1,5 +1,5 @@
 import 'package:epi_api/epi_api.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// Contrato Dart da fatia 1.1D-C1 — parsing, sem consumo.
 ///

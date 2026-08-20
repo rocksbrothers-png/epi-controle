@@ -343,3 +343,36 @@ def test_o_payload_real_alimenta_o_model_dart():
         )
     assert item['stock_status'] == 'critical'
     assert item['stock_condition'] == 'below_minimum'
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Gate: testes Dart precisam importar o framework que o pacote realmente tem
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_testes_dart_importam_o_framework_disponivel_no_pacote():
+    """`package:test` não está nas `dev_dependencies` dos pacotes Flutter.
+
+    Importá-lo faz `flutter analyze` falhar com dezenas de `undefined_function`
+    para cada `expect`/`isNull`/`isEmpty` — e o erro é invisível em qualquer
+    ambiente sem toolchain Flutter, onde os testes Dart não rodam. Só o CI
+    pega, e só depois do push.
+
+    Este gate roda no pytest, que roda em todo lugar: erra o import, reprova
+    antes de chegar ao CI.
+    """
+    pacotes = sorted((RAIZ / 'flutter/packages').glob('*/pubspec.yaml'))
+    assert pacotes, 'nenhum pacote Flutter encontrado — o gate varreria vazio'
+
+    for pubspec in pacotes:
+        raiz_pacote = pubspec.parent
+        tem_package_test = re.search(
+            r'^\s{2}test:', pubspec.read_text(encoding='utf-8'), re.M
+        )
+        for arquivo in sorted((raiz_pacote / 'test').glob('*.dart')):
+            fonte = arquivo.read_text(encoding='utf-8')
+            if "import 'package:test/test.dart';" in fonte and not tem_package_test:
+                raise AssertionError(
+                    f'{arquivo.relative_to(RAIZ)} importa `package:test`, que não '
+                    f'está nas dev_dependencies de {raiz_pacote.name}. '
+                    'Use `package:flutter_test/flutter_test.dart`.'
+                )

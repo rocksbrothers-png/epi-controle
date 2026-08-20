@@ -46,12 +46,21 @@ from modules.stock.service import (
     parse_stock_qr_lookup_value,
     resolve_item_size,
     resolve_minimum_stock,
-    set_epi_minimum_stock,
+    resolve_unit_minimum_stock,
+    set_unit_epi_minimum_stock,
     upsert_unit_stock,
 )
+from core.rate_limit import get_client_ip
 from core.schema import ensure_stock_movement_size_columns
 
 UTC = timezone.utc
+
+
+def _user_agent(handler):
+    try:
+        return str(handler.headers.get('User-Agent', '') or '')
+    except Exception:  # noqa: BLE001 - metadado de auditoria, nunca derruba a operação
+        return ''
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -301,9 +310,12 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
             raise PermissionError('Apenas Administrador Local e Gestor de EPI podem definir estoque mínimo.')
         epi = get_epi_by_id(connection, int(payload['epi_id']))
         ensure_resource_company(actor, epi, 'EPI')
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if not scope_unit_id:
-            raise PermissionError('Perfil sem unidade operacional ativa para editar estoque mínimo.')
+        # Perfil travado: a Unidade é a do ator, e o `unit_id` que o cliente
+        # eventualmente mande é descartado (1.1D-A). Fail-closed sem Unidade.
+        scope_unit_id = resolve_unit_scope(
+            connection, actor,
+            denial_message='Perfil sem unidade operacional ativa para editar estoque mínimo.',
+        ).unit_id
         # Mesma checagem de visibilidade já usada por GET /api/stock/epis e
         # pelos alertas de estoque baixo (fetch_low_stock_items) — não a
         # comparação ingênua epi.unit_id == scope_unit_id, que só é
@@ -322,10 +334,26 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
             target_unit_joint_venture_name=scope_unit_jv_name,
         ):
             raise PermissionError('Perfil só pode editar estoque mínimo de EPIs visíveis na unidade operacional ativa.')
-        minimum_stock = max(0, int(payload.get('minimum_stock') or 0))
-        set_epi_minimum_stock(connection, int(payload['epi_id']), minimum_stock)
+        # O mínimo é DAQUELA Unidade (1.1D-B0). Antes daqui saía
+        # `UPDATE epis SET minimum_stock`, numa rota que já resolvia e validava
+        # a Unidade do ator: o Gestor da Unidade A reescrevia, em silêncio, o
+        # parâmetro das Unidades B e C, e o operador delas passava a ser
+        # alertado por um número que não configurou. A escrita agora é isolada
+        # pela chave (company_id, unit_id, epi_id) e fica auditada.
+        minimo = set_unit_epi_minimum_stock(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            payload.get('minimum_stock'),
+            actor=actor,
+            ip_address=get_client_ip(handler),
+            user_agent=_user_agent(handler),
+        )
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'minimum_stock': minimum_stock})
+        return send_json(handler, 200, {
+            'ok': True,
+            'minimum_stock': minimo.value,
+            'unit_id': int(scope_unit_id),
+            'minimum_stock_source': minimo.source,
+        })
 
 
 # ── POST /api/stock/movements ─────────────────────────────────────────────────
@@ -603,22 +631,42 @@ def handle_get_stock_epis(handler, parsed, payload, match):
                 size_rows = fetch_epi_size_balance(
                     connection, int(epi['company_id']), stock_unit_id, int(epi['id'])
                 )
+                unit_minimum = resolve_unit_minimum_stock(
+                    connection, int(epi['company_id']), stock_unit_id, int(epi['id'])
+                )
             else:
                 # Nenhuma unidade resolvida (master_admin/general_admin sem
                 # seleção): `None`, não 0. Zero afirmaria "esta unidade não tem
                 # estoque"; None diz "não há unidade".
                 unit_stock = None
                 size_rows = []
+                unit_minimum = None
 
             minimum_stock = resolve_minimum_stock(item.get('minimum_stock'))
             item['minimum_stock'] = minimum_stock
             item['company_stock_quantity'] = company_stock
             item['unit_stock_quantity'] = unit_stock
             item['unit_scope_id'] = stock_unit_id or None
-            # Criticidade é CORPORATIVA: `minimum_stock` vive em `epis`, na
-            # empresa. Comparar contra o saldo de uma unidade marcaria como
-            # crítico todo EPI cujo estoque esteja distribuído. Mínimo por
-            # unidade é outra frente (issue #259).
+            # ── Criticidade OPERACIONAL: da Unidade, contra o mínimo DELA ────
+            # `minimum_stock` (acima) é o padrão da EMPRESA e não decide mais a
+            # criticidade de nenhuma Unidade: comparar o saldo local contra ele
+            # marcava como crítica toda Unidade de uma empresa cujo estoque
+            # esteja distribuído — mínimo 100 com 30/30/40 em três Unidades
+            # gerava três alertas falsos.
+            #
+            # `minimum_stock_source` diz se o número é decisão da Unidade
+            # (`unit_configured`) ou herança do padrão (`company_default`), para
+            # o cliente não ter que deduzir isso comparando valores.
+            #
+            # Os três campos são `None` JUNTOS quando não há Unidade resolvida —
+            # nunca 0/False isolados, pelo mesmo motivo de `unit_stock_quantity`.
+            item['unit_minimum_stock'] = unit_minimum.value if unit_minimum else None
+            item['minimum_stock_source'] = unit_minimum.source if unit_minimum else None
+            item['is_unit_stock_critical'] = (
+                is_stock_critical(unit_stock, unit_minimum.value) if unit_minimum else None
+            )
+            # Leitura CORPORATIVA do catálogo, mantida com o mesmo valor de
+            # sempre até os consumidores migrarem (prevista para a 1.1E).
             item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)
             item['stock'] = company_stock
             item['size_balances'] = size_rows

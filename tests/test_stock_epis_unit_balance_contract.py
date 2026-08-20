@@ -140,12 +140,51 @@ def test_a_criticidade_e_calculada_no_backend_contra_o_saldo_corporativo():
     assert "item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)" in corpo
 
 
-def test_a_criticidade_nunca_usa_o_saldo_da_unidade():
+def test_o_saldo_da_unidade_nunca_e_comparado_com_o_minimo_da_empresa():
+    """O defeito é o PAR errado, não o operando `unit_stock`.
+
+    Até a 1.1D-B0 este teste proibia `is_stock_critical(unit_stock` inteiro,
+    porque o único mínimo existente era o corporativo — então qualquer uso do
+    saldo local ali era necessariamente o cruzamento errado. Com o mínimo por
+    Unidade, `is_stock_critical(unit_stock, unit_minimum.value)` passou a ser
+    exatamente a comparação CERTA, e o alvo se estreita para o que sempre foi
+    o defeito: saldo de UMA unidade contra o mínimo da EMPRESA, que marcaria
+    como crítico todo EPI cujo estoque esteja distribuído.
+    """
     corpo = _sem_comentarios_py(_handler())
-    assert 'is_stock_critical(unit_stock' not in corpo, (
-        'comparar o saldo de UMA unidade com o mínimo da EMPRESA marcaria como '
-        'crítico todo EPI cujo estoque esteja distribuído entre unidades'
+    proibidos = (
+        'is_stock_critical(unit_stock, minimum_stock)',
+        "is_stock_critical(unit_stock, item['minimum_stock'])",
+        "is_stock_critical(unit_stock, item.get('minimum_stock'))",
+        'is_stock_critical(unit_stock, epi',
     )
+    for padrao in proibidos:
+        assert padrao not in corpo, (
+            f'`{padrao}` cruza saldo da unidade com mínimo corporativo — use '
+            '`resolve_unit_minimum_stock` para obter o mínimo DAQUELA unidade'
+        )
+
+
+def test_a_criticidade_operacional_usa_o_minimo_da_propria_unidade():
+    corpo = _sem_comentarios_py(_handler())
+    assert 'resolve_unit_minimum_stock(' in corpo, (
+        'a criticidade operacional voltou a sair de um mínimo que não é o da '
+        'unidade resolvida'
+    )
+    assert 'is_stock_critical(unit_stock, unit_minimum.value)' in corpo
+
+
+def test_os_tres_campos_por_unidade_sao_nulos_juntos():
+    """`unit_minimum_stock`, `minimum_stock_source` e `is_unit_stock_critical`
+    são `None` exatamente quando não há unidade — nunca 0/False isolados, que
+    afirmariam "mínimo zero" e "não crítico" onde não há unidade nenhuma."""
+    # Espaços colapsados: a atribuição pode estar quebrada em várias linhas por
+    # comprimento, e isso não muda o contrato.
+    corpo = re.sub(r'\s+', ' ', _sem_comentarios_py(_handler()))
+    for campo in ('unit_minimum_stock', 'minimum_stock_source', 'is_unit_stock_critical'):
+        assert re.search(
+            rf"item\['{campo}'\] = [^;]*?if unit_minimum else None", corpo
+        ), f'`{campo}` deixou de ser None quando não há unidade resolvida'
 
 
 def test_o_minimo_efetivo_passa_pelo_helper_compartilhado():

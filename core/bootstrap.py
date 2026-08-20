@@ -311,6 +311,8 @@ def init_db():
             # o PostgreSQL recusa, e a criação do banco do zero falhava inteira.
             schema.ensure_stock_reservations,
             schema.ensure_stock_replenishment_needs,
+            # Mesma razão de ordem das duas acima: referencia `units` e `epis`.
+            schema.ensure_unit_epi_minimum_stock,
             schema.ensure_procurement_supplier_tables,
             _ensure_commercial_settings,
             _ensure_commercial_tables,

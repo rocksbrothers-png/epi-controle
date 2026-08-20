@@ -4,6 +4,7 @@ import json
 import re
 import unicodedata
 from datetime import datetime, timezone
+from decimal import ROUND_CEILING, Decimal
 from typing import NamedTuple
 
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
@@ -248,17 +249,20 @@ def is_stock_critical(stock, minimum_stock):
     aqui.** Existem dois usos legítimos, e eles não se substituem:
 
     - `saldo da Unidade × mínimo DAQUELA Unidade` → criticidade OPERACIONAL,
-      a que o operador vê. Use `resolve_unit_minimum_stock` para obter o
-      mínimo — nunca `epis.minimum_stock` direto.
+      a que o operador vê. **Não chame direto**: use `classify_unit_epi_stock`,
+      que resolve o mínimo, a faixa de atenção e a habilitação do alerta juntos
+      e devolve os dois status. Chamar esta função com o saldo local só é
+      correto de dentro dela.
     - `saldo corporativo × epis.minimum_stock` → leitura corporativa do
       catálogo (`is_company_stock_critical`), mantida por
       retrocompatibilidade.
 
     Cruzar os dois — saldo de UMA Unidade contra o mínimo da EMPRESA — marca
     como crítica toda Unidade de uma empresa cujo estoque esteja distribuído:
-    mínimo 100 com 30/30/40 em três Unidades gera três alertas falsos. Esse
-    cruzamento ainda existe em `/api/stock/low`, nas demandas de compra e em
-    `replenishment`, e está registrado como dívida a corrigir.
+    mínimo 100 com 30/30/40 em três Unidades gera três alertas falsos. A #271
+    tirou esse cruzamento de `/api/stock/low`, das demandas de compra e dos
+    alertas; `replenishment._epi_levels` segue como dívida, em fatia própria
+    (não recebe `unit_id` e envolve também `maximum_stock`).
     """
     return int(stock or 0) <= resolve_minimum_stock(minimum_stock)
 
@@ -370,6 +374,312 @@ def _actor_id(actor):
     return int(bruto) if bruto else None
 
 
+# ── Faixa de atenção e habilitação do alerta (#271) ──────────────────────────
+
+DEFAULT_ATTENTION_PERCENTAGE = 20
+
+ATTENTION_SOURCE_UNIT = 'unit_configured'
+ATTENTION_SOURCE_COMPANY = 'company_default'
+
+ALERT_SOURCE_UNIT = 'unit_configured'
+ALERT_SOURCE_SYSTEM = 'system_default'
+
+STATUS_NORMAL = 'normal'
+STATUS_NEAR_MINIMUM = 'near_minimum'
+STATUS_CRITICAL = 'critical'
+STATUS_DISABLED = 'disabled'
+
+
+class UnitAttentionPercentage(NamedTuple):
+    """Percentual de atenção efetivo do par (Unidade, EPI), e sua origem."""
+
+    value: int
+    source: str
+
+
+class UnitAlertSetting(NamedTuple):
+    """Habilitação do monitoramento do par (Unidade, EPI), e sua origem.
+
+    `source` é `system_default` quando não há linha — e não `company_default`,
+    porque não existe liga/desliga corporativo: a origem herdada é uma
+    constante do sistema, não uma decisão administrativa da empresa. Se um dia
+    houver toggle corporativo, ele entra como degrau do meio
+    (`system_default` → `company_default` → `unit_configured`) sem que nenhum
+    consumidor precise mudar.
+    """
+
+    enabled: bool
+    source: str
+
+
+class StockClassification(NamedTuple):
+    """Classificação COMPLETA de um EPI numa Unidade — a fonte única.
+
+    `stock_status` e `underlying_status` respondem perguntas diferentes e por
+    isso são campos diferentes:
+
+    - `underlying_status` é a **condição física** do estoque: onde o saldo cai
+      em relação ao mínimo e à faixa de atenção. Sempre `normal`,
+      `near_minimum` ou `critical`, esteja o monitoramento ligado ou não.
+    - `stock_status` é o **estado operacional** que KPIs, alertas e reposição
+      automática consomem. Igual a `underlying_status` quando o monitoramento
+      está ligado; `disabled` quando não está.
+
+    Sem essa separação, uma tela que quisesse dizer "saldo abaixo do mínimo,
+    mas o alerta está desligado" teria de comparar saldo com mínimo por conta
+    própria — reintroduzindo a segunda fórmula que esta fatia existe para
+    eliminar.
+
+    Desabilitado **nunca** vira `normal`: `stock_status` fica `disabled`, que é
+    um estado explícito, e os números reais continuam todos preenchidos.
+    """
+
+    unit_stock_quantity: int
+    effective_minimum_stock: int
+    minimum_stock_source: str
+    effective_attention_percentage: int
+    attention_percentage_source: str
+    attention_limit: int
+    stock_alert_enabled: bool
+    alert_source: str
+    underlying_status: str
+    stock_status: str
+
+
+def resolve_company_attention_percentage(connection, company_id):
+    """Percentual padrão da empresa. Em tabela, não em constante, para que o
+    Administrador Geral possa mudá-lo sem deploy."""
+    row = connection.execute(
+        'SELECT attention_percentage FROM company_stock_attention_config WHERE company_id = ?',
+        (int(company_id),),
+    ).fetchone()
+    if row is None:
+        return DEFAULT_ATTENTION_PERCENTAGE
+    valor = row_to_dict(row).get('attention_percentage')
+    return DEFAULT_ATTENTION_PERCENTAGE if valor is None else max(0, int(valor))
+
+
+def resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id):
+    """Percentual de atenção efetivo — configuração da Unidade → padrão da
+    empresa.
+
+    Como no mínimo, testa a EXISTÊNCIA da linha: `0` é configuração válida
+    ("sem faixa de atenção, me avise só no crítico") e um `if not pct:`
+    devolveria os 20% da empresa contra a decisão da Unidade.
+    """
+    row = connection.execute(
+        'SELECT attention_percentage FROM unit_epi_attention_percentage '
+        'WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+        (int(company_id), int(unit_id), int(epi_id)),
+    ).fetchone()
+    if row is not None:
+        valor = row_to_dict(row).get('attention_percentage')
+        return UnitAttentionPercentage(max(0, int(valor or 0)), ATTENTION_SOURCE_UNIT)
+    return UnitAttentionPercentage(
+        resolve_company_attention_percentage(connection, company_id),
+        ATTENTION_SOURCE_COMPANY,
+    )
+
+
+def resolve_unit_epi_alert_enabled(connection, company_id, unit_id, epi_id):
+    """Habilitação efetiva do monitoramento.
+
+    Três estados persistidos, e o terceiro é o que exige cuidado:
+
+    - **sem linha** → habilitado, `system_default`
+    - `alert_enabled = 0` → desabilitado, `unit_configured`
+    - `alert_enabled = 1` → habilitado, `unit_configured`
+
+    O terceiro existe porque reativar GRAVA 1 em vez de apagar a linha. Apagar
+    tornaria o EPI indistinguível de um que nunca foi tocado, perdendo a
+    diferença entre "nunca configurado" e "a Unidade decidiu manter ligado" —
+    a mesma distinção que `source` preserva no mínimo e no percentual.
+    """
+    row = connection.execute(
+        'SELECT alert_enabled FROM unit_epi_stock_alert_settings '
+        'WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+        (int(company_id), int(unit_id), int(epi_id)),
+    ).fetchone()
+    if row is not None:
+        return UnitAlertSetting(
+            bool(int(row_to_dict(row).get('alert_enabled') or 0)), ALERT_SOURCE_UNIT
+        )
+    return UnitAlertSetting(True, ALERT_SOURCE_SYSTEM)
+
+
+def compute_attention_limit(effective_minimum_stock, attention_percentage):
+    """Teto da faixa de atenção: `ceil(mínimo × (1 + pct/100))`.
+
+    `ceil`, e não `floor`, porque `floor` pode **fazer a faixa desaparecer**:
+    com mínimo 1 e 20%, `1 × 1.2 = 1.2` viraria 1 — o próprio mínimo — e nada
+    satisfaria `1 < saldo <= 1`. O EPI saltaria de vermelho direto para verde.
+    Com `ceil` o limite é 2 e a faixa existe.
+
+    `Decimal`, e não `float`: varrendo mínimos de 1 a 400 contra percentuais de
+    1 a 100, **74 combinações divergem**. Mínimo 50 com 10% é uma delas —
+    `50 * 1.1` em binário dá 55.00000000000001 e `ceil` devolve 56, estendendo
+    a faixa laranja por uma unidade a mais. O defeito só apareceria em algumas
+    combinações, que é a pior espécie.
+
+    Mínimo 0 devolve 0 e a faixa fica vazia, deliberadamente: a Unidade que
+    configurou mínimo 0 disse "só me avise ao zerar", e uma faixa de atenção
+    acima de zero contradiria essa decisão.
+    """
+    minimo = Decimal(int(effective_minimum_stock or 0))
+    pct = Decimal(max(0, int(attention_percentage or 0)))
+    limite = minimo * (Decimal(1) + pct / Decimal(100))
+    return int(limite.to_integral_value(rounding=ROUND_CEILING))
+
+
+def classify_unit_epi_stock(connection, company_id, unit_id, epi_id, *, unit_stock=None):
+    """Classificação de um EPI numa Unidade — PONTO ÚNICO.
+
+    Nenhum consumidor (SQL, Python, Dart ou JavaScript) deve reimplementar esta
+    regra. `/api/stock/low`, as demandas de compra, os alertas, o Dashboard e as
+    telas passam todos por aqui.
+
+    Ordem de decisão::
+
+        underlying_status  = crítico | atenção | normal   (sempre calculado)
+        stock_status       = 'disabled' se o alerta está desligado,
+                             senão igual a underlying_status
+
+    `unit_stock` pode ser passado por quem já leu o saldo, para não repetir a
+    consulta numa listagem. Ausência de linha em `unit_epi_stock` é saldo
+    **zero**, não "sem dado": o EPI é visível para a Unidade e o saldo é
+    conhecido.
+    """
+    if unit_stock is None:
+        linha = get_unit_stock(connection, int(company_id), int(unit_id), int(epi_id))
+        unit_stock = int((linha or {}).get('quantity') or 0)
+    saldo = int(unit_stock or 0)
+
+    minimo = resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id)
+    percentual = resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id)
+    alerta = resolve_unit_epi_alert_enabled(connection, company_id, unit_id, epi_id)
+    limite = compute_attention_limit(minimo.value, percentual.value)
+
+    if is_stock_critical(saldo, minimo.value):
+        subjacente = STATUS_CRITICAL
+    elif saldo <= limite:
+        subjacente = STATUS_NEAR_MINIMUM
+    else:
+        subjacente = STATUS_NORMAL
+
+    return StockClassification(
+        unit_stock_quantity=saldo,
+        effective_minimum_stock=minimo.value,
+        minimum_stock_source=minimo.source,
+        effective_attention_percentage=percentual.value,
+        attention_percentage_source=percentual.source,
+        attention_limit=limite,
+        stock_alert_enabled=alerta.enabled,
+        alert_source=alerta.source,
+        underlying_status=subjacente,
+        stock_status=subjacente if alerta.enabled else STATUS_DISABLED,
+    )
+
+
+def set_unit_epi_attention_percentage(
+    connection, company_id, unit_id, epi_id, attention_percentage, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Grava o percentual de atenção DAQUELA Unidade e audita a mudança.
+
+    Não toca o mínimo nem a habilitação: são parâmetros independentes, em
+    tabelas independentes.
+    """
+    anterior = resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id)
+    valor_anterior = str(anterior.value) if anterior.source == ATTENTION_SOURCE_UNIT else None
+    novo = max(0, int(attention_percentage or 0))
+    _upsert_config(
+        connection, 'unit_epi_attention_percentage', 'attention_percentage',
+        company_id, unit_id, epi_id, novo,
+        existe=anterior.source == ATTENTION_SOURCE_UNIT, actor=actor,
+    )
+    _audit_config(
+        connection, company_id, unit_id, epi_id, 'attention_percentage',
+        valor_anterior, str(novo), anterior.source, actor, ip_address, user_agent,
+    )
+    return UnitAttentionPercentage(novo, ATTENTION_SOURCE_UNIT)
+
+
+def set_unit_epi_alert_enabled(
+    connection, company_id, unit_id, epi_id, enabled, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Liga/desliga o monitoramento DAQUELA Unidade e audita a mudança.
+
+    **Reativar grava 1; nunca apaga a linha.** Apagar devolveria o par ao
+    estado "nunca configurado", perdendo o registro de que a Unidade decidiu
+    deliberadamente manter o alerta ligado.
+
+    Não altera saldo, mínimo, percentual, nenhuma origem, nem o cadastro do
+    EPI: desliga apenas a decisão operacional de alertar.
+    """
+    anterior = resolve_unit_epi_alert_enabled(connection, company_id, unit_id, epi_id)
+    valor_anterior = (
+        ('true' if anterior.enabled else 'false')
+        if anterior.source == ALERT_SOURCE_UNIT else None
+    )
+    novo = bool(enabled)
+    _upsert_config(
+        connection, 'unit_epi_stock_alert_settings', 'alert_enabled',
+        company_id, unit_id, epi_id, 1 if novo else 0,
+        existe=anterior.source == ALERT_SOURCE_UNIT, actor=actor,
+    )
+    _audit_config(
+        connection, company_id, unit_id, epi_id, 'alert_enabled',
+        valor_anterior, 'true' if novo else 'false',
+        anterior.source, actor, ip_address, user_agent,
+    )
+    return UnitAlertSetting(novo, ALERT_SOURCE_UNIT)
+
+
+def _upsert_config(connection, tabela, coluna, company_id, unit_id, epi_id, valor,
+                   *, existe, actor):
+    """UPSERT de um parâmetro de configuração por (empresa, unidade, EPI).
+
+    `tabela` e `coluna` NÃO vêm de entrada do usuário — são literais dos dois
+    chamadores acima. A interpolação existe porque as duas tabelas têm forma
+    idêntica e duplicar o SQL faria as duas divergirem no primeiro ajuste.
+    """
+    agora = datetime.now(UTC).isoformat()
+    if existe:
+        connection.execute(
+            f'UPDATE {tabela} SET {coluna} = ?, updated_at = ?, updated_by_user_id = ? '  # noqa: S608
+            'WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+            (valor, agora, _actor_id(actor), int(company_id), int(unit_id), int(epi_id)),
+        )
+    else:
+        connection.execute(
+            f'INSERT INTO {tabela} '  # noqa: S608
+            f'(company_id, unit_id, epi_id, {coluna}, created_by_user_id, '
+            ' updated_by_user_id, created_at, updated_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (int(company_id), int(unit_id), int(epi_id), valor,
+             _actor_id(actor), _actor_id(actor), agora, agora),
+        )
+
+
+def _audit_config(connection, company_id, unit_id, epi_id, parameter,
+                  previous_value, new_value, previous_source,
+                  actor, ip_address, user_agent):
+    connection.execute(
+        'INSERT INTO unit_epi_stock_config_audit_logs '
+        '(company_id, unit_id, epi_id, parameter, previous_value, new_value, '
+        ' previous_source, actor_user_id, actor_name, actor_role, ip_address, '
+        ' user_agent, created_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (int(company_id), int(unit_id), int(epi_id), parameter,
+         previous_value, new_value, previous_source, _actor_id(actor),
+         str((actor or {}).get('full_name') or (actor or {}).get('name') or ''),
+         str((actor or {}).get('role') or ''),
+         str(ip_address or ''), str(user_agent or ''),
+         datetime.now(UTC).isoformat()),
+    )
+
+
 def fetch_low_stock_items(
     connection,
     actor=None,
@@ -377,7 +687,20 @@ def fetch_low_stock_items(
     actor_operational_unit_id,
     get_unit_active_jv_name,
     is_epi_visible_for_unit,
+    include_near_minimum=False,
 ):
+    """EPIs que exigem atenção na Unidade do ator, já classificados (#271).
+
+    `include_near_minimum` é `False` por padrão de propósito. `/api/stock/low`
+    significa "abaixo do mínimo" para todos os seus consumidores atuais, e o
+    Web Legado conta `state.lowStock.length` no card **"Estoque crítico"** —
+    incluir a faixa laranja ali inflaria um KPI cujo rótulo diz outra coisa,
+    numa tela que só será migrada na 1.1D-C.
+
+    Os alertas passam `True`, porque a faixa de atenção existe justamente para
+    gerar o alerta laranja. Um parâmetro, uma classificação — não duas
+    consultas com regras diferentes.
+    """
     items = []
     scope_unit_id = actor_operational_unit_id(connection, actor)
     if actor and actor.get('role') in ('admin', 'user') and not scope_unit_id:
@@ -425,26 +748,52 @@ def fetch_low_stock_items(
             target_unit_joint_venture_name=unit_jv_cache[target_unit_id],
         ):
             continue
-        stock = int(row['stock'] or 0)
-        minimum = resolve_minimum_stock(row['minimum_stock'])
-        if is_stock_critical(stock, minimum):
-            size_balances = fetch_epi_size_balance(
-                connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id'])
-            )
-            severity = 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning')
-            items.append({
-                'epi_id': row['epi_id'],
-                'epi_name': row['epi_name'],
-                'company_id': row['company_id'],
-                'company_name': row['company_name'],
-                'unit_id': row['unit_id'],
-                'unit_name': row.get('unit_name') or '-',
-                'stock': stock,
-                'minimum_stock': minimum,
-                'unit_measure': row.get('unit_measure') or 'unidade',
-                'severity': severity,
-                'size_balances': size_balances,
-            })
+        # Classificação pela fonte única (#271). Antes daqui saía
+        # `is_stock_critical(stock, resolve_minimum_stock(epis.minimum_stock))`
+        # — saldo DA UNIDADE contra o mínimo da EMPRESA, que marcava como
+        # crítica toda Unidade de uma empresa com estoque distribuído.
+        classificacao = classify_unit_epi_stock(
+            connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id']),
+            unit_stock=int(row['stock'] or 0),
+        )
+        # Desabilitado sai da lista em qualquer modo: não gera alerta, não entra
+        # em KPI, não dispara reposição. Continua visível no Controle de
+        # Estoque, que lê o catálogo por outra rota e recebe `stock_status` para
+        # exibi-lo como monitoramento desligado — sem virar "normal".
+        aceitos = (STATUS_CRITICAL, STATUS_NEAR_MINIMUM) if include_near_minimum else (STATUS_CRITICAL,)
+        if classificacao.stock_status not in aceitos:
+            continue
+        stock = classificacao.unit_stock_quantity
+        minimum = classificacao.effective_minimum_stock
+        size_balances = fetch_epi_size_balance(
+            connection, int(row['company_id']), int(row['unit_id']), int(row['epi_id'])
+        )
+        # `severity` é o rótulo legado do Web Legado (critical/danger/warning) e
+        # continua com a MESMA regra de sempre para não quebrar a tela antes da
+        # 1.1D-C. `stock_status` é o campo novo, e é o que os consumidores
+        # migrados devem ler.
+        severity = 'critical' if stock <= 0 else ('danger' if stock < minimum else 'warning')
+        items.append({
+            'epi_id': row['epi_id'],
+            'epi_name': row['epi_name'],
+            'company_id': row['company_id'],
+            'company_name': row['company_name'],
+            'unit_id': row['unit_id'],
+            'unit_name': row.get('unit_name') or '-',
+            'stock': stock,
+            'minimum_stock': minimum,
+            'minimum_stock_source': classificacao.minimum_stock_source,
+            'attention_limit': classificacao.attention_limit,
+            'effective_attention_percentage': classificacao.effective_attention_percentage,
+            'attention_percentage_source': classificacao.attention_percentage_source,
+            'stock_alert_enabled': classificacao.stock_alert_enabled,
+            'alert_source': classificacao.alert_source,
+            'underlying_status': classificacao.underlying_status,
+            'stock_status': classificacao.stock_status,
+            'unit_measure': row.get('unit_measure') or 'unidade',
+            'severity': severity,
+            'size_balances': size_balances,
+        })
     items.sort(key=lambda r: (r['company_name'], r['unit_name'], r['epi_name']))
     return items
 

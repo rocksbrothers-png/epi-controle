@@ -313,6 +313,7 @@ def init_db():
             schema.ensure_stock_replenishment_needs,
             # Mesma razão de ordem das duas acima: referencia `units` e `epis`.
             schema.ensure_unit_epi_minimum_stock,
+            schema.ensure_stock_classification_config,
             schema.ensure_procurement_supplier_tables,
             _ensure_commercial_settings,
             _ensure_commercial_tables,

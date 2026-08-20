@@ -3200,6 +3200,119 @@ def ensure_unit_epi_minimum_stock(connection) -> None:
             structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_stock_classification_config(connection) -> None:
+    """Faixa de atenção e habilitação de alerta por Unidade + EPI (#271).
+
+    Completa os parâmetros que faltavam para o backend conseguir classificar o
+    estoque sozinho, em vez de cada cliente comparar saldo com mínimo por conta
+    própria:
+
+    - **faixa de atenção** (laranja) acima do mínimo, para avisar ANTES de o
+      estoque ficar crítico;
+    - **liga/desliga do monitoramento**, porque uma Unidade pode ter saldo
+      residual de um EPI que não usa mais — e alerta vermelho permanente sobre
+      isso treina o operador a ignorar alertas.
+
+    Três parâmetros, três tabelas. Alterar mínimo não pode tocar o percentual,
+    e alterar o percentual não pode tocar a habilitação. Numa tabela só, cada
+    UPSERT teria de preservar os campos vizinhos, e o primeiro esquecimento
+    zeraria um parâmetro em silêncio.
+
+    A separação também mantém a regra que vale nas três: **a existência da
+    linha É a configuração local**. Compartilhando a tabela, "linha existe"
+    passaria a significar "percentual OU alerta OU ambos", e a distinção teria
+    de migrar para colunas anuláveis.
+
+    Herança, com uma assimetria deliberada na origem herdada::
+
+        mínimo      epis.minimum_stock              -> company_default
+        percentual  company_stock_attention_config  -> company_default
+        alerta      constante do sistema (true)     -> system_default
+
+    `system_default` porque não existe liga/desliga corporativo: chamar a
+    constante de "padrão da empresa" afirmaria uma decisão administrativa que
+    ninguém tomou. Um toggle corporativo futuro entra como degrau do meio sem
+    quebrar consumidor nenhum.
+    """
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS company_stock_attention_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL UNIQUE,
+            attention_percentage INTEGER NOT NULL DEFAULT 20,
+            updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS unit_epi_attention_percentage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            attention_percentage INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER,
+            updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS unit_epi_stock_alert_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            alert_enabled INTEGER NOT NULL DEFAULT 1,
+            created_by_user_id INTEGER,
+            updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS unit_epi_stock_config_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            parameter TEXT NOT NULL,
+            previous_value TEXT,
+            new_value TEXT NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '',
+            actor_role TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE CASCADE
+        );
+        '''
+    )
+    for statement in (
+        'CREATE INDEX IF NOT EXISTS idx_unit_epi_attention_unit '
+        'ON unit_epi_attention_percentage (company_id, unit_id)',
+        'CREATE INDEX IF NOT EXISTS idx_unit_epi_alert_settings_unit '
+        'ON unit_epi_stock_alert_settings (company_id, unit_id)',
+        'CREATE INDEX IF NOT EXISTS idx_unit_epi_stock_config_audit_scope '
+        'ON unit_epi_stock_config_audit_logs (company_id, unit_id, epi_id, parameter, created_at)',
+    ):
+        try:
+            connection.execute(statement)
+        except Exception as _e:  # noqa: BLE001 - índice é otimização, não requisito
+            structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_stock_reservations(connection) -> None:
     """Reserva de estoque — o elo que faltava entre aprovar e entregar.
 

@@ -27,6 +27,8 @@ from epi_backend.purchase_order_workflow import (
 )
 from core.permissions import PERM_FINANCE_VIEW
 from modules.stock.service import (
+    STATUS_CRITICAL,
+    classify_unit_epi_stock,
     fetch_epi_size_balance,
     get_unit_stock,
     upsert_unit_stock,
@@ -172,12 +174,22 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         d = dict(row)
         d['demand_type'] = 'employee_request'
         demands.append(d)
-    # Estoque baixo = no nível mínimo OU abaixo (ponto de reposição). Usa `<=`
-    # para coincidir com o card "Estoque baixo da unidade" do dashboard
-    # (modules/stock/service.fetch_low_stock_items usa `stock <= minimum`).
-    # Antes era `<` (estrito), o que escondia itens exatamente no mínimo (ex.:
-    # 10/10) das Demandas Pendentes, divergindo do dashboard.
-    stock_clauses = ['ep.active = 1', 'ues.quantity <= ep.minimum_stock']
+    # A REGRA DE MÍNIMO SAIU DO SQL (#271).
+    #
+    # Aqui havia `ues.quantity <= ep.minimum_stock` — saldo da Unidade contra o
+    # mínimo da EMPRESA, copiado para SQL de propósito para "coincidir com o
+    # card do dashboard". A regra errada foi propagada deliberadamente, e o
+    # mínimo não era só o gatilho: ele também dimensiona a reposição
+    # (`quantity_requested` e `suggested_quantity`). Trocar só o operando do
+    # WHERE deixaria a demanda sendo disparada por um número e dimensionada por
+    # outro.
+    #
+    # A consulta agora traz os CANDIDATOS da Unidade e a decisão é do
+    # classificador único, em Python. Um LEFT JOIN com COALESCE resolveria em
+    # SQL, mas reescreveria a cadeia de fallback (unidade -> empresa -> default)
+    # num segundo lugar — exatamente a duplicação que esta fatia elimina.
+    # O custo é aceitável: o recorte já é o catálogo com saldo naquela Unidade.
+    stock_clauses = ['ep.active = 1']
     stock_params = []
     if company_id is not None:
         stock_clauses.insert(0, 'ues.company_id = ?')
@@ -200,8 +212,23 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     ).fetchall()
     for row in stock_rows:
         d = dict(row)
+        # Só `critical` gera reposição automática. `near_minimum` é atenção
+        # preventiva e não vira demanda de compra; `disabled` não gera nada.
+        # Compra MANUAL por usuário autorizado segue independente disto.
+        classificacao = classify_unit_epi_stock(
+            connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']),
+            unit_stock=int(d['current_stock'] or 0),
+        )
+        if classificacao.stock_status != STATUS_CRITICAL:
+            continue
+        # O alvo da reposição é o mínimo EFETIVO daquela Unidade — nunca o
+        # limite da faixa de atenção. A faixa laranja antecipa a atenção; não
+        # aumenta artificialmente o estoque-alvo.
+        d['minimum_stock'] = classificacao.effective_minimum_stock
+        d['minimum_stock_source'] = classificacao.minimum_stock_source
+        d['stock_status'] = classificacao.stock_status
         d['demand_type'] = 'low_stock'
-        d['quantity_requested'] = max(1, int(row['minimum_stock']) - int(row['current_stock']))
+        d['quantity_requested'] = max(1, classificacao.effective_minimum_stock - int(row['current_stock']))
         d['employee_name'] = ''
         d['employee_role'] = ''
         d['employee_sector'] = d.get('employee_sector') or 'Estoque baixo'

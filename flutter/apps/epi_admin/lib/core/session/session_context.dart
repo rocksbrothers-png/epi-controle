@@ -68,7 +68,18 @@ class SessionContext extends Equatable {
     return SessionContext(
       userId: _asInt(user['id'] ?? user['user_id']),
       companyId: _asInt(user['company_id'] ?? normalizedCompany['id']),
-      unitId: _asInt(user['unit_id'] ?? user['operational_unit_id']),
+      // `operational_unit_id` PRIMEIRO, sempre (1.1D-A). É o único campo que o
+      // backend resolve: sai de `actor_operational_unit_id`, já honrando
+      // movimento temporário vigente. `unit_id` é o vínculo cru do colaborador
+      // e não conhece movimentação — lê-lo primeiro devolveria a unidade de
+      // origem de quem está temporariamente em outra, e a sessão passaria a
+      // divergir do recorte que o servidor aplica nas consultas.
+      //
+      // Hoje nenhuma resposta de auth emite `unit_id` (a tabela `users` não tem
+      // essa coluna), então a ordem não muda nada em produção. Está invertida
+      // aqui para que continuar assim não dependa de ninguém lembrar disso ao
+      // acrescentar um campo.
+      unitId: _asInt(user['operational_unit_id'] ?? user['unit_id']),
       role: (user['role'] ?? '').toString(),
       permissions: List<String>.unmodifiable(permissions),
       tenantName: (user['tenant_name'] ??

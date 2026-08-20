@@ -186,6 +186,56 @@ def test_aritmetica_usa_decimal_e_nao_float():
 # Os três estados, com monitoramento ligado
 # ═══════════════════════════════════════════════════════════════════════════
 
+def test_os_valores_do_contrato_sao_literais_travados():
+    """Os quatro status e as três origens são **contrato de API**.
+
+    Flutter e Web Legado vão comparar essas strings. Renomear qualquer uma
+    delas não quebra compilação nenhuma — o cliente simplesmente deixa de
+    reconhecer o estado e cai no ramo padrão, em silêncio.
+
+    Este teste existe porque o resto da suíte compara contra as CONSTANTES, e
+    uma asserção assim é tautológica para renomeações: se o valor muda, a
+    constante muda junto e o teste continua passando. Aqui os literais estão
+    escritos à mão de propósito.
+    """
+    assert STATUS_NORMAL == 'normal'
+    assert STATUS_NEAR_MINIMUM == 'near_minimum'
+    assert STATUS_CRITICAL == 'critical'
+    assert STATUS_DISABLED == 'disabled'
+    assert MINIMUM_SOURCE_COMPANY == 'company_default'
+    assert MINIMUM_SOURCE_UNIT == 'unit_configured'
+    assert ATTENTION_SOURCE_COMPANY == 'company_default'
+    assert ATTENTION_SOURCE_UNIT == 'unit_configured'
+    assert ALERT_SOURCE_UNIT == 'unit_configured'
+    # A distinção que a nomenclatura existe para preservar: a origem herdada do
+    # ALERTA não é `company_default`, porque não existe liga/desliga
+    # corporativo. Chamá-la assim afirmaria uma decisão administrativa que
+    # ninguém tomou.
+    assert ALERT_SOURCE_SYSTEM == 'system_default'
+    assert ALERT_SOURCE_SYSTEM != MINIMUM_SOURCE_COMPANY
+
+
+def test_estado_totalmente_herdado_reporta_as_tres_origens():
+    """Sem nenhuma configuração local, a classificação diz de onde veio cada
+    parâmetro — e as origens do mínimo e do percentual NÃO são a do alerta.
+
+    `company_default` nos dois primeiros porque existe mesmo configuração da
+    empresa por trás (`epis.minimum_stock` e `company_stock_attention_config`).
+    `system_default` no alerta porque não existe liga/desliga corporativo: a
+    origem herdada ali é constante do sistema, não decisão administrativa.
+    """
+    with _conexao() as conn:
+        _saldo(conn, 10, 30)
+        c = classify_unit_epi_stock(conn, 1, 10, 7)
+    assert c.minimum_stock_source == MINIMUM_SOURCE_COMPANY
+    assert c.attention_percentage_source == ATTENTION_SOURCE_COMPANY
+    assert c.alert_source == ALERT_SOURCE_SYSTEM, (
+        'a origem herdada do alerta virou `company_default` e passou a afirmar '
+        'uma decisão da empresa que ninguém tomou'
+    )
+    assert c.stock_alert_enabled is True
+
+
 def test_habilitado_e_saldo_critico():
     with _conexao() as conn:
         _saldo(conn, 10, 20)

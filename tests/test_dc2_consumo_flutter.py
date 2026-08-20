@@ -29,12 +29,18 @@ NEW_DELIVERY = APP / 'features' / 'deliveries' / 'new_delivery_screen.dart'
 
 
 def _fontes_dart():
-    """Todo o Dart de produção do monorepo — sem testes, sem gerado."""
+    """Todo o Dart de produção do monorepo — sem testes, sem gerado.
+
+    `integration_test/` também sai: é código de teste, e o diretório não se
+    chama exatamente `test`, então precisa ser excluído por nome.
+    """
     for caminho in FLUTTER.rglob('*.dart'):
         partes = caminho.parts
-        if 'test' in partes or 'generated' in partes:
+        if 'test' in partes or 'integration_test' in partes:
             continue
-        if caminho.name.endswith('.g.dart'):
+        if 'generated' in partes:
+            continue
+        if caminho.name.endswith(('.g.dart', '_test.dart')):
             continue
         yield caminho
 

@@ -15,9 +15,10 @@ from modules.dashboard.service import build_dashboard_summary
 def handle_get_dashboard_summary(handler, parsed, payload, match):
     """Resumo do Dashboard com escopo, KPIs e fontes do filtro.
 
-    Rota NOVA. Não substitui nada nesta fatia: `/api/bootstrap` continua
-    emitindo tudo o que emitia, e nem o `DashboardCubit` nem o `dashboard.js`
-    foram migrados — a troca dos clientes é a 1.1D-C.
+    O `DashboardCubit` (Flutter) consome esta rota desde a fatia 1.1D-C2. O
+    `dashboard.js` (Web Legado) ainda não — é a 1.1D-C3 — e por isso
+    `/api/bootstrap` continua emitindo tudo o que emitia. Remover campo de lá é
+    a 1.1E, depois que o último cliente sair.
 
     Autorização por `dashboard:view`, a mesma permissão que o bootstrap já
     exige para montar o painel.

@@ -351,12 +351,28 @@ def _setores(colaboradores, unidades_no_escopo):
 
 
 def _rotulo_cnpj(cnpj):
-    """Rótulo exibível de um CNPJ, na ordem em que o usuário o reconhece."""
-    for chave in ('trade_name', 'legal_name', 'name', 'cnpj'):
-        rotulo = str(cnpj.get(chave) or '').strip()
-        if rotulo:
-            return rotulo
-    return ''
+    """Rótulo exibível de um CNPJ: `Nome Fantasia — 12.345.678/0001-90`.
+
+    O nome sozinho não basta. Empresas do mesmo grupo costumam ter nome
+    fantasia igual ou quase igual entre matriz e filiais, e o filtro do painel
+    ficaria com duas opções indistinguíveis — o usuário escolheria uma das duas
+    sem saber qual. O número é o que desambigua.
+
+    Sem nome fantasia vale a razão social. Sem CNPJ, só o nome. Sem nome, só o
+    número. Este rótulo é do SERVIDOR: desde a fatia 1.1D-C2 `filters` é dele, e
+    recompor o texto no cliente traria de volta duas versões da mesma regra.
+    """
+    nome = ''
+    for chave in ('trade_name', 'legal_name', 'name'):
+        nome = str(cnpj.get(chave) or '').strip()
+        if nome:
+            break
+    numero = str(cnpj.get('cnpj') or '').strip()
+    if not nome:
+        return numero
+    if not numero:
+        return nome
+    return f'{nome} — {numero}'
 
 
 def _conformidade(connection, actor, escopo, compute_stock_compliance):

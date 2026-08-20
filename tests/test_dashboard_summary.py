@@ -26,7 +26,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from modules.dashboard.service import build_dashboard_summary
+from modules.dashboard.service import _rotulo_cnpj, build_dashboard_summary
 from modules.stock.service import is_stock_critical
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -533,7 +533,12 @@ def test_unidades_trazem_o_cnpj_para_a_cascata():
 def test_cnpj_sem_nome_fantasia_cai_na_razao_social():
     with _conexao() as conn:
         cnpjs = _resumo(conn, GERAL)['filters']['legal_entities']
-    assert cnpjs == [{'id': 4, 'name': 'Skandi'}, {'id': 5, 'name': 'Norskan SA'}]
+    # Rótulo pronto do servidor: nome + número. Sem o número, dois CNPJs do
+    # mesmo grupo apareceriam idênticos no filtro.
+    assert cnpjs == [
+        {'id': 4, 'name': 'Skandi — 00.000.000/0001-00'},
+        {'id': 5, 'name': 'Norskan SA — 00.000.000/0002-00'},
+    ]
 
 
 def test_filtrar_por_cnpj_recorta_as_unidades_do_cnpj():
@@ -674,3 +679,99 @@ def test_alerts_mantem_a_mesma_fiacao_do_bootstrap():
     assert 'fetch_low_stock_items' in corpo
     assert 'resolve_unit_minimum_stock' not in corpo, \
         'a regra de alerts foi corrigida nesta fatia; ela pertence à issue de dívida'
+
+
+# ── rótulo do CNPJ no filtro ─────────────────────────────────────────────────
+#
+# Desde a 1.1D-C2 o `filters` é do servidor: o cliente não recompõe mais o
+# texto. Se o rótulo perder o número, o painel fica com opções indistinguíveis
+# e ninguém percebe — a lista continua com o mesmo tamanho.
+
+def test_o_rotulo_traz_nome_e_numero():
+    rotulo = _rotulo_cnpj({
+        'trade_name': 'ACME Matriz',
+        'legal_name': 'ACME SA',
+        'cnpj': '11.222.333/0001-81',
+    })
+    assert rotulo == 'ACME Matriz — 11.222.333/0001-81'
+
+
+def test_cnpjs_de_nome_identico_continuam_distinguiveis():
+    """O caso que motivou a mudança: matriz e filial com o mesmo nome."""
+    matriz = _rotulo_cnpj({'trade_name': 'ACME', 'cnpj': '11.222.333/0001-81'})
+    filial = _rotulo_cnpj({'trade_name': 'ACME', 'cnpj': '45.723.174/0001-10'})
+    assert matriz != filial
+    assert '11.222.333/0001-81' in matriz
+    assert '45.723.174/0001-10' in filial
+
+
+def test_cnpjs_de_nome_semelhante_tambem():
+    a = _rotulo_cnpj({'trade_name': 'ACME Filial', 'cnpj': '45.723.174/0001-10'})
+    b = _rotulo_cnpj({'trade_name': 'ACME Filial ', 'cnpj': '45.723.174/0002-01'})
+    assert a != b
+
+
+def test_sem_nome_fantasia_usa_a_razao_social():
+    assert _rotulo_cnpj({
+        'legal_name': 'ACME Filial RJ LTDA',
+        'cnpj': '45.723.174/0001-10',
+    }) == 'ACME Filial RJ LTDA — 45.723.174/0001-10'
+
+
+def test_sem_cnpj_mostra_so_o_nome():
+    # Janela de cadastro incompleto: melhor um nome do que um travessão solto.
+    assert _rotulo_cnpj({'trade_name': 'ACME Matriz'}) == 'ACME Matriz'
+    assert _rotulo_cnpj({'trade_name': 'ACME Matriz', 'cnpj': '  '}) == 'ACME Matriz'
+
+
+def test_sem_nome_mostra_so_o_numero():
+    assert _rotulo_cnpj({'cnpj': '11.222.333/0001-81'}) == '11.222.333/0001-81'
+
+
+def test_registro_vazio_nao_quebra():
+    assert _rotulo_cnpj({}) == ''
+
+
+def test_o_resumo_nao_devolve_dois_cnpjs_indistinguiveis():
+    """O contrato atravessando o resumo inteiro, não só a função de rótulo.
+
+    Matriz e filial com o MESMO nome fantasia — o caso real de grupos
+    empresariais. Sem o número, o filtro ofereceria duas opções iguais e o
+    usuário escolheria uma sem saber qual.
+    """
+    homonimos = [
+        {'id': 4, 'trade_name': 'ACME', 'cnpj': '11.222.333/0001-81'},
+        {'id': 5, 'trade_name': 'ACME', 'cnpj': '45.723.174/0001-10'},
+    ]
+    with _conexao() as conn:
+        resumo = build_dashboard_summary(
+            conn, GERAL,
+            requested_unit_id=None,
+            requested_legal_entity_id=None,
+            requested_sector=None,
+            fetch_units=lambda c, a: list(UNIDADES),
+            fetch_employees=lambda c, a: list(COLABORADORES),
+            fetch_epis=lambda c, a, u: list(EPIS),
+            fetch_deliveries=lambda c, a: list(ENTREGAS),
+            fetch_legal_entities=lambda c, a: list(homonimos),
+            compute_alerts=lambda c, a: [],
+            compute_stock_compliance=lambda c, cid, uid: {'summary': {}},
+            count_pending_purchases=lambda: 0,
+        )
+
+    rotulos = [c['name'] for c in resumo['filters']['legal_entities']]
+    assert len(rotulos) == len(set(rotulos)), (
+        f'dois CNPJs de mesmo nome ficaram indistinguíveis no filtro: {rotulos}'
+    )
+    assert rotulos == [
+        'ACME — 11.222.333/0001-81',
+        'ACME — 45.723.174/0001-10',
+    ]
+
+
+def test_o_cliente_nao_recompoe_o_rotulo():
+    """Compor no Dart traria de volta duas versões da mesma regra."""
+    tela = (RAIZ / 'flutter/apps/epi_admin/lib/features/dashboard'
+            '/dashboard_screen.dart').read_text(encoding='utf-8')
+    for campo in ('trade_name', 'legal_name', "['cnpj']"):
+        assert campo not in tela, f'a tela voltou a compor o rótulo com {campo}'

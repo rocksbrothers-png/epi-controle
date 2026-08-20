@@ -115,10 +115,11 @@ Map<String, dynamic> _resumoDoDashboard(Uri uri) {
       'pending_purchases': 0,
     },
     'filters': {
-      // Rótulo já composto pelo servidor (`_rotulo_cnpj`): nome fantasia,
-      // razão social ou o próprio CNPJ, nessa ordem.
+      // Rótulo já composto pelo servidor (`_rotulo_cnpj`): nome + número.
+      // O número desambigua CNPJs de nome parecido dentro do mesmo grupo.
       'legal_entities': [
-        for (final e in _legalEntities) {'id': e['id'], 'name': e['trade_name']},
+        for (final e in _legalEntities)
+          {'id': e['id'], 'name': '${e['trade_name']} — ${e['cnpj']}'},
       ],
       'units': [
         for (final u in _units)
@@ -294,10 +295,10 @@ void main() {
       // Abre o dropdown de CNPJ (o primeiro int? da barra) e escolhe a filial.
       await tester.tap(find.byType(DropdownButtonFormField<int?>).first);
       await tester.pumpAndSettle();
-      // O rótulo vem PRONTO do servidor (`_rotulo_cnpj`). Antes o cliente o
-      // compunha como "nome — CNPJ"; compor rótulo virou responsabilidade de
-      // quem conhece os dados.
-      await tester.tap(find.text('ACME Filial RJ').last);
+      // O rótulo vem PRONTO do servidor (`_rotulo_cnpj`), com o número junto.
+      // Compor o texto virou responsabilidade de quem conhece os dados; o
+      // cliente só exibe.
+      await tester.tap(find.text('ACME Filial RJ — $_cnpjFilial').last);
       await tester.pumpAndSettle();
 
       // A escolha vira uma CONSULTA ao servidor, com o CNPJ na query e sem
@@ -332,7 +333,7 @@ void main() {
       // servidor contou — o cliente não recontou EPI nenhum.
       await tester.tap(find.byType(DropdownButtonFormField<int?>).first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('ACME Filial RJ').last);
+      await tester.tap(find.text('ACME Filial RJ — $_cnpjFilial').last);
       await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<int?>).last);
       await tester.pumpAndSettle();

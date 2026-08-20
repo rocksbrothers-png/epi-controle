@@ -139,7 +139,7 @@ void main() {
           body: EpiStockBadge(status: EpiStockStatus.disabled),
         ),
       ));
-      expect(find.text('Alertas desativados'), findsOneWidget);
+      expect(find.text('Alerta desabilitado'), findsOneWidget);
       expect(find.text('Normal'), findsNothing);
     });
   });

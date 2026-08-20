@@ -44,7 +44,7 @@ class EpiStockBadge extends StatelessWidget {
         EpiStockStatus.normal => 'Normal',
         EpiStockStatus.nearMinimum => 'Próximo do mínimo',
         EpiStockStatus.critical => 'Crítico',
-        EpiStockStatus.disabled => 'Alertas desativados',
+        EpiStockStatus.disabled => 'Alerta desabilitado',
       };
 
   /// Cor de destaque do estado. Exposta porque a mesma decisão pinta o número

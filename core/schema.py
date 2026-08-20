@@ -3111,6 +3111,95 @@ def ensure_outsourced_company_update_requests(connection) -> None:
         structured_log('warning', 'db.col_skip', error=str(_e))
 
 
+def ensure_unit_epi_minimum_stock(connection) -> None:
+    """Estoque mínimo individual **por Unidade** (fatia 1.1D-B0).
+
+    ``epis.minimum_stock`` é corporativo — chave ``epi_id``, sem ``unit_id``.
+    Mas a única rota que o edita, ``POST /api/stock/minimum``, é exclusiva de
+    Administrador Local e Gestor de EPI (os dois perfis travados em UMA
+    Unidade) e valida a visibilidade do EPI *naquela* Unidade antes de gravar
+    na EMPRESA INTEIRA. O defeito não é de leitura, é de escrita: o Gestor da
+    Unidade A sobrescreve, em silêncio, o mínimo das Unidades B e C.
+
+    A mesma lacuna produz a criticidade errada — saldo de cada Unidade contra
+    o mínimo da empresa marca como crítica toda Unidade de uma empresa cujo
+    estoque esteja distribuído.
+
+    O modelo passa a ser::
+
+        estoque corporativo     = SOMA dos saldos das Unidades
+        mínimo corporativo      = APENAS padrão inicial/herdado
+        estoque da Unidade      = unit_epi_stock.quantity
+        mínimo da Unidade       = unit_epi_minimum_stock.minimum_stock
+        criticidade operacional = saldo da Unidade <= mínimo DAQUELA Unidade
+
+    **Sem backfill.** A existência da linha É a configuração da Unidade;
+    criá-las em massa marcaria como ``unit_configured`` quem nunca configurou
+    nada. E não é preciso: o fallback (ver ``resolve_unit_minimum_stock``) já
+    devolve ``epis.minimum_stock`` com ``source='company_default'``, então o
+    número efetivo continua idêntico ao de hoje — com a verdade histórica
+    intacta.
+
+    Tabela separada de ``unit_epi_stock``, e não uma coluna nela, por três
+    motivos: o mínimo precisa existir **antes** de haver saldo (Unidade nova,
+    EPI novo — como coluna, seria preciso inventar uma linha ``quantity = 0``
+    só para hospedá-lo, e aí zero passaria a significar duas coisas); saldo é
+    reescrito a cada movimentação enquanto o parâmetro muda raramente; e
+    limpar saldo não pode apagar configuração.
+    """
+    connection.executescript(
+        '''
+        CREATE TABLE IF NOT EXISTS unit_epi_minimum_stock (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            minimum_stock INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER,
+            updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id),
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS unit_epi_minimum_stock_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            action TEXT NOT NULL DEFAULT 'set',
+            previous_minimum_stock INTEGER,
+            new_minimum_stock INTEGER NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '',
+            actor_role TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+            FOREIGN KEY (epi_id) REFERENCES epis(id) ON DELETE CASCADE
+        );
+        '''
+    )
+    for statement in (
+        # A consulta quente é "qual o mínimo de cada EPI nesta Unidade",
+        # feita a cada listagem de estoque.
+        'CREATE INDEX IF NOT EXISTS idx_unit_epi_minimum_unit '
+        'ON unit_epi_minimum_stock (company_id, unit_id)',
+        'CREATE INDEX IF NOT EXISTS idx_unit_epi_minimum_audit_scope '
+        'ON unit_epi_minimum_stock_audit_logs (company_id, unit_id, epi_id, created_at)',
+    ):
+        try:
+            connection.execute(statement)
+        except Exception as _e:  # noqa: BLE001 - índice é otimização, não requisito
+            structured_log('warning', 'db.col_skip', error=str(_e))
+
+
 def ensure_stock_reservations(connection) -> None:
     """Reserva de estoque — o elo que faltava entre aprovar e entregar.
 

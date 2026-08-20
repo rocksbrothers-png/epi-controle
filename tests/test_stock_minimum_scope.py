@@ -73,6 +73,27 @@ def _conn():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             unit_id INTEGER NOT NULL, joint_venture_name TEXT, started_at TEXT, ended_at TEXT
         );
+        -- 1.1D-B0: o mínimo passou a ser gravado por Unidade, não em `epis`.
+        -- O escopo de VISIBILIDADE testado aqui não muda; só o destino da
+        -- escrita, que agora é isolado por (company_id, unit_id, epi_id).
+        CREATE TABLE unit_epi_minimum_stock (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            minimum_stock INTEGER NOT NULL DEFAULT 0,
+            created_by_user_id INTEGER, updated_by_user_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, unit_id, epi_id)
+        );
+        CREATE TABLE unit_epi_minimum_stock_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL, unit_id INTEGER NOT NULL, epi_id INTEGER NOT NULL,
+            action TEXT NOT NULL DEFAULT 'set',
+            previous_minimum_stock INTEGER, new_minimum_stock INTEGER NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER, actor_name TEXT NOT NULL DEFAULT '',
+            actor_role TEXT NOT NULL DEFAULT '', ip_address TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+        );
         """
     )
     return conn

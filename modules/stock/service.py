@@ -4,6 +4,7 @@ import json
 import re
 import unicodedata
 from datetime import datetime, timezone
+from typing import NamedTuple
 
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.db import row_to_dict
@@ -237,17 +238,136 @@ def resolve_minimum_stock(value):
 
 
 def is_stock_critical(stock, minimum_stock):
-    """Regra ÚNICA de criticidade de estoque.
+    """Comparação ÚNICA de criticidade — saldo contra mínimo do MESMO escopo.
 
-    Extraída para que `/api/stock/low` e `/api/stock/epis` não possam divergir:
-    duas cópias da mesma comparação divergem no primeiro ajuste feito num lado
-    só, e o operador passaria a ver alertas diferentes conforme a tela.
+    Extraída para que os pontos que a usam não possam divergir: duas cópias da
+    mesma comparação divergem no primeiro ajuste feito num lado só, e o
+    operador passaria a ver alertas diferentes conforme a tela.
 
-    Compara grandezas do MESMO escopo. Quem chama é responsável por passar
-    saldo corporativo com mínimo corporativo — nunca saldo de uma unidade
-    contra o mínimo da empresa.
+    **Quem chama escolhe o escopo, e escolher errado é o defeito clássico
+    aqui.** Existem dois usos legítimos, e eles não se substituem:
+
+    - `saldo da Unidade × mínimo DAQUELA Unidade` → criticidade OPERACIONAL,
+      a que o operador vê. Use `resolve_unit_minimum_stock` para obter o
+      mínimo — nunca `epis.minimum_stock` direto.
+    - `saldo corporativo × epis.minimum_stock` → leitura corporativa do
+      catálogo (`is_company_stock_critical`), mantida por
+      retrocompatibilidade.
+
+    Cruzar os dois — saldo de UMA Unidade contra o mínimo da EMPRESA — marca
+    como crítica toda Unidade de uma empresa cujo estoque esteja distribuído:
+    mínimo 100 com 30/30/40 em três Unidades gera três alertas falsos. Esse
+    cruzamento ainda existe em `/api/stock/low`, nas demandas de compra e em
+    `replenishment`, e está registrado como dívida a corrigir.
     """
     return int(stock or 0) <= resolve_minimum_stock(minimum_stock)
+
+
+# ── Estoque mínimo POR UNIDADE (fatia 1.1D-B0) ───────────────────────────────
+
+MINIMUM_SOURCE_UNIT = 'unit_configured'
+MINIMUM_SOURCE_COMPANY = 'company_default'
+
+
+class UnitMinimum(NamedTuple):
+    """Mínimo efetivo de um EPI numa Unidade, e de onde ele veio.
+
+    `source` existe para que o cliente não precise deduzir a origem comparando
+    números: `unit_configured` significa que alguém deliberadamente definiu
+    aquele mínimo para aquela Unidade; `company_default` significa que a
+    Unidade ainda usa o padrão da empresa. Sem o campo, um mínimo herdado de
+    30 e um configurado de 30 seriam indistinguíveis — e a diferença importa
+    para saber se a Unidade já foi parametrizada.
+    """
+
+    value: int
+    source: str
+
+
+def resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id):
+    """Mínimo efetivo do par (Unidade, EPI) — ponto ÚNICO de resolução.
+
+    Ordem: configuração da Unidade → padrão da empresa (`epis.minimum_stock`)
+    → `DEFAULT_MINIMUM_STOCK`.
+
+    **Testa a EXISTÊNCIA da linha, nunca a truthiness do valor.** `0` é
+    configuração válida ("só me avise ao zerar"), e é justamente o valor que
+    um `if not minimo:` trataria como ausente — o mesmo antipadrão que a fatia
+    1.1B tirou do saldo de estoque. Uma Unidade que configurou 0 receberia o
+    padrão da empresa de volta e voltaria a ser alertada contra a própria
+    decisão.
+
+    Não é chamada quando não há Unidade resolvida: nesse caso a API devolve
+    `null`, e não um mínimo qualquer. "Sem Unidade" não é "sem mínimo".
+    """
+    row = connection.execute(
+        'SELECT minimum_stock FROM unit_epi_minimum_stock '
+        'WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+        (int(company_id), int(unit_id), int(epi_id)),
+    ).fetchone()
+    if row is not None:
+        return UnitMinimum(int(row_to_dict(row)['minimum_stock'] or 0), MINIMUM_SOURCE_UNIT)
+    epi_row = connection.execute(
+        'SELECT minimum_stock FROM epis WHERE id = ?', (int(epi_id),)
+    ).fetchone()
+    padrao = row_to_dict(epi_row).get('minimum_stock') if epi_row is not None else None
+    return UnitMinimum(resolve_minimum_stock(padrao), MINIMUM_SOURCE_COMPANY)
+
+
+def set_unit_epi_minimum_stock(
+    connection, company_id, unit_id, epi_id, minimum_stock, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Grava o mínimo DAQUELA Unidade e audita a mudança.
+
+    Substitui `set_epi_minimum_stock`, que fazia `UPDATE epis` — ou seja, o
+    Gestor de EPI de uma Unidade reescrevia, em silêncio, o parâmetro de todas
+    as outras Unidades da empresa. A escrita agora é isolada pela chave
+    `(company_id, unit_id, epi_id)`.
+
+    A auditoria registra o estado ANTERIOR incluindo a origem, porque a
+    transição que mais interessa é `company_default → unit_configured`: é o
+    momento em que a Unidade deixa de herdar e passa a decidir.
+    """
+    anterior = resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id)
+    previous_minimum = anterior.value if anterior.source == MINIMUM_SOURCE_UNIT else None
+    novo = max(0, int(minimum_stock or 0))
+    agora = datetime.now(UTC).isoformat()
+
+    if anterior.source == MINIMUM_SOURCE_UNIT:
+        connection.execute(
+            'UPDATE unit_epi_minimum_stock SET minimum_stock = ?, updated_at = ?, '
+            'updated_by_user_id = ? WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+            (novo, agora, _actor_id(actor), int(company_id), int(unit_id), int(epi_id)),
+        )
+    else:
+        connection.execute(
+            'INSERT INTO unit_epi_minimum_stock '
+            '(company_id, unit_id, epi_id, minimum_stock, created_by_user_id, '
+            ' updated_by_user_id, created_at, updated_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (int(company_id), int(unit_id), int(epi_id), novo,
+             _actor_id(actor), _actor_id(actor), agora, agora),
+        )
+
+    connection.execute(
+        'INSERT INTO unit_epi_minimum_stock_audit_logs '
+        '(company_id, unit_id, epi_id, action, previous_minimum_stock, '
+        ' new_minimum_stock, previous_source, actor_user_id, actor_name, '
+        ' actor_role, ip_address, user_agent, created_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (int(company_id), int(unit_id), int(epi_id), 'set', previous_minimum,
+         novo, anterior.source, _actor_id(actor),
+         str((actor or {}).get('full_name') or (actor or {}).get('name') or ''),
+         str((actor or {}).get('role') or ''),
+         str(ip_address or ''), str(user_agent or ''), agora),
+    )
+    return UnitMinimum(novo, MINIMUM_SOURCE_UNIT)
+
+
+def _actor_id(actor):
+    bruto = (actor or {}).get('id')
+    return int(bruto) if bruto else None
 
 
 def fetch_low_stock_items(
@@ -494,8 +614,17 @@ def fetch_stock_movements(connection, clauses, params):
     ).fetchall()
 
 
-def set_epi_minimum_stock(connection, epi_id, minimum_stock):
-    connection.execute('UPDATE epis SET minimum_stock = ? WHERE id = ?', (minimum_stock, int(epi_id)))
+# `set_epi_minimum_stock` foi REMOVIDA na fatia 1.1D-B0. Fazia
+# `UPDATE epis SET minimum_stock`, e seu único chamador era
+# `POST /api/stock/minimum` — uma rota exclusiva de perfis travados em UMA
+# Unidade. Escrever a partir dali no valor da empresa era o defeito: o Gestor
+# de uma Unidade reescrevia, em silêncio, o parâmetro de todas as outras.
+#
+# Não fica como função morta de propósito: manter disponível uma função cuja
+# semântica é exatamente a escrita proibida convida a reintroduzir o defeito
+# no próximo ponto que precise "salvar o mínimo". Use
+# `set_unit_epi_minimum_stock`. Se um dia houver tela para editar o PADRÃO da
+# empresa, ela nasce com nome e permissão próprios — não reaproveitando esta.
 
 
 # ── Estoque Bloqueado (Fase 4/HSE) ───────────────────────────────────────────

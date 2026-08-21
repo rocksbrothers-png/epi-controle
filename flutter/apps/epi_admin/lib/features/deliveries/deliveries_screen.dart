@@ -48,24 +48,28 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> {
       MaterialPageRoute(
         builder: (_) => NewDeliveryScreen(
           employees: bootstrap.$1,
-          epis: bootstrap.$2,
-          companyId: bootstrap.$3,
+          companyId: bootstrap.$2,
         ),
       ),
     );
     if (result == true) _loadDeliveries();
   }
 
-  Future<(List<Employee>, List<Epi>, int)> _loadBootstrap() async {
+  /// Colaboradores e empresa para iniciar a entrega.
+  ///
+  /// Os EPIs saíram daqui (#278): o catálogo do bootstrap não sabe de Unidade,
+  /// e a entrega precisa do estoque da Unidade de quem recebe. `Employee.unitId`
+  /// já é `current_unit_id`, resolvido pelo backend com movimentação temporária
+  /// vigente — é ele que abre o passo seguinte.
+  Future<(List<Employee>, int)> _loadBootstrap() async {
     try {
       final b = await ApiClient.auth.bootstrap();
       final employees = b.employees.map(Employee.fromJson).toList();
-      final epis = b.epis.map(Epi.fromJson).toList();
       final companyId =
           b.units.isNotEmpty ? (b.units.first['company_id'] as int?) ?? 0 : 0;
-      return (employees, epis, companyId);
+      return (employees, companyId);
     } on Exception {
-      return (<Employee>[], <Epi>[], 0);
+      return (<Employee>[], 0);
     }
   }
 

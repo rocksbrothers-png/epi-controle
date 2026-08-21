@@ -160,6 +160,12 @@ class _StockBodyState extends State<_StockBody> {
                     separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
                     itemBuilder: (_, i) => _StockTile(
                       epi: items[i],
+                      // Movimentação exige Unidade EXPLÍCITA (#278). Aqui não
+                      // há colaborador determinando o escopo como na entrega:
+                      // sem Unidade resolvida, o servidor recusaria — e a
+                      // visão corporativa não serve de substituto para uma
+                      // operação física.
+                      unitResolved: state.unitId != 0,
                       onMove: (delta) => context
                           .read<StockCubit>()
                           .moveStock(epiId: items[i].id, delta: delta),
@@ -395,9 +401,17 @@ class _ComplianceFilters extends StatelessWidget {
 }
 
 class _StockTile extends StatelessWidget {
-  const _StockTile({required this.epi, required this.onMove});
+  const _StockTile({
+    required this.epi,
+    required this.onMove,
+    required this.unitResolved,
+  });
   final Epi epi;
   final void Function(int delta) onMove;
+
+  /// Se o servidor resolveu uma Unidade para este ator. Sem ela a movimentação
+  /// não abre: entrada e saída incidem sobre o estoque de UMA Unidade.
+  final bool unitResolved;
 
   /// Saldo da UNIDADE — esta é a tela operacional. `null` só ocorre para perfil
   /// sem unidade resolvida; nesse caso não há saldo local a exibir.
@@ -422,6 +436,9 @@ class _StockTile extends StatelessWidget {
     final progresso = epiUnitStockGauge(epi);
     return InkWell(
       onTap: () => _showMoveSheet(context),
+      // `enableFeedback` desligado sem Unidade evita o toque "responder" a uma
+      // ação que não vai acontecer.
+      enableFeedback: unitResolved,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: EpiSpacing.lg,
@@ -547,6 +564,17 @@ class _StockTile extends StatelessWidget {
   }
 
   void _showMoveSheet(BuildContext context) {
+    if (!unitResolved) {
+      // Perfil livre que ainda não escolheu Unidade. Dizer isso agora é melhor
+      // do que abrir a folha, deixar digitar e recusar no envio.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).stockUnitRequiredToMove),
+          backgroundColor: EpiColors.warning,
+        ),
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

@@ -113,6 +113,93 @@ class StockApi {
         .toList();
   }
 
+  // ── Escopo por Unidade do COLABORADOR (fluxo de entrega, #278) ───────────
+  //
+  // Os três métodos abaixo mandam `unit_id`, e os de cima não. A diferença não
+  // é inconsistência: é de onde a Unidade vem em cada fluxo.
+  //
+  // Na tela de estoque, a Unidade é a do ATOR e o servidor a deriva sozinho —
+  // mandá-la de lá moveria autorização para a tela. Na entrega, a Unidade é a
+  // do COLABORADOR que vai receber o EPI (`current_unit_id`, já resolvido pelo
+  // backend com movimentação temporária vigente). Ela pode ser diferente da do
+  // ator — um Administrador Geral entrega para alguém de qualquer Unidade da
+  // empresa —, então precisa ser transportada.
+  //
+  // Transportar não é decidir: `resolve_unit_scope` valida a Unidade contra a
+  // empresa do ator e, para perfil travado, ignora o pedido e devolve a própria
+  // Unidade. E a entrega revalida tudo de novo antes de baixar o item.
+
+  /// EPIs com saldo NA UNIDADE informada, para o passo de EPI da entrega.
+  ///
+  /// `unitStockQuantity` vem preenchido porque a Unidade está resolvida. O
+  /// saldo corporativo continua em campo separado e **não governa nada** aqui.
+  Future<List<Epi>> fetchUnitStockEpis({
+    required int actorUserId,
+    required int unitId,
+    String? name,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/epis',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        if (name != null && name.isNotEmpty) 'name': name,
+      },
+    );
+    final items = (res.data?['items'] as List<dynamic>?) ?? const [];
+    return items.map((e) => Epi.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Itens físicos `in_stock` de um EPI NA UNIDADE informada, em ordem FEFO.
+  ///
+  /// É a lista de onde sai o `stock_item_id` REAL da entrega. Sem ela o cliente
+  /// não tem como nomear a unidade etiquetada que está sendo entregue — e o
+  /// backend, que exige uma linha de `epi_stock_items`, recusa.
+  Future<List<StockItem>> fetchUnitAvailableItems({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/available-items',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+      },
+    );
+    final items = (res.data?['items'] as List<dynamic>?) ?? const [];
+    return items
+        .map((e) => StockItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Resolve um QR lido no item físico correspondente DENTRO da Unidade.
+  ///
+  /// O backend só encontra o item se ele estiver naquela Unidade e naquela
+  /// empresa (`lookup_stock_item_by_qr`), então um QR de outra Unidade não
+  /// resolve — a recusa vem de lá, não de uma checagem da tela.
+  /// GET /api/stock/lookup-qr.
+  Future<StockItem> lookupQr({
+    required int actorUserId,
+    required int unitId,
+    required String qrCode,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/lookup-qr',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'qr_code': qrCode,
+      },
+    );
+    final item = res.data?['stock_item'];
+    if (item is! Map<String, dynamic>) {
+      throw StateError('QR sem item correspondente no estoque da Unidade.');
+    }
+    return StockItem.fromJson(item);
+  }
+
   /// Itens bloqueados da empresa do ator (vencidos, aguardando descarte ou
   /// devolução, em análise, reprovados, de EPI arquivado).
   ///

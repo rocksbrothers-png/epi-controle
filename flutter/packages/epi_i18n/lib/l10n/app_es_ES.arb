@@ -640,5 +640,21 @@
   "stockStatusUnknown": "Estado no reconocido",
   "stockUnitBalanceSuffix": "en la unidad",
   "stockCompanyBalanceLabel": "empresa",
-  "stockMinimumShort": "mín"
+  "stockMinimumShort": "mín",
+  "deliveryStepItem": "Ítem",
+  "deliveryItemTitle": "Seleccione la unidad etiquetada",
+  "deliveryItemEmpty": "Ningún ítem disponible en esta Unidad.",
+  "deliveryItemScan": "Leer QR del ítem",
+  "deliveryUnitStockAvailable": "Stock en la Unidad: {qty}",
+  "@deliveryUnitStockAvailable": {
+    "description": "Saldo do EPI na Unidade do colaborador que vai receber.",
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryEmployeeWithoutUnit": "Colaborador sin Unidad operativa: no se puede registrar la entrega.",
+  "deliveryQrOtherEpi": "El código leído pertenece a otro EPP.",
+  "stockUnitRequiredToMove": "Seleccione una Unidad para mover el stock."
 }

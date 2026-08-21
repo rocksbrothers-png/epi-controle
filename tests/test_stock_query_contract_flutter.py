@@ -85,12 +85,36 @@ def test_o_cliente_nao_envia_company_id_nessas_rotas():
     # O backend só aceita `company_id` de master_admin e ignora o dos demais
     # perfis. Mandar da UI não mudaria o resultado, mas passaria a ideia de que
     # o cliente escolhe o tenant — e a próxima pessoa a mexer confiaria nisso.
+    #
+    # O recorte é dos métodos DERIVADOS DO ATOR. Desde a #278 existem irmãos
+    # explicitamente por Unidade (`fetchUnit*`, `lookupQr`), usados pela
+    # entrega: lá a Unidade é a do COLABORADOR que recebe, um fato do servidor
+    # (`current_unit_id`) que o cliente transporta e que `resolve_unit_scope`
+    # revalida contra a empresa do ator. Transportar não é escolher.
     api = _sem_comentarios(STOCK_API.read_text(encoding='utf-8'))
     inicio = api.index('fetchAvailableItems')
-    fim = api.index('recordMovement')
+    fim = api.index('fetchUnitStockEpis')
     trecho = api[inicio:fim]
     assert 'company_id' not in trecho, 'company_id não pode sair da UI nas rotas de consulta'
     assert 'unit_id' not in trecho, 'unit_id é derivado do ator no servidor'
+
+
+def test_os_metodos_por_unidade_sao_nomeados_como_tal():
+    """A distinção precisa estar no NOME, não só no comentário.
+
+    Dois métodos com a mesma cara e escopos diferentes é como o saldo
+    corporativo entrou numa tela de Unidade.
+    """
+    api = _sem_comentarios(STOCK_API.read_text(encoding='utf-8'))
+    # CADA método por Unidade tem de mandar `unit_id`. Verificar o arquivo
+    # inteiro deixaria passar o caso em que um deles perde o campo e continua
+    # herdando o escopo do ator — silenciosamente, e sem erro nenhum.
+    ordem = ['fetchUnitStockEpis', 'fetchUnitAvailableItems', 'lookupQr']
+    limites = [api.index(m) for m in ordem] + [len(api)]
+    for i, metodo in enumerate(ordem):
+        corpo = api[limites[i]:limites[i + 1]]
+        assert "'unit_id': unitId" in corpo, \
+            f'{metodo} deixou de mandar a Unidade e voltaria ao escopo do ator'
 
 
 def test_o_backend_exige_unidade_operacional_para_perfis_de_campo():
@@ -175,8 +199,12 @@ def test_um_unico_modelo_cobre_as_duas_rotas():
         assert f"'{campo}'" in modelo, f'StockItem não lê {campo}'
 
     api = STOCK_API.read_text(encoding='utf-8')
-    assert api.count('StockItem.fromJson') == 2, \
-        'as duas rotas devem desserializar pelo mesmo StockItem'
+    # Quatro usos, um modelo: available-items e blocked-items (escopo do ator)
+    # mais available-items e lookup-qr por Unidade (entrega, #278). O que o
+    # teste protege é a AUSÊNCIA de um segundo DTO, não a contagem.
+    assert api.count('StockItem.fromJson') == 4, \
+        'as rotas de item devem desserializar pelo mesmo StockItem'
+    assert 'class StockItem' not in api, 'apareceu um segundo modelo de item'
 
 
 def test_o_modelo_cobre_as_colunas_que_o_sql_realmente_seleciona():

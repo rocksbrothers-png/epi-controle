@@ -1101,10 +1101,25 @@ def get_company_purchase_config(connection, company_id):
 
 
 def set_company_purchase_config(connection, actor, company_id, require_admin_review):
-    """Persiste a configuração de compras da empresa (app_meta). Retorna a config."""
+    """Persiste a configuração de compras da empresa (app_meta). Retorna a config.
+
+    PATCH, não substituição. A chave `purchase_config_{company_id}` guarda MAIS
+    de um parâmetro — hoje `require_admin_review` e `po_approval_threshold`, que
+    é lido por `_po_company_approval_threshold` para decidir se a PO precisa de
+    segundo nível de aprovação. Escrever o JSON inteiro a partir de um único
+    campo apagava silenciosamente os demais: bastava alternar a revisão do
+    Admin para o limite de aprovação virar 0 e o multi-nível desligar sem que
+    nada no fluxo acusasse. Só este caminho escreve a chave, então o dado
+    perdido não voltava.
+
+    Um valor guardado que não seja objeto JSON é tratado como ausente — não há
+    o que preservar nele, e propagá-lo faria o merge estourar.
+    """
     import json as _json
     from core.meta import set_meta
-    config = {'require_admin_review': bool(require_admin_review)}
+    stored = get_company_purchase_config(connection, int(company_id))
+    config = dict(stored) if isinstance(stored, dict) else {}
+    config['require_admin_review'] = bool(require_admin_review)
     set_meta(connection, f'purchase_config_{int(company_id)}', _json.dumps(config))
     _record_purchase_event(
         connection, int(company_id), 'company', int(company_id), 'purchase_config_updated', '', '',

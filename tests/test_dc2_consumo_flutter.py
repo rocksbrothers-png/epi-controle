@@ -242,6 +242,31 @@ def test_dashboard_consome_setores_do_servidor():
     assert '_sectorsOf' not in corpo
 
 
+def test_os_quatro_estados_tem_rotulos_distintos():
+    """`normal` tem chip próprio: verde e escrito.
+
+    Deixar `normal` sem badge o tornaria visualmente igual a `null`, e a
+    ausência de contexto de Unidade passaria por estoque saudável — exatamente
+    a confusão que a #271 existe para evitar.
+    """
+    corpo = STOCK_BADGE.read_text(encoding='utf-8')
+    trecho = corpo.split('defaultLabel(EpiStockStatus s)')[1].split('};')[0]
+    rotulos = dict(re.findall(r"EpiStockStatus\.(\w+) => '([^']+)'", trecho))
+    assert rotulos == {
+        'normal': 'Normal',
+        'nearMinimum': 'Próximo do mínimo',
+        'critical': 'Crítico',
+        'disabled': 'Alerta desabilitado',
+    }, rotulos
+    assert len(set(rotulos.values())) == 4, 'dois estados com o mesmo rótulo'
+
+
+def test_a_tela_desenha_badge_apenas_com_classificacao():
+    """`null` fica sem badge — e por isso `normal` precisa ter um."""
+    corpo = _sem_comentarios(STOCK_SCREEN.read_text(encoding='utf-8'))
+    assert 'if (status != null) EpiStockBadge(status: status)' in corpo
+
+
 def test_kpi_critico_nulo_nao_vira_zero_na_tela():
     corpo = _sem_comentarios(DASHBOARD_SCREEN.read_text(encoding='utf-8'))
     assert "state.criticalStock ?? '—'" in corpo

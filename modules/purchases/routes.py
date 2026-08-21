@@ -63,6 +63,7 @@ from modules.purchases.service import (
     fetch_supplier_purchase_orders,
     fetch_user_unit_links,
     get_actor_purchase_unit_scope,
+    purchase_creation_unit_scope_violation,
     get_company_purchase_config,
     set_company_purchase_config,
     create_purchase_function_links,
@@ -277,9 +278,13 @@ def handle_post_purchase_requests(handler, parsed, payload, match):
             raise ValueError('Unidade não encontrada.')
         ensure_resource_company(actor, unit, 'Unidade')
         ensure_unit_operational(connection, unit_id, 'requisições de compra')
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(unit_id) != int(scope_unit_id)):
-            return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Administrador local pode criar requisições apenas para sua própria unidade operacional.'}})
+        violacao = purchase_creation_unit_scope_violation(
+            connection, actor, unit_id,
+            actor_operational_unit_id=actor_operational_unit_id,
+            locked_profile_message='Administrador local pode criar requisições apenas para sua própria unidade operacional.',
+        )
+        if violacao:
+            return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': violacao}})
         items = payload.get('items') or []
         if not items:
             raise ValueError('A requisição precisa ter pelo menos um item.')
@@ -381,13 +386,20 @@ def handle_post_purchase_orders(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'unit_id', 'items'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_CREATE)
+        # Escopo de Unidade antes das validações de negócio: quem não pode
+        # criar nesta Unidade não deve descobrir por tabela quais EPIs dela
+        # estão operacionais.
+        violacao = purchase_creation_unit_scope_violation(
+            connection, actor, int(payload['unit_id']),
+            actor_operational_unit_id=actor_operational_unit_id,
+            locked_profile_message='Usuário pode criar PO apenas para sua unidade operacional.',
+        )
+        if violacao:
+            return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': violacao}})
         ensure_unit_operational(connection, int(payload['unit_id']), 'pedidos de compra')
         from modules.epis.service import ensure_epi_operational
         for item in (payload.get('items') or []):
             ensure_epi_operational(connection, int((item or {}).get('epi_id') or 0), 'pedidos de compra')
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if actor.get('role') in ('admin', 'user') and (not scope_unit_id or int(payload['unit_id']) != int(scope_unit_id)):
-            return send_json(handler, 403, {'ok': False, 'error': {'code': 'UNIT_SCOPE_VIOLATION', 'message': 'Usuário pode criar PO apenas para sua unidade operacional.'}})
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
         result = create_purchase_order(connection, actor, payload, ip, get_epi_by_id_fn=get_epi_by_id)
         connection.commit()

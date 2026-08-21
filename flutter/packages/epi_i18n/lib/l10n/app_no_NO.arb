@@ -640,5 +640,21 @@
   "stockStatusUnknown": "Ukjent status",
   "stockUnitBalanceSuffix": "ved denne enheten",
   "stockCompanyBalanceLabel": "selskap",
-  "stockMinimumShort": "min"
+  "stockMinimumShort": "min",
+  "deliveryStepItem": "Enhet",
+  "deliveryItemTitle": "Velg den merkede enheten",
+  "deliveryItemEmpty": "Ingen enhet tilgjengelig i denne Enheten.",
+  "deliveryItemScan": "Skann QR for enheten",
+  "deliveryUnitStockAvailable": "Lager i Enheten: {qty}",
+  "@deliveryUnitStockAvailable": {
+    "description": "Saldo do EPI na Unidade do colaborador que vai receber.",
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryEmployeeWithoutUnit": "Ansatt uten operativ Enhet: levering kan ikke registreres.",
+  "deliveryQrOtherEpi": "Den skannede koden tilhører et annet verneutstyr.",
+  "stockUnitRequiredToMove": "Velg en Enhet for å flytte lager."
 }

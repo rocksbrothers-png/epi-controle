@@ -7,17 +7,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:signature/signature.dart';
 import '../../core/bloc/new_delivery_cubit.dart';
+import '../qr/qr_scanner_screen.dart';
 
+/// Nova entrega.
+///
+/// Não recebe mais a lista de EPIs (#278). Ela vinha do `/api/bootstrap`, que é
+/// catálogo corporativo, e servia de base para o passo de EPI. Agora os EPIs
+/// são carregados pelo cubit **na Unidade do colaborador**, depois que ele é
+/// escolhido — porque é o colaborador que determina de qual estoque a entrega
+/// sai.
 class NewDeliveryScreen extends StatelessWidget {
   const NewDeliveryScreen({
     super.key,
     required this.employees,
-    required this.epis,
     required this.companyId,
   });
 
   final List<Employee> employees;
-  final List<Epi> epis;
   final int companyId;
 
   @override
@@ -26,7 +32,6 @@ class NewDeliveryScreen extends StatelessWidget {
       create: (_) => NewDeliveryCubit(),
       child: _NewDeliveryBody(
         employees: employees,
-        epis: epis,
         companyId: companyId,
       ),
     );
@@ -36,12 +41,10 @@ class NewDeliveryScreen extends StatelessWidget {
 class _NewDeliveryBody extends StatelessWidget {
   const _NewDeliveryBody({
     required this.employees,
-    required this.epis,
     required this.companyId,
   });
 
   final List<Employee> employees;
-  final List<Epi> epis;
   final int companyId;
 
   @override
@@ -52,6 +55,9 @@ class _NewDeliveryBody extends StatelessWidget {
         final stepTitles = [
           l10n.deliveryStep1,
           l10n.deliveryStep2,
+          // Passo do item físico (#278): entre o EPI e a revisão existe a
+          // escolha de QUAL unidade etiquetada sai do estoque da Unidade.
+          l10n.deliveryStepItem,
           l10n.deliveryStep3,
           l10n.deliveryStep4,
         ];
@@ -78,6 +84,7 @@ class _NewDeliveryBody extends StatelessWidget {
             listenWhen: (p, c) =>
                 p.successId != c.successId ||
                 p.offlineQueued != c.offlineQueued ||
+                p.block != c.block ||
                 p.error != c.error,
             listener: (ctx, state) {
               if (state.offlineQueued) {
@@ -99,10 +106,19 @@ class _NewDeliveryBody extends StatelessWidget {
                 );
                 Navigator.pop(context, true);
               }
-              if (state.error != null) {
+              // Impedimento tipado: o texto é da tela, para valer nos cinco
+              // idiomas. `error` continua carregando falha de rede crua.
+              final impedimento = switch (state.block) {
+                DeliveryBlock.employeeWithoutUnit =>
+                  l10n.deliveryEmployeeWithoutUnit,
+                DeliveryBlock.qrFromAnotherEpi => l10n.deliveryQrOtherEpi,
+                DeliveryBlock.none => null,
+              };
+              final mensagem = impedimento ?? state.error;
+              if (mensagem != null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(state.error!),
+                    content: Text(mensagem),
                     backgroundColor: EpiColors.danger,
                   ),
                 );
@@ -110,7 +126,8 @@ class _NewDeliveryBody extends StatelessWidget {
             },
             child: switch (state.step) {
               DeliveryStep.employee => _EmployeeStep(employees: employees),
-              DeliveryStep.epi => _EpiStep(epis: epis),
+              DeliveryStep.epi => const _EpiStep(),
+              DeliveryStep.item => const _ItemStep(),
               DeliveryStep.details => const _DetailsStep(),
               DeliveryStep.signature => _SignatureStep(companyId: companyId),
             },
@@ -236,9 +253,15 @@ class _EmployeeStepState extends State<_EmployeeStep> {
 
 // ── Step 2: EPI ─────────────────────────────────────────────────────────────
 
+/// Passo do EPI — lista o estoque DA UNIDADE do colaborador (#278).
+///
+/// Não recebe mais os EPIs por parâmetro. Eles vinham de `/api/bootstrap`, que
+/// é catálogo corporativo: o saldo exibido era o da empresa inteira e a
+/// habilitação (`stockQuantity > 0`) deixava escolher EPI que não existia no
+/// estoque de onde a entrega ia sair. Agora vêm do cubit, carregados por
+/// Unidade quando o colaborador é escolhido.
 class _EpiStep extends StatefulWidget {
-  const _EpiStep({required this.epis});
-  final List<Epi> epis;
+  const _EpiStep();
 
   @override
   State<_EpiStep> createState() => _EpiStepState();
@@ -254,10 +277,10 @@ class _EpiStepState extends State<_EpiStep> {
     super.dispose();
   }
 
-  List<Epi> get _filtered {
-    if (_query.isEmpty) return widget.epis;
+  List<Epi> _filtrar(List<Epi> epis) {
+    if (_query.isEmpty) return epis;
     final q = _query.toLowerCase();
-    return widget.epis.where((e) => e.name.toLowerCase().contains(q)).toList();
+    return epis.where((e) => e.name.toLowerCase().contains(q)).toList();
   }
 
   @override
@@ -293,31 +316,39 @@ class _EpiStepState extends State<_EpiStep> {
         ),
         const SizedBox(height: EpiSpacing.sm),
         Expanded(
-          child: ListView.builder(
-            itemCount: _filtered.length,
-            itemBuilder: (_, i) {
-              final epi = _filtered[i];
-              return ListTile(
-                title: Text(epi.name),
-                subtitle: Text(l10n.deliveryStockAvailable(epi.stockQuantity)),
-                // Sem badge de criticidade nesta lista (fatia 1.1D-C2).
-                //
-                // A entrega é uma operação DE UNIDADE, mas os EPIs aqui vêm de
-                // `/api/bootstrap` (ver `deliveries_screen._loadBootstrap`),
-                // que não classifica por Unidade. As opções eram: comparar
-                // saldo com mínimo no cliente — proibido, e errado, porque os
-                // dois têm escopos diferentes — ou mostrar a criticidade
-                // corporativa, que diria ao operador que um EPI está crítico
-                // sem que isso valha para o estoque dele.
-                //
-                // O saldo exibido acima e a habilitação abaixo também são
-                // corporativos. A correção pede a fonte certa de saldo da
-                // Unidade neste fluxo, e está registrada como lacuna própria.
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: epi.stockQuantity > 0
-                    ? () => context.read<NewDeliveryCubit>().selectEpi(epi)
-                    : null,
-                enabled: epi.stockQuantity > 0,
+          child: BlocBuilder<NewDeliveryCubit, NewDeliveryState>(
+            buildWhen: (p, c) =>
+                p.unitEpis != c.unitEpis || p.isLoadingEpis != c.isLoadingEpis,
+            builder: (_, state) {
+              if (state.isLoadingEpis) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final epis = _filtrar(state.unitEpis);
+              if (epis.isEmpty) {
+                return Center(child: Text(l10n.deliveryItemEmpty));
+              }
+              return ListView.builder(
+                itemCount: epis.length,
+                itemBuilder: (_, i) {
+                  final epi = epis[i];
+                  // Saldo DA UNIDADE do colaborador. O corporativo não aparece
+                  // aqui: numa operação física ele não significa nada — a
+                  // entrega sai deste estoque, não do agregado da empresa.
+                  final saldoLocal = epi.unitStockQuantity ?? 0;
+                  return ListTile(
+                    title: Text(epi.name),
+                    subtitle: Text(l10n.deliveryUnitStockAvailable(saldoLocal)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    // Habilitar pelo saldo local é só a primeira barreira. A
+                    // disponibilidade real é decidida no passo do item, onde só
+                    // existem unidades etiquetadas `in_stock` desta Unidade.
+                    onTap: saldoLocal > 0
+                        ? () =>
+                            context.read<NewDeliveryCubit>().selectEpi(epi)
+                        : null,
+                    enabled: saldoLocal > 0,
+                  );
+                },
               );
             },
           ),
@@ -327,7 +358,96 @@ class _EpiStepState extends State<_EpiStep> {
   }
 }
 
-// ── Step 3: Details ─────────────────────────────────────────────────────────
+// ── Step 3: Item físico (unidade etiquetada) ────────────────────────────────
+//
+// O passo que faltava. A entrega baixa UMA unidade etiquetada de
+// `epi_stock_items`, e o backend exige que ela confira em empresa, Unidade,
+// EPI, QR e status `in_stock`. Até a #278 o cliente mandava o id do EPI no
+// lugar do id do item — dois identificadores de domínios diferentes —, e a
+// entrega pelo app não podia dar certo.
+//
+// Dois caminhos, mesmo resultado: um `stock_item_id` REAL.
+//   • ler o QR — o backend resolve o código DENTRO da Unidade;
+//   • escolher na lista — itens `in_stock` daquela Unidade, em ordem FEFO
+//     definida pelo servidor (o cliente não reordena).
+
+class _ItemStep extends StatelessWidget {
+  const _ItemStep();
+
+  Future<void> _lerQr(BuildContext context) async {
+    final cubit = context.read<NewDeliveryCubit>();
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const QrScannerScreen(returnResult: true),
+      ),
+    );
+    if (code == null || code.trim().isEmpty) return;
+    await cubit.selectItemByQr(code.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return BlocBuilder<NewDeliveryCubit, NewDeliveryState>(
+      buildWhen: (p, c) =>
+          p.availableItems != c.availableItems ||
+          p.isLoadingItems != c.isLoadingItems,
+      builder: (_, state) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(EpiSpacing.lg),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.deliveryItemTitle,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _lerQr(context),
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: Text(l10n.deliveryItemScan),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: state.isLoadingItems
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.availableItems.isEmpty
+                      ? Center(child: Text(l10n.deliveryItemEmpty))
+                      : ListView.builder(
+                          itemCount: state.availableItems.length,
+                          itemBuilder: (_, i) {
+                            final item = state.availableItems[i];
+                            return ListTile(
+                              leading: const Icon(Icons.qr_code_2_rounded),
+                              title: Text(item.qrCodeValue ?? '#${item.id}'),
+                              subtitle: Text([
+                                item.lotCode,
+                                item.gloveSize ?? item.size ?? item.uniformSize,
+                                item.epiValidityDate,
+                              ].where((t) => t != null && t.isNotEmpty).join(' · ')),
+                              trailing:
+                                  const Icon(Icons.chevron_right_rounded),
+                              onTap: () => context
+                                  .read<NewDeliveryCubit>()
+                                  .selectItem(item),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ── Step 4: Details ─────────────────────────────────────────────────────────
 
 class _DetailsStep extends StatefulWidget {
   const _DetailsStep();
@@ -337,7 +457,6 @@ class _DetailsStep extends StatefulWidget {
 }
 
 class _DetailsStepState extends State<_DetailsStep> {
-  final _qtyController = TextEditingController(text: '1');
   final _sectorController = TextEditingController();
   final _roleController = TextEditingController();
   DateTime _deliveryDate = DateTime.now();
@@ -348,7 +467,6 @@ class _DetailsStepState extends State<_DetailsStep> {
 
   @override
   void dispose() {
-    _qtyController.dispose();
     _sectorController.dispose();
     _roleController.dispose();
     super.dispose();
@@ -390,15 +508,11 @@ class _DetailsStepState extends State<_DetailsStep> {
                 ),
               ),
             ),
-            const SizedBox(height: EpiSpacing.lg),
-            TextField(
-              controller: _qtyController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: l10n.fieldQuantity,
-                border: const OutlineInputBorder(),
-              ),
-            ),
+            // Sem campo de quantidade (#278). A entrega baixa UMA unidade
+            // etiquetada — a que foi escolhida no passo anterior —, e o
+            // backend recusa qualquer valor diferente de 1
+            // ('Entrega por leitura exige quantidade unitária'). O campo
+            // oferecia uma escolha que sempre falharia.
             const SizedBox(height: EpiSpacing.lg),
             TextField(
               controller: _sectorController,
@@ -431,9 +545,9 @@ class _DetailsStepState extends State<_DetailsStep> {
             EpiButton(
               label: AppLocalizations.of(context).next,
               onPressed: () {
-                final qty = int.tryParse(_qtyController.text.trim()) ?? 1;
                 ctx.read<NewDeliveryCubit>().setDetails(
-                      quantity: qty,
+                      // Uma unidade etiquetada, uma unidade entregue.
+                      quantity: 1,
                       deliveryDate:
                           _deliveryDate.toIso8601String().substring(0, 10),
                       nextReplacementDate: _nextReplacementDate
@@ -489,7 +603,7 @@ class _DateField extends StatelessWidget {
   }
 }
 
-// ── Step 4: Signature ───────────────────────────────────────────────────────
+// ── Step 5: Signature ───────────────────────────────────────────────────────
 
 class _SignatureStep extends StatefulWidget {
   const _SignatureStep({required this.companyId});
@@ -551,7 +665,10 @@ class _SignatureStepState extends State<_SignatureStep> {
                     ),
                     _SummaryRow(
                       icon: Icons.inventory_2_outlined,
-                      text: l10n.deliveryStockAvailable(state.quantity),
+                      // Item físico que sai do estoque — é ele que a entrega
+                      // baixa, e é o seu id que vai no `stock_item_id`.
+                      text: state.selectedItem?.qrCodeValue ??
+                          '#${state.selectedItem?.id ?? 0}',
                     ),
                     _SummaryRow(
                       icon: Icons.calendar_today_outlined,

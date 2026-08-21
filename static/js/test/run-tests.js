@@ -898,6 +898,106 @@ test('estoque: formatStockEpiRow gera linha de tabela', () => {
   assert(row.includes('10'));
   assert(row.includes('5'));
 });
+// ── 1.1D-C3: o Web Legado consome a classificação do backend ──────────────
+//
+// Antes desta fatia o Legado ignorava a classificação por Unidade inteira: uma
+// varredura por `stock_status` em static/ devolvia ZERO. Exibia saldo e mínimo
+// CORPORATIVOS como se fossem o número operacional da Unidade, e classificava
+// "Estoque baixo" por uma terceira régua (`severity`) que não era a
+// classificação de ninguém.
+
+function _EST() { return globalThis.__EPI_ESTOQUE__; }
+
+const _ITEM_UNIDADE = {
+  name: 'Capacete', sector: 'Obras', epi_section: 'Cabeça', manufacturer: 'MSA',
+  ca: '12345', unit_name: 'Unidade A', glove_size: 'N/A', size: 'G',
+  uniform_size: 'N/A', size_balances: [], unit_measure: 'unidade',
+  // corporativos — presentes no payload e que NÃO podem governar a tela
+  stock: 300, company_stock_quantity: 300, minimum_stock: 100,
+  // da Unidade
+  unit_scope_id: 7, unit_stock_quantity: 4, unit_minimum_stock: 10,
+  minimum_stock_source: 'unit_configured', attention_limit: 12,
+  effective_attention_percentage: 20, stock_status: 'critical',
+  underlying_status: 'critical', stock_condition: 'below_minimum'
+};
+
+test('estoque D-C3: saldo exibido é o da Unidade, não o corporativo', () => {
+  const r = _EST().stockReading(_ITEM_UNIDADE);
+  eq(r.value, 4);
+  eq(r.fromUnit, true);
+});
+test('estoque D-C3: saldo ZERO na Unidade continua zero (sem fallback)', () => {
+  // O defeito clássico: `saldo || corporativo` fazia zero virar o total da
+  // empresa, porque zero é falsy. A escolha é por PRESENÇA de unit_scope_id.
+  const r = _EST().stockReading({ ...(_ITEM_UNIDADE), unit_stock_quantity: 0 });
+  eq(r.value, 0);
+  eq(r.fromUnit, true);
+});
+test('estoque D-C3: sem Unidade resolvida o número é corporativo e se declara', () => {
+  const r = _EST().stockReading({ ...(_ITEM_UNIDADE), unit_scope_id: null, unit_stock_quantity: null });
+  eq(r.value, 300);
+  eq(r.fromUnit, false);
+});
+test('estoque D-C3: mínimo exibido é o da Unidade, com a origem', () => {
+  const m = _EST().minimumReading(_ITEM_UNIDADE);
+  eq(m.value, 10);
+  eq(m.source, 'unit_configured');
+  eq(m.fromUnit, true);
+});
+test('estoque D-C3: mínimo herdado é rotulado company_default', () => {
+  const m = _EST().minimumReading({ ...(_ITEM_UNIDADE), minimum_stock_source: 'company_default', unit_minimum_stock: 100 });
+  eq(m.value, 100);
+  eq(m.source, 'company_default');
+});
+test('estoque D-C3: mínimo ZERO na Unidade não cai para o corporativo', () => {
+  const m = _EST().minimumReading({ ...(_ITEM_UNIDADE), unit_minimum_stock: 0 });
+  eq(m.value, 0);
+  eq(m.fromUnit, true);
+});
+test('estoque D-C3: os quatro estados têm chip próprio', () => {
+  ['normal', 'near_minimum', 'critical', 'disabled'].forEach((s) => {
+    const html = _EST().stockStatusBadge({ stock_status: s });
+    assert(html.includes('badge-stock-' + s), 'faltou chip para ' + s);
+  });
+});
+test('estoque D-C3: disabled nunca é renderizado como normal', () => {
+  const desabilitado = _EST().stockStatusBadge({ stock_status: 'disabled' });
+  const normal = _EST().stockStatusBadge({ stock_status: 'normal' });
+  assert(desabilitado !== normal, 'disabled e normal ficaram idênticos');
+  assert(!desabilitado.includes('badge-stock-normal'));
+});
+test('estoque D-C3: stock_status null NÃO vira normal', () => {
+  // Ausência de classificação significa "não há Unidade resolvida". Pintar de
+  // verde justamente o caso em que o sistema não sabe é o pior desfecho.
+  eq(_EST().stockStatusBadge({ stock_status: null }), '');
+  eq(_EST().stockStatusBadge({}), '');
+  eq(_EST().stockStatusBadge({ stock_status: 'valor_novo_do_backend' }), '');
+});
+test('estoque D-C3: attention_limit vem do backend, não é recalculado', () => {
+  const hint = _EST().attentionHint(_ITEM_UNIDADE);
+  assert(hint.includes('12'), 'o limite do servidor precisa aparecer');
+  // 10 × 1,20 = 12 aqui; mas o valor exibido tem que ser o do campo, não a
+  // conta. Trocando só o campo, o texto acompanha.
+  assert(_EST().attentionHint({ ...(_ITEM_UNIDADE), attention_limit: 99 }).includes('99'));
+});
+test('estoque D-C3: sem attention_limit não se inventa faixa', () => {
+  eq(_EST().attentionHint({ ...(_ITEM_UNIDADE), attention_limit: null }), '');
+});
+test('estoque D-C3: a linha da tabela mostra Unidade e não corporativo', () => {
+  const row = _EST().formatStockEpiRow(_ITEM_UNIDADE);
+  assert(row.includes('>4 '), 'saldo da Unidade ausente');
+  assert(!row.includes('>300 '), 'saldo corporativo vazou para a linha');
+  assert(row.includes('badge-stock-critical'), 'chip de estado ausente');
+});
+test('estoque D-C3: a linha sem classificação não ganha chip verde', () => {
+  const row = _EST().formatStockEpiRow({
+    ...(_ITEM_UNIDADE), unit_scope_id: null, unit_stock_quantity: null,
+    unit_minimum_stock: null, stock_status: null, attention_limit: null
+  });
+  assert(!row.includes('badge-stock-normal'));
+  assert(!row.includes('badge-stock-'), 'nenhum chip deve ser desenhado');
+});
+
 test('estoque: renderStockEpis sem refs é no-op seguro', () => {
   globalThis.__EPI_REFS__ = {};
   globalThis.__EPI_APP_STATE__ = { stockEpis: [], lowStock: [], requests: [] };

@@ -1033,6 +1033,15 @@ body.phase3-modern-enabled [data-phase3-filters] {
 .commercial-toolbar label { min-width: 240px; }
 
 .badge-status-warning { background: rgba(192,136,34,.14); color: var(--warning); }
+
+/* Estados de estoque por Unidade (1.1D-C3). São QUATRO e nenhum é opcional:
+   `disabled` precisa ser visualmente distinto de `normal`, senão um EPI com
+   monitoramento desligado passa por saudável. Ausência de classificação (sem
+   Unidade resolvida) não tem chip nenhum — não existe um quinto estado. */
+.badge-stock-normal { background: rgba(34,107,76,.12); color: var(--success); }
+.badge-stock-near_minimum { background: rgba(192,136,34,.14); color: var(--warning); }
+.badge-stock-critical { background: var(--danger-soft); color: var(--danger); }
+.badge-stock-disabled { background: rgba(92,103,96,.12); color: var(--muted); }
 .commercial-card { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .commercial-actions { margin-top: 10px; }
 .commercial-actions .ghost { background: rgba(255,255,255,.8); }

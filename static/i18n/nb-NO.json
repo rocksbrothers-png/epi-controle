@@ -1635,5 +1635,22 @@
       "invalid_value": "Ugyldig verdi",
       "no_natural_key": "Ingen nøkkel til å identifisere posten"
     }
-  }
+  },
+  "stock.statusColumn": "Situasjon",
+  "stock.statusNormal": "Normal",
+  "stock.statusNearMinimum": "Nær minimum",
+  "stock.statusCritical": "Kritisk",
+  "stock.statusAlertDisabled": "Varsel deaktivert",
+  "stock.statusUnknown": "Ingen klassifisering per Enhet",
+  "stock.conditionNegative": "negativ saldo",
+  "stock.conditionZero": "ingen saldo",
+  "stock.conditionBelowMinimum": "under minimum",
+  "stock.conditionAtMinimum": "på minimum",
+  "stock.conditionAboveMinimum": "over minimum",
+  "stock.minimumFromUnit": "satt av Enheten",
+  "stock.minimumFromCompany": "arvet fra selskapets standard",
+  "stock.minimumFromSystem": "systemstandard",
+  "stock.attentionLimit": "oppmerksomhetssone opp til {n}",
+  "stock.companyTotal": "selskapets totale",
+  "stock.underlyingIs": "nåværende tilstand: {s}"
 }

@@ -1635,5 +1635,22 @@
       "invalid_value": "Valor inválido",
       "no_natural_key": "Sem chave para identificar o registro"
     }
-  }
+  },
+  "stock.statusColumn": "Situação",
+  "stock.statusNormal": "Normal",
+  "stock.statusNearMinimum": "Próximo do mínimo",
+  "stock.statusCritical": "Crítico",
+  "stock.statusAlertDisabled": "Alerta desabilitado",
+  "stock.statusUnknown": "Sem classificação por Unidade",
+  "stock.conditionNegative": "saldo negativo",
+  "stock.conditionZero": "sem saldo",
+  "stock.conditionBelowMinimum": "abaixo do mínimo",
+  "stock.conditionAtMinimum": "no mínimo",
+  "stock.conditionAboveMinimum": "acima do mínimo",
+  "stock.minimumFromUnit": "configurado pela Unidade",
+  "stock.minimumFromCompany": "herdado do padrão da empresa",
+  "stock.minimumFromSystem": "padrão do sistema",
+  "stock.attentionLimit": "faixa de atenção até {n}",
+  "stock.companyTotal": "total da empresa",
+  "stock.underlyingIs": "condição atual: {s}"
 }

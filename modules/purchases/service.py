@@ -198,7 +198,10 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         stock_clauses.append('ues.unit_id = ?')
         stock_params.append(int(scope_unit_id))
     stock_rows = connection.execute(
-        f'SELECT ues.company_id, ues.unit_id, ues.epi_id, ues.quantity AS current_stock, ep.minimum_stock, '
+        # `ep.minimum_stock` saiu do SELECT junto com o ORDER BY: era morto por
+        # sobrescrita (`d['minimum_stock']` recebe o mínimo efetivo da Unidade
+        # logo abaixo) e só servia de convite para alguém voltar a lê-lo.
+        f'SELECT ues.company_id, ues.unit_id, ues.epi_id, ues.quantity AS current_stock, '
         f'ep.name AS epi_name, ep.ca, ep.unit_measure, ep.manufacturer, ep.supplier_company AS supplier, '
         f'ep.sector AS employee_sector, ep.glove_size, ep.size, ep.uniform_size, '
         f'u.name AS unit_name, c.name AS company_name '
@@ -207,9 +210,23 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         f'JOIN units u ON u.id = ues.unit_id '
         f'JOIN companies c ON c.id = ues.company_id '
         f"WHERE {' AND '.join(stock_clauses)} "
-        f'ORDER BY (ep.minimum_stock - ues.quantity) DESC',
+        # A PRIORIDADE TAMBÉM SAIU DO SQL (P5).
+        #
+        # Aqui havia `ORDER BY (ep.minimum_stock - ues.quantity) DESC`: o
+        # tamanho do buraco medido contra o mínimo da EMPRESA. Era o último
+        # operando de mínimo corporativo sobrevivente neste caminho — a #271
+        # tirou o irmão dele do WHERE pelo mesmo motivo e deixou este para
+        # trás. Ele não decidia se a demanda existia, mas decidia o que o
+        # Administrador Local via primeiro; com mínimo por Unidade
+        # configurado, a lista chegava ordenada por um número que não governa
+        # nada.
+        #
+        # O SQL agora só devolve os candidatos em ordem estável, e a
+        # prioridade é calculada depois da classificação, junto do resto.
+        f'ORDER BY ues.unit_id, ues.epi_id',
         tuple(stock_params)
     ).fetchall()
+    baixo_estoque = []
     for row in stock_rows:
         d = dict(row)
         # Só `critical` gera reposição automática. `near_minimum` é atenção
@@ -240,7 +257,18 @@ def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
         balances = fetch_epi_size_balance(connection, int(d['company_id']), int(d['unit_id']), int(d['epi_id']))
         d['size_balances'] = balances
         d['size_demands'] = _build_low_stock_size_demands(d, balances)
-        demands.append(d)
+        baixo_estoque.append(d)
+    # Prioridade = tamanho do buraco NAQUELA Unidade: mínimo efetivo dela menos
+    # o saldo dela. Mesma fonte que já dimensiona a reposição
+    # (`quantity_requested`), então a ordem e o número que o Administrador
+    # Local lê passam a concordar. Empates saem por (unidade, EPI) para a
+    # listagem não trocar de ordem entre duas chamadas iguais.
+    baixo_estoque.sort(key=lambda item: (
+        -(int(item['minimum_stock']) - int(item['current_stock'] or 0)),
+        int(item['unit_id']),
+        int(item['epi_id']),
+    ))
+    demands.extend(baixo_estoque)
     return demands
 
 

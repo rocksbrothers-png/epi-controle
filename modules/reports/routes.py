@@ -7,10 +7,10 @@ from urllib.parse import parse_qs
 from core.database import get_connection
 from core.permissions import PERM_STOCK_VIEW
 from core.repository import authorize_action
-from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
+from modules.employees.service import actor_operational_unit_id
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_bytes, send_json
-from modules.purchases.service import actor_has_no_purchase_unit_scope, get_actor_purchase_unit_scope
+from modules.purchases.service import get_actor_purchase_unit_scope, purchase_listing_scope
 from modules.reports.service import (
     build_report_pdf,
     create_report_request,
@@ -50,19 +50,25 @@ def handle_get_report_requests(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_STOCK_VIEW)
         company_id = int(actor['company_id'])
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, parse_qs(parsed.query).get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
         clauses = ['rr.company_id = %s']
         params = [company_id]
-        if scope_unit_id:
+        if escopo.unit_id:
             clauses.append('rr.unit_id = %s')
-            params.append(int(scope_unit_id))
-        elif purchase_scope:
-            ph = ','.join(['%s'] * len(purchase_scope))
+            params.append(int(escopo.unit_id))
+        elif escopo.allowed_unit_ids is not None:
+            # `is not None`, não truthiness: carteira vazia já devolveu lista
+            # vazia acima, mas se um dia deixar de devolver, `if carteira`
+            # aqui abriria a empresa inteira em silêncio.
+            ph = ','.join(['%s'] * len(escopo.allowed_unit_ids))
             clauses.append(f'rr.unit_id IN ({ph})')
-            params.extend(purchase_scope)
+            params.extend(escopo.allowed_unit_ids)
         items = fetch_report_requests(connection, clauses, params)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/report-requests', dataset_name='report_requests', legacy_items=items

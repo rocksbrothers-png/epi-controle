@@ -451,7 +451,8 @@ PURCHASE_CARTEIRA_ROLES = ('buyer', 'approver')
 
 
 def resolve_purchase_unit_scope(
-    connection, actor, requested_unit_id=None, *, purchase_units_loader, denial_message=None,
+    connection, actor, requested_unit_id=None, *, purchase_units_loader,
+    operational_unit_loader=None, denial_message=None,
 ):
     """Escopo de Unidade em Compras — ponto ÚNICO, inclusive para o seletor.
 
@@ -484,7 +485,13 @@ def resolve_purchase_unit_scope(
     role = str((actor or {}).get('role') or '')
 
     if role in ('admin', 'user'):
-        unit_id = actor_operational_unit_id(connection, actor)
+        # `operational_unit_loader` existe para que o chamador que JÁ resolveu
+        # a unidade do ator (para a própria guarda de fail-closed) não a
+        # resolva de novo aqui. Duas resoluções da mesma coisa é como as
+        # variantes de escopo nascem: basta uma delas passar a honrar uma
+        # regra que a outra ignora.
+        resolver = operational_unit_loader or actor_operational_unit_id
+        unit_id = resolver(connection, actor)
         if not unit_id:
             raise PermissionError(denial_message or 'Perfil sem unidade operacional ativa.')
         return UnitSelection(int(unit_id), 'actor', True, (int(unit_id),), False)

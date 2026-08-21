@@ -22,7 +22,7 @@ from core.permissions import (
     PERM_UNIT_LINKS_MANAGE,
 )
 from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
-from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
+from modules.employees.service import actor_operational_unit_id
 from modules.units.service import ensure_unit_operational, fetch_units
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
@@ -35,7 +35,6 @@ UTC = timezone.utc
 
 from modules.purchases.service import (
     actor_company_id_or_query,
-    actor_has_no_purchase_unit_scope,
     add_purchase_order_file,
     apply_purchase_request_workflow_action,
     approve_purchase_order,
@@ -65,6 +64,7 @@ from modules.purchases.service import (
     get_actor_purchase_unit_scope,
     purchase_creation_unit_scope_violation,
     build_purchase_scope_payload,
+    purchase_listing_scope,
     resolve_purchase_scope,
     get_company_purchase_config,
     set_company_purchase_config,
@@ -115,11 +115,14 @@ def handle_get_epi_requests(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
         query = parse_qs(parsed.query)
         company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
-        items = fetch_epi_requests(connection, company_filter, scope_unit_id, purchase_scope)
+        items = fetch_epi_requests(connection, company_filter, escopo.unit_id, escopo.allowed_unit_ids)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/requests', dataset_name='epi_requests', legacy_items=items
         )
@@ -135,13 +138,20 @@ def handle_get_purchase_demands(handler, parsed, payload, match):
             company_id = int(requested_company) if requested_company else None
         else:
             company_id = actor_company_id_or_query(connection, actor, query)
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
-        if not scope_unit_id and purchase_scope_units:
+        if escopo.unit_id is None and escopo.allowed_unit_ids is not None:
+            # "Todas as minhas Unidades": `fetch_purchase_demands` recorta UMA
+            # Unidade por chamada, então a consolidação é aqui. Cada demanda
+            # sai com o próprio `unit_id`/`unit_name` — consolidar é somar a
+            # visão, nunca fundir a origem.
             all_demands, seen = [], set()
-            for uid in purchase_scope_units:
+            for uid in escopo.allowed_unit_ids:
                 for d in fetch_purchase_demands(connection, company_id, uid):
                     key = (d.get('demand_type'), d.get('id') or f"{d.get('unit_id')}/{d.get('epi_id')}")
                     if key not in seen:
@@ -151,7 +161,7 @@ def handle_get_purchase_demands(handler, parsed, payload, match):
                 connection, actor, endpoint_name='/api/purchase-demands', dataset_name='purchase_demands', legacy_items=all_demands
             )
             return send_json(handler, 200, {'items': all_demands})
-        demands = fetch_purchase_demands(connection, company_id, scope_unit_id)
+        demands = fetch_purchase_demands(connection, company_id, escopo.unit_id)
         demands = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/purchase-demands', dataset_name='purchase_demands', legacy_items=demands
         )
@@ -163,12 +173,15 @@ def handle_get_purchase_requests(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
         query = parse_qs(parsed.query)
         company_id = actor_company_id_or_query(connection, actor, query)
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
-        items = fetch_purchase_requests(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
+        items = fetch_purchase_requests(connection, company_id, escopo.unit_id, escopo.allowed_unit_ids, status_filter or None)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/purchase-requests', dataset_name='purchase_requests', legacy_items=items
         )
@@ -204,12 +217,15 @@ def handle_get_purchase_pendencies(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
         query = parse_qs(parsed.query)
         company_id = actor_company_id_or_query(connection, actor, query)
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', ['open'])[0] or 'open').strip()
-        items = fetch_purchase_pendencies(connection, company_id, scope_unit_id, status_filter or None, purchase_scope_units=purchase_scope_units)
+        items = fetch_purchase_pendencies(connection, company_id, escopo.unit_id, status_filter or None, purchase_scope_units=escopo.allowed_unit_ids)
         return send_json(handler, 200, {'items': items})
 
 
@@ -227,12 +243,15 @@ def handle_get_purchase_orders(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PO_VIEW)
         query = parse_qs(parsed.query)
         company_id = actor_company_id_or_query(connection, actor, query)
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
-        if actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units) or actor_has_no_operational_unit(actor, scope_unit_id):
+        escopo = purchase_listing_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            actor_operational_unit_id=actor_operational_unit_id,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+        )
+        if escopo is None:
             return send_json(handler, 200, {'items': []})
         status_filter = str(query.get('status', [''])[0] or '').strip()
-        items = fetch_purchase_orders(connection, company_id, scope_unit_id, purchase_scope_units, status_filter or None)
+        items = fetch_purchase_orders(connection, company_id, escopo.unit_id, escopo.allowed_unit_ids, status_filter or None)
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/purchase-orders', dataset_name='purchase_orders', legacy_items=items
         )

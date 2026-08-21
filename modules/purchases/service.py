@@ -98,6 +98,49 @@ def resolve_purchase_scope(connection, actor, requested_unit_id=None, *, denial_
     )
 
 
+def purchase_listing_scope(
+    connection, actor, requested_unit_id=None, *, actor_operational_unit_id, purchase_units_loader,
+):
+    """Escopo de uma LISTAGEM de Compras. `None` significa "lista vazia".
+
+    Substitui o par `scope_unit_id` + `purchase_scope_units` que cada rota
+    montava à mão, junto das duas guardas de fail-closed. Montar isso sete
+    vezes é como as três variantes de escopo apareceram no backend.
+
+    Devolve `None` — e o chamador responde `200 {'items': []}` — nas duas
+    situações que **não são erro**, apenas ausência de dado:
+
+    - perfil travado sem unidade operacional ativa;
+    - Comprador/Aprovador sem nenhuma Unidade na carteira.
+
+    O que É erro continua subindo, e com o código certo: Unidade fora da
+    carteira é `PermissionError` (403) e identificador inválido ou de outro
+    tenant é `ValueError` (400). Engolir esses dois em lista vazia esconderia
+    de quem pediu a diferença entre "não há nada" e "você não pode".
+
+    O resultado alimenta `fetch_*(company_id, escopo.unit_id,
+    escopo.allowed_unit_ids)` sem tradução: `unit_id` preenchido recorta numa
+    Unidade; `allowed_unit_ids` recorta na carteira ("Todas as minhas
+    Unidades"); os dois nulos são a visão corporativa.
+
+    As duas dependências entram por parâmetro OBRIGATÓRIO. Não é cerimônia:
+    são as fronteiras que as rotas expõem e os testes de fail-closed
+    substituem para simular ator sem unidade e carteira vazia. Resolvê-las
+    por dentro esconderia essas fronteiras e deixaria os testes passando sem
+    exercitar nada. Obrigatórias porque esquecer uma delas precisa ser
+    `TypeError`, nunca um escopo silenciosamente mais amplo.
+    """
+    if actor.get('role') in ('admin', 'user') and not actor_operational_unit_id(connection, actor):
+        return None
+    from core.repository import resolve_purchase_unit_scope
+    escopo = resolve_purchase_unit_scope(
+        connection, actor, requested_unit_id,
+        purchase_units_loader=purchase_units_loader,
+        operational_unit_loader=actor_operational_unit_id,
+    )
+    return None if escopo.blocks_everything else escopo
+
+
 def narrow_purchase_unit_to_selection(scope_unit_id, selected_unit_id, purchase_scope_units):
     """Unidade que uma consulta de Compras deve usar, dada a seleção do usuário.
 

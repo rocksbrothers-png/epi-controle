@@ -48,6 +48,103 @@
     }
   }
 
+  // ── Classificação de estoque: vem do BACKEND, inteira (1.1D-C3) ──────────
+  //
+  // Até esta fatia o Web Legado ignorava a classificação por Unidade e exibia
+  // o saldo e o mínimo CORPORATIVOS como se fossem o número operacional da
+  // Unidade. Uma varredura por `stock_status` em `static/` devolvia zero.
+  //
+  // Nada aqui recalcula regra: `stock_status`, `attention_limit`,
+  // `unit_minimum_stock` e `minimum_stock_source` vêm prontos de
+  // `/api/stock/epis` e `/api/stock/low`. Comparar saldo com mínimo no JS
+  // criaria uma segunda régua — foi assim que a comparação errada se espalhou
+  // por sete consumidores (#271).
+
+  var STOCK_STATUS_LABELS = {
+    normal: ['stock.statusNormal', 'Normal'],
+    near_minimum: ['stock.statusNearMinimum', 'Próximo do mínimo'],
+    critical: ['stock.statusCritical', 'Crítico'],
+    disabled: ['stock.statusAlertDisabled', 'Alerta desabilitado']
+  };
+
+  // Descrições da condição FÍSICA. Informativas: explicam o número, não
+  // classificam. A severidade é sempre `stock_status`.
+  // Os cinco valores de `CONDITION_*` em modules/stock/service.py. A lista é
+  // fechada de propósito: um valor novo no backend aparece como vazio aqui, e
+  // não como um rótulo aproximado que mentiria sobre a condição.
+  var STOCK_CONDITION_LABELS = {
+    negative: ['stock.conditionNegative', 'saldo negativo'],
+    zero: ['stock.conditionZero', 'sem saldo'],
+    below_minimum: ['stock.conditionBelowMinimum', 'abaixo do mínimo'],
+    at_minimum: ['stock.conditionAtMinimum', 'no mínimo'],
+    above_minimum: ['stock.conditionAboveMinimum', 'acima do mínimo']
+  };
+
+  var MINIMUM_SOURCE_LABELS = {
+    unit_configured: ['stock.minimumFromUnit', 'configurado pela Unidade'],
+    company_default: ['stock.minimumFromCompany', 'herdado do padrão da empresa'],
+    system_default: ['stock.minimumFromSystem', 'padrão do sistema']
+  };
+
+  function trPair(pair) { return pair ? tr(pair[0], pair[1]) : ''; }
+
+  /** Chip do estado operacional, ou `''` quando NÃO há classificação.
+   *
+   * `stock_status` ausente significa que não existe Unidade resolvida naquele
+   * contexto — é diferente de estoque normal. Devolver "Normal" aqui pintaria
+   * de verde justamente o caso em que o sistema não sabe. */
+  function stockStatusBadge(item) {
+    var status = item && item.stock_status;
+    if (!status || !STOCK_STATUS_LABELS[status]) { return ''; }
+    return '<span class="badge badge-stock-' + esc(status) + '">'
+      + esc(trPair(STOCK_STATUS_LABELS[status])) + '</span>';
+  }
+
+  /** Saldo a exibir e se ele é da Unidade.
+   *
+   * A escolha é por PRESENÇA de `unit_scope_id`, nunca por truthiness do
+   * saldo: uma Unidade com zero mostra zero, e não o total da empresa. Sem
+   * Unidade resolvida não existe saldo local para inventar — mostramos o
+   * corporativo dizendo que ele é corporativo. */
+  function stockReading(item) {
+    var hasUnit = item && item.unit_scope_id !== null && item.unit_scope_id !== undefined;
+    if (hasUnit) {
+      return { value: Number(item.unit_stock_quantity ?? 0), fromUnit: true };
+    }
+    return { value: Number(item.company_stock_quantity ?? item.stock ?? 0), fromUnit: false };
+  }
+
+  /** Mínimo a exibir, com a origem. Mesma regra de presença. */
+  function minimumReading(item) {
+    var hasUnit = item && item.unit_scope_id !== null && item.unit_scope_id !== undefined;
+    if (hasUnit && item.unit_minimum_stock !== null && item.unit_minimum_stock !== undefined) {
+      return {
+        value: Number(item.unit_minimum_stock),
+        source: String(item.minimum_stock_source || ''),
+        fromUnit: true
+      };
+    }
+    return { value: Number(item.minimum_stock ?? 0), source: 'company_default', fromUnit: false };
+  }
+
+  function minimumSourceLabel(source) {
+    return trPair(MINIMUM_SOURCE_LABELS[source]) || '';
+  }
+
+  /** Faixa de atenção EXPLICADA, nunca recalculada.
+   *
+   * `attention_limit` é `ceil(mínimo × (1 + pct/100))` calculado com Decimal no
+   * servidor. Refazer essa conta em JS com ponto flutuante daria divergências
+   * de uma unidade justamente na fronteira que decide a cor. */
+  function attentionHint(item) {
+    if (!item || item.attention_limit === null || item.attention_limit === undefined) { return ''; }
+    var pct = item.effective_attention_percentage;
+    var base = tr('stock.attentionLimit', 'faixa de atenção até {n}')
+      .replace('{n}', String(item.attention_limit));
+    if (pct === null || pct === undefined) { return base; }
+    return base + ' (' + String(pct) + '%)';
+  }
+
   // ── Helpers internos ─────────────────────────────────────────────────────
 
   function formatStockEpiRow(item) {
@@ -58,6 +155,16 @@
       item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(', ');
     const sizesDisplay = sizesFromBalances || sizesFromEpi || '—';
+    const saldo = stockReading(item);
+    const minimo = minimumReading(item);
+    // Sem Unidade resolvida os números são da EMPRESA. Dizê-lo é o que impede
+    // que o operador leia um total corporativo como disponibilidade local.
+    const escopoSaldo = saldo.fromUnit
+      ? ''
+      : ` <small>(${esc(tr('stock.companyTotal', 'total da empresa'))})</small>`;
+    const origemMinimo = minimumSourceLabel(minimo.source);
+    const faixa = attentionHint(item);
+    const detalheMinimo = [origemMinimo, faixa].filter(Boolean).join(' · ');
     return `<tr>
     <td>${item.name}</td>
     <td>${epiProtectionLabel(item.sector)}</td>
@@ -66,8 +173,9 @@
     <td>${item.ca || '-'}</td>
     <td>${item.unit_name || '-'}</td>
     <td>${sizesDisplay}</td>
-    <td>${item.stock} ${epiMeasureLabel(item.unit_measure)}(s)</td>
-    <td>${Number(item.minimum_stock ?? 0)}</td>
+    <td>${saldo.value} ${epiMeasureLabel(item.unit_measure)}(s)${escopoSaldo}</td>
+    <td>${minimo.value}${detalheMinimo ? `<br><small>${esc(detalheMinimo)}</small>` : ''}</td>
+    <td>${stockStatusBadge(item) || '<span class="muted">—</span>'}</td>
   </tr>`;
   }
 
@@ -79,7 +187,7 @@
     if (!refs.stockEpisTable) { return; }
     const rows = state.stockEpis || [];
     refs.stockEpisTable.innerHTML = rows.map(formatStockEpiRow).join('')
-      || `<tr><td colspan="9">${tr('stock.noEpiForFilters', 'Nenhum EPI encontrado para os filtros.')}</td></tr>`;
+      || `<tr><td colspan="10">${tr('stock.noEpiForFilters', 'Nenhum EPI encontrado para os filtros.')}</td></tr>`;
     phase3Cards(refs.phase3EstoqueSummary, [
       { label: tr('stock.filteredItems', 'Itens filtrados'), value: rows.length },
       { label: tr('stock.lowStock', 'Estoque baixo'), value: (state.lowStock || []).length },
@@ -93,8 +201,16 @@
     if (!refs.stockLowList) { return; }
     const items = getState().lowStock || [];
     refs.stockLowList.innerHTML = items.map((item) => {
-      const severity = String(item.severity || 'warning');
-      const badge = severity === 'critical' ? tr('stock.critical', 'Crítico') : (severity === 'danger' ? tr('stock.high', 'Alto') : tr('stock.moderate', 'Moderado'));
+      // `severity` (critical/danger/warning) era uma TERCEIRA régua: nascia no
+      // backend de `stock <= 0` / `stock < minimum`, independente da
+      // classificação. Duas escalas para o mesmo fato divergem no primeiro
+      // ajuste feito num lado só. A severidade agora é `stock_status`, a
+      // mesma de toda a aplicação.
+      const badge = stockStatusBadge(item);
+      // `stock_condition` descreve a condição física e explica o número. Não
+      // é severidade: um EPI pode estar `disabled` e ainda assim abaixo do
+      // mínimo, e é isso que o operador precisa ler.
+      const condicao = trPair(STOCK_CONDITION_LABELS[String(item.stock_condition || '')]);
       const sizeTag = (() => {
         if (!Array.isArray(item.size_balances) || !item.size_balances.length) { return ''; }
         const parts = item.size_balances.map((s) => {
@@ -107,7 +223,24 @@
         }).filter(Boolean).join(', ');
         return parts ? ` [${parts}]` : '';
       })();
-      return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${tr('stock.criticality', 'Criticidade')}: ${badge}</small></div>`;
+      // `/api/stock/low` já devolve `stock` e `minimum_stock` recortados NA
+      // Unidade (saldo dela contra o mínimo efetivo dela) — não são os
+      // corporativos de `/api/stock/epis`.
+      const origemMinimo = minimumSourceLabel(String(item.minimum_stock_source || ''));
+      const faixa = attentionHint(item);
+      const explicacao = [condicao, origemMinimo, faixa].filter(Boolean).join(' · ');
+      // Alerta desligado nunca some nem vira normal: o chip é cinza e o
+      // estado FÍSICO continua sendo dito, porque o saldo não deixou de ser
+      // o que é só porque o monitoramento foi desativado.
+      const subjacente = item.stock_status === 'disabled'
+        ? trPair(STOCK_STATUS_LABELS[String(item.underlying_status || '')])
+        : '';
+      const rodape = [
+        badge || esc(tr('stock.statusUnknown', 'Sem classificação por Unidade')),
+        subjacente ? esc(tr('stock.underlyingIs', 'condição atual: {s}').replace('{s}', subjacente)) : '',
+        explicacao ? esc(explicacao) : ''
+      ].filter(Boolean).join(' — ');
+      return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
     }).join('') || `<div class="summary-item">${tr('stock.noLowStockItems', 'Sem itens com estoque baixo.')}</div>`;
   }
 
@@ -135,7 +268,14 @@
     formatStockEpiRow,
     renderStockEpis,
     renderLowStock,
-    renderRequests
+    renderRequests,
+    // Exportados para serem TESTÁVEIS. São a fronteira entre o contrato do
+    // backend e a tela: é neles que uma regressão de "corporativo virou
+    // local" ou "disabled virou normal" apareceria primeiro.
+    stockStatusBadge,
+    stockReading,
+    minimumReading,
+    attentionHint
   };
 
   for (const [name, fn] of Object.entries(estoqueExports)) {

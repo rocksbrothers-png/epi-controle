@@ -1635,5 +1635,22 @@
       "invalid_value": "Invalid value",
       "no_natural_key": "No key to identify the record"
     }
-  }
+  },
+  "stock.statusColumn": "Status",
+  "stock.statusNormal": "Normal",
+  "stock.statusNearMinimum": "Near minimum",
+  "stock.statusCritical": "Critical",
+  "stock.statusAlertDisabled": "Alert disabled",
+  "stock.statusUnknown": "No unit-level classification",
+  "stock.conditionNegative": "negative balance",
+  "stock.conditionZero": "no balance",
+  "stock.conditionBelowMinimum": "below minimum",
+  "stock.conditionAtMinimum": "at minimum",
+  "stock.conditionAboveMinimum": "above minimum",
+  "stock.minimumFromUnit": "set by the unit",
+  "stock.minimumFromCompany": "inherited from the company default",
+  "stock.minimumFromSystem": "system default",
+  "stock.attentionLimit": "attention range up to {n}",
+  "stock.companyTotal": "company total",
+  "stock.underlyingIs": "current condition: {s}"
 }

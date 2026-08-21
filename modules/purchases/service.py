@@ -311,6 +311,47 @@ def ensure_purchase_request_action_scope(connection, actor, purchase_request, *,
             raise PermissionError('Requisição fora das unidades de compras vinculadas ao usuário.')
 
 
+def purchase_creation_unit_scope_violation(
+    connection, actor, unit_id, *, actor_operational_unit_id=None, locked_profile_message='',
+):
+    """Motivo pelo qual o ator NÃO pode CRIAR na Unidade alvo; `''` se pode.
+
+    As duas irmãs (`ensure_purchase_request_action_scope` e
+    `ensure_purchase_order_action_scope`) validam um registro que já existe. Na
+    criação não existe registro ainda: o que precisa ser validado é a Unidade
+    que o payload está pedindo. Sem esta checagem, Comprador e Aprovador
+    criavam PR/PO para qualquer Unidade da empresa e só eram barrados na ação
+    seguinte — o registro já nascia na Unidade errada, e um recebimento
+    creditaria o estoque dela.
+
+    Comprador e Aprovador atuam na CARTEIRA de Unidades de
+    `purchase_role_unit_links`, que pode ser múltipla. Múltipla é a carteira,
+    não a transação: cada PR/PO nasce em UMA Unidade, e ela precisa estar na
+    carteira de quem cria. Vínculo em A, B e C não soma nada entre A, B e C —
+    só diz onde a pessoa pode agir.
+
+    Devolve mensagem em vez de levantar porque as rotas de criação respondem
+    403 com o envelope `UNIT_SCOPE_VIOLATION`, já existente; as irmãs levantam
+    `PermissionError` e caem no 403 genérico. Manter cada caminho no seu
+    formato evita mudar o envelope que os clientes já tratam.
+    """
+    if actor.get('role') == 'master_admin':
+        return ''
+    unit_id = int(unit_id)
+    scope_unit_id = actor_operational_unit_id(connection, actor) if actor_operational_unit_id is not None else None
+    if actor.get('role') in ('admin', 'user'):
+        if not scope_unit_id or unit_id != int(scope_unit_id):
+            return locked_profile_message
+        return ''
+    if actor.get('role') in ('buyer', 'approver'):
+        purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
+        if not purchase_scope_units:
+            return 'Usuário sem unidade de compras vinculada.'
+        if unit_id not in {int(uid) for uid in purchase_scope_units}:
+            return 'Unidade fora das unidades de compras vinculadas ao usuário.'
+    return ''
+
+
 def ensure_purchase_workflow_permission(actor, permission_group):
     if permission_group == 'approve':
         ensure_permission(actor, PERM_PO_APPROVE)

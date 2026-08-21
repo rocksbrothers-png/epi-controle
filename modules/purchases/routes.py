@@ -23,7 +23,7 @@ from core.permissions import (
 )
 from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
 from modules.employees.service import actor_has_no_operational_unit, actor_operational_unit_id
-from modules.units.service import ensure_unit_operational
+from modules.units.service import ensure_unit_operational, fetch_units
 from core.security import resolve_actor_user_id
 from datetime import datetime, timezone
 from epi_backend.http_utils import require_fields, send_json
@@ -64,6 +64,8 @@ from modules.purchases.service import (
     fetch_user_unit_links,
     get_actor_purchase_unit_scope,
     purchase_creation_unit_scope_violation,
+    build_purchase_scope_payload,
+    resolve_purchase_scope,
     get_company_purchase_config,
     set_company_purchase_config,
     create_purchase_function_links,
@@ -83,6 +85,30 @@ from modules.purchases.service import (
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
+
+def handle_get_purchase_scope(handler, parsed, payload, match):
+    """Escopo de Unidade em Compras + as Unidades que o ator pode escolher.
+
+    Fonte ÚNICA do seletor. O cliente desenha as opções a partir daqui e
+    devolve a escolha em `unit_id`; ele não monta a lista a partir do
+    bootstrap nem a recorta no navegador — que é o que Web Legado e Flutter
+    fazem hoje, cada um de um jeito.
+
+    `unit_id` na query é opcional e só serve para o servidor confirmar (ou
+    recusar) uma seleção já feita. Recusar aqui não substitui a validação de
+    cada endpoint de Compras: é a mesma resolução, chamada no mesmo lugar.
+    """
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), PERM_PURCHASE_REQUESTS_VIEW)
+        query = parse_qs(parsed.query)
+        escopo = resolve_purchase_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            denial_message='Perfil sem unidade operacional ativa para consultar compras.',
+        )
+        return send_json(handler, 200, build_purchase_scope_payload(
+            connection, actor, escopo, fetch_units_fn=fetch_units,
+        ))
+
 
 def handle_get_epi_requests(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
@@ -698,6 +724,7 @@ def register_routes(router):
     router.register('POST', '/api/company-purchase-config',                        handle_post_company_purchase_config)
     router.register('POST', '/api/purchase-functions',                             handle_post_purchase_functions)
     router.register('GET', '/api/user-unit-links',                                 handle_get_user_unit_links)
+    router.register('GET', '/api/purchase-scope',                            handle_get_purchase_scope)
     router.register('GET', '/api/purchase-demands',                          handle_get_purchase_demands)
     router.register('GET', '/api/purchase-requests',                         handle_get_purchase_requests)
     router.register('GET', r'^/api/purchase-requests/(\d+)$',                handle_get_purchase_request_detail, regex=True)

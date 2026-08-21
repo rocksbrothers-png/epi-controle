@@ -101,6 +101,7 @@ def build_dashboard_summary(
     requested_legal_entity_id=None,
     requested_sector=None,
     permissions=(),
+    purchase_scope_units=None,
     fetch_units,
     fetch_employees,
     fetch_epis,
@@ -115,6 +116,13 @@ def build_dashboard_summary(
     As dependências entram por parâmetro (mesmo padrão de `compute_alerts` e
     `fetch_low_stock_items`) para não importar `modules.*` a partir daqui: é o
     que mantém o módulo fora do ciclo de imports fechado pela issue #148.
+
+    `purchase_scope_units` é a carteira de Compras do ator
+    (`purchase_role_unit_links`), ou `None` quando ele não tem carteira. Ela
+    recorta as OPÇÕES do filtro de Unidade: um Comprador vinculado à Unidade
+    A não pode ver B e C no seletor, porque não pode agir nelas. `None` e
+    tupla vazia são coisas diferentes e nunca podem ser distinguidas por
+    truthiness — `None` é "sem restrição", `()` é "não enxerga nenhuma".
     """
     escopo = resolve_unit_scope(
         connection, actor, requested_unit_id,
@@ -158,7 +166,10 @@ def build_dashboard_summary(
                 connection, actor, epis, escopo, STATUS_CRITICAL),
             'near_minimum_stock': _contagem_por_status(
                 connection, actor, epis, escopo, STATUS_NEAR_MINIMUM),
-            'pending_purchases': count_pending_purchases(),
+            # A Unidade RESOLVIDA vai junto: sem ela este KPI re-derivava o
+            # próprio escopo do ator e ficava surdo ao seletor — selecionar
+            # uma Unidade mudava todos os números do painel, menos este.
+            'pending_purchases': count_pending_purchases(escopo.unit_id),
         },
         'filters': {
             'legal_entities': [
@@ -172,7 +183,7 @@ def build_dashboard_summary(
                     'legal_entity_id': _int_ou_none(u.get('legal_entity_id')),
                 }
                 for u in unidades
-                if not escopo.locked or _int_ou_none(u.get('id')) == escopo.unit_id
+                if _unidade_selecionavel(u, escopo, purchase_scope_units)
             ],
             'sectors': _setores(colaboradores, unidades_no_escopo),
         },
@@ -182,6 +193,25 @@ def build_dashboard_summary(
 
 
 # ── recorte ──────────────────────────────────────────────────────────────────
+
+def _unidade_selecionavel(unidade, escopo, purchase_scope_units):
+    """A Unidade pode aparecer como OPÇÃO no filtro?
+
+    Perfil travado enxerga só a própria. Comprador/Aprovador, só as da
+    carteira. Os demais, todas.
+
+    A comparação com a carteira é `is not None` de propósito: tupla vazia
+    (carteira sem vínculo) precisa esconder tudo, e `if purchase_scope_units`
+    faria o vazio virar "sem restrição" — o antipadrão de truthiness que já
+    custou caro no saldo de estoque.
+    """
+    uid = _int_ou_none(unidade.get('id'))
+    if escopo.locked:
+        return uid == escopo.unit_id
+    if purchase_scope_units is not None:
+        return uid in {int(u) for u in purchase_scope_units}
+    return True
+
 
 def _int_ou_none(valor):
     try:

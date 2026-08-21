@@ -36,6 +36,7 @@ def handle_get_dashboard_summary(handler, parsed, payload, match):
         actor_has_no_purchase_unit_scope,
         count_pending_purchase_requests,
         get_actor_purchase_unit_scope,
+        narrow_purchase_unit_to_selection,
     )
     from modules.stock.service import compute_stock_compliance, fetch_low_stock_items
     from modules.units.service import fetch_units
@@ -64,7 +65,9 @@ def handle_get_dashboard_summary(handler, parsed, payload, match):
                 fetch_epis=fetch_epis,
             )
 
-        def count_pending_purchases():
+        carteira_de_compras = get_actor_purchase_unit_scope(connection, actor)
+
+        def count_pending_purchases(unidade_selecionada=None):
             # Mesmas guardas do bootstrap: sem permissão, sem empresa ou sem
             # escopo de compras o KPI é 0 — nunca a contagem da empresa inteira.
             if 'purchase_requests:view' not in PERMISSIONS.get(actor.get('role'), set()):
@@ -73,13 +76,18 @@ def handle_get_dashboard_summary(handler, parsed, payload, match):
             if not company_id:
                 return 0
             scope_unit_id = actor_operational_unit_id(connection, actor)
-            purchase_scope_units = get_actor_purchase_unit_scope(connection, actor)
             if actor_has_no_purchase_unit_scope(
-                actor, scope_unit_id, purchase_scope_units
+                actor, scope_unit_id, carteira_de_compras
             ) or actor_has_no_operational_unit(actor, scope_unit_id):
                 return 0
+            # A Unidade escolhida no seletor manda sobre o escopo derivado do
+            # ator — e a regra de quando ela manda mora em Compras, testada
+            # lá, porque uma decisão dentro desta closure não é exercitável.
             return count_pending_purchase_requests(
-                connection, company_id, scope_unit_id, purchase_scope_units
+                connection, company_id,
+                narrow_purchase_unit_to_selection(
+                    scope_unit_id, unidade_selecionada, carteira_de_compras),
+                carteira_de_compras,
             )
 
         resumo = build_dashboard_summary(
@@ -88,6 +96,7 @@ def handle_get_dashboard_summary(handler, parsed, payload, match):
             requested_unit_id=query.get('unit_id', [''])[0],
             requested_legal_entity_id=query.get('legal_entity_id', [''])[0],
             requested_sector=query.get('sector', [''])[0],
+            purchase_scope_units=carteira_de_compras,
             fetch_units=fetch_units,
             fetch_employees=fetch_employees,
             fetch_epis=fetch_epis,

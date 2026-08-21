@@ -57,19 +57,118 @@ def get_actor_purchase_unit_scope(connection, actor):
     vira "toda a empresa" ou "nada" é o chamador — ver
     ``actor_has_no_purchase_unit_scope`` para Comprador/Aprovador, cujo
     escopo precisa ser fail-closed (vínculo ausente = zero acesso).
+
+    **Só Comprador e Aprovador têm carteira.** Antes a lista de papéis incluía
+    `admin`, `registry_admin` e `general_admin`, e consultava com
+    `role_type = 'buyer'` para os três, porque nenhum deles é uma função de
+    compras. O efeito era silencioso e ao contrário do desejado: um
+    Administrador Geral que por acaso tivesse vínculo de comprador passava a
+    ser RESTRINGIDO àquelas Unidades, embora a regra seja que ele enxerga a
+    empresa inteira e escolhe a Unidade no seletor. Perfil travado, por sua
+    vez, já é limitado por `actor_operational_unit_id` — carteira ali seria
+    uma segunda fonte para a mesma decisão.
     """
     if not actor:
         return None
     actor_role = actor.get('role')
     linked_employee_id = actor.get('linked_employee_id')
-    if not linked_employee_id or actor_role not in ('buyer', 'approver', 'admin', 'registry_admin', 'general_admin'):
+    if not linked_employee_id or actor_role not in PURCHASE_FUNCTION_TYPES:
         return None
     function_rows = connection.execute(
         'SELECT unit_id FROM purchase_role_unit_links WHERE employee_id = ? AND role_type = ?',
-        (int(linked_employee_id), actor_role if actor_role in PURCHASE_FUNCTION_TYPES else 'buyer')
+        (int(linked_employee_id), actor_role)
     ).fetchall()
     unit_ids = [int(r['unit_id']) for r in function_rows]
     return sorted(set(unit_ids)) if unit_ids else None
+
+
+def resolve_purchase_scope(connection, actor, requested_unit_id=None, *, denial_message=None):
+    """Escopo de Compras do ator — fachada com a carteira já ligada.
+
+    Existe para que nenhum chamador precise lembrar de injetar
+    `get_actor_purchase_unit_scope`. Esquecer a injeção seria fail-OPEN
+    (carteira `None` = sem restrição), então a injeção não pode ser
+    responsabilidade de quem chama.
+    """
+    from core.repository import resolve_purchase_unit_scope
+    return resolve_purchase_unit_scope(
+        connection, actor, requested_unit_id,
+        purchase_units_loader=get_actor_purchase_unit_scope,
+        denial_message=denial_message,
+    )
+
+
+def narrow_purchase_unit_to_selection(scope_unit_id, selected_unit_id, purchase_scope_units):
+    """Unidade que uma consulta de Compras deve usar, dada a seleção do usuário.
+
+    `scope_unit_id` é o que o ator impõe (perfil travado tem uma; os demais,
+    `None`). `selected_unit_id` é o que ele escolheu no seletor.
+
+    A seleção só prevalece se estiver na carteira. Quem valida a Unidade
+    antes daqui (`resolve_unit_scope`) confere existência e tenant, mas **não
+    conhece carteira** — sem esta função, um Comprador vinculado a A+B pediria
+    `unit_id=C` e receberia números de C: o seletor esconde C, a API não.
+
+    Fora da carteira o pedido é DESCARTADO, não recusado — mesmo tratamento
+    que o perfil travado já recebe para um `unit_id` que não é o dele. Recusar
+    aqui transformaria cliente desatualizado em erro; descartar mantém a
+    autorização no servidor.
+
+    `purchase_scope_units` a `None` significa "sem carteira, sem restrição" —
+    e tupla/lista vazia significa "não enxerga nada". A distinção é por
+    `is None`, nunca por truthiness.
+    """
+    if selected_unit_id in (None, '', 0):
+        return scope_unit_id
+    selecionada = int(selected_unit_id)
+    if purchase_scope_units is None:
+        return selecionada
+    if selecionada in {int(u) for u in purchase_scope_units}:
+        return selecionada
+    return scope_unit_id
+
+
+def build_purchase_scope_payload(connection, actor, escopo, *, fetch_units_fn):
+    """Contrato de escopo + lista do seletor, para QUALQUER frontend.
+
+    O cliente desenha o seletor a partir daqui e devolve a escolha em
+    `unit_id`. Ele não filtra, não deduz e não reconstrói a lista — hoje o
+    Web Legado monta as opções de Unidade a partir do bootstrap e as recorta
+    no navegador, e o Flutter nem recorta.
+
+    `available_units` já vem recortado pelo direito do ator:
+    Comprador/Aprovador recebem só a carteira; perfil travado, só a própria
+    Unidade; os demais, as Unidades do tenant.
+    """
+    unidades = fetch_units_fn(connection, actor)
+    empresa = actor.get('company_id')
+    disponiveis = []
+    for u in unidades:
+        uid = u.get('id')
+        if uid is None:
+            continue
+        uid = int(uid)
+        if not escopo.permits(uid):
+            continue
+        # `master_admin` não tem empresa própria; para ele o recorte de tenant
+        # é feito por quem escolheu a empresa, não aqui.
+        if empresa and str(u.get('company_id') or '') != str(empresa):
+            continue
+        disponiveis.append({
+            'id': uid,
+            'name': str(u.get('name') or ''),
+            'legal_entity_id': u.get('legal_entity_id'),
+        })
+    return {
+        'scope': {
+            'company_id': int(empresa) if empresa else None,
+            'unit_id': escopo.unit_id,
+            'unit_scope_source': escopo.source,
+            'locked': escopo.locked,
+        },
+        'available_units': disponiveis,
+        'allows_all_units': escopo.allows_all_units,
+    }
 
 
 def actor_has_no_purchase_unit_scope(actor, scope_unit_id, purchase_scope_units):

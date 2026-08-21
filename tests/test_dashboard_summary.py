@@ -207,7 +207,7 @@ def _resumo(conn, actor, *, unit_id=None, legal_entity_id=None, sector=None,
         fetch_legal_entities=lambda c, a: list(CNPJS),
         compute_alerts=lambda c, a: list(alertas or []),
         compute_stock_compliance=lambda c, cid, uid: dict(conformidade or {'summary': {}}),
-        count_pending_purchases=lambda: pendentes,
+        count_pending_purchases=lambda unidade=None: pendentes,
     )
 
 
@@ -756,7 +756,7 @@ def test_o_resumo_nao_devolve_dois_cnpjs_indistinguiveis():
             fetch_legal_entities=lambda c, a: list(homonimos),
             compute_alerts=lambda c, a: [],
             compute_stock_compliance=lambda c, cid, uid: {'summary': {}},
-            count_pending_purchases=lambda: 0,
+            count_pending_purchases=lambda unidade=None: 0,
         )
 
     rotulos = [c['name'] for c in resumo['filters']['legal_entities']]

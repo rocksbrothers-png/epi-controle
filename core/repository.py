@@ -395,6 +395,148 @@ def resolve_unit_scope(connection, actor, requested_unit_id=None, *, denial_mess
     return UnitScope(pedido_id, 'selected', False)
 
 
+class UnitSelection(NamedTuple):
+    """Escopo de Unidade resolvido pelo SERVIDOR, com a lista do seletor.
+
+    Estende `UnitScope` com o que o cliente precisa para DESENHAR o seletor
+    sem reconstruir autorização nenhuma. Existe separada porque `UnitScope`
+    responde "qual Unidade?" e é usada em caminhos que não têm seletor
+    (entrega, movimentação); esta responde também "quais o ator poderia
+    escolher?".
+
+    `source` ganha um quarto valor em relação a `UnitScope`:
+
+    - `'actor'`          — perfil travado; veio de `actor_operational_unit_id`
+    - `'selected'`       — Unidade escolhida explicitamente, já validada
+    - `'purchase_scope'` — Comprador/Aprovador SEM seleção: a visão é a
+      carteira de `purchase_role_unit_links` ("Todas as minhas Unidades")
+    - `'none'`           — visão corporativa legítima de quem tem esse direito
+
+    O quarto valor não é enfeite. Sem ele, Comprador sem seleção cairia em
+    `'none'`, que significa "empresa inteira" — exatamente o vazamento que
+    esta fatia existe para impedir. `'none'` e `'purchase_scope'` têm o mesmo
+    `unit_id` (`None`) e significados opostos.
+
+    `allowed_unit_ids` é `None` quando NÃO há restrição de carteira (perfis
+    administrativos) e uma tupla quando há. **Tupla vazia significa carteira
+    vazia: nenhum resultado.** A diferença entre `None` e `()` nunca pode ser
+    testada por truthiness — `if not allowed_unit_ids` confundiria "sem
+    restrição" com "não pode ver nada", que é a família de defeito que já
+    custou caro no saldo de estoque. Use `is None`, ou a propriedade
+    `blocks_everything`.
+    """
+
+    unit_id: int | None
+    source: str
+    locked: bool
+    allowed_unit_ids: tuple[int, ...] | None
+    allows_all_units: bool
+
+    @property
+    def blocks_everything(self) -> bool:
+        """Carteira existente e vazia: o ator não enxerga Unidade nenhuma."""
+        return self.allowed_unit_ids is not None and not self.allowed_unit_ids
+
+    def permits(self, unit_id) -> bool:
+        """A Unidade está no direito do ator? Sem restrição ⇒ sempre sim."""
+        if self.allowed_unit_ids is None:
+            return True
+        return int(unit_id) in self.allowed_unit_ids
+
+
+# Perfis cuja visão de Compras é a carteira de `purchase_role_unit_links`.
+# Administrador Geral e de Registro NÃO entram: a Unidade deles é escolha, não
+# vínculo (ver `get_actor_purchase_unit_scope`).
+PURCHASE_CARTEIRA_ROLES = ('buyer', 'approver')
+
+
+def resolve_purchase_unit_scope(
+    connection, actor, requested_unit_id=None, *, purchase_units_loader, denial_message=None,
+):
+    """Escopo de Unidade em Compras — ponto ÚNICO, inclusive para o seletor.
+
+    `purchase_units_loader(connection, actor)` devolve a carteira do ator
+    (`get_actor_purchase_unit_scope`). Entra por injeção, e não por import,
+    porque `core.repository` não pode importar `modules.purchases` sem
+    reabrir o ciclo fechado pela issue #148 — mesmo motivo pelo qual
+    `build_dashboard_summary` recebe `fetch_units`/`fetch_epis`.
+
+    Regras, nesta ordem:
+
+    1. **Perfil travado** (`admin`/`user`): Unidade de
+       `actor_operational_unit_id`, `unit_id` do cliente descartado, e nunca
+       a opção "Todas". Sem unidade ⇒ `PermissionError` (fail-closed).
+    2. **Comprador/Aprovador**: só as Unidades da carteira. Carteira vazia
+       não vira empresa inteira — devolve `allowed_unit_ids=()`, que o
+       chamador honra como "nenhum resultado". "Todas as minhas Unidades" só
+       é oferecida a partir de duas Unidades; com uma só, ela é
+       pré-selecionada.
+    3. **Demais perfis livres** (Administrador Geral/Registro,
+       `master_admin`): todas as Unidades do tenant, com "Todas".
+
+    A Unidade pedida é validada em duas etapas, com erros diferentes de
+    propósito: pertencer ao tenant é `ValueError` (→ 400, identificador
+    inválido para este contexto); estar fora do direito do ator é
+    `PermissionError` (→ 403, identificador válido que ele não pode usar).
+    Colapsar os dois num só esconderia de um Comprador a diferença entre
+    "essa Unidade não existe aqui" e "existe, mas não é sua".
+    """
+    role = str((actor or {}).get('role') or '')
+
+    if role in ('admin', 'user'):
+        unit_id = actor_operational_unit_id(connection, actor)
+        if not unit_id:
+            raise PermissionError(denial_message or 'Perfil sem unidade operacional ativa.')
+        return UnitSelection(int(unit_id), 'actor', True, (int(unit_id),), False)
+
+    carteira = None
+    if role in PURCHASE_CARTEIRA_ROLES:
+        carregada = purchase_units_loader(connection, actor)
+        # `get_actor_purchase_unit_scope` devolve `None` para "nenhum vínculo".
+        # Para Comprador/Aprovador isso É a carteira vazia, não "sem
+        # restrição" — a normalização acontece aqui, uma vez, em vez de em
+        # cada chamador.
+        carteira = tuple(int(u) for u in (carregada or ()))
+        if not carteira:
+            return UnitSelection(None, 'purchase_scope', False, (), False)
+
+    permite_todas = carteira is None or len(carteira) > 1
+
+    pedido = str(requested_unit_id or '').strip()
+    if not pedido:
+        if carteira is not None and len(carteira) == 1:
+            # Uma única Unidade autorizada: já é a visão, não há o que escolher.
+            return UnitSelection(carteira[0], 'selected', False, carteira, False)
+        origem = 'purchase_scope' if carteira is not None else 'none'
+        return UnitSelection(None, origem, False, carteira, permite_todas)
+
+    try:
+        pedido_id = int(pedido)
+    except (TypeError, ValueError):
+        raise ValueError('Unidade inválida.')
+    if pedido_id <= 0:
+        raise ValueError('Unidade inválida.')
+
+    if role != 'master_admin':
+        row = connection.execute(
+            'SELECT company_id FROM units WHERE id = ?', (pedido_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError('Unidade não encontrada.')
+        unidade = row_to_dict(row)
+        empresa_ator = str(actor.get('company_id') or '').strip()
+        empresa_unidade = str(unidade.get('company_id') or '').strip()
+        # Empresa ausente em QUALQUER dos lados nega — "desconhecido" nunca é
+        # "igual". Mesma regra de `resolve_unit_scope`.
+        if not empresa_ator or not empresa_unidade or empresa_unidade != empresa_ator:
+            raise ValueError('Unidade não pertence à empresa do usuário.')
+
+    if carteira is not None and pedido_id not in carteira:
+        raise PermissionError('Unidade fora das unidades de compras vinculadas ao usuário.')
+
+    return UnitSelection(pedido_id, 'selected', False, carteira, permite_todas)
+
+
 def require_actor(connection, actor_user_id, *, allow_password_change_pending=False):
     """Ator válido para uma operação autenticada.
 

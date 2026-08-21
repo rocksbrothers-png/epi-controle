@@ -16,8 +16,6 @@ Unidade, a mesma fonte que dimensiona `quantity_requested`.
 
 import sqlite3
 
-import pytest
-
 from modules.purchases.service import fetch_purchase_demands
 
 EMPRESA, UNIDADE = 2, 4

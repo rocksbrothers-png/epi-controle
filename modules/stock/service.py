@@ -381,8 +381,58 @@ DEFAULT_ATTENTION_PERCENTAGE = 20
 ATTENTION_SOURCE_UNIT = 'unit_configured'
 ATTENTION_SOURCE_COMPANY = 'company_default'
 
+# Origem no nível da EMPRESA. Eixo diferente do de cima: `ATTENTION_SOURCE_*`
+# responde "de onde veio o percentual DESTA Unidade"; estes respondem "a
+# empresa configurou o próprio padrão, ou está usando o do sistema?".
+#
+# A hierarquia completa (#271-B1b):
+#
+#     system_default (20%) → company_configured → unit_configured
+#
+# Uma Unidade sem linha continua com origem `company_default` esteja a empresa
+# configurada ou não — o que ela herdou foi o valor EFETIVO da empresa, e é
+# isso que a origem dela descreve.
+COMPANY_ATTENTION_SOURCE_COMPANY = 'company_configured'
+COMPANY_ATTENTION_SOURCE_SYSTEM = 'system_default'
+
+# Teto do percentual, nos DOIS níveis. Acima de 100 a faixa laranja passa do
+# dobro do mínimo e o estado verde praticamente desaparece do catálogo — como
+# padrão, é muito mais provável ser erro de digitação do que intenção.
+#
+# O limite valia só para o nível corporativo no primeiro desenho. Duas regras
+# para o mesmo parâmetro é como as réguas divergentes desta issue começaram:
+# a rota por Unidade aceitava 500 e a corporativa recusaria 101.
+MAX_ATTENTION_PERCENTAGE = 100
+
 ALERT_SOURCE_UNIT = 'unit_configured'
 ALERT_SOURCE_SYSTEM = 'system_default'
+
+
+class CompanyAttentionPercentage(NamedTuple):
+    """Percentual padrão efetivo da empresa, e se ela o configurou."""
+
+    value: int
+    source: str
+
+
+def validate_attention_percentage(valor):
+    """Percentual válido: inteiro em `0..100`. Fora disso, `ValueError` (400).
+
+    **`0` é válido e significativo**: "sem faixa de atenção, me avise só no
+    crítico". Nunca tratar como ausência — `if not pct` devolveria o padrão
+    herdado contra a decisão explícita de quem configurou.
+    """
+    if isinstance(valor, bool) or valor is None or (isinstance(valor, str) and not valor.strip()):
+        raise ValueError('Percentual de atenção é obrigatório.')
+    try:
+        numero = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError('Percentual de atenção deve ser um número inteiro.')
+    if numero < 0 or numero > MAX_ATTENTION_PERCENTAGE:
+        raise ValueError(
+            f'Percentual de atenção deve estar entre 0 e {MAX_ATTENTION_PERCENTAGE}.'
+        )
+    return numero
 
 STATUS_NORMAL = 'normal'
 STATUS_NEAR_MINIMUM = 'near_minimum'
@@ -470,17 +520,112 @@ class StockClassification(NamedTuple):
     stock_condition: str
 
 
-def resolve_company_attention_percentage(connection, company_id):
-    """Percentual padrão da empresa. Em tabela, não em constante, para que o
-    Administrador Geral possa mudá-lo sem deploy."""
+def resolve_company_attention_setting(connection, company_id):
+    """Percentual padrão da empresa COM a origem.
+
+    Testa a EXISTÊNCIA da linha, como nos outros níveis: uma empresa que
+    configurou 20 é `company_configured`, e uma que nunca configurou é
+    `system_default` — as duas com o mesmo valor e significados diferentes.
+    Preservar essa distinção é o que torna "restaurar padrão do sistema"
+    diferente de "salvar 20%".
+    """
     row = connection.execute(
         'SELECT attention_percentage FROM company_stock_attention_config WHERE company_id = ?',
         (int(company_id),),
     ).fetchone()
     if row is None:
-        return DEFAULT_ATTENTION_PERCENTAGE
+        return CompanyAttentionPercentage(
+            DEFAULT_ATTENTION_PERCENTAGE, COMPANY_ATTENTION_SOURCE_SYSTEM)
     valor = row_to_dict(row).get('attention_percentage')
-    return DEFAULT_ATTENTION_PERCENTAGE if valor is None else max(0, int(valor))
+    if valor is None:
+        # Linha existe com valor nulo: schema permite, semântica não. Trata-se
+        # como não configurada em vez de propagar `None` para a aritmética.
+        return CompanyAttentionPercentage(
+            DEFAULT_ATTENTION_PERCENTAGE, COMPANY_ATTENTION_SOURCE_SYSTEM)
+    return CompanyAttentionPercentage(
+        max(0, int(valor)), COMPANY_ATTENTION_SOURCE_COMPANY)
+
+
+def resolve_company_attention_percentage(connection, company_id):
+    """Só o valor efetivo. É o que a resolução por Unidade precisa: para ela,
+    o que importa é o número herdado, não se a empresa o configurou."""
+    return resolve_company_attention_setting(connection, company_id).value
+
+
+def set_company_attention_percentage(
+    connection, company_id, attention_percentage, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Grava o padrão da empresa. Uma instrução, uma tabela.
+
+    **Não toca `unit_epi_attention_percentage`.** A propagação para quem herda
+    não é escrita: `resolve_unit_attention_percentage` lê o padrão a cada
+    chamada, então a mudança vale na leitura seguinte. Um `UPDATE` em massa
+    aqui sobrescreveria as personalizações locais — o defeito que a 1.1D-B0
+    corrigiu quando o mínimo era `UPDATE epis`.
+    """
+    novo = validate_attention_percentage(attention_percentage)
+    anterior = resolve_company_attention_setting(connection, company_id)
+    agora = datetime.now(UTC).isoformat()
+    connection.execute(
+        'INSERT INTO company_stock_attention_config '
+        '(company_id, attention_percentage, updated_by_user_id, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?) '
+        'ON CONFLICT (company_id) DO UPDATE SET '
+        'attention_percentage = excluded.attention_percentage, '
+        'updated_by_user_id = excluded.updated_by_user_id, '
+        'updated_at = excluded.updated_at',
+        (int(company_id), novo, _actor_id(actor), agora, agora),
+    )
+    _audit_company_attention(
+        connection, company_id, 'set',
+        anterior.value if anterior.source == COMPANY_ATTENTION_SOURCE_COMPANY else None,
+        novo, anterior.source, COMPANY_ATTENTION_SOURCE_COMPANY,
+        actor, ip_address, user_agent,
+    )
+    return CompanyAttentionPercentage(novo, COMPANY_ATTENTION_SOURCE_COMPANY)
+
+
+def clear_company_attention_percentage(
+    connection, company_id, *, actor=None, ip_address='', user_agent='',
+):
+    """Apaga o padrão da empresa e devolve ao `system_default` (20%).
+
+    Diferente de gravar 20: gravar deixa `company_configured = 20`; restaurar
+    deixa a empresa SEM configuração corporativa. Mesmo valor, origens
+    opostas — a mesma distinção que separa `unit_configured` de herança.
+
+    Nenhuma linha de `unit_epi_attention_percentage` é tocada.
+    """
+    anterior = resolve_company_attention_setting(connection, company_id)
+    if anterior.source != COMPANY_ATTENTION_SOURCE_COMPANY:
+        return anterior
+    connection.execute(
+        'DELETE FROM company_stock_attention_config WHERE company_id = ?',
+        (int(company_id),),
+    )
+    herdado = resolve_company_attention_setting(connection, company_id)
+    _audit_company_attention(
+        connection, company_id, 'restore', anterior.value, herdado.value,
+        anterior.source, herdado.source, actor, ip_address, user_agent,
+    )
+    return herdado
+
+
+def _audit_company_attention(connection, company_id, acao, anterior, novo,
+                             origem_anterior, origem_nova, actor, ip_address, user_agent):
+    connection.execute(
+        'INSERT INTO company_stock_attention_config_audit_logs '
+        '(company_id, action, previous_percentage, new_percentage, previous_source, '
+        ' new_source, actor_user_id, actor_name, actor_role, ip_address, user_agent, '
+        ' created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (int(company_id), acao, anterior, novo, origem_anterior, origem_nova,
+         _actor_id(actor),
+         str((actor or {}).get('full_name') or (actor or {}).get('name') or ''),
+         str((actor or {}).get('role') or ''),
+         str(ip_address or ''), str(user_agent or ''),
+         datetime.now(UTC).isoformat()),
+    )
 
 
 def resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id):
@@ -627,7 +772,11 @@ def set_unit_epi_attention_percentage(
     """
     anterior = resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id)
     valor_anterior = str(anterior.value) if anterior.source == ATTENTION_SOURCE_UNIT else None
-    novo = max(0, int(attention_percentage or 0))
+    # Mesma validação do nível corporativo (#271-B1b). Antes era
+    # `max(0, int(pct or 0))`: aceitava 500 silenciosamente e transformava
+    # `0` em `0` por acidente e não por regra, porque `0 or 0` é `0` — o
+    # mesmo `or` que teria devolvido o padrão se o default fosse outro.
+    novo = validate_attention_percentage(attention_percentage)
     _upsert_config(
         connection, 'unit_epi_attention_percentage', 'attention_percentage',
         company_id, unit_id, epi_id, novo,

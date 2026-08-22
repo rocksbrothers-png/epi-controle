@@ -3246,6 +3246,28 @@ def ensure_stock_classification_config(connection) -> None:
             FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
         );
 
+        -- Auditoria do padrão CORPORATIVO (#271-B1b). Tabela própria, e não a
+        -- `unit_epi_stock_config_audit_logs`: aquela tem `unit_id` e `epi_id`
+        -- NOT NULL, e uma alteração de nível empresa só caberia lá com
+        -- sentinelas `0` — que seriam mentira e ainda poluiriam toda consulta
+        -- por Unidade.
+        CREATE TABLE IF NOT EXISTS company_stock_attention_config_audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            action TEXT NOT NULL DEFAULT 'set',
+            previous_percentage INTEGER,
+            new_percentage INTEGER NOT NULL,
+            previous_source TEXT NOT NULL DEFAULT '',
+            new_source TEXT NOT NULL DEFAULT '',
+            actor_user_id INTEGER,
+            actor_name TEXT NOT NULL DEFAULT '',
+            actor_role TEXT NOT NULL DEFAULT '',
+            ip_address TEXT NOT NULL DEFAULT '',
+            user_agent TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS unit_epi_attention_percentage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             company_id INTEGER NOT NULL,
@@ -3306,6 +3328,8 @@ def ensure_stock_classification_config(connection) -> None:
         'ON unit_epi_stock_alert_settings (company_id, unit_id)',
         'CREATE INDEX IF NOT EXISTS idx_unit_epi_stock_config_audit_scope '
         'ON unit_epi_stock_config_audit_logs (company_id, unit_id, epi_id, parameter, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_company_stock_attention_audit_scope '
+        'ON company_stock_attention_config_audit_logs (company_id, created_at)',
     ):
         try:
             connection.execute(statement)

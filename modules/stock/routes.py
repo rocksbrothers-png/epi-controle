@@ -52,10 +52,17 @@ from modules.stock.service import (
     clear_unit_epi_minimum_stock,
     clear_unit_epi_attention_percentage,
     clear_unit_epi_alert_enabled,
+    COMPANY_ATTENTION_SOURCE_COMPANY,
+    DEFAULT_ATTENTION_PERCENTAGE,
+    MAX_ATTENTION_PERCENTAGE,
+    clear_company_attention_percentage,
+    resolve_company_attention_setting,
+    set_company_attention_percentage,
     set_unit_epi_attention_percentage,
     set_unit_epi_minimum_stock,
     upsert_unit_stock,
 )
+from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.rate_limit import get_client_ip
 from core.schema import ensure_stock_movement_size_columns
 
@@ -404,6 +411,114 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
             'minimum_stock': minimo.value,
             'unit_id': int(scope_unit_id),
             'minimum_stock_source': minimo.source,
+        })
+
+
+def _company_for_attention_config(connection, actor, fonte):
+    """Empresa cujo padrão será lido/alterado (#271-B1b).
+
+    `general_admin`/`registry_admin` operam SEMPRE na própria empresa: um
+    `company_id` no payload é ignorado, não recusado — mesmo tratamento que o
+    perfil travado recebe para `unit_id`.
+
+    `master_admin` não tem empresa própria e por isso PRECISA informar
+    `company_id`, validado contra `companies`. Ausente ou inexistente → 400.
+    """
+    if actor.get('role') == 'master_admin':
+        bruto = str((fonte or {}).get('company_id') or '').strip()
+        if not bruto:
+            raise ValueError('Informe a empresa para alterar o percentual padrão.')
+        try:
+            company_id = int(bruto)
+        except (TypeError, ValueError):
+            raise ValueError('Empresa inválida.')
+        existe = connection.execute(
+            'SELECT id FROM companies WHERE id = ?', (company_id,)
+        ).fetchone()
+        if not existe:
+            raise ValueError('Empresa não encontrada.')
+        return company_id
+    company_id = actor.get('company_id')
+    if not company_id:
+        raise PermissionError('Perfil sem empresa vinculada para configurar o percentual padrão.')
+    return int(company_id)
+
+
+def handle_get_company_attention_percentage(handler, parsed, payload, match):
+    """Padrão de atenção da empresa, com a origem explícita.
+
+    O valor efetivo só aparece hoje embutido em `effective_attention_percentage`
+    de cada EPI — e apenas quando a origem é `company_default`. Numa empresa
+    onde todos os pares estejam `unit_configured`, o administrador não teria
+    como ler o padrão que está prestes a alterar.
+    """
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed), PERM_SETTINGS_VIEW)
+        company_id = _company_for_attention_config(connection, actor, parse_qs(parsed.query))
+        atual = resolve_company_attention_setting(connection, company_id)
+        return send_json(handler, 200, {
+            'company_id': company_id,
+            'attention_percentage': atual.value,
+            'source': atual.source,
+            'has_company_config': atual.source == COMPANY_ATTENTION_SOURCE_COMPANY,
+            'system_default_percentage': DEFAULT_ATTENTION_PERCENTAGE,
+            'max_percentage': MAX_ATTENTION_PERCENTAGE,
+        })
+
+
+def handle_post_company_attention_percentage(handler, parsed, payload, match):
+    """Grava o padrão da empresa. NÃO altera configuração de Unidade nenhuma.
+
+    Quem herda passa a usar o valor novo na leitura seguinte, porque a
+    resolução lê o padrão a cada chamada. Quem é `unit_configured` fica
+    intacto — a propagação é leitura, nunca `UPDATE` em massa.
+
+    Permissão `settings:update`, e não `stock:adjust`: isto é parâmetro
+    administrativo da empresa, não ajuste operacional de estoque. Por isso
+    `admin` e `user`, que configuram a própria Unidade, NÃO chegam aqui: o
+    padrão que alterariam é herdado por todas as outras Unidades.
+    """
+    require_fields(payload, ['actor_user_id', 'attention_percentage'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        company_id = _company_for_attention_config(connection, actor, payload)
+        atual = set_company_attention_percentage(
+            connection, company_id, payload.get('attention_percentage'),
+            actor=actor, ip_address=get_client_ip(handler), user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'company_id': company_id,
+            'attention_percentage': atual.value,
+            'source': atual.source,
+        })
+
+
+def handle_post_company_attention_percentage_restore(handler, parsed, payload, match):
+    """Apaga o padrão da empresa e devolve ao `system_default` (20%).
+
+    Diferente de gravar 20: gravar deixa `company_configured = 20`; restaurar
+    deixa a empresa SEM configuração corporativa. Mesmo valor, origens
+    opostas.
+    """
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(
+            connection, resolve_actor_user_id(handler, parsed, payload), PERM_SETTINGS_UPDATE)
+        company_id = _company_for_attention_config(connection, actor, payload)
+        atual = clear_company_attention_percentage(
+            connection, company_id,
+            actor=actor, ip_address=get_client_ip(handler), user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'company_id': company_id,
+            'attention_percentage': atual.value,
+            'source': atual.source,
         })
 
 
@@ -898,6 +1013,11 @@ def register_routes(router):
     router.register('POST', '/api/stock/minimum/restore-default',              handle_post_stock_minimum_restore)
     router.register('POST', '/api/stock/attention-percentage/restore-default', handle_post_stock_attention_percentage_restore)
     router.register('POST', '/api/stock/alert-enabled/restore-default',        handle_post_stock_alert_enabled_restore)
+    # Padrão CORPORATIVO do percentual (#271-B1b). Nível diferente: permissão
+    # `settings:update`, não `stock:adjust`.
+    router.register('GET',  '/api/stock/company-attention-percentage',                 handle_get_company_attention_percentage)
+    router.register('POST', '/api/stock/company-attention-percentage',                 handle_post_company_attention_percentage)
+    router.register('POST', '/api/stock/company-attention-percentage/restore-default', handle_post_company_attention_percentage_restore)
     router.register('POST', '/api/stock/movements',              handle_post_stock_movements)
     router.register('POST', '/api/stock/manufacture-date-ocr',   handle_post_stock_manufacture_date_ocr)
     router.register('POST', '/api/stock/labels/reprint',         handle_post_stock_labels_reprint)

@@ -3328,6 +3328,8 @@ def ensure_stock_classification_config(connection) -> None:
         'ON unit_epi_stock_alert_settings (company_id, unit_id)',
         'CREATE INDEX IF NOT EXISTS idx_unit_epi_stock_config_audit_scope '
         'ON unit_epi_stock_config_audit_logs (company_id, unit_id, epi_id, parameter, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_company_stock_attention_audit_scope '
+        'ON company_stock_attention_config_audit_logs (company_id, created_at)',
     ):
         try:
             connection.execute(statement)

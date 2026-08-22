@@ -265,5 +265,8 @@ def test_non_operational_role_is_blocked_before_any_unit_check(monkeypatch):
     _stock_epi(conn, cid, unit_id, epi_id)
     actor = {'id': 10, 'role': 'buyer', 'company_id': cid}
 
-    with pytest.raises(PermissionError, match='Apenas Administrador Local e Gestor de EPI'):
+    # A #271-B1a somou Administrador Geral e de Registro à lista — a mensagem
+    # mudou, a garantia não: Comprador continua bloqueado ANTES de qualquer
+    # checagem de Unidade.
+    with pytest.raises(PermissionError, match='podem editar estoque mínimo'):
         _post_minimum(conn, actor, epi_id, 20, monkeypatch)

@@ -683,5 +683,33 @@
   },
   "deliveryEmployeeWithoutUnit": "Employee has no operational Unit: delivery cannot be recorded.",
   "deliveryQrOtherEpi": "The scanned code belongs to another PPE.",
-  "stockUnitRequiredToMove": "Select a Unit to move stock."
+  "stockUnitRequiredToMove": "Select a Unit to move stock.",
+  "stockAttentionSectionTitle": "Stock",
+  "stockAttentionCompanyTitle": "Attention range — company default",
+  "stockAttentionCompanyHelp": "Applies to Units that have not set their own percentage. It does not change any Unit already configured.",
+  "stockAttentionPercentageLabel": "Attention range percentage",
+  "stockAttentionOriginLabel": "Source",
+  "stockAttentionOriginCompany": "Set by the company",
+  "stockAttentionOriginSystem": "System default",
+  "stockAttentionSave": "Save company default",
+  "stockAttentionRestore": "Restore system default",
+  "stockAttentionSaved": "Company default saved.",
+  "stockAttentionRestored": "Company default removed. The company is back on the system default.",
+  "stockAttentionSystemDefaultHint": "System default: {value}%",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Enter a whole percentage between 0 and {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "Could not load the company default."
 }

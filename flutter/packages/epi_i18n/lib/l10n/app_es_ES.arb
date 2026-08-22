@@ -656,5 +656,33 @@
   },
   "deliveryEmployeeWithoutUnit": "Colaborador sin Unidad operativa: no se puede registrar la entrega.",
   "deliveryQrOtherEpi": "El código leído pertenece a otro EPP.",
-  "stockUnitRequiredToMove": "Seleccione una Unidad para mover el stock."
+  "stockUnitRequiredToMove": "Seleccione una Unidad para mover el stock.",
+  "stockAttentionSectionTitle": "Existencias",
+  "stockAttentionCompanyTitle": "Franja de atención — valor por defecto de la empresa",
+  "stockAttentionCompanyHelp": "Se aplica a las Unidades que no han definido su propio porcentaje. No modifica ninguna Unidad ya configurada.",
+  "stockAttentionPercentageLabel": "Porcentaje de la franja de atención",
+  "stockAttentionOriginLabel": "Origen",
+  "stockAttentionOriginCompany": "Configurado por la empresa",
+  "stockAttentionOriginSystem": "Valor por defecto del sistema",
+  "stockAttentionSave": "Guardar valor de la empresa",
+  "stockAttentionRestore": "Restaurar el valor del sistema",
+  "stockAttentionSaved": "Valor por defecto de la empresa guardado.",
+  "stockAttentionRestored": "Valor de la empresa eliminado. La empresa vuelve al valor del sistema.",
+  "stockAttentionSystemDefaultHint": "Valor del sistema: {value}%",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Introduzca un porcentaje entero entre 0 y {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "No se ha podido cargar el valor por defecto de la empresa."
 }

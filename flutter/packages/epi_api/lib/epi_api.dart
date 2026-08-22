@@ -14,6 +14,7 @@ export 'endpoints/reports_api.dart';
 export 'endpoints/settings_api.dart';
 export 'models/bootstrap_response.dart';
 export 'models/company.dart';
+export 'models/company_attention_setting.dart';
 export 'models/dashboard_summary.dart';
 export 'models/legal_entity.dart';
 export 'models/outsourced_company.dart';

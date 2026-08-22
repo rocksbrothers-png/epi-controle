@@ -656,5 +656,33 @@
   },
   "deliveryEmployeeWithoutUnit": "Collaborateur sans Unité opérationnelle : la remise ne peut pas être enregistrée.",
   "deliveryQrOtherEpi": "Le code scanné appartient à un autre EPI.",
-  "stockUnitRequiredToMove": "Sélectionnez une Unité pour déplacer le stock."
+  "stockUnitRequiredToMove": "Sélectionnez une Unité pour déplacer le stock.",
+  "stockAttentionSectionTitle": "Stock",
+  "stockAttentionCompanyTitle": "Plage d'attention — valeur par défaut de l'entreprise",
+  "stockAttentionCompanyHelp": "S'applique aux Unités qui n'ont pas défini leur propre pourcentage. Ne modifie aucune Unité déjà configurée.",
+  "stockAttentionPercentageLabel": "Pourcentage de la plage d'attention",
+  "stockAttentionOriginLabel": "Origine",
+  "stockAttentionOriginCompany": "Défini par l'entreprise",
+  "stockAttentionOriginSystem": "Valeur par défaut du système",
+  "stockAttentionSave": "Enregistrer la valeur de l'entreprise",
+  "stockAttentionRestore": "Rétablir la valeur du système",
+  "stockAttentionSaved": "Valeur par défaut de l'entreprise enregistrée.",
+  "stockAttentionRestored": "Valeur de l'entreprise supprimée. L'entreprise revient à la valeur du système.",
+  "stockAttentionSystemDefaultHint": "Valeur du système : {value} %",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Saisissez un pourcentage entier entre 0 et {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "Impossible de charger la valeur par défaut de l'entreprise."
 }

@@ -656,5 +656,33 @@
   },
   "deliveryEmployeeWithoutUnit": "Ansatt uten operativ Enhet: levering kan ikke registreres.",
   "deliveryQrOtherEpi": "Den skannede koden tilhører et annet verneutstyr.",
-  "stockUnitRequiredToMove": "Velg en Enhet for å flytte lager."
+  "stockUnitRequiredToMove": "Velg en Enhet for å flytte lager.",
+  "stockAttentionSectionTitle": "Lager",
+  "stockAttentionCompanyTitle": "Varselintervall — selskapets standard",
+  "stockAttentionCompanyHelp": "Gjelder enheter som ikke har angitt sin egen prosent. Endrer ingen enhet som allerede er konfigurert.",
+  "stockAttentionPercentageLabel": "Prosent for varselintervall",
+  "stockAttentionOriginLabel": "Kilde",
+  "stockAttentionOriginCompany": "Angitt av selskapet",
+  "stockAttentionOriginSystem": "Systemstandard",
+  "stockAttentionSave": "Lagre selskapets standard",
+  "stockAttentionRestore": "Gjenopprett systemstandard",
+  "stockAttentionSaved": "Selskapets standard er lagret.",
+  "stockAttentionRestored": "Selskapets standard er fjernet. Selskapet er tilbake på systemstandarden.",
+  "stockAttentionSystemDefaultHint": "Systemstandard: {value} %",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Oppgi en heltallsprosent mellom 0 og {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "Kunne ikke laste selskapets standard."
 }

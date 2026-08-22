@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../models/company_attention_setting.dart';
 import '../models/epi.dart';
 import '../models/stock_item.dart';
 
@@ -220,6 +221,77 @@ class StockApi {
           .toList(),
       statusKeys: statuses.keys.toList(),
     );
+  }
+
+  // ── Padrão CORPORATIVO da faixa de atenção (#271-B1b) ────────────────────
+  //
+  // `companyId` só é enviado para o `master_admin`, que não tem empresa
+  // própria e precisa nomear o tenant. Para `general_admin`/`registry_admin` o
+  // backend IGNORA o campo e força a empresa do ator — mandá-lo daqui não
+  // quebraria nada, mas sugeriria que a tela escolhe a empresa, e ela não
+  // escolhe. A autoridade fica no servidor, como no resto do módulo.
+  //
+  // Permissão `settings:update`: parâmetro administrativo da empresa, não
+  // ajuste operacional de estoque. `admin`/`user` não chegam aqui.
+
+  /// Lê o padrão da empresa com a ORIGEM explícita.
+  ///
+  /// Necessário porque o percentual efetivo só aparece embutido em cada EPI, e
+  /// apenas quando a origem é `company_default`: numa empresa cujos pares
+  /// estejam todos `unit_configured`, não haveria como ler o padrão que se está
+  /// prestes a alterar.
+  Future<CompanyAttentionSetting> getCompanyAttentionPercentage({
+    required int actorUserId,
+    int? companyId,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/stock/company-attention-percentage',
+      queryParameters: {
+        'actor_user_id': actorUserId,
+        if (companyId != null) 'company_id': companyId,
+      },
+    );
+    return CompanyAttentionSetting.fromJson(res.data ?? const {});
+  }
+
+  /// Grava o padrão da empresa. **Não** altera Unidade nenhuma.
+  ///
+  /// Quem herda passa a usar o valor novo na leitura seguinte — a propagação é
+  /// leitura, nunca `UPDATE` em massa. Quem é `unit_configured` fica intacto.
+  Future<CompanyAttentionSetting> setCompanyAttentionPercentage({
+    required int actorUserId,
+    required int attentionPercentage,
+    int? companyId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/company-attention-percentage',
+      data: {
+        'actor_user_id': actorUserId,
+        'attention_percentage': attentionPercentage,
+        if (companyId != null) 'company_id': companyId,
+      },
+    );
+    return CompanyAttentionSetting.fromJson(res.data ?? const {});
+  }
+
+  /// Apaga o padrão da empresa e devolve ao `system_default`.
+  ///
+  /// **Não é o mesmo que gravar 20.** Gravar deixa `company_configured = 20`;
+  /// restaurar deixa a empresa SEM configuração corporativa. Mesmo número,
+  /// origens opostas — e é por isso que existe rota separada em vez de um
+  /// `set` com valor padrão.
+  Future<CompanyAttentionSetting> restoreCompanyAttentionPercentage({
+    required int actorUserId,
+    int? companyId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/company-attention-percentage/restore-default',
+      data: {
+        'actor_user_id': actorUserId,
+        if (companyId != null) 'company_id': companyId,
+      },
+    );
+    return CompanyAttentionSetting.fromJson(res.data ?? const {});
   }
 
   Future<void> recordMovement({

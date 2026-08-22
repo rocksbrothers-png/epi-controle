@@ -686,5 +686,33 @@
   },
   "deliveryEmployeeWithoutUnit": "Colaborador sem Unidade operacional: não é possível registrar entrega.",
   "deliveryQrOtherEpi": "O código lido pertence a outro EPI.",
-  "stockUnitRequiredToMove": "Selecione uma Unidade para movimentar o estoque."
+  "stockUnitRequiredToMove": "Selecione uma Unidade para movimentar o estoque.",
+  "stockAttentionSectionTitle": "Estoque",
+  "stockAttentionCompanyTitle": "Faixa de atenção — padrão da empresa",
+  "stockAttentionCompanyHelp": "Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.",
+  "stockAttentionPercentageLabel": "Percentual da faixa de atenção",
+  "stockAttentionOriginLabel": "Origem",
+  "stockAttentionOriginCompany": "Configurado pela empresa",
+  "stockAttentionOriginSystem": "Padrão do sistema",
+  "stockAttentionSave": "Salvar padrão da empresa",
+  "stockAttentionRestore": "Restaurar padrão do sistema",
+  "stockAttentionSaved": "Padrão da empresa salvo.",
+  "stockAttentionRestored": "Padrão da empresa removido. A empresa voltou ao padrão do sistema.",
+  "stockAttentionSystemDefaultHint": "Padrão do sistema: {value}%",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Informe um percentual inteiro entre 0 e {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "Não foi possível carregar o padrão da empresa."
 }

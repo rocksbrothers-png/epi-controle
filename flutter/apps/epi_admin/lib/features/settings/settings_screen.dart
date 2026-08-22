@@ -11,6 +11,21 @@ import '../../core/bloc/settings_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
 import '../../core/i18n/theme_mode_notifier.dart';
 import '../../core/router/routes.dart';
+import 'widgets/company_attention_card.dart';
+
+/// O padrão corporativo da faixa de atenção exige `settings:update` — a mesma
+/// permissão que o backend cobra em `/api/stock/company-attention-percentage`.
+///
+/// A checagem aqui é de EXIBIÇÃO, não de autorização: quem decide é o
+/// servidor, e um cliente adulterado que chame a rota continua sendo recusado
+/// lá. O que ela evita é oferecer a um `admin`/`user` um controle que sempre
+/// terminaria em 403 — o padrão que eles alterariam é herdado por todas as
+/// outras Unidades.
+bool _podeConfigurarEstoque(BuildContext context) {
+  final authState = context.read<AuthCubit>().state;
+  return authState is AuthAuthenticated &&
+      authState.sessionContext.hasPermission('settings:update');
+}
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -131,6 +146,17 @@ class _SettingsBody extends StatelessWidget {
                 _ModuleVisibilityCard(
                   companyId: state.isMaster ? state.selectedCompanyId : null,
                 ),
+                // Padrão corporativo da faixa de atenção (#271-B2-b). Fica
+                // nesta seção para reusar o guarda de empresa acima: o
+                // master_admin sem empresa escolhida não chega aqui. Duplicar
+                // um guarda fail-closed é como ele diverge depois.
+                if (_podeConfigurarEstoque(context)) ...[
+                  const SizedBox(height: EpiSpacing.xl),
+                  _SectionHeader(label: l10n.stockAttentionSectionTitle),
+                  CompanyAttentionCard(
+                    companyId: state.isMaster ? state.selectedCompanyId : null,
+                  ),
+                ],
               ],
               const SizedBox(height: EpiSpacing.lg),
               _SectionHeader(label: l10n.settingsFichaSection),

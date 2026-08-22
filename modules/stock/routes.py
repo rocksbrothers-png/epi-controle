@@ -49,6 +49,9 @@ from modules.stock.service import (
     classify_unit_epi_stock,
     resolve_unit_minimum_stock,
     set_unit_epi_alert_enabled,
+    clear_unit_epi_minimum_stock,
+    clear_unit_epi_attention_percentage,
+    clear_unit_epi_alert_enabled,
     set_unit_epi_attention_percentage,
     set_unit_epi_minimum_stock,
     upsert_unit_stock,
@@ -314,19 +317,47 @@ def _authorize_stock_config_write(handler, parsed, payload, connection, *, acao)
 
     `acao` entra só nas mensagens de erro, para o usuário saber o que não
     conseguiu fazer.
+
+    ## Quem configura, e qual Unidade (#271-B1a)
+
+    - **`admin` / `user`** (travados): a Unidade é a do ator e o `unit_id` que
+      o cliente eventualmente mande é DESCARTADO. Nunca alteram outra Unidade.
+    - **`general_admin` / `registry_admin`**: administram parâmetros
+      operacionais de QUALQUER Unidade da própria empresa, e por isso precisam
+      informar `unit_id`. O servidor valida que a Unidade existe e pertence ao
+      tenant do ator — o payload não é fonte de autoridade.
+    - **Os demais**, `master_admin` incluído: negados. Master opera
+      cross-tenant por desenho, e configuração operacional de Unidade não é
+      operação cross-tenant; incluí-lo aqui seria ampliar o alcance sem
+      decisão de negócio que o sustente.
+
+    Antes desta fatia só os perfis travados escreviam, e a Unidade saía sempre
+    do ator: não existia caminho para o Administrador Geral configurar Unidade
+    nenhuma, embora a tela de configuração seja dele também.
     """
     actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), 'stock:adjust')
-    if actor.get('role') not in ('admin', 'user'):
-        raise PermissionError(f'Apenas Administrador Local e Gestor de EPI podem {acao}.')
+    if actor.get('role') not in ('admin', 'user', 'general_admin', 'registry_admin'):
+        raise PermissionError(
+            f'Apenas Administrador Local, Gestor de EPI, Administrador Geral e '
+            f'Administrador de Registro podem {acao}.'
+        )
     epi = get_epi_by_id(connection, int(payload['epi_id']))
     ensure_resource_company(actor, epi, 'EPI')
-    # Perfil travado: a Unidade é a do ator, e o `unit_id` que o cliente
-    # eventualmente mande é descartado (1.1D-A). Fail-closed sem Unidade — o
-    # backend é a autoridade, nunca a Unidade enviada pelo frontend.
-    scope_unit_id = resolve_unit_scope(
-        connection, actor,
+    # `resolve_unit_scope` já é o ponto único: descarta o `unit_id` do cliente
+    # para perfil travado, e para perfil livre valida que a Unidade pedida
+    # existe e pertence ao tenant do ator (`ValueError` → 400). Passar o
+    # `unit_id` aqui é TRANSPORTE, não decisão — a autoridade continua no
+    # servidor.
+    escopo = resolve_unit_scope(
+        connection, actor, payload.get('unit_id'),
         denial_message=f'Perfil sem unidade operacional ativa para {acao}.',
-    ).unit_id
+    )
+    scope_unit_id = escopo.unit_id
+    if not scope_unit_id:
+        # Perfil livre sem seleção. Configuração é sempre DE uma Unidade: não
+        # existe "configurar a empresa" por esta rota, e cair na visão
+        # corporativa aqui gravaria em lugar nenhum ou, pior, em todo lugar.
+        raise ValueError(f'Informe a Unidade para {acao}.')
     # Mesma checagem de visibilidade já usada por GET /api/stock/epis e
     # pelos alertas de estoque baixo (fetch_low_stock_items) — não a
     # comparação ingênua epi.unit_id == scope_unit_id, que só é
@@ -373,6 +404,77 @@ def handle_post_stock_minimum(handler, parsed, payload, match):
             'minimum_stock': minimo.value,
             'unit_id': int(scope_unit_id),
             'minimum_stock_source': minimo.source,
+        })
+
+
+def handle_post_stock_minimum_restore(handler, parsed, payload, match):
+    """Apaga o mínimo local e devolve o par ao padrão da empresa.
+
+    Restaurar o que já é herdado é no-op: devolve o valor efetivo sem apagar
+    nada e sem gerar auditoria. Um cliente desatualizado que peça de novo não
+    vira erro.
+    """
+    require_fields(payload, ['actor_user_id', 'epi_id'])
+    with closing(get_connection()) as connection:
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='restaurar o estoque mínimo padrão',
+        )
+        minimo = clear_unit_epi_minimum_stock(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            actor=actor, ip_address=get_client_ip(handler), user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'unit_id': int(scope_unit_id),
+            'minimum_stock': minimo.value,
+            'minimum_stock_source': minimo.source,
+        })
+
+
+def handle_post_stock_attention_percentage_restore(handler, parsed, payload, match):
+    """Apaga o percentual local e devolve o par ao padrão da empresa."""
+    require_fields(payload, ['actor_user_id', 'epi_id'])
+    with closing(get_connection()) as connection:
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='restaurar a faixa de atenção padrão',
+        )
+        percentual = clear_unit_epi_attention_percentage(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            actor=actor, ip_address=get_client_ip(handler), user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'unit_id': int(scope_unit_id),
+            'attention_percentage': percentual.value,
+            'attention_percentage_source': percentual.source,
+        })
+
+
+def handle_post_stock_alert_enabled_restore(handler, parsed, payload, match):
+    """Apaga a decisão local de alerta e devolve o par ao `system_default`.
+
+    Não confundir com `POST /api/stock/alert-enabled` com `alert_enabled=true`:
+    aquela REATIVA e o par continua `unit_configured` — a Unidade decidiu
+    manter ligado. Esta apaga a decisão. As duas terminam com o alerta ligado
+    e significam coisas opostas.
+    """
+    require_fields(payload, ['actor_user_id', 'epi_id'])
+    with closing(get_connection()) as connection:
+        actor, epi, scope_unit_id = _authorize_stock_config_write(
+            handler, parsed, payload, connection, acao='restaurar o alerta padrão',
+        )
+        alerta = clear_unit_epi_alert_enabled(
+            connection, int(epi['company_id']), int(scope_unit_id), int(payload['epi_id']),
+            actor=actor, ip_address=get_client_ip(handler), user_agent=_user_agent(handler),
+        )
+        connection.commit()
+        return send_json(handler, 200, {
+            'ok': True,
+            'unit_id': int(scope_unit_id),
+            'stock_alert_enabled': alerta.enabled,
+            'alert_source': alerta.source,
         })
 
 
@@ -791,6 +893,11 @@ def register_routes(router):
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)
     router.register('POST', '/api/stock/attention-percentage',   handle_post_stock_attention_percentage)
     router.register('POST', '/api/stock/alert-enabled',          handle_post_stock_alert_enabled)
+    # Restaurar herança (#271-B1a): apagar a personalização local é uma
+    # operação DIFERENTE de gravar um valor, e tem rota própria por isso.
+    router.register('POST', '/api/stock/minimum/restore-default',              handle_post_stock_minimum_restore)
+    router.register('POST', '/api/stock/attention-percentage/restore-default', handle_post_stock_attention_percentage_restore)
+    router.register('POST', '/api/stock/alert-enabled/restore-default',        handle_post_stock_alert_enabled_restore)
     router.register('POST', '/api/stock/movements',              handle_post_stock_movements)
     router.register('POST', '/api/stock/manufacture-date-ocr',   handle_post_stock_manufacture_date_ocr)
     router.register('POST', '/api/stock/labels/reprint',         handle_post_stock_labels_reprint)

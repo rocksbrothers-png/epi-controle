@@ -672,6 +672,100 @@ def set_unit_epi_alert_enabled(
     return UnitAlertSetting(novo, ALERT_SOURCE_UNIT)
 
 
+# ── Restaurar herança (#271-B1a) ─────────────────────────────────────────────
+#
+# Apagar a linha local é uma operação DIFERENTE de gravar um valor, e as três
+# funções abaixo existem para que essa diferença não fique implícita num
+# `set_*(None)`.
+#
+# Ela é especialmente distinta no alerta: `set_unit_epi_alert_enabled(True)`
+# **reativa** e mantém `unit_configured` — a Unidade decidiu manter ligado.
+# `clear_unit_epi_alert_enabled` apaga a decisão e devolve o par ao
+# `system_default`. As duas terminam com o alerta ligado e significam coisas
+# opostas; tratá-las como equivalentes apagaria a decisão de quem a tomou.
+#
+# Restaurar o que já é herdado é NO-OP silencioso: não apaga nada e não gera
+# linha de auditoria. Nada mudou, e um cliente desatualizado que peça a
+# restauração de novo não deve virar erro nem ruído no histórico.
+
+
+def _clear_config(connection, tabela, company_id, unit_id, epi_id):
+    """Remove a personalização local. `tabela` é literal dos chamadores."""
+    connection.execute(
+        f'DELETE FROM {tabela} '  # noqa: S608
+        'WHERE company_id = ? AND unit_id = ? AND epi_id = ?',
+        (int(company_id), int(unit_id), int(epi_id)),
+    )
+
+
+def clear_unit_epi_minimum_stock(
+    connection, company_id, unit_id, epi_id, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Devolve o mínimo do par ao padrão da empresa (`company_default`)."""
+    anterior = resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id)
+    if anterior.source != MINIMUM_SOURCE_UNIT:
+        return anterior
+    _clear_config(connection, 'unit_epi_minimum_stock', company_id, unit_id, epi_id)
+    herdado = resolve_unit_minimum_stock(connection, company_id, unit_id, epi_id)
+    connection.execute(
+        'INSERT INTO unit_epi_minimum_stock_audit_logs '
+        '(company_id, unit_id, epi_id, action, previous_minimum_stock, '
+        ' new_minimum_stock, previous_source, actor_user_id, actor_name, '
+        ' actor_role, ip_address, user_agent, created_at) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (int(company_id), int(unit_id), int(epi_id), 'restore_default',
+         anterior.value, herdado.value, anterior.source, _actor_id(actor),
+         str((actor or {}).get('full_name') or (actor or {}).get('name') or ''),
+         str((actor or {}).get('role') or ''),
+         str(ip_address or ''), str(user_agent or ''),
+         datetime.now(UTC).isoformat()),
+    )
+    return herdado
+
+
+def clear_unit_epi_attention_percentage(
+    connection, company_id, unit_id, epi_id, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Devolve o percentual do par ao padrão da empresa (`company_default`)."""
+    anterior = resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id)
+    if anterior.source != ATTENTION_SOURCE_UNIT:
+        return anterior
+    _clear_config(connection, 'unit_epi_attention_percentage', company_id, unit_id, epi_id)
+    herdado = resolve_unit_attention_percentage(connection, company_id, unit_id, epi_id)
+    _audit_config(
+        connection, company_id, unit_id, epi_id, 'attention_percentage',
+        str(anterior.value), str(herdado.value), anterior.source,
+        actor, ip_address, user_agent,
+    )
+    return herdado
+
+
+def clear_unit_epi_alert_enabled(
+    connection, company_id, unit_id, epi_id, *,
+    actor=None, ip_address='', user_agent='',
+):
+    """Apaga a decisão local de alerta e devolve o par ao `system_default`.
+
+    Não confundir com `set_unit_epi_alert_enabled(True)`: aquela REATIVA e o
+    par continua `unit_configured`. Esta apaga a decisão. As duas terminam com
+    o alerta ligado; só uma delas preserva quem decidiu.
+    """
+    anterior = resolve_unit_epi_alert_enabled(connection, company_id, unit_id, epi_id)
+    if anterior.source != ALERT_SOURCE_UNIT:
+        return anterior
+    _clear_config(connection, 'unit_epi_stock_alert_settings', company_id, unit_id, epi_id)
+    herdado = resolve_unit_epi_alert_enabled(connection, company_id, unit_id, epi_id)
+    _audit_config(
+        connection, company_id, unit_id, epi_id, 'alert_enabled',
+        'true' if anterior.enabled else 'false',
+        'true' if herdado.enabled else 'false',
+        anterior.source, actor, ip_address, user_agent,
+    )
+    return herdado
+
+
 def _upsert_config(connection, tabela, coluna, company_id, unit_id, epi_id, valor,
                    *, existe, actor):
     """UPSERT de um parâmetro de configuração por (empresa, unidade, EPI).

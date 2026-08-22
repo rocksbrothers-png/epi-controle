@@ -120,7 +120,10 @@ void main() {
         isCritical: false,
       ));
       expect(epi.isCompanyStockCritical, isFalse);
-      expect(epi.unitStockQuantity! <= epi.minimumStock, isTrue,
+      // A linha abaixo COMPARA de propósito, para demonstrar que o recálculo
+      // local daria a resposta errada. É a única do repositório isenta do
+      // gate da 1.1D-C4, e o marcador fica na própria linha.
+      expect(epi.unitStockQuantity! <= epi.minimumStock, isTrue, // gate:comparacao-intencional
           reason: 'a comparação local daria crítico — por isso não se usa');
     });
 

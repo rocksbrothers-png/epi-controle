@@ -82,6 +82,10 @@ void main() {
           Routes.handover,
           Routes.returns,
           Routes.records,
+          // Precisa vir com `Routes.stock` — são gates DIFERENTES sobre o
+          // mesmo prefixo (`stock:adjust` × `stock:view`), e a ordem entre eles
+          // no mapa é o que impede a configuração cair no gate de leitura.
+          Routes.stockConfig,
           Routes.stock,
           Routes.purchases,
           Routes.companies,

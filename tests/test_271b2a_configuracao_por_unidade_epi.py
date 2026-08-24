@@ -201,6 +201,63 @@ def test_a_rota_esta_declarada_e_registrada():
     assert 'path: Routes.stockConfig' in _codigo(ROUTER)
 
 
+def test_os_guardas_dart_de_rota_conhecem_a_rota_nova():
+    """Os dois testes Dart que enumeram rotas precisam da entrada nova.
+
+    Não é redundância: eles só rodam no CI, e uma rota gateada que não entre
+    nos dois deixa o PR vermelho depois do push. Aqui a mesma checagem roda
+    localmente, onde ainda dá para corrigir antes.
+
+    - `route_permissions_test.dart` compara `routePermissions` com um conjunto
+      EXATO. Rota nova ausente dali reprova.
+    - `app_shell_navigation_test.dart` exige que toda rota gateada seja
+      alcançável por clique. `/stock/config` fica fora do menu de propósito —
+      é um detour a partir de Controle de Estoque —, então precisa constar de
+      `reachableElsewhere` com o arquivo que navega até ela. Esse teste nasceu
+      de um defeito real: a tela de CNPJs existiu por versões alcançável só
+      digitando a URL.
+    """
+    testes = FLUTTER / 'apps' / 'epi_admin' / 'test'
+    cobertura = _codigo(testes / 'route_permissions_test.dart')
+    assert 'Routes.stockConfig' in cobertura, \
+        'route_permissions_test.dart não conhece a rota nova — o CI reprovaria'
+
+    navegacao = _codigo(testes / 'app_shell_navigation_test.dart')
+    bloco = navegacao.split('reachableElsewhere', 1)[1].split('};', 1)[0]
+    assert "'/stock/config'" in bloco, \
+        'a rota precisa ser declarada em reachableElsewhere (fica fora do menu)'
+    # O teste vizinho exige que a isenção aponte para um arquivo real; sem isto
+    # a lista vira depósito de conveniência.
+    linha = [l for l in bloco.splitlines() if '/stock/config' in l]
+    assert linha, 'declaração de /stock/config não encontrada'
+    origem = bloco.split("'/stock/config'", 1)[1].split(',', 1)[0]
+    assert '.dart' in origem, 'a isenção precisa nomear o arquivo que navega'
+
+
+def test_a_rota_nao_entra_no_menu_lateral():
+    """Configuração não é destino de primeiro nível.
+
+    Fosse um item do menu, `app_shell_navigation_test.dart` passaria pelo
+    caminho errado — e a tela operacional deixaria de ser o ponto de partida,
+    que é justamente o desenho aprovado.
+    """
+    shell = _codigo(APP / 'core' / 'shell' / 'app_shell.dart')
+    assert 'Routes.stockConfig' not in shell
+
+
+def test_a_navegacao_usa_push_para_permitir_voltar():
+    """`push`, não `go`: a configuração é um detour e o operador volta.
+
+    É também o que os outros acessos a tela interna usam — e o que a isenção
+    em `reachableElsewhere` declara.
+    """
+    codigo = _codigo(TELA_ESTOQUE)
+    trecho = codigo.split('Routes.stockConfig', 1)[0][-400:]
+    assert 'context.push' in trecho or 'context.push' in codigo
+    assert 'context.go(' not in codigo, \
+        'go substitui a pilha e o operador perde o caminho de volta'
+
+
 def test_o_modulo_estrutural_e_herdado_de_estoque():
     """`/stock/config` não precisa de entrada em `routeModules`.
 

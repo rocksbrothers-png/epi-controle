@@ -77,7 +77,11 @@ class _StockBodyState extends State<_StockBody> {
               builder: (_, state) => IconButton(
                 icon: const Icon(Icons.tune_rounded),
                 tooltip: l10n.stockConfigTitle,
-                onPressed: () => context.go(
+                // `push`, não `go`: a configuração é um detour a partir desta
+                // tela e o operador precisa voltar para ela. É também o que os
+                // outros acessos a tela interna usam (Configurações → Minha
+                // Empresa, Entregas → Conferência).
+                onPressed: () => context.push(
                   state.unitId != 0
                       ? '${Routes.stockConfig}?unit_id=${state.unitId}'
                       : Routes.stockConfig,
@@ -533,7 +537,7 @@ class _StockTile extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     onPressed: () {
                       final unidade = epi.unitScopeId;
-                      context.go(
+                      context.push(
                         '${Routes.stockConfig}?epi_id=${epi.id}'
                         '${unidade != null ? '&unit_id=$unidade' : ''}',
                       );

@@ -27,6 +27,13 @@ void main() {
       '/invoices': 'settings_screen.dart → context.push(Routes.invoices)',
       '/deliveries/handover':
           'deliveries_screen.dart → context.push(Routes.handover)',
+      // Configuração por Unidade + EPI (#271-B2-a). Fora do menu de propósito:
+      // é um detour a partir de Controle de Estoque, com o par já no contexto,
+      // e não um destino de primeiro nível. Dois pontos de partida, ambos em
+      // stock_screen.dart e ambos gateados por `stock:adjust`: a ação da AppBar
+      // (sem EPI escolhido) e o ícone de cada linha (com `?epi_id=`).
+      '/stock/config':
+          'stock_screen.dart → context.push(Routes.stockConfig)',
     };
 
     test('toda rota gateada é alcançável por clique', () {

@@ -444,6 +444,44 @@ class UnitSelection(NamedTuple):
         return int(unit_id) in self.allowed_unit_ids
 
 
+def selectable_units(unidades, selection: UnitSelection):
+    """As Unidades da lista que o ator pode ESCOLHER no seletor.
+
+    Ponto único da pergunta "o que aparece no seletor?". Antes desta função a
+    resposta existia em dois lugares: aqui, como `UnitSelection.permits`, e no
+    dashboard, como `_unidade_selecionavel` — duas implementações da mesma
+    regra, que divergiriam no primeiro ajuste feito num lado só. É o mesmo
+    defeito que a 1.1D-C4 desfez entre Dart e JS.
+
+    Toda a decisão está em `permits`, e por isso ela vale para os quatro casos
+    sem `if` de perfil nenhum aqui:
+
+        perfil travado      allowed_unit_ids = (própria,)  → só a própria
+        carteira vazia      allowed_unit_ids = ()          → NENHUMA
+        carteira preenchida allowed_unit_ids = (a, b)      → só a carteira
+        perfil livre        allowed_unit_ids = None        → todas do tenant
+
+    A linha que importa é a segunda. Carteira vazia devolve lista vazia, nunca
+    a empresa inteira — e é por isso que `permits` testa `is None` em vez de
+    truthiness: `if not allowed_unit_ids` faria `()` e `None` se comportarem
+    igual, transformando "não pode ver nada" em "pode ver tudo".
+
+    A lista de entrada já vem recortada por tenant (`fetch_units`); aqui só se
+    aplica o direito do ator sobre ela.
+    """
+    return [
+        unidade for unidade in unidades
+        if selection.permits(_unit_id_of(unidade)) and _unit_id_of(unidade)
+    ]
+
+
+def _unit_id_of(unidade):
+    try:
+        return int((unidade or {}).get('id'))
+    except (TypeError, ValueError):
+        return 0
+
+
 # Perfis cuja visão de Compras é a carteira de `purchase_role_unit_links`.
 # Administrador Geral e de Registro NÃO entram: a Unidade deles é escolha, não
 # vínculo (ver `get_actor_purchase_unit_scope`).

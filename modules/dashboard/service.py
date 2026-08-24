@@ -40,8 +40,10 @@ rastreada e deliberadamente fora desta fatia.
 from datetime import date, datetime, timedelta, timezone
 
 from core.repository import (
+    UnitSelection,
     get_unit_active_jv_name,
     resolve_unit_scope,
+    selectable_units,
 )
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from modules.stock.service import (
@@ -182,8 +184,8 @@ def build_dashboard_summary(
                     'name': str(u.get('name') or ''),
                     'legal_entity_id': _int_ou_none(u.get('legal_entity_id')),
                 }
-                for u in unidades
-                if _unidade_selecionavel(u, escopo, purchase_scope_units)
+                for u in selectable_units(
+                    unidades, _selecao_do_painel(escopo, purchase_scope_units))
             ],
             'sectors': _setores(colaboradores, unidades_no_escopo),
         },
@@ -194,23 +196,30 @@ def build_dashboard_summary(
 
 # ── recorte ──────────────────────────────────────────────────────────────────
 
-def _unidade_selecionavel(unidade, escopo, purchase_scope_units):
-    """A Unidade pode aparecer como OPÇÃO no filtro?
+def _selecao_do_painel(escopo, purchase_scope_units):
+    """Adapta o escopo do painel para a `UnitSelection` do ponto único.
 
-    Perfil travado enxerga só a própria. Comprador/Aprovador, só as da
-    carteira. Os demais, todas.
+    O painel resolve `UnitScope` (que responde "qual Unidade?") e recebe a
+    carteira por parâmetro; o seletor compartilhado fala `UnitSelection` (que
+    responde também "quais ele poderia escolher?"). Traduzir aqui é o que
+    permite ter UMA regra — `selectable_units` — em vez da cópia que existia
+    neste arquivo.
 
-    A comparação com a carteira é `is not None` de propósito: tupla vazia
-    (carteira sem vínculo) precisa esconder tudo, e `if purchase_scope_units`
-    faria o vazio virar "sem restrição" — o antipadrão de truthiness que já
-    custou caro no saldo de estoque.
+    Os dois casos que a tradução precisa acertar:
+
+    - **perfil travado** vira `allowed_unit_ids = (própria,)`, e não `None`;
+    - **carteira vazia** vira `()`, e não `None`.
+
+    Trocar qualquer um dos dois por `None` abriria a empresa inteira. É por
+    isso que o teste `is not None` continua explícito abaixo.
     """
-    uid = _int_ou_none(unidade.get('id'))
     if escopo.locked:
-        return uid == escopo.unit_id
+        travada = _int_ou_none(escopo.unit_id)
+        return UnitSelection(travada, 'actor', True, (travada,) if travada else (), False)
     if purchase_scope_units is not None:
-        return uid in {int(u) for u in purchase_scope_units}
-    return True
+        carteira = tuple(int(u) for u in purchase_scope_units)
+        return UnitSelection(escopo.unit_id, 'purchase_scope', False, carteira, len(carteira) > 1)
+    return UnitSelection(escopo.unit_id, 'none', False, None, True)
 
 
 def _int_ou_none(valor):

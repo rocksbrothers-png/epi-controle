@@ -684,5 +684,11 @@
       }
     }
   },
-  "stockAttentionLoadError": "Impossible de charger la valeur par défaut de l'entreprise."
+  "stockAttentionLoadError": "Impossible de charger la valeur par défaut de l'entreprise.",
+  "unitSelectorLabel": "Unité",
+  "unitSelectorAllUnits": "Toutes les Unités",
+  "unitSelectorLockedHint": "Votre profil opère dans une Unité fixe.",
+  "unitSelectorLoadError": "Impossible de charger les Unités.",
+  "unitSelectorNoUnitsAssigned": "Aucune Unité ne vous est attribuée. Contactez l'administrateur.",
+  "unitSelectorCompanyHasNoUnits": "L'entreprise n'a encore aucune Unité enregistrée."
 }

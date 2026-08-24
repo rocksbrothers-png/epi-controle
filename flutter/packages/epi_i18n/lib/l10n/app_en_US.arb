@@ -711,5 +711,11 @@
       }
     }
   },
-  "stockAttentionLoadError": "Could not load the company default."
+  "stockAttentionLoadError": "Could not load the company default.",
+  "unitSelectorLabel": "Unit",
+  "unitSelectorAllUnits": "All Units",
+  "unitSelectorLockedHint": "Your profile operates in a fixed Unit.",
+  "unitSelectorLoadError": "Could not load the Units.",
+  "unitSelectorNoUnitsAssigned": "You have no Unit assigned. Contact your administrator.",
+  "unitSelectorCompanyHasNoUnits": "The company has no Units registered yet."
 }

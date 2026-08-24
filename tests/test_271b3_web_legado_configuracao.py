@@ -18,7 +18,6 @@ Não há toolchain de teste JS aqui além do `run-tests.js`; estas checagens sã
 estáticas, sobre o fonte, e rodam junto do resto da suíte Python.
 """
 
-import json
 import re
 from pathlib import Path
 

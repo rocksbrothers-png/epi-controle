@@ -684,5 +684,11 @@
       }
     }
   },
-  "stockAttentionLoadError": "Kunne ikke laste selskapets standard."
+  "stockAttentionLoadError": "Kunne ikke laste selskapets standard.",
+  "unitSelectorLabel": "Enhet",
+  "unitSelectorAllUnits": "Alle enheter",
+  "unitSelectorLockedHint": "Profilen din opererer i en fast enhet.",
+  "unitSelectorLoadError": "Kunne ikke laste enhetene.",
+  "unitSelectorNoUnitsAssigned": "Du har ingen enhet tildelt. Kontakt administratoren.",
+  "unitSelectorCompanyHasNoUnits": "Selskapet har ennå ingen enheter registrert."
 }

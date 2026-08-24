@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../models/selectable_units.dart';
+
 class UnitsApi {
   const UnitsApi(this._dio);
   final Dio _dio;
@@ -57,5 +59,27 @@ class UnitsApi {
       '/api/units/$id',
       queryParameters: {'actor_user_id': actorUserId},
     );
+  }
+
+  /// As Unidades que o ator pode ESCOLHER, já recortadas pelo servidor.
+  ///
+  /// Substitui `bootstrap.units` em todo seletor. Aquela lista é recortada por
+  /// TENANT e mais nada: um perfil travado recebe dela a empresa inteira, e
+  /// cada tela ficava encarregada de estreitá-la — autorização reconstruída no
+  /// cliente.
+  ///
+  /// Aqui o recorte é do backend, com a MESMA regra de Compras: perfil travado
+  /// só a própria; Comprador/Aprovador só a carteira, e **carteira vazia
+  /// devolve lista vazia, nunca a empresa**; demais perfis, todas do tenant.
+  ///
+  /// Não recebe `unit_id` nem `company_id`: o escopo vem do ator. Mandar
+  /// qualquer um dos dois daqui moveria a decisão para a tela.
+  /// GET /api/units/selectable.
+  Future<SelectableUnits> getSelectableUnits({required int actorUserId}) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/units/selectable',
+      queryParameters: {'actor_user_id': actorUserId},
+    );
+    return SelectableUnits.fromJson(res.data ?? const {});
   }
 }

@@ -684,5 +684,11 @@
       }
     }
   },
-  "stockAttentionLoadError": "No se ha podido cargar el valor por defecto de la empresa."
+  "stockAttentionLoadError": "No se ha podido cargar el valor por defecto de la empresa.",
+  "unitSelectorLabel": "Unidad",
+  "unitSelectorAllUnits": "Todas las Unidades",
+  "unitSelectorLockedHint": "Su perfil opera en una Unidad fija.",
+  "unitSelectorLoadError": "No se han podido cargar las Unidades.",
+  "unitSelectorNoUnitsAssigned": "No tiene ninguna Unidad asignada. Hable con el administrador.",
+  "unitSelectorCompanyHasNoUnits": "La empresa aún no tiene Unidades registradas."
 }

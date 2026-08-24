@@ -6,7 +6,13 @@ from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company, require_structural_admin
 from core.database import get_connection
-from core.repository import authorize_action, get_unit_active_jv_name, get_unit_by_id
+from core.repository import (
+    authorize_action,
+    get_unit_active_jv_name,
+    get_unit_by_id,
+    resolve_purchase_unit_scope,
+    selectable_units,
+)
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.units.service import (
@@ -50,6 +56,62 @@ def handle_get_units(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
         units = fetch_units(connection, actor)
         return send_json(handler, 200, {'units': units})
+
+
+def handle_get_selectable_units(handler, parsed, payload, match):
+    """As Unidades que o ator pode ESCOLHER, mais o contexto do seletor.
+
+    Por que não basta `GET /api/units`: aquela rota recorta por TENANT e mais
+    nada. Um `admin`/`user` travado recebe dela todas as Unidades da empresa, e
+    cada tela ficava encarregada de estreitar a lista por conta própria — o que
+    significa a interface reconstruindo autorização. Hoje quatro telas do
+    Flutter consomem `bootstrap.units` e só uma estreita, no cliente.
+
+    Aqui o servidor decide e o cliente desenha. A regra é a mesma de Compras
+    (`resolve_purchase_unit_scope`) porque É a mesma regra — perfil travado só
+    a própria, Comprador/Aprovador só a carteira, demais perfis todas do
+    tenant. Não há segunda implementação, e o recorte final sai de
+    `selectable_units`, compartilhado com o filtro do Dashboard.
+
+    O contrato devolve estado explícito em vez de deixar o cliente inferir:
+
+    - `locked` + `unit_id`: perfil travado e qual é a Unidade dele;
+    - `allows_all_units`: se a opção "Todas" pode ser oferecida. **Só o
+      backend decide isso**;
+    - `blocks_everything`: carteira existente e VAZIA. Sem este campo, lista
+      vazia seria ambígua entre "você não tem Unidade atribuída" e "a empresa
+      não tem Unidades" — mensagens diferentes para o operador.
+
+    `units:view` é a mesma permissão de `GET /api/units`: a lista aqui é um
+    subconjunto daquela, nunca um superconjunto.
+    """
+    from modules.purchases.service import get_actor_purchase_unit_scope
+
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'units:view')
+        # A carteira entra por injeção: `core.repository` não pode importar
+        # `modules.purchases` sem reabrir o ciclo fechado pela issue #148.
+        selecao = resolve_purchase_unit_scope(
+            connection, actor,
+            purchase_units_loader=get_actor_purchase_unit_scope,
+            denial_message='Perfil sem unidade operacional ativa para selecionar Unidade.',
+        )
+        unidades = selectable_units(fetch_units(connection, actor), selecao)
+        return send_json(handler, 200, {
+            'units': [
+                {
+                    'id': int(u.get('id')),
+                    'name': str(u.get('name') or ''),
+                    'legal_entity_id': u.get('legal_entity_id'),
+                }
+                for u in unidades
+            ],
+            'locked': bool(selecao.locked),
+            'unit_id': selecao.unit_id,
+            'source': selecao.source,
+            'allows_all_units': bool(selecao.allows_all_units),
+            'blocks_everything': bool(selecao.blocks_everything),
+        })
 
 
 def handle_get_archived_units(handler, parsed, payload, match):
@@ -313,6 +375,7 @@ def register_routes(router):
     router.register('GET',    '/api/unit-jv/active',           handle_get_unit_jv_active)
     router.register('GET',    '/api/units',                    handle_get_units)
     router.register('GET',    '/api/units/archived',           handle_get_archived_units)
+    router.register('GET',    '/api/units/selectable',          handle_get_selectable_units)
     router.register('GET',    '/api/units/retention-policy',   handle_get_unit_retention_policy)
     router.register('PUT',    '/api/units/retention-policy',   handle_put_unit_retention_policy)
     router.register('GET',    r'/api/units/(\d+)$',            handle_get_unit,                  regex=True)

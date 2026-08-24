@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -53,6 +54,9 @@ jobs:
               - "app.py"
               - "requirements.txt"
               - "supabase/migrations/**"
+              - ".github/workflows/backend-ci.yml"
+            frontend:
+              - "static/**"
               - ".github/workflows/backend-ci.yml"
 
   test:
@@ -102,6 +106,31 @@ jobs:
             htmlcov/
             junit.xml
           retention-days: 14
+
+  frontend-tests:
+    name: Frontend Tests (JS)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # `static/js/test/run-tests.js` existia desde antes da #271 com centenas
+      # de asserções — e NUNCA foi executado por nenhum workflow (#271-B4). Um
+      # teste que não roda não é gate: ele parece proteção no diff e não
+      # participa de decisão nenhuma. Este job existe para fechar isso.
+      #
+      # O harness não tem dependências: usa apenas `fs`, `path` e `vm` da
+      # stdlib do Node, carrega os módulos de `static/js/` em contexto isolado
+      # e sai com código 1 na primeira falha.
+      - name: Run JS unit tests
+        run: node static/js/test/run-tests.js
 
   lint:
     name: Lint (ruff)

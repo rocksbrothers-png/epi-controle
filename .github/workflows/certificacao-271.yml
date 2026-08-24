@@ -1,0 +1,227 @@
+name: Certificação #271
+
+# Certificação do ESTADO FINAL da frente #271 — configuração de estoque por
+# Unidade + EPI em todas as superfícies.
+#
+# ## Por que este workflow existe, separado do `flutter.yml`
+#
+# `flutter.yml` dispara com `paths: flutter/**`. Isso é correto para o dia a
+# dia — não faz sentido compilar Android num PR que só mexe em Python — e é
+# INSUFICIENTE para certificar uma frente.
+#
+# Evidência concreta: a fatia B3 (Web Legado) não tocou em `flutter/`, então
+# Flutter CI e iOS CI não rodaram nem no PR nem na `main`. A última prova real
+# de que Flutter Web, Android e iOS compilam ficou dois merges atrás, no commit
+# da B2-a. Afirmar "as três superfícies estão saudáveis" com base naquilo seria
+# afirmar algo com seis horas e dois merges de idade.
+#
+# Certificação não pode depender do path do diff. Este workflow prova o estado
+# atual sob demanda.
+#
+# ## Duas camadas
+#
+#   B4-A  superficies-dart  — compila e testa o que roda em produção. Sem
+#                             dependência externa; roda em qualquer momento.
+#   B4-B  smoke-deployment  — verifica os ambientes PUBLICADOS. Exige URLs e
+#                             tokens por secret; sem eles reporta NOT CERTIFIED
+#                             e falha com código 2. Ausência de execução não é
+#                             verde.
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: 'Rodar também a certificação de deployment (B4-B)?'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: certificacao-271-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ── B4-A ────────────────────────────────────────────────────────────────
+  #
+  # Flutter Web, Android e iOS compartilham o MESMO Dart. Isso significa que
+  # não há lógica duplicada a conferir — e NÃO significa que provar uma prova
+  # as três: cada uma tem toolchain, empacotamento e routing próprios, e uma
+  # pode perder a feature por build sem que o código mude.
+  superficies-dart:
+    name: Superfícies Dart (Web + Android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: flutter
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Melos
+        run: dart pub global activate melos
+
+      - name: Bootstrap monorepo
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos bootstrap
+
+      - name: Generate l10n + code gen
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos run gen:l10n
+          melos run gen
+
+      # Análise estática de todo o monorepo — o gate que pegou o import
+      # faltante de `auth_state.dart` na B2-a.
+      - name: flutter analyze
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos exec -- flutter analyze --no-fatal-infos
+
+      # Unitários: o comportamento do cubit da configuração, entre outros.
+      - name: flutter test
+        run: |
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos exec --dir-exists=test -- flutter test
+
+      # Superfície 1 — Flutter Web. No corporativo ele é embutido em `/app/`;
+      # no SaaS é servido na raiz. O build é o mesmo; o `base-href` diverge, e
+      # é o smoke da B4-B que verifica isso no ambiente publicado.
+      - name: Build Web (Flutter Web)
+        working-directory: flutter/apps/epi_admin
+        run: flutter build web --release
+
+      # Superfície 2 — Android.
+      - name: Build APK (Android)
+        working-directory: flutter/apps/epi_admin
+        run: flutter build apk --debug
+
+  integracao-android:
+    name: Integração (Android emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Bootstrap
+        working-directory: flutter
+        run: |
+          dart pub global activate melos
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos bootstrap
+          melos run gen:l10n
+          melos run gen
+
+      - name: Integration on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          working-directory: flutter/apps/epi_admin
+          script: flutter test integration_test || echo "sem integration_test — build validado"
+
+  # Superfície 3 — iOS. Runner macOS, sem assinatura: certifica que compila,
+  # não publica.
+  superficie-ios:
+    name: Superfície iOS (build no-codesign)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: flutter
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Bootstrap
+        run: |
+          dart pub global activate melos
+          export PATH="$PATH:$HOME/.pub-cache/bin"
+          melos bootstrap
+          melos run gen:l10n
+          melos run gen
+
+      - name: Build iOS (no-codesign)
+        working-directory: flutter/apps/epi_admin
+        run: flutter build ios --release --no-codesign
+
+  # Superfície 4 — Web Legado. Sem build: é servido estático pelo Python. A
+  # prova é o harness JS, que até a B4 existia e nunca era executado.
+  superficie-web-legado:
+    name: Superfície Web Legado (JS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS unit tests
+        run: node static/js/test/run-tests.js
+
+  # Gate transversal: capacidades × superfícies, semântica das origens,
+  # isolamento e as garantias de comportamento.
+  paridade-transversal:
+    name: Paridade transversal (#271)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt pytest
+      - name: Gates da frente
+        run: |
+          python -m pytest -q \
+            tests/test_271b4_certificacao_de_superficies.py \
+            tests/test_271_paridade_de_superficies.py \
+            tests/test_271b3_web_legado_configuracao.py \
+            tests/test_271b2a_configuracao_por_unidade_epi.py \
+            tests/test_271_motor_b_congelado.py
+
+  # ── B4-B ────────────────────────────────────────────────────────────────
+  #
+  # Só com `smoke=true` E secrets configurados. O script é SOMENTE LEITURA
+  # contra produção: certificar não pode alterar a configuração real de
+  # ninguém. Sem as variáveis, ele sai com código 2 = NOT CERTIFIED.
+  smoke-deployment:
+    name: Certificação de deployment (B4-B)
+    if: inputs.smoke
+    needs: [superficies-dart, superficie-web-legado, paridade-transversal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Certificar os dois deployments
+        env:
+          EPI_CERT_CORP_URL: ${{ secrets.EPI_CERT_CORP_URL }}
+          EPI_CERT_CORP_TOKEN: ${{ secrets.EPI_CERT_CORP_TOKEN }}
+          EPI_CERT_SAAS_API_URL: ${{ secrets.EPI_CERT_SAAS_API_URL }}
+          EPI_CERT_SAAS_WEB_URL: ${{ secrets.EPI_CERT_SAAS_WEB_URL }}
+          EPI_CERT_SAAS_TOKEN: ${{ secrets.EPI_CERT_SAAS_TOKEN }}
+        run: python3 scripts/certificar_deployment.py

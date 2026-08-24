@@ -71,6 +71,7 @@ JS_CONFIG = RAIZ / 'static' / 'js' / 'views' / 'estoque-config.js'
 JS_HARNESS = RAIZ / 'static' / 'js' / 'test' / 'run-tests.js'
 BACKEND_CI = RAIZ / '.github' / 'workflows' / 'backend-ci.yml'
 CERTIFICACAO = RAIZ / '.github' / 'workflows' / 'certificacao-271.yml'
+IOS_CI = RAIZ / '.github' / 'workflows' / 'ios_ci.yml'
 SMOKE = RAIZ / 'scripts' / 'certificar_deployment.py'
 RENDER = RAIZ / 'render.yaml'
 DOCKERFILE = RAIZ / 'Dockerfile'
@@ -296,6 +297,24 @@ def test_o_harness_js_cobre_a_configuracao_de_verdade():
 
 # ── 4. Certificação das superfícies Dart ─────────────────────────────────────
 
+def _yaml_sem_comentarios(texto: str) -> str:
+    """Descarta linhas de comentário antes de procurar código no workflow.
+
+    Não é preciosismo. Os dois testes abaixo procuravam `build ios` e
+    `no-codesign` no texto cru do `certificacao-271.yml`. Quando o job iOS
+    passou a DELEGAR para o `ios_ci.yml`, o comentário que explica a mudança
+    passou a citar as duas expressões — e os testes continuariam verdes
+    descrevendo um build que este arquivo não faz mais. Confundir a
+    documentação com o código foi o defeito que este arquivo já corrigiu em
+    `test_a_formula_do_motor_b_nao_foi_alterada_no_congelamento`; aqui ele
+    reapareceria pelo mesmo caminho.
+    """
+    return '\n'.join(
+        linha for linha in texto.splitlines()
+        if not linha.lstrip().startswith('#')
+    )
+
+
 def test_existe_job_de_certificacao_das_superficies():
     """`flutter.yml` só dispara com `paths: flutter/**`.
 
@@ -305,17 +324,112 @@ def test_existe_job_de_certificacao_das_superficies():
     não pode depender do path do diff.
     """
     assert CERTIFICACAO.exists(), 'falta o workflow de certificação da #271'
-    wf = CERTIFICACAO.read_text(encoding='utf-8')
+    wf = _yaml_sem_comentarios(CERTIFICACAO.read_text(encoding='utf-8')).lower()
     assert 'workflow_dispatch' in wf
-    for prova in ('flutter analyze', 'flutter test', 'build web',
-                  'build apk', 'build ios'):
-        assert prova in wf.lower(), f'a certificação não cobre: {prova}'
+    for prova in ('flutter analyze', 'flutter test', 'build web', 'build apk'):
+        assert prova in wf, f'a certificação não cobre: {prova}'
+    # iOS não aparece como build aqui de propósito — ver o teste de delegação.
+    assert 'ios_ci.yml' in wf, 'a certificação não cobre a superfície iOS'
 
 
 def test_a_certificacao_cobre_as_superficies_dart():
-    wf = CERTIFICACAO.read_text(encoding='utf-8').lower()
+    wf = _yaml_sem_comentarios(CERTIFICACAO.read_text(encoding='utf-8')).lower()
     assert 'emulator' in wf or 'integration' in wf, 'falta a integração Android'
-    assert 'no-codesign' in wf, 'iOS precisa de build sem assinatura'
+    ios = _yaml_sem_comentarios(IOS_CI.read_text(encoding='utf-8')).lower()
+    assert 'no-codesign' in ios, 'a receita de iOS precisa de build sem assinatura'
+
+
+# ── 4b. iOS: uma receita só, e ela mora no ios_ci.yml ────────────────────────
+#
+# O `Runner.xcodeproj` não é versionado (#238). Todo build iOS depende de uma
+# sequência de preparação que só o `ios_ci.yml` conhece. A primeira versão da
+# certificação escreveu uma SEGUNDA receita, incompleta, que falhava em dois
+# segundos. Estes gates existem para que ela não volte.
+
+def test_a_certificacao_nao_reimplementa_a_receita_de_ios():
+    """O gate principal desta correção.
+
+    Reimplementar aqui é o mesmo defeito que produziu dois motores de reposição
+    (#945) e a comparação `saldo × mínimo` copiada para SQL: duas definições do
+    mesmo comportamento, que divergem no primeiro ajuste feito só de um lado.
+    """
+    wf = _yaml_sem_comentarios(CERTIFICACAO.read_text(encoding='utf-8'))
+    assert 'uses: ./.github/workflows/ios_ci.yml' in wf, (
+        'a certificação precisa CHAMAR o ios_ci.yml, não construir o iOS por conta própria'
+    )
+    for passo in ('flutter build ios', 'flutter create', 'wire_xcode.rb',
+                  'verify_bundle_id.rb', 'pin_ios_deployment_target.rb',
+                  'pod install'):
+        assert passo not in wf, (
+            f'{passo!r} apareceu no certificacao-271.yml. A receita de iOS tem uma '
+            'fonte única — o ios_ci.yml. Se ela precisa mudar, mude lá.'
+        )
+
+
+def test_o_ios_ci_e_reutilizavel_sem_perder_os_gatilhos_proprios():
+    """Virar reutilizável é ACRESCENTAR uma entrada, não trocar de porta."""
+    wf = _yaml_sem_comentarios(IOS_CI.read_text(encoding='utf-8'))
+    assert 'workflow_call:' in wf, 'o ios_ci.yml precisa ser chamável'
+    for gatilho in ('push:', 'pull_request:', 'workflow_dispatch:'):
+        assert gatilho in wf, (
+            f'o gatilho {gatilho!r} sumiu do ios_ci.yml — ele continua sendo o CI '
+            'de iOS do dia a dia, não só uma sub-rotina da certificação'
+        )
+
+
+def test_a_receita_de_ios_prepara_o_projeto_antes_de_construir():
+    """Ordem, não presença.
+
+    `flutter build ios` antes do `flutter create` é exatamente a falha que esta
+    correção resolve: o projeto ainda não existe no disco.
+    """
+    wf = _yaml_sem_comentarios(IOS_CI.read_text(encoding='utf-8'))
+    criacao = wf.find('flutter create')
+    assert criacao != -1, 'a preparação do projeto iOS sumiu do ios_ci.yml'
+    construcao = wf.find('flutter build ios')
+    assert construcao != -1, 'o ios_ci.yml não constrói mais o iOS'
+    assert criacao < construcao, (
+        'há um `flutter build ios` ANTES do `flutter create`. O Runner.xcodeproj '
+        'não é versionado (#238): construir antes de gerar falha com '
+        '"Expected ios/Runner.xcodeproj but this file is missing".'
+    )
+
+
+#: A identidade iOS é o único ponto em que os dois `ios_ci.yml` divergem — e
+#: divergem de propósito. O `certificacao-271.yml`, por não conter receita
+#: nenhuma, segue byte-a-byte igual nos dois repositórios.
+ORG_IOS = {
+    'corporativo': 'com.rocksbrothers',
+    'saas': 'com.livamobile',
+}
+
+
+def test_o_bundle_id_de_ios_pertence_a_este_repositorio():
+    wf = IOS_CI.read_text(encoding='utf-8')
+    esperado = ORG_IOS[_deployment_deste_repositorio()]
+    assert f'--org {esperado}' in wf, (
+        f'este repositório é {_deployment_deste_repositorio()} e deveria gerar o '
+        f'projeto iOS com --org {esperado}'
+    )
+    outro = ORG_IOS['saas' if esperado == ORG_IOS['corporativo'] else 'corporativo']
+    assert f'--org {outro}' not in wf, (
+        f'o --org do outro deployment ({outro}) vazou para este repositório'
+    )
+
+
+def test_a_certificacao_nao_afrouxa_a_reprovacao():
+    """Uma superfície reprovada tem de reprovar a certificação."""
+    wf = _yaml_sem_comentarios(CERTIFICACAO.read_text(encoding='utf-8'))
+    assert 'continue-on-error' not in wf, (
+        'continue-on-error transforma reprovação em verde — é o oposto de certificar'
+    )
+    assert 'secrets: inherit' not in wf, (
+        'o build iOS --no-codesign não precisa de secret nenhum; `inherit` entregaria '
+        'todos os secrets do repositório ao workflow chamado sem necessidade'
+    )
+    assert 'superficie-ios' in wf.split('smoke-deployment')[1], (
+        'o smoke de deployment (B4-B) precisa depender também da superfície iOS'
+    )
 
 
 # ── 5. B4-B: infraestrutura de smoke, sem fingir que foi executada ───────────

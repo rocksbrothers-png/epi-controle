@@ -137,33 +137,31 @@ jobs:
           working-directory: flutter/apps/epi_admin
           script: flutter test integration_test || echo "sem integration_test — build validado"
 
-  # Superfície 3 — iOS. Runner macOS, sem assinatura: certifica que compila,
-  # não publica.
+  # Superfície 3 — iOS. Este job NÃO constrói o iOS: ele CHAMA `ios_ci.yml`.
+  #
+  # A primeira versão daqui rodava `flutter build ios --release --no-codesign`
+  # direto depois do bootstrap, e nunca poderia ter funcionado: o
+  # `Runner.xcodeproj` não é versionado (decisão da #238), então o build precisa
+  # da sequência `flutter create` → restaurar Info.plist/entitlements/Privacy →
+  # `wire_xcode.rb` → `verify_bundle_id.rb` → `pin_ios_deployment_target.rb` →
+  # `pod install`. Sem ela o build morre em dois segundos com
+  # "Expected ios/Runner.xcodeproj but this file is missing".
+  #
+  # O `ios_ci.yml` já executa essa sequência e é a FONTE ÚNICA dela. Copiar as
+  # ~40 linhas para cá resolveria hoje e divergiria amanhã — e, pior, obrigaria
+  # este arquivo a carregar o `--org` de cada repositório, quebrando a
+  # identidade byte-a-byte que ele tem entre o corporativo e o SaaS. O `--org`
+  # (`com.rocksbrothers` × `com.livamobile`) e a validação de bundle id
+  # continuam pertencendo ao `ios_ci.yml` de cada repositório, que é o único
+  # arquivo iOS que legitimamente diverge.
+  #
+  # Sem `secrets: inherit` e sem passar secret nenhum: o build `--no-codesign`
+  # compila sem a config de Firebase, e virar `workflow_call` não é motivo para
+  # o job ganhar acesso que não precisa. Falha aqui reprova a certificação —
+  # nada de `continue-on-error`.
   superficie-ios:
-    name: Superfície iOS (build no-codesign)
-    runs-on: macos-latest
-    timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: flutter
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Bootstrap
-        run: |
-          dart pub global activate melos
-          export PATH="$PATH:$HOME/.pub-cache/bin"
-          melos bootstrap
-          melos run gen:l10n
-          melos run gen
-
-      - name: Build iOS (no-codesign)
-        working-directory: flutter/apps/epi_admin
-        run: flutter build ios --release --no-codesign
+    name: Superfície iOS
+    uses: ./.github/workflows/ios_ci.yml
 
   # Superfície 4 — Web Legado. Sem build: é servido estático pelo Python. A
   # prova é o harness JS, que até a B4 existia e nunca era executado.
@@ -209,7 +207,7 @@ jobs:
   smoke-deployment:
     name: Certificação de deployment (B4-B)
     if: inputs.smoke
-    needs: [superficies-dart, superficie-web-legado, paridade-transversal]
+    needs: [superficies-dart, superficie-ios, superficie-web-legado, paridade-transversal]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

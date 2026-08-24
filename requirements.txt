@@ -1,4 +1,6 @@
 psycopg2-binary>=2.9.12,<3
+gunicorn>=26.1.0,<27
+python-dotenv>=1.2.2,<2
 gunicorn>=26.0.0,<27
 python-dotenv>=1.2.3,<2
 bcrypt>=5.0,<6

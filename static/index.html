@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=9931503d7575">
+  <link rel="stylesheet" href="/styles.css?v=f84d8dd692c2">
   <script>/* Bootstrap de tema (P2-2) — aplica antes do paint para evitar flash. */try{if(localStorage.getItem('epi-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
 </head>
 <body>
@@ -1641,16 +1641,68 @@
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
               <p class="hint"><strong data-i18n="stock.unitStockLabel">Estoque da Unidade:</strong> <span data-i18n="stock.unitStockHint">itens retornados conforme empresa + unidade selecionadas acima.</span></p>
             </div>
-            <fieldset class="stock-minimum-fieldset">
-              <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
-              <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
-                <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+            <!-- Configuração por Unidade + EPI (#271-B3).
+                 Paridade funcional com `/stock/config` do Flutter: os três
+                 parâmetros, cada um com valor efetivo, origem, salvar e
+                 restaurar herança. As superfícies são permanentes e
+                 independentes — nenhuma delas fica com menos capacidade sobre
+                 a mesma regra de negócio.
+                 A Unidade vem de `GET /api/units/selectable`, nunca de uma
+                 lista montada aqui. -->
+            <div id="stock-config-panel" class="stock-config-panel" hidden>
+              <label for="stock-config-unit"><span data-i18n="stock.configUnitLabel">Unidade a configurar</span>
+                <select id="stock-config-unit"></select>
               </label>
-              <div class="action-group">
-                <button class="ghost" id="stock-minimum-selected-edit" type="button" data-i18n="stock.editMinimumStock">Editar estoque Mínimo</button>
-                <button class="primary" id="stock-minimum-selected-save" type="button" data-i18n="save">Salvar</button>
+              <p class="hint" id="stock-config-unit-hint" aria-live="polite"></p>
+              <p class="hint" id="stock-config-scope-warning" aria-live="polite"></p>
+
+              <div id="stock-config-blocks" hidden>
+                <p class="hint" id="stock-config-derived" aria-live="polite"></p>
+
+                <fieldset class="stock-minimum-fieldset">
+                  <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
+                  <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
+                    <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+                  </label>
+                  <p class="hint" id="stock-minimum-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-minimum-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="ghost" id="stock-minimum-selected-edit" type="button" data-i18n="stock.editMinimumStock">Editar estoque Mínimo</button>
+                    <button class="primary" id="stock-minimum-selected-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-minimum-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="stock-attention-fieldset">
+                  <legend data-i18n="stock.attentionRange">Faixa de atenção</legend>
+                  <label><span data-i18n="stock.attentionPercentageLabel">Percentual da faixa de atenção</span>
+                    <input id="stock-attention-value" type="number" min="0" max="100" value="0" readonly>
+                  </label>
+                  <p class="hint" id="stock-attention-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-attention-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="ghost" id="stock-attention-edit" type="button" data-i18n="stock.editAttention">Editar faixa de atenção</button>
+                    <button class="primary" id="stock-attention-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-attention-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="stock-alert-fieldset">
+                  <legend data-i18n="stock.alertMonitoring">Monitoramento de alerta</legend>
+                  <label class="checkbox-label">
+                    <input id="stock-alert-toggle" type="checkbox">
+                    <span data-i18n="stock.alertToggle">Monitorar o estoque deste EPI</span>
+                  </label>
+                  <p class="hint" id="stock-alert-pending" aria-live="polite"></p>
+                  <p class="hint" id="stock-alert-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-alert-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="primary" id="stock-alert-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-alert-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
               </div>
-            </fieldset>
+            </div>
             <fieldset class="size-group">
               <legend data-i18n="stock.itemSizes">Tamanhos do item</legend>
               <div class="size-grid">
@@ -3831,54 +3883,55 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=9931503d7575"></script>
-  <script defer src="/i18n-helper.js?v=9931503d7575"></script>
-  <script defer src="/tenant-init.js?v=9931503d7575"></script>
+  <script defer src="/i18n.js?v=f84d8dd692c2"></script>
+  <script defer src="/i18n-helper.js?v=f84d8dd692c2"></script>
+  <script defer src="/tenant-init.js?v=f84d8dd692c2"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=9931503d7575"></script>
-  <script defer src="/js/core/permissions.js?v=9931503d7575"></script>
-  <script defer src="/js/core/feature-flags.js?v=9931503d7575"></script>
-  <script defer src="/js/core/config.js?v=9931503d7575"></script>
-  <script defer src="/js/utils/storage.js?v=9931503d7575"></script>
-  <script defer src="/js/utils/debug.js?v=9931503d7575"></script>
-  <script defer src="/js/utils/dom.js?v=9931503d7575"></script>
-  <script defer src="/js/utils/perf.js?v=9931503d7575"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=9931503d7575"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=9931503d7575"></script>
-  <script defer src="/js/modules/auth.js?v=9931503d7575"></script>
-  <script defer src="/js/modules/api-client.js?v=9931503d7575"></script>
-  <script defer src="/js/modules/router.js?v=9931503d7575"></script>
-  <script defer src="/js/views/ui-helpers.js?v=9931503d7575"></script>
-  <script defer src="/js/views/view-helpers.js?v=9931503d7575"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=9931503d7575"></script>
-  <script defer src="/js/views/dashboard.js?v=9931503d7575"></script>
-  <script defer src="/js/views/epis.js?v=9931503d7575"></script>
-  <script defer src="/js/views/estoque.js?v=9931503d7575"></script>
-  <script defer src="/js/views/employee-portal.js?v=9931503d7575"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=9931503d7575"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=9931503d7575"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=9931503d7575"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=9931503d7575"></script>
-  <script defer src="/js/views/data-migration-view.js?v=9931503d7575"></script>
-  <script defer src="/js/views/purchases.js?v=9931503d7575"></script>
-  <script defer src="/js/views/procurement.js?v=9931503d7575"></script>
-  <script defer src="/js/views/feedback.js?v=9931503d7575"></script>
-  <script defer src="/js/views/devolution.js?v=9931503d7575"></script>
-  <script defer src="/js/views/fichas.js?v=9931503d7575"></script>
-  <script defer src="/js/views/feedback-detail.js?v=9931503d7575"></script>
-  <script defer src="/js/views/profile.js?v=9931503d7575"></script>
-  <script defer src="/colab-list.js?v=9931503d7575"></script>
-  <script defer src="/gestao-colab.js?v=9931503d7575"></script>
-  <script defer src="/estoque.js?v=9931503d7575"></script>
-  <script defer src="/ux-global.js?v=9931503d7575"></script>
-  <script defer src="/app.js?v=9931503d7575"></script>
-  <script defer src="/share-modal.js?v=9931503d7575"></script>
-  <script defer src="/entrega-epi.js?v=9931503d7575"></script>
-  <script defer src="/ux-phase41.js?v=9931503d7575"></script>
-  <script defer src="/navigation.js?v=9931503d7575"></script>
-  <script defer src="/navigation-controls.js?v=9931503d7575"></script>
-  <script defer src="/multitab-navigation.js?v=9931503d7575"></script>
-  <script defer src="/error-monitor.js?v=9931503d7575"></script>
-  <script defer src="/ux-analytics.js?v=9931503d7575"></script>
+  <script defer src="/js/core/constants.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/core/permissions.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/core/feature-flags.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/core/config.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/utils/storage.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/utils/debug.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/utils/dom.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/utils/perf.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/modules/auth.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/modules/api-client.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/modules/router.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/ui-helpers.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/view-helpers.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/dashboard.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/epis.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/estoque.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/estoque-config.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/employee-portal.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/data-migration-view.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/purchases.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/procurement.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/feedback.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/devolution.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/fichas.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/feedback-detail.js?v=f84d8dd692c2"></script>
+  <script defer src="/js/views/profile.js?v=f84d8dd692c2"></script>
+  <script defer src="/colab-list.js?v=f84d8dd692c2"></script>
+  <script defer src="/gestao-colab.js?v=f84d8dd692c2"></script>
+  <script defer src="/estoque.js?v=f84d8dd692c2"></script>
+  <script defer src="/ux-global.js?v=f84d8dd692c2"></script>
+  <script defer src="/app.js?v=f84d8dd692c2"></script>
+  <script defer src="/share-modal.js?v=f84d8dd692c2"></script>
+  <script defer src="/entrega-epi.js?v=f84d8dd692c2"></script>
+  <script defer src="/ux-phase41.js?v=f84d8dd692c2"></script>
+  <script defer src="/navigation.js?v=f84d8dd692c2"></script>
+  <script defer src="/navigation-controls.js?v=f84d8dd692c2"></script>
+  <script defer src="/multitab-navigation.js?v=f84d8dd692c2"></script>
+  <script defer src="/error-monitor.js?v=f84d8dd692c2"></script>
+  <script defer src="/ux-analytics.js?v=f84d8dd692c2"></script>
 </body>
 </html>

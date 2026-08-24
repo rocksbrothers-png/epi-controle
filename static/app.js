@@ -1977,7 +1977,16 @@ const state = {
   commercialSettings: cloneDefaultCommercialSettings(),
   companies: [], companyAuditLogs: [], fichaAuditLogs: [], users: [], units: [], employees: [], employeeMovements: [], epis: [], deliveries: [], alerts: [], reports: null, lowStock: [], requests: [], fichasPeriods: [], stockGeneratedLabels: [], stockEpis: [], stockEpiMovementItems: [], deliveryEpis: [], deliveryEpisScopeKey: '', deliveryReturnCandidates: [], deliveryReturnScopeKey: '', deliveryReturnPendingScopeKey: '',
   dbPoolStatus: null,
-  stockMinimumEditor: { editing: false, epiId: null },
+  // Editores da configuração por Unidade + EPI (#271-B3). A chave é o PAR
+  // `unidade:epi`, e não só o EPI: trocar de Unidade precisa descartar o
+  // rascunho, senão o valor digitado para uma Unidade seria salvo na outra.
+  stockMinimumEditor: { editing: false, key: null },
+  stockAttentionEditor: { editing: false, key: null },
+  stockAlertEditor: { key: null, draft: true },
+  // Escopo vindo de `GET /api/units/selectable`. `null` = ainda não
+  // carregado ou falhou; nos dois casos a tela fica fail-closed.
+  stockConfigScope: null,
+  stockConfigUnitId: null,
   editingUserId: null,
   editingCompanyId: null,
   selectedCompanyId: null,
@@ -2948,9 +2957,11 @@ function renderPlatformBrand() {
   }
 }
 
-function canManageMinimumStock() {
-  return ['admin', 'user'].includes(state.user?.role);
-}
+// `canManageMinimumStock()` foi REMOVIDA (#271-B3). Ela testava
+// `['admin','user']` e por isso escondia o editor do Administrador Geral, a
+// quem o backend concede `stock:adjust`. Reconstruir autorização por lista de
+// papéis no cliente é o antipadrão que a #271 vem removendo — use
+// `canManageStockConfig()`, que lê a permissão real.
 
 function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
@@ -6046,6 +6057,9 @@ async function loadStockEpis() {
   const payload = await api(`/api/stock/epis?${params.toString()}`);
   state.stockEpis = payload.items || [];
   renderStockEpis();
+  // O escopo do seletor vem de `/api/units/selectable`, e só uma vez: ele não
+  // muda com filtro de listagem.
+  if (state.stockConfigScope === null) { await loadStockConfigUnitScope(); }
   syncSelectedEpiMinimumStockField();
   refreshStockMovementItemsFromLocal();
 }
@@ -6359,82 +6373,398 @@ async function loadPendingReportRequests() {
   }
 }
 
-function syncSelectedEpiMinimumStockField() {
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  const editButton = document.getElementById('stock-minimum-selected-edit');
-  const saveButton = document.getElementById('stock-minimum-selected-save');
+// ── Configuração de estoque por Unidade + EPI (#271-B3) ──────────────────────
+//
+// Paridade com `/stock/config` do Flutter. Toda a REGRA — origens, validação,
+// payloads, quem pode configurar — vive em `js/views/estoque-config.js`, que é
+// testável isoladamente. Aqui fica só a ligação com o DOM.
+//
+// O editor antigo tinha sete defeitos que esta fatia fecha: lia o mínimo
+// CORPORATIVO, não mandava `unit_id` (o Administrador Geral tomava 400), não
+// mostrava origem, gravava o valor da Unidade no campo corporativo do cache,
+// decidia permissão por lista de papéis, não tinha faixa nem alerta, e
+// recarregava a listagem duas vezes.
+
+/** Helpers do módulo de configuração. Sem fallback: se o módulo não carregou,
+ *  a tela não deve fingir que sabe a regra. */
+function stockConfigApi() {
+  return globalThis.__EPI_ESTOQUE_CONFIG__ || null;
+}
+
+function canManageStockConfig() {
+  const cfg = stockConfigApi();
+  return Boolean(cfg && cfg.canConfigureStock());
+}
+
+/** Parâmetros do par corrente, lidos da linha que o servidor devolveu. */
+function selectedStockConfigParameters() {
+  const cfg = stockConfigApi();
   const selected = selectedStockEpi();
-  if (!valueField) return;
-  const selectedId = selected?.id ? String(selected.id) : null;
-  const keepEditingCurrentEpi = Boolean(
-    state.stockMinimumEditor.editing
-    && selectedId
-    && String(state.stockMinimumEditor.epiId || '') === selectedId
-  );
-  if (keepEditingCurrentEpi) {
-    valueField.focus();
-    valueField.select();
-  } else {
-    valueField.value = String(Number(selected?.minimum_stock ?? 0));
-    valueField.readOnly = true;
-    valueField.classList.remove('is-editing');
-    state.stockMinimumEditor.editing = false;
-    state.stockMinimumEditor.epiId = selectedId;
+  if (!cfg || !selected) return null;
+  return cfg.readParameters(selected);
+}
+
+/**
+ * Carrega o escopo de Unidade a partir de `GET /api/units/selectable`.
+ *
+ * Fonte ÚNICA. Nunca `state.units`, que é recortada só por tenant e entregaria
+ * a um perfil travado todas as Unidades da empresa — estreitar isso no cliente
+ * é reconstruir autorização.
+ */
+async function loadStockConfigUnitScope() {
+  const cfg = stockConfigApi();
+  if (!cfg || !state.user?.id) return;
+  try {
+    const payload = await api(`${cfg.STOCK_CONFIG_ROUTES.selectableUnits}?actor_user_id=${encodeURIComponent(state.user.id)}`);
+    const scope = cfg.readSelectableUnits(payload);
+    state.stockConfigScope = scope;
+    // Uma Unidade já escolhida só sobrevive se continuar sendo oferecida.
+    state.stockConfigUnitId = state.stockConfigUnitId === null || state.stockConfigUnitId === undefined
+      ? cfg.initialUnitSelection(scope)
+      : cfg.acceptUnit(scope, state.stockConfigUnitId);
+    if (state.stockConfigUnitId === null || state.stockConfigUnitId === undefined) {
+      state.stockConfigUnitId = cfg.initialUnitSelection(scope);
+    }
+  } catch (error) {
+    // Falha de carga NÃO vira "sem restrição": sem escopo, nada é oferecido.
+    state.stockConfigScope = null;
+    state.stockConfigUnitId = null;
   }
-  const enabled = canManageMinimumStock() && Boolean(selected?.id);
-  if (editButton) editButton.disabled = !enabled;
-  if (saveButton) saveButton.disabled = !enabled || !keepEditingCurrentEpi;
+  renderStockConfigUnitSelector();
+}
+
+function renderStockConfigUnitSelector() {
+  const cfg = stockConfigApi();
+  const panel = document.getElementById('stock-config-panel');
+  const select = document.getElementById('stock-config-unit');
+  const hint = document.getElementById('stock-config-unit-hint');
+  if (!panel || !select || !cfg) return;
+
+  const permitido = canManageStockConfig();
+  panel.hidden = !permitido;
+  if (!permitido) return;
+
+  const scope = state.stockConfigScope;
+  if (!scope) {
+    select.innerHTML = '';
+    select.disabled = true;
+    if (hint) hint.textContent = trEpi('stock.unitScopeLoadError', 'Não foi possível carregar as Unidades.');
+    return;
+  }
+  if (scope.blocksEverything) {
+    select.innerHTML = '';
+    select.disabled = true;
+    if (hint) hint.textContent = trEpi('stock.noUnitsAssigned', 'Nenhuma Unidade atribuída ao seu perfil.');
+    return;
+  }
+
+  // "Todas" NUNCA entra: esta é uma superfície de escrita.
+  select.innerHTML = scope.units
+    .map((u) => `<option value="${escapeHtml(String(u.id))}">${escapeHtml(u.name)}</option>`)
+    .join('');
+  const atual = state.stockConfigUnitId;
+  if (atual !== null && atual !== undefined) select.value = String(atual);
+  // Perfil travado vê a própria Unidade, desabilitada: saber onde se está
+  // operando vale o controle.
+  select.disabled = scope.locked;
+  if (hint) {
+    hint.textContent = scope.locked
+      ? trEpi('stock.unitLockedHint', 'Seu perfil opera apenas na própria Unidade.')
+      : '';
+  }
+}
+
+/**
+ * Sincroniza os três blocos com o par corrente.
+ *
+ * Fail-closed em dois níveis: sem permissão o painel some; sem Unidade OU sem
+ * EPI resolvido, os blocos somem e nada é editável.
+ */
+function syncSelectedEpiMinimumStockField() {
+  const cfg = stockConfigApi();
+  const blocos = document.getElementById('stock-config-blocks');
+  const aviso = document.getElementById('stock-config-scope-warning');
+  const panel = document.getElementById('stock-config-panel');
+  if (!cfg || !panel) return;
+
+  const permitido = canManageStockConfig();
+  panel.hidden = !permitido;
+  if (!permitido) return;
+
+  const selected = selectedStockEpi();
+  const params = selectedStockConfigParameters();
+  const escopoOk = cfg.canWrite(state.stockConfigScope, state.stockConfigUnitId);
+
+  if (blocos) blocos.hidden = !(escopoOk && params);
+  if (aviso) {
+    if (!escopoOk) {
+      aviso.textContent = trEpi('stock.selectUnitFirst', 'Selecione a Unidade para configurar os parâmetros.');
+    } else if (!selected) {
+      aviso.textContent = trEpi('stock.selectEpiFirst', 'Selecione o EPI para ver e editar os parâmetros desta Unidade.');
+    } else if (!params) {
+      aviso.textContent = trEpi('stock.noUnitContext', 'Sem contexto de Unidade para este EPI.');
+    } else {
+      aviso.textContent = '';
+    }
+  }
+  if (!escopoOk || !params) return;
+
+  syncStockMinimumBlock(cfg, params);
+  syncStockAttentionBlock(cfg, params);
+  syncStockAlertBlock(cfg, params);
+  syncStockDerivedHint(cfg, params);
+}
+
+/** Derivados: EXIBIDOS como vieram. Nada aqui é recalculado. */
+function syncStockDerivedHint(cfg, params) {
+  const alvo = document.getElementById('stock-config-derived');
+  if (!alvo) return;
+  const partes = [];
+  if (params.unitStock !== null && params.unitStock !== undefined) {
+    partes.push(`${trEpi('stock.unitBalance', 'Saldo na Unidade')}: ${params.unitStock}`);
+  }
+  if (params.attentionLimit !== null && params.attentionLimit !== undefined) {
+    partes.push(`${trEpi('stock.attentionLimitLabel', 'Limite da faixa de atenção')}: ${params.attentionLimit}`);
+  }
+  const status = cfg.statusLabel(params.stockStatus);
+  if (status) partes.push(status);
+  // `underlying_status` só acrescenta quando DIFERE do operacional — que é
+  // exatamente o caso do monitoramento desligado sobre condição física real.
+  if (params.underlyingStatus && params.underlyingStatus !== params.stockStatus) {
+    const subjacente = cfg.statusLabel(params.underlyingStatus);
+    if (subjacente) partes.push(`${trEpi('stock.physicalCondition', 'Condição física')}: ${subjacente}`);
+  }
+  alvo.textContent = partes.join(' · ');
+}
+
+function syncStockMinimumBlock(cfg, params) {
+  const campo = document.getElementById('stock-minimum-selected-value');
+  const editar = document.getElementById('stock-minimum-selected-edit');
+  const salvar = document.getElementById('stock-minimum-selected-save');
+  const restaurar = document.getElementById('stock-minimum-restore');
+  const origem = document.getElementById('stock-minimum-origin');
+  if (!campo) return;
+
+  const chave = `${params.unitId}:${params.epiId}`;
+  const editando = state.stockMinimumEditor.editing && state.stockMinimumEditor.key === chave;
+  if (editando) {
+    campo.focus();
+  } else {
+    // Lê `unit_minimum_stock` — o efetivo DAQUELA Unidade. O campo antigo
+    // mostrava `minimum_stock`, o padrão corporativo, e o operador editava um
+    // número que não governava a Unidade dele.
+    campo.value = String(params.minimum.value);
+    campo.readOnly = true;
+    campo.classList.remove('is-editing');
+    state.stockMinimumEditor.editing = false;
+    state.stockMinimumEditor.key = chave;
+  }
+  if (origem) origem.textContent = `${trEpi('stock.originLabel', 'Origem')}: ${cfg.sourceLabel(params.minimum.source)}`;
+  if (editar) editar.disabled = editando;
+  if (salvar) salvar.disabled = !editando;
+  // Restaurar o que já é herdado é no-op no backend, mas um botão que não faz
+  // nada é pior que um desabilitado.
+  if (restaurar) restaurar.disabled = !cfg.canRestore(params.minimum.source);
+}
+
+function syncStockAttentionBlock(cfg, params) {
+  const campo = document.getElementById('stock-attention-value');
+  const editar = document.getElementById('stock-attention-edit');
+  const salvar = document.getElementById('stock-attention-save');
+  const restaurar = document.getElementById('stock-attention-restore');
+  const origem = document.getElementById('stock-attention-origin');
+  if (!campo) return;
+
+  const chave = `${params.unitId}:${params.epiId}`;
+  const editando = state.stockAttentionEditor.editing && state.stockAttentionEditor.key === chave;
+  if (!editando) {
+    campo.value = String(params.attention.value);
+    campo.readOnly = true;
+    state.stockAttentionEditor.editing = false;
+    state.stockAttentionEditor.key = chave;
+  }
+  if (origem) origem.textContent = `${trEpi('stock.originLabel', 'Origem')}: ${cfg.sourceLabel(params.attention.source)}`;
+  if (editar) editar.disabled = editando;
+  if (salvar) salvar.disabled = !editando;
+  if (restaurar) restaurar.disabled = !cfg.canRestore(params.attention.source);
+}
+
+function syncStockAlertBlock(cfg, params) {
+  const toggle = document.getElementById('stock-alert-toggle');
+  const salvar = document.getElementById('stock-alert-save');
+  const restaurar = document.getElementById('stock-alert-restore');
+  const origem = document.getElementById('stock-alert-origin');
+  const pendente = document.getElementById('stock-alert-pending');
+  if (!toggle) return;
+
+  const chave = `${params.unitId}:${params.epiId}`;
+  if (state.stockAlertEditor.key !== chave) {
+    // Par novo: o rascunho nasce igual ao que está gravado.
+    state.stockAlertEditor.key = chave;
+    state.stockAlertEditor.draft = params.alert.enabled;
+  }
+  toggle.checked = state.stockAlertEditor.draft === true;
+  const sujo = state.stockAlertEditor.draft !== params.alert.enabled;
+
+  if (origem) origem.textContent = `${trEpi('stock.originLabel', 'Origem')}: ${cfg.sourceLabel(params.alert.source)}`;
+  if (pendente) {
+    pendente.textContent = sujo
+      ? trEpi('stock.alertPending', 'Alteração pendente. Clique em Salvar para aplicar.')
+      : '';
+  }
+  // Sem alteração pendente não há o que gravar — o toggle NÃO persiste
+  // sozinho: silenciar o alerta de um EPI é decisão operacional.
+  if (salvar) salvar.disabled = !sujo;
+  if (restaurar) restaurar.disabled = !cfg.canRestore(params.alert.source);
 }
 
 function toggleSelectedMinimumStockEditMode(editing) {
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  const saveButton = document.getElementById('stock-minimum-selected-save');
-  const selected = selectedStockEpi();
-  if (!valueField) return;
-  if (editing && !selected?.id) return;
+  const campo = document.getElementById('stock-minimum-selected-value');
+  const params = selectedStockConfigParameters();
+  if (!campo || !params) return;
   state.stockMinimumEditor.editing = Boolean(editing);
-  state.stockMinimumEditor.epiId = selected?.id ? String(selected.id) : null;
-  valueField.readOnly = !editing;
-  valueField.classList.toggle('is-editing', Boolean(editing));
-  if (editing) {
-    valueField.focus();
-    valueField.select();
+  state.stockMinimumEditor.key = `${params.unitId}:${params.epiId}`;
+  campo.readOnly = !editing;
+  campo.classList.toggle('is-editing', Boolean(editing));
+  if (editing) { campo.focus(); campo.select(); }
+  syncSelectedEpiMinimumStockField();
+}
+
+function toggleStockAttentionEditMode(editing) {
+  const campo = document.getElementById('stock-attention-value');
+  const params = selectedStockConfigParameters();
+  if (!campo || !params) return;
+  state.stockAttentionEditor.editing = Boolean(editing);
+  state.stockAttentionEditor.key = `${params.unitId}:${params.epiId}`;
+  campo.readOnly = !editing;
+  if (editing) { campo.focus(); campo.select(); }
+  syncSelectedEpiMinimumStockField();
+}
+
+function showStockConfigError(block, message) {
+  const alvo = document.getElementById(`stock-${block}-error`);
+  if (alvo) alvo.textContent = message || '';
+}
+
+function clearStockConfigErrors() {
+  for (const bloco of ['minimum', 'attention', 'alert']) showStockConfigError(bloco, '');
+}
+
+/**
+ * Tronco comum das seis gravações.
+ *
+ * Depois de gravar, RELÊ a listagem: as respostas de escrita trazem só o campo
+ * alterado e a origem, e os derivados (`attention_limit`, `stock_status`) são
+ * recalculados pelo servidor. Calculá-los aqui é o que o gate da 1.1D-C4
+ * proíbe. Uma recarga só — a versão antiga chamava `loadStockEpis()` duas
+ * vezes seguidas.
+ */
+async function runStockConfigWrite(block, outcome, route, payload) {
+  const cfg = stockConfigApi();
+  if (!cfg) return;
+  if (!requirePermission('stock:adjust')) return;
+  clearStockConfigErrors();
+  try {
+    await api(route, { method: 'POST', body: JSON.stringify(payload) });
+    state.stockMinimumEditor.editing = false;
+    state.stockAttentionEditor.editing = false;
+    // O rascunho do alerta volta a acompanhar o servidor na releitura.
+    state.stockAlertEditor.key = null;
+    await loadStockEpis();
+    syncSelectedEpiMinimumStockField();
+    showToast(cfg.outcomeMessage(block, outcome), 'success');
+  } catch (error) {
+    showStockConfigError(block, error?.message || trEpi('stock.saveFailed', 'Falha ao salvar.'));
   }
-  if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selected?.id || !editing;
-  if (!valueField) return;
-  valueField.readOnly = !editing;
-  if (editing) valueField.focus();
-  if (saveButton) saveButton.disabled = !canManageMinimumStock() || !selectedStockEpi();
+}
+
+function stockConfigWriteContext() {
+  const cfg = stockConfigApi();
+  const params = selectedStockConfigParameters();
+  if (!cfg || !params) return null;
+  if (!cfg.canWrite(state.stockConfigScope, state.stockConfigUnitId)) return null;
+  // A linha lida de `/api/stock/epis` precisa ser DA MESMA Unidade escolhida no
+  // seletor. Os dois podem divergir por um instante — o seletor muda antes de a
+  // listagem recarregar —, e gravar nessa janela aplicaria à Unidade escolhida
+  // um valor lido da anterior. Fail-closed até a releitura chegar.
+  if (Number(params.unitId) !== Number(state.stockConfigUnitId)) return null;
+  return { cfg, params, unitId: Number(state.stockConfigUnitId), epiId: params.epiId };
 }
 
 async function saveSelectedEpiMinimumStock() {
-  if (!canManageMinimumStock()) {
-    alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  const campo = document.getElementById('stock-minimum-selected-value');
+  const validado = ctx.cfg.validateMinimum(campo?.value);
+  if (!validado.ok) {
+    showStockConfigError('minimum', trEpi('stock.minimumNegativeError', 'Informe um número inteiro maior ou igual a zero.'));
     return;
   }
-  if (!requirePermission('stock:adjust')) return;
-  const selected = selectedStockEpi();
-  const valueField = document.getElementById('stock-minimum-selected-value');
-  if (!selected?.id || !valueField) return alert('Selecione um EPI para definir o estoque mí­nimo.');
-  const minimumStock = Math.max(0, Number(valueField.value || 0));
-  try {
-    await api('/api/stock/minimum', {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, epi_id: Number(selected.id), minimum_stock: minimumStock })
-    });
-    for (const list of [state.stockEpis, state.epis]) {
-      const target = (list || []).find((item) => String(item.id) === String(selected.id));
-      if (target) target.minimum_stock = minimumStock;
-    }
-    valueField.value = String(minimumStock);
-    toggleSelectedMinimumStockEditMode(false);
-    state.stockMinimumEditor.epiId = String(selected.id);
-    await loadStockEpis();
-    await loadStockEpis();
-    alert('Estoque mí­nimo salvo com sucesso.');
-  } catch (error) {
-    alert(error.message);
+  await runStockConfigWrite(
+    'minimum', 'saved', ctx.cfg.STOCK_CONFIG_ROUTES.minimum,
+    ctx.cfg.minimumPayload(state.user.id, ctx.unitId, ctx.epiId, validado.value)
+  );
+}
+
+async function restoreSelectedEpiMinimumStock() {
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  await runStockConfigWrite(
+    'minimum', 'restored', ctx.cfg.STOCK_CONFIG_ROUTES.minimumRestore,
+    ctx.cfg.restorePayload(state.user.id, ctx.unitId, ctx.epiId)
+  );
+}
+
+async function saveSelectedEpiAttentionPercentage() {
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  const campo = document.getElementById('stock-attention-value');
+  const validado = ctx.cfg.validateAttention(campo?.value);
+  if (!validado.ok) {
+    showStockConfigError('attention', trEpi('stock.attentionRangeError', 'O percentual deve estar entre 0 e 100.'));
+    return;
   }
+  await runStockConfigWrite(
+    'attention', 'saved', ctx.cfg.STOCK_CONFIG_ROUTES.attention,
+    ctx.cfg.attentionPayload(state.user.id, ctx.unitId, ctx.epiId, validado.value)
+  );
+}
+
+async function restoreSelectedEpiAttentionPercentage() {
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  await runStockConfigWrite(
+    'attention', 'restored', ctx.cfg.STOCK_CONFIG_ROUTES.attentionRestore,
+    ctx.cfg.restorePayload(state.user.id, ctx.unitId, ctx.epiId)
+  );
+}
+
+async function saveSelectedEpiAlertEnabled() {
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  const desejado = state.stockAlertEditor.draft === true;
+  if (desejado === ctx.params.alert.enabled) return;
+  // Desligar pergunta; ligar não. A condição mora no módulo, para ser testável.
+  if (ctx.cfg.alertNeedsConfirmation(ctx.params.alert.enabled, desejado)) {
+    const texto = trEpi(
+      'stock.alertDisableConfirm',
+      'Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. Desabilitar?'
+    );
+    if (!confirm(texto)) return;
+  }
+  await runStockConfigWrite(
+    'alert', 'saved', ctx.cfg.STOCK_CONFIG_ROUTES.alert,
+    ctx.cfg.alertPayload(state.user.id, ctx.unitId, ctx.epiId, desejado)
+  );
+}
+
+async function restoreSelectedEpiAlertEnabled() {
+  const ctx = stockConfigWriteContext();
+  if (!ctx) return;
+  await runStockConfigWrite(
+    'alert', 'restored', ctx.cfg.STOCK_CONFIG_ROUTES.alertRestore,
+    ctx.cfg.restorePayload(state.user.id, ctx.unitId, ctx.epiId)
+  );
 }
 
 function stockEpiMatchesMovementSearch(item) {
@@ -14020,25 +14350,70 @@ async function init() {
     if (event.target.dataset.epiEdit) startEditEpi(event.target.dataset.epiEdit);
     if (event.target.dataset.epiArchive) archiveEntityRecord('epi', event.target.dataset.epiArchive);
   });
-  bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {
-    if (!canManageMinimumStock()) {
-      alert('Apenas Administrador Local e Gestor de EPI podem gerenciar estoque mí­nimo.');
-      return;
+  // ── Configuração por Unidade + EPI (#271-B3) ──────────────────────────────
+  //
+  // Os três blocos têm o mesmo formato de ligação: editar → salvar → restaurar.
+  // Nenhum listener decide permissão: quem gateia é `canManageStockConfig()`,
+  // que lê `stock:adjust`, e o backend revalida tudo de novo.
+
+  bindAppListener(document.getElementById('stock-config-unit'), 'change', (event) => {
+    const cfg = stockConfigApi();
+    if (!cfg) return;
+    // A Unidade escolhida só vale se o servidor a tiver oferecido — mesma
+    // guarda do seletor do Flutter.
+    state.stockConfigUnitId = cfg.acceptUnit(state.stockConfigScope, event.target.value);
+    // Trocar de Unidade descarta os rascunhos: um valor digitado para a
+    // Unidade A não pode ser gravado na B.
+    state.stockMinimumEditor = { editing: false, key: null };
+    state.stockAttentionEditor = { editing: false, key: null };
+    state.stockAlertEditor = { key: null, draft: true };
+    clearStockConfigErrors();
+    // A listagem precisa acompanhar: é dela que saem os parâmetros do par, e
+    // `stockConfigWriteContext` recusa gravar enquanto as duas discordarem.
+    const filtro = document.getElementById('stock-unit');
+    if (filtro && state.stockConfigUnitId !== null && state.stockConfigUnitId !== undefined) {
+      filtro.value = String(state.stockConfigUnitId);
     }
-    if (!selectedStockEpi()) {
-      alert('Selecione um EPI para editar o estoque mí­nimo.');
-      return;
-    }
-    toggleSelectedMinimumStockEditMode(true);
+    loadStockEpis().then(syncSelectedEpiMinimumStockField).catch(() => {});
   });
 
+  bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {
+    if (!canManageStockConfig()) return;
+    if (!selectedStockConfigParameters()) return;
+    toggleSelectedMinimumStockEditMode(true);
+  });
   bindAppListener(document.getElementById('stock-minimum-selected-save'), 'click', saveSelectedEpiMinimumStock);
+  bindAppListener(document.getElementById('stock-minimum-restore'), 'click', restoreSelectedEpiMinimumStock);
   bindAppListener(document.getElementById('stock-minimum-selected-value'), 'keydown', (event) => {
     if (event.key !== 'Enter') return;
     if (!state.stockMinimumEditor.editing) return;
     event.preventDefault();
     saveSelectedEpiMinimumStock();
   });
+
+  bindAppListener(document.getElementById('stock-attention-edit'), 'click', () => {
+    if (!canManageStockConfig()) return;
+    if (!selectedStockConfigParameters()) return;
+    toggleStockAttentionEditMode(true);
+  });
+  bindAppListener(document.getElementById('stock-attention-save'), 'click', saveSelectedEpiAttentionPercentage);
+  bindAppListener(document.getElementById('stock-attention-restore'), 'click', restoreSelectedEpiAttentionPercentage);
+  bindAppListener(document.getElementById('stock-attention-value'), 'keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    if (!state.stockAttentionEditor.editing) return;
+    event.preventDefault();
+    saveSelectedEpiAttentionPercentage();
+  });
+
+  // O toggle mexe SÓ no rascunho. A persistência é no Salvar, e desligar pede
+  // confirmação antes do POST — silenciar o alerta é decisão operacional.
+  bindAppListener(document.getElementById('stock-alert-toggle'), 'change', (event) => {
+    if (!canManageStockConfig()) return;
+    state.stockAlertEditor.draft = event.target.checked === true;
+    syncSelectedEpiMinimumStockField();
+  });
+  bindAppListener(document.getElementById('stock-alert-save'), 'click', saveSelectedEpiAlertEnabled);
+  bindAppListener(document.getElementById('stock-alert-restore'), 'click', restoreSelectedEpiAlertEnabled);
 
   bindAppListener(document.getElementById('stock-print-labels'), 'click', () => {
     if (!state.stockGeneratedLabels.length) return alert('Nenhuma etiqueta gerada ainda. Registre uma entrada no estoque primeiro.');

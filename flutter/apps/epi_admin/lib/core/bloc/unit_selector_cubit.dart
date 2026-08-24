@@ -76,11 +76,25 @@ class UnitSelectorCubit extends Cubit<UnitSelectorState> {
     required this.actorUserId,
     required this.unitsApi,
     required this.purpose,
+    this.preferredUnitId,
   }) : super(const UnitSelectorState());
 
   final int actorUserId;
   final UnitsApi unitsApi;
   final UnitSelectorPurpose purpose;
+
+  /// Unidade que o chamador GOSTARIA de ver pré-selecionada — tipicamente um
+  /// `?unit_id=` de deep link (#271-B2-a, ajuste 4).
+  ///
+  /// **É entrada não confiável e é tratada como tal.** Só vale depois de
+  /// aparecer entre as Unidades que `GET /api/units/selectable` devolveu, e
+  /// nunca para perfil travado, cuja Unidade é a do ator e ponto. Um valor que
+  /// não passe nesse filtro é descartado em silêncio e o seletor fica no estado
+  /// que teria sem ele — fail-closed, não "abre na Unidade pedida".
+  ///
+  /// Deixar essa validação aqui, e não em cada tela, é o mesmo motivo que fez o
+  /// seletor existir: quem valida é quem tem a lista.
+  final int? preferredUnitId;
 
   Future<void> load() async {
     emit(state._copyWith(
@@ -122,7 +136,11 @@ class UnitSelectorCubit extends Cubit<UnitSelectorState> {
 
   /// Pré-seleção, quando ela é obrigatória em vez de conveniência.
   ///
-  /// - **perfil travado**: a Unidade do ator, sempre;
+  /// - **perfil travado**: a Unidade do ator, sempre — inclusive por cima de
+  ///   um [preferredUnitId], que para esse perfil não é uma preferência a
+  ///   respeitar e sim uma tentativa de escolher;
+  /// - **[preferredUnitId] validado**: a Unidade pedida, quando ela consta da
+  ///   lista que o servidor ofereceu;
   /// - **uma opção só**: pré-seleciona, porque escolher entre uma coisa não é
   ///   escolha — e em escrita deixar `null` bloquearia quem não tem alternativa;
   /// - **escrita sem "Todas" e várias opções**: `null`, e o chamador fica
@@ -130,6 +148,14 @@ class UnitSelectorCubit extends Cubit<UnitSelectorState> {
   /// - **leitura**: `null`, que é a visão consolidada.
   int? _selecaoInicial(SelectableUnits scope) {
     if (scope.locked) return scope.unitId;
+    final pedida = preferredUnitId;
+    // A checagem é a mesma de `select`: pertencer a `scope.units`. O backend
+    // recusaria de novo, mas aceitar aqui abriria a tela num escopo que o ator
+    // não tem — e a tela de configuração passaria a LER parâmetros de uma
+    // Unidade a partir de um parâmetro de URL.
+    if (pedida != null && scope.units.any((u) => u.id == pedida)) {
+      return pedida;
+    }
     if (scope.units.length == 1 && !scope.allowsAllUnits) {
       return scope.units.first.id;
     }

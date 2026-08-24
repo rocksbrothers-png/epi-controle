@@ -22,6 +22,7 @@ class EpiUnitSelector extends StatelessWidget {
     required this.purpose,
     required this.onChanged,
     this.label,
+    this.preferredUnitId,
   });
 
   /// Leitura oferece "Todas as Unidades" quando o backend autoriza; escrita
@@ -33,12 +34,17 @@ class EpiUnitSelector extends StatelessWidget {
 
   final String? label;
 
+  /// Unidade sugerida por deep link. Só é aplicada se o backend a tiver
+  /// oferecido — ver [UnitSelectorCubit.preferredUnitId].
+  final int? preferredUnitId;
+
   @override
   Widget build(BuildContext context) => BlocProvider(
         create: (_) => UnitSelectorCubit(
           actorUserId: ApiClient.actorUserId,
           unitsApi: ApiClient.units,
           purpose: purpose,
+          preferredUnitId: preferredUnitId,
         )..load(),
         child: _UnitSelectorBody(onChanged: onChanged, label: label),
       );

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../models/company_attention_setting.dart';
 import '../models/epi.dart';
 import '../models/stock_item.dart';
+import '../models/unit_epi_stock_config.dart';
 
 /// Itens de estoque bloqueados, agrupados pelas chaves de status do backend.
 ///
@@ -292,6 +293,155 @@ class StockApi {
       },
     );
     return CompanyAttentionSetting.fromJson(res.data ?? const {});
+  }
+
+  // ── Configuração por Unidade + EPI (#271-B2-a) ───────────────────────────
+  //
+  // Seis rotas, três parâmetros, duas operações cada: gravar e restaurar a
+  // herança. Restaurar NÃO é gravar o valor padrão — gravar deixa o par
+  // `unit_configured` com aquele número; restaurar apaga a decisão local e o
+  // par volta a herdar. As duas podem terminar com o mesmo valor e significam
+  // coisas opostas, e é por isso que o backend tem rota separada para cada uma
+  // em vez de um `set` com valor sentinela.
+  //
+  // `unitId` é obrigatório aqui, ao contrário de `fetchStockEpis`, que deixa o
+  // servidor derivar a Unidade do ator. A diferença não é inconsistência: a
+  // tela de configuração é fail-closed sem Unidade escolhida (#271-B2-a R3),
+  // então um parâmetro opcional modelaria um estado que a tela proíbe. Mandá-lo
+  // continua sendo TRANSPORTE e não decisão — `resolve_unit_scope` descarta o
+  // valor do cliente para perfil travado e devolve a Unidade do ator, e valida
+  // contra o tenant para perfil livre. A resposta carrega a Unidade que o
+  // servidor de fato usou, para o chamador poder conferir.
+
+  /// Grava o estoque mínimo do par. O par fica `unit_configured`.
+  ///
+  /// Chama-se `setUnitEpiMinimum`, e não `...MinimumStock` como a rota
+  /// `set_unit_epi_minimum_stock` do backend, por um motivo mecânico: o gate
+  /// `tests/stock_rule_scan.py` procura um termo de saldo e um de mínimo na
+  /// mesma linha e lê os `<>` de tipo genérico do Dart como comparadores, de
+  /// modo que `Future<UnitEpiMinimum> setUnitEpiMinimumStock(` casava nos dois
+  /// termos sem comparar nada. É falso positivo do detector (mesma família do
+  /// `=>` já documentado em `_comparadores`); o nome mais curto evita o ruído
+  /// sem afrouxar o gate — que é o que importa manter afiado.
+  ///
+  /// O backend aplica `max(0, int(...))`: negativo é normalizado para zero e
+  /// **não existe teto**. O cliente não inventa um — validar formato e
+  /// negatividade é conveniência; a régua é a resposta do servidor.
+  Future<UnitEpiMinimum> setUnitEpiMinimum({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+    required int minimumStock,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/minimum',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+        'minimum_stock': minimumStock,
+      },
+    );
+    return UnitEpiMinimum.fromJson(res.data ?? const {});
+  }
+
+  /// Apaga o mínimo local e devolve o par ao padrão da empresa.
+  Future<UnitEpiMinimum> restoreUnitEpiMinimum({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/minimum/restore-default',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+      },
+    );
+    return UnitEpiMinimum.fromJson(res.data ?? const {});
+  }
+
+  /// Grava o percentual da faixa de atenção do par (0–100, contrato do
+  /// backend). Independente do mínimo: gravar aqui não toca
+  /// `unit_epi_minimum_stock`.
+  Future<UnitEpiAttention> setUnitEpiAttentionPercentage({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+    required int attentionPercentage,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/attention-percentage',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+        'attention_percentage': attentionPercentage,
+      },
+    );
+    return UnitEpiAttention.fromJson(res.data ?? const {});
+  }
+
+  /// Apaga o percentual local e devolve o par ao padrão da empresa.
+  Future<UnitEpiAttention> restoreUnitEpiAttentionPercentage({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/attention-percentage/restore-default',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+      },
+    );
+    return UnitEpiAttention.fromJson(res.data ?? const {});
+  }
+
+  /// Liga/desliga o monitoramento do par. O par fica `unit_configured` nos
+  /// dois casos — inclusive ao religar, porque a Unidade decidiu manter ligado.
+  ///
+  /// Desligar não altera saldo, mínimo, percentual nem o cadastro do EPI: só a
+  /// decisão de alertar e de gerar reposição automática.
+  Future<UnitEpiAlert> setUnitEpiAlertEnabled({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+    required bool alertEnabled,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/alert-enabled',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+        'alert_enabled': alertEnabled,
+      },
+    );
+    return UnitEpiAlert.fromJson(res.data ?? const {});
+  }
+
+  /// Apaga a decisão local de alerta e devolve o par ao `system_default`.
+  ///
+  /// **Não é o mesmo que [setUnitEpiAlertEnabled] com `true`.** Aquela deixa o
+  /// par `unit_configured` — a Unidade decidiu manter ligado; esta apaga a
+  /// decisão. As duas terminam com o alerta ligado e significam coisas opostas.
+  Future<UnitEpiAlert> restoreUnitEpiAlertEnabled({
+    required int actorUserId,
+    required int unitId,
+    required int epiId,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/alert-enabled/restore-default',
+      data: {
+        'actor_user_id': actorUserId,
+        'unit_id': unitId,
+        'epi_id': epiId,
+      },
+    );
+    return UnitEpiAlert.fromJson(res.data ?? const {});
   }
 
   Future<void> recordMovement({

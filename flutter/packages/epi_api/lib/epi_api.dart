@@ -28,6 +28,7 @@ export 'models/employee.dart';
 export 'models/epi.dart';
 export 'models/selectable_units.dart';
 export 'models/stock_item.dart';
+export 'models/unit_epi_stock_config.dart';
 export 'models/ficha_config.dart';
 export 'models/ficha_period.dart';
 export 'models/purchase_request.dart';

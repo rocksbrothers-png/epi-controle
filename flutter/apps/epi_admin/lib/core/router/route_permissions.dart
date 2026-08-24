@@ -23,6 +23,22 @@ const Map<String, String> routePermissions = <String, String>{
   Routes.handover: 'deliveries:view',
   Routes.returns: 'deliveries:view',
   Routes.records: 'fichas:view',
+  // ⚠️ ORDEM IMPORTA: `/stock/config` ANTES de `/stock`.
+  //
+  // `requiredPermissionFor` casa por `startsWith` e devolve o PRIMEIRO
+  // casamento na ordem de inserção do mapa. Com `/stock` antes,
+  // `/stock/config` cairia em `stock:view` e a tela de configuração ficaria
+  // aberta a quem só consulta estoque — enquanto o backend recusaria toda
+  // gravação com 403. Trocar estas duas linhas de lugar é uma edição que
+  // parece inofensiva; `test_a_configuracao_exige_stock_adjust_e_nao_view`
+  // existe para reprovar isso.
+  //
+  // `stock:adjust` é a permissão CORRETA e foi conferida contra
+  // `core/permissions.py`: general_admin, admin e user a têm; master_admin a
+  // perde por `MASTER_ADMIN_OPERATIONAL_EXCLUSIONS`; registry_admin nunca a
+  // teve. Ver `tests/test_271b2a_configuracao_por_unidade_epi.py`, que prova
+  // perfil a perfil que este gate espelha o backend.
+  Routes.stockConfig: 'stock:adjust',
   Routes.stock: 'stock:view',
   Routes.purchases: 'purchase_requests:view',
   Routes.companies: 'companies:view',

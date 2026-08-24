@@ -48,7 +48,6 @@ execução não é verde.
 """
 
 import ast
-import json
 import re
 import sqlite3
 import sys

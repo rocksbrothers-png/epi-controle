@@ -714,5 +714,11 @@
       }
     }
   },
-  "stockAttentionLoadError": "Não foi possível carregar o padrão da empresa."
+  "stockAttentionLoadError": "Não foi possível carregar o padrão da empresa.",
+  "unitSelectorLabel": "Unidade",
+  "unitSelectorAllUnits": "Todas as Unidades",
+  "unitSelectorLockedHint": "Seu perfil opera numa Unidade fixa.",
+  "unitSelectorLoadError": "Não foi possível carregar as Unidades.",
+  "unitSelectorNoUnitsAssigned": "Você não tem Unidade atribuída. Fale com o administrador.",
+  "unitSelectorCompanyHasNoUnits": "A empresa ainda não tem Unidades cadastradas."
 }

@@ -55,6 +55,10 @@ function loadModule(relPath) {
   'views/dashboard.js',
   'views/epis.js',
   'views/estoque.js',
+  // #271-B4: o módulo da configuração por Unidade + EPI passa a ser CARREGADO
+  // pelo harness. Ele existia desde a B3 sem nenhum teste que o executasse —
+  // toda a garantia dele era estrutural (Python lendo o texto do arquivo).
+  'views/estoque-config.js',
   'views/employee-portal.js',
   'views/legal-entity-fields.js',
   'views/legal-entities-view.js',
@@ -1794,6 +1798,188 @@ test('data-migration: APPLY_STRATEGIES não oferece dry_run como escolha', () =>
   // "como aplicar" no seletor.
   assert(!_DM().APPLY_STRATEGIES.includes('dry_run'), 'dry_run fora do seletor');
   eq(_DM().APPLY_STRATEGIES.length, 5);
+});
+
+// ── #271-B4: configuração por Unidade + EPI no Web Legado ─────────────────
+//
+// Estes testes EXECUTAM `views/estoque-config.js`. Até a B4 o módulo era
+// coberto só por asserções estruturais — Python lendo o texto do arquivo —, o
+// que prova que uma linha existe mas não que ela se comporta. A distinção
+// importa: `canWrite` podia estar escrito e devolver `true` para uma Unidade
+// fora da lista sem nenhum gate perceber.
+
+function _CFG() { return globalThis.__EPI_ESTOQUE_CONFIG__; }
+
+function _escopo(over) {
+  return _CFG().readSelectableUnits(Object.assign({
+    units: [{ id: 5, name: 'Matriz' }, { id: 6, name: 'Filial' }],
+    locked: false,
+    unit_id: null,
+    allows_all_units: false,
+    blocks_everything: false
+  }, over || {}));
+}
+
+test('config: origem é lida do servidor, nunca deduzida', () => {
+  const S = _CFG().STOCK_CONFIG_SOURCES;
+  eq(S.unit, 'unit_configured');
+  eq(S.company, 'company_default');
+  eq(S.system, 'system_default');
+});
+
+test('config: restaurar só é oferecido quando há decisão local', () => {
+  // Herdado não tem o que apagar. O backend trata como no-op, mas oferecer um
+  // botão que não faz nada é pior do que desabilitá-lo.
+  assert(_CFG().canRestore('unit_configured'), 'unit_configured pode restaurar');
+  assert(!_CFG().canRestore('company_default'), 'herdado não restaura');
+  assert(!_CFG().canRestore('system_default'), 'system_default não restaura');
+  assert(!_CFG().canRestore(''), 'origem vazia não restaura');
+});
+
+test('config: o mínimo lido é o da Unidade, não o corporativo', () => {
+  const p = _CFG().readParameters({
+    id: 11, unit_scope_id: 5,
+    unit_minimum_stock: 7, minimum_stock: 999,
+    minimum_stock_source: 'unit_configured',
+    effective_attention_percentage: 30, attention_percentage_source: 'company_default',
+    stock_alert_enabled: true, alert_source: 'system_default',
+    attention_limit: 9, stock_status: 'normal', underlying_status: 'normal'
+  });
+  eq(p.minimum.value, 7);
+  assert(p.minimum.value !== 999, 'não pode cair no mínimo corporativo');
+  eq(p.minimum.source, 'unit_configured');
+  eq(p.attention.source, 'company_default');
+  // Derivados são EXIBIDOS como vieram, nunca recalculados.
+  eq(p.attentionLimit, 9);
+  eq(p.stockStatus, 'normal');
+});
+
+test('config: sem Unidade resolvida não há parâmetro para editar', () => {
+  // Fail-closed na leitura: `unit_scope_id` ausente significa que o servidor
+  // não resolveu Unidade, e um par sem Unidade não tem configuração.
+  eq(_CFG().readParameters({ id: 11, unit_minimum_stock: 7 }), null);
+  eq(_CFG().readParameters({ id: 11, unit_scope_id: null }), null);
+  eq(_CFG().readParameters(null), null);
+});
+
+test('config: perfil travado não escolhe Unidade', () => {
+  const escopo = _escopo({ locked: true, unit_id: 5 });
+  eq(_CFG().initialUnitSelection(escopo), 5);
+  // Mesmo pedindo outra, volta a do ator.
+  eq(_CFG().acceptUnit(escopo, 6), 5);
+});
+
+test('config: "Todas" nunca vira seleção de escrita', () => {
+  // Mesmo com o backend autorizando, escrita não consolida.
+  const escopo = _escopo({ allows_all_units: true });
+  eq(_CFG().initialUnitSelection(escopo), null);
+  assert(!_CFG().canWrite(escopo, null), 'sem Unidade real não grava');
+});
+
+test('config: uma Unidade só é pré-selecionada', () => {
+  const escopo = _escopo({ units: [{ id: 9, name: 'Única' }] });
+  eq(_CFG().initialUnitSelection(escopo), 9);
+});
+
+test('config: escrita é fail-closed sem Unidade real', () => {
+  const escopo = _escopo();
+  assert(!_CFG().canWrite(escopo, null), 'null não grava');
+  assert(!_CFG().canWrite(escopo, undefined), 'undefined não grava');
+  assert(!_CFG().canWrite(escopo, 999), 'Unidade fora da lista não grava');
+  assert(_CFG().canWrite(escopo, 5), 'Unidade ofertada grava');
+});
+
+test('config: carteira vazia bloqueia tudo', () => {
+  // `blocks_everything` é "você não tem Unidade atribuída" — diferente de
+  // "a empresa não tem Unidades", e nunca pode virar a empresa inteira.
+  const escopo = _escopo({ units: [], blocks_everything: true });
+  assert(!_CFG().canWrite(escopo, 5), 'carteira vazia não grava');
+  eq(_CFG().initialUnitSelection(escopo), null);
+});
+
+test('config: deep link não vira autoridade', () => {
+  const escopo = _escopo();
+  eq(_CFG().acceptUnit(escopo, 6), 6);          // ofertada → vale
+  eq(_CFG().acceptUnit(escopo, 999), null);     // não ofertada → descartada
+  eq(_CFG().acceptUnit(escopo, 'abc'), null);   // lixo → descartado
+  eq(_CFG().acceptUnit(escopo, null), null);
+});
+
+test('config: autorização é permissão, nunca papel', () => {
+  const anterior = globalThis.__EPI_APP_STATE__;
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'general_admin', permissions: ['stock:adjust'] } };
+  assert(_CFG().canConfigureStock(), 'general_admin com stock:adjust configura');
+  globalThis.__EPI_APP_STATE__ = { user: { role: 'admin', permissions: ['stock:view'] } };
+  assert(!_CFG().canConfigureStock(), 'admin sem stock:adjust não configura');
+  globalThis.__EPI_APP_STATE__ = anterior;
+});
+
+test('config: mínimo recusa negativo e NÃO ganha teto', () => {
+  assert(!_CFG().validateMinimum(-1).ok, 'negativo recusado');
+  assert(!_CFG().validateMinimum(1.5).ok, 'fracionário recusado');
+  eq(_CFG().validateMinimum(-1).error, 'negative');
+  // O backend faz max(0, int(...)) e não publica teto — o cliente não inventa.
+  assert(_CFG().validateMinimum(999999).ok, 'valor alto é aceito');
+  eq(_CFG().validateMinimum(999999).value, 999999);
+});
+
+test('config: percentual usa o teto publicado 0-100', () => {
+  assert(_CFG().validateAttention(0).ok);
+  assert(_CFG().validateAttention(100).ok);
+  assert(!_CFG().validateAttention(101).ok, '101 recusado');
+  eq(_CFG().validateAttention(101).error, 'range');
+});
+
+test('config: toda gravação transporta a Unidade', () => {
+  const C = _CFG();
+  const pares = [
+    C.minimumPayload(1, 5, 11, 7),
+    C.attentionPayload(1, 5, 11, 30),
+    C.alertPayload(1, 5, 11, false),
+    C.restorePayload(1, 5, 11)
+  ];
+  pares.forEach((p) => {
+    eq(p.unit_id, 5);
+    eq(p.epi_id, 11);
+    eq(p.actor_user_id, 1);
+  });
+});
+
+test('config: alert_enabled falso não vira verdadeiro', () => {
+  // O bug clássico: string não-vazia virando true numa conversão ingênua.
+  eq(_CFG().alertPayload(1, 5, 11, false).alert_enabled, false);
+  eq(_CFG().alertPayload(1, 5, 11, 'false').alert_enabled, false);
+  eq(_CFG().alertPayload(1, 5, 11, true).alert_enabled, true);
+});
+
+test('config: salvar e restaurar são rotas distintas', () => {
+  const R = _CFG().STOCK_CONFIG_ROUTES;
+  assert(R.minimum !== R.minimumRestore, 'mínimo tem duas rotas');
+  assert(R.attention !== R.attentionRestore, 'percentual tem duas rotas');
+  assert(R.alert !== R.alertRestore, 'alerta tem duas rotas');
+  eq(R.selectableUnits, '/api/units/selectable');
+});
+
+test('config: salvar e restaurar dizem coisas diferentes', () => {
+  // Podem terminar com o MESMO valor e significam o oposto.
+  const salvo = _CFG().outcomeMessage('minimum', 'saved');
+  const restaurado = _CFG().outcomeMessage('minimum', 'restored');
+  assert(salvo !== restaurado, 'mensagens distintas');
+  assert(salvo && restaurado, 'nenhuma vazia');
+});
+
+test('config: desligar o alerta pede confirmação; ligar não', () => {
+  assert(_CFG().alertNeedsConfirmation(true, false), 'silenciar pergunta');
+  assert(!_CFG().alertNeedsConfirmation(false, true), 'religar não pergunta');
+  assert(!_CFG().alertNeedsConfirmation(true, true), 'sem alteração não pergunta');
+});
+
+test('config: disabled nunca vira normal', () => {
+  const desabilitado = _CFG().statusLabel('disabled');
+  const normal = _CFG().statusLabel('normal');
+  assert(desabilitado !== normal, 'disabled e normal são estados diferentes');
+  // Chave desconhecida de um backend mais novo não pode virar "normal".
+  assert(_CFG().statusLabel('quimera') !== normal, 'desconhecido não vira normal');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

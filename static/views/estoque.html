@@ -35,16 +35,68 @@
               <div id="stock-epi-search-results" class="stock-epi-search-results" aria-live="polite"></div>
               <p class="hint"><strong data-i18n="stock.unitStockLabel">Estoque da Unidade:</strong> <span data-i18n="stock.unitStockHint">itens retornados conforme empresa + unidade selecionadas acima.</span></p>
             </div>
-            <fieldset class="stock-minimum-fieldset">
-              <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
-              <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
-                <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+            <!-- Configuração por Unidade + EPI (#271-B3).
+                 Paridade funcional com `/stock/config` do Flutter: os três
+                 parâmetros, cada um com valor efetivo, origem, salvar e
+                 restaurar herança. As superfícies são permanentes e
+                 independentes — nenhuma delas fica com menos capacidade sobre
+                 a mesma regra de negócio.
+                 A Unidade vem de `GET /api/units/selectable`, nunca de uma
+                 lista montada aqui. -->
+            <div id="stock-config-panel" class="stock-config-panel" hidden>
+              <label for="stock-config-unit"><span data-i18n="stock.configUnitLabel">Unidade a configurar</span>
+                <select id="stock-config-unit"></select>
               </label>
-              <div class="action-group">
-                <button class="ghost" id="stock-minimum-selected-edit" type="button" data-i18n="stock.editMinimumStock">Editar estoque Mínimo</button>
-                <button class="primary" id="stock-minimum-selected-save" type="button" data-i18n="save">Salvar</button>
+              <p class="hint" id="stock-config-unit-hint" aria-live="polite"></p>
+              <p class="hint" id="stock-config-scope-warning" aria-live="polite"></p>
+
+              <div id="stock-config-blocks" hidden>
+                <p class="hint" id="stock-config-derived" aria-live="polite"></p>
+
+                <fieldset class="stock-minimum-fieldset">
+                  <legend data-i18n="stock.minimumBalance">Estoque Mínimo</legend>
+                  <label><span data-i18n="stock.minimumBalance">Estoque Mínimo do EPI selecionado</span>
+                    <input id="stock-minimum-selected-value" type="number" min="0" value="0" readonly>
+                  </label>
+                  <p class="hint" id="stock-minimum-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-minimum-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="ghost" id="stock-minimum-selected-edit" type="button" data-i18n="stock.editMinimumStock">Editar estoque Mínimo</button>
+                    <button class="primary" id="stock-minimum-selected-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-minimum-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="stock-attention-fieldset">
+                  <legend data-i18n="stock.attentionRange">Faixa de atenção</legend>
+                  <label><span data-i18n="stock.attentionPercentageLabel">Percentual da faixa de atenção</span>
+                    <input id="stock-attention-value" type="number" min="0" max="100" value="0" readonly>
+                  </label>
+                  <p class="hint" id="stock-attention-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-attention-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="ghost" id="stock-attention-edit" type="button" data-i18n="stock.editAttention">Editar faixa de atenção</button>
+                    <button class="primary" id="stock-attention-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-attention-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="stock-alert-fieldset">
+                  <legend data-i18n="stock.alertMonitoring">Monitoramento de alerta</legend>
+                  <label class="checkbox-label">
+                    <input id="stock-alert-toggle" type="checkbox">
+                    <span data-i18n="stock.alertToggle">Monitorar o estoque deste EPI</span>
+                  </label>
+                  <p class="hint" id="stock-alert-pending" aria-live="polite"></p>
+                  <p class="hint" id="stock-alert-origin" aria-live="polite"></p>
+                  <p class="error-hint" id="stock-alert-error" aria-live="polite"></p>
+                  <div class="action-group">
+                    <button class="primary" id="stock-alert-save" type="button" data-i18n="save">Salvar</button>
+                    <button class="ghost" id="stock-alert-restore" type="button" data-i18n="stock.restoreInheritance">Restaurar herança</button>
+                  </div>
+                </fieldset>
               </div>
-            </fieldset>
+            </div>
             <fieldset class="size-group">
               <legend data-i18n="stock.itemSizes">Tamanhos do item</legend>
               <div class="size-grid">

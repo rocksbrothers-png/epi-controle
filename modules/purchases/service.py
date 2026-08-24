@@ -280,6 +280,17 @@ def fetch_purchase_function_links(connection, company_id):
 def fetch_purchase_demands(connection, company_id, scope_unit_id=None):
     """Retorna demandas pendentes para virar requisição de compra.
 
+    **Esta é a FONTE OPERACIONAL OFICIAL de geração de demanda.** Servida por
+    `GET /api/purchase-demands`, é o único caminho que roda em produção.
+
+    `modules/stock/replenishment.py` implementa o mesmo conceito e está
+    CONGELADO — zero chamadores fora dos testes, e divergente desta regra em
+    quatro pontos listados no docstring de lá. Se a reposição precisar de algo
+    que só existe naquele módulo (antiduplicidade, corrente
+    `necessidade → requisição`), a direção acordada é absorver a capacidade
+    AQUI e remover o outro, não reativar o segundo motor. Ver a issue de
+    destino do Motor B antes de mexer em qualquer um dos dois.
+
     Regra de negócio:
       - Solicitações de colaboradores entram na aba "Aprovações" primeiro (status
         'solicitado'/'prorrogado'); só DEPOIS de aprovadas pelo Administrador Local

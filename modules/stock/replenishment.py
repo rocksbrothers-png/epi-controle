@@ -1,5 +1,39 @@
 """Necessidade de reposição de estoque, por unidade (plano §4).
 
+.. warning::
+
+    **MÓDULO CONGELADO — não ligue isto em produção sem revisão.**
+
+    Hoje ele tem ZERO chamadores fora dos testes: nenhuma rota, nenhum
+    serviço, nenhum agendador. A geração de demanda que roda de verdade é
+    `modules.purchases.service.fetch_purchase_demands`, servida por
+    `GET /api/purchase-demands` — **essa é a fonte operacional oficial**, e ela
+    já usa `classify_unit_epi_stock`, já respeita `effective_minimum_stock` e
+    já ignora `near_minimum`/`disabled`.
+
+    Este módulo é um segundo motor do mesmo conceito, e diverge daquele em
+    quatro pontos conhecidos:
+
+    1. `_epi_levels` lê `epis.minimum_stock` — o mínimo CORPORATIVO — e sequer
+       recebe `unit_id`, então mínimo por Unidade não governa nem a quantidade
+       sugerida nem o gatilho;
+    2. não consulta `stock_alert_enabled`: um EPI com monitoramento desligado
+       pela Unidade (#271-B2-a) ainda geraria necessidade aqui;
+    3. `maximum_stock` só existe em `epis` e não tem equivalente por Unidade,
+       então migrar apenas o mínimo produziria um alvo híbrido
+       Unidade × empresa — a ambiguidade que motivou o congelamento;
+    4. em compensação, tem capacidades que o motor oficial NÃO tem:
+       antiduplicidade (§4.2) e a corrente `necessidade → requisição` (§3.8).
+       É por isso que ele foi congelado em vez de removido.
+
+    A decisão de destino — absorver as capacidades úteis no motor oficial e
+    remover isto, ou reativá-lo já sobre a classificação por Unidade — está em
+    issue própria. **A fórmula abaixo não foi corrigida de propósito**: mexer
+    nela sem decidir o `maximum_stock` criaria a regra híbrida em código morto.
+
+    `tests/test_271_motor_b_congelado.py` reprova qualquer import a partir de
+    código de produção.
+
 O estoque mínimo já era detectado, mas apenas *calculado na hora*. Sem registro
 persistido não havia como cumprir duas exigências do plano:
 

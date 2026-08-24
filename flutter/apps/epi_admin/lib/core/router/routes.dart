@@ -7,6 +7,11 @@ abstract final class Routes {
   static const epiDetail      = '/epis/:id';
   static const epis        = '/epis';
   static const stock       = '/stock';
+  /// Configuração de estoque por Unidade + EPI (#271-B2-a). Subrota de
+  /// `/stock` de propósito: herda o módulo estrutural `estoque` por
+  /// `startsWith` em `requiredModuleFor`. A PERMISSÃO, essa não pode ser
+  /// herdada — ver `route_permissions.dart`.
+  static const stockConfig = '/stock/config';
   static const deliveries  = '/deliveries';
   static const deliveryNew = '/deliveries/new';
   static const handover    = '/deliveries/handover';
@@ -38,6 +43,7 @@ abstract final class Routes {
     epiDetail,
     epis,
     stock,
+    stockConfig,
     deliveries,
     deliveryNew,
     handover,

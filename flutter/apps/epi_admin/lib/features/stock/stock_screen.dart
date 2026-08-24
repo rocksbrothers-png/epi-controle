@@ -2,9 +2,33 @@ import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/bloc/auth_cubit.dart';
+// `AuthAuthenticated` e `sessionContext` moram aqui, não em `auth_cubit.dart`
+// — que só define o cubit. Os dois imports andam juntos, como em
+// `settings_screen.dart`.
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/stock_cubit.dart';
+import '../../core/router/routes.dart';
 import '../../core/utils/epi_status_utils.dart';
+
+/// Quem pode abrir a configuração por Unidade + EPI (#271-B2-a).
+///
+/// `stock:adjust`, o MESMO piso que `route_permissions.dart` exige da rota e
+/// que o backend cobra em `_authorize_stock_config_write`. Um ponto único, e
+/// não um `if` de perfil: reconstruir a regra a partir de papéis é como o menu
+/// e a rota divergem.
+///
+/// Efeito por perfil, conferido contra `core/permissions.py`: Administrador
+/// Geral, Administrador Local e Gestor de EPI veem; Administrador Master não
+/// (perde a permissão em `MASTER_ADMIN_OPERATIONAL_EXCLUSIONS`); Administrador
+/// de Registro não (nunca recebeu `STOCK_MANAGEMENT_PERMISSIONS`).
+bool podeConfigurarEstoquePorUnidade(BuildContext context) {
+  final authState = context.read<AuthCubit>().state;
+  return authState is AuthAuthenticated &&
+      authState.sessionContext.hasPermission('stock:adjust');
+}
 
 class StockScreen extends StatelessWidget {
   const StockScreen({super.key});
@@ -43,6 +67,27 @@ class _StockBodyState extends State<_StockBody> {
       appBar: AppBar(
         title: Text(l10n.stockTitle),
         actions: [
+          // Entrada da configuração sem EPI escolhido: a tela abre no seletor
+          // e o usuário escolhe lá. `unit_id` só é enviado quando o servidor já
+          // resolveu uma Unidade para esta listagem — e mesmo assim é
+          // revalidado no destino.
+          if (podeConfigurarEstoquePorUnidade(context))
+            BlocBuilder<StockCubit, StockState>(
+              buildWhen: (p, c) => p.unitId != c.unitId,
+              builder: (_, state) => IconButton(
+                icon: const Icon(Icons.tune_rounded),
+                tooltip: l10n.stockConfigTitle,
+                // `push`, não `go`: a configuração é um detour a partir desta
+                // tela e o operador precisa voltar para ela. É também o que os
+                // outros acessos a tela interna usam (Configurações → Minha
+                // Empresa, Entregas → Conferência).
+                onPressed: () => context.push(
+                  state.unitId != 0
+                      ? '${Routes.stockConfig}?unit_id=${state.unitId}'
+                      : Routes.stockConfig,
+                ),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => context.read<StockCubit>().load(),
@@ -476,6 +521,28 @@ class _StockTile extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   onPressed: () => AvailableItemsSheet.show(context, epi),
                 ),
+                // Configurar ESTE EPI nesta Unidade (#271-B2-a). Só aparece
+                // para quem tem `stock:adjust` — o mesmo piso que a rota exige
+                // e que o backend cobra em toda gravação.
+                //
+                // Leva o par por query string, nunca por `state.extra`: um
+                // refresh de Web descarta `extra` e a tela abriria sem EPI. Os
+                // dois valores são revalidados no destino contra
+                // `/api/units/selectable` e `/api/stock/epis` — daqui eles são
+                // conveniência de navegação, não autorização.
+                if (podeConfigurarEstoquePorUnidade(context))
+                  IconButton(
+                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: AppLocalizations.of(context).stockConfigTitle,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      final unidade = epi.unitScopeId;
+                      context.push(
+                        '${Routes.stockConfig}?epi_id=${epi.id}'
+                        '${unidade != null ? '&unit_id=$unidade' : ''}',
+                      );
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: EpiSpacing.xs),

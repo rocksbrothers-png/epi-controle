@@ -19,6 +19,7 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/settings/my_company_screen.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/subscription/invoices_screen.dart';
+import '../../features/stock/stock_config_screen.dart';
 import '../../features/stock/stock_screen.dart';
 import '../../features/qr/qr_scanner_screen.dart';
 import '../../features/deliveries/handover_conference_screen.dart';
@@ -150,6 +151,20 @@ GoRouter buildRouter({
           GoRoute(
             path: Routes.stock,
             builder: (c, s) => const StockScreen(),
+          ),
+          GoRoute(
+            path: Routes.stockConfig,
+            // `?unit_id=` e `?epi_id=` recortam a tela num par — caminho a
+            // partir de Controle de Estoque, e o que sobrevive a um refresh de
+            // Web (`state.extra` não sobrevive). Os dois são ENTRADA NÃO
+            // CONFIÁVEL e nenhum deles seleciona nada sozinho: a tela só os
+            // aplica depois que `/api/units/selectable` e `/api/stock/epis`
+            // confirmarem, respectivamente, a Unidade e o EPI. Ver
+            // `StockConfigScreen`.
+            builder: (c, s) => StockConfigScreen(
+              unitId: int.tryParse(s.uri.queryParameters['unit_id'] ?? ''),
+              epiId: int.tryParse(s.uri.queryParameters['epi_id'] ?? ''),
+            ),
           ),
           GoRoute(
             path: Routes.deliveries,

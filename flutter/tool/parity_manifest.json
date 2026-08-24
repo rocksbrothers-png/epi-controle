@@ -108,7 +108,7 @@
     "apps/epi_admin/lib/features/stock/data/datasources/stock_remote_datasource.dart": "9790604d0f7edb80ffe1bccd037319a5de88fb8534964c2c466a41131ab7ec93",
     "apps/epi_admin/lib/features/stock/data/repository_impl/stock_repository_impl.dart": "828dd7945f5fc221d555a0f775121acc576ce0ed65cd1c4f514a45ebd06c4bc8",
     "apps/epi_admin/lib/features/stock/domain/repositories/stock_repository.dart": "e806b45b6fb9ba3d950a2e5bb1ec53070bf278a7a3b850fc8864dff71e5e1637",
-    "apps/epi_admin/lib/features/stock/stock_screen.dart": "3497bb686b6b22051df169b720346229d80cabd8dc8229f12fb948ef5d2ea889",
+    "apps/epi_admin/lib/features/stock/stock_screen.dart": "727b9bfbc99160f7c91870d8c00fb5b2d1ff5e3c5dd080f57daeb2843ac13c7b",
     "apps/epi_admin/lib/features/subscription/invoices_screen.dart": "d7efd88d339c824ac742b3a978d7a33d34fa829028f5a583f573ea4316e1d32b",
     "apps/epi_admin/lib/features/subscription/subscription_screen.dart": "6a03c5b1317b88a0b64e8039096cc6451f35c4563600ed37626d240068b38c19",
     "apps/epi_admin/lib/features/units/unit_labels.dart": "46dc7125153763d70039b3f5827ff6a6014e8613544ff57d44c138f6505e1a1b",

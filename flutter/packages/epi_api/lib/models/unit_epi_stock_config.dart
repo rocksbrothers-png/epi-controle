@@ -11,6 +11,7 @@
 /// Unidade herdou 20" — mesmo número, estados opostos —, e deduzi-la a partir
 /// da ação que o usuário acabou de executar perderia exatamente a distinção
 /// que a fatia existe para preservar.
+library;
 
 /// Origem comum aos três parâmetros: a Unidade decidiu este valor.
 const String kUnitEpiSourceUnit = 'unit_configured';

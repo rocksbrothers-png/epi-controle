@@ -5,6 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/auth_cubit.dart';
+// `AuthAuthenticated` e `sessionContext` moram aqui, não em `auth_cubit.dart`
+// — que só define o cubit. Os dois imports andam juntos, como em
+// `settings_screen.dart`.
+import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/stock_cubit.dart';
 import '../../core/router/routes.dart';
 import '../../core/utils/epi_status_utils.dart';

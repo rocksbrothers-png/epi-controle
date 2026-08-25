@@ -36,6 +36,25 @@ Para certificar ESCRITA, use um ambiente de staging com
 `EPI_CERT_ALLOW_WRITE=1` e uma Unidade/EPI de teste controlados; esse caminho
 é deliberadamente separado e não é exercido contra produção.
 
+## Quem orquestra: `epi-controle` (corporativo)
+
+**A certificação de deployment da #271 roda a partir do repositório
+corporativo, e só dele.** Este script certifica os DOIS ambientes numa única
+execução — API e Web Legado corporativos, Flutter Web corporativo em `/app/`,
+API e Web Legado do SaaS, CORS do SaaS e Flutter Web do SaaS na raiz. Uma run
+já produz o veredito completo.
+
+Por isso os cinco `EPI_CERT_*` vivem apenas no cofre do `epi-controle`. Rodar
+também pelo `epi-controle-app` repetiria exatamente o mesmo trabalho e
+espalharia as credenciais dos dois ambientes por dois cofres em vez de um —
+mais superfície de exposição sem nenhuma informação nova.
+
+O `certificacao-271.yml` do `epi-controle-app` continua valendo para a B4-A
+(as superfícies Dart, o Web Legado e os gates da frente, que são específicos
+daquele artefato e da identidade iOS `com.livamobile`). Ele simplesmente não
+recebe os secrets da B4-B: disparado lá com `smoke=true`, o job sai com
+`NOT CERTIFIED` e código 2, que é a resposta correta para "não executado".
+
 ## Uso
 
     export EPI_CERT_CORP_URL=https://...          # API corporativa
@@ -45,9 +64,21 @@ Para certificar ESCRITA, use um ambiente de staging com
     export EPI_CERT_SAAS_TOKEN=...
     python3 scripts/certificar_deployment.py
 
+`EPI_CERT_SAAS_WEB_URL` não pode terminar em barra: ele também vira o header
+`Origin` da checagem de CORS, e a comparação com `Access-Control-Allow-Origin`
+é exata. Um valor com barra final produziria reprovação falsa.
+
+As duas URLs de API entram como origem, SEM `/api` — o script concatena as
+rotas por conta própria.
+
 Nenhuma credencial vive no repositório: tudo entra por ambiente, e no CI por
 secrets. Um deployment sem variáveis definidas é reportado como
 `NOT CERTIFIED`, nunca como aprovado.
+
+Os access tokens da aplicação valem 8 horas (`JWT_EXP_SECONDS`). Gere-os pouco
+antes de executar; um valor cadastrado ontem já vai ser recusado com HTTP 401,
+e o script trata isso como falha, corretamente. Certificação recorrente exige
+uma solução de credencial de vida longa que ainda não existe.
 """
 
 from __future__ import annotations

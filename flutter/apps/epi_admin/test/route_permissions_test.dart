@@ -53,6 +53,54 @@ void main() {
     });
   });
 
+  group('subrotas de Configurações (hub)', () {
+    /// As Configurações deixaram de ser uma tela única e viraram um hub com
+    /// uma subtela por assunto. As subtelas NÃO entram em `routePermissions`:
+    /// `requiredPermissionFor` casa por `startsWith` e `/settings` já as
+    /// cobre com o mesmo piso do hub — que aqui é o correto, ao contrário de
+    /// `/stock/config`, que precisa de um gate MAIS estrito que `/stock`.
+    ///
+    /// O que este grupo trava é justamente isso: se alguém inserir uma rota
+    /// nova ANTES de `/settings` cujo prefixo case com `/settings/...`, ou
+    /// mudar o caminho de uma subtela para fora do prefixo, as subtelas
+    /// ficariam sem gate nenhum — abertas a qualquer usuário autenticado.
+    const subrotas = <String>[
+      Routes.settingsAppearance,
+      Routes.settingsFicha,
+      Routes.settingsStock,
+      Routes.settingsModules,
+      Routes.settingsArchival,
+    ];
+
+    test('toda subtela herda settings:view da rota-mãe', () {
+      for (final rota in subrotas) {
+        expect(requiredPermissionFor(rota), 'settings:view', reason: rota);
+      }
+    });
+
+    test('a query de empresa não desliga o gate', () {
+      // O master_admin chega com `?company_id=`; o gate resolve pelo caminho.
+      expect(
+        requiredPermissionFor('${Routes.settingsFicha}?company_id=7'),
+        'settings:view',
+      );
+    });
+
+    test('as subrotas herdam por prefixo, sem entrada própria no mapa', () {
+      for (final rota in subrotas) {
+        expect(routePermissions.keys, isNot(contains(rota)), reason: rota);
+      }
+    });
+
+    test('toda subtela declarada está registrada em Routes.all', () {
+      // Uma subtela fora de `Routes.all` é uma rota que ninguém consegue
+      // conferir contra o menu — foi assim que a tela de CNPJs sumiu.
+      for (final rota in subrotas) {
+        expect(Routes.all, contains(rota), reason: rota);
+      }
+    });
+  });
+
   group('rota de CNPJs (Multi-CNPJ)', () {
     test('/legal-entities exige legal_entities:view', () {
       // Sem o gate, qualquer usuário autenticado abriria a tela de CNPJs e só

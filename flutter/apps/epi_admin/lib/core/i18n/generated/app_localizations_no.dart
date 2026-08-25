@@ -1506,6 +1506,72 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
+
+  @override
+  String get settingsSectionCompany => 'Empresa';
+
+  @override
+  String get settingsSectionOperation => 'Operação';
+
+  @override
+  String get settingsSectionSubscription => 'Assinatura';
+
+  @override
+  String get settingsCompanyLabel => 'Empresa';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Administrando a empresa: ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Selecione uma empresa em Configurações para continuar.';
+
+  @override
+  String get settingsFichaTileTitle => 'Ficha de EPI';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Título, declaração, observações e rastreabilidade';
+
+  @override
+  String get settingsStockTileSubtitle => 'Faixa de atenção padrão da empresa';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Módulos visíveis por perfil e por Unidade';
+
+  @override
+  String get settingsArchivalTitle => 'Arquivamento e retenção';
+
+  @override
+  String get settingsArchivalSubtitle =>
+      'Anos de preservação dos registros arquivados';
+
+  @override
+  String get settingsAppearanceTitle => 'Aparência e idioma';
+
+  @override
+  String get settingsAppearanceSubtitle =>
+      'Tema da interface e idioma do aplicativo';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'Minha Assinatura';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Plano, cobranças e cancelamento';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Histórico Financeiro';
+
+  @override
+  String get settingsInvoicesTileSubtitle => 'Todas as cobranças e recibos';
+
+  @override
+  String get settingsNoPermission =>
+      'Você não tem permissão para alterar esta configuração.';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -3005,4 +3071,68 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Alle enheter (standard)';
+
+  @override
+  String get settingsSectionCompany => 'Selskap';
+
+  @override
+  String get settingsSectionOperation => 'Drift';
+
+  @override
+  String get settingsSectionSubscription => 'Abonnement';
+
+  @override
+  String get settingsCompanyLabel => 'Selskap';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Administrerer selskapet: ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Velg et selskap i Innstillinger for å fortsette.';
+
+  @override
+  String get settingsFichaTileTitle => 'PVU-skjema';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Tittel, erklæring, merknader og sporbarhet';
+
+  @override
+  String get settingsStockTileSubtitle => 'Selskapets standard varselgrense';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Moduler synlige per profil og per enhet';
+
+  @override
+  String get settingsArchivalTitle => 'Arkivering og oppbevaring';
+
+  @override
+  String get settingsArchivalSubtitle => 'År arkiverte poster bevares';
+
+  @override
+  String get settingsAppearanceTitle => 'Utseende og språk';
+
+  @override
+  String get settingsAppearanceSubtitle => 'Grensesnittstema og appspråk';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'Mitt abonnement';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Abonnement, betalinger og oppsigelse';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Betalingshistorikk';
+
+  @override
+  String get settingsInvoicesTileSubtitle => 'Alle betalinger og kvitteringer';
+
+  @override
+  String get settingsNoPermission =>
+      'Du har ikke tillatelse til å endre denne innstillingen.';
 }

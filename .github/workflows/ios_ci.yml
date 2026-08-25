@@ -33,9 +33,52 @@ on:
         required: false
         default: 'latest-stable'
 
+  # Reutilizável. Existe para que a `certificacao-271.yml` CHAME esta receita em
+  # vez de reimplementá-la: o `Runner.xcodeproj` não é versionado (#238), então
+  # qualquer build iOS depende da sequência `flutter create` → `wire_xcode.rb` →
+  # `verify_bundle_id.rb` → `pin_ios_deployment_target.rb` → `pod install`. Uma
+  # segunda cópia dessa sequência divergiria da primeira — foi exatamente o que
+  # aconteceu na primeira versão daquele workflow, cujo job iOS chamava
+  # `flutter build ios` direto e falhava em dois segundos com
+  # "Expected ios/Runner.xcodeproj but this file is missing".
+  #
+  # Os gatilhos acima ficam INTACTOS: este bloco só acrescenta um caminho de
+  # entrada, não altera quando o workflow roda por conta própria.
+  workflow_call:
+    inputs:
+      xcode_version:
+        description: 'Versão do Xcode (ex.: latest-stable, 16.2, 16.3)'
+        required: false
+        type: string
+        default: 'latest-stable'
+    # Todos OPCIONAIS, e de propósito. O build `--no-codesign` compila sem
+    # nenhum deles — são config de cliente do Firebase, e o app funciona com o
+    # push desabilitado. Quem chama para CERTIFICAR não passa nada, e assim o
+    # job reutilizado não ganha acesso que não precisa só por ter virado
+    # `workflow_call`. Note que NÃO se usa `secrets: inherit` do lado do
+    # chamador: isso entregaria todos os secrets do repositório de uma vez.
+    secrets:
+      FIREBASE_PROJECT_ID:
+        required: false
+      FIREBASE_SENDER_ID:
+        required: false
+      FIREBASE_STORAGE_BUCKET:
+        required: false
+      FIREBASE_IOS_API_KEY:
+        required: false
+      FIREBASE_IOS_APP_ID:
+        required: false
+
 # Cancela runs antigos do mesmo ref (macOS runner é caro).
+#
+# `github.workflow` entra no grupo porque este workflow passou a ser
+# reutilizável: numa chamada `workflow_call` esse contexto vale o nome do
+# workflow CHAMADOR. Sem ele, a certificação disparada na `main` e um
+# `ios_ci.yml` disparado por push na `main` cairiam no mesmo grupo
+# `ios-ci-refs/heads/main` e, com `cancel-in-progress`, um cancelaria o outro —
+# a certificação apareceria como cancelada sem nunca ter reprovado nada.
 concurrency:
-  group: ios-ci-${{ github.ref }}
+  group: ios-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -80,7 +123,7 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ github.event.inputs.xcode_version || env.XCODE_VERSION }}
+          xcode-version: ${{ inputs.xcode_version || env.XCODE_VERSION }}
 
       - name: Show Xcode version
         run: |

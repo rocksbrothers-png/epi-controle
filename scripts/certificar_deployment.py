@@ -93,6 +93,8 @@ TIMEOUT = 20
 
 #: Rotas de LEITURA que provam que a frente #271 está viva no ambiente. Cada
 #: uma responde uma pergunta que o CI não alcança.
+#: A ORDEM importa: `/api/units/selectable` vem primeiro porque é dela que sai
+#: o `unit_id` usado na segunda. Ver `_unidade_para_classificar`.
 SONDAS = (
     ('/api/units/selectable',
      'o seletor de Unidade tem fonte — sem isto nenhuma escrita é possível'),
@@ -100,8 +102,16 @@ SONDAS = (
      'a listagem devolve a classificação por par (Unidade, EPI)'),
 )
 
-#: Campos que provam que as migrations 025/026/027 rodaram NAQUELE banco. Se a
-#: tabela não existe, o backend não tem de onde tirar estes valores.
+#: Campos que provam que as migrations rodaram NAQUELE banco. Se a tabela não
+#: existe, o backend não tem de onde tirar estes valores.
+#:
+#: **A presença da chave não basta — o valor não pode ser nulo.** O backend faz
+#: `item['unit_minimum_stock'] = classificacao.effective_minimum_stock if
+#: classificacao else None` para as nove, e `classificacao` só é calculada
+#: quando há Unidade resolvida. Sem `unit_id`, um perfil livre recebe as nove
+#: chaves valendo `None` — e a checagem antiga, `campo in item`, aprovava isso
+#: sem `classify_unit_epi_stock` ter sido chamado nem uma vez. Verde sem
+#: execução: exatamente o que esta certificação existe para pegar.
 CAMPOS_DE_CLASSIFICACAO = (
     'unit_minimum_stock',
     'minimum_stock_source',
@@ -155,13 +165,30 @@ def _get(url: str, token: str, origin: str = '') -> tuple[int, dict, dict]:
         return 0, {'_erro': str(e)}, {}
 
 
+def _unidade_para_classificar(corpo: dict):
+    """Extrai do PRÓPRIO backend uma Unidade autorizada, ou `None`.
+
+    O `unit_id` nunca é inventado nem configurado por secret: vem da resposta
+    de `/api/units/selectable`, que é quem decide o que este ator pode
+    escolher. Um id vindo de fora seria o certificador AFIRMAR escopo em vez
+    de verificá-lo — e um id errado reprovaria um ambiente correto.
+    """
+    if corpo.get('locked') and corpo.get('unit_id'):
+        return int(corpo['unit_id'])
+    for unidade in (corpo.get('units') or []):
+        if unidade.get('id'):
+            return int(unidade['id'])
+    return None
+
+
 def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Resultado:
     r = Resultado(nome)
     if not base_url:
         r.pulado = True
         return r
+    raiz = base_url.rstrip('/')
 
-    status, corpo, _ = _get(base_url.rstrip('/') + '/api/units/selectable', token)
+    status, corpo, _ = _get(raiz + '/api/units/selectable', token)
     if status == 0:
         r.falha('aplicação responde', f'inacessível: {corpo.get("_erro")}')
         return r
@@ -172,30 +199,57 @@ def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Re
         return r
     r.ok('autenticação', 'token aceito')
 
-    for rota, porque in SONDAS:
-        st, body, _ = _get(base_url.rstrip('/') + rota, token)
-        if st != 200:
-            r.falha(f'GET {rota}', f'HTTP {st} — {porque}')
-            continue
-        r.ok(f'GET {rota}', porque)
+    rota_unidades, porque_unidades = SONDAS[0]
+    if status != 200:
+        r.falha(f'GET {rota_unidades}', f'HTTP {status} — {porque_unidades}')
+        return r
+    r.ok(f'GET {rota_unidades}', porque_unidades)
 
-        if rota == '/api/stock/epis':
-            itens = body.get('items') or []
-            if not itens:
-                r.falha('schema da classificação',
-                        'listagem vazia: impossível provar que as migrations rodaram')
-                continue
-            ausentes = [c for c in CAMPOS_DE_CLASSIFICACAO if c not in itens[0]]
+    # Fail-closed: sem Unidade não há classificação por Unidade para provar, e
+    # cair na visão corporativa (`unit_id` ausente) devolveria as nove chaves
+    # nulas — aprovação sem execução. Reprovar aqui é dizer a verdade.
+    unidade = _unidade_para_classificar(corpo)
+    if unidade is None:
+        r.falha('Unidade para classificação',
+                'nenhuma Unidade selecionável para este ator: sem contexto de '
+                'Unidade o backend não executa classify_unit_epi_stock, e a '
+                'classificação da #271 fica sem como ser provada')
+        return r
+    r.ok('Unidade para classificação',
+         f'unit_id={unidade} obtido de {rota_unidades} (nunca de secret)')
+
+    rota_epis, porque_epis = SONDAS[1]
+    st, body, _ = _get(f'{raiz}{rota_epis}?unit_id={unidade}', token)
+    if st != 200:
+        r.falha(f'GET {rota_epis}', f'HTTP {st} — {porque_epis}')
+    else:
+        r.ok(f'GET {rota_epis}', f'{porque_epis} (unit_id={unidade})')
+        itens = body.get('items') or []
+        if not itens:
+            r.falha('schema da classificação',
+                    'listagem vazia: impossível provar que as migrations rodaram')
+        else:
+            item = itens[0]
+            ausentes = [c for c in CAMPOS_DE_CLASSIFICACAO if c not in item]
             if ausentes:
                 r.falha('schema da classificação',
-                        f'campos ausentes {ausentes} — migrations 025/026/027 '
+                        f'campos ausentes {ausentes} — migrations da #271 '
                         f'provavelmente não rodaram NESTE banco')
             else:
-                r.ok('schema da classificação',
-                     'os nove campos por Unidade + EPI estão presentes')
+                # `is None`, não falsy: `stock_alert_enabled` é booleano e
+                # `False` é resposta legítima — desligado não é ausente.
+                nulos = [c for c in CAMPOS_DE_CLASSIFICACAO if item.get(c) is None]
+                if nulos:
+                    r.falha('classificação efetiva',
+                            f'campos nulos {nulos}: as chaves existem mas '
+                            f'classify_unit_epi_stock não foi executado. '
+                            f'Presença de chave não é prova de classificação.')
+                else:
+                    r.ok('classificação efetiva',
+                         'os nove campos por Unidade + EPI vieram com valor real')
 
     if origin:
-        _, _, cab = _get(base_url.rstrip('/') + '/api/units/selectable', token, origin=origin)
+        _, _, cab = _get(raiz + '/api/units/selectable', token, origin=origin)
         permitido = cab.get('access-control-allow-origin', '')
         if permitido in (origin, '*'):
             r.ok('CORS', f'origin {origin} liberado')
@@ -236,11 +290,13 @@ def main() -> int:
     saas_token = os.environ.get('EPI_CERT_SAAS_TOKEN', '')
 
     resultados = [
-        # corporativo: um serviço, mesmo origin, Flutter embutido em /app/
+        # Corporativo: sistema Web próprio (Web Legado + API). NÃO publica
+        # Flutter Web — são sistemas distintos por decisão de arquitetura, e o
+        # Flutter é superfície do SaaS. A primeira versão desta certificação
+        # exigia `/app/` aqui e reprovava um deployment CORRETO: o teste
+        # afirmava uma arquitetura que o produto não tem.
         certificar_api('corporativo · API + Web Legado', corp_url, corp_token),
-        certificar_web('corporativo · Flutter Web',
-                       corp_url.rstrip('/') + '/app/' if corp_url else '', '/app/'),
-        # saas: dois serviços, origins separados, CORS obrigatório
+        # SaaS: dois serviços, origins separados, CORS obrigatório.
         certificar_api('saas · API + Web Legado', saas_api, saas_token, origin=saas_web),
         certificar_web('saas · Flutter Web', saas_web, '/'),
     ]

@@ -201,6 +201,25 @@ jobs:
 
   # ── B4-B ────────────────────────────────────────────────────────────────
   #
+  # ORQUESTRADOR OFICIAL: `rocksbrothers-png/epi-controle` (corporativo).
+  #
+  # A certificação de deployment da #271 roda a partir do repositório
+  # corporativo, e só dele. O `certificar_deployment.py` verifica os DOIS
+  # ambientes numa única execução — API e Web Legado corporativos, Flutter Web
+  # corporativo em `/app/`, API e Web Legado do SaaS, CORS do SaaS e Flutter
+  # Web do SaaS na raiz —, então uma run já produz o veredito completo.
+  #
+  # Os cinco `EPI_CERT_*` existem apenas no cofre do `epi-controle`. Rodar
+  # também pelo `epi-controle-app` repetiria o mesmo trabalho e espalharia as
+  # credenciais dos dois ambientes por dois cofres, sem informação nova.
+  #
+  # Este arquivo é byte-a-byte idêntico nos dois repositórios de propósito, e o
+  # job abaixo continua existindo no espelho: disparado lá com `smoke=true` e
+  # sem secrets, ele sai com NOT CERTIFIED e código 2 — que é a resposta certa
+  # para "não executado", e nunca um verde falso. As demais superfícies (B4-A)
+  # seguem valendo nos dois, porque cada artefato e cada identidade iOS
+  # (`com.rocksbrothers` x `com.livamobile`) precisa ser exercido no seu lado.
+  #
   # Só com `smoke=true` E secrets configurados. O script é SOMENTE LEITURA
   # contra produção: certificar não pode alterar a configuração real de
   # ninguém. Sem as variáveis, ele sai com código 2 = NOT CERTIFIED.

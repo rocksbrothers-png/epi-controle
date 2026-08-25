@@ -10,18 +10,17 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # (A) EXCEÇÕES PERMANENTES
 # Autônimos de idioma: o seletor de idioma mostra cada idioma em seu próprio
-# nome, por convenção universal. NÃO traduzir.
-lib/features/settings/settings_screen.dart|Português (BR)
-lib/features/settings/settings_screen.dart|English (US)
-lib/features/settings/settings_screen.dart|Español
-lib/features/settings/settings_screen.dart|Français
-lib/features/settings/settings_screen.dart|Norsk
+# nome, por convenção universal. NÃO traduzir. (O seletor saiu da tela única
+# de Configurações para a subtela `Aparência e idioma`.)
+lib/features/settings/appearance_screen.dart|Português (BR)
+lib/features/settings/appearance_screen.dart|English (US)
+lib/features/settings/appearance_screen.dart|Español
+lib/features/settings/appearance_screen.dart|Français
+lib/features/settings/appearance_screen.dart|Norsk
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO (migrar para epi_i18n em PRs futuros)
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
-# Seletor de empresa da Ficha (master_admin) nas Configurações
-lib/features/settings/settings_screen.dart|Empresa
 # Avaliações / Feedback
 lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
 lib/features/feedback/feedback_screen.dart|Fechar
@@ -56,11 +55,6 @@ lib/features/purchases/po_supplier_screen.dart|rejected
 lib/features/purchases/suppliers_screen.dart|API
 lib/features/purchases/suppliers_screen.dart|E-mail
 lib/features/purchases/suppliers_screen.dart|Portal
-lib/features/settings/settings_screen.dart|Assinatura
-lib/features/settings/settings_screen.dart|Histórico Financeiro
-lib/features/settings/settings_screen.dart|Minha Assinatura
-lib/features/settings/settings_screen.dart|Plano, cobranças e cancelamento
-lib/features/settings/settings_screen.dart|Todas as cobranças e recibos
 lib/features/subscription/invoices_screen.dart|Abrir recibo
 lib/features/subscription/invoices_screen.dart|Histórico Financeiro
 lib/features/subscription/invoices_screen.dart|Não foi possível abrir o recibo.
@@ -111,9 +105,8 @@ lib/features/epis/epis_screen.dart|Arquivar
 lib/features/epis/epis_screen.dart|Arquivar EPI
 lib/features/epis/epis_screen.dart|Desarquivar
 lib/features/epis/epis_screen.dart|Desarquivar EPI
-lib/features/settings/settings_screen.dart|Política de arquivamento salva com sucesso.
-lib/features/settings/settings_screen.dart|Regras
-lib/features/settings/settings_screen.dart|Salvar política de arquivamento
+lib/features/settings/archival_policy_screen.dart|Política de arquivamento salva com sucesso.
+lib/features/settings/archival_policy_screen.dart|Salvar política de arquivamento
 lib/features/units/units_screen.dart|Arquivar
 lib/features/units/units_screen.dart|Arquivar Unidade
 lib/features/units/units_screen.dart|Desarquivar
@@ -135,10 +128,8 @@ lib/features/units/units_screen.dart|Motivo do arquivamento (auditoria)
 lib/features/feedback/feedback_screen.dart|Erro ao carregar avaliações
 lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
 lib/features/qr/qr_scanner_screen.dart|Código detectado
-lib/features/settings/settings_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
-lib/features/settings/settings_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
-lib/features/settings/settings_screen.dart|Selecione uma empresa (na seção Ficha) para configurar as regras.
-lib/features/settings/settings_screen.dart|Selecione uma empresa para configurar a Ficha.
+lib/features/settings/archival_policy_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
+lib/features/settings/archival_policy_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
 lib/features/subscription/subscription_screen.dart|Assinatura cancelada. O acesso permanece ativo até o final do 
 lib/features/subscription/subscription_screen.dart|Nenhuma assinatura ativa
 lib/features/subscription/subscription_screen.dart|Não foi possível carregar a assinatura.

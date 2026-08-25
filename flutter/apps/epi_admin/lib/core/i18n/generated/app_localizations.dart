@@ -2999,6 +2999,120 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Todas as unidades (padrão)'**
   String get moduleVisibilityAllUnitsOption;
+
+  /// No description provided for @settingsSectionCompany.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa'**
+  String get settingsSectionCompany;
+
+  /// No description provided for @settingsSectionOperation.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Operação'**
+  String get settingsSectionOperation;
+
+  /// No description provided for @settingsSectionSubscription.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Assinatura'**
+  String get settingsSectionSubscription;
+
+  /// No description provided for @settingsCompanyLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa'**
+  String get settingsCompanyLabel;
+
+  /// No description provided for @settingsCompanyScopeBanner.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrando a empresa: {name}'**
+  String settingsCompanyScopeBanner(String name);
+
+  /// No description provided for @settingsSelectCompanyFirst.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione uma empresa em Configurações para continuar.'**
+  String get settingsSelectCompanyFirst;
+
+  /// No description provided for @settingsFichaTileTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ficha de EPI'**
+  String get settingsFichaTileTitle;
+
+  /// No description provided for @settingsFichaTileSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Título, declaração, observações e rastreabilidade'**
+  String get settingsFichaTileSubtitle;
+
+  /// No description provided for @settingsStockTileSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Faixa de atenção padrão da empresa'**
+  String get settingsStockTileSubtitle;
+
+  /// No description provided for @settingsModulesTileSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Módulos visíveis por perfil e por Unidade'**
+  String get settingsModulesTileSubtitle;
+
+  /// No description provided for @settingsArchivalTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivamento e retenção'**
+  String get settingsArchivalTitle;
+
+  /// No description provided for @settingsArchivalSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Anos de preservação dos registros arquivados'**
+  String get settingsArchivalSubtitle;
+
+  /// No description provided for @settingsAppearanceTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aparência e idioma'**
+  String get settingsAppearanceTitle;
+
+  /// No description provided for @settingsAppearanceSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tema da interface e idioma do aplicativo'**
+  String get settingsAppearanceSubtitle;
+
+  /// No description provided for @settingsSubscriptionTileTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Minha Assinatura'**
+  String get settingsSubscriptionTileTitle;
+
+  /// No description provided for @settingsSubscriptionTileSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Plano, cobranças e cancelamento'**
+  String get settingsSubscriptionTileSubtitle;
+
+  /// No description provided for @settingsInvoicesTileTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico Financeiro'**
+  String get settingsInvoicesTileTitle;
+
+  /// No description provided for @settingsInvoicesTileSubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as cobranças e recibos'**
+  String get settingsInvoicesTileSubtitle;
+
+  /// No description provided for @settingsNoPermission.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Você não tem permissão para alterar esta configuração.'**
+  String get settingsNoPermission;
 }
 
 class _AppLocalizationsDelegate

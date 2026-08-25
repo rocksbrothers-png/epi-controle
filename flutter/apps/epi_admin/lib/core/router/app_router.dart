@@ -16,6 +16,11 @@ import '../../features/reports/reports_screen.dart';
 import '../../features/portal/portal_screen.dart';
 import '../../features/returns/returns_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/appearance_screen.dart';
+import '../../features/settings/archival_policy_screen.dart';
+import '../../features/settings/ficha_config_screen.dart';
+import '../../features/settings/module_visibility_screen.dart';
+import '../../features/settings/stock_defaults_screen.dart';
 import '../../features/settings/my_company_screen.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/subscription/invoices_screen.dart';
@@ -188,9 +193,42 @@ GoRouter buildRouter({
           ),
           GoRoute(
             path: Routes.settings,
-            builder: (c, s) => SettingsScreen(
+            builder: (c, s) => const SettingsScreen(),
+          ),
+          // Subtelas de Configurações. `?company_id=` recorta cada uma num
+          // tenant — caminho do master_admin a partir do seletor do hub, e o
+          // que sobrevive a um refresh de Web (`state.extra` não sobrevive).
+          // É ENTRADA NÃO CONFIÁVEL: o backend valida o tenant em toda
+          // leitura e gravação; a query só diz qual empresa a tela pede.
+          GoRoute(
+            path: Routes.settingsAppearance,
+            builder: (c, s) => AppearanceScreen(
               localeProvider: localeProvider,
               themeNotifier: themeNotifier,
+            ),
+          ),
+          GoRoute(
+            path: Routes.settingsFicha,
+            builder: (c, s) => FichaConfigScreen(
+              companyId: int.tryParse(s.uri.queryParameters['company_id'] ?? ''),
+            ),
+          ),
+          GoRoute(
+            path: Routes.settingsStock,
+            builder: (c, s) => StockDefaultsScreen(
+              companyId: int.tryParse(s.uri.queryParameters['company_id'] ?? ''),
+            ),
+          ),
+          GoRoute(
+            path: Routes.settingsModules,
+            builder: (c, s) => ModuleVisibilityScreen(
+              companyId: int.tryParse(s.uri.queryParameters['company_id'] ?? ''),
+            ),
+          ),
+          GoRoute(
+            path: Routes.settingsArchival,
+            builder: (c, s) => ArchivalPolicyScreen(
+              companyId: int.tryParse(s.uri.queryParameters['company_id'] ?? ''),
             ),
           ),
           GoRoute(

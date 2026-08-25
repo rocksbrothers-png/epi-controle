@@ -1506,6 +1506,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
+
+  @override
+  String get settingsSectionCompany => 'Empresa';
+
+  @override
+  String get settingsSectionOperation => 'Operação';
+
+  @override
+  String get settingsSectionSubscription => 'Assinatura';
+
+  @override
+  String get settingsCompanyLabel => 'Empresa';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Administrando a empresa: ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Selecione uma empresa em Configurações para continuar.';
+
+  @override
+  String get settingsFichaTileTitle => 'Ficha de EPI';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Título, declaração, observações e rastreabilidade';
+
+  @override
+  String get settingsStockTileSubtitle => 'Faixa de atenção padrão da empresa';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Módulos visíveis por perfil e por Unidade';
+
+  @override
+  String get settingsArchivalTitle => 'Arquivamento e retenção';
+
+  @override
+  String get settingsArchivalSubtitle =>
+      'Anos de preservação dos registros arquivados';
+
+  @override
+  String get settingsAppearanceTitle => 'Aparência e idioma';
+
+  @override
+  String get settingsAppearanceSubtitle =>
+      'Tema da interface e idioma do aplicativo';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'Minha Assinatura';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Plano, cobranças e cancelamento';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Histórico Financeiro';
+
+  @override
+  String get settingsInvoicesTileSubtitle => 'Todas as cobranças e recibos';
+
+  @override
+  String get settingsNoPermission =>
+      'Você não tem permissão para alterar esta configuração.';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -3000,4 +3066,68 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'All units (default)';
+
+  @override
+  String get settingsSectionCompany => 'Company';
+
+  @override
+  String get settingsSectionOperation => 'Operations';
+
+  @override
+  String get settingsSectionSubscription => 'Subscription';
+
+  @override
+  String get settingsCompanyLabel => 'Company';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Managing company: ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Select a company in Settings to continue.';
+
+  @override
+  String get settingsFichaTileTitle => 'PPE record';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Title, declaration, notes and traceability';
+
+  @override
+  String get settingsStockTileSubtitle => 'Company default attention threshold';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Modules visible per role and per Unit';
+
+  @override
+  String get settingsArchivalTitle => 'Archiving and retention';
+
+  @override
+  String get settingsArchivalSubtitle => 'Years archived records are preserved';
+
+  @override
+  String get settingsAppearanceTitle => 'Appearance and language';
+
+  @override
+  String get settingsAppearanceSubtitle => 'Interface theme and app language';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'My subscription';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Plan, charges and cancellation';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Billing history';
+
+  @override
+  String get settingsInvoicesTileSubtitle => 'All charges and receipts';
+
+  @override
+  String get settingsNoPermission =>
+      'You do not have permission to change this setting.';
 }

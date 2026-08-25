@@ -37,6 +37,21 @@ void main() {
       expect(requiredModuleFor('/stock/9'), 'estoque');
     });
 
+    test('as subtelas de Configurações herdam o módulo `configuracoes`', () {
+      // O hub de Configurações abre uma subtela por assunto. Se uma delas
+      // ficasse fora do módulo, o Administrador Geral desligaria
+      // `configuracoes` e a subtela continuaria acessível por URL direta.
+      for (final rota in <String>[
+        Routes.settingsAppearance,
+        Routes.settingsFicha,
+        Routes.settingsStock,
+        Routes.settingsModules,
+        Routes.settingsArchival,
+      ]) {
+        expect(requiredModuleFor(rota), 'configuracoes', reason: rota);
+      }
+    });
+
     test('dashboard (/) não exige módulo (evita loop do redirect guard)', () {
       expect(requiredModuleFor(Routes.dashboard), isNull);
     });

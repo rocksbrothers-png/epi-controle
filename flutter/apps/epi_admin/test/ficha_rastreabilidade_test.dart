@@ -20,8 +20,11 @@ import 'package:flutter_test/flutter_test.dart';
 /// Ou seja: **nenhuma das duas posições fazia o que a tela prometia**, e a
 /// posição "ligado" gravava lixo num documento legal. Model e consumidor
 /// precisam mudar juntos — trocar só o model não compila.
-String _readSettingsScreen() =>
-    File('lib/features/settings/settings_screen.dart').readAsStringSync();
+/// O formulário da Ficha saiu da tela única de Configurações para a subtela
+/// `/settings/ficha` quando as Configurações viraram um hub de subtelas. O
+/// arquivo mudou de lugar; o defeito que estes testes travam, não.
+String _readFichaScreen() =>
+    File('lib/features/settings/ficha_config_screen.dart').readAsStringSync();
 
 /// Corpo de uma classe, do cabeçalho até a próxima declaração de topo.
 ///
@@ -92,7 +95,7 @@ void main() {
   group('consumidor: _FichaConfigFormState', () {
     late String corpo;
 
-    setUp(() => corpo = _classBody(_readSettingsScreen(), '_FichaConfigFormState'));
+    setUp(() => corpo = _classBody(_readFichaScreen(), '_FichaConfigFormState'));
 
     test('trata rastreabilidade como texto editável', () {
       expect(corpo, contains('late final TextEditingController _rastreabilidade;'));

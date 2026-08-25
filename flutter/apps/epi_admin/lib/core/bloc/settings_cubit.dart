@@ -71,28 +71,42 @@ class SettingsState extends Equatable {
 class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit() : super(const SettingsState());
 
-  /// Ponto de entrada da tela. Para o master_admin carrega a lista de empresas
-  /// e exige a seleção de uma antes de carregar a Ficha; para admins de
-  /// empresa carrega direto a Ficha da própria empresa.
-  Future<void> init({required bool isMaster}) async {
+  /// Ponto de entrada da tela-hub de Configurações.
+  ///
+  /// Só o master_admin precisa de carga: ele não pertence a uma empresa e
+  /// escolhe qual tenant está administrando. A escolha viaja para as subtelas
+  /// em `?company_id=`, então o hub NÃO carrega mais a Ficha — quem carrega é
+  /// a subtela que a edita, com a empresa já resolvida.
+  Future<void> initCompanies({required bool isMaster}) async {
     if (!isMaster) {
       emit(state._copyWith(isMaster: false));
-      await load();
       return;
     }
     emit(state._copyWith(isMaster: true, isLoading: true, clearError: true));
     try {
       final companies = await ApiClient.companies.getCompanies();
-      final firstId = companies.isNotEmpty ? companies.first.id : null;
-      emit(state._copyWith(companies: companies, selectedCompanyId: firstId));
-      if (firstId != null) {
-        await _loadFicha(companyId: firstId);
-      } else {
-        emit(state._copyWith(isLoading: false));
-      }
+      emit(state._copyWith(
+        companies: companies,
+        selectedCompanyId: companies.isNotEmpty ? companies.first.id : null,
+        isLoading: false,
+      ));
     } catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  /// Ponto de entrada da subtela da Ficha, com a empresa já resolvida pelo hub.
+  ///
+  /// `companyId` nulo para admins de empresa (o backend resolve a própria) e
+  /// para o master_admin que ainda não escolheu — neste caso não há o que
+  /// carregar, e a subtela mostra o aviso em vez do formulário.
+  Future<void> initForCompany({
+    required bool isMaster,
+    required int? companyId,
+  }) async {
+    emit(state._copyWith(isMaster: isMaster, selectedCompanyId: companyId));
+    if (isMaster && companyId == null) return;
+    await _loadFicha(companyId: companyId);
   }
 
   Future<void> load() async => _loadFicha(companyId: null);
@@ -108,10 +122,10 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
   }
 
-  /// master_admin troca a empresa ativa → recarrega a Ficha do tenant.
-  Future<void> selectCompany(int companyId) async {
+  /// master_admin troca a empresa ativa no hub. Não recarrega nada aqui: cada
+  /// subtela abre já com a empresa na query e carrega o que é dela.
+  void selectCompany(int companyId) {
     emit(state._copyWith(selectedCompanyId: companyId));
-    await _loadFicha(companyId: companyId);
   }
 
   Future<void> save(FichaConfig config) async {

@@ -1506,6 +1506,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
+
+  @override
+  String get settingsSectionCompany => 'Empresa';
+
+  @override
+  String get settingsSectionOperation => 'Operação';
+
+  @override
+  String get settingsSectionSubscription => 'Assinatura';
+
+  @override
+  String get settingsCompanyLabel => 'Empresa';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Administrando a empresa: ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Selecione uma empresa em Configurações para continuar.';
+
+  @override
+  String get settingsFichaTileTitle => 'Ficha de EPI';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Título, declaração, observações e rastreabilidade';
+
+  @override
+  String get settingsStockTileSubtitle => 'Faixa de atenção padrão da empresa';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Módulos visíveis por perfil e por Unidade';
+
+  @override
+  String get settingsArchivalTitle => 'Arquivamento e retenção';
+
+  @override
+  String get settingsArchivalSubtitle =>
+      'Anos de preservação dos registros arquivados';
+
+  @override
+  String get settingsAppearanceTitle => 'Aparência e idioma';
+
+  @override
+  String get settingsAppearanceSubtitle =>
+      'Tema da interface e idioma do aplicativo';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'Minha Assinatura';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Plano, cobranças e cancelamento';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Histórico Financeiro';
+
+  @override
+  String get settingsInvoicesTileSubtitle => 'Todas as cobranças e recibos';
+
+  @override
+  String get settingsNoPermission =>
+      'Você não tem permissão para alterar esta configuração.';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -3015,4 +3081,72 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Toutes les unités (par défaut)';
+
+  @override
+  String get settingsSectionCompany => 'Entreprise';
+
+  @override
+  String get settingsSectionOperation => 'Exploitation';
+
+  @override
+  String get settingsSectionSubscription => 'Abonnement';
+
+  @override
+  String get settingsCompanyLabel => 'Entreprise';
+
+  @override
+  String settingsCompanyScopeBanner(String name) {
+    return 'Entreprise administrée : ${name}';
+  }
+
+  @override
+  String get settingsSelectCompanyFirst =>
+      'Sélectionnez une entreprise dans Paramètres pour continuer.';
+
+  @override
+  String get settingsFichaTileTitle => 'Fiche d\'EPI';
+
+  @override
+  String get settingsFichaTileSubtitle =>
+      'Titre, déclaration, observations et traçabilité';
+
+  @override
+  String get settingsStockTileSubtitle =>
+      'Seuil d\'alerte par défaut de l\'entreprise';
+
+  @override
+  String get settingsModulesTileSubtitle =>
+      'Modules visibles par profil et par Unité';
+
+  @override
+  String get settingsArchivalTitle => 'Archivage et conservation';
+
+  @override
+  String get settingsArchivalSubtitle =>
+      'Années de conservation des enregistrements archivés';
+
+  @override
+  String get settingsAppearanceTitle => 'Apparence et langue';
+
+  @override
+  String get settingsAppearanceSubtitle =>
+      'Thème de l\'interface et langue de l\'application';
+
+  @override
+  String get settingsSubscriptionTileTitle => 'Mon abonnement';
+
+  @override
+  String get settingsSubscriptionTileSubtitle =>
+      'Formule, facturation et résiliation';
+
+  @override
+  String get settingsInvoicesTileTitle => 'Historique financier';
+
+  @override
+  String get settingsInvoicesTileSubtitle =>
+      'Toutes les factures et tous les reçus';
+
+  @override
+  String get settingsNoPermission =>
+      'Vous n\'avez pas l\'autorisation de modifier ce paramètre.';
 }

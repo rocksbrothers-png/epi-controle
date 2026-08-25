@@ -79,6 +79,17 @@ Os commits seguem [Conventional Commits](https://www.conventionalcommits.org/pt-
 - Documentação da infra de CI/CD em `docs/ci-cd/README.md`.
 
 ### Changed
+- Configurações (Flutter Web/Android/iOS) — a tela única virou um **hub de
+  subtelas**. Tema, idioma, Ficha de EPI, política de arquivamento,
+  visibilidade por módulo e a faixa de atenção da empresa estavam empilhados
+  numa lista só: chegar à Ficha exigia rolar por um formulário de retenção e
+  por uma matriz de switches. Agora cada assunto é um item com ícone e
+  descrição, agrupado por seção (Empresa, Operação, Aplicativo, Assinatura),
+  que abre a sua própria tela em `/settings/{appearance,ficha,stock,modules,archival}`.
+  A empresa escolhida pelo `master_admin` viaja para cada subtela em
+  `?company_id=` (sobrevive a refresh no Web) e cada subtela repete o seu
+  guarda de permissão/empresa — a URL direta não passa pelo hub. Os textos do
+  hub passaram a usar `epi_i18n` nos cinco idiomas.
 - Removido `node.js.yml` (Python CI) em favor de `backend-ci.yml`.
 
 ### Fixed

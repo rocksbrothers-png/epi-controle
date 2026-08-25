@@ -20,6 +20,18 @@ abstract final class Routes {
   static const purchases   = '/purchases';
   static const reports     = '/reports';
   static const settings    = '/settings';
+  /// Subrotas de Configurações. São subrotas de `/settings` de
+  /// propósito: `requiredPermissionFor` e `requiredModuleFor` casam por
+  /// `startsWith` e já as cobrem com `settings:view` + módulo `configuracoes`
+  /// — o mesmo piso do hub, que é o correto aqui (diferente de
+  /// `/stock/config`, que precisa de um gate MAIS estrito que `/stock`).
+  /// Cada subtela ainda faz a sua própria checagem: a URL direta não passa
+  /// pelo hub.
+  static const settingsAppearance = '/settings/appearance';
+  static const settingsFicha      = '/settings/ficha';
+  static const settingsStock      = '/settings/stock';
+  static const settingsModules    = '/settings/modules';
+  static const settingsArchival   = '/settings/archival';
   static const myCompany   = '/my-company';
   static const subscription = '/subscription';
   static const invoices    = '/invoices';
@@ -52,6 +64,11 @@ abstract final class Routes {
     purchases,
     reports,
     settings,
+    settingsAppearance,
+    settingsFicha,
+    settingsStock,
+    settingsModules,
+    settingsArchival,
     myCompany,
     subscription,
     invoices,

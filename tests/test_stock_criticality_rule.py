@@ -20,8 +20,11 @@ Estes testes travam essa leitura, e travam também que a regra é UMA só —
 divergirem no primeiro ajuste feito num lado só.
 """
 
+import ast
+import io
 import pathlib
 import re
+import tokenize
 
 import pytest
 
@@ -110,15 +113,80 @@ def test_saldo_nulo_conta_como_zero():
 
 # ── uma regra só ─────────────────────────────────────────────────────────────
 
-def test_low_stock_usa_a_regra_compartilhada():
-    # O ponto do teste: duas cópias da mesma comparação divergem no primeiro
-    # ajuste feito num lado só, e o operador passaria a ver alertas diferentes
-    # conforme a tela que abrisse.
-    servico = (RAIZ / 'modules/stock/service.py').read_text(encoding='utf-8')
+def _codigo(fonte: str) -> str:
+    """Fonte sem comentários **e sem docstrings**, via `ast` + `tokenize`.
+
+    Recortar por texto cru é o que cegou dois gates desta frente: a expressão
+    que eles procuravam saiu do código e sobreviveu na prosa que explica a
+    migração. Nem regex resolve — `'https://'` tem `//` e `#` aparece dentro de
+    string. Só o parser sabe distinguir.
+
+    Docstring conta como prosa: `replenishment.py` cita
+    `classify_unit_epi_stock` no aviso de congelamento sem chamá-lo uma vez.
+
+    `ast.parse` e `tokenize` propagam erro de propósito: os arquivos lidos são
+    fonte Python deste repositório, e um `SyntaxError` ali não é caso a
+    tolerar. Engolir a falha devolveria fonte só parcialmente limpa — e um
+    gate que volta a enxergar comentários é exatamente o defeito que estes
+    testes existem para impedir. Falha alta é melhor que gate cego.
+
+    (Este helper está duplicado em outros arquivos de teste. A convergência num
+    helper compartilhado é dívida registrada — ver #948.)
+    """
+    linhas = fonte.split('\n')
+    apagar = set()
+    for no in ast.walk(ast.parse(fonte)):
+        if not isinstance(no, (ast.Module, ast.ClassDef,
+                               ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        corpo = getattr(no, 'body', None)
+        if not corpo:
+            continue
+        primeiro = corpo[0]
+        if (isinstance(primeiro, ast.Expr)
+                and isinstance(primeiro.value, ast.Constant)
+                and isinstance(primeiro.value.value, str)):
+            fim = primeiro.end_lineno or primeiro.lineno
+            apagar.update(range(primeiro.lineno, fim + 1))
+    cortes = {}
+    for tok in tokenize.generate_tokens(io.StringIO(fonte).readline):
+        if tok.type == tokenize.COMMENT:
+            linha, coluna = tok.start
+            cortes[linha] = min(cortes.get(linha, coluna), coluna)
+    return '\n'.join(
+        '' if i in apagar else (linha[:cortes[i]] if i in cortes else linha)
+        for i, linha in enumerate(linhas, 1)
+    )
+
+
+def test_low_stock_delega_a_classificacao_em_vez_de_comparar():
+    """Uma regra só — e o gate que a defendia estava cego.
+
+    A versão anterior, `test_low_stock_usa_a_regra_compartilhada`, exigia
+    `is_stock_critical(` e `resolve_minimum_stock(` dentro de
+    `fetch_low_stock_items`. As duas saíram do código quando a #271 migrou a
+    função para a fonte única — e sobreviveram na MESMA linha de comentário,
+    que descreve o que havia ali antes.
+
+    O teste lia o arquivo cru. Passava por causa do comentário, e passaria
+    igualmente se a função tivesse voltado a comparar por conta própria. Pior
+    ainda: apagar aquele comentário reprovaria um código correto.
+
+    A afirmação agora é sobre a delegação, que é o que "uma regra só"
+    significa: quem compara é `classify_unit_epi_stock`, e quem decide a
+    inclusão na lista é o `stock_status` que ela devolve.
+    """
+    servico = _codigo((RAIZ / 'modules/stock/service.py').read_text(encoding='utf-8'))
     inicio = servico.index('def fetch_low_stock_items(')
     corpo = servico[inicio:servico.index('def build_low_stock(', inicio)]
-    assert 'is_stock_critical(' in corpo, \
+
+    assert 'classify_unit_epi_stock(' in corpo, \
+        'fetch_low_stock_items deixou de usar a fonte única de classificação'
+    assert 'classificacao.stock_status' in corpo, \
+        'a inclusão na lista voltou a ser decidida fora da classificação'
+    assert 'is_stock_critical(' not in corpo, \
         'fetch_low_stock_items voltou a comparar por conta própria'
-    assert 'resolve_minimum_stock(' in corpo
+    assert 'resolve_minimum_stock(' not in corpo, \
+        'voltou a resolver o mínimo CORPORATIVO em vez do da Unidade'
     assert 'else 10' not in corpo, \
         'o fallback do mínimo foi reintroduzido inline em vez de usar o helper'

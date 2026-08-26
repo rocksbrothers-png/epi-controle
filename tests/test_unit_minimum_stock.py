@@ -33,9 +33,12 @@ configurou nada — e não é preciso, porque o fallback já devolve o mesmo nú
 de hoje com `source='company_default'`.
 """
 
+import ast
+import io
 import pathlib
 import re
 import sqlite3
+import tokenize
 
 from modules.stock.service import (
     MINIMUM_SOURCE_COMPANY,
@@ -313,11 +316,55 @@ def test_valor_negativo_e_normalizado_para_zero():
 # Fiação e sabotagem
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _sem_comentarios(fonte: str) -> str:
-    """Descarta comentários: eles CITAM o padrão proibido para explicá-lo."""
+def _codigo(fonte: str) -> str:
+    """Fonte sem comentários **e sem docstrings**, via `ast` + `tokenize`.
+
+    Recortar por texto cru é o que cegou dois gates desta frente: a expressão
+    que eles procuravam saiu do código e sobreviveu na prosa que explica a
+    migração. Nem regex resolve — `'https://'` tem `//` e `#` aparece dentro de
+    string. Só o parser sabe distinguir.
+
+    Docstring conta como prosa: `replenishment.py` cita
+    `classify_unit_epi_stock` no aviso de congelamento sem chamá-lo uma vez.
+
+    `ast.parse` e `tokenize` propagam erro de propósito: os arquivos lidos são
+    fonte Python deste repositório, e um `SyntaxError` ali não é caso a
+    tolerar. Engolir a falha devolveria fonte só parcialmente limpa — e um
+    gate que volta a enxergar comentários é exatamente o defeito que estes
+    testes existem para impedir. Falha alta é melhor que gate cego.
+
+    (Este helper está duplicado em outros arquivos de teste. A convergência num
+    helper compartilhado é dívida registrada — ver #948.)
+    """
+    linhas = fonte.split('\n')
+    apagar = set()
+    for no in ast.walk(ast.parse(fonte)):
+        if not isinstance(no, (ast.Module, ast.ClassDef,
+                               ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        corpo = getattr(no, 'body', None)
+        if not corpo:
+            continue
+        primeiro = corpo[0]
+        if (isinstance(primeiro, ast.Expr)
+                and isinstance(primeiro.value, ast.Constant)
+                and isinstance(primeiro.value.value, str)):
+            fim = primeiro.end_lineno or primeiro.lineno
+            apagar.update(range(primeiro.lineno, fim + 1))
+    cortes = {}
+    for tok in tokenize.generate_tokens(io.StringIO(fonte).readline):
+        if tok.type == tokenize.COMMENT:
+            linha, coluna = tok.start
+            cortes[linha] = min(cortes.get(linha, coluna), coluna)
     return '\n'.join(
-        linha for linha in fonte.split('\n') if not linha.lstrip().startswith('#')
+        '' if i in apagar else (linha[:cortes[i]] if i in cortes else linha)
+        for i, linha in enumerate(linhas, 1)
     )
+
+
+def _sem_comentarios(fonte: str) -> str:
+    """Mantido pelo nome que os testes desta seção já usam."""
+    return _codigo(fonte)
 
 
 def test_a_escrita_corporativa_nao_existe_mais():
@@ -401,21 +448,73 @@ def test_o_par_migration_python_sql_existe():
     assert SQL.name in modulo, 'o módulo aponta para outro arquivo .sql'
 
 
-def test_o_minimo_por_unidade_nao_vazou_para_os_consumidores_ainda():
-    """Escopo da B0: a fatia entrega a FONTE, não migra consumidor.
+#: Consumidores que a dívida da B0 listou e que já consomem a fonte única.
+#: A afirmação é POSITIVA — diz o que existe, não o que resta de uma dívida.
+MIGRADOS_PARA_A_FONTE_UNICA = (
+    'modules/stock/service.py',
+    'modules/purchases/service.py',
+)
 
-    `/api/stock/low`, demandas de compra e `replenishment` seguem cruzando
-    saldo local com mínimo corporativo — dívida registrada, corrigida nas
-    próximas fatias. Quando forem migrados, este teste falha pedindo a
-    atualização, que é o objetivo: a dívida não some em silêncio.
+#: Único consumidor restante, e congelado: zero chamadores operacionais.
+MOTOR_CONGELADO = 'modules/stock/replenishment.py'
+
+
+def _fonte(caminho: str) -> str:
+    return _codigo((RAIZ / caminho).read_text(encoding='utf-8'))
+
+
+def test_os_consumidores_migrados_usam_a_fonte_unica():
+    """Substitui um gate que afirmava o oposto — e passava por um comentário.
+
+    A versão anterior sustentava que NENHUM consumidor havia sido migrado, e
+    ancorava isso em `ues.quantity <= ep.minimum_stock` dentro de
+    `modules/purchases/service.py`. A expressão saiu do SQL quando a #271
+    migrou a função, mas sobreviveu **dentro do comentário** que explica a
+    migração. O teste lia o arquivo cru, encontrava a string e passava.
+
+    Seis consumidores migraram e ele nunca avisou — o oposto do que o próprio
+    docstring prometia. Daí as duas mudanças de método: a leitura descarta
+    comentários e docstrings, e a asserção é sobre o que o código faz.
     """
-    pendentes = {
-        'modules/stock/service.py': 'def fetch_low_stock_items',
-        'modules/purchases/service.py': 'ues.quantity <= ep.minimum_stock',
-        'modules/stock/replenishment.py': 'def _epi_levels',
-    }
-    for caminho, ancora in pendentes.items():
-        fonte = (RAIZ / caminho).read_text(encoding='utf-8')
-        assert ancora in fonte, f'{caminho} mudou; revise a dívida registrada'
-        assert 'resolve_unit_minimum_stock' not in fonte or caminho == 'modules/stock/service.py', \
-            f'{caminho} foi migrado — atualize esta lista e a issue de dívida'
+    for caminho in MIGRADOS_PARA_A_FONTE_UNICA:
+        assert 'classify_unit_epi_stock' in _fonte(caminho), \
+            f'{caminho} deixou de consumir a fonte única da classificação'
+
+
+def test_a_decisao_de_criticidade_nao_volta_para_o_sql_das_demandas():
+    """A cópia em SQL era deliberada, e é a que mais custa a desfazer.
+
+    `ues.quantity <= ep.minimum_stock` foi copiada para SQL de propósito, para
+    "coincidir com o card do dashboard": a regra errada propagada de caso
+    pensado. O mínimo ali não era só o gatilho — dimensionava a reposição.
+    """
+    demandas = _fonte('modules/purchases/service.py')
+    assert 'ep.minimum_stock' not in demandas, \
+        'a comparação com o mínimo da EMPRESA voltou para o SQL das demandas'
+    assert 'effective_minimum_stock' in demandas, \
+        'a reposição deixou de ser dimensionada pelo mínimo da Unidade'
+
+
+def test_o_motor_b_e_o_unico_restante_e_segue_congelado():
+    """Dívida funcional real, mas sem chamador — e é isso que a mantém adiável.
+
+    Se alguém religar o Motor B sem migrá-lo, ele volta a gerar necessidade de
+    reposição pelo mínimo CORPORATIVO e ignorando `stock_alert_enabled`. Este
+    teste falha nos dois sentidos: se ganhar chamador operacional, ou se for
+    migrado sem que a #271 seja atualizada.
+    """
+    congelado = _fonte(MOTOR_CONGELADO)
+    assert 'classify_unit_epi_stock' not in congelado, \
+        'o Motor B foi migrado — atualize a lista acima e a #271'
+
+    chamadores = []
+    for base in ('modules', 'core', 'epi_backend'):
+        for arquivo in sorted((RAIZ / base).rglob('*.py')):
+            if arquivo.name == 'replenishment.py':
+                continue
+            codigo = _codigo(arquivo.read_text(encoding='utf-8'))
+            if 'stock.replenishment' in codigo or 'import replenishment' in codigo:
+                chamadores.append(str(arquivo.relative_to(RAIZ)))
+    assert chamadores == [], \
+        f'o Motor B ganhou chamador operacional ({chamadores}) sem ter sido ' \
+        f'migrado: geraria reposição pelo mínimo da EMPRESA'

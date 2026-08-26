@@ -28,7 +28,7 @@ STOCK_API = FLUTTER / 'packages' / 'epi_api' / 'lib' / 'endpoints' / 'stock_api.
 EXPORTS = FLUTTER / 'packages' / 'epi_api' / 'lib' / 'epi_api.dart'
 CUBIT = APP / 'core' / 'bloc' / 'company_attention_cubit.dart'
 CARD = APP / 'features' / 'settings' / 'widgets' / 'company_attention_card.dart'
-SETTINGS_SCREEN = APP / 'features' / 'settings' / 'settings_screen.dart'
+SETTINGS_DIR = APP / 'features' / 'settings'
 TESTE_DART = (FLUTTER / 'apps' / 'epi_admin' / 'test' /
               'company_attention_cubit_test.dart')
 
@@ -53,20 +53,68 @@ CHAVES = (
 )
 
 
+def _sem_comentario_ao_final(linha: str) -> str:
+    """Corta o `//` que abre comentário, ignorando o que está entre aspas.
+
+    `'https://...'` não é comentário: recortar ali quebraria as asserções sobre
+    rotas. O estado de aspas é seguido caractere a caractere, com escape.
+    """
+    aspas = None
+    i = 0
+    while i < len(linha):
+        c = linha[i]
+        if aspas is not None:
+            if c == '\\':
+                i += 2
+                continue
+            if c == aspas:
+                aspas = None
+        elif c in '\'"':
+            aspas = c
+        elif c == '/' and linha[i + 1:i + 2] == '/':
+            return linha[:i]
+        i += 1
+    return linha
+
+
 def _sem_comentarios(texto: str) -> str:
     """Remove `//` e `///` para que a prosa não satisfaça asserção nenhuma.
 
     Um teste que passa por causa de um comentário é um falso verde — foi o que
     aconteceu com a âncora da própria #271.
+
+    Recortar só a linha inteira deixava passar o caso mais provável de todos:
+    desligar o controle e deixar o nome dele no fim da linha — `return true; //
+    hasPermission('settings:update')`. O gate continuava verde sobre um gate
+    que não existe mais. Foi um teste de mutação desta fatia que revelou.
     """
     return '\n'.join(
-        linha for linha in texto.split('\n')
+        _sem_comentario_ao_final(linha) for linha in texto.split('\n')
         if not linha.lstrip().startswith('//')
     )
 
 
 def _codigo(caminho: Path) -> str:
     return _sem_comentarios(caminho.read_text(encoding='utf-8'))
+
+
+def _arquivos_que_montam_o_cartao() -> list:
+    """Onde quer que o cartão esteja montado — a subtela pode mudar de nome.
+
+    A B2-b nasceu com o cartão dentro de `settings_screen.dart`. A divisão das
+    Configurações em hub + subtelas o moveu para `stock_defaults_screen.dart`,
+    e o teste, que fixava o caminho, reprovou uma refatoração correta. Pior do
+    que o falso vermelho seria o falso verde simétrico: se o cartão mudasse de
+    casa de novo, o teste seguiria olhando para um arquivo que não o monta mais
+    e aprovaria a B1b sem consumidor nenhum.
+
+    O contrato não é o caminho do arquivo. É que o cartão esteja montado em
+    algum lugar e que TODO ponto de montagem carregue o gate.
+    """
+    return sorted(
+        caminho for caminho in SETTINGS_DIR.rglob('*.dart')
+        if caminho != CARD and 'CompanyAttentionCard(' in _codigo(caminho)
+    )
 
 
 # ── Os arquivos existem e estão ligados ─────────────────────────────────────
@@ -83,8 +131,7 @@ def test_o_modelo_esta_exportado_no_pacote():
 
 
 def test_a_tela_de_configuracoes_monta_o_cartao():
-    fonte = _codigo(SETTINGS_SCREEN)
-    assert 'CompanyAttentionCard(' in fonte, \
+    assert _arquivos_que_montam_o_cartao(), \
         'o cartão existe mas não está montado — a B1b continuaria sem consumidor'
 
 
@@ -174,10 +221,13 @@ def test_a_existencia_da_configuracao_vem_de_has_company_config():
 # ── Permissão e fail-closed ─────────────────────────────────────────────────
 
 def test_o_cartao_e_gated_por_settings_update():
-    fonte = _codigo(SETTINGS_SCREEN)
-    assert "hasPermission('settings:update')" in fonte, \
-        ('sem o gate, `admin`/`user` veriam um controle que sempre terminaria '
-         'em 403 — e o padrão que alterariam é herdado por todas as Unidades')
+    montagens = _arquivos_que_montam_o_cartao()
+    assert montagens, 'o cartão não está montado em lugar nenhum'
+    for caminho in montagens:
+        assert "hasPermission('settings:update')" in _codigo(caminho), \
+            (f'{caminho.name} monta o cartão sem gate: `admin`/`user` veriam '
+             'um controle que sempre terminaria em 403 — e o padrão que '
+             'alterariam é herdado por todas as Unidades')
 
 
 def test_o_cubit_nao_grava_sem_ter_lido_antes():

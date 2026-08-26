@@ -240,6 +240,23 @@ def test_o_script_tem_exit_code_real_desde_a_etapa_1():
         'o código de saída do relatório deixou de chegar ao processo'
 
 
+def test_o_exit_code_do_relatorio_sobrevive_ao_pipe():
+    """O `| tee` do passo devolveria 0 mesmo com o relatório reprovando.
+
+    O shell padrão do Actions é `bash -e {0}`, e numa pipeline o status é o do
+    ÚLTIMO comando. Sem `set -o pipefail`, o `tee` mascara o código de saída —
+    e a etapa 3 removeria o `continue-on-error` para descobrir que o job
+    continua verde. É o defeito do passo antigo (`$?` ecoado, `cat … || true`)
+    reproduzido uma camada acima, e foi assim que ele apareceu: a primeira
+    execução da etapa 1 reportou `success` num passo cujo script saiu 1.
+    """
+    passo = _passo_de_migrations()
+    if '|' in passo:
+        assert 'set -o pipefail' in passo, \
+            ('o passo canaliza a saída sem `pipefail`: o exit code do '
+             'relatório é descartado e a etapa 3 não teria efeito')
+
+
 def test_o_continue_on_error_do_ruff_nao_foi_tocado():
     """Território da #948. Uma busca por `continue-on-error` acha os dois."""
     workflow = _workflow()

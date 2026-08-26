@@ -247,6 +247,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://epi:epi@localhost:5432/epi_ci
         run: |
+          # `set -o pipefail` não é estilo. O shell padrão do Actions é
+          # `bash -e {0}`, e numa pipeline o status é o do ÚLTIMO comando: sem
+          # isto, o `tee` devolve 0 e o exit code do relatório vai para o lixo.
+          # É o MESMO defeito que esta issue existe para matar — o passo antigo
+          # ecoava o `$?` de cada psql e terminava em `cat … || true` — só que
+          # uma camada acima. Sem `pipefail`, a etapa 3 removeria o
+          # `continue-on-error` e o job continuaria verde.
+          set -o pipefail
           mkdir -p /tmp/mig-logs
           python scripts/ci_migrations_report.py 2>&1 | tee /tmp/mig-logs/relatorio.txt
 

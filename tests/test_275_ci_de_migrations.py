@@ -18,6 +18,7 @@ em três gates desta mesma frente.
 """
 
 import ast
+import importlib.util
 import io
 import pathlib
 import re
@@ -71,6 +72,23 @@ def _yaml_sem_comentarios(fonte: str) -> str:
 
 def _script() -> str:
     return _codigo(SCRIPT.read_text(encoding='utf-8'))
+
+
+def _modulo():
+    """Carrega o relatório como módulo, para exercitar a derivação de verdade.
+
+    Ler o código-fonte prova que uma linha existe; chamar a função prova que
+    ela faz o que diz. Os gates de derivação abaixo são funcionais por isso —
+    a etapa 1 desta issue nasceu de três asserções que liam texto e passavam
+    por causa de um comentário.
+
+    O import é seguro: o `psycopg2` só é carregado dentro de
+    `_conexao_de_observacao`, e nada no nível do módulo abre conexão.
+    """
+    spec = importlib.util.spec_from_file_location('ci_migrations_report', SCRIPT)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
 
 
 def _workflow() -> str:
@@ -231,6 +249,252 @@ def test_a_trilha_declarativa_roda_duas_vezes():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# A derivação — etapa 2. Funcional, com fonte sintética e caso negativo.
+# ═══════════════════════════════════════════════════════════════════════════
+
+_MOLDES = {
+    'array': """
+        DO $$ DECLARE tbl text[] := ARRAY['tabela_array', 'outra_array'];
+        BEGIN EXECUTE 'ALTER TABLE x ENABLE ROW LEVEL SECURITY'; END $$;
+    """,
+    'escalar': """
+        DO $$
+        DECLARE
+          tbl text := 'tabela_escalar';
+        BEGIN
+          EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
+        END $$;
+    """,
+    'alter_literal': 'ALTER TABLE public.tabela_alter ENABLE ROW LEVEL SECURITY;',
+    'policy_literal': (
+        'ALTER TABLE tabela_policy ENABLE ROW LEVEL SECURITY;\n'
+        'CREATE POLICY p ON public.tabela_policy FOR ALL TO anon USING (false);'
+    ),
+}
+
+
+def test_a_derivacao_cobre_os_quatro_moldes():
+    """Os quatro existem no repositório, e o escalar faltava até a etapa 2.
+
+    Sem ele, oito tabelas declaradas com `DECLARE tbl text := 'nome'` eram
+    acusadas de `unexpected_policy` — o relatório chamando de intrusa uma
+    policy que a migration ao lado declarava.
+
+    Fonte sintética e não o repositório: ler os arquivos reais e conferir o
+    total prova que o número bateu, não que a derivação está certa.
+    """
+    derivar = _modulo()._tabelas_de_rls
+    assert 'tabela_array' in derivar(_MOLDES['array'])
+    assert 'outra_array' in derivar(_MOLDES['array'])
+    assert 'tabela_escalar' in derivar(_MOLDES['escalar'])
+    assert 'tabela_alter' in derivar(_MOLDES['alter_literal'])
+    assert 'tabela_policy' in derivar(_MOLDES['policy_literal'])
+
+
+def test_a_derivacao_nao_captura_arquivo_sem_rls():
+    """O caso negativo é o que impede a correção de virar sobre-captura.
+
+    Uma migration de `drop` que guarda um bloco com `tbl text := 'x'` e não
+    menciona RLS não pode entrar no conjunto esperado: entraria como
+    `missing_rls` para sempre, um defeito inventado pelo próprio relatório.
+    """
+    sem_rls = """
+        DO $$
+        DECLARE
+          tbl text := 'tabela_dropada';
+        BEGIN
+          EXECUTE format('DROP TABLE IF EXISTS public.%I', tbl);
+        END $$;
+    """
+    assert _modulo()._tabelas_de_rls(sem_rls) == set(), \
+        'a derivação passou a capturar arquivo que não declara RLS nenhuma'
+
+
+def test_o_conjunto_de_bootstrap_e_derivado_do_codigo():
+    """`known_bootstrap` sai do AST das chamadas, nunca de lista fixa.
+
+    Uma lista literal aqui envelheceria na primeira tabela que alguém
+    acrescentasse ao mesmo padrão — e envelheceria em silêncio, que é o modo
+    de falhar que esta issue existe para eliminar.
+    """
+    derivar = _modulo()._tabelas_de_enable_rls
+    assert derivar("_enable_rls(conn, 'a', 'b')") == {'a', 'b'}, \
+        'a derivação deixou de ler os literais das chamadas a _enable_rls'
+    assert derivar("outra_funcao(conn, 'c')") == set(), \
+        'a derivação passou a capturar chamada que não é _enable_rls'
+    assert derivar("_enable_rls(conn, nome_variavel)") == set(), \
+        'argumento não-literal foi derivado — o correto é ele cair em unexpected'
+
+
+def test_o_script_nao_lista_as_tabelas_de_billing_a_mao():
+    """Território da #309. Congelar os nomes aqui esconderia a sexta."""
+    script = _script()
+    for tabela in ('payment_plans', 'subscription_audit_logs'):
+        assert tabela not in script, \
+            f'`{tabela}` foi fixada no relatório em vez de derivada do código'
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A classificação em três origens — o coração da etapa 2
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_as_tres_origens_de_cobertura_sao_separadas():
+    """Declarada, conhecida do bootstrap, e realmente inesperada.
+
+    Os três casos que a etapa 2 precisa provar, sem tocar no PostgreSQL:
+
+    - tabela declarada por migration NÃO é inesperada;
+    - tabela conhecida do bootstrap NÃO é inesperada — e também não é
+      dobrada dentro de `expected`, senão a dívida da #309 sumiria do
+      relatório com o CI verde;
+    - uma terceira policy, que ninguém declarou, APARECE em
+      `unexpected_policy`.
+    """
+    classificar = _modulo()._classificar_cobertura
+    resultado = classificar(
+        declaradas={'declarada'},
+        por_bootstrap={'do_bootstrap'},
+        ligadas={'declarada', 'do_bootstrap', 'intrusa'},
+        com_policy={'declarada', 'do_bootstrap', 'intrusa'},
+        presentes={'declarada', 'do_bootstrap', 'intrusa'},
+    )
+    assert resultado['expected_rls_tables'] == {'declarada'}
+    assert resultado['known_bootstrap_rls_tables'] == {'do_bootstrap'}, \
+        'a tabela do bootstrap foi dobrada dentro de expected e sumiu como dívida'
+    assert resultado['unexpected_policy'] == {'intrusa'}, \
+        'a policy não declarada deixou de aparecer como unexpected_policy'
+    assert resultado['missing_rls'] == set()
+    assert resultado['missing_policy'] == set()
+
+
+def test_a_divida_do_bootstrap_nao_vira_cobertura_legitima():
+    """Se `known_bootstrap` fosse dobrado em `expected`, a etapa 3 ficaria cega.
+
+    O gate final exige `known_bootstrap_rls_tables` VAZIO justamente para que
+    a #309 seja pré-requisito. Fundir os conjuntos zeraria esse gate sem
+    resolver nada — o CI verde com cinco tabelas fora do versionamento, que é
+    o verde incompleto que a #275 existe para eliminar.
+    """
+    resultado = _modulo()._classificar_cobertura(
+        declaradas=set(), por_bootstrap={'so_no_bootstrap'},
+        ligadas={'so_no_bootstrap'}, com_policy={'so_no_bootstrap'},
+        presentes={'so_no_bootstrap'},
+    )
+    assert resultado['expected_rls_tables'] == set(), \
+        'tabela sem migration entrou em expected_rls_tables'
+    assert resultado['known_bootstrap_rls_tables'] == {'so_no_bootstrap'}
+
+
+def test_o_diagnostico_nomeia_os_dois_achados_nao_bloqueantes():
+    """A lista de diagnósticos, exercitada nas quatro combinações.
+
+    Gate da POPULAÇÃO, não do consumo. A versão anterior só verificava que a
+    frase limpa vivia dentro de `if not diagnosticos:` — e esvaziar a lista
+    na origem tornava essa condição trivialmente verdadeira, com os 27 testes
+    passando. Duas mutações escaparam exatamente assim.
+    """
+    montar = _modulo()._diagnosticos
+    assert montar(set(), set()) == [], 'diagnóstico inventado sem achado nenhum'
+
+    so_bootstrap = montar({'a'}, set())
+    assert len(so_bootstrap) == 1
+    assert 'known_bootstrap_rls_tables' in so_bootstrap[0], \
+        'o achado de RLS fora de migration deixou de ser nomeado'
+
+    so_intrusa = montar(set(), {'b'})
+    assert len(so_intrusa) == 1
+    assert 'unexpected_policy' in so_intrusa[0], \
+        'a policy não declarada deixou de ser nomeada no diagnóstico'
+
+    assert len(montar({'a'}, {'b'})) == 2, \
+        'os dois achados juntos deixaram de ser reportados separadamente'
+
+
+def test_o_veredito_de_sucesso_nao_engole_a_divida():
+    """"Nenhum problema" não pode ser a última palavra havendo achado aberto.
+
+    O `_conjunto` já é gatilhado, mas imprime no meio de um relatório de 800
+    linhas. Quem lê só o fim sai com "tudo certo" — e a etapa 3 depende de
+    alguém lembrar que a dívida existe.
+
+    Duas correções nasceram aqui, e as duas de evidência, não de revisão:
+
+    1. Uma mutação escapou: trocar a condição por `if False:` silenciava o
+       bloco com os 26 testes passando.
+    2. A sabotagem end-to-end plantou uma policy que ninguém declara. O
+       relatório a listou corretamente em `unexpected_policy` e o veredito
+       imprimiu "Nenhum problema" dez linhas abaixo. Medir certo e resumir
+       errado é o mesmo falso verde, mudado de lugar.
+
+    Por isso a frase limpa agora vive DENTRO do ramo `if not diagnosticos:`,
+    e o exit code continua 0 — diagnóstico não bloqueia na etapa 2.
+    """
+    script = _script()
+    sucesso = script[script.index('if not problemas:'):]
+    assert 'if not diagnosticos:' in sucesso, \
+        ('a frase limpa do veredito deixou de ser condicionada aos '
+         'diagnósticos — ela pode voltar a aparecer sobre achado aberto')
+    limpo = sucesso[sucesso.index('if not diagnosticos:'):]
+    limpo = limpo[:limpo.index('return 0')]
+    assert 'Nenhum problema' in limpo, \
+        'a frase limpa saiu de dentro do ramo que exige diagnóstico vazio'
+    assert 'known_bootstrap_rls_tables' in sucesso, \
+        'o veredito deixou de nomear o conjunto onde a dívida está listada'
+    assert 'unexpected_policy' in sucesso, \
+        'o veredito deixou de nomear as policies não declaradas'
+
+
+def test_o_esperado_e_o_bootstrap_sao_intersectados_com_o_schema_vivo():
+    """`user_unit_links` é alvo de RLS numa migration antiga e DROPADO depois.
+
+    Sem a interseção ele apareceria como `missing_rls` para sempre — um
+    defeito inventado pelo próprio relatório.
+
+    SUCESSOR de `test_o_esperado_e_intersectado_com_o_schema_vivo`, removido
+    na etapa 2. Aquele procurava a string `_rls_esperada() & presentes` na
+    fonte; a interseção mudou de lugar (foi para `_classificar_cobertura`) e
+    ele passou a reprovar por endereço, não por comportamento. Este exercita
+    a função e cobre também o conjunto do bootstrap, que o anterior ignorava.
+    """
+    resultado = _modulo()._classificar_cobertura(
+        declaradas={'existe', 'foi_dropada'}, por_bootstrap={'sumiu_tambem'},
+        ligadas={'existe'}, com_policy={'existe'}, presentes={'existe'},
+    )
+    assert resultado['expected_rls_tables'] == {'existe'}
+    assert resultado['known_bootstrap_rls_tables'] == set()
+    assert resultado['missing_rls'] == set(), \
+        'tabela inexistente virou missing_rls — defeito inventado pelo relatório'
+
+
+def test_a_mensagem_de_erro_nao_depende_do_comprimento_do_caminho():
+    """Em `epi-controle-app` o caminho é mais longo e cortava antes."""
+    montar = _modulo()._mensagem_de_falha
+    longo = ('psql:/um/caminho/bem/longo/supabase/migrations/x.sql:42: '
+             'ERROR:  role "anon" does not exist')
+    curto = 'psql:/x.sql:42: ERROR:  role "anon" does not exist'
+    assert montar(longo) == montar(curto), \
+        'o comprimento do caminho ainda muda a mensagem'
+    assert 'linha 42' in montar(longo)
+    assert 'role "anon" does not exist' in montar(longo)
+
+
+def test_o_truncamento_mora_so_na_funcao_pura():
+    """Gate do PONTO DE USO, não da ferramenta.
+
+    A primeira versão deste gate exercitava só `_PREFIXO_PSQL.sub` e passava
+    com o ponto de impressão revertido para `primeira.strip()[:120]`: a regex
+    certa, ignorada. É o mesmo defeito do gate de `ON_ERROR_STOP` da etapa
+    anterior — provar que a ferramenta existe não prova que ela é usada.
+    """
+    script = _script()
+    corpo = script[script.index('def _aplicar_sql'):script.index('def main(')]
+    assert '_mensagem_de_falha(' in corpo, \
+        'o passo deixou de montar a mensagem pela função pura'
+    assert '[:120]' not in corpo, \
+        'voltou a truncar no ponto de impressão, onde o caminho ainda conta'
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # RLS de verdade — a asserção que dá sentido à issue
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -263,9 +527,9 @@ def test_o_relatorio_publica_conjuntos_e_diferencas():
     palavra aprovava um relatório que só imprimisse `len(missing_policy)`.
     """
     script = _script()
-    for chave in ('expected_rls_tables', 'tables_with_rls_enabled',
-                  'tables_with_policies', 'missing_rls', 'missing_policy',
-                  'unexpected_policy'):
+    for chave in ('expected_rls_tables', 'known_bootstrap_rls_tables',
+                  'tables_with_rls_enabled', 'tables_with_policies',
+                  'missing_rls', 'missing_policy', 'unexpected_policy'):
         assert f"_conjunto('{chave}'" in script, \
             f'o relatório deixou de PUBLICAR `{chave}` como conjunto — a etapa '
 
@@ -280,17 +544,6 @@ def test_a_cobertura_de_rls_nao_tem_numero_fixo():
         'a cobertura de RLS foi fixada num número em vez de derivada'
 
 
-def test_o_esperado_e_intersectado_com_o_schema_vivo():
-    """`user_unit_links` é alvo de RLS numa migration antiga e DROPADO por outra.
-
-    Sem a interseção ele apareceria como `missing_rls` para sempre — um
-    defeito inventado pelo próprio relatório.
-    """
-    script = _script()
-    assert '_rls_esperada() & presentes' in script, \
-        'o conjunto esperado deixou de ser intersectado com as tabelas que existem'
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # A etapa 1 é observacional — e este par de gates diz isso em voz alta
 # ═══════════════════════════════════════════════════════════════════════════
@@ -302,6 +555,19 @@ def test_a_etapa_1_ainda_nao_bloqueia():
     `continue-on-error` **ausente**. Ele existe para que ninguém adiante a
     etapa 3 antes de a etapa 2 zerar os defeitos reais, e não para registrar
     o `continue-on-error` como requisito permanente.
+
+    QUANDO A ETAPA 3 CHEGAR, o gate bloqueante exige QUATRO condições:
+
+        missing_rls                = 0
+        missing_policy             = 0
+        unexpected_policy          = 0
+        known_bootstrap_rls_tables = 0   ← não esquecer esta
+
+    A quarta é o que acopla a #309 ao gate final. Sem ela o CI ficaria
+    totalmente verde mantendo cinco tabelas cuja RLS segue fora do
+    versionamento de migrations — exatamente o verde incompleto que a #275
+    existe para eliminar. Ela não some do relatório na etapa 2: aparece em
+    conjunto próprio e é repetida no VEREDITO, marcada como diagnóstico.
     """
     assert 'continue-on-error: true' in _passo_de_migrations(), \
         ('o passo de migrations passou a bloquear antes da etapa 2 — se isto '

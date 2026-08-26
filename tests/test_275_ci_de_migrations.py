@@ -86,6 +86,89 @@ def _passo_de_migrations() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Os roles que as migrations exigem — pré-condição da plataforma
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _passo_de_roles() -> str:
+    """Só o passo dos roles — o job tem vários `psql`."""
+    texto = _workflow()
+    assert 'Pré-condições do Supabase' in texto, \
+        ('o passo que cria `anon`/`authenticated` sumiu do workflow — sem ele '
+         'todo CREATE POLICY volta a falhar e o CI mede o ambiente, não as '
+         'migrations')
+    inicio = texto.index('Pré-condições do Supabase')
+    fim = texto.index('- name: Validate Multi-Tenant invariants', inicio)
+    return texto[inicio:fim]
+
+
+def test_o_ci_cria_os_dois_roles_que_as_migrations_exigem():
+    """16 das 32 migrations criam policies `TO anon, authenticated`.
+
+    Sem os roles, medido: 16/32 `.sql` falham, 1 de 28 migrations Python
+    aplicam, 72 tabelas ficam sem RLS. Com eles: 0, 28/28, 0. Nenhuma linha de
+    migration muda entre os dois números — o defeito era do ambiente do CI.
+
+    Leitura por `_yaml_sem_comentarios`: o comentário acima do passo cita os
+    dois roles várias vezes, e comentário que satisfaz asserção é exatamente o
+    defeito que a Fase 1 da #271 corrigiu em três gates.
+    """
+    passo = _passo_de_roles()
+    for role in ('anon', 'authenticated'):
+        assert f'CREATE ROLE {role} NOLOGIN' in passo, \
+            f'o passo deixou de criar `{role}` como NOLOGIN'
+
+
+def test_os_roles_nao_ganham_privilegio_nenhum():
+    """`NOLOGIN` sem `GRANT` é a fronteira do que este CI afirma provar.
+
+    Com isto, o CI prova que as policies foram CRIADAS. Não prova que elas
+    ISOLAM — para isso é preciso conectar como `anon` e ver a leitura ser
+    negada, o que é frente própria. Um `GRANT` aqui mudaria em silêncio o que
+    o job mede; quem precisar dele que troque este gate de propósito.
+    """
+    passo = _passo_de_roles()
+    assert 'GRANT' not in passo.upper(), \
+        ('o passo passou a conceder privilégio aos roles — isso muda o que o '
+         'CI mede e o gate precisa ser revisto junto')
+
+
+def test_o_ci_nao_cria_service_role():
+    """Nenhuma migration referencia `service_role`. Criar por precaução é ruído."""
+    assert 'service_role' not in _workflow(), \
+        'o workflow passou a criar `service_role`, que nenhuma migration usa'
+
+
+def test_os_roles_existem_antes_de_qualquer_migration():
+    """Depois do bootstrap não adianta: o `CREATE POLICY` já teria falhado."""
+    texto = _workflow()
+    assert texto.index('Pré-condições do Supabase') \
+        < texto.index('Migrations — relatório observacional'), \
+        'o passo dos roles foi parar depois do relatório'
+
+
+def test_a_criacao_de_roles_nao_engole_erro():
+    """Um `CREATE ROLE` que falha em silêncio devolve o CI ao estado anterior.
+
+    Sem `ON_ERROR_STOP`, o `psql` sai 0 mesmo com o bloco `DO` reprovando, e o
+    relatório seguinte voltaria a medir a ausência dos roles sem que nada
+    ficasse vermelho.
+
+    A asserção é por CHAMADA, não pelo token: a primeira versão deste gate
+    procurava `ON_ERROR_STOP=1` no passo inteiro e passava com a guarda
+    removida do `psql` que cria os roles, porque o segundo `psql` — o que só
+    confere — ainda a tinha.
+    """
+    passo = _passo_de_roles()
+    assert 'set -euo pipefail' in passo, \
+        'o passo dos roles deixou de propagar falha do shell'
+    chamadas = [l for l in passo.split('\n') if l.strip().startswith('psql ')]
+    assert chamadas, 'o passo dos roles não chama mais o psql'
+    sem_guarda = [l.strip() for l in chamadas if 'ON_ERROR_STOP=1' not in l]
+    assert sem_guarda == [], \
+        f'psql sem ON_ERROR_STOP no passo dos roles: {sem_guarda}'
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # O job usa o bootstrap real, e não declara schema
 # ═══════════════════════════════════════════════════════════════════════════
 

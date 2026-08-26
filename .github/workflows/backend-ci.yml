@@ -189,6 +189,41 @@ jobs:
           done
           psql -h localhost -U epi -d epi_ci -c "SELECT version();"
 
+      # Pré-condições da PLATAFORMA, não fixture de teste.
+      #
+      # 16 das 32 migrations criam policies `TO anon, authenticated`. Esses dois
+      # roles existem em qualquer projeto Supabase e NÃO existem na imagem
+      # `postgres:16`. Sem eles todo `CREATE POLICY` morre em
+      # `role "anon" does not exist`, e o que o CI mede deixa de ser a qualidade
+      # das migrations: passa a ser a ausência do Supabase.
+      #
+      # Medido na etapa 1, mesma árvore, sem uma linha de migration alterada:
+      #   sem os roles → 16/32 `.sql` falham · 1 de 28 migrations Python aplicam
+      #                  · 72 tabelas sem RLS · 73 sem policy · exit 1
+      #   com os roles → 0 falhas · 28/28 · 0 sem RLS · 0 sem policy · exit 0
+      #
+      # O que isto NÃO prova: `NOLOGIN` sem `GRANT` permite que as policies
+      # sejam CRIADAS, não que elas ISOLEM. Provar isolamento exige conectar
+      # como `anon` e verificar que a leitura é negada — frente própria.
+      #
+      # `service_role` fica de fora de propósito: nenhuma migration o referencia.
+      - name: Pré-condições do Supabase (roles anon e authenticated)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -h localhost -U epi -d epi_ci -c "
+            DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+                CREATE ROLE anon NOLOGIN;
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                CREATE ROLE authenticated NOLOGIN;
+              END IF;
+            END
+            \$\$;"
+          psql -v ON_ERROR_STOP=1 -h localhost -U epi -d epi_ci -tAc \
+            "SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated') ORDER BY 1;"
+
       # Validação estática Multi-Tenant: as migrations de RLS DEVEM referenciar
       # tenant_id/company_id e criar policies. Isto é sempre seguro (não aplica
       # SQL), garante que ninguém remova o isolamento por engano.

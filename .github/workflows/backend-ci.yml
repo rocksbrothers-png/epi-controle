@@ -212,22 +212,51 @@ jobs:
           fi
           echo "OK: invariantes Multi-Tenant presentes nas migrations."
 
-      # Aplica as migrations SQL em ordem para detectar regressões de sintaxe.
-      # NÃO bloqueante: as migrations de RLS assumem tabelas-base criadas pelo
-      # bootstrap da aplicação (fora deste job), então algumas podem falhar até
-      # existir um runner de schema-base. O log fica registrado como artefato.
-      - name: Apply SQL migrations (dry validation)
-        continue-on-error: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
         run: |
-          set +e
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ETAPA 1 da #275 — OBSERVAÇÃO. Deliberadamente ainda NÃO bloqueante.
+      #
+      # O passo anterior aplicava os 32 `.sql` contra um banco VAZIO e ficava
+      # verde por três motivos independentes: este `continue-on-error`, o
+      # `set +e`, e — o que quase ninguém nota — o `$?` de cada `psql` ser
+      # apenas ecoado no log, nunca acumulado, com o passo terminando em
+      # `cat … || true`. Remover só o `continue-on-error` não teria mudado nada.
+      #
+      # Pior que as 9 que falhavam: 18 PASSAVAM SEM FAZER NADA. Elas guardam
+      # cada bloco com `CONTINUE WHEN NOT EXISTS (information_schema.tables)`,
+      # e contra banco vazio pulam tudo com sucesso. São as de RLS.
+      #
+      # O schema-base agora vem dos `ensure_*` do bootstrap real — nunca de um
+      # `base_schema.sql` mantido à parte, que divergiria em silêncio (#238).
+      # `run_pending_migrations` NÃO cria schema: valida a trilha operacional
+      # depois que a base existe.
+      #
+      # O script sai com código != 0 quando algo falha, desde já. Quem segura
+      # o job é este `continue-on-error`, não uma mentira no script — assim a
+      # etapa 3 é literalmente remover esta linha.
+      - name: Migrations — relatório observacional (#275 etapa 1)
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://epi:epi@localhost:5432/epi_ci
+        run: |
+          # `set -o pipefail` não é estilo. O shell padrão do Actions é
+          # `bash -e {0}`, e numa pipeline o status é o do ÚLTIMO comando: sem
+          # isto, o `tee` devolve 0 e o exit code do relatório vai para o lixo.
+          # É o MESMO defeito que esta issue existe para matar — o passo antigo
+          # ecoava o `$?` de cada psql e terminava em `cat … || true` — só que
+          # uma camada acima. Sem `pipefail`, a etapa 3 removeria o
+          # `continue-on-error` e o job continuaria verde.
+          set -o pipefail
           mkdir -p /tmp/mig-logs
-          for f in $(ls supabase/migrations/*.sql | sort); do
-            echo "── applying $f"
-            psql -h localhost -U epi -d epi_ci -v ON_ERROR_STOP=1 -f "$f" \
-              >> "/tmp/mig-logs/apply.log" 2>&1
-            echo "   exit=$? for $f" >> "/tmp/mig-logs/apply.log"
-          done
-          cat /tmp/mig-logs/apply.log || true
+          python scripts/ci_migrations_report.py 2>&1 | tee /tmp/mig-logs/relatorio.txt
 
       - name: Upload migration log
         if: always()

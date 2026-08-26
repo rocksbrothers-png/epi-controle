@@ -124,37 +124,35 @@ def _codigo(fonte: str) -> str:
     Docstring conta como prosa: `replenishment.py` cita
     `classify_unit_epi_stock` no aviso de congelamento sem chamá-lo uma vez.
 
+    `ast.parse` e `tokenize` propagam erro de propósito: os arquivos lidos são
+    fonte Python deste repositório, e um `SyntaxError` ali não é caso a
+    tolerar. Engolir a falha devolveria fonte só parcialmente limpa — e um
+    gate que volta a enxergar comentários é exatamente o defeito que estes
+    testes existem para impedir. Falha alta é melhor que gate cego.
+
     (Este helper está duplicado em outros arquivos de teste. A convergência num
     helper compartilhado é dívida registrada — ver #948.)
     """
     linhas = fonte.split('\n')
     apagar = set()
-    try:
-        arvore = ast.parse(fonte)
-    except SyntaxError:
-        arvore = None
-    if arvore is not None:
-        for no in ast.walk(arvore):
-            if not isinstance(no, (ast.Module, ast.ClassDef,
-                                   ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            corpo = getattr(no, 'body', None)
-            if not corpo:
-                continue
-            primeiro = corpo[0]
-            if (isinstance(primeiro, ast.Expr)
-                    and isinstance(primeiro.value, ast.Constant)
-                    and isinstance(primeiro.value.value, str)):
-                fim = primeiro.end_lineno or primeiro.lineno
-                apagar.update(range(primeiro.lineno, fim + 1))
+    for no in ast.walk(ast.parse(fonte)):
+        if not isinstance(no, (ast.Module, ast.ClassDef,
+                               ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        corpo = getattr(no, 'body', None)
+        if not corpo:
+            continue
+        primeiro = corpo[0]
+        if (isinstance(primeiro, ast.Expr)
+                and isinstance(primeiro.value, ast.Constant)
+                and isinstance(primeiro.value.value, str)):
+            fim = primeiro.end_lineno or primeiro.lineno
+            apagar.update(range(primeiro.lineno, fim + 1))
     cortes = {}
-    try:
-        for tok in tokenize.generate_tokens(io.StringIO(fonte).readline):
-            if tok.type == tokenize.COMMENT:
-                linha, coluna = tok.start
-                cortes[linha] = min(cortes.get(linha, coluna), coluna)
-    except (tokenize.TokenError, IndentationError):
-        pass
+    for tok in tokenize.generate_tokens(io.StringIO(fonte).readline):
+        if tok.type == tokenize.COMMENT:
+            linha, coluna = tok.start
+            cortes[linha] = min(cortes.get(linha, coluna), coluna)
     return '\n'.join(
         '' if i in apagar else (linha[:cortes[i]] if i in cortes else linha)
         for i, linha in enumerate(linhas, 1)

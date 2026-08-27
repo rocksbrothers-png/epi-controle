@@ -38,52 +38,13 @@ def _now_iso():
 
 # ── Schema ──────────────────────────────────────────────────────────────────
 
-def _enable_rls(connection, *tables):
-    """Habilita Row Level Security (idempotente) nas tabelas informadas, com
-    a policy `block_direct_api_access` que nega `anon`/`authenticated` —
-    mesmo padrão das fases de RLS hardening em `supabase/migrations/`.
-
-    RLS habilitado sem nenhuma policy já nega acesso a `anon`/`authenticated`
-    (PostgREST público) por padrão, mas o Supabase Security Advisor sinaliza
-    essa lacuna (`rls_enabled_no_policy`) porque o estado fica ambíguo sem
-    uma policy explícita — a policy formaliza a intenção. O backend, que
-    conecta como dono (`postgres`), segue acessando normalmente: dono ignora
-    RLS (sem FORCE). Resolve os lints `rls_disabled_in_public` e
-    `rls_enabled_no_policy`. SQLite (testes) não suporta RLS/policies: o
-    erro é ignorado com segurança.
-    """
-    for table in tables:
-        try:
-            connection.execute(f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY')
-        except Exception:
-            try:
-                connection.rollback()
-            except Exception:
-                pass
-        try:
-            connection.execute(
-                f"""
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1 FROM pg_policies
-                        WHERE schemaname = current_schema()
-                          AND tablename = '{table}'
-                          AND policyname = 'block_direct_api_access'
-                    ) THEN
-                        EXECUTE 'CREATE POLICY block_direct_api_access ON {table} '
-                            'AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)';
-                    END IF;
-                END $$;
-                """
-            )
-        except Exception:
-            try:
-                connection.rollback()
-            except Exception:
-                pass
-
-
+# A RLS destas cinco tabelas mora em `supabase/migrations/20260827000000_billing_rls.sql`
+# e no par `epi_backend/migrations/028_billing_rls.py` — #309. Até então era
+# aplicada aqui por `_enable_rls`, que rodava em todo boot mas não era
+# migration: não entrava em `app_migrations` e era invisível a qualquer gate
+# derivado de migrations. Não recolocar DDL de RLS neste arquivo: existe gate
+# estático proibindo `ENABLE ROW LEVEL SECURITY` e `CREATE POLICY` em
+# `modules/`, `core/` e `app.py`.
 def ensure_payment_tables(connection):
     connection.executescript(
         '''
@@ -147,7 +108,6 @@ def ensure_payment_tables(connection):
         "CREATE INDEX IF NOT EXISTS idx_payment_plans_plan_key ON payment_plans(plan_key)"
     )
     # Segurança: nega acesso público via PostgREST (RLS sem políticas).
-    _enable_rls(connection, 'payments', 'payment_plans')
 
 
 # Colunas evolutivas das tabelas de assinatura: (tabela, coluna, definição).
@@ -267,7 +227,6 @@ def ensure_subscription_tables(connection):
         '''
     )
     # Segurança: nega acesso público via PostgREST (RLS sem políticas).
-    _enable_rls(connection, 'subscriptions', 'invoices', 'subscription_audit_logs')
 
 
 # ── Config pública (segura para o frontend) ───────────────────────────────────

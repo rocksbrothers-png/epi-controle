@@ -210,11 +210,20 @@ def _classificar_cobertura(declaradas, por_bootstrap, ligadas, com_policy, prese
     RLS numa migration antiga e DROPADO por outra depois. Sem ela apareceria
     como `missing_rls` para sempre.
 
-    NA ETAPA 3 o gate bloqueante exige `known_bootstrap_rls_tables` VAZIO,
-    além de `missing_rls`, `missing_policy` e `unexpected_policy` zerados.
-    Sem essa quarta condição o CI ficaria totalmente verde mantendo cinco
-    tabelas cuja RLS segue fora do versionamento — exatamente o verde
-    incompleto que a #275 existe para eliminar.
+    `tables_without_rls` não é derivado de nada: é o schema vivo menos as
+    tabelas com RLS. Ele existe porque os outros quatro conjuntos têm um
+    buraco em comum — todos falam de tabelas que alguém DECLAROU. Apagar a
+    declaração E a proteção faz a tabela sumir dos quatro ao mesmo tempo, com
+    o CI verde. Foi o que a auditoria da #309 encontrou: remover as chamadas a
+    `_enable_rls` sem acrescentar a migration zeraria `known_bootstrap`,
+    `missing_rls`, `missing_policy` e `unexpected_policy` de uma vez, deixando
+    cinco tabelas desprotegidas. Aqui apagar proteção ACENDE um conjunto em vez
+    de apagar quatro.
+
+    NA ETAPA 3 o gate bloqueante exige os CINCO vazios: `missing_rls`,
+    `missing_policy`, `unexpected_policy`, `known_bootstrap_rls_tables` e
+    `tables_without_rls`. A quarta acopla a #309 ao gate final; a quinta
+    impede que a #309 seja "resolvida" apagando o que ela deveria versionar.
     """
     esperadas = declaradas & presentes
     bootstrap = (por_bootstrap & presentes) - esperadas
@@ -225,6 +234,7 @@ def _classificar_cobertura(declaradas, por_bootstrap, ligadas, com_policy, prese
         'missing_rls': cobertas - ligadas,
         'missing_policy': cobertas - com_policy,
         'unexpected_policy': com_policy - cobertas,
+        'tables_without_rls': presentes - ligadas,
     }
 
 
@@ -264,7 +274,8 @@ def _bootstrap() -> None:
     init_db()
 
 
-def _diagnosticos(bootstrap_fora_de_migration, policies_nao_declaradas) -> list:
+def _diagnosticos(bootstrap_fora_de_migration, policies_nao_declaradas,
+                  tabelas_sem_rls) -> list:
     """Achados que NÃO bloqueiam na etapa 2 — e que mesmo assim são ditos.
 
     Diagnóstico ≠ problema: nada aqui muda o exit code, e é isso que a etapa 2
@@ -290,6 +301,10 @@ def _diagnosticos(bootstrap_fora_de_migration, policies_nao_declaradas) -> list:
         achados.append(
             f'{len(policies_nao_declaradas)} policy(s) que nenhuma migration e '
             f'nenhum `_enable_rls` declaram — ver `unexpected_policy`')
+    if tabelas_sem_rls:
+        achados.append(
+            f'{len(tabelas_sem_rls)} tabela(s) SEM RLS habilitada — ver '
+            f'`tables_without_rls`. Nenhum outro conjunto pega este caso.')
     return achados
 
 
@@ -419,6 +434,10 @@ def main() -> int:
     _conjunto('missing_rls', missing_rls)
     _conjunto('missing_policy', missing_policy)
     _conjunto('unexpected_policy', cobertura['unexpected_policy'])
+    _conjunto('tables_without_rls', cobertura['tables_without_rls'])
+    print('   ↑ o schema vivo menos as tabelas com RLS. Os outros conjuntos só')
+    print('     falam de tabelas DECLARADAS; este fala das que existem. Apagar')
+    print('     proteção acende aqui em vez de sumir de lá.')
 
     # `relrowsecurity` e `pg_policies` são dimensões separadas de propósito:
     # tabela com RLS ligada e NENHUMA policy bloqueia tudo em silêncio, que é
@@ -429,7 +448,8 @@ def main() -> int:
         problemas.append(f'{len(missing_policy)} tabela(s) sem policy')
 
     diagnosticos = _diagnosticos(
-        bootstrap_fora_de_migration, cobertura['unexpected_policy'])
+        bootstrap_fora_de_migration, cobertura['unexpected_policy'],
+        cobertura['tables_without_rls'])
 
     # ── veredito ────────────────────────────────────────────────────────────
     _titulo('VEREDITO')
@@ -438,17 +458,23 @@ def main() -> int:
             print('Nenhum problema. As duas trilhas rodam, são idempotentes, e a RLS')
             print('está efetivamente presente no banco.')
             return 0
+        # "não há tabela sem RLS" era verdade quando `missing_rls` era a única
+        # medida de RLS. Com `tables_without_rls`, virou mentira: os dois
+        # `missing_*` correm sobre as tabelas DECLARADAS, e a sabotagem da #309
+        # imprimiu esta linha com cinco tabelas desprotegidas listadas logo
+        # abaixo. A frase agora afirma só o que os checks bloqueantes cobrem.
         print('As verificações BLOQUEANTES da etapa 2 passaram: as duas trilhas')
-        print('rodam, são idempotentes, e não há tabela sem RLS ou sem policy.')
+        print('rodam, são idempotentes, e toda tabela DECLARADA tem RLS e policy.')
         print()
         print('Mas há DIAGNÓSTICO aberto. Não bloqueia agora; bloqueia na etapa 3:')
         for diagnostico in diagnosticos:
             print(f'  · {diagnostico}')
         print()
-        print('O gate bloqueante da etapa 3 exigirá QUATRO conjuntos vazios:')
-        print('missing_rls, missing_policy, unexpected_policy e')
-        print('known_bootstrap_rls_tables. É a quarta que acopla a #309 ao gate')
-        print('final — sem ela o CI ficaria verde com RLS fora do versionamento.')
+        print('O gate bloqueante da etapa 3 exigirá CINCO conjuntos vazios:')
+        print('missing_rls, missing_policy, unexpected_policy,')
+        print('known_bootstrap_rls_tables e tables_without_rls. A quarta acopla')
+        print('a #309 ao gate final; a quinta impede que a #309 seja resolvida')
+        print('apagando o que ela deveria versionar.')
         return 0
     for problema in problemas:
         print(f'  · {problema}')

@@ -367,6 +367,43 @@ def test_as_tres_origens_de_cobertura_sao_separadas():
     assert resultado['missing_policy'] == set()
 
 
+def test_o_quinto_conjunto_pega_o_que_os_outros_quatro_perdem():
+    """Apagar declaração E proteção some dos quatro conjuntos de uma vez.
+
+    Os outros quatro só falam de tabelas DECLARADAS. Uma tabela que existe,
+    não é declarada por migration nenhuma, não é citada por `_enable_rls` e
+    não tem policy não aparece em `expected`, nem em `known_bootstrap`, nem em
+    `unexpected` — e como `missing_*` correm sobre `cobertas`, também não
+    aparece neles.
+
+    Não é hipótese: a sabotagem da #309 apagou o par de migration e as quatro
+    condições da etapa 3 ficaram verdes com cinco tabelas desprotegidas.
+    `tables_without_rls` é o único que acende.
+    """
+    resultado = _modulo()._classificar_cobertura(
+        declaradas=set(), por_bootstrap=set(),
+        ligadas=set(), com_policy=set(),
+        presentes={'orfa'},
+    )
+    assert resultado['expected_rls_tables'] == set()
+    assert resultado['known_bootstrap_rls_tables'] == set()
+    assert resultado['unexpected_policy'] == set()
+    assert resultado['missing_rls'] == set()
+    assert resultado['missing_policy'] == set()
+    assert resultado['tables_without_rls'] == {'orfa'}, \
+        ('o quinto conjunto deixou de pegar tabela sem RLS — os outros quatro '
+         'não pegam este caso, e o gate da etapa 3 volta a ter o buraco')
+
+
+def test_o_quinto_conjunto_nao_acusa_tabela_protegida():
+    """Sem o complemento, o gate da etapa 3 nunca ficaria verde."""
+    resultado = _modulo()._classificar_cobertura(
+        declaradas={'ok'}, por_bootstrap=set(),
+        ligadas={'ok'}, com_policy={'ok'}, presentes={'ok'},
+    )
+    assert resultado['tables_without_rls'] == set()
+
+
 def test_a_divida_do_bootstrap_nao_vira_cobertura_legitima():
     """Se `known_bootstrap` fosse dobrado em `expected`, a etapa 3 ficaria cega.
 
@@ -394,20 +431,25 @@ def test_o_diagnostico_nomeia_os_dois_achados_nao_bloqueantes():
     passando. Duas mutações escaparam exatamente assim.
     """
     montar = _modulo()._diagnosticos
-    assert montar(set(), set()) == [], 'diagnóstico inventado sem achado nenhum'
+    assert montar(set(), set(), set()) == [], 'diagnóstico inventado sem achado'
 
-    so_bootstrap = montar({'a'}, set())
+    so_bootstrap = montar({'a'}, set(), set())
     assert len(so_bootstrap) == 1
     assert 'known_bootstrap_rls_tables' in so_bootstrap[0], \
         'o achado de RLS fora de migration deixou de ser nomeado'
 
-    so_intrusa = montar(set(), {'b'})
+    so_intrusa = montar(set(), {'b'}, set())
     assert len(so_intrusa) == 1
     assert 'unexpected_policy' in so_intrusa[0], \
         'a policy não declarada deixou de ser nomeada no diagnóstico'
 
-    assert len(montar({'a'}, {'b'})) == 2, \
-        'os dois achados juntos deixaram de ser reportados separadamente'
+    so_sem_rls = montar(set(), set(), {'c'})
+    assert len(so_sem_rls) == 1
+    assert 'tables_without_rls' in so_sem_rls[0], \
+        'a tabela sem RLS deixou de ser nomeada no diagnóstico'
+
+    assert len(montar({'a'}, {'b'}, {'c'})) == 3, \
+        'os três achados juntos deixaram de ser reportados separadamente'
 
 
 def test_o_veredito_de_sucesso_nao_engole_a_divida():
@@ -529,7 +571,8 @@ def test_o_relatorio_publica_conjuntos_e_diferencas():
     script = _script()
     for chave in ('expected_rls_tables', 'known_bootstrap_rls_tables',
                   'tables_with_rls_enabled', 'tables_with_policies',
-                  'missing_rls', 'missing_policy', 'unexpected_policy'):
+                  'missing_rls', 'missing_policy', 'unexpected_policy',
+                  'tables_without_rls'):
         assert f"_conjunto('{chave}'" in script, \
             f'o relatório deixou de PUBLICAR `{chave}` como conjunto — a etapa '
 
@@ -561,13 +604,15 @@ def test_a_etapa_1_ainda_nao_bloqueia():
         missing_rls                = 0
         missing_policy             = 0
         unexpected_policy          = 0
-        known_bootstrap_rls_tables = 0   ← não esquecer esta
+        known_bootstrap_rls_tables = 0   ← acopla a #309 ao gate
+        tables_without_rls         = 0   ← fecha o buraco dos outros quatro
 
-    A quarta é o que acopla a #309 ao gate final. Sem ela o CI ficaria
-    totalmente verde mantendo cinco tabelas cuja RLS segue fora do
-    versionamento de migrations — exatamente o verde incompleto que a #275
-    existe para eliminar. Ela não some do relatório na etapa 2: aparece em
-    conjunto próprio e é repetida no VEREDITO, marcada como diagnóstico.
+    A quarta acopla a #309: sem ela o CI ficaria verde mantendo tabelas cuja
+    RLS segue fora do versionamento. A quinta impede que a #309 seja
+    "resolvida" apagando o que ela deveria versionar — os outros quatro só
+    falam de tabelas DECLARADAS, e apagar declaração e proteção some de todos
+    ao mesmo tempo. Nenhuma delas some do relatório na etapa 2: aparecem em
+    conjunto próprio e são repetidas no VEREDITO, marcadas como diagnóstico.
     """
     assert 'continue-on-error: true' in _passo_de_migrations(), \
         ('o passo de migrations passou a bloquear antes da etapa 2 — se isto '

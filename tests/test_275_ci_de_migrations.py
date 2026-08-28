@@ -1,4 +1,4 @@
-"""O CI de migrations prova as duas trilhas — #275, etapa 1.
+"""O CI de migrations prova as duas trilhas, e agora REPROVA — #275, etapa 3.
 
 O job `PostgreSQL Schema & Multi-Tenant` aplicava os 32 `.sql` contra um banco
 vazio e ficava verde. Estes gates travam o que a etapa 1 estabeleceu, e o
@@ -15,6 +15,22 @@ fixado.
 Leitura sempre por `_codigo`: o diff da etapa 1 é denso em comentário, e
 comentário que satisfaz asserção foi o defeito que a Fase 1 da #271 corrigiu
 em três gates desta mesma frente.
+
+## Etapa 3
+
+O `continue-on-error: true` saiu do passo de migrations e o exit code do
+relatório passou a segurar o job. Os gates que a etapa 3 acrescenta seguem a
+mesma regra do resto do arquivo — medir comportamento, não texto:
+
+- `_problemas_de_cobertura` é exercitada com os cinco conjuntos, um por vez;
+- cada conjunto tem uma MUTAÇÃO que prova que o gate acima o enxerga, e o
+  agregador tem a sua, com controle contra o original;
+- o `pipefail` é sabotado DE VERDADE: o `run:` extraído do workflow roda com
+  um relatório que sai 1, e o controle sem `pipefail` precisa sair 0.
+
+Presença textual de `set -euo pipefail` continua sendo verificada, mas como
+complemento. Sozinha ela prova que a linha existe, não que ela funciona — e a
+etapa 1 já reportou `success` num passo cujo script saiu 1.
 """
 
 import ast
@@ -22,6 +38,7 @@ import importlib.util
 import io
 import pathlib
 import re
+import subprocess
 import tokenize
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -95,12 +112,92 @@ def _workflow() -> str:
     return _yaml_sem_comentarios(WORKFLOW.read_text(encoding='utf-8'))
 
 
+#: O passo mudou de nome na etapa 3 — de "relatório observacional" para
+#: "as duas trilhas, bloqueante". As âncoras vivem aqui para que renomear
+#: quebre um lugar só, e com mensagem em vez de `ValueError`.
+_ANCORA_MIGRATIONS = 'Migrations — as duas trilhas, bloqueante'
+_ANCORA_RUFF = 'Ruff check'
+
+
+def _passo(ancora: str) -> str:
+    """O bloco YAML de um passo, delimitado por INDENTAÇÃO.
+
+    A etapa 3 precisa afirmar em qual passo o `continue-on-error` sobrevive, e
+    a versão anterior fatiava por "até o nome do próximo passo". Isso funciona
+    para um passo do meio e falha para o último do job — o do Ruff é o último,
+    e a fatia vazaria para dentro do job seguinte. Um `continue-on-error`
+    acrescentado ao job de PostgreSQL apareceria como sendo do Ruff.
+    """
+    linhas = _workflow().split('\n')
+    for i, linha in enumerate(linhas):
+        if ancora not in linha or not linha.lstrip().startswith('- name:'):
+            continue
+        recuo = len(linha) - len(linha.lstrip())
+        corpo = [linha]
+        for seguinte in linhas[i + 1:]:
+            if seguinte.strip() and len(seguinte) - len(seguinte.lstrip()) <= recuo:
+                break
+            corpo.append(seguinte)
+        return '\n'.join(corpo)
+    raise AssertionError(
+        f'passo {ancora!r} não encontrado no workflow — se foi renomeado, '
+        f'atualize a âncora: todos os gates do passo dependem dela')
+
+
 def _passo_de_migrations() -> str:
-    """Só o passo da #275 — o job tem outros, e outro `continue-on-error`."""
-    texto = _workflow()
-    inicio = texto.index('Migrations — relatório observacional')
-    fim = texto.index('- name: Upload migration log', inicio)
-    return texto[inicio:fim]
+    """Só o passo da #275 — o job tem outros, e o Ruff tem `continue-on-error`."""
+    return _passo(_ANCORA_MIGRATIONS)
+
+
+def _passo_do_ruff() -> str:
+    """Só o passo do Ruff — território da #948, intocado pela etapa 3."""
+    return _passo(_ANCORA_RUFF)
+
+
+def _run_do_passo() -> str:
+    """O `run:` do passo de migrations, dedentado e executável.
+
+    Extrair do workflow em vez de reescrever à mão é o que faz a sabotagem do
+    `pipefail` medir o passo REAL. Um script copiado no teste provaria que a
+    cópia funciona.
+    """
+    passo = _passo_de_migrations()
+    corpo = passo[passo.index('run: |') + len('run: |'):]
+    linhas = [linha for linha in corpo.split('\n') if linha.strip()]
+    assert linhas, 'o `run:` do passo de migrations ficou vazio'
+    recuo = min(len(linha) - len(linha.lstrip()) for linha in linhas)
+    return '\n'.join(linha[recuo:] for linha in linhas)
+
+
+def _modulo_mutado(velho: str, novo: str):
+    """Carrega o relatório com uma mutação aplicada — e PROVA que ela pegou.
+
+    Sem a asserção de aplicação, uma mutação que não casa com o texto vira
+    "gate passou" quando na verdade nada foi testado. Já aconteceu nesta
+    frente: três gates da etapa 1 passavam por comentário.
+    """
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    assert velho in fonte, f'MUTACAO NAO APLICOU: {velho!r} não está no script'
+    mutada = fonte.replace(velho, novo, 1)
+    assert mutada != fonte, 'MUTACAO NAO APLICOU: texto idêntico após a troca'
+    espaco = {'__name__': 'ci_migrations_report_mutado', '__file__': str(SCRIPT)}
+    exec(compile(mutada, str(SCRIPT), 'exec'), espaco)  # noqa: S102 - mutação controlada
+    return espaco
+
+
+#: Os cinco conjuntos que a etapa 3 exige vazios, e o que basta para sujar
+#: cada um sozinho. `_classificar_cobertura` devolve estes nomes.
+_CINCO = ('missing_rls', 'missing_policy', 'unexpected_policy',
+          'known_bootstrap_rls_tables', 'tables_without_rls')
+
+
+def _cobertura(**sujos) -> dict:
+    """Uma cobertura limpa, com só os conjuntos nomeados não-vazios."""
+    base = {nome: set() for nome in _CINCO}
+    base['expected_rls_tables'] = set()
+    for nome, valor in sujos.items():
+        base[nome] = valor
+    return base
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -160,7 +257,7 @@ def test_os_roles_existem_antes_de_qualquer_migration():
     """Depois do bootstrap não adianta: o `CREATE POLICY` já teria falhado."""
     texto = _workflow()
     assert texto.index('Pré-condições do Supabase') \
-        < texto.index('Migrations — relatório observacional'), \
+        < texto.index(_ANCORA_MIGRATIONS), \
         'o passo dos roles foi parar depois do relatório'
 
 
@@ -422,68 +519,181 @@ def test_a_divida_do_bootstrap_nao_vira_cobertura_legitima():
     assert resultado['known_bootstrap_rls_tables'] == {'so_no_bootstrap'}
 
 
-def test_o_diagnostico_nomeia_os_dois_achados_nao_bloqueantes():
-    """A lista de diagnósticos, exercitada nas quatro combinações.
+def test_os_cinco_conjuntos_sao_bloqueantes():
+    """O coração da etapa 3: cada conjunto SOZINHO reprova.
 
-    Gate da POPULAÇÃO, não do consumo. A versão anterior só verificava que a
-    frase limpa vivia dentro de `if not diagnosticos:` — e esvaziar a lista
-    na origem tornava essa condição trivialmente verdadeira, com os 27 testes
-    passando. Duas mutações escaparam exatamente assim.
+    Funcional, não textual — `_problemas_de_cobertura` é pura justamente para
+    isto. Um por vez porque juntos escondem o que falta: com os cinco sujos,
+    quatro condições vivas e uma morta dão a mesma lista não-vazia.
+
+    Três destes eram diagnóstico na etapa 2, e cada um tem uma sabotagem por
+    trás: `unexpected_policy` foi listada corretamente sob um "Nenhum
+    problema"; `known_bootstrap_rls_tables` é a #309; `tables_without_rls`
+    apareceu quando os outros quatro mediram zero com cinco tabelas nuas.
     """
-    montar = _modulo()._diagnosticos
-    assert montar(set(), set(), set()) == [], 'diagnóstico inventado sem achado'
+    reprovar = _modulo()._problemas_de_cobertura
 
-    so_bootstrap = montar({'a'}, set(), set())
-    assert len(so_bootstrap) == 1
-    assert 'known_bootstrap_rls_tables' in so_bootstrap[0], \
-        'o achado de RLS fora de migration deixou de ser nomeado'
+    assert reprovar(_cobertura()) == [], 'problema inventado sobre cobertura limpa'
 
-    so_intrusa = montar(set(), {'b'}, set())
-    assert len(so_intrusa) == 1
-    assert 'unexpected_policy' in so_intrusa[0], \
-        'a policy não declarada deixou de ser nomeada no diagnóstico'
+    for nome in _CINCO:
+        achados = reprovar(_cobertura(**{nome: {'x'}}))
+        assert len(achados) == 1, \
+            f'`{nome}` sozinho produziu {len(achados)} achados, esperado 1'
+        assert nome in achados[0], \
+            f'o achado de `{nome}` não nomeia o conjunto — quem lê o veredito ' \
+            f'não sabe onde olhar'
 
-    so_sem_rls = montar(set(), set(), {'c'})
-    assert len(so_sem_rls) == 1
-    assert 'tables_without_rls' in so_sem_rls[0], \
-        'a tabela sem RLS deixou de ser nomeada no diagnóstico'
-
-    assert len(montar({'a'}, {'b'}, {'c'})) == 3, \
-        'os três achados juntos deixaram de ser reportados separadamente'
+    todos = reprovar(_cobertura(**{nome: {'x'} for nome in _CINCO}))
+    assert len(todos) == len(_CINCO), \
+        'os cinco sujos deixaram de ser reportados separadamente'
 
 
-def test_o_veredito_de_sucesso_nao_engole_a_divida():
-    """"Nenhum problema" não pode ser a última palavra havendo achado aberto.
+def test_o_gate_dos_cinco_pega_cada_conjunto_neutralizado():
+    """MUTAÇÃO, um conjunto por vez: o gate acima está cego?
 
-    O `_conjunto` já é gatilhado, mas imprime no meio de um relatório de 800
-    linhas. Quem lê só o fim sai com "tudo certo" — e a etapa 3 depende de
-    alguém lembrar que a dívida existe.
+    Para cada um dos cinco, a condição é neutralizada no script e o gate
+    precisa deixar de ver o achado. Um conjunto que continua "reprovando" com
+    a condição morta significa que outra condição o está pegando por acidente
+    — e que remover a certa passaria despercebida.
+    """
+    for nome in _CINCO:
+        espaco = _modulo_mutado(f"if cobertura['{nome}']:",
+                                f"if False and cobertura['{nome}']:")
+        achados = espaco['_problemas_de_cobertura'](_cobertura(**{nome: {'x'}}))
+        assert achados == [], \
+            (f'com a condição de `{nome}` morta o agregador ainda reprovou: '
+             f'`{achados}` — o gate dos cinco não está medindo `{nome}`')
 
-    Duas correções nasceram aqui, e as duas de evidência, não de revisão:
 
-    1. Uma mutação escapou: trocar a condição por `if False:` silenciava o
-       bloco com os 26 testes passando.
-    2. A sabotagem end-to-end plantou uma policy que ninguém declara. O
-       relatório a listou corretamente em `unexpected_policy` e o veredito
-       imprimiu "Nenhum problema" dez linhas abaixo. Medir certo e resumir
-       errado é o mesmo falso verde, mudado de lugar.
+def test_o_gate_dos_cinco_pega_o_agregador_neutralizado():
+    """MUTAÇÃO do agregador inteiro: `return []` com conjunto sujo.
 
-    Por isso a frase limpa agora vive DENTRO do ramo `if not diagnosticos:`,
-    e o exit code continua 0 — diagnóstico não bloqueia na etapa 2.
+    As cinco mutações acima matam uma condição cada. Esta mata a função. Sem
+    ela, um refactor que troque o corpo por uma lista vazia — ou que devolva
+    cedo — passaria pelos cinco gates individuais sem nenhum deles reclamar do
+    caso que interessa: cobertura suja e veredito limpo.
+    """
+    espaco = _modulo_mutado('    return achados', '    return []')
+    for nome in _CINCO:
+        achados = espaco['_problemas_de_cobertura'](_cobertura(**{nome: {'x'}}))
+        assert achados == [], \
+            'MUTACAO NAO APLICOU: o agregador sabotado ainda devolve achados'
+
+    intacto = _modulo()._problemas_de_cobertura
+    assert intacto(_cobertura(missing_rls={'x'})) != [], \
+        ('o agregador ÍNTEGRO devolveu lista vazia com conjunto sujo — a '
+         'sabotagem e o original são indistinguíveis e este gate não prova nada')
+
+
+def test_nenhum_conjunto_de_defeito_fica_so_no_relatorio():
+    """Todo conjunto classificado, menos o de cobertura legítima, reprova.
+
+    Lê as CHAVES que `_problemas_de_cobertura` consome, por AST — não o texto,
+    que docstring e comentário satisfariam. Um sexto conjunto acrescentado a
+    `_classificar_cobertura` passa a exigir decisão explícita: ou ele bloqueia,
+    ou alguém escreve aqui por que não. É a porta pela qual `tables_without_rls`
+    quase não entrou.
+    """
+    modulo = _modulo()
+    classificados = set(
+        modulo._classificar_cobertura(set(), set(), set(), set(), set()))
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    alvo = next(no for no in ast.parse(fonte).body
+                if isinstance(no, ast.FunctionDef)
+                and no.name == '_problemas_de_cobertura')
+    consumidas = {
+        no.slice.value for no in ast.walk(alvo)
+        if isinstance(no, ast.Subscript) and isinstance(no.slice, ast.Constant)
+        and isinstance(no.slice.value, str)
+    }
+    esquecidas = classificados - consumidas - {'expected_rls_tables'}
+    assert not esquecidas, \
+        (f'{sorted(esquecidas)} são classificados e publicados no relatório mas '
+         f'não reprovam: conjunto medido que não bloqueia é o falso verde da '
+         f'etapa 2 sobrevivendo à etapa 3')
+    assert set(_CINCO) <= consumidas, \
+        f'o agregador deixou de consumir {sorted(set(_CINCO) - consumidas)}'
+
+
+def test_o_veredito_limpo_exige_problemas_vazio():
+    """"Nenhum problema" não pode aparecer sobre achado aberto.
+
+    Na etapa 2 a frase vivia dentro de `if not diagnosticos:`, porque havia
+    achado que não bloqueava. Esse ramo acabou: os cinco conjuntos reprovam, e
+    a única condição da frase limpa é `problemas` vazio.
+
+    Duas correções nasceram deste gate, as duas de evidência: uma mutação
+    `if False:` silenciou o bloco com todos os testes verdes, e a sabotagem
+    end-to-end imprimiu "Nenhum problema" dez linhas abaixo de uma policy
+    intrusa listada corretamente.
     """
     script = _script()
+    assert 'diagnostico' not in script.lower(), \
+        ('o vocabulário de diagnóstico não-bloqueante voltou ao relatório — na '
+         'etapa 3 medir e não reprovar é exatamente o que não pode existir')
     sucesso = script[script.index('if not problemas:'):]
-    assert 'if not diagnosticos:' in sucesso, \
-        ('a frase limpa do veredito deixou de ser condicionada aos '
-         'diagnósticos — ela pode voltar a aparecer sobre achado aberto')
-    limpo = sucesso[sucesso.index('if not diagnosticos:'):]
-    limpo = limpo[:limpo.index('return 0')]
+    limpo = sucesso[:sucesso.index('return 0')]
     assert 'Nenhum problema' in limpo, \
-        'a frase limpa saiu de dentro do ramo que exige diagnóstico vazio'
-    assert 'known_bootstrap_rls_tables' in sucesso, \
-        'o veredito deixou de nomear o conjunto onde a dívida está listada'
-    assert 'unexpected_policy' in sucesso, \
-        'o veredito deixou de nomear as policies não declaradas'
+        'a frase limpa saiu de dentro do ramo que exige `problemas` vazio'
+    assert 'return 1' in sucesso, \
+        'o veredito deixou de reprovar quando há problema'
+
+
+def test_erro_impresso_sem_reprovacao_vira_problema():
+    """Invariante da etapa 3: `ERROR:` impresso exige exit code != 0.
+
+    Pura e exercitada nas quatro combinações. O único emissor de hoje já
+    alimenta `problemas` pelo mesmo caminho — esta função existe para o `print`
+    que ainda não foi escrito.
+    """
+    invariante = _modulo()._erro_sem_reprovacao
+    assert invariante([], []) == [], 'problema inventado sem erro impresso'
+    assert invariante([], ['algo']) == [], 'problema inventado sem erro impresso'
+    assert invariante(['psql: ERROR: x'], ['algo']) == [], \
+        'erro COM problema correspondente foi contado duas vezes'
+    solto = invariante(['psql: ERROR: x'], [])
+    assert len(solto) == 1 and 'ERROR:' in solto[0], \
+        ('`ERROR:` impresso sem problema bloqueante deixou de reprovar — o '
+         'relatório sairia 0 mostrando erro na tela')
+
+
+def test_a_saida_do_relatorio_registra_o_que_imprime():
+    """O `_Tee` precisa repassar tudo e reter só as linhas com `ERROR:`.
+
+    Se ele não repassasse, o `| tee` do workflow gravaria um log vazio. Se não
+    retivesse, a invariante acima nunca teria insumo e passaria sempre.
+    """
+    modulo = _modulo()
+    destino = io.StringIO()
+    saida = modulo._Tee(destino)
+    saida.write('linha limpa\n')
+    saida.write('psql:arquivo.sql:12: ERROR: relation does not exist\n')
+    saida.flush()
+
+    assert 'linha limpa' in destino.getvalue(), \
+        'o `_Tee` deixou de repassar para o stdout real: o log do CI ficaria vazio'
+    assert 'ERROR' in destino.getvalue(), 'o `_Tee` engoliu a linha de erro'
+    assert len(saida.com_erro) == 1, \
+        f'o `_Tee` registrou {len(saida.com_erro)} linhas com `ERROR:`, esperado 1'
+    assert 'relation does not exist' in saida.com_erro[0]
+
+
+def test_o_relatorio_instala_o_tee_antes_do_veredito():
+    """A captura tem de envolver o corpo e terminar ANTES do veredito.
+
+    Conferir depois de imprimir "Nenhum problema" seria descobrir a contradição
+    tarde demais para não publicá-la — mede certo, resume errado, que é o falso
+    verde mudado para o rodapé.
+    """
+    script = _script()
+    assert 'redirect_stdout' in script, \
+        'o relatório deixou de capturar a própria saída'
+    corpo = script[script.index('def _relatorio'):]
+    posicao_invariante = corpo.index('_erro_sem_reprovacao')
+    posicao_veredito = corpo.index("_titulo('VEREDITO')")
+    assert posicao_invariante < posicao_veredito, \
+        ('a invariante de `ERROR:` passou a ser conferida depois do veredito — '
+         'o relatório imprimiria "Nenhum problema" e sairia 1 embaixo')
 
 
 def test_o_esperado_e_o_bootstrap_sao_intersectados_com_o_schema_vivo():
@@ -591,32 +801,20 @@ def test_a_cobertura_de_rls_nao_tem_numero_fixo():
 # A etapa 1 é observacional — e este par de gates diz isso em voz alta
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test_a_etapa_1_ainda_nao_bloqueia():
-    """Gate TRANSITÓRIO da etapa observacional da #275.
+def test_o_passo_de_migrations_bloqueia():
+    """O simétrico que o gate transitório da etapa 1 encomendou.
 
-    DEVE SER SUBSTITUÍDO NA ETAPA 3 pelo simétrico — o que exige o
-    `continue-on-error` **ausente**. Ele existe para que ninguém adiante a
-    etapa 3 antes de a etapa 2 zerar os defeitos reais, e não para registrar
-    o `continue-on-error` como requisito permanente.
+    Ele afirmava `continue-on-error: true` PRESENTE, para que ninguém
+    adiantasse a etapa 3 antes de a etapa 2 zerar os defeitos reais. Zeraram;
+    a #309 fechou a última; o gate inverte.
 
-    QUANDO A ETAPA 3 CHEGAR, o gate bloqueante exige QUATRO condições:
-
-        missing_rls                = 0
-        missing_policy             = 0
-        unexpected_policy          = 0
-        known_bootstrap_rls_tables = 0   ← acopla a #309 ao gate
-        tables_without_rls         = 0   ← fecha o buraco dos outros quatro
-
-    A quarta acopla a #309: sem ela o CI ficaria verde mantendo tabelas cuja
-    RLS segue fora do versionamento. A quinta impede que a #309 seja
-    "resolvida" apagando o que ela deveria versionar — os outros quatro só
-    falam de tabelas DECLARADAS, e apagar declaração e proteção some de todos
-    ao mesmo tempo. Nenhuma delas some do relatório na etapa 2: aparecem em
-    conjunto próprio e são repetidas no VEREDITO, marcadas como diagnóstico.
+    Afirmar ausência aqui é seguro porque a fatia é do passo, não do arquivo:
+    `_passo` delimita por indentação, e o `continue-on-error` do Ruff — que
+    permanece — vive fora dela.
     """
-    assert 'continue-on-error: true' in _passo_de_migrations(), \
-        ('o passo de migrations passou a bloquear antes da etapa 2 — se isto '
-         'é intencional, é a etapa 3, e este gate deve ser invertido')
+    assert 'continue-on-error' not in _passo_de_migrations(), \
+        ('o passo de migrations voltou a ser não-bloqueante: a etapa 3 da #275 '
+         'existe para remover exatamente esta linha')
 
 
 def test_o_script_tem_exit_code_real_desde_a_etapa_1():
@@ -634,26 +832,71 @@ def test_o_script_tem_exit_code_real_desde_a_etapa_1():
         'o código de saída do relatório deixou de chegar ao processo'
 
 
-def test_o_exit_code_do_relatorio_sobrevive_ao_pipe():
-    """O `| tee` do passo devolveria 0 mesmo com o relatório reprovando.
+def test_o_passo_declara_euo_pipefail():
+    """Leitura do texto. Sozinha não prova nada — ver o gate seguinte.
 
-    O shell padrão do Actions é `bash -e {0}`, e numa pipeline o status é o do
-    ÚLTIMO comando. Sem `set -o pipefail`, o `tee` mascara o código de saída —
-    e a etapa 3 removeria o `continue-on-error` para descobrir que o job
-    continua verde. É o defeito do passo antigo (`$?` ecoado, `cat … || true`)
-    reproduzido uma camada acima, e foi assim que ele apareceu: a primeira
-    execução da etapa 1 reportou `success` num passo cujo script saiu 1.
+    A versão da etapa 1 era condicional (`if '|' in passo`). Passo sem pipe
+    passava sem asserção nenhuma, o que é uma forma silenciosa de gate
+    desligado. Aqui é incondicional: o passo TEM pipe e precisa do `pipefail`.
     """
     passo = _passo_de_migrations()
-    if '|' in passo:
-        assert 'set -o pipefail' in passo, \
-            ('o passo canaliza a saída sem `pipefail`: o exit code do '
-             'relatório é descartado e a etapa 3 não teria efeito')
+    assert '| tee' in passo, \
+        'o passo deixou de canalizar a saída — este gate perdeu o objeto'
+    assert 'set -euo pipefail' in passo, \
+        ('o passo canaliza a saída sem `set -euo pipefail`: o exit code do '
+         'relatório é descartado e remover o `continue-on-error` não teria '
+         'efeito nenhum')
+
+
+def test_o_pipe_do_passo_preserva_exit_code_de_verdade(tmp_path):
+    """SABOTAGEM REAL: roda a pipeline do passo com um relatório que sai 1.
+
+    Presença textual de `set -euo pipefail` prova que a linha existe, não que
+    ela funciona. Este gate executa o `run:` EXTRAÍDO DO WORKFLOW, trocando só
+    a chamada do relatório por um processo que sai 1, e exige que o passo
+    inteiro saia diferente de zero.
+
+    O controle é a metade que importa: sem `pipefail`, o mesmo script precisa
+    sair 0. Se saísse != 0 nos dois casos, o gate estaria medindo outra coisa e
+    aprovaria um passo sem `pipefail`.
+
+    Foi este defeito, uma camada acima, que quase passou na etapa 1: a primeira
+    execução reportou `success` num passo cujo script saiu 1.
+    """
+    original = _run_do_passo()
+    reprovando = original.replace(
+        'python scripts/ci_migrations_report.py',
+        "python3 -c 'import sys; print(\"reprovando\"); sys.exit(1)'")
+    assert reprovando != original, \
+        'MUTACAO NAO APLICOU: a chamada do relatório mudou de forma no workflow'
+    reprovando = reprovando.replace('/tmp/mig-logs', str(tmp_path / 'logs'))
+
+    com = subprocess.run(['bash', '-c', reprovando],
+                         capture_output=True, text=True)
+    assert com.returncode != 0, \
+        (f'o passo saiu {com.returncode} com o relatório reprovando: o `tee` '
+         f'está engolindo o exit code e o job ficaria verde')
+
+    sem = reprovando.replace('set -euo pipefail', 'set -eu')
+    assert sem != reprovando, 'MUTACAO NAO APLICOU: `set -euo pipefail` mudou de forma'
+    controle = subprocess.run(['bash', '-c', sem], capture_output=True, text=True)
+    assert controle.returncode == 0, \
+        (f'sem `pipefail` o passo saiu {controle.returncode}, não 0: a '
+         f'sabotagem não distingue os dois casos e este gate não prova nada')
 
 
 def test_o_continue_on_error_do_ruff_nao_foi_tocado():
-    """Território da #948. Uma busca por `continue-on-error` acha os dois."""
+    """Território da #948. Sobrou UM, e o gate diz ONDE — não quantos.
+
+    Contagem sozinha aprova a troca: remover o do Ruff e devolver o das
+    migrations mantém o total em 1 e desfaz a etapa 3 inteira. É a mesma lição
+    de medir o ponto de chamada em vez da existência da ferramenta, que já
+    custou dois gates cegos nesta frente.
+    """
     workflow = _workflow()
-    assert workflow.count('continue-on-error: true') == 2, \
-        ('o número de `continue-on-error` mudou — o do Ruff é da fase 2 da '
-         '#948 e não deve ser removido junto com o das migrations')
+    assert workflow.count('continue-on-error: true') == 1, \
+        ('o número de `continue-on-error` no workflow mudou — a etapa 3 deixa '
+         'exatamente um, o do Ruff')
+    assert 'continue-on-error: true' in _passo_do_ruff(), \
+        ('o `continue-on-error` sobrevivente não é o do Ruff — ele é da fase 2 '
+         'da #948 e não pode ser trocado pelo das migrations')

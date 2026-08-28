@@ -257,39 +257,38 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ETAPA 1 da #275 — OBSERVAÇÃO. Deliberadamente ainda NÃO bloqueante.
+      # ETAPA 3 da #275 — BLOQUEANTE. O `continue-on-error` saiu daqui.
       #
-      # O passo anterior aplicava os 32 `.sql` contra um banco VAZIO e ficava
-      # verde por três motivos independentes: este `continue-on-error`, o
-      # `set +e`, e — o que quase ninguém nota — o `$?` de cada `psql` ser
-      # apenas ecoado no log, nunca acumulado, com o passo terminando em
-      # `cat … || true`. Remover só o `continue-on-error` não teria mudado nada.
+      # O passo original aplicava os 32 `.sql` contra um banco VAZIO e ficava
+      # verde por três motivos independentes: o `continue-on-error`, o `set +e`,
+      # e — o que quase ninguém nota — o `$?` de cada `psql` ser apenas ecoado
+      # no log, nunca acumulado, com o passo terminando em `cat … || true`.
+      # Remover só o `continue-on-error` não teria mudado nada. As etapas 1 e 2
+      # existiram para que, aqui, remover essa linha tivesse efeito real.
       #
       # Pior que as 9 que falhavam: 18 PASSAVAM SEM FAZER NADA. Elas guardam
       # cada bloco com `CONTINUE WHEN NOT EXISTS (information_schema.tables)`,
       # e contra banco vazio pulam tudo com sucesso. São as de RLS.
       #
-      # O schema-base agora vem dos `ensure_*` do bootstrap real — nunca de um
+      # O schema-base vem dos `ensure_*` do bootstrap real — nunca de um
       # `base_schema.sql` mantido à parte, que divergiria em silêncio (#238).
       # `run_pending_migrations` NÃO cria schema: valida a trilha operacional
       # depois que a base existe.
       #
-      # O script sai com código != 0 quando algo falha, desde já. Quem segura
-      # o job é este `continue-on-error`, não uma mentira no script — assim a
-      # etapa 3 é literalmente remover esta linha.
-      - name: Migrations — relatório observacional (#275 etapa 1)
-        continue-on-error: true
+      # O `continue-on-error` do Ruff (job `Lint`) é da fase 2 da #948 e NÃO
+      # foi tocado. Um gate confere que o sobrevivente é aquele, não este.
+      - name: Migrations — as duas trilhas, bloqueante (#275 etapa 3)
         env:
           DATABASE_URL: postgresql://epi:epi@localhost:5432/epi_ci
         run: |
-          # `set -o pipefail` não é estilo. O shell padrão do Actions é
-          # `bash -e {0}`, e numa pipeline o status é o do ÚLTIMO comando: sem
-          # isto, o `tee` devolve 0 e o exit code do relatório vai para o lixo.
-          # É o MESMO defeito que esta issue existe para matar — o passo antigo
-          # ecoava o `$?` de cada psql e terminava em `cat … || true` — só que
-          # uma camada acima. Sem `pipefail`, a etapa 3 removeria o
-          # `continue-on-error` e o job continuaria verde.
-          set -o pipefail
+          # `pipefail` não é estilo. O shell padrão do Actions é `bash -e {0}`,
+          # e numa pipeline o status é o do ÚLTIMO comando: sem isto, o `tee`
+          # devolve 0 e o exit code do relatório vai para o lixo. É o MESMO
+          # defeito que esta issue existe para matar — o passo antigo ecoava o
+          # `$?` de cada psql e terminava em `cat … || true` — só que uma camada
+          # acima. Sem `pipefail`, tirar o `continue-on-error` não muda nada, e
+          # um gate roda esta pipeline de verdade para provar que muda.
+          set -euo pipefail
           mkdir -p /tmp/mig-logs
           python scripts/ci_migrations_report.py 2>&1 | tee /tmp/mig-logs/relatorio.txt
 

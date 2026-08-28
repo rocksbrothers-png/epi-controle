@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Relatório observacional do CI de migrations — #275, etapa 1.
+"""Relatório bloqueante do CI de migrations — #275, etapa 3.
 
 O job `PostgreSQL Schema & Multi-Tenant` aplicava os 32 `.sql` contra um banco
 **vazio** e ficava verde de qualquer jeito. Duas coisas se escondiam ali:
@@ -25,13 +25,34 @@ o que existe em `pg_policies` e em `pg_class.relrowsecurity` no fim.
 existe. Acoplar os dois conceitos plantaria no CI a mesma confusão que a #275
 existe para desfazer.
 
-## Etapa 1 é observacional — mas o exit code é real
+## Etapa 3: o relatório passou a reprovar
 
-Este script sai com código != 0 quando algo falha, desde já. Quem segura o job
-é o `continue-on-error: true` no workflow, não uma mentira aqui dentro. Assim a
-etapa 3 é literalmente remover aquela linha — e não descobrir, na hora, que o
-exit code nunca existiu (que é exatamente o defeito do passo antigo, onde o
-`$?` de cada `psql` só era ecoado no log).
+O `continue-on-error: true` saiu do passo. O exit code deste script — real
+desde a etapa 1, justamente para que a etapa 3 fosse remover uma linha e não
+descobrir na hora que ele nunca existiu — passa a segurar o job.
+
+Cinco conjuntos reprovam, e `_problemas_de_cobertura` é a fonte única deles:
+
+    missing_rls                 tabela declarada, RLS desligada
+    missing_policy              tabela declarada, RLS ligada, zero policies
+    unexpected_policy           policy que nenhuma declaração explica
+    known_bootstrap_rls_tables  RLS fora de migration versionada (#309)
+    tables_without_rls          tabela do schema vivo sem RLS
+
+Os três últimos eram DIAGNÓSTICO na etapa 2: impressos, contados, sem efeito no
+exit code. O ramo "não bloqueia agora" deixou de existir.
+
+## `ERROR:` impresso exige reprovação
+
+Toda a saída passa por `_Tee`, que registra as linhas com `ERROR:`. Se alguma
+foi impressa e `problemas` está vazio, a própria ausência vira problema. A
+invariante é verificada em execução, não afirmada por leitura do código — e
+por isso vale para um `print` que ainda não existe.
+
+Ela cobre o que ESTE script imprime. Não cobre erro de PostgreSQL capturado e
+engolido dentro do bootstrap: esses nascem no servidor, morrem num `except` em
+Python e só aparecem no log do container, fora do alcance deste processo.
+Medi-los é a #315, não a #275.
 
 ## O observador não compartilha maquinário com o observado
 
@@ -43,6 +64,8 @@ deveria encontrar.
 from __future__ import annotations
 
 import ast
+import contextlib
+import io
 import os
 import re
 import subprocess
@@ -78,6 +101,10 @@ _TEM_RLS = re.compile(r'ENABLE ROW LEVEL SECURITY|CREATE POLICY', re.I)
 #: corte de 120 e a mensagem some antes no repositório de nome mais longo.
 #: Truncar a MENSAGEM, não a linha, faz os dois relatórios coincidirem.
 _PREFIXO_PSQL = re.compile(r'^psql:.*?:(\d+):\s*')
+
+#: `ERROR:` como o `psql` o emite. Nenhuma linha assim pode chegar ao relatório
+#: sem problema bloqueante correspondente — ver `_erro_sem_reprovacao`.
+_LINHA_DE_ERRO = re.compile(r'ERROR:')
 
 
 def _conexao_de_observacao():
@@ -274,38 +301,98 @@ def _bootstrap() -> None:
     init_db()
 
 
-def _diagnosticos(bootstrap_fora_de_migration, policies_nao_declaradas,
-                  tabelas_sem_rls) -> list:
-    """Achados que NÃO bloqueiam na etapa 2 — e que mesmo assim são ditos.
+def _problemas_de_cobertura(cobertura: dict) -> list:
+    """Os CINCO conjuntos que reprovam. Fonte única do veredito e do exit code.
 
-    Diagnóstico ≠ problema: nada aqui muda o exit code, e é isso que a etapa 2
-    combinou. Mas o veredito precisa NOMEÁ-LOS, senão "Nenhum problema"
-    aparece sobre achado aberto. Detector que mede certo e resume errado é o
-    mesmo falso verde, mudado para o rodapé.
+    Antes eram dois lugares: dois `if` soltos no corpo do relatório para
+    `missing_rls` e `missing_policy`, e `_diagnosticos()` para os outros três —
+    que imprimiam e não reprovavam. Etapa 3 junta os cinco aqui.
 
-    Não é hipótese: a sabotagem end-to-end da etapa 2 plantou uma policy que
-    ninguém declara, o relatório a listou corretamente em `unexpected_policy`,
-    e o veredito imprimiu "Nenhum problema" dez linhas abaixo.
+    Fonte única porque o gate precisa exercitar cada condição SOZINHA, e gate
+    que lê texto é exatamente o defeito que a #275 existe para matar. Pura pelo
+    mesmo motivo: as cinco combinações rodam sem PostgreSQL.
 
-    Pura para que o gate exercite as quatro combinações sem PostgreSQL. Uma
-    versão anterior deste gate cobria só o CONSUMO da lista, e esvaziá-la na
-    origem passava com todos os testes verdes.
+    Por que os três últimos deixaram de ser diagnóstico:
+
+    · `unexpected_policy` — a sabotagem end-to-end da etapa 2 plantou uma
+      policy que ninguém declara, o relatório a listou corretamente, e o
+      veredito imprimiu "Nenhum problema" dez linhas abaixo.
+    · `known_bootstrap_rls_tables` — sem ele o CI ficaria verde mantendo RLS
+      fora do versionamento, que é a #309 inteira.
+    · `tables_without_rls` — sem ele a #309 poderia ser "resolvida" apagando o
+      que deveria versionar: os outros quatro só falam de tabelas DECLARADAS, e
+      apagar declaração e proteção junto some de todos ao mesmo tempo. A
+      sabotagem da #309 mediu os quatro em zero com cinco tabelas nuas.
+
+    Cada linha nomeia o conjunto do relatório, para quem lê o veredito saber
+    onde olhar em vez de recontar.
     """
     achados = []
-    if bootstrap_fora_de_migration:
+    if cobertura['missing_rls']:
         achados.append(
-            f'{len(bootstrap_fora_de_migration)} tabela(s) com RLS criada pelo '
-            f'bootstrap fora de migration versionada (#309) — ver '
+            f"{len(cobertura['missing_rls'])} tabela(s) declarada(s) sem RLS "
+            f'habilitada — ver `missing_rls`')
+    if cobertura['missing_policy']:
+        achados.append(
+            f"{len(cobertura['missing_policy'])} tabela(s) declarada(s) sem "
+            f'policy — ver `missing_policy`')
+    if cobertura['unexpected_policy']:
+        achados.append(
+            f"{len(cobertura['unexpected_policy'])} policy(s) que nenhuma "
+            f'migration e nenhum `_enable_rls` declaram — ver '
+            f'`unexpected_policy`')
+    if cobertura['known_bootstrap_rls_tables']:
+        achados.append(
+            f"{len(cobertura['known_bootstrap_rls_tables'])} tabela(s) com RLS "
+            f'criada pelo bootstrap fora de migration versionada (#309) — ver '
             f'`known_bootstrap_rls_tables`')
-    if policies_nao_declaradas:
+    if cobertura['tables_without_rls']:
         achados.append(
-            f'{len(policies_nao_declaradas)} policy(s) que nenhuma migration e '
-            f'nenhum `_enable_rls` declaram — ver `unexpected_policy`')
-    if tabelas_sem_rls:
-        achados.append(
-            f'{len(tabelas_sem_rls)} tabela(s) SEM RLS habilitada — ver '
-            f'`tables_without_rls`. Nenhum outro conjunto pega este caso.')
+            f"{len(cobertura['tables_without_rls'])} tabela(s) do schema vivo "
+            f'SEM RLS habilitada — ver `tables_without_rls`. Nenhum dos outros '
+            f'quatro pega este caso.')
     return achados
+
+
+class _Tee(io.TextIOBase):
+    """Escreve no stdout real e REGISTRA as linhas que carregam `ERROR:`.
+
+    O veredito consulta o registro; não relê o próprio stdout. É o que faz a
+    invariante valer para qualquer `print` do relatório — inclusive um que
+    ainda não existe — em vez de valer para os pontos que eu conferi à mão.
+    """
+
+    def __init__(self, destino):
+        self._destino = destino
+        self.com_erro = []
+
+    def write(self, texto: str) -> int:
+        for linha in texto.splitlines():
+            if _LINHA_DE_ERRO.search(linha):
+                self.com_erro.append(linha.strip())
+        return self._destino.write(texto)
+
+    def flush(self) -> None:
+        self._destino.flush()
+
+
+def _erro_sem_reprovacao(linhas_com_erro: list, problemas: list) -> list:
+    """Invariante da etapa 3: `ERROR:` impresso exige exit code != 0.
+
+    Hoje o único emissor é `_aplicar_sql`, e ele já alimenta `problemas` pelo
+    mesmo caminho. Esta função existe para o caso que ainda não aconteceu: um
+    `print` novo que mostra o erro e deixa o job verde. Foi assim, uma camada
+    acima, que a etapa 1 quase passou — `$?` ecoado no log e `cat … || true`.
+
+    NÃO cobre erro de PostgreSQL capturado e engolido dentro do bootstrap: ver
+    #315. Esses não passam por este processo e afirmar o contrário seria vender
+    cobertura que não existe.
+    """
+    if problemas or not linhas_com_erro:
+        return []
+    return [(f'{len(linhas_com_erro)} linha(s) `ERROR:` impressa(s) sem '
+             f'problema bloqueante correspondente — o relatório sairia 0 '
+             f'mostrando erro')]
 
 
 def _mensagem_de_falha(stderr: str) -> str:
@@ -351,9 +438,21 @@ def _aplicar_sql(passagem: int) -> list:
 
 
 def main() -> int:
+    """Instala o `_Tee` e roda o relatório dentro dele.
+
+    A captura precisa envolver o corpo INTEIRO e terminar antes do veredito:
+    conferir depois de imprimir "Nenhum problema" seria descobrir a
+    contradição tarde demais para não publicá-la.
+    """
+    saida = _Tee(sys.stdout)
+    with contextlib.redirect_stdout(saida):
+        return _relatorio(saida)
+
+
+def _relatorio(saida: _Tee) -> int:
     problemas = []
 
-    _titulo('RELATÓRIO DE MIGRATIONS — #275 etapa 1 (observacional)')
+    _titulo('RELATÓRIO DE MIGRATIONS — #275 etapa 3 (bloqueante)')
 
     conexao = _conexao_de_observacao()
     antes_de_tudo = _tabelas(conexao)
@@ -426,7 +525,7 @@ def main() -> int:
     print('   ↑ RLS criada pelo BOOTSTRAP, fora de migration versionada (#309).')
     print('     Não é policy intrusa — e também não é cobertura legítima: é')
     print('     dívida. Fica aqui, contada e nomeada, em vez de sumir dentro')
-    print('     de expected_rls_tables. A etapa 3 exige este conjunto VAZIO.')
+    print('     de expected_rls_tables. Desde a etapa 3, VAZIO é obrigatório.')
     print()
     _conjunto('tables_with_rls_enabled', ligadas)
     _conjunto('tables_with_policies', com_policy)
@@ -442,46 +541,20 @@ def main() -> int:
     # `relrowsecurity` e `pg_policies` são dimensões separadas de propósito:
     # tabela com RLS ligada e NENHUMA policy bloqueia tudo em silêncio, que é
     # pior do que nenhuma das duas. Contar só policies não distingue os casos.
-    if missing_rls:
-        problemas.append(f'{len(missing_rls)} tabela(s) sem RLS habilitada')
-    if missing_policy:
-        problemas.append(f'{len(missing_policy)} tabela(s) sem policy')
-
-    diagnosticos = _diagnosticos(
-        bootstrap_fora_de_migration, cobertura['unexpected_policy'],
-        cobertura['tables_without_rls'])
+    problemas.extend(_problemas_de_cobertura(cobertura))
+    problemas.extend(_erro_sem_reprovacao(saida.com_erro, problemas))
 
     # ── veredito ────────────────────────────────────────────────────────────
     _titulo('VEREDITO')
     if not problemas:
-        if not diagnosticos:
-            print('Nenhum problema. As duas trilhas rodam, são idempotentes, e a RLS')
-            print('está efetivamente presente no banco.')
-            return 0
-        # "não há tabela sem RLS" era verdade quando `missing_rls` era a única
-        # medida de RLS. Com `tables_without_rls`, virou mentira: os dois
-        # `missing_*` correm sobre as tabelas DECLARADAS, e a sabotagem da #309
-        # imprimiu esta linha com cinco tabelas desprotegidas listadas logo
-        # abaixo. A frase agora afirma só o que os checks bloqueantes cobrem.
-        print('As verificações BLOQUEANTES da etapa 2 passaram: as duas trilhas')
-        print('rodam, são idempotentes, e toda tabela DECLARADA tem RLS e policy.')
-        print()
-        print('Mas há DIAGNÓSTICO aberto. Não bloqueia agora; bloqueia na etapa 3:')
-        for diagnostico in diagnosticos:
-            print(f'  · {diagnostico}')
-        print()
-        print('O gate bloqueante da etapa 3 exigirá CINCO conjuntos vazios:')
-        print('missing_rls, missing_policy, unexpected_policy,')
-        print('known_bootstrap_rls_tables e tables_without_rls. A quarta acopla')
-        print('a #309 ao gate final; a quinta impede que a #309 seja resolvida')
-        print('apagando o que ela deveria versionar.')
+        print('Nenhum problema. As duas trilhas rodam, são idempotentes, e a RLS')
+        print('está efetivamente presente no banco.')
         return 0
     for problema in problemas:
         print(f'  · {problema}')
     print()
-    print('ETAPA 1 É OBSERVACIONAL: o `continue-on-error` do workflow segura o')
-    print('job. Estes números são o insumo da etapa 2 — cada falha vira fatia')
-    print('própria. Nada é corrigido aqui.')
+    print('O passo de migrations BLOQUEIA desde a etapa 3 da #275. Sem')
+    print('`continue-on-error`, este código de saída reprova o job.')
     return 1
 
 

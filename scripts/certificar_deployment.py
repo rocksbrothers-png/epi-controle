@@ -94,13 +94,48 @@ só apareceram quando os serviços foram aquecidos antes:
   a requisição ter chegado à aplicação. O mesmo token saiu "aceito" numa leitura
   (503) e "recusado" na seguinte (403): não-determinismo sobre um fato que não é.
 
-Daí a separação. O **preflight** só responde "a aplicação acordou?", com timeout
-generoso e teto duro. O **smoke funcional** roda depois, com `TIMEOUT = 20`
-inalterado — dar mais tempo para tudo transformaria cada checagem funcional numa
-espera longa e mascararia lentidão real de endpoint.
+Daí a separação. O **preflight** só responde "a aplicação está PRONTA?". O
+**smoke funcional** roda depois, com `TIMEOUT = 20` inalterado — dar mais tempo
+para tudo transformaria cada checagem funcional numa espera longa e mascararia
+lentidão real de endpoint.
 
-O preflight NÃO é retry: são no máximo duas tentativas, e só o veredito
-"ainda não pronta" consome a segunda.
+## Por que "duas tentativas" não bastava — evidência de 03/09/2026
+
+A primeira versão do preflight fazia duas tentativas de 60 s e chamava isso de
+teto de 120 s. Contra os dois deployments de produção ela reprovou assim:
+
+    preflight 1/2: HTTP 503 em 32.5s → nao_pronta
+    preflight 2/2: HTTP 503 em  0.2s → nao_pronta
+
+Os 0,2 s da segunda tentativa denunciam o erro de projeto. **O 503 não vem do
+gateway: vem da própria aplicação.** `_require_bootstrap_ready` (`app.py`)
+responde `DB_BOOTSTRAP_NOT_READY` a toda rota `/api/` não isenta enquanto
+`state['ready']` for falso — e `ready` só vira verdadeiro quando o runner de
+migrations termina. Nos logs de produção o `ensure_*` levou de ~50 s a mais de
+90 s, sobre um cold start de contêiner de ~32 s.
+
+Ou seja: "2 × 60 s" era orçamento de TIMEOUT, não de relógio. Uma resposta 503
+imediata não consome timeout nenhum, então as duas tentativas coladas gastaram
+32,6 s de espera real contra uma readiness de ~80 s a ~120 s. O contrato
+classificava certo e nunca poderia passar.
+
+## O contrato atual: amostragem periódica com deadline absoluto
+
+O preflight sonda `/api/units/selectable` a cada `PREFLIGHT_INTERVALO`, até
+`PREFLIGHT_DEADLINE` de **relógio monotônico**, com cada requisição limitada a
+`PREFLIGHT_TIMEOUT`. Não é retry nem backoff: é esperar uma condição que se
+resolve sozinha, com teto.
+
+`/health` **não** serve como sonda: ele devolve 200 incondicionalmente durante o
+boot (`runtime_probe_response` responde antes de olhar `ready`), que é como o
+health check da plataforma mantém o serviço roteável enquanto o schema ainda
+sobe. Sondar `/health` diria "pronta" em 32 s e jogaria o smoke funcional contra
+503 — o mesmo falso verde que esta fase existe para eliminar. A sonda tem de ser
+a superfície real.
+
+O deadline não é permissão para esconder bootstrap lento: o relatório registra
+`time_to_ready` por deployment. Se ele crescer, isso é evidência operacional
+própria, não ruído a absorver.
 """
 
 from __future__ import annotations
@@ -116,13 +151,19 @@ import urllib.request
 #: aumentar isto globalmente esconderia o defeito em vez de medi-lo.
 TIMEOUT = 20
 
-#: Timeout do PREFLIGHT de disponibilidade, só dele. Dimensionado acima do
-#: cold start medido (46 s no corporativo) — 45 s nasceria abaixo da evidência.
+#: Timeout de CADA requisição do preflight, só dela. Dimensionado acima do cold
+#: start medido (46 s no corporativo) — 45 s nasceria abaixo da evidência.
 PREFLIGHT_TIMEOUT = 60
 
-#: Teto duro de tentativas por deployment: 2 × 60 s = 120 s. Não é backoff nem
-#: laço; é uma repetição controlada.
-PREFLIGHT_TENTATIVAS = 2
+#: Orçamento ABSOLUTO de relógio por deployment, medido em `time.monotonic()`.
+#: Não é a soma dos timeouts das requisições: um 503 respondido em 0,2 s não
+#: consome timeout nenhum, e foi assim que "2 × 60 s" virou 32,6 s de espera
+#: real contra um bootstrap que precisa de ~80 s a ~120 s.
+PREFLIGHT_DEADLINE = 180
+
+#: Intervalo entre sondagens. O preflight não é retry nem backoff: é amostragem
+#: periódica de uma condição que se resolve sozinha (`state['ready']`).
+PREFLIGHT_INTERVALO = 5
 
 #: Vereditos do preflight. Existem como constantes para o gate exercitar a
 #: classificação sem rede.
@@ -144,10 +185,13 @@ def _classificar_preflight(status: int) -> str:
                camada de autenticação, portanto está de pé
     · 404      respondeu, mas `/api/units/selectable` faz parte do contrato
                esperado: rota ausente é deployment errado, não indisponível.
-               Falha imediata, sem segunda tentativa — repetir não conserta
+               Falha imediata, sem nova sondagem — repetir não conserta
                contrato
-    · 5xx      gateway ou aplicação indisponível: ainda subindo
-    · 0        timeout ou erro de socket: nem resposta houve
+    · 5xx      ainda não pronta. Inclui o 503 do PRÓPRIO backend: enquanto
+               `state['ready']` é falso, `_require_bootstrap_ready` devolve
+               `DB_BOOTSTRAP_NOT_READY` em toda rota `/api/` não isenta.
+               Segue sondando até o deadline
+    · 0        timeout ou erro de socket: nem resposta houve. Idem
 
     Demais 4xx (400, 429, …) contam como pronta pelo mesmo critério de
     401/403: são resposta deliberada da aplicação. O smoke funcional julga.
@@ -211,8 +255,12 @@ class Resultado:
         self.ambiente = ambiente
         self.checagens: list[tuple[str, bool, str]] = []
         self.pulado = False
-        #: (numero, status, segundos, veredito) de cada tentativa do preflight.
+        #: (numero, status, segundos, veredito) de cada sondagem do preflight.
         self.preflight: list[tuple[int, int, float, str]] = []
+        #: Relógio absoluto do preflight inteiro. É evidência operacional por
+        #: si só: se crescer, o bootstrap está degradando, e o deadline não
+        #: pode servir para esconder isso.
+        self.time_to_ready: float = 0.0
         #: Indisponibilidade NÃO é divergência de contrato. O relatório separa
         #: as duas porque a ação do operador é diferente em cada caso.
         self.nao_pronta = False
@@ -274,25 +322,48 @@ def _unidade_para_classificar(corpo: dict):
     return None
 
 
-def _preflight(raiz: str, token: str) -> tuple[str, list]:
-    """Fase 1: espera a aplicação acordar. Somente GET, sem escrita.
+def _preflight(raiz: str, token: str) -> tuple[str, list, float]:
+    """Fase 1: espera a aplicação ficar PRONTA. Somente GET, sem escrita.
 
-    Devolve o veredito e o registro cronometrado de cada tentativa. Só o
-    veredito `NAO_PRONTA` consome a segunda tentativa: `CONTRATO_INVALIDO`
-    para de imediato, porque repetir não conserta rota ausente.
+    Amostragem periódica com deadline absoluto. A pergunta que governa a parada
+    não é "quantas tentativas já fizemos" e sim "quanto tempo de RELÓGIO já
+    esperamos" — contar tentativas foi o que fez a versão anterior desistir em
+    32,6 s de um bootstrap de ~80 s, porque um 503 imediato não gasta timeout.
+
+    Só `NAO_PRONTA` continua sondando. `CONTRATO_INVALIDO` (404) para na hora:
+    repetir não conserta rota ausente. `PRONTA`/`PRONTA_AUTH_RECUSADA` param
+    porque a resposta já é da aplicação.
+
+    Devolve o veredito final, o registro cronometrado de cada sondagem e o
+    `time_to_ready` total.
     """
     tentativas: list[tuple[int, int, float, str]] = []
+    inicio_total = time.monotonic()
     veredito = NAO_PRONTA
-    for numero in range(1, PREFLIGHT_TENTATIVAS + 1):
+    numero = 0
+
+    while True:
+        numero += 1
         inicio = time.monotonic()
         status, _, _ = _get(raiz + SONDAS[0][0], token,
                             timeout=PREFLIGHT_TIMEOUT)
         decorrido = time.monotonic() - inicio
         veredito = _classificar_preflight(status)
         tentativas.append((numero, status, decorrido, veredito))
+
         if veredito != NAO_PRONTA:
             break
-    return veredito, tentativas
+
+        # Deadline ABSOLUTO: nenhuma sondagem nova começa depois dele. Uma
+        # requisição já em voo pode terminar depois — isso é limitado por
+        # `PREFLIGHT_TIMEOUT`, não por este laço. E o laço termina sempre: o
+        # restante decresce a cada volta e a espera nunca o ultrapassa.
+        restante = PREFLIGHT_DEADLINE - (time.monotonic() - inicio_total)
+        if restante <= 0:
+            break
+        time.sleep(min(PREFLIGHT_INTERVALO, restante))
+
+    return veredito, tentativas, time.monotonic() - inicio_total
 
 
 def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Resultado:
@@ -303,32 +374,30 @@ def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Re
     raiz = base_url.rstrip('/')
 
     # ── Fase 1: preflight ──────────────────────────────────────────────────
-    veredito, r.preflight = _preflight(raiz, token)
+    veredito, r.preflight, r.time_to_ready = _preflight(raiz, token)
     ultimo_status = r.preflight[-1][1]
-    total = sum(segundos for _, _, segundos, _ in r.preflight)
 
     if veredito == NAO_PRONTA:
         # Fail-closed: nenhuma requisição funcional é emitida. Prosseguir
         # produziria exatamente as leituras enganosas que motivaram esta fase.
         r.nao_pronta = True
         r.falha('preflight',
-                f'aplicação não respondeu em {len(r.preflight)} tentativa(s) de '
-                f'{PREFLIGHT_TIMEOUT}s (último HTTP {ultimo_status}, '
-                f'{total:.1f}s no total) — indisponibilidade, não divergência '
-                f'de contrato')
+                f'READY TIMEOUT: {len(r.preflight)} sondagem(ns) em '
+                f'{r.time_to_ready:.1f}s, deadline de {PREFLIGHT_DEADLINE}s, '
+                f'último HTTP {ultimo_status} — indisponibilidade, não '
+                f'divergência de contrato')
         return r
 
     if veredito == CONTRATO_INVALIDO:
         r.falha('preflight',
-                f'HTTP 404 em {SONDAS[0][0]} após {total:.1f}s: o servidor '
-                f'respondeu, mas a rota faz parte do contrato da #271. '
-                f'Deployment ou roteamento errado — repetir não conserta')
+                f'HTTP 404 em {SONDAS[0][0]} após {r.time_to_ready:.1f}s: o '
+                f'servidor respondeu, mas a rota faz parte do contrato da '
+                f'#271. Deployment ou roteamento errado — repetir não conserta')
         return r
 
     r.ok('preflight',
-         f'aplicação pronta em {total:.1f}s '
-         f'(tentativa {len(r.preflight)} de {PREFLIGHT_TENTATIVAS}, '
-         f'HTTP {ultimo_status})')
+         f'aplicação pronta: time_to_ready {r.time_to_ready:.1f}s em '
+         f'{len(r.preflight)} sondagem(ns), HTTP {ultimo_status}')
 
     # ── Fase 2: smoke funcional, TIMEOUT inalterado ────────────────────────
     status, corpo, _ = _get(raiz + '/api/units/selectable', token)
@@ -470,8 +539,12 @@ def main() -> int:
             falhou = True
         print(f'\n[{marca}] {r.ambiente}')
         for numero, status, segundos, veredito in r.preflight:
-            print(f'   preflight {numero}/{PREFLIGHT_TENTATIVAS}: HTTP {status} '
+            print(f'   preflight {numero}/{len(r.preflight)}: HTTP {status} '
                   f'em {segundos:.1f}s → {veredito}')
+        if r.preflight:
+            print(f'   time_to_ready: {r.time_to_ready:.1f}s '
+                  f'(deadline {PREFLIGHT_DEADLINE}s, sondagem a cada '
+                  f'{PREFLIGHT_INTERVALO}s)')
         for nome, passou, detalhe in r.checagens:
             print(f'   {"OK  " if passou else "FALHA"} {nome}: {detalhe}')
 
@@ -483,9 +556,9 @@ def main() -> int:
             # diferentes do operador. Fundir as duas num veredito só foi o que
             # deixou quatro execuções indistinguíveis entre "dormindo" e
             # "quebrado".
-            print(f'RESULTADO: FALHOU — {len(nao_acordaram)} deployment(s) não '
-                  f'acordaram em até '
-                  f'{PREFLIGHT_TENTATIVAS * PREFLIGHT_TIMEOUT}s: '
+            print(f'RESULTADO: FALHOU — READY TIMEOUT em '
+                  f'{len(nao_acordaram)} deployment(s), com '
+                  f'{PREFLIGHT_DEADLINE}s de deadline cada: '
                   f'{", ".join(nao_acordaram)}.')
             print('Isto é INDISPONIBILIDADE, não divergência de contrato: o')
             print('smoke funcional não chegou a ser executado nesses ambientes.')

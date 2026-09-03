@@ -78,7 +78,29 @@ secrets. Um deployment sem variáveis definidas é reportado como
 Os access tokens da aplicação valem 8 horas (`JWT_EXP_SECONDS`). Gere-os pouco
 antes de executar; um valor cadastrado ontem já vai ser recusado com HTTP 401,
 e o script trata isso como falha, corretamente. Certificação recorrente exige
-uma solução de credencial de vida longa que ainda não existe.
+uma solução de credencial de vida longa que ainda não existe (#313).
+
+## Duas fases: preflight de disponibilidade, depois smoke funcional
+
+Os serviços de aplicação hibernam por inatividade. Medido em 02/09/2026 abrindo
+as URLs à mão: **46 s no corporativo, 35 s no SaaS** para a primeira resposta.
+Contra `TIMEOUT = 20`, quatro execuções seguidas reprovaram com
+`The read operation timed out` — e o timeout escondia dois defeitos reais, que
+só apareceram quando os serviços foram aquecidos antes:
+
+- os dois tokens estavam expirados (401 no SaaS, 403 no corporativo);
+- um 503 era reportado como `autenticação: token aceito`, porque a checagem só
+  reprovava em 401/403. O certificador AFIRMAVA ter verificado autenticação sem
+  a requisição ter chegado à aplicação. O mesmo token saiu "aceito" numa leitura
+  (503) e "recusado" na seguinte (403): não-determinismo sobre um fato que não é.
+
+Daí a separação. O **preflight** só responde "a aplicação acordou?", com timeout
+generoso e teto duro. O **smoke funcional** roda depois, com `TIMEOUT = 20`
+inalterado — dar mais tempo para tudo transformaria cada checagem funcional numa
+espera longa e mascararia lentidão real de endpoint.
+
+O preflight NÃO é retry: são no máximo duas tentativas, e só o veredito
+"ainda não pronta" consome a segunda.
 """
 
 from __future__ import annotations
@@ -86,10 +108,69 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
+#: Timeout dos GETs FUNCIONAIS. Não subir: lentidão de endpoint é defeito, e
+#: aumentar isto globalmente esconderia o defeito em vez de medi-lo.
 TIMEOUT = 20
+
+#: Timeout do PREFLIGHT de disponibilidade, só dele. Dimensionado acima do
+#: cold start medido (46 s no corporativo) — 45 s nasceria abaixo da evidência.
+PREFLIGHT_TIMEOUT = 60
+
+#: Teto duro de tentativas por deployment: 2 × 60 s = 120 s. Não é backoff nem
+#: laço; é uma repetição controlada.
+PREFLIGHT_TENTATIVAS = 2
+
+#: Vereditos do preflight. Existem como constantes para o gate exercitar a
+#: classificação sem rede.
+PRONTA = 'pronta'
+PRONTA_AUTH_RECUSADA = 'pronta_auth_recusada'
+CONTRATO_INVALIDO = 'contrato_invalido'
+NAO_PRONTA = 'nao_pronta'
+
+
+def _classificar_preflight(status: int) -> str:
+    """"A aplicação acordou?" — função pura, um status por vez.
+
+    O erro a evitar é o que o certificador cometia: tratar todo status != 0
+    como "respondeu". Um 5xx é resposta do GATEWAY, não da aplicação, e foi
+    exatamente assim que um 503 virou `token aceito`.
+
+    · 2xx      a aplicação respondeu e aceitou
+    · 401/403  a aplicação respondeu e recusou DELIBERADAMENTE — chegou à
+               camada de autenticação, portanto está de pé
+    · 404      respondeu, mas `/api/units/selectable` faz parte do contrato
+               esperado: rota ausente é deployment errado, não indisponível.
+               Falha imediata, sem segunda tentativa — repetir não conserta
+               contrato
+    · 5xx      gateway ou aplicação indisponível: ainda subindo
+    · 0        timeout ou erro de socket: nem resposta houve
+
+    Demais 4xx (400, 429, …) contam como pronta pelo mesmo critério de
+    401/403: são resposta deliberada da aplicação. O smoke funcional julga.
+    """
+    if 200 <= status < 300:
+        return PRONTA
+    if status in (401, 403):
+        return PRONTA_AUTH_RECUSADA
+    if status == 404:
+        return CONTRATO_INVALIDO
+    if status == 0 or status >= 500:
+        return NAO_PRONTA
+    return PRONTA
+
+
+def _autenticou(status: int) -> bool:
+    """Só 2xx é evidência de token aceito.
+
+    A versão anterior reprovava apenas 401/403 e declarava "token aceito" para
+    todo o resto — inclusive 500, 502, 503. Afirmar autenticação sobre uma
+    resposta de gateway é alegar cobertura inexistente.
+    """
+    return 200 <= status < 300
 
 #: Rotas de LEITURA que provam que a frente #271 está viva no ambiente. Cada
 #: uma responde uma pergunta que o CI não alcança.
@@ -130,6 +211,11 @@ class Resultado:
         self.ambiente = ambiente
         self.checagens: list[tuple[str, bool, str]] = []
         self.pulado = False
+        #: (numero, status, segundos, veredito) de cada tentativa do preflight.
+        self.preflight: list[tuple[int, int, float, str]] = []
+        #: Indisponibilidade NÃO é divergência de contrato. O relatório separa
+        #: as duas porque a ação do operador é diferente em cada caso.
+        self.nao_pronta = False
 
     def ok(self, nome: str, detalhe: str = '') -> None:
         self.checagens.append((nome, True, detalhe))
@@ -144,15 +230,22 @@ class Resultado:
         )
 
 
-def _get(url: str, token: str, origin: str = '') -> tuple[int, dict, dict]:
-    """GET puro. **Nunca** POST — ver o cabeçalho deste arquivo."""
+def _get(url: str, token: str, origin: str = '',
+         timeout: int = TIMEOUT) -> tuple[int, dict, dict]:
+    """GET puro. **Nunca** POST — ver o cabeçalho deste arquivo.
+
+    `timeout` é parâmetro para que o preflight use `PREFLIGHT_TIMEOUT` sem
+    afrouxar os GETs funcionais. O default preserva `TIMEOUT` para quem não
+    pedir nada — os funcionais não pedem, e um gate confere isso no ponto de
+    chamada.
+    """
     req = urllib.request.Request(url, method='GET')
     if token:
         req.add_header('Authorization', f'Bearer {token}')
     if origin:
         req.add_header('Origin', origin)
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             corpo = resp.read().decode('utf-8', errors='replace')
             cabecalhos = {k.lower(): v for k, v in resp.headers.items()}
             try:
@@ -181,6 +274,27 @@ def _unidade_para_classificar(corpo: dict):
     return None
 
 
+def _preflight(raiz: str, token: str) -> tuple[str, list]:
+    """Fase 1: espera a aplicação acordar. Somente GET, sem escrita.
+
+    Devolve o veredito e o registro cronometrado de cada tentativa. Só o
+    veredito `NAO_PRONTA` consome a segunda tentativa: `CONTRATO_INVALIDO`
+    para de imediato, porque repetir não conserta rota ausente.
+    """
+    tentativas: list[tuple[int, int, float, str]] = []
+    veredito = NAO_PRONTA
+    for numero in range(1, PREFLIGHT_TENTATIVAS + 1):
+        inicio = time.monotonic()
+        status, _, _ = _get(raiz + SONDAS[0][0], token,
+                            timeout=PREFLIGHT_TIMEOUT)
+        decorrido = time.monotonic() - inicio
+        veredito = _classificar_preflight(status)
+        tentativas.append((numero, status, decorrido, veredito))
+        if veredito != NAO_PRONTA:
+            break
+    return veredito, tentativas
+
+
 def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Resultado:
     r = Resultado(nome)
     if not base_url:
@@ -188,14 +302,50 @@ def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Re
         return r
     raiz = base_url.rstrip('/')
 
+    # ── Fase 1: preflight ──────────────────────────────────────────────────
+    veredito, r.preflight = _preflight(raiz, token)
+    ultimo_status = r.preflight[-1][1]
+    total = sum(segundos for _, _, segundos, _ in r.preflight)
+
+    if veredito == NAO_PRONTA:
+        # Fail-closed: nenhuma requisição funcional é emitida. Prosseguir
+        # produziria exatamente as leituras enganosas que motivaram esta fase.
+        r.nao_pronta = True
+        r.falha('preflight',
+                f'aplicação não respondeu em {len(r.preflight)} tentativa(s) de '
+                f'{PREFLIGHT_TIMEOUT}s (último HTTP {ultimo_status}, '
+                f'{total:.1f}s no total) — indisponibilidade, não divergência '
+                f'de contrato')
+        return r
+
+    if veredito == CONTRATO_INVALIDO:
+        r.falha('preflight',
+                f'HTTP 404 em {SONDAS[0][0]} após {total:.1f}s: o servidor '
+                f'respondeu, mas a rota faz parte do contrato da #271. '
+                f'Deployment ou roteamento errado — repetir não conserta')
+        return r
+
+    r.ok('preflight',
+         f'aplicação pronta em {total:.1f}s '
+         f'(tentativa {len(r.preflight)} de {PREFLIGHT_TENTATIVAS}, '
+         f'HTTP {ultimo_status})')
+
+    # ── Fase 2: smoke funcional, TIMEOUT inalterado ────────────────────────
     status, corpo, _ = _get(raiz + '/api/units/selectable', token)
     if status == 0:
-        r.falha('aplicação responde', f'inacessível: {corpo.get("_erro")}')
+        r.falha('aplicação responde',
+                f'inacessível no smoke funcional apesar do preflight ter '
+                f'passado: {corpo.get("_erro")}')
         return r
     r.ok('aplicação responde', f'HTTP {status}')
 
-    if status in (401, 403):
-        r.falha('autenticação', f'token recusado (HTTP {status})')
+    if not _autenticou(status):
+        if status in (401, 403):
+            r.falha('autenticação', f'token recusado (HTTP {status})')
+        else:
+            r.falha('autenticação',
+                    f'sem evidência de token aceito (HTTP {status}): a '
+                    f'resposta não veio da camada de autenticação')
         return r
     r.ok('autenticação', 'token aceito')
 
@@ -312,16 +462,35 @@ def main() -> int:
             print(f'\n[NOT CERTIFIED] {r.ambiente}')
             print('   variáveis de ambiente ausentes — não executado')
             continue
-        marca = 'CERTIFICADO' if r.certificado else 'FALHOU'
+        if r.nao_pronta:
+            marca = 'NÃO ACORDOU'
+        else:
+            marca = 'CERTIFICADO' if r.certificado else 'FALHOU'
         if not r.certificado:
             falhou = True
         print(f'\n[{marca}] {r.ambiente}')
+        for numero, status, segundos, veredito in r.preflight:
+            print(f'   preflight {numero}/{PREFLIGHT_TENTATIVAS}: HTTP {status} '
+                  f'em {segundos:.1f}s → {veredito}')
         for nome, passou, detalhe in r.checagens:
             print(f'   {"OK  " if passou else "FALHA"} {nome}: {detalhe}')
 
     print('\n' + '=' * 72)
     if falhou:
-        print('RESULTADO: FALHOU — o deployment diverge do contrato da #271.')
+        nao_acordaram = [r.ambiente for r in resultados if r.nao_pronta]
+        if nao_acordaram:
+            # Indisponibilidade e divergência de contrato pedem ações
+            # diferentes do operador. Fundir as duas num veredito só foi o que
+            # deixou quatro execuções indistinguíveis entre "dormindo" e
+            # "quebrado".
+            print(f'RESULTADO: FALHOU — {len(nao_acordaram)} deployment(s) não '
+                  f'acordaram em até '
+                  f'{PREFLIGHT_TENTATIVAS * PREFLIGHT_TIMEOUT}s: '
+                  f'{", ".join(nao_acordaram)}.')
+            print('Isto é INDISPONIBILIDADE, não divergência de contrato: o')
+            print('smoke funcional não chegou a ser executado nesses ambientes.')
+        else:
+            print('RESULTADO: FALHOU — o deployment diverge do contrato da #271.')
         return 1
     if nao_executado:
         print('RESULTADO: NOT CERTIFIED — parte dos ambientes não foi verificada.')

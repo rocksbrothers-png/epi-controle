@@ -203,6 +203,118 @@ def _col_exists(connection, table, column) -> bool:
     return str(column or '').strip() in _table_columns(connection, table)
 
 
+def _constraint_exists(connection, table, constraint) -> bool:
+    """A constraint existe nesta tabela? Consulta que NÃO pode abortar a transação.
+
+    Deliberadamente sem ``'tabela'::regclass``: sobre tabela ausente o cast
+    levanta ``UndefinedTable`` e abortaria justamente a transação que esta
+    checagem existe para proteger. O join em ``pg_class``/``pg_namespace``
+    devolve zero linhas nesse caso, que é a resposta certa.
+
+    SQLite não tem ``pg_constraint`` nem ``ALTER TABLE ADD CONSTRAINT``; para
+    ele a pergunta não se aplica e a resposta é `False` sem consultar.
+    """
+    if _is_sqlite_connection(connection):
+        return False
+    nome = str(constraint or '').strip()
+    tabela = str(table or '').strip()
+    if not nome or not tabela:
+        return False
+    row = connection.execute(
+        """
+        SELECT 1
+        FROM pg_constraint c
+        JOIN pg_class t ON t.oid = c.conrelid
+        JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE c.conname = ?
+          AND t.relname = ?
+          AND n.nspname = ANY (current_schemas(false))
+        LIMIT 1
+        """,
+        (nome, tabela),
+    ).fetchone()
+    return row is not None
+
+
+def _add_constraint_protegido(connection, table, constraint, ddl) -> bool:
+    """Cria uma constraint sem poder envenenar a transação em curso (#315).
+
+    Devolve `True` se a constraint EXISTE ao final — criada agora ou já
+    presente. `False` significa ausente, e quem chama decide o que fazer: esta
+    função **não** decide disponibilidade.
+
+    ## Por que SAVEPOINT e não `connection.rollback()`
+
+    Medido em PostgreSQL 16.13, com trabalho válido pendente na transação:
+
+    ===========================  ==================  ==================
+    estratégia                   statement seguinte  trabalho pendente
+    ===========================  ==================  ==================
+    engolir sem nada (o defeito) falha               PERDIDO
+    `connection.rollback()`      executa             PERDIDO
+    SAVEPOINT + ROLLBACK TO      executa             preservado
+    ===========================  ==================  ==================
+
+    O rollback global conserta metade: recupera a conexão e descarta trabalho
+    válido junto. E o `connection.commit()` do runner (`core/bootstrap.py`)
+    converte transação abortada em ROLLBACK **sem levantar exceção** — foi
+    assim que a #315 perdeu DDL em silêncio, com `db.ensure_fn_ok` ao final.
+
+    O idioma já existe na casa: `core/database.py` usa savepoint pelo mesmo
+    motivo, pelas issues #177/#842.
+
+    ## Observabilidade
+
+    Cada desfecho tem evento próprio. `db.constraint_create_failed` sai em
+    `error` e é o único que significa "tentou e a constraint continua
+    ausente" — nunca mais um `db.constraint_skip` genérico cobrindo tanto
+    "já existia" quanto "não consegui criar".
+    """
+    nome = str(constraint or '').strip()
+    tabela = str(table or '').strip()
+    if not nome.isidentifier():
+        raise SchemaMigrationError(
+            f'Nome de constraint inválido para migração: {nome!r}.',
+            kind='migration_invalid_arguments',
+            context={'constraint': nome, 'table': tabela, 'phase': 'migration'},
+        )
+
+    if _is_sqlite_connection(connection):
+        structured_log('info', 'db.constraint_unsupported_dialect',
+                       constraint=nome, table=tabela)
+        return False
+
+    if _constraint_exists(connection, tabela, nome):
+        structured_log('info', 'db.constraint_already_present',
+                       constraint=nome, table=tabela)
+        return True
+
+    savepoint = f'sp_{nome}'[:63]
+    connection.execute(f'SAVEPOINT {savepoint}')
+    try:
+        connection.execute(ddl)
+    except Exception as _e:  # noqa: BLE001 - o desfecho é decidido pela pós-condição
+        connection.execute(f'ROLLBACK TO SAVEPOINT {savepoint}')
+        connection.execute(f'RELEASE SAVEPOINT {savepoint}')
+        if _constraint_exists(connection, tabela, nome):
+            # Criada em paralelo por outro boot entre a checagem e a tentativa.
+            structured_log('info', 'db.constraint_present_after_error',
+                           constraint=nome, table=tabela, error=str(_e))
+            return True
+        structured_log('error', 'db.constraint_create_failed',
+                       constraint=nome, table=tabela, error=str(_e),
+                       kind=_classify_db_error(_e))
+        return False
+
+    connection.execute(f'RELEASE SAVEPOINT {savepoint}')
+    if not _constraint_exists(connection, tabela, nome):
+        structured_log('error', 'db.constraint_missing_after_create',
+                       constraint=nome, table=tabela)
+        return False
+    structured_log('info', 'db.constraint_created', constraint=nome, table=tabela)
+    return True
+
+
 def _safe_add_column(connection, table, column, definition, log_event='db.col_skip') -> None:
     """Adiciona coluna apenas se ela não existir e valida pós-migração."""
     table_name = str(table or '').strip()
@@ -951,16 +1063,29 @@ def ensure_delivery_migration_origin_columns(connection) -> None:
     # no SQLite, e no PostgreSQL a constraint precisa vir depois da coluna.
     # Falhar aqui não pode derrubar o bootstrap — a coluna já existe e o
     # sistema funciona sem a constraint; ela é integridade referencial, não
-    # requisito de escrita.
-    try:
-        connection.execute(
-            'ALTER TABLE deliveries ADD CONSTRAINT fk_deliveries_migration_job '
-            'FOREIGN KEY (migration_job_id) REFERENCES migration_jobs(id) ON DELETE SET NULL'
-        )
-        connection.commit()
-    except Exception as _e:  # noqa: BLE001 - SQLite não suporta; PG já pode ter a constraint
-        structured_log('info', 'db.constraint_skip',
-                       constraint='fk_deliveries_migration_job', error=str(_e))
+    # requisito de escrita. Essa decisão é ANTERIOR à #315 e segue valendo:
+    # se a ausência da FK deve virar requisito fatal é a #327, que depende de
+    # auditar órfãos em produção primeiro.
+    #
+    # O que a #315 corrige é o efeito colateral. Em banco já provisionado o
+    # `ADD CONSTRAINT` falha SEMPRE (o PostgreSQL não tem
+    # `ADD CONSTRAINT IF NOT EXISTS`), e a falha engolida sem rollback deixava
+    # a transação em `INERROR`: o `CREATE INDEX` abaixo era recusado, e o
+    # `connection.commit()` do runner descartava a transação inteira em
+    # silêncio, ainda logando `db.ensure_fn_ok`.
+    #
+    # `_add_constraint_protegido` devolve False quando a FK continua ausente,
+    # já tendo registrado `db.constraint_create_failed` em `error`. O
+    # bootstrap segue — mas a transação continua íntegra e o índice abaixo
+    # passa a ser criado de verdade.
+    _add_constraint_protegido(
+        connection,
+        'deliveries',
+        'fk_deliveries_migration_job',
+        'ALTER TABLE deliveries ADD CONSTRAINT fk_deliveries_migration_job '
+        'FOREIGN KEY (migration_job_id) REFERENCES migration_jobs(id) ON DELETE SET NULL',
+    )
+    connection.commit()
 
     # Índice PARCIAL: o caso comum é `origin = 'sistema'`, e indexá-lo seria
     # indexar a tabela inteira sem ganho. Quem consulta procura o que foi

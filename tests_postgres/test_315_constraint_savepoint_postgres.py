@@ -30,10 +30,21 @@ decisão de disponibilidade, anterior à #315 e tratada na #327. O que ela exige
 é que uma criação realmente fracassada nunca passe como sucesso.
 """
 import os
+import sys
 from contextlib import closing
 
 import pytest
 
+# Mesma linha de `test_migration_contract_postgres.py`, e pelo mesmo motivo: o
+# CI roda o console script `pytest`, que — ao contrário de `python -m pytest` —
+# NÃO põe o diretório atual no `sys.path`. Como este arquivo é o primeiro de
+# `tests_postgres/` na ordem alfabética, ele é importado antes de qualquer outro
+# que já faça esse ajuste, e sem isto a coleta morre com
+# `ModuleNotFoundError: No module named 'core'` — verde local, vermelho no CI.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# (E402 não está no conjunto de regras do repositório; sem `noqa` para não
+# introduzir RUF100 — diretiva inútil é finding novo.)
 from core import schema
 from core.database import get_connection
 

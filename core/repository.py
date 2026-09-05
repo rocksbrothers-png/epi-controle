@@ -4,7 +4,7 @@ from datetime import date
 from typing import NamedTuple
 
 from core.auth import ensure_company_access, ensure_permission
-from core.roles import normalize_role_name
+from core.roles import CERTIFICATION_READONLY_ROLE, normalize_role_name
 from epi_backend.db import row_to_dict
 
 # ── Contagem de usuários ──────────────────────────────────────────────────────
@@ -533,6 +533,34 @@ def resolve_purchase_unit_scope(
         if not unit_id:
             raise PermissionError(denial_message or 'Perfil sem unidade operacional ativa.')
         return UnitSelection(int(unit_id), 'actor', True, (int(unit_id),), False)
+
+    if role == CERTIFICATION_READONLY_ROLE:
+        # Identidade técnica da certificação (#313), com escopo ENUMERADO.
+        #
+        # Sem este ramo o papel cairia no `else` lá embaixo, que devolve
+        # `allowed_unit_ids = None` — "sem restrição" — e passaria a depender
+        # inteiramente de `fetch_units` recortar por `company_id`. O isolamento
+        # entre tenants viraria efeito colateral de outra função, exatamente o
+        # que não se quer numa credencial que roda sozinha no CI.
+        #
+        # Enumerar tem três consequências desejadas: o vínculo com o tenant
+        # passa a ser valor de retorno e não efeito de terceiro; afrouxar
+        # `fetch_units` amanhã não amplia este papel; e conta sem empresa
+        # devolve `()`, que é `blocks_everything` — fail-closed alto e claro,
+        # em vez de alcançar unidade órfã.
+        #
+        # `allows_all_units` é False de propósito: perfil somente-leitura não
+        # tem o que fazer com "Todas". E `requested_unit_id` não é honrado
+        # aqui porque o papel não alcança nenhuma rota de Compras — não há
+        # seleção a validar, só a lista do seletor.
+        empresa = str((actor or {}).get('company_id') or '').strip()
+        if not empresa:
+            return UnitSelection(None, 'certification', False, (), False)
+        linhas = connection.execute(
+            'SELECT id FROM units WHERE company_id = ? ORDER BY id', (empresa,)
+        ).fetchall()
+        permitidas = tuple(int(row_to_dict(linha)['id']) for linha in linhas)
+        return UnitSelection(None, 'certification', False, permitidas, False)
 
     carteira = None
     if role in PURCHASE_CARTEIRA_ROLES:

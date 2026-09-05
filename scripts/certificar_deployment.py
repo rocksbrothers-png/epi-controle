@@ -58,11 +58,21 @@ recebe os secrets da B4-B: disparado lá com `smoke=true`, o job sai com
 ## Uso
 
     export EPI_CERT_CORP_URL=https://...          # API corporativa
-    export EPI_CERT_CORP_TOKEN=...                # token de leitura
     export EPI_CERT_SAAS_API_URL=https://...      # API do SaaS
     export EPI_CERT_SAAS_WEB_URL=https://...      # Flutter Web do SaaS
+
+    # Modo NOVO (#313), por deployment — identidade `certification_readonly`:
+    export EPI_CERT_CORP_USER=... EPI_CERT_CORP_PASSWORD=...
+    export EPI_CERT_SAAS_USER=... EPI_CERT_SAAS_PASSWORD=...
+
+    # Modo LEGADO, enquanto o novo não estiver provisionado:
+    export EPI_CERT_CORP_TOKEN=...                # access JWT de 8 h
     export EPI_CERT_SAAS_TOKEN=...
+
     python3 scripts/certificar_deployment.py
+
+Os modos são EXCLUSIVOS por deployment: com usuário e senha presentes o token
+estático não é lido, e um login recusado REPROVA — nunca recorre ao JWT antigo.
 
 `EPI_CERT_SAAS_WEB_URL` não pode terminar em barra: ele também vira o header
 `Origin` da checagem de CORS, e a comparação com `Access-Control-Allow-Origin`
@@ -227,6 +237,29 @@ SONDAS = (
      'a listagem devolve a classificação por par (Unidade, EPI)'),
 )
 
+#: Rota de autenticação. Literal e única — `/api/auth/login` é alias do MESMO
+#: handler, mas NÃO está em `BOOTSTRAP_READY_EXEMPT_PATHS` e responderia 503
+#: durante o boot. O gate estático exige exatamente esta constante.
+ROTA_LOGIN = '/api/login'
+
+#: Identidade do ator autenticado. Consultada ANTES do smoke funcional.
+ROTA_IDENTIDADE = '/api/auth/me'
+
+#: A identidade técnica da certificação (#313) e as duas permissões que ela
+#: precisa ter — **exatamente** estas, nem mais nem menos. Continência aceitaria
+#: uma conta com uma só, que reprovaria o smoke por falta de acesso e mandaria
+#: investigar o deployment; e aceitaria um `registry_admin`, com as 26 escritas
+#: que esta frente existe para não usar.
+PAPEL_ESPERADO = 'certification_readonly'
+PERMISSOES_ESPERADAS = frozenset({'units:view', 'stock:view'})
+
+#: Modos de credencial, MUTUAMENTE EXCLUSIVOS. Nunca `login() or token`: um
+#: fallback silencioso devolveria verde com a credencial que a #313 existe para
+#: eliminar, e esconderia a falha do modo novo por semanas.
+MODO_NOVO = 'credenciais'
+MODO_LEGADO = 'token_estatico'
+MODO_AUSENTE = 'sem_credencial'
+
 #: Campos que provam que as migrations rodaram NAQUELE banco. Se a tabela não
 #: existe, o backend não tem de onde tirar estes valores.
 #:
@@ -322,8 +355,22 @@ def _unidade_para_classificar(corpo: dict):
     return None
 
 
-def _preflight(raiz: str, token: str) -> tuple[str, list, float]:
+def _preflight(raiz: str, token: str = '') -> tuple[str, list, float]:
     """Fase 1: espera a aplicação ficar PRONTA. Somente GET, sem escrita.
+
+    **Sem autenticação** (#313). O preflight responde uma pergunta só — "a
+    aplicação saiu do bootstrap?" — e 401/403 já a responde: recusar
+    deliberadamente prova que a requisição chegou à camada de autenticação.
+    Mandar credencial aqui acoplaria readiness a identidade e obrigaria o login
+    a acontecer ANTES do READY, que é justamente quando o banco pode não
+    responder.
+
+    O parâmetro `token` sobrevive com default vazio porque os 25 gates da #271
+    o passam posicionalmente e uma das sabotagens de lá ancora no texto exato
+    da linha do `_get`. Mudar a assinatura obrigaria a editar aquele arquivo —
+    trocar a prova para acomodar o código. Em produção `certificar_api` chama
+    `_preflight(raiz)` e nenhum header `Authorization` é emitido; há gate para
+    isso.
 
     Amostragem periódica com deadline absoluto. A pergunta que governa a parada
     não é "quantas tentativas já fizemos" e sim "quanto tempo de RELÓGIO já
@@ -366,15 +413,100 @@ def _preflight(raiz: str, token: str) -> tuple[str, list, float]:
     return veredito, tentativas, time.monotonic() - inicio_total
 
 
-def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Resultado:
+def _modo(token: str, usuario: str, senha: str) -> str:
+    """Qual credencial usar. Os modos são EXCLUSIVOS, por decisão de contrato.
+
+    Com usuário e senha presentes o token estático não é sequer lido: se o
+    login falhar, a certificação reprova. A alternativa — tentar o token antigo
+    — devolveria verde usando exatamente a credencial que a #313 elimina, e a
+    falha do caminho novo ficaria invisível até o JWT expirar.
+    """
+    if usuario and senha:
+        return MODO_NOVO
+    if token:
+        return MODO_LEGADO
+    return MODO_AUSENTE
+
+
+def _login(raiz: str, usuario: str, senha: str) -> tuple[str, str]:
+    """`POST /api/login` — a ÚNICA escrita do certificador. Devolve (token, erro).
+
+    Nada aqui é registrado: nem usuário, nem senha, nem o token. O token volta
+    como valor e vive só na variável local de quem chamou, pelo tempo do
+    processo. Não vai a arquivo, `$GITHUB_ENV`, `$GITHUB_OUTPUT`, argumento de
+    linha de comando nem log — o gate 14 varre o módulo atrás disso.
+
+    Só é chamada DEPOIS do preflight declarar READY: `/api/login` é isento do
+    portão de bootstrap, mas ainda consulta o banco, e tentar antes trocaria
+    "credencial errada" por "banco ainda subindo" no relatório.
+    """
+    corpo = json.dumps({'username': usuario, 'password': senha}).encode('utf-8')
+    req = urllib.request.Request(raiz + ROTA_LOGIN, data=corpo, method='POST')
+    req.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            dados = json.loads(resp.read().decode('utf-8', errors='replace'))
+    except urllib.error.HTTPError as erro:
+        try:
+            detalhe = json.loads(erro.read().decode('utf-8', errors='replace'))
+        except Exception:  # noqa: BLE001 - corpo de erro não estruturado
+            detalhe = {}
+        codigo = (detalhe.get('error') or {}).get('code') if isinstance(
+            detalhe.get('error'), dict) else detalhe.get('code')
+        return '', f'HTTP {erro.code}{" " + str(codigo) if codigo else ""}'
+    except Exception as erro:  # noqa: BLE001 - rede
+        return '', f'{type(erro).__name__}'
+    token = str(dados.get('token') or '')
+    if not token:
+        return '', 'resposta 200 sem `token`: contrato de login divergente'
+    return token, ''
+
+
+def _validar_identidade(raiz: str, token: str) -> str:
+    """`GET /api/auth/me` — quem é o ator, antes de tocar no smoke. '' = ok.
+
+    Verificar o papel e as permissões aqui é o que separa "a credencial
+    funciona" de "a credencial é a certa". Um `registry_admin` autenticaria e
+    passaria o smoke inteiro carregando 26 permissões de escrita — a #313
+    existe para que isso reprove, alto, na certificação.
+
+    Igualdade e não continência: um conjunto a menos reprovaria o smoke adiante
+    por falta de acesso, e mandaria investigar o deployment em vez da conta.
+    """
+    status, corpo, _ = _get(raiz + ROTA_IDENTIDADE, token)
+    if status != 200:
+        return f'HTTP {status} em {ROTA_IDENTIDADE}'
+    dados = corpo.get('data') if isinstance(corpo.get('data'), dict) else corpo
+    usuario = dados.get('user') or {}
+    papel = str(usuario.get('role') or '')
+    if papel != PAPEL_ESPERADO:
+        return f'papel {papel!r}, esperado {PAPEL_ESPERADO!r}'
+    permissoes = frozenset(dados.get('permissions') or ())
+    if permissoes != PERMISSOES_ESPERADAS:
+        sobrando = sorted(permissoes - PERMISSOES_ESPERADAS)
+        faltando = sorted(PERMISSOES_ESPERADAS - permissoes)
+        return (f'permissões divergem — sobrando {sobrando}, faltando {faltando}')
+    if not str(usuario.get('company_id') or '').strip():
+        return ('identidade sem empresa: o escopo de Unidade sairia vazio e o '
+                'isolamento por tenant deixaria de ser verificável')
+    return ''
+
+
+def certificar_api(nome: str, base_url: str, token: str = '', origin: str = '',
+                   usuario: str = '', senha: str = '') -> Resultado:
     r = Resultado(nome)
     if not base_url:
         r.pulado = True
         return r
     raiz = base_url.rstrip('/')
 
-    # ── Fase 1: preflight ──────────────────────────────────────────────────
-    veredito, r.preflight, r.time_to_ready = _preflight(raiz, token)
+    modo = _modo(token, usuario, senha)
+    if modo == MODO_AUSENTE:
+        r.pulado = True
+        return r
+
+    # ── Fase 1: preflight, SEM credencial ──────────────────────────────────
+    veredito, r.preflight, r.time_to_ready = _preflight(raiz)
     ultimo_status = r.preflight[-1][1]
 
     if veredito == NAO_PRONTA:
@@ -396,8 +528,25 @@ def certificar_api(nome: str, base_url: str, token: str, origin: str = '') -> Re
         return r
 
     r.ok('preflight',
-         f'aplicação pronta: time_to_ready {r.time_to_ready:.1f}s em '
-         f'{len(r.preflight)} sondagem(ns), HTTP {ultimo_status}')
+         f'aplicação pronta sem credencial: time_to_ready {r.time_to_ready:.1f}s '
+         f'em {len(r.preflight)} sondagem(ns), HTTP {ultimo_status}')
+
+    # ── Fase 1b: autenticação, só depois do READY ──────────────────────────
+    if modo == MODO_NOVO:
+        token, erro_login = _login(raiz, usuario, senha)
+        if erro_login:
+            # Fail-closed: nenhuma requisição funcional, e NENHUMA tentativa
+            # com o token estático. Ver `_modo`.
+            r.falha('autenticação', f'login recusado ({erro_login})')
+            return r
+        r.ok('autenticação', f'login aceito em {ROTA_LOGIN}')
+
+        erro_identidade = _validar_identidade(raiz, token)
+        if erro_identidade:
+            r.falha('identidade', erro_identidade)
+            return r
+        r.ok('identidade',
+             f'{PAPEL_ESPERADO} com exatamente {sorted(PERMISSOES_ESPERADAS)}')
 
     # ── Fase 2: smoke funcional, TIMEOUT inalterado ────────────────────────
     status, corpo, _ = _get(raiz + '/api/units/selectable', token)
@@ -504,9 +653,13 @@ def certificar_web(nome: str, url: str, base_href_esperado: str) -> Resultado:
 def main() -> int:
     corp_url = os.environ.get('EPI_CERT_CORP_URL', '')
     corp_token = os.environ.get('EPI_CERT_CORP_TOKEN', '')
+    corp_user = os.environ.get('EPI_CERT_CORP_USER', '')
+    corp_pass = os.environ.get('EPI_CERT_CORP_PASSWORD', '')
     saas_api = os.environ.get('EPI_CERT_SAAS_API_URL', '')
     saas_web = os.environ.get('EPI_CERT_SAAS_WEB_URL', '')
     saas_token = os.environ.get('EPI_CERT_SAAS_TOKEN', '')
+    saas_user = os.environ.get('EPI_CERT_SAAS_USER', '')
+    saas_pass = os.environ.get('EPI_CERT_SAAS_PASSWORD', '')
 
     resultados = [
         # Corporativo: sistema Web próprio (Web Legado + API). NÃO publica
@@ -514,9 +667,11 @@ def main() -> int:
         # Flutter é superfície do SaaS. A primeira versão desta certificação
         # exigia `/app/` aqui e reprovava um deployment CORRETO: o teste
         # afirmava uma arquitetura que o produto não tem.
-        certificar_api('corporativo · API + Web Legado', corp_url, corp_token),
+        certificar_api('corporativo · API + Web Legado', corp_url, corp_token,
+                       usuario=corp_user, senha=corp_pass),
         # SaaS: dois serviços, origins separados, CORS obrigatório.
-        certificar_api('saas · API + Web Legado', saas_api, saas_token, origin=saas_web),
+        certificar_api('saas · API + Web Legado', saas_api, saas_token,
+                       origin=saas_web, usuario=saas_user, senha=saas_pass),
         certificar_web('saas · Flutter Web', saas_web, '/'),
     ]
 

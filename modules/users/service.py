@@ -5,7 +5,12 @@ from datetime import datetime, timedelta
 
 from core.auth import ensure_company_access, ensure_resource_company
 from core.repository import authorize_action, get_employee_by_id, get_user_by_id
-from core.roles import BILLABLE_ROLES, ROLE_WEIGHT, normalize_role_name
+from core.roles import (
+    BILLABLE_ROLES,
+    CERTIFICATION_READONLY_ROLE,
+    ROLE_WEIGHT,
+    normalize_role_name,
+)
 from core.security import hash_password, is_bcrypt_hash
 from epi_backend.config import UTC
 from epi_backend.http_utils import require_fields
@@ -99,6 +104,20 @@ def resolve_target_company_id(actor, payload_company_id, payload_role, linked_em
     has_linked_employee = linked_employee_id not in (None, '', 'null')
     if role in BILLABLE_ROLES and not company_id and not has_linked_employee:
         raise ValueError('Perfil com empresa exige uma empresa vinculada.')
+    if role == CERTIFICATION_READONLY_ROLE:
+        # A identidade de certificação (#313) fica FORA de `BILLABLE_ROLES` —
+        # é automação, não assento de pessoa. O efeito colateral é que a
+        # exigência acima deixa de valer justamente para o único papel que não
+        # pode existir sem tenant: sem `company_id` o escopo enumerado sai
+        # vazio e o isolamento passaria a depender de ninguém olhar. Por isso a
+        # regra é reafirmada aqui, explícita, e não herdada de uma lista de
+        # cobrança que pode mudar por motivo comercial.
+        if has_linked_employee:
+            raise ValueError(
+                'A identidade de certificação não pode ser vinculada a um colaborador.'
+            )
+        if not company_id:
+            raise ValueError('A identidade de certificação exige empresa vinculada.')
     return int(company_id) if company_id not in (None, '', 'null') else None
 
 

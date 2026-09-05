@@ -19,7 +19,14 @@
     user: 'Gestor de EPI',
     buyer: 'Comprador',
     approver: 'Aprovador',
-    employee: 'Funcionário'
+    employee: 'Funcionário',
+    // Identidade técnica da certificação B4-B (#313). Presente só como
+    // RÓTULO: a conta precisa ser identificável numa listagem ou auditoria em
+    // vez de aparecer com o nome cru. Deliberadamente ausente de
+    // USER_COMPANY_REQUIRED_ROLES, CONFIGURATION_ADMIN_ROLES e
+    // EPI_ALL_UNITS_PROFILES, e de todo seletor de criação/edição: visibilidade
+    // não é permissão para criar pela tela.
+    certification_readonly: 'Certificação (somente leitura)'
   });
 
   const ROLE_ALIASES = Object.freeze({

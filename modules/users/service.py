@@ -136,6 +136,29 @@ def ensure_operational_role_link(connection, role, linked_employee_id, company_i
 
 
 def resolve_user_employee_link(connection, actor, payload, company_id, allow_manual_create=False):
+    if normalize_role_name(payload.get('role', '')) == CERTIFICATION_READONLY_ROLE:
+        # Identidade técnica da certificação (#313): não é pessoa, não tem
+        # colaborador, e não pode disparar a criação de um.
+        #
+        # Sem esta saída o papel é INALCANÇÁVEL pela API de usuários, e as duas
+        # portas se fecham uma contra a outra: com `linked_employee_id`,
+        # `resolve_target_company_id` recusa o vínculo; sem ele, o ramo de
+        # criação manual abaixo exige os seis campos `employee_*` e criaria um
+        # colaborador — exatamente o dado fictício em produção que o contrato
+        # da #313 proíbe.
+        #
+        # Alcance medido, não suposto: este arquivo diverge entre os dois
+        # repositórios. No `epi-controle-app`, `_resolve_optional_employee_link`
+        # já dispensa colaborador para perfis administrativos, então lá esta
+        # saída cobre só o caso em que campos `employee_*` chegam junto com a
+        # identidade técnica. Ou seja, ela NÃO explica a conta do SaaS ter
+        # nascido `registry_admin` — naquele código o papel já era criável.
+        #
+        # Mesmo formato de `ensure_operational_role_link`, que também sai cedo
+        # para papéis que não são operacionais. `company_id` segue obrigatório —
+        # quem o exige é `resolve_target_company_id`, e este retorno o preserva.
+        return None, company_id
+
     linked_employee_id = payload.get('linked_employee_id')
     if linked_employee_id not in (None, '', 'null'):
         employee = get_employee_by_id(connection, int(linked_employee_id))

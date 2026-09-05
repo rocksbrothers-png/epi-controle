@@ -237,8 +237,20 @@ jobs:
       - name: Certificar os dois deployments
         env:
           EPI_CERT_CORP_URL: ${{ secrets.EPI_CERT_CORP_URL }}
-          EPI_CERT_CORP_TOKEN: ${{ secrets.EPI_CERT_CORP_TOKEN }}
           EPI_CERT_SAAS_API_URL: ${{ secrets.EPI_CERT_SAAS_API_URL }}
           EPI_CERT_SAAS_WEB_URL: ${{ secrets.EPI_CERT_SAAS_WEB_URL }}
+          # Modo NOVO (#313): identidade `certification_readonly`, uma por
+          # ambiente. Enquanto estes secrets não existirem, cada deployment cai
+          # no modo LEGADO sozinho — os modos são exclusivos POR AMBIENTE, e a
+          # transição pode ser feita num de cada vez.
+          EPI_CERT_CORP_USER: ${{ secrets.EPI_CERT_CORP_USER }}
+          EPI_CERT_CORP_PASSWORD: ${{ secrets.EPI_CERT_CORP_PASSWORD }}
+          EPI_CERT_SAAS_USER: ${{ secrets.EPI_CERT_SAAS_USER }}
+          EPI_CERT_SAAS_PASSWORD: ${{ secrets.EPI_CERT_SAAS_PASSWORD }}
+          # Modo LEGADO: access JWT de 8 h renovado à mão. Sai do workflow, do
+          # script e do cofre na fatia 5 da #313, depois que os dois ambientes
+          # certificarem no modo novo. NÃO é fallback: com usuário e senha
+          # presentes, o script nem lê estes valores.
+          EPI_CERT_CORP_TOKEN: ${{ secrets.EPI_CERT_CORP_TOKEN }}
           EPI_CERT_SAAS_TOKEN: ${{ secrets.EPI_CERT_SAAS_TOKEN }}
         run: python3 scripts/certificar_deployment.py

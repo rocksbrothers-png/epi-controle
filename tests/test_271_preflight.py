@@ -43,6 +43,8 @@ import pytest
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SCRIPT = RAIZ / 'scripts' / 'certificar_deployment.py'
 
+from tests.certificador_matchers import escritas_indevidas
+
 #: Teto de segurança: qualquer laço que passe daqui é laço infinito, não
 #: lentidão. Muito acima do máximo legítimo (deadline / intervalo + 1).
 TETO_DE_SEGURANCA = 500
@@ -555,19 +557,19 @@ def test_o_deadline_e_o_intervalo_sao_usados_no_laco():
 
 
 def test_somente_get_em_todo_o_certificador():
-    """Nenhuma escrita em produção. O cabeçalho promete; isto verifica."""
-    arvore = ast.parse(SCRIPT.read_text(encoding='utf-8'))
-    requests = [no for no in ast.walk(arvore)
-                if isinstance(no, ast.Call)
-                and getattr(no.func, 'attr', '') == 'Request']
-    assert requests, 'nenhuma `urllib.request.Request` encontrada'
-    for chamada in requests:
-        metodo = {k.arg: k.value for k in chamada.keywords}.get('method')
-        assert isinstance(metodo, ast.Constant) and metodo.value == 'GET', \
-            'uma requisição deixou de ser GET explícito'
+    """Nenhuma escrita em produção, com UMA exceção estritamente tipada.
 
-    for no in ast.walk(arvore):
-        if isinstance(no, ast.Call):
-            proibidas = {'data', 'json'} & {k.arg for k in no.keywords}
-            assert not proibidas, \
-                f'chamada com {sorted(proibidas)}: o certificador não escreve'
+    A exceção é `POST /api/login`, introduzida pela #313 para acabar com o JWT
+    de 8 horas renovado à mão. Ela é tipada, e não uma licença: exatamente um
+    `Request` com `method='POST'`, dentro de `_login`, com a URL formada pela
+    constante `ROTA_LOGIN`, que precisa valer `/api/login` — e `data=` só nele.
+    Qualquer segundo POST, qualquer PUT/PATCH/DELETE, ou o login apontado para
+    outro endpoint, reprovam.
+
+    O contrato da #313 é explícito quanto a isto: o gate não pode virar "POST
+    permitido". As fixtures de não-vacuidade que provam que ele reprova cada
+    uma dessas mutações vivem em `tests/test_313_certificador_autentica.py`,
+    junto do código que criou a exceção.
+    """
+    motivo = escritas_indevidas(SCRIPT.read_text(encoding='utf-8'))
+    assert not motivo, motivo

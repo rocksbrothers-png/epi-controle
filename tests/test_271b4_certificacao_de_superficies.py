@@ -47,7 +47,6 @@ executada, a frente fica **NOT CERTIFIED** para deployment — e ausência de
 execução não é verde.
 """
 
-import ast
 import re
 import sqlite3
 import sys
@@ -550,17 +549,17 @@ def test_o_smoke_nao_escreve_em_producao():
     Provar que a escrita funciona exige ambiente controlado; contra produção,
     só leitura e health. Um smoke que grava para se provar é um smoke que
     muda o alerta de alguém.
+
+    A regra vem de `tests/certificador_matchers.py`, a mesma que
+    `test_271_preflight.py` usa. Antes havia duas verificações independentes
+    do mesmo invariante; quando a #313 abriu a exceção tipada do login, manter
+    as duas significaria manter duas definições de "escrita permitida" — e a
+    que ficasse para trás protegeria produção só na aparência.
     """
-    fonte = SMOKE.read_text(encoding='utf-8')
-    arvore = ast.parse(fonte)
-    metodos = set()
-    for no in ast.walk(arvore):
-        if isinstance(no, ast.Call):
-            for kw in no.keywords:
-                if kw.arg == 'method' and isinstance(kw.value, ast.Constant):
-                    metodos.add(str(kw.value.value).upper())
-    proibidos = metodos & {'POST', 'PUT', 'PATCH', 'DELETE'}
-    assert not proibidos, f'o smoke escreve em produção: {proibidos}'
+    from tests.certificador_matchers import escritas_indevidas
+
+    motivo = escritas_indevidas(SMOKE.read_text(encoding='utf-8'))
+    assert not motivo, f'o smoke escreve em produção: {motivo}'
 
 
 def test_o_estado_de_certificacao_e_explicito():

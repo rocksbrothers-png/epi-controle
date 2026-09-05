@@ -1,6 +1,15 @@
 """Constantes de roles e mapeamento de pesos do sistema EPI Controle."""
 
+#: Identidade técnica da certificação de deployment (#313). NÃO é papel de
+#: pessoa: existe para que o smoke B4-B consulte Unidade e estoque sem carregar
+#: as 26 permissões de escrita de `registry_admin`, que era a única alternativa
+#: provisionável sem inventar colaborador.
+CERTIFICATION_READONLY_ROLE = 'certification_readonly'
+
 ROLE_WEIGHT: dict[str, int] = {
+    # Peso 0: nunca gerencia ninguém. `create_user` reprova papel ausente
+    # deste mapa, então a presença aqui é o que torna a identidade criável.
+    CERTIFICATION_READONLY_ROLE: 0,
     'employee': 0,
     'user': 1,
     'buyer': 1,
@@ -33,8 +42,13 @@ ROLE_ALIASES: dict[str, str] = {
     'comprador': 'buyer',
     'approver': 'approver',
     'aprovador': 'approver',
+    CERTIFICATION_READONLY_ROLE: CERTIFICATION_READONLY_ROLE,
 }
 
+#: Papéis que consomem assento faturado. `CERTIFICATION_READONLY_ROLE` está
+#: DELIBERADAMENTE fora: é automação, não usuário. A ausência aqui desliga a
+#: exigência de empresa em `resolve_target_company_id`, e por isso essa
+#: exigência é reafirmada explicitamente lá — ver #313.
 BILLABLE_ROLES: tuple[str, ...] = (
     'general_admin',
     'registry_admin',

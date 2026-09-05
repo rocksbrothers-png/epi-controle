@@ -1,5 +1,7 @@
 """Constantes e mapa de permissões do sistema EPI Controle."""
 
+from core.roles import CERTIFICATION_READONLY_ROLE
+
 # --- Permissões individuais ---
 
 PERM_DASHBOARD_VIEW = 'dashboard:view'
@@ -332,4 +334,10 @@ PERMISSIONS: dict[str, frozenset[str]] = {
         | PPE_TEST_LOCAL_ADMIN_PERMISSIONS
     ),
     'employee': frozenset({PERM_EPI_VIEW_SELF, PERM_EPI_SIGN}),
+    # Identidade técnica da certificação B4-B (#313). EXATAMENTE as duas
+    # permissões que o smoke consome — `GET /api/units/selectable` e
+    # `GET /api/stock/epis` — e nenhuma de escrita. O gate exige igualdade, não
+    # continência: uma a menos reprovaria a certificação por falta de acesso, e
+    # uma a mais seria privilégio que ninguém pediu.
+    CERTIFICATION_READONLY_ROLE: frozenset({PERM_UNITS_VIEW, PERM_STOCK_VIEW}),
 }

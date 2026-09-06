@@ -48,6 +48,31 @@ def _sem_comentarios(texto: str) -> str:
         for linha in texto.splitlines())
 
 
+def _blocos_de_job() -> dict:
+    """Os blocos de `jobs:` recortados por indentação, sem PyYAML.
+
+    `PyYAML` não está no `requirements.txt`, e o job de testes instala só o que
+    está lá — importá-lo aqui reprovaria por dependência ausente em vez de por
+    defeito. É a mesma razão pela qual `test_275_ci_de_migrations.py` fatia o
+    YAML por indentação em vez de carregá-lo.
+    """
+    linhas = WORKFLOW.read_text(encoding='utf-8').splitlines()
+    inicio_jobs = next((i for i, l in enumerate(linhas) if l.rstrip() == 'jobs:'), None)
+    assert inicio_jobs is not None, '`jobs:` ausente do workflow'
+
+    blocos, nome, corpo = {}, None, []
+    for linha in linhas[inicio_jobs + 1:]:
+        if re.fullmatch(r'  [A-Za-z0-9_-]+:', linha.rstrip()):
+            if nome:
+                blocos[nome] = '\n'.join(corpo)
+            nome, corpo = linha.strip().rstrip(':'), []
+        elif nome:
+            corpo.append(linha)
+    if nome:
+        blocos[nome] = '\n'.join(corpo)
+    return blocos
+
+
 def _passo_do_gate() -> str:
     """O bloco YAML do passo bloqueante, delimitado por indentação.
 
@@ -128,27 +153,18 @@ def test_o_job_que_roda_pytest_tambem_instala_o_ruff():
     exigência tem de ser estática: só o CI conseguiria observar a falta, e
     tarde.
     """
-    import yaml
-    jobs = yaml.safe_load(WORKFLOW.read_text(encoding='utf-8'))['jobs']
-    passos = [
-        str(passo.get('run') or '')
-        for job in jobs.values()
-        for passo in job.get('steps', [])
-    ]
-    roda_pytest = [p for p in passos if 'pytest tests/' in p]
-    assert roda_pytest, 'nenhum passo roda a suíte — matcher quebrado'
+    blocos = _blocos_de_job()
+    assert blocos, 'nenhum job encontrado — matcher quebrado'
 
-    instala_ruff = [p for p in passos if 'pip install' in p and 'ruff==' in p]
-    jobs_com_pytest = {
-        nome for nome, job in jobs.items()
-        if any('pytest tests/' in str(p.get('run') or '') for p in job.get('steps', []))
-    }
-    for nome in jobs_com_pytest:
-        comandos = [str(p.get('run') or '') for p in jobs[nome]['steps']]
-        assert any('pip install' in c and 'ruff==' in c for c in comandos), (
+    com_pytest = {nome: corpo for nome, corpo in blocos.items()
+                  if 'pytest tests/' in corpo}
+    assert com_pytest, 'nenhum job roda a suíte — matcher quebrado'
+
+    for nome, corpo in com_pytest.items():
+        assert any('pip install' in linha and 'ruff==' in linha
+                   for linha in corpo.splitlines()), (
             f'o job `{nome}` roda a suíte mas não instala o ruff: os gates da '
             f'fatia 1 falhariam por ferramenta ausente, não por defeito')
-    assert instala_ruff, 'nenhum job instala ruff com versão exata'
 
 
 # ── A forma do gate ──────────────────────────────────────────────────────────

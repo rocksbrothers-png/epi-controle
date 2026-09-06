@@ -188,7 +188,6 @@ def test_auth_routes_imports_get_user_by_id():
 # ── request_base_url comportamento ───────────────────────────────────────────
 
 def test_request_base_url_uses_public_base_url_env(monkeypatch):
-    import os
     from epi_backend.http_utils import request_base_url
 
     class FakeHeaders(dict):

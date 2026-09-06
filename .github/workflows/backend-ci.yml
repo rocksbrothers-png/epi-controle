@@ -83,7 +83,13 @@ jobs:
             tesseract-ocr-nor tesseract-ocr-fra libgl1 libglib2.0-0
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt pytest pytest-cov
+        # `ruff` entra aqui porque `tests/test_948_gate_f401.py` o invoca para
+        # provar o baseline de F401 e para rodar a sabotagem. Sem ele os gates
+        # não falham por defeito — falham por ferramenta ausente, que é ruído.
+        # A versão é a MESMA do job de lint, e o gate reprova se as duas
+        # divergirem: dois pins que se soltam um do outro medem árvores
+        # diferentes e voltam a produzir baseline móvel.
+        run: pip install -r requirements.txt pytest pytest-cov ruff==0.16.5
 
       - name: Run tests with coverage
         # Cobertura é relatada mas ainda NÃO é gate (sem --cov-fail-under).
@@ -145,12 +151,33 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install ruff
-        run: pip install ruff
-      - name: Ruff check
-        # Não bloqueante: ainda não há config de ruff nem baseline. Remova
-        # `continue-on-error` depois de adicionar `ruff.toml` e zerar o passivo.
+        # Versão EXATA, e é requisito da fatia 1 da #948, não preferência de
+        # estilo. Com `pip install ruff` o baseline se move sozinho a cada
+        # release: a mesma árvore de 24/08 media 56 achados com o ruff da época
+        # e mede 310 com o 0.16.5. Um gate bloqueante sobre baseline móvel fica
+        # vermelho em código que ninguém tocou — e o reflexo seria devolver o
+        # `continue-on-error`, desfazendo o gate.
+        run: pip install ruff==0.16.5
+      - name: Ruff check (amplo, não bloqueante)
+        # Continua não bloqueante: ~300 achados de outras regras pertencem às
+        # fatias 2 e 3 da #948. Ampliar aqui agora misturaria a limpeza
+        # histórica com o gate que impede dívida nova.
         continue-on-error: true
         run: ruff check epi_backend modules app.py --output-format=github
+      - name: Ruff F401 em tests/ e scripts/ (bloqueante)
+        # Fatia 1 da #948, e o único gate de lint que reprova hoje.
+        #
+        # `tests/` e `scripts/` não eram lintados por ninguém: o CodeQL achava
+        # os imports ociosos DEPOIS do push, como comentário de review. Duas
+        # ocorrências idênticas em fatias consecutivas da #271 é padrão, não
+        # descuido.
+        #
+        # Tolerância ZERO e por seleção de regra, nunca por supressão: sem
+        # `continue-on-error`, sem `--exit-zero`, sem arquivo de baseline e sem
+        # allowlist de violações conhecidas. Uma regra está no gate a zero ou
+        # não está no gate — jamais "no gate acima de N", que é o que deixaria
+        # dívida nova entrar por baixo do número.
+        run: ruff check tests scripts --select F401 --output-format=github
 
   postgres-schema:
     name: PostgreSQL Schema & Multi-Tenant

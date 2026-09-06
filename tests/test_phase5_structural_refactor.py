@@ -1,7 +1,6 @@
 """Tests for Phase 5 structural refactor: HTTP router, core/repository, module routes."""
 
 import importlib
-import re
 import types
 
 

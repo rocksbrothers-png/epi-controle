@@ -23,7 +23,6 @@ from modules.units.service import (
     restore_unit,
     set_company_retention_years,
     set_unit_legal_hold,
-    summarize_unit_history,
 )
 
 UTC = timezone.utc

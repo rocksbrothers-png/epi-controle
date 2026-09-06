@@ -3,7 +3,6 @@
 Aditivo e retrocompatível: tokens antigos sem claim `type` valem como 'access'.
 """
 
-import json
 import sqlite3
 
 import pytest

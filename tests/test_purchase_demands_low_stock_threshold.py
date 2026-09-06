@@ -8,7 +8,6 @@ Demandas Pendentes, porque `fetch_purchase_demands` usava `quantity < minimum`
 
 import sqlite3
 
-import pytest
 
 from modules.purchases.service import fetch_purchase_demands
 

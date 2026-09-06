@@ -83,7 +83,13 @@ jobs:
             tesseract-ocr-nor tesseract-ocr-fra libgl1 libglib2.0-0
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt pytest pytest-cov
+        # `ruff` entra aqui porque `tests/test_948_gate_f401.py` o invoca para
+        # provar o baseline de F401 e para rodar a sabotagem. Sem ele os gates
+        # não falham por defeito — falham por ferramenta ausente, que é ruído.
+        # A versão é a MESMA do job de lint, e o gate reprova se as duas
+        # divergirem: dois pins que se soltam um do outro medem árvores
+        # diferentes e voltam a produzir baseline móvel.
+        run: pip install -r requirements.txt pytest pytest-cov ruff==0.16.5
 
       - name: Run tests with coverage
         # Cobertura é relatada mas ainda NÃO é gate (sem --cov-fail-under).

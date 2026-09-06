@@ -71,9 +71,22 @@ def _passo_do_gate() -> str:
 
 
 def _ruff(*args) -> subprocess.CompletedProcess:
-    return subprocess.run(
+    """Invoca o ruff, e falha de forma legível quando ele não está no ambiente.
+
+    O primeiro CI desta fatia morreu aqui: o ruff era instalado só no job de
+    lint, e os três gates que o invocam reprovaram com `No module named ruff` —
+    ferramenta ausente disfarçada de dívida encontrada. A mensagem abaixo diz
+    o que consertar em vez de mandar o leitor caçar imports que não existem.
+    """
+    resultado = subprocess.run(
         [sys.executable, '-m', 'ruff', 'check', *args],
         cwd=RAIZ, capture_output=True, text=True, check=False)
+    if 'No module named ruff' in resultado.stderr:
+        raise AssertionError(
+            'ruff ausente neste ambiente: os gates da fatia 1 da #948 o exigem '
+            'também no job de testes, não só no de lint. Instale a MESMA '
+            'versão pinada no workflow.')
+    return resultado
 
 
 # ── O pin de versão ──────────────────────────────────────────────────────────
@@ -86,12 +99,56 @@ def test_o_ruff_esta_pinado_em_versao_exata():
     código que ninguém tocou, e o reflexo é devolver o `continue-on-error`.
     """
     texto = _sem_comentarios(WORKFLOW.read_text(encoding='utf-8'))
-    instalacoes = re.findall(r'pip install ruff(\S*)', texto)
-    assert instalacoes, 'nenhuma instalação de ruff no workflow'
-    for sufixo in instalacoes:
-        assert re.fullmatch(r'==\d+\.\d+\.\d+', sufixo), (
-            f'ruff instalado sem versão exata: `pip install ruff{sufixo}`. '
+    # Só as linhas de INSTALAÇÃO. Um `findall` sobre o arquivo inteiro casaria
+    # também o `ruff check` dos comandos e o `Lint (ruff)` do nome do job, e
+    # cada um deles entraria como "pin vazio" — o gate reprovaria a si mesmo.
+    versoes = [
+        achado
+        for linha in texto.splitlines() if 'pip install' in linha
+        for achado in re.findall(r'\bruff(==\S*)?', linha)
+    ]
+    assert versoes, 'nenhuma instalação de ruff no workflow'
+    for sufixo in versoes:
+        assert re.fullmatch(r'==\d+\.\d+\.\d+', sufixo or ''), (
+            f'ruff instalado sem versão exata: `ruff{sufixo}`. '
             f'Esperado `ruff==X.Y.Z`.')
+    assert len(set(versoes)) == 1, (
+        f'o ruff está pinado em versões diferentes no mesmo workflow: '
+        f'{sorted(set(versoes))}. Dois pins que se soltam um do outro medem '
+        f'árvores diferentes e devolvem o baseline móvel que a fatia 1 fecha.')
+
+
+def test_o_job_que_roda_pytest_tambem_instala_o_ruff():
+    """O defeito que custou o primeiro CI desta fatia.
+
+    Os gates de baseline e de sabotagem invocam o ruff. Ele era instalado só no
+    job de lint, então no `Test & Coverage` os três reprovaram com `No module
+    named ruff` — ferramenta ausente lida como dívida encontrada. Um gate que
+    depende de uma ferramenta precisa exigir a ferramenta onde ele roda, e essa
+    exigência tem de ser estática: só o CI conseguiria observar a falta, e
+    tarde.
+    """
+    import yaml
+    jobs = yaml.safe_load(WORKFLOW.read_text(encoding='utf-8'))['jobs']
+    passos = [
+        str(passo.get('run') or '')
+        for job in jobs.values()
+        for passo in job.get('steps', [])
+    ]
+    roda_pytest = [p for p in passos if 'pytest tests/' in p]
+    assert roda_pytest, 'nenhum passo roda a suíte — matcher quebrado'
+
+    instala_ruff = [p for p in passos if 'pip install' in p and 'ruff==' in p]
+    jobs_com_pytest = {
+        nome for nome, job in jobs.items()
+        if any('pytest tests/' in str(p.get('run') or '') for p in job.get('steps', []))
+    }
+    for nome in jobs_com_pytest:
+        comandos = [str(p.get('run') or '') for p in jobs[nome]['steps']]
+        assert any('pip install' in c and 'ruff==' in c for c in comandos), (
+            f'o job `{nome}` roda a suíte mas não instala o ruff: os gates da '
+            f'fatia 1 falhariam por ferramenta ausente, não por defeito')
+    assert instala_ruff, 'nenhum job instala ruff com versão exata'
 
 
 # ── A forma do gate ──────────────────────────────────────────────────────────

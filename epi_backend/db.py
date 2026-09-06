@@ -236,6 +236,94 @@ def _is_sqlite_connection(connection) -> bool:
     return 'sqlite' in module_name or 'sqlite' in class_name
 
 
+# ── Memo positivo de catálogo (#332) ─────────────────────────────────────────
+#
+# O bootstrap emite ~558 consultas a `information_schema` por partida — duas
+# por coluna verificada, 279 colunas — e em regime estacionário nenhuma delas
+# resulta em DDL: o schema já está correto. O memo abaixo existe para não
+# repetir a mesma pergunta ao catálogo dezenas de vezes na mesma execução.
+#
+# A regra é ASSIMÉTRICA de propósito: só a PRESENÇA conhecida encurta caminho.
+# Ausência no memo não afirma nada e sempre cai na consulta viva, porque só a
+# consulta viva pode produzir `False` — e é um `False` que autoriza
+# `ALTER TABLE ADD COLUMN`. Um memo que respondesse "não existe" a partir de um
+# retrato envelhecido mandaria alterar schema com informação obsoleta, e o
+# cenário não é hipotético: `db.init_lock_not_acquired` deixa dois bootstraps
+# correrem em paralelo contra o mesmo banco.
+#
+# O memo vive ANEXADO À CONEXÃO e só durante `init_db`. A conexão vem de um
+# pool: se o memo sobrevivesse ao bootstrap, uma requisição HTTP posterior
+# poderia recebê-la carregando um retrato velho do schema — e `table_columns`
+# é consultada em caminho de requisição (`modules/employees/service.py`, entre
+# outros). A desmontagem em `finally` não é higiene, é requisito de correção.
+_ATRIBUTO_MEMO_CATALOGO = '_epi_memo_catalogo_332'
+
+
+def _catalogo_memo(connection):
+    """O memo desta conexão, ou ``None`` quando não há janela aberta."""
+    # Exceções estreitas de propósito: o que pode falhar aqui é o PORTADOR não
+    # suportar atributos (`AttributeError`) ou recusar o nome (`TypeError`).
+    # Engolir `Exception` esconderia defeito de verdade num caminho que roda
+    # centenas de vezes por bootstrap.
+    try:
+        memo = getattr(connection, _ATRIBUTO_MEMO_CATALOGO, None)
+    except (AttributeError, TypeError):
+        return None
+    return memo if isinstance(memo, dict) else None
+
+
+def _catalogo_memo_gravar(connection, table_name: str, colunas) -> None:
+    """Grava conhecimento POSITIVO. Conjunto vazio nunca é gravado: vazio pode
+    ser tabela ausente ou consulta que falhou, e nenhum dos dois é
+    conhecimento."""
+    if not colunas:
+        return
+    memo = _catalogo_memo(connection)
+    if memo is None:
+        return
+    try:
+        memo[table_name] = frozenset(colunas)
+    except TypeError:
+        return  # memo é otimização: falhar ao gravar nunca pode quebrar migração
+
+
+def abrir_memo_catalogo(connection) -> bool:
+    """Abre a janela do memo. ``False`` quando o portador não aceita atributo.
+
+    ``sqlite3.Connection`` recusa atributos e referências fracas — medido, não
+    suposto. Nesse caso o memo não abre e o módulo inteiro se comporta como
+    antes desta mudança. É o fallback previsto, não uma limitação.
+    """
+    try:
+        setattr(connection, _ATRIBUTO_MEMO_CATALOGO, {})
+    except (AttributeError, TypeError):
+        return False
+    return _catalogo_memo(connection) is not None
+
+
+def fechar_memo_catalogo(connection) -> None:
+    """Fecha a janela. Chamado em ``finally``: a conexão nunca volta ao pool
+    carregando memo."""
+    try:
+        delattr(connection, _ATRIBUTO_MEMO_CATALOGO)
+    except (AttributeError, TypeError):
+        return
+
+
+def invalidar_memo_catalogo(connection, table) -> None:
+    """Esquece o que se sabia desta tabela.
+
+    Chamado após toda tentativa de ``ALTER TABLE ADD COLUMN``. Esquecer — e não
+    remendar o memo com a coluna nova — é o que preserva a validação
+    pós-migração de ``_safe_add_column``: ela precisa continuar consultando o
+    banco real, e não confirmar o próprio memo.
+    """
+    memo = _catalogo_memo(connection)
+    if memo is None:
+        return
+    memo.pop(str(table or '').strip(), None)
+
+
 def table_exists(connection, table) -> bool:
     """Verifica se uma tabela existe (SQLite ou Postgres). Vive em ``db`` — a
     camada de mais baixo nível — para poder ser usada por qualquer módulo sem
@@ -243,6 +331,11 @@ def table_exists(connection, table) -> bool:
     table_name = str(table or '').strip()
     if not table_name:
         return False
+    # #332: único atalho é positivo. Conjunto de colunas conhecido prova que a
+    # tabela existe; ausência no memo não prova o contrário e vai ao catálogo.
+    _memo = _catalogo_memo(connection)
+    if _memo is not None and _memo.get(table_name):
+        return True
     try:
         if _is_sqlite_connection(connection):
             row = connection.execute(
@@ -300,19 +393,49 @@ def table_columns(connection, table) -> set:
     try:
         if _is_sqlite_connection(connection):
             rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
-            return {str(row['name'] if isinstance(row, dict) else row[1]) for row in rows}
-        rows = connection.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
-            (table_name,),
-        ).fetchall()
-        result = set()
-        for row in rows:
-            if isinstance(row, dict):
-                result.add(str(row.get('column_name') or ''))
-            elif hasattr(row, 'keys'):
-                result.add(str(row['column_name']))
-            else:
-                result.add(str(row[0]))
-        return {item for item in result if item}
+            colunas = {str(row['name'] if isinstance(row, dict) else row[1]) for row in rows}
+        else:
+            rows = connection.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+                (table_name,),
+            ).fetchall()
+            result = set()
+            for row in rows:
+                if isinstance(row, dict):
+                    result.add(str(row.get('column_name') or ''))
+                elif hasattr(row, 'keys'):
+                    result.add(str(row['column_name']))
+                else:
+                    result.add(str(row[0]))
+            colunas = {item for item in result if item}
     except Exception:
         return set()
+    # #332: esta função NUNCA responde pelo memo — ela é o caminho vivo, e
+    # `'x' in table_columns(...)` é usado em rotas de requisição, onde ausência
+    # precisa continuar significando ausência real. Aqui o memo só é ALIMENTADO.
+    _catalogo_memo_gravar(connection, table_name, colunas)
+    return colunas
+
+
+def column_exists(connection, table, column) -> bool:
+    """A coluna existe? Regra de três vias do memo positivo (#332).
+
+    · tabela no memo **e** coluna presente → ``True`` sem consultar
+    · tabela ausente do memo               → consulta viva
+    · tabela no memo, coluna **ausente**   → consulta viva
+
+    A terceira linha é a que importa. Responder ``False`` a partir do memo
+    seria caching negativo disfarçado: o conjunto de colunas foi lido num
+    instante anterior, e é justamente um ``False`` que leva `_safe_add_column`
+    a emitir ``ALTER TABLE ADD COLUMN``. Só a consulta viva pode negar.
+    """
+    table_name = str(table or '').strip()
+    column_name = str(column or '').strip()
+    if not table_name or not column_name:
+        return False
+    memo = _catalogo_memo(connection)
+    if memo is not None:
+        conhecidas = memo.get(table_name)
+        if conhecidas is not None and column_name in conhecidas:
+            return True
+    return column_name in table_columns(connection, table_name)

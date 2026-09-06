@@ -691,8 +691,20 @@ class _StockMoveSheetState extends State<_StockMoveSheet> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: EpiSpacing.xs),
+          // Saldo da UNIDADE, rotulado como tal (#278, ocorrência 2). Aqui se
+          // digita uma entrada ou saída DAQUELA Unidade, e o número exibido
+          // era o da empresa inteira sob o rótulo genérico "Estoque atual" —
+          // o operador conferia a própria operação contra um saldo de outro
+          // escopo. O card logo acima já distingue os dois; a folha tinha
+          // perdido a distinção.
+          //
+          // `null` vira '—', nunca 0: zero afirma "esta Unidade tem zero", e
+          // ausência de contexto de Unidade não afirma isso. E não há fallback
+          // para `stockQuantity`: numa operação física o saldo corporativo não
+          // substitui o local. Mesmo tratamento do `_unitStock ?? '—'` do card.
           Text(
-            '${AppLocalizations.of(context).epiStockLabel}: ${widget.epi.stockQuantity}',
+            '${l10n.epiStockLabel} ${l10n.stockUnitBalanceSuffix}: '
+            '${widget.epi.unitStockQuantity ?? '—'}',
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium

@@ -142,6 +142,61 @@ def test_a_movimentacao_exige_unidade_explicita():
     assert 'state.unitId != 0' in corpo
 
 
+def _folha_de_movimentacao(corpo):
+    """Só a classe `_StockMoveSheetState`, recortada por chave de bloco.
+
+    O arquivo inteiro contém leituras LEGÍTIMAS do saldo corporativo — o card
+    mostra os dois saldos com rótulos distintos, e é assim que deve ser. Um
+    matcher sobre o arquivo todo reprovaria o card correto junto com a folha
+    errada, e alguém acabaria afrouxando o gate para o card passar.
+    """
+    inicio = corpo.index('class _StockMoveSheetState')
+    resto = corpo[inicio:]
+    fim = resto.index('\nclass ', 1)
+    return resto[:fim]
+
+
+# ── Ocorrência 2: a folha de movimentação (#278) ─────────────────────────────
+
+def test_a_folha_de_movimentacao_usa_o_saldo_da_unidade():
+    """O defeito: entrada/saída DE UMA UNIDADE conferidas contra o saldo da
+    empresa inteira, sob rótulo genérico."""
+    folha = _folha_de_movimentacao(_sem_comentarios(ESTOQUE.read_text(encoding='utf-8')))
+    assert 'widget.epi.unitStockQuantity' in folha, \
+        'a folha não lê o saldo da Unidade'
+    assert 'widget.epi.stockQuantity' not in folha, \
+        'a folha voltou a exibir o saldo CORPORATIVO como saldo operacional'
+
+
+def test_a_folha_rotula_o_saldo_como_da_unidade():
+    """`epiStockLabel` sozinho é "Estoque atual" — não diz de quem."""
+    folha = _folha_de_movimentacao(_sem_comentarios(ESTOQUE.read_text(encoding='utf-8')))
+    assert 'stockUnitBalanceSuffix' in folha, \
+        'o saldo da folha voltou a aparecer sem escopo no rótulo'
+
+
+def test_a_folha_nao_converte_null_em_zero():
+    """`0` afirma "esta Unidade tem zero"; `null` é ausência de contexto.
+
+    Trocar um pelo outro faria a folha afirmar saldo zerado onde não há saldo
+    conhecido — e zero é justamente o número que impede a operação.
+    """
+    folha = _folha_de_movimentacao(_sem_comentarios(ESTOQUE.read_text(encoding='utf-8')))
+    assert "unitStockQuantity ?? '—'" in folha, \
+        'a folha perdeu o tratamento próprio de saldo desconhecido'
+    assert 'unitStockQuantity ?? 0' not in folha, \
+        'saldo desconhecido virou zero na folha'
+
+
+def test_o_saldo_corporativo_do_card_continua_rotulado():
+    """Contraprova dos três acima: eles não podem estar passando porque o saldo
+    corporativo sumiu da tela. Ele CONTINUA no card, e rotulado."""
+    corpo = _sem_comentarios(ESTOQUE.read_text(encoding='utf-8'))
+    assert 'stockCompanyBalanceLabel' in corpo, \
+        'o saldo corporativo rotulado sumiu do card — a tela perdeu informação'
+    assert 'epi.companyStockQuantity ?? epi.stockQuantity' in corpo
+
+
 def test_as_rotas_por_unidade_mandam_unit_id_e_dizem_por_que():
     """Mandar `unit_id` aqui é transporte, não decisão.
 

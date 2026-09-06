@@ -1,7 +1,6 @@
 """Tests for Phase 6 structural refactor: PUT/DELETE wiring, ficha, stock, portal, employees."""
 
 import importlib
-import re
 import types
 
 
@@ -34,7 +33,6 @@ def test_employees_service_normalize_cpf_valid():
 
 def test_employees_service_normalize_cpf_invalid():
     from modules.employees.service import normalize_cpf
-    import pytest
     try:
         normalize_cpf('123')
         assert False, 'Should have raised'

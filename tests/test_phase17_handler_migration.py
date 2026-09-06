@@ -1,7 +1,6 @@
 """Tests for Phase 17: handler migration from server_postgres to modules."""
 
 import importlib
-import types
 
 
 MIGRATED_ROUTES = [
@@ -46,7 +45,7 @@ def test_test_imports_use_modules_not_server_postgres():
     from modules.devolutions.service import fetch_open_deliveries_for_devolution, register_epi_devolution
     from modules.feedback.service import apply_feedback_triage, fetch_feedback_detail, fetch_feedbacks_for_manager
     from core.schema import ensure_devolution_columns
-    from core.permissions import PERM_EPI_FEEDBACK_VIEW, PERMISSIONS
+    from core.permissions import PERMISSIONS
 
     for fn in (fetch_low_stock_items, backfill_unit_stock_from_epis, sync_epi_scope_stock_unit,
                fetch_open_deliveries_for_devolution, register_epi_devolution,

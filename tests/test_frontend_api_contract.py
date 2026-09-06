@@ -12,7 +12,6 @@ import glob
 import os
 import re
 
-import pytest
 
 import app  # noqa: F401 — registra as rotas no router
 from app import router

@@ -3,7 +3,6 @@ import sqlite3
 import pytest
 
 import core.schema
-import server_postgres
 from server_postgres import SchemaMigrationError, _ensure_ficha_periods_sequence_unique
 
 

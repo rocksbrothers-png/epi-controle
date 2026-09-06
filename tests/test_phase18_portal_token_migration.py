@@ -7,7 +7,6 @@ import pytest
 from core.schema import ensure_migrate_legacy_portal_tokens
 from modules.portal.service import (
     EmployeePortalAccessDenied,
-    get_employee_portal_context_by_token,
     resolve_external_employee_context,
 )
 

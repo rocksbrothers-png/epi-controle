@@ -205,7 +205,7 @@ def test_shadow_no_diff_when_rules_match_legacy():
 # ── promote_rule_engine service ───────────────────────────────────────────────
 
 def test_promote_rule_engine_updates_mode():
-    from modules.settings.service import promote_rule_engine, get_configuration_framework
+    from modules.settings.service import promote_rule_engine
     conn = _make_full_connection()
     framework = promote_rule_engine(conn, 1, mode='shadow', rollout_percentage=10, enable=True)
     conn.commit()

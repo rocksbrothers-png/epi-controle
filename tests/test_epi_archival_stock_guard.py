@@ -9,7 +9,6 @@ motivo e auditoria.
 
 import sqlite3
 
-import pytest
 
 from modules.epis.service import (
     block_available_stock_for_archival,

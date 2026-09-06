@@ -1,6 +1,5 @@
 """Tests for Fase 19 cleanup: compute_alerts_wired + user_unit_links POST migration."""
 
-import importlib
 
 
 # ── compute_alerts_wired ──────────────────────────────────────────────────────

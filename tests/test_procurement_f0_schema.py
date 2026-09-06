@@ -261,7 +261,6 @@ def test_send_email_multiple_recipients_and_attachment(monkeypatch):
 
 def test_recovery_email_delegates_to_mailer(monkeypatch):
     """Comportamento da recuperação de senha não muda (regra intacta)."""
-    from epi_backend.mailer import send_email
     from modules.auth.service import send_recovery_email_smtp
     _configure_fake_smtp(monkeypatch)
     send_recovery_email_smtp('user@example.com', 'joao', 'TOKEN123')

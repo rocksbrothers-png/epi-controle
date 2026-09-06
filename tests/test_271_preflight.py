@@ -483,7 +483,7 @@ def test_sem_ready_nenhuma_requisicao_funcional():
     relogio = _relogiar(m)
     chamadas = _stub(m, 503, relogio=relogio)
 
-    r = m.certificar_api('teste', 'https://exemplo', 'tok')
+    r = m.certificar_api('teste', 'https://exemplo', usuario='u', senha='p')
 
     assert r.nao_pronta is True
     assert r.certificado is False, 'preflight reprovado produziu ambiente certificado'
@@ -501,7 +501,7 @@ def test_contrato_invalido_tambem_nao_emite_requisicao_funcional():
     m = _modulo()
     _relogiar(m)
     chamadas = _stub(m, 404)
-    r = m.certificar_api('teste', 'https://exemplo', 'tok')
+    r = m.certificar_api('teste', 'https://exemplo', usuario='u', senha='p')
     assert r.certificado is False
     assert r.nao_pronta is False, \
         '404 foi rotulado como indisponibilidade; é divergência de contrato'
@@ -514,8 +514,13 @@ def test_depois_de_ready_o_smoke_roda_com_o_timeout_funcional():
     m = _modulo()
     relogio = _relogiar(m)
     chamadas = _stub(m, 503, 503, 200, relogio=relogio, custo=1.0)
+    # Autenticação e identidade são degrau obrigatório da fase 2 desde a fatia
+    # 5 da #313; substituídas aqui para o gate seguir medindo o que ele mede —
+    # a fronteira entre os dois timeouts, não o login.
+    _por(m, '_login', lambda raiz, usuario, senha: ('tok-do-login', ''))
+    _por(m, '_validar_identidade', lambda raiz, token: '')
 
-    m.certificar_api('teste', 'https://exemplo', 'tok')
+    m.certificar_api('teste', 'https://exemplo', usuario='u', senha='p')
 
     do_preflight = [c for c in chamadas if c[1] == m.PREFLIGHT_TIMEOUT]
     funcionais = [c for c in chamadas if c[1] == m.TIMEOUT]

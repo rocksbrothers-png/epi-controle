@@ -368,10 +368,25 @@ def test_gate_11_memo_nao_sobrevive_ao_bootstrap_em_sucesso():
 
 def test_gate_11_memo_nao_sobrevive_a_excecao_no_bootstrap():
     conexao = ConexaoFalsa({})
-    with pytest.raises(RuntimeError), _memo_catalogo_do_bootstrap(conexao):
-        assert epi_db._catalogo_memo(conexao) is not None
-        raise RuntimeError('migração falhou no meio do bootstrap')
-    assert epi_db._catalogo_memo(conexao) is None
+
+    # O `raise` vive dentro de uma função, e não direto no corpo do `with`, por
+    # uma razão de legibilidade que já custou um alerta: com ele no corpo, o
+    # CodeQL marca a asserção final como "código inalcançável". É falso — o
+    # `__exit__` de `pytest.raises` suprime a exceção e a linha executa,
+    # verificado trocando-a por `assert False` e vendo o teste falhar nela —
+    # mas um alerta permanente sobre a linha cujo propósito É executar depois
+    # do bloco convida alguém a apagá-la, e aí este gate ficaria vacuoso.
+    def _bootstrap_que_falha():
+        with _memo_catalogo_do_bootstrap(conexao):
+            assert epi_db._catalogo_memo(conexao) is not None
+            raise RuntimeError('migração falhou no meio do bootstrap')
+
+    with pytest.raises(RuntimeError):
+        _bootstrap_que_falha()
+
+    assert epi_db._catalogo_memo(conexao) is None, (
+        'o memo sobreviveu à exceção e a conexão volta ao pool com ele'
+    )
 
 
 # ── Gate 12/14 na suíte rápida, e a sabotagem do Gate 13 ─────────────────────

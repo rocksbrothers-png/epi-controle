@@ -61,18 +61,15 @@ recebe os secrets da B4-B: disparado lá com `smoke=true`, o job sai com
     export EPI_CERT_SAAS_API_URL=https://...      # API do SaaS
     export EPI_CERT_SAAS_WEB_URL=https://...      # Flutter Web do SaaS
 
-    # Modo NOVO (#313), por deployment — identidade `certification_readonly`:
+    # Identidade `certification_readonly`, uma por deployment (#313):
     export EPI_CERT_CORP_USER=... EPI_CERT_CORP_PASSWORD=...
     export EPI_CERT_SAAS_USER=... EPI_CERT_SAAS_PASSWORD=...
 
-    # Modo LEGADO, enquanto o novo não estiver provisionado:
-    export EPI_CERT_CORP_TOKEN=...                # access JWT de 8 h
-    export EPI_CERT_SAAS_TOKEN=...
-
     python3 scripts/certificar_deployment.py
 
-Os modos são EXCLUSIVOS por deployment: com usuário e senha presentes o token
-estático não é lido, e um login recusado REPROVA — nunca recorre ao JWT antigo.
+Usuário e senha são o ÚNICO mecanismo de autenticação. Um login recusado
+REPROVA o deployment, e um deployment sem credencial sai `NOT CERTIFIED` — não
+existe segunda porta por onde a certificação possa entrar.
 
 `EPI_CERT_SAAS_WEB_URL` não pode terminar em barra: ele também vira o header
 `Origin` da checagem de CORS, e a comparação com `Access-Control-Allow-Origin`
@@ -85,10 +82,9 @@ Nenhuma credencial vive no repositório: tudo entra por ambiente, e no CI por
 secrets. Um deployment sem variáveis definidas é reportado como
 `NOT CERTIFIED`, nunca como aprovado.
 
-Os access tokens da aplicação valem 8 horas (`JWT_EXP_SECONDS`). Gere-os pouco
-antes de executar; um valor cadastrado ontem já vai ser recusado com HTTP 401,
-e o script trata isso como falha, corretamente. Certificação recorrente exige
-uma solução de credencial de vida longa que ainda não existe (#313).
+A certificação faz o próprio login a cada execução (#313, fatia 5): não há
+credencial de vida longa para renovar à mão, e portanto não há mais como uma
+reprovação significar "o JWT venceu" em vez de "o deployment divergiu".
 
 ## Duas fases: preflight de disponibilidade, depois smoke funcional
 
@@ -253,11 +249,15 @@ ROTA_IDENTIDADE = '/api/auth/me'
 PAPEL_ESPERADO = 'certification_readonly'
 PERMISSOES_ESPERADAS = frozenset({'units:view', 'stock:view'})
 
-#: Modos de credencial, MUTUAMENTE EXCLUSIVOS. Nunca `login() or token`: um
-#: fallback silencioso devolveria verde com a credencial que a #313 existe para
-#: eliminar, e esconderia a falha do modo novo por semanas.
+#: Os dois estados possíveis de credencial. Não há terceiro, e essa ausência é
+#: o contrato: sem um modo alternativo não existe `login() or <credencial
+#: antiga>` para alguém reintroduzir, nem caminho por onde um verde possa sair
+#: de uma credencial que não seja a identidade de certificação.
+#:
+#: `MODO_AUSENTE` NÃO é resquício do modo antigo e não sai daqui: é ele que faz
+#: um deployment sem credencial sair `NOT CERTIFIED` com código 2 em vez de ser
+#: sondado às cegas. Ausência de execução não é aprovação.
 MODO_NOVO = 'credenciais'
-MODO_LEGADO = 'token_estatico'
 MODO_AUSENTE = 'sem_credencial'
 
 #: Campos que provam que as migrations rodaram NAQUELE banco. Se a tabela não
@@ -413,18 +413,20 @@ def _preflight(raiz: str, token: str = '') -> tuple[str, list, float]:
     return veredito, tentativas, time.monotonic() - inicio_total
 
 
-def _modo(token: str, usuario: str, senha: str) -> str:
-    """Qual credencial usar. Os modos são EXCLUSIVOS, por decisão de contrato.
+def _modo(usuario: str, senha: str) -> str:
+    """Há credencial de certificação, ou não há. Duas saídas, sem terceira.
 
-    Com usuário e senha presentes o token estático não é sequer lido: se o
-    login falhar, a certificação reprova. A alternativa — tentar o token antigo
-    — devolveria verde usando exatamente a credencial que a #313 elimina, e a
-    falha do caminho novo ficaria invisível até o JWT expirar.
+    A função não recebe token algum, e é aí que está a garantia: não existe
+    argumento por onde uma credencial alternativa possa chegar, então nenhuma
+    edição futura consegue devolver um modo que autentique por outra via sem
+    mudar esta assinatura — o que os gates da fatia 5 reprovam.
+
+    Faltando usuário OU senha o resultado é `MODO_AUSENTE`, nunca uma tentativa
+    parcial: meia credencial produziria um 401 indistinguível de deployment
+    quebrado, que é o defeito que a #313 existe para eliminar.
     """
     if usuario and senha:
         return MODO_NOVO
-    if token:
-        return MODO_LEGADO
     return MODO_AUSENTE
 
 
@@ -492,18 +494,29 @@ def _validar_identidade(raiz: str, token: str) -> str:
     return ''
 
 
-def certificar_api(nome: str, base_url: str, token: str = '', origin: str = '',
+def certificar_api(nome: str, base_url: str, origin: str = '',
                    usuario: str = '', senha: str = '') -> Resultado:
+    """Certifica um deployment. NÃO existe parâmetro de token, de propósito.
+
+    O parâmetro foi removido na fatia 5 da #313 em vez de ganhar um default
+    inofensivo: sem ele, uma tentativa futura de passar uma credencial pronta
+    vira `TypeError` na hora, e não uma regressão silenciosa que só apareceria
+    quando alguém reparasse que o verde veio da credencial errada.
+    """
     r = Resultado(nome)
     if not base_url:
         r.pulado = True
         return r
     raiz = base_url.rstrip('/')
 
-    modo = _modo(token, usuario, senha)
-    if modo == MODO_AUSENTE:
+    if _modo(usuario, senha) == MODO_AUSENTE:
         r.pulado = True
         return r
+
+    # A única origem possível para esta credencial é o `_login` abaixo. Começa
+    # vazia porque o preflight roda SEM credencial, e assim permanece até a
+    # autenticação devolver a dela.
+    token = ''
 
     # ── Fase 1: preflight, SEM credencial ──────────────────────────────────
     veredito, r.preflight, r.time_to_ready = _preflight(raiz)
@@ -532,21 +545,23 @@ def certificar_api(nome: str, base_url: str, token: str = '', origin: str = '',
          f'em {len(r.preflight)} sondagem(ns), HTTP {ultimo_status}')
 
     # ── Fase 1b: autenticação, só depois do READY ──────────────────────────
-    if modo == MODO_NOVO:
-        token, erro_login = _login(raiz, usuario, senha)
-        if erro_login:
-            # Fail-closed: nenhuma requisição funcional, e NENHUMA tentativa
-            # com o token estático. Ver `_modo`.
-            r.falha('autenticação', f'login recusado ({erro_login})')
-            return r
-        r.ok('autenticação', f'login aceito em {ROTA_LOGIN}')
+    # Caminho único: chegar aqui sem credencial é impossível — `MODO_AUSENTE`
+    # já retornou acima.
+    token, erro_login = _login(raiz, usuario, senha)
+    if erro_login:
+        # Fail-closed, e é o `return` que o garante: sem ele o smoke seguiria
+        # com `token` vazio e leria o 401 do backend como divergência de
+        # deployment. Não há credencial alternativa a tentar.
+        r.falha('autenticação', f'login recusado ({erro_login})')
+        return r
+    r.ok('autenticação', f'login aceito em {ROTA_LOGIN}')
 
-        erro_identidade = _validar_identidade(raiz, token)
-        if erro_identidade:
-            r.falha('identidade', erro_identidade)
-            return r
-        r.ok('identidade',
-             f'{PAPEL_ESPERADO} com exatamente {sorted(PERMISSOES_ESPERADAS)}')
+    erro_identidade = _validar_identidade(raiz, token)
+    if erro_identidade:
+        r.falha('identidade', erro_identidade)
+        return r
+    r.ok('identidade',
+         f'{PAPEL_ESPERADO} com exatamente {sorted(PERMISSOES_ESPERADAS)}')
 
     # ── Fase 2: smoke funcional, TIMEOUT inalterado ────────────────────────
     status, corpo, _ = _get(raiz + '/api/units/selectable', token)
@@ -652,12 +667,10 @@ def certificar_web(nome: str, url: str, base_href_esperado: str) -> Resultado:
 
 def main() -> int:
     corp_url = os.environ.get('EPI_CERT_CORP_URL', '')
-    corp_token = os.environ.get('EPI_CERT_CORP_TOKEN', '')
     corp_user = os.environ.get('EPI_CERT_CORP_USER', '')
     corp_pass = os.environ.get('EPI_CERT_CORP_PASSWORD', '')
     saas_api = os.environ.get('EPI_CERT_SAAS_API_URL', '')
     saas_web = os.environ.get('EPI_CERT_SAAS_WEB_URL', '')
-    saas_token = os.environ.get('EPI_CERT_SAAS_TOKEN', '')
     saas_user = os.environ.get('EPI_CERT_SAAS_USER', '')
     saas_pass = os.environ.get('EPI_CERT_SAAS_PASSWORD', '')
 
@@ -667,10 +680,10 @@ def main() -> int:
         # Flutter é superfície do SaaS. A primeira versão desta certificação
         # exigia `/app/` aqui e reprovava um deployment CORRETO: o teste
         # afirmava uma arquitetura que o produto não tem.
-        certificar_api('corporativo · API + Web Legado', corp_url, corp_token,
+        certificar_api('corporativo · API + Web Legado', corp_url,
                        usuario=corp_user, senha=corp_pass),
         # SaaS: dois serviços, origins separados, CORS obrigatório.
-        certificar_api('saas · API + Web Legado', saas_api, saas_token,
+        certificar_api('saas · API + Web Legado', saas_api,
                        origin=saas_web, usuario=saas_user, senha=saas_pass),
         certificar_web('saas · Flutter Web', saas_web, '/'),
     ]

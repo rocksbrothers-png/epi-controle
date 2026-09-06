@@ -8,9 +8,11 @@ quebrada — e os gates do fluxo novo.
 
 O que estes gates existem para impedir:
 
-1. `login() or EPI_CERT_*_TOKEN`. Um fallback silencioso devolveria verde com a
-   credencial que esta frente elimina, e a falha do caminho novo ficaria
-   invisível até o JWT expirar;
+1. um fallback do tipo `login() or <credencial antiga>`. Silencioso, devolveria
+   verde com a credencial que esta frente elimina, e a falha do caminho novo
+   ficaria invisível até o JWT expirar. Desde a fatia 5 não há segunda
+   credencial para cair — e `tests/test_313_fatia5_mecanismo_unico.py` prova
+   que ela não volta;
 2. autenticar sem conferir QUEM autenticou. Um `registry_admin` passa o smoke
    inteiro carregando 26 permissões de escrita;
 3. o preflight voltar a mandar credencial, reacoplando readiness a identidade;
@@ -145,8 +147,13 @@ def test_o_preflight_nao_manda_authorization():
 
 
 def test_certificar_api_chama_o_preflight_sem_token():
-    """Estático, porque o parâmetro `token` continua existindo por compatibilidade
-    com os 25 gates da #271: o que precisa ser provado é o PONTO DE CHAMADA."""
+    """Estático: o que precisa ser provado é o PONTO DE CHAMADA.
+
+    Continua valendo depois da fatia 5. `certificar_api` já não recebe token
+    algum, mas ela passa a ter um local `token` preenchido pelo login — e o
+    preflight roda ANTES dele. Sondar com credencial reacoplaria readiness a
+    identidade, que é o defeito que esta separação existe para impedir.
+    """
     arvore = ast.parse(_fonte())
     chamadas = [no for no in ast.walk(arvore)
                 if isinstance(no, ast.Call)
@@ -167,49 +174,78 @@ def test_as_constantes_do_preflight_e_do_smoke_nao_mudaram():
     assert m.TIMEOUT == 20, 'lentidão de endpoint é defeito; subir isto a esconde'
 
 
-# ── Gate 12: modos exclusivos ────────────────────────────────────────────────
+# ── Gate 12: só existem dois modos, e credencial é usuário + senha ───────────
 
-def test_os_modos_sao_exclusivos():
+def test_so_ha_dois_modos():
+    """Depois da fatia 5, `_modo` decide sobre usuário e senha, e mais nada.
+
+    A assinatura é parte do gate: `_modo` não aceita um terceiro argumento, de
+    modo que não há por onde uma credencial alternativa entrar na decisão.
+    """
     m = _modulo()
-    assert m._modo('tok', '', '') == m.MODO_LEGADO
-    assert m._modo('', 'u', 'p') == m.MODO_NOVO
-    assert m._modo('', '', '') == m.MODO_AUSENTE
-    # O caso que importa: token presente NÃO tem precedência nem preferência.
-    assert m._modo('tok-antigo', 'u', 'p') == m.MODO_NOVO
+    assert m._modo('u', 'p') == m.MODO_NOVO
+    assert m._modo('', '') == m.MODO_AUSENTE
+    assert not hasattr(m, 'MODO_LEGADO'), 'o modo legado voltou'
+
+    with pytest.raises(TypeError):
+        m._modo('tok', 'u', 'p')  # a porta do token não existe mais
 
 
-def test_o_token_estatico_nao_e_usado_quando_ha_credenciais():
+def test_meia_credencial_nao_autentica():
+    """Usuário sem senha (ou o inverso) é ausência, não tentativa parcial.
+
+    Tentar com metade produziria um 401 do backend indistinguível de
+    deployment quebrado — exatamente a confusão que a #313 existe para acabar.
+    """
+    m = _modulo()
+    assert m._modo('u', '') == m.MODO_AUSENTE
+    assert m._modo('', 'p') == m.MODO_AUSENTE
+
+
+def test_a_credencial_do_smoke_vem_do_login_e_de_mais_nada():
     m = _instrumentar(_modulo(), rede := _Rede(
         [(401, {}, {}),                    # preflight: pronta, auth recusada
-         (200, {'units': [{'id': 9}], 'permissions': []}, {}),  # /api/auth/me
          (200, {'units': [{'id': 9}]}, {}),
          (200, {'items': [{}]}, {})]))
-    rede.login = ('tok-NOVO', '')
+    rede.login = ('tok-DO-LOGIN', '')
     m._validar_identidade = lambda raiz, token: ''
-    m.certificar_api('x', 'https://exemplo', 'tok-ANTIGO', usuario='u', senha='p')
+    m.certificar_api('x', 'https://exemplo', usuario='u', senha='p')
     usados = {token for _, token, _ in rede.gets if token}
-    assert 'tok-ANTIGO' not in usados, 'o JWT estático foi usado apesar das credenciais'
-    assert usados == {'tok-NOVO'}
+    assert usados == {'tok-DO-LOGIN'}, \
+        f'o smoke usou credencial de outra origem: {sorted(usados)}'
+
+
+def test_certificar_api_nao_aceita_credencial_pronta():
+    """A remoção do parâmetro é o gate: passar um token vira erro, não regressão."""
+    import inspect
+    m = _modulo()
+    parametros = inspect.signature(m.certificar_api).parameters
+    assert 'token' not in parametros, \
+        'o parâmetro de token voltou: há por onde injetar credencial pronta'
+    with pytest.raises(TypeError):
+        m.certificar_api('x', 'https://exemplo', usuario='u', senha='p',
+                         token='tok-ANTIGO')
 
 
 # ── Gate 11: fail-closed ─────────────────────────────────────────────────────
 
 def test_login_recusado_nao_emite_requisicao_funcional():
-    """Fail-closed com o token antigo PRESENTE — que é o caso perigoso.
+    """Fail-closed: login recusado encerra o deployment ali mesmo.
 
-    Contar requisições não basta: uma implementação que caísse no token antigo
-    emitiria a mesma quantidade de GETs de um caminho legítimo. O que distingue
-    é a credencial usada e o veredito registrado.
+    Contar requisições não basta sozinho — uma implementação que seguisse com
+    credencial vazia emitiria GETs e leria o 401 do backend como divergência de
+    deployment. Por isso o gate afirma três coisas: nenhuma requisição depois
+    do login, nenhuma credencial em uso, e o veredito de autenticação REPROVADO.
     """
     m = _instrumentar(_modulo(), rede := _Rede([(401, {}, {})]))
     rede.login = ('', 'HTTP 401 INVALID_PASSWORD')
-    r = m.certificar_api('x', 'https://exemplo', 'tok-ANTIGO', usuario='u', senha='p')
+    r = m.certificar_api('x', 'https://exemplo', usuario='u', senha='p')
     assert not r.certificado
-    assert 'tok-ANTIGO' not in {token for _, token, _ in rede.gets}, \
-        'o JWT estático foi usado após login recusado — fallback silencioso'
     funcionais = [url for url, _, _ in rede.gets[1:]]
     assert not funcionais, \
         f'houve requisição depois de login recusado: {funcionais}'
+    assert not {token for _, token, _ in rede.gets if token}, \
+        'alguma credencial foi usada apesar do login recusado'
     autenticacao = [(nome, passou) for nome, passou, _ in r.checagens
                     if nome == 'autenticação']
     assert autenticacao == [('autenticação', False)], \
@@ -219,7 +255,7 @@ def test_login_recusado_nao_emite_requisicao_funcional():
 def test_sem_credencial_nenhuma_o_ambiente_sai_nao_executado():
     """Ausência de execução nunca é aprovação."""
     m = _instrumentar(_modulo(), rede := _Rede([]))
-    r = m.certificar_api('x', 'https://exemplo', '', usuario='', senha='')
+    r = m.certificar_api('x', 'https://exemplo', usuario='', senha='')
     assert r.pulado and not r.certificado
     assert not rede.gets, 'sondou sem credencial configurada'
 
@@ -265,7 +301,7 @@ def test_identidade_divergente_impede_o_smoke():
         [(401, {}, {}),
          (200, {'data': {'user': {'role': 'registry_admin', 'company_id': 1},
                          'permissions': ['units:view', 'stock:view']}}, {})]))
-    r = m.certificar_api('x', 'https://exemplo', '', usuario='u', senha='p')
+    r = m.certificar_api('x', 'https://exemplo', usuario='u', senha='p')
     urls = [url for url, _, _ in rede.gets]
     assert not r.certificado
     assert any(m.ROTA_IDENTIDADE in url for url in urls), \

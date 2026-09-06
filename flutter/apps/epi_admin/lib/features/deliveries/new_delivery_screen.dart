@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:signature/signature.dart';
 import '../../core/bloc/new_delivery_cubit.dart';
+import '../../core/utils/epi_status_utils.dart';
 import '../qr/qr_scanner_screen.dart';
 
 /// Nova entrega.
@@ -335,10 +336,35 @@ class _EpiStepState extends State<_EpiStep> {
                   // aqui: numa operação física ele não significa nada — a
                   // entrega sai deste estoque, não do agregado da empresa.
                   final saldoLocal = epi.unitStockQuantity ?? 0;
+                  // Classificação DA UNIDADE, decidida pelo backend (#271) e
+                  // devolvida por `/api/stock/epis` junto com o saldo local
+                  // (#278, item 6 da DoD). A 1.1D-C2 tirou daqui o badge de
+                  // criticidade CORPORATIVA porque a lista vinha do bootstrap,
+                  // que não classifica por Unidade; a lista mudou de fonte e a
+                  // classificação certa passou a chegar.
+                  //
+                  // Mesmo contrato das outras superfícies — `stock_screen` e
+                  // `stock_config_screen`: o helper traduz `stock_status` e a
+                  // tela só desenha. Nada é recalculado aqui, e `null` (sem
+                  // classificação) não desenha badge, em vez de virar `normal`.
+                  final status = epiUnitBadgeStatus(epi);
                   return ListTile(
                     title: Text(epi.name),
                     subtitle: Text(l10n.deliveryUnitStockAvailable(saldoLocal)),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    // O badge acompanha o chevron em vez de substituí-lo: o
+                    // toque continua sendo a ação do item, e some a escolha
+                    // entre ver o estado do estoque OU saber que dá para
+                    // avançar. Antes da 1.1D-C2 um excluía o outro.
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (status != null) ...[
+                          EpiStockBadge(status: status),
+                          const SizedBox(width: EpiSpacing.xs),
+                        ],
+                        const Icon(Icons.chevron_right_rounded),
+                      ],
+                    ),
                     // Habilitar pelo saldo local é só a primeira barreira. A
                     // disponibilidade real é decidida no passo do item, onde só
                     // existem unidades etiquetadas `in_stock` desta Unidade.

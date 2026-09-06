@@ -199,8 +199,20 @@ def _table_columns(connection, table) -> set:
     return _db_table_columns(connection, table)
 
 
+def _invalidar_memo_catalogo(connection, table) -> None:
+    """Esquece o que o memo de catálogo (#332) sabia desta tabela."""
+    from epi_backend.db import invalidar_memo_catalogo as _db_invalidar
+    _db_invalidar(connection, table)
+
+
 def _col_exists(connection, table, column) -> bool:
-    return str(column or '').strip() in _table_columns(connection, table)
+    # #332: delega ao predicado de coluna em `db`, que aplica a regra de três
+    # vias do memo positivo. A regra não pode ser expressa aqui: uma função que
+    # devolve o CONJUNTO de colunas não sabe qual coluna está sendo perguntada,
+    # e `coluna in conjunto` transformaria ausência no memo em `False` sem
+    # consultar o banco — que é exatamente o `False` que autoriza um ALTER.
+    from epi_backend.db import column_exists as _db_column_exists
+    return _db_column_exists(connection, table, column)
 
 
 def _constraint_exists(connection, table, constraint) -> bool:
@@ -334,8 +346,16 @@ def _safe_add_column(connection, table, column, definition, log_event='db.col_sk
     if _col_exists(connection, table_name, column_name):
         return  # coluna ja existe — nao toca na tabela
     try:
-        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
-        connection.commit()
+        try:
+            connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+            connection.commit()
+        finally:
+            # #332: esquece esta tabela ANTES de qualquer releitura, no caminho
+            # de sucesso e no de exceção. Sem isto a validação logo abaixo
+            # confirmaria o memo em vez do banco, e no `except` a checagem de
+            # "apareceu apesar do erro" responderia com o retrato anterior ao
+            # ALTER. Esquecer preserva o que essas duas leituras significam.
+            _invalidar_memo_catalogo(connection, table_name)
         if not _col_exists(connection, table_name, column_name):
             raise SchemaMigrationError(
                 f'Coluna {table_name}.{column_name} não encontrada após ALTER TABLE.',

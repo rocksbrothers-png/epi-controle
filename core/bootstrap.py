@@ -17,6 +17,8 @@ core.bootstrap de volta (só app.py/scripts), então ele nunca entra em um
 ciclo de import.
 """
 
+from contextlib import contextmanager as _contextmanager
+
 from core import schema
 from core.database import get_connection as _get_connection
 from core.security import hash_password as _hash_password
@@ -38,6 +40,32 @@ from modules.stock.service import (
     next_company_qr_sequence as _next_qr_seq,
     build_master_epi_qr as _build_master_qr,
 )
+
+
+@_contextmanager
+def _memo_catalogo_do_bootstrap(connection):
+    """Janela do memo positivo de catálogo (#332), restrita a esta execução.
+
+    O `finally` não é higiene: a conexão vem de um pool e é devolvida a ele ao
+    fim de `init_db`. Se o memo sobrevivesse, uma requisição HTTP posterior
+    poderia recebê-la carregando um retrato velho do schema — e `table_columns`
+    é consultada em caminho de requisição. Fechar aqui é requisito de correção.
+
+    Abrir no topo do `with` (e não depois do `executescript` inicial) é
+    equivalente em comportamento: nada entre um ponto e outro lê colunas de
+    catálogo, e o memo é preguiçoso e só positivo. A alternativa custaria
+    reindentar todo o corpo de `init_db` para acomodar um `try/finally`.
+
+    Quando o portador não aceita o memo — `sqlite3.Connection` recusa atributos
+    e referências fracas —, a janela simplesmente não abre e tudo se comporta
+    como antes desta mudança.
+    """
+    from epi_backend.db import abrir_memo_catalogo, fechar_memo_catalogo
+    abrir_memo_catalogo(connection)
+    try:
+        yield
+    finally:
+        fechar_memo_catalogo(connection)
 
 
 def init_db():
@@ -70,7 +98,7 @@ def init_db():
     if not connection:
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
-    with _closing(connection) as connection:
+    with _closing(connection) as connection, _memo_catalogo_do_bootstrap(connection):
         schema.run_schema_precheck(connection)
         advisory_lock_acquired = False
         if _DB_CONNECTOR and _DATABASE_URL:

@@ -17,7 +17,13 @@ from core.security import (
     verify_password,
 )
 from epi_backend.config import APP_ENV, PASSWORD_RECOVERY_KEY
-from epi_backend.http_utils import require_fields, send_api_response, send_json, structured_log
+from epi_backend.http_utils import (
+    redact_sensitive_query,
+    require_fields,
+    send_api_response,
+    send_json,
+    structured_log,
+)
 from core.repository import get_user_by_id
 from core.permissions import PERMISSIONS
 from modules.auth.service import (
@@ -37,7 +43,11 @@ from modules.auth.service import (
 
 
 def handle_post_login(handler, parsed, payload, match):
-    structured_log('info', 'auth.login.entry', path=parsed.path, raw_path=getattr(handler, 'path', ''))
+    structured_log(
+        'info', 'auth.login.entry',
+        path=parsed.path,
+        raw_path=redact_sensitive_query(getattr(handler, 'path', '')),
+    )
     client_ip = get_client_ip(handler)
     if not login_limiter.is_allowed(client_ip):
         structured_log('warning', 'auth.login.rate_limited', ip=client_ip)

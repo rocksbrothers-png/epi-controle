@@ -491,10 +491,14 @@ def test_a_f2_nao_toca_no_cpf_do_portal(js):
         'sessionStorage.clear() apagaria o cache do portal e invadiria a F4'
 
 
-def test_o_encerramento_so_mexe_na_propria_chave(js):
-    """A única escrita em storage do encerramento é o aviso de uso único."""
+def test_o_encerramento_so_mexe_nas_proprias_chaves(js):
+    """Três chaves, todas da F2 — o aviso de uso único, a marca de escopo dos
+    snapshots e o sinal de limpeza de rascunho. Nenhuma de F3 ou F4."""
     corpo = _corpo_de(js, 'terminateSession')
-    assert corpo.count('sessionStorage.') == 1
+    chaves = sorted(set(re.findall(r'sessionStorage\.\w+\((\w+)', corpo)))
+    assert chaves == ['SESSION_END_MESSAGE_KEY', 'SESSION_TEARDOWN_KEY',
+                      'SNAPSHOT_SCOPE_KEY'], f'chaves inesperadas: {chaves}'
+    assert 'localStorage' not in corpo
 
 
 # ── 10. Histórico SPA: o snapshot não atravessa identidade ───────────────────
@@ -509,7 +513,7 @@ def test_o_encerramento_so_mexe_na_propria_chave(js):
 
 def test_o_snapshot_de_navegacao_carimba_o_documento_de_origem(js):
     corpo = _corpo_de(js, 'collectInteractiveSnapshot')
-    assert corpo.count('sid: DOCUMENT_INSTANCE_ID') == 2, (
+    assert corpo.count('sid: snapshotScopeId()') == 2, (
         'os DOIS retornos precisam carimbar: o com filtros e o do atalho, '
         'senão um deles vira snapshot sem origem')
     assert 'const DOCUMENT_INSTANCE_ID' in js
@@ -518,10 +522,10 @@ def test_o_snapshot_de_navegacao_carimba_o_documento_de_origem(js):
 def test_o_snapshot_de_outro_documento_e_descartado(js):
     """A metade que fecha o furo: carimbar sem conferir não protege nada."""
     corpo = _corpo_de(js, 'restoreInteractiveSnapshot')
-    assert 'snapshot.sid !== DOCUMENT_INSTANCE_ID' in corpo, \
+    assert 'snapshot.sid !== snapshotScopeId()' in corpo, \
         'sem a conferência, o filtro do usuário anterior volta pelo botão Voltar'
     # A rejeição vem ANTES de qualquer escrita em `state`.
-    assert corpo.index('snapshot.sid !== DOCUMENT_INSTANCE_ID') < corpo.index('state.employeesFilters')
+    assert corpo.index('snapshot.sid !== snapshotScopeId()') < corpo.index('state.employeesFilters')
 
 
 def test_o_carimbo_muda_a_cada_carga_do_documento(js):
@@ -544,6 +548,81 @@ def test_a_navegacao_por_voltar_continua_funcionando(js):
     assert 'restoreInteractiveSnapshot(event?.state)' in trecho
     assert 'showView(nextView' in trecho
     assert trecho.index('restoreInteractiveSnapshot') < trecho.index('showView(nextView')
+
+
+# ── 10b. O escopo é a SESSÃO, não a carga do documento ───────────────────────
+#
+# Segunda rodada da revisão: carimbar por documento invalidaria os snapshots
+# também num F5 do mesmo usuário — e restaurar filtro e rolagem ao voltar
+# depois de um refresh é comportamento existente da SPA. A F2 não pode
+# quebrá-lo por tabela.
+
+def test_a_marca_de_escopo_sobrevive_a_um_refresh_do_mesmo_usuario(js):
+    corpo = _corpo_de(js, 'snapshotScopeId')
+    assert 'sessionStorage.getItem(SNAPSHOT_SCOPE_KEY)' in corpo, \
+        'sem persistir a marca, um F5 comum perde a restauração ao voltar'
+    assert 'sessionStorage.setItem(SNAPSHOT_SCOPE_KEY' in corpo
+
+
+def test_so_o_encerramento_invalida_os_snapshots(js):
+    """A outra metade: se o encerramento não apagasse a marca, os snapshots de
+    quem saiu continuariam casando com os do próximo."""
+    corpo = _corpo_de(js, 'terminateSession')
+    assert 'sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY)' in corpo
+    # E ninguém mais a apaga: um segundo apagador reintroduziria o F5 quebrado.
+    assert js.count('removeItem(SNAPSHOT_SCOPE_KEY)') == 1
+
+
+def test_sem_storage_o_escopo_falha_fechado(js):
+    """Sem `sessionStorage` perde-se a restauração no F5 — mas nunca se aceita
+    snapshot anterior ao encerramento. O lado seguro é o padrão."""
+    corpo = _corpo_de(js, 'snapshotScopeId')
+    assert 'catch' in corpo and 'DOCUMENT_INSTANCE_ID' in corpo.split('catch')[1]
+
+
+# ── 10c. A recarga NÃO limpa campo: o navegador restaura ─────────────────────
+#
+# Achado da revisão que atingiu a premissa central da fatia. `location.reload()`
+# preserva valores de controle de formulário — é por isso que um F5 mantém o que
+# você digitou. Depois de um encerramento, esse rascunho é de quem saiu:
+# `#employee-form` tem CPF, nome, e-mail e WhatsApp de um colaborador.
+
+def test_o_encerramento_sinaliza_a_limpeza_de_rascunhos(js):
+    corpo = _corpo_de(js, 'terminateSession')
+    assert "sessionStorage.setItem(SESSION_TEARDOWN_KEY, '1')" in corpo
+
+
+def test_a_carga_seguinte_limpa_os_rascunhos_restaurados(js):
+    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    assert 'sessionStorage.getItem(SESSION_TEARDOWN_KEY)' in corpo
+    assert 'sessionStorage.removeItem(SESSION_TEARDOWN_KEY)' in corpo, \
+        'sem remover, todo F5 seguinte apagaria rascunho legítimo'
+    assert corpo.index('removeItem') < corpo.index('querySelectorAll')
+    assert "querySelectorAll('#main-screen form')" in corpo
+    assert '.reset()' in corpo
+
+
+def test_a_limpeza_nao_alcanca_a_tela_de_login(js):
+    """O `#login-screen` fica de fora de propósito: mexer nele brigaria com o
+    gerenciador de senhas, que a F1 registrou como comportamento do ambiente."""
+    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    assert 'login-screen' not in corpo
+    assert corpo.count("querySelectorAll(") == 1
+
+
+def test_um_refresh_comum_nao_apaga_rascunho(js):
+    """Contraprova: a limpeza é condicionada ao sinal do encerramento. Sem ele,
+    a função sai antes de tocar em formulário nenhum."""
+    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    assert 'if (!pendente) return;' in corpo
+    assert corpo.index('if (!pendente) return;') < corpo.index('querySelectorAll')
+
+
+def test_a_limpeza_roda_antes_dos_valores_padrao_do_init(js):
+    """`init()` escreve datas padrão em campos. Limpar depois disso apagaria os
+    defaults legítimos; limpar antes tira só o que o navegador restaurou."""
+    corpo = _corpo_de(js, 'init')
+    assert corpo.index('clearRestoredAppForms();') < corpo.index('refs.deliveryReturnedDate.value')
 
 
 # ── 11. A invariante não tem ponto cego fora do app.js ───────────────────────

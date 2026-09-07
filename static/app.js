@@ -1817,11 +1817,41 @@ const DOCUMENT_INSTANCE_ID = (() => {
   return `t${Date.now()}`;
 })();
 
+// A marca vive no `sessionStorage`, e NÃO por carga de documento (#343, F2).
+//
+// Um F5 do MESMO usuário precisa continuar restaurando filtros e rolagem ao
+// voltar — isso é comportamento existente da SPA, e a F2 não pode quebrá-lo por
+// tabela. Quem invalida os snapshots é o ENCERRAMENTO, que apaga a marca; a
+// carga seguinte cria outra, e nada de antes dele casa.
+const SNAPSHOT_SCOPE_KEY = 'epi-snapshot-scope';
+
+// Sinal de uso único: acabou de haver um encerramento, então a carga seguinte
+// precisa limpar rascunhos de formulário. Ver `clearRestoredAppForms`.
+const SESSION_TEARDOWN_KEY = 'epi-session-teardown';
+
+let _escopoDeSnapshot = null;
+
+function snapshotScopeId() {
+  if (_escopoDeSnapshot) return _escopoDeSnapshot;
+  try {
+    _escopoDeSnapshot = sessionStorage.getItem(SNAPSHOT_SCOPE_KEY) || '';
+    if (!_escopoDeSnapshot) {
+      _escopoDeSnapshot = DOCUMENT_INSTANCE_ID;
+      sessionStorage.setItem(SNAPSHOT_SCOPE_KEY, _escopoDeSnapshot);
+    }
+  } catch (_e) {
+    // Sem storage: cai para o valor do documento. Perde-se a restauração no
+    // F5, mas nunca se aceita snapshot anterior ao encerramento — falha fechado.
+    _escopoDeSnapshot = DOCUMENT_INSTANCE_ID;
+  }
+  return _escopoDeSnapshot;
+}
+
 function collectInteractiveSnapshot(view) {
-  if (!isUxInteractiveAppEnabled()) return { view, sid: DOCUMENT_INSTANCE_ID };
+  if (!isUxInteractiveAppEnabled()) return { view, sid: snapshotScopeId() };
   return {
     view,
-    sid: DOCUMENT_INSTANCE_ID,
+    sid: snapshotScopeId(),
     scrollY: globalThis.scrollY || 0,
     filters: {
       employees: { ...state.employeesFilters },
@@ -1836,7 +1866,7 @@ function restoreInteractiveSnapshot(snapshot) {
   // Snapshot de outro documento = de antes do encerramento, logo de outra
   // identidade. Restaurá-lo devolveria os filtros do usuário anterior. A view
   // em si continua sendo navegável: só o estado carimbado é descartado.
-  if (snapshot.sid !== DOCUMENT_INSTANCE_ID) return;
+  if (snapshot.sid !== snapshotScopeId()) return;
   const filters = snapshot.filters || {};
   if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
   if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };
@@ -2748,11 +2778,42 @@ function terminateSession(message = '') {
   // herdar a navegação do anterior. Só ela sai — remoção genérica exigiria um
   // inventário de parâmetros que esta fatia não fez.
   try {
+    // Apagar a marca invalida os snapshots de navegação de quem saiu; o sinal
+    // manda a carga seguinte limpar rascunhos de formulário, que a recarga
+    // sozinha NÃO limpa.
+    sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY);
+    sessionStorage.setItem(SESSION_TEARDOWN_KEY, '1');
+  } catch (_e) { /* sem storage: a recarga continua valendo */ }
+  try {
     const url = new URL(globalThis.location.href);
     url.searchParams.delete('view');
     globalThis.history.replaceState({}, '', url);
   } catch (_e) { /* sem URL/history: a recarga continua valendo */ }
   globalThis.location.reload();
+}
+
+function clearRestoredAppForms() {
+  let pendente = '';
+  try {
+    pendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
+    sessionStorage.removeItem(SESSION_TEARDOWN_KEY);
+  } catch (_e) {
+    return;
+  }
+  if (!pendente) return;
+  // `location.reload()` NÃO limpa valores de campo: o navegador os restaura —
+  // é por isso que um F5 preserva o que você digitou. Depois de um
+  // ENCERRAMENTO, porém, esse rascunho é de quem saiu: `#employee-form` tem
+  // CPF, nome, e-mail e WhatsApp de um colaborador.
+  //
+  // Só a tela do app é limpa. O `#login-screen` fica de fora de propósito,
+  // para não brigar com o gerenciador de senhas do navegador — que a F1
+  // registrou como comportamento esperado do ambiente, não como defeito.
+  document.querySelectorAll('#main-screen form').forEach((formulario) => {
+    try {
+      formulario.reset();
+    } catch (_erro) { /* formulário exótico: seguir limpando os outros */ }
+  });
 }
 
 function consumePendingSessionMessage() {
@@ -13641,6 +13702,10 @@ async function init() {
     renderEmployeeCpfValidationScreen(normalizedToken);
     return;
   }
+  // ANTES de qualquer setup que escreva valor padrão em campo: o que o
+  // navegador restaurou de quem saiu tem de sair primeiro.
+  clearRestoredAppForms();
+
   runNonCriticalSetup('assinatura modal', setupSignatureModal);
   runNonCriticalSetup('sanitize login URL', sanitizeLoginUrlParams);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);

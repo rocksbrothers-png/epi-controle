@@ -1782,10 +1782,29 @@ function trackInteractiveViewHistory(view) {
   renderInteractiveNavTabs(view);
 }
 
+// Identidade do documento atual (#343, F2).
+//
+// Os snapshots de navegação SPA guardam FILTROS digitados pelo usuário —
+// `employeesFilters`, `employeesOpsFilters`, `episFilters`, com busca em texto
+// livre e `company_id`/`unit_id`. Eles vão para `history.pushState`, e as
+// entradas de quem saiu continuam no histórico da aba: `terminateSession()`
+// recarrega e troca a entrada ATIVA, mas não pode apagar as anteriores.
+//
+// Sem carimbar a origem, um "Voltar" depois do login seguinte devolveria os
+// filtros do usuário anterior para dentro do `state` do atual — o popstate
+// restaura o snapshot e re-renderiza as tabelas. É a mesma travessia de
+// identidade que esta fatia existe para fechar, por outra porta.
+//
+// Não é segredo nem token: é um discriminador de documento. Cada carga da
+// página — inclusive a que o encerramento provoca — gera um novo, então todo
+// snapshot criado antes do encerramento deixa de casar e é ignorado.
+const DOCUMENT_SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 function collectInteractiveSnapshot(view) {
-  if (!isUxInteractiveAppEnabled()) return { view };
+  if (!isUxInteractiveAppEnabled()) return { view, sid: DOCUMENT_SESSION_ID };
   return {
     view,
+    sid: DOCUMENT_SESSION_ID,
     scrollY: globalThis.scrollY || 0,
     filters: {
       employees: { ...state.employeesFilters },
@@ -1797,6 +1816,10 @@ function collectInteractiveSnapshot(view) {
 
 function restoreInteractiveSnapshot(snapshot) {
   if (!isUxInteractiveAppEnabled() || !snapshot || typeof snapshot !== 'object') return;
+  // Snapshot de outro documento = de antes do encerramento, logo de outra
+  // identidade. Restaurá-lo devolveria os filtros do usuário anterior. A view
+  // em si continua sendo navegável: só o estado carimbado é descartado.
+  if (snapshot.sid !== DOCUMENT_SESSION_ID) return;
   const filters = snapshot.filters || {};
   if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
   if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };

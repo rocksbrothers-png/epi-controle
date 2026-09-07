@@ -497,6 +497,98 @@ def test_o_encerramento_so_mexe_na_propria_chave(js):
     assert corpo.count('sessionStorage.') == 1
 
 
+# ── 10. Histórico SPA: o snapshot não atravessa identidade ───────────────────
+#
+# Achado da revisão automatizada, confirmado contra o código. `terminateSession`
+# recarrega e troca a entrada ATIVA do histórico, mas as entradas anteriores —
+# criadas por `history.pushState(collectInteractiveSnapshot(view), …)` — ficam
+# na aba com os filtros de quem saiu. Um "Voltar" depois do login seguinte
+# devolveria `employeesFilters`/`employeesOpsFilters`/`episFilters` do usuário
+# anterior, com busca em texto livre e `company_id`/`unit_id`, para dentro do
+# `state` do atual.
+
+def test_o_snapshot_de_navegacao_carimba_o_documento_de_origem(js):
+    corpo = _corpo_de(js, 'collectInteractiveSnapshot')
+    assert corpo.count('sid: DOCUMENT_SESSION_ID') == 2, (
+        'os DOIS retornos precisam carimbar: o com filtros e o do atalho, '
+        'senão um deles vira snapshot sem origem')
+    assert 'const DOCUMENT_SESSION_ID' in js
+
+
+def test_o_snapshot_de_outro_documento_e_descartado(js):
+    """A metade que fecha o furo: carimbar sem conferir não protege nada."""
+    corpo = _corpo_de(js, 'restoreInteractiveSnapshot')
+    assert 'snapshot.sid !== DOCUMENT_SESSION_ID' in corpo, \
+        'sem a conferência, o filtro do usuário anterior volta pelo botão Voltar'
+    # A rejeição vem ANTES de qualquer escrita em `state`.
+    assert corpo.index('snapshot.sid !== DOCUMENT_SESSION_ID') < corpo.index('state.employeesFilters')
+
+
+def test_o_carimbo_muda_a_cada_carga_do_documento(js):
+    """É o que faz o encerramento invalidar os snapshots antigos: ele recarrega,
+    a página gera outro identificador, e nada de antes casa."""
+    i = js.index('const DOCUMENT_SESSION_ID')
+    linha = js[i:js.index('\n', i)]
+    assert 'Date.now()' in linha and 'Math.random()' in linha
+    assert js.count('const DOCUMENT_SESSION_ID') == 1, \
+        'dois identificadores fariam snapshots casarem por acidente'
+
+
+def test_a_navegacao_por_voltar_continua_funcionando(js):
+    """Contraprova: descartar o snapshot não pode quebrar o botão Voltar. A
+    view continua sendo resolvida e exibida; só o estado carimbado é ignorado."""
+    i = js.index("safeOn(globalThis, 'popstate'")
+    trecho = js[i:i + 500]
+    assert 'restoreInteractiveSnapshot(event?.state)' in trecho
+    assert 'showView(nextView' in trecho
+    assert trecho.index('restoreInteractiveSnapshot') < trecho.index('showView(nextView')
+
+
+# ── 11. A invariante não tem ponto cego fora do app.js ───────────────────────
+#
+# Segundo achado da revisão, na parte que procede: `clearSession` é exportado no
+# `globalThis` por `auth.js` (`globalThis[name] = fn`, `__EPI_AUTH__`,
+# `__EPI_FRONTEND_HELPERS__`), então qualquer módulo pode chamá-lo e pular o
+# teardown. Os gates 1 e 2 leem só o `app.js` — este cobre o resto.
+
+def _outros_js_servidos():
+    raiz = RAIZ / 'static'
+    for caminho in sorted(raiz.rglob('*.js')):
+        rel = caminho.relative_to(RAIZ).as_posix()
+        if '/test/' in rel or rel == 'static/app.js':
+            continue
+        yield rel, caminho
+
+
+def test_nenhum_outro_arquivo_servido_chama_clear_session_por_fora():
+    """O orquestrador vive no `app.js`; `clearSession` é global. Um módulo que
+    o chamasse encerraria sessão sem teardown, e os gates 1 e 2 não veriam."""
+    infratores = []
+    for rel, caminho in _outros_js_servidos():
+        texto = _sem_comentarios(caminho.read_text(encoding='utf-8'))
+        if rel == 'static/js/modules/auth.js':
+            continue  # é quem DEFINE a primitiva
+        if re.search(r'\bclearSession\s*\(', texto):
+            infratores.append(rel)
+    assert not infratores, (
+        'arquivo servido chamando clearSession() fora do orquestrador: '
+        + ', '.join(infratores))
+
+
+def test_nenhum_outro_arquivo_servido_esconde_a_tela_para_encerrar():
+    """Mesmo ponto cego, pelo outro lado: um módulo que fizesse
+    `showScreen(false)` como encerramento repetiria o defeito original."""
+    infratores = []
+    for rel, caminho in _outros_js_servidos():
+        texto = _sem_comentarios(caminho.read_text(encoding='utf-8'))
+        if rel == 'static/js/modules/router.js':
+            continue  # é quem DEFINE showScreen
+        if 'showScreen(false)' in texto:
+            infratores.append(rel)
+    assert not infratores, (
+        'arquivo servido escondendo a tela por conta própria: ' + ', '.join(infratores))
+
+
 # ── 9. Bootstrap degradado: o cenário que virava vazamento visível ───────────
 
 def test_o_bootstrap_degradado_nao_pode_mais_renderizar_dados_de_outro(js):

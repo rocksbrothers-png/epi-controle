@@ -652,15 +652,31 @@ def humanize_integrity_error(exc):
 # ── HTTP Request Handler ─────────────────────────────────────────────────────
 
 class EpiHandler(SimpleHTTPRequestHandler):
-    # Parâmetros cujo VALOR nunca pode aparecer no access log (#343, F1). A
-    # lista é de nomes, não de padrões no valor: procurar "parece uma senha" no
-    # texto erra dos dois lados.
-    SENSITIVE_QUERY_PARAMS = frozenset({
-        'password', 'senha', 'new_password', 'current_password', 'confirm_password',
-        'token', 'access_token', 'refresh_token', 'recovery_key', 'secret',
-        'api_key', 'apikey', 'authorization', 'totp', 'totp_code', 'code',
-        'username', 'usuario', 'user',
-    })
+    # Parâmetros cujo VALOR nunca pode aparecer no access log (#343, F1).
+    #
+    # A lista é de NOMES, não de padrões no valor: procurar "parece uma senha"
+    # no texto erra dos dois lados. E é curta de propósito — cada nome está
+    # aqui porque a auditoria PROVOU que ele trafega, ou trafegou, em query
+    # string neste código:
+    #
+    #   username, password  o achado da F1. `preloadLoginFromUrl` aceitava
+    #                       exatamente estes dois, e são os que
+    #                       `sanitizeLoginUrlParams` remove de links antigos.
+    #   token               uso atual: `modules/portal/routes.py` lê `?token=`
+    #                       — o link de acesso do portal do colaborador é uma
+    #                       credencial de capacidade na URL.
+    #
+    # Nomes que NÃO entram, e por quê: `code` é código de negócio
+    # (`modules/deliveries/routes.py`), `qr_code` identifica item físico e o
+    # backend valida posse antes de agir, e `actor_user_id`/`user_id` são
+    # identificadores — justamente a observabilidade que precisa sobreviver.
+    # `new_password`, `totp_code`, `recovery_key` e afins viajam no CORPO do
+    # POST, nunca na query: redigi-los aqui seria código morto fingindo
+    # proteção.
+    #
+    # O gate fixa esta lista. Ampliá-la é um ato deliberado, com evidência —
+    # não uma precaução silenciosa.
+    SENSITIVE_QUERY_PARAMS = frozenset({'username', 'password', 'token'})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)

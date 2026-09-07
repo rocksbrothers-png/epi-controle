@@ -121,13 +121,35 @@ def test_o_access_log_redige_o_valor_dos_parametros_sensiveis():
     assert 'username=***' in saida
 
 
-@pytest.mark.parametrize('nome', ['token', 'access_token', 'refresh_token',
-                                  'secret', 'recovery_key', 'totp_code', 'senha'])
-def test_o_access_log_redige_os_demais_nomes_sensiveis(nome):
+@pytest.mark.parametrize('nome', ['username', 'password', 'token'])
+def test_o_access_log_redige_cada_nome_comprovado(nome):
+    """Um teste por nome, para a falha dizer QUAL parâmetro vazou."""
     saida = aplicacao.EpiHandler._redact_request_line(
         f'"GET /api/x?{nome}={MARCADOR} HTTP/1.1" 200 -')
-    assert MARCADOR not in saida
+    assert MARCADOR not in saida, f'o valor de `{nome}` saiu inteiro no log'
     assert f'{nome}=***' in saida
+
+
+def test_a_lista_de_sensiveis_e_a_comprovada_pela_auditoria():
+    """Fixa a lista para que ampliá-la seja ato deliberado, com evidência.
+
+    `username` e `password` são o achado da F1 — os dois nomes que
+    `preloadLoginFromUrl` aceitava e que `sanitizeLoginUrlParams` remove.
+    `token` é uso ATUAL: `modules/portal/routes.py` lê `?token=`, e um link de
+    capacidade na URL é credencial. Nomes como `new_password` ou `totp_code`
+    viajam no corpo do POST e não na query: redigi-los seria código morto.
+    """
+    assert aplicacao.EpiHandler.SENSITIVE_QUERY_PARAMS == frozenset(
+        {'username', 'password', 'token'})
+
+
+@pytest.mark.parametrize('nome', ['code', 'qr_code', 'actor_user_id', 'user_id',
+                                  'unit_id', 'company_id', 'epi_id'])
+def test_os_parametros_de_negocio_nao_sao_redigidos(nome):
+    """Contraprova: redigir tudo destrói a investigação de incidente, que é
+    exatamente para o que o log serve."""
+    linha = f'"GET /api/x?{nome}=123 HTTP/1.1" 200 -'
+    assert aplicacao.EpiHandler._redact_request_line(linha) == linha
 
 
 def test_a_redacao_preserva_observabilidade_legitima():

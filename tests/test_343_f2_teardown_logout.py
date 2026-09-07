@@ -560,11 +560,14 @@ def test_a_f2_nao_toca_no_cpf_do_portal(js):
 def test_o_encerramento_so_mexe_nas_proprias_chaves(js):
     """Três chaves, todas da F2 — o aviso de uso único, a marca de escopo dos
     snapshots e o sinal de limpeza de rascunho. Nenhuma de F3 ou F4."""
+    # O encerramento toca duas chaves diretamente e delega a terceira ao
+    # `rotateSnapshotScope` — as três são da F2, nenhuma é de F3 ou F4.
     corpo = _corpo_de(js, 'terminateSession')
-    chaves = sorted(set(re.findall(r'sessionStorage\.\w+\((\w+)', corpo)))
+    rotacao = _corpo_de(js, 'rotateSnapshotScope')
+    chaves = sorted(set(re.findall(r'sessionStorage\.\w+\((\w+)', corpo + rotacao)))
     assert chaves == ['SESSION_END_MESSAGE_KEY', 'SESSION_TEARDOWN_KEY',
                       'SNAPSHOT_SCOPE_KEY'], f'chaves inesperadas: {chaves}'
-    assert 'localStorage' not in corpo
+    assert 'localStorage' not in corpo and 'localStorage' not in rotacao
 
 
 # ── 10. Histórico SPA: o snapshot não atravessa identidade ───────────────────
@@ -630,13 +633,35 @@ def test_a_marca_de_escopo_sobrevive_a_um_refresh_do_mesmo_usuario(js):
     assert 'sessionStorage.setItem(SNAPSHOT_SCOPE_KEY' in corpo
 
 
-def test_so_o_encerramento_invalida_os_snapshots(js):
-    """A outra metade: se o encerramento não apagasse a marca, os snapshots de
-    quem saiu continuariam casando com os do próximo."""
-    corpo = _corpo_de(js, 'terminateSession')
-    assert 'sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY)' in corpo
-    # E ninguém mais a apaga: um segundo apagador reintroduziria o F5 quebrado.
-    assert js.count('removeItem(SNAPSHOT_SCOPE_KEY)') == 1
+def test_a_troca_de_principal_invalida_os_snapshots(js):
+    """Não basta o encerramento: há troca de principal SEM encerramento.
+
+    A logado, backend cai, F5; o `init()` mantém `state.user` de A e oferece
+    login manual; B entra com sucesso e nenhum `terminateSession` aconteceu. O
+    `sessionStorage` sobreviveu ao F5, e as entradas de histórico de A
+    continuariam casando com o escopo.
+    """
+    # Um mecanismo só, chamado nos DOIS pontos.
+    assert js.count('removeItem(SNAPSHOT_SCOPE_KEY)') == 1, \
+        'a rotação precisa ficar num lugar só, senão as duas cópias divergem'
+    assert 'removeItem(SNAPSHOT_SCOPE_KEY)' in _corpo_de(js, 'rotateSnapshotScope')
+    assert 'rotateSnapshotScope();' in _corpo_de(js, 'terminateSession')
+    assert 'rotateSnapshotScope();' in _corpo_de(js, 'handleLogin')
+
+
+def test_a_rotacao_derruba_tambem_o_cache_em_memoria(js):
+    """No login não há recarga para zerar o cache do módulo. Sem isso, o valor
+    antigo continuaria valendo dentro do mesmo documento."""
+    corpo = _corpo_de(js, 'rotateSnapshotScope')
+    assert '_escopoDeSnapshot = null;' in corpo
+    assert corpo.index('_escopoDeSnapshot = null;') < corpo.index('removeItem')
+
+
+def test_a_rotacao_no_login_vem_depois_do_save_session(js):
+    """Rotacionar antes seria inócuo: o escopo seria recriado pelo próprio
+    snapshot seguinte, ainda com o principal antigo em cena."""
+    corpo = _corpo_de(js, 'handleLogin')
+    assert corpo.index('saveSession(') < corpo.index('rotateSnapshotScope();')
 
 
 def test_sem_storage_o_escopo_falha_fechado(js):

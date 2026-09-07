@@ -1831,6 +1831,20 @@ const SESSION_TEARDOWN_KEY = 'epi-session-teardown';
 
 let _escopoDeSnapshot = null;
 
+function rotateSnapshotScope() {
+  // Troca de principal invalida os snapshots do anterior — e ela nem sempre
+  // passa por `terminateSession()`. O caso real: A logado, backend cai, F5, o
+  // `init()` mantém `state.user` de A e oferece "login manual agora"; B entra
+  // com sucesso e nenhum encerramento aconteceu. O `sessionStorage` sobreviveu
+  // ao F5 e as entradas de histórico de A continuariam casando.
+  //
+  // O cache em memória precisa cair junto: aqui NÃO há recarga para zerá-lo.
+  _escopoDeSnapshot = null;
+  try {
+    sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY);
+  } catch (_e) { /* sem storage: o escopo já é por documento, nada a fazer */ }
+}
+
 function snapshotScopeId() {
   if (_escopoDeSnapshot) return _escopoDeSnapshot;
   try {
@@ -2787,9 +2801,9 @@ function terminateSession(message = '') {
     // Apagar a marca invalida os snapshots de navegação de quem saiu; o sinal
     // manda a carga seguinte limpar rascunhos de formulário, que a recarga
     // sozinha NÃO limpa.
-    sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY);
     sessionStorage.setItem(SESSION_TEARDOWN_KEY, '1');
   } catch (_e) { /* sem storage: a recarga continua valendo */ }
+  rotateSnapshotScope();
   try {
     const url = new URL(globalThis.location.href);
     url.searchParams.delete('view');
@@ -12015,6 +12029,9 @@ async function handleLogin(event) {
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
     sessaoEstabelecidaNestaTentativa = true;
+    // Principal novo: os snapshots de navegação de quem usava a aba antes não
+    // são dele. Vale mesmo sem encerramento — ver `rotateSnapshotScope`.
+    rotateSnapshotScope();
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       handlePasswordChangeAfterLogin(password);

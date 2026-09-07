@@ -27,6 +27,7 @@ CUBIT = APP / 'core' / 'bloc' / 'new_delivery_cubit.dart'
 TELA = APP / 'features' / 'deliveries' / 'new_delivery_screen.dart'
 LISTA = APP / 'features' / 'deliveries' / 'deliveries_screen.dart'
 ESTOQUE = APP / 'features' / 'stock' / 'stock_screen.dart'
+ESTOQUE_CONFIG = APP / 'features' / 'stock' / 'stock_config_screen.dart'
 STOCK_API = FLUTTER / 'packages' / 'epi_api' / 'lib' / 'endpoints' / 'stock_api.dart'
 
 ENTREGAS = RAIZ / 'modules' / 'deliveries' / 'service.py'
@@ -41,6 +42,11 @@ def _sem_comentarios(texto):
         linha for linha in texto.splitlines()
         if not linha.lstrip().startswith('//')
     )
+
+
+def _normalizado(texto):
+    """Espaço colapsado: a quebra de linha é do `dart format`, não da regra."""
+    return ' '.join(_sem_comentarios(texto).split())
 
 
 # ── o item físico REAL ───────────────────────────────────────────────────────
@@ -123,6 +129,58 @@ def test_o_passo_de_epi_usa_o_saldo_da_unidade():
     # quantidade no resumo. Nenhum dos dois sobrevive.
     assert 'deliveryStockAvailable' not in tela, \
         'voltou o rótulo de saldo sem escopo'
+
+
+# ── item 6 da DoD: o badge de estoque volta ao passo de EPI ──────────────────
+#
+# A 1.1D-C2 removeu o badge daqui porque a lista vinha de `/api/bootstrap`, que
+# não classifica por Unidade, e o único badge disponível era o CORPORATIVO. A
+# ocorrência 1 da #278 trocou a fonte para `/api/stock/epis`, que devolve
+# `stock_status` por Unidade — a razão da remoção deixou de existir, mas o badge
+# não voltou sozinho. Estes gates travam a volta e a forma dela.
+
+
+def test_o_passo_de_epi_exibe_o_badge_da_unidade():
+    tela = _sem_comentarios(TELA.read_text(encoding='utf-8'))
+    assert 'epiUnitBadgeStatus(epi)' in tela, \
+        'o passo de EPI parou de ler a classificação por Unidade'
+    assert 'EpiStockBadge(status: status)' in tela, \
+        'o badge de estoque da Unidade sumiu do passo de EPI'
+
+
+def test_o_badge_da_entrega_so_aparece_com_classificacao():
+    """`null` é ausência de contexto, não estado saudável: sem badge."""
+    tela = _normalizado(TELA.read_text(encoding='utf-8'))
+    assert 'if (status != null) ...[ EpiStockBadge(status: status),' in tela, \
+        'o badge perdeu a guarda de `null` — sem classificação, sem badge'
+
+
+def test_o_passo_de_epi_nao_traduz_stock_status_por_conta_propria():
+    """A tradução mora no helper oficial. A tela transporta, não decide."""
+    tela = _sem_comentarios(TELA.read_text(encoding='utf-8'))
+    # O campo cru e os literais do backend não aparecem na tela: quem os
+    # conhece é `epiUnitBadgeStatus`.
+    assert 'stockStatus' not in tela, 'a tela voltou a ler `stock_status` crua'
+    for literal in ("'critical'", "'near_minimum'", "'normal'", "'disabled'"):
+        assert literal not in tela, f'classificação recalculada na tela: {literal}'
+    # Nem o badge corporativo, que foi o motivo original da remoção.
+    assert 'EpiBadgeStatus' not in tela, 'voltou o badge do catálogo corporativo'
+    assert 'isCompanyStockCritical' not in tela
+    # Nem a comparação saldo × mínimo, que a 1.1D-C2 tirou do cliente.
+    assert 'minimumStock' not in tela, 'comparação saldo × mínimo de volta na tela'
+    # Contraprova do matcher: os quatro literais existem, e existem no helper.
+    helper = (APP / 'core' / 'utils' / 'epi_status_utils.dart').read_text(
+        encoding='utf-8')
+    for literal in ("'critical'", "'near_minimum'", "'normal'", "'disabled'"):
+        assert literal in helper, 'o helper oficial deixou de mapear ' + literal
+
+
+def test_as_tres_superficies_usam_o_mesmo_contrato_de_badge():
+    """Contraprova: o padrão é o das telas de estoque, não um inventado aqui."""
+    for arquivo in (TELA, ESTOQUE, ESTOQUE_CONFIG):
+        corpo = _sem_comentarios(arquivo.read_text(encoding='utf-8'))
+        assert 'epiUnitBadgeStatus(epi)' in corpo, f'{arquivo.name} sem o helper'
+        assert 'EpiStockBadge(status: status)' in corpo, f'{arquivo.name} sem o badge'
 
 
 def test_a_entrega_e_de_uma_unidade_etiquetada():

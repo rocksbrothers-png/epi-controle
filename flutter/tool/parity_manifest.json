@@ -54,7 +54,7 @@
     "apps/epi_admin/lib/features/deliveries/deliveries_screen.dart": "6ac80767826775ef2e846cc07b031c4ec240a73b5e433168a5e8528cfc45bcca",
     "apps/epi_admin/lib/features/deliveries/domain/repositories/deliveries_repository.dart": "55a7d03280fd2369f2d7d999fe68e60d78a4a6c7a061f3a8260bdb6dbe8e3dd5",
     "apps/epi_admin/lib/features/deliveries/handover_conference_screen.dart": "c692fde97d02d7cc28d9fc52513ccccf2ff21e5bcf9171a0258d008626feebea",
-    "apps/epi_admin/lib/features/deliveries/new_delivery_screen.dart": "0d4af79883d13bf1c2d7bba1fa7ae31931e9baa18284c8fc27e7e06ac3074bab",
+    "apps/epi_admin/lib/features/deliveries/new_delivery_screen.dart": "30f62b57aa5e98f7715d2bea4cc69ff3262f7ca77d78f1ecb6172e91ac553cff",
     "apps/epi_admin/lib/features/employees/data/datasources/employees_remote_datasource.dart": "7cc34cfb1c0f134d04f224781bd7719f28bff10646946c4a38ad9651908caae7",
     "apps/epi_admin/lib/features/employees/data/repository_impl/employees_repository_impl.dart": "8c68760064a46ba370c68df39d17ea2faea10fc2079f6587a5225c21c1e8cb74",
     "apps/epi_admin/lib/features/employees/domain/repositories/employees_repository.dart": "b4be57894079b31093c1ad7035bf25b9af0f168944cc8eb0e97f0ca4c50bb0c1",

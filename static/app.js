@@ -2851,15 +2851,31 @@ function resetAppFormDrafts() {
   });
 }
 
+// A condicao de SEGURANCA e a ausencia de sessao autenticada, nao o marcador.
+//
+// `state.user` ja nasce do `localStorage` na carga do modulo, com fallback
+// nulo: storage indisponivel vira "sem sessao", que LIMPA. E o mesmo
+// discriminador que o proprio `init()` usa para decidir se restaura sessao.
+//
+// Uma aba carregada sem sessao autenticada nao tem razao legitima para exibir
+// rascunho: o que o navegador restaurou nos campos e de quem usou a aba antes.
+// Isso cobre a aba que nao iniciou o encerramento — ela nunca recebeu o
+// marcador, que e por aba — sem broadcast, evento de storage nem identidade
+// entre abas.
+//
+// O marcador continua, como sinal AUXILIAR: cobre o caso de haver sessao
+// gravada e ainda assim ser preciso limpar. Se ele sumir, a condicao acima
+// continua valendo — por isso o `catch` nao retorna mais.
 function clearRestoredAppForms() {
-  let pendente = '';
+  const semSessaoAutenticada = !state.user;
+  let encerramentoPendente = '';
   try {
-    pendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
+    encerramentoPendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
     sessionStorage.removeItem(SESSION_TEARDOWN_KEY);
-  } catch (_e) {
-    return;
-  }
-  if (!pendente) return;
+  } catch (_e) { /* sinal auxiliar: a condicao de seguranca nao depende dele */ }
+  // Sessao autenticada e sem encerramento pendente: F5 legitimo, o rascunho e
+  // do proprio dono da sessao e fica.
+  if (!semSessaoAutenticada && !encerramentoPendente) return;
   resetAppFormDrafts();
 }
 
@@ -13758,6 +13774,11 @@ async function init() {
     }
   };
 
+  // ANTES de qualquer setup que escreva valor padrão em campo, e ANTES de
+  // qualquer `return` desta função: o caminho do portal do colaborador retorna
+  // cedo, e daqui de baixo a limpeza passaria por fora dele.
+  clearRestoredAppForms();
+
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
     const normalizedToken = String(employeeToken).trim();
@@ -13773,10 +13794,6 @@ async function init() {
     renderEmployeeCpfValidationScreen(normalizedToken);
     return;
   }
-  // ANTES de qualquer setup que escreva valor padrão em campo: o que o
-  // navegador restaurou de quem saiu tem de sair primeiro.
-  clearRestoredAppForms();
-
   runNonCriticalSetup('assinatura modal', setupSignatureModal);
   runNonCriticalSetup('sanitize login URL', sanitizeLoginUrlParams);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);

@@ -710,11 +710,13 @@ def test_a_limpeza_nao_alcanca_a_tela_de_login(js):
 
 
 def test_um_refresh_comum_nao_apaga_rascunho(js):
-    """Contraprova: a limpeza é condicionada ao sinal do encerramento. Sem ele,
-    a função sai antes de tocar em formulário nenhum."""
+    """Contraprova, na direção oposta do gate 12a: com sessão autenticada E sem
+    encerramento pendente — o F5 legítimo — a função sai antes de tocar em
+    formulário nenhum. Rascunho do próprio dono da sessão não é apagado."""
     corpo = _corpo_de(js, 'clearRestoredAppForms')
-    assert 'if (!pendente) return;' in corpo
-    assert corpo.index('if (!pendente) return;') < corpo.index('resetAppFormDrafts')
+    guarda = 'if (!semSessaoAutenticada && !encerramentoPendente) return;'
+    assert guarda in corpo, 'a preservação do F5 legítimo sumiu'
+    assert corpo.index(guarda) < corpo.index('resetAppFormDrafts')
 
 
 def test_a_limpeza_roda_antes_dos_valores_padrao_do_init(js):
@@ -786,6 +788,77 @@ def test_os_campos_soltos_do_fornecedor_existem_fora_de_form():
     antes = compras[:i]
     assert antes.rfind('<form') < antes.rfind('</form>'), \
         'os campos do fornecedor entraram num <form>: revisar o gate da limpeza'
+
+
+# ── 12a. Carga sem sessão autenticada não restaura rascunho de ninguém ───────
+#
+# Achado da revisão. É o meio-termo honesto do vazamento entre abas: o marcador
+# de encerramento vive em `sessionStorage`, que é POR ABA. A aba que não iniciou
+# o logout nunca o recebe — recarregada, ela via `clearRestoredAppForms` sair
+# cedo e mantinha CPF, e-mail e observações de fornecedor que o navegador
+# restaurou.
+#
+# A correção NÃO é coordenação entre abas. É trocar o critério: uma carga sem
+# sessão autenticada não tem razão legítima para exibir rascunho do aplicativo.
+# O marcador continua, como sinal auxiliar.
+#
+# O que esta fatia deliberadamente NÃO resolve, e virou frente própria: a aba
+# que permanece aberta sem recarregar (12b) e o escopo de snapshot ligado ao
+# principal (11). Os dois exigem identidade entre abas.
+
+def test_carga_sem_sessao_autenticada_reseta_os_rascunhos(js):
+    """Direção 1: sem sessão, limpa. A guarda de saída EXIGE sessão, então
+    `semSessaoAutenticada` verdadeiro nunca pode tomar o `return`."""
+    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    assert 'const semSessaoAutenticada = !state.user;' in corpo
+    guarda = 'if (!semSessaoAutenticada && !encerramentoPendente) return;'
+    assert guarda in corpo, 'a condição de segurança sumiu ou mudou de forma'
+    assert 'resetAppFormDrafts();' in corpo
+    assert corpo.index(guarda) < corpo.index('resetAppFormDrafts();')
+
+
+def test_a_condicao_de_seguranca_nao_depende_de_sessionStorage(js):
+    """A ausência de sessão é lida ANTES do `try` de storage, e a falha de
+    storage não pode mais abortar a limpeza: o `catch` não retorna."""
+    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    i_condicao = corpo.index('const semSessaoAutenticada')
+    i_try = corpo.index('try {')
+    assert i_condicao < i_try, 'a condição de segurança caiu para dentro do try'
+    i_catch = corpo.index('catch (_e)')
+    i_guarda = corpo.index('if (!semSessaoAutenticada')
+    assert 'return' not in corpo[i_catch:i_guarda],         'o catch voltou a abortar: storage indisponível cancelaria a limpeza'
+
+
+def test_state_user_falha_fechado_quando_o_storage_nao_responde(js):
+    """Premissa do gate acima. `state.user` nasce de uma leitura de storage com
+    fallback nulo: storage indisponível vira "sem sessão", que LIMPA. Se essa
+    origem mudar para algo que falhe aberto, o raciocínio cai — e o gate vê."""
+    assert "user: safeJsonParse(safeStorageRead(STORAGE_KEYS.session, 'null'), null)" in js
+
+
+def test_o_init_usa_o_mesmo_discriminador_de_sessao(js):
+    """Premissa: `state.user` não é critério inventado para esta fatia — é o que
+    o próprio `init()` usa para decidir se há sessão a restaurar."""
+    corpo = _corpo_de(js, 'init')
+    assert 'if (state.user) {' in corpo
+
+
+def test_a_limpeza_roda_antes_de_qualquer_return_do_init(js):
+    """O caminho do portal do colaborador retorna cedo. Com a limpeza embaixo
+    dele, uma carga de portal passaria por fora e manteria o rascunho."""
+    corpo = _corpo_de(js, 'init')
+    i_limpeza = corpo.index('clearRestoredAppForms();')
+    assert i_limpeza < corpo.index("get('employee_token')")
+    assert i_limpeza < corpo.index('return;'),         'existe um return antes da limpeza: há carga que escapa'
+
+
+def test_a_fatia_nao_introduz_coordenacao_entre_abas(js):
+    """Escopo negativo explícito: o 12(a) se resolve dentro da própria aba. Se
+    aparecer broadcast ou evento de storage, é a frente cross-tab entrando de
+    contrabando aqui em vez de no contrato próprio dela."""
+    assert 'BroadcastChannel' not in js
+    assert "addEventListener('storage'" not in js
+    assert 'onstorage' not in js
 
 
 # ── 11. A invariante não tem ponto cego fora do app.js ───────────────────────

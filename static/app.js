@@ -5323,7 +5323,11 @@ async function loadBootstrap() {
   } catch (error) {
     updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
     if ([401, 403].includes(Number(error?.status || 0))) {
-      terminateSession();
+      // Mensagem NEUTRA de propósito: 401/403 aqui não prova expiração — pode
+      // ser revogação, troca de senha em outro dispositivo ou permissão
+      // retirada. Sem ela, a sessão morre no meio do uso e a recarga parece
+      // erro aleatório.
+      terminateSession('Sua sessão foi encerrada. Faça login novamente para continuar.');
     } else if (state.user && isBootstrapRequestError(error)) {
       setBootstrapDegraded(error);
       updateBootstrapDegradedUi();

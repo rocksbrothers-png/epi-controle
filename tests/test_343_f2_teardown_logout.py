@@ -342,6 +342,78 @@ def test_a_mensagem_e_de_uso_unico(js):
     assert '  consumePendingSessionMessage();' in js, 'ninguém lê a mensagem'
 
 
+# Toda terminação real que NÃO é voluntária precisa dizer ao usuário o que
+# houve. O botão "Sair" é a exceção deliberada: quem clicou já sabe.
+MENSAGENS_DE_ENCERRAMENTO = {
+    'sessão revogada durante uso (401/403)':
+        'Sua sessão foi encerrada. Faça login novamente para continuar.',
+    'sessão expirada':
+        'Sessão expirada. Faça login novamente.',
+    'bootstrap/sessão inválida':
+        'Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.',
+}
+
+
+@pytest.mark.parametrize('caminho,texto', sorted(MENSAGENS_DE_ENCERRAMENTO.items()))
+def test_cada_encerramento_involuntario_avisa_pelo_mecanismo_one_shot(js, caminho, texto):
+    """A mensagem tem de ir POR `terminateSession`, não por `setLoginMessage`.
+
+    `setLoginMessage` escreve no DOM — e o DOM morre na recarga. Só o mecanismo
+    de uso único atravessa.
+    """
+    assert f"terminateSession('{texto}')" in js, (
+        f'"{caminho}" perdeu o aviso, ou passou a exibi-lo por um caminho que '
+        'não sobrevive à recarga')
+
+
+def test_a_saida_voluntaria_continua_sem_mensagem(js):
+    """Contraprova: quem clicou em "Sair" já sabe o que houve. Um aviso ali
+    seria ruído, e o gate impede que a regra vire "sempre avisa"."""
+    i = js.index("getElementById('logout-btn')")
+    trecho = js[i:i + 200]
+    assert 'terminateSession()' in trecho, 'a saída voluntária não leva mensagem'
+
+
+def test_o_aviso_do_caminho_2_nao_afirma_causa_que_nao_pode_provar(js):
+    """401/403 durante o uso não prova expiração: pode ser revogação, troca de
+    senha em outro dispositivo ou permissão retirada. O texto é neutro de
+    propósito, e o gate impede que alguém o "melhore" para uma causa falsa."""
+    aviso = MENSAGENS_DE_ENCERRAMENTO['sessão revogada durante uso (401/403)']
+    i = js.index('[401, 403].includes(Number(error?.status')
+    trecho = js[i:i + 400]
+    assert f"terminateSession('{aviso}')" in trecho
+    assert 'expirada' not in aviso.lower()
+    assert 'expirou' not in aviso.lower()
+
+
+def test_a_mensagem_nao_reaparece_em_recarga_seguinte(js):
+    """Uso único de verdade.
+
+    `consumePendingSessionMessage` apaga a chave ANTES de exibi-la, então uma
+    segunda recarga não encontra nada. E só `terminateSession` escreve nela —
+    se houvesse outro escritor, o aviso poderia ressuscitar sozinho.
+    """
+    corpo = _corpo_de(js, 'consumePendingSessionMessage')
+    assert corpo.index('removeItem') < corpo.index('setLoginMessage')
+    escritores = js.count(f'sessionStorage.setItem(SESSION_END_MESSAGE_KEY')
+    assert escritores == 1, (
+        f'{escritores} escritores da chave one-shot: só o encerramento pode '
+        'gravá-la, senão o aviso reaparece sem encerramento nenhum')
+    consumidores = len(re.findall(r'(?<!function )\bconsumePendingSessionMessage\(', js))
+    assert consumidores == 1, (
+        f'{consumidores} chamadas a consumePendingSessionMessage(): a mensagem '
+        'é consumida em um lugar só — o init()')
+
+
+@pytest.mark.parametrize('funcao', ['handleLogin', 'handlePasswordChangeAfterLogin'])
+def test_o_aviso_nao_interfere_na_autenticacao_em_andamento(js, funcao):
+    """Categoria B não toca no mecanismo one-shot: nem grava, nem consome, nem
+    é interrompida por ele. O TOTP e a troca de senha seguem intactos."""
+    corpo = _corpo_de(js, funcao)
+    assert 'SESSION_END_MESSAGE_KEY' not in corpo
+    assert 'consumePendingSessionMessage' not in corpo
+
+
 def test_as_duas_mensagens_de_sessao_continuam_existindo(js):
     for texto in ('Sessão expirada. Faça login novamente.',
                   'Não foi possível restaurar sua sessão automaticamente.'):

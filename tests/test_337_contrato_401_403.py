@@ -43,16 +43,18 @@ import re
 
 import pytest
 
+# Uma forma só de importar o módulo (CodeQL: `import` e `import from` juntos
+# sobre o mesmo módulo). O alias também deixa explícito, em cada asserção, que a
+# classe comparada é a do módulo sob teste — e não uma cópia local.
 import core.security as seguranca
-from core.security import (
-    AuthenticationError,
-    PasswordChangeRequiredError,
-    create_jwt_token,
-    decode_jwt_token,
-    decode_token_of_type,
-    parse_bearer_token,
-    resolve_actor_user_id,
-)
+
+AuthenticationError = seguranca.AuthenticationError
+PasswordChangeRequiredError = seguranca.PasswordChangeRequiredError
+create_jwt_token = seguranca.create_jwt_token
+decode_jwt_token = seguranca.decode_jwt_token
+decode_token_of_type = seguranca.decode_token_of_type
+parse_bearer_token = seguranca.parse_bearer_token
+resolve_actor_user_id = seguranca.resolve_actor_user_id
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 APP = RAIZ / 'app.py'

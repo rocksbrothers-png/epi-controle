@@ -87,6 +87,91 @@ def _corpo_de(js_texto, nome):
     raise AssertionError(f'não consegui delimitar {nome}')
 
 
+# ── 0. As duas categorias semânticas do contrato ─────────────────────────────
+#
+# O erro perigoso desta fatia seria a generalização "todo `clearSession()`
+# recarrega". Ela resolveria o A→B e QUEBRARIA o login com 2FA. A classificação
+# é por SEMÂNTICA — o que o caminho significa —, não por qual função ele chama.
+
+# A: TERMINAÇÃO REAL DE SESSÃO — havia sessão, e ela acabou.
+#    Estes DEVEM convergir para terminateSession().
+TERMINACAO_REAL_DE_SESSAO = {
+    'botão Sair': "getElementById('logout-btn')",
+    'sessão revogada durante uso (401/403)': '[401, 403].includes(Number(error?.status',
+    'sessão expirada': "isSessionRestoreAuthError(error)",
+    'bootstrap/sessão inválida': "console.warn('[auth] bootstrap falhou, limpando sessão'",
+}
+
+# B: AUTENTICAÇÃO EM ANDAMENTO — nenhuma sessão chegou a existir nesta página.
+#    Estes NÃO PODEM chamar terminateSession() nem recarregar.
+AUTENTICACAO_EM_ANDAMENTO = {
+    'falha de login / TOTP_REQUIRED / TOTP_INVALID': 'handleLogin',
+    'troca de senha obrigatória (sessão ATIVA)': 'handlePasswordChangeAfterLogin',
+}
+
+
+@pytest.mark.parametrize('caminho,marca', sorted(TERMINACAO_REAL_DE_SESSAO.items()))
+def test_terminacao_real_converge_para_o_caminho_unico(js, caminho, marca):
+    """Direção 1 do contrato: TERMINAÇÃO REAL → terminateSession().
+
+    Não compara texto exato nem número de linha: a partir da marca do caminho,
+    procura o PRÓXIMO desfecho — `terminateSession(` ou `showScreen(false)` — e
+    exige que seja o primeiro. É o enunciado semântico, tolerante a reformatação.
+    """
+    assert marca in js, f'a marca do caminho "{caminho}" sumiu do código'
+    resto = js[js.index(marca):]
+    i_term = resto.find('terminateSession(')
+    i_hide = resto.find('showScreen(false)')
+    assert i_term != -1, f'"{caminho}" não converge para terminateSession()'
+    assert i_hide == -1 or i_term < i_hide, (
+        f'"{caminho}" volta a apenas esconder a tela: showScreen(false) aparece '
+        'antes de terminateSession()')
+
+
+@pytest.mark.parametrize('caminho,funcao', sorted(AUTENTICACAO_EM_ANDAMENTO.items()))
+def test_autenticacao_em_andamento_nao_encerra_sessao(js, caminho, funcao):
+    """Direção 2 do contrato: autenticação em andamento NÃO recarrega.
+
+    É a metade que impede o falso verde perigoso — uma implementação que
+    "resolve" A→B generalizando `clearSession()` → reload e, com isso, deixa o
+    2FA impossível de concluir.
+    """
+    corpo = _corpo_de(js, funcao)
+    assert 'terminateSession(' not in corpo,         f'"{caminho}" não é encerramento de sessão: recarregar ali destrói o fluxo'
+    assert 'location.reload' not in corpo
+
+
+def test_a_troca_de_senha_obrigatoria_continua_intacta(js):
+    """O sexto `showScreen(false)`, o que prova que a categoria B é real.
+
+    Aqui a sessão está ATIVA — `saveSession` já rodou — e só o formulário muda.
+    Um gate que banisse `showScreen(false)` cegamente teria quebrado este fluxo,
+    e é exatamente ele que separa "esconder a tela" de "encerrar sessão".
+    """
+    corpo = _corpo_de(js, 'handlePasswordChangeAfterLogin')
+    assert 'showScreen(false)' in corpo, 'o fluxo de troca de senha foi quebrado'
+    assert "changeForm.style.display = 'grid'" in corpo
+    assert "loginForm.style.display = 'none'" in corpo
+    assert 'clearSession()' not in corpo,         'a sessão está ativa aqui; limpá-la expulsaria quem precisa trocar a senha'
+
+
+def test_o_campo_de_totp_sobrevive_a_falha_de_login(js):
+    """A prova de que o 2FA continua possível.
+
+    `TOTP_REQUIRED`/`TOTP_INVALID` revelam o campo e o focam. Uma recarga o
+    esconderia de novo e esvaziaria o input: o usuário nunca conseguiria
+    fornecer o código.
+    """
+    corpo = _corpo_de(js, 'handleLogin')
+    assert "totpRow.style.display = ''" in corpo, 'o campo de TOTP deixou de ser revelado'
+    assert "getElementById('login-totp')?.focus()" in corpo
+    for codigo in ("'TOTP_REQUIRED'", "'TOTP_INVALID'"):
+        assert codigo in corpo
+    # E o desfecho desse bloco continua sendo a tela de login, não a recarga.
+    depois = corpo[corpo.index("totpRow.style.display = ''"):]
+    assert 'terminateSession(' not in depois and 'location.reload' not in depois
+
+
 # ── 1. Inventário: todo encerramento passa pelo caminho único ────────────────
 
 # Único lugar que chama `clearSession()` sem ser encerramento, com a razão.

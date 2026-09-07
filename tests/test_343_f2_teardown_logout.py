@@ -509,28 +509,30 @@ def test_o_encerramento_so_mexe_na_propria_chave(js):
 
 def test_o_snapshot_de_navegacao_carimba_o_documento_de_origem(js):
     corpo = _corpo_de(js, 'collectInteractiveSnapshot')
-    assert corpo.count('sid: DOCUMENT_SESSION_ID') == 2, (
+    assert corpo.count('sid: DOCUMENT_INSTANCE_ID') == 2, (
         'os DOIS retornos precisam carimbar: o com filtros e o do atalho, '
         'senão um deles vira snapshot sem origem')
-    assert 'const DOCUMENT_SESSION_ID' in js
+    assert 'const DOCUMENT_INSTANCE_ID' in js
 
 
 def test_o_snapshot_de_outro_documento_e_descartado(js):
     """A metade que fecha o furo: carimbar sem conferir não protege nada."""
     corpo = _corpo_de(js, 'restoreInteractiveSnapshot')
-    assert 'snapshot.sid !== DOCUMENT_SESSION_ID' in corpo, \
+    assert 'snapshot.sid !== DOCUMENT_INSTANCE_ID' in corpo, \
         'sem a conferência, o filtro do usuário anterior volta pelo botão Voltar'
     # A rejeição vem ANTES de qualquer escrita em `state`.
-    assert corpo.index('snapshot.sid !== DOCUMENT_SESSION_ID') < corpo.index('state.employeesFilters')
+    assert corpo.index('snapshot.sid !== DOCUMENT_INSTANCE_ID') < corpo.index('state.employeesFilters')
 
 
 def test_o_carimbo_muda_a_cada_carga_do_documento(js):
     """É o que faz o encerramento invalidar os snapshots antigos: ele recarrega,
     a página gera outro identificador, e nada de antes casa."""
-    i = js.index('const DOCUMENT_SESSION_ID')
-    linha = js[i:js.index('\n', i)]
-    assert 'Date.now()' in linha and 'Math.random()' in linha
-    assert js.count('const DOCUMENT_SESSION_ID') == 1, \
+    i = js.index('const DOCUMENT_INSTANCE_ID')
+    bloco = js[i:i + 600]
+    # Web Crypto, não `Math.random()`: é a API correta para identificador único
+    # no navegador, e um PRNG fraco aqui seria lido como credencial.
+    assert 'crypto' in bloco and 'Math.random()' not in bloco
+    assert js.count('const DOCUMENT_INSTANCE_ID') == 1, \
         'dois identificadores fariam snapshots casarem por acidente'
 
 

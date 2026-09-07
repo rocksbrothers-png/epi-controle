@@ -1797,14 +1797,31 @@ function trackInteractiveViewHistory(view) {
 //
 // Não é segredo nem token: é um discriminador de documento. Cada carga da
 // página — inclusive a que o encerramento provoca — gera um novo, então todo
-// snapshot criado antes do encerramento deixa de casar e é ignorado.
-const DOCUMENT_SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// snapshot criado antes do encerramento deixa de casar e é ignorado. Casar o
+// valor não dá privilégio nenhum: devolveria ao usuário os próprios filtros.
+//
+// Ainda assim usa Web Crypto, e não `Math.random()`, por dois motivos: é a API
+// correta para gerar identificador único no navegador, e uma constante com
+// "ID" no nome alimentada por PRNG fraco é lida — com razão — como credencial
+// por quem revisa e por analisador estático. O nome também diz o que ele é:
+// instância de DOCUMENTO, não sessão.
+const DOCUMENT_INSTANCE_ID = (() => {
+  const fonte = globalThis.crypto;
+  if (fonte?.randomUUID) return fonte.randomUUID();
+  if (fonte?.getRandomValues) {
+    const bytes = fonte.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Sem Web Crypto: a marca de tempo já distingue cargas, que é todo o
+  // objetivo — e não há segredo em jogo.
+  return `t${Date.now()}`;
+})();
 
 function collectInteractiveSnapshot(view) {
-  if (!isUxInteractiveAppEnabled()) return { view, sid: DOCUMENT_SESSION_ID };
+  if (!isUxInteractiveAppEnabled()) return { view, sid: DOCUMENT_INSTANCE_ID };
   return {
     view,
-    sid: DOCUMENT_SESSION_ID,
+    sid: DOCUMENT_INSTANCE_ID,
     scrollY: globalThis.scrollY || 0,
     filters: {
       employees: { ...state.employeesFilters },
@@ -1819,7 +1836,7 @@ function restoreInteractiveSnapshot(snapshot) {
   // Snapshot de outro documento = de antes do encerramento, logo de outra
   // identidade. Restaurá-lo devolveria os filtros do usuário anterior. A view
   // em si continua sendo navegável: só o estado carimbado é descartado.
-  if (snapshot.sid !== DOCUMENT_SESSION_ID) return;
+  if (snapshot.sid !== DOCUMENT_INSTANCE_ID) return;
   const filters = snapshot.filters || {};
   if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
   if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };

@@ -2812,6 +2812,29 @@ function resetAppFormDrafts() {
       formulario.reset();
     } catch (_erro) { /* formulário exótico: seguir limpando os outros */ }
   });
+  // `form.reset()` só alcança descendentes de <form>, e há rascunho sensível
+  // FORA deles: `#compras-supplier-name`, `-cnpj`, `-email` e `-notes` são
+  // inputs soltos dentro de um <div class="form-grid">. Abrir o painel de novo
+  // fornecedor só desesconde a div — o valor de quem saiu apareceria inteiro.
+  //
+  // Volta ao valor PADRÃO do HTML, não a string vazia: é a semântica do
+  // `reset()`, e apagar cegamente destruiria default legítimo.
+  document.querySelectorAll('#main-screen input, #main-screen textarea').forEach((controle) => {
+    try {
+      if (controle.type === 'checkbox' || controle.type === 'radio') {
+        controle.checked = controle.defaultChecked;
+      } else if (controle.type !== 'file') {
+        controle.value = controle.defaultValue;
+      }
+    } catch (_erro) { /* controle exótico: seguir limpando os outros */ }
+  });
+  document.querySelectorAll('#main-screen select').forEach((selecao) => {
+    try {
+      Array.from(selecao.options).forEach((opcao) => {
+        opcao.selected = opcao.defaultSelected;
+      });
+    } catch (_erro) { /* idem */ }
+  });
 }
 
 function clearRestoredAppForms() {
@@ -11949,6 +11972,14 @@ function syncStructuralCrudAccess() {
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage('');
+  // Discriminador desta TENTATIVA, e não `state.user` (#343, F2). O `init()`
+  // deixa `state.user` preenchido de propósito quando o bootstrap está
+  // temporariamente indisponível — mostra "Você pode tentar login manual
+  // agora" com a sessão antiga ainda em memória. Com `state.user` como
+  // critério, uma senha errada ou um TOTP_REQUIRED nessa recuperação cairia no
+  // ramo de terminação, recarregaria a página e faria o campo de código sumir:
+  // a mesma quebra de 2FA que a separação de categorias existe para evitar.
+  let sessaoEstabelecidaNestaTentativa = false;
 
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
@@ -11983,6 +12014,7 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
+    sessaoEstabelecidaNestaTentativa = true;
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       handlePasswordChangeAfterLogin(password);
@@ -12024,7 +12056,7 @@ async function handleLogin(event) {
     //            `loadBootstrap` já pode ter preenchido parte do `state`. Uma
     //            falha aqui é TERMINAÇÃO REAL: sem o teardown completo esse
     //            estado parcial e o DOM ficariam para o próximo que entrar.
-    if (state.user) {
+    if (sessaoEstabelecidaNestaTentativa) {
       terminateSession('Não foi possível concluir o login. Faça login novamente.');
       return;
     }

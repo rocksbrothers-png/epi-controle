@@ -186,9 +186,9 @@ def test_o_campo_de_totp_sobrevive_a_falha_de_login(js):
 
 def test_falha_apos_a_sessao_estabelecida_e_terminacao_real(js):
     corpo = _corpo_de(js, 'handleLogin')
-    assert 'if (state.user) {' in corpo, \
+    assert 'if (sessaoEstabelecidaNestaTentativa) {' in corpo, \
         'sem o discriminador, o sub-caminho pós-saveSession volta a só esconder'
-    i_guard = corpo.index('if (state.user) {')
+    i_guard = corpo.index('if (sessaoEstabelecidaNestaTentativa) {')
     i_term = corpo.index('terminateSession(')
     i_clear = corpo.index('clearSession();')
     assert i_guard < i_term < i_clear, (
@@ -672,9 +672,16 @@ def test_a_limpeza_nao_alcanca_a_tela_de_login(js):
     gerenciador de senhas, que a F1 registrou como comportamento do ambiente."""
     corpo = _corpo_de(js, 'resetAppFormDrafts')
     assert 'login-screen' not in corpo
-    assert corpo.count("querySelectorAll(") == 1
     assert "querySelectorAll('#main-screen form')" in corpo
     assert '.reset()' in corpo
+    # TODO seletor da função é escopado em `#main-screen` — nenhum varre o
+    # documento inteiro, que alcançaria a tela de login.
+    seletores = re.findall(r"querySelectorAll\('([^']+)'\)", corpo)
+    assert seletores, 'a limpeza sumiu'
+    for seletor in seletores:
+        for parte in seletor.split(','):
+            assert parte.strip().startswith('#main-screen'), \
+                f'seletor fora do escopo da tela do app: {parte.strip()}'
 
 
 def test_um_refresh_comum_nao_apaga_rascunho(js):
@@ -690,6 +697,70 @@ def test_a_limpeza_roda_antes_dos_valores_padrao_do_init(js):
     defaults legítimos; limpar antes tira só o que o navegador restaurou."""
     corpo = _corpo_de(js, 'init')
     assert corpo.index('clearRestoredAppForms();') < corpo.index('refs.deliveryReturnedDate.value')
+
+
+def test_o_discriminador_e_por_tentativa_e_nao_o_state_user(js):
+    """`state.user` não serve como critério.
+
+    O `init()` o deixa preenchido de propósito quando o bootstrap está
+    temporariamente indisponível — mostra "Você pode tentar login manual agora"
+    com a sessão antiga em memória. Com `state.user` como critério, um
+    TOTP_REQUIRED nessa recuperação recarregaria a página e faria o campo de
+    código sumir: a mesma quebra de 2FA que a separação existe para evitar.
+    """
+    corpo = _corpo_de(js, 'handleLogin')
+    assert 'let sessaoEstabelecidaNestaTentativa = false;' in corpo
+    assert 'if (state.user)' not in corpo, \
+        'state.user sobrevive à recuperação de bootstrap: não discrimina a tentativa'
+    # A flag é marcada logo após `saveSession`, e só depois dele.
+    i_save = corpo.index('saveSession(')
+    i_flag = corpo.index('sessaoEstabelecidaNestaTentativa = true;')
+    i_guard = corpo.index('if (sessaoEstabelecidaNestaTentativa) {')
+    assert i_save < i_flag < i_guard
+
+
+def test_o_init_realmente_preserva_state_user_na_recuperacao(js):
+    """A premissa do gate acima: se o `init()` passasse a limpar a sessão nesse
+    ramo, o raciocínio mudaria — e o gate precisa perceber."""
+    corpo = _corpo_de(js, 'init')
+    i = corpo.index('isTemporaryBootstrapUnavailable(error)')
+    ramo = corpo[i:corpo.index('return;', i)]
+    assert 'clearSession' not in ramo and 'terminateSession' not in ramo, \
+        'o ramo temporário passou a encerrar sessão: revisar o discriminador'
+    assert 'login manual agora' in ramo
+
+
+# ── 10e. A limpeza alcança controle solto, não só <form> ─────────────────────
+#
+# Achado da revisão: `form.reset()` só alcança descendentes de <form>. Os campos
+# do novo fornecedor — `#compras-supplier-name`, `-cnpj`, `-email`, `-notes` —
+# são inputs soltos num <div class="form-grid">. Abrir o painel só desesconde a
+# div, e o rascunho de quem saiu apareceria inteiro.
+
+def test_a_limpeza_alcanca_controles_fora_de_form(js):
+    corpo = _corpo_de(js, 'resetAppFormDrafts')
+    assert "querySelectorAll('#main-screen input, #main-screen textarea')" in corpo
+    assert "querySelectorAll('#main-screen select')" in corpo
+
+
+def test_a_limpeza_restaura_o_padrao_e_nao_apaga_cegamente(js):
+    """Semântica de `reset()`: volta ao valor PADRÃO do HTML. Apagar cegamente
+    destruiria default legítimo."""
+    corpo = _corpo_de(js, 'resetAppFormDrafts')
+    assert 'controle.defaultValue' in corpo
+    assert 'controle.defaultChecked' in corpo
+    assert 'opcao.defaultSelected' in corpo
+    assert "controle.value = ''" not in corpo
+
+
+def test_os_campos_soltos_do_fornecedor_existem_fora_de_form():
+    """A premissa do achado, verificada no HTML: se virarem <form>, o gate
+    acima deixa de ser necessário — e é melhor descobrir isso pelo gate."""
+    compras = (RAIZ / 'static' / 'views' / 'compras.html').read_text(encoding='utf-8')
+    i = compras.index('id="compras-supplier-name"')
+    antes = compras[:i]
+    assert antes.rfind('<form') < antes.rfind('</form>'), \
+        'os campos do fornecedor entraram num <form>: revisar o gate da limpeza'
 
 
 # ── 11. A invariante não tem ponto cego fora do app.js ───────────────────────

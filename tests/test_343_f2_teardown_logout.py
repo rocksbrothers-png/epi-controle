@@ -100,12 +100,17 @@ TERMINACAO_REAL_DE_SESSAO = {
     'sessão revogada durante uso (401/403)': '[401, 403].includes(Number(error?.status',
     'sessão expirada': "isSessionRestoreAuthError(error)",
     'bootstrap/sessão inválida': "console.warn('[auth] bootstrap falhou, limpando sessão'",
+    # A fronteira dentro do handleLogin: falha NÃO-degradada depois de
+    # `saveSession`, quando já existe sessão gravada e `state` parcial.
+    'falha após a sessão estabelecida': "post_login_bootstrap",
 }
 
 # B: AUTENTICAÇÃO EM ANDAMENTO — nenhuma sessão chegou a existir nesta página.
 #    Estes NÃO PODEM chamar terminateSession() nem recarregar.
+# A fronteira passa DENTRO do `handleLogin`, e o discriminador é `saveSession`:
+# antes dele não há sessão (categoria B); depois há, e uma falha vira terminação
+# real. Por isso a categoria B lista só o que é B por inteiro.
 AUTENTICACAO_EM_ANDAMENTO = {
-    'falha de login / TOTP_REQUIRED / TOTP_INVALID': 'handleLogin',
     'troca de senha obrigatória (sessão ATIVA)': 'handlePasswordChangeAfterLogin',
 }
 
@@ -172,6 +177,64 @@ def test_o_campo_de_totp_sobrevive_a_falha_de_login(js):
     assert 'terminateSession(' not in depois and 'location.reload' not in depois
 
 
+# ── 0b. A fronteira passa dentro do handleLogin ──────────────────────────────
+#
+# Achado da revisão, e era erro do contrato, não só do código: `saveSession`
+# roda ANTES do `loadBootstrap`. Uma falha não-degradada depois dela deixava
+# sessão gravada, `state` parcialmente preenchido e DOM montado — encerrados
+# com o mecanismo antigo, que só escondia a tela.
+
+def test_falha_apos_a_sessao_estabelecida_e_terminacao_real(js):
+    corpo = _corpo_de(js, 'handleLogin')
+    assert 'if (state.user) {' in corpo, \
+        'sem o discriminador, o sub-caminho pós-saveSession volta a só esconder'
+    i_guard = corpo.index('if (state.user) {')
+    i_term = corpo.index('terminateSession(')
+    i_clear = corpo.index('clearSession();')
+    assert i_guard < i_term < i_clear, (
+        'a terminação real precisa vir sob o guard e ANTES do ramo sem sessão')
+
+
+def test_o_discriminador_e_o_save_session(js):
+    """A premissa: se `saveSession` passasse a rodar depois do bootstrap, a
+    fronteira mudaria de lugar e este contrato precisaria ser refeito."""
+    corpo = _corpo_de(js, 'handleLogin')
+    assert corpo.index('saveSession(') < corpo.index('await loadBootstrap();')
+
+
+def test_a_falha_de_autenticacao_continua_sem_recarregar(js):
+    """A outra metade: no ramo SEM sessão nada recarrega — é o que mantém o
+    2FA possível."""
+    corpo = _corpo_de(js, 'handleLogin')
+    ramo_sem_sessao = corpo[corpo.index('clearSession();'):]
+    assert 'terminateSession(' not in ramo_sem_sessao
+    assert 'location.reload' not in ramo_sem_sessao
+    assert "totpRow.style.display = ''" in ramo_sem_sessao
+
+
+# ── 10d. A limpeza de rascunho não depende de storage ────────────────────────
+#
+# Achado da revisão: num ambiente onde `sessionStorage` lança — privacidade
+# restritiva, embedding com storage desligado — o sinal não é gravado, o leitor
+# sai cedo, e a limpeza de formulário simplesmente não acontecia. Justo o
+# ambiente em que o vazamento importa.
+
+def test_o_encerramento_limpa_rascunho_sem_depender_de_storage(js):
+    corpo = _corpo_de(js, 'terminateSession')
+    assert 'resetAppFormDrafts();' in corpo, \
+        'sem a limpeza síncrona, um ambiente sem storage fica desprotegido'
+    # Fora de qualquer try de storage: é o ponto do gate.
+    antes_do_storage = corpo[:corpo.index('sessionStorage')]
+    assert 'resetAppFormDrafts();' in antes_do_storage
+
+
+def test_a_limpeza_na_carga_seguinte_e_reforco_e_nao_a_garantia(js):
+    """As duas existem: a síncrona não depende de storage; a da carga seguinte
+    cobre o caso de o navegador restaurar mesmo assim."""
+    assert len(re.findall(r'(?<!function )\bresetAppFormDrafts\(', js)) == 2
+    assert 'resetAppFormDrafts();' in _corpo_de(js, 'clearRestoredAppForms')
+
+
 # ── 1. Inventário: todo encerramento passa pelo caminho único ────────────────
 
 # Único lugar que chama `clearSession()` sem ser encerramento, com a razão.
@@ -202,9 +265,9 @@ def test_todo_encerramento_de_sessao_passa_pelo_caminho_unico(js):
 def test_os_quatro_encerramentos_conhecidos_continuam_convergindo(js):
     """Contraprova do inventário: se os call sites SUMIREM, o gate acima ficaria
     verde por vacuidade."""
-    assert len(re.findall(r'(?<!function )\bterminateSession\(', js)) == 4, (
-        'os quatro encerramentos (botão, 401/403, sessão expirada, bootstrap) '
-        'precisam continuar existindo e chamando o caminho único')
+    assert len(re.findall(r'(?<!function )\bterminateSession\(', js)) == 5, (
+        'os cinco encerramentos (botão, 401/403, sessão expirada, bootstrap e a '
+        'falha pós-saveSession) precisam continuar chamando o caminho único')
 
 
 # ── 2. Nenhum encerramento apenas esconde a tela ─────────────────────────────
@@ -445,8 +508,11 @@ def test_o_login_com_2fa_continua_possivel(js):
     corpo = _corpo_de(js, 'handleLogin')
     assert "TOTP_REQUIRED" in corpo and "TOTP_INVALID" in corpo
     assert "totpRow.style.display = ''" in corpo
-    assert 'terminateSession(' not in corpo, \
-        'recarregar na falha de login quebra o 2FA: o campo de código some'
+    # O `terminateSession` do `handleLogin` é do sub-caminho pós-`saveSession`.
+    # O bloco do TOTP fica DEPOIS dele, no ramo sem sessão — se a recarga
+    # passasse a alcançá-lo, o campo de código sumiria e o 2FA morreria.
+    assert corpo.index('terminateSession(') < corpo.index("totpRow.style.display = ''")
+    assert 'location.reload' not in corpo
 
 
 @pytest.mark.parametrize('chave', ['lowStock', 'stockEpis', 'requests', 'fichasPeriods'])
@@ -597,17 +663,18 @@ def test_a_carga_seguinte_limpa_os_rascunhos_restaurados(js):
     assert 'sessionStorage.getItem(SESSION_TEARDOWN_KEY)' in corpo
     assert 'sessionStorage.removeItem(SESSION_TEARDOWN_KEY)' in corpo, \
         'sem remover, todo F5 seguinte apagaria rascunho legítimo'
-    assert corpo.index('removeItem') < corpo.index('querySelectorAll')
-    assert "querySelectorAll('#main-screen form')" in corpo
-    assert '.reset()' in corpo
+    assert corpo.index('removeItem') < corpo.index('resetAppFormDrafts')
+    assert 'resetAppFormDrafts();' in corpo
 
 
 def test_a_limpeza_nao_alcanca_a_tela_de_login(js):
     """O `#login-screen` fica de fora de propósito: mexer nele brigaria com o
     gerenciador de senhas, que a F1 registrou como comportamento do ambiente."""
-    corpo = _corpo_de(js, 'clearRestoredAppForms')
+    corpo = _corpo_de(js, 'resetAppFormDrafts')
     assert 'login-screen' not in corpo
     assert corpo.count("querySelectorAll(") == 1
+    assert "querySelectorAll('#main-screen form')" in corpo
+    assert '.reset()' in corpo
 
 
 def test_um_refresh_comum_nao_apaga_rascunho(js):
@@ -615,7 +682,7 @@ def test_um_refresh_comum_nao_apaga_rascunho(js):
     a função sai antes de tocar em formulário nenhum."""
     corpo = _corpo_de(js, 'clearRestoredAppForms')
     assert 'if (!pendente) return;' in corpo
-    assert corpo.index('if (!pendente) return;') < corpo.index('querySelectorAll')
+    assert corpo.index('if (!pendente) return;') < corpo.index('resetAppFormDrafts')
 
 
 def test_a_limpeza_roda_antes_dos_valores_padrao_do_init(js):
@@ -692,9 +759,13 @@ def test_o_bootstrap_degradado_nao_pode_mais_renderizar_dados_de_outro(js):
     # contagem; aqui prendemos que o caminho único é o que recarrega).
     assert 'location.reload()' in _corpo_de(js, 'terminateSession')
 
-    # Elo 3: e o degradado não tem atalho próprio de limpeza que dispense a
-    # recarga — se alguém adicionar um, esta fatia precisa ser reavaliada.
-    assert 'terminateSession(' not in corpo_login
+    # Elo 3: o RAMO DEGRADADO não pode ter atalho próprio que dispense a
+    # recarga. O `terminateSession` do `handleLogin` pertence ao sub-caminho
+    # pós-`saveSession`, que é terminação real — outro ramo, outra semântica.
+    i_deg = corpo_login.index('isBootstrapRequestError(bootstrapError)')
+    ramo_degradado = corpo_login[i_deg:corpo_login.index('} else {', i_deg)]
+    assert 'terminateSession(' not in ramo_degradado
+    assert 'renderAll();' in ramo_degradado
 
 
 def test_o_modo_degradado_continua_avisando_o_usuario(js):

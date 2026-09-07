@@ -2767,6 +2767,12 @@ function terminateSession(message = '') {
   // bootstrap deixavam o stream ativo com a sessão já morta.
   void stopDeliveryQrCamera();
   clearSession();
+  // Síncrono, ANTES da recarga, e sem depender de storage: é a única limpeza
+  // de rascunho que sobrevive a um ambiente onde `sessionStorage` lança
+  // (privacidade restritiva, embedding com storage desligado). O sinal abaixo
+  // repete a limpeza na carga seguinte, para o caso de o navegador restaurar
+  // mesmo assim — mas ele é o reforço, não a garantia.
+  resetAppFormDrafts();
   if (message) {
     // Uso único: sobrevive à recarga e é apagada na primeira leitura. Guarda só
     // o texto do aviso — nunca identificador, token ou dado de sessão.
@@ -2792,15 +2798,7 @@ function terminateSession(message = '') {
   globalThis.location.reload();
 }
 
-function clearRestoredAppForms() {
-  let pendente = '';
-  try {
-    pendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
-    sessionStorage.removeItem(SESSION_TEARDOWN_KEY);
-  } catch (_e) {
-    return;
-  }
-  if (!pendente) return;
+function resetAppFormDrafts() {
   // `location.reload()` NÃO limpa valores de campo: o navegador os restaura —
   // é por isso que um F5 preserva o que você digitou. Depois de um
   // ENCERRAMENTO, porém, esse rascunho é de quem saiu: `#employee-form` tem
@@ -2814,6 +2812,18 @@ function clearRestoredAppForms() {
       formulario.reset();
     } catch (_erro) { /* formulário exótico: seguir limpando os outros */ }
   });
+}
+
+function clearRestoredAppForms() {
+  let pendente = '';
+  try {
+    pendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
+    sessionStorage.removeItem(SESSION_TEARDOWN_KEY);
+  } catch (_e) {
+    return;
+  }
+  if (!pendente) return;
+  resetAppFormDrafts();
 }
 
 function consumePendingSessionMessage() {
@@ -12001,11 +12011,23 @@ async function handleLogin(event) {
     void maybeShowOnboardingWizard();
   } catch (error) {
     clearBootstrapDegraded();
-    // NÃO é encerramento de sessão: nenhuma sessão chegou a ser estabelecida
-    // nesta página, e o `clearSession` aqui é higiene defensiva. Recarregar
-    // seria uma REGRESSÃO FUNCIONAL: o bloco abaixo revela o campo de TOTP em
-    // TOTP_REQUIRED/TOTP_INVALID, e a recarga o esconderia de novo, deixando o
-    // login com 2FA impossível de concluir. Ver gate da #343 F2.
+    // A fronteira entre as duas categorias passa DENTRO desta função, e o
+    // discriminador é `saveSession`, não o nome do bloco:
+    //
+    //   antes  — nenhuma sessão foi estabelecida. É falha de AUTENTICAÇÃO, e
+    //            recarregar seria REGRESSÃO FUNCIONAL: o bloco mais abaixo
+    //            revela o campo de TOTP em TOTP_REQUIRED/TOTP_INVALID, e a
+    //            recarga o esconderia de novo e o esvaziaria, deixando o login
+    //            com 2FA impossível de concluir.
+    //
+    //   depois — `saveSession` já gravou usuário, permissões e token, e o
+    //            `loadBootstrap` já pode ter preenchido parte do `state`. Uma
+    //            falha aqui é TERMINAÇÃO REAL: sem o teardown completo esse
+    //            estado parcial e o DOM ficariam para o próximo que entrar.
+    if (state.user) {
+      terminateSession('Não foi possível concluir o login. Faça login novamente.');
+      return;
+    }
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {

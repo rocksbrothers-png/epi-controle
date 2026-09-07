@@ -652,8 +652,69 @@ def humanize_integrity_error(exc):
 # ── HTTP Request Handler ─────────────────────────────────────────────────────
 
 class EpiHandler(SimpleHTTPRequestHandler):
+    # Parâmetros cujo VALOR nunca pode aparecer no access log (#343, F1).
+    #
+    # A lista é de NOMES, não de padrões no valor: procurar "parece uma senha"
+    # no texto erra dos dois lados. E é curta de propósito — cada nome está
+    # aqui porque a auditoria PROVOU que ele trafega, ou trafegou, em query
+    # string neste código:
+    #
+    #   username, password  o achado da F1. `preloadLoginFromUrl` aceitava
+    #                       exatamente estes dois, e são os que
+    #                       `sanitizeLoginUrlParams` remove de links antigos.
+    #   token               uso atual: `modules/portal/routes.py` lê `?token=`
+    #                       — o link de acesso do portal do colaborador é uma
+    #                       credencial de capacidade na URL.
+    #
+    # Nomes que NÃO entram, e por quê: `code` é código de negócio
+    # (`modules/deliveries/routes.py`), `qr_code` identifica item físico e o
+    # backend valida posse antes de agir, e `actor_user_id`/`user_id` são
+    # identificadores — justamente a observabilidade que precisa sobreviver.
+    # `new_password`, `totp_code`, `recovery_key` e afins viajam no CORPO do
+    # POST, nunca na query: redigi-los aqui seria código morto fingindo
+    # proteção.
+    #
+    # O gate fixa esta lista. Ampliá-la é um ato deliberado, com evidência —
+    # não uma precaução silenciosa.
+    SENSITIVE_QUERY_PARAMS = frozenset({'username', 'password', 'token'})
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
+
+    @classmethod
+    def _redact_request_line(cls, message):
+        """Substitui o VALOR dos parâmetros sensíveis por `***` no access log.
+
+        O `log_message` padrão do `BaseHTTPRequestHandler` imprime a linha de
+        request inteira — `"GET /?password=… HTTP/1.1"` —, e é assim que uma
+        credencial que trafegou na URL chega ao log do serviço. A F1 fecha a
+        porta de entrada (o cliente não manda mais), e isto fecha a de saída,
+        para o caso de um link antigo, um cliente terceiro ou um scanner.
+
+        Redige por NOME de parâmetro e preserva o resto: método, caminho,
+        status, tamanho e os parâmetros não sensíveis continuam no log, porque
+        são a observabilidade legítima que não se deve perder.
+        """
+        def _redigir(trecho):
+            partes = trecho.split('&')
+            saida = []
+            for parte in partes:
+                nome, sep, _valor = parte.partition('=')
+                if sep and nome.strip().lower() in cls.SENSITIVE_QUERY_PARAMS:
+                    saida.append(f'{nome}=***')
+                else:
+                    saida.append(parte)
+            return '&'.join(saida)
+
+        if '?' not in message:
+            return message
+        antes, _, resto = message.partition('?')
+        # A query termina no primeiro espaço (o `HTTP/1.1"` da linha de request).
+        query, separador, depois = resto.partition(' ')
+        return f'{antes}?{_redigir(query)}{separador}{depois}'
+
+    def log_message(self, format, *args):  # noqa: A002 - assinatura da stdlib
+        super().log_message('%s', self._redact_request_line(format % args))
 
     def _apply_default_response_headers(self):
         parsed = urlparse(self.path)

@@ -2676,6 +2676,18 @@ function toggleLoginPasswordVisibility() {
   setLoginPasswordVisibility(!isVisible);
 }
 
+// Credencial NUNCA entra pela URL (#343, F1).
+//
+// Existia aqui um `preloadLoginFromUrl` que lia `?username=` e `?password=` e
+// PRÉ-PREENCHIA os campos de login. Ele foi removido: uma senha em query string
+// já vazou antes de qualquer limpeza — ela viaja na linha de request, entra no
+// histórico do navegador, no `Referer` e no access log do servidor. Apagar os
+// parâmetros da barra de endereço depois não desfaz nada disso.
+//
+// Esta função ficou, com outro papel: quem chegar por um link ou favorito
+// ANTIGO ainda traz os parâmetros, e removê-los da URL e da entrada de
+// histórico reduz a exposição que já começou. Ela não preenche nada, e é
+// chamada incondicionalmente na inicialização.
 function sanitizeLoginUrlParams() {
   const url = new URL(globalThis.location.href);
   let changed = false;
@@ -2689,18 +2701,6 @@ function sanitizeLoginUrlParams() {
     const queryString = url.searchParams.toString();
     const nextUrl = url.pathname + (queryString ? `?${queryString}` : '') + (url.hash || '');
     globalThis.history.replaceState({}, '', nextUrl);
-  }
-}
-
-function preloadLoginFromUrl() {
-  const params = new URLSearchParams(globalThis.location.search);
-  const username = String(params.get('username') || '').trim();
-  const password = String(params.get('password') || '').trim();
-  if (username && refs.loginUsername) refs.loginUsername.value = username;
-  if (password && refs.loginPassword) refs.loginPassword.value = password;
-  if (username || password) {
-    setLoginMessage('Credenciais da URL pré-preenchidas. Clique em "Entrar" para continuar.');
-    sanitizeLoginUrlParams();
   }
 }
 
@@ -13531,7 +13531,7 @@ async function init() {
     return;
   }
   runNonCriticalSetup('assinatura modal', setupSignatureModal);
-  runNonCriticalSetup('preload login URL', preloadLoginFromUrl);
+  runNonCriticalSetup('sanitize login URL', sanitizeLoginUrlParams);
   runNonCriticalSetup('required labels', markRequiredFieldLabels);
   runNonCriticalSetup('form field hardening', setupFormFieldHardening);
   runNonCriticalSetup('phase2 pilots', setupPhase2PilotsSafely);

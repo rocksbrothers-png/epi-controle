@@ -694,19 +694,34 @@ def test_a_carga_seguinte_limpa_os_rascunhos_restaurados(js):
 
 def test_a_limpeza_nao_alcanca_a_tela_de_login(js):
     """O `#login-screen` fica de fora de propósito: mexer nele brigaria com o
-    gerenciador de senhas, que a F1 registrou como comportamento do ambiente."""
+    gerenciador de senhas, que a F1 registrou como comportamento do ambiente.
+
+    Enunciado reformulado no achado 8: a exceção deixou de ser implícita (um
+    escopo `#main-screen` que por acaso não alcançava o login) e passou a ser
+    EXPLÍCITA e única. Mais forte, não mais frouxa: agora o resto do documento
+    é alcançado de propósito, e só o login é poupado.
+    """
     corpo = _corpo_de(js, 'resetAppFormDrafts')
-    assert 'login-screen' not in corpo
-    assert "querySelectorAll('#main-screen form')" in corpo
+    assert "closest('#login-screen')" in corpo, 'a exceção do login sumiu'
     assert '.reset()' in corpo
-    # TODO seletor da função é escopado em `#main-screen` — nenhum varre o
-    # documento inteiro, que alcançaria a tela de login.
+    # Toda varredura consulta a exceção: nenhuma limpa sem checar antes.
     seletores = re.findall(r"querySelectorAll\('([^']+)'\)", corpo)
-    assert seletores, 'a limpeza sumiu'
-    for seletor in seletores:
-        for parte in seletor.split(','):
-            assert parte.strip().startswith('#main-screen'), \
-                f'seletor fora do escopo da tela do app: {parte.strip()}'
+    assert len(seletores) == 3, f'varreduras esperadas: 3, encontradas {len(seletores)}'
+    # Uma consulta por varredura. A definição é `const ehDaTelaDeLogin =`, que
+    # não casa com este padrão — só os pontos de chamada casam.
+    assert corpo.count('ehDaTelaDeLogin(') == len(seletores), \
+        'alguma varredura limpa sem consultar a exceção'
+    # A exceção é UMA. Um segundo `closest` seria outra tela poupada em silêncio.
+    assert corpo.count('closest(') == 1, 'apareceu uma segunda exceção'
+
+
+def test_na_duvida_a_limpeza_acontece(js):
+    """Se `closest` falhar, o controle NÃO é tratado como sendo do login. A
+    exceção é de UX; a limpeza é de segurança, e é ela que ganha o desempate."""
+    corpo = _corpo_de(js, 'resetAppFormDrafts')
+    i_catch = corpo.index('catch (_erro)')
+    assert 'return false;' in corpo[i_catch:i_catch + 120], \
+        'o fallback da exceção passou a poupar o controle: fail-open'
 
 
 def test_um_refresh_comum_nao_apaga_rascunho(js):
@@ -765,9 +780,14 @@ def test_o_init_realmente_preserva_state_user_na_recuperacao(js):
 # div, e o rascunho de quem saiu apareceria inteiro.
 
 def test_a_limpeza_alcanca_controles_fora_de_form(js):
+    """Reformulado no achado 8: os seletores não podem voltar a ser escopados
+    por lista de inclusão. `input, textarea` e `select` varrem o documento; a
+    única subtração é a exceção do login, provada no gate acima."""
     corpo = _corpo_de(js, 'resetAppFormDrafts')
-    assert "querySelectorAll('#main-screen input, #main-screen textarea')" in corpo
-    assert "querySelectorAll('#main-screen select')" in corpo
+    assert "querySelectorAll('input, textarea')" in corpo
+    assert "querySelectorAll('select')" in corpo
+    assert '#main-screen' not in corpo, \
+        'a limpeza voltou a ser lista de inclusão: modais irmãos ficam de fora'
 
 
 def test_a_limpeza_restaura_o_padrao_e_nao_apaga_cegamente(js):
@@ -788,6 +808,100 @@ def test_os_campos_soltos_do_fornecedor_existem_fora_de_form():
     antes = compras[:i]
     assert antes.rfind('<form') < antes.rfind('</form>'), \
         'os campos do fornecedor entraram num <form>: revisar o gate da limpeza'
+
+
+# ── 13. A limpeza alcança os modais, que são IRMÃOS de #main-screen ──────────
+#
+# Terceiro achado da mesma classe: "a limpeza não alcança X". Primeiro foram os
+# controles soltos fora de <form> (10e); depois a aba não recarregada (12a);
+# agora os modais da aplicação, que não são descendentes de `#main-screen`.
+#
+# São 31 controles em quatro modais — `#signature-modal`,
+# `#smr-request-report-modal`, `#master-profile-modal` e
+# `#onboarding-wizard-modal` — com nome de assinante, notas de relatório,
+# e-mail, código de 2FA e campos de senha.
+#
+# A conclusão não foi acrescentar quatro ids à lista: foi que a LISTA é o
+# defeito. É o mesmo argumento que esta fatia faz contra o teardown enumerado.
+# O critério inverteu — limpa tudo, menos a tela de login.
+#
+# O gate abaixo não casa texto: monta a árvore do `index.html` REAL e mede.
+
+def _controles_por_tela():
+    """Percorre o index.html servido e classifica cada controle de formulário
+    pela tela de topo a que pertence."""
+    from html.parser import HTMLParser
+
+    class Arvore(HTMLParser):
+        VAZIAS = {'input', 'br', 'hr', 'img', 'meta', 'link', 'source', 'area',
+                  'base', 'col', 'embed', 'param', 'track', 'wbr'}
+
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.pilha, self.tags, self.controles = [], [], []
+
+        def handle_starttag(self, tag, attrs):
+            identificador = dict(attrs).get('id', '')
+            if tag in ('input', 'textarea', 'select'):
+                self.controles.append((identificador, list(self.pilha)))
+            if tag in self.VAZIAS:
+                return
+            self.tags.append(tag)
+            self.pilha.append(identificador)
+
+        def handle_endtag(self, tag):
+            if tag in self.VAZIAS:
+                return
+            while self.tags:
+                if self.tags.pop() == tag:
+                    self.pilha.pop()
+                    break
+                self.pilha.pop()
+
+    arvore = Arvore()
+    arvore.feed((RAIZ / 'static' / 'index.html').read_text(encoding='utf-8'))
+    por_tela = {'login-screen': [], 'main-screen': [], 'fora': []}
+    for identificador, ancestrais in arvore.controles:
+        if 'login-screen' in ancestrais:
+            por_tela['login-screen'].append(identificador)
+        elif 'main-screen' in ancestrais:
+            por_tela['main-screen'].append(identificador)
+        else:
+            por_tela['fora'].append(identificador)
+    return por_tela
+
+
+def test_existe_mesmo_controle_fora_das_duas_telas():
+    """A premissa do achado, medida no HTML servido. Se um dia não houver mais
+    controle fora de `#main-screen`, a inversão do critério deixa de ser
+    necessária — e é melhor descobrir isso por um gate vermelho."""
+    por_tela = _controles_por_tela()
+    assert por_tela['fora'], \
+        'não há mais controle fora das telas: revisar a inversão do critério'
+    assert por_tela['login-screen'], 'a tela de login perdeu seus controles'
+
+
+def test_os_modais_da_aplicacao_ficam_dentro_do_alcance():
+    """Os quatro modais do achado continuam fora de `#main-screen`. Enquanto
+    estiverem, um seletor escopado neles os deixaria de fora — e o gate do
+    seletor acima é que garante que isso não volte."""
+    conteudo = (RAIZ / 'static' / 'index.html').read_text(encoding='utf-8')
+    for modal in ('signature-modal', 'smr-request-report-modal',
+                  'master-profile-modal', 'onboarding-wizard-modal'):
+        assert f'id="{modal}"' in conteudo, f'{modal} sumiu do HTML servido'
+    por_tela = _controles_por_tela()
+    assert 'smr-req-notes' in por_tela['fora'], \
+        'smr-req-notes mudou de tela: reavaliar o alcance da limpeza'
+
+
+def test_so_existem_duas_telas_de_topo():
+    """Premissa da exceção única. Se nascer uma terceira tela de topo, alguém
+    precisa decidir conscientemente de que lado dela a limpeza fica."""
+    import re as _re
+    conteudo = (RAIZ / 'static' / 'index.html').read_text(encoding='utf-8')
+    telas = set(_re.findall(r'id="([a-z-]+-screen)"', conteudo))
+    assert telas == {'login-screen', 'main-screen'}, \
+        f'telas de topo mudaram: {sorted(telas)}'
 
 
 # ── 12a. Carga sem sessão autenticada não restaura rascunho de ninguém ───────

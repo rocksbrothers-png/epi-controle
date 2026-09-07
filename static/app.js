@@ -2812,16 +2812,37 @@ function terminateSession(message = '') {
   globalThis.location.reload();
 }
 
+// A exclusao e UMA e explicita; nao ha lista de inclusao.
+//
+// Escopar por `#main-screen` era lista de inclusao disfarcada, e nao sobreviveu:
+// tres rodadas seguidas da revisao acharam a mesma classe de defeito — primeiro
+// os controles soltos fora de <form>, depois a aba nao recarregada, agora os
+// modais da aplicacao, que sao IRMAOS de `#main-screen` e nao descendentes.
+// `#signature-modal`, `#smr-request-report-modal`, `#master-profile-modal` e
+// `#onboarding-wizard-modal` somam 31 controles que a lista nao alcancava.
+//
+// E o mesmo argumento que esta fatia faz contra o teardown enumerado: uma lista
+// envelhece no primeiro elemento novo, sem ninguem perceber. Entao inverte-se o
+// criterio — limpa-se TUDO, menos a unica excecao que o contrato exige.
+//
+// A excecao e o `#login-screen`, e ela e de UX, nao de seguranca: mexer nele
+// brigaria com o gerenciador de senhas do navegador, que a F1 registrou como
+// comportamento esperado do ambiente. Por isso, na duvida, limpa-se: se
+// `closest` falhar, o controle NAO e tratado como sendo do login.
 function resetAppFormDrafts() {
   // `location.reload()` NÃO limpa valores de campo: o navegador os restaura —
   // é por isso que um F5 preserva o que você digitou. Depois de um
   // ENCERRAMENTO, porém, esse rascunho é de quem saiu: `#employee-form` tem
   // CPF, nome, e-mail e WhatsApp de um colaborador.
-  //
-  // Só a tela do app é limpa. O `#login-screen` fica de fora de propósito,
-  // para não brigar com o gerenciador de senhas do navegador — que a F1
-  // registrou como comportamento esperado do ambiente, não como defeito.
-  document.querySelectorAll('#main-screen form').forEach((formulario) => {
+  const ehDaTelaDeLogin = (elemento) => {
+    try {
+      return Boolean(elemento.closest('#login-screen'));
+    } catch (_erro) {
+      return false;
+    }
+  };
+  document.querySelectorAll('form').forEach((formulario) => {
+    if (ehDaTelaDeLogin(formulario)) return;
     try {
       formulario.reset();
     } catch (_erro) { /* formulário exótico: seguir limpando os outros */ }
@@ -2833,7 +2854,8 @@ function resetAppFormDrafts() {
   //
   // Volta ao valor PADRÃO do HTML, não a string vazia: é a semântica do
   // `reset()`, e apagar cegamente destruiria default legítimo.
-  document.querySelectorAll('#main-screen input, #main-screen textarea').forEach((controle) => {
+  document.querySelectorAll('input, textarea').forEach((controle) => {
+    if (ehDaTelaDeLogin(controle)) return;
     try {
       if (controle.type === 'checkbox' || controle.type === 'radio') {
         controle.checked = controle.defaultChecked;
@@ -2842,7 +2864,8 @@ function resetAppFormDrafts() {
       }
     } catch (_erro) { /* controle exótico: seguir limpando os outros */ }
   });
-  document.querySelectorAll('#main-screen select').forEach((selecao) => {
+  document.querySelectorAll('select').forEach((selecao) => {
+    if (ehDaTelaDeLogin(selecao)) return;
     try {
       Array.from(selecao.options).forEach((opcao) => {
         opcao.selected = opcao.defaultSelected;

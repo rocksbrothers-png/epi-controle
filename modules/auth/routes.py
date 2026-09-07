@@ -8,6 +8,7 @@ from core.database import get_connection
 from core.rate_limit import get_client_ip, login_limiter, recovery_limiter
 from core.repository import authorize_action
 from core.security import (
+    AuthenticationError,
     hash_password,
     is_bcrypt_hash,
     parse_bearer_token,
@@ -282,9 +283,15 @@ def handle_get_bootstrap(handler, parsed, payload, match):
             payload_data = build_bootstrap(connection, actor)
             structured_log('info', 'bootstrap.completed', actor_user_id=actor_user_id, user_role=actor.get('role'), company_id=actor.get('company_id'), path=parsed.path, degraded=bool(payload_data.get('degraded')), failed_sections=[item.get('section') for item in payload_data.get('bootstrap_warnings', [])])
             return send_json(handler, 200, {'ok': True, 'data': payload_data})
-    except PermissionError as exc:
+    except AuthenticationError as exc:
+        # Token ausente/inválido/expirado → 401 (dispara o refresh no cliente).
         from epi_backend.http_utils import structured_log
         structured_log('warning', 'bootstrap.auth_failed', actor_user_id=actor_user_id, user_role=actor.get('role') if actor else '', company_id=actor.get('company_id') if actor else '', path=parsed.path, error=str(exc))
+        send_json(handler, 401, {'error': str(exc)})
+    except PermissionError as exc:
+        # Usuário autenticado, mas sem permissão (dashboard:view) → 403.
+        from epi_backend.http_utils import structured_log
+        structured_log('warning', 'bootstrap.permission_denied', actor_user_id=actor_user_id, user_role=actor.get('role') if actor else '', company_id=actor.get('company_id') if actor else '', path=parsed.path, error=str(exc))
         send_json(handler, 403, {'error': str(exc)})
 
 

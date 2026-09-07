@@ -79,6 +79,7 @@ from core.bootstrap import init_db
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import parse_json, require_fields, send_bytes, send_json, structured_log
 from core.security import (
+    AuthenticationError,
     PasswordChangeRequiredError,
     create_jwt_token,
     decode_jwt_token,
@@ -586,6 +587,13 @@ def bad_request(handler, message):
     send_json(handler, 400, {'error': message})
 
 
+def unauthorized(handler, message):
+    # 401 = falha de AUTENTICAÇÃO (token ausente/inválido/expirado). É o que
+    # dispara o refresh automático do access token no cliente Flutter; usar 403
+    # aqui fazia o refresh nunca ocorrer e o app mostrar "Sem conexão".
+    send_json(handler, 401, {'error': message})
+
+
 def forbidden(handler, message):
     send_json(handler, 403, {'error': message})
 
@@ -891,6 +899,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if result is not None:
                 return result
             return super().do_GET()
+        except AuthenticationError as exc:
+            # ANTES de PermissionError, de quem é subclasse: sem esta ordem a
+            # falha de autenticação viraria 403 e o cliente nunca renovaria o
+            # token (#337).
+            structured_log('warning', 'http.authentication_error', method='GET', path=parsed.path, error=str(exc))
+            unauthorized(self, str(exc))
+            return
         except PasswordChangeRequiredError as exc:
             # ANTES de PermissionError: é subclasse dele, e sem esta ordem o
             # cliente receberia um 403 genérico, sem como distinguir "sem
@@ -958,6 +973,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
             if result is not None:
                 return result
             return not_found(self)
+        except AuthenticationError as exc:
+            # ANTES de PermissionError, de quem é subclasse: sem esta ordem a
+            # falha de autenticação viraria 403 e o cliente nunca renovaria o
+            # token (#337).
+            structured_log('warning', 'http.authentication_error', method='POST', path=parsed.path, error=str(exc))
+            unauthorized(self, str(exc))
+            return
         except PasswordChangeRequiredError as exc:
             # ANTES de PermissionError: é subclasse dele, e sem esta ordem o
             # cliente receberia um 403 genérico, sem como distinguir "sem
@@ -1001,6 +1023,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
             result = router.dispatch('PUT', parsed.path, self, parsed, payload)
             if result is not None:
                 return result
+        except AuthenticationError as exc:
+            # ANTES de PermissionError, de quem é subclasse: sem esta ordem a
+            # falha de autenticação viraria 403 e o cliente nunca renovaria o
+            # token (#337).
+            structured_log('warning', 'http.authentication_error', method='PUT', path=parsed.path, error=str(exc))
+            unauthorized(self, str(exc))
+            return
         except PasswordChangeRequiredError as exc:
             # ANTES de PermissionError: é subclasse dele, e sem esta ordem o
             # cliente receberia um 403 genérico, sem como distinguir "sem
@@ -1038,6 +1067,13 @@ class EpiHandler(SimpleHTTPRequestHandler):
             result = router.dispatch('DELETE', parsed.path, self, parsed)
             if result is not None:
                 return result
+        except AuthenticationError as exc:
+            # ANTES de PermissionError, de quem é subclasse: sem esta ordem a
+            # falha de autenticação viraria 403 e o cliente nunca renovaria o
+            # token (#337).
+            structured_log('warning', 'http.authentication_error', method='DELETE', path=parsed.path, error=str(exc))
+            unauthorized(self, str(exc))
+            return
         except PasswordChangeRequiredError as exc:
             # ANTES de PermissionError: é subclasse dele, e sem esta ordem o
             # cliente receberia um 403 genérico, sem como distinguir "sem

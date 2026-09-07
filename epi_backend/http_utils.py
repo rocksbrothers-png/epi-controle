@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from urllib.parse import unquote
 
 from epi_backend.config import UTC
 
@@ -13,6 +14,90 @@ def _json_safe(value):
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
     return str(value)
+
+
+# ── Redação de credencial em query string (#343, F1) ─────────────────────────
+#
+# UM único mecanismo, chamado EXPLICITAMENTE por cada sink que registra um path
+# cru. Deliberadamente NÃO é um filtro mágico dentro do `structured_log`: aquele
+# sink registra muita coisa além de path, e interceptar por nome de campo faria
+# um sink novo nascer "protegido" por acidente, sem ninguém ter pensado nele.
+# Chamada explícita + gate que enumera os sinks é o que mantém a cobertura
+# verificável em vez de presumida.
+
+SENSITIVE_QUERY_PARAMS = frozenset({"username", "password", "token", "employee_token"})
+"""Nomes cujo VALOR nunca pode ser reproduzido num log.
+
+A lista é de NOMES, não de padrões no valor: procurar "parece uma senha" no
+texto erra dos dois lados. É curta de propósito — cada nome está aqui porque a
+auditoria PROVOU que ele trafega, ou trafegou, em query string neste código:
+
+  username, password  o achado original da F1. `preloadLoginFromUrl` (removido)
+                      aceitava exatamente estes dois, e são os que
+                      `sanitizeLoginUrlParams` ainda remove de links antigos.
+  token               `modules/portal/routes.py` lê `?token=` hoje, em
+                      `handle_get_employee_access` e `..._pdf`.
+  employee_token      `modules/portal/service.py` GERA o link do portal como
+                      `/?employee_token=…`, e `static/app.js` o LÊ no
+                      carregamento da página: toda visita normal ao portal
+                      leva uma credencial de capacidade na query.
+
+Nomes que NÃO entram, e por quê: `code` é código de negócio
+(`modules/deliveries/routes.py`), `qr_code` identifica item físico e o backend
+valida posse antes de agir, e `actor_user_id`/`user_id`/`unit_id` são
+identificadores — justamente a observabilidade que precisa sobreviver.
+`new_password`, `totp_code`, `recovery_key` e afins viajam no CORPO do POST,
+nunca na query: redigi-los aqui seria código morto fingindo proteção.
+
+O gate fixa esta lista. Ampliá-la é um ato deliberado, com evidência — não uma
+precaução silenciosa.
+"""
+
+
+def _canonical_param_name(name):
+    """Normaliza o NOME do parâmetro do jeito que o servidor de fato o lê.
+
+    `parse_qs` aplica exatamente UMA passada de percent-decoding no nome, e é
+    por `parse_qs` que as rotas do portal leem a query. Então `to%6ben=…` chega
+    na rota como `token`: comparar o nome cru deixaria a credencial passar por
+    um caractere de diferença.
+
+    Uma passada, não um laço. Duas passadas redigiriam `%2570assword`, que o
+    servidor NÃO aceita como `password` — o redator cobre exatamente o que é
+    aceito, nem mais nem menos.
+    """
+    return unquote(str(name).strip()).strip().lower()
+
+
+def redact_sensitive_query(text):
+    """Substitui por `***` o VALOR dos parâmetros sensíveis, preservando o resto.
+
+    Aceita as duas formas em que um path aparece nos sinks:
+
+        path cru       `/api/employee-access?token=…&cpf_last3=123`
+        linha de log   `"GET /?password=… HTTP/1.1" 200 -`
+
+    Preserva método, rota, status, tamanho e os parâmetros de negócio: a
+    observabilidade legítima é metade do contrato, e redigir tudo seria tão ruim
+    quanto não redigir nada.
+    """
+    texto = str(text)
+    if "?" not in texto:
+        return texto
+    antes, _, resto = texto.partition("?")
+    # Numa linha de request a query termina no primeiro espaço (o `HTTP/1.1"`);
+    # num path cru não há espaço, e `partition` devolve a query inteira.
+    query, separador, depois = resto.partition(" ")
+    partes = []
+    for parte in query.split("&"):
+        nome, sep, _valor = parte.partition("=")
+        if sep and _canonical_param_name(nome) in SENSITIVE_QUERY_PARAMS:
+            # O nome fica COMO VEIO: o log continua fiel ao que o cliente
+            # mandou, inclusive na forma codificada, e só o valor desaparece.
+            partes.append(f"{nome}=***")
+        else:
+            partes.append(parte)
+    return f'{antes}?{"&".join(partes)}{separador}{depois}'
 
 
 def structured_log(level, event, **fields):
@@ -37,7 +122,7 @@ def send_json(handler, status, payload):
             "info" if status < 400 else "error",
             "http.response",
             method=getattr(handler, "command", ""),
-            path=getattr(handler, "path", ""),
+            path=redact_sensitive_query(getattr(handler, "path", "")),
             status=status,
         )
 

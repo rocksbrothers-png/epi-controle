@@ -2664,6 +2664,69 @@ function setLoginMessage(message = '', isError = false) {
   refs.loginMessage.classList.toggle('error', Boolean(isError));
 }
 
+// ── Encerramento de sessão (#343, F2) ────────────────────────────────────────
+//
+// CAMINHO ÚNICO de encerramento. Antes, cada lugar que encerrava sessão fazia
+// `clearSession(); showScreen(false)` — e `showScreen` apenas alterna uma classe
+// CSS. O DOM de quem saiu continuava montado e `state` continuava preenchido:
+// `clearSession` zera 9 das ~76 chaves, e o bootstrap do usuário seguinte
+// sobrescreve outras 24. As 44 restantes atravessavam a troca de identidade — e
+// chegavam a ser RENDERIZADAS, porque `loadBootstrap` termina em `renderAll()`,
+// que chama `renderOutsourcedCompanies()`, que escreve `state.outsourcedCompanies`
+// (dados do usuário anterior) direto no `innerHTML` da tela do próximo.
+//
+// Pior no bootstrap degradado (502/503, `isBootstrapRequestError`): ali NENHUMA
+// das 24 chaves é sobrescrita, porque a chamada a `/api/bootstrap` falhou — e
+// `renderAll()` roda assim mesmo, com o banner de modo degradado. Era o caminho
+// que transformava cache antigo em vazamento visível.
+//
+// A recarga é o mecanismo, e não um teardown enumerado. Enumerar não escala nem
+// sobrevive: são 44 chaves de `state` e 72 containers com `innerHTML` HOJE, e a
+// lista envelheceria na primeira chave nova sem ninguém perceber.
+// `location.reload()` elimina DOM, valores de campo, memória JS, closures e
+// listeners sem depender de ninguém lembrar de atualizar lista alguma.
+//
+// NÃO limpa `localStorage` nem `sessionStorage`: `epi-theme` (F3) e
+// `employee_portal_cpf_last3_*` (F4) são frentes separadas da #343 e continuam
+// exatamente como estavam. Há gate provando que esta fatia não as toca.
+const SESSION_END_MESSAGE_KEY = 'epi-session-end-message';
+
+function terminateSession(message = '') {
+  // A câmera é recurso do dispositivo e precisa ser liberada em TODOS os
+  // caminhos. Antes, só o botão de Sair a desligava: um 401/403 ou uma falha de
+  // bootstrap deixavam o stream ativo com a sessão já morta.
+  void stopDeliveryQrCamera();
+  clearSession();
+  if (message) {
+    // Uso único: sobrevive à recarga e é apagada na primeira leitura. Guarda só
+    // o texto do aviso — nunca identificador, token ou dado de sessão.
+    try {
+      sessionStorage.setItem(SESSION_END_MESSAGE_KEY, String(message));
+    } catch (_e) { /* sem storage: perde-se o aviso, não a limpeza */ }
+  }
+  // `view` carrega a última tela de quem saiu; mantê-la faria o próximo login
+  // herdar a navegação do anterior. Só ela sai — remoção genérica exigiria um
+  // inventário de parâmetros que esta fatia não fez.
+  try {
+    const url = new URL(globalThis.location.href);
+    url.searchParams.delete('view');
+    globalThis.history.replaceState({}, '', url);
+  } catch (_e) { /* sem URL/history: a recarga continua valendo */ }
+  globalThis.location.reload();
+}
+
+function consumePendingSessionMessage() {
+  let pendente = '';
+  try {
+    pendente = sessionStorage.getItem(SESSION_END_MESSAGE_KEY) || '';
+    // Apaga ANTES de exibir: uso único de verdade, mesmo que o render falhe.
+    sessionStorage.removeItem(SESSION_END_MESSAGE_KEY);
+  } catch (_e) {
+    return;
+  }
+  if (pendente) setLoginMessage(pendente, true);
+}
+
 function setLoginPasswordVisibility(isVisible) {
   if (!refs.loginPassword || !refs.loginPasswordToggle) return;
   refs.loginPassword.type = isVisible ? 'text' : 'password';
@@ -5260,8 +5323,7 @@ async function loadBootstrap() {
   } catch (error) {
     updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
     if ([401, 403].includes(Number(error?.status || 0))) {
-      clearSession();
-      showScreen(false);
+      terminateSession();
     } else if (state.user && isBootstrapRequestError(error)) {
       setBootstrapDegraded(error);
       updateBootstrapDegradedUi();
@@ -11834,6 +11896,11 @@ async function handleLogin(event) {
     void maybeShowOnboardingWizard();
   } catch (error) {
     clearBootstrapDegraded();
+    // NÃO é encerramento de sessão: nenhuma sessão chegou a ser estabelecida
+    // nesta página, e o `clearSession` aqui é higiene defensiva. Recarregar
+    // seria uma REGRESSÃO FUNCIONAL: o bloco abaixo revela o campo de TOTP em
+    // TOTP_REQUIRED/TOTP_INVALID, e a recarga o esconderia de novo, deixando o
+    // login com 2FA impossível de concluir. Ver gate da #343 F2.
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {
@@ -13751,9 +13818,7 @@ async function init() {
 
   bindAppListener(document.getElementById('movement-form'), 'submit', saveEmployeeMovement);
   bindAppListener(document.getElementById('logout-btn'), 'click', () => {
-    void stopDeliveryQrCamera();
-    clearSession();
-    showScreen(false);
+    terminateSession();
   });
 
   bindAppListener(document.getElementById('delivery-company'), 'change', () => {
@@ -14454,6 +14519,7 @@ async function init() {
   setupViewTabs();
 
   showScreen(false);
+  consumePendingSessionMessage();
   if (state.user) {
     let hasLoggedBootstrapFallback = false;
     const tryRestoreSession = async (attempt = 1) => {
@@ -14464,9 +14530,7 @@ async function init() {
       } catch (error) {
         if (isSessionRestoreAuthError(error)) {
           clearBootstrapDegraded();
-          clearSession();
-          showScreen(false);
-          setLoginMessage('Sessão expirada. Faça login novamente.', true);
+          terminateSession('Sessão expirada. Faça login novamente.');
           return;
         }
         if (isTemporaryBootstrapUnavailable(error)) {
@@ -14491,9 +14555,7 @@ async function init() {
         }
         console.warn('[auth] bootstrap falhou, limpando sessão', error);
         clearBootstrapDegraded();
-        clearSession();
-        showScreen(false);
-        setLoginMessage('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.', true);
+        terminateSession('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.');
       }
     };
     void tryRestoreSession();

@@ -7,9 +7,12 @@
     : function () { return true; };
   if (!ensureModuleBound('phase43')) return;
 
-  var STORAGE_KEY = 'epi:ux:phase43:state:v1';
-  var PHASE42_MEMORY_KEY = 'epi:ux:phase42:memory:v2';
-  var MAX_STORAGE_BYTES = 12000;
+  // Nada aqui é persistido (F5-B). `epi:ux:phase43:state:v1` guardava estado de
+  // navegação do fluxo de entrega, e o módulo ainda lia
+  // `epi:ux:phase42:memory:v2` — herdando a mesma travessia de identidade que o
+  // phase42 tinha. As duas leituras/gravações saíram; o estado do fluxo vive em
+  // `runtime`, que é RAM e morre com o documento.
+  var estadoEmMemoria = {};
   var runtime = {
     listenersBound: false,
     formBound: new WeakSet(),
@@ -55,41 +58,30 @@
     }
   }
 
-  function resetIfRequested() {
-    try {
-      var params = new URLSearchParams(globalThis.location.search || '');
-      if (params.get('ux_phase43_reset') !== '1') return;
-      localStorage.removeItem(STORAGE_KEY);
-      runtime.manualMode = false;
-      runtime.lastSuggestion = null;
-    } catch (_) {}
+  // Descarta o estado do fluxo ao sair do módulo — mesma razão do phase42: a
+  // SPA não recarrega a página, então sem isto o contexto atravessaria a
+  // reentrada. Substitui o antigo `resetIfRequested()`, que dependia de
+  // `?ux_phase43_reset=1`.
+  function descartarEstado() {
+    Object.keys(estadoEmMemoria).forEach(function (chave) { delete estadoEmMemoria[chave]; });
+    runtime.manualMode = false;
+    runtime.lastSuggestion = null;
   }
 
   function loadState() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (!parsed || typeof parsed !== 'object') return {};
-      return parsed;
-    } catch (_) {
-      return {};
-    }
+    return estadoEmMemoria;
   }
 
   function saveState(payload) {
-    try {
-      var raw = JSON.stringify(payload || {});
-      if (raw.length > MAX_STORAGE_BYTES) return;
-      localStorage.setItem(STORAGE_KEY, raw);
-    } catch (_) {}
+    if (!payload || typeof payload !== 'object' || payload === estadoEmMemoria) return;
+    Object.keys(estadoEmMemoria).forEach(function (chave) { delete estadoEmMemoria[chave]; });
+    Object.keys(payload).forEach(function (chave) { estadoEmMemoria[chave] = payload[chave]; });
   }
 
+  // O phase42 deixou de publicar memória em storage. Sem uma fonte compartilhada
+  // persistida, o phase43 opera apenas com o que observa no fluxo atual.
   function loadPhase42Memory() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(PHASE42_MEMORY_KEY) || '{}');
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch (_) {
-      return {};
-    }
+    return {};
   }
 
   function isDeliveriesViewActive() {
@@ -546,10 +538,10 @@
 
   function init() {
     try {
-      resetIfRequested();
       if (!isEnabled()) return;
       var form = byId('delivery-form');
       if (!form) return;
+      document.addEventListener('epi:viewchange', descartarEstado);
       bindGlobalHandlers();
       bindForm(form);
     } catch (error) {

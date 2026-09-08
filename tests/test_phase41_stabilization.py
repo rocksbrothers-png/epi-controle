@@ -16,10 +16,28 @@ def test_phase41_has_global_guard_and_iife():
 
 
 def test_phase41_uses_namespaced_storage_and_reset_query():
+    """Revisado na #343 F5-B.
+
+    A chave de ROLAGEM (`epi:ux:phase41:scroll:v2`) saiu: posição de rolagem é
+    estado de navegação, e o contrato agora manda reentrar no módulo pelo topo.
+    Ela era, aliás, escrita e nunca lida — persistia navegação sem sequer
+    entregar a função.
+
+    A chave de CONTEXTO (`epi:ux:phase41:context:v2`) continua aqui de
+    propósito: rascunho de formulário é outra categoria e sai na F5-C, com
+    contrato próprio. Se alguém antecipar, este gate cai — e a decisão volta a
+    ser explícita.
+    """
     content = _read("static/ux-phase41.js")
     assert "epi:ux:phase41:context:v2" in content
-    assert "epi:ux:phase41:scroll:v2" in content
     assert "ux_phase41_reset" in content
+    corpo = "\n".join(
+        linha for linha in content.split("\n")
+        if not linha.strip().startswith("//")
+    )
+    assert "epi:ux:phase41:scroll:v2" not in corpo, (
+        "a persistência de rolagem voltou: ver #343 F5-B"
+    )
 
 
 def test_phase41_blocks_sensitive_field_persistence():

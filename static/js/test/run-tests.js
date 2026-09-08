@@ -2141,6 +2141,541 @@ testAsync('#343 F4: novo ciclo na mesma aba não herda o acesso de quem validou 
   });
 });
 
+
+// ── #343 F5-B: navegação sempre começa no estado padrão ────────────────────
+//
+// Estes gates NÃO leem o texto do arquivo: eles carregam os mesmos 48 scripts
+// que `static/views/_scripts.html` serve ao navegador, num contexto `vm`
+// isolado, e exercitam o mecanismo REAL de abas e de troca de módulo. O que
+// existe abaixo de mock é plataforma (nós de DOM, eventos), nunca lógica de
+// navegação — se alguém reintroduzir a persistência no código servido, o
+// comportamento medido aqui muda e o gate cai.
+//
+// Contexto isolado de propósito: `static/app.js` define milhares de símbolos e
+// não pode contaminar os testes dos módulos de `static/js`.
+
+const vmF5B = require('vm');
+
+function camelF5B(s) { return s.replace(/-([a-z])/g, (_, c) => c.toUpperCase()); }
+
+function casaF5B(no, sel) {
+  return String(sel).split(',').map((s) => s.trim()).filter(Boolean).some((parte) => {
+    let resto = parte;
+    if (resto.startsWith(':scope > ')) {return false;}
+    const mTag = resto.match(/^([a-zA-Z]+)/);
+    if (mTag) {
+      if (no.tagName !== mTag[1].toUpperCase()) {return false;}
+      resto = resto.slice(mTag[1].length);
+    }
+    for (const cls of resto.match(/\.[A-Za-z0-9_-]+/g) || []) {
+      if (!no._classes.has(cls.slice(1))) {return false;}
+      resto = resto.replace(cls, '');
+    }
+    const mNot = resto.match(/:not\(\[([a-z-]+)\]\)/);
+    if (mNot) {
+      if (no.dataset[camelF5B(mNot[1].replace(/^data-/, ''))] !== undefined) {return false;}
+      resto = resto.replace(mNot[0], '');
+    }
+    const mId = resto.match(/^#([A-Za-z0-9_-]+)/);
+    if (mId) {
+      if (no.id !== mId[1]) {return false;}
+      resto = resto.replace(mId[0], '');
+    }
+    for (const attr of resto.match(/\[[^\]]+\]/g) || []) {
+      const corpo = attr.slice(1, -1);
+      const eq = corpo.indexOf('=');
+      if (eq === -1) {
+        if (no.dataset[camelF5B(corpo.replace(/^data-/, ''))] === undefined) {return false;}
+      } else {
+        const nome = corpo.slice(0, eq);
+        const valor = corpo.slice(eq + 1).replace(/^["']|["']$/g, '');
+        if (String(no.dataset[camelF5B(nome.replace(/^data-/, ''))]) !== valor) {return false;}
+      }
+    }
+    return true;
+  });
+}
+
+function descendentesF5B(no) {
+  const saida = [];
+  (function anda(n) { n.children.forEach((f) => { saida.push(f); anda(f); }); })(no);
+  return saida;
+}
+
+function criarNoF5B(tag, attrs = {}) {
+  const no = {
+    tagName: String(tag).toUpperCase(),
+    dataset: {}, style: {}, _attrs: {}, _classes: new Set(), _handlers: {},
+    children: [], parent: null, hidden: false, tabIndex: 0,
+    id: attrs.id || '', value: '', disabled: false, textContent: '',
+    classList: {
+      add: (c) => no._classes.add(c),
+      remove: (c) => no._classes.delete(c),
+      contains: (c) => no._classes.has(c),
+      toggle: (c, v) => {
+        const ligar = v === undefined ? !no._classes.has(c) : Boolean(v);
+        if (ligar) {no._classes.add(c);} else {no._classes.delete(c);}
+        return ligar;
+      }
+    },
+    setAttribute(k, v) { no._attrs[k] = String(v); },
+    getAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k) ? no._attrs[k] : null; },
+    hasAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k); },
+    removeAttribute(k) { delete no._attrs[k]; },
+    appendChild(filho) { filho.parent = no; no.children.push(filho); return filho; },
+    insertBefore(filho, refNo) {
+      filho.parent = no;
+      const i = refNo ? no.children.indexOf(refNo) : -1;
+      if (i === -1) {no.children.push(filho);} else {no.children.splice(i, 0, filho);}
+      return filho;
+    },
+    insertAdjacentElement(posicao, filho) {
+      const pai = no.parent;
+      if (!pai) {return null;}
+      const i = pai.children.indexOf(no);
+      filho.parent = pai;
+      pai.children.splice(posicao === 'beforebegin' ? i : i + 1, 0, filho);
+      return filho;
+    },
+    get firstChild() { return no.children[0] || null; },
+    focus() { no._focado = true; },
+    scrollIntoView() {},
+    addEventListener(ev, fn) { (no._handlers[ev] = no._handlers[ev] || []).push(fn); },
+    removeEventListener() {},
+    // Como no navegador: exceção num listener não impede os demais nem sobe
+    // para quem disparou. Sem isto um listener alheio derrubaria o disparo e o
+    // teste estaria medindo o mock, não o comportamento servido.
+    // Propaga pela árvore como o navegador: quem escuta no container ouve o
+    // evento disparado no campo. Sem isto, um gate que digita num input não
+    // alcançaria o handler real — e passaria verde sem exercitar nada.
+    // Exceção em listener fica isolada, também como no navegador.
+    dispatchEvent(ev) {
+      if (!ev.target) {ev.target = no;}
+      let atual = no;
+      while (atual) {
+        ev.currentTarget = atual;
+        (atual._handlers[ev.type] || []).forEach((fn) => {
+          try { fn(ev); } catch (erro) { (no._errosDeListener = no._errosDeListener || []).push(erro); }
+        });
+        if (ev.bubbles === false) {break;}
+        atual = atual.parent;
+      }
+      return true;
+    },
+    matches(sel) { return casaF5B(no, sel); },
+    closest(sel) { let n = no; while (n) { if (casaF5B(n, sel)) {return n;} n = n.parent; } return null; },
+    querySelectorAll(sel) {
+      const texto = String(sel).trim();
+      if (texto.startsWith(':scope > ')) {
+        const resto = texto.slice(':scope > '.length);
+        return no.children.filter((n) => casaF5B(n, resto));
+      }
+      return descendentesF5B(no).filter((n) => casaF5B(n, sel));
+    },
+    querySelector(sel) { return no.querySelectorAll(sel)[0] || null; }
+  };
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === 'id') {no.id = v;} else if (k.startsWith('data-')) {no.dataset[camelF5B(k.slice(5))] = v;} else if (k === 'class') {String(v).split(/\s+/).filter(Boolean).forEach((c) => no._classes.add(c));}
+  });
+  return no;
+}
+
+function montarVistaF5B(nome, grupo, abas) {
+  const vista = criarNoF5B('div', { id: `${nome}-view`, class: 'view' });
+  const nav = criarNoF5B('nav', { 'data-vtabs': grupo, class: 'view-tabs' });
+  vista.appendChild(nav);
+  abas.forEach((chave) => {
+    nav.appendChild(criarNoF5B('button', { 'data-vtab': chave, class: 'vtab' }));
+    const painel = criarNoF5B('div', { 'data-vtab-panel': chave, class: 'vtab-panel' });
+    painel.appendChild(criarNoF5B('div', {}));
+    vista.appendChild(painel);
+  });
+  return vista;
+}
+
+// Carrega os mesmos scripts que a página serve, na mesma ordem.
+function montarAppServidoF5B(busca) {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const vistas = {
+    estoque: montarVistaF5B('estoque', 'estoque', ['estoque', 'movimentacoes', 'validade', 'alertas']),
+    colaboradores: montarVistaF5B('colaboradores', 'colaboradores', ['cadastro', 'lista', 'arquivados']),
+    dashboard: montarVistaF5B('dashboard', 'dashboard-grp', ['inicio', 'outra'])
+  };
+  const main = criarNoF5B('div', { id: 'main-content' });
+  Object.values(vistas).forEach((v) => main.appendChild(v));
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(main);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const sessao = {
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; }
+  };
+  const local = {
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+
+  const ctx = {
+    document: doc, localStorage: local, sessionStorage: sessao,
+    location: { search: busca || '', href: `http://local/${busca || ''}`, pathname: '/', assign() {}, reload() {} },
+    history: { pushState() {}, replaceState() {} },
+    navigator: { userAgent: 'node' }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) }),
+    alert() {}, scrollTo() {}, matchMedia: () => ({ matches: false, addEventListener() {} })
+  };
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_erro) { /* isolado, como no navegador */ } });
+    return true;
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  vmF5B.createContext(ctx);
+
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  ordem.forEach((rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_erro) { /* dependência de browser ausente não invalida o gate */ }
+  });
+
+  const abaAtiva = (grupo) => {
+    const nav = doc.querySelector(`nav[data-vtabs="${grupo}"]`);
+    const ativa = nav.querySelectorAll('[data-vtab]').find((t) => t.classList.contains('is-active'));
+    return ativa ? ativa.dataset.vtab : '';
+  };
+  const entrarNoModulo = (nome) => doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', { detail: { view: nome } }));
+
+  return { ctx, doc, vistas, sessao, local, abaAtiva, entrarNoModulo, scriptsCarregados: ordem.length };
+}
+
+let _appF5B = null;
+function appServidoF5B() {
+  if (!_appF5B) {
+    _appF5B = montarAppServidoF5B();
+    _appF5B.ctx.setupViewTabs();
+  }
+  return _appF5B;
+}
+
+test('#343 F5-B G0: o gate roda sobre os scripts realmente servidos', () => {
+  const app = appServidoF5B();
+  assert(app.scriptsCarregados >= 40, `esperava a lista de _scripts.html, veio ${app.scriptsCarregados}`);
+  assert(typeof app.ctx.setupViewTabs === 'function', 'setupViewTabs não veio do app.js servido');
+  assert(typeof app.ctx.resetViewTabsToInitial === 'function', 'resetViewTabsToInitial não existe no app.js servido');
+});
+
+test('#343 F5-B G1: sair do módulo e voltar abre a subtela inicial', () => {
+  const app = appServidoF5B();
+  eq(app.abaAtiva('estoque'), 'estoque', 'o módulo deveria abrir na primeira aba');
+  app.ctx.activateViewTab(app.doc.querySelector('nav[data-vtabs="estoque"]'), 'movimentacoes');
+  eq(app.abaAtiva('estoque'), 'movimentacoes', 'o clique do usuário deveria abrir a subtela');
+  app.entrarNoModulo('dashboard');
+  app.entrarNoModulo('estoque');
+  eq(app.abaAtiva('estoque'), 'estoque', 'reentrar no módulo deveria voltar à aba inicial');
+});
+
+test('#343 F5-B G4: a aba interna não sobrevive à troca de módulo em nenhum grupo', () => {
+  const app = appServidoF5B();
+  app.ctx.activateViewTab(app.doc.querySelector('nav[data-vtabs="colaboradores"]'), 'arquivados');
+  eq(app.abaAtiva('colaboradores'), 'arquivados');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'cadastro', 'colaboradores deveria reabrir em "cadastro"');
+});
+
+test('#343 F5-B G6/G10: navegar não grava estado de navegação em storage nenhum', () => {
+  const app = appServidoF5B();
+  app.ctx.activateViewTab(app.doc.querySelector('nav[data-vtabs="estoque"]'), 'validade');
+  app.entrarNoModulo('colaboradores');
+  app.entrarNoModulo('estoque');
+  const proibidas = /^(epi_vtab_|epi:ux:phase4[1234]|epi\.ux\.phase44)/;
+  const gravadas = [...Object.keys(app.sessao._s), ...Object.keys(app.local._s)].filter((k) => proibidas.test(k));
+  eq(gravadas.length, 0, `chaves de navegação gravadas: ${gravadas.join(', ')}`);
+});
+
+
+test('#343 F5-B G7: deep link explícito continua abrindo o destino pedido', () => {
+  const app = appServidoF5B();
+  assert(typeof app.ctx.resolveViewFromLocation === 'function', 'resolveViewFromLocation sumiu do app servido');
+  const original = app.ctx.location.search;
+  try {
+    app.ctx.location.search = '?view=estoque';
+    eq(app.ctx.resolveViewFromLocation(), 'estoque', 'o destino explícito da URL deveria ser respeitado');
+    app.ctx.location.search = '?view=colaboradores';
+    eq(app.ctx.resolveViewFromLocation(), 'colaboradores');
+  } finally { app.ctx.location.search = original; }
+});
+
+test('#343 F5-B G9: snapshot com `sid` de outra sessão é recusado', () => {
+  // Precisa da flag `ux_interactive_app` LIGADA: com ela desligada
+  // `restoreInteractiveSnapshot` sai na primeira linha e a checagem de `sid`
+  // nunca é alcançada — um gate com a flag no default mediria o nada e ficaria
+  // verde mesmo com a proteção removida.
+  const app = montarAppServidoF5B('?ux_interactive_app=1');
+  app.ctx.setupViewTabs();
+  const meu = app.ctx.collectInteractiveSnapshot('estoque');
+  assert(typeof meu.sid === 'string' && meu.sid.length > 0, 'o snapshot precisa de carimbo `sid`');
+  assert(meu.filters && meu.filters.employees, 'com a flag ligada o snapshot deveria carregar filtros');
+
+  const antes = JSON.stringify(app.ctx.collectInteractiveSnapshot('estoque').filters);
+  let lancou = null;
+  try {
+    app.ctx.restoreInteractiveSnapshot({
+      view: 'estoque', sid: 'sid-de-outra-sessao', scrollY: 999,
+      filters: { employees: { search: 'INVASOR' }, epis: { search: 'INVASOR' } }
+    });
+  } catch (erro) { lancou = erro; }
+  const depois = JSON.stringify(app.ctx.collectInteractiveSnapshot('estoque').filters);
+  eq(depois, antes, 'filtros de um snapshot com `sid` alheio entraram no estado atual');
+  eq(lancou, null, `a recusa por sid deveria sair limpa, e lançou: ${lancou && lancou.message}`);
+});
+
+test('#343 F5-B G8: o popstate reaplica o snapshot DEPOIS da entrada no módulo', () => {
+  // Ordem importa: se `restoreInteractiveSnapshot` rodasse antes do `showView`,
+  // o reset de entrada apagaria o que o usuário pediu de volta no Voltar.
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  const trecho = fonte.slice(fonte.indexOf("safeOn(globalThis, 'popstate'"));
+  const posShow = trecho.indexOf('showView(nextView');
+  const posRestore = trecho.indexOf('restoreInteractiveSnapshot(event?.state)');
+  assert(posShow > -1 && posRestore > -1, 'o handler de popstate mudou de forma');
+  assert(posShow < posRestore, 'o snapshot voltou a ser aplicado antes do showView');
+});
+
+test('#343 F5-B G5: sessão nova não herda navegação nenhuma da anterior', () => {
+  const anterior = appServidoF5B();
+  anterior.ctx.activateViewTab(anterior.doc.querySelector('nav[data-vtabs="estoque"]'), 'alertas');
+  eq(anterior.abaAtiva('estoque'), 'alertas');
+  // Encerrar a sessão e outra pessoa entrar = documento novo. Como nada foi
+  // persistido, não existe caminho por onde a navegação de A chegue a B.
+  const nova = montarAppServidoF5B();
+  nova.ctx.setupViewTabs();
+  eq(nova.abaAtiva('estoque'), 'estoque', 'a sessão seguinte deveria abrir na aba inicial');
+  eq(Object.keys(anterior.sessao._s).filter((k) => k.startsWith('epi_vtab_')).length, 0,
+    'a sessão anterior deixou aba gravada em sessionStorage');
+});
+
+// ── phase44: filtros ───────────────────────────────────────────────────────
+// Carrega o ux-phase44.js SERVIDO, com a flag ligada, monta o container de
+// filtros que ele procura e digita nele. O que se mede é o efeito: se voltar a
+// existir gravação, a chave aparece no localStorage e o gate cai.
+function comPhase44LigadoF5B(chavesPreexistentes) {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const local = {
+    _s: Object.assign({}, chavesPreexistentes || {}),
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+  const vista = criarNoF5B('div', { id: 'colaboradores-view', class: 'view active' });
+  // Header já presente: é o estado da página depois do primeiro bind, e faz
+  // `applyViewHeader` sair cedo. Sem isto ele monta markup via `innerHTML`,
+  // que este shim não interpreta, e o `bindFilterPattern` — o que interessa
+  // medir — nunca seria alcançado.
+  vista.appendChild(criarNoF5B('article', { class: 'card phase44-header' }));
+  const filtros = criarNoF5B('div', { 'data-colab-list-filters': '1' });
+  const campo = criarNoF5B('input', { id: 'employees-filter-search' });
+  filtros.appendChild(campo);
+  vista.appendChild(filtros);
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(vista);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const ctx = {
+    document: doc, localStorage: local,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: '?ux_phase44=1', href: 'http://local/?ux_phase44=1' }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, URL, URLSearchParams, Promise
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx.addEventListener = () => {}; ctx.dispatchEvent = () => true;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, 'ux-phase44.js'), 'utf-8'), ctx, { filename: 'ux-phase44.js' });
+  return { ctx, local, doc, campo, filtros };
+}
+
+testAsync('#343 F5-B G2: digitar um filtro não grava nada, e a chave legada é apagada', async () => {
+  const legada = { 'epi.ux.phase44.filters.colaboradores': '{"employees-filter-search":"Maria"}' };
+  const { ctx, local, campo } = comPhase44LigadoF5B(legada);
+  assert(ctx.document.body.classList.contains('phase44-enabled'),
+    'o phase44 não chegou a iniciar — o gate estaria medindo o nada');
+  eq(local.getItem('epi.ux.phase44.filters.colaboradores'), null,
+    'a chave legada de navegação deveria ter sido apagada no init');
+
+  campo.value = 'Joana';
+  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
+  campo.dispatchEvent(new ctx.CustomEvent('change', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 260));   // maior que o debounce de 180ms
+
+  const gravadas = Object.keys(local._s).filter((k) => k.indexOf('epi.ux.phase44') === 0);
+  eq(gravadas.length, 0, `o filtro foi persistido: ${gravadas.join(', ')}`);
+});
+
+
+// ── phase41: rolagem (F5-B) e rascunho de formulário (fronteira com a F5-C) ──
+function comPhase41LigadoF5B() {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const local = {
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+  const vista = criarNoF5B('div', { id: 'colaboradores-view', class: 'view active' });
+  const form = criarNoF5B('form', { id: 'employee-form' });
+  const campo = criarNoF5B('input', { id: 'employee-name' });
+  campo.type = 'text';
+  form.appendChild(campo);
+  vista.appendChild(form);
+  const main = criarNoF5B('div', { id: 'main-content' });
+  main.appendChild(vista);
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(main);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const ctx = {
+    document: doc, localStorage: local,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: '?ux_phase41=1', href: 'http://local/?ux_phase41=1' }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, URL, URLSearchParams, Promise,
+    scrollY: 480, scrollTo() {}
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_e) { /* isolado */ } });
+    return true;
+  };
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, 'ux-phase41.js'), 'utf-8'), ctx, { filename: 'ux-phase41.js' });
+  return { ctx, local, doc, campo };
+}
+
+testAsync('#343 F5-B G6: a rolagem não é mais persistida em lugar nenhum', async () => {
+  const { ctx, local, campo } = comPhase41LigadoF5B();
+  assert(ctx.document.body.classList.contains('phase41-enabled'),
+    'o phase41 não iniciou — o gate estaria medindo o nada');
+  campo.value = 'Ana';
+  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
+  ctx.scrollY = 900;
+  ctx.dispatchEvent(new ctx.CustomEvent('beforeunload', {}));
+  await new Promise((r) => setTimeout(r, 300));
+  eq(local.getItem('epi:ux:phase41:scroll:v2'), null,
+    'a rolagem voltou a ser gravada — reentrar no módulo restauraria a posição anterior');
+});
+
+testAsync('#343 F5-B: o rascunho de formulário NÃO foi tocado — ele é da F5-C', async () => {
+  // Gate de fronteira. A F5-B remove estado de NAVEGAÇÃO; o rascunho de
+  // formulário (`epi:ux:phase41:context:v2`) é categoria 3 e sai na F5-C, com
+  // contrato próprio. Se alguém antecipar essa remoção aqui, este gate cai e a
+  // decisão volta a ser explícita em vez de virar efeito colateral.
+  const { ctx, local, campo } = comPhase41LigadoF5B();
+  campo.value = 'Ana';
+  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
+  ctx.dispatchEvent(new ctx.CustomEvent('beforeunload', {}));
+  await new Promise((r) => setTimeout(r, 300));
+  assert(local.getItem('epi:ux:phase41:context:v2') !== null,
+    'o rascunho parou de ser persistido: isso é escopo da F5-C, não da F5-B');
+});
+
+
+// ── phase42: contexto/último registro ──────────────────────────────────────
+testAsync('#343 F5-B G3: o último colaborador/EPI usado não é guardado em storage', async () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const local = {
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+  const vista = criarNoF5B('div', { id: 'entregas-view', class: 'view active' });
+  const form = criarNoF5B('form', { id: 'delivery-form' });
+  const campos = {};
+  ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi'].forEach((id) => {
+    const c = criarNoF5B('select', { id });
+    c.options = [];
+    campos[id] = c;
+    form.appendChild(c);
+  });
+  vista.appendChild(form);
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(vista);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const ctx = {
+    document: doc, localStorage: local,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: '?ux_phase42=1', href: 'http://local/?ux_phase42=1' }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, URL, URLSearchParams, Promise
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx.addEventListener = () => {}; ctx.dispatchEvent = () => true;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'), ctx, { filename: 'ux-phase42.js' });
+
+  assert(doc.body.classList.contains('phase42-enabled'),
+    'o phase42 não iniciou — o gate estaria medindo o nada');
+
+  campos['delivery-employee'].value = '77';
+  campos['delivery-employee'].dispatchEvent(new ctx.CustomEvent('change', { bubbles: true }));
+  campos['delivery-epi'].value = '31';
+  campos['delivery-epi'].dispatchEvent(new ctx.CustomEvent('change', { bubbles: true }));
+  form.dispatchEvent(new ctx.CustomEvent('submit', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 300));
+
+  const gravadas = Object.keys(local._s).filter((k) => k.indexOf('epi:ux:phase4') === 0);
+  eq(gravadas.length, 0, `contexto de negócio persistido: ${gravadas.join(', ')}`);
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
 // handler `async` sem esperar por ele daria verde por não ter chegado a

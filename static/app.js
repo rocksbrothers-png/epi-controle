@@ -3371,8 +3371,16 @@ function bindSpaNavigationHistory() {
     if (!isSpaNavigationEnabled()) return;
     const fallbackView = defaultView();
     const nextView = event?.state?.view || resolveViewFromLocation() || fallbackView;
-    restoreInteractiveSnapshot(event?.state);
     showView(nextView, { partial: true, historyMode: 'replace' });
+    // O snapshot é reaplicado DEPOIS do `showView` (F5-B). Entrar no módulo
+    // devolve abas e filtros ao estado inicial; o Voltar/Avançar é navegação
+    // pedida explicitamente pelo usuário, então ele reaplica por cima. Na ordem
+    // anterior — snapshot antes do `showView` — o reset de entrada apagaria
+    // justamente o estado que o usuário mandou restaurar.
+    //
+    // O snapshot continua carimbado por `sid`: de outra sessão ou de outra
+    // identidade, é recusado dentro de `restoreInteractiveSnapshot`.
+    restoreInteractiveSnapshot(event?.state);
   });
 }
 
@@ -3634,7 +3642,6 @@ function bindNavBackBehavior() {
 // data-vtab-panel="chave"> na mesma view. A lógica de negócio não muda: os
 // painéis inativos permanecem no DOM (renderizações por id continuam
 // funcionando) — apenas deixam de ser exibidos.
-const VIEW_TAB_STORAGE_PREFIX = 'epi_vtab_';
 
 // Ações de linha que preenchem um formulário noutra aba: ao clicar, a aba do
 // formulário é ativada para o usuário ver o que acabou de abrir para edição.
@@ -3680,9 +3687,14 @@ function activateViewTab(nav, key, options = {}) {
   viewTabPanelsFor(nav).forEach((panel) => {
     panel.classList.toggle('is-active', panel.dataset.vtabPanel === key);
   });
-  if (options.persist !== false) {
-    try { sessionStorage.setItem(VIEW_TAB_STORAGE_PREFIX + group, key); } catch (_e) { /* storage indisponível */ }
-  }
+  // A aba ativa NÃO é persistida (F5-B). Aba interna é estado de NAVEGAÇÃO:
+  // reentrar no módulo abre a aba inicial, não a última usada — inclusive para
+  // o mesmo usuário. Havia aqui um `sessionStorage.setItem(epi_vtab_<grupo>)`
+  // que sobrevivia ao encerramento de sessão na mesma aba do navegador, então
+  // quem entrasse depois herdava a navegação de quem saiu.
+  //
+  // O `options.persist` deixou de existir junto: sem gravação, um parâmetro
+  // para "não gravar" só enganaria quem lesse depois.
   if (options.focus) nav.querySelector(`[data-vtab="${key}"]`)?.focus();
   document.dispatchEvent(new CustomEvent('epi:vtab-change', { detail: { group, tab: key } }));
 }
@@ -3703,8 +3715,47 @@ function syncViewTabsVisibility(nav) {
   });
   if (activeHidden) {
     const fallback = visibleViewTabs(nav)[0];
-    if (fallback) activateViewTab(nav, fallback.dataset.vtab, { persist: false });
+    if (fallback) activateViewTab(nav, fallback.dataset.vtab);
   }
+}
+
+// Filtros de um módulo voltam ao estado inicial na entrada (F5-B).
+//
+// Reaproveita o `clearFilters` que o próprio módulo já declara — é o mesmo
+// que o botão "Limpar filtros" executa, então "estado inicial" aqui não é uma
+// definição nova inventada por esta fatia: é a que o produto já tinha.
+//
+// Sem isto, remover a persistência do phase44 corrigiria só metade: os valores
+// continuam nos `<input>` (o DOM da SPA não é descartado) e em
+// `state.employeesFilters` / `employeesOpsFilters` / `episFilters`, que são
+// globais em memória e atravessam a troca de módulo sem passar por storage.
+const VIEW_FILTER_RESET = Object.freeze({
+  colaboradores: 'colaboradores',
+  'colaborador-list': 'colaborador-lista',
+  'gestao-colaborador': 'gestao-colaborador',
+  epis: 'epis',
+  estoque: 'estoque'
+});
+
+function resetModuleFiltersToInitial(view) {
+  const chave = VIEW_FILTER_RESET[String(view || '')];
+  if (!chave) return;
+  try {
+    INTERACTIVE_TOOLS_MODULES[chave]?.clearFilters?.();
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao limpar filtros de ${view}`, error);
+  }
+}
+
+// Estado inicial de um grupo de abas: a PRIMEIRA aba declarada na view, ou a
+// primeira ainda visível quando permissão ocultou as anteriores. Não há aqui
+// nenhuma consulta a storage — é essa a diferença entre "abrir o módulo" e
+// "voltar para onde o último usuário parou" (F5-B).
+function resetViewTabsToInitial(nav) {
+  if (!nav) return;
+  const inicial = (visibleViewTabs(nav)[0] || viewTabButtons(nav)[0])?.dataset.vtab || '';
+  if (inicial) activateViewTab(nav, inicial);
+  syncViewTabsVisibility(nav);
 }
 
 function handleViewTabKeydown(nav, event) {
@@ -3742,22 +3793,25 @@ function setupViewTabs() {
       activateViewTab(nav, tab.dataset.vtab);
     });
     safeOn(nav, 'keydown', (event) => handleViewTabKeydown(nav, event));
-    let stored = '';
-    try { stored = sessionStorage.getItem(VIEW_TAB_STORAGE_PREFIX + group) || ''; } catch (_e) { /* sem storage */ }
-    const initial = viewTabButtons(nav).some((tab) => tab.dataset.vtab === stored)
-      ? stored
-      : (viewTabButtons(nav)[0]?.dataset.vtab || '');
-    if (initial) activateViewTab(nav, initial, { persist: false });
-    syncViewTabsVisibility(nav);
+    resetViewTabsToInitial(nav);
   });
 
   if (!globalThis.__EPI_VTABS_GLOBAL_BOUND__) {
     globalThis.__EPI_VTABS_GLOBAL_BOUND__ = true;
-    // Revalida a visibilidade das abas ao trocar de view (permissões podem
-    // ter ocultado cards depois do login/bootstrap).
+    // Entrar num módulo devolve suas abas ao estado inicial (F5-B), e revalida
+    // a visibilidade (permissões podem ter ocultado cards depois do bootstrap).
+    //
+    // O reset precisa acontecer AQUI, e não só na remoção do storage: as views
+    // da SPA vivem todas no DOM, e `setupViewTabs()` roda uma única vez por
+    // nav (guarda `vtabsBound`). Sem este listener, sair do módulo e voltar
+    // reencontraria a última aba pela simples permanência do DOM — sem storage
+    // nenhum envolvido. Apagar a chave `epi_vtab_` sozinha corrigiria o F5 e a
+    // troca de identidade, e deixaria passar o caso mais comum de todos.
     safeOn(document, 'epi:viewchange', (event) => {
-      const view = document.getElementById(`${event?.detail?.view || ''}-view`);
-      view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => syncViewTabsVisibility(nav));
+      const nome = event?.detail?.view || '';
+      const view = document.getElementById(`${nome}-view`);
+      view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => resetViewTabsToInitial(nav));
+      resetModuleFiltersToInitial(nome);
     });
     // "Editar" numa listagem preenche o formulário noutra aba → ativa a aba
     // do formulário depois que o handler delegado da tabela já rodou (bubble).
@@ -3766,7 +3820,7 @@ function setupViewTabs() {
       if (!trigger) return;
       const nav = findViewTabsNav(trigger.group);
       if (!nav) return;
-      activateViewTab(nav, trigger.tab, { persist: false });
+      activateViewTab(nav, trigger.tab);
       viewTabPanelFor(nav, trigger.tab)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     });
     // Ao sair da sub-aba "Registrar" de Entrega de EPI, encerra a câmera de QR

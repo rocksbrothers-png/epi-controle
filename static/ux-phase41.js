@@ -142,7 +142,10 @@
   }
 
   var contextKey = 'epi:ux:phase41:context:v2';
-  var scrollKey = 'epi:ux:phase41:scroll:v2';
+  // `epi:ux:phase41:scroll:v2` foi removida (F5-B). Posição de rolagem é estado
+  // de NAVEGAÇÃO: reentrar num módulo abre no topo, não onde o último uso
+  // parou. A chave ainda era gravada a cada `beforeunload` e nunca lida por
+  // ninguém — persistia navegação de graça, sem sequer entregar a função.
   var SENSITIVE_FIELD_PATTERN = /(password|token|cpf|cnpj|signature|assinatura|document|recovery|qr|code|key|secret|access|link)/i;
 
   function shouldPersistField(field) {
@@ -160,7 +163,6 @@
       var params = new URLSearchParams(globalThis.location.search || '');
       if (params.get('ux_phase41_reset') !== '1') return;
       localStorage.removeItem(contextKey);
-      localStorage.removeItem(scrollKey);
     } catch (error) {
       console.warn('[phase41] reset context', error);
     }
@@ -192,18 +194,6 @@
       });
     } catch (error) {
       console.warn('[phase41] context restore', error);
-    }
-  }
-
-  function saveScrollContext() {
-    try {
-      var current = activeView();
-      if (!current) return;
-      var payload = JSON.parse(localStorage.getItem(scrollKey) || '{}');
-      payload[current.id] = Number(window.scrollY || 0);
-      queueStorageWrite(scrollKey, JSON.stringify(payload), { wait: 180, maxBytes: 12000 });
-    } catch (error) {
-      console.warn('[phase41] scroll save', error);
     }
   }
 
@@ -388,7 +378,9 @@
       var currentId = current?.id || '';
       if (!currentId || currentId === previousActiveId) return;
 
-      saveScrollContext();
+      // Sem `saveScrollContext()` (F5-B): a rolagem da view que está sendo
+      // deixada não é guardada. O `scrollTo` abaixo já era o comportamento —
+      // trocar de módulo sempre abriu no topo; o que existia era só a gravação.
       closeUiOverlays({ includeModal: false });
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -434,7 +426,6 @@
 
       safeOn(window, 'beforeunload', function () {
         saveInputContext();
-        saveScrollContext();
       }, { signal: moduleController.signal });
       safeOn(document, 'input', saveInputContext, { signal: moduleController.signal });
       safeOn(document, 'change', saveInputContext, { signal: moduleController.signal });

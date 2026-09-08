@@ -20,10 +20,15 @@
     actionBarBound: new WeakSet(),
     scrollTopByView: Object.create(null)
   };
+  // Único resquício do storage do módulo: o namespace, mantido só para APAGAR
+  // as chaves que versões anteriores gravaram. Nada aqui escreve.
   var STORAGE_NAMESPACE = 'epi.ux.phase44';
-  var STORAGE_FILTER_PREFIX = STORAGE_NAMESPACE + '.filters.';
-  var MAX_STORAGE_BYTES = 6000;
-  var MAX_FILTER_FIELDS = 30;
+
+  // Filtros não são persistidos (F5-B). Havia aqui
+  // `epi.ux.phase44.filters.<view>` em `localStorage`, restaurado toda vez que
+  // a view era montada: sair do módulo e voltar reencontrava o filtro anterior,
+  // e o valor sobrevivia à troca de usuário na mesma máquina. Filtro é estado
+  // de NAVEGAÇÃO — reentrar mostra a lista sem filtro.
   var SENSITIVE_FIELD_PATTERN = /(senha|password|token|cpf|documento|signature|assinatura|email|mail)/i;
 
   var VIEW_CONFIG = {
@@ -105,36 +110,6 @@
       if (timer) globalThis.clearTimeout(timer);
       timer = globalThis.setTimeout(function invoke() { fn.apply(ctx, args); }, wait || 160);
     };
-  }
-
-  function isResetRequested() {
-    try {
-      var params = new URLSearchParams(globalThis.location.search || '');
-      return params.get('ux_phase44_reset') === '1';
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function safeLocalStorageGet(key) {
-    try {
-      if (!globalThis.localStorage || !key) return '';
-      return String(globalThis.localStorage.getItem(key) || '');
-    } catch (_) {
-      return '';
-    }
-  }
-
-  function safeLocalStorageSet(key, value) {
-    try {
-      if (!globalThis.localStorage || !key) return false;
-      var payload = String(value || '');
-      if (payload.length > MAX_STORAGE_BYTES) return false;
-      globalThis.localStorage.setItem(key, payload);
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 
   function removePhase44Storage() {
@@ -308,46 +283,9 @@
       setScreenStatus(viewName, active.length > 0 ? 'Filtros aplicados (' + active.length + ')' : 'Sem filtros ativos', active.length > 0 ? 'loading' : 'idle');
     }
 
-    var persistKey = STORAGE_FILTER_PREFIX + viewName;
-    function persistContext() {
-      try {
-        var fields = Array.from(container.querySelectorAll('input,select,textarea'));
-        var payload = {};
-        var count = 0;
-        fields.forEach(function (field) {
-          if (count >= MAX_FILTER_FIELDS) return;
-          var key = field.id || field.name;
-          if (!key) return;
-          if (SENSITIVE_FIELD_PATTERN.test(key)) return;
-          if (field.type && SENSITIVE_FIELD_PATTERN.test(field.type)) return;
-          if (SENSITIVE_FIELD_PATTERN.test(field.autocomplete || '')) return;
-          payload[key] = field.value;
-          count += 1;
-        });
-        safeLocalStorageSet(persistKey, JSON.stringify(payload));
-      } catch (_) {}
-    }
-
-    function restoreContext() {
-      try {
-        var raw = safeLocalStorageGet(persistKey);
-        if (!raw) return;
-        var parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return;
-        Array.from(container.querySelectorAll('input,select,textarea')).forEach(function (field) {
-          var key = field.id || field.name;
-          if (!key || SENSITIVE_FIELD_PATTERN.test(key)) return;
-          if (!Object.prototype.hasOwnProperty.call(parsed, key)) return;
-          field.value = String(parsed[key] ?? '');
-          field.dispatchEvent(new Event('input', { bubbles: true }));
-          field.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-      } catch (_) {}
-    }
 
     var debounced = debounce(function () {
       updateCounter();
-      persistContext();
     }, 180);
 
     safeOn(container, 'input', debounced);
@@ -360,10 +298,8 @@
         field.dispatchEvent(new Event('change', { bubbles: true }));
       });
       updateCounter();
-      persistContext();
     });
 
-    restoreContext();
     updateCounter();
   }
 
@@ -530,7 +466,12 @@
     if (runtime.initialized) return;
     runtime.initialized = true;
     document.body.classList.add('phase44-enabled');
-    if (isResetRequested()) removePhase44Storage();
+    // Incondicional (F5-B), não mais só sob `?ux_phase44_reset=1`: navegadores
+    // que já rodaram a versão anterior têm `epi.ux.phase44.filters.*` gravado.
+    // Ninguém lê mais essas chaves, mas deixá-las seria manter estado de
+    // navegação de sessões antigas parado no disco do usuário. Remove apenas o
+    // próprio namespace do módulo.
+    removePhase44Storage();
 
     Object.keys(VIEW_CONFIG).forEach(function (viewName) {
       bindView(viewName);

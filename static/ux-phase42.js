@@ -7,14 +7,20 @@
   var createScopedAbortController = typeof helpers.createScopedAbortController === 'function'
     ? helpers.createScopedAbortController
     : function () { return new AbortController(); };
-  var queueStorageWrite = typeof helpers.queueStorageWrite === 'function'
-    ? helpers.queueStorageWrite
-    : function (key, value) { try { localStorage.setItem(key, value); } catch (_) {} };
   var moduleController = createScopedAbortController('phase42');
 
-  var STORAGE_KEY = 'epi:ux:phase42:memory:v2';
+  // A memória de uso do phase42 vive SOMENTE aqui, em RAM (F5-B). Antes ela
+  // ficava em `localStorage` sob `epi:ux:phase42:memory:v2`, carregando
+  // `employeeId`, `epiId`, `unitId`, `roleName` e `last.companyId` — sem escopo
+  // de usuário nem de tenant. Sobrevivia ao encerramento de sessão, então quem
+  // entrasse depois na mesma máquina recebia o contexto de quem saiu, com
+  // identificador de empresa junto.
+  //
+  // A funcionalidade continua: enquanto o usuário permanece no fluxo, as
+  // sugestões funcionam igual. O que acaba é a travessia — de reload, de
+  // logout, de identidade e de reentrada no módulo.
+  var memoriaEmMemoria = {};
   var MAX_EVENTS = 120;
-  var MAX_STORAGE_BYTES = 45000;
 
   function safeOn(target, eventName, handler, options) {
     try {
@@ -45,30 +51,22 @@
   function byId(id) { return document.getElementById(id); }
   function trim(value) { return String(value || '').trim(); }
 
+  // As três funções operam SEMPRE sobre o mesmo objeto, nunca o substituem.
+  // O `init()` guarda a referência uma única vez (`var memory = loadMemory()`)
+  // e a usa até o fim; trocar o objeto aqui deixaria aquele closure apontando
+  // para a memória antiga — e o descarte não teria efeito nenhum.
   function loadMemory() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (!parsed || typeof parsed !== 'object') return {};
-      return parsed;
-    } catch (_) {
-      return {};
-    }
+    return memoriaEmMemoria;
   }
 
   function saveMemory(memory) {
-    try {
-      var payload = JSON.stringify(memory || {});
-      if (payload.length > MAX_STORAGE_BYTES) return;
-      queueStorageWrite(STORAGE_KEY, payload, { wait: 220, maxBytes: MAX_STORAGE_BYTES });
-    } catch (_) {}
+    if (!memory || typeof memory !== 'object' || memory === memoriaEmMemoria) return;
+    descartarMemoria();
+    Object.keys(memory).forEach(function (chave) { memoriaEmMemoria[chave] = memory[chave]; });
   }
 
-  function resetMemoryIfRequested() {
-    try {
-      var params = new URLSearchParams(globalThis.location.search || '');
-      if (params.get('ux_phase42_reset') !== '1') return;
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (_) {}
+  function descartarMemoria() {
+    Object.keys(memoriaEmMemoria).forEach(function (chave) { delete memoriaEmMemoria[chave]; });
   }
 
   function ensurePanels(form) {
@@ -325,7 +323,14 @@
     try {
       if (!isEnabled()) return;
       document.body.classList.add('phase42-enabled');
-      resetMemoryIfRequested();
+      // Sair do módulo descarta o contexto (F5-B). Sem isto a memória em RAM
+      // ainda atravessaria a reentrada: a SPA não recarrega a página, e o IIFE
+      // vive enquanto o documento viver.
+      //
+      // Substitui o antigo `resetMemoryIfRequested()`, que só limpava mediante
+      // `?ux_phase42_reset=1` — descarte manual, que ninguém dispara na
+      // navegação real.
+      safeOn(document, 'epi:viewchange', descartarMemoria, { signal: moduleController.signal });
 
       var form = byId('delivery-form');
       if (!form) return;

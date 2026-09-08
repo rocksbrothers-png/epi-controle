@@ -274,3 +274,121 @@ def test_g6_a_rota_continua_lendo_cpf_last3_da_query():
         'as duas rotas do portal (acesso e PDF) precisam continuar lendo '
         '`cpf_last3` da query'
     )
+
+
+# ── G7: paridade dos arquivos que formam o contrato da F4 ────────────────────
+#
+# A sabotagem S7 provou o buraco: alterar o comportamento da F4 em UM
+# repositório deixava vermelho só o gate daquele lado, e nada obrigava os dois
+# a andarem juntos. O `parity_manifest.json` não fecha isso — ele cobre 258
+# arquivos, TODOS sob `flutter/`, e nenhum arquivo desta fatia.
+#
+# Este gate é deliberadamente estreito: não é um mecanismo para todo o
+# `static/`, e não mexe no manifesto do Flutter. Ele cobre exatamente os
+# arquivos que ESTA fatia precisa manter equivalentes, e nada além disso.
+# Travar `app.js` inteiro por hash num monolito de 14 mil linhas imporia
+# atrito a todo trabalho futuro — mas `app.js` já está aqui porque o bootstrap
+# do portal vive nele, e essa é a diferença entre cobrir um contrato e cobrir
+# um diretório.
+#
+# Limite honesto, do mesmo tipo que o `--update` do manifesto do Flutter tem:
+# quem alterar um arquivo coberto E recalcular o dígito no mesmo repositório
+# passa no gate. O que o gate garante é que isso seja um ato DELIBERADO e
+# visível no diff — dois arquivos mudam, não um —, não um descuido silencioso.
+
+ARQUIVOS_PAREADOS_F4 = (
+    # o portal: onde o cache dos 3 dígitos foi removido (G1, G3)
+    'static/js/views/employee-portal.js',
+    # o bootstrap do employee_token: um caminho só (G2)
+    'static/app.js',
+    # F4-B: os 3 dígitos fora do structured_log (G4)
+    'modules/portal/routes.py',
+    # F4-C: cpf_last3 entre os parâmetros sensíveis (G5)
+    'epi_backend/http_utils.py',
+    # os 4 testes comportamentais que provam o cenário A -> B
+    'static/js/test/run-tests.js',
+    # o contrato da allowlist da F1, que esta fatia mudou de lado
+    'tests/test_343_f1_credencial_na_url.py',
+    # estes próprios gates
+    'tests/test_343_f4_portal_cpf_sem_cache.py',
+)
+
+# `static/index.html` fica FORA de propósito: é gerado por `scripts/build_index.py`
+# e o cache-buster `?v=` deriva do conteúdo dos assets, que já diferia entre os
+# repositórios ANTES desta fatia. Comparar byte a byte reprovaria uma divergência
+# intencional. Ele tem gate próprio em cada repositório — `test_index_html_build.py`
+# e `test_static_assets.py` — que provam que o arquivo está sincronizado com os
+# fragmentos DAQUELE repositório, que é a propriedade que importa nele.
+
+ESTE_ARQUIVO = 'tests/test_343_f4_portal_cpf_sem_cache.py'
+PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F4 = '
+
+DIGESTO_PARIDADE_F4 = 'b9533807a106ea359ef5f114917ab4460e9f8e4528328ed0cae86b9c72668839'
+
+
+def _bytes_para_o_digesto(rel):
+    """Conteúdo de um arquivo coberto, para efeito de dígito.
+
+    Este arquivo se inclui na própria cobertura — os gates da F4 são parte do
+    contrato tanto quanto o código que eles protegem. Para isso a linha que
+    carrega o dígito é removida antes de hashear: sem essa exclusão o valor
+    dependeria de si mesmo e não existiria número que fechasse a conta.
+    """
+    bruto = (RAIZ / rel).read_bytes()
+    if rel != ESTE_ARQUIVO:
+        return bruto
+    return b'\n'.join(
+        linha for linha in bruto.split(b'\n')
+        if not linha.startswith(PREFIXO_DO_DIGESTO.encode('utf-8'))
+    )
+
+
+def _digesto_dos_pareados():
+    import hashlib
+    acumulador = hashlib.sha256()
+    for rel in ARQUIVOS_PAREADOS_F4:
+        acumulador.update(rel.encode('utf-8'))
+        acumulador.update(b'\x00')
+        acumulador.update(_bytes_para_o_digesto(rel))
+        acumulador.update(b'\x00')
+    return acumulador.hexdigest()
+
+
+def test_g7_os_arquivos_pareados_existem_todos():
+    """Âncora: um caminho que deixou de existir tornaria o dígito uma conta
+    sobre menos arquivos, e o gate passaria protegendo menos do que promete."""
+    for rel in ARQUIVOS_PAREADOS_F4:
+        assert (RAIZ / rel).is_file(), f'arquivo pareado sumiu: {rel}'
+    assert len(set(ARQUIVOS_PAREADOS_F4)) == 7, (
+        'a lista de arquivos pareados mudou de tamanho — se foi deliberado, '
+        'atualize também a justificativa de cada entrada'
+    )
+
+
+def test_g7_index_html_nao_entra_na_igualdade_byte_a_byte():
+    """A divergência do `index.html` entre os repositórios é intencional."""
+    assert 'static/index.html' not in ARQUIVOS_PAREADOS_F4, (
+        'o index.html é gerado e seu cache-buster deriva do conteúdo, que já '
+        'diferia entre os repositórios antes da F4: exigir igualdade byte a '
+        'byte reprovaria uma divergência deliberada'
+    )
+
+
+def test_g7_paridade_f4_entre_corporate_e_saas():
+    """Um único dígito sobre os 7 arquivos que formam o contrato da F4.
+
+    Este arquivo é byte a byte idêntico nos dois repositórios, então o valor
+    esperado é o mesmo dos dois lados. Alterar o comportamento da F4 em apenas
+    um repositório muda o conteúdo daquele lado, o dígito deixa de bater, e o
+    gate fica vermelho NAQUELE repositório — que é exatamente o alarme que
+    faltava.
+    """
+    obtido = _digesto_dos_pareados()
+    assert obtido == DIGESTO_PARIDADE_F4, (
+        'os arquivos pareados da F4 divergiram.\n'
+        f'  esperado: {DIGESTO_PARIDADE_F4}\n'
+        f'  obtido:   {obtido}\n'
+        'Se a mudança foi deliberada, ela precisa existir NOS DOIS '
+        'repositórios, e este dígito precisa ser atualizado nos dois — em um '
+        'commit onde os dois arquivos aparecem juntos no diff.'
+    )

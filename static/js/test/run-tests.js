@@ -81,6 +81,8 @@ function test(name, fn) {
     failures.push({ name, message: err && err.message ? err.message : String(err) });
   }
 }
+const asyncTests = [];
+function testAsync(name, fn) { asyncTests.push({ name, fn }); }
 function assert(cond, msg) {
   if (!cond) {throw new Error(msg || 'assertion failed');}
 }
@@ -261,7 +263,14 @@ test('auth: saveSession sem token remove a chave de token', () => {
 test('auth: setPasswordChangeRequired persiste flag', () => {
   const state = freshState();
   globalThis.setPasswordChangeRequired(true);
-  eq(state.requirePasswordChange, true);
+  // `assert` em vez de `eq`: o `eq` embute o VALOR na mensagem de falha, e a
+  // mensagem vai para o `console.error` do relatório. O CodeQL segue esse
+  // caminho e o classifica como "clear-text logging of sensitive information"
+  // por causa do nome do campo. O valor aqui é booleano e não revela nada,
+  // mas o fluxo existe de verdade — e uma flag booleana não precisa ser
+  // ecoada para a mensagem dizer o que falhou.
+  assert(state.requirePasswordChange === true,
+    'setPasswordChangeRequired(true) deveria marcar a flag no state');
   eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.changeRequired), 'true');
 });
 test('auth: clearSession zera estado e storage', () => {
@@ -1982,12 +1991,177 @@ test('config: disabled nunca vira normal', () => {
   assert(_CFG().statusLabel('quimera') !== normal, 'desconhecido não vira normal');
 });
 
-// ── Relatório ─────────────────────────────────────────────────────────────
-if (failures.length) {
-  console.error(`\nFALHAS (${failures.length}):`);
-  failures.forEach((f) => console.error(`  ✗ ${f.name}: ${f.message}`));
-  console.error(`\n${passed} passaram, ${failures.length} falharam`);
-  process.exit(1);
+
+// ── #343 F4: o portal do colaborador não persiste os 3 dígitos do CPF ──────
+//
+// Estes testes são COMPORTAMENTAIS: executam `renderEmployeeCpfValidationScreen`
+// de verdade, disparam o clique de submissão e observam o que o código tocou.
+// O espião registra QUALQUER acesso a storage — leitura, escrita ou remoção —
+// porque o contrato da F4 é ausência de estado, não "estado mais curto".
+//
+// O modelo de recarga é fiel de propósito: `recarregar()` troca os elementos do
+// DOM (a página é reconstruída) mas MANTÉM o mesmo espião de storage — que é
+// exatamente o que um reload real faz com `sessionStorage`. Se algo tivesse
+// sobrevivido, sobreviveria aqui.
+
+async function comPortalMockado(executar) {
+  const documentoOriginal = globalThis.document;
+  const sessionOriginal = globalThis.sessionStorage;
+  const localOriginal = globalThis.localStorage;
+  const acessos = [];
+
+  const criarElemento = (id) => ({
+    id, value: '', disabled: false, textContent: '', style: {}, _handlers: {},
+    addEventListener(evento, fn) { this._handlers[evento] = fn; },
+    click() { return this._handlers.click ? this._handlers.click() : undefined; },
+  });
+  let elementos = {};
+  const montarDom = () => {
+    elementos = {};
+    ['employee-cpf-last3', 'employee-cpf-submit', 'employee-cpf-feedback']
+      .forEach((id) => { elementos[id] = criarElemento(id); });
+    globalThis.document = {
+      body: { innerHTML: '' },
+      getElementById(id) { return elementos[id] || null; },
+      querySelector() { return null; },
+      querySelectorAll() { return []; },
+      createElement() { return criarElemento('novo'); },
+    };
+  };
+
+  const espiao = (rotulo) => ({
+    getItem(k) { acessos.push(`${rotulo}.getItem:${k}`); return null; },
+    setItem(k, v) { acessos.push(`${rotulo}.setItem:${k}=${v}`); },
+    removeItem(k) { acessos.push(`${rotulo}.removeItem:${k}`); },
+    clear() { acessos.push(`${rotulo}.clear`); },
+  });
+
+  montarDom();
+  globalThis.sessionStorage = espiao('session');
+  globalThis.localStorage = espiao('local');
+  try {
+    return await executar({
+      get elementos() { return elementos; },
+      acessos,
+      recarregar: montarDom,
+    });
+  } finally {
+    globalThis.document = documentoOriginal;
+    globalThis.sessionStorage = sessionOriginal;
+    globalThis.localStorage = localOriginal;
+  }
 }
-console.log(`${passed} testes JS passaram`);
-process.exit(0);
+
+function apiFalsaDoPortal() {
+  return {
+    employee: { employee_name: 'Maria', employee_id_code: 'E101', sector: 'Ops' },
+    deliveries: [], fichas: [], requests: [], feedbacks: [], available_epis: [],
+  };
+}
+
+testAsync('#343 F4: a tela de validação não consulta storage e o campo nasce vazio', async () => {
+  await comPortalMockado(async ({ elementos, acessos }) => {
+    globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+    eq(elementos['employee-cpf-last3'].value, '',
+      'o campo de CPF veio pré-preenchido — era assim que o segundo fator vazava');
+    eq(acessos.length, 0, `a tela tocou em storage: ${acessos.join(', ')}`);
+  });
+});
+
+testAsync('#343 F4: validar o CPF não grava os 3 dígitos em lugar nenhum', async () => {
+  await comPortalMockado(async ({ elementos, acessos }) => {
+    let chamouApi = false;
+    const apiOriginal = globalThis.api;
+    globalThis.api = async () => { chamouApi = true; return apiFalsaDoPortal(); };
+    try {
+      globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+      elementos['employee-cpf-last3'].value = '123';
+      await elementos['employee-cpf-submit'].click();
+      assert(chamouApi,
+        'o fluxo não chegou a submeter: o teste passaria por não ter rodado, não por estar correto');
+      eq(acessos.length, 0, `o portal tocou em storage ao validar: ${acessos.join(', ')}`);
+      assert(!acessos.join(',').includes('123'), 'os 3 dígitos do CPF foram para storage');
+    } finally { globalThis.api = apiOriginal; }
+  });
+});
+
+testAsync('#343 F4: após recarregar, o portal exige os 3 dígitos de novo', async () => {
+  await comPortalMockado(async (ctx) => {
+    const apiOriginal = globalThis.api;
+    globalThis.api = async () => apiFalsaDoPortal();
+    try {
+      // Ciclo 1 — o colaborador A valida com sucesso.
+      globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+      ctx.elementos['employee-cpf-last3'].value = '123';
+      await ctx.elementos['employee-cpf-submit'].click();
+
+      // Recarga: DOM novo, MESMO storage — como num reload de verdade.
+      ctx.recarregar();
+      const antes = ctx.acessos.length;
+      globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+
+      eq(ctx.elementos['employee-cpf-last3'].value, '',
+        'o campo veio preenchido depois da recarga: o desafio foi pulado');
+      eq(ctx.acessos.length - antes, 0,
+        'a recarga consultou storage procurando um CPF salvo');
+    } finally { globalThis.api = apiOriginal; }
+  });
+});
+
+testAsync('#343 F4: novo ciclo na mesma aba não herda o acesso de quem validou antes', async () => {
+  await comPortalMockado(async (ctx) => {
+    const apiOriginal = globalThis.api;
+    let chamadas = 0;
+    globalThis.api = async () => { chamadas += 1; return apiFalsaDoPortal(); };
+    try {
+      // A valida e entra.
+      globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+      ctx.elementos['employee-cpf-last3'].value = '123';
+      await ctx.elementos['employee-cpf-submit'].click();
+      eq(chamadas, 1, 'premissa: o primeiro acesso precisa mesmo ter ocorrido');
+
+      // Novo ciclo na MESMA aba, com o MESMO link de A — o cenário do achado.
+      ctx.recarregar();
+      globalThis.renderEmployeeCpfValidationScreen('token-A-1789000000', '', false);
+
+      // Sem digitar nada, o acesso não acontece: nenhuma chamada nova à API.
+      eq(chamadas, 1,
+        'o portal abriu sem nova entrada dos 3 dígitos — a posse do link valeu sozinha');
+      eq(ctx.elementos['employee-cpf-last3'].value, '',
+        'o campo trouxe os dígitos de quem validou antes');
+
+      // E com entrada errada, quem decide continua sendo o servidor.
+      globalThis.api = async () => { throw new Error('CPF inválido. Tentativas restantes: 2.'); };
+      ctx.elementos['employee-cpf-last3'].value = '999';
+      await ctx.elementos['employee-cpf-submit'].click();
+      assert(String(ctx.elementos['employee-cpf-feedback'].textContent).includes('Tentativas restantes'),
+        'a recusa do servidor precisa chegar ao usuário');
+      eq(ctx.acessos.length, 0, `storage foi tocado em algum ponto do ciclo: ${ctx.acessos.join(', ')}`);
+    } finally { globalThis.api = apiOriginal; }
+  });
+});
+
+// ── Relatório ─────────────────────────────────────────────────────────────
+// Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
+// handler `async` sem esperar por ele daria verde por não ter chegado a
+// executar — que é a forma mais silenciosa de falso-verde.
+(async () => {
+  for (const t of asyncTests) {
+    try {
+      resetStorage();
+      globalThis.location = { search: '' };
+      await t.fn();
+      passed += 1;
+    } catch (err) {
+      failures.push({ name: t.name, message: err && err.message ? err.message : String(err) });
+    }
+  }
+  if (failures.length) {
+    console.error(`\nFALHAS (${failures.length}):`);
+    failures.forEach((f) => console.error(`  ✗ ${f.name}: ${f.message}`));
+    console.error(`\n${passed} passaram, ${failures.length} falharam`);
+    process.exit(1);
+  }
+  console.log(`${passed} testes JS passaram`);
+  process.exit(0);
+})();

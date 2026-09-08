@@ -2770,9 +2770,10 @@ function setLoginMessage(message = '', isError = false) {
 // `location.reload()` elimina DOM, valores de campo, memória JS, closures e
 // listeners sem depender de ninguém lembrar de atualizar lista alguma.
 //
-// NÃO limpa `localStorage` nem `sessionStorage`: `epi-theme` (F3) e
-// `employee_portal_cpf_last3_*` (F4) são frentes separadas da #343 e continuam
-// exatamente como estavam. Há gate provando que esta fatia não as toca.
+// NÃO limpa `localStorage` nem `sessionStorage`: `epi-theme` (F3) é frente
+// separada da #343 e continua exatamente como estava. Há gate provando que esta
+// fatia não a toca. (A chave do portal que esta nota citava foi ELIMINADA pela
+// F4 — o portal não persiste mais nada no navegador, então não há o que limpar.)
 const SESSION_END_MESSAGE_KEY = 'epi-session-end-message';
 
 function terminateSession(message = '') {
@@ -13804,17 +13805,13 @@ async function init() {
 
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
-    const normalizedToken = String(employeeToken).trim();
-    const cachedCpf = getCachedPortalCpfLast3(normalizedToken);
-    if (cachedCpf) {
-      try {
-        await renderEmployeeExternalAccess(normalizedToken, cachedCpf);
-        return;
-      } catch (_error) {
-        sessionStorage.removeItem(portalCpfStorageKey(normalizedToken));
-      }
-    }
-    renderEmployeeCpfValidationScreen(normalizedToken);
+    // Um caminho só: a tela de validação. Não existe aqui ramo que entre no
+    // portal com os 3 dígitos vindos de storage — era esse ramo que deixava a
+    // POSSE do link valer sozinha, sem o CONHECIMENTO do CPF, para quem
+    // chegasse a esta aba com o link de outra pessoa.
+    //
+    // Reload, nova abertura e novo ciclo de uso passam todos por aqui.
+    renderEmployeeCpfValidationScreen(String(employeeToken).trim());
     return;
   }
   runNonCriticalSetup('assinatura modal', setupSignatureModal);

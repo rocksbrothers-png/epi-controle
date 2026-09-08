@@ -12,7 +12,19 @@ class ThemeModeNotifier extends ChangeNotifier {
   ThemeMode get mode => _mode;
 
   Future<void> init() async {
-    final stored = await _storage.read(key: _kKey);
+    // D2 — a leitura pode lancar: keystore corrompido no Android, storage
+    // bloqueado no navegador. Antes, isso subia ate o `main()` e impedia o
+    // `runApp` — tela preta em vez de degradacao.
+    //
+    // O `try` envolve SOMENTE a operacao de storage. Um erro de programacao em
+    // `_parse` continua propagando, como deve: a protecao e para a falha de
+    // ambiente, nao para esconder defeito nosso.
+    String? stored;
+    try {
+      stored = await _storage.read(key: _kKey);
+    } catch (_) {
+      stored = null; // sem storage: vale o default, e o app inicia
+    }
     _mode = _parse(stored);
   }
 

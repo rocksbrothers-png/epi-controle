@@ -85,7 +85,12 @@ def handle_get_employee_access(handler, parsed, payload, match):
                 link_id=portal_context.get('portal_link_id'),
                 employee_id=portal_context.get('employee_id'),
                 token_prefix=str(token or '')[:12],
-                cpf_last3_received=''.join(ch for ch in str(cpf_last3 or '') if ch.isdigit())[:3],
+                # `cpf_last3` NAO entra aqui — nem cru, nem mascarado, nem em
+                # hash. Ele e fator de validacao do portal, e esta mesma linha
+                # carrega `employee_id` e `link_id`: qualquer representacao
+                # correlacionavel ligaria o fator a uma pessoa identificada.
+                # `reason` ja diz se a recusa foi CPF_MISMATCH — que e a
+                # observabilidade legitima, sem revelar o fator.
             )
             return send_json(handler, 403, {'ok': False, 'error': {'code': exc.code, 'message': exc.message}})
         employee_id = int(employee_user['employee_id'])

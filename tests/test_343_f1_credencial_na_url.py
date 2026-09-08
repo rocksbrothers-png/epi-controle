@@ -147,9 +147,17 @@ def test_a_lista_de_sensiveis_e_a_comprovada_pela_auditoria():
     normal ao portal leva uma credencial de capacidade na query. Nomes como
     `new_password` ou `totp_code` viajam no corpo do POST e não na query:
     redigi-los seria código morto fingindo proteção.
+
+    `cpf_last3` ENTROU na F4 da #343, e entrou pelo caminho certo: a auditoria
+    provou que ele é o SEGUNDO FATOR do portal — posse do link mais
+    conhecimento dos 3 dígitos — e que `handle_get_employee_access` e
+    `..._pdf` o leem de `?cpf_last3=`. A F1 o havia classificado como
+    parâmetro de negócio, o que era razoável com a evidência daquela época e
+    deixou de ser com esta. Ampliar a lista continua exigindo evidência; o que
+    mudou foi a evidência, não o critério.
     """
     assert SENSITIVE_QUERY_PARAMS == frozenset(
-        {'username', 'password', 'token', 'employee_token'})
+        {'username', 'password', 'token', 'employee_token', 'cpf_last3'})
 
 
 @pytest.mark.parametrize('codificado,decodificado', [
@@ -191,10 +199,13 @@ def test_o_redator_ignora_caixa_do_nome(nome):
 
 
 @pytest.mark.parametrize('nome', ['code', 'qr_code', 'actor_user_id', 'user_id',
-                                  'unit_id', 'company_id', 'epi_id', 'cpf_last3'])
+                                  'unit_id', 'company_id', 'epi_id'])
 def test_os_parametros_de_negocio_nao_sao_redigidos(nome):
     """Contraprova: redigir tudo destrói a investigação de incidente, que é
-    exatamente para o que o log serve."""
+    exatamente para o que o log serve.
+
+    `cpf_last3` SAIU desta lista na F4 da #343: ele não era parâmetro de
+    negócio, era fator de validação. Ver o gate da lista de sensíveis."""
     linha = f'"GET /api/x?{nome}=123 HTTP/1.1" 200 -'
     assert redact_sensitive_query(linha) == linha
 
@@ -207,10 +218,16 @@ def test_a_redacao_preserva_observabilidade_legitima():
 
 
 def test_a_redacao_preserva_o_vizinho_de_negocio_do_parametro_sensivel():
-    """O caso real do portal: o token some, o `cpf_last3` fica."""
+    """Redigir o sensível não pode levar junto o identificador ao lado.
+
+    O vizinho aqui é `actor_user_id`, que `resolve_actor_user_id` LÊ da query
+    (`epi_backend/security.py`) — é observabilidade legítima e precisa
+    sobreviver. Na F1 este teste usava `cpf_last3` como vizinho; a F4 o moveu
+    para o lado dos sensíveis, e o teste passou a usar um vizinho que continua
+    sendo de negócio de verdade."""
     saida = redact_sensitive_query(
-        f'/api/employee-access?employee_token={MARCADOR}&cpf_last3=123')
-    assert saida == '/api/employee-access?employee_token=***&cpf_last3=123'
+        f'/api/employee-access?employee_token={MARCADOR}&actor_user_id=42')
+    assert saida == '/api/employee-access?employee_token=***&actor_user_id=42'
 
 
 def test_o_redator_aceita_path_cru_e_linha_de_log():
@@ -348,7 +365,9 @@ def test_o_sink_http_response_nao_imprime_credencial(capsys):
     saida = capsys.readouterr().out
     assert MARCADOR not in saida, 'o token saiu inteiro no log estruturado'
     registro = json.loads(saida.strip().splitlines()[-1])
-    assert registro['path'] == '/api/employee-access?employee_token=***&cpf_last3=123'
+    # Os DOIS fatores do portal somem da mesma linha: a posse (o token) e o
+    # conhecimento (os 3 dígitos). Antes da F4 o segundo sobrevivia aqui.
+    assert registro['path'] == '/api/employee-access?employee_token=***&cpf_last3=***'
     assert registro['method'] == 'GET', 'a observabilidade legítima sumiu junto'
     assert registro['status'] == 200
 

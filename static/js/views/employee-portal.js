@@ -79,21 +79,24 @@
     if (typeof globalThis.closeSignatureModal === 'function') {return globalThis.closeSignatureModal();}
   }
 
-  // ── Portal CPF helpers ─────────────────────────────────────────────────────
-
-  function portalCpfStorageKey(token) {
-    return `employee_portal_cpf_last3_${String(token || '').slice(0, 18)}`;
-  }
-
-  function cachePortalCpfLast3(token, cpfLast3) {
-    if (!/^\d{3}$/.test(String(cpfLast3 || ''))) {return;}
-    sessionStorage.setItem(portalCpfStorageKey(token), String(cpfLast3));
-  }
-
-  function getCachedPortalCpfLast3(token) {
-    const cached = String(sessionStorage.getItem(portalCpfStorageKey(token)) || '').trim();
-    return /^\d{3}$/.test(cached) ? cached : '';
-  }
+  // ── Portal CPF: nada é persistido no navegador ─────────────────────────────
+  //
+  // Os 3 últimos dígitos do CPF NÃO são guardados em `sessionStorage`, em
+  // `localStorage`, em cookie nem em qualquer outro storage. Aqui havia um
+  // cache — `employee_portal_cpf_last3_<token>` — e ele custava caro demais
+  // pelo que economizava.
+  //
+  // O portal é protegido por dois fatores: POSSE do link (`?employee_token=`)
+  // e CONHECIMENTO dos 3 dígitos. O cache era indexado pelo token, então quem
+  // chegasse àquela aba com o link de outra pessoa — histórico, voltar,
+  // link compartilhado — entrava sem o segundo fator: via a ficha inteira e
+  // podia ASSINAR em nome dela. O cache não economizava uma requisição nem
+  // uma decisão: economizava três dígitos digitados.
+  //
+  // Por isso não há substituto. Marcador opaco, TTL curto ou cookie apenas
+  // encurtariam a janela do mesmo bypass — a ausência de estado é o que o
+  // fecha. O backend continua sendo a autoridade e revalida `cpf_last3` a
+  // cada requisição; o cliente não guarda nada para "adiantar" essa decisão.
 
   // ── Tela de validação de CPF ───────────────────────────────────────────────
 
@@ -116,8 +119,8 @@
     const submit = document.getElementById('employee-cpf-submit');
     const feedback = document.getElementById('employee-cpf-feedback');
     if (!input || !submit || !feedback) {return;}
-    const cached = getCachedPortalCpfLast3(token);
-    if (cached && !locked) {input.value = cached;}
+    // O campo nasce VAZIO. Pré-preencher a partir de storage era o mesmo
+    // bypass por outro caminho: entregaria o segundo fator a quem não o sabe.
     safeOn(input, 'input', () => { input.value = String(input.value || '').replace(/\D/g, '').slice(0, 3); });
     safeOn(input, 'keyup', (event) => {
       if (event.key === 'Enter' && !locked) {submit.click();}
@@ -131,7 +134,6 @@
       }
       try {
         await renderEmployeeExternalAccess(token, cpfLast3);
-        cachePortalCpfLast3(token, cpfLast3);
       } catch (error) {
         const msg = String(error?.message || tr('portal.cpfValidationFailed', 'Não foi possível validar o CPF.'));
         feedback.textContent = msg;
@@ -646,18 +648,12 @@
 
   // ── Exports ────────────────────────────────────────────────────────────────
 
-  globalThis.portalCpfStorageKey = portalCpfStorageKey;
   globalThis.formatPortalOrgChain = formatOrgChain;
-  globalThis.cachePortalCpfLast3 = cachePortalCpfLast3;
-  globalThis.getCachedPortalCpfLast3 = getCachedPortalCpfLast3;
   globalThis.renderEmployeeCpfValidationScreen = renderEmployeeCpfValidationScreen;
   globalThis.renderEmployeeExternalAccess = renderEmployeeExternalAccess;
 
   globalThis.__EPI_EMPLOYEE_PORTAL__ = Object.freeze({
     formatOrgChain,
-    portalCpfStorageKey,
-    cachePortalCpfLast3,
-    getCachedPortalCpfLast3,
     renderEmployeeCpfValidationScreen,
     renderEmployeeExternalAccess,
   });

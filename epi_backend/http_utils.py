@@ -25,7 +25,7 @@ def _json_safe(value):
 # Chamada explícita + gate que enumera os sinks é o que mantém a cobertura
 # verificável em vez de presumida.
 
-SENSITIVE_QUERY_PARAMS = frozenset({"username", "password", "token", "employee_token"})
+SENSITIVE_QUERY_PARAMS = frozenset({"username", "password", "token", "employee_token", "cpf_last3"})
 """Nomes cujo VALOR nunca pode ser reproduzido num log.
 
 A lista é de NOMES, não de padrões no valor: procurar "parece uma senha" no
@@ -41,6 +41,12 @@ auditoria PROVOU que ele trafega, ou trafegou, em query string neste código:
                       `/?employee_token=…`, e `static/app.js` o LÊ no
                       carregamento da página: toda visita normal ao portal
                       leva uma credencial de capacidade na query.
+  cpf_last3           acrescentado pela F4 da #343, com evidência: é o SEGUNDO
+                      FATOR do portal (posse do link + conhecimento dos 3
+                      dígitos), e `handle_get_employee_access` e `..._pdf` o
+                      leem de `?cpf_last3=` — toda validação bem-sucedida põe o
+                      fator na query. Antes disso ele sobrevivia no path cru
+                      registrado, ao lado de um `employee_token` já redigido.
 
 Nomes que NÃO entram, e por quê: `code` é código de negócio
 (`modules/deliveries/routes.py`), `qr_code` identifica item físico e o backend

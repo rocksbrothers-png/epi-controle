@@ -263,7 +263,14 @@ test('auth: saveSession sem token remove a chave de token', () => {
 test('auth: setPasswordChangeRequired persiste flag', () => {
   const state = freshState();
   globalThis.setPasswordChangeRequired(true);
-  eq(state.requirePasswordChange, true);
+  // `assert` em vez de `eq`: o `eq` embute o VALOR na mensagem de falha, e a
+  // mensagem vai para o `console.error` do relatório. O CodeQL segue esse
+  // caminho e o classifica como "clear-text logging of sensitive information"
+  // por causa do nome do campo. O valor aqui é booleano e não revela nada,
+  // mas o fluxo existe de verdade — e uma flag booleana não precisa ser
+  // ecoada para a mensagem dizer o que falhou.
+  assert(state.requirePasswordChange === true,
+    'setPasswordChangeRequired(true) deveria marcar a flag no state');
   eq(globalThis.safeStorageRead(globalThis.STORAGE_KEYS.changeRequired), 'true');
 });
 test('auth: clearSession zera estado e storage', () => {

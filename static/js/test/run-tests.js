@@ -2701,7 +2701,11 @@ function _semComentariosF5B(texto) {
 // — que sai cedo sem a flag — a chave ficaria no disco para sempre justamente
 // nessa pessoa. O encerramento de sessão preserva `localStorage` de propósito
 // (F2), então não há outro caminho que a apague.
-function comModuloUxF5B(arquivo, busca, chavesPreexistentes) {
+// Sem parâmetro de query string, de propósito: este helper existe para medir o
+// caminho da flag DESLIGADA, e uma busca com `?ux_phase4x=1` ligaria o módulo e
+// faria o gate medir outra coisa. Deixar o parâmetro aberto seria um convite a
+// esse engano — e o CodeQL apontou, com razão, que ele nunca variava.
+function comModuloUxF5B(arquivo, chavesPreexistentes) {
   const raizStatic = path.resolve(JS_ROOT, '..');
   const local = {
     _s: Object.assign({}, chavesPreexistentes || {}),
@@ -2720,7 +2724,7 @@ function comModuloUxF5B(arquivo, busca, chavesPreexistentes) {
   const ctx = {
     document: doc, localStorage: local,
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    location: { search: busca || '', href: `http://local/${busca || ''}` }, console,
+    location: { search: '', href: 'http://local/' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
@@ -2740,7 +2744,7 @@ function comModuloUxF5B(arquivo, busca, chavesPreexistentes) {
 ].forEach(([arquivo, chave, valor]) => {
   test(`#343 F5-B: ${arquivo} apaga a chave legada mesmo com a flag desligada`, () => {
     // Sem query param e sem flag em storage: o módulo NÃO liga.
-    const { ctx, local } = comModuloUxF5B(arquivo, '', { [chave]: valor, 'epi-theme': 'dark' });
+    const { ctx, local } = comModuloUxF5B(arquivo, { [chave]: valor, 'epi-theme': 'dark' });
     assert(!ctx.document.body.classList.contains(arquivo.replace('ux-', '').replace('.js', '') + '-enabled'),
       `${arquivo} ligou: o gate mediria o caminho errado`);
     eq(local.getItem(chave), null,

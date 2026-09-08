@@ -3387,7 +3387,7 @@ function bindSpaNavigationHistory() {
     //    de `restoreInteractiveSnapshot`.
     // 3. Só então reescrever a entrada, já com o estado restaurado — que é o
     //    que o `historyMode: 'replace'` fazia antes de a ordem mudar.
-    showView(nextView, { partial: true });
+    showView(nextView, { partial: true, viaHistorico: true });
     restoreInteractiveSnapshot(event?.state);
     if (isSpaNavigationEnabled()) {
       globalThis.history.replaceState(
@@ -3537,7 +3537,19 @@ function showView(view, options = {}) {
     globalThis.history.replaceState(collectInteractiveSnapshot(view), '', nextUrl);
   }
   try {
-    document.dispatchEvent(new CustomEvent('epi:viewchange', { detail: { view } }));
+    // `anterior` e `viaHistorico` existem para o reset da F5-B distinguir
+    // "entrou noutro módulo" de "o mesmo módulo se redesenhou". `showView` é
+    // chamado também por fluxos internos — `startEditEmployee()` chama
+    // `showView('colaboradores')` estando já em colaboradores — e sem essa
+    // distinção o reset apagaria os filtros que o usuário acabou de usar para
+    // achar o registro que está editando.
+    document.dispatchEvent(new CustomEvent('epi:viewchange', {
+      detail: {
+        view,
+        anterior: currentActiveView.replace(/-view$/, ''),
+        viaHistorico: options.viaHistorico === true
+      }
+    }));
   } catch (error) {
     reportNonCriticalError('[view] falha ao notificar troca de tela', error);
   }
@@ -3846,6 +3858,17 @@ function setupViewTabs() {
     // troca de identidade, e deixaria passar o caso mais comum de todos.
     safeOn(document, 'epi:viewchange', (event) => {
       const nome = event?.detail?.view || '';
+      const anterior = event?.detail?.anterior || '';
+      // Só em ENTRADA de módulo: o mesmo módulo se redesenhando (edição,
+      // troca de idioma, refresh de permissão) não é reentrada, e zerar ali
+      // destruiria trabalho em andamento.
+      if (!nome || nome === anterior) {return;}
+      // Voltar/Avançar é navegação explícita do usuário (contrato da F5-B) e
+      // fica de fora do reset. O snapshot carimbado por `sid` carrega só
+      // filtros de colaboradores/EPIs; resetar aqui apagaria aba interna e
+      // filtros de estoque que o snapshot não tem como devolver, deixando o
+      // Voltar pior do que era.
+      if (event?.detail?.viaHistorico === true) {return;}
       const view = document.getElementById(`${nome}-view`);
       view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => resetViewTabsToInitial(nav));
       resetModuleFiltersToInitial(nome);

@@ -2364,9 +2364,22 @@ function montarAppServidoF5B(busca) {
     const ativa = nav.querySelectorAll('[data-vtab]').find((t) => t.classList.contains('is-active'));
     return ativa ? ativa.dataset.vtab : '';
   };
-  const entrarNoModulo = (nome) => doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', { detail: { view: nome } }));
+  // Emite o MESMO formato que `showView` emite, incluindo `anterior` e
+  // `viaHistorico` — sem isso os gates estariam exercitando uma forma de
+  // evento que a aplicação nunca produz.
+  let _vistaAtual = '';
+  const entrarNoModulo = (nome, opcoes) => {
+    const anterior = _vistaAtual;
+    _vistaAtual = nome;
+    return doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', {
+      detail: { view: nome, anterior, viaHistorico: (opcoes || {}).viaHistorico === true }
+    }));
+  };
+  const redesenharMesmaVista = (nome) => doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', {
+    detail: { view: nome, anterior: nome, viaHistorico: false }
+  }));
 
-  return { ctx, doc, vistas, sessao, local, abaAtiva, entrarNoModulo, scriptsCarregados: ordem.length };
+  return { ctx, doc, vistas, sessao, local, abaAtiva, entrarNoModulo, redesenharMesmaVista, scriptsCarregados: ordem.length };
 }
 
 let _appF5B = null;
@@ -2777,6 +2790,67 @@ test('#343 F5-B A3: o popstate reescreve a entrada de histórico só APÓS resta
   assert(posShow > -1 && posRestore > -1 && posReplace > -1, 'o handler de popstate mudou de forma');
   assert(posShow < posRestore, 'a entrada no módulo deixou de vir antes da restauração');
   assert(posRestore < posReplace, 'a entrada de histórico é reescrita antes de o snapshot ser restaurado');
+});
+
+
+test('#343 F5-B N2: o mesmo módulo se redesenhando NÃO zera a navegação', () => {
+  // `showView` é chamado também por fluxos internos: `startEditEmployee()`
+  // chama `showView("colaboradores")` estando já em colaboradores. Zerar ali
+  // apagaria os filtros que o usuário acabou de usar para achar o registro
+  // que está editando.
+  const app = appServidoF5B();
+  app.entrarNoModulo('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'cadastro');
+  app.ctx.activateViewTab(app.doc.querySelector('nav[data-vtabs="colaboradores"]'), 'lista');
+  app.redesenharMesmaVista('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'lista',
+    'um redesenho da MESMA view zerou a navegação — isso é trabalho em andamento sendo destruído');
+});
+
+test('#343 F5-B N9: Voltar/Avançar não sofre o reset de entrada', () => {
+  // O snapshot carimbado por `sid` carrega só filtros de colaboradores/EPIs.
+  // Se o reset rodasse no `popstate`, ele apagaria aba interna e filtros de
+  // estoque que o snapshot não tem como devolver — o Voltar ficaria pior do
+  // que era antes da fatia.
+  const app = appServidoF5B();
+  app.entrarNoModulo('estoque');
+  app.ctx.activateViewTab(app.doc.querySelector('nav[data-vtabs="estoque"]'), 'movimentacoes');
+  app.entrarNoModulo('dashboard');
+  app.entrarNoModulo('estoque', { viaHistorico: true });
+  eq(app.abaAtiva('estoque'), 'movimentacoes',
+    'o Voltar sofreu o reset de entrada e perdeu estado que o snapshot não recupera');
+  // E a entrada normal continua zerando.
+  app.entrarNoModulo('dashboard');
+  app.entrarNoModulo('estoque');
+  eq(app.abaAtiva('estoque'), 'estoque', 'a reentrada normal deixou de zerar');
+});
+
+test('#343 F5-B N3: o phase42 publica a memória em RAM e o phase43 a consome', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const p42 = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'));
+  const p43 = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase43.js'), 'utf-8'));
+  assert(p42.includes('globalThis.__EPI_PHASE42_MEMORIA__ = memoriaEmMemoria'),
+    'o phase42 parou de publicar a memória: o phase43 fica sem sugestão dentro do fluxo');
+  assert(p43.includes('globalThis.__EPI_PHASE42_MEMORIA__'),
+    'o phase43 parou de ler a memória do phase42');
+  const inicio = p43.indexOf('function loadPhase42Memory()');
+  const corpo = p43.slice(inicio, p43.indexOf('\n  }', inicio));
+  assert(corpo.includes('__EPI_PHASE42_MEMORIA__'),
+    'loadPhase42Memory deixou de consultar a memória do phase42 — a ponte em memória morreu');
+  // A ponte não pode ressuscitar persistência.
+  assert(!p43.includes("localStorage.getItem('epi:ux:phase42"), 'a ponte voltou a passar por storage');
+});
+
+test('#343 F5-B N7: descartar a memória do phase42 apaga o que já foi renderizado', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'));
+  const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
+  assert(i > -1, 'o descarte na troca de módulo sumiu do phase42');
+  const bloco = fonte.slice(i, i + 900);
+  ['descartarMemoria()', 'phase42-suggestion-box', 'phase42-alerts-box',
+   'phase42-quick-confirm', 'userEdited.clear()', 'autofilledFieldIds.clear()']
+    .forEach((trecho) => assert(bloco.includes(trecho),
+      `o descarte não cobre "${trecho}" — a recomendação anterior seguiria visível na volta`));
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

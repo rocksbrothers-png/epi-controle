@@ -20,6 +20,15 @@
   // sugestões funcionam igual. O que acaba é a travessia — de reload, de
   // logout, de identidade e de reentrada no módulo.
   var memoriaEmMemoria = {};
+
+  // Ponte EM MEMÓRIA para o phase43, que antes lia a mesma chave de
+  // `localStorage`. A F5-B tirou a persistência, não a funcionalidade: enquanto
+  // o usuário permanece no fluxo, o phase43 continua enxergando os eventos de
+  // uso que o phase42 registra. O objeto nunca é substituído — `descartarMemoria`
+  // apaga as chaves em lugar — então esta referência segue válida e o descarte
+  // ao trocar de módulo alcança os dois módulos de uma vez.
+  globalThis.__EPI_PHASE42_MEMORIA__ = memoriaEmMemoria;
+
   var MAX_EVENTS = 120;
 
   function safeOn(target, eventName, handler, options) {
@@ -335,6 +344,13 @@
     try {
       if (!isEnabled()) return;
       document.body.classList.add('phase42-enabled');
+      var form = byId('delivery-form');
+      if (!form) return;
+      var panels = ensurePanels(form);
+      var memory = loadMemory();
+      var userEdited = new Set();
+      var autofilledFieldIds = new Set();
+
       // Sair do módulo descarta o contexto (F5-B). Sem isto a memória em RAM
       // ainda atravessaria a reentrada: a SPA não recarrega a página, e o IIFE
       // vive enquanto o documento viver.
@@ -342,14 +358,24 @@
       // Substitui o antigo `resetMemoryIfRequested()`, que só limpava mediante
       // `?ux_phase42_reset=1` — descarte manual, que ninguém dispara na
       // navegação real.
-      safeOn(document, 'epi:viewchange', descartarMemoria, { signal: moduleController.signal });
-
-      var form = byId('delivery-form');
-      if (!form) return;
-      var panels = ensurePanels(form);
-      var memory = loadMemory();
-      var userEdited = new Set();
-      var autofilledFieldIds = new Set();
+      safeOn(document, 'epi:viewchange', function () {
+        descartarMemoria();
+        // O DOM da SPA não é descartado ao trocar de módulo: sem isto a
+        // recomendação já renderizada continuaria visível na volta, mesmo com
+        // a memória que a gerou apagada — até o usuário mexer noutro campo.
+        ['phase42-suggestion-box', 'phase42-alerts-box', 'phase42-quick-confirm']
+          .forEach(function (id) {
+            var caixa = byId(id);
+            if (!caixa) return;
+            caixa.hidden = true;
+            caixa.innerHTML = '';
+          });
+        // Marcas do fluxo anterior: sem limpá-las, os campos preenchidos
+        // automaticamente e os editados à mão continuariam contando como se o
+        // usuário já os tivesse revisado nesta entrada.
+        userEdited.clear();
+        autofilledFieldIds.clear();
+      }, { signal: moduleController.signal });
 
       var watched = ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi'];
       watched.forEach(function (id) {

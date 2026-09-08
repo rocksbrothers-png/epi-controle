@@ -123,9 +123,23 @@ def test_g10_o_reset_de_entrada_existe_e_esta_na_costura_de_troca_de_view():
     corpo = _fonte('static/app.js')
     assert 'function resetViewTabsToInitial(' in corpo
     assert 'function resetModuleFiltersToInitial(' in corpo
-    listener = corpo[corpo.index("safeOn(document, 'epi:viewchange'"):][:600]
+    listener = corpo[corpo.index("safeOn(document, 'epi:viewchange'"):][:1200]
     assert 'resetViewTabsToInitial(nav)' in listener, 'o reset de abas saiu da troca de view'
     assert 'resetModuleFiltersToInitial(' in listener, 'o reset de filtros saiu da troca de view'
+    # Duas guardas, cada uma por um motivo distinto:
+    #  - `nome === anterior`: `showView` também é chamado por fluxos internos da
+    #    MESMA view (`startEditEmployee` chama `showView('colaboradores')` estando
+    #    já lá). Resetar ali destruiria o filtro que o usuário usou para achar o
+    #    registro que está editando.
+    #  - `viaHistorico`: Voltar/Avançar é navegação explícita e fica de fora. O
+    #    snapshot carrega só filtros de colaboradores/EPIs, então resetar no
+    #    `popstate` apagaria aba interna e filtros de estoque que ele não devolve.
+    assert 'nome === anterior' in listener, (
+        'a guarda de transição real sumiu: o redesenho da mesma view voltaria a zerar a navegação'
+    )
+    assert 'viaHistorico' in listener, (
+        'a guarda do Voltar/Avançar sumiu: o popstate voltaria a sofrer o reset de entrada'
+    )
 
 
 # ── Exceções deliberadas: deep link e Voltar/Avançar ────────────────────────
@@ -213,7 +227,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '47e46151a1c98c4f232daec97680216541a80c279f40832d38f156cf68723ad1'
+DIGESTO_PARIDADE_F5B = '21065534b0d8dde7c10c2ad64c8b7b8e85a7688ceee218638ae2e9ea26abc2d7'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

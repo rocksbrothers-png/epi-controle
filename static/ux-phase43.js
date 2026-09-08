@@ -103,10 +103,20 @@
     Object.keys(payload).forEach(function (chave) { estadoEmMemoria[chave] = payload[chave]; });
   }
 
-  // O phase42 deixou de publicar memória em storage. Sem uma fonte compartilhada
-  // persistida, o phase43 opera apenas com o que observa no fluxo atual.
+  // Ponte com o phase42, agora EM MEMÓRIA. Antes os dois se comunicavam pela
+  // chave `epi:ux:phase42:memory:v2` em `localStorage`; a F5-B tirou a
+  // persistência, e devolver `{}` aqui teria matado junto a sugestão e o
+  // preenchimento assistido DENTRO do fluxo — funcionalidade que a fatia não
+  // se propôs a remover. O phase42 publica o mesmo objeto que usa, e ele é
+  // esvaziado (não substituído) ao trocar de módulo, então os dois descartam
+  // juntos.
   function loadPhase42Memory() {
-    return {};
+    try {
+      var memoria = globalThis.__EPI_PHASE42_MEMORIA__;
+      return memoria && typeof memoria === 'object' ? memoria : {};
+    } catch (_) {
+      return {};
+    }
   }
 
   function isDeliveriesViewActive() {

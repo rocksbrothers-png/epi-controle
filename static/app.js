@@ -1782,10 +1782,90 @@ function trackInteractiveViewHistory(view) {
   renderInteractiveNavTabs(view);
 }
 
+// Identidade do documento atual (#343, F2).
+//
+// Os snapshots de navegação SPA guardam FILTROS digitados pelo usuário —
+// `employeesFilters`, `employeesOpsFilters`, `episFilters`, com busca em texto
+// livre e `company_id`/`unit_id`. Eles vão para `history.pushState`, e as
+// entradas de quem saiu continuam no histórico da aba: `terminateSession()`
+// recarrega e troca a entrada ATIVA, mas não pode apagar as anteriores.
+//
+// Sem carimbar a origem, um "Voltar" depois do login seguinte devolveria os
+// filtros do usuário anterior para dentro do `state` do atual — o popstate
+// restaura o snapshot e re-renderiza as tabelas. É a mesma travessia de
+// identidade que esta fatia existe para fechar, por outra porta.
+//
+// Não é segredo nem token: é um discriminador de documento. Cada carga da
+// página — inclusive a que o encerramento provoca — gera um novo, então todo
+// snapshot criado antes do encerramento deixa de casar e é ignorado. Casar o
+// valor não dá privilégio nenhum: devolveria ao usuário os próprios filtros.
+//
+// Ainda assim usa Web Crypto, e não `Math.random()`, por dois motivos: é a API
+// correta para gerar identificador único no navegador, e uma constante com
+// "ID" no nome alimentada por PRNG fraco é lida — com razão — como credencial
+// por quem revisa e por analisador estático. O nome também diz o que ele é:
+// instância de DOCUMENTO, não sessão.
+const DOCUMENT_INSTANCE_ID = (() => {
+  const fonte = globalThis.crypto;
+  if (fonte?.randomUUID) return fonte.randomUUID();
+  if (fonte?.getRandomValues) {
+    const bytes = fonte.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Sem Web Crypto: a marca de tempo já distingue cargas, que é todo o
+  // objetivo — e não há segredo em jogo.
+  return `t${Date.now()}`;
+})();
+
+// A marca vive no `sessionStorage`, e NÃO por carga de documento (#343, F2).
+//
+// Um F5 do MESMO usuário precisa continuar restaurando filtros e rolagem ao
+// voltar — isso é comportamento existente da SPA, e a F2 não pode quebrá-lo por
+// tabela. Quem invalida os snapshots é o ENCERRAMENTO, que apaga a marca; a
+// carga seguinte cria outra, e nada de antes dele casa.
+const SNAPSHOT_SCOPE_KEY = 'epi-snapshot-scope';
+
+// Sinal de uso único: acabou de haver um encerramento, então a carga seguinte
+// precisa limpar rascunhos de formulário. Ver `clearRestoredAppForms`.
+const SESSION_TEARDOWN_KEY = 'epi-session-teardown';
+
+let _escopoDeSnapshot = null;
+
+function rotateSnapshotScope() {
+  // Troca de principal invalida os snapshots do anterior — e ela nem sempre
+  // passa por `terminateSession()`. O caso real: A logado, backend cai, F5, o
+  // `init()` mantém `state.user` de A e oferece "login manual agora"; B entra
+  // com sucesso e nenhum encerramento aconteceu. O `sessionStorage` sobreviveu
+  // ao F5 e as entradas de histórico de A continuariam casando.
+  //
+  // O cache em memória precisa cair junto: aqui NÃO há recarga para zerá-lo.
+  _escopoDeSnapshot = null;
+  try {
+    sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY);
+  } catch (_e) { /* sem storage: o escopo já é por documento, nada a fazer */ }
+}
+
+function snapshotScopeId() {
+  if (_escopoDeSnapshot) return _escopoDeSnapshot;
+  try {
+    _escopoDeSnapshot = sessionStorage.getItem(SNAPSHOT_SCOPE_KEY) || '';
+    if (!_escopoDeSnapshot) {
+      _escopoDeSnapshot = DOCUMENT_INSTANCE_ID;
+      sessionStorage.setItem(SNAPSHOT_SCOPE_KEY, _escopoDeSnapshot);
+    }
+  } catch (_e) {
+    // Sem storage: cai para o valor do documento. Perde-se a restauração no
+    // F5, mas nunca se aceita snapshot anterior ao encerramento — falha fechado.
+    _escopoDeSnapshot = DOCUMENT_INSTANCE_ID;
+  }
+  return _escopoDeSnapshot;
+}
+
 function collectInteractiveSnapshot(view) {
-  if (!isUxInteractiveAppEnabled()) return { view };
+  if (!isUxInteractiveAppEnabled()) return { view, sid: snapshotScopeId() };
   return {
     view,
+    sid: snapshotScopeId(),
     scrollY: globalThis.scrollY || 0,
     filters: {
       employees: { ...state.employeesFilters },
@@ -1797,6 +1877,10 @@ function collectInteractiveSnapshot(view) {
 
 function restoreInteractiveSnapshot(snapshot) {
   if (!isUxInteractiveAppEnabled() || !snapshot || typeof snapshot !== 'object') return;
+  // Snapshot de outro documento = de antes do encerramento, logo de outra
+  // identidade. Restaurá-lo devolveria os filtros do usuário anterior. A view
+  // em si continua sendo navegável: só o estado carimbado é descartado.
+  if (snapshot.sid !== snapshotScopeId()) return;
   const filters = snapshot.filters || {};
   if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
   if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };
@@ -2662,6 +2746,172 @@ function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
   refs.loginMessage.textContent = message;
   refs.loginMessage.classList.toggle('error', Boolean(isError));
+}
+
+// ── Encerramento de sessão (#343, F2) ────────────────────────────────────────
+//
+// CAMINHO ÚNICO de encerramento. Antes, cada lugar que encerrava sessão fazia
+// `clearSession(); showScreen(false)` — e `showScreen` apenas alterna uma classe
+// CSS. O DOM de quem saiu continuava montado e `state` continuava preenchido:
+// `clearSession` zera 9 das ~76 chaves, e o bootstrap do usuário seguinte
+// sobrescreve outras 24. As 44 restantes atravessavam a troca de identidade — e
+// chegavam a ser RENDERIZADAS, porque `loadBootstrap` termina em `renderAll()`,
+// que chama `renderOutsourcedCompanies()`, que escreve `state.outsourcedCompanies`
+// (dados do usuário anterior) direto no `innerHTML` da tela do próximo.
+//
+// Pior no bootstrap degradado (502/503, `isBootstrapRequestError`): ali NENHUMA
+// das 24 chaves é sobrescrita, porque a chamada a `/api/bootstrap` falhou — e
+// `renderAll()` roda assim mesmo, com o banner de modo degradado. Era o caminho
+// que transformava cache antigo em vazamento visível.
+//
+// A recarga é o mecanismo, e não um teardown enumerado. Enumerar não escala nem
+// sobrevive: são 44 chaves de `state` e 72 containers com `innerHTML` HOJE, e a
+// lista envelheceria na primeira chave nova sem ninguém perceber.
+// `location.reload()` elimina DOM, valores de campo, memória JS, closures e
+// listeners sem depender de ninguém lembrar de atualizar lista alguma.
+//
+// NÃO limpa `localStorage` nem `sessionStorage`: `epi-theme` (F3) e
+// `employee_portal_cpf_last3_*` (F4) são frentes separadas da #343 e continuam
+// exatamente como estavam. Há gate provando que esta fatia não as toca.
+const SESSION_END_MESSAGE_KEY = 'epi-session-end-message';
+
+function terminateSession(message = '') {
+  // A câmera é recurso do dispositivo e precisa ser liberada em TODOS os
+  // caminhos. Antes, só o botão de Sair a desligava: um 401/403 ou uma falha de
+  // bootstrap deixavam o stream ativo com a sessão já morta.
+  void stopDeliveryQrCamera();
+  clearSession();
+  // Síncrono, ANTES da recarga, e sem depender de storage: é a única limpeza
+  // de rascunho que sobrevive a um ambiente onde `sessionStorage` lança
+  // (privacidade restritiva, embedding com storage desligado). O sinal abaixo
+  // repete a limpeza na carga seguinte, para o caso de o navegador restaurar
+  // mesmo assim — mas ele é o reforço, não a garantia.
+  resetAppFormDrafts();
+  if (message) {
+    // Uso único: sobrevive à recarga e é apagada na primeira leitura. Guarda só
+    // o texto do aviso — nunca identificador, token ou dado de sessão.
+    try {
+      sessionStorage.setItem(SESSION_END_MESSAGE_KEY, String(message));
+    } catch (_e) { /* sem storage: perde-se o aviso, não a limpeza */ }
+  }
+  // `view` carrega a última tela de quem saiu; mantê-la faria o próximo login
+  // herdar a navegação do anterior. Só ela sai — remoção genérica exigiria um
+  // inventário de parâmetros que esta fatia não fez.
+  try {
+    // Apagar a marca invalida os snapshots de navegação de quem saiu; o sinal
+    // manda a carga seguinte limpar rascunhos de formulário, que a recarga
+    // sozinha NÃO limpa.
+    sessionStorage.setItem(SESSION_TEARDOWN_KEY, '1');
+  } catch (_e) { /* sem storage: a recarga continua valendo */ }
+  rotateSnapshotScope();
+  try {
+    const url = new URL(globalThis.location.href);
+    url.searchParams.delete('view');
+    globalThis.history.replaceState({}, '', url);
+  } catch (_e) { /* sem URL/history: a recarga continua valendo */ }
+  globalThis.location.reload();
+}
+
+// A exclusao e UMA e explicita; nao ha lista de inclusao.
+//
+// Escopar por `#main-screen` era lista de inclusao disfarcada, e nao sobreviveu:
+// tres rodadas seguidas da revisao acharam a mesma classe de defeito — primeiro
+// os controles soltos fora de <form>, depois a aba nao recarregada, agora os
+// modais da aplicacao, que sao IRMAOS de `#main-screen` e nao descendentes.
+// `#signature-modal`, `#smr-request-report-modal`, `#master-profile-modal` e
+// `#onboarding-wizard-modal` somam 31 controles que a lista nao alcancava.
+//
+// E o mesmo argumento que esta fatia faz contra o teardown enumerado: uma lista
+// envelhece no primeiro elemento novo, sem ninguem perceber. Entao inverte-se o
+// criterio — limpa-se TUDO, menos a unica excecao que o contrato exige.
+//
+// A excecao e o `#login-screen`, e ela e de UX, nao de seguranca: mexer nele
+// brigaria com o gerenciador de senhas do navegador, que a F1 registrou como
+// comportamento esperado do ambiente. Por isso, na duvida, limpa-se: se
+// `closest` falhar, o controle NAO e tratado como sendo do login.
+function resetAppFormDrafts() {
+  // `location.reload()` NÃO limpa valores de campo: o navegador os restaura —
+  // é por isso que um F5 preserva o que você digitou. Depois de um
+  // ENCERRAMENTO, porém, esse rascunho é de quem saiu: `#employee-form` tem
+  // CPF, nome, e-mail e WhatsApp de um colaborador.
+  const ehDaTelaDeLogin = (elemento) => {
+    try {
+      return Boolean(elemento.closest('#login-screen'));
+    } catch (_erro) {
+      return false;
+    }
+  };
+  document.querySelectorAll('form').forEach((formulario) => {
+    if (ehDaTelaDeLogin(formulario)) return;
+    try {
+      formulario.reset();
+    } catch (_erro) { /* formulário exótico: seguir limpando os outros */ }
+  });
+  // `form.reset()` só alcança descendentes de <form>, e há rascunho sensível
+  // FORA deles: `#compras-supplier-name`, `-cnpj`, `-email` e `-notes` são
+  // inputs soltos dentro de um <div class="form-grid">. Abrir o painel de novo
+  // fornecedor só desesconde a div — o valor de quem saiu apareceria inteiro.
+  //
+  // Volta ao valor PADRÃO do HTML, não a string vazia: é a semântica do
+  // `reset()`, e apagar cegamente destruiria default legítimo.
+  document.querySelectorAll('input, textarea').forEach((controle) => {
+    if (ehDaTelaDeLogin(controle)) return;
+    try {
+      if (controle.type === 'checkbox' || controle.type === 'radio') {
+        controle.checked = controle.defaultChecked;
+      } else if (controle.type !== 'file') {
+        controle.value = controle.defaultValue;
+      }
+    } catch (_erro) { /* controle exótico: seguir limpando os outros */ }
+  });
+  document.querySelectorAll('select').forEach((selecao) => {
+    if (ehDaTelaDeLogin(selecao)) return;
+    try {
+      Array.from(selecao.options).forEach((opcao) => {
+        opcao.selected = opcao.defaultSelected;
+      });
+    } catch (_erro) { /* idem */ }
+  });
+}
+
+// A condicao de SEGURANCA e a ausencia de sessao autenticada, nao o marcador.
+//
+// `state.user` ja nasce do `localStorage` na carga do modulo, com fallback
+// nulo: storage indisponivel vira "sem sessao", que LIMPA. E o mesmo
+// discriminador que o proprio `init()` usa para decidir se restaura sessao.
+//
+// Uma aba carregada sem sessao autenticada nao tem razao legitima para exibir
+// rascunho: o que o navegador restaurou nos campos e de quem usou a aba antes.
+// Isso cobre a aba que nao iniciou o encerramento — ela nunca recebeu o
+// marcador, que e por aba — sem broadcast, evento de storage nem identidade
+// entre abas.
+//
+// O marcador continua, como sinal AUXILIAR: cobre o caso de haver sessao
+// gravada e ainda assim ser preciso limpar. Se ele sumir, a condicao acima
+// continua valendo — por isso o `catch` nao retorna mais.
+function clearRestoredAppForms() {
+  const semSessaoAutenticada = !state.user;
+  let encerramentoPendente = '';
+  try {
+    encerramentoPendente = sessionStorage.getItem(SESSION_TEARDOWN_KEY) || '';
+    sessionStorage.removeItem(SESSION_TEARDOWN_KEY);
+  } catch (_e) { /* sinal auxiliar: a condicao de seguranca nao depende dele */ }
+  // Sessao autenticada e sem encerramento pendente: F5 legitimo, o rascunho e
+  // do proprio dono da sessao e fica.
+  if (!semSessaoAutenticada && !encerramentoPendente) return;
+  resetAppFormDrafts();
+}
+
+function consumePendingSessionMessage() {
+  let pendente = '';
+  try {
+    pendente = sessionStorage.getItem(SESSION_END_MESSAGE_KEY) || '';
+    // Apaga ANTES de exibir: uso único de verdade, mesmo que o render falhe.
+    sessionStorage.removeItem(SESSION_END_MESSAGE_KEY);
+  } catch (_e) {
+    return;
+  }
+  if (pendente) setLoginMessage(pendente, true);
 }
 
 function setLoginPasswordVisibility(isVisible) {
@@ -5260,8 +5510,11 @@ async function loadBootstrap() {
   } catch (error) {
     updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
     if ([401, 403].includes(Number(error?.status || 0))) {
-      clearSession();
-      showScreen(false);
+      // Mensagem NEUTRA de propósito: 401/403 aqui não prova expiração — pode
+      // ser revogação, troca de senha em outro dispositivo ou permissão
+      // retirada. Sem ela, a sessão morre no meio do uso e a recarga parece
+      // erro aleatório.
+      terminateSession('Sua sessão foi encerrada. Faça login novamente para continuar.');
     } else if (state.user && isBootstrapRequestError(error)) {
       setBootstrapDegraded(error);
       updateBootstrapDegradedUi();
@@ -11772,6 +12025,14 @@ function syncStructuralCrudAccess() {
 async function handleLogin(event) {
   event.preventDefault();
   setLoginMessage('');
+  // Discriminador desta TENTATIVA, e não `state.user` (#343, F2). O `init()`
+  // deixa `state.user` preenchido de propósito quando o bootstrap está
+  // temporariamente indisponível — mostra "Você pode tentar login manual
+  // agora" com a sessão antiga ainda em memória. Com `state.user` como
+  // critério, uma senha errada ou um TOTP_REQUIRED nessa recuperação cairia no
+  // ramo de terminação, recarregaria a página e faria o campo de código sumir:
+  // a mesma quebra de 2FA que a separação de categorias existe para evitar.
+  let sessaoEstabelecidaNestaTentativa = false;
 
   const submitButton = refs.loginForm?.querySelector('button[type="submit"]');
 
@@ -11806,6 +12067,10 @@ async function handleLogin(event) {
     });
 
     saveSession(payload.user, payload.permissions || [], payload.token || '');
+    sessaoEstabelecidaNestaTentativa = true;
+    // Principal novo: os snapshots de navegação de quem usava a aba antes não
+    // são dele. Vale mesmo sem encerramento — ver `rotateSnapshotScope`.
+    rotateSnapshotScope();
     setPasswordChangeRequired(Boolean(payload.require_password_change));
     if (state.requirePasswordChange) {
       handlePasswordChangeAfterLogin(password);
@@ -11834,6 +12099,23 @@ async function handleLogin(event) {
     void maybeShowOnboardingWizard();
   } catch (error) {
     clearBootstrapDegraded();
+    // A fronteira entre as duas categorias passa DENTRO desta função, e o
+    // discriminador é `saveSession`, não o nome do bloco:
+    //
+    //   antes  — nenhuma sessão foi estabelecida. É falha de AUTENTICAÇÃO, e
+    //            recarregar seria REGRESSÃO FUNCIONAL: o bloco mais abaixo
+    //            revela o campo de TOTP em TOTP_REQUIRED/TOTP_INVALID, e a
+    //            recarga o esconderia de novo e o esvaziaria, deixando o login
+    //            com 2FA impossível de concluir.
+    //
+    //   depois — `saveSession` já gravou usuário, permissões e token, e o
+    //            `loadBootstrap` já pode ter preenchido parte do `state`. Uma
+    //            falha aqui é TERMINAÇÃO REAL: sem o teardown completo esse
+    //            estado parcial e o DOM ficariam para o próximo que entrar.
+    if (sessaoEstabelecidaNestaTentativa) {
+      terminateSession('Não foi possível concluir o login. Faça login novamente.');
+      return;
+    }
     clearSession();
     showScreen(false);
     console.error('[auth] Falha no login', {
@@ -13515,6 +13797,11 @@ async function init() {
     }
   };
 
+  // ANTES de qualquer setup que escreva valor padrão em campo, e ANTES de
+  // qualquer `return` desta função: o caminho do portal do colaborador retorna
+  // cedo, e daqui de baixo a limpeza passaria por fora dele.
+  clearRestoredAppForms();
+
   const employeeToken = new URLSearchParams(globalThis.location.search).get('employee_token');
   if (employeeToken) {
     const normalizedToken = String(employeeToken).trim();
@@ -13751,9 +14038,7 @@ async function init() {
 
   bindAppListener(document.getElementById('movement-form'), 'submit', saveEmployeeMovement);
   bindAppListener(document.getElementById('logout-btn'), 'click', () => {
-    void stopDeliveryQrCamera();
-    clearSession();
-    showScreen(false);
+    terminateSession();
   });
 
   bindAppListener(document.getElementById('delivery-company'), 'change', () => {
@@ -14454,6 +14739,7 @@ async function init() {
   setupViewTabs();
 
   showScreen(false);
+  consumePendingSessionMessage();
   if (state.user) {
     let hasLoggedBootstrapFallback = false;
     const tryRestoreSession = async (attempt = 1) => {
@@ -14464,9 +14750,7 @@ async function init() {
       } catch (error) {
         if (isSessionRestoreAuthError(error)) {
           clearBootstrapDegraded();
-          clearSession();
-          showScreen(false);
-          setLoginMessage('Sessão expirada. Faça login novamente.', true);
+          terminateSession('Sessão expirada. Faça login novamente.');
           return;
         }
         if (isTemporaryBootstrapUnavailable(error)) {
@@ -14491,9 +14775,7 @@ async function init() {
         }
         console.warn('[auth] bootstrap falhou, limpando sessão', error);
         clearBootstrapDegraded();
-        clearSession();
-        showScreen(false);
-        setLoginMessage('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.', true);
+        terminateSession('Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.');
       }
     };
     void tryRestoreSession();

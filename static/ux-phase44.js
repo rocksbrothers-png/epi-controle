@@ -466,12 +466,6 @@
     if (runtime.initialized) return;
     runtime.initialized = true;
     document.body.classList.add('phase44-enabled');
-    // Incondicional (F5-B), não mais só sob `?ux_phase44_reset=1`: navegadores
-    // que já rodaram a versão anterior têm `epi.ux.phase44.filters.*` gravado.
-    // Ninguém lê mais essas chaves, mas deixá-las seria manter estado de
-    // navegação de sessões antigas parado no disco do usuário. Remove apenas o
-    // próprio namespace do módulo.
-    removePhase44Storage();
 
     Object.keys(VIEW_CONFIG).forEach(function (viewName) {
       bindView(viewName);
@@ -494,6 +488,13 @@
   globalThis.createActionBar = createActionBar;
   globalThis.createConfirmInline = createConfirmInline;
   globalThis.createBadge = createBadge;
+
+  // ANTES do gate da flag, e não dentro do `init()`: navegadores que já rodaram
+  // a versão anterior têm `epi.ux.phase44.filters.*` gravado, e ninguém mais lê
+  // essas chaves. Quem mais precisa da remoção é justamente quem teve a flag
+  // ligada um dia e não tem mais — dentro do `init()` a limpeza nunca alcançaria
+  // essa pessoa. Remove apenas o próprio namespace do módulo.
+  removePhase44Storage();
 
   if (!isEnabled()) {
     console.info('[phase44] desabilitada: fluxo clássico mantido');

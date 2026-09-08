@@ -58,11 +58,29 @@ CHAVES_PROIBIDAS = (
 
 @pytest.mark.parametrize('chave,arquivo,oque', CHAVES_PROIBIDAS)
 def test_g10_a_chave_de_navegacao_nao_e_mais_escrita(chave, arquivo, oque):
+    """A chave pode ser NOMEADA, mas só para ser apagada.
+
+    A primeira versão deste gate proibia o nome da chave no arquivo. Estava
+    errado por um detalhe que a revisão do Codex expôs: parar de gravar não
+    apaga o que já está no disco de quem rodou a versão anterior, e o
+    encerramento de sessão preserva `localStorage` de propósito (F2). A
+    remoção da chave legada precisa citá-la — e é justamente o que se quer.
+
+    O que continua proibido é qualquer forma de GRAVAÇÃO.
+    """
     corpo = _fonte(arquivo)
-    assert chave not in corpo, (
-        f'{arquivo} voltou a usar `{chave}` ({oque}). Estado de navegação não '
-        f'é persistido nesta arquitetura — ver o contrato no topo deste arquivo.'
-    )
+    for achado in re.finditer(re.escape(chave), corpo):
+        linha_ini = corpo.rfind('\n', 0, achado.start()) + 1
+        linha = corpo[linha_ini:corpo.find('\n', achado.start())]
+        assert 'removeItem' in linha, (
+            f'{arquivo} cita `{chave}` ({oque}) fora de uma remoção: {linha.strip()[:80]}. '
+            f'Estado de navegação não é persistido nesta arquitetura.'
+        )
+    for gravacao in ('setItem', 'queueStorageWrite'):
+        for achado in re.finditer(re.escape(gravacao) + r'\(([^)]*)', corpo):
+            assert chave not in achado.group(1), (
+                f'{arquivo} voltou a gravar `{chave}` via {gravacao}'
+            )
 
 
 def test_g10_o_phase44_nao_grava_filtro_mas_ainda_limpa_o_legado():
@@ -195,7 +213,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '9b2bcc55b10dac2dd88117338da16c0e234a6a41748ec7f948a347d8819ad8a2'
+DIGESTO_PARIDADE_F5B = '47e46151a1c98c4f232daec97680216541a80c279f40832d38f156cf68723ad1'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

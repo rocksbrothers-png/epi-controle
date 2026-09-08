@@ -2676,6 +2676,109 @@ testAsync('#343 F5-B G3: o último colaborador/EPI usado não é guardado em sto
   eq(gravadas.length, 0, `contexto de negócio persistido: ${gravadas.join(', ')}`);
 });
 
+
+function _semComentariosF5B(texto) {
+  return String(texto).split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+}
+
+// ── Migração: as chaves legadas somem mesmo com a flag DESLIGADA ───────────
+//
+// Este é o caso que mais importa: quem teve a flag ligada um dia, gravou a
+// chave, e hoje está com ela desligada. Se a limpeza morasse dentro do `init()`
+// — que sai cedo sem a flag — a chave ficaria no disco para sempre justamente
+// nessa pessoa. O encerramento de sessão preserva `localStorage` de propósito
+// (F2), então não há outro caminho que a apague.
+function comModuloUxF5B(arquivo, busca, chavesPreexistentes) {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const local = {
+    _s: Object.assign({}, chavesPreexistentes || {}),
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+  const doc = criarNoF5B('document', {});
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+  const ctx = {
+    document: doc, localStorage: local,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: busca || '', href: `http://local/${busca || ''}` }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, URL, URLSearchParams, Promise
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx.addEventListener = () => {}; ctx.dispatchEvent = () => true;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, arquivo), 'utf-8'), ctx, { filename: arquivo });
+  return { ctx, local, doc };
+}
+
+[
+  ['ux-phase42.js', 'epi:ux:phase42:memory:v2', '{"last":{"employeeId":7,"companyId":3}}'],
+  ['ux-phase43.js', 'epi:ux:phase43:state:v1', '{"qty":"5"}'],
+  ['ux-phase44.js', 'epi.ux.phase44.filters.colaboradores', '{"employees-filter-search":"Maria"}']
+].forEach(([arquivo, chave, valor]) => {
+  test(`#343 F5-B: ${arquivo} apaga a chave legada mesmo com a flag desligada`, () => {
+    // Sem query param e sem flag em storage: o módulo NÃO liga.
+    const { ctx, local } = comModuloUxF5B(arquivo, '', { [chave]: valor, 'epi-theme': 'dark' });
+    assert(!ctx.document.body.classList.contains(arquivo.replace('ux-', '').replace('.js', '') + '-enabled'),
+      `${arquivo} ligou: o gate mediria o caminho errado`);
+    eq(local.getItem(chave), null,
+      `${chave} sobreviveu com a flag desligada — quem teve a flag ligada um dia ficaria com ela no disco para sempre`);
+    eq(local.getItem('epi-theme'), 'dark',
+      'a limpeza passou do próprio namespace e apagou chave alheia');
+  });
+});
+
+test('#343 F5-B A1: descartar o estado do phase43 fecha o resumo e solta as guardas', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase43.js'), 'utf-8'));
+  const corpo = fonte.slice(fonte.indexOf('function descartarEstado()'));
+  const fim = corpo.indexOf('\n  }');
+  const bloco = corpo.slice(0, fim);
+  ['runtime.manualMode = false', 'runtime.lastSuggestion = null',
+   'runtime.quickOpen = false', 'runtime.userEdited.clear()', 'phase43-quick-confirm']
+    .forEach((trecho) => assert(bloco.includes(trecho),
+      `descartarEstado não zera "${trecho}" — reentrar em Entregas reabriria o resumo da visita anterior`));
+});
+
+test('#343 F5-B A4: Entregas e Fichas entram no reset de filtros na entrada', () => {
+  const app = appServidoF5B();
+  assert(typeof app.ctx.resetModuleFiltersToInitial === 'function');
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const mapa = fonte.slice(fonte.indexOf('const VIEW_FILTER_RESET'), fonte.indexOf('function resetModuleFiltersToInitial'));
+  ['colaboradores:', 'epis:', 'estoque:', 'entregas:', 'fichas:']
+    .forEach((v) => assert(mapa.includes(v), `${v} ficou de fora do reset de filtros na entrada`));
+  assert(mapa.includes('syncDeliveriesSearchFilters()'), 'Entregas não ressincroniza o estado após limpar');
+  assert(mapa.includes('syncFichaSearchFilters()'), 'Fichas não ressincroniza o estado após limpar');
+});
+
+test('#343 F5-B A3: o popstate reescreve a entrada de histórico só APÓS restaurar', () => {
+  // A entrada precisa acabar carimbada com o estado RESTAURADO. Se o
+  // `showView` gravasse antes (via historyMode: 'replace'), ela ficaria com os
+  // filtros da view que está sendo deixada, e voltar a ela depois restauraria
+  // o valor errado.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const trecho = fonte.slice(fonte.indexOf("safeOn(globalThis, 'popstate'"));
+  const fim = trecho.indexOf('\n  });');
+  const handler = trecho.slice(0, fim);
+  assert(!handler.includes("historyMode: 'replace'"),
+    'o showView do popstate voltou a gravar a entrada antes da restauração');
+  const posShow = handler.indexOf('showView(nextView');
+  const posRestore = handler.indexOf('restoreInteractiveSnapshot(event?.state)');
+  const posReplace = handler.indexOf('history.replaceState(');
+  assert(posShow > -1 && posRestore > -1 && posReplace > -1, 'o handler de popstate mudou de forma');
+  assert(posShow < posRestore, 'a entrada no módulo deixou de vir antes da restauração');
+  assert(posRestore < posReplace, 'a entrada de histórico é reescrita antes de o snapshot ser restaurado');
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
 // handler `async` sem esperar por ele daria verde por não ter chegado a

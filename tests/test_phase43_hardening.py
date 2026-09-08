@@ -57,8 +57,14 @@ def test_phase43_nao_persiste_mais_estado_de_navegacao():
         linha for linha in content.split("\n")
         if not linha.strip().startswith("//")
     )
+    # As chaves podem aparecer para serem REMOVIDAS — a limpeza do que versões
+    # anteriores gravaram precisa nomeá-las. O que não pode voltar é gravação.
     for proibido in ("epi:ux:phase43:state:v1", "epi:ux:phase42:memory:v2"):
-        assert proibido not in corpo, f"{proibido} voltou ao phase43: ver #343 F5-B"
+        for linha in corpo.split("\n"):
+            if proibido in linha:
+                assert "removeItem" in linha, (
+                    f"{proibido} voltou ao phase43 fora de uma remoção: {linha.strip()[:70]}"
+                )
     assert 'function descartarEstado(' in corpo, (
         'o descarte do estado ao trocar de módulo sumiu'
     )

@@ -3371,16 +3371,29 @@ function bindSpaNavigationHistory() {
     if (!isSpaNavigationEnabled()) return;
     const fallbackView = defaultView();
     const nextView = event?.state?.view || resolveViewFromLocation() || fallbackView;
-    showView(nextView, { partial: true, historyMode: 'replace' });
-    // O snapshot é reaplicado DEPOIS do `showView` (F5-B). Entrar no módulo
-    // devolve abas e filtros ao estado inicial; o Voltar/Avançar é navegação
-    // pedida explicitamente pelo usuário, então ele reaplica por cima. Na ordem
-    // anterior — snapshot antes do `showView` — o reset de entrada apagaria
-    // justamente o estado que o usuário mandou restaurar.
+    // Três passos, nesta ordem exata — cada um existe por um motivo:
     //
-    // O snapshot continua carimbado por `sid`: de outra sessão ou de outra
-    // identidade, é recusado dentro de `restoreInteractiveSnapshot`.
+    // 1. `showView` SEM `historyMode`. Entrar no módulo devolve abas e filtros
+    //    ao estado inicial (F5-B). O `historyMode: 'replace'` foi retirado de
+    //    propósito: ele faria o `showView` gravar `collectInteractiveSnapshot()`
+    //    na entrada de histórico AGORA, antes da restauração — carimbando-a com
+    //    os filtros da view que está sendo DEIXADA. O `event.state` desta
+    //    travessia ainda seria aplicado corretamente, mas a entrada ficaria
+    //    com o estado errado, e voltar a ela mais tarde restauraria o valor
+    //    sobrescrito.
+    // 2. Reaplicar o snapshot. O Voltar/Avançar é navegação pedida
+    //    explicitamente pelo usuário, então vence o reset de entrada. Continua
+    //    carimbado por `sid`: de outra sessão ou identidade, é recusado dentro
+    //    de `restoreInteractiveSnapshot`.
+    // 3. Só então reescrever a entrada, já com o estado restaurado — que é o
+    //    que o `historyMode: 'replace'` fazia antes de a ordem mudar.
+    showView(nextView, { partial: true });
     restoreInteractiveSnapshot(event?.state);
+    if (isSpaNavigationEnabled()) {
+      globalThis.history.replaceState(
+        collectInteractiveSnapshot(nextView), '', buildNavigationUrl(nextView)
+      );
+    }
   });
 }
 
@@ -3729,19 +3742,43 @@ function syncViewTabsVisibility(nav) {
 // continuam nos `<input>` (o DOM da SPA não é descartado) e em
 // `state.employeesFilters` / `employeesOpsFilters` / `episFilters`, que são
 // globais em memória e atravessam a troca de módulo sem passar por storage.
+const limparCamposDeFiltro = (chaves) => {
+  chaves.forEach((chave) => { if (refs[chave]) refs[chave].value = ''; });
+};
+
 const VIEW_FILTER_RESET = Object.freeze({
-  colaboradores: 'colaboradores',
-  'colaborador-list': 'colaborador-lista',
-  'gestao-colaborador': 'gestao-colaborador',
-  epis: 'epis',
-  estoque: 'estoque'
+  colaboradores: () => INTERACTIVE_TOOLS_MODULES.colaboradores?.clearFilters?.(),
+  'colaborador-list': () => INTERACTIVE_TOOLS_MODULES['colaborador-lista']?.clearFilters?.(),
+  'gestao-colaborador': () => INTERACTIVE_TOOLS_MODULES['gestao-colaborador']?.clearFilters?.(),
+  epis: () => INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.(),
+  estoque: () => INTERACTIVE_TOOLS_MODULES.estoque?.clearFilters?.(),
+  // Entregas e Fichas não têm entrada em `INTERACTIVE_TOOLS_MODULES`, mas têm
+  // filtros de SPA que persistem do mesmo jeito — `state.deliveriesFilters` e
+  // `state.fichaFilters` são globais em memória, e os campos ficam no DOM.
+  // Derivar o mapa só dos módulos interativos deixava os dois de fora.
+  //
+  // O campo de empresa entra na limpeza como nos demais módulos: as funções de
+  // sincronização chamam `syncDeliveriesOptions()` / `syncFichaOptions()`, que
+  // reaplicam o escopo por perfil operacional e voltam a travar o campo.
+  entregas: () => {
+    limparCamposDeFiltro([
+      'deliveriesFilterCompany', 'deliveriesFilterUnit', 'deliveriesFilterEmployee',
+      'deliveriesFilterEpi', 'deliveriesFilterDateFrom', 'deliveriesFilterDateTo',
+      'deliveriesFilterStatus'
+    ]);
+    syncDeliveriesSearchFilters();
+  },
+  fichas: () => {
+    limparCamposDeFiltro(['fichaFilterCompany', 'fichaFilterUnit', 'fichaFilterSearch']);
+    syncFichaSearchFilters();
+  }
 });
 
 function resetModuleFiltersToInitial(view) {
-  const chave = VIEW_FILTER_RESET[String(view || '')];
-  if (!chave) return;
+  const limpar = VIEW_FILTER_RESET[String(view || '')];
+  if (typeof limpar !== 'function') return;
   try {
-    INTERACTIVE_TOOLS_MODULES[chave]?.clearFilters?.();
+    limpar();
   } catch (error) {
     reportNonCriticalError(`[f5b] falha ao limpar filtros de ${view}`, error);
   }

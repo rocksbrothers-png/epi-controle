@@ -66,6 +66,31 @@
     Object.keys(estadoEmMemoria).forEach(function (chave) { delete estadoEmMemoria[chave]; });
     runtime.manualMode = false;
     runtime.lastSuggestion = null;
+    // `quickOpen` e `userEdited` também são estado de NAVEGAÇÃO e precisam cair
+    // junto. `bindForm` é guardado por um `WeakSet` (`runtime.formBound`), então
+    // reentrar em Entregas NÃO reconstrói o formulário: sem zerar estes dois, o
+    // resumo de confirmação reabriria no estado da visita anterior e as guardas
+    // de edição continuariam valendo, mesmo com a memória já descartada.
+    runtime.quickOpen = false;
+    runtime.userEdited.clear();
+    // O painel já renderizado não some sozinho: `renderQuickSummary` só o
+    // esconde quando é chamado de novo, e a reentrada não o chama.
+    try {
+      var quick = byId('phase43-quick-confirm');
+      if (quick) {
+        quick.hidden = true;
+        quick.innerHTML = '';
+      }
+    } catch (_) {}
+  }
+
+  // Migração, pelo mesmo motivo do phase42: parar de gravar não apaga o que já
+  // está no disco de quem rodou a versão anterior. Roda fora do `init()`, que
+  // sai cedo com a flag desligada.
+  function removerChaveLegada() {
+    try {
+      globalThis.localStorage?.removeItem('epi:ux:phase43:state:v1');
+    } catch (_) {}
   }
 
   function loadState() {
@@ -556,6 +581,8 @@
       init();
     }, 80);
   }
+
+  removerChaveLegada();
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });
   else init();

@@ -69,6 +69,18 @@
     Object.keys(memoriaEmMemoria).forEach(function (chave) { delete memoriaEmMemoria[chave]; });
   }
 
+  // Migração: parar de gravar não apaga o que já foi gravado. Navegadores que
+  // rodaram a versão anterior têm `epi:ux:phase42:memory:v2` no disco com
+  // employeeId, epiId, unitId, roleName e companyId — e o encerramento de
+  // sessão preserva `localStorage` de propósito (F2), então sem esta remoção a
+  // chave ficaria lá indefinidamente, sem ninguém para lê-la nem apagá-la.
+  // Mesmo tratamento que o `removePhase44Storage()`.
+  function removerChaveLegada() {
+    try {
+      globalThis.localStorage?.removeItem('epi:ux:phase42:memory:v2');
+    } catch (_) {}
+  }
+
   function ensurePanels(form) {
     if (!form) return {};
     var suggestion = byId('phase42-suggestion-box');
@@ -472,6 +484,12 @@
       console.warn('[phase42] fallback para fluxo clássico por segurança.', error);
     }
   }
+
+  // Fora do `init()` de propósito: `init()` sai cedo quando a flag está
+  // desligada — que é o default — e a limpeza precisa acontecer justamente
+  // para quem teve a flag LIGADA um dia e não tem mais. Dentro do `init()` a
+  // chave legada sobreviveria para sempre em quem mais precisa dela removida.
+  removerChaveLegada();
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });
   else init();

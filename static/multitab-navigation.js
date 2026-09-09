@@ -265,8 +265,21 @@
     var startTs = typeof helpers.markRenderStart === 'function' ? helpers.markRenderStart() : 0;
     markLoading(tab.id, true);
     try {
-      navApi.showView(tab.view, { partial: true, historyMode: 'replace' });
-      restoreViewContext(tab);
+      // `viaMultitab` diz ao reset de entrada da F5-B que ISTO NÃO É reentrada
+      // no módulo: sem ele, entrar pelo menu lateral resetaria o módulo e a
+      // linha seguinte devolveria os campos capturados, anulando o reset.
+      navApi.showView(tab.view, {
+        partial: true,
+        historyMode: 'replace',
+        viaMultitab: opts.restoreContext === true
+      });
+      // Contrato F5-B: restaurar contexto é EXCEÇÃO, não padrão. Só em ação
+      // explícita do usuário sobre a barra multitab (clicar numa aba já aberta,
+      // Ctrl+Tab, fechar aba e cair na vizinha, restaurar sessão) e no
+      // Voltar/Avançar. Entrar pelo menu lateral é reentrada no módulo e tem de
+      // chegar no estado inicial. Opt-in deliberado: um call site novo que
+      // esqueça a flag erra para o lado do contrato, não contra ele.
+      if (opts.restoreContext === true) restoreViewContext(tab);
       drawTabs();
       drawBreadcrumb(tab);
       runSafeRebinds();
@@ -339,7 +352,7 @@
     if (tab.id === activeTabId) {
       var previous = tabs[Math.max(0, idx - 1)] || tabs[0];
       activeTabId = previous.id;
-      activateTab(previous.id, { historyMode: 'replace' });
+      activateTab(previous.id, { historyMode: 'replace', restoreContext: true });
       return;
     }
     drawTabs();
@@ -432,7 +445,7 @@
         if (tabs.length <= 1) return;
         var index = tabs.findIndex(function (item) { return item.id === activeTabId; });
         var next = tabs[(index + 1) % tabs.length];
-        if (next) activateTab(next.id, { historyMode: 'push' });
+        if (next) activateTab(next.id, { historyMode: 'push', restoreContext: true });
         return;
       }
       if (event.altKey && event.key === 'ArrowLeft') {
@@ -456,7 +469,7 @@
       var tabTarget = event.target && event.target.closest ? event.target.closest('[data-tab-id]') : null;
       if (!tabTarget) return;
       event.preventDefault();
-      activateTab(tabTarget.dataset.tabId, { historyMode: 'push' });
+      activateTab(tabTarget.dataset.tabId, { historyMode: 'push', restoreContext: true });
     });
 
     safeOn(refs.back, 'click', function (event) {
@@ -483,7 +496,7 @@
           });
           tab.url = tab.stack[tab.stack.length - 1].url;
         }
-        activateTab(tab.id, { skipHistory: true, historyMode: 'replace' });
+        activateTab(tab.id, { skipHistory: true, historyMode: 'replace', restoreContext: true });
       } finally {
         restoringPopState = false;
       }

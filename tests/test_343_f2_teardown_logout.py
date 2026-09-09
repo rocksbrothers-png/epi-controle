@@ -611,12 +611,25 @@ def test_o_carimbo_muda_a_cada_carga_do_documento(js):
 
 def test_a_navegacao_por_voltar_continua_funcionando(js):
     """Contraprova: descartar o snapshot não pode quebrar o botão Voltar. A
-    view continua sendo resolvida e exibida; só o estado carimbado é ignorado."""
+    view continua sendo resolvida e exibida; só o estado carimbado é ignorado.
+
+    A ORDEM foi invertida na #343 F5-B, de propósito. Antes o snapshot era
+    aplicado antes do `showView`; agora entra depois. A razão é que a F5-B
+    passou a devolver abas e filtros ao estado inicial na ENTRADA do módulo —
+    e `showView` é quem dispara essa entrada. Na ordem antiga, o reset rodaria
+    depois da restauração e apagaria justamente o estado que o usuário pediu
+    de volta no Voltar.
+
+    A propriedade que este gate protege continua idêntica: as duas chamadas
+    existem no handler de `popstate`, então o Voltar navega E reaplica o
+    snapshot carimbado. O que mudou foi qual das duas vem primeiro.
+    """
     i = js.index("safeOn(globalThis, 'popstate'")
-    trecho = js[i:i + 500]
+    trecho = js[i:i + 900]
     assert 'restoreInteractiveSnapshot(event?.state)' in trecho
     assert 'showView(nextView' in trecho
-    assert trecho.index('restoreInteractiveSnapshot') < trecho.index('showView(nextView')
+    assert trecho.index('showView(nextView') < trecho.index('restoreInteractiveSnapshot(event?.state)'), \
+        'o snapshot voltou a ser aplicado antes da entrada no módulo (ver #343 F5-B)' 
 
 
 # ── 10b. O escopo é a SESSÃO, não a carga do documento ───────────────────────

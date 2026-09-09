@@ -55,7 +55,13 @@ def test_analytics_and_phase42_buffers_remain_limited():
     assert 'var MAX_EVENTS = 100;' in analytics
     assert 'var MAX_BYTES = 28000;' in analytics
     assert 'var MAX_EVENTS = 120;' in phase42
-    assert 'var MAX_STORAGE_BYTES = 45000;' in phase42
+    # `MAX_STORAGE_BYTES` do phase42 saiu na #343 F5-B: a memória de uso deixou
+    # de ir para `localStorage` e passou a viver só em RAM, descartada ao trocar
+    # de módulo. Sem gravação não há teto de bytes a limitar. O `MAX_EVENTS`
+    # continua: ele limita a lista em memória, que segue existindo.
+    assert 'var MAX_STORAGE_BYTES' not in phase42, (
+        'o phase42 voltou a persistir memória de uso: ver #343 F5-B'
+    )
 
 
 def test_app_listener_migration_leaves_only_canvas_direct_bindings_and_safeon_core():

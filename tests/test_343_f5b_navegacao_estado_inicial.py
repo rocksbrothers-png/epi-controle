@@ -482,6 +482,37 @@ def test_o_descarte_do_phase42_restaura_o_valor_que_a_sugestao_substituiu():
     )
 
 
+# ── Decisão de contrato: clique no menu da view já ativa é no-op ───────────
+
+def test_clique_no_menu_da_view_ativa_e_no_op_por_decisao_de_contrato():
+    """Levantado em review como possível falha do contrato "reentrar no módulo
+    → estado inicial". A decisão de produto foi explícita: esse gesto NÃO é
+    reentrada para fins da F5-B.
+
+    O achado não está sendo ignorado — está sendo fixado. Sem a guarda, clicar
+    no item do menu do módulo em que já se está passaria a destruir, sem aviso,
+    uma edição em andamento e qualquer dado ainda não salvo.
+    """
+    corpo = _fonte('static/app.js')
+    i = corpo.index("safeOn(document, 'epi:viewchange'")
+    listener = corpo[i:corpo.index('resetModuleWizardsToInitial(nome);', i)]
+    assert 'if (!nome || nome === anterior) {return;}' in listener, (
+        'a guarda de mesma-view saiu do listener: o clique no menu do módulo '
+        'ativo passaria a resetar, com perda silenciosa de dados'
+    )
+    # A decisão proíbe explicitamente um desvio por sinal de menu.
+    assert 'viaMenu' not in listener, (
+        'apareceu um desvio por sinal de menu, que a decisão de contrato proíbe'
+    )
+    # E a guarda precede qualquer reset — decidir depois de zerar não adianta.
+    assert listener.index('nome === anterior') < listener.index('resetViewTabsToInitial(nav)'), (
+        'a guarda deixou de preceder os resets'
+    )
+    # As outras duas exceções continuam com a semântica já definida.
+    for sinal in ('viaHistorico', 'viaMultitab'):
+        assert sinal in listener, f'a exceção {sinal} sumiu do listener'
+
+
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
@@ -503,7 +534,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '61febae418ec7844908964b39cedea657fe70ee441429ed9b69473b7d3afabdb'
+DIGESTO_PARIDADE_F5B = '25011effb6179467333284a8d83be37976ed1ef1701a56e6418c407c41db5429'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

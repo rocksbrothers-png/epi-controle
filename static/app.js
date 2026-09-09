@@ -4234,9 +4234,25 @@ function setupViewTabs() {
     safeOn(document, 'epi:viewchange', (event) => {
       const nome = event?.detail?.view || '';
       const anterior = event?.detail?.anterior || '';
-      // Só em ENTRADA de módulo: o mesmo módulo se redesenhando (edição,
-      // troca de idioma, refresh de permissão) não é reentrada, e zerar ali
-      // destruiria trabalho em andamento.
+      // Só em ENTRADA de módulo — vindo de OUTRA view.
+      //
+      // `nome === anterior` cobre dois casos, e ambos são intencionais:
+      //
+      //  1. o mesmo módulo se redesenhando (edição, troca de idioma, recarga
+      //     depois de salvar), que nunca foi reentrada;
+      //  2. o clique no item do menu lateral correspondente à view JÁ ATIVA.
+      //
+      // O caso 2 foi levantado em review como possível falha do contrato
+      // "reentrar no módulo → estado inicial", e a decisão de produto foi
+      // EXPLÍCITA: esse gesto não é reentrada para fins da F5-B, e é no-op
+      // quanto ao reset. O motivo é o custo do contrário — clicar no menu do
+      // módulo em que já se está passaria a destruir, sem aviso, uma edição em
+      // andamento e qualquer dado ainda não salvo.
+      //
+      // Não existe (e não deve existir) um sinal `viaMenu` que contorne esta
+      // guarda para forçar o reset nesse cenário. O gate comportamental
+      // "G-menu-1" prova a proteção com um controle A/B, e a sabotagem
+      // "S-menu-noop" fica vermelha se alguém a remover.
       if (!nome || nome === anterior) {return;}
       // Voltar/Avançar é navegação explícita do usuário (contrato da F5-B) e
       // fica de fora do reset. O snapshot carimbado por `sid` carrega só

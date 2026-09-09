@@ -2557,8 +2557,19 @@ function montarAppServidoF5B(busca) {
   const redesenharMesmaVista = (nome) => doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', {
     detail: { view: nome, anterior: nome, viaHistorico: false }
   }));
+  // Clicar no item do menu lateral da view JÁ ATIVA emite exatamente este
+  // evento: `showView(nome)` roda, `currentActiveView` já é `${nome}-view`,
+  // logo `anterior === nome`, e nem `viaHistorico` nem `viaMultitab` são
+  // marcados. O alias existe para o gate dizer QUAL gesto está sendo medido —
+  // a forma do evento é a mesma do redesenho interno de propósito, e é
+  // justamente isso que a decisão de contrato formaliza.
+  const clicarNoMenuDaViewAtiva = (nome) => redesenharMesmaVista(nome);
 
-  return { ctx, doc, vistas, sessao, local, abaAtiva, entrarNoModulo, redesenharMesmaVista, scriptsCarregados: ordem.length };
+  return {
+    ctx, doc, vistas, sessao, local, abaAtiva,
+    entrarNoModulo, redesenharMesmaVista, clicarNoMenuDaViewAtiva,
+    scriptsCarregados: ordem.length
+  };
 }
 
 let _appF5B = null;
@@ -3845,6 +3856,118 @@ test('#343 F5-B G-conv-11: registrar uso só entra no histórico se a entrega de
     'o contexto deixou de ser capturado no submit, quando o formulário ainda está cheio');
   ['appendUsageEvent(', 'saveMemory(', 'anunciarUsoRegistrado('].forEach((t) => assert(!corpo.includes(t),
     `"${t}" voltou para o pré-submit: uma submissão abortada entraria no histórico`));
+});
+
+// ══ #343 F5-B: clique no menu da view já ativa é NO-OP (decisão de contrato) ═
+//
+// O Codex levantou que `anterior === nome` faz o clique no item do menu
+// correspondente ao módulo já ativo não disparar reset, e que isso falharia o
+// contrato "reentrar no módulo → estado inicial". A decisão de produto foi
+// explícita: esse gesto NÃO é reentrada para fins da F5-B.
+//
+// O achado não está sendo ignorado — está sendo FIXADO. Estes gates existem
+// para que uma mudança futura não transforme esse clique em perda silenciosa
+// de dados, que é o custo real da alternativa.
+
+test('#343 F5-B G-menu-1: clicar no menu do módulo ativo preserva a edição não salva', () => {
+  const app = appServidoF5B();
+  const refs = app.ctx.__EPI_REFS__;
+  const identidade = app.doc.getElementById('unit-form-id');
+  const nome = app.doc.getElementById('unit-name');
+
+  // 1. O usuário entra no módulo vindo de outra view.
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('unidades');
+
+  // 2. Inicia uma edição e altera dados SEM salvar.
+  identidade.value = '77';
+  nome.value = 'Unidade em edição, não salva';
+  refs.unitsFilterName.value = 'busca em uso';
+  refs.unitsFilterCity.value = 'Curitiba';
+
+  // 3. Clica de novo no item do menu DESSE MESMO módulo.
+  app.clicarNoMenuDaViewAtiva('unidades');
+
+  // 4. Nada do trabalho em andamento pode ter sido destruído.
+  eq(identidade.value, '77',
+    'o clique no menu do módulo ativo descartou a identidade do registro em edição');
+  eq(nome.value, 'Unidade em edição, não salva',
+    'o clique no menu do módulo ativo apagou dados digitados e não salvos');
+  eq(refs.unitsFilterName.value, 'busca em uso',
+    'o clique no menu do módulo ativo apagou o filtro que o usuário estava usando');
+  eq(refs.unitsFilterCity.value, 'Curitiba',
+    'o clique no menu do módulo ativo apagou o filtro que o usuário estava usando');
+
+  // 5. CONTROLE A/B — prova que o gate não é vazio.
+  //
+  // Sem isto, um reset quebrado (que não zerasse nada) faria as asserções
+  // acima passarem por acidente. O mesmo estado, agora numa entrada REAL
+  // (vinda de outra view), tem de ser zerado: é a única forma de demonstrar
+  // que o passo 3 foi no-op por decisão, e não por impotência do mecanismo.
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('unidades');
+  eq(identidade.value, '',
+    'o controle A/B falhou: a entrada real deixou de desarmar o modo de edição');
+  eq(nome.value, '',
+    'o controle A/B falhou: a entrada real deixou de limpar o formulário');
+  eq(refs.unitsFilterName.value, '',
+    'o controle A/B falhou: a entrada real deixou de limpar os filtros');
+});
+
+test('#343 F5-B G-menu-2: o mesmo gesto não mexe em aba interna nem em seleção', () => {
+  // Complementa o G-menu-1 nas outras classes de estado de trabalho: a aba
+  // interna em que o usuário está e a seleção que ele montou.
+  const app = appServidoF5B();
+  const ctx = app.ctx;
+
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('colaboradores');
+  const nav = app.vistas.colaboradores.querySelector('nav[data-vtabs]');
+  ctx.activateViewTab(nav, 'lista');
+  eq(app.abaAtiva('colaboradores'), 'lista', 'o preparo do gate não trocou de aba');
+
+  app.entrarNoModulo('compras');
+  ctx._selectedDemands.add(0);
+  ctx._selectedDemands.add(1);
+
+  // O gesto, nos dois módulos.
+  app.clicarNoMenuDaViewAtiva('compras');
+  eq(ctx._selectedDemands.size, 2,
+    'o clique no menu do módulo ativo desfez a seleção que o usuário montou');
+
+  app.entrarNoModulo('colaboradores');
+  ctx.activateViewTab(nav, 'lista');
+  app.clicarNoMenuDaViewAtiva('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'lista',
+    'o clique no menu do módulo ativo jogou o usuário de volta para a primeira aba');
+
+  // Controle A/B: entrada real zera as duas.
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'cadastro',
+    'o controle A/B falhou: a entrada real deixou de devolver a aba inicial');
+  app.entrarNoModulo('compras');
+  eq(ctx._selectedDemands.size, 0,
+    'o controle A/B falhou: a entrada real deixou de limpar a seleção');
+});
+
+test('#343 F5-B G-menu-3: a guarda é a única porta, e não há bypass por sinal de menu', () => {
+  // A decisão de contrato proíbe um `viaMenu` que contorne a guarda para
+  // forçar reset no clique sobre a view ativa. Este gate trava isso no texto:
+  // se alguém introduzir esse desvio, ele cai — e a discussão volta a ser
+  // explícita, em vez de virar mudança silenciosa de comportamento.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
+  const listener = fonte.slice(i, fonte.indexOf('resetModuleWizardsToInitial(nome);', i));
+  assert(/if \(!nome \|\| nome === anterior\) \{return;\}/.test(listener),
+    'a guarda de mesma-view saiu do listener: o clique no menu do módulo ativo passaria a resetar');
+  assert(!/viaMenu/.test(listener),
+    'apareceu um desvio por sinal de menu, que a decisão de contrato proíbe');
+  // E a guarda tem de vir ANTES de qualquer reset, não depois.
+  const posGuarda = listener.indexOf('nome === anterior');
+  const posPrimeiroReset = listener.indexOf('resetViewTabsToInitial(nav)');
+  assert(posGuarda > -1 && posPrimeiroReset > -1 && posGuarda < posPrimeiroReset,
+    'a guarda deixou de preceder os resets: algum teardown rodaria antes de ela decidir');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

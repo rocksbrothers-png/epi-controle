@@ -2963,6 +2963,30 @@ test('#343 F5-B C7: o descarte do phase42 tira as marcas visuais de autofill', (
       `o descarte não remove "${t}" — a marca visual sobreviveria a um ciclo completo de saída e volta`));
 });
 
+
+test('#343 F5-B: o reset de entrada não afrouxa o escopo de empresa por papel', () => {
+  // Para papéis não-master a empresa não é filtro, é ESCOPO: o valor é fixo e o
+  // controle fica desabilitado. Limpá-la esvaziava o recorte exibido, e o
+  // `syncDeliveriesOptions()` seguinte ainda reabilitava o campo — ele só trava
+  // perfis `admin`/`user`, enquanto o escopo trava todo não-master.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const limpador = fonte.slice(fonte.indexOf('const limparCamposDeFiltro'), fonte.indexOf('const VIEW_FILTER_RESET'));
+  assert(/ehMaster\(\).*Company/s.test(limpador),
+    'o limpador voltou a apagar o campo de empresa sem olhar o papel');
+  const reset = fonte.slice(fonte.indexOf('function resetModuleFiltersToInitial'));
+  assert(reset.slice(0, 600).includes('populateScopedSearchFilters()'),
+    'o reset deixou de reafirmar o escopo e a trava de empresa');
+});
+
+test('#343 F5-B: a chave legada de rolagem do phase41 é apagada fora do gate', () => {
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8'));
+  assert(fonte.includes('function removerChaveLegadaDeRolagem()'), 'a limpeza da rolagem legada sumiu');
+  const chamada = fonte.lastIndexOf('removerChaveLegadaDeRolagem();');
+  const gate = fonte.indexOf('if (!isEnabled()) return;');
+  assert(chamada > -1 && (gate === -1 || chamada > gate || !fonte.slice(gate, chamada).includes('function init')),
+    'a limpeza foi para dentro do init: nunca alcançaria quem desligou a flag');
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
 // handler `async` sem esperar por ele daria verde por não ter chegado a

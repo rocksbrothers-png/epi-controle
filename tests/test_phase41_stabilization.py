@@ -35,8 +35,16 @@ def test_phase41_uses_namespaced_storage_and_reset_query():
         linha for linha in content.split("\n")
         if not linha.strip().startswith("//")
     )
-    assert "epi:ux:phase41:scroll:v2" not in corpo, (
-        "a persistência de rolagem voltou: ver #343 F5-B"
+    # A chave pode ser NOMEADA, mas só para ser apagada: remover o gravador não
+    # apaga o que já está no disco de quem rodou a versão anterior, e o
+    # encerramento de sessão preserva `localStorage` de propósito (F2).
+    for linha in corpo.split("\n"):
+        if "epi:ux:phase41:scroll:v2" in linha:
+            assert "removeItem" in linha, (
+                f"a persistência de rolagem voltou (#343 F5-B): {linha.strip()[:70]}"
+            )
+    assert "removerChaveLegadaDeRolagem" in corpo, (
+        "a limpeza da chave legada de rolagem sumiu: ela ficaria no disco para sempre"
     )
 
 

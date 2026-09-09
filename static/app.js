@@ -3760,8 +3760,20 @@ function syncViewTabsVisibility(nav) {
 // continuam nos `<input>` (o DOM da SPA não é descartado) e em
 // `state.employeesFilters` / `employeesOpsFilters` / `episFilters`, que são
 // globais em memória e atravessam a troca de módulo sem passar por storage.
+// O campo de EMPRESA não é filtro para quem não é master: é ESCOPO. Para
+// papéis não-master `populateScopedSearchFilters()` fixa o valor e desabilita o
+// controle. Limpá-lo aqui esvaziava o escopo exibido e, pior, o
+// `syncDeliveriesOptions()` seguinte reabilitava o campo — porque ele só trava
+// perfis `admin`/`user` (`isOperationalProfile`), enquanto o escopo trava todo
+// não-master. Reentrar num módulo destravava um controle que estava fixo.
+const ehMaster = () => state.user?.role === 'master_admin';
+
 const limparCamposDeFiltro = (chaves) => {
-  chaves.forEach((chave) => { if (refs[chave]) refs[chave].value = ''; });
+  chaves.forEach((chave) => {
+    if (!refs[chave]) {return;}
+    if (!ehMaster() && /Company$/.test(chave)) {return;}
+    refs[chave].value = '';
+  });
 };
 
 const VIEW_FILTER_RESET = Object.freeze({
@@ -3833,6 +3845,10 @@ function resetModuleFiltersToInitial(view) {
   if (typeof limpar !== 'function') return;
   try {
     limpar();
+    // Reafirma valor e trava de escopo por papel. Barato e idempotente: para o
+    // master não muda nada; para os demais garante que a reentrada nunca
+    // afrouxe o recorte de empresa, qualquer que seja o caminho de limpeza.
+    populateScopedSearchFilters();
   } catch (error) {
     reportNonCriticalError(`[f5b] falha ao limpar filtros de ${view}`, error);
   }

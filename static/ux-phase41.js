@@ -158,6 +158,18 @@
     return true;
   }
 
+  // Migração: quem rodou a versão anterior tem `epi:ux:phase41:scroll:v2` no
+  // disco. Remover o gravador não apaga o já gravado, e o antigo reset por
+  // query param também deixou de tocá-la. Roda FORA do gate da flag, como nos
+  // phase42/43/44 — quem mais precisa é justamente quem desligou a flag.
+  function removerChaveLegadaDeRolagem() {
+    try {
+      globalThis.localStorage?.removeItem('epi:ux:phase41:scroll:v2');
+    } catch (error) {
+      console.warn('[phase41] limpeza da chave legada de rolagem', error);
+    }
+  }
+
   function resetPhase41ContextIfRequested() {
     try {
       var params = new URLSearchParams(globalThis.location.search || '');
@@ -435,6 +447,8 @@
       console.error('[phase41] Falha ao iniciar. Fluxo clássico mantido.', error);
     }
   }
+
+  removerChaveLegadaDeRolagem();
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });
   else init();

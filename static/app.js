@@ -3807,17 +3807,23 @@ const limparCamposDeFiltro = (chaves) => {
 };
 
 const VIEW_FILTER_RESET = Object.freeze({
-  colaboradores: () => INTERACTIVE_TOOLS_MODULES.colaboradores?.clearFilters?.(),
-  'colaborador-list': () => INTERACTIVE_TOOLS_MODULES['colaborador-lista']?.clearFilters?.(),
-  'gestao-colaborador': () => INTERACTIVE_TOOLS_MODULES['gestao-colaborador']?.clearFilters?.(),
+  colaboradores: () => {
+    passoDeReset('colaboradores/clearFilters', () => INTERACTIVE_TOOLS_MODULES.colaboradores?.clearFilters?.());
+    limparFiltrosArquivados('employee', 'archivedEmployees');
+  },
+  'colaborador-list': () => passoDeReset('colaborador-list/clearFilters',
+    () => INTERACTIVE_TOOLS_MODULES['colaborador-lista']?.clearFilters?.()),
+  'gestao-colaborador': () => passoDeReset('gestao-colaborador/clearFilters',
+    () => INTERACTIVE_TOOLS_MODULES['gestao-colaborador']?.clearFilters?.()),
   epis: () => {
-    INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.();
+    passoDeReset('epis/clearFilters', () => INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.());
     // `syncEpisSearchFilters()` não volta à primeira página, ao contrário do
     // caminho de colaboradores e entregas. Sem isto, sair do catálogo na
     // página 3 e voltar reabriria a página 3 — paginação é estado de
     // navegação como qualquer outro.
     if (state.pagination) {state.pagination.epis = 1;}
     passoDeReset('epis/renderTables', () => renderTables());
+    limparFiltrosArquivados('epi', 'archivedEpis');
   },
   usuarios: () => {
     ['userFilterCompany', 'userFilterRole', 'userFilterStatus', 'userFilterSearch']
@@ -3838,7 +3844,25 @@ const VIEW_FILTER_RESET = Object.freeze({
       if (typeof syncArchivedUnitsFilters === 'function') {syncArchivedUnitsFilters();}
     });
   },
-  estoque: () => INTERACTIVE_TOOLS_MODULES.estoque?.clearFilters?.(),
+  estoque: () => passoDeReset('estoque/clearFilters', () => INTERACTIVE_TOOLS_MODULES.estoque?.clearFilters?.()),
+  cnpjs: () => {
+    limparCamposDeFiltro(['legalEntitiesFilterSearch', 'legalEntitiesFilterType']);
+    // `showInactive` é caixa, não campo de texto: `value = ''` não a desmarca,
+    // e ela decide se registros inativos aparecem na lista.
+    if (refs.legalEntitiesShowInactive) {
+      refs.legalEntitiesShowInactive.checked = false;
+      refs.legalEntitiesShowInactive.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    passoDeReset('cnpjs/sync', () => syncLegalEntitiesFilters());
+  },
+  terceirizados: () => {
+    limparCamposDeFiltro(['outsourcedCompaniesFilterSearch', 'outsourcedCompaniesFilterKind']);
+    passoDeReset('terceirizados/empresas', () => syncOutsourcedCompaniesFilters());
+    limparCamposDeFiltro(['outsourcedEmployeesFilterSearch']);
+    passoDeReset('terceirizados/colaboradores', () => syncOutsourcedEmployeesFilters());
+    limparFiltrosArquivados('outsourcedCompany', 'archivedOutsourcedCompanies');
+    limparFiltrosArquivados('outsourcedEmployee', 'archivedOutsourcedEmployees');
+  },
   // Entregas e Fichas não têm entrada em `INTERACTIVE_TOOLS_MODULES`, mas têm
   // filtros de SPA que persistem do mesmo jeito — `state.deliveriesFilters` e
   // `state.fichaFilters` são globais em memória, e os campos ficam no DOM.
@@ -3887,6 +3911,18 @@ const VIEW_FILTER_RESET = Object.freeze({
   }
 });
 
+// Grupos de arquivados: quatro módulos têm uma aba de arquivados com seu
+// PRÓPRIO conjunto de filtros, sobre `ARCHIVAL_ENTITIES`. Como a aba também
+// volta ao início na reentrada, a lista arquivada reapareceria filtrada pela
+// visita anterior se só limpássemos os filtros da aba principal.
+function limparFiltrosArquivados(kind, prefixo) {
+  limparCamposDeFiltro([
+    `${prefixo}FilterCompany`, `${prefixo}FilterDate`,
+    `${prefixo}FilterReason`, `${prefixo}FilterUser`
+  ]);
+  passoDeReset(`arquivados/${kind}`, () => syncArchivedRecordsFilters(kind));
+}
+
 // ── Modo de edição: a classe mais séria do contrato (F5-B) ──────────────────
 //
 // Nove módulos entram em modo de edição, guardando a identidade do registro de
@@ -3913,7 +3949,16 @@ function resetarFormularioPorId(id) {
 const VIEW_FORM_RESET = Object.freeze({
   empresas: () => resetCompanyForm(),
   usuarios: () => resetUserForm(),
-  comercial: () => resetCommercialContractForm(),
+  // `fillCommercialForm()` e não `resetCommercialContractForm()`: o editor
+  // comercial tem DUAS metades — a configuração principal da empresa
+  // (`commercial-form` + `commercial-company`) e o contrato. Limpar só a
+  // segunda deixava a tela editando a empresa B com a identidade do contrato
+  // dela já descartada: um "Salvar contrato" ali gravaria um rascunho em
+  // branco POR CIMA do contrato existente de B. `fillCommercialForm()` é a
+  // autoridade que o próprio módulo usa para carregar o editor inteiro — ela
+  // recarrega a metade principal e chama `resetCommercialContractForm()` no
+  // fim, deixando as duas metades coerentes.
+  comercial: () => fillCommercialForm(),
   unidades: () => resetarFormularioPorId('unit-form'),
   colaboradores: () => resetarFormularioPorId('employee-form'),
   epis: () => resetarFormularioPorId('epi-form'),
@@ -3941,24 +3986,48 @@ function resetModuleFormsToInitial(view) {
 // registro carregado. No `modal-edit-supplier` isso tem a mesma gravidade do
 // modo de edição — o submit atualizaria o fornecedor da visita passada. Por
 // isso o id também é descartado, não basta esconder.
+//
+// Inventário pela FONTE, não por busca em `app.js`: os modais vivem em
+// `static/views/modals/*.html` (mais o `ppe-form-modal`, inline em
+// `avaliacoes.html`, e o `smr-request-report-modal`, em `_modals.html`), e dois
+// deles são acionados de `static/js/views/purchases.js`. Procurar só neste
+// arquivo achava 3 de 7 — o mesmo erro de método já corrigido antes: inventário
+// por conceito e pela superfície servida, nunca pelo lugar onde eu esperava
+// encontrar o mecanismo.
+//
+// A segunda posição é a LISTA de campos de identidade a descartar. Esconder sem
+// descartar deixa a mesma armadilha do modo de edição: o `aval-action-modal`
+// guarda `aval-modal-feedback-id` e `aval-modal-action`, então reentrar em
+// Avaliações com ele aberto exporia uma confirmação capaz de agir sobre o
+// feedback escolhido na visita anterior.
 const MODAIS_DE_MODULO = Object.freeze({
   compras: [
-    ['modal-edit-supplier', 'edit-supplier-id'],
-    ['modal-supplier-pos', '']
+    ['modal-edit-supplier', ['edit-supplier-id']],
+    ['modal-supplier-pos', []],
+    ['aprovacoes-reprovar-modal', []],
+    ['aprovacoes-prorrogar-modal', []]
   ],
-  avaliacoes: [['ppe-form-modal', '']]
+  avaliacoes: [
+    ['ppe-form-modal', []],
+    ['aval-action-modal', ['aval-modal-feedback-id', 'aval-modal-action']]
+  ],
+  estoque: [['smr-request-report-modal', []]]
 });
 
 function resetModuleModalsToInitial(view) {
   const modais = MODAIS_DE_MODULO[String(view || '')];
   if (!modais) {return;}
   try {
-    modais.forEach(([modalId, identidadeId]) => passoDeReset(`modal/${modalId}`, () => {
+    modais.forEach(([modalId, identidades]) => passoDeReset(`modal/${modalId}`, () => {
       const modal = document.getElementById(modalId);
+      // `display = 'none'` é exatamente como o produto fecha estes modais
+      // (todos abrem com `display = 'flex'`) — não é um fechamento inventado
+      // por esta fatia.
       if (modal) {modal.style.display = 'none';}
-      if (!identidadeId) {return;}
-      const campo = document.getElementById(identidadeId);
-      if (campo) {campo.value = '';}
+      (identidades || []).forEach((campoId) => {
+        const campo = document.getElementById(campoId);
+        if (campo) {campo.value = '';}
+      });
     }));
   } catch (error) {
     reportNonCriticalError(`[f5b] falha ao fechar modais de ${view}`, error);

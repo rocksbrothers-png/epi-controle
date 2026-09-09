@@ -275,9 +275,11 @@ def test_um_passo_de_reset_que_falha_nao_cancela_os_seguintes():
     corpo = _fonte('static/app.js')
     assert 'function passoDeReset(' in corpo
     mapa = corpo[corpo.index('const VIEW_FILTER_RESET'):corpo.index('function resetModuleFormsToInitial')]
-    assert mapa.count('passoDeReset(') >= 6, (
-        'as ressincronizações de módulo voltaram a rodar sem isolamento: '
-        'a primeira que falhar cancela as demais'
+    assert mapa.count('passoDeReset(') >= 12, (
+        'passos do reset voltaram a rodar sem isolamento: a primeira falha '
+        'cancela os demais. Isto vale também para os `clearFilters()` de cada '
+        'módulo, não só para as ressincronizações — foi um deles lançando que '
+        'impediu a limpeza dos filtros de arquivados.'
     )
     reset = corpo[corpo.index('function resetModuleFiltersToInitial'):][:900]
     assert 'finally' in reset and 'populateScopedSearchFilters()' in reset, (
@@ -323,21 +325,106 @@ def test_o_multitab_restaura_contexto_apenas_em_acao_explicita():
 
 # ── Ponte phase42 → phase43 (contexto/sugestão em RAM) ─────────────────────
 
-def test_registrar_uso_anuncia_e_a_sugestao_recalcula():
-    """Sem persistência não há releitura no próximo carregamento que corrija a
-    defasagem: o card exibiria a sugestão de ANTES da entrega recém-feita até
-    alguém trocar o colaborador."""
+def test_registrar_uso_anuncia_apenas_quando_a_entrega_da_certo():
+    """O handler de submit do phase42 é `capture: true` e roda ANTES do phase43,
+    que dá `preventDefault()` quando o resumo não foi revisado. Anunciar ali
+    apresentava submissão abortada — ou falha de API — como uso concluído, com
+    o phase43 recalculando o ranking em cima dela."""
     p42 = _fonte('static/ux-phase42.js')
     p43 = _fonte('static/ux-phase43.js')
     submit = p42[p42.index("safeOn(form, 'submit'"):]
-    grava = submit.index('saveMemory(memory);')
-    anuncia = submit.index('anunciarUsoRegistrado();')
-    assert grava < anuncia, 'o anúncio saiu antes de a memória ser gravada'
+    fim = submit.index('}, { capture: true')
+    assert 'anunciarUsoRegistrado()' not in submit[:fim], (
+        'o anúncio voltou para o pré-submit'
+    )
+    sucesso = p42.index("safeOn(document, 'epi:delivery-submit-success'")
+    assert 'anunciarUsoRegistrado()' in p42[sucesso:sucesso + 200], (
+        'o anúncio deixou de sair da conclusão da entrega'
+    )
     assert "CustomEvent('epi:phase42:uso-registrado')" in p42
     bind = p43[p43.index('function bindForm('):]
     escuta = bind.index("safeOn(document, 'epi:phase42:uso-registrado'")
     assert 'recomputarSugestao(ui, form)' in bind[escuta:escuta + 300], (
         'o phase43 escuta o anúncio mas não recalcula nada'
+    )
+
+
+# ── Rodada de convergência do Codex ────────────────────────────────────────
+
+def test_os_sete_modais_entram_no_reset_com_suas_identidades():
+    """Contagem corrigida. A auditoria achou 3 porque procurou em `app.js`; os
+    modais vivem em `static/views/modals/*.html` (mais o `ppe-form-modal`,
+    inline em avaliacoes, e o `smr-request-report-modal`, em `_modals.html`) e
+    dois são acionados de `static/js/views/purchases.js`."""
+    corpo = _fonte('static/app.js')
+    modais = corpo[corpo.index('const MODAIS_DE_MODULO'):corpo.index('function resetModuleModalsToInitial')]
+    for modal in ('modal-edit-supplier', 'modal-supplier-pos',
+                  'aprovacoes-reprovar-modal', 'aprovacoes-prorrogar-modal',
+                  'ppe-form-modal', 'aval-action-modal', 'smr-request-report-modal'):
+        assert f"'{modal}'" in modais, f'{modal} ficou de fora do reset de modais'
+    # Dois campos de identidade no mesmo modal: esconder sem descartar exporia,
+    # na volta, uma confirmação capaz de agir sobre o feedback da visita anterior.
+    assert "'aval-modal-feedback-id'" in modais and "'aval-modal-action'" in modais
+
+
+def test_cnpjs_terceirizados_e_arquivados_entram_no_reset_de_filtros():
+    corpo = _fonte('static/app.js')
+    mapa = corpo[corpo.index('const VIEW_FILTER_RESET'):corpo.index('function limparFiltrosArquivados')]
+    for view in ('cnpjs', 'terceirizados'):
+        assert f'{view}:' in mapa, f'{view} retém filtros vivos e ficou de fora do reset'
+    assert 'legalEntitiesShowInactive' in mapa, (
+        'a caixa "mostrar inativos" ficou de fora: `value = ""` não desmarca caixa'
+    )
+    for kind in ('employee', 'epi', 'outsourcedCompany', 'outsourcedEmployee'):
+        assert f"limparFiltrosArquivados('{kind}'" in mapa, (
+            f'o grupo de arquivados de {kind} ficou de fora do reset'
+        )
+
+
+def test_o_editor_comercial_e_resetado_atomicamente():
+    """O editor tem duas metades: a configuração principal da empresa e o
+    contrato. Limpar só a segunda deixava a tela editando a empresa B com a
+    identidade do contrato dela já descartada — e um "Salvar contrato" ali
+    gravaria um rascunho em branco por cima do contrato existente de B."""
+    corpo = _fonte('static/app.js')
+    mapa = corpo[corpo.index('const VIEW_FORM_RESET'):corpo.index('function resetModuleFormsToInitial')]
+    linha = next(l for l in mapa.split('\n') if l.strip().startswith('comercial:'))
+    assert 'fillCommercialForm()' in linha, (
+        'o reset comercial voltou a limpar só a metade do contrato'
+    )
+    preenche = corpo[corpo.index('function fillCommercialForm('):]
+    assert 'resetCommercialContractForm(' in preenche[:preenche.index('\n}')], (
+        'fillCommercialForm deixou de resetar a metade do contrato'
+    )
+
+
+def test_a_troca_explicita_de_aba_multitab_nao_descarta_o_assistente():
+    """`activateTab()` restaura os campos daquela aba logo depois; descartar o
+    assistente ali devolveria o formulário preenchido SEM a sugestão nem o
+    contexto de revisão que pertenciam a ele."""
+    for arquivo, descarte in (('static/ux-phase42.js', 'descartarMemoria()'),
+                              ('static/ux-phase43.js', 'descartarEstado()')):
+        corpo = _fonte(arquivo)
+        i = corpo.index("safeOn(document, 'epi:viewchange'")
+        bloco = corpo[i:corpo.index(descarte, i)]
+        assert 'detalhe.anterior' in bloco, f'{arquivo}: a guarda de redesenho sumiu'
+        assert 'viaMultitab' in bloco, (
+            f'{arquivo}: a troca explícita de aba multitab voltou a descartar o assistente'
+        )
+
+
+def test_o_teardown_do_phase43_e_registrado_uma_vez():
+    """`scheduleRebind()` chama `init()` a cada viewchange, htmx swap e
+    popstate, e o registro fica antes da guarda `runtime.formBound`. Sem
+    cadeado, cada navegação acrescentava um listener permanente de descarte."""
+    corpo = _fonte('static/ux-phase43.js')
+    init = corpo[corpo.index('function init()'):corpo.index('function scheduleRebind()')]
+    registro = init.index("safeOn(document, 'epi:viewchange'")
+    assert 'runtime.teardownBound' in init[:registro], (
+        'o registro do teardown voltou a rodar sem cadeado'
+    )
+    assert "document.addEventListener('epi:viewchange'" not in init, (
+        'o teardown voltou ao addEventListener cru, fora do AbortController da aplicação'
     )
 
 
@@ -362,7 +449,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = 'b677ca71e8a940d387dec68eaca97a9a27ffc95c237fdf7134941befb71b9983'
+DIGESTO_PARIDADE_F5B = '658e59329f3de2c0792eba199a88009ccdbbb4387c7a04b63495b62b64ecd462'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

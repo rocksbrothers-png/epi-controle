@@ -380,6 +380,12 @@
         // a memória e fecharia o fluxo com o usuário ainda em Entregas.
         var detalhe = evento && evento.detail ? evento.detail : {};
         if (detalhe.view && detalhe.view === detalhe.anterior) return;
+        // Troca EXPLÍCITA de aba na barra multitab também não é saída do
+        // módulo: `activateTab()` restaura os campos daquela aba logo depois,
+        // e descartar aqui devolveria o formulário preenchido SEM a sugestão
+        // e sem o contexto de revisão que pertenciam a ele — pior do que não
+        // restaurar nada. Mesma exceção que o reset central de entrada aplica.
+        if (detalhe.viaMultitab === true) return;
         descartarMemoria();
         // O DOM da SPA não é descartado ao trocar de módulo: sem isto a
         // recomendação já renderizada continuaria visível na volta, mesmo com
@@ -509,8 +515,27 @@
         var ctx = getContext(memory);
         appendUsageEvent(memory, ctx);
         saveMemory(memory);
-        anunciarUsoRegistrado();
       }, { capture: true, signal: moduleController.signal });
+
+      // O anúncio sai daqui e passa a depender da entrega ter DADO CERTO.
+      //
+      // Este handler é `capture: true` e o phase42 é injetado antes do phase43,
+      // então ele roda ANTES do submit do phase43 — que dá `preventDefault()`
+      // quando o resumo de confirmação não foi revisado. Anunciar aqui fazia
+      // uma submissão abortada (ou uma que falhasse na API) ser apresentada
+      // como uso concluído, com o phase43 recalculando o ranking em cima dela.
+      //
+      // `epi:delivery-submit-success` é disparado pelo app.js só depois de a
+      // API responder. Ele vem DEPOIS do `form.reset()`, então o recálculo
+      // encontra o formulário já vazio: o card é limpo junto, que é o estado
+      // coerente com uma entrega concluída. A sugestão da próxima entrega
+      // continua sendo calculada na troca de colaborador.
+      //
+      // O registro em si (`appendUsageEvent` acima) continua no pré-submit:
+      // movê-lo mudaria o contrato do phase42, fora do escopo desta fatia.
+      safeOn(document, 'epi:delivery-submit-success', function () {
+        anunciarUsoRegistrado();
+      }, { signal: moduleController.signal });
 
       safeOn(document, 'click', function (event) {
         var target = event.target;

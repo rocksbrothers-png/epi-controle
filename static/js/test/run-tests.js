@@ -2376,6 +2376,8 @@ function montarVistasDeClasseF5B() {
   const compras = montarVistaSimplesF5B('compras', [
     modalFornecedor,
     criarNoF5B('div', { id: 'modal-supplier-pos' }),
+    criarNoF5B('div', { id: 'aprovacoes-reprovar-modal' }),
+    criarNoF5B('div', { id: 'aprovacoes-prorrogar-modal' }),
     caixa('compras-demands-select-all'), listaDemandas,
     caixa('aprovacoes-select-all'), listaAprov,
     criarNoF5B('button', { id: 'compras-create-request-btn' }),
@@ -2384,7 +2386,29 @@ function montarVistasDeClasseF5B() {
     criarNoF5B('button', { id: 'aprovacoes-prorrogar-btn' })
   ]);
 
-  const avaliacoes = montarVistaSimplesF5B('avaliacoes', [criarNoF5B('div', { id: 'ppe-form-modal' })]);
+  const modalAcaoAvaliacao = criarNoF5B('div', { id: 'aval-action-modal' });
+  modalAcaoAvaliacao.appendChild(campoF5B('input', { id: 'aval-modal-feedback-id' }));
+  modalAcaoAvaliacao.appendChild(campoF5B('input', { id: 'aval-modal-action' }));
+  const avaliacoes = montarVistaSimplesF5B('avaliacoes', [
+    criarNoF5B('div', { id: 'ppe-form-modal' }),
+    modalAcaoAvaliacao
+  ]);
+
+  const cnpjs = montarVistaSimplesF5B('cnpjs', [
+    campoF5B('input', { id: 'legal-entities-filter-search' }),
+    campoF5B('input', { id: 'legal-entities-filter-type' }),
+    campoF5B('input', { id: 'legal-entities-show-inactive', type: 'checkbox' })
+  ]);
+
+  const terceirizados = montarVistaSimplesF5B('terceirizados', [
+    campoF5B('input', { id: 'outsourced-companies-filter-search' }),
+    campoF5B('input', { id: 'outsourced-companies-filter-kind' }),
+    campoF5B('input', { id: 'outsourced-employees-filter-search' }),
+    campoF5B('input', { id: 'archived-outsourced-companies-filter-user' }),
+    campoF5B('input', { id: 'archived-outsourced-companies-filter-reason' }),
+    campoF5B('input', { id: 'archived-outsourced-employees-filter-user' }),
+    campoF5B('input', { id: 'archived-outsourced-employees-filter-reason' })
+  ]);
 
   const usuarios = montarVistaSimplesF5B('usuarios', [
     criarNoF5B('div', { id: 'purchase-function-units' }),
@@ -2408,7 +2432,7 @@ function montarVistasDeClasseF5B() {
 
   const relatorios = montarVistaSimplesF5B('relatorios', []);
 
-  return { unidades, compras, avaliacoes, usuarios, migracao, comercial, relatorios };
+  return { unidades, compras, avaliacoes, usuarios, migracao, comercial, relatorios, cnpjs, terceirizados };
 }
 
 // Carrega os mesmos scripts que a página serve, na mesma ordem.
@@ -2422,6 +2446,17 @@ function montarAppServidoF5B(busca) {
   };
   // O campo de busca do dashboard mora na própria vista de dashboard.
   vistas.dashboard.appendChild(campoF5B('input', { id: 'dashboard-global-search' }));
+  // Arquivados de colaboradores e de EPIs: abas dos módulos que já existem no
+  // fixture, com seu PRÓPRIO conjunto de filtros sobre `ARCHIVAL_ENTITIES`.
+  ['archived-employees-filter-user', 'archived-employees-filter-reason']
+    .forEach((id) => vistas.colaboradores.appendChild(campoF5B('input', { id })));
+  vistas.epis = montarVistaSimplesF5B('epis', [
+    campoF5B('input', { id: 'archived-epis-filter-user' }),
+    campoF5B('input', { id: 'archived-epis-filter-reason' })
+  ]);
+  // Modal global de solicitação de relatório: mora em `_modals.html`, mas o
+  // botão que o abre está em Estoque — logo, é modal DO módulo estoque.
+  vistas.estoque.appendChild(criarNoF5B('div', { id: 'smr-request-report-modal' }));
   const main = criarNoF5B('div', { id: 'main-content' });
   Object.values(vistas).forEach((v) => main.appendChild(v));
   const doc = criarNoF5B('document', {});
@@ -3527,13 +3562,19 @@ test('#343 F5-B G-ponte-1: registrar uso anuncia, e o phase43 recalcula', () => 
   const raiz = path.resolve(JS_ROOT, '..');
   const p42 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase42.js'), 'utf-8'));
   const p43 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase43.js'), 'utf-8'));
-  // O anúncio tem de sair DEPOIS de a memória ser gravada, senão o phase43
-  // recalcula sobre o ranking antigo.
+  // O anúncio depende de a entrega ter DADO CERTO. O handler de submit do
+  // phase42 é `capture: true` e roda antes do phase43, que dá
+  // `preventDefault()` quando o resumo não foi revisado: anunciar ali
+  // apresentava submissão abortada (ou falha de API) como uso concluído.
   const submit = p42.slice(p42.indexOf("safeOn(form, 'submit'"));
-  const posGrava = submit.indexOf('saveMemory(memory);');
-  const posAnuncia = submit.indexOf('anunciarUsoRegistrado();');
-  assert(posGrava > -1 && posAnuncia > -1, 'o phase42 deixou de anunciar o uso registrado');
-  assert(posGrava < posAnuncia, 'o anúncio saiu antes de a memória ser gravada');
+  const fimDoSubmit = submit.indexOf('}, { capture: true');
+  assert(fimDoSubmit > -1, 'o handler de submit do phase42 mudou de forma');
+  assert(!submit.slice(0, fimDoSubmit).includes('anunciarUsoRegistrado()'),
+    'o anúncio voltou para o pré-submit: uma submissão abortada seria apresentada como uso concluído');
+  const sucesso = p42.indexOf("safeOn(document, 'epi:delivery-submit-success'");
+  assert(sucesso > -1, 'o phase42 deixou de escutar a conclusão da entrega');
+  assert(p42.slice(sucesso, sucesso + 200).includes('anunciarUsoRegistrado()'),
+    'o anúncio deixou de sair da conclusão da entrega');
   assert(p42.includes("dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'))"),
     'o anúncio deixou de ser um evento observável');
   const bind = p43.slice(p43.indexOf('function bindForm('));
@@ -3541,6 +3582,176 @@ test('#343 F5-B G-ponte-1: registrar uso anuncia, e o phase43 recalcula', () => 
   assert(escuta > -1, 'o phase43 não escuta o anúncio: a sugestão ficaria congelada até trocar de colaborador');
   assert(bind.slice(escuta, escuta + 260).includes('recomputarSugestao(ui, form)'),
     'o phase43 escuta o anúncio mas não recalcula nada');
+});
+
+// ══ #343 F5-B: rodada de convergência do Codex ═════════════════════════════
+//
+// Sete achados verificados um a um contra o código. Seis entraram; o sétimo
+// (clique no menu do módulo já ativo) é decisão de contrato e foi relatado.
+
+test('#343 F5-B G-conv-1: os SETE modais entram no reset, com suas identidades', () => {
+  // Contagem corrigida: a auditoria achou 3 porque procurou em `app.js`. Os
+  // modais vivem em `static/views/modals/*.html` (+ `ppe-form-modal` inline em
+  // avaliacoes e `smr-request-report-modal` em `_modals.html`), e dois são
+  // acionados de `static/js/views/purchases.js`.
+  const app = appServidoF5B();
+  const abertos = [
+    ['compras', ['modal-edit-supplier', 'modal-supplier-pos',
+      'aprovacoes-reprovar-modal', 'aprovacoes-prorrogar-modal']],
+    ['avaliacoes', ['ppe-form-modal', 'aval-action-modal']],
+    ['estoque', ['smr-request-report-modal']]
+  ];
+  abertos.forEach(([vista, ids]) => {
+    ids.forEach((id) => { app.doc.getElementById(id).style.display = 'flex'; });
+    app.entrarNoModulo(vista);
+    app.entrarNoModulo('relatorios');
+    app.entrarNoModulo(vista);
+    ids.forEach((id) => eq(app.doc.getElementById(id).style.display, 'none',
+      `${id} reabriu no ponto da visita anterior`));
+  });
+});
+
+test('#343 F5-B G-conv-2: o modal de ação de avaliação descarta AS DUAS identidades', () => {
+  // `aval-action-modal` guarda o feedback escolhido E a ação a executar.
+  // Esconder sem descartar exporia, na volta, uma confirmação capaz de agir
+  // sobre o feedback da visita anterior.
+  const app = appServidoF5B();
+  const feedback = app.doc.getElementById('aval-modal-feedback-id');
+  const acao = app.doc.getElementById('aval-modal-action');
+  feedback.value = '31';
+  acao.value = 'arquivar';
+  app.entrarNoModulo('avaliacoes');
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('avaliacoes');
+  eq(feedback.value, '', 'o modal continuou apontando para o feedback anterior');
+  eq(acao.value, '', 'a ação pendente da visita anterior sobreviveu');
+});
+
+test('#343 F5-B G-conv-3: CNPJs e Terceirizados entram no reset de filtros', () => {
+  const app = appServidoF5B();
+  const refs = app.ctx.__EPI_REFS__;
+  const estado = app.ctx.__EPI_APP_STATE__;
+  const campos = [
+    'legalEntitiesFilterSearch', 'legalEntitiesFilterType',
+    'outsourcedCompaniesFilterSearch', 'outsourcedCompaniesFilterKind',
+    'outsourcedEmployeesFilterSearch'
+  ];
+  campos.forEach((k) => { refs[k].value = 'x'; });
+  refs.legalEntitiesShowInactive.checked = true;
+  // Sujar o ESTADO pela mesma porta que o usuário sujaria: as funções de
+  // sincronização que os handlers de input do módulo já chamam. Sem isto o
+  // gate compararia o estado com o valor inicial dele — asserção vazia, e foi
+  // assim que uma sabotagem passou verde antes desta correção.
+  app.ctx.syncLegalEntitiesFilters();
+  app.ctx.syncOutsourcedCompaniesFilters();
+  app.ctx.syncOutsourcedEmployeesFilters();
+  eq(estado.legalEntitiesFilters.search, 'x', 'o preparo do gate não sujou o estado: mediria o nada');
+  eq(estado.outsourcedCompaniesFilters.search, 'x', 'o preparo do gate não sujou o estado: mediria o nada');
+  eq(estado.outsourcedEmployeesFilters.search, 'x', 'o preparo do gate não sujou o estado: mediria o nada');
+
+  ['cnpjs', 'terceirizados'].forEach((v) => {
+    app.entrarNoModulo(v);
+    app.entrarNoModulo('relatorios');
+    app.entrarNoModulo(v);
+  });
+
+  campos.forEach((k) => eq(refs[k].value, '', `${k} sobreviveu à reentrada`));
+  eq(refs.legalEntitiesShowInactive.checked, false,
+    'a caixa "mostrar inativos" continuou marcada: `value = ""` não desmarca caixa');
+  // O ESTADO é o que filtra a lista. Limpar o campo sem ressincronizar deixa a
+  // tela vazia e a lista ainda recortada — o pior dos dois mundos.
+  eq(estado.legalEntitiesFilters.search, '', 'o estado do filtro de CNPJs não foi ressincronizado');
+  eq(estado.legalEntitiesFilters.type, '', 'o estado do filtro de CNPJs não foi ressincronizado');
+  eq(estado.legalEntitiesFilters.showInactive, false, 'o estado de "mostrar inativos" não foi ressincronizado');
+  eq(estado.outsourcedCompaniesFilters.search, '', 'o estado do filtro de terceirizadas não foi ressincronizado');
+  eq(estado.outsourcedCompaniesFilters.kind, '', 'o estado do filtro de terceirizadas não foi ressincronizado');
+  eq(estado.outsourcedEmployeesFilters.search, '', 'o estado do filtro de prestadores não foi ressincronizado');
+});
+
+test('#343 F5-B G-conv-4: os quatro grupos de arquivados voltam ao início', () => {
+  // Um grupo por módulo, sobre `ARCHIVAL_ENTITIES`. Sem `*Company`: para
+  // papéis não-master a empresa é escopo, não filtro.
+  const app = appServidoF5B();
+  const refs = app.ctx.__EPI_REFS__;
+  const estado = app.ctx.__EPI_APP_STATE__;
+  const grupos = [
+    ['colaboradores', 'employee', 'archivedEmployees'],
+    ['epis', 'epi', 'archivedEpis'],
+    ['terceirizados', 'outsourcedCompany', 'archivedOutsourcedCompanies'],
+    ['terceirizados', 'outsourcedEmployee', 'archivedOutsourcedEmployees']
+  ];
+  grupos.forEach(([, kind, prefixo]) => {
+    refs[`${prefixo}FilterUser`].value = 'ana';
+    refs[`${prefixo}FilterReason`].value = 'motivo';
+    // Mesma porta do usuário: `syncArchivedRecordsFilters` é o que os handlers
+    // de input dos arquivados chamam.
+    app.ctx.syncArchivedRecordsFilters(kind);
+    eq(estado[`${prefixo}Filters`].user, 'ana', `o preparo de ${prefixo} não sujou o estado`);
+  });
+
+  ['colaboradores', 'epis', 'terceirizados'].forEach((v) => {
+    app.entrarNoModulo(v);
+    app.entrarNoModulo('relatorios');
+    app.entrarNoModulo(v);
+  });
+
+  grupos.forEach(([vista, , prefixo]) => {
+    eq(refs[`${prefixo}FilterUser`].value, '', `${prefixo} (${vista}) sobreviveu à reentrada`);
+    eq(refs[`${prefixo}FilterReason`].value, '', `${prefixo} (${vista}) sobreviveu à reentrada`);
+    eq(estado[`${prefixo}Filters`].user, '', `o estado de ${prefixo} não foi ressincronizado`);
+    eq(estado[`${prefixo}Filters`].reason, '', `o estado de ${prefixo} não foi ressincronizado`);
+  });
+});
+
+test('#343 F5-B G-conv-5: o editor comercial é resetado ATOMICAMENTE', () => {
+  // O editor tem duas metades: a configuração principal da empresa e o
+  // contrato. Limpar só o contrato deixava a tela editando a empresa B com a
+  // identidade do contrato dela já descartada — e um "Salvar contrato" ali
+  // gravaria um rascunho em branco por cima do contrato existente de B.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const mapa = fonte.slice(fonte.indexOf('const VIEW_FORM_RESET'), fonte.indexOf('function resetModuleFormsToInitial'));
+  const linha = mapa.split('\n').find((l) => l.trim().startsWith('comercial:')) || '';
+  assert(linha.includes('fillCommercialForm()'),
+    'o reset comercial voltou a limpar só a metade do contrato');
+  assert(!/comercial:.*resetCommercialContractForm/.test(linha),
+    'o reset comercial voltou a chamar direto o reset parcial');
+  // E `fillCommercialForm` continua sendo a autoridade que recarrega as duas.
+  const preenche = fonte.slice(fonte.indexOf('function fillCommercialForm('));
+  const fim = preenche.indexOf('\n}');
+  assert(preenche.slice(0, fim).includes('resetCommercialContractForm('),
+    'fillCommercialForm deixou de resetar a metade do contrato: o reset deixaria de ser atômico');
+});
+
+test('#343 F5-B G-conv-6: a troca explícita de aba multitab não descarta o assistente', () => {
+  // `activateTab()` restaura os campos daquela aba logo depois. Descartar a
+  // memória do phase42/43 ali devolveria o formulário preenchido SEM a
+  // sugestão nem o contexto de revisão que pertenciam a ele.
+  const raiz = path.resolve(JS_ROOT, '..');
+  [['ux-phase42.js', 'descartarMemoria()'], ['ux-phase43.js', 'descartarEstado()']].forEach(([arquivo, descarte]) => {
+    const fonte = _semComentariosF5B(fs.readFileSync(path.join(raiz, arquivo), 'utf-8'));
+    const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
+    assert(i > -1, `${arquivo}: o teardown mudou de forma`);
+    const bloco = fonte.slice(i, fonte.indexOf(descarte, i));
+    assert(bloco.includes('detalhe.anterior'), `${arquivo}: a guarda de redesenho sumiu`);
+    assert(bloco.includes('viaMultitab'),
+      `${arquivo}: a troca explícita de aba multitab voltou a descartar o assistente`);
+  });
+});
+
+test('#343 F5-B G-conv-7: o teardown do phase43 é registrado UMA vez', () => {
+  // `scheduleRebind()` chama `init()` a cada viewchange/htmx swap/popstate, e o
+  // registro fica antes da guarda `runtime.formBound`. Sem cadeado, cada
+  // navegação acrescentava um listener permanente de descarte.
+  const fonte = _semComentariosF5B(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
+  const init = fonte.slice(fonte.indexOf('function init()'), fonte.indexOf('function scheduleRebind()'));
+  const registro = init.indexOf("safeOn(document, 'epi:viewchange'");
+  assert(registro > -1, 'o teardown do phase43 sumiu do init');
+  assert(init.slice(0, registro).includes('runtime.teardownBound'),
+    'o registro do teardown voltou a rodar sem cadeado: uma navegação acrescenta um listener');
+  assert(!init.includes("document.addEventListener('epi:viewchange'"),
+    'o teardown voltou ao addEventListener cru, fora do AbortController da aplicação');
+  assert(fonte.includes('teardownBound: false'), 'o cadeado deixou de ser declarado no runtime');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

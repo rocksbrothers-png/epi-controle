@@ -16,6 +16,8 @@
   var runtime = {
     listenersBound: false,
     formBound: new WeakSet(),
+    // Cadeado do listener de descarte: `init()` roda a cada navegação.
+    teardownBound: false,
     currentForm: null,
     userEdited: new Set(),
     manualMode: false,
@@ -595,14 +597,32 @@
       if (!isEnabled()) return;
       var form = byId('delivery-form');
       if (!form) return;
-      document.addEventListener('epi:viewchange', function (evento) {
-        // Mesma guarda do phase42: `showView()` também é chamado sem trocar de
-        // view (recarga após entrega, troca de idioma). Descartar ali fecharia
-        // o resumo de confirmação com o usuário ainda em Entregas.
-        var detalhe = evento && evento.detail ? evento.detail : {};
-        if (detalhe.view && detalhe.view === detalhe.anterior) return;
-        descartarEstado();
-      });
+      // Uma vez só. `scheduleRebind()` chama `init()` a cada `epi:viewchange`,
+      // `htmx:afterSwap` e `popstate`, e este registro fica ANTES da guarda
+      // `runtime.formBound` do `bindForm`. Sem o cadeado, cada navegação
+      // acrescentava mais um listener permanente de descarte, e uma sessão
+      // longa passaria a executar a mesma limpeza um número crescente de
+      // vezes. Foi esta fatia que introduziu o listener; o cadeado vem junto.
+      if (!runtime.teardownBound) {
+        runtime.teardownBound = true;
+        // `safeOn` e não `addEventListener` cru: é a porta que este projeto usa
+        // para registrar listener no AbortController de escopo da aplicação —
+        // a mesma que o teardown do phase42 já usava.
+        safeOn(document, 'epi:viewchange', function (evento) {
+          // Mesma guarda do phase42: `showView()` também é chamado sem trocar
+          // de view (recarga após entrega, troca de idioma). Descartar ali
+          // fecharia o resumo de confirmação com o usuário ainda em Entregas.
+          var detalhe = evento && evento.detail ? evento.detail : {};
+          if (detalhe.view && detalhe.view === detalhe.anterior) return;
+          // Troca EXPLÍCITA de aba na barra multitab também não é saída do
+          // módulo: `activateTab()` restaura os campos daquela aba logo depois,
+          // e descartar aqui devolveria o formulário preenchido SEM a sugestão
+          // e sem o contexto de revisão que pertenciam a ele — pior do que não
+          // restaurar nada. Mesma exceção que o reset central de entrada aplica.
+          if (detalhe.viaMultitab === true) return;
+          descartarEstado();
+        });
+      }
       bindGlobalHandlers();
       bindForm(form);
     } catch (error) {

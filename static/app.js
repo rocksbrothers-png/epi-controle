@@ -3903,6 +3903,32 @@ const VIEW_FILTER_RESET = Object.freeze({
       if (typeof renderLatestDeliveries === 'function') {renderLatestDeliveries();}
     });
   },
+  compras: () => {
+    // Três seletores, três carregadores distintos. O de empresa fica OCULTO
+    // para quem não é master (`_initDemandsCompanyFilter`), então ali ele é
+    // filtro de verdade, não escopo travado — limpar é correto.
+    ['compras-demands-company-filter', 'compras-req-status-filter', 'compras-po-status-filter']
+      .forEach((id) => {
+        const campo = document.getElementById(id);
+        if (!campo) {return;}
+        campo.value = '';
+        campo.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+  },
+  avaliacoes: () => {
+    ['feedbacks-filter-status', 'feedbacks-filter-type'].forEach((id) => {
+      const campo = document.getElementById(id);
+      if (campo) {campo.value = '';}
+    });
+    // A lista de feedbacks só recarrega por ação explícita ("Filtrar" /
+    // "Atualizar"): limpar os selects sem recarregar deixaria a tela mostrando
+    // o recorte da visita anterior com os controles já vazios.
+    passoDeReset('avaliacoes/feedbacks', () => globalThis.__EPI_FEEDBACK_DETAIL__?.loadEpiFeedbacks?.());
+  },
+  migracao: () => {
+    limparCamposDeFiltro(['migracaoCatalogFilter']);
+    passoDeReset('migracao/catalogo', () => renderDataMigrationCatalog());
+  },
   relatorios: () => {
     // Paginação com outro nome: `state.reportArchivePage` vive fora de
     // `state.pagination`, e foi por isso que escapou da primeira contagem —
@@ -4047,6 +4073,18 @@ function resetModuleSelectionToInitial(view) {
     }
     if (view === 'empresas') {
       state.selectedCompanyId = null;
+      // Redesenhar é obrigatório, e por um motivo de ORDEM: o reset de
+      // formulários roda antes deste e termina em `renderCompanyDetails()`,
+      // que ainda enxerga a empresa da visita anterior. Sem redesenhar aqui, o
+      // painel de detalhes e a linha destacada continuam mostrando aquela
+      // empresa enquanto o estado diz que nada está selecionado.
+      //
+      // O "estado inicial" do módulo não é `null`: tanto `renderCompanyDetails`
+      // quanto `renderCompanies` caem na PRIMEIRA empresa visível quando não há
+      // seleção. Chamar as duas é o que devolve exatamente esse estado, em vez
+      // de inventar um terceiro.
+      passoDeReset('empresas/detalhes', () => renderCompanyDetails());
+      passoDeReset('empresas/tabela', () => renderCompanies());
     }
     if (view === 'compras') {
       // `.clear()` e nunca reatribuição: os Sets são publicados em `globalThis`

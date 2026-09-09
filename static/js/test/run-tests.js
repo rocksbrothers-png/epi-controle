@@ -2374,6 +2374,9 @@ function montarVistasDeClasseF5B() {
   const listaAprov = criarNoF5B('tbody', { id: 'aprovacoes-tbody' });
   listaAprov.appendChild(campoF5B('input', { id: 'aprov-0', type: 'checkbox', class: 'aprovacao-check' }));
   const compras = montarVistaSimplesF5B('compras', [
+    campoF5B('select', { id: 'compras-demands-company-filter' }),
+    campoF5B('select', { id: 'compras-req-status-filter' }),
+    campoF5B('select', { id: 'compras-po-status-filter' }),
     modalFornecedor,
     criarNoF5B('div', { id: 'modal-supplier-pos' }),
     criarNoF5B('div', { id: 'aprovacoes-reprovar-modal' }),
@@ -2391,7 +2394,9 @@ function montarVistasDeClasseF5B() {
   modalAcaoAvaliacao.appendChild(campoF5B('input', { id: 'aval-modal-action' }));
   const avaliacoes = montarVistaSimplesF5B('avaliacoes', [
     criarNoF5B('div', { id: 'ppe-form-modal' }),
-    modalAcaoAvaliacao
+    modalAcaoAvaliacao,
+    campoF5B('select', { id: 'feedbacks-filter-status' }),
+    campoF5B('select', { id: 'feedbacks-filter-type' })
   ]);
 
   const cnpjs = montarVistaSimplesF5B('cnpjs', [
@@ -2420,6 +2425,7 @@ function montarVistasDeClasseF5B() {
     campoF5B('input', { id: 'migracao-file', type: 'file' }),
     criarNoF5B('span', { id: 'migracao-file-name' }),
     campoF5B('input', { id: 'migracao-sheet' }),
+    campoF5B('input', { id: 'migracao-catalog-filter' }),
     criarNoF5B('div', { id: 'migracao-steps' })
   ]);
 
@@ -3071,11 +3077,20 @@ test('#343 F5-B N7: descartar a memória do phase42 apaga o que já foi renderiz
   const fonte = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'));
   const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
   assert(i > -1, 'o descarte na troca de módulo sumiu do phase42');
-  const bloco = fonte.slice(i, i + 900);
+  // Âncora no FIM do bloco, não numa janela de bytes: uma janela fixa quebra
+  // sozinha quando o bloco cresce, e um gate que cai por tamanho ensina a
+  // ignorá-lo.
+  const fim = fonte.indexOf('}, { signal: moduleController.signal });', i);
+  assert(fim > i, 'o bloco de descarte do phase42 mudou de forma');
+  const bloco = fonte.slice(i, fim);
   ['descartarMemoria()', 'phase42-suggestion-box', 'phase42-alerts-box',
    'phase42-quick-confirm', 'userEdited.clear()', 'autofilledFieldIds.clear()']
     .forEach((trecho) => assert(bloco.includes(trecho),
       `o descarte não cobre "${trecho}" — a recomendação anterior seguiria visível na volta`));
+  // E devolve o valor que a sugestão substituiu: limpar só a marca deixaria a
+  // escolha sugerida no campo, agora parecendo escolha manual.
+  assert(/campo\.value = anterior/.test(bloco),
+    'o descarte apaga a marca de autofill sem restaurar o valor anterior');
 });
 
 
@@ -3571,10 +3586,14 @@ test('#343 F5-B G-ponte-1: registrar uso anuncia, e o phase43 recalcula', () => 
   assert(fimDoSubmit > -1, 'o handler de submit do phase42 mudou de forma');
   assert(!submit.slice(0, fimDoSubmit).includes('anunciarUsoRegistrado()'),
     'o anúncio voltou para o pré-submit: uma submissão abortada seria apresentada como uso concluído');
+  assert(!submit.slice(0, fimDoSubmit).includes('appendUsageEvent('),
+    'o registro voltou para o pré-submit: uma submissão abortada entraria no histórico');
   const sucesso = p42.indexOf("safeOn(document, 'epi:delivery-submit-success'");
   assert(sucesso > -1, 'o phase42 deixou de escutar a conclusão da entrega');
-  assert(p42.slice(sucesso, sucesso + 200).includes('anunciarUsoRegistrado()'),
-    'o anúncio deixou de sair da conclusão da entrega');
+  const blocoSucesso = p42.slice(sucesso, p42.indexOf('}, { signal: moduleController.signal });', sucesso));
+  ['appendUsageEvent(memory, ctxPendente)', 'saveMemory(memory)', 'anunciarUsoRegistrado()']
+    .forEach((t) => assert(blocoSucesso.includes(t),
+      `a conclusão da entrega deixou de executar "${t}"`));
   assert(p42.includes("dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'))"),
     'o anúncio deixou de ser um evento observável');
   const bind = p43.slice(p43.indexOf('function bindForm('));
@@ -3752,6 +3771,80 @@ test('#343 F5-B G-conv-7: o teardown do phase43 é registrado UMA vez', () => {
   assert(!init.includes("document.addEventListener('epi:viewchange'"),
     'o teardown voltou ao addEventListener cru, fora do AbortController da aplicação');
   assert(fonte.includes('teardownBound: false'), 'o cadeado deixou de ser declarado no runtime');
+});
+
+// ══ #343 F5-B: segunda revisão de convergência (head b6aea85, SaaS) ════════
+
+test('#343 F5-B G-conv-8: Compras, Avaliações e Migração entram no reset de filtros', () => {
+  const app = appServidoF5B();
+  const ids = [
+    'compras-demands-company-filter', 'compras-req-status-filter',
+    'compras-po-status-filter', 'feedbacks-filter-status', 'feedbacks-filter-type',
+    'migracao-catalog-filter'
+  ];
+  ids.forEach((id) => { app.doc.getElementById(id).value = 'x'; });
+  // Os três seletores de Compras só recarregam suas listas por `change`
+  // (`loadPurchaseDemands`, `loadPurchaseRequests`, `loadPurchaseOrders` estão
+  // ligados a ele). Limpar o valor sem notificar deixaria as listas mostrando
+  // o resultado do filtro anterior com os controles já vazios.
+  const notificados = new Set();
+  ['compras-demands-company-filter', 'compras-req-status-filter', 'compras-po-status-filter']
+    .forEach((id) => app.doc.getElementById(id)
+      .addEventListener('change', () => notificados.add(id)));
+  ['compras', 'avaliacoes', 'migracao'].forEach((v) => {
+    app.entrarNoModulo(v);
+    app.entrarNoModulo('relatorios');
+    app.entrarNoModulo(v);
+  });
+  ids.forEach((id) => eq(app.doc.getElementById(id).value, '',
+    `${id} sobreviveu à reentrada`));
+  eq(notificados.size, 3,
+    `os seletores de Compras foram limpos sem disparar \`change\`: as listas continuariam com o recorte anterior (notificados: ${[...notificados].join(', ') || 'nenhum'})`);
+});
+
+test('#343 F5-B G-conv-9: soltar a empresa selecionada redesenha as duas superfícies', () => {
+  // Problema de ORDEM: o reset de formulários roda antes do de seleção e
+  // termina em `renderCompanyDetails()`, que ainda enxerga a empresa da visita
+  // anterior. Sem redesenhar depois, o painel e a linha destacada continuam
+  // mostrando aquela empresa enquanto o estado diz que nada está selecionado.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const reset = fonte.slice(fonte.indexOf('function resetModuleSelectionToInitial'));
+  const bloco = reset.slice(0, reset.indexOf('} catch (error)'));
+  const posNull = bloco.indexOf('state.selectedCompanyId = null;');
+  assert(posNull > -1, 'a seleção de empresa saiu do reset');
+  const depois = bloco.slice(posNull);
+  assert(depois.includes('renderCompanyDetails()'),
+    'o painel de detalhes não é redesenhado: continuaria mostrando a empresa da visita anterior');
+  assert(depois.includes('renderCompanies()'),
+    'a tabela não é redesenhada: a linha destacada continuaria na empresa anterior');
+  // A ordem importa: redesenhar ANTES de soltar não corrigiria nada.
+  assert(bloco.indexOf('renderCompanyDetails()') > posNull,
+    'o redesenho ficou antes de soltar a seleção');
+});
+
+test('#343 F5-B G-conv-10: o card de sugestão do phase43 cai junto com o estado', () => {
+  const fonte = _semComentariosF5B(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
+  const descarte = fonte.slice(fonte.indexOf('function descartarEstado()'));
+  const bloco = descarte.slice(0, descarte.indexOf('\n  }'));
+  ['phase43-quick-confirm', 'phase43-fast-card'].forEach((id) => assert(bloco.includes(id),
+    `${id} ficou renderizado após o descarte: a recomendação reapareceria sem memória por trás`));
+});
+
+test('#343 F5-B G-conv-11: registrar uso só entra no histórico se a entrega der certo', () => {
+  // O handler de submit do phase42 é `capture: true` e roda ANTES do phase43,
+  // que aborta quando o resumo não foi revisado, o código do item está errado
+  // ou a quantidade é inválida. Gravar ali punha no histórico uma entrega que
+  // nunca existiu — e o phase43 passava a recomendar a partir dela.
+  const p42 = _semComentariosF5B(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase42.js'), 'utf-8'));
+  const submit = p42.slice(p42.indexOf("safeOn(form, 'submit'"));
+  const fim = submit.indexOf('}, { capture: true');
+  const corpo = submit.slice(0, fim);
+  assert(corpo.includes('ctxPendente = getContext(memory)'),
+    'o contexto deixou de ser capturado no submit, quando o formulário ainda está cheio');
+  ['appendUsageEvent(', 'saveMemory(', 'anunciarUsoRegistrado('].forEach((t) => assert(!corpo.includes(t),
+    `"${t}" voltou para o pré-submit: uma submissão abortada entraria no histórico`));
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

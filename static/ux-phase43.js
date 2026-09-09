@@ -77,12 +77,16 @@
     runtime.userEdited.clear();
     // O painel já renderizado não some sozinho: `renderQuickSummary` só o
     // esconde quando é chamado de novo, e a reentrada não o chama.
+    // O card de sugestão cai junto: `bindForm` é guardado por `runtime.formBound`
+    // e não roda de novo na reentrada, então a recomendação renderizada
+    // reapareceria sem nenhuma memória por trás dela.
     try {
-      var quick = byId('phase43-quick-confirm');
-      if (quick) {
-        quick.hidden = true;
-        quick.innerHTML = '';
-      }
+      ['phase43-quick-confirm', 'phase43-fast-card'].forEach(function (id) {
+        var no = byId(id);
+        if (!no) return;
+        no.hidden = true;
+        no.innerHTML = '';
+      });
     } catch (_) {}
   }
 

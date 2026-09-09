@@ -325,22 +325,27 @@ def test_o_multitab_restaura_contexto_apenas_em_acao_explicita():
 
 # ── Ponte phase42 → phase43 (contexto/sugestão em RAM) ─────────────────────
 
-def test_registrar_uso_anuncia_apenas_quando_a_entrega_da_certo():
+def test_registrar_uso_so_entra_no_historico_se_a_entrega_der_certo():
     """O handler de submit do phase42 é `capture: true` e roda ANTES do phase43,
-    que dá `preventDefault()` quando o resumo não foi revisado. Anunciar ali
-    apresentava submissão abortada — ou falha de API — como uso concluído, com
-    o phase43 recalculando o ranking em cima dela."""
+    que aborta quando o resumo não foi revisado, o codigo do item esta errado ou
+    a quantidade e invalida. Gravar ali punha no historico uma entrega que nunca
+    existiu — e o phase43 passava a recomendar a partir dela."""
     p42 = _fonte('static/ux-phase42.js')
     p43 = _fonte('static/ux-phase43.js')
     submit = p42[p42.index("safeOn(form, 'submit'"):]
     fim = submit.index('}, { capture: true')
-    assert 'anunciarUsoRegistrado()' not in submit[:fim], (
-        'o anúncio voltou para o pré-submit'
+    assert 'ctxPendente = getContext(memory)' in submit[:fim], (
+        'o contexto deixou de ser capturado no submit, com o formulário ainda cheio'
     )
+    for trecho in ('appendUsageEvent(', 'saveMemory(', 'anunciarUsoRegistrado('):
+        assert trecho not in submit[:fim], (
+            f'"{trecho}" voltou para o pré-submit: submissão abortada entraria no histórico'
+        )
     sucesso = p42.index("safeOn(document, 'epi:delivery-submit-success'")
-    assert 'anunciarUsoRegistrado()' in p42[sucesso:sucesso + 200], (
-        'o anúncio deixou de sair da conclusão da entrega'
-    )
+    bloco = p42[sucesso:p42.index('}, { signal: moduleController.signal });', sucesso)]
+    for trecho in ('appendUsageEvent(memory, ctxPendente)', 'saveMemory(memory)',
+                   'anunciarUsoRegistrado()'):
+        assert trecho in bloco, f'a conclusão da entrega deixou de executar "{trecho}"' 
     assert "CustomEvent('epi:phase42:uso-registrado')" in p42
     bind = p43[p43.index('function bindForm('):]
     escuta = bind.index("safeOn(document, 'epi:phase42:uso-registrado'")
@@ -428,6 +433,55 @@ def test_o_teardown_do_phase43_e_registrado_uma_vez():
     )
 
 
+def test_compras_avaliacoes_e_migracao_entram_no_reset_de_filtros():
+    corpo = _fonte('static/app.js')
+    mapa = corpo[corpo.index('const VIEW_FILTER_RESET'):corpo.index('function limparFiltrosArquivados')]
+    for view in ('compras', 'avaliacoes', 'migracao'):
+        assert f'{view}:' in mapa, f'{view} retém filtros vivos e ficou de fora do reset'
+    # Os seletores de Compras só recarregam por `change`.
+    compras = mapa[mapa.index('compras:'):mapa.index('avaliacoes:')]
+    assert "new Event('change'" in compras, (
+        'os seletores de Compras são limpos sem notificar: as listas continuariam '
+        'com o recorte da visita anterior'
+    )
+
+
+def test_soltar_a_empresa_selecionada_redesenha_as_duas_superficies():
+    """Problema de ordem: o reset de formulários roda antes do de seleção e
+    termina em `renderCompanyDetails()`, que ainda enxerga a empresa da visita
+    anterior."""
+    corpo = _fonte('static/app.js')
+    reset = corpo[corpo.index('function resetModuleSelectionToInitial'):]
+    bloco = reset[:reset.index('} catch (error)')]
+    pos = bloco.index('state.selectedCompanyId = null;')
+    depois = bloco[pos:]
+    assert 'renderCompanyDetails()' in depois and 'renderCompanies()' in depois, (
+        'as superfícies de Empresas não são redesenhadas após soltar a seleção'
+    )
+
+
+def test_o_card_de_sugestao_do_phase43_cai_junto_com_o_estado():
+    corpo = _fonte('static/ux-phase43.js')
+    descarte = corpo[corpo.index('function descartarEstado()'):]
+    bloco = descarte[:descarte.index('\n  }')]
+    for node_id in ('phase43-quick-confirm', 'phase43-fast-card'):
+        assert node_id in bloco, (
+            f'{node_id} ficou renderizado após o descarte: a recomendação '
+            'reapareceria sem memória por trás'
+        )
+
+
+def test_o_descarte_do_phase42_restaura_o_valor_que_a_sugestao_substituiu():
+    """Só limpar a marca deixava a escolha SUGERIDA no campo, agora sem nada que
+    a identificasse como sugestão: na volta ela parece escolha manual."""
+    corpo = _fonte('static/ux-phase42.js')
+    i = corpo.index("safeOn(document, 'epi:viewchange'")
+    bloco = corpo[i:corpo.index('}, { signal: moduleController.signal });', i)]
+    assert 'campo.value = anterior' in bloco, (
+        'o descarte apaga a marca de autofill sem restaurar o valor anterior'
+    )
+
+
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
@@ -449,7 +503,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '658e59329f3de2c0792eba199a88009ccdbbb4387c7a04b63495b62b64ecd462'
+DIGESTO_PARIDADE_F5B = '61febae418ec7844908964b39cedea657fe70ee441429ed9b69473b7d3afabdb'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

@@ -364,6 +364,8 @@
       var memory = loadMemory();
       var userEdited = new Set();
       var autofilledFieldIds = new Set();
+      // Contexto capturado no submit e gravado só na conclusão da entrega.
+      var ctxPendente = null;
 
       // Sair do módulo descarta o contexto (F5-B). Sem isto a memória em RAM
       // ainda atravessaria a reentrada: a SPA não recarrega a página, e o IIFE
@@ -407,6 +409,14 @@
         autofilledFieldIds.forEach(function (id) {
           var campo = byId(id);
           if (!campo) return;
+          // RESTAURAR antes de apagar a marca — mesma semântica do
+          // "#phase42-undo-suggestion", que é o caminho legítimo de desfazer.
+          // Só limpar a marca deixava a escolha SUGERIDA no campo, agora sem
+          // nada que a identificasse como sugestão: na volta ela parece ter
+          // sido escolhida à mão, embora a memória e o painel que a
+          // justificavam já tenham sido descartados.
+          var anterior = String(campo.dataset.phase42PrevValue || '');
+          campo.value = anterior;
           clearAutofillMark(campo);
           delete campo.dataset.phase42PrevValue;
           delete campo.dataset.phase42Autofill;
@@ -512,28 +522,33 @@
           event.preventDefault();
           return;
         }
-        var ctx = getContext(memory);
-        appendUsageEvent(memory, ctx);
-        saveMemory(memory);
+        // Captura o contexto AQUI (o formulário ainda está preenchido) e
+        // guarda para gravar só se a entrega der certo. Ver abaixo.
+        ctxPendente = getContext(memory);
       }, { capture: true, signal: moduleController.signal });
 
-      // O anúncio sai daqui e passa a depender da entrega ter DADO CERTO.
+      // O REGISTRO e o anúncio passam a depender de a entrega ter dado certo.
       //
-      // Este handler é `capture: true` e o phase42 é injetado antes do phase43,
-      // então ele roda ANTES do submit do phase43 — que dá `preventDefault()`
-      // quando o resumo de confirmação não foi revisado. Anunciar aqui fazia
-      // uma submissão abortada (ou uma que falhasse na API) ser apresentada
-      // como uso concluído, com o phase43 recalculando o ranking em cima dela.
+      // O handler acima é `capture: true` e o phase42 é injetado antes do
+      // phase43, então ele roda ANTES do submit do phase43 — que dá
+      // `preventDefault()` quando o resumo de confirmação não foi revisado, o
+      // código do item está errado ou a quantidade é inválida. Gravar ali fazia
+      // uma submissão abortada — ou uma que falhasse na API — entrar no
+      // histórico como uso concluído, e o phase43 passava a recomendar a partir
+      // de uma entrega que nunca existiu.
       //
-      // `epi:delivery-submit-success` é disparado pelo app.js só depois de a
-      // API responder. Ele vem DEPOIS do `form.reset()`, então o recálculo
-      // encontra o formulário já vazio: o card é limpo junto, que é o estado
-      // coerente com uma entrega concluída. A sugestão da próxima entrega
-      // continua sendo calculada na troca de colaborador.
-      //
-      // O registro em si (`appendUsageEvent` acima) continua no pré-submit:
-      // movê-lo mudaria o contrato do phase42, fora do escopo desta fatia.
+      // Por isso o contexto é capturado no submit (formulário ainda cheio) e
+      // gravado aqui: `epi:delivery-submit-success` é disparado pelo app.js só
+      // depois de a API responder. Ele vem DEPOIS do `form.reset()`, então o
+      // recálculo do phase43 encontra o formulário vazio e limpa o card — que é
+      // o estado coerente com uma entrega concluída. A sugestão da PRÓXIMA
+      // entrega continua sendo calculada na troca de colaborador, já com o
+      // evento novo no ranking.
       safeOn(document, 'epi:delivery-submit-success', function () {
+        if (!ctxPendente) return;
+        appendUsageEvent(memory, ctxPendente);
+        saveMemory(memory);
+        ctxPendente = null;
         anunciarUsoRegistrado();
       }, { signal: moduleController.signal });
 

@@ -212,6 +212,15 @@
     node.dataset.state = trim(tone) || 'idle';
   }
 
+  // Extraída do `bindForm` para poder rodar também a cada troca de colaborador.
+  function recomputarSugestao(ui, form) {
+    var employeeId = trim(byId('delivery-employee') && byId('delivery-employee').value);
+    var suggestion = employeeId ? readSuggestion(loadPhase42Memory(), employeeId) : null;
+    runtime.lastSuggestion = suggestion;
+    applySuggestionIfSafe(form, suggestion);
+    renderSuggestionCard(ui, form, suggestion);
+  }
+
   function readSuggestion(memory, employeeId) {
     var events = Array.isArray(memory.events) ? memory.events : [];
     var filtered = events.filter(function (item) {
@@ -522,18 +531,22 @@
     ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi', 'delivery-stock-item-code'].forEach(function (id) {
       var field = byId(id);
       if (!field) return;
-      safeOn(field, 'change', function () {
+      // A sugestão é recalculada a cada troca de colaborador, não só uma vez no
+      // bind. Antes ela vinha do histórico PERSISTIDO, então já existia quando
+      // o formulário era ligado; com a memória apenas em RAM (F5-B) ela nasce
+      // vazia e só se preenche conforme o phase42 registra uso no próprio
+      // fluxo. Sem recalcular aqui, a ponte em memória existiria sem nunca
+      // produzir o card nem o preenchimento assistido — `bindForm` é guardado
+      // por `runtime.formBound` e não roda de novo.
+      var aoMudarCampo = function () {
         runtime.userEdited.add(id);
         persistSafeSnapshot(form);
+        if (id === 'delivery-employee') recomputarSugestao(ui, form);
         refreshSticky(ui, form);
         renderQuickSummary(ui, form);
-      });
-      safeOn(field, 'input', function () {
-        runtime.userEdited.add(id);
-        persistSafeSnapshot(form);
-        refreshSticky(ui, form);
-        renderQuickSummary(ui, form);
-      });
+      };
+      safeOn(field, 'change', aoMudarCampo);
+      safeOn(field, 'input', aoMudarCampo);
     });
 
     var qtyField = form.querySelector('[name="quantity"]');
@@ -559,12 +572,7 @@
       setState('Confirmando entrega...', 'loading');
     }, true);
 
-    var memory = loadPhase42Memory();
-    var employeeId = trim(byId('delivery-employee') && byId('delivery-employee').value);
-    var suggestion = employeeId ? readSuggestion(memory, employeeId) : null;
-    runtime.lastSuggestion = suggestion;
-    applySuggestionIfSafe(form, suggestion);
-    renderSuggestionCard(ui, form, suggestion);
+    recomputarSugestao(ui, form);
 
     refreshSticky(ui, form);
     renderQuickSummary(ui, form);
@@ -576,7 +584,14 @@
       if (!isEnabled()) return;
       var form = byId('delivery-form');
       if (!form) return;
-      document.addEventListener('epi:viewchange', descartarEstado);
+      document.addEventListener('epi:viewchange', function (evento) {
+        // Mesma guarda do phase42: `showView()` também é chamado sem trocar de
+        // view (recarga após entrega, troca de idioma). Descartar ali fecharia
+        // o resumo de confirmação com o usuário ainda em Entregas.
+        var detalhe = evento && evento.detail ? evento.detail : {};
+        if (detalhe.view && detalhe.view === detalhe.anterior) return;
+        descartarEstado();
+      });
       bindGlobalHandlers();
       bindForm(form);
     } catch (error) {

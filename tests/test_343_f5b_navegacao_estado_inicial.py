@@ -126,6 +126,10 @@ def test_g10_o_reset_de_entrada_existe_e_esta_na_costura_de_troca_de_view():
     listener = corpo[corpo.index("safeOn(document, 'epi:viewchange'"):][:1200]
     assert 'resetViewTabsToInitial(nav)' in listener, 'o reset de abas saiu da troca de view'
     assert 'resetModuleFiltersToInitial(' in listener, 'o reset de filtros saiu da troca de view'
+    assert 'resetModuleSelectionToInitial(' in listener, (
+        'o reset de seleção saiu da troca de view: reentrar devolveria as caixas '
+        'marcadas da visita anterior, com a barra de ações armada'
+    )
     # Duas guardas, cada uma por um motivo distinto:
     #  - `nome === anterior`: `showView` também é chamado por fluxos internos da
     #    MESMA view (`startEditEmployee` chama `showView('colaboradores')` estando
@@ -227,7 +231,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '5e47277857dc9afaa1936128cbc0ca07ff3ab3221755946db5af3a4193fd2f6f'
+DIGESTO_PARIDADE_F5B = '1a5ad9dfc3dc870e44bbc7efab807c9828c871cd61d00b4c31810170b6baacc5'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

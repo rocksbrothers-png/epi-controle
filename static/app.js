@@ -3390,8 +3390,14 @@ function bindSpaNavigationHistory() {
     showView(nextView, { partial: true, viaHistorico: true });
     restoreInteractiveSnapshot(event?.state);
     if (isSpaNavigationEnabled()) {
+      // A view REALMENTE aberta, não a pedida: `showView` redireciona para
+      // `defaultView()` quando o papel perdeu acesso à view do histórico, e
+      // retorna sem trocar nada quando o container não existe. Gravar
+      // `nextView` cru nesses casos deixaria a URL e o snapshot apontando para
+      // uma tela diferente da exibida.
+      const aberta = document.querySelector('.view.active')?.id?.replace(/-view$/, '') || nextView;
       globalThis.history.replaceState(
-        collectInteractiveSnapshot(nextView), '', buildNavigationUrl(nextView)
+        collectInteractiveSnapshot(aberta), '', buildNavigationUrl(aberta)
       );
     }
   });
@@ -3762,7 +3768,24 @@ const VIEW_FILTER_RESET = Object.freeze({
   colaboradores: () => INTERACTIVE_TOOLS_MODULES.colaboradores?.clearFilters?.(),
   'colaborador-list': () => INTERACTIVE_TOOLS_MODULES['colaborador-lista']?.clearFilters?.(),
   'gestao-colaborador': () => INTERACTIVE_TOOLS_MODULES['gestao-colaborador']?.clearFilters?.(),
-  epis: () => INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.(),
+  epis: () => {
+    INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.();
+    // `syncEpisSearchFilters()` não volta à primeira página, ao contrário do
+    // caminho de colaboradores e entregas. Sem isto, sair do catálogo na
+    // página 3 e voltar reabriria a página 3 — paginação é estado de
+    // navegação como qualquer outro.
+    if (state.pagination) {state.pagination.epis = 1;}
+    renderTables();
+  },
+  usuarios: () => {
+    ['userFilterCompany', 'userFilterRole', 'userFilterStatus', 'userFilterSearch']
+      .forEach((chave) => { if (refs[chave]) {refs[chave].value = '';} });
+    syncUserFilters();
+  },
+  unidades: () => {
+    limparCamposDeFiltro(['unitsFilterCompany', 'unitsFilterName', 'unitsFilterType', 'unitsFilterCity']);
+    syncUnitsSearchFilters();
+  },
   estoque: () => INTERACTIVE_TOOLS_MODULES.estoque?.clearFilters?.(),
   // Entregas e Fichas não têm entrada em `INTERACTIVE_TOOLS_MODULES`, mas têm
   // filtros de SPA que persistem do mesmo jeito — `state.deliveriesFilters` e
@@ -3785,6 +3808,25 @@ const VIEW_FILTER_RESET = Object.freeze({
     syncFichaSearchFilters();
   }
 });
+
+// Seleção é estado de NAVEGAÇÃO: reentrar não pode devolver as caixas marcadas
+// da visita anterior. `employeesBulk.retain()` preserva todo id que continue na
+// lista — depois do reset de filtros a lista fica MAIOR, então a seleção antiga
+// sobreviveria inteira, com a barra de ações armada.
+function resetModuleSelectionToInitial(view) {
+  try {
+    if (view === 'colaboradores' || view === 'gestao-colaborador' || view === 'colaborador-list') {
+      // `employeesBulk` é `null` quando o componente do DS não carregou, e é um
+      // `const` declarado mais abaixo — o `try` cobre os dois casos.
+      employeesBulk?.clear?.();
+    }
+    if (view === 'empresas') {
+      state.selectedCompanyId = null;
+    }
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao limpar seleção de ${view}`, error);
+  }
+}
 
 function resetModuleFiltersToInitial(view) {
   const limpar = VIEW_FILTER_RESET[String(view || '')];
@@ -3872,6 +3914,7 @@ function setupViewTabs() {
       const view = document.getElementById(`${nome}-view`);
       view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => resetViewTabsToInitial(nav));
       resetModuleFiltersToInitial(nome);
+      resetModuleSelectionToInitial(nome);
     });
     // "Editar" numa listagem preenche o formulário noutra aba → ativa a aba
     // do formulário depois que o handler delegado da tabela já rodou (bubble).

@@ -358,7 +358,14 @@
       // Substitui o antigo `resetMemoryIfRequested()`, que só limpava mediante
       // `?ux_phase42_reset=1` — descarte manual, que ninguém dispara na
       // navegação real.
-      safeOn(document, 'epi:viewchange', function () {
+      safeOn(document, 'epi:viewchange', function (evento) {
+        // Só em SAÍDA real do módulo. `showView()` é chamado também sem trocar
+        // de view — a recarga após uma entrega bem-sucedida
+        // (`loadBootstrap() -> renderAll() -> showView('entregas')`) e o
+        // redesenho por troca de idioma passam por aqui. Descartar ali apagaria
+        // a memória e fecharia o fluxo com o usuário ainda em Entregas.
+        var detalhe = evento && evento.detail ? evento.detail : {};
+        if (detalhe.view && detalhe.view === detalhe.anterior) return;
         descartarMemoria();
         // O DOM da SPA não é descartado ao trocar de módulo: sem isto a
         // recomendação já renderizada continuaria visível na volta, mesmo com
@@ -373,6 +380,17 @@
         // Marcas do fluxo anterior: sem limpá-las, os campos preenchidos
         // automaticamente e os editados à mão continuariam contando como se o
         // usuário já os tivesse revisado nesta entrada.
+        // As marcas visuais ficam no DOM, que sobrevive à troca de módulo:
+        // limpar só os conjuntos deixaria os campos ainda com a classe
+        // `phase42-autofilled`, o title de sugestão e o valor anterior no
+        // dataset, de um fluxo que já foi descartado.
+        autofilledFieldIds.forEach(function (id) {
+          var campo = byId(id);
+          if (!campo) return;
+          clearAutofillMark(campo);
+          delete campo.dataset.phase42PrevValue;
+          delete campo.dataset.phase42Autofill;
+        });
         userEdited.clear();
         autofilledFieldIds.clear();
       }, { signal: moduleController.signal });

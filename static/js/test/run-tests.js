@@ -2857,6 +2857,112 @@ test('#343 F5-B N7: descartar a memória do phase42 apaga o que já foi renderiz
       `o descarte não cobre "${trecho}" — a recomendação anterior seguiria visível na volta`));
 });
 
+
+test('#343 F5-B C1/C2/C6: Usuários, Unidades, paginação e seleção entram no reset', () => {
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const mapa = fonte.slice(fonte.indexOf('const VIEW_FILTER_RESET'), fonte.indexOf('function resetModuleSelectionToInitial'));
+  ['colaboradores:', 'epis:', 'estoque:', 'entregas:', 'fichas:', 'usuarios:', 'unidades:']
+    .forEach((v) => assert(mapa.includes(v), `${v} ficou de fora do reset de filtros`));
+  assert(mapa.includes('syncUserFilters()'), 'Usuários não ressincroniza após limpar');
+  assert(mapa.includes('syncUnitsSearchFilters()'), 'Unidades não ressincroniza após limpar');
+  // Paginação: só o caminho de EPIs precisava, os outros já voltavam à 1ª página
+  // dentro das próprias funções de sincronização.
+  assert(mapa.includes('state.pagination.epis = 1'),
+    'a paginação de EPIs não volta à primeira página: sair na página 3 e voltar reabriria a página 3');
+  // Seleção
+  const selecao = fonte.slice(fonte.indexOf('function resetModuleSelectionToInitial'));
+  assert(selecao.includes('employeesBulk?.clear?.()'), 'a seleção em lote de colaboradores não é limpa');
+  assert(selecao.includes('state.selectedCompanyId = null'), 'a empresa selecionada não é limpa');
+  const listener = fonte.slice(fonte.indexOf("safeOn(document, 'epi:viewchange'"))
+    .slice(0, 1400);
+  assert(listener.includes('resetModuleSelectionToInitial('), 'o reset de seleção não está ligado à entrada de módulo');
+});
+
+test('#343 F5-B C5: o popstate grava a view REALMENTE aberta, não a pedida', () => {
+  // `showView` redireciona para `defaultView()` quando o papel perdeu acesso, e
+  // sai sem trocar nada se o container não existe. Gravar `nextView` cru
+  // deixaria URL e snapshot apontando para outra tela.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const i = fonte.indexOf("safeOn(globalThis, 'popstate'");
+  const handler = fonte.slice(i, fonte.indexOf('\n  });', i));
+  assert(handler.includes(".view.active"), 'o handler deixou de resolver a view efetivamente ativa');
+  assert(!/replaceState\(\s*collectInteractiveSnapshot\(nextView\)/.test(handler),
+    'o replaceState voltou a gravar a view pedida em vez da aberta');
+});
+
+test('#343 F5-B C4: a sugestão do phase43 é recalculada a cada troca de colaborador', () => {
+  const p43 = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
+  assert(p43.includes('function recomputarSugestao('), 'a recomputação da sugestão sumiu');
+  assert(/id === 'delivery-employee'\) recomputarSugestao\(/.test(p43),
+    'a sugestão deixou de ser recalculada na troca de colaborador: com a memória só em RAM, ela nasceria vazia e nunca se preencheria');
+  // E o bind continua computando uma vez, pela mesma porta.
+  const bind = p43.slice(p43.indexOf('function bindForm('));
+  assert(bind.includes('recomputarSugestao(ui, form)'), 'o bind deixou de computar a sugestão inicial');
+});
+
+testAsync('#343 F5-B C3: redesenho da MESMA view não descarta a memória do phase42', async () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const local = {
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+  const vista = criarNoF5B('div', { id: 'entregas-view', class: 'view active' });
+  const form = criarNoF5B('form', { id: 'delivery-form' });
+  ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi'].forEach((id) => {
+    const c = criarNoF5B('select', { id });
+    c.options = [];
+    form.appendChild(c);
+  });
+  vista.appendChild(form);
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(vista);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+  const ctx = {
+    document: doc, localStorage: local,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: '?ux_phase42=1', href: 'http://local/?ux_phase42=1' }, console,
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, URL, URLSearchParams, Promise
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx.addEventListener = () => {}; ctx.dispatchEvent = () => true;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'), ctx, { filename: 'ux-phase42.js' });
+  assert(doc.body.classList.contains('phase42-enabled'), 'o phase42 não iniciou — o gate mediria o nada');
+
+  const memoria = ctx.__EPI_PHASE42_MEMORIA__;
+  assert(memoria && typeof memoria === 'object', 'a ponte em memória não foi publicada');
+  memoria.events = [{ employeeId: '7', epiId: '3' }];
+
+  // Recarga após entrega / troca de idioma: mesma view, memória preservada.
+  doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', { detail: { view: 'entregas', anterior: 'entregas' } }));
+  eq(Array.isArray(ctx.__EPI_PHASE42_MEMORIA__.events) ? ctx.__EPI_PHASE42_MEMORIA__.events.length : 0, 1,
+    'um redesenho da MESMA view apagou a memória — o usuário nem saiu de Entregas');
+
+  // Saída real: descarta.
+  doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', { detail: { view: 'estoque', anterior: 'entregas' } }));
+  eq(Object.keys(ctx.__EPI_PHASE42_MEMORIA__).length, 0, 'sair do módulo deixou de descartar a memória');
+});
+
+test('#343 F5-B C7: o descarte do phase42 tira as marcas visuais de autofill', () => {
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase42.js'), 'utf-8'));
+  const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
+  const bloco = fonte.slice(i, i + 1600);
+  ['clearAutofillMark(campo)', 'phase42PrevValue', 'phase42Autofill']
+    .forEach((t) => assert(bloco.includes(t),
+      `o descarte não remove "${t}" — a marca visual sobreviveria a um ciclo completo de saída e volta`));
+});
+
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
 // handler `async` sem esperar por ele daria verde por não ter chegado a

@@ -212,6 +212,135 @@ def test_premissa_a_flag_do_snapshot_interativo_continua_desligada():
 
 # ── G11 — paridade Corporate × SaaS ────────────────────────────────────────
 
+# ── Classes incorporadas ao plano fechado: edição, modal e wizard ──────────
+
+def test_o_reset_de_entrada_cobre_edicao_modal_e_wizard():
+    """A auditoria fechada nomeou onze classes. Estas três não estavam na
+    primeira implementação e são as de maior consequência: com o modo de edição
+    armado, o próximo submit ALTERA o registro da visita anterior em vez de
+    criar um novo. Não é incômodo de navegação, é integridade de dado."""
+    corpo = _fonte('static/app.js')
+    listener = corpo[corpo.index("safeOn(document, 'epi:viewchange'"):][:1800]
+    for chamada, oque in (
+        ('resetModuleFormsToInitial(', 'modo de edição'),
+        ('resetModuleModalsToInitial(', 'modal aberto'),
+        ('resetModuleWizardsToInitial(', 'assistente/wizard'),
+    ):
+        assert chamada in listener, (
+            f'{oque} saiu da costura de troca de view: reentrar no módulo '
+            'devolveria o estado da visita anterior'
+        )
+
+
+def test_os_nove_modulos_de_edicao_tem_reset_declarado():
+    corpo = _fonte('static/app.js')
+    mapa = corpo[corpo.index('const VIEW_FORM_RESET'):corpo.index('function resetModuleFormsToInitial')]
+    for view in ('empresas', 'usuarios', 'comercial', 'unidades',
+                 'colaboradores', 'epis', 'cnpjs', 'terceirizados'):
+        assert f'{view}:' in mapa, f'{view} entra em modo de edição e ficou de fora do reset'
+    # Compras edita pelo modal — a cobertura entra pela porta dos modais.
+    modais = corpo[corpo.index('const MODAIS_DE_MODULO'):corpo.index('function resetModuleModalsToInitial')]
+    assert 'compras:' in modais
+
+
+def test_o_modal_descarta_a_identidade_e_nao_apenas_esconde():
+    """Esconder o modal sem soltar o id deixa a mesma armadilha do modo de
+    edição: o registro segue apontado, e o próximo salvar o sobrescreve."""
+    corpo = _fonte('static/app.js')
+    modais = corpo[corpo.index('const MODAIS_DE_MODULO'):corpo.index('function resetModuleModalsToInitial')]
+    assert "'edit-supplier-id'" in modais, (
+        'o modal de fornecedor voltou a ser apenas escondido, sem descartar o registro editado'
+    )
+    reset = corpo[corpo.index('function resetModuleModalsToInitial'):][:900]
+    assert "campo.value = ''" in reset, 'o reset de modais parou de limpar a identidade'
+
+
+def test_o_wizard_reaproveita_o_reset_que_o_produto_ja_expoe():
+    """"Estado inicial" do assistente não pode ser uma definição nova inventada
+    por esta fatia: é a mesma do botão "Recomeçar" que o módulo já tinha."""
+    corpo = _fonte('static/app.js')
+    reset = corpo[corpo.index('function resetModuleWizardsToInitial'):][:600]
+    assert 'resetDataMigrationWizard()' in reset
+    assert 'refs.migracaoRestart' in corpo, (
+        'o botão Recomeçar sumiu: o reset do wizard perderia a autoridade que reaproveita'
+    )
+
+
+# ── Passos independentes ───────────────────────────────────────────────────
+
+def test_um_passo_de_reset_que_falha_nao_cancela_os_seguintes():
+    """Achado medido: com um único `try` em volta do corpo do reset, um
+    `sync*()` que lançasse impedia a limpeza dos campos seguintes, e o módulo
+    reabria com metade dos filtros limpos."""
+    corpo = _fonte('static/app.js')
+    assert 'function passoDeReset(' in corpo
+    mapa = corpo[corpo.index('const VIEW_FILTER_RESET'):corpo.index('function resetModuleFormsToInitial')]
+    assert mapa.count('passoDeReset(') >= 6, (
+        'as ressincronizações de módulo voltaram a rodar sem isolamento: '
+        'a primeira que falhar cancela as demais'
+    )
+    reset = corpo[corpo.index('function resetModuleFiltersToInitial'):][:900]
+    assert 'finally' in reset and 'populateScopedSearchFilters()' in reset, (
+        'a reafirmação do escopo de empresa saiu do `finally`: uma falha na '
+        'limpeza deixaria o recorte por papel destravado'
+    )
+
+
+# ── Notificação da tela ────────────────────────────────────────────────────
+
+def test_limpar_filtro_notifica_a_tela():
+    """Sem `input`/`change`, o contador "Filtros ativos: N" e os status de
+    módulo ficam com o número da visita anterior: estado limpo, DOM mentindo."""
+    corpo = _fonte('static/app.js')
+    limpador = corpo[corpo.index('const limparCamposDeFiltro'):corpo.index('const VIEW_FILTER_RESET')]
+    assert "new Event('input'" in limpador and "new Event('change'" in limpador
+
+
+# ── Multitab: restaurar contexto é exceção, não padrão ─────────────────────
+
+def test_o_multitab_restaura_contexto_apenas_em_acao_explicita():
+    """A flag estar desligada por padrão não elimina o requisito: com ela
+    ligada, entrar pelo menu lateral restaurava os campos da visita anterior
+    logo depois de o reset de entrada tê-los limpado."""
+    corpo = _fonte('static/multitab-navigation.js')
+    assert 'if (opts.restoreContext === true) restoreViewContext(tab);' in corpo, (
+        'restoreViewContext voltou a rodar em toda ativação de aba'
+    )
+    ativar = corpo[corpo.index('function activateTab('):]
+    assert 'viaMultitab: opts.restoreContext === true' in ativar, (
+        'a ativação deixou de distinguir troca explícita de aba de reentrada no módulo'
+    )
+    menu = corpo[corpo.index('function onMenuIntercept('):corpo.index('function bindKeyboard(')]
+    assert 'restoreContext' not in menu, (
+        'entrar pelo menu lateral voltou a restaurar o contexto da visita anterior'
+    )
+    app = _fonte('static/app.js')
+    listener = app[app.index("safeOn(document, 'epi:viewchange'"):][:1800]
+    assert 'viaMultitab' in listener, (
+        'o app deixou de tratar a troca explícita de aba como exceção ao reset'
+    )
+
+
+# ── Ponte phase42 → phase43 (contexto/sugestão em RAM) ─────────────────────
+
+def test_registrar_uso_anuncia_e_a_sugestao_recalcula():
+    """Sem persistência não há releitura no próximo carregamento que corrija a
+    defasagem: o card exibiria a sugestão de ANTES da entrega recém-feita até
+    alguém trocar o colaborador."""
+    p42 = _fonte('static/ux-phase42.js')
+    p43 = _fonte('static/ux-phase43.js')
+    submit = p42[p42.index("safeOn(form, 'submit'"):]
+    grava = submit.index('saveMemory(memory);')
+    anuncia = submit.index('anunciarUsoRegistrado();')
+    assert grava < anuncia, 'o anúncio saiu antes de a memória ser gravada'
+    assert "CustomEvent('epi:phase42:uso-registrado')" in p42
+    bind = p43[p43.index('function bindForm('):]
+    escuta = bind.index("safeOn(document, 'epi:phase42:uso-registrado'")
+    assert 'recomputarSugestao(ui, form)' in bind[escuta:escuta + 300], (
+        'o phase43 escuta o anúncio mas não recalcula nada'
+    )
+
+
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
@@ -222,6 +351,8 @@ ARQUIVOS_PAREADOS_F5B = (
     'static/ux-phase43.js',
     # filtros por view
     'static/ux-phase44.js',
+    # restauração de contexto de aba vira opt-in (só ação explícita de multitab)
+    'static/multitab-navigation.js',
     # os gates comportamentais que provam o cenário
     'static/js/test/run-tests.js',
     # estes próprios gates
@@ -231,7 +362,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = 'a5805bf1cf55c5221770eab5e032c7974e17a958590098e668fa052ff3ef13cf'
+DIGESTO_PARIDADE_F5B = 'b677ca71e8a940d387dec68eaca97a9a27ffc95c237fdf7134941befb71b9983'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:
@@ -263,7 +394,7 @@ def _digesto_dos_pareados() -> str:
 def test_g11_os_arquivos_pareados_existem_todos():
     for rel in ARQUIVOS_PAREADOS_F5B:
         assert (RAIZ / rel).is_file(), f'arquivo pareado sumiu: {rel}'
-    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 7
+    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 8
 
 
 def test_g11_index_html_nao_entra_na_igualdade_byte_a_byte():

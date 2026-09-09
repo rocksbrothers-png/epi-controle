@@ -2184,12 +2184,22 @@ function casaF5B(no, sel) {
     for (const attr of resto.match(/\[[^\]]+\]/g) || []) {
       const corpo = attr.slice(1, -1);
       const eq = corpo.indexOf('=');
+      // Atributo comum (`[type="submit"]`, `[name="id"]`) resolve na
+      // propriedade do nó; `data-*` continua resolvendo no dataset.
+      const lerAtributo = (nome) => (/^data-/.test(nome)
+        ? no.dataset[camelF5B(nome.slice(5))]
+        : (no[nome] !== undefined ? no[nome] : no._attrs[nome]));
       if (eq === -1) {
-        if (no.dataset[camelF5B(corpo.replace(/^data-/, ''))] === undefined) {return false;}
+        const v = lerAtributo(corpo);
+        // `data-*` mantém a semântica anterior (existe = presente, mesmo
+        // vazio); atributo comum precisa de valor, senão `[type]` casaria com
+        // qualquer `<div>`, cuja propriedade `type` é `''`.
+        if (v === undefined) {return false;}
+        if (!/^data-/.test(corpo) && v === '') {return false;}
       } else {
         const nome = corpo.slice(0, eq);
         const valor = corpo.slice(eq + 1).replace(/^["']|["']$/g, '');
-        if (String(no.dataset[camelF5B(nome.replace(/^data-/, ''))]) !== valor) {return false;}
+        if (String(lerAtributo(nome)) !== valor) {return false;}
       }
     }
     return true;
@@ -2207,7 +2217,14 @@ function criarNoF5B(tag, attrs = {}) {
     tagName: String(tag).toUpperCase(),
     dataset: {}, style: {}, _attrs: {}, _classes: new Set(), _handlers: {},
     children: [], parent: null, hidden: false, tabIndex: 0,
-    id: attrs.id || '', value: '', disabled: false, textContent: '',
+    id: attrs.id || '', value: attrs.value || '', disabled: false, textContent: '',
+    // Plataforma, não lógica: `type`/`name`/`checked` e o par
+    // `defaultValue`/`defaultChecked` são propriedades que o navegador dá a
+    // qualquer campo. `form.reset()` abaixo depende delas para se comportar
+    // como o nativo — e é o nativo que a F5-B usa para desarmar o modo de
+    // edição (o hidden `id` volta ao padrão do HTML, que é vazio).
+    type: attrs.type || '', name: attrs.name || '', checked: false,
+    defaultValue: attrs.value || '', defaultChecked: false, options: [],
     classList: {
       add: (c) => no._classes.add(c),
       remove: (c) => no._classes.delete(c),
@@ -2262,6 +2279,22 @@ function criarNoF5B(tag, attrs = {}) {
       }
       return true;
     },
+    // `form.reset()` nativo: devolve cada campo ao valor/estado padrão do HTML
+    // e NÃO dispara `input`/`change` (o spec chama o algoritmo direto). Copiar
+    // essa semântica é o que permite ao gate medir o desarme real do modo de
+    // edição em vez de um reset inventado pelo mock.
+    reset() {
+      descendentesF5B(no).forEach((campo) => {
+        if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(campo.tagName)) {return;}
+        campo.value = campo.defaultValue;
+        campo.checked = campo.defaultChecked;
+      });
+    },
+    get elements() {
+      const mapa = {};
+      descendentesF5B(no).forEach((campo) => { if (campo.name) {mapa[campo.name] = campo;} });
+      return mapa;
+    },
     matches(sel) { return casaF5B(no, sel); },
     closest(sel) { let n = no; while (n) { if (casaF5B(n, sel)) {return n;} n = n.parent; } return null; },
     querySelectorAll(sel) {
@@ -2293,14 +2326,102 @@ function montarVistaF5B(nome, grupo, abas) {
   return vista;
 }
 
+// Campo de formulário com valor padrão declarado no HTML — é esse padrão que
+// `form.reset()` devolve, e é nele que se apoia o desarme do modo de edição.
+function campoF5B(tag, attrs) { return criarNoF5B(tag, attrs || {}); }
+
+// Vista sem abas, só com os nós que uma classe do contrato precisa.
+function montarVistaSimplesF5B(nome, filhos) {
+  const vista = criarNoF5B('div', { id: `${nome}-view`, class: 'view' });
+  (filhos || []).forEach((f) => vista.appendChild(f));
+  return vista;
+}
+
+// ── Nós por classe do contrato (F5-B) ───────────────────────────────────────
+//
+// O fixture precisa existir ANTES de `app.js` rodar: o objeto `refs` é montado
+// no topo do arquivo com `document.getElementById(...)` avaliado na hora. Um
+// nó criado depois nunca entra em `refs`, e o gate mediria um no-op.
+function montarFormularioF5B(id, campos) {
+  const form = criarNoF5B('form', { id });
+  form.appendChild(campoF5B('input', { id: `${id}-id`, type: 'hidden', name: 'id' }));
+  (campos || []).forEach(([campoId, tipo]) => form.appendChild(campoF5B('input', { id: campoId, type: tipo || 'text' })));
+  const submit = criarNoF5B('button', { id: `${id}-submit` });
+  submit.type = 'submit';
+  form.appendChild(submit);
+  return form;
+}
+
+function montarVistasDeClasseF5B() {
+  const caixa = (id) => campoF5B('input', { id, type: 'checkbox' });
+
+  const unidades = montarVistaSimplesF5B('unidades', [
+    montarFormularioF5B('unit-form', [['unit-name']]),
+    campoF5B('input', { id: 'units-filter-company' }),
+    campoF5B('input', { id: 'units-filter-name' }),
+    campoF5B('input', { id: 'units-filter-type' }),
+    campoF5B('input', { id: 'units-filter-city' }),
+    campoF5B('input', { id: 'archived-units-filter-company' }),
+    campoF5B('input', { id: 'archived-units-filter-user' }),
+    campoF5B('input', { id: 'archived-units-filter-reason' }),
+    campoF5B('input', { id: 'archived-units-filter-date' })
+  ]);
+
+  const modalFornecedor = criarNoF5B('div', { id: 'modal-edit-supplier' });
+  modalFornecedor.appendChild(campoF5B('input', { id: 'edit-supplier-id' }));
+  const listaDemandas = criarNoF5B('tbody', { id: 'compras-demands-tbody' });
+  [0, 1].forEach((i) => listaDemandas.appendChild(campoF5B('input', { id: `demand-${i}`, type: 'checkbox', class: 'demand-check' })));
+  const listaAprov = criarNoF5B('tbody', { id: 'aprovacoes-tbody' });
+  listaAprov.appendChild(campoF5B('input', { id: 'aprov-0', type: 'checkbox', class: 'aprovacao-check' }));
+  const compras = montarVistaSimplesF5B('compras', [
+    modalFornecedor,
+    criarNoF5B('div', { id: 'modal-supplier-pos' }),
+    caixa('compras-demands-select-all'), listaDemandas,
+    caixa('aprovacoes-select-all'), listaAprov,
+    criarNoF5B('button', { id: 'compras-create-request-btn' }),
+    criarNoF5B('button', { id: 'aprovacoes-aprovar-btn' }),
+    criarNoF5B('button', { id: 'aprovacoes-reprovar-btn' }),
+    criarNoF5B('button', { id: 'aprovacoes-prorrogar-btn' })
+  ]);
+
+  const avaliacoes = montarVistaSimplesF5B('avaliacoes', [criarNoF5B('div', { id: 'ppe-form-modal' })]);
+
+  const usuarios = montarVistaSimplesF5B('usuarios', [
+    criarNoF5B('div', { id: 'purchase-function-units' }),
+    criarNoF5B('div', { id: 'purchase-function-selected-units' }),
+    criarNoF5B('span', { id: 'purchase-function-selected-count' })
+  ]);
+
+  const migracao = montarVistaSimplesF5B('migracao', [
+    campoF5B('input', { id: 'migracao-file', type: 'file' }),
+    criarNoF5B('span', { id: 'migracao-file-name' }),
+    campoF5B('input', { id: 'migracao-sheet' }),
+    criarNoF5B('div', { id: 'migracao-steps' })
+  ]);
+
+  const comercial = montarVistaSimplesF5B('comercial', [
+    campoF5B('input', { id: 'commercial-filter-status' }),
+    campoF5B('input', { id: 'commercial-filter-date-from' }),
+    campoF5B('input', { id: 'commercial-filter-date-to' }),
+    campoF5B('input', { id: 'commercial-filter-actor' })
+  ]);
+
+  const relatorios = montarVistaSimplesF5B('relatorios', []);
+
+  return { unidades, compras, avaliacoes, usuarios, migracao, comercial, relatorios };
+}
+
 // Carrega os mesmos scripts que a página serve, na mesma ordem.
 function montarAppServidoF5B(busca) {
   const raizStatic = path.resolve(JS_ROOT, '..');
   const vistas = {
     estoque: montarVistaF5B('estoque', 'estoque', ['estoque', 'movimentacoes', 'validade', 'alertas']),
     colaboradores: montarVistaF5B('colaboradores', 'colaboradores', ['cadastro', 'lista', 'arquivados']),
-    dashboard: montarVistaF5B('dashboard', 'dashboard-grp', ['inicio', 'outra'])
+    dashboard: montarVistaF5B('dashboard', 'dashboard-grp', ['inicio', 'outra']),
+    ...montarVistasDeClasseF5B()
   };
+  // O campo de busca do dashboard mora na própria vista de dashboard.
+  vistas.dashboard.appendChild(campoF5B('input', { id: 'dashboard-global-search' }));
   const main = criarNoF5B('div', { id: 'main-content' });
   Object.values(vistas).forEach((v) => main.appendChild(v));
   const doc = criarNoF5B('document', {});
@@ -2334,6 +2455,18 @@ function montarAppServidoF5B(busca) {
     history: { pushState() {}, replaceState() {} },
     navigator: { userAgent: 'node' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
@@ -2372,7 +2505,12 @@ function montarAppServidoF5B(busca) {
     const anterior = _vistaAtual;
     _vistaAtual = nome;
     return doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', {
-      detail: { view: nome, anterior, viaHistorico: (opcoes || {}).viaHistorico === true }
+      detail: {
+        view: nome,
+        anterior,
+        viaHistorico: (opcoes || {}).viaHistorico === true,
+        viaMultitab: (opcoes || {}).viaMultitab === true
+      }
     }));
   };
   const redesenharMesmaVista = (nome) => doc.dispatchEvent(new ctx.CustomEvent('epi:viewchange', {
@@ -2525,6 +2663,18 @@ function comPhase44LigadoF5B(chavesPreexistentes) {
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { search: '?ux_phase44=1', href: 'http://local/?ux_phase44=1' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, URL, URLSearchParams, Promise
@@ -2586,6 +2736,18 @@ function comPhase41LigadoF5B() {
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { search: '?ux_phase41=1', href: 'http://local/?ux_phase41=1' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, URL, URLSearchParams, Promise,
@@ -2666,6 +2828,18 @@ testAsync('#343 F5-B G3: o último colaborador/EPI usado não é guardado em sto
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { search: '?ux_phase42=1', href: 'http://local/?ux_phase42=1' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, URL, URLSearchParams, Promise
@@ -2726,6 +2900,18 @@ function comModuloUxF5B(arquivo, chavesPreexistentes) {
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { search: '', href: 'http://local/' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, URL, URLSearchParams, Promise
@@ -2930,6 +3116,18 @@ testAsync('#343 F5-B C3: redesenho da MESMA view não descarta a memória do pha
     sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     location: { search: '?ux_phase42=1', href: 'http://local/?ux_phase42=1' }, console,
     CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    // Plataforma. `Event` é o construtor que qualquer código de UI usa para
+    // notificar campos (`new Event('input', { bubbles: true })`); sem ele no
+    // contexto, o disparo lança ReferenceError, o `catch` do app engole e o
+    // gate mede um reset que nunca aconteceu — falso verde.
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    // Idem: `getComputedStyle` é primitiva do navegador. Sem ela, todo código
+    // que pergunta "este campo está visível?" quebra dentro de um try/catch e
+    // some do teste.
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
     AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
     MutationObserver: class { observe() {} disconnect() {} },
     setTimeout, clearTimeout, URL, URLSearchParams, Promise
@@ -2985,6 +3183,364 @@ test('#343 F5-B: a chave legada de rolagem do phase41 é apagada fora do gate', 
   const gate = fonte.indexOf('if (!isEnabled()) return;');
   assert(chamada > -1 && (gate === -1 || chamada > gate || !fonte.slice(gate, chamada).includes('function init')),
     'a limpeza foi para dentro do init: nunca alcançaria quem desligou a flag');
+});
+
+// ══ #343 F5-B: gates por CLASSE do contrato ═════════════════════════════════
+//
+// Onze classes foram inventariadas na auditoria fechada. Os gates abaixo medem
+// COMPORTAMENTO no app realmente servido: põem o módulo num estado de trabalho,
+// saem para outro módulo, voltam pela mesma porta que a aplicação usa
+// (`epi:viewchange` com `anterior` e as exceções), e conferem o estado inicial.
+//
+// A correção de método que a auditoria expôs vale aqui também: procura-se o
+// CONCEITO, não o nome do mecanismo. Foi contando `state.pagination.*` que
+// `state.reportArchivePage` escapou da primeira contagem.
+
+test('#343 F5-B G-fixture: os nós das novas classes chegaram ao `refs` do app', () => {
+  // Sem este gate, qualquer um dos gates de classe abaixo poderia passar por
+  // não ter nó nenhum para mexer. `refs` é montado no topo do `app.js`, com os
+  // `getElementById` avaliados na hora — nó criado depois nunca entra.
+  const app = appServidoF5B();
+  // `refs` e `state` são `const` dentro do bloco que envolve todo o app.js, e
+  // por isso não viram propriedades de globalThis. O app já publica as duas
+  // pontes para os módulos de view — é por elas que o gate entra, sem exigir
+  // nenhum export novo criado só para teste.
+  const refs = app.ctx.__EPI_REFS__;
+  assert(refs && typeof refs === 'object', 'o app servido não expôs `__EPI_REFS__`');
+  assert(app.ctx.__EPI_APP_STATE__ && typeof app.ctx.__EPI_APP_STATE__ === 'object',
+    'o app servido não expôs `__EPI_APP_STATE__`');
+  [
+    'unitsFilterName', 'archivedUnitsFilterUser', 'commercialFilterStatus',
+    'dashboardGlobalSearch', 'migracaoFile', 'migracaoSheet'
+  ].forEach((chave) => assert(refs[chave], `refs.${chave} ficou nulo: o fixture não alcança o app`));
+  ['unit-form', 'modal-edit-supplier', 'edit-supplier-id', 'ppe-form-modal',
+    'purchase-function-units', 'compras-demands-select-all']
+    .forEach((id) => assert(app.doc.getElementById(id), `o nó #${id} não existe no fixture`));
+  ['resetModuleFormsToInitial', 'resetModuleModalsToInitial', 'resetModuleWizardsToInitial']
+    .forEach((fn) => assert(typeof app.ctx[fn] === 'function', `${fn} não existe no app.js servido`));
+});
+
+// ── Classe 1: edição ────────────────────────────────────────────────────────
+test('#343 F5-B G-edicao-1: sair no meio da edição e voltar desarma o modo de edição', () => {
+  const app = appServidoF5B();
+  const form = app.doc.getElementById('unit-form');
+  const identidade = app.doc.getElementById('unit-form-id');
+  const nome = app.doc.getElementById('unit-name');
+  identidade.value = '77';
+  nome.value = 'Unidade em edição';
+  app.entrarNoModulo('unidades');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('unidades');
+  eq(identidade.value, '', 'a identidade do registro sobreviveu: o próximo submit alteraria o registro anterior');
+  eq(nome.value, '', 'o formulário voltou preenchido da visita passada');
+  assert(form, 'fixture perdeu o formulário');
+});
+
+test('#343 F5-B G-edicao-2: o mesmo módulo se redesenhando NÃO destrói a edição em curso', () => {
+  const app = appServidoF5B();
+  const identidade = app.doc.getElementById('unit-form-id');
+  app.entrarNoModulo('unidades');
+  identidade.value = '88';
+  app.redesenharMesmaVista('unidades');
+  eq(identidade.value, '88', 'um redesenho (idioma, permissão, edição) apagou trabalho em andamento');
+});
+
+test('#343 F5-B G-edicao-3: os nove módulos de edição têm reset declarado', () => {
+  // Estrutural, pareado com o G-edicao-1 comportamental: o mapa é a lista
+  // fechada da auditoria, e um módulo novo que entre em modo de edição sem
+  // entrada aqui derruba este gate.
+  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8'));
+  const mapa = fonte.slice(fonte.indexOf('const VIEW_FORM_RESET'), fonte.indexOf('function resetModuleFormsToInitial'));
+  ['empresas:', 'usuarios:', 'comercial:', 'unidades:', 'colaboradores:', 'epis:', 'cnpjs:', 'terceirizados:']
+    .forEach((v) => assert(mapa.includes(v), `${v} ficou de fora do reset de edição`));
+  // Compras edita pelo modal, e por isso entra pela porta dos modais.
+  const modais = fonte.slice(fonte.indexOf('const MODAIS_DE_MODULO'), fonte.indexOf('function resetModuleModalsToInitial'));
+  assert(modais.includes('compras:'), 'compras perdeu a cobertura pela porta dos modais');
+  assert(modais.includes("'edit-supplier-id'"), 'o modal de fornecedor deixou de descartar a identidade editada');
+});
+
+// ── Classe 10: modal ────────────────────────────────────────────────────────
+test('#343 F5-B G-modal-1: reentrar no módulo fecha o modal aberto', () => {
+  const app = appServidoF5B();
+  const modal = app.doc.getElementById('modal-edit-supplier');
+  const pos = app.doc.getElementById('modal-supplier-pos');
+  const avaliacao = app.doc.getElementById('ppe-form-modal');
+  modal.style.display = 'block';
+  pos.style.display = 'block';
+  avaliacao.style.display = 'block';
+  app.entrarNoModulo('compras');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('compras');
+  eq(modal.style.display, 'none', 'o modal de fornecedor reabriu no ponto da visita anterior');
+  eq(pos.style.display, 'none', 'o modal de POs reabriu no ponto da visita anterior');
+  app.entrarNoModulo('avaliacoes');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('avaliacoes');
+  eq(avaliacao.style.display, 'none', 'o modal de avaliações reabriu no ponto da visita anterior');
+});
+
+test('#343 F5-B G-modal-2: esconder não basta — a identidade editada é descartada', () => {
+  // A gravidade aqui é a mesma do modo de edição: com o id preservado, um
+  // submit atualizaria o fornecedor da visita passada.
+  const app = appServidoF5B();
+  const identidade = app.doc.getElementById('edit-supplier-id');
+  identidade.value = '42';
+  app.entrarNoModulo('compras');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('compras');
+  eq(identidade.value, '', 'o modal fechou mas continuou apontando para o registro anterior');
+});
+
+test('#343 F5-B G-modal-3: redesenho e Voltar/Avançar NÃO fecham o modal', () => {
+  const app = appServidoF5B();
+  const modal = app.doc.getElementById('modal-edit-supplier');
+  app.entrarNoModulo('compras');
+  modal.style.display = 'block';
+  app.redesenharMesmaVista('compras');
+  eq(modal.style.display, 'block', 'um redesenho da própria view fechou um modal em uso');
+  app.entrarNoModulo('estoque');
+  modal.style.display = 'block';
+  app.entrarNoModulo('compras', { viaHistorico: true });
+  eq(modal.style.display, 'block', 'Voltar/Avançar deixou de ser exceção e fechou o modal');
+});
+
+// ── Classe 11: wizard / step ────────────────────────────────────────────────
+test('#343 F5-B G-wizard-1: reentrar devolve o assistente ao primeiro passo', () => {
+  const app = appServidoF5B();
+  const rascunho = app.ctx.migracaoState();
+  rascunho.step = 'revisao';
+  app.entrarNoModulo('migracao');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('migracao');
+  eq(app.ctx.migracaoState().step, 'entidade', 'o assistente retomou no passo da visita anterior');
+});
+
+test('#343 F5-B G-wizard-2: reentrar descarta o rascunho do assistente, no estado e no DOM', () => {
+  const app = appServidoF5B();
+  const rascunho = app.ctx.migracaoState();
+  const arquivo = app.doc.getElementById('migracao-file');
+  const planilha = app.doc.getElementById('migracao-sheet');
+  const rotulo = app.doc.getElementById('migracao-file-name');
+  Object.assign(rascunho, {
+    step: 'mapeamento', fileName: 'colaboradores.xlsx', fileBase64: 'QUJD',
+    sheet: 'Plan1', columns: ['A', 'B'], mapping: { A: 'name' }, totalRows: 12
+  });
+  arquivo.value = 'colaboradores.xlsx';
+  planilha.value = 'Plan1';
+  rotulo.textContent = 'colaboradores.xlsx';
+  app.entrarNoModulo('migracao');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('migracao');
+  const depois = app.ctx.migracaoState();
+  eq(depois.fileName, '', 'o nome do arquivo da visita anterior sobreviveu');
+  eq(depois.fileBase64, '', 'o conteúdo do arquivo da visita anterior sobreviveu');
+  eq(depois.sheet, '', 'a planilha escolhida sobreviveu');
+  eq(depois.columns.length, 0, 'as colunas lidas sobreviveram');
+  eq(Object.keys(depois.mapping).length, 0, 'o mapeamento de colunas sobreviveu');
+  eq(depois.totalRows, 0, 'a contagem de linhas sobreviveu');
+  eq(arquivo.value, '', 'o campo de arquivo continuou preenchido na tela');
+  eq(planilha.value, '', 'o campo de planilha continuou preenchido na tela');
+  eq(rotulo.textContent, '', 'o rótulo do arquivo continuou na tela');
+});
+
+test('#343 F5-B G-wizard-3: redesenho e Voltar/Avançar NÃO reiniciam o assistente', () => {
+  const app = appServidoF5B();
+  app.entrarNoModulo('migracao');
+  app.ctx.migracaoState().step = 'revisao';
+  app.redesenharMesmaVista('migracao');
+  eq(app.ctx.migracaoState().step, 'revisao', 'um redesenho jogou fora um assistente em andamento');
+  app.entrarNoModulo('estoque');
+  app.ctx.migracaoState().step = 'revisao';
+  app.entrarNoModulo('migracao', { viaHistorico: true });
+  eq(app.ctx.migracaoState().step, 'revisao', 'Voltar/Avançar deixou de ser exceção e reiniciou o assistente');
+});
+
+// ── Classe 4: seleção ───────────────────────────────────────────────────────
+test('#343 F5-B G-selecao-1: a seleção de Compras não sobrevive à reentrada', () => {
+  const app = appServidoF5B();
+  const ctx = app.ctx;
+  ctx._selectedDemands.add(0); ctx._selectedDemands.add(1);
+  ctx._selectedAprovacoes.add(0);
+  const todasDemandas = app.doc.getElementById('compras-demands-select-all');
+  const todasAprov = app.doc.getElementById('aprovacoes-select-all');
+  todasDemandas.checked = true; todasAprov.checked = true;
+  app.doc.querySelectorAll('.demand-check, .aprovacao-check').forEach((c) => { c.checked = true; });
+  const botao = app.doc.getElementById('compras-create-request-btn');
+  botao.style.display = '';
+  app.entrarNoModulo('compras');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('compras');
+  eq(ctx._selectedDemands.size, 0, 'as demandas selecionadas voltaram da visita anterior');
+  eq(ctx._selectedAprovacoes.size, 0, 'as aprovações selecionadas voltaram da visita anterior');
+  eq(todasDemandas.checked, false, 'o "marcar todas" de demandas continuou marcado');
+  eq(todasAprov.checked, false, 'o "marcar todas" de aprovações continuou marcado');
+  const marcadas = app.doc.querySelectorAll('.demand-check, .aprovacao-check').filter((c) => c.checked);
+  eq(marcadas.length, 0, 'a tela continuou mostrando caixas marcadas com o estado já vazio');
+  eq(botao.style.display, 'none', 'a barra de ação em lote continuou armada sem seleção');
+});
+
+test('#343 F5-B G-selecao-2: a seleção de unidades das funções de compras é descartada', () => {
+  // O Set é um `const` interno; o gate mede o que a TELA mostra, que é o que o
+  // usuário vê ao reentrar — e o que quebraria se o reset fosse só no estado.
+  const app = appServidoF5B();
+  const contador = app.doc.getElementById('purchase-function-selected-count');
+  app.ctx.setPurchaseFunctionUnitSelection('9', true);
+  assert(/^1 /.test(contador.textContent),
+    `a seleção nem chegou a ser registrada (contador: "${contador.textContent}")`);
+  app.entrarNoModulo('usuarios');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('usuarios');
+  assert(/^0 /.test(contador.textContent),
+    `as unidades vinculadas da visita anterior voltaram marcadas (contador: "${contador.textContent}")`);
+});
+
+// ── Classe 2: filtros ───────────────────────────────────────────────────────
+test('#343 F5-B G-filtro-1: TODOS os campos são limpos, não só o primeiro', () => {
+  // Este gate existe por causa de um falso-verde real: `limparCamposDeFiltro`
+  // passou a disparar `input`/`change`, e num contexto sem o construtor `Event`
+  // o primeiro disparo lançava, o `catch` do app engolia, e os campos
+  // seguintes ficavam preenchidos. Medir campo a campo é o que expõe isso.
+  const app = appServidoF5B();
+  const chaves = ['unitsFilterName', 'unitsFilterType', 'unitsFilterCity'];
+  chaves.forEach((k) => { app.ctx.__EPI_REFS__[k].value = 'x'; });
+  app.entrarNoModulo('unidades');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('unidades');
+  chaves.forEach((k) => eq(app.ctx.__EPI_REFS__[k].value, '', `${k} sobreviveu à reentrada`));
+});
+
+test('#343 F5-B G-filtro-2: limpar um filtro NOTIFICA a tela (input e change)', () => {
+  // Sem os eventos, o contador "Filtros ativos: N" e os status de módulo ficam
+  // com o número da visita anterior: estado lógico limpo, DOM mentindo.
+  const app = appServidoF5B();
+  const campo = app.ctx.__EPI_REFS__.unitsFilterName;
+  const vistos = [];
+  campo.addEventListener('input', () => vistos.push('input'));
+  campo.addEventListener('change', () => vistos.push('change'));
+  campo.value = 'Sul';
+  app.entrarNoModulo('unidades');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('unidades');
+  assert(vistos.includes('input'), 'a limpeza não disparou `input`');
+  assert(vistos.includes('change'), 'a limpeza não disparou `change`');
+});
+
+test('#343 F5-B G-filtro-3: Comercial, Dashboard e Arquivados entram no reset', () => {
+  const app = appServidoF5B();
+  const arquivados = ['archivedUnitsFilterUser', 'archivedUnitsFilterReason', 'archivedUnitsFilterDate'];
+  const comerciais = ['commercialFilterStatus', 'commercialFilterDateFrom', 'commercialFilterDateTo', 'commercialFilterActor'];
+  [...arquivados, ...comerciais, 'dashboardGlobalSearch'].forEach((k) => { app.ctx.__EPI_REFS__[k].value = 'x'; });
+  app.ctx.__EPI_APP_STATE__.dashboardFilters.query = 'x';
+  ['unidades', 'comercial', 'dashboard'].forEach((v) => {
+    app.entrarNoModulo(v);
+    app.entrarNoModulo('estoque');
+    app.entrarNoModulo(v);
+  });
+  arquivados.forEach((k) => eq(app.ctx.__EPI_REFS__[k].value, '', `o filtro de arquivados ${k} sobreviveu`));
+  comerciais.forEach((k) => eq(app.ctx.__EPI_REFS__[k].value, '', `o filtro comercial ${k} sobreviveu`));
+  eq(app.ctx.__EPI_REFS__.dashboardGlobalSearch.value, '', 'a busca global do dashboard sobreviveu');
+  eq(app.ctx.__EPI_APP_STATE__.dashboardFilters.query, '', 'o estado da busca do dashboard sobreviveu');
+});
+
+test('#343 F5-B G-passos-1: um passo que falha não cancela os seguintes', () => {
+  // Achado medido, não hipotético: com um único `try` em volta do corpo do
+  // reset, `syncUnitsSearchFilters()` lançando impedia a limpeza dos filtros de
+  // unidades arquivadas — o módulo reabria com metade dos filtros limpos.
+  const app = appServidoF5B();
+  let lancou = false;
+  try { app.ctx.syncUnitsSearchFilters(); } catch (_e) { lancou = true; }
+  assert(lancou,
+    'o passo intermediário parou de lançar neste fixture: o gate mediria um cenário que não existe mais');
+  // Sem `*Company`: para papéis não-master a empresa é ESCOPO, não filtro, e
+  // permanece fixa de propósito (regra já coberta por gate próprio).
+  const depois = ['archivedUnitsFilterUser', 'archivedUnitsFilterReason', 'archivedUnitsFilterDate'];
+  depois.forEach((k) => { app.ctx.__EPI_REFS__[k].value = 'x'; });
+  app.entrarNoModulo('unidades');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('unidades');
+  depois.forEach((k) => eq(app.ctx.__EPI_REFS__[k].value, '',
+    `${k} ficou por limpar porque um passo anterior falhou`));
+});
+
+// ── Classe 3: paginação ─────────────────────────────────────────────────────
+test('#343 F5-B G-paginacao-1: a página do arquivo de relatórios volta à primeira', () => {
+  // Paginação com outro nome. Foi exatamente esta que escapou da contagem
+  // inicial por eu ter procurado `state.pagination.*` em vez do conceito.
+  const app = appServidoF5B();
+  app.ctx.__EPI_APP_STATE__.reportArchivePage = 4;
+  app.entrarNoModulo('relatorios');
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('relatorios');
+  eq(app.ctx.__EPI_APP_STATE__.reportArchivePage, 1, 'o arquivo de relatórios reabriu na página da visita anterior');
+});
+
+// ── Classe 5: abas internas ─────────────────────────────────────────────────
+test('#343 F5-B G-abas-1: a visibilidade é sincronizada ANTES de escolher a aba inicial', () => {
+  // `visibleViewTabs()` lê `tab.style.display`, escrito por
+  // `syncViewTabsVisibility()`. O cenário que só a sincronização PRÉVIA cobre é
+  // o da aba que voltou a ter conteúdo: ela continua marcada como oculta desde
+  // a última sincronização, a escolha a pula, e a sincronização final não
+  // corrige — a aba ativa está visível, então não há fallback a disparar.
+  // Resultado: o módulo abre pulando a primeira aba que o usuário passou a ver.
+  const app = appServidoF5B();
+  const vista = app.vistas.colaboradores;
+  const nav = vista.querySelector('nav[data-vtabs]');
+  const primeira = nav.querySelectorAll('[data-vtab]')[0];
+  // Estado herdado: marcada como oculta, mas com o painel cheio de conteúdo
+  // visível — exatamente o que acontece quando a permissão volta a liberar.
+  primeira.style.display = 'none';
+  vista.querySelector('[data-vtab-panel="cadastro"]').children.forEach((f) => { f.style.display = ''; });
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('colaboradores');
+  eq(app.abaAtiva('colaboradores'), 'cadastro',
+    'a aba inicial foi escolhida com a visibilidade velha e pulou a primeira aba já liberada');
+});
+
+// ── Classe 7: multitab ──────────────────────────────────────────────────────
+test('#343 F5-B G-multitab-1: restaurar contexto é opt-in, só em ação explícita', () => {
+  const fonte = _semComentariosF5B(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'multitab-navigation.js'), 'utf-8'));
+  assert(fonte.includes('if (opts.restoreContext === true) restoreViewContext(tab);'),
+    'restoreViewContext voltou a rodar em toda ativação de aba');
+  const ativar = fonte.slice(fonte.indexOf('function activateTab('));
+  assert(ativar.includes('viaMultitab: opts.restoreContext === true'),
+    'a ativação deixou de avisar o app que aquilo não é reentrada no módulo');
+  // Entrar pelo menu lateral é reentrada: não pode carregar a flag.
+  const menu = fonte.slice(fonte.indexOf('function onMenuIntercept('), fonte.indexOf('function bindKeyboard('));
+  assert(!menu.includes('restoreContext'),
+    'entrar pelo menu lateral voltou a restaurar o contexto da visita anterior');
+});
+
+test('#343 F5-B G-multitab-2: a troca explícita de aba não sofre o reset de entrada', () => {
+  const app = appServidoF5B();
+  const identidade = app.doc.getElementById('unit-form-id');
+  app.entrarNoModulo('unidades');
+  identidade.value = '55';
+  app.entrarNoModulo('estoque');
+  app.entrarNoModulo('unidades', { viaMultitab: true });
+  eq(identidade.value, '55',
+    'clicar numa aba já aberta na barra multitab passou a ser tratado como reentrada');
+});
+
+// ── Classe 6: contexto/sugestão (ponte phase42 → phase43) ───────────────────
+test('#343 F5-B G-ponte-1: registrar uso anuncia, e o phase43 recalcula', () => {
+  const raiz = path.resolve(JS_ROOT, '..');
+  const p42 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase42.js'), 'utf-8'));
+  const p43 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase43.js'), 'utf-8'));
+  // O anúncio tem de sair DEPOIS de a memória ser gravada, senão o phase43
+  // recalcula sobre o ranking antigo.
+  const submit = p42.slice(p42.indexOf("safeOn(form, 'submit'"));
+  const posGrava = submit.indexOf('saveMemory(memory);');
+  const posAnuncia = submit.indexOf('anunciarUsoRegistrado();');
+  assert(posGrava > -1 && posAnuncia > -1, 'o phase42 deixou de anunciar o uso registrado');
+  assert(posGrava < posAnuncia, 'o anúncio saiu antes de a memória ser gravada');
+  assert(p42.includes("dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'))"),
+    'o anúncio deixou de ser um evento observável');
+  const bind = p43.slice(p43.indexOf('function bindForm('));
+  const escuta = bind.indexOf("safeOn(document, 'epi:phase42:uso-registrado'");
+  assert(escuta > -1, 'o phase43 não escuta o anúncio: a sugestão ficaria congelada até trocar de colaborador');
+  assert(bind.slice(escuta, escuta + 260).includes('recomputarSugestao(ui, form)'),
+    'o phase43 escuta o anúncio mas não recalcula nada');
 });
 
 // ── Relatório ─────────────────────────────────────────────────────────────

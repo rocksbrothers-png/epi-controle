@@ -572,6 +572,17 @@
       setState('Confirmando entrega...', 'loading');
     }, true);
 
+    // A ponte phase42 -> phase43 é agora só RAM: não há releitura de storage no
+    // próximo carregamento que corrija uma sugestão defasada. Quando o phase42
+    // registra uso (submit de entrega), o ranking muda na hora e o card tem de
+    // acompanhar — senão ele exibe a sugestão de ANTES da entrega recém-feita
+    // até alguém trocar o colaborador. `bindForm` é guardado por
+    // `runtime.formBound` e não roda de novo, então este listener é o único
+    // ponto de atualização.
+    safeOn(document, 'epi:phase42:uso-registrado', function () {
+      recomputarSugestao(ui, form);
+    });
+
     recomputarSugestao(ui, form);
 
     refreshSticky(ui, form);

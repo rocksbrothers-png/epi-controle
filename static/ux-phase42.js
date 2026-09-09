@@ -173,6 +173,20 @@
     };
   }
 
+  // A memória do phase42 agora vive só em RAM (F5-B: histórico de sugestão não
+  // é preferência do usuário nem estado operacional com requisito funcional).
+  // Quem consome essa memória — o card de sugestão do phase43 — precisa saber
+  // QUANDO ela mudou: sem persistência não há releitura no próximo carregamento
+  // que "conserte" a defasagem. O anúncio é de mão única: o phase42 não conhece
+  // o phase43, apenas publica que registrou uso.
+  function anunciarUsoRegistrado() {
+    try {
+      document.dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'));
+    } catch (error) {
+      console.warn('[phase42] falha ao anunciar uso registrado', error);
+    }
+  }
+
   function summarizeHistory(memory, employeeId, roleName) {
     var events = Array.isArray(memory.events) ? memory.events : [];
     var byEmployee = events.filter(function (item) { return String(item.employeeId) === String(employeeId); });
@@ -495,6 +509,7 @@
         var ctx = getContext(memory);
         appendUsageEvent(memory, ctx);
         saveMemory(memory);
+        anunciarUsoRegistrado();
       }, { capture: true, signal: moduleController.signal });
 
       safeOn(document, 'click', function (event) {

@@ -42,11 +42,32 @@ def test_phase43_suggestion_is_optional_and_manual_mode_supported():
     assert 'runtime.userEdited.has' in content
 
 
-def test_phase43_storage_namespace_limits_and_reset_query_param_present():
+def test_phase43_nao_persiste_mais_estado_de_navegacao():
+    """Revisado na #343 F5-B — antes exigia o oposto.
+
+    O phase43 guardava `epi:ux:phase43:state:v1` e ainda lia a memória do
+    phase42, herdando a mesma travessia de identidade. As duas saíram: o estado
+    do fluxo vive em RAM e é descartado ao trocar de módulo.
+
+    O limite de bytes e o `?ux_phase43_reset=1` deixaram de existir junto —
+    ambos só faziam sentido com storage.
+    """
     content = _read('static/ux-phase43.js')
-    assert "STORAGE_KEY = 'epi:ux:phase43:state:v1'" in content
-    assert 'MAX_STORAGE_BYTES = 12000' in content
-    assert "params.get('ux_phase43_reset') !== '1'" in content
+    corpo = "\n".join(
+        linha for linha in content.split("\n")
+        if not linha.strip().startswith("//")
+    )
+    # As chaves podem aparecer para serem REMOVIDAS — a limpeza do que versões
+    # anteriores gravaram precisa nomeá-las. O que não pode voltar é gravação.
+    for proibido in ("epi:ux:phase43:state:v1", "epi:ux:phase42:memory:v2"):
+        for linha in corpo.split("\n"):
+            if proibido in linha:
+                assert "removeItem" in linha, (
+                    f"{proibido} voltou ao phase43 fora de uma remoção: {linha.strip()[:70]}"
+                )
+    assert 'function descartarEstado(' in corpo, (
+        'o descarte do estado ao trocar de módulo sumiu'
+    )
 
 
 def test_phase43_avoids_duplicate_global_listener_binding():

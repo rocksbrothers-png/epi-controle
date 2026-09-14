@@ -50,12 +50,25 @@ def test_phase44_feedback_avoids_timeout_success_and_uses_real_signals():
     assert 'Ação concluída com sucesso.' not in content
 
 
-def test_phase44_filter_restore_reset_and_sensitive_data_protection_present():
+def test_phase44_nao_persiste_mais_filtro_e_limpa_o_legado():
+    """Revisado na #343 F5-B — antes exigia a persistência do filtro.
+
+    Filtro é estado de NAVEGAÇÃO: reentrar no módulo mostra a lista sem filtro,
+    inclusive para o mesmo usuário. Saíram o prefixo de storage, o
+    `persistContext`/`restoreContext` e os helpers de escrita.
+
+    O namespace ficou — e só ele — porque `removePhase44Storage()` agora roda
+    INCONDICIONALMENTE no init, para apagar as chaves que versões anteriores
+    gravaram no navegador de quem já usou o sistema.
+    """
     content = _read('static/ux-phase44.js')
-    assert "STORAGE_NAMESPACE = 'epi.ux.phase44'" in content
-    assert "STORAGE_FILTER_PREFIX = STORAGE_NAMESPACE + '.filters.'" in content
-    assert "params.get('ux_phase44_reset') === '1'" in content
-    assert 'removePhase44Storage' in content
-    assert 'restoreContext()' in content
-    assert 'SENSITIVE_FIELD_PATTERN' in content
-    assert 'safeLocalStorageSet' in content
+    corpo = "\n".join(
+        linha for linha in content.split("\n")
+        if not linha.strip().startswith("//")
+    )
+    assert "STORAGE_NAMESPACE = 'epi.ux.phase44'" in corpo
+    assert 'removePhase44Storage();' in corpo, 'a limpeza das chaves legadas sumiu'
+    for proibido in ('STORAGE_FILTER_PREFIX', 'restoreContext', 'persistContext',
+                     'safeLocalStorageSet', "ux_phase44_reset"):
+        assert proibido not in corpo, f'{proibido} voltou ao phase44: ver #343 F5-B'
+    assert 'SENSITIVE_FIELD_PATTERN' in corpo

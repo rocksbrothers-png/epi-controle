@@ -7,12 +7,17 @@
     : function () { return true; };
   if (!ensureModuleBound('phase43')) return;
 
-  var STORAGE_KEY = 'epi:ux:phase43:state:v1';
-  var PHASE42_MEMORY_KEY = 'epi:ux:phase42:memory:v2';
-  var MAX_STORAGE_BYTES = 12000;
+  // Nada aqui é persistido (F5-B). `epi:ux:phase43:state:v1` guardava estado de
+  // navegação do fluxo de entrega, e o módulo ainda lia
+  // `epi:ux:phase42:memory:v2` — herdando a mesma travessia de identidade que o
+  // phase42 tinha. As duas leituras/gravações saíram; o estado do fluxo vive em
+  // `runtime`, que é RAM e morre com o documento.
+  var estadoEmMemoria = {};
   var runtime = {
     listenersBound: false,
     formBound: new WeakSet(),
+    // Cadeado do listener de descarte: `init()` roda a cada navegação.
+    teardownBound: false,
     currentForm: null,
     userEdited: new Set(),
     manualMode: false,
@@ -55,38 +60,66 @@
     }
   }
 
-  function resetIfRequested() {
+  // Descarta o estado do fluxo ao sair do módulo — mesma razão do phase42: a
+  // SPA não recarrega a página, então sem isto o contexto atravessaria a
+  // reentrada. Substitui o antigo `resetIfRequested()`, que dependia de
+  // `?ux_phase43_reset=1`.
+  function descartarEstado() {
+    Object.keys(estadoEmMemoria).forEach(function (chave) { delete estadoEmMemoria[chave]; });
+    runtime.manualMode = false;
+    runtime.lastSuggestion = null;
+    // `quickOpen` e `userEdited` também são estado de NAVEGAÇÃO e precisam cair
+    // junto. `bindForm` é guardado por um `WeakSet` (`runtime.formBound`), então
+    // reentrar em Entregas NÃO reconstrói o formulário: sem zerar estes dois, o
+    // resumo de confirmação reabriria no estado da visita anterior e as guardas
+    // de edição continuariam valendo, mesmo com a memória já descartada.
+    runtime.quickOpen = false;
+    runtime.userEdited.clear();
+    // O painel já renderizado não some sozinho: `renderQuickSummary` só o
+    // esconde quando é chamado de novo, e a reentrada não o chama.
+    // O card de sugestão cai junto: `bindForm` é guardado por `runtime.formBound`
+    // e não roda de novo na reentrada, então a recomendação renderizada
+    // reapareceria sem nenhuma memória por trás dela.
     try {
-      var params = new URLSearchParams(globalThis.location.search || '');
-      if (params.get('ux_phase43_reset') !== '1') return;
-      localStorage.removeItem(STORAGE_KEY);
-      runtime.manualMode = false;
-      runtime.lastSuggestion = null;
+      ['phase43-quick-confirm', 'phase43-fast-card'].forEach(function (id) {
+        var no = byId(id);
+        if (!no) return;
+        no.hidden = true;
+        no.innerHTML = '';
+      });
+    } catch (_) {}
+  }
+
+  // Migração, pelo mesmo motivo do phase42: parar de gravar não apaga o que já
+  // está no disco de quem rodou a versão anterior. Roda fora do `init()`, que
+  // sai cedo com a flag desligada.
+  function removerChaveLegada() {
+    try {
+      globalThis.localStorage?.removeItem('epi:ux:phase43:state:v1');
     } catch (_) {}
   }
 
   function loadState() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (!parsed || typeof parsed !== 'object') return {};
-      return parsed;
-    } catch (_) {
-      return {};
-    }
+    return estadoEmMemoria;
   }
 
   function saveState(payload) {
-    try {
-      var raw = JSON.stringify(payload || {});
-      if (raw.length > MAX_STORAGE_BYTES) return;
-      localStorage.setItem(STORAGE_KEY, raw);
-    } catch (_) {}
+    if (!payload || typeof payload !== 'object' || payload === estadoEmMemoria) return;
+    Object.keys(estadoEmMemoria).forEach(function (chave) { delete estadoEmMemoria[chave]; });
+    Object.keys(payload).forEach(function (chave) { estadoEmMemoria[chave] = payload[chave]; });
   }
 
+  // Ponte com o phase42, agora EM MEMÓRIA. Antes os dois se comunicavam pela
+  // chave `epi:ux:phase42:memory:v2` em `localStorage`; a F5-B tirou a
+  // persistência, e devolver `{}` aqui teria matado junto a sugestão e o
+  // preenchimento assistido DENTRO do fluxo — funcionalidade que a fatia não
+  // se propôs a remover. O phase42 publica o mesmo objeto que usa, e ele é
+  // esvaziado (não substituído) ao trocar de módulo, então os dois descartam
+  // juntos.
   function loadPhase42Memory() {
     try {
-      var parsed = JSON.parse(localStorage.getItem(PHASE42_MEMORY_KEY) || '{}');
-      return parsed && typeof parsed === 'object' ? parsed : {};
+      var memoria = globalThis.__EPI_PHASE42_MEMORIA__;
+      return memoria && typeof memoria === 'object' ? memoria : {};
     } catch (_) {
       return {};
     }
@@ -183,6 +216,15 @@
     if (!node) return;
     node.textContent = trim(text) || 'Pronto';
     node.dataset.state = trim(tone) || 'idle';
+  }
+
+  // Extraída do `bindForm` para poder rodar também a cada troca de colaborador.
+  function recomputarSugestao(ui, form) {
+    var employeeId = trim(byId('delivery-employee') && byId('delivery-employee').value);
+    var suggestion = employeeId ? readSuggestion(loadPhase42Memory(), employeeId) : null;
+    runtime.lastSuggestion = suggestion;
+    applySuggestionIfSafe(form, suggestion);
+    renderSuggestionCard(ui, form, suggestion);
   }
 
   function readSuggestion(memory, employeeId) {
@@ -495,18 +537,22 @@
     ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi', 'delivery-stock-item-code'].forEach(function (id) {
       var field = byId(id);
       if (!field) return;
-      safeOn(field, 'change', function () {
+      // A sugestão é recalculada a cada troca de colaborador, não só uma vez no
+      // bind. Antes ela vinha do histórico PERSISTIDO, então já existia quando
+      // o formulário era ligado; com a memória apenas em RAM (F5-B) ela nasce
+      // vazia e só se preenche conforme o phase42 registra uso no próprio
+      // fluxo. Sem recalcular aqui, a ponte em memória existiria sem nunca
+      // produzir o card nem o preenchimento assistido — `bindForm` é guardado
+      // por `runtime.formBound` e não roda de novo.
+      var aoMudarCampo = function () {
         runtime.userEdited.add(id);
         persistSafeSnapshot(form);
+        if (id === 'delivery-employee') recomputarSugestao(ui, form);
         refreshSticky(ui, form);
         renderQuickSummary(ui, form);
-      });
-      safeOn(field, 'input', function () {
-        runtime.userEdited.add(id);
-        persistSafeSnapshot(form);
-        refreshSticky(ui, form);
-        renderQuickSummary(ui, form);
-      });
+      };
+      safeOn(field, 'change', aoMudarCampo);
+      safeOn(field, 'input', aoMudarCampo);
     });
 
     var qtyField = form.querySelector('[name="quantity"]');
@@ -532,12 +578,18 @@
       setState('Confirmando entrega...', 'loading');
     }, true);
 
-    var memory = loadPhase42Memory();
-    var employeeId = trim(byId('delivery-employee') && byId('delivery-employee').value);
-    var suggestion = employeeId ? readSuggestion(memory, employeeId) : null;
-    runtime.lastSuggestion = suggestion;
-    applySuggestionIfSafe(form, suggestion);
-    renderSuggestionCard(ui, form, suggestion);
+    // A ponte phase42 -> phase43 é agora só RAM: não há releitura de storage no
+    // próximo carregamento que corrija uma sugestão defasada. Quando o phase42
+    // registra uso (submit de entrega), o ranking muda na hora e o card tem de
+    // acompanhar — senão ele exibe a sugestão de ANTES da entrega recém-feita
+    // até alguém trocar o colaborador. `bindForm` é guardado por
+    // `runtime.formBound` e não roda de novo, então este listener é o único
+    // ponto de atualização.
+    safeOn(document, 'epi:phase42:uso-registrado', function () {
+      recomputarSugestao(ui, form);
+    });
+
+    recomputarSugestao(ui, form);
 
     refreshSticky(ui, form);
     renderQuickSummary(ui, form);
@@ -546,10 +598,35 @@
 
   function init() {
     try {
-      resetIfRequested();
       if (!isEnabled()) return;
       var form = byId('delivery-form');
       if (!form) return;
+      // Uma vez só. `scheduleRebind()` chama `init()` a cada `epi:viewchange`,
+      // `htmx:afterSwap` e `popstate`, e este registro fica ANTES da guarda
+      // `runtime.formBound` do `bindForm`. Sem o cadeado, cada navegação
+      // acrescentava mais um listener permanente de descarte, e uma sessão
+      // longa passaria a executar a mesma limpeza um número crescente de
+      // vezes. Foi esta fatia que introduziu o listener; o cadeado vem junto.
+      if (!runtime.teardownBound) {
+        runtime.teardownBound = true;
+        // `safeOn` e não `addEventListener` cru: é a porta que este projeto usa
+        // para registrar listener no AbortController de escopo da aplicação —
+        // a mesma que o teardown do phase42 já usava.
+        safeOn(document, 'epi:viewchange', function (evento) {
+          // Mesma guarda do phase42: `showView()` também é chamado sem trocar
+          // de view (recarga após entrega, troca de idioma). Descartar ali
+          // fecharia o resumo de confirmação com o usuário ainda em Entregas.
+          var detalhe = evento && evento.detail ? evento.detail : {};
+          if (detalhe.view && detalhe.view === detalhe.anterior) return;
+          // Troca EXPLÍCITA de aba na barra multitab também não é saída do
+          // módulo: `activateTab()` restaura os campos daquela aba logo depois,
+          // e descartar aqui devolveria o formulário preenchido SEM a sugestão
+          // e sem o contexto de revisão que pertenciam a ele — pior do que não
+          // restaurar nada. Mesma exceção que o reset central de entrada aplica.
+          if (detalhe.viaMultitab === true) return;
+          descartarEstado();
+        });
+      }
       bindGlobalHandlers();
       bindForm(form);
     } catch (error) {
@@ -564,6 +641,8 @@
       init();
     }, 80);
   }
+
+  removerChaveLegada();
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });
   else init();

@@ -7,14 +7,29 @@
   var createScopedAbortController = typeof helpers.createScopedAbortController === 'function'
     ? helpers.createScopedAbortController
     : function () { return new AbortController(); };
-  var queueStorageWrite = typeof helpers.queueStorageWrite === 'function'
-    ? helpers.queueStorageWrite
-    : function (key, value) { try { localStorage.setItem(key, value); } catch (_) {} };
   var moduleController = createScopedAbortController('phase42');
 
-  var STORAGE_KEY = 'epi:ux:phase42:memory:v2';
+  // A memória de uso do phase42 vive SOMENTE aqui, em RAM (F5-B). Antes ela
+  // ficava em `localStorage` sob `epi:ux:phase42:memory:v2`, carregando
+  // `employeeId`, `epiId`, `unitId`, `roleName` e `last.companyId` — sem escopo
+  // de usuário nem de tenant. Sobrevivia ao encerramento de sessão, então quem
+  // entrasse depois na mesma máquina recebia o contexto de quem saiu, com
+  // identificador de empresa junto.
+  //
+  // A funcionalidade continua: enquanto o usuário permanece no fluxo, as
+  // sugestões funcionam igual. O que acaba é a travessia — de reload, de
+  // logout, de identidade e de reentrada no módulo.
+  var memoriaEmMemoria = {};
+
+  // Ponte EM MEMÓRIA para o phase43, que antes lia a mesma chave de
+  // `localStorage`. A F5-B tirou a persistência, não a funcionalidade: enquanto
+  // o usuário permanece no fluxo, o phase43 continua enxergando os eventos de
+  // uso que o phase42 registra. O objeto nunca é substituído — `descartarMemoria`
+  // apaga as chaves em lugar — então esta referência segue válida e o descarte
+  // ao trocar de módulo alcança os dois módulos de uma vez.
+  globalThis.__EPI_PHASE42_MEMORIA__ = memoriaEmMemoria;
+
   var MAX_EVENTS = 120;
-  var MAX_STORAGE_BYTES = 45000;
 
   function safeOn(target, eventName, handler, options) {
     try {
@@ -45,29 +60,33 @@
   function byId(id) { return document.getElementById(id); }
   function trim(value) { return String(value || '').trim(); }
 
+  // As três funções operam SEMPRE sobre o mesmo objeto, nunca o substituem.
+  // O `init()` guarda a referência uma única vez (`var memory = loadMemory()`)
+  // e a usa até o fim; trocar o objeto aqui deixaria aquele closure apontando
+  // para a memória antiga — e o descarte não teria efeito nenhum.
   function loadMemory() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (!parsed || typeof parsed !== 'object') return {};
-      return parsed;
-    } catch (_) {
-      return {};
-    }
+    return memoriaEmMemoria;
   }
 
   function saveMemory(memory) {
-    try {
-      var payload = JSON.stringify(memory || {});
-      if (payload.length > MAX_STORAGE_BYTES) return;
-      queueStorageWrite(STORAGE_KEY, payload, { wait: 220, maxBytes: MAX_STORAGE_BYTES });
-    } catch (_) {}
+    if (!memory || typeof memory !== 'object' || memory === memoriaEmMemoria) return;
+    descartarMemoria();
+    Object.keys(memory).forEach(function (chave) { memoriaEmMemoria[chave] = memory[chave]; });
   }
 
-  function resetMemoryIfRequested() {
+  function descartarMemoria() {
+    Object.keys(memoriaEmMemoria).forEach(function (chave) { delete memoriaEmMemoria[chave]; });
+  }
+
+  // Migração: parar de gravar não apaga o que já foi gravado. Navegadores que
+  // rodaram a versão anterior têm `epi:ux:phase42:memory:v2` no disco com
+  // employeeId, epiId, unitId, roleName e companyId — e o encerramento de
+  // sessão preserva `localStorage` de propósito (F2), então sem esta remoção a
+  // chave ficaria lá indefinidamente, sem ninguém para lê-la nem apagá-la.
+  // Mesmo tratamento que o `removePhase44Storage()`.
+  function removerChaveLegada() {
     try {
-      var params = new URLSearchParams(globalThis.location.search || '');
-      if (params.get('ux_phase42_reset') !== '1') return;
-      localStorage.removeItem(STORAGE_KEY);
+      globalThis.localStorage?.removeItem('epi:ux:phase42:memory:v2');
     } catch (_) {}
   }
 
@@ -152,6 +171,20 @@
       epiId: ctx.epiId,
       companyId: ctx.companyId
     };
+  }
+
+  // A memória do phase42 agora vive só em RAM (F5-B: histórico de sugestão não
+  // é preferência do usuário nem estado operacional com requisito funcional).
+  // Quem consome essa memória — o card de sugestão do phase43 — precisa saber
+  // QUANDO ela mudou: sem persistência não há releitura no próximo carregamento
+  // que "conserte" a defasagem. O anúncio é de mão única: o phase42 não conhece
+  // o phase43, apenas publica que registrou uso.
+  function anunciarUsoRegistrado() {
+    try {
+      document.dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'));
+    } catch (error) {
+      console.warn('[phase42] falha ao anunciar uso registrado', error);
+    }
   }
 
   function summarizeHistory(memory, employeeId, roleName) {
@@ -325,14 +358,72 @@
     try {
       if (!isEnabled()) return;
       document.body.classList.add('phase42-enabled');
-      resetMemoryIfRequested();
-
       var form = byId('delivery-form');
       if (!form) return;
       var panels = ensurePanels(form);
       var memory = loadMemory();
       var userEdited = new Set();
       var autofilledFieldIds = new Set();
+      // Contexto capturado no submit e gravado só na conclusão da entrega.
+      var ctxPendente = null;
+
+      // Sair do módulo descarta o contexto (F5-B). Sem isto a memória em RAM
+      // ainda atravessaria a reentrada: a SPA não recarrega a página, e o IIFE
+      // vive enquanto o documento viver.
+      //
+      // Substitui o antigo `resetMemoryIfRequested()`, que só limpava mediante
+      // `?ux_phase42_reset=1` — descarte manual, que ninguém dispara na
+      // navegação real.
+      safeOn(document, 'epi:viewchange', function (evento) {
+        // Só em SAÍDA real do módulo. `showView()` é chamado também sem trocar
+        // de view — a recarga após uma entrega bem-sucedida
+        // (`loadBootstrap() -> renderAll() -> showView('entregas')`) e o
+        // redesenho por troca de idioma passam por aqui. Descartar ali apagaria
+        // a memória e fecharia o fluxo com o usuário ainda em Entregas.
+        var detalhe = evento && evento.detail ? evento.detail : {};
+        if (detalhe.view && detalhe.view === detalhe.anterior) return;
+        // Troca EXPLÍCITA de aba na barra multitab também não é saída do
+        // módulo: `activateTab()` restaura os campos daquela aba logo depois,
+        // e descartar aqui devolveria o formulário preenchido SEM a sugestão
+        // e sem o contexto de revisão que pertenciam a ele — pior do que não
+        // restaurar nada. Mesma exceção que o reset central de entrada aplica.
+        if (detalhe.viaMultitab === true) return;
+        descartarMemoria();
+        // O DOM da SPA não é descartado ao trocar de módulo: sem isto a
+        // recomendação já renderizada continuaria visível na volta, mesmo com
+        // a memória que a gerou apagada — até o usuário mexer noutro campo.
+        ['phase42-suggestion-box', 'phase42-alerts-box', 'phase42-quick-confirm']
+          .forEach(function (id) {
+            var caixa = byId(id);
+            if (!caixa) return;
+            caixa.hidden = true;
+            caixa.innerHTML = '';
+          });
+        // Marcas do fluxo anterior: sem limpá-las, os campos preenchidos
+        // automaticamente e os editados à mão continuariam contando como se o
+        // usuário já os tivesse revisado nesta entrada.
+        // As marcas visuais ficam no DOM, que sobrevive à troca de módulo:
+        // limpar só os conjuntos deixaria os campos ainda com a classe
+        // `phase42-autofilled`, o title de sugestão e o valor anterior no
+        // dataset, de um fluxo que já foi descartado.
+        autofilledFieldIds.forEach(function (id) {
+          var campo = byId(id);
+          if (!campo) return;
+          // RESTAURAR antes de apagar a marca — mesma semântica do
+          // "#phase42-undo-suggestion", que é o caminho legítimo de desfazer.
+          // Só limpar a marca deixava a escolha SUGERIDA no campo, agora sem
+          // nada que a identificasse como sugestão: na volta ela parece ter
+          // sido escolhida à mão, embora a memória e o painel que a
+          // justificavam já tenham sido descartados.
+          var anterior = String(campo.dataset.phase42PrevValue || '');
+          campo.value = anterior;
+          clearAutofillMark(campo);
+          delete campo.dataset.phase42PrevValue;
+          delete campo.dataset.phase42Autofill;
+        });
+        userEdited.clear();
+        autofilledFieldIds.clear();
+      }, { signal: moduleController.signal });
 
       var watched = ['delivery-company', 'delivery-unit-filter', 'delivery-employee', 'delivery-epi'];
       watched.forEach(function (id) {
@@ -431,10 +522,35 @@
           event.preventDefault();
           return;
         }
-        var ctx = getContext(memory);
-        appendUsageEvent(memory, ctx);
-        saveMemory(memory);
+        // Captura o contexto AQUI (o formulário ainda está preenchido) e
+        // guarda para gravar só se a entrega der certo. Ver abaixo.
+        ctxPendente = getContext(memory);
       }, { capture: true, signal: moduleController.signal });
+
+      // O REGISTRO e o anúncio passam a depender de a entrega ter dado certo.
+      //
+      // O handler acima é `capture: true` e o phase42 é injetado antes do
+      // phase43, então ele roda ANTES do submit do phase43 — que dá
+      // `preventDefault()` quando o resumo de confirmação não foi revisado, o
+      // código do item está errado ou a quantidade é inválida. Gravar ali fazia
+      // uma submissão abortada — ou uma que falhasse na API — entrar no
+      // histórico como uso concluído, e o phase43 passava a recomendar a partir
+      // de uma entrega que nunca existiu.
+      //
+      // Por isso o contexto é capturado no submit (formulário ainda cheio) e
+      // gravado aqui: `epi:delivery-submit-success` é disparado pelo app.js só
+      // depois de a API responder. Ele vem DEPOIS do `form.reset()`, então o
+      // recálculo do phase43 encontra o formulário vazio e limpa o card — que é
+      // o estado coerente com uma entrega concluída. A sugestão da PRÓXIMA
+      // entrega continua sendo calculada na troca de colaborador, já com o
+      // evento novo no ranking.
+      safeOn(document, 'epi:delivery-submit-success', function () {
+        if (!ctxPendente) return;
+        appendUsageEvent(memory, ctxPendente);
+        saveMemory(memory);
+        ctxPendente = null;
+        anunciarUsoRegistrado();
+      }, { signal: moduleController.signal });
 
       safeOn(document, 'click', function (event) {
         var target = event.target;
@@ -467,6 +583,12 @@
       console.warn('[phase42] fallback para fluxo clássico por segurança.', error);
     }
   }
+
+  // Fora do `init()` de propósito: `init()` sai cedo quando a flag está
+  // desligada — que é o default — e a limpeza precisa acontecer justamente
+  // para quem teve a flag LIGADA um dia e não tem mais. Dentro do `init()` a
+  // chave legada sobreviveria para sempre em quem mais precisa dela removida.
+  removerChaveLegada();
 
   if (document.readyState === 'loading') safeOn(document, 'DOMContentLoaded', init, { once: true });
   else init();

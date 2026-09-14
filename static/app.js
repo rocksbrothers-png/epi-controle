@@ -3371,8 +3371,35 @@ function bindSpaNavigationHistory() {
     if (!isSpaNavigationEnabled()) return;
     const fallbackView = defaultView();
     const nextView = event?.state?.view || resolveViewFromLocation() || fallbackView;
+    // Três passos, nesta ordem exata — cada um existe por um motivo:
+    //
+    // 1. `showView` SEM `historyMode`. Entrar no módulo devolve abas e filtros
+    //    ao estado inicial (F5-B). O `historyMode: 'replace'` foi retirado de
+    //    propósito: ele faria o `showView` gravar `collectInteractiveSnapshot()`
+    //    na entrada de histórico AGORA, antes da restauração — carimbando-a com
+    //    os filtros da view que está sendo DEIXADA. O `event.state` desta
+    //    travessia ainda seria aplicado corretamente, mas a entrada ficaria
+    //    com o estado errado, e voltar a ela mais tarde restauraria o valor
+    //    sobrescrito.
+    // 2. Reaplicar o snapshot. O Voltar/Avançar é navegação pedida
+    //    explicitamente pelo usuário, então vence o reset de entrada. Continua
+    //    carimbado por `sid`: de outra sessão ou identidade, é recusado dentro
+    //    de `restoreInteractiveSnapshot`.
+    // 3. Só então reescrever a entrada, já com o estado restaurado — que é o
+    //    que o `historyMode: 'replace'` fazia antes de a ordem mudar.
+    showView(nextView, { partial: true, viaHistorico: true });
     restoreInteractiveSnapshot(event?.state);
-    showView(nextView, { partial: true, historyMode: 'replace' });
+    if (isSpaNavigationEnabled()) {
+      // A view REALMENTE aberta, não a pedida: `showView` redireciona para
+      // `defaultView()` quando o papel perdeu acesso à view do histórico, e
+      // retorna sem trocar nada quando o container não existe. Gravar
+      // `nextView` cru nesses casos deixaria a URL e o snapshot apontando para
+      // uma tela diferente da exibida.
+      const aberta = document.querySelector('.view.active')?.id?.replace(/-view$/, '') || nextView;
+      globalThis.history.replaceState(
+        collectInteractiveSnapshot(aberta), '', buildNavigationUrl(aberta)
+      );
+    }
   });
 }
 
@@ -3516,7 +3543,23 @@ function showView(view, options = {}) {
     globalThis.history.replaceState(collectInteractiveSnapshot(view), '', nextUrl);
   }
   try {
-    document.dispatchEvent(new CustomEvent('epi:viewchange', { detail: { view } }));
+    // `anterior` e `viaHistorico` existem para o reset da F5-B distinguir
+    // "entrou noutro módulo" de "o mesmo módulo se redesenhou". `showView` é
+    // chamado também por fluxos internos — `startEditEmployee()` chama
+    // `showView('colaboradores')` estando já em colaboradores — e sem essa
+    // distinção o reset apagaria os filtros que o usuário acabou de usar para
+    // achar o registro que está editando.
+    document.dispatchEvent(new CustomEvent('epi:viewchange', {
+      detail: {
+        view,
+        anterior: currentActiveView.replace(/-view$/, ''),
+        viaHistorico: options.viaHistorico === true,
+        // Troca EXPLÍCITA de aba na barra multitab (clique na aba, Ctrl+Tab,
+        // fechar aba, restauração de sessão). Como Voltar/Avançar, é o usuário
+        // pedindo um contexto específico de volta — não é reentrada no módulo.
+        viaMultitab: options.viaMultitab === true
+      }
+    }));
   } catch (error) {
     reportNonCriticalError('[view] falha ao notificar troca de tela', error);
   }
@@ -3634,7 +3677,6 @@ function bindNavBackBehavior() {
 // data-vtab-panel="chave"> na mesma view. A lógica de negócio não muda: os
 // painéis inativos permanecem no DOM (renderizações por id continuam
 // funcionando) — apenas deixam de ser exibidos.
-const VIEW_TAB_STORAGE_PREFIX = 'epi_vtab_';
 
 // Ações de linha que preenchem um formulário noutra aba: ao clicar, a aba do
 // formulário é ativada para o usuário ver o que acabou de abrir para edição.
@@ -3680,9 +3722,14 @@ function activateViewTab(nav, key, options = {}) {
   viewTabPanelsFor(nav).forEach((panel) => {
     panel.classList.toggle('is-active', panel.dataset.vtabPanel === key);
   });
-  if (options.persist !== false) {
-    try { sessionStorage.setItem(VIEW_TAB_STORAGE_PREFIX + group, key); } catch (_e) { /* storage indisponível */ }
-  }
+  // A aba ativa NÃO é persistida (F5-B). Aba interna é estado de NAVEGAÇÃO:
+  // reentrar no módulo abre a aba inicial, não a última usada — inclusive para
+  // o mesmo usuário. Havia aqui um `sessionStorage.setItem(epi_vtab_<grupo>)`
+  // que sobrevivia ao encerramento de sessão na mesma aba do navegador, então
+  // quem entrasse depois herdava a navegação de quem saiu.
+  //
+  // O `options.persist` deixou de existir junto: sem gravação, um parâmetro
+  // para "não gravar" só enganaria quem lesse depois.
   if (options.focus) nav.querySelector(`[data-vtab="${key}"]`)?.focus();
   document.dispatchEvent(new CustomEvent('epi:vtab-change', { detail: { group, tab: key } }));
 }
@@ -3703,8 +3750,436 @@ function syncViewTabsVisibility(nav) {
   });
   if (activeHidden) {
     const fallback = visibleViewTabs(nav)[0];
-    if (fallback) activateViewTab(nav, fallback.dataset.vtab, { persist: false });
+    if (fallback) activateViewTab(nav, fallback.dataset.vtab);
   }
+}
+
+// Cada passo de um reset é INDEPENDENTE.
+//
+// Uma entrada de reset costuma ter vários passos (limpar um grupo de campos,
+// ressincronizar o módulo, limpar o grupo da outra aba, ressincronizar de
+// novo). Com um único `try` em volta de tudo, o primeiro passo que lançasse
+// cancelaria silenciosamente todos os seguintes — e o módulo reabriria com
+// metade dos filtros limpos e metade intactos. Meio reset é pior do que
+// nenhum: é o estado que ninguém consegue explicar olhando a tela.
+//
+// Medido, não suposto: foi assim que um `syncUnitsSearchFilters()` com alvo de
+// render ausente impediu a limpeza dos filtros de unidades arquivadas.
+function passoDeReset(rotulo, executar) {
+  try {
+    executar();
+  } catch (error) {
+    reportNonCriticalError(`[f5b] passo de reset falhou: ${rotulo}`, error);
+  }
+}
+
+// Filtros de um módulo voltam ao estado inicial na entrada (F5-B).
+//
+// Reaproveita o `clearFilters` que o próprio módulo já declara — é o mesmo
+// que o botão "Limpar filtros" executa, então "estado inicial" aqui não é uma
+// definição nova inventada por esta fatia: é a que o produto já tinha.
+//
+// Sem isto, remover a persistência do phase44 corrigiria só metade: os valores
+// continuam nos `<input>` (o DOM da SPA não é descartado) e em
+// `state.employeesFilters` / `employeesOpsFilters` / `episFilters`, que são
+// globais em memória e atravessam a troca de módulo sem passar por storage.
+// O campo de EMPRESA não é filtro para quem não é master: é ESCOPO. Para
+// papéis não-master `populateScopedSearchFilters()` fixa o valor e desabilita o
+// controle. Limpá-lo aqui esvaziava o escopo exibido e, pior, o
+// `syncDeliveriesOptions()` seguinte reabilitava o campo — porque ele só trava
+// perfis `admin`/`user` (`isOperationalProfile`), enquanto o escopo trava todo
+// não-master. Reentrar num módulo destravava um controle que estava fixo.
+const ehMaster = () => state.user?.role === 'master_admin';
+
+const limparCamposDeFiltro = (chaves) => {
+  chaves.forEach((chave) => {
+    if (!refs[chave]) {return;}
+    if (!ehMaster() && /Company$/.test(chave)) {return;}
+    refs[chave].value = '';
+    // Os eventos vão junto: o contador do phase44 ("Filtros ativos: N") e o
+    // status de tela só se atualizam por `input`/`change`, e `bindView()` não
+    // religa um container já ligado na reentrada. Sem isto o módulo mostrava
+    // "Filtros ativos: 1" com os filtros e a lista já zerados — estado lógico e
+    // DOM divergindo, que é o oposto do que esta fatia promete.
+    refs[chave].dispatchEvent(new Event('input', { bubbles: true }));
+    refs[chave].dispatchEvent(new Event('change', { bubbles: true }));
+  });
+};
+
+const VIEW_FILTER_RESET = Object.freeze({
+  colaboradores: () => {
+    passoDeReset('colaboradores/clearFilters', () => INTERACTIVE_TOOLS_MODULES.colaboradores?.clearFilters?.());
+    limparFiltrosArquivados('employee', 'archivedEmployees');
+  },
+  'colaborador-list': () => passoDeReset('colaborador-list/clearFilters',
+    () => INTERACTIVE_TOOLS_MODULES['colaborador-lista']?.clearFilters?.()),
+  'gestao-colaborador': () => passoDeReset('gestao-colaborador/clearFilters',
+    () => INTERACTIVE_TOOLS_MODULES['gestao-colaborador']?.clearFilters?.()),
+  epis: () => {
+    passoDeReset('epis/clearFilters', () => INTERACTIVE_TOOLS_MODULES.epis?.clearFilters?.());
+    // `syncEpisSearchFilters()` não volta à primeira página, ao contrário do
+    // caminho de colaboradores e entregas. Sem isto, sair do catálogo na
+    // página 3 e voltar reabriria a página 3 — paginação é estado de
+    // navegação como qualquer outro.
+    if (state.pagination) {state.pagination.epis = 1;}
+    passoDeReset('epis/renderTables', () => renderTables());
+    limparFiltrosArquivados('epi', 'archivedEpis');
+  },
+  usuarios: () => {
+    ['userFilterCompany', 'userFilterRole', 'userFilterStatus', 'userFilterSearch']
+      .forEach((chave) => { if (refs[chave]) {refs[chave].value = '';} });
+    passoDeReset('usuarios/sync', () => syncUserFilters());
+  },
+  unidades: () => {
+    limparCamposDeFiltro(['unitsFilterCompany', 'unitsFilterName', 'unitsFilterType', 'unitsFilterCity']);
+    passoDeReset('unidades/sync', () => syncUnitsSearchFilters());
+    // Os arquivados são um segundo conjunto de filtros do mesmo módulo, numa
+    // aba própria — e a aba também volta ao início, então a lista arquivada
+    // reaparece filtrada por quem esteve ali antes se não limparmos aqui.
+    limparCamposDeFiltro([
+      'archivedUnitsFilterCompany', 'archivedUnitsFilterUser',
+      'archivedUnitsFilterReason', 'archivedUnitsFilterDate'
+    ]);
+    passoDeReset('unidades-arquivadas/sync', () => {
+      if (typeof syncArchivedUnitsFilters === 'function') {syncArchivedUnitsFilters();}
+    });
+  },
+  estoque: () => passoDeReset('estoque/clearFilters', () => INTERACTIVE_TOOLS_MODULES.estoque?.clearFilters?.()),
+  cnpjs: () => {
+    limparCamposDeFiltro(['legalEntitiesFilterSearch', 'legalEntitiesFilterType']);
+    // `showInactive` é caixa, não campo de texto: `value = ''` não a desmarca,
+    // e ela decide se registros inativos aparecem na lista.
+    if (refs.legalEntitiesShowInactive) {
+      refs.legalEntitiesShowInactive.checked = false;
+      refs.legalEntitiesShowInactive.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    passoDeReset('cnpjs/sync', () => syncLegalEntitiesFilters());
+  },
+  terceirizados: () => {
+    limparCamposDeFiltro(['outsourcedCompaniesFilterSearch', 'outsourcedCompaniesFilterKind']);
+    passoDeReset('terceirizados/empresas', () => syncOutsourcedCompaniesFilters());
+    limparCamposDeFiltro(['outsourcedEmployeesFilterSearch']);
+    passoDeReset('terceirizados/colaboradores', () => syncOutsourcedEmployeesFilters());
+    limparFiltrosArquivados('outsourcedCompany', 'archivedOutsourcedCompanies');
+    limparFiltrosArquivados('outsourcedEmployee', 'archivedOutsourcedEmployees');
+  },
+  // Entregas e Fichas não têm entrada em `INTERACTIVE_TOOLS_MODULES`, mas têm
+  // filtros de SPA que persistem do mesmo jeito — `state.deliveriesFilters` e
+  // `state.fichaFilters` são globais em memória, e os campos ficam no DOM.
+  // Derivar o mapa só dos módulos interativos deixava os dois de fora.
+  //
+  // O campo de empresa entra na limpeza como nos demais módulos: as funções de
+  // sincronização chamam `syncDeliveriesOptions()` / `syncFichaOptions()`, que
+  // reaplicam o escopo por perfil operacional e voltam a travar o campo.
+  entregas: () => {
+    limparCamposDeFiltro([
+      'deliveriesFilterCompany', 'deliveriesFilterUnit', 'deliveriesFilterEmployee',
+      'deliveriesFilterEpi', 'deliveriesFilterDateFrom', 'deliveriesFilterDateTo',
+      'deliveriesFilterStatus'
+    ]);
+    passoDeReset('entregas/sync', () => syncDeliveriesSearchFilters());
+  },
+  fichas: () => {
+    limparCamposDeFiltro(['fichaFilterCompany', 'fichaFilterUnit', 'fichaFilterSearch']);
+    passoDeReset('fichas/sync', () => syncFichaSearchFilters());
+  },
+  comercial: () => {
+    limparCamposDeFiltro([
+      'commercialFilterStatus', 'commercialFilterDateFrom',
+      'commercialFilterDateTo', 'commercialFilterActor'
+    ]);
+    passoDeReset('comercial/sync', () => syncCommercialFilter());
+  },
+  dashboard: () => {
+    limparCamposDeFiltro(['dashboardGlobalSearch']);
+    state.dashboardFilters.query = '';
+    // Os renderizadores do dashboard moram em `static/js/views/dashboard.js` e
+    // chegam aqui por `globalThis`. O `input` disparado acima já os aciona pelo
+    // `bindSearchInput`, mas com 120 ms de debounce: chamar direto fecha essa
+    // janela em que a tela ainda mostra o resultado filtrado. `typeof` porque a
+    // ordem de carga do módulo de view não é garantia deste arquivo.
+    passoDeReset('dashboard/render', () => {
+      if (typeof renderAlerts === 'function') {renderAlerts();}
+      if (typeof renderLatestDeliveries === 'function') {renderLatestDeliveries();}
+    });
+  },
+  compras: () => {
+    // Três seletores, três carregadores distintos. O de empresa fica OCULTO
+    // para quem não é master (`_initDemandsCompanyFilter`), então ali ele é
+    // filtro de verdade, não escopo travado — limpar é correto.
+    ['compras-demands-company-filter', 'compras-req-status-filter', 'compras-po-status-filter']
+      .forEach((id) => {
+        const campo = document.getElementById(id);
+        if (!campo) {return;}
+        campo.value = '';
+        campo.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+  },
+  avaliacoes: () => {
+    ['feedbacks-filter-status', 'feedbacks-filter-type'].forEach((id) => {
+      const campo = document.getElementById(id);
+      if (campo) {campo.value = '';}
+    });
+    // A lista de feedbacks só recarrega por ação explícita ("Filtrar" /
+    // "Atualizar"): limpar os selects sem recarregar deixaria a tela mostrando
+    // o recorte da visita anterior com os controles já vazios.
+    passoDeReset('avaliacoes/feedbacks', () => globalThis.__EPI_FEEDBACK_DETAIL__?.loadEpiFeedbacks?.());
+  },
+  migracao: () => {
+    limparCamposDeFiltro(['migracaoCatalogFilter']);
+    passoDeReset('migracao/catalogo', () => renderDataMigrationCatalog());
+  },
+  relatorios: () => {
+    // Paginação com outro nome: `state.reportArchivePage` vive fora de
+    // `state.pagination`, e foi por isso que escapou da primeira contagem —
+    // procurei pelo mecanismo, não pelo conceito.
+    state.reportArchivePage = 1;
+  }
+});
+
+// Grupos de arquivados: quatro módulos têm uma aba de arquivados com seu
+// PRÓPRIO conjunto de filtros, sobre `ARCHIVAL_ENTITIES`. Como a aba também
+// volta ao início na reentrada, a lista arquivada reapareceria filtrada pela
+// visita anterior se só limpássemos os filtros da aba principal.
+function limparFiltrosArquivados(kind, prefixo) {
+  limparCamposDeFiltro([
+    `${prefixo}FilterCompany`, `${prefixo}FilterDate`,
+    `${prefixo}FilterReason`, `${prefixo}FilterUser`
+  ]);
+  passoDeReset(`arquivados/${kind}`, () => syncArchivedRecordsFilters(kind));
+}
+
+// ── Modo de edição: a classe mais séria do contrato (F5-B) ──────────────────
+//
+// Nove módulos entram em modo de edição, guardando a identidade do registro de
+// duas formas: `state.editing*Id` (empresas, usuários) ou um
+// `<input type="hidden" name="id">` no formulário (unidades, colaboradores,
+// EPIs, CNPJs, terceirizados ×2, e o modal de fornecedor em compras).
+//
+// O único ponto que desarmava isso era `form.reset()` + `handleFormReset(form)`
+// APÓS submit bem-sucedido. Sair no meio da edição deixava o módulo armado: ao
+// voltar, o formulário seguia preenchido, o botão dizia "Atualizar", e um
+// submit alterava o registro anterior em vez de criar um novo. Não é questão de
+// navegação — é integridade de dado.
+//
+// Aqui não se inventa reset novo: chama-se a autoridade que cada módulo já
+// tem. `form.reset()` nativo devolve o hidden `id` ao valor padrão do HTML
+// (vazio), que é exatamente o caminho já percorrido depois de salvar.
+function resetarFormularioPorId(id) {
+  const form = document.getElementById(id);
+  if (!form) {return;}
+  form.reset();
+  handleFormReset(form);
+}
+
+const VIEW_FORM_RESET = Object.freeze({
+  empresas: () => resetCompanyForm(),
+  usuarios: () => resetUserForm(),
+  // `fillCommercialForm()` e não `resetCommercialContractForm()`: o editor
+  // comercial tem DUAS metades — a configuração principal da empresa
+  // (`commercial-form` + `commercial-company`) e o contrato. Limpar só a
+  // segunda deixava a tela editando a empresa B com a identidade do contrato
+  // dela já descartada: um "Salvar contrato" ali gravaria um rascunho em
+  // branco POR CIMA do contrato existente de B. `fillCommercialForm()` é a
+  // autoridade que o próprio módulo usa para carregar o editor inteiro — ela
+  // recarrega a metade principal e chama `resetCommercialContractForm()` no
+  // fim, deixando as duas metades coerentes.
+  comercial: () => fillCommercialForm(),
+  unidades: () => resetarFormularioPorId('unit-form'),
+  colaboradores: () => resetarFormularioPorId('employee-form'),
+  epis: () => resetarFormularioPorId('epi-form'),
+  cnpjs: () => resetarFormularioPorId('legal-entity-form'),
+  terceirizados: () => {
+    passoDeReset('terceirizados/empresa', () => resetarFormularioPorId('outsourced-company-form'));
+    passoDeReset('terceirizados/colaborador', () => resetarFormularioPorId('outsourced-employee-form'));
+  }
+});
+
+function resetModuleFormsToInitial(view) {
+  const limpar = VIEW_FORM_RESET[String(view || '')];
+  if (typeof limpar !== 'function') {return;}
+  try {
+    limpar();
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao sair do modo de edição em ${view}`, error);
+  }
+}
+
+// ── Modais e wizard: mesmo princípio, outra manifestação ────────────────────
+//
+// Os três modais ficam DENTRO da view, então somem quando ela perde `.active`.
+// O que não some é o estado: reentrar reabria o modal no ponto anterior, com o
+// registro carregado. No `modal-edit-supplier` isso tem a mesma gravidade do
+// modo de edição — o submit atualizaria o fornecedor da visita passada. Por
+// isso o id também é descartado, não basta esconder.
+//
+// Inventário pela FONTE, não por busca em `app.js`: os modais vivem em
+// `static/views/modals/*.html` (mais o `ppe-form-modal`, inline em
+// `avaliacoes.html`, e o `smr-request-report-modal`, em `_modals.html`), e dois
+// deles são acionados de `static/js/views/purchases.js`. Procurar só neste
+// arquivo achava 3 de 7 — o mesmo erro de método já corrigido antes: inventário
+// por conceito e pela superfície servida, nunca pelo lugar onde eu esperava
+// encontrar o mecanismo.
+//
+// A segunda posição é a LISTA de campos de identidade a descartar. Esconder sem
+// descartar deixa a mesma armadilha do modo de edição: o `aval-action-modal`
+// guarda `aval-modal-feedback-id` e `aval-modal-action`, então reentrar em
+// Avaliações com ele aberto exporia uma confirmação capaz de agir sobre o
+// feedback escolhido na visita anterior.
+const MODAIS_DE_MODULO = Object.freeze({
+  compras: [
+    ['modal-edit-supplier', ['edit-supplier-id']],
+    ['modal-supplier-pos', []],
+    ['aprovacoes-reprovar-modal', []],
+    ['aprovacoes-prorrogar-modal', []]
+  ],
+  avaliacoes: [
+    ['ppe-form-modal', []],
+    ['aval-action-modal', ['aval-modal-feedback-id', 'aval-modal-action']]
+  ],
+  estoque: [['smr-request-report-modal', []]]
+});
+
+function resetModuleModalsToInitial(view) {
+  const modais = MODAIS_DE_MODULO[String(view || '')];
+  if (!modais) {return;}
+  try {
+    modais.forEach(([modalId, identidades]) => passoDeReset(`modal/${modalId}`, () => {
+      const modal = document.getElementById(modalId);
+      // `display = 'none'` é exatamente como o produto fecha estes modais
+      // (todos abrem com `display = 'flex'`) — não é um fechamento inventado
+      // por esta fatia.
+      if (modal) {modal.style.display = 'none';}
+      (identidades || []).forEach((campoId) => {
+        const campo = document.getElementById(campoId);
+        if (campo) {campo.value = '';}
+      });
+    }));
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao fechar modais de ${view}`, error);
+  }
+}
+
+// Seleção é estado de NAVEGAÇÃO: reentrar não pode devolver as caixas marcadas
+// da visita anterior. `employeesBulk.retain()` preserva todo id que continue na
+// lista — depois do reset de filtros a lista fica MAIOR, então a seleção antiga
+// sobreviveria inteira, com a barra de ações armada.
+function resetModuleSelectionToInitial(view) {
+  try {
+    if (view === 'colaboradores' || view === 'gestao-colaborador' || view === 'colaborador-list') {
+      // `employeesBulk` é `null` quando o componente do DS não carregou, e é um
+      // `const` declarado mais abaixo — o `try` cobre os dois casos.
+      employeesBulk?.clear?.();
+    }
+    if (view === 'empresas') {
+      state.selectedCompanyId = null;
+      // Redesenhar é obrigatório, e por um motivo de ORDEM: o reset de
+      // formulários roda antes deste e termina em `renderCompanyDetails()`,
+      // que ainda enxerga a empresa da visita anterior. Sem redesenhar aqui, o
+      // painel de detalhes e a linha destacada continuam mostrando aquela
+      // empresa enquanto o estado diz que nada está selecionado.
+      //
+      // O "estado inicial" do módulo não é `null`: tanto `renderCompanyDetails`
+      // quanto `renderCompanies` caem na PRIMEIRA empresa visível quando não há
+      // seleção. Chamar as duas é o que devolve exatamente esse estado, em vez
+      // de inventar um terceiro.
+      passoDeReset('empresas/detalhes', () => renderCompanyDetails());
+      passoDeReset('empresas/tabela', () => renderCompanies());
+    }
+    if (view === 'compras') {
+      // `.clear()` e nunca reatribuição: os Sets são publicados em `globalThis`
+      // por getter/setter e lidos por módulos de view (purchases.js). Trocar o
+      // objeto deixaria referências capturadas apontando para a seleção velha.
+      _selectedDemands.clear();
+      _selectedAprovacoes.clear();
+      // As caixas marcadas continuam no DOM (a SPA não descarta a view), então
+      // limpar só o Set deixaria a tela mentindo: marcado na tela, vazio no
+      // estado. Desmarcar aqui é o que torna a reentrada de fato inicial.
+      desmarcarCaixas(['compras-demands-select-all', 'aprovacoes-select-all']);
+      desmarcarCaixas('.demand-check, .aprovacao-check');
+      // Passos independentes: as duas barras de ação são de fluxos distintos, e
+      // uma falha ao ressincronizar a de demandas não pode deixar a de
+      // aprovações armada sem seleção.
+      passoDeReset('compras/barra-demandas', () => updateCreateRequestBtn());
+      passoDeReset('compras/barra-aprovacoes', () => _syncAprovacoesBtnVisibility());
+    }
+    if (view === 'usuarios') {
+      _purchaseFunctionSelectedUnitIds.clear();
+      // Re-render é obrigatório: os checkboxes de unidade são gerados a partir
+      // do Set, e sem redesenhar continuariam `checked` do vínculo anterior.
+      passoDeReset('usuarios/funcoes-de-compra', () => renderPurchaseFunctionUnitChecks());
+    }
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao limpar seleção de ${view}`, error);
+  }
+}
+
+// Desmarca caixas por id (array) ou por seletor CSS (string). Sem efeito quando
+// o elemento não existe — módulos ocultos por permissão não são erro.
+function desmarcarCaixas(alvo) {
+  const nos = Array.isArray(alvo)
+    ? alvo.map((id) => document.getElementById(id)).filter(Boolean)
+    : Array.from(document.querySelectorAll(alvo));
+  nos.forEach((no) => { no.checked = false; });
+}
+
+// Wizard/assistente é estado de NAVEGAÇÃO: reentrar no módulo tem de devolver o
+// passo 1, não o passo em que o último uso parou. Reaproveita o reset que o
+// próprio produto já expõe no botão "Recomeçar" (`refs.migracaoRestart`) — não
+// há definição nova de "estado inicial" inventada por esta fatia.
+function resetModuleWizardsToInitial(view) {
+  if (view !== 'migracao') {return;}
+  try {
+    resetDataMigrationWizard();
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao reiniciar assistente de ${view}`, error);
+  }
+}
+
+function resetModuleFiltersToInitial(view) {
+  const limpar = VIEW_FILTER_RESET[String(view || '')];
+  if (typeof limpar !== 'function') return;
+  try {
+    limpar();
+  } catch (error) {
+    reportNonCriticalError(`[f5b] falha ao limpar filtros de ${view}`, error);
+  } finally {
+    // Reafirma valor e trava de escopo por papel. Barato e idempotente: para o
+    // master não muda nada; para os demais garante que a reentrada nunca
+    // afrouxe o recorte de empresa, qualquer que seja o caminho de limpeza.
+    //
+    // `finally` e não fim do `try`: uma falha na limpeza de um módulo não pode
+    // deixar o recorte de empresa destravado. Foi exatamente essa a regressão
+    // que esta fatia introduziu e corrigiu — limpar o campo de empresa e não
+    // reafirmar a trava libera para o perfil não-master um filtro que deve
+    // permanecer fixo.
+    try {
+      populateScopedSearchFilters();
+    } catch (error) {
+      reportNonCriticalError(`[f5b] falha ao reafirmar escopo de ${view}`, error);
+    }
+  }
+}
+
+// Estado inicial de um grupo de abas: a PRIMEIRA aba declarada na view, ou a
+// primeira ainda visível quando permissão ocultou as anteriores. Não há aqui
+// nenhuma consulta a storage — é essa a diferença entre "abrir o módulo" e
+// "voltar para onde o último usuário parou" (F5-B).
+function resetViewTabsToInitial(nav) {
+  if (!nav) return;
+  // Visibilidade PRIMEIRO. `visibleViewTabs()` lê `tab.style.display`, que quem
+  // escreve é `syncViewTabsVisibility()`. Sem sincronizar antes de escolher, a
+  // "primeira aba visível" é a da ÚLTIMA sincronização — que pode ter ocorrido
+  // com outro perfil, antes de uma permissão ocultar (ou revelar) os cards do
+  // painel. O resultado seria abrir o módulo numa aba que o usuário atual não
+  // deveria ver, ou pular a primeira aba que ele passou a ver.
+  syncViewTabsVisibility(nav);
+  const inicial = (visibleViewTabs(nav)[0] || viewTabButtons(nav)[0])?.dataset.vtab || '';
+  if (inicial) activateViewTab(nav, inicial);
+  // Segunda passada: idempotente. Cobre o caso do fallback
+  // `viewTabButtons(nav)[0]` (nenhuma aba visível), em que a aba ativada pode
+  // precisar ser reavaliada.
+  syncViewTabsVisibility(nav);
 }
 
 function handleViewTabKeydown(nav, event) {
@@ -3742,22 +4217,64 @@ function setupViewTabs() {
       activateViewTab(nav, tab.dataset.vtab);
     });
     safeOn(nav, 'keydown', (event) => handleViewTabKeydown(nav, event));
-    let stored = '';
-    try { stored = sessionStorage.getItem(VIEW_TAB_STORAGE_PREFIX + group) || ''; } catch (_e) { /* sem storage */ }
-    const initial = viewTabButtons(nav).some((tab) => tab.dataset.vtab === stored)
-      ? stored
-      : (viewTabButtons(nav)[0]?.dataset.vtab || '');
-    if (initial) activateViewTab(nav, initial, { persist: false });
-    syncViewTabsVisibility(nav);
+    resetViewTabsToInitial(nav);
   });
 
   if (!globalThis.__EPI_VTABS_GLOBAL_BOUND__) {
     globalThis.__EPI_VTABS_GLOBAL_BOUND__ = true;
-    // Revalida a visibilidade das abas ao trocar de view (permissões podem
-    // ter ocultado cards depois do login/bootstrap).
+    // Entrar num módulo devolve suas abas ao estado inicial (F5-B), e revalida
+    // a visibilidade (permissões podem ter ocultado cards depois do bootstrap).
+    //
+    // O reset precisa acontecer AQUI, e não só na remoção do storage: as views
+    // da SPA vivem todas no DOM, e `setupViewTabs()` roda uma única vez por
+    // nav (guarda `vtabsBound`). Sem este listener, sair do módulo e voltar
+    // reencontraria a última aba pela simples permanência do DOM — sem storage
+    // nenhum envolvido. Apagar a chave `epi_vtab_` sozinha corrigiria o F5 e a
+    // troca de identidade, e deixaria passar o caso mais comum de todos.
     safeOn(document, 'epi:viewchange', (event) => {
-      const view = document.getElementById(`${event?.detail?.view || ''}-view`);
-      view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => syncViewTabsVisibility(nav));
+      const nome = event?.detail?.view || '';
+      const anterior = event?.detail?.anterior || '';
+      // Só em ENTRADA de módulo — vindo de OUTRA view.
+      //
+      // `nome === anterior` cobre dois casos, e ambos são intencionais:
+      //
+      //  1. o mesmo módulo se redesenhando (edição, troca de idioma, recarga
+      //     depois de salvar), que nunca foi reentrada;
+      //  2. o clique no item do menu lateral correspondente à view JÁ ATIVA.
+      //
+      // O caso 2 foi levantado em review como possível falha do contrato
+      // "reentrar no módulo → estado inicial", e a decisão de produto foi
+      // EXPLÍCITA: esse gesto não é reentrada para fins da F5-B, e é no-op
+      // quanto ao reset. O motivo é o custo do contrário — clicar no menu do
+      // módulo em que já se está passaria a destruir, sem aviso, uma edição em
+      // andamento e qualquer dado ainda não salvo.
+      //
+      // Não existe (e não deve existir) um sinal `viaMenu` que contorne esta
+      // guarda para forçar o reset nesse cenário. O gate comportamental
+      // "G-menu-1" prova a proteção com um controle A/B, e a sabotagem
+      // "S-menu-noop" fica vermelha se alguém a remover.
+      if (!nome || nome === anterior) {return;}
+      // Voltar/Avançar é navegação explícita do usuário (contrato da F5-B) e
+      // fica de fora do reset. O snapshot carimbado por `sid` carrega só
+      // filtros de colaboradores/EPIs; resetar aqui apagaria aba interna e
+      // filtros de estoque que o snapshot não tem como devolver, deixando o
+      // Voltar pior do que era.
+      if (event?.detail?.viaHistorico === true) {return;}
+      // Mesma razão para a troca explícita de aba multitab: quem clica numa aba
+      // já aberta está pedindo AQUELE contexto, não o estado inicial. Entrar
+      // pelo menu lateral continua sendo reentrada e cai no reset abaixo.
+      if (event?.detail?.viaMultitab === true) {return;}
+      const view = document.getElementById(`${nome}-view`);
+      view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => resetViewTabsToInitial(nav));
+      // Ordem deliberada: modal antes de formulário (o modal carrega a
+      // identidade sendo editada), formulário antes de filtro (limpar filtro
+      // redesenha listas), e seleção depois do filtro (a lista fica maior, e
+      // uma seleção sobrevivente reapareceria com a barra de ações armada).
+      resetModuleModalsToInitial(nome);
+      resetModuleFormsToInitial(nome);
+      resetModuleFiltersToInitial(nome);
+      resetModuleSelectionToInitial(nome);
+      resetModuleWizardsToInitial(nome);
     });
     // "Editar" numa listagem preenche o formulário noutra aba → ativa a aba
     // do formulário depois que o handler delegado da tabela já rodou (bubble).
@@ -3766,7 +4283,7 @@ function setupViewTabs() {
       if (!trigger) return;
       const nav = findViewTabsNav(trigger.group);
       if (!nav) return;
-      activateViewTab(nav, trigger.tab, { persist: false });
+      activateViewTab(nav, trigger.tab);
       viewTabPanelFor(nav, trigger.tab)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     });
     // Ao sair da sub-aba "Registrar" de Entrega de EPI, encerra a câmera de QR

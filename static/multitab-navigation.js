@@ -242,6 +242,21 @@
     drawTabs();
   }
 
+  // F5-B.1/B — a MESMA semântica de ativação redundante que o app aplica, sem
+  // reinventá-la aqui. O fallback local existe porque este módulo é servido em
+  // arquivo separado: se o bridge mudar de forma, a resposta segura é calcular
+  // no DOM, e não responder "nunca é redundante" — que é exatamente a resposta
+  // que destrói trabalho do usuário.
+  function ativacaoRedundanteDeView(view) {
+    if (typeof navApi.ativacaoRedundanteDeView === 'function') {
+      return navApi.ativacaoRedundanteDeView(view) === true;
+    }
+    if (!view) return false;
+    var no = document.querySelector('.view.active');
+    var ativa = no && no.id ? String(no.id).replace(/-view$/, '') : '';
+    return ativa !== '' && ativa === view;
+  }
+
   function activateTab(tabId, options) {
     var opts = options || {};
     var tab = getTabById(tabId);
@@ -251,7 +266,47 @@
     if (current && current.id !== tab.id) {
       current.context = captureViewContext(current.view);
     }
+    // F5-B.1/B — ATIVAÇÃO REDUNDANTE: a aba pedida já é a ativa E a view dela já
+    // é a exibida. É o clique no item do menu lateral do módulo corrente
+    // (`onMenuIntercept` → `ensureTab` → aqui, com a aba já existindo) e o
+    // clique na própria aba já ativa. Nada transiciona, então nada pode ser
+    // fechado: `closeTransientUi()` fecha `.signature-modal.is-open`, e reabrir
+    // a assinatura devolve um canvas em branco — o desenho não gravado some.
+    //
+    // Medido ANTES de `activeTabId = tab.id`: depois da atribuição `current` já
+    // seria o próprio `tab` e toda ativação pareceria redundante.
+    var redundante = Boolean(current) && current.id === tab.id && ativacaoRedundanteDeView(tab.view);
+    // F5-B.1/B — ativação redundante é no-op INTEIRO, não só o
+    // `closeTransientUi()`. Pular apenas o fechamento deixava passar todo o
+    // resto de uma transição: `navApi.showView(..., { partial: true })`, que nas
+    // views suportadas rebusca e redesenha o módulo; `runSafeRebinds()`; a
+    // animação e o `markLoading` piscando; e o `updateHistory(tab, opts)`
+    // empilhando outra entrada, porque `onMenuIntercept` passa
+    // `historyMode: 'push'` — o Voltar passava a revisitar um estado de aba
+    // idêntico, uma vez por clique repetido.
+    //
+    // `restoreContext` é a exceção, e por isso não é um `viaMenu` disfarçado:
+    // quem clica numa aba da barra, faz Ctrl+Tab, fecha uma aba ou volta por
+    // `popstate` está pedindo AQUELE contexto de volta, e a restauração do nó
+    // interno precisa rodar mesmo sobre a aba corrente. O caminho do menu
+    // lateral não passa esse sinal — e é justamente o menu que o contrato manda
+    // ser no-op.
+    //
+    // `activeTabId` já é `tab.id` aqui (é o que `redundante` mede), então sair
+    // antes da atribuição não muda estado nenhum.
+    if (redundante && opts.restoreContext !== true) return;
     activeTabId = tab.id;
+    // Incondicional, e isso é deliberado: depois da saída antecipada acima, todo
+    // caminho que chega aqui é OU uma troca real de contexto, OU um
+    // `restoreContext` explícito (clique na aba, `popstate`) que vai reescrever
+    // os campos logo abaixo — e nos dois casos fechar dropdown, modal e painel
+    // transitório é o comportamento certo, o mesmo de antes desta fatia.
+    //
+    // Havia aqui um `if (!redundante)`. Com a saída antecipada ele virou código
+    // morto para o caso que importava, e a sabotagem que o removia passou a ficar
+    // VERDE — uma guarda que não guarda nada é pior que nenhuma, porque parece
+    // proteção. Quem protege o gesto de menu é o `return` acima, e é ele que a
+    // sabotagem `S-B2` derruba.
     closeTransientUi();
 
     var controller = tabAbortControllers.get(tab.id);

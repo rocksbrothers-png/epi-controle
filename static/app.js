@@ -3342,11 +3342,66 @@ async function runSpaPartialNavigation(view) {
   return task;
 }
 
+// ── F5-B.1 · ATIVAÇÃO REDUNDANTE DE VIEW ───────────────────────────────────
+// Contrato aprovado em #343: reativar a view que JÁ está ativa não é sair do
+// módulo e reentrar. Logo não é TRANSIÇÃO — e nenhum efeito colateral de
+// transição pode ocorrer: nem recarregar a página, nem fechar UI transitória
+// com trabalho não salvo, nem trocar aba interna, nem zerar a rolagem, nem
+// apagar a pilha de navegação.
+//
+// A resposta vem do ESTADO — que view está de fato ativa no DOM —, nunca de um
+// sinal declarado por quem chamou. Um sinal opcional volta a perder dados no
+// dia em que um chamador novo esquecer de passá-lo; o estado não tem como ser
+// esquecido.
+//
+// Sem fallback para `defaultView()`, e é por isso que esta função existe em vez
+// de reaproveitar `__EPI_APP_NAV_API__.getCurrentView()`, que tem esse
+// fallback: com NENHUMA view ativa (antes do primeiro `showView`), o fallback
+// responderia `dashboard` e faria a primeira navegação de verdade para o
+// dashboard parecer redundante — a tela nunca abriria.
+function viewAtivaNoDom() {
+  return document.querySelector('.view.active')?.id?.replace(/-view$/, '') || '';
+}
+
+function ativacaoRedundanteDeView(view) {
+  if (!view) {return false;}
+  const ativa = viewAtivaNoDom();
+  return ativa !== '' && ativa === view;
+}
+
 function navigateToView(view, options = {}) {
   const {
     historyMode = 'push',
     partial = true
   } = options;
+  // F5-B.1/A — ATIVAÇÃO REDUNDANTE é no-op, e a guarda fica no TOPO da função,
+  // antes de TODOS os efeitos de transição que ela produz. São três, e os três
+  // doem:
+  //
+  //   `location.assign`   recarrega a página e leva embora todo formulário e
+  //                       toda edição não salvos (views de fallback clássico);
+  //   `history.pushState` empilha uma entrada duplicada para a MESMA URL, com
+  //                       `collectInteractiveSnapshot()` carimbado nela — o
+  //                       Voltar passa a cair no módulo em que o usuário já
+  //                       está, uma vez por clique repetido;
+  //   `showView`          emite `epi:viewchange` e, nas views suportadas pela
+  //                       SPA, dispara a atualização parcial, que rebusca e
+  //                       redesenha o módulo.
+  //
+  // A primeira versão desta guarda vivia só dentro do ramo de
+  // `SPA_NAV_CLASSIC_FALLBACK_VIEWS`, e por isso não alcançava nenhuma das oito
+  // views de `SPA_NAV_SUPPORTED_VIEWS` — a maioria dos módulos. Com a flag de
+  // SPA ligada, `canUseSpa` era true e o clique repetido seguia empilhando
+  // histórico e redesenhando. O gesto não era no-op; era no-op só onde eu havia
+  // olhado.
+  //
+  // `recarregarMesmaView` é a exceção EXPLÍCITA, e é o inverso exato do
+  // `viaMenu` que o contrato proíbe: ali um sinal ausente causaria destruição de
+  // trabalho, aqui um sinal ausente causa proteção. Quem precisa redesenhar a
+  // própria view — o fim do onboarding, depois de `loadBootstrap()` trazer os
+  // dados novos — pede isso por escrito. Quem esquecer de pedir ganha o
+  // comportamento seguro.
+  if (ativacaoRedundanteDeView(view) && options.recarregarMesmaView !== true) {return;}
   const canUseSpa = isSpaNavigationEnabled() && SPA_NAV_SUPPORTED_VIEWS.includes(view);
   if (!canUseSpa) {
     if (isSpaNavigationEnabled() && SPA_NAV_CLASSIC_FALLBACK_VIEWS.includes(view)) {
@@ -4308,6 +4363,10 @@ function registerMultitabNavigationApi() {
       return !permission || hasPermission(permission);
     },
     getCurrentView: () => document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView(),
+    // F5-B.1: a MESMA semântica de ativação redundante que o app aplica, para
+    // os módulos carregados depois (multitab) não reinventarem a sua. Diferente
+    // de `getCurrentView`: sem fallback para `defaultView()`.
+    ativacaoRedundanteDeView,
     rerunSafeSetups: () => {
       try {
         applyPhase2Visibility('Cadastro de Colaborador', isPhase2NavInteractivityEnabled());
@@ -4424,7 +4483,17 @@ function bindMobileUxBehavior() {
 
   safeOn(document, 'epi:viewchange', (e) => {
     closeMobileMenu();
-    if (e?.detail?.view === 'compras' && hasPermission('purchase_requests:view')) {
+    // F5-B.1/C — `anterior === 'compras'` é ATIVAÇÃO REDUNDANTE: o usuário
+    // clicou em Compras estando em Compras, ou a própria view se redesenhou.
+    // Trocar a aba interna aqui devolvia o usuário à aba padrão e descartava o
+    // trabalho da aba que ele tinha aberta. Este listener é independente do
+    // reset de entrada da F5-B e não tem feature flag nenhuma: era o
+    // comportamento vivo em produção.
+    //
+    // Entrar em Compras vindo de OUTRA view continua abrindo a aba padrão —
+    // esse é o contrato da F5-B e ele não muda aqui.
+    const redundante = e?.detail?.anterior === 'compras';
+    if (e?.detail?.view === 'compras' && !redundante && hasPermission('purchase_requests:view')) {
       // Approver não cria demandas, cai direto em Requisições
       const defaultTab = hasPermission('purchase_requests:create') ? 'demandas' : 'requisicoes';
       switchComprasTab(defaultTab);
@@ -13870,7 +13939,11 @@ async function advanceOnboardingStep() {
       await api('/api/my-company/onboarding-complete', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
       closeModal(modal);
       await loadBootstrap();
-      navigateToView('dashboard');
+      // `recarregarMesmaView`: o usuário já estava no dashboard antes do
+      // onboarding, então esta é uma ativação redundante — mas aqui redesenhar é
+      // o objetivo, porque `loadBootstrap()` acabou de trocar os dados por
+      // baixo. Sem o sinal, a tela ficaria com a empresa ainda vazia.
+      navigateToView('dashboard', { recarregarMesmaView: true });
       return;
     }
     if (onboardingStep === 1) {
@@ -14304,6 +14377,26 @@ const DEVOLUTION_DESTINATIONS = [
 function bindAppListener(target, eventName, handler, options = {}) {
   if (!target) return false;
   return safeOn(target, eventName, handler, options);
+}
+
+// O clique no item do menu lateral é O gesto que a F5-B/F5-B.1 contrata, e este
+// é o handler REAL dele. Ficava embutido no meio do `init()`, junto de chamadas
+// de API e de bootstrap, o que tornava o caminho `clique → handler →
+// navigateToView` inalcançável por teste: os gates da F5-B acabaram medindo o
+// evento `epi:viewchange` já pronto, DEPOIS do ponto onde o dano acontece
+// (`location.assign` mora aqui dentro, antes do evento). Virar função nomeada
+// não muda comportamento nenhum — é o que permite ao gate atravessar o caminho
+// de verdade em vez de fabricá-lo.
+function bindMenuNavigation() {
+  refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
+    bindAppListener(button, 'click', (event) => {
+      event.preventDefault();
+      const targetView = button.dataset.view;
+      if (!targetView) return;
+      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(targetView, 'loading', 'Carregando área...');
+      navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
+    })
+  );
 }
 
 async function init() {
@@ -15038,15 +15131,7 @@ async function init() {
     }
   });
 
-  refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
-    bindAppListener(button, 'click', (event) => {
-      event.preventDefault();
-      const targetView = button.dataset.view;
-      if (!targetView) return;
-      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(targetView, 'loading', 'Carregando área...');
-      navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
-    })
-  );
+  bindMenuNavigation();
   bindAppListener(refs.topConfigTrigger, 'click', openSettingsDrawer);
   setupThemeToggle();
   bindAppListener(refs.interactiveNavTabs, 'click', (event) => {
@@ -18115,6 +18200,16 @@ function _matchPurchaseImportRows(rows, prItems) {
       if (episTesteBtn) episTesteBtn.style.display = hasPermission('ppe_test:view') ? '' : 'none';
       const pendentesBtn = document.getElementById('avaltab-pendentes');
       if (pendentesBtn) pendentesBtn.style.display = isAdmin ? 'none' : '';
+      // F5-B.1/F — a visibilidade das abas acima é idempotente e derivada de
+      // permissão, então continua rodando sempre. A TROCA de aba e a recarga
+      // abaixo, não: em ativação redundante (`anterior === 'avaliacoes'`) elas
+      // devolviam o usuário à aba padrão e descartavam o trabalho da aba aberta.
+      // Mesmo defeito do listener de Compras, num módulo que a auditoria da
+      // F5-B não alcançou — este listener também não tem feature flag.
+      //
+      // Entrar em Avaliações vindo de OUTRA view continua abrindo a aba padrão:
+      // isso é o contrato da F5-B e não muda aqui.
+      if (e.detail?.anterior === 'avaliacoes') return;
       if (isAdmin) {
         // Admins: visão unificada (loadSummary + loadEpiFeedbacks via showAvalTab)
         showAvalTab('avaliacao-final');

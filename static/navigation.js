@@ -268,6 +268,19 @@
     safeOn(document, 'epi:viewchange', function (event) {
       var startTs = typeof helpers.markRenderStart === 'function' ? helpers.markRenderStart() : 0;
       var view = event && event.detail && event.detail.view ? event.detail.view : activeViewName();
+      // F5-B.1/E — `rootPush` faz `stack.length = 0` e recomeça a pilha do
+      // zero. Em ativação redundante (`anterior === view`) isso apagava o
+      // caminho que o usuário percorreu DENTRO do módulo, e o botão Voltar da
+      // hierarquia ficava sem destino. O topo da pilha já é esta view: não há
+      // raiz nova para empilhar, só o histórico dele para perder.
+      //
+      // TRANSIÇÃO real de raiz, com `anterior` diferente, continua zerando a
+      // pilha — é assim que a hierarquia é definida.
+      var anterior = event && event.detail ? event.detail.anterior : '';
+      if (anterior && anterior === view) {
+        if (typeof helpers.markRenderEnd === 'function') helpers.markRenderEnd(startTs);
+        return;
+      }
       rootPush(view);
       if (typeof helpers.markRenderEnd === 'function') helpers.markRenderEnd(startTs);
     });

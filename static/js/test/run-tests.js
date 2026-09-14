@@ -2212,6 +2212,32 @@ function descendentesF5B(no) {
   return saida;
 }
 
+// Plataforma: os três freios do DOM instalados no objeto de evento. Sem eles,
+// `preventDefault()` e `stopImmediatePropagation()` — que o interceptador de
+// captura do multitab chama no clique do menu lateral — seriam no-ops, e o
+// disparo rodaria DOIS handlers onde o navegador roda um. Não é lógica de
+// navegação: é o que o navegador dá a qualquer evento.
+function prepararEventoF5B(ev) {
+  ev._pararPropagacao = false;
+  ev._pararImediato = false;
+  if (ev.defaultPrevented === undefined) {ev.defaultPrevented = false;}
+  if (typeof ev.preventDefault !== 'function') {
+    ev.preventDefault = function () { ev.defaultPrevented = true; };
+  }
+  if (typeof ev.stopPropagation !== 'function') {
+    ev.stopPropagation = function () { ev._pararPropagacao = true; };
+  }
+  if (typeof ev.stopImmediatePropagation !== 'function') {
+    // Como no navegador: silencia também os listeners restantes DESTE nó, não
+    // só os dos nós seguintes.
+    ev.stopImmediatePropagation = function () {
+      ev._pararImediato = true;
+      ev._pararPropagacao = true;
+    };
+  }
+  return ev;
+}
+
 function criarNoF5B(tag, attrs = {}) {
   const no = {
     tagName: String(tag).toUpperCase(),
@@ -2257,27 +2283,47 @@ function criarNoF5B(tag, attrs = {}) {
     get firstChild() { return no.children[0] || null; },
     focus() { no._focado = true; },
     scrollIntoView() {},
-    addEventListener(ev, fn) { (no._handlers[ev] = no._handlers[ev] || []).push(fn); },
+    // A fase de escuta é plataforma: `{ capture: true }` muda QUANDO o listener
+    // roda, e é disso que depende o interceptador de menu do multitab.
+    addEventListener(ev, fn, options) {
+      const captura = options === true || Boolean(options && options.capture);
+      (no._handlers[ev] = no._handlers[ev] || []).push({ fn, captura });
+    },
     removeEventListener() {},
-    // Como no navegador: exceção num listener não impede os demais nem sobe
-    // para quem disparou. Sem isto um listener alheio derrubaria o disparo e o
-    // teste estaria medindo o mock, não o comportamento servido.
     // Propaga pela árvore como o navegador: quem escuta no container ouve o
     // evento disparado no campo. Sem isto, um gate que digita num input não
     // alcançaria o handler real — e passaria verde sem exercitar nada.
-    // Exceção em listener fica isolada, também como no navegador.
+    // Exceção em listener fica isolada, também como no navegador: não impede os
+    // demais nem sobe para quem disparou.
+    //
+    // Caminho REAL de propagação — captura da raiz até o alvo, depois bolha do
+    // alvo até a raiz — e os três freios do DOM. Sem as fases, um listener de
+    // captura que chama `stopImmediatePropagation()` não silenciaria o handler
+    // seguinte: o clique no menu lateral rodaria o interceptador do multitab E o
+    // handler do app, dois caminhos que no navegador são mutuamente exclusivos.
+    // Era essa lacuna que mantinha o caminho real do clique fora dos gates.
     dispatchEvent(ev) {
+      prepararEventoF5B(ev);
       if (!ev.target) {ev.target = no;}
-      let atual = no;
-      while (atual) {
+      const caminho = [];
+      for (let n = no; n; n = n.parent) {caminho.push(n);}
+      const fases = [];
+      caminho.slice(1).reverse().forEach((n) => fases.push([n, 'captura']));
+      // No alvo o navegador roda captura e bolha juntos, em ordem de registro.
+      fases.push([no, 'alvo']);
+      if (ev.bubbles !== false) {caminho.slice(1).forEach((n) => fases.push([n, 'bolha']));}
+      for (const [atual, fase] of fases) {
+        if (ev._pararPropagacao) {break;}
         ev.currentTarget = atual;
-        (atual._handlers[ev.type] || []).forEach((fn) => {
-          try { fn(ev); } catch (erro) { (no._errosDeListener = no._errosDeListener || []).push(erro); }
-        });
-        if (ev.bubbles === false) {break;}
-        atual = atual.parent;
+        const inscritos = (atual._handlers[ev.type] || []).filter(
+          (h) => fase === 'alvo' || (fase === 'captura' ? h.captura : !h.captura)
+        );
+        for (const inscrito of inscritos) {
+          if (ev._pararImediato) {break;}
+          try { inscrito.fn(ev); } catch (erro) { (no._errosDeListener = no._errosDeListener || []).push(erro); }
+        }
       }
-      return true;
+      return !ev.defaultPrevented;
     },
     // `form.reset()` nativo: devolve cada campo ao valor/estado padrão do HTML
     // e NÃO dispara `input`/`change` (o spec chama o algoritmo direto). Copiar
@@ -3868,6 +3914,16 @@ test('#343 F5-B G-conv-11: registrar uso só entra no histórico se a entrega de
 // O achado não está sendo ignorado — está sendo FIXADO. Estes gates existem
 // para que uma mudança futura não transforme esse clique em perda silenciosa
 // de dados, que é o custo real da alternativa.
+//
+// INSUFICIÊNCIA DESTES TRÊS GATES, registrada e não apagada (F5-B.1): eles
+// provam o listener CENTRAL, e só ele. `clicarNoMenuDaViewAtiva` despacha
+// `epi:viewchange` direto, então nenhum dos três pode observar o que roda ANTES
+// do evento (`location.assign` em `navigateToView`, `closeTransientUi()` em
+// `activateTab`) nem os OUTROS listeners do mesmo evento, que não tinham guarda
+// (aba de Compras, rolagem do phase44, pilha de raiz da hierarquia). Cinco
+// achados atravessaram exatamente esse vão. Eles continuam aqui porque o que
+// provam é verdade e vale como regressão; o gesto de menu quem prova é a seção
+// "F5-B.1", que parte do clique real.
 
 test('#343 F5-B G-menu-1: clicar no menu do módulo ativo preserva a edição não salva', () => {
   const app = appServidoF5B();
@@ -3969,6 +4025,679 @@ test('#343 F5-B G-menu-3: a guarda é a única porta, e não há bypass por sina
   assert(posGuarda > -1 && posPrimeiroReset > -1 && posGuarda < posPrimeiroReset,
     'a guarda deixou de preceder os resets: algum teardown rodaria antes de ela decidir');
 });
+
+// ══ #343 F5-B.1: o gesto de MENU medido pelo CAMINHO REAL ════════════════════
+// MARCA_INICIO_F5B1
+//
+// Correção metodológica REGISTRADA, e não apagada: os gates `G-menu-1/2/3`
+// acima provam — com controle A/B — que o listener CENTRAL de `epi:viewchange`
+// é no-op quando `anterior === nome`. O que eles NÃO provam é o GESTO.
+// `clicarNoMenuDaViewAtiva` despacha `epi:viewchange` direto e por isso é
+// estruturalmente incapaz de observar:
+//
+//   (i)  o que roda ANTES do evento — `location.assign` dentro de
+//        `navigateToView`, `closeTransientUi()` dentro de `activateTab`;
+//   (ii) os OUTROS listeners de `epi:viewchange`, que não tinham guarda: a aba
+//        interna de Compras (sem feature flag nenhuma — comportamento vivo), a
+//        rolagem do phase44 e a pilha de raiz do navigation.js.
+//
+// Os cinco achados do F5-B.1 estavam exatamente nesses dois pontos cegos. Um
+// teste que fabrica `epi:viewchange` não é prova do gesto de menu: os gates
+// desta seção partem do CLIQUE, num nó `.menu-link[data-view]` real, com os
+// handlers reais ligados por `bindMenuNavigation()` — e `G-real-cobertura`
+// reprova se alguém voltar a fabricar o evento aqui.
+//
+// SEGUNDO falso-verde desta fatia, encontrado pela bateria de sabotagens e
+// registrado aqui: quando a guarda do achado A subiu para o TOPO de
+// `navigateToView` — como o review pediu, e com razão —, o clique no menu do
+// módulo ativo passou a NÃO alcançar mais nenhum listener de `epi:viewchange`.
+// Isso é o resultado certo para o contrato e o resultado errado para os gates:
+// `S-C`, `S-D` e `S-E` passaram a ficar VERDES com a proteção removida, porque
+// o caminho medido nem chegava lá.
+//
+// Os três gates passaram a medir DUAS coisas, e é a segunda que os mantém
+// honestos:
+//   (a) o gesto de menu não alcança o listener — consequência da guarda de A;
+//   (b) quando o listener É alcançado com `anterior === view`, a guarda o torna
+//       no-op. A rota viva para isso é o REDESENHO INTERNO da própria view, que
+//       o app faz por `showView(mesmaView)` — é o que `startEditEmployee()`,
+//       a troca de idioma e a recarga pós-salvamento fazem, e é o que o
+//       `activateTab` do multitab faz. Chamar `showView` é usar a porta do app,
+//       não fabricar o evento: quem calcula `anterior` continua sendo ele.
+
+const ABAS_DE_AVALIACOES_F5B = Object.freeze(
+  ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'epis-teste', 'avaliacao-final']
+);
+
+const MARCA_INICIO_F5B1 = 'MARCA_INICIO_F5B1';
+const MARCA_FIM_F5B1 = 'MARCA_FIM_F5B1';
+
+function montarAppRealF5B(busca, opcoes) {
+  const o = opcoes || {};
+  const raizStatic = path.resolve(JS_ROOT, '..');
+
+  const vistas = {
+    dashboard: montarVistaF5B('dashboard', 'dashboard-grp', ['inicio', 'outra']),
+    estoque: montarVistaF5B('estoque', 'estoque', ['estoque', 'movimentacoes']),
+    colaboradores: montarVistaF5B('colaboradores', 'colaboradores', ['cadastro', 'lista']),
+    compras: montarVistaSimplesF5B('compras', []),
+    entregas: montarVistaSimplesF5B('entregas', []),
+    avaliacoes: montarVistaSimplesF5B('avaliacoes', [])
+  };
+
+  // Subabas de Avaliações no formato real: `bindAvaliacoesView()` escuta o
+  // clique em `#avaliacoes-subtabs` e `showAvalTab` marca `is-active` no botão
+  // `#avaltab-<pane>` e esconde os `#avaliacoes-pane-<pane>`.
+  const subabas = criarNoF5B('div', { id: 'avaliacoes-subtabs' });
+  ABAS_DE_AVALIACOES_F5B.forEach((aba) => {
+    subabas.appendChild(criarNoF5B('button', { id: `avaltab-${aba}`, 'data-avaliacoes-tab': aba }));
+    vistas.avaliacoes.appendChild(campoF5B('div', { id: `avaliacoes-pane-${aba}` }));
+  });
+  vistas.avaliacoes.appendChild(subabas);
+  // Cabeçalho já montado, como fica a página depois do primeiro bind: faz o
+  // `applyViewHeader` do phase44 sair cedo em vez de montar markup por
+  // `innerHTML`, que este shim não interpreta.
+  Object.values(vistas).forEach((v) => v.appendChild(criarNoF5B('article', { class: 'card phase44-header' })));
+
+  // Igual ao `dashboard.html` SERVIDO, que já chega com `class="view active"`.
+  // É esse detalhe que proíbe a semântica de ativação redundante de ter
+  // fallback para `defaultView()`: com o fallback, a primeira navegação de
+  // verdade pareceria redundante.
+  vistas.dashboard.classList.add('active');
+
+  // Abas internas de Compras no formato que `switchComprasTab` manipula.
+  ['demandas', 'requisicoes', 'cotacoes', 'pos'].forEach((aba) => {
+    vistas.compras.appendChild(campoF5B('button', { id: `compras-tab-${aba}` }));
+    vistas.compras.appendChild(campoF5B('div', { id: `compras-${aba}-panel` }));
+  });
+
+  // Trabalho não salvo em Entregas: formulário preenchido e não enviado.
+  vistas.entregas.appendChild(montarFormularioF5B('delivery-form', [['delivery-obs', 'text']]));
+
+  // Trabalho não salvo em Estoque, para o caminho das views SUPORTADAS pela SPA.
+  // Id fora de todos os mapas de reset do app, de propósito: o que se mede aqui
+  // é a ausência de transição, não a eficácia de um reset.
+  vistas.estoque.appendChild(campoF5B('input', { id: 'f5b1-rascunho-estoque' }));
+
+  // Gatilho de subnível da hierarquia, no formato que `pushFromTrigger` lê.
+  vistas.estoque.appendChild(criarNoF5B('button', {
+    id: 'estoque-abrir-lote',
+    'data-hierarchy-push': '1',
+    'data-hierarchy-id': 'lote-4711',
+    'data-hierarchy-label': 'Lote 4711'
+  }));
+
+  const menu = criarNoF5B('nav', { id: 'menu' });
+  ['dashboard', 'estoque', 'colaboradores', 'compras', 'entregas', 'avaliacoes'].forEach((view) => {
+    const item = criarNoF5B('button', { 'data-view': view, class: 'menu-link' });
+    item.textContent = view;
+    menu.appendChild(item);
+  });
+
+  const main = criarNoF5B('div', { id: 'main-content' });
+  Object.values(vistas).forEach((v) => main.appendChild(v));
+
+  // Modal de assinatura ABERTO, com o traçado ainda não gravado: é o alvo de
+  // `closeTransientUi()`. Fechar aqui e reabrir devolve um canvas em branco —
+  // o desenho não gravado não volta.
+  const modalAssinatura = criarNoF5B('div', { id: 'signature-modal', class: 'signature-modal is-open' });
+  modalAssinatura.appendChild(criarNoF5B('canvas', { id: 'signature-pad', 'data-tracos': '7' }));
+
+  // Dropdown transitório: serve de CONTROLE — a troca real de contexto tem de
+  // continuar fechando o que é transitório.
+  const dropdown = criarNoF5B('div', { id: 'dropdown-acoes', 'data-ui-dropdown': '1', class: 'is-open' });
+
+  const topbar = criarNoF5B('div', { class: 'topbar' });
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(topbar);
+  doc.appendChild(menu);
+  doc.appendChild(main);
+  doc.appendChild(modalAssinatura);
+  doc.appendChild(dropdown);
+  // Hierarquia (navigation.js) e multitab só desenham se acharem seus nós.
+  [['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'], ['hierarchy-breadcrumb-wrap', 'div'],
+   ['multitab-nav-root', 'div'], ['multitab-nav-tabs', 'div'], ['multitab-back-btn', 'button'],
+   ['multitab-breadcrumb', 'div'], ['interactive-nav-tabs', 'div']]
+    .forEach(([id, tag]) => doc.appendChild(criarNoF5B(tag, { id })));
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const armazem = () => ({
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  });
+
+  const ctx = {
+    document: doc, localStorage: armazem(), sessionStorage: armazem(), console,
+    navigator: { userAgent: 'node' },
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    getComputedStyle: (el) => ({
+      display: (el && el.style && el.style.display) || (el && el.hidden ? 'none' : 'block'),
+      visibility: (el && el.style && el.style.visibility) || 'visible'
+    }),
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    HTMLElement: class {},
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    performance: { now: () => Date.now() },
+    // Promessa que NUNCA resolve, de propósito. Estes gates medem navegação, e
+    // o app dispara carga de dados ao abrir um módulo: inventar payload de API
+    // seria fabricar resposta de servidor dentro do teste, e devolver um
+    // `Response` incompleto derruba o processo com rejeição não tratada num
+    // caminho que o gate nem observa. Não resolver deixa a carga pendente, que
+    // é o único estado honesto aqui.
+    fetch: () => new Promise(() => {}),
+    alert() {}, matchMedia: () => ({ matches: false, addEventListener() {} })
+  };
+  // Espiões. Cada um mede um dos cinco efeitos colaterais de transição que o
+  // contrato proíbe na ativação redundante.
+  ctx._assigns = [];
+  ctx._reloads = 0;
+  ctx._scrolls = [];
+  ctx._pushStates = 0;
+  ctx.scrollY = 0;
+  ctx.location = {
+    search: busca || '', href: `http://local/${busca || ''}`, pathname: '/', origin: 'http://local',
+    assign(url) { ctx._assigns.push(String(url)); },
+    reload() { ctx._reloads += 1; }
+  };
+  ctx.history = {
+    length: 1,
+    pushState() { ctx._pushStates += 1; },
+    replaceState() {},
+    back() {}
+  };
+  ctx.scrollTo = (opcoes) => { ctx._scrolls.push(opcoes); };
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_erro) { /* isolado */ } });
+    return true;
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  vmF5B.createContext(ctx);
+
+  // Módulos carregados ANTES da lista servida, quando o gate precisa que eles
+  // realmente iniciem. Hoje `ux-phase44.js` não inicia depois do `app.js`: a
+  // primeira linha do IIFE grava `globalThis.__EPI_PHASE44_BOUND__ = true` e seis
+  // linhas abaixo ele pergunta `ensureModuleBound('phase44')`, que deriva
+  // exatamente essa chave e responde "já ligado" — o módulo retorna antes de
+  // qualquer bind. Carregado antes do `app.js`, `__EPI_FRONTEND_HELPERS__` ainda
+  // não existe, o `ensureModuleBound` usado é o fallback local, e o módulo inicia.
+  //
+  // Essa colisão de chave é um defeito SEPARADO (o phase44 não inicia em
+  // produção), fora do cerco do F5-B.1 e relatado como achado próprio. O gate D
+  // existe para que o dia em que ela for corrigida não seja o dia em que clicar
+  // no menu do módulo ativo passa a arrancar o usuário de onde ele estava.
+  (o.precarregar || []).forEach((rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_erro) { /* medido pelos gates abaixo */ }
+  });
+
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  ordem.forEach((rel) => {
+    // `multitab-navigation.js` captura `globalThis.__EPI_APP_NAV_API__` na
+    // AVALIAÇÃO do próprio arquivo (`var navApi = ... || {}`) e retorna na
+    // linha seguinte se `navApi.showView` não for função. Quem publica essa API
+    // é `registerMultitabNavigationApi()`, que o app chama dentro de `init()`,
+    // no DOMContentLoaded — depois. Aqui a publicação acontece no ponto em que o
+    // módulo espera encontrá-la, usando a função REAL do app.
+    //
+    // Que o app SERVIDO publique a API tarde é um defeito de fiação separado (o
+    // multitab não chega a iniciar em produção hoje), fora do cerco do F5-B.1 e
+    // relatado como achado próprio. A guarda B existe para que o dia em que essa
+    // fiação for corrigida não seja o dia em que o usuário perde uma assinatura.
+    if (rel.endsWith('multitab-navigation.js') && typeof ctx.registerMultitabNavigationApi === 'function') {
+      try { ctx.registerMultitabNavigationApi(); } catch (_erro) { /* medido pelos gates abaixo */ }
+    }
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_erro) { /* dependência de browser ausente não invalida o gate */ }
+    // Sessão mínima assim que o `state` do app existe, e não depois de tudo
+    // carregado: o multitab é avaliado adiante e já abre a aba inicial chamando
+    // `showView`. Sem usuário, o RBAC do app manda qualquer view para a padrão e
+    // o gate mediria uma sessão deslogada.
+    if (rel === 'app.js') {
+      const estado = ctx.__EPI_APP_STATE__ || {};
+      estado.user = { id: 1, role: 'general_admin', company_id: 1 };
+      // `hasPermission` consulta `state.permissions` quando ela está preenchida.
+      estado.permissions = [
+        'dashboard:view', 'stock:view', 'deliveries:view', 'employees:view', 'reports:view',
+        'purchase_requests:view', 'purchase_requests:create', 'purchase_orders:view',
+        'epi_evaluation:view', 'epi_feedback:view', 'ppe_test:view'
+      ];
+    }
+  });
+
+  // O que o `init()` do app faz e de que estes gates dependem — nada mais.
+  // `setupViewTabs` liga o reset central da F5-B; `bindMobileUxBehavior` liga o
+  // listener independente que troca a aba de Compras; `bindMenuNavigation` liga
+  // o handler REAL do item de menu. Todos são funções do app, não do teste.
+  if (typeof ctx.registerMultitabNavigationApi === 'function') ctx.registerMultitabNavigationApi();
+  ctx.setupViewTabs();
+  ctx.bindMobileUxBehavior();
+  ctx.bindMenuNavigation();
+
+  // OBSERVAÇÃO, não fabricação: o harness conta os `epi:viewchange` que a
+  // APLICAÇÃO emite, para o gate poder afirmar "nenhuma transição aconteceu" em
+  // vez de só "nada visível mudou". O listener é registrado depois dos scripts,
+  // então nunca precede nem substitui os do app.
+  const eventosDeView = [];
+  doc.addEventListener('epi:viewchange', (ev) => { eventosDeView.push(ev && ev.detail); });
+
+  const viewAtiva = () => {
+    const no = doc.querySelector('.view.active');
+    return no && no.id ? no.id.replace(/-view$/, '') : '';
+  };
+  // O GESTO contratado: um clique de verdade, no nó de verdade. Daqui em diante
+  // quem decide o que acontece é a aplicação servida.
+  const clicarNoItemDeMenu = (view) => {
+    const item = doc.querySelector(`.menu-link[data-view="${view}"]`);
+    if (!item) {throw new Error(`fixture sem item de menu para "${view}"`);}
+    return item.dispatchEvent(new ctx.Event('click', { bubbles: true }));
+  };
+  const clicarEm = (id) => {
+    const no = doc.getElementById(id);
+    if (!no) {throw new Error(`fixture sem nó "${id}"`);}
+    return no.dispatchEvent(new ctx.Event('click', { bubbles: true }));
+  };
+  const abaDeAvaliacoesAtiva = () => {
+    const ativa = ABAS_DE_AVALIACOES_F5B
+      .find((aba) => doc.getElementById(`avaltab-${aba}`)?.classList.contains('is-active'));
+    return ativa || '';
+  };
+  const abaDeComprasAtiva = () => {
+    const ativa = ['demandas', 'requisicoes', 'cotacoes', 'pos']
+      .find((aba) => doc.getElementById(`compras-tab-${aba}`)?.classList.contains('is-active'));
+    return ativa || '';
+  };
+
+  return { ctx, doc, vistas, viewAtiva, clicarNoItemDeMenu, clicarEm, abaDeComprasAtiva,
+    abaDeAvaliacoesAtiva, eventosDeView, scriptsCarregados: ordem.length };
+}
+
+test('#343 F5-B.1 G-real-0: o harness carrega o app servido e liga os handlers reais', () => {
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  assert(app.scriptsCarregados >= 40, `esperava a lista de _scripts.html, veio ${app.scriptsCarregados}`);
+  eq(app.viewAtiva(), 'dashboard', 'o fixture deveria começar no dashboard, como a página servida');
+  assert(typeof app.ctx.bindMenuNavigation === 'function', 'bindMenuNavigation não veio do app.js servido');
+  assert(typeof app.ctx.ativacaoRedundanteDeView === 'function', 'a semântica canônica não existe no app servido');
+  assert(app.ctx.isSpaNavigationEnabled() === true, 'a flag de SPA não ligou: os gates de A mediriam o caminho errado');
+  eq(app.ctx.ativacaoRedundanteDeView('dashboard'), true, 'a view ativa não foi reconhecida como ativação redundante');
+  eq(app.ctx.ativacaoRedundanteDeView('estoque'), false, 'uma view NÃO ativa foi tratada como redundante');
+});
+
+test('#343 F5-B.1 G-real-cobertura: todo gate desta seção parte do clique real', () => {
+  // Este é o gate que a meta-sabotagem ataca: trocar o clique real por um
+  // `dispatchEvent(new CustomEvent('epi:viewchange', ...))` derruba-o. Foi
+  // exatamente esse atalho que deixou os cinco achados passarem por baixo dos
+  // gates anteriores, e é contra a repetição dele que este gate existe.
+  const fonte = fs.readFileSync(__filename, 'utf-8');
+  const ini = fonte.indexOf(MARCA_INICIO_F5B1 + '\n');
+  const fim = fonte.indexOf(MARCA_FIM_F5B1 + '\n');
+  assert(ini > -1 && fim > ini, 'as marcas da seção F5-B.1 mudaram de forma');
+  const secao = fonte.slice(ini, fim);
+  const blocos = secao.split("\ntest('#343 F5-B.1 ").slice(1);
+  assert(blocos.length >= 11, `esperava os gates do F5-B.1, encontrei ${blocos.length}`);
+  const semClique = ['G-real-0', 'G-real-cobertura', 'G-real-contraprova'];
+  blocos.forEach((bloco) => {
+    const nome = bloco.slice(0, bloco.indexOf(':'));
+    if (semClique.includes(nome)) {return;}
+    assert(bloco.includes('clicarNoItemDeMenu('),
+      `o gate "${nome}" não parte do clique real — evento fabricado não prova o gesto de menu`);
+    ['entrarNoModulo(', 'redesenharMesmaVista(', 'clicarNoMenuDaViewAtiva(', "'epi:viewchange'"]
+      .forEach((atalho) => assert(!bloco.includes(atalho),
+        `o gate "${nome}" fabrica a troca de view com \`${atalho}\`: é o atalho que escondeu os cinco achados`));
+  });
+});
+
+test('#343 F5-B.1 G-real-contraprova: o evento fabricado não alcança o efeito destrutivo', () => {
+  // A razão pela qual os gates antigos não podiam ter visto o achado A:
+  // `location.assign` roda ANTES de `epi:viewchange` existir. Fabricar o evento
+  // não pode acusar nem absolver esse caminho — este gate mede essa cegueira em
+  // vez de descrevê-la.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  app.doc.dispatchEvent(new app.ctx.CustomEvent('epi:viewchange', {
+    detail: { view: 'entregas', anterior: 'dashboard', viaHistorico: false, viaMultitab: false }
+  }));
+  eq(app.ctx._assigns.length, 0,
+    'o evento fabricado alcançou navigateToView — então o shim está mentindo sobre o caminho');
+  // O clique real, no mesmo estado, alcança.
+  app.clicarNoItemDeMenu('entregas');
+  eq(app.ctx._assigns.length, 1,
+    'o clique real NÃO alcançou navigateToView: sem isso nenhum gate desta seção prova nada');
+});
+
+// ── Achado A — navigateToView / location.assign ─────────────────────────────
+
+test('#343 F5-B.1 G-A-1: clique no menu do módulo ativo não recarrega a página', () => {
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  // Estado de partida: Entregas ABERTA. Com a flag de SPA ligada, chegar aqui
+  // pelo menu passa por `location.assign`, o navegador recarrega e serve a
+  // página já nessa view — `showView` é o que o app roda depois desse
+  // recarregamento. O harness não recarrega, então usa a função real do app.
+  app.ctx.showView('entregas', { partial: false });
+  eq(app.viewAtiva(), 'entregas', 'o fixture não chegou em Entregas');
+  const assignsDaEntrada = app.ctx._assigns.length;
+
+  // Trabalho não salvo, DEPOIS da entrada — a entrada reseta, por contrato.
+  const obs = app.doc.getElementById('delivery-obs');
+  obs.value = 'devolucao parcial: conferir com o almoxarife';
+
+  app.clicarNoItemDeMenu('entregas');
+
+  eq(app.ctx._assigns.length, assignsDaEntrada,
+    'o clique no menu do módulo JÁ ATIVO recarregou a página — todo formulário não salvo iria embora');
+  eq(app.ctx._reloads, 0, 'houve reload explícito na ativação redundante');
+  eq(obs.value, 'devolucao parcial: conferir com o almoxarife',
+    'o texto não salvo foi destruído pelo clique no menu do módulo já ativo');
+});
+
+test('#343 F5-B.1 G-A-2: a guarda é por view, e não desliga o fluxo clássico', () => {
+  // Controle: a guarda só vale para a view ATIVA. Estando em Estoque, clicar em
+  // Entregas continua sendo transição de verdade e continua recarregando —
+  // resolver o achado A tornando `location.assign` inalcançável seria trocar um
+  // defeito por outro.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  app.ctx.showView('estoque', { partial: false });
+  eq(app.viewAtiva(), 'estoque');
+  app.clicarNoItemDeMenu('entregas');
+  eq(app.ctx._assigns.length, 1, 'a transição real para Entregas deixou de acontecer');
+  assert(/entregas/.test(app.ctx._assigns[0]), `a URL clássica não aponta para entregas: ${app.ctx._assigns[0]}`);
+});
+
+test('#343 F5-B.1 G-A-3: em view suportada pela SPA, o clique redundante não transiciona', () => {
+  // O achado que a primeira versão desta guarda deixou passar: ela vivia dentro
+  // do ramo de `SPA_NAV_CLASSIC_FALLBACK_VIEWS` e não alcançava nenhuma das oito
+  // views de `SPA_NAV_SUPPORTED_VIEWS` — a maioria dos módulos. Com `canUseSpa`
+  // verdadeiro, o clique repetido seguia empilhando histórico e redesenhando.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  app.ctx.showView('estoque', { partial: false });
+  eq(app.viewAtiva(), 'estoque', 'o fixture não chegou em Estoque');
+  assert(app.ctx.isSpaNavigationEnabled() === true, 'a flag de SPA não ligou: o gate mediria o caminho errado');
+
+  const rascunho = app.doc.getElementById('f5b1-rascunho-estoque');
+  rascunho.value = 'contagem parcial do corredor B';
+  const pushesAntes = app.ctx._pushStates;
+  const eventosAntes = app.eventosDeView.length;
+
+  app.clicarNoItemDeMenu('estoque');   // o gesto contratado
+
+  eq(app.ctx._pushStates, pushesAntes,
+    'o clique no menu do módulo já ativo empilhou uma entrada de histórico duplicada — o Voltar passa a cair no próprio módulo');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique emitiu epi:viewchange: houve transição onde o contrato manda não haver nenhuma');
+  eq(app.ctx._assigns.length, 0, 'houve recarregamento na ativação redundante');
+  eq(rascunho.value, 'contagem parcial do corredor B', 'o trabalho não salvo foi destruído');
+});
+
+test('#343 F5-B.1 G-A-4: transição real empilha, e a exceção explícita redesenha', () => {
+  // Dois controles num gate. Primeiro: resolver o achado não pode ter desligado
+  // a navegação das views suportadas pela SPA.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  const pushesAntes = app.ctx._pushStates;
+  app.clicarNoItemDeMenu('estoque');           // dashboard → estoque, transição real
+  eq(app.viewAtiva(), 'estoque', 'a transição real para uma view suportada pela SPA deixou de acontecer');
+  assert(app.ctx._pushStates > pushesAntes, 'a transição real deixou de empilhar histórico');
+
+  // Segundo: `recarregarMesmaView` continua sendo a porta de quem PRECISA
+  // redesenhar a própria view — o fim do onboarding, depois de `loadBootstrap()`.
+  // Sem essa porta, a tela ficaria com os dados antigos.
+  const pushesDepois = app.ctx._pushStates;
+  app.ctx.navigateToView('estoque', { recarregarMesmaView: true });
+  assert(app.ctx._pushStates > pushesDepois,
+    'a exceção explícita deixou de funcionar: quem precisa redesenhar a própria view perdeu o caminho');
+});
+
+// ── Achado C — listener independente que troca a aba de Compras ─────────────
+
+test('#343 F5-B.1 G-C-1: clique no menu de Compras mantém a aba interna aberta', () => {
+  // SEM flag nenhuma na URL, de propósito: este listener não tem feature flag.
+  // O achado C é o único dos cinco que já ocorre no fluxo padrão de produção.
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('compras');
+  eq(app.viewAtiva(), 'compras', 'o clique real não abriu Compras');
+  eq(app.abaDeComprasAtiva(), 'demandas', 'a ENTRADA no módulo deveria abrir a aba padrão (contrato F5-B)');
+
+  // O usuário abre outra aba interna — pela função real que o botão da aba usa.
+  app.ctx.switchComprasTab('cotacoes');
+  eq(app.abaDeComprasAtiva(), 'cotacoes');
+
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('compras');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
+  eq(app.abaDeComprasAtiva(), 'cotacoes',
+    'clicar no menu de Compras estando em Compras voltou para a aba padrão — o trabalho da aba aberta foi descartado');
+
+  // (b) E quando o listener É alcançado com `anterior === view` — redesenho
+  // interno da própria view, o que `startEditEmployee` e a troca de idioma
+  // fazem —, a guarda deste listener é o que segura a aba.
+  app.ctx.showView('compras', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.eventosDeView[app.eventosDeView.length - 1].anterior, 'compras',
+    'o redesenho interno não reportou `anterior === compras`: o cenário medido não é o do contrato');
+  eq(app.abaDeComprasAtiva(), 'cotacoes',
+    'o redesenho da MESMA view devolveu a aba padrão e descartou o trabalho da aba aberta');
+});
+
+test('#343 F5-B.1 G-C-2: entrar em Compras vindo de outra view continua na aba padrão', () => {
+  // Controle do contrato da F5-B: a guarda do achado C não pode desligar o
+  // reset de ENTRADA.
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('compras');
+  app.ctx.switchComprasTab('cotacoes');
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.viewAtiva(), 'estoque');
+  app.clicarNoItemDeMenu('compras');
+  eq(app.abaDeComprasAtiva(), 'demandas',
+    'sair do módulo e voltar deveria abrir a aba padrão — o reset de entrada da F5-B sumiu');
+});
+
+// ── Achado F — listener independente que troca a aba de Avaliações ──────────
+//
+// Sexto caminho, achado pela revisão e confirmado por enumeração FECHADA de
+// todos os listeners de `epi:viewchange` da árvore servida. Mesma classe do
+// achado C, em um módulo que a auditoria da F5-B não alcançou, e também sem
+// feature flag nenhuma.
+
+test('#343 F5-B.1 G-F-1: clique no menu de Avaliações mantém a aba interna aberta', () => {
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.viewAtiva(), 'avaliacoes', 'o clique real não abriu Avaliações');
+  eq(app.abaDeAvaliacoesAtiva(), 'avaliacao-final',
+    'a ENTRADA no módulo deveria abrir a aba padrão do papel (contrato F5-B)');
+
+  // O usuário abre outra aba interna — clique REAL no botão da subaba, que é o
+  // caminho que `bindAvaliacoesView()` escuta.
+  app.clicarEm('avaltab-reclamacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes', 'o clique real na subaba não trocou de aba');
+
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes',
+    'clicar no menu de Avaliações estando em Avaliações voltou para a aba padrão');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a aba.
+  app.ctx.showView('avaliacoes', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.eventosDeView[app.eventosDeView.length - 1].anterior, 'avaliacoes',
+    'o redesenho interno não reportou `anterior === avaliacoes`: o cenário medido não é o do contrato');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes',
+    'o redesenho da MESMA view devolveu a aba padrão e descartou o trabalho da aba aberta');
+});
+
+test('#343 F5-B.1 G-F-2: entrar em Avaliações vindo de outra view volta à aba padrão', () => {
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('avaliacoes');
+  app.clicarEm('avaltab-reclamacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes');
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.viewAtiva(), 'estoque');
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'avaliacao-final',
+    'sair do módulo e voltar deveria abrir a aba padrão — o reset de entrada da F5-B sumiu');
+});
+
+// ── Achado D — phase44 / rolagem ────────────────────────────────────────────
+
+test('#343 F5-B.1 G-D-1: clique no menu do módulo ativo não zera a rolagem', () => {
+  const app = montarAppRealF5B('?ux_phase44=1', { precarregar: ['ux-phase44.js'] });
+  assert(app.doc.body.classList.contains('phase44-enabled'),
+    'o phase44 não iniciou — o gate mediria o nada');
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.viewAtiva(), 'estoque');
+  const rolagensDaEntrada = app.ctx._scrolls.length;
+  assert(rolagensDaEntrada >= 1, 'a ENTRADA no módulo deveria ter ido ao topo (contrato F5-B)');
+
+  // O usuário rolou a página lendo a lista.
+  app.ctx.scrollY = 420;
+
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
+  eq(app.ctx._scrolls.length, rolagensDaEntrada,
+    'clicar no menu do módulo já ativo jogou a página para o topo, tirando o usuário de onde ele estava');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a rolagem.
+  app.ctx.showView('estoque', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.ctx._scrolls.length, rolagensDaEntrada,
+    'o redesenho da MESMA view jogou a página para o topo');
+});
+
+test('#343 F5-B.1 G-D-2: entrar no módulo vindo de outra view continua começando no topo', () => {
+  const app = montarAppRealF5B('?ux_phase44=1', { precarregar: ['ux-phase44.js'] });
+  app.clicarNoItemDeMenu('estoque');
+  const antes = app.ctx._scrolls.length;
+  app.ctx.scrollY = 420;
+  app.clicarNoItemDeMenu('colaboradores');
+  assert(app.ctx._scrolls.length > antes,
+    'a entrada real no módulo deixou de começar no topo — a guarda do achado D passou do ponto');
+  eq(app.ctx._scrolls[app.ctx._scrolls.length - 1].top, 0, 'a entrada real não foi ao topo');
+});
+
+// ── Achado E — navigation.js / rootPush ─────────────────────────────────────
+
+test('#343 F5-B.1 G-E-1: clique no menu do módulo ativo não apaga a pilha de navegação', () => {
+  const app = montarAppRealF5B('?ux_hierarchy=1');
+  const pilha = () => app.ctx.__EPI_VIEW_STACK__ || [];
+  assert(Array.isArray(app.ctx.__EPI_VIEW_STACK__),
+    'a hierarquia não iniciou — o gate mediria o nada');
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.viewAtiva(), 'estoque');
+  eq(pilha().length, 1, 'a entrada no módulo deveria deixar a pilha na raiz');
+
+  // O usuário desce um nível DENTRO do módulo, pelo gatilho real da hierarquia.
+  app.clicarEm('estoque-abrir-lote');
+  eq(pilha().length, 2, 'o gatilho real de subnível não empilhou nada — o gate mediria o nada');
+  eq(pilha()[1].label, 'Lote 4711');
+
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
+  eq(pilha().length, 2,
+    'clicar no menu do módulo já ativo apagou a pilha: o Voltar da hierarquia perdeu o caminho do usuário');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a pilha.
+  app.ctx.showView('estoque', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(pilha().length, 2, 'o redesenho da MESMA view apagou a pilha de navegação');
+  eq(pilha()[1].label, 'Lote 4711', 'o subnível em que o usuário estava desapareceu da pilha');
+});
+
+test('#343 F5-B.1 G-E-2: transição real de raiz continua recomeçando a pilha', () => {
+  const app = montarAppRealF5B('?ux_hierarchy=1');
+  const pilha = () => app.ctx.__EPI_VIEW_STACK__ || [];
+  app.clicarNoItemDeMenu('estoque');
+  app.clicarEm('estoque-abrir-lote');
+  eq(pilha().length, 2);
+  app.clicarNoItemDeMenu('colaboradores');
+  eq(pilha().length, 1,
+    'a transição real para outra raiz deixou de recomeçar a pilha — a guarda do achado E passou do ponto');
+  eq(pilha()[0].id, 'colaboradores', 'a nova raiz não é a view que o usuário abriu');
+});
+
+// ── Achado B — multitab / closeTransientUi ──────────────────────────────────
+
+test('#343 F5-B.1 G-B-1: com multitab, clique no módulo ativo não fecha o modal de assinatura', () => {
+  const app = montarAppRealF5B('?ux_multitab=1');
+  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
+    'o multitab não iniciou — o gate mediria o nada');
+  app.clicarNoItemDeMenu('entregas');
+  eq(app.viewAtiva(), 'entregas', 'o clique real não abriu Entregas pelo caminho do multitab');
+
+  // Assinatura em andamento: modal aberto, traçado ainda não gravado. A troca
+  // de contexto acima já passou por `closeTransientUi()`, então o estado é
+  // montado DEPOIS dela — como acontece com o usuário.
+  const modal = app.doc.getElementById('signature-modal');
+  modal.classList.add('is-open');
+  modal.removeAttribute('aria-hidden');
+  const prancheta = app.doc.getElementById('signature-pad');
+  prancheta.dataset.tracos = '7';
+
+  const pushesAntes = app.ctx._pushStates;
+  const eventosAntes = app.eventosDeView.length;
+
+  app.clicarNoItemDeMenu('entregas');   // o gesto contratado
+
+  assert(modal.classList.contains('is-open'),
+    'o modal de assinatura foi fechado pelo clique no menu do módulo já ativo — reabrir devolve um canvas em branco');
+  assert(modal.getAttribute('aria-hidden') !== 'true', 'o modal foi marcado como oculto na ativação redundante');
+  eq(prancheta.dataset.tracos, '7', 'o traçado não gravado foi perdido');
+  // O no-op é INTEIRO, não só o fechamento da UI transitória: sem isto, o
+  // `activateTab` seguia redesenhando o módulo e empilhando histórico.
+  eq(app.eventosDeView.length, eventosAntes,
+    'a ativação redundante ainda emitiu troca de view: o módulo é redesenhado e a atualização parcial roda');
+  eq(app.ctx._pushStates, pushesAntes,
+    'a ativação redundante empilhou outra entrada de histórico — o Voltar passa a revisitar um estado de aba idêntico');
+});
+
+test('#343 F5-B.1 G-B-2: troca real de contexto continua fechando a UI transitória', () => {
+  // Controle exigido pelo contrato: resolver o achado B tornando
+  // `closeTransientUi()` inoperante seria trocar um defeito por outro.
+  const app = montarAppRealF5B('?ux_multitab=1');
+  app.clicarNoItemDeMenu('entregas');
+  const modal = app.doc.getElementById('signature-modal');
+  const dropdown = app.doc.getElementById('dropdown-acoes');
+  modal.classList.add('is-open');
+  dropdown.classList.add('is-open');
+
+  app.clicarNoItemDeMenu('estoque');   // troca de contexto DE VERDADE
+
+  eq(app.viewAtiva(), 'estoque');
+  assert(!modal.classList.contains('is-open'),
+    'a troca real de contexto deixou de fechar o modal transitório — closeTransientUi ficou inoperante');
+  assert(!dropdown.classList.contains('is-open'),
+    'a troca real de contexto deixou de fechar o dropdown transitório');
+});
+
+// MARCA_FIM_F5B1
 
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um

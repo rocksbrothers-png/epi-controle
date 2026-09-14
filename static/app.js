@@ -3342,6 +3342,33 @@ async function runSpaPartialNavigation(view) {
   return task;
 }
 
+// ── F5-B.1 · ATIVAÇÃO REDUNDANTE DE VIEW ───────────────────────────────────
+// Contrato aprovado em #343: reativar a view que JÁ está ativa não é sair do
+// módulo e reentrar. Logo não é TRANSIÇÃO — e nenhum efeito colateral de
+// transição pode ocorrer: nem recarregar a página, nem fechar UI transitória
+// com trabalho não salvo, nem trocar aba interna, nem zerar a rolagem, nem
+// apagar a pilha de navegação.
+//
+// A resposta vem do ESTADO — que view está de fato ativa no DOM —, nunca de um
+// sinal declarado por quem chamou. Um sinal opcional volta a perder dados no
+// dia em que um chamador novo esquecer de passá-lo; o estado não tem como ser
+// esquecido.
+//
+// Sem fallback para `defaultView()`, e é por isso que esta função existe em vez
+// de reaproveitar `__EPI_APP_NAV_API__.getCurrentView()`, que tem esse
+// fallback: com NENHUMA view ativa (antes do primeiro `showView`), o fallback
+// responderia `dashboard` e faria a primeira navegação de verdade para o
+// dashboard parecer redundante — a tela nunca abriria.
+function viewAtivaNoDom() {
+  return document.querySelector('.view.active')?.id?.replace(/-view$/, '') || '';
+}
+
+function ativacaoRedundanteDeView(view) {
+  if (!view) {return false;}
+  const ativa = viewAtivaNoDom();
+  return ativa !== '' && ativa === view;
+}
+
 function navigateToView(view, options = {}) {
   const {
     historyMode = 'push',
@@ -3350,6 +3377,12 @@ function navigateToView(view, options = {}) {
   const canUseSpa = isSpaNavigationEnabled() && SPA_NAV_SUPPORTED_VIEWS.includes(view);
   if (!canUseSpa) {
     if (isSpaNavigationEnabled() && SPA_NAV_CLASSIC_FALLBACK_VIEWS.includes(view)) {
+      // F5-B.1/A — a guarda fica ANTES do efeito destrutivo, não depois dele.
+      // `location.assign` recarrega a página inteira: leva embora todo
+      // formulário e toda edição não salvos, e nunca chega ao listener de
+      // `epi:viewchange` onde mora a guarda da F5-B. Reativar a view já ativa
+      // não tem o que entregar com um recarregamento — só a perda.
+      if (ativacaoRedundanteDeView(view)) {return;}
       globalThis.location.assign(buildNavigationUrl(view).toString());
       return;
     }
@@ -4308,6 +4341,10 @@ function registerMultitabNavigationApi() {
       return !permission || hasPermission(permission);
     },
     getCurrentView: () => document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView(),
+    // F5-B.1: a MESMA semântica de ativação redundante que o app aplica, para
+    // os módulos carregados depois (multitab) não reinventarem a sua. Diferente
+    // de `getCurrentView`: sem fallback para `defaultView()`.
+    ativacaoRedundanteDeView,
     rerunSafeSetups: () => {
       try {
         applyPhase2Visibility('Cadastro de Colaborador', isPhase2NavInteractivityEnabled());
@@ -4424,7 +4461,17 @@ function bindMobileUxBehavior() {
 
   safeOn(document, 'epi:viewchange', (e) => {
     closeMobileMenu();
-    if (e?.detail?.view === 'compras' && hasPermission('purchase_requests:view')) {
+    // F5-B.1/C — `anterior === 'compras'` é ATIVAÇÃO REDUNDANTE: o usuário
+    // clicou em Compras estando em Compras, ou a própria view se redesenhou.
+    // Trocar a aba interna aqui devolvia o usuário à aba padrão e descartava o
+    // trabalho da aba que ele tinha aberta. Este listener é independente do
+    // reset de entrada da F5-B e não tem feature flag nenhuma: era o
+    // comportamento vivo em produção.
+    //
+    // Entrar em Compras vindo de OUTRA view continua abrindo a aba padrão —
+    // esse é o contrato da F5-B e ele não muda aqui.
+    const redundante = e?.detail?.anterior === 'compras';
+    if (e?.detail?.view === 'compras' && !redundante && hasPermission('purchase_requests:view')) {
       // Approver não cria demandas, cai direto em Requisições
       const defaultTab = hasPermission('purchase_requests:create') ? 'demandas' : 'requisicoes';
       switchComprasTab(defaultTab);
@@ -14306,6 +14353,26 @@ function bindAppListener(target, eventName, handler, options = {}) {
   return safeOn(target, eventName, handler, options);
 }
 
+// O clique no item do menu lateral é O gesto que a F5-B/F5-B.1 contrata, e este
+// é o handler REAL dele. Ficava embutido no meio do `init()`, junto de chamadas
+// de API e de bootstrap, o que tornava o caminho `clique → handler →
+// navigateToView` inalcançável por teste: os gates da F5-B acabaram medindo o
+// evento `epi:viewchange` já pronto, DEPOIS do ponto onde o dano acontece
+// (`location.assign` mora aqui dentro, antes do evento). Virar função nomeada
+// não muda comportamento nenhum — é o que permite ao gate atravessar o caminho
+// de verdade em vez de fabricá-lo.
+function bindMenuNavigation() {
+  refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
+    bindAppListener(button, 'click', (event) => {
+      event.preventDefault();
+      const targetView = button.dataset.view;
+      if (!targetView) return;
+      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(targetView, 'loading', 'Carregando área...');
+      navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
+    })
+  );
+}
+
 async function init() {
   const runNonCriticalSetup = (label, setupFn) => {
     try {
@@ -15038,15 +15105,7 @@ async function init() {
     }
   });
 
-  refs.menu?.querySelectorAll('.menu-link[data-view]').forEach((button) =>
-    bindAppListener(button, 'click', (event) => {
-      event.preventDefault();
-      const targetView = button.dataset.view;
-      if (!targetView) return;
-      if (isPhase3ModernUiEnabled()) updatePhase3ContextStatus(targetView, 'loading', 'Carregando área...');
-      navigateToView(targetView, { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: isSpaNavigationEnabled() });
-    })
-  );
+  bindMenuNavigation();
   bindAppListener(refs.topConfigTrigger, 'click', openSettingsDrawer);
   setupThemeToggle();
   bindAppListener(refs.interactiveNavTabs, 'click', (event) => {

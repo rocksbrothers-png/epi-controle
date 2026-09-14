@@ -242,6 +242,21 @@
     drawTabs();
   }
 
+  // F5-B.1/B — a MESMA semântica de ativação redundante que o app aplica, sem
+  // reinventá-la aqui. O fallback local existe porque este módulo é servido em
+  // arquivo separado: se o bridge mudar de forma, a resposta segura é calcular
+  // no DOM, e não responder "nunca é redundante" — que é exatamente a resposta
+  // que destrói trabalho do usuário.
+  function ativacaoRedundanteDeView(view) {
+    if (typeof navApi.ativacaoRedundanteDeView === 'function') {
+      return navApi.ativacaoRedundanteDeView(view) === true;
+    }
+    if (!view) return false;
+    var no = document.querySelector('.view.active');
+    var ativa = no && no.id ? String(no.id).replace(/-view$/, '') : '';
+    return ativa !== '' && ativa === view;
+  }
+
   function activateTab(tabId, options) {
     var opts = options || {};
     var tab = getTabById(tabId);
@@ -251,8 +266,22 @@
     if (current && current.id !== tab.id) {
       current.context = captureViewContext(current.view);
     }
+    // F5-B.1/B — ATIVAÇÃO REDUNDANTE: a aba pedida já é a ativa E a view dela já
+    // é a exibida. É o clique no item do menu lateral do módulo corrente
+    // (`onMenuIntercept` → `ensureTab` → aqui, com a aba já existindo) e o
+    // clique na própria aba já ativa. Nada transiciona, então nada pode ser
+    // fechado: `closeTransientUi()` fecha `.signature-modal.is-open`, e reabrir
+    // a assinatura devolve um canvas em branco — o desenho não gravado some.
+    //
+    // Medido ANTES de `activeTabId = tab.id`: depois da atribuição `current` já
+    // seria o próprio `tab` e toda ativação pareceria redundante.
+    var redundante = Boolean(current) && current.id === tab.id && ativacaoRedundanteDeView(tab.view);
     activeTabId = tab.id;
-    closeTransientUi();
+    // Troca REAL de contexto continua fechando dropdown, modal e painel
+    // transitório. A guarda é para a ativação redundante, não para todo
+    // `activateTab` — tornar `closeTransientUi()` inoperante seria trocar um
+    // defeito por outro.
+    if (!redundante) closeTransientUi();
 
     var controller = tabAbortControllers.get(tab.id);
     if (controller) {

@@ -513,6 +513,195 @@ def test_clique_no_menu_da_view_ativa_e_no_op_por_decisao_de_contrato():
         assert sinal in listener, f'a exceção {sinal} sumiu do listener'
 
 
+# ── F5-B.1 — ATIVAÇÃO REDUNDANTE: cinco caminhos, uma única semântica ────────
+#
+# Contrato aprovado (#343): reativar a view que já está ativa não é sair e
+# reentrar. Logo não é transição, e nenhum efeito colateral de transição pode
+# ocorrer — recarregar a página, fechar UI transitória com trabalho não salvo,
+# trocar aba interna, zerar rolagem, apagar a pilha de navegação.
+#
+# O comportamento é provado pelos gates `#343 F5-B.1 G-*` em
+# `static/js/test/run-tests.js`, que partem do CLIQUE real no item de menu. Aqui
+# ficam as propriedades estruturais que um teste de comportamento não fixa bem:
+# a ORDEM entre guarda e efeito destrutivo, e a existência de uma semântica só.
+
+
+def _bloco(rel: str, inicio: str, fim: str) -> str:
+    corpo = _fonte(rel)
+    i = corpo.index(inicio)
+    j = corpo.find(fim, i)
+    assert j > i, f'{rel}: bloco {inicio!r} mudou de forma'
+    return corpo[i:j]
+
+
+def test_f5b1_a_semantica_de_ativacao_redundante_e_unica_e_sem_fallback():
+    """Uma função só, e sem fallback para a view padrão.
+
+    O `dashboard.html` é servido com `class="view active"`. Um fallback para
+    `defaultView()` — que `getCurrentView()` tem — faria a resposta ser
+    `dashboard` mesmo sem view ativa nenhuma, e a PRIMEIRA navegação de verdade
+    pareceria redundante: a tela nunca abriria.
+    """
+    corpo = _fonte('static/app.js')
+    assert 'function ativacaoRedundanteDeView(view) {' in corpo, (
+        'a semântica canônica de ativação redundante desapareceu do app.js'
+    )
+    bloco = _bloco('static/app.js', 'function viewAtivaNoDom()', 'function ativacaoRedundanteDeView')
+    assert 'defaultView()' not in bloco, (
+        'viewAtivaNoDom ganhou fallback para defaultView(): a primeira navegação '
+        'para a view padrão passaria a ser tratada como redundante'
+    )
+    assert 'ativacaoRedundanteDeView,' in corpo, (
+        'a semântica deixou de ser publicada em __EPI_APP_NAV_API__ — o multitab '
+        'voltaria a ter uma resposta própria para a mesma pergunta'
+    )
+
+
+def test_f5b1_achado_a_a_guarda_precede_o_location_assign():
+    """A guarda tem de vir ANTES do efeito destrutivo, não depois.
+
+    `location.assign` recarrega a página: leva embora todo trabalho não salvo e
+    nunca chega ao listener de `epi:viewchange`, onde mora a guarda da F5-B.
+    """
+    bloco = _bloco('static/app.js', 'function navigateToView(view, options = {})',
+                   'function bindSpaNavigationHistory')
+    pos_guarda = bloco.find('if (ativacaoRedundanteDeView(view)) {return;}')
+    pos_assign = bloco.find('globalThis.location.assign(')
+    assert pos_guarda > -1, 'a guarda de ativação redundante saiu de navigateToView'
+    assert pos_assign > -1, 'navigateToView mudou de forma: o location.assign não está mais lá'
+    assert pos_guarda < pos_assign, (
+        'a guarda passou a vir DEPOIS do location.assign: o recarregamento '
+        'aconteceria antes de alguém decidir se devia acontecer'
+    )
+
+
+def test_f5b1_achado_b_ativacao_redundante_nao_fecha_ui_transitoria():
+    """O multitab não fecha modal/dropdown quando nada transiciona.
+
+    E o contrário também é gate: troca real de contexto CONTINUA fechando.
+    Tornar `closeTransientUi()` inoperante seria trocar um defeito por outro.
+    """
+    bloco = _bloco('static/multitab-navigation.js', 'function activateTab(tabId, options)',
+                   'function pushInternalNode')
+    assert 'if (!redundante) closeTransientUi();' in bloco, (
+        'o fechamento de UI transitória voltou a ser incondicional em activateTab: '
+        'clicar no menu do módulo ativo fecharia o modal de assinatura e o '
+        'traçado não gravado iria embora'
+    )
+    pos_medida = bloco.find('var redundante =')
+    pos_troca = bloco.find('activeTabId = tab.id;')
+    assert pos_medida > -1 and pos_troca > -1, 'activateTab mudou de forma'
+    assert pos_medida < pos_troca, (
+        'a medida de redundância passou para depois de `activeTabId = tab.id`: '
+        'a aba corrente viraria a própria aba pedida e TODA ativação pareceria '
+        'redundante — nenhuma troca fecharia mais nada'
+    )
+    corpo = _fonte('static/multitab-navigation.js')
+    assert 'function closeTransientUi()' in corpo, (
+        'closeTransientUi foi removido em vez de guardado'
+    )
+
+
+def test_f5b1_achado_c_a_aba_de_compras_tem_guarda_de_anterior():
+    """O listener independente de Compras — o único dos cinco sem feature flag."""
+    bloco = _bloco('static/app.js', "safeOn(document, 'epi:viewchange', (e) => {",
+                   'function applyPhase3UiVisibility')
+    assert "const redundante = e?.detail?.anterior === 'compras';" in bloco, (
+        'a guarda de ativação redundante saiu do listener de Compras'
+    )
+    pos_guarda = bloco.find('!redundante')
+    pos_troca = bloco.find('switchComprasTab(defaultTab)')
+    assert pos_guarda > -1 and pos_troca > -1, 'o listener de Compras mudou de forma'
+    assert pos_guarda < pos_troca, (
+        'a troca de aba de Compras voltou a acontecer antes da guarda: clicar no '
+        'menu de Compras estando em Compras descartaria a aba aberta'
+    )
+
+
+def test_f5b1_achado_d_a_rolagem_so_zera_em_entrada_de_verdade():
+    bloco = _bloco('static/ux-phase44.js', 'function bindScrollPattern()', "safeOn(document, 'invalid'")
+    pos_guarda = bloco.find('if (anterior && anterior === nextView) return;')
+    pos_scroll = bloco.find('globalThis.scrollTo({ top: 0')
+    assert pos_guarda > -1, 'a guarda de ativação redundante saiu do padrão de rolagem do phase44'
+    assert pos_scroll > -1, 'bindScrollPattern mudou de forma'
+    assert pos_guarda < pos_scroll, (
+        'a rolagem volta ao topo antes da guarda decidir: o clique no menu do '
+        'módulo ativo arrancaria o usuário de onde ele estava lendo'
+    )
+
+
+def test_f5b1_achado_e_a_pilha_de_raiz_so_reinicia_em_transicao_real():
+    bloco = _bloco('static/navigation.js', "safeOn(document, 'epi:viewchange', function (event)",
+                   "safeOn(document, 'click', function (event)")
+    pos_guarda = bloco.find('if (anterior && anterior === view) {')
+    pos_push = bloco.find('rootPush(view);')
+    assert pos_guarda > -1, 'a guarda de ativação redundante saiu do listener da hierarquia'
+    assert pos_push > -1, 'o listener da hierarquia mudou de forma'
+    assert pos_guarda < pos_push, (
+        'rootPush volta a rodar antes da guarda: `stack.length = 0` apagaria o '
+        'caminho que o usuário percorreu dentro do módulo'
+    )
+    corpo = _fonte('static/navigation.js')
+    assert 'stack.length = 0;' in corpo, (
+        'rootPush foi esvaziado em vez de guardado: a transição real de raiz '
+        'precisa continuar recomeçando a pilha'
+    )
+
+
+def test_f5b1_os_gates_do_gesto_partem_do_clique_real():
+    """Nenhum gate do F5-B.1 pode fabricar a troca de view.
+
+    Um `dispatchEvent(new CustomEvent('epi:viewchange', ...))` não passa por
+    `navigateToView` nem por `activateTab` — foi esse atalho que deixou os cinco
+    achados atravessarem os gates anteriores. A verificação também existe do
+    lado JS (`G-real-cobertura`); aqui ela fica fora do alcance de quem edita só
+    o runner.
+    """
+    corpo = (RAIZ / 'static/js/test/run-tests.js').read_text(encoding='utf-8')
+    i = corpo.find('MARCA_INICIO_F5B1\n')
+    j = corpo.find('MARCA_FIM_F5B1\n')
+    assert i > -1 and j > i, 'as marcas da seção F5-B.1 sumiram do runner'
+    secao = corpo[i:j]
+    blocos = secao.split("\ntest('#343 F5-B.1 ")[1:]
+    assert len(blocos) >= 11, f'esperava os gates do F5-B.1 no runner, encontrei {len(blocos)}'
+    isentos = ('G-real-0', 'G-real-cobertura', 'G-real-contraprova')
+    for bloco in blocos:
+        nome = bloco[:bloco.index(':')]
+        if nome in isentos:
+            continue
+        assert 'clicarNoItemDeMenu(' in bloco, (
+            f'o gate "{nome}" não parte do clique real no item de menu'
+        )
+        # `'epi:viewchange'` entra na lista porque a fabricação não precisa de
+        # helper nenhum: basta um `dispatchEvent(new CustomEvent(...))` dentro do
+        # gate. Sem este item, trocar o clique pelo evento cru mantinha o gate
+        # verde — exatamente o falso-verde que esta seção existe para impedir.
+        for atalho in ('entrarNoModulo(', 'redesenharMesmaVista(',
+                       'clicarNoMenuDaViewAtiva(', "'epi:viewchange'"):
+            assert atalho not in bloco, (
+                f'o gate "{nome}" fabrica a troca de view com `{atalho}`'
+            )
+
+
+def test_f5b1_a_insuficiencia_dos_gates_anteriores_esta_registrada():
+    """A evidência antiga não é apagada — é datada.
+
+    Os `G-menu-1/2/3` continuam no runner, porque o que provam é verdade. O que
+    passou a estar escrito ao lado é o limite deles, para ninguém voltar a
+    tratá-los como certificação do gesto de menu.
+    """
+    corpo = (RAIZ / 'static/js/test/run-tests.js').read_text(encoding='utf-8')
+    for gate in ('G-menu-1', 'G-menu-2', 'G-menu-3'):
+        assert gate in corpo, f'{gate} foi apagado: a evidência anterior não pode desaparecer sem registro'
+    assert 'INSUFICIÊNCIA DESTES TRÊS GATES' in corpo, (
+        'o registro de por que os G-menu não provavam o gesto de menu foi removido'
+    )
+    assert 'clicarNoMenuDaViewAtiva' in corpo, (
+        'o helper que fabricava o evento sumiu junto com o registro: o texto '
+        'precisa continuar dizendo o que ele fazia'
+    )
+
+
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
@@ -525,6 +714,9 @@ ARQUIVOS_PAREADOS_F5B = (
     'static/ux-phase44.js',
     # restauração de contexto de aba vira opt-in (só ação explícita de multitab)
     'static/multitab-navigation.js',
+    # F5-B.1: a pilha de raiz da hierarquia não é mais zerada em ativação
+    # redundante da mesma view
+    'static/navigation.js',
     # os gates comportamentais que provam o cenário
     'static/js/test/run-tests.js',
     # estes próprios gates
@@ -534,7 +726,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '25011effb6179467333284a8d83be37976ed1ef1701a56e6418c407c41db5429'
+DIGESTO_PARIDADE_F5B = 'a85254caf20654ed0ad95bba9de7994eb19c985b9c22e157cc21e87ae7a9ba96'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:
@@ -566,7 +758,7 @@ def _digesto_dos_pareados() -> str:
 def test_g11_os_arquivos_pareados_existem_todos():
     for rel in ARQUIVOS_PAREADOS_F5B:
         assert (RAIZ / rel).is_file(), f'arquivo pareado sumiu: {rel}'
-    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 8
+    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 9
 
 
 def test_g11_index_html_nao_entra_na_igualdade_byte_a_byte():
@@ -577,7 +769,7 @@ def test_g11_index_html_nao_entra_na_igualdade_byte_a_byte():
 
 
 def test_g11_paridade_f5b_entre_corporate_e_saas():
-    """Um único dígito sobre os 7 arquivos do contrato da F5-B.
+    """Um único dígito sobre os 9 arquivos do contrato da F5-B/F5-B.1.
 
     Os dois repositórios calculam o mesmo número e comparam com a mesma
     constante. Editar um lado sem o outro derruba o gate no lado editado.

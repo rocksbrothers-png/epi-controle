@@ -405,6 +405,16 @@
     safeOn(document, 'epi:viewchange', function (event) {
       var nextView = event && event.detail ? event.detail.view : activeViewName();
       if (!VIEW_CONFIG[nextView]) return;
+      // F5-B.1/D — ativação redundante (`anterior === view`: clique no item de
+      // menu do módulo já ativo, ou redesenho interno da mesma view) não zera a
+      // rolagem — o usuário continua lendo e preenchendo de onde estava. Nem
+      // pulsa a transição, porque não houve transição.
+      //
+      // ENTRADA de verdade no módulo, com `anterior` diferente, continua
+      // começando no topo: isso é contrato da F5-B e não muda aqui. São dois
+      // gestos distintos e a guarda separa exatamente os dois.
+      var anterior = event && event.detail ? event.detail.anterior : '';
+      if (anterior && anterior === nextView) return;
       globalThis.scrollTo({ top: 0, behavior: 'smooth' });
       document.body.classList.remove('phase44-transition-pulse');
       void document.body.offsetWidth;

@@ -14,13 +14,13 @@ O frontend web legado é uma SPA (Single Page Application) em **JavaScript vanil
 | `i18n-helper.js` | 849 B | Adaptador legado de i18n |
 | `navigation.js` | 11 KB | Navegação hierárquica (Phase 4.6) |
 | `navigation-controls.js` | 15 KB | Controles de navegação UI |
-| `multitab-navigation.js` | 17 KB | Suporte a navegação multi-aba |
+| `multitab-navigation.js` | 17 KB | Suporte a navegação multi-aba — **inerte** (ver Limitações, item 7) |
 | `error-monitor.js` | 10 KB | Monitoramento de erros e rollback |
 | `ux-global.js` | 8.6 KB | UX global unificada (Phase 4.4+) |
-| `ux-phase41.js` | 17 KB | Módulo UX Phase 4.1 |
-| `ux-phase42.js` | 19 KB | Módulo UX Phase 4.2 |
-| `ux-phase43.js` | 20 KB | Módulo UX Phase 4.3 |
-| `ux-phase44.js` | 22 KB | Módulo UX Phase 4.4 |
+| `ux-phase41.js` | 17 KB | Módulo UX Phase 4.1 — **inerte** (ver Limitações, item 7) |
+| `ux-phase42.js` | 19 KB | Módulo UX Phase 4.2 — único dos quatro que inicializa |
+| `ux-phase43.js` | 20 KB | Módulo UX Phase 4.3 — **inerte** (ver Limitações, item 7) |
+| `ux-phase44.js` | 22 KB | Módulo UX Phase 4.4 — **inerte** (ver Limitações, item 7) |
 | `ux-analytics.js` | 18 KB | Analytics e telemetria |
 | `tenant-init.js` | 12 KB | Inicialização de tenant/white-label |
 | `share-modal.js` | 2.5 KB | Modal de compartilhamento |
@@ -57,7 +57,20 @@ if (!globalThis.__EPI_MODULE_LOADED__) {
 // Padrão alternativo (para módulos menores)
 if (globalThis.__EPI_MODULE_BOUND__) return;
 globalThis.__EPI_MODULE_BOUND__ = true;
+
+// Padrão central, quando os helpers do app.js já estão publicados
+if (!helpers.ensureModuleBound('meu_modulo')) return;
 ```
+
+> **Os três padrões são alternativas mutuamente exclusivas — nunca os combine.**
+> `ensureModuleBound(chave)` DERIVA o nome global `__EPI_<CHAVE>_BOUND__`. Um módulo
+> que grava esse global por conta própria e depois chama `ensureModuleBound` com a
+> chave correspondente recebe "já ligado" de si mesmo e retorna antes de qualquer
+> bind — inclusive antes de ler a própria feature flag.
+>
+> `ux-phase41.js`, `ux-phase43.js` e `ux-phase44.js` estão hoje nessa condição e não
+> inicializam em produção. `ux-phase42.js` usa somente `ensureModuleBound` e é o único
+> dos quatro que inicializa. Ver `docs/PHASE5_0_GO_LIVE_PROGRESSIVO.md`, seção 10.
 
 ### Comunicação entre Módulos
 
@@ -77,10 +90,16 @@ const enabled = helpers.getFeatureFlag('ux_phase41_enabled', {
   allowStorage: true 
 });
 
-// Fontes de flags (por prioridade):
-// 1. localStorage ('ux_phase41_enabled' === '1')
-// 2. Query param (?ux_phase41=1)
+// Fontes de flags (por prioridade REAL, conforme readFeatureFlagFromSources em app.js):
+// 1. Query param (?ux_phase41=1)   ← vence
+// 2. localStorage ('ux_phase41_enabled' === '1')   ← só se allowStorage !== false
 // 3. defaultValue
+//
+// `allowStorage` é true por omissão (`options.allowStorage !== false`).
+// O kill switch `ux_global_kill_switch` precede tudo para as flags listadas em
+// UX_FORCE_CLASSIC_FLAGS, e responde também a `__EPI_AUTO_ROLLBACK_ACTIVE__`.
+// As duas fontes são controláveis pelo usuário final: não há, hoje, fonte de
+// servidor nem escopo por tenant para flags de UX.
 ```
 
 ## Estrutura do app.js (Seções Principais)
@@ -147,6 +166,16 @@ Ativado via `localStorage.epi_diagnostic_mode_enabled = '1'`:
 3. **`var` e `function` globais**: poluição do escopo global
 4. **Sem type checking**: ausência de TypeScript ou JSDoc consistente
 5. **Sem linter formal**: regras de estilo inconsistentes entre arquivos
-6. **Testes**: sem testes unitários JS (apenas `test_js_syntax.py` valida sintaxe)
+6. **Testes**: há suíte unitária JS em `static/js/test/run-tests.js` (319 testes,
+   sem dependências externas) além do `test_js_syntax.py`. A limitação real é de
+   NATUREZA: boa parte das asserções sobre os módulos UX é **estrutural** — verifica
+   a presença de texto no arquivo, não o comportamento em execução. Dois exemplos
+   (`test_phase41_has_global_guard_and_iife` e
+   `test_phase44_guard_flag_and_classic_fallback_are_present`) afirmam a presença da
+   linha que causa a colisão de guarda descrita acima, e portanto exigem que o defeito
+   permaneça. Suíte verde não é, por si, evidência de comportamento correto.
+7. **Módulos inertes**: `ux-phase41.js`, `ux-phase43.js`, `ux-phase44.js` e
+   `multitab-navigation.js` não inicializam em produção. Ligar suas feature flags não
+   produz efeito observável. Ver `docs/PHASE5_0_GO_LIVE_PROGRESSIVO.md`, seção 10.
 
 Ver `spec/10-js-refactoring-plan.md` para o plano de modernização.

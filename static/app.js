@@ -18200,6 +18200,16 @@ function _matchPurchaseImportRows(rows, prItems) {
       if (episTesteBtn) episTesteBtn.style.display = hasPermission('ppe_test:view') ? '' : 'none';
       const pendentesBtn = document.getElementById('avaltab-pendentes');
       if (pendentesBtn) pendentesBtn.style.display = isAdmin ? 'none' : '';
+      // F5-B.1/F — a visibilidade das abas acima é idempotente e derivada de
+      // permissão, então continua rodando sempre. A TROCA de aba e a recarga
+      // abaixo, não: em ativação redundante (`anterior === 'avaliacoes'`) elas
+      // devolviam o usuário à aba padrão e descartavam o trabalho da aba aberta.
+      // Mesmo defeito do listener de Compras, num módulo que a auditoria da
+      // F5-B não alcançou — este listener também não tem feature flag.
+      //
+      // Entrar em Avaliações vindo de OUTRA view continua abrindo a aba padrão:
+      // isso é o contrato da F5-B e não muda aqui.
+      if (e.detail?.anterior === 'avaliacoes') return;
       if (isAdmin) {
         // Admins: visão unificada (loadSummary + loadEpiFeedbacks via showAvalTab)
         showAvalTab('avaliacao-final');

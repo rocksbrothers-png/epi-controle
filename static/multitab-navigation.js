@@ -276,12 +276,38 @@
     // Medido ANTES de `activeTabId = tab.id`: depois da atribuição `current` já
     // seria o próprio `tab` e toda ativação pareceria redundante.
     var redundante = Boolean(current) && current.id === tab.id && ativacaoRedundanteDeView(tab.view);
+    // F5-B.1/B — ativação redundante é no-op INTEIRO, não só o
+    // `closeTransientUi()`. Pular apenas o fechamento deixava passar todo o
+    // resto de uma transição: `navApi.showView(..., { partial: true })`, que nas
+    // views suportadas rebusca e redesenha o módulo; `runSafeRebinds()`; a
+    // animação e o `markLoading` piscando; e o `updateHistory(tab, opts)`
+    // empilhando outra entrada, porque `onMenuIntercept` passa
+    // `historyMode: 'push'` — o Voltar passava a revisitar um estado de aba
+    // idêntico, uma vez por clique repetido.
+    //
+    // `restoreContext` é a exceção, e por isso não é um `viaMenu` disfarçado:
+    // quem clica numa aba da barra, faz Ctrl+Tab, fecha uma aba ou volta por
+    // `popstate` está pedindo AQUELE contexto de volta, e a restauração do nó
+    // interno precisa rodar mesmo sobre a aba corrente. O caminho do menu
+    // lateral não passa esse sinal — e é justamente o menu que o contrato manda
+    // ser no-op.
+    //
+    // `activeTabId` já é `tab.id` aqui (é o que `redundante` mede), então sair
+    // antes da atribuição não muda estado nenhum.
+    if (redundante && opts.restoreContext !== true) return;
     activeTabId = tab.id;
-    // Troca REAL de contexto continua fechando dropdown, modal e painel
-    // transitório. A guarda é para a ativação redundante, não para todo
-    // `activateTab` — tornar `closeTransientUi()` inoperante seria trocar um
-    // defeito por outro.
-    if (!redundante) closeTransientUi();
+    // Incondicional, e isso é deliberado: depois da saída antecipada acima, todo
+    // caminho que chega aqui é OU uma troca real de contexto, OU um
+    // `restoreContext` explícito (clique na aba, `popstate`) que vai reescrever
+    // os campos logo abaixo — e nos dois casos fechar dropdown, modal e painel
+    // transitório é o comportamento certo, o mesmo de antes desta fatia.
+    //
+    // Havia aqui um `if (!redundante)`. Com a saída antecipada ele virou código
+    // morto para o caso que importava, e a sabotagem que o removia passou a ficar
+    // VERDE — uma guarda que não guarda nada é pior que nenhuma, porque parece
+    // proteção. Quem protege o gesto de menu é o `return` acima, e é ele que a
+    // sabotagem `S-B2` derruba.
+    closeTransientUi();
 
     var controller = tabAbortControllers.get(tab.id);
     if (controller) {

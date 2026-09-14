@@ -597,10 +597,11 @@ def test_f5b1_achado_b_ativacao_redundante_nao_fecha_ui_transitoria():
     """
     bloco = _bloco('static/multitab-navigation.js', 'function activateTab(tabId, options)',
                    'function pushInternalNode')
-    assert 'if (!redundante) closeTransientUi();' in bloco, (
-        'o fechamento de UI transitória voltou a ser incondicional em activateTab: '
-        'clicar no menu do módulo ativo fecharia o modal de assinatura e o '
-        'traçado não gravado iria embora'
+    # A medida de redundância tem de existir e de ser lida pela saída antecipada
+    # (gate próprio, abaixo). Aqui o que se fixa é a ORDEM em que ela é tirada.
+    assert 'closeTransientUi();' in bloco, (
+        'closeTransientUi deixou de ser chamado em activateTab: a troca real de '
+        'contexto pararia de fechar dropdown, modal e painel transitório'
     )
     pos_medida = bloco.find('var redundante =')
     pos_troca = bloco.find('activeTabId = tab.id;')
@@ -716,6 +717,104 @@ def test_f5b1_a_insuficiencia_dos_gates_anteriores_esta_registrada():
     )
 
 
+def test_f5b1_achado_b_ativacao_redundante_e_no_op_inteiro():
+    """Sair ANTES de redesenhar, e não só pular o fechamento da UI transitária.
+
+    A primeira versão desta correção pulava apenas `closeTransientUi()` e deixava
+    passar todo o resto de uma transição: `showView` com `partial: true` (que
+    rebusca e redesenha o módulo), os rebinds, a animação e o `updateHistory`
+    empilhando outra entrada — `onMenuIntercept` passa `historyMode: 'push'`.
+    """
+    bloco = _bloco('static/multitab-navigation.js', 'function activateTab(tabId, options)',
+                   'function pushInternalNode')
+    pos_saida = bloco.find("if (redundante && opts.restoreContext !== true) return;")
+    assert pos_saida > -1, (
+        'a saída antecipada da ativação redundante saiu do activateTab: o clique no '
+        'menu do módulo ativo voltaria a redesenhar o módulo e a empilhar histórico'
+    )
+    for nome, agulha in (
+        ('a atribuição de aba ativa', 'activeTabId = tab.id;'),
+        ('o redesenho da view', 'navApi.showView('),
+    ):
+        pos = bloco.find(agulha)
+        assert pos > -1, f'activateTab mudou de forma: não achei {nome}'
+        assert pos_saida < pos, f'a saída antecipada passou para depois de {nome}'
+    # `restoreContext` continua sendo a exceção — e não pode virar um `viaMenu`
+    # ao contrário, valendo para qualquer chamador.
+    assert 'viaMenu' not in _fonte('static/multitab-navigation.js'), (
+        'apareceu um sinal de menu no multitab, que a decisão de contrato proíbe'
+    )
+
+
+def test_f5b1_achado_f_a_aba_de_avaliacoes_tem_guarda_de_anterior():
+    """Sexto caminho, mesma classe do achado C, também sem feature flag."""
+    # Fim no `bindAvaliacoesView();` — a CHAMADA, que vem depois do listener; a
+    # definição da função vem antes dele e não serviria de âncora.
+    bloco = _bloco('static/app.js', "if (e.detail?.view === 'avaliacoes') {", 'bindAvaliacoesView();')
+    pos_guarda = bloco.find("if (e.detail?.anterior === 'avaliacoes') return;")
+    assert pos_guarda > -1, 'a guarda de ativação redundante saiu do listener de Avaliações'
+    for nome, agulha in (
+        ("a aba unificada do admin", "showAvalTab('avaliacao-final')"),
+        ("a aba de pendentes", "showAvalTab('pendentes')"),
+    ):
+        pos = bloco.find(agulha)
+        assert pos > -1, f'o listener de Avaliações mudou de forma: não achei {nome}'
+        assert pos_guarda < pos, (
+            f'a troca para {nome} voltou a acontecer antes da guarda: o redesenho da '
+            f'mesma view descartaria o trabalho da aba aberta'
+        )
+
+
+# Inventário FECHADO dos listeners de `epi:viewchange` na árvore servida.
+#
+# O sexto caminho (Avaliações) existia porque a auditoria da F5-B inventariou por
+# módulo, e não por listener. Este mapa fecha a pergunta "falta algum?": cada
+# registro está aqui com o veredito de por que é guardado ou inócuo, e um
+# listener novo derruba o gate — obrigando a decisão em vez de deixá-la passar.
+LISTENERS_DE_VIEWCHANGE = {
+    # 3 em app.js: reset central da F5-B, aba de Compras (C), aba de Avaliações (F).
+    'static/app.js': (3, 'os tres com guarda de `anterior`'),
+    # rootPush da hierarquia (E).
+    'static/navigation.js': (1, 'guarda de `anterior` (E)'),
+    # rolagem (D) e rebind de view (idempotente por WeakSet).
+    'static/ux-phase44.js': (2, 'rolagem com guarda (D); o rebind e idempotente'),
+    # teardown de memoria/estado: guarda `view === anterior` desde a F5-B.
+    'static/ux-phase42.js': (1, 'teardown com guarda de mesma-view'),
+    'static/ux-phase43.js': (2, 'teardown com guarda de mesma-view; o rebind e idempotente'),
+    # titulo da aba: tem guarda propria (`view !== tab.view` retorna).
+    'static/multitab-navigation.js': (1, 'guarda propria de mesma-view'),
+    # melhoria progressiva: nao mexe em estado de trabalho.
+    'static/ux-global.js': (1, 'apenas enriquece o DOM da view'),
+    # telemetria: registra o que aconteceu, nao muda estado.
+    'static/ux-analytics.js': (1, 'apenas telemetria'),
+    # breadcrumb proprio: a pilha tem dedup e os overlays sao do proprio modulo.
+    'static/navigation-controls.js': (1, 'pilha com dedup; overlays do proprio modulo'),
+}
+
+REGISTRO_DE_VIEWCHANGE = re.compile(
+    r"(?:safeOn|bindAppListener)\(\s*[^,]+,\s*'epi:viewchange'"
+    r"|\.addEventListener\(\s*'epi:viewchange'"
+)
+
+
+def test_f5b1_o_inventario_de_listeners_de_viewchange_esta_fechado():
+    """Um listener novo de `epi:viewchange` não entra em silêncio.
+
+    Não é auditoria aberta: é uma lista enumerável. O gate não julga o novo
+    listener — ele obriga alguém a classificá-lo, que foi exatamente o passo que
+    faltou quando o de Avaliações entrou sem guarda.
+    """
+    for rel, (esperado, motivo) in LISTENERS_DE_VIEWCHANGE.items():
+        corpo = _fonte(rel)
+        achados = len(REGISTRO_DE_VIEWCHANGE.findall(corpo))
+        assert achados == esperado, (
+            f'{rel}: {achados} listeners de `epi:viewchange`, esperados {esperado} '
+            f'({motivo}). Se o listener novo mexe em estado de trabalho, ele precisa '
+            f'da guarda de `anterior`; se não mexe, atualize este inventário dizendo '
+            f'por quê.'
+        )
+
+
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
@@ -740,7 +839,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '08ca0d1247dfea98afae65c96538ea3fcf94a71a9f58fb01a2ef43f65ecb5590'
+DIGESTO_PARIDADE_F5B = '1dabcf96af886bad6e5fa919ce0fa04561b694ea55ff1acca8f690525dae97c7'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

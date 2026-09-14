@@ -4065,6 +4065,10 @@ test('#343 F5-B G-menu-3: a guarda é a única porta, e não há bypass por sina
 //       `activateTab` do multitab faz. Chamar `showView` é usar a porta do app,
 //       não fabricar o evento: quem calcula `anterior` continua sendo ele.
 
+const ABAS_DE_AVALIACOES_F5B = Object.freeze(
+  ['pendentes', 'reclamacoes', 'elogios', 'sugestoes', 'ranking', 'epis-teste', 'avaliacao-final']
+);
+
 const MARCA_INICIO_F5B1 = 'MARCA_INICIO_F5B1';
 const MARCA_FIM_F5B1 = 'MARCA_FIM_F5B1';
 
@@ -4077,8 +4081,19 @@ function montarAppRealF5B(busca, opcoes) {
     estoque: montarVistaF5B('estoque', 'estoque', ['estoque', 'movimentacoes']),
     colaboradores: montarVistaF5B('colaboradores', 'colaboradores', ['cadastro', 'lista']),
     compras: montarVistaSimplesF5B('compras', []),
-    entregas: montarVistaSimplesF5B('entregas', [])
+    entregas: montarVistaSimplesF5B('entregas', []),
+    avaliacoes: montarVistaSimplesF5B('avaliacoes', [])
   };
+
+  // Subabas de Avaliações no formato real: `bindAvaliacoesView()` escuta o
+  // clique em `#avaliacoes-subtabs` e `showAvalTab` marca `is-active` no botão
+  // `#avaltab-<pane>` e esconde os `#avaliacoes-pane-<pane>`.
+  const subabas = criarNoF5B('div', { id: 'avaliacoes-subtabs' });
+  ABAS_DE_AVALIACOES_F5B.forEach((aba) => {
+    subabas.appendChild(criarNoF5B('button', { id: `avaltab-${aba}`, 'data-avaliacoes-tab': aba }));
+    vistas.avaliacoes.appendChild(campoF5B('div', { id: `avaliacoes-pane-${aba}` }));
+  });
+  vistas.avaliacoes.appendChild(subabas);
   // Cabeçalho já montado, como fica a página depois do primeiro bind: faz o
   // `applyViewHeader` do phase44 sair cedo em vez de montar markup por
   // `innerHTML`, que este shim não interpreta.
@@ -4113,7 +4128,7 @@ function montarAppRealF5B(busca, opcoes) {
   }));
 
   const menu = criarNoF5B('nav', { id: 'menu' });
-  ['dashboard', 'estoque', 'colaboradores', 'compras', 'entregas'].forEach((view) => {
+  ['dashboard', 'estoque', 'colaboradores', 'compras', 'entregas', 'avaliacoes'].forEach((view) => {
     const item = criarNoF5B('button', { 'data-view': view, class: 'menu-link' });
     item.textContent = view;
     menu.appendChild(item);
@@ -4262,7 +4277,8 @@ function montarAppRealF5B(busca, opcoes) {
       // `hasPermission` consulta `state.permissions` quando ela está preenchida.
       estado.permissions = [
         'dashboard:view', 'stock:view', 'deliveries:view', 'employees:view', 'reports:view',
-        'purchase_requests:view', 'purchase_requests:create', 'purchase_orders:view'
+        'purchase_requests:view', 'purchase_requests:create', 'purchase_orders:view',
+        'epi_evaluation:view', 'epi_feedback:view', 'ppe_test:view'
       ];
     }
   });
@@ -4299,6 +4315,11 @@ function montarAppRealF5B(busca, opcoes) {
     if (!no) {throw new Error(`fixture sem nó "${id}"`);}
     return no.dispatchEvent(new ctx.Event('click', { bubbles: true }));
   };
+  const abaDeAvaliacoesAtiva = () => {
+    const ativa = ABAS_DE_AVALIACOES_F5B
+      .find((aba) => doc.getElementById(`avaltab-${aba}`)?.classList.contains('is-active'));
+    return ativa || '';
+  };
   const abaDeComprasAtiva = () => {
     const ativa = ['demandas', 'requisicoes', 'cotacoes', 'pos']
       .find((aba) => doc.getElementById(`compras-tab-${aba}`)?.classList.contains('is-active'));
@@ -4306,7 +4327,7 @@ function montarAppRealF5B(busca, opcoes) {
   };
 
   return { ctx, doc, vistas, viewAtiva, clicarNoItemDeMenu, clicarEm, abaDeComprasAtiva,
-    eventosDeView, scriptsCarregados: ordem.length };
+    abaDeAvaliacoesAtiva, eventosDeView, scriptsCarregados: ordem.length };
 }
 
 test('#343 F5-B.1 G-real-0: o harness carrega o app servido e liga os handlers reais', () => {
@@ -4488,6 +4509,55 @@ test('#343 F5-B.1 G-C-2: entrar em Compras vindo de outra view continua na aba p
     'sair do módulo e voltar deveria abrir a aba padrão — o reset de entrada da F5-B sumiu');
 });
 
+// ── Achado F — listener independente que troca a aba de Avaliações ──────────
+//
+// Sexto caminho, achado pela revisão e confirmado por enumeração FECHADA de
+// todos os listeners de `epi:viewchange` da árvore servida. Mesma classe do
+// achado C, em um módulo que a auditoria da F5-B não alcançou, e também sem
+// feature flag nenhuma.
+
+test('#343 F5-B.1 G-F-1: clique no menu de Avaliações mantém a aba interna aberta', () => {
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.viewAtiva(), 'avaliacoes', 'o clique real não abriu Avaliações');
+  eq(app.abaDeAvaliacoesAtiva(), 'avaliacao-final',
+    'a ENTRADA no módulo deveria abrir a aba padrão do papel (contrato F5-B)');
+
+  // O usuário abre outra aba interna — clique REAL no botão da subaba, que é o
+  // caminho que `bindAvaliacoesView()` escuta.
+  app.clicarEm('avaltab-reclamacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes', 'o clique real na subaba não trocou de aba');
+
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes',
+    'clicar no menu de Avaliações estando em Avaliações voltou para a aba padrão');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a aba.
+  app.ctx.showView('avaliacoes', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.eventosDeView[app.eventosDeView.length - 1].anterior, 'avaliacoes',
+    'o redesenho interno não reportou `anterior === avaliacoes`: o cenário medido não é o do contrato');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes',
+    'o redesenho da MESMA view devolveu a aba padrão e descartou o trabalho da aba aberta');
+});
+
+test('#343 F5-B.1 G-F-2: entrar em Avaliações vindo de outra view volta à aba padrão', () => {
+  const app = montarAppRealF5B('');
+  app.clicarNoItemDeMenu('avaliacoes');
+  app.clicarEm('avaltab-reclamacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'reclamacoes');
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.viewAtiva(), 'estoque');
+  app.clicarNoItemDeMenu('avaliacoes');
+  eq(app.abaDeAvaliacoesAtiva(), 'avaliacao-final',
+    'sair do módulo e voltar deveria abrir a aba padrão — o reset de entrada da F5-B sumiu');
+});
+
 // ── Achado D — phase44 / rolagem ────────────────────────────────────────────
 
 test('#343 F5-B.1 G-D-1: clique no menu do módulo ativo não zera a rolagem', () => {
@@ -4591,12 +4661,21 @@ test('#343 F5-B.1 G-B-1: com multitab, clique no módulo ativo não fecha o moda
   const prancheta = app.doc.getElementById('signature-pad');
   prancheta.dataset.tracos = '7';
 
+  const pushesAntes = app.ctx._pushStates;
+  const eventosAntes = app.eventosDeView.length;
+
   app.clicarNoItemDeMenu('entregas');   // o gesto contratado
 
   assert(modal.classList.contains('is-open'),
     'o modal de assinatura foi fechado pelo clique no menu do módulo já ativo — reabrir devolve um canvas em branco');
   assert(modal.getAttribute('aria-hidden') !== 'true', 'o modal foi marcado como oculto na ativação redundante');
   eq(prancheta.dataset.tracos, '7', 'o traçado não gravado foi perdido');
+  // O no-op é INTEIRO, não só o fechamento da UI transitória: sem isto, o
+  // `activateTab` seguia redesenhando o módulo e empilhando histórico.
+  eq(app.eventosDeView.length, eventosAntes,
+    'a ativação redundante ainda emitiu troca de view: o módulo é redesenhado e a atualização parcial roda');
+  eq(app.ctx._pushStates, pushesAntes,
+    'a ativação redundante empilhou outra entrada de histórico — o Voltar passa a revisitar um estado de aba idêntico');
 });
 
 test('#343 F5-B.1 G-B-2: troca real de contexto continua fechando a UI transitória', () => {

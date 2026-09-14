@@ -2343,6 +2343,12 @@ function criarNoF5B(tag, attrs = {}) {
     },
     matches(sel) { return casaF5B(no, sel); },
     closest(sel) { let n = no; while (n) { if (casaF5B(n, sel)) {return n;} n = n.parent; } return null; },
+    // Plataforma: `Node.contains`. O fechamento por clique fora do phase44 é
+    // escrito com ele (`!root.contains(event.target)`), enquanto o do app.js usa
+    // `closest`. Sem esta primitiva o handler do phase44 lançaria em silêncio e
+    // a comparação entre os dois contratos mediria a ausência do shim, não a
+    // diferença entre os módulos.
+    contains(outro) { let n = outro; while (n) { if (n === no) {return true;} n = n.parent; } return false; },
     querySelectorAll(sel) {
       const texto = String(sel).trim();
       if (texto.startsWith(':scope > ')) {
@@ -4698,6 +4704,1099 @@ test('#343 F5-B.1 G-B-2: troca real de contexto continua fechando a UI transitó
 });
 
 // MARCA_FIM_F5B1
+
+// ══════════════════════════════════════════════════════════════════════════
+// #343 PR1 — CARACTERIZAÇÃO COMPORTAMENTAL E OWNERSHIP
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Esta seção NÃO corrige nada. Ela transforma em teste reproduzível o que a
+// auditoria mediu, e responde por COMPORTAMENTO quem é o owner real de cada
+// responsabilidade.
+//
+// Dois modos de carga, e a diferença entre eles é o objeto de estudo:
+//
+//   ORDEM SERVIDA      — exatamente o que `_scripts.html` manda o navegador
+//                        fazer, mais a injeção dinâmica de 42/43/44 que o
+//                        `app.js` dispara. É o que roda em produção.
+//   CONTRAFACTUAL      — a MESMA carga, com o bloqueio neutralizado pelo lado
+//                        do HOST: `ensureModuleBound` passa a derivar chave de
+//                        outro namespace, e/ou a nav API é publicada antes do
+//                        módulo que a consome. Nenhum byte de produção é
+//                        alterado — nem em disco, nem em memória. O que muda é
+//                        o ambiente em volta.
+//
+// O contrafactual responde "o que apareceria SE o bloqueio saísse", que é
+// pergunta de decisão, não de implementação. Ele não autoriza a correção.
+// ── MARCA_INICIO_PR1
+
+const MARCA_INICIO_PR1 = 'MARCA_INICIO_PR1';
+const MARCA_FIM_PR1 = 'MARCA_FIM_PR1';
+
+// Registro das caracterizações de DEFEITO. Cada uma afirma o comportamento
+// ATUAL (portanto passa hoje) e declara, em campos obrigatórios, qual seria o
+// comportamento correto. Quando o defeito for corrigido, ela falha — que é o
+// sinal desejado. Não é `skip` nem `xfail` permanente: nada fica ignorado.
+const DEFEITOS_CARACTERIZADOS = [];
+function caracterizaDefeito(nome, ficha, fn) {
+  ['esperado', 'atual', 'motivo', 'responsabilidade', 'decisaoFutura'].forEach((campo) => {
+    if (!ficha || !String(ficha[campo] || '').trim()) {
+      throw new Error(`caracterizaDefeito("${nome}") sem o campo obrigatório "${campo}"`);
+    }
+  });
+  DEFEITOS_CARACTERIZADOS.push({ nome, ...ficha });
+  test(nome, fn);
+}
+
+// ── Harness de ownership ────────────────────────────────────────────────────
+
+function fixtureOwnershipPR1() {
+  const vista = (nome) => {
+    const v = criarNoF5B('div', { id: `${nome}-view`, class: 'view' });
+    // Cabeçalho já montado: faz o `applyViewHeader` do phase44 sair cedo em vez
+    // de montar markup por `innerHTML`, que este shim não interpreta. Mesmo
+    // recurso que o harness da F5-B.1 usa.
+    v.appendChild(criarNoF5B('article', { class: 'card phase44-header' }));
+    return v;
+  };
+
+  const vistas = {
+    dashboard: vista('dashboard'),
+    entregas: vista('entregas'),
+    estoque: vista('estoque')
+  };
+  vistas.dashboard._classes.add('active');
+
+  // Formulário de entrega com os campos que phase42 e phase43 procuram por id.
+  const form = criarNoF5B('form', { id: 'delivery-form' });
+  form.appendChild(criarNoF5B('div', { id: 'delivery-form-topo' }));
+  const selecao = (id, valores) => {
+    const s = criarNoF5B('select', { id });
+    s.options = (valores || []).map((v) => ({ value: String(v), textContent: `opcao ${v}`, selected: false }));
+    s.selectedOptions = [];
+    return s;
+  };
+  form.appendChild(selecao('delivery-company', ['1', '2']));
+  form.appendChild(selecao('delivery-unit-filter', ['10', '20']));
+  form.appendChild(selecao('delivery-employee', ['100', '200']));
+  form.appendChild(selecao('delivery-epi', ['1000', '2000']));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-role' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-stock-item-code' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-quantity', name: 'quantity', value: '1' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-date', name: 'delivery_date', value: '2026-09-14' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-employee-search', type: 'search' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-epi-search', type: 'search' }));
+  form.appendChild(criarNoF5B('div', { id: 'delivery-ux-feedback' }));
+  // Este shim não interpreta `innerHTML`, e o phase42 monta o checkbox de
+  // revisão por essa via (`renderQuickConfirm`). O nó abaixo representa aquele
+  // checkbox, com o MESMO id que `hasExplicitReview()` procura — é o gate real
+  // do phase42 que fica exercitável, não um atalho que o contorna.
+  form.appendChild(criarNoF5B('input', { id: 'phase42-review-check', type: 'checkbox' }));
+  const enviar = criarNoF5B('button', { id: 'delivery-submit', class: 'primary' });
+  enviar.type = 'submit';
+  form.appendChild(enviar);
+  vistas.entregas.appendChild(form);
+
+  // Campo de dado pessoal FORA do fluxo de entrega: é o que o phase41
+  // persistiria, e o que `resetAppFormDrafts()` existe para limpar.
+  const formColaborador = criarNoF5B('form', { id: 'employee-form' });
+  formColaborador.appendChild(criarNoF5B('input', { id: 'employee-name', name: 'name' }));
+  formColaborador.appendChild(criarNoF5B('input', { id: 'employee-email', name: 'email', type: 'email' }));
+  vistas.estoque.appendChild(formColaborador);
+
+  // DOIS dropdowns no contrato de atributos que app.js e phase44 disputam.
+  // Dois, e não um: a diferença entre os owners só aparece com mais de um.
+  const dropdowns = ['acoes', 'exportar'].map((nome) => {
+    const raiz = criarNoF5B('div', { id: `dropdown-${nome}`, 'data-ui-dropdown': '1' });
+    raiz.appendChild(criarNoF5B('button', { id: `dropdown-${nome}-trigger`, 'data-dropdown-trigger': '1' }));
+    const painel = criarNoF5B('div', { id: `dropdown-${nome}-panel`, 'data-dropdown-panel': '1' });
+    painel.hidden = true;
+    raiz.appendChild(painel);
+    return raiz;
+  });
+
+  const menu = criarNoF5B('nav', { id: 'menu' });
+  ['dashboard', 'entregas', 'estoque'].forEach((view) => {
+    const item = criarNoF5B('button', { 'data-view': view, class: 'menu-link' });
+    item.textContent = view;
+    menu.appendChild(item);
+  });
+
+  const main = criarNoF5B('div', { id: 'main-content' });
+  Object.values(vistas).forEach((v) => main.appendChild(v));
+
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(criarNoF5B('div', { class: 'topbar' }));
+  doc.appendChild(menu);
+  doc.appendChild(main);
+  dropdowns.forEach((d) => doc.appendChild(d));
+  [['multitab-nav-root', 'div'], ['multitab-nav-tabs', 'div'], ['multitab-back-btn', 'button'],
+   ['multitab-breadcrumb', 'div'], ['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'],
+   ['hierarchy-breadcrumb-wrap', 'div'], ['interactive-nav-tabs', 'div'], ['login-screen', 'div']]
+    .forEach(([id, tag]) => doc.appendChild(criarNoF5B(tag, { id })));
+
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+  return { doc, vistas, form, dropdowns };
+}
+
+function montarAppOwnership(busca, opcoes) {
+  const o = opcoes || {};
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const { doc, vistas, form, dropdowns } = fixtureOwnershipPR1();
+
+  const armazem = () => ({
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  });
+  const local = armazem();
+  Object.entries(o.storageInicial || {}).forEach(([k, v]) => local.setItem(k, v));
+
+  // Respostas de rede declaradas pelo teste. `fetch` nunca sai da máquina: o
+  // que se mede aqui é quem EMBRULHA o fetch, não o que o servidor responde.
+  // Respostas casadas por trecho de URL, e não por ordem de chegada: a carga
+  // da página dispara requisições próprias (i18n, tenant, bootstrap) que
+  // consumiriam uma fila posicional e tornariam o gate dependente de corrida.
+  const respostasPorUrl = new Map(Object.entries(o.respostasPorUrl || {}));
+  const chamadasDeRede = [];
+  const fetchBase = function fetchBaseDoHarness(url) {
+    const alvo = String(url || '');
+    chamadasDeRede.push(alvo);
+    let escolhida = null;
+    respostasPorUrl.forEach((valor, trecho) => {
+      if (escolhida === null && alvo.includes(trecho)) escolhida = valor;
+    });
+    const proxima = escolhida || { ok: true, status: 200 };
+    if (proxima instanceof Error) return Promise.reject(proxima);
+    return Promise.resolve(proxima);
+  };
+
+  const ctx = {
+    document: doc, localStorage: local, sessionStorage: armazem(),
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    CustomEvent: class { constructor(t, i) { this.type = t; this.bubbles = true; Object.assign(this, i || {}); } },
+    Event: class { constructor(t, i) { this.type = t; this.bubbles = false; Object.assign(this, i || {}); } },
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    // Construtores de elemento que o app usa em `instanceof`. Sem eles o acesso
+    // lança ReferenceError dentro de funções do app, e o gate mediria um crash
+    // do fixture em vez do comportamento do módulo. Como nenhum nó do shim
+    // herda deles, todo `instanceof` dá falso — que é a mesma degradação que o
+    // harness da F5-B.1 já aceita para `HTMLElement`.
+    HTMLElement: class {}, HTMLFormElement: class {}, HTMLButtonElement: class {},
+    HTMLInputElement: class {}, HTMLSelectElement: class {}, HTMLTextAreaElement: class {},
+    HTMLAnchorElement: class {},
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams, Map, Set, WeakSet,
+    requestAnimationFrame: (f) => setTimeout(f, 0),
+    performance: { now: () => Date.now() },
+    getComputedStyle: (el) => ({
+      display: (el && el.hidden) ? 'none' : 'block', visibility: 'visible'
+    }),
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
+    navigator: { userAgent: 'node' },
+    alert() {}, confirm: () => true,
+    fetch: fetchBase,
+    scrollTo() {}, scrollY: 0,
+    _assigns: [], _reloads: 0, _pushStates: 0, _replaceStates: 0
+  };
+  ctx.location = {
+    search: busca || '', href: `http://local/${busca || ''}`, pathname: '/', origin: 'http://local',
+    assign(url) { ctx._assigns.push(String(url)); },
+    reload() { ctx._reloads += 1; }
+  };
+  ctx.history = {
+    length: 1,
+    pushState() { ctx._pushStates += 1; },
+    replaceState() { ctx._replaceStates += 1; },
+    back() {}
+  };
+  // `window` precisa das fases de escuta como qualquer nó: módulos registram
+  // `popstate` e `beforeunload` nele.
+  const noJanela = criarNoF5B('window', {});
+  ctx.addEventListener = noJanela.addEventListener;
+  ctx.removeEventListener = noJanela.removeEventListener;
+  ctx.dispatchEvent = noJanela.dispatchEvent;
+  ctx._janela = noJanela;
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  vmF5B.createContext(ctx);
+
+  // Injeção dinâmica: `app.js` cria <script> para 42/43/44 e os anexa ao head.
+  // Script inserido por script é ASSÍNCRONO (a propriedade `defer` é ignorada),
+  // então ele não roda no meio do app.js — vai para a fila e é despachado
+  // depois. O harness modela "chegou da rede depois do resto", que é o caso
+  // comum; a ordem entre 42, 43 e 44 NÃO é garantida pelo navegador, e nenhum
+  // gate desta seção depende dela.
+  const filaInjetada = [];
+  doc.head.appendChild = function (no) {
+    const src = String((no && no.src) || '');
+    const casa = src.match(/\/(ux-phase4\d\.js)/);
+    if (casa) filaInjetada.push(casa[1]);
+    return no;
+  };
+
+  const rodar = (rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (erro) {
+      (ctx._errosDeCarga = ctx._errosDeCarga || []).push({ rel, erro: String(erro && erro.message) });
+    }
+  };
+
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+
+  ordem.forEach((rel) => {
+    // CONTRAFACTUAL de navegação: publicar a nav API ANTES do módulo que a
+    // consome na avaliação do próprio arquivo. Em produção ela só nasce dentro
+    // do `init()`, no DOMContentLoaded — depois deste ponto.
+    if (rel.endsWith('multitab-navigation.js') && o.publicarNavApiCedo
+        && typeof ctx.registerMultitabNavigationApi === 'function') {
+      try { ctx.registerMultitabNavigationApi(); } catch (_e) { /* medido pelos gates */ }
+    }
+    rodar(rel);
+    if (rel === 'app.js') {
+      const estado = ctx.__EPI_APP_STATE__ || {};
+      estado.user = o.usuario || { id: 1, role: 'general_admin', company_id: 1 };
+      estado.permissions = ['dashboard:view', 'deliveries:view', 'stock:view', 'employees:view'];
+      // CONTRAFACTUAL de bootstrap: `ensureModuleBound` passa a derivar a chave
+      // num namespace PRÓPRIO, em vez de `__EPI_<CHAVE>_BOUND__` — que é a
+      // mesma chave que os IIFEs de 41/43/44 gravam em si mesmos. Substitui-se
+      // o objeto de helpers inteiro porque o original é `Object.freeze`d; a
+      // propriedade global, essa, é gravável. Nenhum arquivo servido é tocado.
+      const originais = ctx.__EPI_FRONTEND_HELPERS__ || {};
+      const substitutos = {};
+      if (o.contrafactualBootstrap) {
+        const ligados = Object.create(null);
+        substitutos.ensureModuleBound = function ensureModuleBoundSemColisao(chave) {
+          const k = String(chave || '');
+          if (ligados[k]) return false;
+          ligados[k] = true;
+          return true;
+        };
+      }
+      // Espiã de flags: registra QUEM perguntou por qual flag. É assim que se
+      // prova que um módulo nem chegou ao próprio gate de flag — afirmação que
+      // nenhuma leitura de código consegue fazer sozinha.
+      if (o.espiarFlags) {
+        const leituras = [];
+        ctx._leiturasDeFlag = leituras;
+        const embrulha = (fn) => function (nome, opcoes) {
+          const r = fn.call(this, nome, opcoes);
+          leituras.push({ flag: String(nome), retorno: r });
+          return r;
+        };
+        if (typeof originais.getFeatureFlag === 'function') {
+          substitutos.getFeatureFlag = embrulha(originais.getFeatureFlag);
+        }
+        if (typeof ctx.getFeatureFlag === 'function') {
+          ctx.getFeatureFlag = embrulha(ctx.getFeatureFlag);
+        }
+      }
+      if (o.espiaoDeErro && typeof originais.reportNonCriticalError === 'function') {
+        const registro = [];
+        ctx._errosNaoCriticos = registro;
+        substitutos.reportNonCriticalError = function (ctxMsg, erro) {
+          registro.push({ ctx: String(ctxMsg), erro: String((erro && erro.message) || erro), pilha: String((erro && erro.stack) || '').split('\n').slice(1, 4).join(' | ') });
+        };
+      }
+      if (Object.keys(substitutos).length) {
+        ctx.__EPI_FRONTEND_HELPERS__ = Object.freeze({ ...originais, ...substitutos });
+      }
+    }
+  });
+
+  // Scripts assíncronos chegam agora.
+  filaInjetada.forEach(rodar);
+
+  const listenersDe = (alvo, evento) => ((alvo && alvo._handlers && alvo._handlers[evento]) || []);
+  const contarListeners = (alvo, evento) => listenersDe(alvo, evento).length;
+
+  return {
+    ctx, doc, vistas, form, dropdowns, ordem, filaInjetada, chamadasDeRede, local,
+    listenersDe, contarListeners,
+    // A gravação em storage do app é DEBOUNCED (`queueStorageWrite`). Quem a
+    // força é o próprio app, em `beforeunload`/`pagehide`/`visibilitychange`.
+    // O gate chama essa mesma função — não inventa uma escrita própria.
+    descarregarStorage: () => {
+      if (typeof ctx.flushPendingStorageWrites === 'function') ctx.flushPendingStorageWrites();
+    },
+    responderPara: (trecho, r) => { respostasPorUrl.set(String(trecho), r); },
+    chamadasPara: (trecho) => chamadasDeRede.filter((u) => u.includes(trecho)),
+    viewAtiva: () => {
+      const no = doc.querySelector('.view.active');
+      return no && no.id ? no.id.replace(/-view$/, '') : '';
+    },
+    clicarNoItemDeMenu: (view) => {
+      const item = doc.querySelector(`.menu-link[data-view="${view}"]`);
+      if (!item) throw new Error(`fixture sem item de menu para "${view}"`);
+      return item.dispatchEvent(new ctx.Event('click', { bubbles: true }));
+    },
+    enviarFormularioDeEntrega: () => {
+      const ev = new ctx.Event('submit', { bubbles: true });
+      form.dispatchEvent(ev);
+      return ev;
+    },
+    inicializouDeVerdade: (alvos) => alvos.some(([alvo, evento]) => contarListeners(alvo, evento) > 0)
+  };
+}
+
+test('PR1 H-0: o harness carrega o app servido na ordem de produção', () => {
+  const app = montarAppOwnership('');
+  assert(app.ordem.length >= 40, `esperava a lista de _scripts.html, veio ${app.ordem.length}`);
+  assert(typeof app.ctx.ensureModuleBound === 'function', 'app.js não carregou');
+  assert(typeof app.ctx.navigateToView === 'function', 'navigateToView não veio do app servido');
+  eq(app.viewAtiva(), 'dashboard', 'o fixture deveria começar no dashboard');
+  eq(app.filaInjetada.length, 3, `os 3 scripts injetados dinamicamente deveriam entrar na fila, vieram ${app.filaInjetada.length}`);
+  assert(!app.ctx._errosDeCarga, `carga com erro: ${JSON.stringify(app.ctx._errosDeCarga)}`);
+});
+
+// ── B. phase42 — CONTROLE POSITIVO ──────────────────────────────────────────
+//
+// O phase42 é o único dos cinco que inicializa na ordem servida. Ele é o
+// controle positivo desta seção: se estes gates passarem, o harness sabe
+// reconhecer um módulo REALMENTE inicializado — e a inércia que os gates
+// seguintes medem não é cegueira do harness.
+
+test('PR1 B-1: phase42 com a flag DESLIGADA não inicializa', () => {
+  const app = montarAppOwnership('');
+  eq(app.contarListeners(app.form, 'submit'), 0, 'com a flag desligada não deveria haver gate de submit do phase42');
+  eq(app.doc.getElementById('phase42-suggestion-box'), null, 'o painel de sugestão não deveria existir');
+  assert(!app.doc.body.classList.contains('phase42-enabled'), 'a marca de habilitado não deveria estar no body');
+});
+
+test('PR1 B-2: phase42 com a flag LIGADA inicializa — registra listeners e monta painéis', () => {
+  const app = montarAppOwnership('?ux_phase42=1');
+  assert(app.doc.body.classList.contains('phase42-enabled'), 'phase42 não marcou o body: não chegou ao init()');
+  assert(app.doc.getElementById('phase42-suggestion-box'), 'o painel de sugestão não foi montado');
+  assert(app.doc.getElementById('phase42-alerts-box'), 'o painel de alertas não foi montado');
+  assert(app.doc.getElementById('phase42-quick-confirm'), 'o resumo rápido não foi montado');
+  eq(app.contarListeners(app.form, 'submit'), 1, 'phase42 deveria registrar exatamente um gate de submit');
+  assert(app.contarListeners(app.doc, 'epi:delivery-submit-success') >= 1,
+    'phase42 não escuta a conclusão da entrega: o registro de uso nunca aconteceria');
+});
+
+test('PR1 B-3: phase42 é o gate de submit — sem revisão explícita, a entrega não passa', () => {
+  const app = montarAppOwnership('?ux_phase42=1');
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, true, 'sem marcar a revisão, o submit deveria ser barrado pelo phase42');
+  const aviso = app.doc.getElementById('delivery-ux-feedback');
+  assert(String(aviso.textContent || '').includes('Revise'),
+    `o phase42 deveria explicar o bloqueio, veio "${aviso.textContent}"`);
+});
+
+test('PR1 B-4: phase42 não duplica — o guard central bloqueia a segunda carga', () => {
+  const app = montarAppOwnership('?ux_phase42=1');
+  const antes = app.contarListeners(app.form, 'submit');
+  // Segunda avaliação do MESMO arquivo servido, como aconteceria se a injeção
+  // dinâmica disparasse duas vezes.
+  vmF5B.runInContext(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase42.js'), 'utf-8'),
+    app.ctx, { filename: 'ux-phase42.js' });
+  eq(app.contarListeners(app.form, 'submit'), antes,
+    'a segunda carga registrou listeners de novo: o guard de duplicidade não seguraria');
+});
+
+test('PR1 B-5: o harness distingue inicializado de inerte (contraprova do controle)', () => {
+  const ligado = montarAppOwnership('?ux_phase42=1');
+  const desligado = montarAppOwnership('');
+  assert(ligado.contarListeners(ligado.form, 'submit') > desligado.contarListeners(desligado.form, 'submit'),
+    'o harness não consegue separar módulo ativo de módulo inerte — nenhum gate desta seção provaria nada');
+});
+
+// ── C. phase41 — ESTADO ATUAL E CONTRAFACTUAL ───────────────────────────────
+
+caracterizaDefeito('PR1 C-1: phase41 não inicializa na ordem servida, nem com a flag ligada', {
+  esperado: 'Com ux_phase41=1, o módulo deveria alcançar init() e registrar seus listeners.',
+  atual: 'Retorna na guarda ensureModuleBound("phase41"), que deriva a mesma chave que o IIFE gravou duas linhas antes.',
+  motivo: 'Colisão de chave entre a guarda local do IIFE e o guard central do app.js.',
+  responsabilidade: 'Persistência/restauração de contexto de formulário + atalhos de teclado.',
+  decisaoFutura: 'Não reativar antes do contrato de escopo (tenant/usuário/TTL/logout) da F5-C.'
+}, () => {
+  const app = montarAppOwnership('?ux_phase41=1');
+  eq(app.ctx.__EPI_PHASE41_BOUND__, true, 'o IIFE deveria ter gravado a própria chave de guarda');
+  assert(!app.doc.body.classList.contains('phase41-enabled'),
+    'phase41 marcou o body: então ele INICIALIZOU e esta caracterização está obsoleta');
+  eq(app.contarListeners(app.doc, 'keydown'), 0, 'phase41 não deveria ter registrado atalhos de teclado');
+  eq(app.contarListeners(app.doc, 'input'), 0, 'phase41 não deveria ter registrado a gravação de contexto');
+});
+
+caracterizaDefeito('PR1 C-2: a flag do phase41 nunca chega a ser consultada', {
+  esperado: 'O módulo deveria ler ux_phase41_enabled para decidir se inicializa.',
+  atual: 'A guarda retorna antes do gate de flag; a flag não é lida nenhuma vez.',
+  motivo: 'A ordem das linhas no IIFE põe a guarda antes do isEnabled().',
+  responsabilidade: 'Governança de ativação por flag.',
+  decisaoFutura: 'Enquanto durar, ligar a flag do 4.1 em produção é um no-op — a documentação já registra isso.'
+}, () => {
+  const app = montarAppOwnership('?ux_phase41=1', { espiarFlags: true });
+  const leituras = (app.ctx._leiturasDeFlag || []).filter((l) => l.flag === 'ux_phase41_enabled');
+  eq(leituras.length, 0,
+    `a flag do phase41 foi consultada ${leituras.length}x — se passou a ser lida, o módulo voltou a iniciar`);
+  // Contraprova no mesmo harness: a flag do phase42, que INICIALIZA, é lida.
+  const controle = montarAppOwnership('?ux_phase42=1', { espiarFlags: true });
+  assert((controle.ctx._leiturasDeFlag || []).some((l) => l.flag === 'ux_phase42_enabled'),
+    'a espiã não registra leitura nenhuma: ela está cega, e o gate acima não provaria nada');
+});
+
+caracterizaDefeito('PR1 C-3: a limpeza de chave legada da F5-B não é alcançada em 41, 43 e 44', {
+  esperado: 'A migração deveria apagar as chaves legadas mesmo com a flag desligada — foi posta fora do gate da flag justamente para isso.',
+  atual: 'Ela está DEPOIS da guarda no topo do IIFE, que retorna antes. Só a do phase42 roda.',
+  motivo: 'Mesma colisão de chave; a limpeza é a vítima colateral mais concreta dela.',
+  responsabilidade: 'Migração/retenção de dados em localStorage.',
+  decisaoFutura: 'Se os módulos forem removidos, a limpeza precisa sobreviver a eles em algum lugar que execute.'
+}, () => {
+  const legadas = {
+    'epi:ux:phase41:scroll:v2': '{"de":"quem usou a maquina antes"}',
+    'epi:ux:phase42:memory:v2': '{"last":{"employeeId":7,"companyId":3}}',
+    'epi:ux:phase43:state:v1': '{"qty":"5"}',
+    'epi.ux.phase44.filters.entregas': '{"deliveries-filter-company":"3"}'
+  };
+  const app = montarAppOwnership('', { storageInicial: legadas });
+  eq(app.local.getItem('epi:ux:phase42:memory:v2'), null,
+    'a limpeza do phase42 parou de rodar — ela é a única que hoje funciona');
+  ['epi:ux:phase41:scroll:v2', 'epi:ux:phase43:state:v1', 'epi.ux.phase44.filters.entregas']
+    .forEach((chave) => assert(app.local.getItem(chave) !== null,
+      `a chave legada "${chave}" foi removida — o bootstrap foi corrigido e esta caracterização está obsoleta`));
+});
+
+test('PR1 C-4 (contrafactual): sem a colisão, phase41 inicializa e persiste campos', () => {
+  const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true });
+  assert(app.doc.body.classList.contains('phase41-enabled'),
+    'nem com o bloqueio neutralizado o phase41 iniciou: o contrafactual não mede o que promete');
+  const nome = app.doc.getElementById('employee-name');
+  nome.value = 'Maria Aparecida';
+  app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
+  app.descarregarStorage();
+  const bruto = app.local.getItem('epi:ux:phase41:context:v2');
+  assert(bruto, 'phase41 não gravou contexto nenhum');
+  const gravado = JSON.parse(bruto);
+  eq(gravado['employee-name'], 'Maria Aparecida',
+    'o nome do colaborador não foi persistido — o contrafactual precisa exercitar a gravação real');
+});
+
+test('PR1 C-5 (contrafactual): a chave de contexto do phase41 não tem escopo de tenant nem de usuário', () => {
+  const chaveDe = (usuario) => {
+    const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true, usuario });
+    app.doc.getElementById('employee-name').value = `rascunho de ${usuario.id}`;
+    app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
+    app.descarregarStorage();
+    return Object.keys(app.local._s).filter((k) => k.startsWith('epi:ux:phase41:'));
+  };
+  const deA = chaveDe({ id: 1, role: 'general_admin', company_id: 1 });
+  const deB = chaveDe({ id: 2, role: 'general_admin', company_id: 99 });
+  eq(deA.length, 1, `esperava uma chave de contexto, vieram ${JSON.stringify(deA)}`);
+  eq(JSON.stringify(deA), JSON.stringify(deB),
+    'as chaves passaram a diferir por usuário/tenant — o contrato de escopo foi implementado e este gate precisa ser revisto');
+  assert(!deA[0].includes('1') || !deA[0].includes('99'),
+    'a chave passou a carregar identificador: escopo implementado');
+});
+
+caracterizaDefeito('PR1 C-6 (contrafactual): o contexto do phase41 sobrevive à limpeza de rascunho do logout', {
+  esperado: 'Encerrar a sessão deveria eliminar todo rascunho de quem saiu, inclusive o persistido pelo phase41.',
+  atual: 'resetAppFormDrafts() limpa o DOM; a chave em localStorage permanece e seria restaurada na carga seguinte.',
+  motivo: 'phase41 grava em localStorage, que sobrevive à recarga por design (F2), e nada no encerramento varre esse prefixo.',
+  responsabilidade: 'Isolamento de rascunho entre identidades na mesma máquina.',
+  decisaoFutura: 'A F5-C precisa varrer o prefixo no terminateSession() antes de qualquer ativação do 4.1.'
+}, () => {
+  const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true });
+  const nome = app.doc.getElementById('employee-name');
+  nome.value = 'Maria Aparecida';
+  app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
+  app.descarregarStorage();
+  assert(app.local.getItem('epi:ux:phase41:context:v2'), 'o rascunho não chegou a ser gravado');
+
+  // A limpeza REAL do app, a mesma que o encerramento de sessão dispara.
+  assert(typeof app.ctx.resetAppFormDrafts === 'function', 'resetAppFormDrafts não veio do app servido');
+  app.ctx.resetAppFormDrafts();
+  eq(nome.value, '', 'a limpeza do app deveria ter zerado o campo no DOM');
+  assert(app.local.getItem('epi:ux:phase41:context:v2') !== null,
+    'a chave do phase41 foi limpa junto — o contrato de escopo foi implementado e esta caracterização está obsoleta');
+  const remanescente = JSON.parse(app.local.getItem('epi:ux:phase41:context:v2'));
+  eq(remanescente['employee-name'], 'Maria Aparecida',
+    'o nome de quem saiu continua legível no storage depois do encerramento');
+});
+
+// ── D. phase42 × phase43 — MATRIZ DE DEPENDÊNCIA ────────────────────────────
+//
+// As duas células com o 43 ligado só existem no contrafactual: na ordem
+// servida o phase43 é inerte. Elas medem o que apareceria SE o bloqueio saísse.
+
+function celulaDaMatriz42x43(busca, opcoes) {
+  const app = montarAppOwnership(busca, { contrafactualBootstrap: true, ...(opcoes || {}) });
+  // Contexto mínimo de uma entrega em preenchimento.
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  return app;
+}
+
+test('PR1 D-1: matriz 42×43 — quantos gates de submit existem em cada combinação', () => {
+  const gates = (busca) => celulaDaMatriz42x43(busca).contarListeners(
+    celulaDaMatriz42x43(busca).form, 'submit');
+  // Medido no MESMO app, não em dois: a linha acima monta duas vezes de propósito
+  // para provar que a montagem é determinística; abaixo mede-se uma só.
+  const medir = (busca) => {
+    const app = celulaDaMatriz42x43(busca);
+    return app.contarListeners(app.form, 'submit');
+  };
+  eq(medir(''), 0, '42 OFF / 43 OFF deveria não ter gate nenhum sobre o submit de entrega');
+  eq(medir('?ux_phase42=1'), 1, '42 ON / 43 OFF deveria ter exatamente um gate');
+  eq(medir('?ux_phase43=1'), 1, '43 ON / 42 OFF deveria ter exatamente um gate (o do 43)');
+  eq(medir('?ux_phase42=1&ux_phase43=1'), 2,
+    '42 ON / 43 ON deveria ter DOIS gates independentes sobre o mesmo formulário');
+  eq(typeof gates, 'function');
+});
+
+caracterizaDefeito('PR1 D-2 (contrafactual): com 42 e 43 ativos, satisfazer um gate não libera o outro', {
+  esperado: 'Um formulário deveria ter uma única pré-condição de envio, de um único dono.',
+  atual: 'phase42 exige o checkbox de revisão; phase43 exige o resumo rápido aberto e válido. São dois preventDefault() independentes, em captura, que não se conhecem.',
+  motivo: 'Dois módulos assumiram a mesma responsabilidade sobre #delivery-form sem contrato entre si.',
+  responsabilidade: 'Pré-condição de envio da entrega de EPI.',
+  decisaoFutura: 'Escolher um owner. O phase42 é o que hoje funciona; o que for exclusivo do 43 se absorve nele.'
+}, () => {
+  const app = celulaDaMatriz42x43('?ux_phase42=1&ux_phase43=1');
+  // Satisfaz o gate do phase42 pelo caminho legítimo dele.
+  app.doc.getElementById('phase42-review-check').checked = true;
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, true,
+    'com o gate do phase42 satisfeito o envio passou — o segundo gate deixou de existir e esta caracterização está obsoleta');
+  const resumo = app.doc.getElementById('phase43-quick-confirm');
+  assert(resumo && resumo.hidden === false,
+    'quem barrou não foi o phase43: ele abriria o próprio resumo de confirmação ao bloquear');
+  assert(String(resumo.innerHTML || '').includes('Confirmação rápida'),
+    'o painel aberto não é o do phase43');
+});
+
+test('PR1 D-3 (contrafactual): 43 ON com 42 OFF bloqueia o envio sem entregar sugestão', () => {
+  const app = celulaDaMatriz42x43('?ux_phase43=1');
+  // A ponte existe mesmo com o phase42 desligado — ela é publicada ACIMA do
+  // gate de flag. Logo, a presença dela não prova que o 42 está ativo.
+  assert(app.ctx.__EPI_PHASE42_MEMORIA__ && typeof app.ctx.__EPI_PHASE42_MEMORIA__ === 'object',
+    'a ponte em memória deixou de ser publicada com a flag do 42 desligada');
+  eq(Object.keys(app.ctx.__EPI_PHASE42_MEMORIA__).length, 0,
+    'a ponte veio preenchida com o phase42 desligado: alguém mais está alimentando o histórico');
+
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, true, 'o phase43 sozinho deveria barrar o envio');
+  const card = app.doc.getElementById('phase43-fast-card');
+  assert(!card || card.hidden === true,
+    'o card de sugestão apareceu sem o phase42 alimentar o histórico — a dependência não é o que a auditoria mediu');
+});
+
+test('PR1 D-4: a existência da ponte 42→43 não é sinal de que o phase42 está ativo', () => {
+  const desligado = montarAppOwnership('', { contrafactualBootstrap: true });
+  const ligado = montarAppOwnership('?ux_phase42=1', { contrafactualBootstrap: true });
+  assert(desligado.ctx.__EPI_PHASE42_MEMORIA__, 'a ponte deveria existir mesmo com tudo desligado');
+  assert(ligado.ctx.__EPI_PHASE42_MEMORIA__, 'a ponte deveria existir com o 42 ligado');
+  // Nenhuma verificação em runtime pode usar a ponte como discriminador: ela é
+  // igual nos dois estados. Quem quiser declarar a dependência precisa de outro sinal.
+  eq(typeof desligado.ctx.__EPI_PHASE42_MEMORIA__, typeof ligado.ctx.__EPI_PHASE42_MEMORIA__);
+});
+
+// ── E. phase44 × error-monitor.js — INTERCEPTAÇÃO DE fetch ──────────────────
+
+test('PR1 E-1: o owner ativo do fetch é o error-monitor.js, sem flag nenhuma', () => {
+  const app = montarAppOwnership('');
+  eq(app.ctx.fetch.__EPI_MONITORED_FETCH__, true,
+    'o error-monitor não embrulhou o fetch na carga padrão — ele deixou de ser o owner');
+  assert(typeof app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__ === 'function',
+    'o fetch original não foi preservado pelo monitor');
+  assert(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__ !== true,
+    'o phase44 embrulhou o fetch na ordem servida — ele não deveria nem iniciar');
+});
+
+test('PR1 E-2: o wrapper do error-monitor é idempotente contra a própria recarga', () => {
+  const app = montarAppOwnership('');
+  const primeiro = app.ctx.fetch;
+  vmF5B.runInContext(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'error-monitor.js'), 'utf-8'),
+    app.ctx, { filename: 'error-monitor.js' });
+  eq(app.ctx.fetch, primeiro, 'a segunda carga do error-monitor embrulhou o fetch de novo');
+});
+
+caracterizaDefeito('PR1 E-3 (contrafactual): o bridge do phase44 empilha sobre o do error-monitor', {
+  esperado: 'Uma única camada de instrumentação sobre o fetch, de um único dono.',
+  atual: 'phase44 consulta só __EPI_PHASE44_FETCH_BRIDGED__ e o error-monitor só __EPI_MONITORED_FETCH__. Nenhum reconhece a marca do outro, então os dois embrulham.',
+  motivo: 'Duas implementações da mesma responsabilidade, cada uma com marca de idempotência privada.',
+  responsabilidade: 'Instrumentação de requisições HTTP.',
+  decisaoFutura: 'Manter o error-monitor como owner; a instrumentação do 44 sai do patch global e vai para o cliente canônico.'
+}, () => {
+  const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
+  eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, true, 'o phase44 não chegou a instalar o bridge');
+  assert(typeof app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__ === 'function',
+    'o error-monitor deixou de instalar o dele');
+  // A marca do monitor não está mais na camada externa: o phase44 ficou por cima.
+  assert(app.ctx.fetch.__EPI_MONITORED_FETCH__ !== true,
+    'o phase44 não ficou por cima — a ordem mudou e a caracterização precisa ser revista');
+  // E o monitor continua na cadeia: o original guardado não é o fetch atual.
+  assert(app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__ !== app.ctx.fetch,
+    'a cadeia tem uma camada só: o empilhamento não se reproduziu');
+});
+
+testAsync('PR1 E-4 (contrafactual): uma requisição atravessa as DUAS camadas', async () => {
+  const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
+  const eventos = [];
+  app.doc.addEventListener('epi:action-error', (ev) => eventos.push(ev));
+  app.responderPara('/api/deliveries/caracterizacao', { ok: false, status: 500 });
+  await app.ctx.fetch('/api/deliveries/caracterizacao');
+
+  eq(app.chamadasPara('/api/deliveries/caracterizacao').length, 1,
+    'a requisição não chegou ao fetch base uma única vez');
+  eq(eventos.length, 1, 'o bridge do phase44 não emitiu epi:action-error: a camada dele não rodou');
+  const snapshot = app.ctx.__EPI_MONITORING__ && app.ctx.__EPI_MONITORING__.getSnapshot();
+  const instaveis = Object.keys((snapshot && snapshot.unstableApis) || {});
+  assert(instaveis.some((k) => k.includes('/api/deliveries/caracterizacao')),
+    `o error-monitor não registrou a instabilidade desta requisição: ${JSON.stringify(instaveis)}`);
+});
+
+// ── F. phase44 × app.js — DROPDOWN [data-ui-dropdown] ───────────────────────
+//
+// Os dois usam o MESMO contrato de atributos. Isso, sozinho, não prova
+// duplicidade: o que decide é se o COMPORTAMENTO é o mesmo. Os gates abaixo
+// exercitam os dois owners contra o mesmo fixture, gesto por gesto, e a
+// diferença que sobrar é o que eventualmente precisaria ser absorvido.
+
+// Owner atual: `setupInteractiveDropdowns()` do app.js, atrás de
+// `isHtmxAlpineProductionActive()` — que é `htmx_alpine_production_enabled`
+// E `ux_tools_functional_enabled`. A função é chamada dentro do `init()`, no
+// DOMContentLoaded; aqui ela é chamada diretamente, como o harness da F5-B.1
+// faz com `setupViewTabs()`.
+function appComDropdownDoApp() {
+  const app = montarAppOwnership('?ux_htmx_prod=1&ux_tools_functional=1');
+  assert(app.ctx.isHtmxAlpineProductionActive() === true,
+    'as flags do dropdown do app não ligaram: o gate mediria o caminho errado');
+  app.ctx.setupInteractiveDropdowns();
+  return app;
+}
+
+function appComDropdownDoPhase44() {
+  // Sem as flags do app: só o phase44 liga, para o contrato dele ser medido
+  // isolado, e não a soma dos dois.
+  const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
+  assert(app.ctx.isHtmxAlpineProductionActive() === false,
+    'o dropdown do app também ligou: a medição não isolaria o contrato do phase44');
+  return app;
+}
+
+function clicarNoGatilho(app, nome) {
+  const gatilho = app.doc.getElementById(`dropdown-${nome}-trigger`);
+  gatilho.dispatchEvent(new app.ctx.Event('click', { bubbles: true }));
+}
+function estadoDoDropdown(app, nome) {
+  const raiz = app.doc.getElementById(`dropdown-${nome}`);
+  const painel = app.doc.getElementById(`dropdown-${nome}-panel`);
+  const gatilho = app.doc.getElementById(`dropdown-${nome}-trigger`);
+  return {
+    aberto: raiz.classList.contains('is-open'),
+    painelVisivel: painel.hidden === false,
+    aria: gatilho.getAttribute('aria-expanded')
+  };
+}
+
+test('PR1 F-1: owner atual do dropdown é o app.js — abre, fecha e sincroniza aria/painel', () => {
+  const app = appComDropdownDoApp();
+  eq(estadoDoDropdown(app, 'acoes').aberto, false, 'deveria começar fechado');
+  clicarNoGatilho(app, 'acoes');
+  const aberto = estadoDoDropdown(app, 'acoes');
+  eq(aberto.aberto, true, 'o clique no gatilho não abriu');
+  eq(aberto.painelVisivel, true, 'o painel continuou escondido');
+  eq(aberto.aria, 'true', 'aria-expanded não acompanhou');
+  clicarNoGatilho(app, 'acoes');
+  const fechado = estadoDoDropdown(app, 'acoes');
+  eq(fechado.aberto, false, 'o segundo clique não fechou');
+  eq(fechado.aria, 'false', 'aria-expanded não voltou');
+});
+
+test('PR1 F-2 (contrafactual): o phase44 cobre o mesmo gesto básico de abrir e fechar', () => {
+  const app = appComDropdownDoPhase44();
+  clicarNoGatilho(app, 'acoes');
+  const aberto = estadoDoDropdown(app, 'acoes');
+  eq(aberto.aberto, true, 'o phase44 não abriu o dropdown');
+  eq(aberto.painelVisivel, true, 'o painel continuou escondido');
+  eq(aberto.aria, 'true', 'aria-expanded não acompanhou');
+  clicarNoGatilho(app, 'acoes');
+  eq(estadoDoDropdown(app, 'acoes').aberto, false, 'o phase44 não fechou no segundo clique');
+});
+
+test('PR1 F-3: EQUIVALENTE no resultado — os dois mantêm exclusividade, por mecanismos diferentes', () => {
+  // Medido, não deduzido: a leitura do código sugeria que só o app.js fechava o
+  // anterior (`closeInteractiveDropdowns()` explícito, contra um `setOpen` que
+  // no phase44 só mexe na própria raiz). O gate mostrou o contrário — o phase44
+  // registra UM listener de clique no documento POR instância, e o clique no
+  // gatilho do vizinho cai como "clique fora" para todas as outras. O efeito
+  // observável é o mesmo; o caminho, não.
+  const doApp = appComDropdownDoApp();
+  clicarNoGatilho(doApp, 'acoes');
+  clicarNoGatilho(doApp, 'exportar');
+  eq(estadoDoDropdown(doApp, 'exportar').aberto, true, 'o segundo dropdown não abriu no app');
+  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'o app.js perdeu a exclusividade');
+
+  const do44 = appComDropdownDoPhase44();
+  clicarNoGatilho(do44, 'acoes');
+  clicarNoGatilho(do44, 'exportar');
+  eq(estadoDoDropdown(do44, 'exportar').aberto, true, 'o segundo dropdown não abriu no phase44');
+  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'o phase44 perdeu a exclusividade');
+});
+
+test('PR1 F-3b: DIFERENÇA de custo — o phase44 registra um listener de documento POR dropdown', () => {
+  const doApp = appComDropdownDoApp();
+  const do44 = appComDropdownDoPhase44();
+  const cliquesNoDoc = (app) => app.contarListeners(app.doc, 'click');
+  // O fixture tem dois dropdowns. O app.js fecha todos a partir de um único
+  // listener; o phase44 precisa de um por instância, e o número cresce com a
+  // quantidade de dropdowns da tela.
+  assert(cliquesNoDoc(do44) > cliquesNoDoc(doApp),
+    `o phase44 deveria custar mais listeners de documento (app=${cliquesNoDoc(doApp)}, 44=${cliquesNoDoc(do44)})`);
+});
+
+test('PR1 F-4: DIFERENÇA — Escape fecha pelo app.js a partir do documento; no phase44 só de dentro do dropdown', () => {
+  const doApp = appComDropdownDoApp();
+  clicarNoGatilho(doApp, 'acoes');
+  doApp.doc.dispatchEvent(new doApp.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'Escape no documento não fechou pelo app.js');
+
+  const do44 = appComDropdownDoPhase44();
+  clicarNoGatilho(do44, 'acoes');
+  do44.doc.dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+  eq(estadoDoDropdown(do44, 'acoes').aberto, true,
+    'o Escape do documento fechou pelo phase44 — ele escuta na RAIZ do dropdown, não no documento');
+  // Pela raiz, como o phase44 espera, ele fecha — e devolve o foco ao gatilho.
+  do44.doc.getElementById('dropdown-acoes')
+    .dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'nem pela raiz o phase44 fechou com Escape');
+  assert(do44.doc.getElementById('dropdown-acoes-trigger')._focado === true,
+    'o phase44 deveria devolver o foco ao gatilho — capacidade que o app.js não tem');
+});
+
+test('PR1 F-5: ambos fecham por clique fora, mas o phase44 fecha o dropdown VIZINHO junto', () => {
+  const doApp = appComDropdownDoApp();
+  clicarNoGatilho(doApp, 'acoes');
+  doApp.doc.getElementById('menu').dispatchEvent(new doApp.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'o app.js não fechou por clique fora');
+
+  const do44 = appComDropdownDoPhase44();
+  clicarNoGatilho(do44, 'acoes');
+  do44.doc.getElementById('menu').dispatchEvent(new do44.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'o phase44 não fechou por clique fora');
+
+  // A diferença fina: clicar DENTRO do dropdown vizinho. O app.js ignora
+  // (qualquer `[data-ui-dropdown]` conta como "dentro"); o phase44 fecha o
+  // outro, porque cada instância só reconhece a própria raiz.
+  const app2 = appComDropdownDoApp();
+  clicarNoGatilho(app2, 'acoes');
+  app2.doc.getElementById('dropdown-exportar-panel')
+    .dispatchEvent(new app2.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(app2, 'acoes').aberto, true,
+    'o app.js fechou por clique dentro de outro dropdown — ele trata qualquer [data-ui-dropdown] como "dentro"');
+
+  const p44b = appComDropdownDoPhase44();
+  clicarNoGatilho(p44b, 'acoes');
+  p44b.doc.getElementById('dropdown-exportar-panel')
+    .dispatchEvent(new p44b.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(p44b, 'acoes').aberto, false,
+    'o phase44 deixou aberto: ele usa root.contains por instância e deveria fechar o vizinho');
+});
+
+test('PR1 F-6: classificação da equivalência do dropdown — PARCIAL, com as diferenças nomeadas', () => {
+  // Este gate não mede comportamento novo: ele fixa a CONCLUSÃO que os gates
+  // F-1..F-5 sustentam, para que mudar o comportamento sem revisar a decisão
+  // quebre aqui.
+  const equivalentes = [
+    'abrir e fechar pelo gatilho, com aria-expanded e painel sincronizados (F-1, F-2)',
+    'exclusividade entre dropdowns, por mecanismos diferentes (F-3)',
+    'fechar por clique fora do conjunto (F-5)'
+  ];
+  const diferencas = [
+    'Escape: app.js escuta no documento, phase44 só na raiz do dropdown — capacidade do APP',
+    'foco de volta ao gatilho no Escape: phase44 SIM, app.js NÃO — capacidade do 44',
+    'clique dentro de OUTRO dropdown: app.js mantém o primeiro aberto, phase44 fecha',
+    'custo: app.js usa um listener de documento, phase44 usa um por dropdown (F-3b)',
+    'gate de ativação: app.js exige duas flags, phase44 exige a própria'
+  ];
+  eq(equivalentes.length, 3, 'a lista de equivalências mudou sem revisão da classificação');
+  eq(diferencas.length, 5, 'a lista de diferenças mudou sem revisão da classificação');
+  // PARCIAL, e não TOTAL: há capacidade em cada lado que o outro não tem.
+  const classificacao = 'PARCIAL';
+  eq(classificacao, 'PARCIAL');
+});
+
+// ── G. multitab-navigation × navegação principal ────────────────────────────
+//
+// A pergunta que estes gates respondem é uma só: se o multitab fosse ativado,
+// QUEM passaria a ser o owner efetivo do clique no menu lateral?
+
+// Owner atual. `bindMenuNavigation()` é a função REAL do app; ela é chamada no
+// `init()`, no DOMContentLoaded, e aqui é chamada diretamente — mesmo recurso
+// que o harness da F5-B.1 usa.
+//
+// LIMITE DO HARNESS, declarado: não é possível espionar uma chamada INTERNA do
+// `app.js` substituindo a propriedade global correspondente. Num `vm`, as
+// funções declaradas no topo de um script resolvem referências do mesmo script
+// pelo binding dele, e a troca feita de fora não é vista. Medido, não suposto:
+// a pilha do gesto real mostra `dispatchEvent -> app.js:bindMenuNavigation ->
+// navigateToView`, com a versão ORIGINAL.
+//
+// Então o discriminador aqui é o EFEITO, não a chamada — e é justamente o que
+// separa os dois caminhos: `navigateToView` chama `location.assign` nas views
+// que a SPA não cobre; `navApi.showView`, que é por onde o multitab entra, não
+// chama. Mesma técnica que os gates da F5-B.1 usam com `_assigns`.
+function appComNavegacaoDoApp(busca, opcoes) {
+  const app = montarAppOwnership(busca || '?ux_spa_navigation=1', opcoes);
+  app.ctx.bindMenuNavigation();
+  const vistos = [];
+  app.doc.addEventListener('epi:viewchange', (ev) => vistos.push(ev && ev.detail));
+  return { ...app, vistos };
+}
+
+test('PR1 G-1: owner atual da navegação — o clique no menu chega a navigateToView', () => {
+  const app = appComNavegacaoDoApp();
+  eq(app.viewAtiva(), 'dashboard', 'o fixture deveria começar no dashboard');
+  eq(app.ctx._assigns.length, 0, 'o estado inicial já deveria estar limpo');
+  app.clicarNoItemDeMenu('entregas');
+  eq(app.ctx._assigns.length, 1,
+    'o clique no menu não alcançou navigateToView — só ela recarrega a view fora da cobertura da SPA');
+  assert(String(app.ctx._assigns[0]).includes('entregas'),
+    `a navegação foi para outro lugar: ${app.ctx._assigns[0]}`);
+});
+
+test('PR1 G-2: a guarda de ativação redundante vive no owner atual', () => {
+  const app = appComNavegacaoDoApp();
+  const antes = app.vistos.length;
+  app.clicarNoItemDeMenu('dashboard'); // já é a view ativa
+  eq(app.ctx._assigns.length, 0, 'ativação redundante recarregou a página');
+  eq(app.vistos.length, antes, 'ativação redundante emitiu epi:viewchange: a guarda do app deixou de segurar');
+  eq(app.ctx._pushStates, 0, 'ativação redundante empilhou entrada de histórico');
+});
+
+test('PR1 G-3: na ordem servida o multitab não inicializa — a nav API nasce depois dele', () => {
+  const app = montarAppOwnership('?ux_multitab=1');
+  eq(app.doc.body.classList.contains('ux-multitab-enabled'), false,
+    'o multitab marcou o body: ele iniciou, e a caracterização de inércia está obsoleta');
+  eq(app.ctx.__EPI_MULTITAB_NAVIGATION_BOUND__, true,
+    'o guard central deveria ter sido queimado mesmo assim — é o que impede uma segunda tentativa');
+  eq(app.listenersDe(app.doc, 'click').filter((h) => h.captura).length, 0,
+    'há interceptador de clique em captura na ordem servida: o multitab iniciou');
+});
+
+caracterizaDefeito('PR1 G-4 (contrafactual): com a nav API publicada antes, o multitab assume o clique do menu', {
+  esperado: 'Um único owner da intenção de navegação; módulos auxiliares se integram por API, não por interceptação.',
+  atual: 'multitab registra um listener de CAPTURA no documento e chama stopImmediatePropagation(), silenciando o handler real do item de menu — navigateToView deixa de rodar.',
+  motivo: 'Interceptação em vez de ponto de extensão: a ordem de fase do DOM decide o owner, não um contrato.',
+  responsabilidade: 'Autoridade sobre a intenção de navegação (clique no menu lateral).',
+  decisaoFutura: 'Absorver no owner atual: navigateToView ganha resolvedor registrável e o multitab deixa de escutar cliques.'
+}, () => {
+  const semMultitab = appComNavegacaoDoApp();
+  semMultitab.clicarNoItemDeMenu('entregas');
+  eq(semMultitab.ctx._assigns.length, 1, 'controle: sem o multitab, o clique passa pelo owner do app');
+
+  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
+  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
+    'o contrafactual não ligou o multitab: ele não mede o que promete');
+
+  app.clicarNoItemDeMenu('entregas');
+
+  eq(app.ctx._assigns.length, 0,
+    'navigateToView ainda roda no clique — o multitab deixou de interceptar e esta caracterização está obsoleta');
+  eq(app.viewAtiva(), 'entregas',
+    'o multitab assumiu o clique mas não trocou a view: pior que interceptar é interceptar e não entregar');
+});
+
+test('PR1 G-5 (contrafactual): é o stopImmediatePropagation em captura que decide o owner', () => {
+  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
+  const captura = app.listenersDe(app.doc, 'click').filter((h) => h.captura);
+  assert(captura.length >= 1,
+    'o multitab deveria ter registrado ao menos um listener de clique em CAPTURA no documento');
+
+  // Contraprova: o handler do item de menu EXISTE — o que o impede de rodar é a
+  // fase de escuta, não a ausência de registro.
+  const item = app.doc.querySelector('.menu-link[data-view="entregas"]');
+  assert(app.contarListeners(item, 'click') >= 1,
+    'o handler real do item de menu não está ligado: o gate mediria a ausência dele, não a interceptação');
+  const evento = new app.ctx.Event('click', { bubbles: true });
+  item.dispatchEvent(evento);
+  eq(evento.defaultPrevented, true, 'o interceptador deveria ter chamado preventDefault');
+  eq(app.ctx._assigns.length, 0, 'o handler do app rodou: a interceptação não foi total');
+});
+
+caracterizaDefeito('PR1 G-6 (contrafactual): o multitab reimplementa a guarda de redundância em paralelo', {
+  esperado: 'Uma única definição de "ativação redundante", consultada por quem precisar.',
+  atual: 'O multitab consulta navApi.ativacaoRedundanteDeView quando existe, mas carrega um fallback próprio que recalcula a mesma regra a partir do DOM.',
+  motivo: 'Consequência de ter desviado do owner: quem não passa por navigateToView precisa refazer o que ela faz.',
+  responsabilidade: 'Semântica de ativação redundante de view.',
+  decisaoFutura: 'Com o resolvedor registrável, a guarda volta a ser consultada uma vez só, dentro do owner.'
+}, () => {
+  const fonte = fs.readFileSync(
+    path.join(path.resolve(JS_ROOT, '..'), 'multitab-navigation.js'), 'utf-8');
+  assert(fonte.includes('function ativacaoRedundanteDeView(view)'),
+    'o multitab deixou de ter definição própria da guarda — a duplicidade acabou');
+  assert(fonte.includes("navApi.ativacaoRedundanteDeView"),
+    'o multitab deixou de consultar a guarda canônica');
+  // E o comportamento: no contrafactual, clicar no menu da view ATIVA é no-op,
+  // porque a cópia da guarda também segura. Duas implementações concordando
+  // hoje não é contrato — é coincidência mantida à mão.
+  const app = appComNavegacaoDoApp('?ux_multitab=1', { publicarNavApiCedo: true });
+  const antes = app.vistos.length;
+  app.clicarNoItemDeMenu('dashboard');
+  eq(app.vistos.length, antes, 'a cópia da guarda no multitab deixou de segurar a ativação redundante');
+});
+
+// ── H. O que o phase43 acrescenta ao phase42 ────────────────────────────────
+//
+// A pergunta de decisão não é "o 43 duplica o 42?", e sim "sobra alguma
+// capacidade no 43 que o owner não tem?". Sem resposta medida, remover é
+// chute e preservar é inércia.
+
+test('PR1 H-1: o phase42 sozinho NÃO valida o código lido do item de estoque', () => {
+  const app = montarAppOwnership('?ux_phase42=1', { contrafactualBootstrap: true });
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '2';
+  app.doc.getElementById('delivery-stock-item-code').value = ''; // não lido
+  app.doc.getElementById('phase42-review-check').checked = true;
+
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, false,
+    'o phase42 passou a barrar por código não lido — ele absorveu a capacidade e o 43 perdeu a exclusividade');
+});
+
+test('PR1 H-2: o phase43 acrescenta a exigência do código lido — capacidade EXCLUSIVA dele', () => {
+  const app = montarAppOwnership('?ux_phase43=1', { contrafactualBootstrap: true });
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '2';
+  app.doc.getElementById('delivery-stock-item-code').value = '';
+
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, true, 'o phase43 deveria barrar o envio sem o código lido');
+  const resumo = app.doc.getElementById('phase43-quick-confirm');
+  assert(String(resumo && resumo.innerHTML || '').includes('código lido'),
+    `o phase43 deveria nomear o campo que falta, veio: ${String(resumo && resumo.innerHTML || '').slice(0, 200)}`);
+
+  // E com o código lido, ele deixa de reclamar DESSE campo.
+  app.doc.getElementById('delivery-stock-item-code').value = 'LOTE-4711';
+  app.enviarFormularioDeEntrega();
+  assert(!String(resumo.innerHTML || '').includes('Faltando'),
+    `com todos os campos preenchidos não deveria faltar nada: ${String(resumo.innerHTML || '').slice(0, 200)}`);
+});
+
+// ── Z. MATRIZES — conclusões ancoradas em medição ───────────────────────────
+
+test('PR1 Z-1: matriz de ownership — a coluna "ativa hoje?" é remedida, não declarada', () => {
+  // Cada linha reafirma, na ordem SERVIDA, se a implementação candidata está
+  // mesmo em operação. Se qualquer uma mudar de estado, este gate quebra e a
+  // matriz do PR precisa ser revista antes de qualquer decisão.
+  const padrao = montarAppOwnership('');
+  const comFlagsDoDropdown = montarAppOwnership('?ux_htmx_prod=1&ux_tools_functional=1');
+  const com42 = montarAppOwnership('?ux_phase42=1');
+
+  const linhas = [
+    { responsabilidade: 'Instrumentação de requisições HTTP',
+      candidata: 'error-monitor.js', ativaHoje: padrao.ctx.fetch.__EPI_MONITORED_FETCH__ === true,
+      esperada: true, owner: 'error-monitor.js' },
+    { responsabilidade: 'Instrumentação de requisições HTTP (concorrente)',
+      candidata: 'ux-phase44.js (bindFetchFeedbackBridge)', ativaHoje: padrao.ctx.__EPI_PHASE44_FETCH_BRIDGED__ === true,
+      esperada: false, owner: 'error-monitor.js' },
+    { responsabilidade: 'Dropdown [data-ui-dropdown]',
+      candidata: 'app.js (setupInteractiveDropdowns)', ativaHoje: comFlagsDoDropdown.ctx.isHtmxAlpineProductionActive() === true,
+      esperada: true, owner: 'app.js' },
+    { responsabilidade: 'Dropdown [data-ui-dropdown] (concorrente)',
+      candidata: 'ux-phase44.js (createDropdown)', ativaHoje: padrao.doc.body.classList.contains('phase44-enabled'),
+      esperada: false, owner: 'app.js' },
+    { responsabilidade: 'Intenção de navegação (clique de menu)',
+      candidata: 'app.js (bindMenuNavigation → navigateToView)', ativaHoje: typeof padrao.ctx.navigateToView === 'function',
+      esperada: true, owner: 'app.js' },
+    { responsabilidade: 'Intenção de navegação (concorrente)',
+      candidata: 'multitab-navigation.js', ativaHoje: padrao.doc.body.classList.contains('ux-multitab-enabled'),
+      esperada: false, owner: 'app.js' },
+    { responsabilidade: 'Assistente e pré-condição de envio da entrega',
+      candidata: 'ux-phase42.js', ativaHoje: com42.doc.body.classList.contains('phase42-enabled'),
+      esperada: true, owner: 'ux-phase42.js' },
+    { responsabilidade: 'Fluxo rápido de entrega (concorrente)',
+      candidata: 'ux-phase43.js', ativaHoje: montarAppOwnership('?ux_phase43=1').contarListeners(padrao.form, 'submit') > 0,
+      esperada: false, owner: 'ux-phase42.js' },
+    { responsabilidade: 'Persistência/restauração de rascunho de formulário',
+      candidata: 'ux-phase41.js', ativaHoje: montarAppOwnership('?ux_phase41=1').doc.body.classList.contains('phase41-enabled'),
+      esperada: false, owner: 'nenhum — e o app tem política ANTI-persistência ativa (resetAppFormDrafts)' },
+    { responsabilidade: 'Limpeza de rascunho no encerramento de sessão',
+      candidata: 'app.js (resetAppFormDrafts/clearRestoredAppForms)', ativaHoje: typeof padrao.ctx.resetAppFormDrafts === 'function',
+      esperada: true, owner: 'app.js' }
+  ];
+
+  linhas.forEach((l) => {
+    eq(l.ativaHoje, l.esperada,
+      `"${l.responsabilidade}" via ${l.candidata}: a matriz diz ativa=${l.esperada} e a medição diz ${l.ativaHoje}`);
+  });
+  eq(linhas.length, 10, 'a matriz de ownership mudou de tamanho sem revisão');
+});
+
+test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a sustenta', () => {
+  const DECISOES = Object.freeze([
+    'MANTER — OWNER',
+    'MANTER INERTE — FUNCIONALIDADE ÚNICA',
+    'ABSORVER CAPACIDADE NO OWNER',
+    'REMOVER — REDUNDANTE',
+    'INVESTIGAR'
+  ]);
+  const matriz = [
+    { modulo: 'ux-phase42.js', necessario: true, exclusivo: true,
+      decisao: 'MANTER — OWNER', gates: ['B-1', 'B-2', 'B-3', 'B-4', 'D-1'] },
+    { modulo: 'ux-phase41.js', necessario: false, exclusivo: true,
+      decisao: 'MANTER INERTE — FUNCIONALIDADE ÚNICA', gates: ['C-1', 'C-2', 'C-4', 'C-5', 'C-6'] },
+    { modulo: 'ux-phase43.js', necessario: false, exclusivo: true,
+      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['D-1', 'D-2', 'D-3', 'H-1', 'H-2'] },
+    { modulo: 'ux-phase44.js', necessario: false, exclusivo: true,
+      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5'] },
+    // A navegação TEM owner ativo e comprovado (G-1, G-2); o multitab cria uma
+    // segunda autoridade sobre o mesmo clique (G-4, G-5) e uma segunda cópia da
+    // guarda (G-6). O que é exclusivo dele — abas com contexto preservado — não
+    // tem owner nenhum hoje, e é essa capacidade que se absorve no contrato de
+    // navegação, não o interceptador.
+    { modulo: 'multitab-navigation.js', necessario: false, exclusivo: true,
+      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['G-1', 'G-2', 'G-3', 'G-4', 'G-5', 'G-6'] }
+  ];
+  matriz.forEach((m) => {
+    assert(DECISOES.includes(m.decisao), `decisão fora do vocabulário: ${m.decisao}`);
+    assert(m.gates.length >= 3, `"${m.modulo}" precisa de mais de um gate sustentando a decisão`);
+  });
+  // Nenhum módulo foi classificado REMOVER — REDUNDANTE neste PR: em todos os
+  // quatro inertes sobrou capacidade que o owner atual não tem. Remoção é
+  // decisão do PR de limpeza, e só depois da absorção.
+  eq(matriz.filter((m) => m.decisao === 'REMOVER — REDUNDANTE').length, 0,
+    'um módulo foi marcado para remoção: isso exige gate que prove ausência de capacidade exclusiva');
+  eq(matriz.length, 5, 'a matriz de decisão mudou de tamanho sem revisão');
+});
+
+test('PR1 Z-3: toda caracterização de defeito declara os cinco campos e é visível no relatório', () => {
+  assert(DEFEITOS_CARACTERIZADOS.length >= 6,
+    `esperava as caracterizações de defeito registradas, vieram ${DEFEITOS_CARACTERIZADOS.length}`);
+  DEFEITOS_CARACTERIZADOS.forEach((d) => {
+    ['esperado', 'atual', 'motivo', 'responsabilidade', 'decisaoFutura'].forEach((campo) => {
+      assert(String(d[campo] || '').length > 20, `"${d.nome}" tem o campo "${campo}" vazio ou curto demais`);
+    });
+  });
+  // Nenhuma delas é `skip`: todas asseguram o estado ATUAL e falham no dia em
+  // que o defeito for corrigido — que é o sinal que este PR quer deixar armado.
+  console.log('\n── #343 PR1 · defeitos caracterizados (falham quando forem corrigidos) ──');
+  DEFEITOS_CARACTERIZADOS.forEach((d) => {
+    console.log(`  • ${d.nome}`);
+    console.log(`      responsabilidade: ${d.responsabilidade}`);
+    console.log(`      atual:            ${d.atual}`);
+    console.log(`      esperado:         ${d.esperado}`);
+    console.log(`      decisão futura:   ${d.decisaoFutura}`);
+  });
+  console.log('');
+});
+
+// MARCA_FIM_PR1
 
 // ── Relatório ─────────────────────────────────────────────────────────────
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um

@@ -4046,6 +4046,24 @@ test('#343 F5-B G-menu-3: a guarda é a única porta, e não há bypass por sina
 // desta seção partem do CLIQUE, num nó `.menu-link[data-view]` real, com os
 // handlers reais ligados por `bindMenuNavigation()` — e `G-real-cobertura`
 // reprova se alguém voltar a fabricar o evento aqui.
+//
+// SEGUNDO falso-verde desta fatia, encontrado pela bateria de sabotagens e
+// registrado aqui: quando a guarda do achado A subiu para o TOPO de
+// `navigateToView` — como o review pediu, e com razão —, o clique no menu do
+// módulo ativo passou a NÃO alcançar mais nenhum listener de `epi:viewchange`.
+// Isso é o resultado certo para o contrato e o resultado errado para os gates:
+// `S-C`, `S-D` e `S-E` passaram a ficar VERDES com a proteção removida, porque
+// o caminho medido nem chegava lá.
+//
+// Os três gates passaram a medir DUAS coisas, e é a segunda que os mantém
+// honestos:
+//   (a) o gesto de menu não alcança o listener — consequência da guarda de A;
+//   (b) quando o listener É alcançado com `anterior === view`, a guarda o torna
+//       no-op. A rota viva para isso é o REDESENHO INTERNO da própria view, que
+//       o app faz por `showView(mesmaView)` — é o que `startEditEmployee()`,
+//       a troca de idioma e a recarga pós-salvamento fazem, e é o que o
+//       `activateTab` do multitab faz. Chamar `showView` é usar a porta do app,
+//       não fabricar o evento: quem calcula `anterior` continua sendo ele.
 
 const MARCA_INICIO_F5B1 = 'MARCA_INICIO_F5B1';
 const MARCA_FIM_F5B1 = 'MARCA_FIM_F5B1';
@@ -4080,6 +4098,11 @@ function montarAppRealF5B(busca, opcoes) {
 
   // Trabalho não salvo em Entregas: formulário preenchido e não enviado.
   vistas.entregas.appendChild(montarFormularioF5B('delivery-form', [['delivery-obs', 'text']]));
+
+  // Trabalho não salvo em Estoque, para o caminho das views SUPORTADAS pela SPA.
+  // Id fora de todos os mapas de reset do app, de propósito: o que se mede aqui
+  // é a ausência de transição, não a eficácia de um reset.
+  vistas.estoque.appendChild(campoF5B('input', { id: 'f5b1-rascunho-estoque' }));
 
   // Gatilho de subnível da hierarquia, no formato que `pushFromTrigger` lê.
   vistas.estoque.appendChild(criarNoF5B('button', {
@@ -4253,6 +4276,13 @@ function montarAppRealF5B(busca, opcoes) {
   ctx.bindMobileUxBehavior();
   ctx.bindMenuNavigation();
 
+  // OBSERVAÇÃO, não fabricação: o harness conta os `epi:viewchange` que a
+  // APLICAÇÃO emite, para o gate poder afirmar "nenhuma transição aconteceu" em
+  // vez de só "nada visível mudou". O listener é registrado depois dos scripts,
+  // então nunca precede nem substitui os do app.
+  const eventosDeView = [];
+  doc.addEventListener('epi:viewchange', (ev) => { eventosDeView.push(ev && ev.detail); });
+
   const viewAtiva = () => {
     const no = doc.querySelector('.view.active');
     return no && no.id ? no.id.replace(/-view$/, '') : '';
@@ -4276,7 +4306,7 @@ function montarAppRealF5B(busca, opcoes) {
   };
 
   return { ctx, doc, vistas, viewAtiva, clicarNoItemDeMenu, clicarEm, abaDeComprasAtiva,
-    scriptsCarregados: ordem.length };
+    eventosDeView, scriptsCarregados: ordem.length };
 }
 
 test('#343 F5-B.1 G-real-0: o harness carrega o app servido e liga os handlers reais', () => {
@@ -4369,6 +4399,49 @@ test('#343 F5-B.1 G-A-2: a guarda é por view, e não desliga o fluxo clássico'
   assert(/entregas/.test(app.ctx._assigns[0]), `a URL clássica não aponta para entregas: ${app.ctx._assigns[0]}`);
 });
 
+test('#343 F5-B.1 G-A-3: em view suportada pela SPA, o clique redundante não transiciona', () => {
+  // O achado que a primeira versão desta guarda deixou passar: ela vivia dentro
+  // do ramo de `SPA_NAV_CLASSIC_FALLBACK_VIEWS` e não alcançava nenhuma das oito
+  // views de `SPA_NAV_SUPPORTED_VIEWS` — a maioria dos módulos. Com `canUseSpa`
+  // verdadeiro, o clique repetido seguia empilhando histórico e redesenhando.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  app.ctx.showView('estoque', { partial: false });
+  eq(app.viewAtiva(), 'estoque', 'o fixture não chegou em Estoque');
+  assert(app.ctx.isSpaNavigationEnabled() === true, 'a flag de SPA não ligou: o gate mediria o caminho errado');
+
+  const rascunho = app.doc.getElementById('f5b1-rascunho-estoque');
+  rascunho.value = 'contagem parcial do corredor B';
+  const pushesAntes = app.ctx._pushStates;
+  const eventosAntes = app.eventosDeView.length;
+
+  app.clicarNoItemDeMenu('estoque');   // o gesto contratado
+
+  eq(app.ctx._pushStates, pushesAntes,
+    'o clique no menu do módulo já ativo empilhou uma entrada de histórico duplicada — o Voltar passa a cair no próprio módulo');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique emitiu epi:viewchange: houve transição onde o contrato manda não haver nenhuma');
+  eq(app.ctx._assigns.length, 0, 'houve recarregamento na ativação redundante');
+  eq(rascunho.value, 'contagem parcial do corredor B', 'o trabalho não salvo foi destruído');
+});
+
+test('#343 F5-B.1 G-A-4: transição real empilha, e a exceção explícita redesenha', () => {
+  // Dois controles num gate. Primeiro: resolver o achado não pode ter desligado
+  // a navegação das views suportadas pela SPA.
+  const app = montarAppRealF5B('?ux_spa_navigation=1');
+  const pushesAntes = app.ctx._pushStates;
+  app.clicarNoItemDeMenu('estoque');           // dashboard → estoque, transição real
+  eq(app.viewAtiva(), 'estoque', 'a transição real para uma view suportada pela SPA deixou de acontecer');
+  assert(app.ctx._pushStates > pushesAntes, 'a transição real deixou de empilhar histórico');
+
+  // Segundo: `recarregarMesmaView` continua sendo a porta de quem PRECISA
+  // redesenhar a própria view — o fim do onboarding, depois de `loadBootstrap()`.
+  // Sem essa porta, a tela ficaria com os dados antigos.
+  const pushesDepois = app.ctx._pushStates;
+  app.ctx.navigateToView('estoque', { recarregarMesmaView: true });
+  assert(app.ctx._pushStates > pushesDepois,
+    'a exceção explícita deixou de funcionar: quem precisa redesenhar a própria view perdeu o caminho');
+});
+
 // ── Achado C — listener independente que troca a aba de Compras ─────────────
 
 test('#343 F5-B.1 G-C-1: clique no menu de Compras mantém a aba interna aberta', () => {
@@ -4383,10 +4456,23 @@ test('#343 F5-B.1 G-C-1: clique no menu de Compras mantém a aba interna aberta'
   app.ctx.switchComprasTab('cotacoes');
   eq(app.abaDeComprasAtiva(), 'cotacoes');
 
-  app.clicarNoItemDeMenu('compras');   // o gesto contratado
-
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('compras');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
   eq(app.abaDeComprasAtiva(), 'cotacoes',
     'clicar no menu de Compras estando em Compras voltou para a aba padrão — o trabalho da aba aberta foi descartado');
+
+  // (b) E quando o listener É alcançado com `anterior === view` — redesenho
+  // interno da própria view, o que `startEditEmployee` e a troca de idioma
+  // fazem —, a guarda deste listener é o que segura a aba.
+  app.ctx.showView('compras', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.eventosDeView[app.eventosDeView.length - 1].anterior, 'compras',
+    'o redesenho interno não reportou `anterior === compras`: o cenário medido não é o do contrato');
+  eq(app.abaDeComprasAtiva(), 'cotacoes',
+    'o redesenho da MESMA view devolveu a aba padrão e descartou o trabalho da aba aberta');
 });
 
 test('#343 F5-B.1 G-C-2: entrar em Compras vindo de outra view continua na aba padrão', () => {
@@ -4415,10 +4501,21 @@ test('#343 F5-B.1 G-D-1: clique no menu do módulo ativo não zera a rolagem', (
 
   // O usuário rolou a página lendo a lista.
   app.ctx.scrollY = 420;
-  app.clicarNoItemDeMenu('estoque');   // o gesto contratado
 
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
   eq(app.ctx._scrolls.length, rolagensDaEntrada,
     'clicar no menu do módulo já ativo jogou a página para o topo, tirando o usuário de onde ele estava');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a rolagem.
+  app.ctx.showView('estoque', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(app.ctx._scrolls.length, rolagensDaEntrada,
+    'o redesenho da MESMA view jogou a página para o topo');
 });
 
 test('#343 F5-B.1 G-D-2: entrar no módulo vindo de outra view continua começando no topo', () => {
@@ -4448,10 +4545,19 @@ test('#343 F5-B.1 G-E-1: clique no menu do módulo ativo não apaga a pilha de n
   eq(pilha().length, 2, 'o gatilho real de subnível não empilhou nada — o gate mediria o nada');
   eq(pilha()[1].label, 'Lote 4711');
 
-  app.clicarNoItemDeMenu('estoque');   // o gesto contratado
-
+  // (a) O gesto de menu não chega nem a emitir troca de view.
+  const eventosAntes = app.eventosDeView.length;
+  app.clicarNoItemDeMenu('estoque');
+  eq(app.eventosDeView.length, eventosAntes,
+    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
   eq(pilha().length, 2,
     'clicar no menu do módulo já ativo apagou a pilha: o Voltar da hierarquia perdeu o caminho do usuário');
+
+  // (b) E no redesenho interno da própria view, que alcança o listener, é a
+  // guarda dele que segura a pilha.
+  app.ctx.showView('estoque', { partial: false });
+  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
+  eq(pilha().length, 2, 'o redesenho da MESMA view apagou a pilha de navegação');
   eq(pilha()[1].label, 'Lote 4711', 'o subnível em que o usuário estava desapareceu da pilha');
 });
 

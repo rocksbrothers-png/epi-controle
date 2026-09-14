@@ -557,22 +557,36 @@ def test_f5b1_a_semantica_de_ativacao_redundante_e_unica_e_sem_fallback():
     )
 
 
-def test_f5b1_achado_a_a_guarda_precede_o_location_assign():
-    """A guarda tem de vir ANTES do efeito destrutivo, não depois.
+def test_f5b1_achado_a_a_guarda_precede_todo_efeito_de_transicao():
+    """A guarda vem antes dos TRÊS efeitos, e fora de qualquer ramo.
 
-    `location.assign` recarrega a página: leva embora todo trabalho não salvo e
-    nunca chega ao listener de `epi:viewchange`, onde mora a guarda da F5-B.
+    `location.assign` recarrega a página e leva embora o trabalho não salvo;
+    `history.pushState` empilha entrada duplicada para a mesma URL e estraga o
+    Voltar; `showView` emite `epi:viewchange` e dispara a atualização parcial.
+
+    A primeira versão deste gate conferia só o `location.assign`, e por isso
+    aceitou uma guarda que vivia DENTRO do ramo de
+    `SPA_NAV_CLASSIC_FALLBACK_VIEWS` — sem alcançar nenhuma das oito views de
+    `SPA_NAV_SUPPORTED_VIEWS`. Conferir a ordem contra `const canUseSpa` é o que
+    prende a guarda no topo da função, onde ela alcança todos os caminhos.
     """
     bloco = _bloco('static/app.js', 'function navigateToView(view, options = {})',
                    'function bindSpaNavigationHistory')
-    pos_guarda = bloco.find('if (ativacaoRedundanteDeView(view)) {return;}')
-    pos_assign = bloco.find('globalThis.location.assign(')
-    assert pos_guarda > -1, 'a guarda de ativação redundante saiu de navigateToView'
-    assert pos_assign > -1, 'navigateToView mudou de forma: o location.assign não está mais lá'
-    assert pos_guarda < pos_assign, (
-        'a guarda passou a vir DEPOIS do location.assign: o recarregamento '
-        'aconteceria antes de alguém decidir se devia acontecer'
+    pos_guarda = bloco.find(
+        'if (ativacaoRedundanteDeView(view) && options.recarregarMesmaView !== true) {return;}'
     )
+    assert pos_guarda > -1, 'a guarda de ativação redundante saiu de navigateToView'
+    for nome, agulha in (
+        ('a bifurcação de SPA (`const canUseSpa`)', 'const canUseSpa ='),
+        ('o recarregamento clássico (`location.assign`)', 'globalThis.location.assign('),
+        ('o empilhamento de histórico (`history.pushState`)', 'globalThis.history.pushState('),
+    ):
+        pos = bloco.find(agulha)
+        assert pos > -1, f'navigateToView mudou de forma: não achei {nome}'
+        assert pos_guarda < pos, (
+            f'a guarda passou a vir DEPOIS de {nome}: o efeito de transição '
+            f'aconteceria antes de alguém decidir se devia acontecer'
+        )
 
 
 def test_f5b1_achado_b_ativacao_redundante_nao_fecha_ui_transitoria():
@@ -726,7 +740,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = 'a85254caf20654ed0ad95bba9de7994eb19c985b9c22e157cc21e87ae7a9ba96'
+DIGESTO_PARIDADE_F5B = '08ca0d1247dfea98afae65c96538ea3fcf94a71a9f58fb01a2ef43f65ecb5590'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

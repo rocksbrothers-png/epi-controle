@@ -2238,6 +2238,12 @@ function prepararEventoF5B(ev) {
   return ev;
 }
 
+// Último nó que recebeu foco. O navegador guarda isso em
+// `document.activeElement`; sem modelar, nenhum gate consegue perguntar "o foco
+// estava DENTRO do painel que acabou de fechar?" — que é a pergunta de que
+// depende a devolução de foco do dropdown.
+let NO_FOCADO_F5B = null;
+
 function criarNoF5B(tag, attrs = {}) {
   const no = {
     tagName: String(tag).toUpperCase(),
@@ -2281,7 +2287,7 @@ function criarNoF5B(tag, attrs = {}) {
       return filho;
     },
     get firstChild() { return no.children[0] || null; },
-    focus() { no._focado = true; },
+    focus() { no._focado = true; NO_FOCADO_F5B = no; },
     scrollIntoView() {},
     // A fase de escuta é plataforma: `{ capture: true }` muda QUANDO o listener
     // roda, e é disso que depende o interceptador de menu do multitab.
@@ -4822,6 +4828,10 @@ function fixtureOwnershipPR1() {
     const raiz = criarNoF5B('div', { id: `dropdown-${nome}`, 'data-ui-dropdown': '1' });
     raiz.appendChild(criarNoF5B('button', { id: `dropdown-${nome}-trigger`, 'data-dropdown-trigger': '1' }));
     const painel = criarNoF5B('div', { id: `dropdown-${nome}-panel`, 'data-dropdown-panel': '1' });
+    // Painel de dropdown tem item acionável: é DENTRO dele que o foco do
+    // teclado fica depois de abrir, e é esse foco que some quando o painel é
+    // escondido. Sem o item, o gesto real não seria reproduzível.
+    painel.appendChild(criarNoF5B('button', { id: `dropdown-${nome}-item` }));
     painel.hidden = true;
     raiz.appendChild(painel);
     return raiz;
@@ -4842,6 +4852,10 @@ function fixtureOwnershipPR1() {
   doc.appendChild(menu);
   doc.appendChild(main);
   dropdowns.forEach((d) => doc.appendChild(d));
+  // O mesmo Escape que fecha o dropdown também fecha o modal de assinatura.
+  // O nó precisa existir para que a fatia 2C possa provar que esse ramo
+  // continua rodando depois de a devolução de foco entrar no handler.
+  doc.appendChild(criarNoF5B('div', { id: 'signature-modal', class: 'signature-modal is-open' }));
   [['multitab-nav-root', 'div'], ['multitab-nav-tabs', 'div'], ['multitab-back-btn', 'button'],
    ['multitab-breadcrumb', 'div'], ['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'],
    ['hierarchy-breadcrumb-wrap', 'div'], ['interactive-nav-tabs', 'div'], ['login-screen', 'div']]
@@ -4854,6 +4868,25 @@ function fixtureOwnershipPR1() {
   doc.title = '';
   doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
   doc.createElement = (t) => criarNoF5B(t, {});
+  // `activeElement` só vale se o nó focado ainda pertence A ESTE documento: um
+  // gate que monta dois apps no mesmo teste não pode ver o foco do outro.
+  // Quando não há foco válido, o navegador reporta o <body> — e é o que se
+  // devolve aqui, para o código de produção enxergar o mesmo que enxergaria
+  // num navegador de verdade.
+  //
+  // LIMITE DECLARADO: o foco é global, como no navegador — só um documento o
+  // tem por vez. Um gate que monta DOIS apps e quer comparar o foco dos dois
+  // precisa ler o do primeiro ANTES de montar o segundo; depois disso o
+  // primeiro passa a reportar o próprio <body>, que é exatamente o que um
+  // navegador faria com uma aba que perdeu o foco.
+  Object.defineProperty(doc, 'activeElement', {
+    configurable: true,
+    get() {
+      return NO_FOCADO_F5B && descendentesF5B(doc).includes(NO_FOCADO_F5B)
+        ? NO_FOCADO_F5B
+        : doc.body;
+    }
+  });
   return { doc, vistas, form, dropdowns };
 }
 
@@ -5532,8 +5565,12 @@ test('PR1 F-4: DIFERENÇA — Escape fecha pelo app.js a partir do documento; no
   do44.doc.getElementById('dropdown-acoes')
     .dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
   eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'nem pela raiz o phase44 fechou com Escape');
+  // ATUALIZADO NO PR 2C. Esta era a única capacidade que o owner não tinha, e
+  // ela foi ABSORVIDA: hoje o app.js também devolve o foco (2C C-1). A
+  // asserção continua aqui porque mede o concorrente, e é dela que sai a
+  // equivalência verificada em 2C C-7 — mas já não descreve uma exclusividade.
   assert(do44.doc.getElementById('dropdown-acoes-trigger')._focado === true,
-    'o phase44 deveria devolver o foco ao gatilho — capacidade que o app.js não tem');
+    'o phase44 deixou de devolver o foco ao gatilho: a equivalência de 2C C-7 precisa ser remedida');
 });
 
 test('PR1 F-5: ambos fecham por clique fora, mas o phase44 fecha o dropdown VIZINHO junto', () => {
@@ -5822,6 +5859,7 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
     'MANTER — OWNER',
     'MANTER INERTE — FUNCIONALIDADE ÚNICA',
     'ABSORVER CAPACIDADE NO OWNER',
+    'CAPACIDADE ABSORVIDA — RESTO INERTE',
     'REMOVER — REDUNDANTE',
     'INVESTIGAR'
   ]);
@@ -5838,14 +5876,21 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
     // interface (barra fixa, confirmar por teclado, modo manual, eco do estado
     // do envio) que nunca rodaram em produção e não carregam regra de negócio.
     { modulo: 'ux-phase43.js', necessario: false, exclusivo: false,
-      decisao: 'REMOVER — REDUNDANTE', gates: ['D-1', 'D-2', 'D-3', 'A-1', 'A-3', 'A-4'] },
-    // PR 2B fechou o EIXO DO FETCH deste módulo: nada a absorver, o caminho
-    // concorrente vai para REMOVER NO PR 4 (B-9). A classificação do módulo
-    // como um todo continua em aberto porque resta o EIXO DO DROPDOWN, que é
-    // do PR 2C — e é só nele que `exclusivo: true` ainda se apoia.
+      decisao: 'REMOVER — REDUNDANTE', gates: ['D-1', 'D-2', 'D-3', '2A A-1', '2A A-3', '2A A-4'] },
+    // PR 2B fechou o EIXO DO FETCH (nada a absorver) e o PR 2C fechou o EIXO DO
+    // DROPDOWN — este, sim, com absorção: a devolução de foco ao gatilho foi
+    // para dentro do owner (2C C-1). É a única capacidade absorvida em todo o
+    // PR 2. Com os dois eixos concorrentes resolvidos, o módulo não disputa
+    // mais responsabilidade nenhuma.
+    //
+    // `exclusivo` continua TRUE de propósito, e não por inércia: o que resta no
+    // arquivo (cabeçalho de view, barra de ação, contador de filtros,
+    // confirmação embutida, rolagem ao topo) não tem outro dono — mas também
+    // nunca rodou e nunca foi validado. Decidir se isso vira produto ou vai
+    // embora é decisão do PR 4, não uma disputa de ownership.
     { modulo: 'ux-phase44.js', necessario: false, exclusivo: true,
-      decisao: 'ABSORVER CAPACIDADE NO OWNER',
-      gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5', 'B-6', 'B-7', 'B-9'] },
+      decisao: 'CAPACIDADE ABSORVIDA — RESTO INERTE',
+      gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5', '2B B-6', '2B B-7', '2C C-1', '2C C-7', '2C C-8'] },
     // A navegação TEM owner ativo e comprovado (G-1, G-2); o multitab cria uma
     // segunda autoridade sobre o mesmo clique (G-4, G-5) e uma segunda cópia da
     // guarda (G-6). O que é exclusivo dele — abas com contexto preservado — não
@@ -5866,8 +5911,14 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
   matriz.filter((m) => m.decisao === 'REMOVER — REDUNDANTE').forEach((m) => {
     assert(m.exclusivo === false,
       `"${m.modulo}" foi marcado para remoção mas ainda consta com capacidade exclusiva`);
-    assert(m.gates.some((g) => /^A-/.test(g)),
+    assert(m.gates.some((g) => /^2[A-D] /.test(g)),
       `"${m.modulo}" foi marcado para remoção sem gate do PR 2 que prove o owner alternativo`);
+  });
+  // Absorção declarada também precisa de prova: sem um gate do PR 2 mostrando
+  // a capacidade DENTRO do owner, "absorvida" seria só uma palavra.
+  matriz.filter((m) => m.decisao === 'CAPACIDADE ABSORVIDA — RESTO INERTE').forEach((m) => {
+    assert(m.gates.some((g) => /^2[A-D] /.test(g)),
+      `"${m.modulo}" consta como absorvido sem gate do PR 2 que mostre a capacidade no owner`);
   });
   eq(matriz.length, 5, 'a matriz de decisão mudou de tamanho sem revisão');
 });
@@ -6251,6 +6302,196 @@ test('PR2B B-9: destino de cada caminho concorrente do fetch, no vocabulário do
     && m.absorveu !== 'não se aplica').length, 0,
     'algo foi absorvido nesta fatia: o inventário de flags do PR 2B precisa ser preenchido');
   eq(matriz.length, 3, 'a matriz do PR 2B mudou de tamanho sem revisão');
+});
+
+
+// ── PR 2C. CONSOLIDAÇÃO — dropdown: ux-phase44 × app.js ─────────────────────
+//
+// Owner preservado: `setupInteractiveDropdowns()` do app.js. O PR 1 mediu os
+// dois lado a lado e o saldo foi: equivalentes no gesto básico (F-2, F-3), o
+// concorrente mais caro (F-3b: um listener de documento POR dropdown) e o
+// owner mais abrangente no Escape (F-4: fecha a partir do documento; o
+// phase44 só de dentro da própria raiz).
+//
+// Sobrou UMA capacidade do concorrente que o owner não tinha: devolver o foco
+// ao gatilho depois de fechar pelo teclado. Diferente das fatias 2A e 2B, esta
+// é real e necessária — e por isso é a primeira (e única) coisa absorvida em
+// todo o PR 2.
+
+function focar(app, id) {
+  const no = app.doc.getElementById(id);
+  if (!no) throw new Error(`fixture sem o nó "${id}"`);
+  no.focus();
+  return no;
+}
+function teclarEscapeNoDocumento(app) {
+  app.doc.dispatchEvent(new app.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+}
+
+test('PR2C C-1: Escape com o foco DENTRO do dropdown fecha E devolve o foco ao gatilho', () => {
+  // A capacidade absorvida. Sem ela, esconder o painel deixa o foco num nó
+  // invisível — o navegador o joga no <body> e quem navega por teclado perde
+  // o lugar na página.
+  const app = appComDropdownDoApp();
+  clicarNoGatilho(app, 'acoes');
+  focar(app, 'dropdown-acoes-item');
+
+  teclarEscapeNoDocumento(app);
+
+  eq(estadoDoDropdown(app, 'acoes').aberto, false, 'o Escape deixou de fechar o dropdown');
+  // Compara por id: os nós do shim são cíclicos (parent ↔ children) e um
+  // `eq` entre objetos produziria erro de serialização em vez de diagnóstico.
+  eq(String(app.doc.activeElement && app.doc.activeElement.id), 'dropdown-acoes-trigger',
+    'o foco não voltou para o gatilho: quem fechou pelo teclado ficou sem lugar na página');
+});
+
+
+test('PR2C C-2: Escape com o foco FORA do dropdown fecha, e NÃO mexe no foco', () => {
+  // O limite da absorção. Mover o cursor de um campo de texto por causa de um
+  // dropdown que o usuário nem estava usando seria comportamento novo — e
+  // comportamento novo não é absorção.
+  const app = appComDropdownDoApp();
+  clicarNoGatilho(app, 'acoes');
+  focar(app, 'delivery-quantity');
+
+  teclarEscapeNoDocumento(app);
+
+  eq(estadoDoDropdown(app, 'acoes').aberto, false,
+    'o Escape do documento deixou de fechar o dropdown: o alcance do owner regrediu');
+  eq(String(app.doc.activeElement && app.doc.activeElement.id), 'delivery-quantity',
+    'o foco foi roubado de um campo que o usuário estava preenchendo');
+});
+
+test('PR2C C-3: Escape sem dropdown aberto não mexe no foco', () => {
+  const app = appComDropdownDoApp();
+  focar(app, 'delivery-quantity');
+  teclarEscapeNoDocumento(app);
+  eq(String(app.doc.activeElement && app.doc.activeElement.id), 'delivery-quantity',
+    'o Escape mexeu no foco sem ter fechado dropdown nenhum');
+});
+
+test('PR2C C-4: o mesmo Escape continua fechando o modal de assinatura', () => {
+  // O ramo do modal vem DEPOIS da devolução de foco no mesmo handler. Se a
+  // absorção lançasse, este ramo deixaria de rodar em silêncio.
+  const app = appComDropdownDoApp();
+  const modal = app.doc.getElementById('signature-modal');
+  assert(modal.classList.contains('is-open'), 'o fixture não trouxe o modal aberto');
+  clicarNoGatilho(app, 'acoes');
+  focar(app, 'dropdown-acoes-item');
+
+  teclarEscapeNoDocumento(app);
+
+  assert(!modal.classList.contains('is-open'),
+    'o Escape deixou de fechar o modal de assinatura: a absorção interrompeu o handler');
+  eq(String(app.doc.activeElement && app.doc.activeElement.id), 'dropdown-acoes-trigger',
+    'a devolução de foco e o fechamento do modal não convivem no mesmo Escape');
+});
+
+test('PR2C C-5: a absorção não trouxe o custo de listeners do concorrente', () => {
+  // F-3b mediu que o phase44 registra um listener de documento POR dropdown.
+  // O owner registra um par fixo, e absorver não podia mudar isso.
+  const semDropdown = montarAppOwnership('');
+  const base = {
+    click: semDropdown.contarListeners(semDropdown.doc, 'click'),
+    keydown: semDropdown.contarListeners(semDropdown.doc, 'keydown')
+  };
+  const comOwner = appComDropdownDoApp();
+  eq(comOwner.contarListeners(comOwner.doc, 'click') - base.click, 1,
+    'o owner passou a registrar mais de um listener de clique no documento');
+  eq(comOwner.contarListeners(comOwner.doc, 'keydown') - base.keydown, 1,
+    'o owner passou a registrar mais de um listener de teclado no documento');
+
+  // Contraste: o concorrente cresce com o número de dropdowns do fixture (2).
+  const com44 = appComDropdownDoPhase44();
+  eq(com44.contarListeners(com44.doc, 'click') - base.click, 2,
+    'o custo por instância do phase44 mudou: a comparação de F-3b precisa ser revista');
+});
+
+test('PR2C C-6: exclusividade e clique fora seguem exatamente como antes', () => {
+  const app = appComDropdownDoApp();
+  clicarNoGatilho(app, 'acoes');
+  clicarNoGatilho(app, 'exportar');
+  eq(estadoDoDropdown(app, 'acoes').aberto, false, 'abrir o segundo deixou o primeiro aberto');
+  eq(estadoDoDropdown(app, 'exportar').aberto, true, 'o segundo não abriu');
+
+  app.doc.getElementById('menu').dispatchEvent(new app.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(app, 'exportar').aberto, false, 'o clique fora deixou de fechar');
+
+  // E o caso fino de F-5: clique DENTRO de outro dropdown continua não
+  // fechando o aberto. A absorção mexeu só no Escape.
+  const outro = appComDropdownDoApp();
+  clicarNoGatilho(outro, 'acoes');
+  outro.doc.getElementById('dropdown-exportar-panel')
+    .dispatchEvent(new outro.ctx.Event('click', { bubbles: true }));
+  eq(estadoDoDropdown(outro, 'acoes').aberto, true,
+    'o clique dentro de outro dropdown passou a fechar o aberto: comportamento novo, não absorvido');
+});
+
+test('PR2C C-7: no gesto que o concorrente cobria, os dois agora terminam igual', () => {
+  // Fecha pelo teclado a partir de dentro: mesmo estado final e mesmo foco.
+  const doApp = appComDropdownDoApp();
+  clicarNoGatilho(doApp, 'acoes');
+  focar(doApp, 'dropdown-acoes-item');
+  doApp.doc.getElementById('dropdown-acoes')
+    .dispatchEvent(new doApp.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+  // Lido AGORA, antes da segunda montagem: o foco é global no modelo, como no
+  // navegador — ver o limite declarado no fixture.
+  const focoDoOwner = String(doApp.doc.activeElement && doApp.doc.activeElement.id);
+
+  const do44 = appComDropdownDoPhase44();
+  clicarNoGatilho(do44, 'acoes');
+  focar(do44, 'dropdown-acoes-item');
+  do44.doc.getElementById('dropdown-acoes')
+    .dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
+
+  eq(estadoDoDropdown(doApp, 'acoes').aberto, estadoDoDropdown(do44, 'acoes').aberto,
+    'o estado final do dropdown divergiu entre owner e concorrente');
+  eq(focoDoOwner, 'dropdown-acoes-trigger', 'o owner não devolveu o foco no gesto de dentro');
+  assert(do44.doc.getElementById('dropdown-acoes-trigger')._focado === true,
+    'o concorrente deixou de devolver o foco: a equivalência precisa ser remedida');
+
+  // E o que o concorrente NÃO cobre continua sendo vantagem do owner (F-4):
+  // Escape a partir do documento.
+  const soOwner = appComDropdownDoApp();
+  clicarNoGatilho(soOwner, 'acoes');
+  teclarEscapeNoDocumento(soOwner);
+  eq(estadoDoDropdown(soOwner, 'acoes').aberto, false, 'o owner perdeu o alcance do Escape pelo documento');
+});
+
+test('PR2C C-8: destino de cada caminho concorrente do dropdown, e inventário de flags', () => {
+  const DESTINOS = Object.freeze([
+    'REMOVER AGORA',
+    'REMOVER NO PR 4',
+    'MANTER TEMPORARIAMENTE POR DEPENDÊNCIA',
+    'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA'
+  ]);
+  const app = appComDropdownDoApp();
+  eq(app.ctx.isHtmxAlpineProductionActive(), true,
+    'a flag que governa o owner mudou: o inventário abaixo precisa ser refeito');
+  const padrao = montarAppOwnership('');
+  eq(padrao.ctx.isHtmxAlpineProductionActive(), false,
+    'o owner do dropdown passou a rodar sem flag: o inventário precisa ser refeito');
+
+  const matriz = [
+    { caminho: 'app.js (setupInteractiveDropdowns)', papel: 'OWNER',
+      absorveu: 'devolução de foco ao gatilho no Escape de dentro do dropdown',
+      // Inventário de flags: o código absorvido NÃO ganhou flag própria. Ele
+      // vive dentro do handler do owner, atrás do gate que já existia —
+      // `isHtmxAlpineProductionActive()`, isto é htmx_alpine_production_enabled
+      // E ux_tools_functional_enabled. Flag nova aqui só multiplicaria estados.
+      flag: 'htmx_alpine_production_enabled + ux_tools_functional_enabled (a do próprio owner; nenhuma flag nova)',
+      destino: 'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA', gates: ['2C C-1', '2C C-2', '2C C-5', '2C C-6'] },
+    { caminho: 'ux-phase44.js (createDropdown)', papel: 'CONCORRENTE',
+      absorveu: 'não se aplica — a capacidade dele foi para o owner',
+      flag: 'ux_phase44_enabled (inalterada, e o módulo segue inerte)',
+      destino: 'REMOVER NO PR 4', gates: ['2C C-1', '2C C-7', 'F-3b', 'F-5'] }
+  ];
+  matriz.forEach((m) => {
+    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
+    assert(m.gates.length >= 2, `"${m.caminho}" precisa de mais de um gate sustentando o destino`);
+    assert(String(m.flag || '').trim() !== '', `"${m.caminho}" sem inventário de flag`);
+  });
+  eq(matriz.length, 2, 'a matriz do PR 2C mudou de tamanho sem revisão');
 });
 
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {

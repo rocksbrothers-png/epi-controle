@@ -6991,8 +6991,13 @@ test('PR3 A-6: onde o requisito de rascunho é REAL, ele já existe — e é ser
 });
 
 test('PR3 A-7: comparação A/B/C e destino do phase41 e da flag', () => {
-  const app = montarAppOwnership('');
+  // O par que sustenta a Etapa 12: inerte SEM a flag e inerte COM ela. É por
+  // isso que corrigir o bootstrap seria trabalho perdido — a flag não é o que
+  // segura o módulo, e com ele indo embora a colisão deixa de importar.
+  const semFlag = montarAppOwnership('');
   const comFlag = montarAppOwnership('?ux_phase41=1');
+  eq(semFlag.doc.body.classList.contains('phase41-enabled'), false,
+    'o phase41 passou a iniciar na carga padrão');
   eq(comFlag.doc.body.classList.contains('phase41-enabled'), false,
     'a flag passou a ligar o phase41: a Etapa 12 (bootstrap) muda de resposta');
 

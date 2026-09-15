@@ -5061,6 +5061,12 @@ function montarAppOwnership(busca, opcoes) {
   return {
     ctx, doc, vistas, form, dropdowns, ordem, filaInjetada, chamadasDeRede, local,
     listenersDe, contarListeners,
+    // O fetch de base, ANTES de qualquer embrulho. Serve para contar camadas de
+    // instrumentação sem depender de marcas privadas: quantos saltos existem
+    // entre `ctx.fetch` e ele. Sem isso a contagem seria uma dedução a partir
+    // das marcas — e é justamente a marca privada de cada dono que falha em
+    // enxergar o outro (PR1 E-3).
+    fetchBase,
     // A gravação em storage do app é DEBOUNCED (`queueStorageWrite`). Quem a
     // força é o próprio app, em `beforeunload`/`pagehide`/`visibilitychange`.
     // O gate chama essa mesma função — não inventa uma escrita própria.
@@ -5381,7 +5387,7 @@ caracterizaDefeito('PR1 E-3 (contrafactual): o bridge do phase44 empilha sobre o
   atual: 'phase44 consulta só __EPI_PHASE44_FETCH_BRIDGED__ e o error-monitor só __EPI_MONITORED_FETCH__. Nenhum reconhece a marca do outro, então os dois embrulham.',
   motivo: 'Duas implementações da mesma responsabilidade, cada uma com marca de idempotência privada.',
   responsabilidade: 'Instrumentação de requisições HTTP.',
-  decisaoFutura: 'Manter o error-monitor como owner; a instrumentação do 44 sai do patch global e vai para o cliente canônico.'
+  decisaoFutura: 'REVISTO NO PR 2B: manter o error-monitor como owner e NÃO absorver nada. A única capacidade do bridge — emitir epi:action-* — não tem consumidor na produção padrão (B-6) e, quando tem, alimenta métrica de duração zero (B-7). O caminho concorrente sai no PR 4.'
 }, () => {
   const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
   eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, true, 'o phase44 não chegou a instalar o bridge');
@@ -5792,14 +5798,23 @@ test('PR1 Z-1: matriz de ownership — a coluna "ativa hoje?" é remedida, não 
       esperada: false, owner: 'nenhum — e o app tem política ANTI-persistência ativa (resetAppFormDrafts)' },
     { responsabilidade: 'Limpeza de rascunho no encerramento de sessão',
       candidata: 'app.js (resetAppFormDrafts/clearRestoredAppForms)', ativaHoje: typeof padrao.ctx.resetAppFormDrafts === 'function',
-      esperada: true, owner: 'app.js' }
+      esperada: true, owner: 'app.js' },
+    // ACRESCENTADA NO PR 2B. Não é um owner concorrente: é um CONSUMIDOR sem
+    // emissor. O ux-analytics escuta `epi:action-*`, que só o bridge inerte do
+    // phase44 dispararia — e ele próprio só se registra com a flag
+    // `ux_analytics_enabled` ligada E papel master, o que na carga padrão não
+    // acontece. A linha existe para que a remoção do bridge, no PR 4, não
+    // deixe para trás um ouvinte que ninguém mais alimenta.
+    { responsabilidade: 'Feedback de ação por requisição (consumo de epi:action-*)',
+      candidata: 'ux-analytics.js (flowFinish generic_action)', ativaHoje: padrao.contarListeners(padrao.doc, 'epi:action-success') > 0,
+      esperada: false, owner: 'nenhum — sem emissor em produção (PR2B B-6)' }
   ];
 
   linhas.forEach((l) => {
     eq(l.ativaHoje, l.esperada,
       `"${l.responsabilidade}" via ${l.candidata}: a matriz diz ativa=${l.esperada} e a medição diz ${l.ativaHoje}`);
   });
-  eq(linhas.length, 11, 'a matriz de ownership mudou de tamanho sem revisão');
+  eq(linhas.length, 12, 'a matriz de ownership mudou de tamanho sem revisão');
 });
 
 test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a sustenta', () => {
@@ -5824,8 +5839,13 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
     // do envio) que nunca rodaram em produção e não carregam regra de negócio.
     { modulo: 'ux-phase43.js', necessario: false, exclusivo: false,
       decisao: 'REMOVER — REDUNDANTE', gates: ['D-1', 'D-2', 'D-3', 'A-1', 'A-3', 'A-4'] },
+    // PR 2B fechou o EIXO DO FETCH deste módulo: nada a absorver, o caminho
+    // concorrente vai para REMOVER NO PR 4 (B-9). A classificação do módulo
+    // como um todo continua em aberto porque resta o EIXO DO DROPDOWN, que é
+    // do PR 2C — e é só nele que `exclusivo: true` ainda se apoia.
     { modulo: 'ux-phase44.js', necessario: false, exclusivo: true,
-      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5'] },
+      decisao: 'ABSORVER CAPACIDADE NO OWNER',
+      gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5', 'B-6', 'B-7', 'B-9'] },
     // A navegação TEM owner ativo e comprovado (G-1, G-2); o multitab cria uma
     // segunda autoridade sobre o mesmo clique (G-4, G-5) e uma segunda cópia da
     // guarda (G-6). O que é exclusivo dele — abas com contexto preservado — não
@@ -5993,6 +6013,244 @@ test('PR2A A-5: quantos gates de submit existem depois da consolidação, e de q
   // E o que a consolidação evita: o terceiro.
   eq(contar('?ux_phase42=1&ux_phase43=1', { contrafactualBootstrap: true }), 3,
     'com o phase43 somado seriam TRÊS gates sobre o mesmo formulário — é este o terceiro que o PR 2A dispensa');
+});
+
+// ── PR 2B. CONSOLIDAÇÃO — fetch: ux-phase44 × error-monitor.js ──────────────
+//
+// Owner preservado: `error-monitor.js`. Ele embrulha `win.fetch` sem flag
+// nenhuma, na carga padrão, e é o único que roda hoje (PR1 E-1).
+//
+// O concorrente é `bindFetchFeedbackBridge()` do phase44, que nunca inicializa.
+// A pergunta do PR 2 não é "ele funciona?", e sim: QUAL capacidade é exclusiva
+// dele, e ela é mesmo necessária? A resposta abaixo é medida, não deduzida.
+//
+// A capacidade candidata é UMA: emitir `epi:action-success` / `epi:action-error`
+// por requisição, com a view ativa no momento da chamada. Os gates B-6..B-8
+// perguntam quem consome isso hoje e o que a absorção produziria de fato.
+
+test('PR2B B-1: existe UMA camada sobre o fetch, e ela é a do owner', () => {
+  // Contagem por SALTO, não por marca: o que falha em produção é justamente a
+  // marca privada de cada dono, que não enxerga a do outro (PR1 E-3).
+  const app = montarAppOwnership('');
+  assert(app.ctx.fetch !== app.fetchBase, 'ninguém embrulhou o fetch: o owner não rodou');
+  eq(app.ctx.fetch.__EPI_MONITORED_FETCH__, true, 'a camada externa não é a do error-monitor');
+  eq(app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__, app.fetchBase,
+    'o interior da camada não é o fetch base — há mais de um embrulho na cadeia');
+});
+
+test('PR2B B-2: o owner permanece com UMA camada mesmo recarregado várias vezes', () => {
+  const app = montarAppOwnership('');
+  const primeiro = app.ctx.fetch;
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'error-monitor.js'), 'utf-8');
+  for (let i = 0; i < 3; i += 1) {
+    vmF5B.runInContext(fonte, app.ctx, { filename: `error-monitor.js#${i}` });
+  }
+  eq(app.ctx.fetch, primeiro, 'uma das recargas instalou uma segunda camada');
+  eq(app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__, app.fetchBase,
+    'o original preservado deixou de ser o fetch base: a cadeia cresceu');
+});
+
+testAsync('PR2B B-3: sucesso — o owner devolve a MESMA resposta e não registra instabilidade', async () => {
+  const app = montarAppOwnership('');
+  const resposta = { ok: true, status: 200, marcador: 'resposta-do-teste' };
+  app.responderPara('/api/consolidacao/ok', resposta);
+
+  const devolvida = await app.ctx.fetch('/api/consolidacao/ok');
+  eq(devolvida, resposta, 'o owner trocou o objeto de resposta — o contrato do chamador mudaria');
+  eq(app.chamadasPara('/api/consolidacao/ok').length, 1, 'a requisição não chegou ao fetch base uma única vez');
+
+  const snapshot = app.ctx.__EPI_MONITORING__.getSnapshot();
+  assert(!Object.keys(snapshot.unstableApis).some((k) => k.includes('/api/consolidacao/ok')),
+    'uma resposta 200 foi contabilizada como instabilidade');
+});
+
+testAsync('PR2B B-4: 5xx — o owner registra a instabilidade e AINDA ASSIM devolve a resposta', async () => {
+  const app = montarAppOwnership('');
+  app.responderPara('/api/consolidacao/erro', { ok: false, status: 503 });
+
+  const devolvida = await app.ctx.fetch('/api/consolidacao/erro');
+  eq(devolvida.status, 503, 'o owner engoliu a resposta de erro em vez de devolvê-la');
+
+  const instaveis = Object.keys(app.ctx.__EPI_MONITORING__.getSnapshot().unstableApis);
+  assert(instaveis.some((k) => k.includes('/api/consolidacao/erro')),
+    `o owner não registrou o 5xx: ${JSON.stringify(instaveis)}`);
+});
+
+testAsync('PR2B B-5: erro de rede — o owner registra e RE-LANÇA o mesmo erro', async () => {
+  const app = montarAppOwnership('');
+  const falha = new Error('rede indisponivel');
+  app.responderPara('/api/consolidacao/rede', falha);
+
+  let capturado = null;
+  try {
+    await app.ctx.fetch('/api/consolidacao/rede');
+  } catch (erro) {
+    capturado = erro;
+  }
+  eq(capturado, falha, 'o owner trocou ou engoliu o erro: quem chama deixaria de tratá-lo');
+
+  const instaveis = Object.keys(app.ctx.__EPI_MONITORING__.getSnapshot().unstableApis);
+  assert(instaveis.some((k) => k.includes('/api/consolidacao/rede')),
+    `o owner não registrou a falha de rede: ${JSON.stringify(instaveis)}`);
+});
+
+testAsync('PR2B B-6: a capacidade candidata não tem EMISSOR, e o consumidor é duplamente condicionado', async () => {
+  // Este é o gate que decide o PR 2B. O único consumidor de
+  // `epi:action-success`/`epi:action-error` fora do próprio phase44 é o
+  // `ux-analytics.js` — e ele só se registra quando DUAS condições valem ao
+  // mesmo tempo: a flag `ux_analytics_enabled` (falsa por padrão) e o papel
+  // master. Na configuração padrão de produção não há consumidor NENHUM.
+  const padrao = montarAppOwnership('');
+  eq(padrao.contarListeners(padrao.doc, 'epi:action-success'), 0,
+    'apareceu consumidor de epi:action-success na carga padrão: a análise do PR 2B precisa ser refeita');
+  eq(padrao.contarListeners(padrao.doc, 'epi:action-error'), 0,
+    'apareceu consumidor de epi:action-error na carga padrão');
+
+  // Com a flag ligada E papel master, o consumidor existe — e continua ligado
+  // a nada, porque em produção ninguém emite esses eventos.
+  const app = montarAppOwnership('?ux_analytics=1', {
+    usuario: { id: 9, role: 'master_admin', company_id: 1 }
+  });
+  assert(!(app.ctx._errosDeCarga || []).some((e) => e.rel.includes('ux-analytics')),
+    `ux-analytics não carregou no harness: ${JSON.stringify(app.ctx._errosDeCarga)}`);
+  assert(app.contarListeners(app.doc, 'epi:action-success') >= 1,
+    'nem com flag e papel master o ux-analytics ouve epi:action-success: o consumidor sumiu');
+  assert(app.contarListeners(app.doc, 'epi:action-error') >= 1,
+    'nem com flag e papel master o ux-analytics ouve epi:action-error');
+
+  // E o emissor, medido: uma requisição de verdade atravessa o owner e não
+  // produz evento nenhum.
+  const emitidos = [];
+  app.doc.addEventListener('epi:action-success', () => emitidos.push('ok'));
+  app.doc.addEventListener('epi:action-error', () => emitidos.push('erro'));
+  app.responderPara('/api/consolidacao/emissor', { ok: true, status: 200 });
+  await app.ctx.fetch('/api/consolidacao/emissor');
+  eq(emitidos.length, 0, 'alguém passou a emitir epi:action-* em produção — a análise precisa ser refeita');
+
+  // Contraprova de que o par do fluxo de entrega, esse sim, TEM emissor no dono
+  // do domínio: o padrão que funciona é o app.js anunciar o evento de negócio.
+  // Emissor = quem DISPARA o evento. `dispatchEvent(...)` e o nome do evento na
+  // mesma instrução; quem só faz `addEventListener` é consumidor, não emissor.
+  const emissoresDeAcao = ['ux-phase44.js', 'app.js', 'ux-analytics.js', 'error-monitor.js']
+    .filter((arq) => /dispatchEvent\([^;]*epi:action-/.test(
+      fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), arq), 'utf-8')));
+  eq(emissoresDeAcao.join(','), 'ux-phase44.js',
+    'o conjunto de emissores de epi:action-* mudou: a decisão do PR 2B precisa ser revista');
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  assert(appJs.includes("CustomEvent('epi:delivery-submit-start')"),
+    'o app.js deixou de emitir o par de eventos do fluxo de entrega');
+});
+
+testAsync('PR2B B-7: o que a absorção produziria — medido no contrafactual, não suposto', async () => {
+  // Se o owner passasse a emitir `epi:action-*` por requisição, o consumidor
+  // ativo registraria um `flow_success`/`flow_error` para CADA chamada HTTP.
+  // Aqui o bridge do phase44 roda de verdade e o resultado é inspecionado no
+  // mesmo armazenamento que o analytics usa em produção.
+  const app = montarAppOwnership('?ux_phase44=1&ux_analytics=1', {
+    contrafactualBootstrap: true,
+    usuario: { id: 9, role: 'master_admin', company_id: 1 }
+  });
+  eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, true, 'o bridge não instalou: o contrafactual não mediu nada');
+
+  // A própria carga da página já fez requisições que o usuário não pediu — é
+  // exatamente esse tráfego que passaria a ser rotulado como "ação".
+  const requisicoesDoBoot = app.chamadasDeRede.length;
+  assert(requisicoesDoBoot >= 1,
+    'a página não fez requisição própria no boot: o custo (b) não seria observável');
+
+  app.responderPara('/api/consolidacao/infraestrutura', { ok: true, status: 200 });
+  await app.ctx.fetch('/api/consolidacao/infraestrutura');
+  await new Promise((r) => setTimeout(r, 0));
+
+  const eventos = JSON.parse(app.local.getItem('epi.analytics.master.events') || '[]');
+  const genericos = eventos.filter((e) => e && e.metadata && e.metadata.flow === 'generic_action');
+  assert(genericos.length >= 1,
+    `a requisição de infraestrutura não virou evento de analytics: ${JSON.stringify(eventos.map((e) => e.event))}`);
+
+  // (a) O evento não mede nada: `flowStart('generic_action')` não existe em
+  //     produção, então a duração é sempre zero.
+  genericos.forEach((e) => {
+    eq(e.duration, 0, 'a duração deixou de ser zero: alguém passou a abrir o fluxo generic_action');
+  });
+  const analyticsJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-analytics.js'), 'utf-8');
+  assert(!analyticsJs.includes("flowStart('generic_action'"),
+    'o generic_action ganhou abertura de fluxo: o custo medido aqui mudou');
+
+  // (b) O evento é atribuído a uma "ação" que o usuário não fez: a requisição
+  //     é de infraestrutura, disparada pela própria página.
+  eq(app.chamadasPara('/api/consolidacao/infraestrutura').length, 1,
+    'a requisição de infraestrutura não chegou à camada base');
+
+  // (c) E ocupa lugar no MESMO buffer limitado do analytics do master.
+  assert(analyticsJs.includes('while (events.length > MAX_EVENTS) events.shift();'),
+    'o buffer do analytics deixou de ser limitado: o custo (c) precisa ser remedido');
+  assert(/var MAX_EVENTS = 100;/.test(analyticsJs), 'o limite do buffer mudou de valor sem revisão');
+});
+
+testAsync('PR2B B-8: 4xx — o owner NÃO chama isso de falha; o concorrente chamaria', async () => {
+  // Não é detalhe de implementação: é o significado de "erro". Para o owner,
+  // 4xx é resposta legítima do servidor (o cliente errou), e só 5xx é
+  // instabilidade. Para o bridge, todo `!response.ok` é erro de ação.
+  const padrao = montarAppOwnership('');
+  padrao.responderPara('/api/consolidacao/proibido', { ok: false, status: 403 });
+  await padrao.ctx.fetch('/api/consolidacao/proibido');
+  const instaveis = Object.keys(padrao.ctx.__EPI_MONITORING__.getSnapshot().unstableApis);
+  assert(!instaveis.some((k) => k.includes('/api/consolidacao/proibido')),
+    `o owner passou a tratar 4xx como instabilidade de API: ${JSON.stringify(instaveis)}`);
+
+  const contra = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
+  const erros = [];
+  contra.doc.addEventListener('epi:action-error', (ev) => erros.push(ev));
+  contra.responderPara('/api/consolidacao/proibido', { ok: false, status: 403 });
+  await contra.ctx.fetch('/api/consolidacao/proibido');
+  eq(erros.length, 1, 'o bridge deixou de classificar 4xx como erro de ação: a divergência sumiu');
+});
+
+test('PR2B B-9: destino de cada caminho concorrente do fetch, no vocabulário do PR 2', () => {
+  // A matriz não se declara: cada linha reafirma, no app servido, o estado que
+  // sustenta o destino. Se algum caminho mudar de estado, este gate quebra
+  // antes de a decisão virar remoção no PR 4.
+  const padrao = montarAppOwnership('');
+  const comAnalytics = montarAppOwnership('?ux_analytics=1', {
+    usuario: { id: 9, role: 'master_admin', company_id: 1 }
+  });
+  eq(padrao.ctx.fetch.__EPI_MONITORED_FETCH__, true, 'o owner do fetch não está ativo na carga padrão');
+  eq(padrao.ctx.__EPI_PHASE44_FETCH_BRIDGED__ === true, false, 'o bridge do phase44 passou a instalar em produção');
+  eq(padrao.contarListeners(padrao.doc, 'epi:action-success'), 0,
+    'o consumidor órfão passou a existir na carga padrão');
+  assert(comAnalytics.contarListeners(comAnalytics.doc, 'epi:action-success') >= 1,
+    'o consumidor órfão sumiu mesmo com flag e papel master: a linha dele precisa ser revista');
+
+  const DESTINOS = Object.freeze([
+    'REMOVER AGORA',
+    'REMOVER NO PR 4',
+    'MANTER TEMPORARIAMENTE POR DEPENDÊNCIA',
+    'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA'
+  ]);
+  const matriz = [
+    { caminho: 'error-monitor.js (monitoredFetch)', papel: 'OWNER',
+      absorveu: 'nada — nenhuma capacidade do concorrente se mostrou necessária',
+      destino: 'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA', gates: ['B-1', 'B-2', 'B-3', 'B-4', 'B-5'] },
+    { caminho: 'ux-phase44.js (bindFetchFeedbackBridge)', papel: 'CONCORRENTE',
+      absorveu: 'nada — a única capacidade candidata alimenta métrica que não mede nada (B-7)',
+      destino: 'REMOVER NO PR 4', gates: ['B-6', 'B-7', 'B-8', 'E-3', 'E-4'] },
+    // O phase44 inteiro NÃO sai no PR 2B: o eixo do dropdown ainda está aberto
+    // e é decidido no PR 2C. Este destino vale para o caminho do fetch.
+    { caminho: 'ux-analytics.js (ouvintes epi:action-*)', papel: 'CONSUMIDOR ÓRFÃO',
+      absorveu: 'não se aplica',
+      destino: 'REMOVER NO PR 4', gates: ['B-6', 'B-7'] }
+  ];
+  matriz.forEach((m) => {
+    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
+    assert(m.gates.length >= 2, `"${m.caminho}" precisa de mais de um gate sustentando o destino`);
+  });
+  // Nenhuma flag entra em produção por conta desta consolidação: nada foi
+  // absorvido, então não há código novo atrás de flag nova.
+  eq(matriz.filter((m) => m.absorveu !== 'nada — nenhuma capacidade do concorrente se mostrou necessária'
+    && m.absorveu !== 'nada — a única capacidade candidata alimenta métrica que não mede nada (B-7)'
+    && m.absorveu !== 'não se aplica').length, 0,
+    'algo foi absorvido nesta fatia: o inventário de flags do PR 2B precisa ser preenchido');
+  eq(matriz.length, 3, 'a matriz do PR 2B mudou de tamanho sem revisão');
 });
 
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {

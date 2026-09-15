@@ -1755,7 +1755,24 @@ function setupInteractiveDropdowns() {
   }, { passive: true });
   safeOn(document, 'keydown', (event) => {
     if (event?.key !== 'Escape') return;
+    // Onde o foco estava ANTES de fechar. Esconder o painel tira o foco de um
+    // nó que deixa de ser visível, e o navegador o devolve ao <body>: quem
+    // navega por teclado perde o lugar na página. Devolver o foco ao gatilho
+    // é a única capacidade que o ux-phase44 tinha e este dono não tinha
+    // (#343 PR 2C).
+    const raizFocada = event?.target?.closest?.('[data-ui-dropdown]')
+      || document.activeElement?.closest?.('[data-ui-dropdown]')
+      || null;
+    const fechouOndeOFocoEstava = raizFocada?.classList?.contains('is-open') === true;
     closeInteractiveDropdowns();
+    // Só quando o foco estava DENTRO do dropdown que acabou de fechar. Escape
+    // com o foco em outro lugar continua apenas fechando, sem mexer no foco —
+    // mover o cursor de um campo de texto seria comportamento novo, não
+    // absorção.
+    if (fechouOndeOFocoEstava) {
+      const gatilho = raizFocada.querySelector('[data-dropdown-trigger]');
+      if (typeof gatilho?.focus === 'function') gatilho.focus();
+    }
     if (document.getElementById('signature-modal')?.classList.contains('is-open')) {
       closeSignatureModal();
     }

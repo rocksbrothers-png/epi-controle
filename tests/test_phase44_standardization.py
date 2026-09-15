@@ -1,3 +1,15 @@
+"""Testes ESTRUTURAIS (LEGADOS) do ux-phase44.js — #343 PR1.
+
+Verificação de TEXTO no arquivo, não de comportamento. O `ux-phase44.js` não
+inicializa em produção (colisão entre a guarda local do IIFE e o guard central
+`ensureModuleBound`), e esta suíte esteve verde o tempo todo.
+
+Prova de comportamento: `static/js/test/run-tests.js`, gates `PR1 E-*` (fetch,
+contra o owner ativo `error-monitor.js`) e `PR1 F-*` (dropdown, contra o owner
+ativo `app.js`), com as diferenças de contrato nomeadas uma a uma.
+"""
+
+
 import re
 from pathlib import Path
 
@@ -8,7 +20,15 @@ def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding='utf-8')
 
 
-def test_phase44_guard_flag_and_classic_fallback_are_present():
+def test_legacy_structural_phase44_guard_flag_and_classic_fallback_are_present():
+    """LEGADO/ESTRUTURAL. Caracteriza o estado atual, não o desejado.
+
+    A primeira asserção exige a presença da linha que torna o módulo inerte:
+    `ensureModuleBound('phase44')` deriva `__EPI_PHASE44_BOUND__`, que o IIFE
+    grava em si mesmo logo acima. Quando o bootstrap for corrigido, este teste
+    DEVE falhar — e é aí que ele sai. Ver `PR1 E-1` e `PR1 F-*` em
+    static/js/test/run-tests.js.
+    """
     content = _read('static/ux-phase44.js')
     assert '__EPI_PHASE44_BOUND__' in content
     assert "getFeatureFlag('ux_phase44_enabled'" in content

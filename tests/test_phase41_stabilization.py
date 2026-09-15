@@ -1,3 +1,27 @@
+"""Testes ESTRUTURAIS (LEGADOS) do ux-phase41.js — #343 PR1.
+
+NATUREZA DESTES TESTES
+Tudo aqui é verificação de TEXTO no arquivo: procura-se um símbolo, um nome de
+função, um trecho. Nada neste módulo executa o phase41. Passar aqui significa
+que o código está escrito de certa forma — NÃO que ele funciona, e nem sequer
+que ele chega a iniciar.
+
+POR QUE ISSO IMPORTA NESTE ARQUIVO
+A caracterização comportamental da #343 PR1 mediu que o `ux-phase41.js` NÃO
+inicializa em produção: o IIFE grava `__EPI_PHASE41_BOUND__` nas primeiras
+linhas e, logo abaixo, pergunta ao `ensureModuleBound('phase41')` se já está
+ligado — que deriva exatamente essa chave. O módulo retorna antes do gate da
+flag. Esta suíte inteira estava verde durante todo esse tempo.
+
+ONDE ESTÁ A PROVA DE COMPORTAMENTO
+Em `static/js/test/run-tests.js`, seção PR1 (gates `PR1 C-*`), que carrega o
+módulo na ordem servida e mede guarda de saída, leitura de flag e listeners.
+
+NÃO APAGAR sem substituir: alguns destes asserts guardam decisões reais de
+escopo (ver `test_phase41_uses_namespaced_storage_and_reset_query`).
+"""
+
+
 from pathlib import Path
 
 
@@ -9,7 +33,19 @@ def _read(path: str) -> str:
     return (_repo_root() / path).read_text(encoding="utf-8")
 
 
-def test_phase41_has_global_guard_and_iife():
+def test_legacy_structural_phase41_has_global_guard_and_iife():
+    """LEGADO/ESTRUTURAL. Caracteriza o estado atual, não o desejado.
+
+    ATENÇÃO — a segunda asserção deste teste EXIGE a presença da linha que
+    torna o módulo inerte. `ensureModuleBound('phase41')` deriva o nome
+    `__EPI_PHASE41_BOUND__`; o IIFE grava esse mesmo global duas linhas antes e
+    recebe de si mesmo a resposta "já ligado". Enquanto a colisão existir, este
+    assert a documenta. Quando ela for corrigida, este teste DEVE falhar — é o
+    sinal de que a correção chegou, e o momento de removê-lo.
+
+    Não transformar em asserção "o defeito precisa continuar existindo" sem
+    este comentário. Ver `PR1 C-1` em static/js/test/run-tests.js.
+    """
     content = _read("static/ux-phase41.js")
     assert "(function phase41Iife()" in content
     assert "__EPI_PHASE41_BOUND__" in content

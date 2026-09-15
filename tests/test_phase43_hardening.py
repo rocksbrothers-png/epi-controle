@@ -1,3 +1,15 @@
+"""Testes ESTRUTURAIS (LEGADOS) do ux-phase43.js — #343 PR1.
+
+Verificação de TEXTO no arquivo, não de comportamento. O `ux-phase43.js` não
+inicializa em produção (mesma colisão de chave de guarda do 4.1 e do 4.4), e
+esta suíte esteve verde o tempo todo.
+
+Prova de comportamento: `static/js/test/run-tests.js`, gates `PR1 D-*` e
+`PR1 H-*` — matriz de dependência com o phase42, os dois gates concorrentes de
+submit e a capacidade exclusiva do 4.3 (exigência do código lido).
+"""
+
+
 import re
 from pathlib import Path
 
@@ -8,7 +20,13 @@ def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding='utf-8')
 
 
-def test_phase43_uses_guard_and_fail_safe_init_gate():
+def test_legacy_structural_phase43_uses_guard_and_fail_safe_init_gate():
+    """LEGADO/ESTRUTURAL. Caracteriza o estado atual, não o desejado.
+
+    A primeira asserção exige a presença da linha que torna o módulo inerte —
+    mesma colisão do 4.1. Quando o bootstrap for corrigido, este teste DEVE
+    falhar. Ver `PR1 D-1` em static/js/test/run-tests.js.
+    """
     content = _read('static/ux-phase43.js')
     assert '__EPI_PHASE43_BOUND__' in content
     assert 'if (!isEnabled()) return;' in content

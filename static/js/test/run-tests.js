@@ -5860,6 +5860,7 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
     'MANTER INERTE — FUNCIONALIDADE ÚNICA',
     'ABSORVER CAPACIDADE NO OWNER',
     'CAPACIDADE ABSORVIDA — RESTO INERTE',
+    'CONSOLIDADO SEM ABSORÇÃO — RESTO INERTE',
     'REMOVER — REDUNDANTE',
     'INVESTIGAR'
   ]);
@@ -5893,11 +5894,24 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
       gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5', '2B B-6', '2B B-7', '2C C-1', '2C C-7', '2C C-8'] },
     // A navegação TEM owner ativo e comprovado (G-1, G-2); o multitab cria uma
     // segunda autoridade sobre o mesmo clique (G-4, G-5) e uma segunda cópia da
-    // guarda (G-6). O que é exclusivo dele — abas com contexto preservado — não
-    // tem owner nenhum hoje, e é essa capacidade que se absorve no contrato de
-    // navegação, não o interceptador.
+    // guarda (G-6).
+    //
+    // REVISTO NO PR 2D. O PR 1 previu absorver "abas com contexto preservado"
+    // no contrato de navegação. A medição não sustenta: o que existe ali é um
+    // CACHE de tudo que foi digitado, filtrado só por tipo de campo e fora do
+    // alcance do `resetAppFormDrafts()`, que é limpeza de DOM (2D D-4, D-6).
+    // Absorvê-lo faria o owner da navegação passar a manter essa cópia, e a
+    // política de limpeza do app a depender da recarga.
+    //
+    // E uma correção a favor do módulo, registrada porque a hipótese era minha:
+    // pelo MENU ele NÃO restaura — respeita o contrato de reentrada, de forma
+    // deliberada e documentada no próprio arquivo (2D D-5).
+    //
+    // `exclusivo` segue TRUE: a barra de abas com histórico próprio não tem
+    // outro dono. Também nunca rodou nem foi validada, e essa decisão é do PR 4.
     { modulo: 'multitab-navigation.js', necessario: false, exclusivo: true,
-      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['G-1', 'G-2', 'G-3', 'G-4', 'G-5', 'G-6'] }
+      decisao: 'CONSOLIDADO SEM ABSORÇÃO — RESTO INERTE',
+      gates: ['G-1', 'G-2', 'G-3', 'G-4', 'G-5', 'G-6', '2D D-1', '2D D-4', '2D D-5', '2D D-6'] }
   ];
   matriz.forEach((m) => {
     assert(DECISOES.includes(m.decisao), `decisão fora do vocabulário: ${m.decisao}`);
@@ -5916,10 +5930,13 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
   });
   // Absorção declarada também precisa de prova: sem um gate do PR 2 mostrando
   // a capacidade DENTRO do owner, "absorvida" seria só uma palavra.
-  matriz.filter((m) => m.decisao === 'CAPACIDADE ABSORVIDA — RESTO INERTE').forEach((m) => {
-    assert(m.gates.some((g) => /^2[A-D] /.test(g)),
-      `"${m.modulo}" consta como absorvido sem gate do PR 2 que mostre a capacidade no owner`);
-  });
+  ['CAPACIDADE ABSORVIDA — RESTO INERTE', 'CONSOLIDADO SEM ABSORÇÃO — RESTO INERTE']
+    .forEach((decisao) => {
+      matriz.filter((m) => m.decisao === decisao).forEach((m) => {
+        assert(m.gates.some((g) => /^2[A-D] /.test(g)),
+          `"${m.modulo}" consta como consolidado sem gate do PR 2 que sustente a conclusão`);
+      });
+    });
   eq(matriz.length, 5, 'a matriz de decisão mudou de tamanho sem revisão');
 });
 
@@ -6492,6 +6509,312 @@ test('PR2C C-8: destino de cada caminho concorrente do dropdown, e inventário d
     assert(String(m.flag || '').trim() !== '', `"${m.caminho}" sem inventário de flag`);
   });
   eq(matriz.length, 2, 'a matriz do PR 2C mudou de tamanho sem revisão');
+});
+
+
+// ── PR 2D. CONSOLIDAÇÃO — navegação: multitab-navigation × app.js ───────────
+//
+// Owner preservado: `bindMenuNavigation()` → `navigateToView()` do app.js.
+//
+// A pergunta que esta fatia precisa responder é a do contrato: "existe apenas
+// UMA autoridade capaz de decidir a navegação?". D-1 responde SIM medindo, e
+// D-2 trava a resposta contra o mecanismo que a derrubaria.
+
+function fonteServida(arquivo) {
+  return fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), arquivo), 'utf-8');
+}
+
+test('PR2D D-1: existe UMA autoridade capaz de decidir a navegação — e o clique chega nela', () => {
+  const app = appComNavegacaoDoApp();
+  app.clicarNoItemDeMenu('entregas');
+  eq(app.ctx._assigns.length, 1, 'o clique no menu não alcançou o owner da navegação');
+  assert(String(app.ctx._assigns[0]).includes('entregas'),
+    `a navegação foi para outro lugar: ${app.ctx._assigns[0]}`);
+
+  // E ninguém mais reivindica o clique ANTES dele. Um listener de clique em
+  // CAPTURA no documento é o único mecanismo capaz de decidir por cima do
+  // owner (G-5), então a contagem dele é a medida direta de "quantas
+  // autoridades existem".
+  const emCaptura = app.listenersDe(app.doc, 'click').filter((l) => l.captura === true);
+  eq(emCaptura.length, 0,
+    `alguém escuta o clique em captura no documento e pode decidir antes do owner: ${emCaptura.length}`);
+});
+
+test('PR2D D-2: o mecanismo que derrubaria a autoridade única está identificado e isolado', () => {
+  // Medido no app servido: hoje o interceptador não chega a existir, e é isso
+  // que mantém a resposta de D-1 em SIM.
+  const padrao = montarAppOwnership('');
+  eq(padrao.listenersDe(padrao.doc, 'click').filter((l) => l.captura === true).length, 0,
+    'apareceu interceptador de clique em captura na carga servida');
+
+  // Não é opinião sobre estilo: captura + stopImmediatePropagation silencia o
+  // handler real do item de menu, e `navigateToView` deixa de rodar (G-4).
+  const multitab = fonteServida('multitab-navigation.js');
+  assert(/safeOn\(document, 'click', onMenuIntercept, \{ capture: true \}\)/.test(multitab),
+    'o multitab mudou de mecanismo: a caracterização de G-4/G-5 precisa ser refeita');
+  assert(multitab.includes('event.stopImmediatePropagation();'),
+    'o multitab deixou de silenciar os demais handlers');
+
+  // O contrato: nenhum OUTRO arquivo servido faz isso. O multitab é a única
+  // ocorrência, e ela sai no PR 4 — até lá, esta contagem impede que o padrão
+  // seja copiado para um segundo lugar.
+  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const interceptadores = servidos.filter((rel) => {
+    const fonte = fonteServida(rel);
+    return /addEventListener\(\s*'click'[^)]*capture|'click',[^,]+,\s*\{\s*capture:\s*true/.test(fonte)
+      && fonte.includes('stopImmediatePropagation');
+  });
+  eq(interceptadores.join(','), 'multitab-navigation.js',
+    'apareceu um segundo interceptador de clique em captura entre os arquivos servidos');
+});
+
+test('PR2D D-3: "ativação redundante" tem uma definição, e ela mora no owner', () => {
+  const app = appComNavegacaoDoApp();
+  const antes = app.vistos.length;
+  app.clicarNoItemDeMenu('dashboard'); // já ativa
+  eq(app.ctx._assigns.length, 0, 'a ativação redundante recarregou a página');
+  eq(app.vistos.length, antes, 'a ativação redundante emitiu troca de view');
+  assert(typeof app.ctx.ativacaoRedundanteDeView === 'function',
+    'a definição canônica sumiu do owner');
+
+  // E a cópia: só o multitab a reimplementa (G-6), e ela sai no PR 4.
+  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const copias = servidos.filter((rel) => rel !== 'app.js'
+    && /function ativacaoRedundanteDeView/.test(fonteServida(rel)));
+  eq(copias.join(','), 'multitab-navigation.js',
+    'apareceu uma segunda cópia da guarda entre os arquivos servidos');
+});
+
+test('PR2D D-4: a capacidade candidata do multitab é um CACHE de tudo que foi digitado', () => {
+  // Medido no app servido: hoje esse cache não chega a existir, porque o
+  // módulo não inicializa (G-3). O que segue descreve o que ele faria.
+  const padrao = montarAppOwnership('');
+  eq(padrao.doc.body.classList.contains('ux-multitab-enabled'), false,
+    'o multitab passou a iniciar em produção: a análise do PR 2D precisa ser refeita');
+
+  // O que o PR 1 chamou de "abas com contexto preservado" é, no código,
+  // `captureViewContext`: uma varredura de todo input/select/textarea com id
+  // dentro da view, guardada num objeto JS por aba.
+  const multitab = fonteServida('multitab-navigation.js');
+  assert(multitab.includes("viewNode.querySelectorAll('input[id], select[id], textarea[id]')"),
+    'o multitab mudou o que captura: a análise do PR 2D precisa ser refeita');
+
+  // O filtro é por TIPO de campo, não por natureza do dado: só `password` e
+  // `hidden` ficam de fora. Não há noção de CPF, CNPJ, e-mail ou documento —
+  // que são exatamente os dados que a política do app nomeia (ver D-5).
+  assert(multitab.includes("field.type === 'password' || field.type === 'hidden'"),
+    'o filtro do multitab mudou de forma');
+  assert(!/cpf|cnpj|documento|sensiv|sensitive/i.test(multitab),
+    'o multitab passou a conhecer campos sensíveis: a objeção do PR 2D precisa ser revista');
+});
+
+test('PR2D D-5: pelo MENU o multitab NÃO restaura — ele respeita o contrato de reentrada', () => {
+  // CORREÇÃO DE HIPÓTESE. Ao abrir o PR 2D eu esperava que o cache de contexto
+  // do multitab brigasse com a política de limpeza do app em qualquer troca de
+  // view. O código diz o contrário, e de forma deliberada: `restoreViewContext`
+  // só roda com `opts.restoreContext === true`, e o caminho do menu lateral não
+  // passa esse sinal — "entrar pelo menu lateral é reentrada no módulo e tem de
+  // chegar no estado inicial" (contrato F5-B, no próprio arquivo).
+  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
+  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
+    'o multitab não iniciou no contrafactual: o gate mediria o nada');
+
+  app.clicarNoItemDeMenu('entregas');
+  app.doc.getElementById('delivery-role').value = 'DIGITADO-ANTES';
+  app.clicarNoItemDeMenu('estoque');   // captura o contexto de entregas
+
+  // Esvaziado com a aba fora de foco: sem isso o campo continuaria preenchido
+  // por inércia — a view só fica escondida — e o gate não distinguiria
+  // "restaurou" de "ninguém apagou".
+  app.doc.getElementById('delivery-role').value = '';
+  app.clicarNoItemDeMenu('entregas');  // volta PELO MENU
+
+  eq(app.doc.getElementById('delivery-role').value, '',
+    'o multitab restaurou pelo menu: o contrato de reentrada do app deixou de ser respeitado');
+});
+
+test('PR2D D-6: a restauração existe, por gesto da barra — e devolve o que a limpeza do app apagou', () => {
+  // O que sobra da objeção, medido no gesto certo: Ctrl+Tab restaura. A captura
+  // é INCONDICIONAL (toda troca de aba varre os campos) e o cache é um objeto
+  // JS; `resetAppFormDrafts()` opera no DOM e não o alcança.
+  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
+  app.clicarNoItemDeMenu('entregas');
+  app.doc.getElementById('delivery-role').value = 'DADO-DE-QUEM-SAIU';
+  app.clicarNoItemDeMenu('estoque');   // captura o contexto de entregas
+
+  app.ctx.resetAppFormDrafts();        // a limpeza do app, no DOM
+  eq(app.doc.getElementById('delivery-role').value, '',
+    'a limpeza do app não alcançou nem o DOM: o gate mediria outra coisa');
+
+  // Ctrl+Tab: um dos gestos que pedem o contexto de volta (os outros são
+  // clique na aba, fechar aba e popstate — todos com restoreContext: true).
+  // Ele CICLA pelas abas abertas (dashboard, entregas, estoque), então repete-se
+  // até chegar na de entregas — o gesto do usuário é o mesmo.
+  for (let i = 0; i < 3 && app.viewAtiva() !== 'entregas'; i += 1) {
+    app.doc.dispatchEvent(new app.ctx.Event('keydown', { key: 'Tab', ctrlKey: true, bubbles: true }));
+  }
+  eq(app.viewAtiva(), 'entregas', 'o Ctrl+Tab não alcançou a aba de entregas: o gate mediria outra coisa');
+
+  eq(app.doc.getElementById('delivery-role').value, 'DADO-DE-QUEM-SAIU',
+    'o cache não devolveu o valor: a objeção do PR 2D precisa ser remedida');
+
+  // O que hoje cobre o encerramento é a RECARGA — `terminateSession()` termina
+  // em `location.reload()` e o heap morre junto. É reforço de ambiente, não a
+  // limpeza. Absorver o cache no owner faria a política passar a depender disso.
+  const appJs = fonteServida('app.js');
+  assert(appJs.includes('globalThis.location.reload();'),
+    'o encerramento deixou de recarregar: a avaliação de risco do PR 2D muda');
+  assert(/CPF, nome, e-mail e WhatsApp/.test(appJs),
+    'o comentário que declara a política de limpeza mudou: a citação do PR 2D precisa ser revista');
+});
+
+
+test('PR2D D-7: destino de cada caminho da navegação, e inventário de flags', () => {
+  const DESTINOS = Object.freeze([
+    'REMOVER AGORA',
+    'REMOVER NO PR 4',
+    'MANTER TEMPORARIAMENTE POR DEPENDÊNCIA',
+    'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA'
+  ]);
+  const padrao = montarAppOwnership('');
+  eq(padrao.doc.body.classList.contains('ux-multitab-enabled'), false,
+    'o multitab passou a iniciar em produção: o destino precisa ser refeito');
+
+  const matriz = [
+    { caminho: 'app.js (bindMenuNavigation → navigateToView)', papel: 'OWNER',
+      absorveu: 'nada — a capacidade do concorrente conflita com política ativa do próprio app (D-5)',
+      flag: 'ux_spa_navigation_enabled (a do próprio owner; nenhuma flag nova)',
+      destino: 'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA', gates: ['2D D-1', '2D D-3', '2D D-5'] },
+    { caminho: 'multitab-navigation.js (onMenuIntercept)', papel: 'CONCORRENTE',
+      absorveu: 'não se aplica — interceptador, não capacidade',
+      flag: 'ux_multitab_enabled (inalterada, e o módulo segue inerte)',
+      destino: 'REMOVER NO PR 4', gates: ['2D D-1', '2D D-2', 'G-4', 'G-5'] },
+    { caminho: 'multitab-navigation.js (captureViewContext/restoreViewContext)', papel: 'CAPACIDADE CANDIDATA',
+      absorveu: 'nada — segunda cópia do que foi digitado, fora do alcance da limpeza do app (D-5)',
+      flag: 'ux_multitab_enabled (inalterada)',
+      destino: 'REMOVER NO PR 4', gates: ['2D D-4', '2D D-5', '2D D-6'] }
+  ];
+  matriz.forEach((m) => {
+    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
+    assert(m.gates.length >= 2, `"${m.caminho}" precisa de mais de um gate sustentando o destino`);
+    assert(String(m.flag || '').trim() !== '', `"${m.caminho}" sem inventário de flag`);
+  });
+  eq(matriz.length, 3, 'a matriz do PR 2D mudou de tamanho sem revisão');
+});
+
+
+// ── MATRIZES FINAIS DO PR 2 ─────────────────────────────────────────────────
+//
+// As duas exigidas pelo contrato da frente. Nenhuma das duas se declara: cada
+// linha reafirma, no app servido, o estado que sustenta a conclusão.
+
+test('PR2D D-8: matriz final — responsabilidade × owner antes/concorrente/depois', () => {
+  const padrao = montarAppOwnership('');
+  const com42 = montarAppOwnership('?ux_phase42=1');
+  const comDropdown = montarAppOwnership('?ux_htmx_prod=1&ux_tools_functional=1');
+
+  const linhas = [
+    { responsabilidade: 'Pré-condição de envio da entrega de EPI',
+      ownerAntes: 'app.js (saveSimpleForm) + backend (deliveries/service.py)',
+      concorrente: 'ux-phase43.js (validateContext)',
+      ownerDepois: 'app.js — inalterado',
+      absorvido: 'nada — a cópia não tinha a exceção de devolução',
+      concorrenteRemovivel: true,
+      ativoHoje: typeof padrao.ctx.formValues === 'function', fatia: '2A' },
+    { responsabilidade: 'Assistente e revisão explícita do envio',
+      ownerAntes: 'ux-phase42.js', concorrente: 'ux-phase43.js',
+      ownerDepois: 'ux-phase42.js — inalterado',
+      absorvido: 'nada',
+      concorrenteRemovivel: true,
+      ativoHoje: com42.doc.body.classList.contains('phase42-enabled'), fatia: '2A' },
+    { responsabilidade: 'Instrumentação de requisições HTTP',
+      ownerAntes: 'error-monitor.js', concorrente: 'ux-phase44.js (bindFetchFeedbackBridge)',
+      ownerDepois: 'error-monitor.js — inalterado',
+      absorvido: 'nada — a capacidade alimentava métrica de duração zero',
+      concorrenteRemovivel: true,
+      ativoHoje: padrao.ctx.fetch.__EPI_MONITORED_FETCH__ === true, fatia: '2B' },
+    { responsabilidade: 'Dropdown [data-ui-dropdown]',
+      ownerAntes: 'app.js (setupInteractiveDropdowns)', concorrente: 'ux-phase44.js (createDropdown)',
+      ownerDepois: 'app.js — COM a devolução de foco ao gatilho',
+      absorvido: 'devolução de foco ao gatilho no Escape de dentro do dropdown',
+      concorrenteRemovivel: true,
+      ativoHoje: comDropdown.ctx.isHtmxAlpineProductionActive() === true, fatia: '2C' },
+    { responsabilidade: 'Intenção de navegação (clique no menu)',
+      ownerAntes: 'app.js (bindMenuNavigation → navigateToView)',
+      concorrente: 'multitab-navigation.js (onMenuIntercept, em captura)',
+      ownerDepois: 'app.js — inalterado',
+      absorvido: 'nada — interceptador não é capacidade',
+      concorrenteRemovivel: true,
+      ativoHoje: typeof padrao.ctx.navigateToView === 'function', fatia: '2D' },
+    { responsabilidade: 'Contexto de formulário por aba',
+      ownerAntes: 'nenhum', concorrente: 'multitab-navigation.js (captureViewContext)',
+      ownerDepois: 'nenhum — continua sem dono, e deliberadamente',
+      absorvido: 'nada — segunda cópia do digitado, fora do alcance de resetAppFormDrafts()',
+      concorrenteRemovivel: true,
+      ativoHoje: false, fatia: '2D' }
+  ];
+
+  linhas.forEach((l) => {
+    eq(l.ativoHoje, l.responsabilidade === 'Contexto de formulário por aba' ? false : true,
+      `"${l.responsabilidade}": o owner medido não está no estado que a matriz declara`);
+    assert(String(l.absorvido || '').trim() !== '', `"${l.responsabilidade}" sem coluna "absorvido"`);
+    assert(/^2[A-D]$/.test(l.fatia), `"${l.responsabilidade}" sem fatia identificada`);
+  });
+
+  // O saldo do PR 2 inteiro: UMA absorção, em seis responsabilidades.
+  const absorcoes = linhas.filter((l) => !/^nada/.test(l.absorvido));
+  eq(absorcoes.length, 1, 'o número de capacidades absorvidas no PR 2 mudou sem revisão');
+  eq(absorcoes[0].fatia, '2C', 'a única absorção do PR 2 deixou de ser a do dropdown');
+  eq(linhas.length, 6, 'a matriz final de responsabilidades mudou de tamanho sem revisão');
+});
+
+test('PR2D D-9: matriz final — módulo × estado × flag × destino', () => {
+  const DESTINOS = Object.freeze([
+    'MANTER — OWNER',
+    'REMOVER NO PR 4',
+    'FORA DO ESCOPO DO PR 2 — DECISÃO DO PR 3/F5-C'
+  ]);
+  const padrao = montarAppOwnership('');
+  const ligado = (busca, marca) => montarAppOwnership(busca).doc.body.classList.contains(marca);
+
+  const matriz = [
+    { modulo: 'ux-phase42.js', inerteHoje: !padrao.doc.body.classList.contains('phase42-enabled'),
+      ligaComFlag: ligado('?ux_phase42=1', 'phase42-enabled'),
+      flag: 'ux_phase42_enabled', destino: 'MANTER — OWNER' },
+    { modulo: 'ux-phase41.js', inerteHoje: !padrao.doc.body.classList.contains('phase41-enabled'),
+      // Não liga nem com a flag: a colisão de chave de guard barra antes.
+      ligaComFlag: ligado('?ux_phase41=1', 'phase41-enabled'),
+      flag: 'ux_phase41_enabled', destino: 'FORA DO ESCOPO DO PR 2 — DECISÃO DO PR 3/F5-C' },
+    { modulo: 'ux-phase43.js', inerteHoje: !padrao.doc.body.classList.contains('phase43-enabled'),
+      ligaComFlag: ligado('?ux_phase43=1', 'phase43-enabled'),
+      flag: 'ux_phase43_enabled', destino: 'REMOVER NO PR 4' },
+    { modulo: 'ux-phase44.js', inerteHoje: !padrao.doc.body.classList.contains('phase44-enabled'),
+      ligaComFlag: ligado('?ux_phase44=1', 'phase44-enabled'),
+      flag: 'ux_phase44_enabled', destino: 'REMOVER NO PR 4' },
+    { modulo: 'multitab-navigation.js', inerteHoje: !padrao.doc.body.classList.contains('ux-multitab-enabled'),
+      ligaComFlag: ligado('?ux_multitab=1', 'ux-multitab-enabled'),
+      flag: 'ux_multitab_navigation_enabled', destino: 'REMOVER NO PR 4' }
+  ];
+
+  matriz.forEach((m) => {
+    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
+    assert(m.inerteHoje === true, `"${m.modulo}" deixou de estar inerte na carga padrão`);
+    // A flag existe mesmo: o nome precisa casar com o registro do app.
+    assert(fonteServida('app.js').includes(`${m.flag}: {`),
+      `"${m.modulo}" aponta para uma flag que não existe no registro: ${m.flag}`);
+  });
+
+  // O phase42 é o único que a flag consegue LIGAR de fato. Nos outros quatro a
+  // flag é inócua — a colisão de chave de guard barra antes dela (PR 0/PR 1).
+  // É por isso que "desligar a flag" nunca foi resposta para nenhum deles.
+  eq(matriz.filter((m) => m.ligaComFlag).map((m) => m.modulo).join(','), 'ux-phase42.js',
+    'mudou o conjunto de módulos que a flag consegue ligar: as conclusões do PR 0 e do PR 1 precisam ser revistas');
+
+  eq(matriz.filter((m) => m.destino === 'REMOVER NO PR 4').length, 3,
+    'mudou o número de módulos que o PR 2 libera para remoção');
+  eq(matriz.length, 5, 'a matriz final de módulos mudou de tamanho sem revisão');
 });
 
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {

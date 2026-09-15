@@ -97,11 +97,24 @@ no Escape.
 
 ### 4.2) phase43 — o que ele acrescenta ao phase42
 
+> **CORRIGIDO NO PR 2A.** A conclusão original desta seção estava errada. Ver
+> `docs/PR2A_CONSOLIDACAO_ENTREGA.md`.
+
 Medido em `PR1 H-1` e `H-2`: com o `phase42` sozinho e a revisão marcada, uma
 entrega **sem código lido** passa. Com o `phase43`, ela é barrada e o campo
-faltante é nomeado. A exigência do `#delivery-stock-item-code` é **capacidade
-exclusiva do 4.3** — é o que se absorve no owner, e é o motivo de a decisão não
-ser "REMOVER".
+faltante é nomeado.
+
+Daí se concluiu que a exigência do `#delivery-stock-item-code` era capacidade
+exclusiva do 4.3. **Não é.** Os dois gates comparam phase42 com phase43 e nunca
+mediram o `app.js`, cujo handler de submit da entrega é ligado dentro do
+`init()` — que este harness só passou a executar no PR 2A. O owner real da
+exigência é o `app.js` (antecipação, com exceção para devolução e mensagem
+traduzida) e, em última instância, o backend em
+`modules/deliveries/service.py`, que é onde a regra é decidida.
+
+O phase43 é uma terceira cópia da mesma regra, **sem** a exceção de devolução:
+ativá-lo bloquearia toda devolução (`PR2A A-4`). Classificação revista para
+**REMOVER — REDUNDANTE**, com remoção física no PR 4.
 
 ## 5) Matriz de decisão por módulo
 
@@ -112,14 +125,15 @@ decisão e recusa o vocabulário fora da lista.
 |---|---|---|---|
 | `ux-phase41.js` | não (inerte) | **sim** — nenhum outro persiste rascunho; o app tem política ANTI-persistência | **MANTER INERTE — FUNCIONALIDADE ÚNICA** |
 | `ux-phase42.js` | **sim** quando a flag está ligada | **sim** — é o owner do assistente e do gate de envio | **MANTER — OWNER** |
-| `ux-phase43.js` | não (inerte) | **sim** — exigência do código lido, confirmação por teclado, estado do envio | **ABSORVER CAPACIDADE NO OWNER** |
+| `ux-phase43.js` | não (inerte) | **não** (revisto no PR 2A) — só afordâncias de interface, sem regra de negócio | **REMOVER — REDUNDANTE** (remoção física no PR 4) |
 | `ux-phase44.js` | não (inerte) | **sim** — foco de volta ao gatilho, confirmação inline, contador de filtros | **ABSORVER CAPACIDADE NO OWNER** |
 | `multitab-navigation.js` | não (inerte) | **sim** — abas com contexto preservado, sem owner algum hoje | **ABSORVER CAPACIDADE NO OWNER** |
 
-**Nenhum módulo foi classificado `REMOVER — REDUNDANTE`.** Em todos os quatro
-inertes sobrou capacidade que o owner atual não tem. Remoção é decisão do PR de
-limpeza, e só depois da absorção. O gate `Z-2` recusa essa classificação sem
-prova de ausência de capacidade exclusiva.
+**No PR 1, nenhum módulo alcançou `REMOVER — REDUNDANTE`** — em todos os quatro
+inertes parecia sobrar capacidade que o owner atual não tinha. O PR 2A derrubou
+essa aparência para o `phase43`. O gate `Z-2` continua recusando a classificação
+sem prova: exige que o módulo conste sem capacidade exclusiva **e** que a decisão
+venha acompanhada de um gate do PR 2 que mostre o owner alternativo.
 
 ## 6) Caracterizações de defeito
 

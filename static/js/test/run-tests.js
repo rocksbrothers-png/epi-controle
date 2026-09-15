@@ -5796,6 +5796,63 @@ test('PR1 Z-3: toda caracterização de defeito declara os cinco campos e é vis
   console.log('');
 });
 
+test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {
+  // Este é o gate que fecha a seção, e ele existe pelo mesmo motivo que o
+  // `G-real-cobertura` da F5-B.1: a fatia anterior descobriu que gates montados
+  // sobre evento FABRICADO passavam verdes sem atravessar o caminho real, e foi
+  // esse atalho que manteve cinco achados invisíveis. Uma seção que se propõe a
+  // caracterizar COMPORTAMENTO não pode aceitar o mesmo atalho.
+  //
+  // É também o consumidor das marcas de seção — declaradas junto com o harness
+  // e apontadas pelo CodeQL como não utilizadas enquanto este gate não existia.
+  const fonte = fs.readFileSync(__filename, 'utf-8');
+  const ini = fonte.indexOf(MARCA_INICIO_PR1 + '\n');
+  const fim = fonte.indexOf(MARCA_FIM_PR1 + '\n', ini + 1);
+  assert(ini > -1 && fim > ini, 'as marcas da seção PR1 mudaram de forma');
+  const secao = fonte.slice(ini, fim);
+
+  const blocos = secao.split(/\n(?:test|testAsync|caracterizaDefeito)\('PR1 /).slice(1);
+  assert(blocos.length >= 35, `esperava os gates do PR1, encontrei ${blocos.length}`);
+  const FABRICACAO_DE_VIEW = "CustomEvent('epi:" + "viewchange'";
+
+  // Montar o app servido é o que separa caracterização de suposição. As quatro
+  // funções auxiliares abaixo todas desembocam em `montarAppOwnership`.
+  const MONTAGENS = [
+    'montarAppOwnership(', 'celulaDaMatriz42x43(',
+    'appComDropdownDoApp(', 'appComDropdownDoPhase44(', 'appComNavegacaoDoApp('
+  ];
+  // Únicas exceções, e cada uma tem razão declarada: elas não medem
+  // comportamento, fixam a CONCLUSÃO que os outros gates sustentam.
+  const SEM_MONTAGEM = {
+    'F-6': 'fixa a classificação de equivalência do dropdown, derivada de F-1..F-5',
+    'Z-2': 'fixa a matriz de decisão por módulo e o vocabulário permitido',
+    'Z-3': 'valida os campos das caracterizações de defeito, não o app',
+    'Z-4': 'é este próprio gate de cobertura, que lê o arquivo em vez do app'
+  };
+
+  blocos.forEach((bloco) => {
+    const nome = bloco.slice(0, bloco.indexOf(':'));
+    if (!Object.prototype.hasOwnProperty.call(SEM_MONTAGEM, nome)) {
+      assert(MONTAGENS.some((m) => bloco.includes(m)),
+        `o gate "${nome}" não monta o app servido — sem isso ele descreve uma suposição, não um comportamento`);
+    }
+    // O atalho proibido, explicitamente: inventar a troca de view em vez de
+    // provocá-la. Nenhum gate desta seção precisa disso, e o dia em que um
+    // precisar é o dia de rever o harness, não de fabricar o evento.
+    //
+    // O literal é montado em duas partes de propósito: escrito inteiro, ELE
+    // apareceria no texto desta própria função e o gate se acusaria. A
+    // alternativa seria abrir exceção para si mesmo — e uma regra que não
+    // alcança quem a escreve é exatamente o tipo de guarda que não guarda.
+    assert(!bloco.includes(FABRICACAO_DE_VIEW),
+      `o gate "${nome}" fabrica a troca de view: é o atalho que escondeu os cinco achados da F5-B.1`);
+  });
+
+  // E as exceções não podem crescer em silêncio.
+  eq(Object.keys(SEM_MONTAGEM).length, 4,
+    'a lista de gates sem montagem mudou de tamanho: cada exceção precisa de razão declarada');
+});
+
 // MARCA_FIM_PR1
 
 // ── Relatório ─────────────────────────────────────────────────────────────

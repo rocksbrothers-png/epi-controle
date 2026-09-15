@@ -4706,7 +4706,7 @@ test('#343 F5-B.1 G-B-2: troca real de contexto continua fechando a UI transitó
 // MARCA_FIM_F5B1
 
 // ══════════════════════════════════════════════════════════════════════════
-// #343 PR1 — CARACTERIZAÇÃO COMPORTAMENTAL E OWNERSHIP
+// #343 — CARACTERIZAÇÃO COMPORTAMENTAL (PR1) E CONSOLIDAÇÃO (PR2)
 // ══════════════════════════════════════════════════════════════════════════
 //
 // Esta seção NÃO corrige nada. Ela transforma em teste reproduzível o que a
@@ -4775,10 +4775,15 @@ function fixtureOwnershipPR1() {
     s.selectedOptions = [];
     return s;
   };
-  form.appendChild(selecao('delivery-company', ['1', '2']));
-  form.appendChild(selecao('delivery-unit-filter', ['10', '20']));
-  form.appendChild(selecao('delivery-employee', ['100', '200']));
-  form.appendChild(selecao('delivery-epi', ['1000', '2000']));
+  // `name` além do `id`: o `formValues()` do app monta o payload pelos NOMES,
+  // e sem eles o gate do owner real mediria um formulário vazio.
+  const nomeado = (no, nome) => { no.name = nome; return no; };
+  form.appendChild(nomeado(selecao('delivery-company', ['1', '2']), 'company_id'));
+  form.appendChild(nomeado(selecao('delivery-unit-filter', ['10', '20']), 'unit_id'));
+  form.appendChild(nomeado(selecao('delivery-employee', ['100', '200']), 'employee_id'));
+  form.appendChild(nomeado(selecao('delivery-epi', ['1000', '2000']), 'epi_id'));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-stock-item-id', name: 'stock_item_id', type: 'hidden' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-stock-qr-code', name: 'stock_qr_code', type: 'hidden' }));
   form.appendChild(criarNoF5B('input', { id: 'delivery-role' }));
   form.appendChild(criarNoF5B('input', { id: 'delivery-stock-item-code' }));
   form.appendChild(criarNoF5B('input', { id: 'delivery-quantity', name: 'quantity', value: '1' }));
@@ -4791,6 +4796,14 @@ function fixtureOwnershipPR1() {
   // checkbox, com o MESMO id que `hasExplicitReview()` procura — é o gate real
   // do phase42 que fica exercitável, não um atalho que o contorna.
   form.appendChild(criarNoF5B('input', { id: 'phase42-review-check', type: 'checkbox' }));
+  // Devolução: o app roteia para /api/devolutions e APAGA stock_item_id e
+  // stock_qr_code do payload. Os nós precisam existir antes de o app.js rodar,
+  // porque `refs` é montado na avaliação do arquivo.
+  form.appendChild(criarNoF5B('input', { id: 'delivery-is-devolution', name: 'is_devolution', type: 'checkbox' }));
+  form.appendChild(criarNoF5B('div', { id: 'delivery-devolution-fields' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-returned-date', type: 'date' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-return-condition', value: 'usable' }));
+  form.appendChild(criarNoF5B('input', { id: 'delivery-return-destination', value: 'stock' }));
   const enviar = criarNoF5B('button', { id: 'delivery-submit', class: 'primary' });
   enviar.type = 'submit';
   form.appendChild(enviar);
@@ -4891,6 +4904,29 @@ function montarAppOwnership(busca, opcoes) {
     // do fixture em vez do comportamento do módulo. Como nenhum nó do shim
     // herda deles, todo `instanceof` dá falso — que é a mesma degradação que o
     // harness da F5-B.1 já aceita para `HTMLElement`.
+    // Plataforma: `formValues()` do app é
+    // `Object.fromEntries(new FormData(form).entries())`. Sem este construtor o
+    // envio real da entrega morre antes de chegar à validação que o gate mede.
+    // Segue a semântica do navegador nos pontos que importam: só controles COM
+    // `name`, checkbox/radio apenas quando marcados, e `select` entrega o
+    // `value` corrente.
+    FormData: class {
+      constructor(form) {
+        this._pares = [];
+        if (!form || typeof form.querySelectorAll !== 'function') return;
+        descendentesF5B(form).forEach((campo) => {
+          if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(campo.tagName)) return;
+          if (!campo.name || campo.disabled) return;
+          const tipo = String(campo.type || '').toLowerCase();
+          if ((tipo === 'checkbox' || tipo === 'radio') && !campo.checked) return;
+          this._pares.push([String(campo.name), String(campo.value == null ? '' : campo.value)]);
+        });
+      }
+      entries() { return this._pares[Symbol.iterator](); }
+      get(nome) { const par = this._pares.find((x) => x[0] === nome); return par ? par[1] : null; }
+      forEach(fn) { this._pares.forEach(([k, v]) => fn(v, k, this)); }
+      [Symbol.iterator]() { return this.entries(); }
+    },
     HTMLElement: class {}, HTMLFormElement: class {}, HTMLButtonElement: class {},
     HTMLInputElement: class {}, HTMLSelectElement: class {}, HTMLTextAreaElement: class {},
     HTMLAnchorElement: class {},
@@ -4965,7 +5001,10 @@ function montarAppOwnership(busca, opcoes) {
     if (rel === 'app.js') {
       const estado = ctx.__EPI_APP_STATE__ || {};
       estado.user = o.usuario || { id: 1, role: 'general_admin', company_id: 1 };
-      estado.permissions = ['dashboard:view', 'deliveries:view', 'stock:view', 'employees:view'];
+      estado.permissions = [
+        'dashboard:view', 'deliveries:view', 'deliveries:create',
+        'stock:view', 'employees:view'
+      ];
       // CONTRAFACTUAL de bootstrap: `ensureModuleBound` passa a derivar a chave
       // num namespace PRÓPRIO, em vez de `__EPI_<CHAVE>_BOUND__` — que é a
       // mesma chave que os IIFEs de 41/43/44 gravam em si mesmos. Substitui-se
@@ -5029,6 +5068,22 @@ function montarAppOwnership(busca, opcoes) {
       if (typeof ctx.flushPendingStorageWrites === 'function') ctx.flushPendingStorageWrites();
     },
     responderPara: (trecho, r) => { respostasPorUrl.set(String(trecho), r); },
+    // Dispara o bootstrap REAL do app. O `init()` é `async function` declarada
+    // dentro do bloco `if (!globalThis.__EPI_APP_RUNTIME_LOADED__) {` que
+    // envolve o app.js inteiro — e declaração `async function` em bloco NUNCA
+    // vaza para o global (a hoisting legada do Annex B não vale para elas).
+    // Por isso nem `init` nem `saveSimpleForm` existem em `ctx`, enquanto
+    // `navigateToView` e `showView`, que são `function` comum, existem.
+    //
+    // O caminho que sobra é o de produção: o app registra
+    // `safeOn(document, 'DOMContentLoaded', () => init().catch(...))`, e esse
+    // listener está no documento do harness. Disparar o evento roda o
+    // bootstrap de verdade — inclusive `bindAppListener(#delivery-form,
+    // 'submit', ...)`, que é o owner do envio da entrega. O `.catch()` do
+    // próprio app absorve a rejeição das chamadas de API que vierem depois.
+    dispararBootstrapDoApp: () => {
+      doc.dispatchEvent(new ctx.Event('DOMContentLoaded', { bubbles: false }));
+    },
     chamadasPara: (trecho) => chamadasDeRede.filter((u) => u.includes(trecho)),
     viewAtiva: () => {
       const no = doc.querySelector('.view.active');
@@ -5653,6 +5708,12 @@ caracterizaDefeito('PR1 G-6 (contrafactual): o multitab reimplementa a guarda de
 // capacidade no 43 que o owner não tem?". Sem resposta medida, remover é
 // chute e preservar é inércia.
 
+// CORRIGIDO NO PR 2A. Estes dois gates continuam medindo o que sempre mediram —
+// phase42 não valida o código, phase43 valida — mas a CONCLUSÃO que se tirou
+// deles estava errada. Eles comparam 42 com 43 e nunca mediram o `app.js`, cujo
+// handler de submit da entrega é ligado dentro do `init()`, que este harness só
+// passou a executar no PR 2A (`dispararBootstrapDoApp`). O owner real da
+// exigência é o app — ver `PR2A A-1`. Logo, a capacidade NÃO é exclusiva do 43.
 test('PR1 H-1: o phase42 sozinho NÃO valida o código lido do item de estoque', () => {
   const app = montarAppOwnership('?ux_phase42=1', { contrafactualBootstrap: true });
   app.doc.getElementById('delivery-employee').value = '100';
@@ -5667,7 +5728,7 @@ test('PR1 H-1: o phase42 sozinho NÃO valida o código lido do item de estoque',
     'o phase42 passou a barrar por código não lido — ele absorveu a capacidade e o 43 perdeu a exclusividade');
 });
 
-test('PR1 H-2: o phase43 acrescenta a exigência do código lido — capacidade EXCLUSIVA dele', () => {
+test('PR1 H-2: o phase43 também exige o código lido — mas a capacidade não é dele (ver PR2A A-1)', () => {
   const app = montarAppOwnership('?ux_phase43=1', { contrafactualBootstrap: true });
   app.doc.getElementById('delivery-employee').value = '100';
   app.doc.getElementById('delivery-epi').value = '1000';
@@ -5720,6 +5781,9 @@ test('PR1 Z-1: matriz de ownership — a coluna "ativa hoje?" é remedida, não 
     { responsabilidade: 'Assistente e pré-condição de envio da entrega',
       candidata: 'ux-phase42.js', ativaHoje: com42.doc.body.classList.contains('phase42-enabled'),
       esperada: true, owner: 'ux-phase42.js' },
+    { responsabilidade: 'Exigência do código lido no envio da entrega',
+      candidata: 'app.js (saveSimpleForm, ramo do delivery-form)', ativaHoje: typeof padrao.ctx.formValues === 'function',
+      esperada: true, owner: 'app.js — e a decisão final é do backend (modules/deliveries/service.py)' },
     { responsabilidade: 'Fluxo rápido de entrega (concorrente)',
       candidata: 'ux-phase43.js', ativaHoje: montarAppOwnership('?ux_phase43=1').contarListeners(padrao.form, 'submit') > 0,
       esperada: false, owner: 'ux-phase42.js' },
@@ -5735,7 +5799,7 @@ test('PR1 Z-1: matriz de ownership — a coluna "ativa hoje?" é remedida, não 
     eq(l.ativaHoje, l.esperada,
       `"${l.responsabilidade}" via ${l.candidata}: a matriz diz ativa=${l.esperada} e a medição diz ${l.ativaHoje}`);
   });
-  eq(linhas.length, 10, 'a matriz de ownership mudou de tamanho sem revisão');
+  eq(linhas.length, 11, 'a matriz de ownership mudou de tamanho sem revisão');
 });
 
 test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a sustenta', () => {
@@ -5751,8 +5815,15 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
       decisao: 'MANTER — OWNER', gates: ['B-1', 'B-2', 'B-3', 'B-4', 'D-1'] },
     { modulo: 'ux-phase41.js', necessario: false, exclusivo: true,
       decisao: 'MANTER INERTE — FUNCIONALIDADE ÚNICA', gates: ['C-1', 'C-2', 'C-4', 'C-5', 'C-6'] },
-    { modulo: 'ux-phase43.js', necessario: false, exclusivo: true,
-      decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['D-1', 'D-2', 'D-3', 'H-1', 'H-2'] },
+    // REVISTO NO PR 2A. A exigência do código lido, que o PR 1 tinha tomado por
+    // capacidade exclusiva, é do `app.js` — que a aplica ANTES da rede, com
+    // exceção para devolução e com mensagem traduzida (PR2A A-1..A-3). O
+    // phase43 é uma terceira cópia da mesma regra, sem a exceção: ativá-lo
+    // bloquearia toda devolução (PR2A A-4). O que sobra nele são afordâncias de
+    // interface (barra fixa, confirmar por teclado, modo manual, eco do estado
+    // do envio) que nunca rodaram em produção e não carregam regra de negócio.
+    { modulo: 'ux-phase43.js', necessario: false, exclusivo: false,
+      decisao: 'REMOVER — REDUNDANTE', gates: ['D-1', 'D-2', 'D-3', 'A-1', 'A-3', 'A-4'] },
     { modulo: 'ux-phase44.js', necessario: false, exclusivo: true,
       decisao: 'ABSORVER CAPACIDADE NO OWNER', gates: ['E-1', 'E-3', 'F-1', 'F-3', 'F-4', 'F-5'] },
     // A navegação TEM owner ativo e comprovado (G-1, G-2); o multitab cria uma
@@ -5767,11 +5838,17 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
     assert(DECISOES.includes(m.decisao), `decisão fora do vocabulário: ${m.decisao}`);
     assert(m.gates.length >= 3, `"${m.modulo}" precisa de mais de um gate sustentando a decisão`);
   });
-  // Nenhum módulo foi classificado REMOVER — REDUNDANTE neste PR: em todos os
-  // quatro inertes sobrou capacidade que o owner atual não tem. Remoção é
-  // decisão do PR de limpeza, e só depois da absorção.
-  eq(matriz.filter((m) => m.decisao === 'REMOVER — REDUNDANTE').length, 0,
-    'um módulo foi marcado para remoção: isso exige gate que prove ausência de capacidade exclusiva');
+  // REMOVER — REDUNDANTE exige prova de que a capacidade tem outro dono. No
+  // PR 1 nenhum módulo alcançava esse patamar; no PR 2A o phase43 alcançou,
+  // porque os gates A-1..A-4 mostram o owner real e mostram que a cópia é pior
+  // que o original. A regra abaixo não impede a classificação — exige que ela
+  // venha acompanhada dos gates que a sustentam.
+  matriz.filter((m) => m.decisao === 'REMOVER — REDUNDANTE').forEach((m) => {
+    assert(m.exclusivo === false,
+      `"${m.modulo}" foi marcado para remoção mas ainda consta com capacidade exclusiva`);
+    assert(m.gates.some((g) => /^A-/.test(g)),
+      `"${m.modulo}" foi marcado para remoção sem gate do PR 2 que prove o owner alternativo`);
+  });
   eq(matriz.length, 5, 'a matriz de decisão mudou de tamanho sem revisão');
 });
 
@@ -5796,6 +5873,128 @@ test('PR1 Z-3: toda caracterização de defeito declara os cinco campos e é vis
   console.log('');
 });
 
+// ── PR 2A — phase43 × phase42: quem é o owner da exigência do código lido ───
+
+testAsync('PR2A A-1: o owner REAL da exigência do código lido é o app.js', async () => {
+  // O gate `PR1 H-2` mediu que o phase43 exige o código e disso concluiu que a
+  // capacidade era EXCLUSIVA dele. A conclusão estava errada, e o motivo é o
+  // limite do harness que o próprio PR 1 declarou: o bind do submit da entrega
+  // mora dentro do `init()`, que o harness não executava. O gate comparou
+  // phase42 com phase43 e nunca mediu o app.
+  //
+  // Aqui o bootstrap REAL roda, e quem julga o envio é o handler de produção.
+  const app = montarAppOwnership('');
+  app.dispararBootstrapDoApp();
+  eq(app.contarListeners(app.form, 'submit'), 1,
+    'o app não ligou o próprio handler de submit da entrega: o gate mediria a ausência dele');
+
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '1';
+  app.doc.getElementById('delivery-stock-item-id').value = '';
+  app.doc.getElementById('delivery-stock-qr-code').value = '';
+
+  const avisos = [];
+  app.ctx.alert = (m) => avisos.push(String(m));
+  app.enviarFormularioDeEntrega();
+  await new Promise((r) => setTimeout(r, 0));
+
+  eq(app.chamadasPara('/api/deliveries').length, 0,
+    'a entrega sem código lido chegou à rede: o app deixou de barrar antes do envio');
+  assert(avisos.some((m) => /QR|Leia/i.test(m)),
+    `o app deveria recusar a entrega sem leitura, avisos: ${JSON.stringify(avisos)}`);
+});
+
+testAsync('PR2A A-2: com o código lido, o mesmo owner deixa a entrega seguir para a API', async () => {
+  // Contraprova do A-1: sem ela, "não chegou à rede" poderia significar apenas
+  // que o fixture nunca chega à rede.
+  const app = montarAppOwnership('');
+  app.dispararBootstrapDoApp();
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '1';
+  app.doc.getElementById('delivery-stock-item-id').value = '77';
+  app.doc.getElementById('delivery-stock-qr-code').value = 'QR-77';
+
+  app.enviarFormularioDeEntrega();
+  await new Promise((r) => setTimeout(r, 0));
+
+  eq(app.chamadasPara('/api/deliveries').length, 1,
+    'com o código lido a entrega deveria alcançar a API — senão o A-1 não prova nada');
+});
+
+testAsync('PR2A A-3: o owner isenta a DEVOLUÇÃO da exigência do código lido', async () => {
+  // Regra real do app: devolução vai para /api/devolutions e o payload tem
+  // `stock_item_id` e `stock_qr_code` REMOVIDOS. Exigir leitura ali seria
+  // impedir toda devolução.
+  const app = montarAppOwnership('');
+  app.dispararBootstrapDoApp();
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '1';
+  app.doc.getElementById('delivery-stock-item-id').value = '';
+  app.doc.getElementById('delivery-stock-qr-code').value = '';
+  app.doc.getElementById('delivery-is-devolution').checked = true;
+
+  const avisos = [];
+  app.ctx.alert = (m) => avisos.push(String(m));
+  app.enviarFormularioDeEntrega();
+  await new Promise((r) => setTimeout(r, 0));
+
+  assert(!avisos.some((m) => /Leia e valide/i.test(m)),
+    `a devolução foi barrada pela exigência de leitura, que não se aplica a ela: ${JSON.stringify(avisos)}`);
+});
+
+caracterizaDefeito('PR2A A-4: o phase43 exigiria o código lido também na devolução', {
+  esperado: 'A exigência de leitura vale para entrega, não para devolução — que o app roteia para /api/devolutions sem stock_item_id nem stock_qr_code.',
+  atual: 'validateContext() do phase43 exige stockCode incondicionalmente. O arquivo inteiro não menciona devolução.',
+  motivo: 'Terceira cópia de uma regra que já tem dono, escrita sem as exceções que o dono conhece.',
+  responsabilidade: 'Pré-condição de envio da entrega de EPI.',
+  decisaoFutura: 'Não absorver: a capacidade não é exclusiva e a cópia é pior que o original. phase43 vai para REMOVER NO PR 4.'
+}, () => {
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8');
+  assert(fonte.includes("missing.push('código lido')"),
+    'o phase43 deixou de exigir o código lido — esta caracterização está obsoleta');
+  assert(!/devolu|devolution/i.test(fonte),
+    'o phase43 passou a conhecer devolução: a caracterização precisa ser revista');
+
+  // E o comportamento, no contrafactual: com a devolução marcada, ele barra.
+  const app = montarAppOwnership('?ux_phase43=1', { contrafactualBootstrap: true });
+  app.doc.getElementById('delivery-employee').value = '100';
+  app.doc.getElementById('delivery-epi').value = '1000';
+  app.doc.getElementById('delivery-unit-filter').value = '10';
+  app.doc.getElementById('delivery-quantity').value = '1';
+  app.doc.getElementById('delivery-is-devolution').checked = true;
+  app.doc.getElementById('delivery-stock-item-code').value = '';
+
+  const evento = app.enviarFormularioDeEntrega();
+  eq(evento.defaultPrevented, true, 'o phase43 deixou de barrar: caracterização obsoleta');
+  const resumo = app.doc.getElementById('phase43-quick-confirm');
+  assert(String(resumo && resumo.innerHTML || '').includes('código lido'),
+    'o phase43 barrou por outro motivo que não a leitura');
+});
+
+test('PR2A A-5: quantos gates de submit existem depois da consolidação, e de quem são', () => {
+  // O contrato "um owner por responsabilidade" é sobre a REGRA, não sobre a
+  // contagem de listeners. Esta medição deixa explícito o arranjo autorizado,
+  // para ninguém precisar deduzi-lo depois.
+  const contar = (busca, opcoes) => {
+    const app = montarAppOwnership(busca, opcoes);
+    app.dispararBootstrapDoApp();
+    return app.contarListeners(app.form, 'submit');
+  };
+  eq(contar(''), 1,
+    'produção hoje: só o handler do app.js, dono da regra de negócio da entrega');
+  eq(contar('?ux_phase42=1'), 2,
+    'com o phase42 ligado somam-se dois: o do app (regra) e o do phase42 (revisão explícita). Arranjo autorizado — o phase42 é o owner do assistente e a revisão é dele.');
+  // E o que a consolidação evita: o terceiro.
+  eq(contar('?ux_phase42=1&ux_phase43=1', { contrafactualBootstrap: true }), 3,
+    'com o phase43 somado seriam TRÊS gates sobre o mesmo formulário — é este o terceiro que o PR 2A dispensa');
+});
+
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {
   // Este é o gate que fecha a seção, e ele existe pelo mesmo motivo que o
   // `G-real-cobertura` da F5-B.1: a fatia anterior descobriu que gates montados
@@ -5811,8 +6010,10 @@ test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a tro
   assert(ini > -1 && fim > ini, 'as marcas da seção PR1 mudaram de forma');
   const secao = fonte.slice(ini, fim);
 
-  const blocos = secao.split(/\n(?:test|testAsync|caracterizaDefeito)\('PR1 /).slice(1);
-  assert(blocos.length >= 35, `esperava os gates do PR1, encontrei ${blocos.length}`);
+  // Reconhece os gates do PR 1 e os das fatias do PR 2 (PR2A..PR2D): todos
+  // vivem nesta seção e todos respondem à mesma regra.
+  const blocos = secao.split(/\n(?:test|testAsync|caracterizaDefeito)\('PR(?:1|2[A-D]) /).slice(1);
+  assert(blocos.length >= 40, `esperava os gates do PR1 e do PR2, encontrei ${blocos.length}`);
   const FABRICACAO_DE_VIEW = "CustomEvent('epi:" + "viewchange'";
 
   // Montar o app servido é o que separa caracterização de suposição. As quatro
@@ -5821,6 +6022,8 @@ test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a tro
     'montarAppOwnership(', 'celulaDaMatriz42x43(',
     'appComDropdownDoApp(', 'appComDropdownDoPhase44(', 'appComNavegacaoDoApp('
   ];
+  // O gate de cobertura é o último da seção; renomeá-lo ou movê-lo exige
+  // revisar a lista de exceções abaixo, e é por isso que ela tem tamanho fixo.
   // Únicas exceções, e cada uma tem razão declarada: elas não medem
   // comportamento, fixam a CONCLUSÃO que os outros gates sustentam.
   const SEM_MONTAGEM = {

@@ -68,8 +68,14 @@ e continua certo.
 
 **A cópia de sessão existe por um motivo só:** deixar o pré-paint aplicar o tema
 certo num F5 sem piscar. Ela vive em `sessionStorage`, que não atravessa aba nem
-janela; carrega o id do principal; é recusada **e removida** se o carimbo não
-bater; e é derrubada no encerramento de sessão.
+janela; carrega um **carimbo derivado** do principal — nunca o id em texto claro
+—; é recusada **e removida** se o carimbo não bater; e é derrubada no
+encerramento de sessão.
+
+O carimbo é derivado porque responde a uma pergunta só — *"esta cópia é minha?"*
+—, que é comparação e nunca leitura de volta. **Não é segredo criptográfico:** o
+espaço de ids é pequeno e quem lê o `sessionStorage` pode enumerar. A cópia morre
+com a aba; o que se ganha é guardar menos e deixar o fluxo legível.
 
 **Por que não bastava apagar tudo no logout.** Isso impediria B de herdar de A,
 mas destruiria a possibilidade de A recuperar as próprias preferências. O
@@ -88,7 +94,7 @@ Nomeadas uma a uma: nada de `localStorage.clear()` — sessão, flags e tenant
 moram no mesmo storage com contratos diferentes. O `ISOL C-8` prova as duas
 metades, com chaves de outros donos como controle.
 
-## 6. Dois defeitos encontrados pelos próprios gates
+## 6. Três defeitos encontrados pelos próprios gates
 
 **Um segundo escritor de tema.** O botão da topbar aplicava o tema no DOM e
 gravava `epi-theme` por conta própria, sem passar pelo drawer. Duas gravações
@@ -100,12 +106,18 @@ começava em `null`, indistinguível de "ninguém logado", então a primeira
 pergunta da página parecia uma troca de principal e derrubava o atalho do
 pré-paint. Achado pelo controle positivo do `ISOL C-14`.
 
+**O `ISOL C-14` media a própria suposição.** Ele semeava a cópia de sessão na
+mão, com o carimbo literal — então media o formato que eu tinha imaginado, e não
+o mecanismo; quebraria a cada mudança interna do dono. Foi reescrito para usar o
+caminho real: A entra na aba e configura, B entra na mesma aba depois.
+
 ## 7. Sabotagens
 
 Cada mecanismo foi quebrado de propósito, um por vez, e um gate específico
 acusou. **Duas passaram verde na primeira rodada** — β e γ —, repetindo a lição
 do PR B: os gates estavam certos no resultado e errados no motivo. `ISOL C-13` e
-`ISOL C-14` nasceram daí.
+`ISOL C-14` nasceram daí. A η e o `ISOL C-15` vieram depois, com a revisão do
+CodeQL (§ 9).
 
 | Sabotagem | Acusada por |
 |---|---|
@@ -115,6 +127,7 @@ do PR B: os gates estavam certos no resultado e errados no motivo. `ISOL C-13` e
 | δ — legado sem dono deixa de ser aposentado | `C-8` |
 | ε — cliente deixa de persistir no servidor | `C-5`, `C-11` |
 | ζ — o dono volta a gravar em `localStorage` | `C-12` |
+| η — o carimbo volta a ser o id em texto claro | `C-15`, `C-14` |
 
 A **ε** é a mais importante: sem o `C-11`, uma versão que simplesmente não
 guardasse nada passaria em todos os gates de não-herança — e perder a
@@ -135,7 +148,25 @@ Nenhum foi apagado. Cada um diz no próprio corpo o que ficou obsoleto e por qu�
 | `navegação :: drawer de Configuração` | exige o dono único em vez de uma chave solta |
 | `navegação :: sidebar recolhível` | idem |
 
-## 9. Limites desta fatia
+## 9. CodeQL
+
+Quatro alertas no diff, todos fechados, todos apontando para algo real.
+
+`js/clear-text-storage-of-sensitive-data` foi o mais instrutivo, e exigiu **duas
+rodadas**. A primeira correção — nomear os quatro campos gravados em vez de
+espalhar o objeto — era boa por si, mas não era o caminho que a ferramenta via, e
+o alerta voltou. O caminho real: `prefsPrincipalCorrente()` alcança o objeto
+`state`, que também guarda `requirePasswordChange` e o token de sessão; a análise
+não distingue campos dentro dele. Estava certa sobre a forma, e a resposta foi
+derivar o carimbo (§ 4).
+
+`js/bad-tag-filter` (2×) apontou a regex de `<script>` com que o harness extraía
+o pré-paint: frágil e lida como tentativa de filtrar HTML. Passou a extrair por
+delimitador literal, num lugar só — a expressão estava duplicada nos dois gates.
+
+`py/empty-except` apontou o `except` do rollback, que engolia sem dizer por quê.
+
+## 10. Limites desta fatia
 
 - O **app Flutter** não mudou de escopo. `LocaleProvider` e `ThemeModeNotifier`
   seguem com escopo de instalação, e os gates que os protegem valem palavra por

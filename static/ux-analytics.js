@@ -13,7 +13,10 @@
   const LEGACY_STORAGE_KEY = 'epi.analytics.events';
   var MAX_EVENTS = 100;
   var REPETITIVE_EVENTS = new Set(['ui:click', 'ui:hover', 'ui:input', 'ui:filter', 'ui:search']);
-  var MAX_BYTES = 28000;
+  // `MAX_BYTES` saiu no PR B do Isolamento, pelo mesmo motivo que o
+  // `MAX_STORAGE_BYTES` do phase42 saiu na #343 F5-B: sem gravação em disco não
+  // há teto de bytes a limitar. Ele já não era lido por ninguém. `MAX_EVENTS`
+  // fica — continua limitando a lista em memória, que segue existindo.
   const DUPLICATE_WINDOW_MS = 450;
   const MAIN_CLICK_DEBOUNCE_MS = 600;
   const FLOW_ABANDON_TIMEOUT_MS = 15000;
@@ -57,6 +60,22 @@
     return isMasterRole(resolveCurrentRole());
   }
 
+  // Papel igual NÃO é principal igual. `canAccessAnalytics()` responde "este
+  // papel pode ver telemetria?"; esta função responde "de QUEM é a telemetria
+  // que está em memória?". Foram duas perguntas confundidas numa só até o PR B
+  // do Isolamento — e foi essa confusão que deixou um `master_admin` ler os
+  // eventos do `master_admin` anterior.
+  function resolveCurrentPrincipal() {
+    return safeCall(() => {
+      const doEstado = globalScope.__EPI_APP_STATE__?.user?.id;
+      if (doEstado) return String(doEstado);
+      const raw = win.localStorage.getItem(SESSION_KEY);
+      if (!raw) return '';
+      const parsed = JSON.parse(raw);
+      return String(parsed?.id || '');
+    }, '');
+  }
+
   function parseFlagValue(value) {
     if (value === '1') return true;
     if (value === '0') return false;
@@ -83,22 +102,43 @@
     }, false);
   }
 
-  function safeStorageRead() {
-    return safeCall(() => {
-      const raw = win.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    }, []);
+  // ── Escopo da telemetria: SESSÃO, e em RAM (PR B do Isolamento) ───────────
+  //
+  // Os eventos deixaram de ir para o `localStorage`. O motivo não é economia de
+  // bytes: é que NADA os consome fora da sessão que os produziu. A API
+  // `__EPI_ANALYTICS__` é publicada e não tem um único leitor no código
+  // servido; não há tela que os exiba e não há endpoint de telemetria no
+  // backend (`enqueueFlush` continua marcado como "fase futura"). Persistir
+  // dado comportamental de uma PESSOA no disco de um computador compartilhado,
+  // sem consumidor, é risco sem contrapartida.
+  //
+  // Mesmo caminho que a memória de uso do phase42 seguiu na #343 F5-B.
+  //
+  // A lista vive em `analyticsState.eventos`, e é descartada quando o principal
+  // muda — inclusive sem recarga, que é o caminho que o `ISOL A-8` mostrou ser
+  // real.
+  function descartarSeTrocouPrincipal() {
+    const atual = resolveCurrentPrincipal();
+    if (atual === analyticsState.principal) return;
+    analyticsState.principal = atual;
+    analyticsState.eventos = [];
   }
 
-  function safeStorageWrite(events) {
-    return safeCall(() => {
-      win.localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-      return true;
-    }, false);
+  function lerEventos() {
+    descartarSeTrocouPrincipal();
+    return analyticsState.eventos.slice();
   }
 
+  function gravarEventos(events) {
+    descartarSeTrocouPrincipal();
+    analyticsState.eventos = Array.isArray(events) ? events : [];
+    return true;
+  }
+
+  // Purga do que versões anteriores gravaram no disco. Roda SEMPRE, não só para
+  // não-master: uma lista sem dono identificável é legado sem proprietário, e
+  // entregá-la ao primeiro master que entrar é atribuir a atividade de alguém a
+  // outra pessoa. Remove apenas as duas chaves da própria telemetria.
   function clearAnalyticsStorage() {
     safeCall(() => {
       win.localStorage.removeItem(STORAGE_KEY);
@@ -118,6 +158,10 @@
 
   const analyticsState = {
     enabled: isEnabledForMaster(),
+    // A telemetria desta sessão. Nasce vazia a cada carga — é o que dá o escopo
+    // SESSION sem depender de nada gravado em disco.
+    eventos: [],
+    principal: resolveCurrentPrincipal(),
     queue: [],
     queueScheduled: false,
     recentEvents: new Map(),
@@ -196,10 +240,10 @@
         duration: Number(payload?.duration || 0),
         metadata
       };
-      const events = safeStorageRead();
+      const events = lerEventos();
       events.push(eventItem);
       while (events.length > MAX_EVENTS) events.shift();
-      safeStorageWrite(events);
+      gravarEventos(events);
     });
   }
 
@@ -517,7 +561,7 @@
       ensureUnauthorizedStorageIsNotExposed();
       return { allowed: false, events: [] };
     }
-    return { allowed: true, events: safeStorageRead() };
+    return { allowed: true, events: lerEventos() };
   }
 
   const analyticsApi = Object.freeze({
@@ -525,7 +569,7 @@
     getEvents: () => getEventsForApi(),
     clearEvents: () => {
       if (!canAccessAnalytics()) return { allowed: false, events: [] };
-      safeStorageWrite([]);
+      gravarEventos([]);
       return { allowed: true, events: [] };
     },
     track: (eventName, metadata) => {
@@ -550,9 +594,13 @@
   });
 
   if (shouldResetByQuery()) {
-    clearAnalyticsStorage();
+    gravarEventos([]);
   }
 
+  // Incondicional: o disco não guarda mais telemetria, e o que houver ali veio
+  // de versão anterior, sem dono comprovável. `ensureUnauthorizedStorageIsNotExposed()`
+  // continua existindo para o caminho da API, onde a pergunta é de PAPEL.
+  clearAnalyticsStorage();
   ensureUnauthorizedStorageIsNotExposed();
 
   if (!analyticsState.enabled) return;

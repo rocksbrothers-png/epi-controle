@@ -55,7 +55,6 @@ def test_analytics_and_phase42_buffers_remain_limited():
     analytics = _read('static/ux-analytics.js')
     phase42 = _read('static/ux-phase42.js')
     assert 'var MAX_EVENTS = 100;' in analytics
-    assert 'var MAX_BYTES = 28000;' in analytics
     assert 'var MAX_EVENTS = 120;' in phase42
     # `MAX_STORAGE_BYTES` do phase42 saiu na #343 F5-B: a memória de uso deixou
     # de ir para `localStorage` e passou a viver só em RAM, descartada ao trocar
@@ -63,6 +62,14 @@ def test_analytics_and_phase42_buffers_remain_limited():
     # continua: ele limita a lista em memória, que segue existindo.
     assert 'var MAX_STORAGE_BYTES' not in phase42, (
         'o phase42 voltou a persistir memória de uso: ver #343 F5-B'
+    )
+    # ATUALIZADO no PR B do Isolamento: o `MAX_BYTES` do ux-analytics saiu pelo
+    # MESMO motivo, um ano de código depois. A telemetria deixou de ir para o
+    # `localStorage` e passou a viver só em RAM, descartada na troca de
+    # principal. Sem gravação não há teto de bytes — e aquela constante já não
+    # era lida por ninguém antes disso.
+    assert 'var MAX_BYTES' not in analytics, (
+        'o ux-analytics voltou a persistir telemetria: ver Isolamento PR B'
     )
 
 

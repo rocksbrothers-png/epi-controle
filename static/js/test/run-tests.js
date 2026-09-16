@@ -6735,6 +6735,257 @@ test('ISOL A-7: a fatia não cria persistência de View nem segundo dono de nave
 });
 
 
+test('ISOL A-10: `escopoDoEstadoConfere()` é o dono ÚNICO da comparação de escopo', () => {
+  // Registrado como CONTRATO a pedido explícito, junto com a autorização do
+  // PR B. Gate apenas — nenhuma linha de produção do PR A foi tocada.
+  //
+  // A revisão do PR A pediu que esta função fosse o owner único da decisão
+  // "este estado histórico pertence à sessão atual?". A implementação já era
+  // essa, mas NADA impedia alguém de reintroduzir a comparação em outro ponto:
+  // os gates do PR A verificam a ORDEM e o USO, não a exclusividade. Sem este
+  // gate, o contrato era uma intenção, não uma trava.
+  const appJs = fonteServida('app.js');
+
+  // `snapshotScopeId()` tem dois papéis legítimos: CARIMBAR (em
+  // `collectInteractiveSnapshot`) e ser comparado — este último só dentro do
+  // dono. Qualquer outra COMPARAÇÃO é um segundo dono da mesma regra.
+  const comparacoes = (appJs.match(/[!=]==\s*snapshotScopeId\(\)|snapshotScopeId\(\)\s*[!=]==/g) || []);
+  eq(comparacoes.length, 1,
+    `a comparação de escopo aparece ${comparacoes.length}x — ela pertence a um dono só`);
+  const dono = appJs.slice(appJs.indexOf('function escopoDoEstadoConfere'));
+  assert(dono.slice(0, 300).includes('estado.sid === snapshotScopeId()'),
+    'a única comparação de escopo deixou de estar dentro de `escopoDoEstadoConfere`');
+
+  // E a sequência do contrato: validar escopo → decidir View. Nunca o inverso.
+  const i = appJs.indexOf("safeOn(globalThis, 'popstate'");
+  const handler = appJs.slice(i, i + 3000);
+  assert(handler.indexOf('escopoDoEstadoConfere') < handler.indexOf('showView('),
+    'a validação de escopo voltou a rodar depois de aplicar a View');
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// ISOLAMENTO ENTRE USUÁRIOS — PR B (telemetria)
+//
+// B-0: CARACTERIZAÇÃO. Estes gates medem o comportamento ANTES da correção.
+// Os que descrevem o defeito nascem vermelhos, de propósito.
+//
+// Reproduzido na investigação: `master_admin` A gera eventos, sai, e o
+// `master_admin` B seguinte os lê. A proteção existente é por PAPEL
+// (`canAccessAnalytics()` → `isMasterRole`), e papel igual não é principal
+// igual.
+// ════════════════════════════════════════════════════════════════════════════
+
+const CHAVE_TELEMETRIA = 'epi.analytics.master.events';
+
+// Uma CARGA de página do `ux-analytics.js` servido, com `localStorage`
+// compartilhado entre as cargas — é assim que se modela a mesma aba/navegador.
+function montarTelemetria(localCompartilhado, opcoes) {
+  const o = opcoes || {};
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const doc = criarNoF5B('document', {});
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.readyState = 'complete';
+  doc.getElementById = () => null;
+  doc.createElement = (tag) => criarNoF5B(tag, {});
+  doc.querySelector = () => null;
+  doc.querySelectorAll = () => [];
+
+  const ctx = {
+    document: doc, localStorage: localCompartilhado,
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    location: { search: o.busca || '?ux_analytics=1', href: 'http://local/' },
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    navigator: { userAgent: 'node' },
+    // A identidade que o módulo enxerga. Ele lê `__EPI_APP_STATE__.user.role`
+    // primeiro e cai para a sessão em storage — os dois caminhos existem aqui.
+    __EPI_APP_STATE__: o.usuario ? { user: { id: o.usuario.id, role: o.usuario.papel } } : {},
+    __EPI_FRONTEND_HELPERS__: Object.freeze({
+      getFeatureFlag: (nome) => nome === 'ux_analytics_enabled',
+      safeOn: (alvo, ev, fn) => { try { alvo.addEventListener(ev, fn); return true; } catch (_e) { return false; } }
+    }),
+    STORAGE_KEYS: { session: 'epi-session-v4' },
+    CustomEvent: class { constructor(tipo, init) { this.type = tipo; Object.assign(this, init || {}); } },
+    Event: class { constructor(tipo, init) { this.type = tipo; this.bubbles = false; Object.assign(this, init || {}); } },
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    Date, JSON, Math
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx.addEventListener = () => {}; ctx.dispatchEvent = () => true;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(
+    fs.readFileSync(path.join(raizStatic, 'ux-analytics.js'), 'utf-8'), ctx, { filename: 'ux-analytics.js' });
+
+  return {
+    ctx,
+    api: () => ctx.__EPI_ANALYTICS__ || null,
+    // Produz evento pelo caminho REAL do módulo. `pushEvent` enfileira e drena
+    // numa microtask (`Promise.resolve().then(flushQueue)`), então quem mede
+    // precisa ceder o turno — senão o gate lê a lista antes de ela existir e
+    // conclui "isolado" sobre um evento que nunca foi gravado.
+    produzirEvento: async (nome) => {
+      const api = ctx.__EPI_ANALYTICS__;
+      if (!api || typeof api.track !== 'function') return false;
+      const ok = api.track(nome || 'evento_de_teste', {});
+      await Promise.resolve();
+      await Promise.resolve();
+      return ok;
+    },
+    // O que ESTE principal consegue ler pela API pública do módulo.
+    eventosVisiveis: () => {
+      const api = ctx.__EPI_ANALYTICS__;
+      if (!api || typeof api.getEvents !== 'function') return { allowed: false, events: [] };
+      return api.getEvents();
+    }
+  };
+}
+
+function armazemTelemetria(inicial) {
+  return {
+    _s: Object.assign({}, inicial || {}),
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  };
+}
+
+const EVENTOS_DE_A = JSON.stringify([
+  { event: 'view_open', module: 'colaboradores', timestamp: 1, duration: 0, metadata: {} },
+  { event: 'flow:complete', module: 'entregas', timestamp: 2, duration: 120, metadata: {} }
+]);
+
+test('ISOL B-0: o harness monta o ux-analytics servido e alcança a API', () => {
+  const local = armazemTelemetria();
+  const d = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+  assert(d.api(), '__EPI_ANALYTICS__ não foi publicada pelo módulo servido');
+  assert(typeof d.api().getEvents === 'function', 'a API perdeu getEvents');
+  eq(d.eventosVisiveis().allowed, true, 'um master deveria ter acesso à própria telemetria');
+});
+
+testAsync('ISOL B-1: master B não consome a telemetria do master A', async () => {
+  // O vazamento medido na investigação. Papel igual, principal diferente.
+  //
+  // A telemetria é PRODUZIDA pelo caminho real do módulo, não semeada no
+  // storage: semear mede o que o teste escreveu, não o que a aplicação grava.
+  const local = armazemTelemetria();
+  const a = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+  await a.produzirEvento('acao_de_A');
+  // O módulo emite `view_open` na inicialização, então a lista de A tem mais do
+  // que o evento deste gate. O que importa é que o evento NOMEADO aqui esteja
+  // presente: sem ele, o gate mediria uma lista vazia e chamaria de isolamento.
+  assert(a.eventosVisiveis().events.some((e) => e.event === 'acao_de_A'),
+    'A não viu o próprio evento — o gate não mediu nada');
+
+  // B entra numa CARGA nova (o logout recarrega a página).
+  const b = montarTelemetria(local, { usuario: { id: 'B', papel: 'master_admin' } });
+  const deA = b.eventosVisiveis().events.filter((e) => e.event === 'acao_de_A');
+  eq(deA.length, 0, `B leu ${deA.length} evento(s) de A: ${JSON.stringify(deA).slice(0, 120)}`);
+});
+
+test('ISOL B-2: a proteção por PAPEL continua funcionando (controle)', () => {
+  // Contraprova do B-1: o que já funcionava não pode regredir.
+  const local = armazemTelemetria({ [CHAVE_TELEMETRIA]: EVENTOS_DE_A });
+  const b = montarTelemetria(local, { usuario: { id: 'B', papel: 'admin' } });
+  eq(b.eventosVisiveis().allowed, false, 'um não-master voltou a ter acesso à API de telemetria');
+  eq(local.getItem(CHAVE_TELEMETRIA), null,
+    'a telemetria continuou no disco com um não-master logado');
+});
+
+testAsync('ISOL B-3: troca de principal SEM recarga também isola a telemetria', async () => {
+  // Obrigatório por causa do `ISOL A-8`: nem toda troca de identidade passa por
+  // recarga. O login de outro principal acontece no MESMO documento — e é este
+  // o gate que distingue "telemetria em RAM descartada na troca" de "telemetria
+  // no disco que por acaso foi purgada na carga".
+  const local = armazemTelemetria();
+  const d = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+  await d.produzirEvento('acao_de_A');
+  assert(d.eventosVisiveis().events.some((e) => e.event === 'acao_de_A'),
+    'A não viu o próprio evento — o gate não mediu nada');
+
+  // B faz login no mesmo documento: só a identidade publicada muda.
+  d.ctx.__EPI_APP_STATE__.user = { id: 'B', role: 'master_admin' };
+  const deA = d.eventosVisiveis().events.filter((e) => e.event === 'acao_de_A');
+  eq(deA.length, 0, `sem recarga, B leu ${deA.length} evento(s) de A pela mesma API`);
+});
+
+testAsync('ISOL B-4: nova sessão do PRÓPRIO A — contrato medido, não presumido', async () => {
+  // Este gate não afirma o que DEVE acontecer: ele fixa o que acontece, para a
+  // decisão de escopo ser tomada sobre medida e não sobre intuição.
+  const local = armazemTelemetria();
+  const a1 = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+  await a1.produzirEvento('acao_de_A');
+  assert(a1.eventosVisiveis().events.some((e) => e.event === 'acao_de_A'),
+    'A não viu o próprio evento — o gate não mediu nada');
+  const a2 = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+  // A nova sessão também emite o seu `view_open`; o que se mede é a
+  // sobrevivência do evento NOMEADO da sessão anterior.
+  const sobrevive = a2.eventosVisiveis().events.some((e) => e.event === 'acao_de_A');
+  // O contrato escolhido no PR B está documentado em docs/ISOLAMENTO_PR_B_TELEMETRIA.md.
+  eq(sobrevive, false,
+    'a telemetria sobreviveu à nova sessão do mesmo usuário — contrato SESSION diz que não');
+});
+
+test('ISOL B-7: a telemetria legada some do DISCO, não só da leitura', () => {
+  // A sabotagem que removeu a purga incondicional não foi pega por nenhum gate:
+  // com a telemetria em RAM, ninguém lê o disco, então "não é lida" passa a ser
+  // verdade mesmo com o dado ainda gravado lá. A propriedade que faltava medir
+  // é DADO EM REPOUSO — telemetria de uma pessoa parada no disco de um
+  // computador compartilhado, esperando quem souber abrir o DevTools.
+  const local = armazemTelemetria({
+    [CHAVE_TELEMETRIA]: EVENTOS_DE_A,
+    'epi.analytics.events': EVENTOS_DE_A,
+    // Controle: dado alheio não pode ser levado junto.
+    'epi-theme': 'dark',
+    'epi-session-v4': '{"id":"B","role":"master_admin"}'
+  });
+  montarTelemetria(local, { usuario: { id: 'B', papel: 'master_admin' } });
+
+  eq(local.getItem(CHAVE_TELEMETRIA), null, 'a telemetria legada continuou no disco após a carga');
+  eq(local.getItem('epi.analytics.events'), null, 'a chave legada antiga continuou no disco após a carga');
+  eq(local.getItem('epi-theme'), 'dark', 'a purga levou junto dado que não é dela');
+  assert(local.getItem('epi-session-v4'), 'a purga levou junto a sessão');
+});
+
+test('ISOL B-8: o módulo não grava telemetria em disco', () => {
+  // Contrato estrutural, complementar ao B-3: nenhuma gravação da chave de
+  // telemetria pode voltar ao código servido. `removeItem` continua permitido —
+  // é a purga do legado.
+  const fonte = fonteServida('ux-analytics.js');
+  const gravacoes = fonte.match(/localStorage\.setItem\(/g) || [];
+  eq(gravacoes.length, 0,
+    `o ux-analytics voltou a gravar em localStorage (${gravacoes.length} ocorrência(s))`);
+  assert(/localStorage\.removeItem\(STORAGE_KEY\)/.test(fonte),
+    'a purga da chave de telemetria sumiu do módulo');
+  assert(/localStorage\.removeItem\(LEGACY_STORAGE_KEY\)/.test(fonte),
+    'a purga da chave legada antiga sumiu do módulo');
+});
+
+test('ISOL B-5: telemetria legada sem identidade não é atribuída a ninguém', () => {
+  // `epi.analytics.master.events` gravado por uma versão anterior não tem dono
+  // identificável. Entregá-la ao primeiro master que entrar é o mesmo erro que
+  // a regra de preferências legadas do PR C proíbe.
+  const local = armazemTelemetria({ [CHAVE_TELEMETRIA]: EVENTOS_DE_A });
+  const primeiro = montarTelemetria(local, { usuario: { id: 'PRIMEIRO', papel: 'master_admin' } });
+  const lido = primeiro.eventosVisiveis();
+  eq(lido.events.length, 0,
+    'o primeiro master que entrou herdou telemetria legada sem dono comprovado');
+});
+
+test('ISOL B-6: storage malformado falha fechado', () => {
+  const casos = ['{', 'null', '"texto"', '{"nao":"array"}', '[1,2,3]'];
+  casos.forEach((bruto) => {
+    const local = armazemTelemetria({ [CHAVE_TELEMETRIA]: bruto });
+    const d = montarTelemetria(local, { usuario: { id: 'A', papel: 'master_admin' } });
+    const lido = d.eventosVisiveis();
+    assert(Array.isArray(lido.events), `storage ${bruto} produziu events não-array`);
+    eq(lido.events.length, 0, `storage malformado ${bruto} virou ${lido.events.length} evento(s)`);
+  });
+});
+
+
 (async () => {
   for (const t of asyncTests) {
     try {

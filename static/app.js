@@ -934,9 +934,14 @@ function safeStorageRemove(key) {
 // limpeza dele para cá duplicaria owner justamente na fatia que existe para
 // eliminar owners duplicados.
 //
-// APOSENTADORIA: ver `docs/PR4_LIMPEZA_FINAL_343.md`. Esta rotina é temporária
-// e nasce com critério de retirada documentado.
-const CLEANUP_LEGADO_UX_VERSAO = '343-pr4';
+// APOSENTADORIA — versão do cleanup: `343-pr4`. Esta rotina é temporária e nasce
+// com critério de retirada documentado em `docs/PR4_LIMPEZA_FINAL_343.md`,
+// seção 2. A versão vive AQUI, no comentário, e não numa constante: nada em
+// runtime a lê, porque a decisão registrada naquele documento é não gravar
+// marcador de "já limpei" — o marcador seria uma chave nova, precisando de outra
+// limpeza depois. A primeira versão desta fatia declarava uma constante para
+// isso, que ninguém consumia; o CodeQL apanhou, e com razão: identificador que
+// nada lê é dívida com aparência de mecanismo.
 
 // Chaves exatas. A lista é fechada e foi conferida contra o histórico do
 // repositório: não houve versão anterior dessas chaves além das abaixo.

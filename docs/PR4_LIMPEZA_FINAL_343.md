@@ -122,8 +122,16 @@ futuro como `epi.ux.phase440` entraria na varredura.
 
 ### Aposentadoria
 
-A rotina é versionada por `CLEANUP_LEGADO_UX_VERSAO = '343-pr4'` e **nasce
-temporária**.
+A rotina **nasce temporária**, e carrega a versão `343-pr4` na marca
+`APOSENTADORIA`, no comentário de cabeçalho do cleanup em `static/app.js`.
+
+A primeira versão desta fatia declarava uma constante para essa versão. O CodeQL
+apontou, corretamente, que nada a lia — e não podia ler, porque a decisão logo
+abaixo é **não gravar marcador de "já limpei"**. Um identificador que ninguém
+consome é dívida com aparência de mecanismo, exatamente o que esta fatia existe
+para não criar; a versão passou para o comentário, que é onde ela sempre atuou.
+O gate `PR4 L-5` trava as duas pontas: a marca precisa existir, e a constante não
+pode voltar.
 
 **Por quantas versões precisa sobreviver?** Até que não reste navegador com essas
 chaves. Como não há como medir isso de fora, o critério proposto é o tempo: a
@@ -153,7 +161,7 @@ prefixo do phase44.
 | `PR4 L-2` | dado alheio sobrevive; e o phase42 continua limpando o dele |
 | `PR4 L-3` | idempotência — a segunda execução não quebra nem apaga a mais |
 | `PR4 L-4` | sem `localStorage` (janela privativa), a inicialização não cai |
-| `PR4 L-5` | a rotina não usa limpeza total nem afrouxa o prefixo |
+| `PR4 L-5` | a rotina não usa limpeza total, não afrouxa o prefixo, mantém a marca de aposentadoria e não reintroduz constante de versão sem leitor |
 | `PR4 R-1` | os quatro arquivos não existem, não são servidos, não são injetados |
 | `PR4 R-2` | as quatro flags não são declaradas nem lidas por arquivo servido |
 | `PR4 R-3` | um owner de fetch, um de dropdown, zero interceptadores de navegação em captura |

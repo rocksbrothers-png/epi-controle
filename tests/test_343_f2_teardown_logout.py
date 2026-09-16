@@ -40,6 +40,13 @@ chaves e 72 containers HOJE, e a lista envelheceria na primeira chave nova.
 (`employee_portal_cpf_last3_*`, F4) continuam exatamente como estavam. O gate 8
 prova isso nos dois sentidos — a F2 não pode resolver F3/F4 de contrabando.
 
+ATUALIZADO na frente de Isolamento (PR C): a F3 foi resolvida DEPOIS, por
+decisão de produto, e o tema deixou de ser preferência de dispositivo no Web
+Legado. O gate 8 continua existindo e continua com a mesma função — impedir que
+o encerramento invada storage de dono alheio —, mas os valores que ele espera
+mudaram junto com o contrato. Os dois testes afetados dizem no próprio corpo o
+que ficou obsoleto e por quê. A F4 segue intocada.
+
 Nenhum teste usa credencial real.
 """
 
@@ -539,13 +546,30 @@ def test_a_camera_desliga_em_todo_encerramento(js):
 # ── 8. F3 e F4 permanecem intocadas ──────────────────────────────────────────
 
 def test_a_f2_nao_toca_no_tema(js):
-    """F3 é frente separada. `location.reload()` não limpa `localStorage`, e o
-    encerramento não pode limpá-lo por fora."""
+    """O encerramento não limpa `localStorage` por fora.
+
+    ATUALIZADO na frente de Isolamento (PR C). O contrato original tinha duas
+    metades, e só a primeira sobreviveu.
+
+    A primeira — o encerramento não mexe em `localStorage` — continua valendo
+    palavra por palavra, e continua sendo o que este gate protege.
+
+    A segunda exigia que `localStorage.setItem('epi-theme', ...)` AINDA
+    EXISTISSE no app, como prova de que a F2 não havia invadido a F3. Essa
+    metade ficou obsoleta porque a F3 foi resolvida — não por acidente desta
+    fatia, mas por decisão de produto: o tema deixou de ser preferência de
+    DISPOSITIVO e virou preferência de USUÁRIO, guardada no servidor. Exigir a
+    chave de volta hoje seria exigir o vazamento de volta.
+
+    O comportamento anterior não era bug: era a decisão declarada na UI ("As
+    preferências são salvas neste dispositivo."), com gates próprios. Ela foi
+    substituída, não corrigida.
+    """
     corpo = _corpo_de(js, 'terminateSession')
-    assert 'epi-theme' not in corpo
-    assert 'localStorage' not in corpo
-    assert "localStorage.setItem('epi-theme'" in js, \
-        'o tema por dispositivo continua existindo: F3 não foi resolvida aqui'
+    assert 'localStorage' not in corpo, \
+        'o encerramento passou a mexer em localStorage por fora'
+    assert "localStorage.setItem('epi-theme'" not in js, \
+        'a chave de tema por dispositivo voltou: ver Isolamento PR C'
 
 
 def test_a_f2_nao_toca_no_cpf_do_portal(js):
@@ -558,16 +582,32 @@ def test_a_f2_nao_toca_no_cpf_do_portal(js):
 
 
 def test_o_encerramento_so_mexe_nas_proprias_chaves(js):
-    """Três chaves, todas da F2 — o aviso de uso único, a marca de escopo dos
-    snapshots e o sinal de limpeza de rascunho. Nenhuma de F3 ou F4."""
-    # O encerramento toca duas chaves diretamente e delega a terceira ao
-    # `rotateSnapshotScope` — as três são da F2, nenhuma é de F3 ou F4.
+    """Toda chave tocada no encerramento tem dono declarado.
+
+    ATUALIZADO na frente de Isolamento (PR C). Eram três chaves, todas da F2.
+    Agora são quatro: entrou `PREFS_SESSAO_KEY`.
+
+    O contrato anterior — "nenhuma chave de F3 ou F4" — ficou obsoleto porque a
+    fronteira mudou de lugar por decisão de produto. A quarta chave NÃO é a
+    preferência do usuário: é a CÓPIA DE SESSÃO que serve ao pré-paint da
+    próxima carga desta aba. A preferência em si mora no servidor e sobrevive
+    inteira ao logout — quem sai reencontra a própria aparência no próximo
+    login (`ISOL C-11`). Derrubar a cópia é o que impede a aba reaberta de
+    pintar o tema de quem saiu antes de saber quem entrou (`ISOL C-10`).
+
+    O que o gate protege é o mesmo de antes, e por isso ele continua existindo:
+    o encerramento mexe em chaves NOMEADAS, nunca em bloco. A lista é fechada
+    justamente para que uma chave nova precise passar por aqui.
+    """
     corpo = _corpo_de(js, 'terminateSession')
     rotacao = _corpo_de(js, 'rotateSnapshotScope')
     chaves = sorted(set(re.findall(r'sessionStorage\.\w+\((\w+)', corpo + rotacao)))
-    assert chaves == ['SESSION_END_MESSAGE_KEY', 'SESSION_TEARDOWN_KEY',
-                      'SNAPSHOT_SCOPE_KEY'], f'chaves inesperadas: {chaves}'
+    assert chaves == ['PREFS_SESSAO_KEY', 'SESSION_END_MESSAGE_KEY',
+                      'SESSION_TEARDOWN_KEY', 'SNAPSHOT_SCOPE_KEY'], \
+        f'chaves inesperadas: {chaves}'
     assert 'localStorage' not in corpo and 'localStorage' not in rotacao
+    assert 'clear()' not in corpo and 'clear()' not in rotacao, \
+        'limpeza em bloco: o encerramento voltaria a invadir dono alheio'
 
 
 # ── 10. Histórico SPA: o snapshot não atravessa identidade ───────────────────

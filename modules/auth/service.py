@@ -1,5 +1,6 @@
 """Serviço de autenticação sem DI."""
 
+import json
 import os
 import traceback as _traceback
 from urllib.parse import parse_qs
@@ -328,6 +329,106 @@ def _with_company_stock_fields(epis):
     return epis
 
 
+# ── Preferências pessoais de interface (frente de Isolamento, PR C) ──────────
+#
+# Escopo USER. Até esta fatia, tema, densidade de tabela, sidebar recolhida e
+# idioma viviam apenas em chaves do `localStorage`, com escopo DEVICE: num
+# computador compartilhado, quem entrasse depois herdava a aparência de quem
+# saiu (gates `ISOL C-1`..`C-10`). O dono passa a ser a IDENTIDADE, e a fonte
+# da verdade é a coluna `users.ui_preferences`.
+#
+# Só existem estas quatro chaves, e só estes valores. Um nome ou valor
+# desconhecido é descartado em silêncio: preferência de interface jamais pode
+# derrubar um login nem virar canal para gravar dado arbitrário na linha do
+# usuário.
+
+UI_PREFERENCE_DEFAULTS = {
+    'tema': 'light',
+    'densidade': 'normal',
+    'sidebar': 'expanded',
+    'idioma': 'pt-BR',
+}
+
+UI_PREFERENCE_ALLOWED = {
+    'tema': ('light', 'dark'),
+    'densidade': ('normal', 'compact'),
+    'sidebar': ('expanded', 'collapsed'),
+    # Mesma lista de `static/i18n.js`; um idioma fora dela cairia no fallback
+    # do cliente de qualquer jeito, e aceitá-lo aqui só gravaria lixo.
+    'idioma': ('pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'),
+}
+
+
+def normalize_ui_preferences(raw) -> dict:
+    """Devolve SEMPRE as quatro chaves, sempre com valor permitido.
+
+    Aceita dict ou o JSON cru da coluna. Qualquer coisa que não case com a
+    lista de valores permitidos vira o padrão — nunca erro. O chamador pode
+    confiar no formato sem checar nada.
+    """
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw) if raw.strip() else {}
+        except (ValueError, TypeError):
+            raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    resultado = dict(UI_PREFERENCE_DEFAULTS)
+    for chave, permitidos in UI_PREFERENCE_ALLOWED.items():
+        valor = raw.get(chave)
+        if isinstance(valor, str) and valor in permitidos:
+            resultado[chave] = valor
+    return resultado
+
+
+def get_user_ui_preferences(connection, user_id) -> dict:
+    """Preferências do usuário, já normalizadas.
+
+    Coluna ausente (banco anterior à migração) devolve os padrões, e não erro:
+    o `/api/auth/me` é a rota que atravessa até o bloqueio de senha temporária
+    e não pode falhar por causa de aparência.
+    """
+    if user_id is None or str(user_id) == '':
+        return dict(UI_PREFERENCE_DEFAULTS)
+    try:
+        linha = connection.execute(
+            'SELECT ui_preferences FROM users WHERE id = ? LIMIT 1',
+            (int(user_id),),
+        ).fetchone()
+    except Exception as _e:
+        structured_log('warning', 'db.col_skip', table='users', column='ui_preferences', error=str(_e))
+        return dict(UI_PREFERENCE_DEFAULTS)
+    if not linha:
+        return dict(UI_PREFERENCE_DEFAULTS)
+    return normalize_ui_preferences(linha['ui_preferences'])
+
+
+def save_user_ui_preferences(connection, user_id, incoming) -> dict:
+    """Grava as preferências do usuário e devolve o estado resultante.
+
+    Escrita PARCIAL: o que vier é mesclado sobre o que já está gravado, então
+    salvar só o tema não apaga o idioma. O que não for reconhecido é ignorado.
+    """
+    atual = get_user_ui_preferences(connection, user_id)
+    if isinstance(incoming, str):
+        try:
+            incoming = json.loads(incoming) if incoming.strip() else {}
+        except (ValueError, TypeError):
+            incoming = {}
+    if not isinstance(incoming, dict):
+        incoming = {}
+    mesclado = dict(atual)
+    for chave, permitidos in UI_PREFERENCE_ALLOWED.items():
+        valor = incoming.get(chave)
+        if isinstance(valor, str) and valor in permitidos:
+            mesclado[chave] = valor
+    connection.execute(
+        'UPDATE users SET ui_preferences = ? WHERE id = ?',
+        (json.dumps(mesclado, ensure_ascii=False, sort_keys=True), int(user_id)),
+    )
+    return mesclado
+
+
 def build_bootstrap(connection, actor):
     from modules.settings.service import canary_evaluate_visibility_dataset, get_effective_module_visibility
     from modules.units.service import fetch_units
@@ -447,6 +548,10 @@ def build_bootstrap(connection, actor):
             'company_name': actor.get('company_name'),
             'company_cnpj': actor.get('company_cnpj'),
             'operational_unit_id': actor.get('operational_unit_id'),
+            # Preferências pessoais de interface (Isolamento PR C). Viajam com
+            # a identidade: é o que permite ao cliente aplicar a aparência de
+            # QUEM ENTROU, em vez da que o navegador tinha guardado.
+            'ui_preferences': get_user_ui_preferences(connection, actor.get('id')),
         },
         'company': {
             'id': actor.get('company_id'),

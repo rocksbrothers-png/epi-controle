@@ -22,7 +22,11 @@
 
   const SUPPORTED = ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'];
   const FALLBACK = 'pt-BR';
-  const LS_LANG_KEY = 'epi_language';
+  // `LS_LANG_KEY` saiu na frente de Isolamento (PR C): nomeava uma chave de
+  // `localStorage` com escopo DEVICE, e o idioma passou a pertencer à
+  // identidade. A chave antiga é APOSENTADA pelo dono, no `app.js`, e nunca
+  // mais lida. O nome dela não aparece aqui de propósito — este arquivo não
+  // deve voltar a ter um caminho até ela, nem em texto.
 
   const _cache = {};          // locale -> dict
   let _active = {};           // dict do idioma ativo
@@ -145,12 +149,17 @@
 
   function isValid(code) { return SUPPORTED.includes(code); }
 
+  // O idioma é uma das quatro preferências pessoais e tem o MESMO dono que as
+  // outras três desde a frente de Isolamento (PR C). Este módulo carrega antes
+  // do `app.js`, mas ambas as funções só são chamadas em tempo de execução
+  // (via `tenant-init.js`, no `DOMContentLoaded`), quando o dono já existe.
+  // Sem dono, o idioma cai no padrão — nunca no que estava no dispositivo.
   function getStoredLang() {
-    try { return localStorage.getItem(LS_LANG_KEY) || ''; } catch { return ''; }
+    try { return globalThis.__EPI_PREFS__?.ler()?.idioma || ''; } catch { return ''; }
   }
 
   function storeLang(code) {
-    try { localStorage.setItem(LS_LANG_KEY, code); } catch {}
+    try { globalThis.__EPI_PREFS__?.definir({ idioma: code }); } catch {}
   }
 
   function detectBrowserLang() {

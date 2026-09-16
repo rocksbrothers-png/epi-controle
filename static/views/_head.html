@@ -8,6 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
-  <script>/* Bootstrap de tema (P2-2) — aplica antes do paint para evitar flash. */try{if(localStorage.getItem('epi-theme')==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
+  <!-- Bootstrap de tema (P2-2, reescrito na frente de Isolamento PR C).
+       Antes lia `epi-theme` do `localStorage`: aparência de escopo DEVICE,
+       aplicada ANTES de qualquer autenticação. Num computador compartilhado
+       isso mostrava a escolha de quem usou o navegador antes — e "corrigir
+       depois" não desfaz o que já foi visto (`ISOL C-9`).
+       Agora lê a cópia de sessão, que `sessionStorage` mantém presa a esta aba
+       e que só é escrita DEPOIS da autenticação, carimbada com o principal.
+       Por construção não há o que aplicar antes de saber de quem é. -->
+  <script>try{var p=JSON.parse(sessionStorage.getItem('epi-prefs-sessao')||'null');if(p&&p.tema==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
 </head>
 <body>

@@ -160,6 +160,7 @@ def init_db():
                 role TEXT NOT NULL,
                 company_id INTEGER,
                 active INTEGER NOT NULL DEFAULT 1,
+                ui_preferences TEXT,
                 FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
             );
             CREATE TABLE IF NOT EXISTS company_audit_logs (

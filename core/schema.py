@@ -966,6 +966,11 @@ def ensure_user_columns(connection) -> None:
         # Política de senha temporária (troca obrigatória no 1º acesso + expiração)
         ('must_change_password', 'INTEGER NOT NULL DEFAULT 0'),
         ('password_expires_at', 'TEXT'),
+        # Preferências pessoais de interface (Isolamento PR C): tema, densidade,
+        # sidebar e idioma passam a pertencer à IDENTIDADE, não ao dispositivo.
+        # Opcional de propósito: sem a coluna o app cai nos padrões oficiais,
+        # que é o comportamento correto — nunca o do usuário anterior.
+        ('ui_preferences', 'TEXT'),
     ]:
         try:
             _safe_add_column(connection, 'users', _col, _defn)

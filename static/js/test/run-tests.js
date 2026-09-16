@@ -1154,7 +1154,18 @@ test('navegação: engrenagem abre Drawer de Configuração (sem trocar de rota)
   assert(js.includes("id=\"settings-save\"") && js.includes("id=\"settings-cancel\"") && js.includes("id=\"settings-restore\""), 'botões do drawer ausentes');
   // aplica só ao salvar; persiste tema/idioma/densidade
   assert(js.includes('function _applySettings'), 'sem aplicação de preferências');
-  assert(js.includes("SETTINGS_DENSITY_KEY = 'epi-density'") && js.includes('EpiI18n.setLang'), 'sem persistência de densidade/idioma');
+  // ATUALIZADO na frente de Isolamento (PR C). O contrato anterior exigia a
+  // constante `SETTINGS_DENSITY_KEY = 'epi-density'` como PROVA de que o drawer
+  // persistia a densidade. Ele ficou obsoleto porque a persistência mudou de
+  // lugar por decisão de produto: a chave de `localStorage` (escopo DEVICE) deu
+  // lugar ao servidor (escopo USER). O que o gate protegia — "o drawer persiste
+  // o que o usuário escolheu" — continua valendo, e é isto que ele checa agora.
+  // Não é um teste afrouxado para ficar verde: a exigência ficou mais forte,
+  // porque agora ele nomeia o dono único em vez de uma chave solta.
+  assert(js.includes('definirPreferencias(parcial)') && js.includes('EpiI18n'),
+    'o drawer parou de persistir densidade/idioma pelo dono das preferências');
+  assert(!js.includes("SETTINGS_DENSITY_KEY = 'epi-density'"),
+    'a chave de densidade por dispositivo voltou: ver Isolamento PR C');
   // densidade aplicada no init
   assert(js.includes("runNonCriticalSetup('table density preference', applyTableDensityPref)"), 'densidade não aplicada no init');
   // acesso à página de config preservado (avançado) para quem tem permissão
@@ -1186,7 +1197,14 @@ test('navegação: seta Voltar sempre funcional com fallback ao Dashboard + brea
 test('navegação: sidebar recolhível no desktop tem wiring + persistência + CSS', () => {
   const js = _read('app.js');
   // preferência persistida e helpers presentes
-  assert(js.includes("SIDEBAR_COLLAPSED_KEY = 'epi-sidebar-collapsed'"), 'sem chave de preferência');
+  // ATUALIZADO na frente de Isolamento (PR C), pelo mesmo motivo do gate do
+  // drawer: a preferência de sidebar continua persistida, mas o dono passou a
+  // ser a identidade, não o dispositivo. A chave que este gate exigia deixou de
+  // existir — e exigi-la de volta seria exigir o vazamento de volta.
+  assert(js.includes('function isSidebarCollapsedPref()') && js.includes('definirPreferencias({ sidebar:'),
+    'a sidebar parou de persistir a preferência pelo dono');
+  assert(!js.includes("SIDEBAR_COLLAPSED_KEY = 'epi-sidebar-collapsed'"),
+    'a chave de sidebar por dispositivo voltou: ver Isolamento PR C');
   assert(js.includes('function toggleSidebarCollapsed') && js.includes('function applySidebarCollapsed'), 'helpers ausentes');
   // o botão ☰ recolhe no desktop (fora do modo mobile)
   assert(js.includes("if (!isUxMobileEnabled()) { toggleSidebarCollapsed(); return; }"), 'toggle desktop não vinculado ao ☰');
@@ -6983,6 +7001,510 @@ test('ISOL B-6: storage malformado falha fechado', () => {
     assert(Array.isArray(lido.events), `storage ${bruto} produziu events não-array`);
     eq(lido.events.length, 0, `storage malformado ${bruto} virou ${lido.events.length} evento(s)`);
   });
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// ISOLAMENTO ENTRE USUÁRIOS — PR C (preferências pessoais de interface)
+//
+// Os gates C-1..C-10 nasceram VERMELHOS, escritos antes da correção, e o que
+// eles mediam era o contrato #343 F3: tema, densidade, sidebar e idioma eram
+// DEVICE, por decisão de produto declarada na UI. Num computador compartilhado
+// isso significava que quem entrava herdava a aparência de quem saiu.
+//
+// A decisão de produto MUDOU: o escopo passou a ser USER, com o servidor como
+// fonte da verdade (`users.ui_preferences`). Estes gates agora protegem o
+// contrato novo.
+//
+// LIÇÃO DO PR B, aplicada aqui desde o início: um harness sem servidor mede
+// pouco. "B não herda de A" ficaria verde numa versão que simplesmente não
+// guardasse NADA — e perder a preferência de todo mundo não é isolamento, é
+// outro defeito. Por isso o harness carrega um servidor de mentira que
+// atravessa as cargas, e por isso existe o `ISOL C-11`: A tem de reencontrar o
+// que é de A. Sem esse par, os outros gates não provam o mecanismo.
+// ════════════════════════════════════════════════════════════════════════════
+
+const CHAVES_DE_PREFERENCIA = Object.freeze({
+  tema: 'epi-theme',
+  densidade: 'epi-density',
+  sidebar: 'epi-sidebar-collapsed',
+  idioma: 'epi_language'
+});
+
+const PERFIL_A = Object.freeze({ tema: 'dark', densidade: 'compact', sidebar: 'collapsed', idioma: 'en-GB' });
+const PERFIL_B = Object.freeze({ tema: 'light', densidade: 'normal', sidebar: 'expanded', idioma: 'es-ES' });
+const PADRAO_OFICIAL = Object.freeze({ tema: 'light', densidade: 'normal', sidebar: 'expanded', idioma: 'pt-BR' });
+
+// O servidor. O mesmo mapa atravessa todas as cargas, como a coluna
+// `users.ui_preferences` atravessa todas as sessões.
+// Extrai o script inline do `_head.html` por delimitador LITERAL, não por
+// expressão regular. Uma regex de `<script>` é frágil (não pega `<SCRIPT>`
+// nem tag com atributo) e, pior, é lida pela análise estática como tentativa
+// de FILTRAR HTML — que não é o caso aqui: o arquivo é nosso e tem
+// exatamente um script. Achado do CodeQL (`js/bad-tag-filter`).
+// Um lugar só: os dois gates que precisam disso chamam esta função.
+function scriptDoPrePaint() {
+  const arquivo = fs.readFileSync(
+    path.join(path.resolve(JS_ROOT, '..'), 'views', '_head.html'), 'utf-8');
+  const minusculo = arquivo.toLowerCase();
+  const abre = minusculo.indexOf('<script>');
+  const fecha = minusculo.indexOf('</script>', abre + 1);
+  if (abre === -1 || fecha === -1) return null;
+  return arquivo.slice(abre + '<script>'.length, fecha);
+}
+
+function servidorDePreferencias(inicial) {
+  const porUsuario = JSON.parse(JSON.stringify(inicial || {}));
+  return {
+    ler(id) {
+      const k = String(id ?? '');
+      return porUsuario[k] ? Object.assign({}, porUsuario[k]) : null;
+    },
+    gravar(id, parcial) {
+      const k = String(id ?? '');
+      porUsuario[k] = Object.assign({}, porUsuario[k] || PADRAO_OFICIAL, parcial || {});
+      return porUsuario[k];
+    },
+    escritas: 0,
+    instantaneo() { return JSON.parse(JSON.stringify(porUsuario)); }
+  };
+}
+
+// O idioma chega ao DOM por `setLang`, que é assíncrono. Ler uma carga recém
+// montada sem ceder o turno mediria o estado de antes da aplicação — e daria
+// verde por engano nos gates cujo valor esperado é o padrão.
+async function assentar() { for (let i = 0; i < 24; i += 1) await Promise.resolve(); }
+
+function armazemPreferencias(inicial) {
+  return {
+    _s: Object.assign({}, inicial || {}),
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; },
+    instantaneo() { return Object.assign({}, this._s); }
+  };
+}
+
+// Uma CARGA de página. O `localStorage` atravessa as cargas (mesmo navegador);
+// o `sessionStorage` atravessa só se a opção `sessao` for reaproveitada (mesma
+// aba). Roda TAMBÉM o script inline de pré-paint do `_head.html` servido — é
+// lá que o tema é decidido antes da autenticação, e é esse o momento que o
+// `ISOL C-9` mede.
+function montarDocumentoPreferencias(local, opcoes) {
+  const o = opcoes || {};
+  const servidor = o.servidor || servidorDePreferencias();
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const doc = criarNoF5B('document', {});
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (tag) => criarNoF5B(tag, {});
+  doc.querySelector = () => null;
+  doc.querySelectorAll = () => [];
+
+  let idDoPrincipal = o.usuario ? String(o.usuario.id) : '';
+
+  const respostaJson = (corpo) => Promise.resolve({
+    ok: true, status: 200, headers: { get: () => 'application/json' },
+    json: () => Promise.resolve(corpo), text: () => Promise.resolve(JSON.stringify(corpo))
+  });
+
+  const ctx = {
+    document: doc, localStorage: local, sessionStorage: o.sessao || armazemPreferencias(),
+    location: { search: o.busca || '', href: `http://local/${o.busca || ''}`, pathname: '/', assign() {}, reload() {} },
+    history: { pushState() {}, replaceState() {}, back() {}, length: 1, state: null },
+    navigator: { userAgent: 'node', language: 'pt-BR', languages: ['pt-BR'] },
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    crypto: { randomUUID: () => 'doc-' + Math.random().toString(16).slice(2) },
+    CustomEvent: class { constructor(tipo, init) { this.type = tipo; Object.assign(this, init || {}); } },
+    Event: class { constructor(tipo, init) { this.type = tipo; this.bubbles = false; Object.assign(this, init || {}); } },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    // O servidor de mentira responde à rota REAL de escrita. É isto que
+    // transforma "o app esqueceu" em "o app gravou no dono certo".
+    fetch: (url, init) => {
+      const caminho = String(url || '');
+      if (caminho.includes('/api/auth/me/preferences')) {
+        let corpo = {};
+        try { corpo = JSON.parse((init && init.body) || '{}'); } catch (_e) { corpo = {}; }
+        servidor.escritas += 1;
+        return respostaJson({ ok: true, data: { ui_preferences: servidor.gravar(idDoPrincipal, corpo) } });
+      }
+      return respostaJson({ items: [] });
+    },
+    alert() {}, scrollTo() {}, matchMedia: () => ({ matches: false, addEventListener() {} })
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_e) { /* isolado */ } });
+    return true;
+  };
+  vmF5B.createContext(ctx);
+
+  // MOMENTO 1 — antes de conhecer a identidade. O script de pré-paint REAL.
+  const inline = scriptDoPrePaint();
+  assert(inline, 'o script de pré-paint sumiu do _head.html — o gate mediria outra página');
+  vmF5B.runInContext(inline, ctx, { filename: '_head.html:pre-paint' });
+  const temaNoPrePaint = doc.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+
+  // Os scripts servidos, na ordem real.
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  ordem.forEach((rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_e) { /* dependência de browser ausente não invalida o gate */ }
+  });
+
+  // MOMENTO 2 — identidade autenticada disponível.
+  const entrar = (usuario) => {
+    const st = ctx.__EPI_APP_STATE__;
+    idDoPrincipal = usuario ? String(usuario.id) : '';
+    if (st) st.user = usuario ? Object.assign({ role: 'admin', company_id: 'c1' }, usuario) : null;
+    return st;
+  };
+  // O que o `/api/bootstrap` entrega. Em produção quem chama é o `loadBootstrap`;
+  // o `ISOL C-12` prova que essa ligação existe e que ela passa o campo certo.
+  const receberBootstrap = () => ctx.adotarPreferenciasDoServidor(servidor.ler(idDoPrincipal));
+
+  if (o.usuario) { entrar(o.usuario); if (o.semBootstrap !== true) receberBootstrap(); }
+
+  const visiveis = () => ({
+    tema: doc.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+    densidade: doc.body.classList.contains('ux-density-compact') ? 'compact' : 'normal',
+    sidebar: doc.body.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded',
+    idioma: (ctx.EpiI18n && ctx.EpiI18n.lang) || PADRAO_OFICIAL.idioma
+  });
+
+  return {
+    ctx, doc, entrar, receberBootstrap, servidor, temaNoPrePaint,
+    // MOMENTO 3 — o que o usuário efetivamente VÊ.
+    preferenciasVisiveis: visiveis,
+    // Configura pelos caminhos REAIS da interface: o drawer de Configurações
+    // (`_applySettings`) e o botão da sidebar (`toggleSidebarCollapsed`). Um
+    // gate que escrevesse a chave na mão não provaria nada sobre o produto.
+    configurar: async ({ tema, densidade, sidebar, idioma }) => {
+      const atual = visiveis();
+      if (tema || densidade || idioma) {
+        ctx._applySettings({
+          theme: tema || atual.tema,
+          lang: idioma || null,
+          density: densidade || atual.densidade,
+        });
+      }
+      if (sidebar && (sidebar === 'collapsed') !== (atual.sidebar === 'collapsed')) {
+        ctx.toggleSidebarCollapsed();
+      }
+      // `setLang` é assíncrono e atravessa `fetch` + `json()` do dicionário:
+      // sem ceder o turno várias vezes, o idioma ainda não chegou ao DOM.
+      for (let i = 0; i < 24; i += 1) await Promise.resolve();
+    }
+  };
+}
+
+testAsync('ISOL C-0: o harness monta o pré-paint REAL e o app servido', async () => {
+  const d = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor: servidorDePreferencias()
+  });
+  assert(typeof d.ctx._applySettings === 'function', '_applySettings não veio do app servido');
+  assert(typeof d.ctx.applyTableDensityPref === 'function', 'applyTableDensityPref não veio do app servido');
+  assert(typeof d.ctx.toggleSidebarCollapsed === 'function', 'toggleSidebarCollapsed não veio do app servido');
+  assert(typeof d.ctx.adotarPreferenciasDoServidor === 'function', 'o dono das preferências não veio do app servido');
+  eq(d.temaNoPrePaint, 'light', 'sem cópia de sessão, o pré-paint deveria ficar no padrão');
+});
+
+['tema', 'densidade', 'sidebar', 'idioma'].forEach((qual, indice) => {
+  testAsync(`ISOL C-${indice + 1}: B não herda ${qual} de A`, async () => {
+    const local = armazemPreferencias();
+    const servidor = servidorDePreferencias();
+    const a = montarDocumentoPreferencias(local, { usuario: { id: 'A' }, servidor });
+    await a.configurar({ [qual]: PERFIL_A[qual] });
+    eq(a.preferenciasVisiveis()[qual], PERFIL_A[qual],
+      `A não conseguiu aplicar ${qual} — o gate não mediu nada`);
+
+    // B entra numa carga nova, mesmo navegador, aba nova.
+    const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' }, servidor });
+    await assentar();
+    eq(b.preferenciasVisiveis()[qual], PADRAO_OFICIAL[qual],
+      `B herdou ${qual}="${PERFIL_A[qual]}" de A`);
+  });
+});
+
+testAsync('ISOL C-5: conjunto completo, alternando A → B → A → B', async () => {
+  const local = armazemPreferencias();
+  const servidor = servidorDePreferencias();
+  const perfis = { A: PERFIL_A, B: PERFIL_B };
+  const ordem = ['A', 'B', 'A', 'B'];
+  const falhas = [];
+  for (let i = 0; i < ordem.length; i += 1) {
+    const quem = ordem[i];
+    const d = montarDocumentoPreferencias(local, { usuario: { id: quem }, servidor });
+    await assentar();
+    const aoEntrar = d.preferenciasVisiveis();
+    if (i > 0) {
+      // Contrato: ou o usuário reencontra o que é dele, ou recebe o padrão
+      // oficial — nunca o que o ANTERIOR deixou.
+      const doAnterior = perfis[ordem[i - 1]];
+      Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+        if (aoEntrar[k] === doAnterior[k] && doAnterior[k] !== perfis[quem][k]) {
+          falhas.push(`entrada ${i + 1} (${quem}): ${k}="${aoEntrar[k]}" veio de ${ordem[i - 1]}`);
+        }
+      });
+    }
+    await d.configurar(perfis[quem]);
+  }
+  eq(falhas.length, 0, `herança entre identidades: ${falhas.join(' | ')}`);
+});
+
+testAsync('ISOL C-6: troca de principal SEM recarga não deixa a aparência de A', async () => {
+  // Obrigatório desde o `ISOL A-8`: nem toda troca de identidade recarrega.
+  const servidor = servidorDePreferencias();
+  const d = montarDocumentoPreferencias(armazemPreferencias(), { usuario: { id: 'A' }, servidor });
+  await d.configurar(PERFIL_A);
+  eq(d.preferenciasVisiveis().tema, 'dark', 'A não aplicou o próprio tema — o gate não mediu nada');
+
+  d.entrar({ id: 'B' });          // login de B no MESMO documento
+  d.receberBootstrap();
+  await assentar();
+  const vistoPorB = d.preferenciasVisiveis();
+  eq(vistoPorB.tema, PADRAO_OFICIAL.tema, 'sem recarga, B continuou vendo o tema de A');
+  eq(vistoPorB.densidade, PADRAO_OFICIAL.densidade, 'sem recarga, B continuou vendo a densidade de A');
+  eq(vistoPorB.sidebar, PADRAO_OFICIAL.sidebar, 'sem recarga, B continuou vendo a sidebar de A');
+});
+
+testAsync('ISOL C-7: primeiro acesso recebe os padrões oficiais', async () => {
+  const c = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'C' }, servidor: servidorDePreferencias()
+  });
+  await assentar();
+  const visto = c.preferenciasVisiveis();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(visto[k], PADRAO_OFICIAL[k], `usuário sem preferência recebeu ${k}="${visto[k]}"`);
+  });
+});
+
+testAsync('ISOL C-8: legado DEVICE não é atribuído a ninguém', async () => {
+  // Valores gravados por versão anterior não têm dono comprovável. Entregá-los
+  // ao primeiro que logar transforma preferência compartilhada em preferência
+  // pessoal da pessoa errada.
+  const local = armazemPreferencias({
+    'epi-theme': 'dark', 'epi-density': 'compact',
+    'epi-sidebar-collapsed': '1', 'epi_language': 'en-GB',
+    // Controles: chaves de OUTROS donos, no mesmo storage. Se sumirem, a
+    // aposentadoria virou `localStorage.clear()` disfarçado.
+    'epi-session-v4': '{"id":"A"}', 'epi_tenant': 'acme', 'epi-flag-qualquer': '1'
+  });
+  const primeiro = montarDocumentoPreferencias(local, {
+    usuario: { id: 'PRIMEIRO' }, servidor: servidorDePreferencias()
+  });
+  await assentar();
+  const visto = primeiro.preferenciasVisiveis();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(visto[k], PADRAO_OFICIAL[k],
+      `o primeiro usuário após a atualização herdou ${k}="${visto[k]}" do legado sem dono`);
+  });
+  primeiro.ctx.aposentarPreferenciasLegadas();
+  const disco = local.instantaneo();
+  Object.values(CHAVES_DE_PREFERENCIA).forEach((chave) => {
+    assert(!(chave in disco), `a chave legada "${chave}" continua no disco depois da aposentadoria`);
+  });
+  ['epi-session-v4', 'epi_tenant', 'epi-flag-qualquer'].forEach((alheia) => {
+    assert(alheia in disco, `a aposentadoria levou junto "${alheia}", que tem outro dono`);
+  });
+});
+
+testAsync('ISOL C-9: o PRÉ-PAINT não aplica preferência de principal desconhecido', async () => {
+  // O risco principal desta fatia. "Aplicar e corrigir depois" continua sendo
+  // vazamento — B já viu a tela de A.
+  const local = armazemPreferencias({ 'epi-theme': 'dark' });
+  const b = montarDocumentoPreferencias(local, {
+    usuario: { id: 'B' }, servidor: servidorDePreferencias()
+  });
+  eq(b.temaNoPrePaint, PADRAO_OFICIAL.tema,
+    'o pré-paint aplicou um tema antes de saber de quem ele é');
+});
+
+test('ISOL C-9b: o pré-paint não lê localStorage, por construção', () => {
+  // O par estrutural do C-9. O comportamental prova que HOJE não vaza; este
+  // prova que não PODE voltar a vazar pelo mesmo caminho: `localStorage`
+  // atravessa abas e identidades, `sessionStorage` não.
+  const inline = scriptDoPrePaint();
+  assert(inline, 'o script de pré-paint sumiu do _head.html');
+  assert(!inline.includes('localStorage'),
+    'o pré-paint voltou a ler localStorage — aparência aplicada antes da identidade');
+  assert(inline.includes('sessionStorage'),
+    'o pré-paint parou de ler a cópia de sessão: o tema volta a piscar a cada F5');
+});
+
+testAsync('ISOL C-10: expiração de sessão não deixa a aparência anterior para o próximo', async () => {
+  const local = armazemPreferencias();
+  const servidor = servidorDePreferencias();
+  const sessaoDaAba = armazemPreferencias();
+  const a = montarDocumentoPreferencias(local, { usuario: { id: 'A' }, servidor, sessao: sessaoDaAba });
+  await a.configurar(PERFIL_A);
+  try {
+    a.ctx.clearSession = () => {};
+    a.ctx.stopDeliveryQrCamera = () => Promise.resolve();
+    a.ctx.terminateSession('sessão expirada');
+  } catch (_e) { /* o que importa é o estado depois */ }
+  // B reabre NA MESMA ABA: é o caso em que o `sessionStorage` sobreviveria.
+  const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' }, servidor, sessao: sessaoDaAba });
+  await assentar();
+  eq(b.temaNoPrePaint, PADRAO_OFICIAL.tema,
+    'depois da expiração, o pré-paint da aba ainda pintou o tema do anterior');
+  eq(b.preferenciasVisiveis().tema, PADRAO_OFICIAL.tema,
+    'depois da expiração, o próximo principal ainda recebeu o tema do anterior');
+});
+
+testAsync('ISOL C-11: A reencontra o que é de A (controle contra "esquecer tudo")', async () => {
+  // O par indispensável dos C-1..C-5. Sem ele, uma versão que não guardasse
+  // nada passaria em todos eles — e perder a preferência de todo mundo não é
+  // isolamento, é outro defeito.
+  const local = armazemPreferencias();
+  const servidor = servidorDePreferencias();
+  const a1 = montarDocumentoPreferencias(local, { usuario: { id: 'A' }, servidor });
+  await a1.configurar(PERFIL_A);
+  assert(servidor.escritas > 0, 'nada foi gravado no servidor — a preferência não tem dono nenhum');
+
+  // B usa o computador no meio do caminho.
+  const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' }, servidor });
+  await b.configurar(PERFIL_B);
+
+  // A volta, em carga nova.
+  const a2 = montarDocumentoPreferencias(local, { usuario: { id: 'A' }, servidor });
+  await assentar();
+  const visto = a2.preferenciasVisiveis();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(visto[k], PERFIL_A[k], `A não reencontrou ${k}: esperava "${PERFIL_A[k]}", veio "${visto[k]}"`);
+  });
+});
+
+testAsync('ISOL C-13: troca de principal SEM bootstrap também descarta', async () => {
+  // Achado da SABOTAGEM β. O `ISOL C-6` estava verde pelo motivo errado: ele
+  // sempre chamava o bootstrap, e o bootstrap SOBRESCREVE a memória de qualquer
+  // jeito. Com isso, quebrar `prefsDescartarSeTrocouPrincipal()` não deixava
+  // nenhum gate vermelho — o mecanismo não estava sendo medido.
+  //
+  // A janela real: `saveSession(B)` acontece ANTES de `loadBootstrap()`. Entre
+  // os dois, qualquer leitura de preferência responderia com a de A se o
+  // descarte por troca de principal não existisse.
+  const servidor = servidorDePreferencias();
+  const d = montarDocumentoPreferencias(armazemPreferencias(), { usuario: { id: 'A' }, servidor });
+  await d.configurar(PERFIL_A);
+  eq(d.ctx.preferenciasDoPrincipal().tema, 'dark', 'A não aplicou — o gate não mediu nada');
+
+  d.entrar({ id: 'B' });   // login de B; o bootstrap dele AINDA não voltou
+  const respostaDoDono = d.ctx.preferenciasDoPrincipal();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(respostaDoDono[k], PADRAO_OFICIAL[k],
+      `antes do bootstrap, o dono respondeu ${k}="${respostaDoDono[k]}" — valor de A`);
+  });
+  // E quem consulta o dono para pintar a tela também não pode pintar o de A.
+  d.ctx.applyTableDensityPref();
+  eq(d.doc.body.classList.contains('ux-density-compact'), false,
+    'a densidade de A sobreviveu à troca de principal');
+});
+
+testAsync('ISOL C-14: cópia de sessão de OUTRO principal não é aceita', async () => {
+  // Achado da SABOTAGEM γ. Nenhum gate media o carimbo da cópia de sessão,
+  // porque em todos eles a cópia ou era nova ou tinha sido derrubada pelo
+  // encerramento. Faltava o caso em que ela SOBREVIVE: o login de B na mesma
+  // aba não passa por `terminateSession()`, então a cópia de A continua lá até
+  // o bootstrap de B chegar. O carimbo é a única coisa que a recusa.
+  //
+  // A cópia é escrita pelo CAMINHO REAL, não semeada na mão: o formato do
+  // carimbo é detalhe do dono, e um gate que o escrevesse à mão passaria a
+  // medir a própria suposição em vez do mecanismo.
+  const servidor = servidorDePreferencias();
+  const sessaoDaAba = armazemPreferencias();
+  const a1 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDaAba
+  });
+  await a1.configurar(PERFIL_A);
+  assert(sessaoDaAba.getItem('epi-prefs-sessao'),
+    'A não deixou cópia na aba — o gate não mediria nada');
+
+  // B entra na MESMA aba, sem passar pelo encerramento (login direto) e antes
+  // de o bootstrap dele voltar.
+  const b = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'B' }, servidor, sessao: sessaoDaAba, semBootstrap: true
+  });
+  const resposta = b.ctx.preferenciasDoPrincipal();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(resposta[k], PADRAO_OFICIAL[k],
+      `B aceitou a cópia de sessão de A: ${k}="${resposta[k]}"`);
+  });
+  // Recusar não basta: a cópia alheia tem de SAIR da aba, porque o pré-paint
+  // da próxima carga não tem como conferir carimbo nenhum.
+  eq(sessaoDaAba.getItem('epi-prefs-sessao'), null,
+    'a cópia de A continuou na aba — o próximo pré-paint a aplicaria');
+
+  // Controle positivo: a cópia DO PRÓPRIO principal continua sendo aceita —
+  // senão a correção seria "ignorar a cópia sempre", e o pré-paint voltaria a
+  // piscar a cada F5.
+  const sessaoDoA = armazemPreferencias();
+  const a2 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDoA
+  });
+  await a2.configurar(PERFIL_A);
+  const a3 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDoA, semBootstrap: true
+  });
+  eq(a3.ctx.preferenciasDoPrincipal().tema, PERFIL_A.tema,
+    'A deixou de reconhecer a própria cópia de sessão');
+  eq(a3.temaNoPrePaint, PERFIL_A.tema,
+    'o pré-paint parou de usar a cópia da própria aba: o tema volta a piscar no F5');
+});
+
+// O carimbo é um DERIVADO do principal, não o id. Um gate para que ele não
+// volte a ser o id em texto claro — foi assim que o CodeQL leu a gravação.
+test('ISOL C-15: o carimbo da cópia não é o identificador do principal', () => {
+  const appJs = _read('app.js');
+  const corpo = appJs.slice(appJs.indexOf('function prefsGravarCopiaDeSessao()'));
+  const ateOFim = corpo.slice(0, corpo.indexOf('\nfunction '));
+  assert(ateOFim.includes('prefsCarimboDoPrincipal()'),
+    'a gravação da cópia voltou a carimbar com algo que não é o derivado');
+  assert(!ateOFim.includes('prefsPrincipalCorrente()'),
+    'o id do principal voltou a ser gravado em texto claro na cópia de sessão');
+});
+
+test('ISOL C-12: o servidor é o dono, e o cliente não grava preferência em localStorage', () => {
+  const appJs = _read('app.js');
+  const i18nJs = _read('i18n.js');
+
+  // A ligação bootstrap -> dono existe e passa o campo do SERVIDOR.
+  assert(appJs.includes('adotarPreferenciasDoServidor(payload.user?.ui_preferences)'),
+    'o bootstrap parou de entregar as preferências do servidor ao dono');
+  // A escrita vai para a rota real.
+  assert(appJs.includes("api('/api/auth/me/preferences'"),
+    'o cliente parou de persistir a preferência no servidor');
+
+  // Nenhuma das quatro chaves DEVICE volta a ser gravada. A única menção
+  // permitida é a LISTA DE APOSENTADORIA, que existe para apagá-las.
+  const semAposentadoria = appJs.replace(/const PREFS_LEGADO_DEVICE = Object\.freeze\(\[[\s\S]*?\]\);/, '');
+  ["'epi-theme'", "'epi-density'", "'epi-sidebar-collapsed'", "'epi_language'"].forEach((chave) => {
+    assert(!semAposentadoria.includes(chave),
+      `${chave} voltou a aparecer no app.js fora da lista de aposentadoria`);
+    assert(!i18nJs.includes(chave),
+      `${chave} voltou a aparecer no i18n.js — o idioma tem um dono só`);
+  });
+
+  // Dono único: a comparação de principal das preferências mora num lugar só.
+  const comparacoes = (appJs.match(/prefsPrincipalCorrente\(\)/g) || []).length;
+  assert(comparacoes >= 3, 'o dono das preferências sumiu do app.js');
+  assert(appJs.includes('function prefsDescartarSeTrocouPrincipal()'),
+    'sumiu o descarte por troca de principal — o `ISOL C-6` voltaria a vazar');
 });
 
 

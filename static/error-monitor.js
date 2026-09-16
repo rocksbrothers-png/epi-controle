@@ -16,12 +16,8 @@
   const AUTO_ROLLBACK_WINDOW_MS = 10000;
   const MAX_CONSECUTIVE_5XX = 5;
   const UX_FLAG_STORAGE_KEYS = Object.freeze([
-    'ux_phase41_enabled',
     'ux_phase42_enabled',
-    'ux_phase43_enabled',
-    'ux_phase44_enabled',
     'ux_hierarchical_navigation_enabled',
-    'ux_multitab_navigation_enabled',
     'spa_navigation_enabled',
     'ux_global_enabled',
     'dashboard_interativo_enabled',

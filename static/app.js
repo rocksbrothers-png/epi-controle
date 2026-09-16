@@ -268,12 +268,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled',
   uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
   uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
-  uxPhase41Enabled: 'ux_phase41_enabled',
   uxPhase42Enabled: 'ux_phase42_enabled',
-  uxPhase43Enabled: 'ux_phase43_enabled',
-  uxPhase44Enabled: 'ux_phase44_enabled',
   uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
-  uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
   uxAnalyticsEnabled: 'ux_analytics_enabled',
   uxMobileEnabled: 'ux_mobile_enabled',
   uxNavigationControlsEnabled: 'ux_navigation_controls_enabled',
@@ -281,12 +277,8 @@ const UX_FRONTEND_FLAGS = Object.freeze({
   uxGlobalKillSwitch: 'ux_global_kill_switch'
 });
 const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
-  'ux_phase41_enabled',
   'ux_phase42_enabled',
-  'ux_phase43_enabled',
-  'ux_phase44_enabled',
   'ux_hierarchical_navigation_enabled',
-  'ux_multitab_navigation_enabled',
   'spa_navigation_enabled',
   'ux_global_enabled',
   'dashboard_interativo_enabled',
@@ -305,12 +297,8 @@ const FEATURE_FLAG_DEFINITIONS = Object.freeze({
   ux_performance_hardening_enabled: { queryParam: 'ux_perf_hardening', storageKeys: [UX_FRONTEND_FLAGS.uxPerformanceHardeningEnabled] },
   ux_interactive_app_enabled: { queryParam: 'ux_interactive_app', storageKeys: [UX_FRONTEND_FLAGS.uxInteractiveAppEnabled] },
   ux_tools_functional_enabled: { queryParam: 'ux_tools_functional', storageKeys: [UX_FRONTEND_FLAGS.uxToolsFunctionalEnabled] },
-  ux_phase41_enabled: { queryParam: 'ux_phase41', storageKeys: [UX_FRONTEND_FLAGS.uxPhase41Enabled] },
   ux_phase42_enabled: { queryParam: 'ux_phase42', storageKeys: [UX_FRONTEND_FLAGS.uxPhase42Enabled] },
-  ux_phase43_enabled: { queryParam: 'ux_phase43', storageKeys: [UX_FRONTEND_FLAGS.uxPhase43Enabled] },
-  ux_phase44_enabled: { queryParam: 'ux_phase44', storageKeys: [UX_FRONTEND_FLAGS.uxPhase44Enabled] },
   ux_hierarchical_navigation_enabled: { queryParam: 'ux_hierarchy', storageKeys: [UX_FRONTEND_FLAGS.uxHierarchicalNavigationEnabled] },
-  ux_multitab_navigation_enabled: { queryParam: 'ux_multitab', storageKeys: [UX_FRONTEND_FLAGS.uxMultitabNavigationEnabled] },
   ux_analytics_enabled: { queryParam: 'ux_analytics', storageKeys: [UX_FRONTEND_FLAGS.uxAnalyticsEnabled] },
   ux_mobile_enabled: { queryParam: 'ux_mobile', storageKeys: [UX_FRONTEND_FLAGS.uxMobileEnabled] },
   ux_navigation_controls_enabled: { queryParam: 'ux_nav_controls', storageKeys: [UX_FRONTEND_FLAGS.uxNavigationControlsEnabled] },
@@ -327,28 +315,6 @@ if (!globalThis.__EPI_PHASE42_SCRIPT_REQUESTED__) {
     document.head.appendChild(phase42Script);
   } catch (error) {
     reportNonCriticalError('phase42 script bootstrap failed', error);
-  }
-}
-if (!globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__) {
-  globalThis.__EPI_PHASE43_SCRIPT_REQUESTED__ = true;
-  try {
-    const phase43Script = document.createElement('script');
-    phase43Script.defer = true;
-    phase43Script.src = '/ux-phase43.js?v=20260424-50';
-    document.head.appendChild(phase43Script);
-  } catch (error) {
-    reportNonCriticalError('phase43 script bootstrap failed', error);
-  }
-}
-if (!globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__) {
-  globalThis.__EPI_PHASE44_SCRIPT_REQUESTED__ = true;
-  try {
-    const phase44Script = document.createElement('script');
-    phase44Script.defer = true;
-    phase44Script.src = '/ux-phase44.js?v=20260424-50';
-    document.head.appendChild(phase44Script);
-  } catch (error) {
-    reportNonCriticalError('phase44 script bootstrap failed', error);
   }
 }
 const PHASE2_STORAGE_ROLLOUT_KEY = 'epi_phase2_rollout_storage_enabled';
@@ -950,6 +916,73 @@ function safeStorageRemove(key) {
     reportNonCriticalError(`storage remove failed for ${key}`, error);
   }
 }
+
+// ── Limpeza de resíduos legados da UX no navegador (#343 PR 4) ──────────────
+//
+// Os módulos `ux-phase41`, `ux-phase43` e `ux-phase44` saíram nesta fatia. Cada
+// um limpava a PRÓPRIA chave na carga, fora do gate da flag — justamente para
+// alcançar quem teve a flag ligada um dia e não tem mais. Remover o arquivo
+// removeria junto o único código capaz de alcançar o que ele já gravou no
+// disco de quem usou as versões anteriores.
+//
+// Por isso a limpeza mora aqui: `app.js` SEMPRE carrega, não depende de
+// nenhuma das flags removidas e roda antes de qualquer decisão de produto.
+//
+// O que NÃO se faz aqui, de propósito: limpeza total do storage, varredura por
+// heurística, e qualquer toque no namespace do phase42 — ele CONTINUA servido e
+// já remove a própria chave legada (`removerChaveLegada`, na F5-B). Migrar a
+// limpeza dele para cá duplicaria owner justamente na fatia que existe para
+// eliminar owners duplicados.
+//
+// APOSENTADORIA: ver `docs/PR4_LIMPEZA_FINAL_343.md`. Esta rotina é temporária
+// e nasce com critério de retirada documentado.
+const CLEANUP_LEGADO_UX_VERSAO = '343-pr4';
+
+// Chaves exatas. A lista é fechada e foi conferida contra o histórico do
+// repositório: não houve versão anterior dessas chaves além das abaixo.
+const CHAVES_LEGADAS_UX = Object.freeze([
+  // Dados que os módulos gravaram.
+  'epi:ux:phase41:context:v2',
+  'epi:ux:phase41:scroll:v2',
+  'epi:ux:phase43:state:v1',
+  // E as próprias chaves de FLAG. Quem ligou uma delas um dia tem o valor no
+  // disco; elas saíram do registro, e quem as apagava era o auto-rollback do
+  // `error-monitor.js`, que também deixou de conhecê-las. Sem esta linha,
+  // ficariam órfãs para sempre.
+  'ux_phase41_enabled',
+  'ux_phase43_enabled',
+  'ux_phase44_enabled',
+  'ux_multitab_navigation_enabled'
+]);
+
+// Prefixo. O phase44 gravava uma chave POR VIEW (`epi.ux.phase44.filters.<view>`),
+// então o conjunto não é enumerável — só o namespace é. O ponto final no fim do
+// prefixo é essencial: sem ele, um namespace futuro como `epi.ux.phase440`
+// entraria na varredura.
+const PREFIXOS_LEGADOS_UX = Object.freeze(['epi.ux.phase44.']);
+
+function limparResiduosLegadosDaUx() {
+  try {
+    if (!globalThis.localStorage) return;
+    CHAVES_LEGADAS_UX.forEach((chave) => {
+      safeStorageRemove(chave);
+    });
+    // De trás para a frente: remover encurta a lista e um laço crescente
+    // pularia índices.
+    for (let i = globalThis.localStorage.length - 1; i >= 0; i -= 1) {
+      const chave = globalThis.localStorage.key(i);
+      if (!chave) continue;
+      if (!PREFIXOS_LEGADOS_UX.some((prefixo) => chave.indexOf(prefixo) === 0)) continue;
+      safeStorageRemove(chave);
+    }
+  } catch (_erro) {
+    // Sem storage (janela privativa, storage desligado, embedding restritivo):
+    // não há resíduo a limpar e a aplicação não pode deixar de carregar por
+    // causa disso.
+  }
+}
+
+limparResiduosLegadosDaUx();
 
 function parseFeatureFlagValue(value) {
   if (value === '1') return true;
@@ -3625,11 +3658,7 @@ function showView(view, options = {}) {
       detail: {
         view,
         anterior: currentActiveView.replace(/-view$/, ''),
-        viaHistorico: options.viaHistorico === true,
-        // Troca EXPLÍCITA de aba na barra multitab (clique na aba, Ctrl+Tab,
-        // fechar aba, restauração de sessão). Como Voltar/Avançar, é o usuário
-        // pedindo um contexto específico de volta — não é reentrada no módulo.
-        viaMultitab: options.viaMultitab === true
+        viaHistorico: options.viaHistorico === true
       }
     }));
   } catch (error) {
@@ -4332,10 +4361,6 @@ function setupViewTabs() {
       // filtros de estoque que o snapshot não tem como devolver, deixando o
       // Voltar pior do que era.
       if (event?.detail?.viaHistorico === true) {return;}
-      // Mesma razão para a troca explícita de aba multitab: quem clica numa aba
-      // já aberta está pedindo AQUELE contexto, não o estado inicial. Entrar
-      // pelo menu lateral continua sendo reentrada e cai no reset abaixo.
-      if (event?.detail?.viaMultitab === true) {return;}
       const view = document.getElementById(`${nome}-view`);
       view?.querySelectorAll?.('nav[data-vtabs]').forEach((nav) => resetViewTabsToInitial(nav));
       // Ordem deliberada: modal antes de formulário (o modal carrega a
@@ -4368,7 +4393,9 @@ function setupViewTabs() {
   }
 }
 
-function registerMultitabNavigationApi() {
+// Publica `__EPI_APP_NAV_API__`. O nome anterior citava o módulo de abas, que
+// saiu no #343 PR 4; o consumidor que permanece é o `navigation-controls.js`.
+function registerAppNavigationApi() {
   globalThis.__EPI_APP_NAV_API__ = {
     showView,
     navigateToView,
@@ -4381,35 +4408,9 @@ function registerMultitabNavigationApi() {
     },
     getCurrentView: () => document.querySelector('.view.active')?.id?.replace(/-view$/, '') || defaultView(),
     // F5-B.1: a MESMA semântica de ativação redundante que o app aplica, para
-    // os módulos carregados depois (multitab) não reinventarem a sua. Diferente
-    // de `getCurrentView`: sem fallback para `defaultView()`.
-    ativacaoRedundanteDeView,
-    rerunSafeSetups: () => {
-      try {
-        applyPhase2Visibility('Cadastro de Colaborador', isPhase2NavInteractivityEnabled());
-        applyPhase2Visibility('Listagem de Colaboradores', isColabListHtmxPilotEnabled());
-        applyPhase2Visibility('Gestão de Colaborador', isGestaoColaboradorHtmxPilotEnabled());
-        applyPhase2Visibility('Cadastro de EPI', isEpiHtmxPilotEnabled());
-        applyPhase2Visibility('Controle de Estoque (read-only + filtros)', isEstoqueHtmxPilotEnabled());
-      } catch (error) {
-        reportNonCriticalError('[multitab] applyPhase2Visibility failed', error);
-      }
-      try {
-        setupPhase2PilotsSafely();
-      } catch (error) {
-        reportNonCriticalError('[multitab] setupPhase2PilotsSafely failed', error);
-      }
-      try {
-        setupPhase29Ux();
-      } catch (error) {
-        reportNonCriticalError('[multitab] setupPhase29Ux failed', error);
-      }
-      try {
-        document.dispatchEvent(new CustomEvent('epi:ux-rebind-safe', { detail: { source: 'multitab-navigation' } }));
-      } catch (error) {
-        reportNonCriticalError('[multitab] ux rebind dispatch failed', error);
-      }
-    }
+    // os módulos carregados depois não reinventarem a sua. Diferente de
+    // `getCurrentView`: sem fallback para `defaultView()`.
+    ativacaoRedundanteDeView
   };
 }
 
@@ -15351,7 +15352,7 @@ async function init() {
   }
   if (refs.deliveryReturnedDate) refs.deliveryReturnedDate.value = new Date().toISOString().split('T')[0];
   syncDeliveryDevolutionOptions();
-  registerMultitabNavigationApi();
+  registerAppNavigationApi();
   setupViewTabs();
 
   showScreen(false);

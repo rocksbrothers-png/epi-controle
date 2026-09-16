@@ -475,17 +475,20 @@
         flowFinish('delivery_epi', 'error', { source: 'epi:delivery-submit-error' });
         pushEvent('form:error', { module: getActiveView(), metadata: { source: 'epi:delivery-submit-error' } });
       });
-      doc.addEventListener('epi:action-success', () => {
-        flowFinish('generic_action', 'success', { source: 'epi:action-success' });
-      });
-      doc.addEventListener('epi:action-error', () => {
-        flowFinish('generic_action', 'error', { source: 'epi:action-error' });
-      });
+      // #343 PR 4 — os ouvintes de `epi:action-success`/`epi:action-error` saíram
+      // daqui. O único produtor deles em produção era o bridge de fetch do
+      // ux-phase44, removido nesta fatia: sem produtor, `flowFinish` nunca era
+      // chamado. E a métrica que alimentavam não media nada — `generic_action`
+      // não tem `flowStart` em lugar nenhum, então a duração era sempre zero.
     }, null);
 
     safeCall(() => {
       doc.addEventListener('click', (event) => {
-        const target = event?.target?.closest?.('#phase43-confirm, [data-phase44-confirm-yes], [data-confirm-action]');
+        // #343 PR 4 — `#phase43-confirm` e `[data-phase44-confirm-yes]` saíram do
+        // seletor: os dois nós eram criados em runtime pelo ux-phase43 e pelo
+        // ux-phase44, que foram removidos, e não existem em nenhum HTML servido.
+        // `[data-confirm-action]` é markup do app e continua sendo o gatilho.
+        const target = event?.target?.closest?.('[data-confirm-action]');
         if (!target) return;
         pushEvent('flow:confirm', { module: getActiveView(), metadata: { source: 'confirm_click' } });
       }, { passive: true });

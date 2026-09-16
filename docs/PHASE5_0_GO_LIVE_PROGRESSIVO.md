@@ -1,6 +1,15 @@
 # Fase 5.0 — Ativação Controlada (Go Live Progressivo)
 
-Data: 2026-04-24. Revisado em 2026-09-14 (correção factual — ver seção 10).
+Data: 2026-04-24. Revisado em 2026-09-14 (correção factual — ver seção 10) e em
+2026-09-16 (#343 PR 4 — remoção dos módulos).
+
+> **DOCUMENTO HISTÓRICO a partir de 2026-09-16.**
+> Quatro dos cinco módulos que este documento descreve **não existem mais**:
+> `ux-phase41.js`, `ux-phase43.js`, `ux-phase44.js` e `multitab-navigation.js`
+> foram removidos no #343 PR 4, junto com as flags deles. O único que permanece é
+> o `ux-phase42.js`. O que está escrito abaixo descreve o estado da auditoria de
+> setembro de 2026 e é mantido como registro de decisão — **não como instrução de
+> ativação**. Para o estado atual, ver `docs/PR4_LIMPEZA_FINAL_343.md`.
 
 > **Revisão factual — auditoria de execução dos módulos UX.**
 > A matriz original desta seção marcava "Pronto para produção: SIM" para 4.1, 4.3 e
@@ -22,13 +31,13 @@ Estados, em ordem. Um módulo só alcança um estado se alcançou todos os anter
 
 | Fase | Flag (querystring) | Maturidade alcançada | Habilitável hoje? | Observação |
 |---|---|---|---|---|
-| 4.1 | `ux_phase41_enabled` (`ux_phase41=1`) | 2 — testado estruturalmente | **NÃO** | Inerte: colisão de chave de guarda. A flag nunca é lida. |
+| 4.1 | ~~`ux_phase41_enabled`~~ | — | **REMOVIDO (PR 4)** | Era inerte por colisão de chave de guarda. A F5-C concluiu que rascunho de formulário não é requisito; módulo e flag removidos. |
 | 4.2 | `ux_phase42_enabled` (`ux_phase42=1`) | 3 — testado comportamentalmente (parcial) | SIM | Único módulo que inicializa. Registra 13 listeners com a flag ligada. |
-| 4.3 | `ux_phase43_enabled` (`ux_phase43=1`) | 2 — testado estruturalmente | **NÃO** | Inerte: mesma colisão. Depende funcionalmente da 4.2 sem declarar a dependência. |
-| 4.4 | `ux_phase44_enabled` (`ux_phase44=1`) | 2 — testado estruturalmente | **NÃO** | Inerte: mesma colisão. |
+| 4.3 | ~~`ux_phase43_enabled`~~ | — | **REMOVIDO (PR 4)** | Era inerte pela mesma colisão. A regra que ele duplicava tem dono no `app.js` e no backend (PR 2A). |
+| 4.4 | ~~`ux_phase44_enabled`~~ | — | **REMOVIDO (PR 4)** | Era inerte pela mesma colisão. Fetch fica com o `error-monitor.js` (PR 2B); dropdown com o `app.js`, que absorveu a devolução de foco (PR 2C). |
 | Hierarchy | `ux_hierarchical_navigation_enabled` (`ux_hierarchy=1`) | não auditado nesta rodada | não verificado | Fora do escopo da auditoria. O "SIM" anterior não foi confirmado nem refutado. |
 | SPA | `spa_navigation_enabled` (`ux_spa_navigation=1`) | não auditado nesta rodada | não verificado | Idem. |
-| Tabs | `ux_multitab_navigation_enabled` (`ux_multitab=1`) | 2 — testado estruturalmente | **NÃO** | Inerte por outro motivo: consome `__EPI_APP_NAV_API__` antes de ela ser publicada. |
+| Tabs | ~~`ux_multitab_navigation_enabled`~~ | — | **REMOVIDO (PR 4)** | Era inerte por consumir `__EPI_APP_NAV_API__` antes da publicação. A navegação tem um dono só (PR 2D). |
 
 Nenhum módulo está no estado 5. Este documento não aprova nenhum para produção.
 
@@ -40,9 +49,10 @@ Nenhum módulo está no estado 5. Este documento não aprova nenhum para produç
 
 ### Fase 2 (teste real)
 - Ativar manualmente via `localStorage` para piloto restrito.
-- Exemplo:
-  - `localStorage.setItem('ux_phase44_enabled', '1')`
-  - `localStorage.setItem('ux_multitab_navigation_enabled', '1')`
+- Exemplo (**obsoleto**: as duas flags citadas foram removidas no PR 4; o roteiro
+  fica como registro do método, não como instrução executável):
+  - ~~`localStorage.setItem('ux_phase44_enabled', '1')`~~
+  - ~~`localStorage.setItem('ux_multitab_navigation_enabled', '1')`~~
 
 ### Fase 3 (parcial)
 - Ativar para grupos controlados por perfil/time de operação.

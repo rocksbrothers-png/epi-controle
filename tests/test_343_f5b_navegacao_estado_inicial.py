@@ -130,8 +130,15 @@ def test_o_deep_link_por_view_continua_existindo():
 def test_o_snapshot_do_voltar_continua_carimbado_e_so_no_popstate():
     corpo = _fonte('static/app.js')
     assert 'function restoreInteractiveSnapshot(' in corpo
-    assert 'snapshot.sid !== snapshotScopeId()' in corpo, (
+    # ATUALIZADO na frente de Isolamento (PR A): a comparação virou
+    # `escopoDoEstadoConfere()`, com um dono só, porque o `popstate` passou a
+    # precisar da mesma regra ANTES de escolher a view. O carimbo continua
+    # sendo a propriedade protegida aqui.
+    assert 'escopoDoEstadoConfere(snapshot)' in corpo, (
         'o carimbo `sid` saiu: um snapshot de outra sessão/identidade passaria'
+    )
+    assert 'estado.sid === snapshotScopeId()' in corpo, (
+        'a regra de escopo deixou de comparar o carimbo'
     )
     # Restaurar só pode acontecer no Voltar/Avançar. Qualquer outra chamada
     # transformaria o snapshot em memória automática de navegação.
@@ -641,7 +648,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '2d97f7a9f01101af0c49080ed48fb773989a35be4bba2c3f67b2466bf21c61e3'
+DIGESTO_PARIDADE_F5B = 'a65b8b3cbb26d3e32fa0a5677484e2f09772347e8e6ce8f41360db3a6125ea79'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

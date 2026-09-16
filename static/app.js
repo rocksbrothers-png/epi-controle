@@ -1860,7 +1860,10 @@ function trackInteractiveViewHistory(view) {
 // "ID" no nome alimentada por PRNG fraco é lida — com razão — como credencial
 // por quem revisa e por analisador estático. O nome também diz o que ele é:
 // instância de DOCUMENTO, não sessão.
-const DOCUMENT_INSTANCE_ID = (() => {
+//
+// O gerador é função porque tem DOIS usuários: a constante do documento, logo
+// abaixo, e `rotateSnapshotScope()`, que precisa de um valor novo sem recarga.
+function novoDiscriminadorDeEscopo(sufixo) {
   const fonte = globalThis.crypto;
   if (fonte?.randomUUID) return fonte.randomUUID();
   if (fonte?.getRandomValues) {
@@ -1868,9 +1871,12 @@ const DOCUMENT_INSTANCE_ID = (() => {
     return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
   // Sem Web Crypto: a marca de tempo já distingue cargas, que é todo o
-  // objetivo — e não há segredo em jogo.
-  return `t${Date.now()}`;
-})();
+  // objetivo — e não há segredo em jogo. O sufixo separa dois valores gerados
+  // dentro do MESMO milissegundo, que é o caso da rotação sem recarga.
+  return `t${Date.now()}${sufixo ? `-${sufixo}` : ''}`;
+}
+
+const DOCUMENT_INSTANCE_ID = novoDiscriminadorDeEscopo();
 
 // A marca vive no `sessionStorage`, e NÃO por carga de documento (#343, F2).
 //
@@ -1893,11 +1899,21 @@ function rotateSnapshotScope() {
   // com sucesso e nenhum encerramento aconteceu. O `sessionStorage` sobreviveu
   // ao F5 e as entradas de histórico de A continuariam casando.
   //
-  // O cache em memória precisa cair junto: aqui NÃO há recarga para zerá-lo.
-  _escopoDeSnapshot = null;
+  // Gera um escopo NOVO em vez de apenas apagar o atual.
+  //
+  // Apagar bastava enquanto a rotação só acontecia em `terminateSession()`, que
+  // recarrega a página: a carga seguinte tinha outro `DOCUMENT_INSTANCE_ID`. No
+  // login de outro principal NÃO há recarga — `snapshotScopeId()` recaía no
+  // mesmo `DOCUMENT_INSTANCE_ID` de antes e a rotação virava no-op, justamente
+  // no cenário descrito acima, que ela existe para cobrir. O gate `ISOL A-8`
+  // mede esse caminho.
+  _escopoDeSnapshot = novoDiscriminadorDeEscopo('rot');
   try {
-    sessionStorage.removeItem(SNAPSHOT_SCOPE_KEY);
-  } catch (_e) { /* sem storage: o escopo já é por documento, nada a fazer */ }
+    sessionStorage.setItem(SNAPSHOT_SCOPE_KEY, _escopoDeSnapshot);
+  } catch (_e) {
+    // Sem storage: o valor em memória já vale para este documento, que é o
+    // único que pode ler os snapshots desta aba antes da próxima carga.
+  }
 }
 
 function snapshotScopeId() {
@@ -1914,6 +1930,21 @@ function snapshotScopeId() {
     _escopoDeSnapshot = DOCUMENT_INSTANCE_ID;
   }
   return _escopoDeSnapshot;
+}
+
+// Um estado de histórico só pode decidir a tela se PROVAR pertencer a esta
+// sessão (frente de Isolamento entre Usuários, PR A).
+//
+// O carimbo é o mesmo `sid` que a #343 F2 já criou para os filtros — o que
+// muda aqui são duas coisas: o MOMENTO (antes de aplicar a view, não depois) e
+// o ALCANCE (a view também, não só os filtros). O defeito nunca foi a falta da
+// verificação; foi ela rodar tarde demais e cobrir pouco.
+//
+// Ausência de carimbo é recusa, não permissão: uma entrada sem `sid` não prova
+// a quem pertence, e entradas antigas pertencem a quem estava ali antes.
+function escopoDoEstadoConfere(estado) {
+  if (!estado || typeof estado !== 'object') return false;
+  return estado.sid === snapshotScopeId();
 }
 
 function collectInteractiveSnapshot(view) {
@@ -1933,9 +1964,12 @@ function collectInteractiveSnapshot(view) {
 function restoreInteractiveSnapshot(snapshot) {
   if (!isUxInteractiveAppEnabled() || !snapshot || typeof snapshot !== 'object') return;
   // Snapshot de outro documento = de antes do encerramento, logo de outra
-  // identidade. Restaurá-lo devolveria os filtros do usuário anterior. A view
-  // em si continua sendo navegável: só o estado carimbado é descartado.
-  if (snapshot.sid !== snapshotScopeId()) return;
+  // identidade. Restaurá-lo devolveria os filtros do usuário anterior.
+  //
+  // A regra de escopo mora em `escopoDoEstadoConfere()`: uma responsabilidade,
+  // um dono. Antes ela existia só aqui, e por isso a VIEW escapava — quem
+  // chama este ponto já tinha aplicado a tela.
+  if (!escopoDoEstadoConfere(snapshot)) return;
   const filters = snapshot.filters || {};
   if (filters.employees) state.employeesFilters = { ...state.employeesFilters, ...filters.employees };
   if (filters.employeesOps) state.employeesOpsFilters = { ...state.employeesOpsFilters, ...filters.employeesOps };
@@ -3480,7 +3514,15 @@ function bindSpaNavigationHistory() {
     if (!state?.user) return;
     if (!isSpaNavigationEnabled()) return;
     const fallbackView = defaultView();
-    const nextView = event?.state?.view || resolveViewFromLocation() || fallbackView;
+    // A ORDEM é o contrato: validar o escopo, e só então escolher a tela.
+    //
+    // Fora do escopo, a URL da entrada TAMBÉM é de quem saiu — ela carrega o
+    // mesmo `?view=`. Cair em `resolveViewFromLocation()` nesse caso devolveria
+    // o vazamento pela porta dos fundos, então o fallback é direto.
+    const estadoEhDestaSessao = escopoDoEstadoConfere(event?.state);
+    const nextView = estadoEhDestaSessao
+      ? (event.state.view || resolveViewFromLocation() || fallbackView)
+      : fallbackView;
     // Três passos, nesta ordem exata — cada um existe por um motivo:
     //
     // 1. `showView` SEM `historyMode`. Entrar no módulo devolve abas e filtros
@@ -3492,9 +3534,10 @@ function bindSpaNavigationHistory() {
     //    com o estado errado, e voltar a ela mais tarde restauraria o valor
     //    sobrescrito.
     // 2. Reaplicar o snapshot. O Voltar/Avançar é navegação pedida
-    //    explicitamente pelo usuário, então vence o reset de entrada. Continua
-    //    carimbado por `sid`: de outra sessão ou identidade, é recusado dentro
-    //    de `restoreInteractiveSnapshot`.
+    //    explicitamente pelo usuário, então vence o reset de entrada — quando o
+    //    usuário é o mesmo. De outra sessão, nem a view nem os filtros passam,
+    //    e a entrada é reescrita abaixo com o snapshot de quem está agora: o
+    //    histórico de quem saiu se apaga à medida que o atual caminha por ele.
     // 3. Só então reescrever a entrada, já com o estado restaurado — que é o
     //    que o `historyMode: 'replace'` fazia antes de a ordem mudar.
     showView(nextView, { partial: true, viaHistorico: true });

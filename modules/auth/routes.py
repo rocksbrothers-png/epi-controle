@@ -475,6 +475,9 @@ def handle_put_auth_me_preferences(handler, parsed, payload, match):
             try:
                 connection.rollback()
             except Exception:
+                # Rollback falhou depois de a escrita já ter falhado: não há
+                # segunda chance a tentar, e engolir aqui preserva o erro
+                # original, que é o que descreve o problema de verdade.
                 pass
             raise ValueError('Não foi possível salvar as preferências.')
         return send_api_response(handler, 200, data={'ui_preferences': resultado})

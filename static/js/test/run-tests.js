@@ -7037,6 +7037,22 @@ const PADRAO_OFICIAL = Object.freeze({ tema: 'light', densidade: 'normal', sideb
 
 // O servidor. O mesmo mapa atravessa todas as cargas, como a coluna
 // `users.ui_preferences` atravessa todas as sessões.
+// Extrai o script inline do `_head.html` por delimitador LITERAL, não por
+// expressão regular. Uma regex de `<script>` é frágil (não pega `<SCRIPT>`
+// nem tag com atributo) e, pior, é lida pela análise estática como tentativa
+// de FILTRAR HTML — que não é o caso aqui: o arquivo é nosso e tem
+// exatamente um script. Achado do CodeQL (`js/bad-tag-filter`).
+// Um lugar só: os dois gates que precisam disso chamam esta função.
+function scriptDoPrePaint() {
+  const arquivo = fs.readFileSync(
+    path.join(path.resolve(JS_ROOT, '..'), 'views', '_head.html'), 'utf-8');
+  const minusculo = arquivo.toLowerCase();
+  const abre = minusculo.indexOf('<script>');
+  const fecha = minusculo.indexOf('</script>', abre + 1);
+  if (abre === -1 || fecha === -1) return null;
+  return arquivo.slice(abre + '<script>'.length, fecha);
+}
+
 function servidorDePreferencias(inicial) {
   const porUsuario = JSON.parse(JSON.stringify(inicial || {}));
   return {
@@ -7137,10 +7153,9 @@ function montarDocumentoPreferencias(local, opcoes) {
   vmF5B.createContext(ctx);
 
   // MOMENTO 1 — antes de conhecer a identidade. O script de pré-paint REAL.
-  const head = fs.readFileSync(path.join(raizStatic, 'views', '_head.html'), 'utf-8');
-  const inline = head.match(/<script>([\s\S]*?)<\/script>/);
+  const inline = scriptDoPrePaint();
   assert(inline, 'o script de pré-paint sumiu do _head.html — o gate mediria outra página');
-  vmF5B.runInContext(inline[1], ctx, { filename: '_head.html:pre-paint' });
+  vmF5B.runInContext(inline, ctx, { filename: '_head.html:pre-paint' });
   const temaNoPrePaint = doc.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 
   // Os scripts servidos, na ordem real.
@@ -7324,12 +7339,11 @@ test('ISOL C-9b: o pré-paint não lê localStorage, por construção', () => {
   // O par estrutural do C-9. O comportamental prova que HOJE não vaza; este
   // prova que não PODE voltar a vazar pelo mesmo caminho: `localStorage`
   // atravessa abas e identidades, `sessionStorage` não.
-  const head = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_head.html'), 'utf-8');
-  const inline = head.match(/<script>([\s\S]*?)<\/script>/);
+  const inline = scriptDoPrePaint();
   assert(inline, 'o script de pré-paint sumiu do _head.html');
-  assert(!inline[1].includes('localStorage'),
+  assert(!inline.includes('localStorage'),
     'o pré-paint voltou a ler localStorage — aparência aplicada antes da identidade');
-  assert(inline[1].includes('sessionStorage'),
+  assert(inline.includes('sessionStorage'),
     'o pré-paint parou de ler a cópia de sessão: o tema volta a piscar a cada F5');
 });
 

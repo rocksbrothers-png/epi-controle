@@ -4594,9 +4594,17 @@ function prefsLerCopiaDeSessao() {
 }
 
 function prefsGravarCopiaDeSessao() {
+  // Os quatro campos são NOMEADOS, um a um, em vez de espalhados com `...`.
+  // O espalhamento copiava o objeto inteiro: se algum dia entrasse ali uma
+  // chave vinda do bootstrap, ela iria para o disco junto, e nem a leitura do
+  // código nem a análise estática conseguiriam afirmar o contrário. Achado do
+  // CodeQL (`js/clear-text-storage-of-sensitive-data`) e correção real: a
+  // cópia de sessão só pode conter preferência de interface.
+  const p = prefsNormalizar(_prefsEmMemoria);
   try {
     sessionStorage.setItem(PREFS_SESSAO_KEY, JSON.stringify({
-      ...(_prefsEmMemoria || PREFS_PADRAO), p: prefsPrincipalCorrente()
+      p: prefsPrincipalCorrente(),
+      tema: p.tema, densidade: p.densidade, sidebar: p.sidebar, idioma: p.idioma
     }));
   } catch (_e) { /* sem storage: só o pré-paint perde o atalho */ }
 }

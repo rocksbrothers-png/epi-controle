@@ -2859,10 +2859,17 @@ function setLoginMessage(message = '', isError = false) {
 // `location.reload()` elimina DOM, valores de campo, memória JS, closures e
 // listeners sem depender de ninguém lembrar de atualizar lista alguma.
 //
-// NÃO limpa `localStorage` nem `sessionStorage`: `epi-theme` (F3) é frente
-// separada da #343 e continua exatamente como estava. Há gate provando que esta
-// fatia não a toca. (A chave do portal que esta nota citava foi ELIMINADA pela
-// F4 — o portal não persiste mais nada no navegador, então não há o que limpar.)
+// NÃO limpa `localStorage` nem `sessionStorage` em bloco. (A chave do portal
+// que esta nota citava foi ELIMINADA pela F4 — o portal não persiste mais nada
+// no navegador, então não há o que limpar.)
+//
+// ATUALIZADO na frente de Isolamento (PR C): a nota dizia que a preferência de
+// tema era frente separada e continuava intocada. Deixou de ser verdade, e por
+// decisão de produto: tema, densidade, sidebar e idioma passaram a pertencer à
+// IDENTIDADE, com o servidor como fonte da verdade. O encerramento derruba a
+// CÓPIA DE SESSÃO dessas preferências — e só a cópia. O valor de quem saiu
+// continua guardado na conta dele e volta inteiro no próximo login: isto é
+// dar dono, não apagar preferência.
 const SESSION_END_MESSAGE_KEY = 'epi-session-end-message';
 
 function terminateSession(message = '') {
@@ -2894,6 +2901,10 @@ function terminateSession(message = '') {
     sessionStorage.setItem(SESSION_TEARDOWN_KEY, '1');
   } catch (_e) { /* sem storage: a recarga continua valendo */ }
   rotateSnapshotScope();
+  // A cópia de sessão das preferências serve ao pré-paint da PRÓXIMA carga
+  // desta aba. Se ela sobrevivesse ao encerramento, a aba reaberta pintaria o
+  // tema de quem saiu antes de saber quem entrou (`ISOL C-10`).
+  try { sessionStorage.removeItem(PREFS_SESSAO_KEY); } catch (_e) { /* sem storage: nada a derrubar */ }
   try {
     const url = new URL(globalThis.location.href);
     url.searchParams.delete('view');
@@ -4487,11 +4498,184 @@ function applyMobileUxVisibility() {
   applySidebarCollapsed();
 }
 
-// ── Sidebar recolhível no desktop, com preferência persistida (Navegação §6) ──
-const SIDEBAR_COLLAPSED_KEY = 'epi-sidebar-collapsed';
+// ── Preferências pessoais de interface: DONO ÚNICO (Isolamento, PR C) ────────
+//
+// Tema, densidade de tabela, sidebar recolhida e idioma. Até esta fatia cada
+// uma morava numa chave própria de `localStorage`, com escopo DEVICE — e num
+// computador compartilhado isso significa que quem entrava herdava a aparência
+// de quem saiu. Os gates `ISOL C-1`..`C-10` mediram exatamente isso.
+//
+// O escopo agora é USER. A fonte da verdade é o SERVIDOR (`users.ui_preferences`,
+// entregue em `/api/bootstrap` e `/api/auth/me`), e o navegador guarda no
+// máximo uma CÓPIA DE SESSÃO. A cópia:
+//   • vive em `sessionStorage`, que não atravessa aba nem janela;
+//   • carrega o id do principal e é descartada quando ele muda, inclusive SEM
+//     recarga — a lição do `ISOL A-8`, agora contratual (`ISOL C-6`);
+//   • existe por um motivo só: deixar o pré-paint aplicar o tema CERTO num F5
+//     sem piscar. Sem ela, todo recarregar mostraria o tema claro por um quadro.
+//
+// `localStorage` deixou de guardar preferência. O que houver lá veio de versão
+// anterior e é LEGADO SEM DONO — ver `aposentarPreferenciasLegadas()`.
+const PREFS_PADRAO = Object.freeze({
+  tema: 'light', densidade: 'normal', sidebar: 'expanded', idioma: 'pt-BR'
+});
 
+// Mesma lista do backend (`UI_PREFERENCE_ALLOWED`) e do `i18n.js`. Valor fora
+// dela cai no padrão: preferência de interface nunca derruba uma tela.
+const PREFS_VALORES = Object.freeze({
+  tema: ['light', 'dark'],
+  densidade: ['normal', 'compact'],
+  sidebar: ['expanded', 'collapsed'],
+  idioma: ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'],
+});
+
+const PREFS_SESSAO_KEY = 'epi-prefs-sessao';
+
+// Chaves da era DEVICE. Elas NÃO são lidas em lugar nenhum — são aposentadas.
+const PREFS_LEGADO_DEVICE = Object.freeze([
+  'epi-theme', 'epi-density', 'epi-sidebar-collapsed', 'epi_language'
+]);
+
+let _prefsEmMemoria = null;
+// `undefined` = ainda não perguntamos de quem é esta sessão. É estado distinto
+// de `''` (ninguém logado), que é um principal como outro qualquer. Sem essa
+// distinção, a PRIMEIRA leitura da página se pareceria com uma troca de
+// principal e derrubaria a cópia da própria aba — o `ISOL C-14` pegou isso.
+let _prefsPrincipal;
+
+function prefsPrincipalCorrente() {
+  const id = state?.user?.id;
+  return (id === undefined || id === null) ? '' : String(id);
+}
+
+function prefsNormalizar(bruto) {
+  const origem = (bruto && typeof bruto === 'object') ? bruto : {};
+  const saida = { ...PREFS_PADRAO };
+  Object.keys(PREFS_VALORES).forEach((chave) => {
+    const valor = origem[chave];
+    if (typeof valor === 'string' && PREFS_VALORES[chave].includes(valor)) saida[chave] = valor;
+  });
+  return saida;
+}
+
+// Papel igual NÃO é principal igual — mesma regra do PR B. A comparação é por
+// id, e a ausência de id (deslogado) é um principal distinto de qualquer um.
+function prefsDescartarSeTrocouPrincipal() {
+  const atual = prefsPrincipalCorrente();
+  if (atual === _prefsPrincipal) return false;
+  const primeiraPergunta = _prefsPrincipal === undefined;
+  _prefsPrincipal = atual;
+  // Primeira leitura da página não é troca: não há nada anterior a descartar,
+  // e derrubar a cópia aqui apagaria justamente o atalho do pré-paint. Uma
+  // cópia que não seja deste principal é recusada e removida na leitura.
+  if (primeiraPergunta) return false;
+  _prefsEmMemoria = null;
+  try { sessionStorage.removeItem(PREFS_SESSAO_KEY); } catch (_e) { /* sem storage: a RAM já foi zerada */ }
+  return true;
+}
+
+function prefsLerCopiaDeSessao() {
+  try {
+    const cru = sessionStorage.getItem(PREFS_SESSAO_KEY);
+    if (!cru) return null;
+    const salvo = JSON.parse(cru);
+    // Sem carimbo de principal, ou carimbo de outro: a cópia não prova ser
+    // desta identidade. Ausência de prova é recusa, não permissão.
+    if (!salvo || String(salvo.p ?? '') !== prefsPrincipalCorrente()) {
+      // E não basta recusar: uma cópia alheia deixada na aba seria lida pelo
+      // PRÉ-PAINT da próxima carga, que não tem como conferir carimbo nenhum.
+      // Se o bootstrap desta carga falhar (modo degradado) e ela sobrevivesse,
+      // o próximo F5 pintaria o tema do principal anterior.
+      try { sessionStorage.removeItem(PREFS_SESSAO_KEY); } catch (_e) { /* nada a remover */ }
+      return null;
+    }
+    return prefsNormalizar(salvo);
+  } catch (_e) { return null; }
+}
+
+function prefsGravarCopiaDeSessao() {
+  try {
+    sessionStorage.setItem(PREFS_SESSAO_KEY, JSON.stringify({
+      ...(_prefsEmMemoria || PREFS_PADRAO), p: prefsPrincipalCorrente()
+    }));
+  } catch (_e) { /* sem storage: só o pré-paint perde o atalho */ }
+}
+
+function preferenciasDoPrincipal() {
+  prefsDescartarSeTrocouPrincipal();
+  if (!_prefsEmMemoria) _prefsEmMemoria = prefsLerCopiaDeSessao() || { ...PREFS_PADRAO };
+  return { ..._prefsEmMemoria };
+}
+
+// Ponto ÚNICO onde o que o servidor sabe entra no cliente.
+function adotarPreferenciasDoServidor(doServidor) {
+  _prefsPrincipal = prefsPrincipalCorrente();
+  _prefsEmMemoria = prefsNormalizar(doServidor);
+  prefsGravarCopiaDeSessao();
+  aplicarPreferenciasNaTela();
+}
+
+function prefsEnviarAoServidor(parcial) {
+  if (!prefsPrincipalCorrente()) return;
+  try {
+    void api('/api/auth/me/preferences', {
+      method: 'PUT', body: JSON.stringify(parcial)
+    }).catch((erro) => reportNonCriticalError('preferências não salvas no servidor', erro));
+  } catch (erro) {
+    reportNonCriticalError('preferências não salvas no servidor', erro);
+  }
+}
+
+function definirPreferencias(parcial) {
+  const novo = prefsNormalizar({ ...preferenciasDoPrincipal(), ...(parcial || {}) });
+  _prefsEmMemoria = novo;
+  prefsGravarCopiaDeSessao();
+  aplicarPreferenciasNaTela();
+  prefsEnviarAoServidor(parcial || {});
+  return novo;
+}
+
+function aplicarPreferenciasNaTela() {
+  const p = preferenciasDoPrincipal();
+  if (p.tema === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  if (typeof applyThemeToggleUI === 'function') applyThemeToggleUI();
+  document.body?.classList.toggle('ux-density-compact', p.densidade === 'compact');
+  applySidebarCollapsed();
+  const i18n = globalThis.EpiI18n;
+  // `persist: false`: quem persiste é este dono. Sem a guarda de igualdade,
+  // `setLang` chamaria `storeLang`, que voltaria aqui — laço.
+  if (i18n && i18n.lang !== p.idioma && typeof i18n.setLang === 'function') {
+    void i18n.setLang(p.idioma, { persist: false });
+  }
+}
+
+// UNOWNED LEGACY. Estes valores foram gravados quando a preferência era do
+// DISPOSITIVO: não há como provar de quem são. Entregá-los ao primeiro que
+// logasse transformaria preferência compartilhada em preferência pessoal da
+// pessoa errada — por isso são APAGADOS sem nunca serem lidos (`ISOL C-8`).
+//
+// Só estas quatro chaves, nomeadas uma a uma. Nada de `localStorage.clear()`:
+// sessão, flags e tenant moram no mesmo storage com contratos diferentes.
+function aposentarPreferenciasLegadas() {
+  PREFS_LEGADO_DEVICE.forEach((chave) => safeStorageRemove(chave));
+}
+
+// Fachada nomeada para quem é carregado ANTES do `app.js` — hoje só o
+// `i18n.js`, que precisa do dono para resolver e persistir o idioma.
+globalThis.__EPI_PREFS__ = Object.freeze({
+  ler: preferenciasDoPrincipal,
+  definir: definirPreferencias,
+  adotarDoServidor: adotarPreferenciasDoServidor,
+  aposentarLegado: aposentarPreferenciasLegadas,
+});
+
+// ── Sidebar recolhível no desktop, com preferência persistida (Navegação §6) ──
+// A constante `SIDEBAR_COLLAPSED_KEY` saiu na frente de Isolamento (PR C):
+// ela nomeava uma chave de `localStorage` que não existe mais. Quem responde
+// agora é o dono das preferências pessoais, e o escopo é USER.
 function isSidebarCollapsedPref() {
-  return safeStorageRead(SIDEBAR_COLLAPSED_KEY, '0') === '1';
+  return preferenciasDoPrincipal().sidebar === 'collapsed';
 }
 
 function applySidebarCollapsed() {
@@ -4508,8 +4692,8 @@ function applySidebarCollapsed() {
 }
 
 function toggleSidebarCollapsed() {
-  safeStorageWrite(SIDEBAR_COLLAPSED_KEY, isSidebarCollapsedPref() ? '0' : '1');
-  applySidebarCollapsed();
+  // `definirPreferencias` já reaplica a tela e persiste no servidor.
+  definirPreferencias({ sidebar: isSidebarCollapsedPref() ? 'expanded' : 'collapsed' });
 }
 
 function bindMobileUxBehavior() {
@@ -4652,12 +4836,14 @@ function setupThemeToggle() {
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
   applyThemeToggleUI();
+  // O botão da topbar era um SEGUNDO escritor de tema: aplicava no DOM e
+  // gravava a chave de dispositivo por conta própria, sem passar pelo drawer.
+  // Duas gravações independentes da mesma preferência é como uma delas
+  // sobrevive a uma correção feita só na outra — foi o `ISOL C-12` que o
+  // encontrou. Agora os dois caminhos têm o mesmo dono.
   bindAppListener(btn, 'click', () => {
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (dark) { document.documentElement.removeAttribute('data-theme'); }
-    else { document.documentElement.setAttribute('data-theme', 'dark'); }
-    try { localStorage.setItem('epi-theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ }
-    applyThemeToggleUI();
+    definirPreferencias({ tema: dark ? 'light' : 'dark' });
   });
 }
 
@@ -4665,19 +4851,18 @@ function setupThemeToggle() {
 // A engrenagem abre um drawer lateral SOBRE a tela atual (sem trocar de rota,
 // preservando estado/rolagem), reaproveitando o componente dsOpenDrawer. As
 // preferências (tema/idioma/densidade) só são aplicadas ao Salvar; Cancelar/
-// Fechar descartam. Persistência por dispositivo (localStorage).
-const SETTINGS_DENSITY_KEY = 'epi-density';
-const SETTINGS_THEME_KEY = 'epi-theme';
-
+// Fechar descartam. Persistência POR USUÁRIO, no servidor (Isolamento PR C).
+// As constantes `SETTINGS_DENSITY_KEY` e `SETTINGS_THEME_KEY` saíram na frente
+// de Isolamento (PR C) pelo mesmo motivo da `SIDEBAR_COLLAPSED_KEY`: nomeavam
+// chaves de `localStorage` com escopo DEVICE, que deixaram de existir.
 function applyTableDensityPref() {
-  const compact = safeStorageRead(SETTINGS_DENSITY_KEY, 'normal') === 'compact';
-  document.body?.classList.toggle('ux-density-compact', compact);
+  document.body?.classList.toggle('ux-density-compact', preferenciasDoPrincipal().densidade === 'compact');
 }
 
 function _settingsDrawerBodyHtml() {
   const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
   const lang = (globalThis.EpiI18n && globalThis.EpiI18n.lang) || 'pt-BR';
-  const density = safeStorageRead(SETTINGS_DENSITY_KEY, 'normal') === 'compact' ? 'compact' : 'normal';
+  const density = preferenciasDoPrincipal().densidade;
   const langs = [['pt-BR', 'Português'], ['en-GB', 'English'], ['es-ES', 'Español'], ['fr-FR', 'Français'], ['nb-NO', 'Bokmål']];
   const opt = (v, cur, label) => `<option value="${v}"${v === cur ? ' selected' : ''}>${escapeHtml(label)}</option>`;
   const advanced = hasConfigurationAccess()
@@ -4690,7 +4875,7 @@ function _settingsDrawerBodyHtml() {
       <select id="settings-language">${langs.map(([c, n]) => opt(c, lang, n)).join('')}</select></label>
     <label class="settings-field"><span>${tr('settings.density', 'Densidade da tabela')}</span>
       <select id="settings-density">${opt('normal', density, tr('settings.densityNormal', 'Normal'))}${opt('compact', density, tr('settings.densityCompact', 'Compacta'))}</select></label>
-    <p class="hint">${tr('settings.hint', 'As preferências são salvas neste dispositivo.')}</p>
+    <p class="hint">${tr('settings.hint', 'As preferências são salvas na sua conta e acompanham você em qualquer dispositivo.')}</p>
     ${advanced}
   </div>`;
 }
@@ -4702,16 +4887,16 @@ function _settingsDrawerFooterHtml() {
     + `<button type="button" class="primary" id="settings-save">${tr('save', 'Salvar')}</button>`;
 }
 
+// Fachada do drawer sobre o dono das preferências. Mantida com a MESMA
+// assinatura de antes (`theme`/`lang`/`density`) porque é o que o drawer
+// monta; a tradução para o vocabulário do dono acontece aqui, num lugar só.
 function _applySettings({ theme, lang, density }) {
-  if (theme === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); }
-  else { document.documentElement.removeAttribute('data-theme'); }
-  safeStorageWrite(SETTINGS_THEME_KEY, theme === 'dark' ? 'dark' : 'light');
-  if (typeof applyThemeToggleUI === 'function') { applyThemeToggleUI(); }
-  document.body?.classList.toggle('ux-density-compact', density === 'compact');
-  safeStorageWrite(SETTINGS_DENSITY_KEY, density === 'compact' ? 'compact' : 'normal');
-  if (lang && globalThis.EpiI18n && globalThis.EpiI18n.lang !== lang && typeof globalThis.EpiI18n.setLang === 'function') {
-    void globalThis.EpiI18n.setLang(lang);
-  }
+  const parcial = {
+    tema: theme === 'dark' ? 'dark' : 'light',
+    densidade: density === 'compact' ? 'compact' : 'normal',
+  };
+  if (lang) parcial.idioma = lang;
+  definirPreferencias(parcial);
 }
 
 function openSettingsDrawer() {
@@ -6048,6 +6233,11 @@ async function loadBootstrap() {
     state.alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
     state.permissions = normalizePermissions(state.user, payload.permissions || state.permissions);
     state.moduleVisibility = (payload.module_visibility && typeof payload.module_visibility === 'object') ? payload.module_visibility : {};
+    // Preferências pessoais de interface (Isolamento PR C). PONTO ÚNICO de
+    // entrada do que o servidor sabe. Bootstrap degradado (502/503) não chega
+    // aqui, e é o certo: sem resposta do servidor o usuário fica nos padrões
+    // oficiais — nunca na aparência de quem usou o navegador antes.
+    adotarPreferenciasDoServidor(payload.user?.ui_preferences);
     state.bootstrapWarnings = Array.isArray(payload.bootstrap_warnings) ? payload.bootstrap_warnings : [];
     if (state.user?.role === 'master_admin') {
       try {
@@ -14504,6 +14694,7 @@ async function init() {
   runNonCriticalSetup('ux mobile visibility', applyMobileUxVisibility);
   runNonCriticalSetup('ux mobile behavior', bindMobileUxBehavior);
   runNonCriticalSetup('nav back behavior', bindNavBackBehavior);
+  runNonCriticalSetup('aposentadoria do legado de preferências', aposentarPreferenciasLegadas);
   runNonCriticalSetup('table density preference', applyTableDensityPref);
   runNonCriticalSetup('assinatura entrega', setupDeliverySignatureCanvas);
   runNonCriticalSetup('sessão QR entrega', resetDeliveryQrSession);

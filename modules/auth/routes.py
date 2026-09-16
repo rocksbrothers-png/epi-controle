@@ -349,6 +349,12 @@ def handle_get_auth_me(handler, parsed, payload, match):
         )
         user = dict(actor)
         user.pop('password', None)
+        # Preferências pessoais de interface (Isolamento PR C). Explicitamente
+        # NORMALIZADAS aqui: a coluna guarda JSON cru, e entregar cru obrigaria
+        # cada cliente a repetir a validação — três clientes, três chances de
+        # divergir. Uma representação só, decidida pelo dono.
+        from modules.auth.service import get_user_ui_preferences
+        user['ui_preferences'] = get_user_ui_preferences(connection, actor['id'])
         from modules.auth.service import get_user_password_policy
         from modules.employees.service import actor_operational_unit_id
         from modules.settings.service import get_effective_module_visibility
@@ -430,6 +436,50 @@ def handle_post_accept_terms(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'terms_accepted_at': accepted_at})
 
 
+def handle_get_auth_me_preferences(handler, parsed, payload, match):
+    """Preferências pessoais de interface do usuário autenticado.
+
+    Já vêm no `/api/bootstrap` e no `/api/auth/me`; esta rota existe para quem
+    precisa só delas, sem pagar um bootstrap inteiro.
+    """
+    from modules.auth.service import get_user_ui_preferences
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        return send_api_response(handler, 200, data={
+            'ui_preferences': get_user_ui_preferences(connection, actor['id']),
+        })
+
+
+def handle_put_auth_me_preferences(handler, parsed, payload, match):
+    """Grava as preferências pessoais de interface do usuário autenticado.
+
+    Escopo USER (Isolamento PR C). O ator vem do mesmo caminho de sempre —
+    nunca do corpo —, então um usuário não consegue escrever na linha de
+    outro nem mandando `user_id`.
+
+    Escrita parcial e tolerante: só as quatro chaves conhecidas entram, e um
+    valor não reconhecido é ignorado em vez de virar 400. Aparência não pode
+    ser motivo de erro na tela de quem só trocou o tema.
+    """
+    from modules.auth.service import save_user_ui_preferences
+    with closing(get_connection()) as connection:
+        actor = _require_authenticated_actor(connection, handler, parsed, payload)
+        entrada = payload if isinstance(payload, dict) else {}
+        # Aceita tanto `{tema: ...}` quanto `{ui_preferences: {tema: ...}}`.
+        if isinstance(entrada.get('ui_preferences'), dict):
+            entrada = entrada['ui_preferences']
+        try:
+            resultado = save_user_ui_preferences(connection, actor['id'], entrada)
+            connection.commit()
+        except Exception:
+            try:
+                connection.rollback()
+            except Exception:
+                pass
+            raise ValueError('Não foi possível salvar as preferências.')
+        return send_api_response(handler, 200, data={'ui_preferences': resultado})
+
+
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
@@ -447,3 +497,6 @@ def register_routes(router):
     router.register('POST', '/api/auth/2fa/enable',   handle_post_2fa_enable)
     router.register('POST', '/api/auth/2fa/disable',  handle_post_2fa_disable)
     router.register('POST', '/api/auth/accept-terms', handle_post_accept_terms)
+    router.register('GET',  '/api/auth/me/preferences', handle_get_auth_me_preferences)
+    router.register('PUT',  '/api/auth/me/preferences', handle_put_auth_me_preferences)
+    router.register('POST', '/api/auth/me/preferences', handle_put_auth_me_preferences)

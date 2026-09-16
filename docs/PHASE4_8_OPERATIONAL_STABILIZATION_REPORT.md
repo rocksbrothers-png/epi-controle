@@ -2,6 +2,14 @@
 
 Data de execução: 2026-04-24.
 
+> **DOCUMENTO HISTÓRICO a partir de 2026-09-16.** Ele registra o que foi
+> auditado na Fase 4.8 e continua válido como registro daquela data. Não
+> descreve o estado atual do frontend: os módulos `ux-phase41.js`,
+> `ux-phase43.js`, `ux-phase44.js` e `multitab-navigation.js`, e as quatro
+> flags que os ligavam, foram **removidos no #343 PR 4**. As linhas abaixo que
+> os citam estão marcadas. Para o estado final, ver
+> `docs/PR4_LIMPEZA_FINAL_343.md` e `spec/07-frontend-javascript.md`.
+
 ## 1) Status dos pré-requisitos obrigatórios
 
 - `/api/ficha-epi-audit`: rota existente com fallback explícito para indisponibilidade (retorna `503` com código `FICHA_AUDIT_UNAVAILABLE`, evitando quebra genérica). Situação: **atendido no código**.
@@ -15,13 +23,13 @@ Data de execução: 2026-04-24.
 
 | Flag | Default | Querystring | Tela/área afetada | Risco | Rollback |
 |---|---|---|---|---|---|
-| `ux_phase41_enabled` | OFF | `ux_phase41=1` | Fluxos UX da fase 4.1 (progressive UX hooks) | Baixo/Médio | OFF + limpar `localStorage` da flag |
+| ~~`ux_phase41_enabled`~~ | — | — | **REMOVIDA no #343 PR 4** (módulo excluído) | — | — |
 | `ux_phase42_enabled` | OFF | `ux_phase42=1` | Recursos fase 4.2 via script lazy | Médio | OFF + remover querystring |
-| `ux_phase43_enabled` | OFF | `ux_phase43=1` | Recursos fase 4.3 (hardening) | Médio | OFF + fallback automático para fluxo padrão |
-| `ux_phase44_enabled` | OFF | `ux_phase44=1` | Recursos fase 4.4 (padronização) | Médio | OFF + retorno ao baseline |
+| ~~`ux_phase43_enabled`~~ | — | — | **REMOVIDA no #343 PR 4** (módulo excluído) | — | — |
+| ~~`ux_phase44_enabled`~~ | — | — | **REMOVIDA no #343 PR 4** (módulo excluído) | — | — |
 | `entrega_epi_htmx_enabled` | OFF | `ux_entrega_epi=1` | Tela Entrega de EPI (HTMX) | Médio | OFF + fluxo clássico de entrega |
 | `ux_hierarchical_navigation_enabled` | OFF | `ux_hierarchy=1` | Breadcrumb/níveis de navegação | Médio | OFF + navegação plana |
-| `ux_multitab_navigation_enabled` | OFF | `ux_multitab=1` | Navegação por abas internas | Médio | OFF + navegação padrão SPA |
+| ~~`ux_multitab_navigation_enabled`~~ | — | — | **REMOVIDA no #343 PR 4** (módulo excluído) | — | — |
 | `spa_navigation_enabled` | OFF | `ux_spa_navigation=1` | Motor SPA (menu/histórico/back-forward) | Médio/Alto | OFF + reload para navegação clássica |
 | `ux_global_enabled` | OFF | `ux_global=1` | Camada UX global (Dashboard, Cadastros, Estoque etc.) | Médio | OFF imediato |
 | `dashboard_interativo_enabled` | OFF | `ux_dashboard_interativo=1` | Dashboard interativo | Médio | OFF + dashboard clássico |
@@ -54,6 +62,7 @@ Cobertura automática validada com `pytest -q` (131 testes):
 ## 5) Auditoria de navegação (status)
 
 - Estruturas de navegação SPA/hierarquia/multitab presentes e controladas por flag.
+  _(#343 PR 4: a camada de abas internas foi removida; restam SPA e hierarquia.)_
 - Regras de leitura de flag com `default OFF` mantidas.
 - Fluxos de `back/forward`, fechamento de abas e preservação de contexto dependem de validação manual em navegador (gate final de go-live).
 
@@ -71,13 +80,13 @@ Cobertura automática validada com `pytest -q` (131 testes):
 - `spa_navigation_enabled`
 - `dashboard_interativo_enabled`
 - `ux_hierarchical_navigation_enabled`
-- `ux_multitab_navigation_enabled`
+- ~~`ux_multitab_navigation_enabled`~~ — **removida no #343 PR 4**
 
 ### 7.2 Apenas por querystring (sem persistência ampla)
-- `ux_phase41_enabled`
+- ~~`ux_phase41_enabled`~~ — **removida no #343 PR 4**
 - `ux_phase42_enabled`
-- `ux_phase43_enabled`
-- `ux_phase44_enabled`
+- ~~`ux_phase43_enabled`~~ — **removida no #343 PR 4**
+- ~~`ux_phase44_enabled`~~ — **removida no #343 PR 4**
 - `entrega_epi_htmx_enabled`
 
 ### 7.3 Não ativar por padrão (neste momento)
@@ -92,6 +101,7 @@ Cobertura automática validada com `pytest -q` (131 testes):
 ## 8) Riscos remanescentes
 
 1. Regressão comportamental em navegação combinada (SPA + hierarquia + multitab) sob uso intenso.
+   _(#343 PR 4: a combinação com abas internas deixou de existir.)_
 2. Dependência de validação manual de console limpo em browser real (erros de extensão devem ser segregados dos erros do app).
 3. Necessidade de ensaio operacional com perfis reais (Gestor de EPI e Administrador Local) para confirmação final de restrição por unidade em ambiente homolog.
 

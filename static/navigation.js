@@ -20,9 +20,11 @@
   function isEnabled() {
     try {
       if (typeof helpers.getFeatureFlag === 'function') {
-        var hierarchy = helpers.getFeatureFlag('ux_hierarchical_navigation_enabled', { defaultValue: false, allowStorage: true });
-        var multitab = helpers.getFeatureFlag('ux_multitab_navigation_enabled', { defaultValue: false, allowStorage: true });
-        return hierarchy && !multitab;
+        // O termo `&& !multitab` saiu no #343 PR 4: ele existia para impedir
+        // duas navegações simultâneas, e o módulo de abas foi removido. A flag
+        // dele também saiu do registro, então consultá-la aqui passaria a ler
+        // uma definição inexistente.
+        return helpers.getFeatureFlag('ux_hierarchical_navigation_enabled', { defaultValue: false, allowStorage: true });
       }
       var params = new URLSearchParams(globalThis.location.search);
       return params.get('ux_hierarchy') === '1';

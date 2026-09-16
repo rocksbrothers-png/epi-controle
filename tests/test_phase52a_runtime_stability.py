@@ -41,12 +41,14 @@ def test_analytics_keeps_critical_events_and_dedupes_only_repetitive():
 
 
 def test_abort_scopes_are_module_specific():
-    phase41 = _read('static/ux-phase41.js')
+    """Cada módulo servido tem escopo de abort próprio.
+
+    ATUALIZADO NO #343 PR 4: o phase41 e o phase44 saíram, e com eles as duas
+    outras asserções. O contrato permanece para o módulo que sobrevive — o
+    escopo por módulo é o que impede um `abort()` de derrubar listener alheio.
+    """
     phase42 = _read('static/ux-phase42.js')
-    phase44 = _read('static/ux-phase44.js')
-    assert "createScopedAbortController('phase41')" in phase41
     assert "createScopedAbortController('phase42')" in phase42
-    assert "createScopedAbortController('phase44')" in phase44
 
 
 def test_analytics_and_phase42_buffers_remain_limited():

@@ -117,7 +117,7 @@ estado de `refs`.
 **Parity fix `feature-flags-rt.js`:** paridade total com `app.js`:
 - `isUxGlobalKillSwitchActive()` — verifica `globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__` antes da storage
 - `getFeatureFlag()` — aplica `UX_FORCE_CLASSIC_FLAGS` kill-switch, idêntico a `app.js`
-- Conectado no `index.html` (antes de `app.js`), expondo `globalThis.getFeatureFlag` para scripts externos (ux-phase41/43/44.js, entrega-epi.js).
+- Conectado no `index.html` (antes de `app.js`), expondo `globalThis.getFeatureFlag` para scripts externos (`ux-phase42.js`, `entrega-epi.js`). Os módulos 4.1, 4.3 e 4.4 foram removidos no #343 PR 4.
 
 **Testes:** 32 testes JS passam (17 novos: kill-switch parity 3, auth puras 8, sessão 6).
 

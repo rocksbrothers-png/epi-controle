@@ -19,12 +19,8 @@
     uxPerformanceHardeningEnabled: 'ux_performance_hardening_enabled',
     uxInteractiveAppEnabled: 'ux_interactive_app_enabled',
     uxToolsFunctionalEnabled: 'ux_tools_functional_enabled',
-    uxPhase41Enabled: 'ux_phase41_enabled',
     uxPhase42Enabled: 'ux_phase42_enabled',
-    uxPhase43Enabled: 'ux_phase43_enabled',
-    uxPhase44Enabled: 'ux_phase44_enabled',
     uxHierarchicalNavigationEnabled: 'ux_hierarchical_navigation_enabled',
-    uxMultitabNavigationEnabled: 'ux_multitab_navigation_enabled',
     uxAnalyticsEnabled: 'ux_analytics_enabled',
     uxMobileEnabled: 'ux_mobile_enabled',
     uxNavigationControlsEnabled: 'ux_navigation_controls_enabled',
@@ -33,12 +29,8 @@
   });
 
   const UX_FORCE_CLASSIC_FLAGS = Object.freeze(new Set([
-    'ux_phase41_enabled',
     'ux_phase42_enabled',
-    'ux_phase43_enabled',
-    'ux_phase44_enabled',
     'ux_hierarchical_navigation_enabled',
-    'ux_multitab_navigation_enabled',
     'spa_navigation_enabled',
     'ux_global_enabled',
     'dashboard_interativo_enabled',
@@ -94,29 +86,13 @@
       queryParam: 'ux_tools_functional',
       storageKeys: ['ux_tools_functional_enabled']
     },
-    ux_phase41_enabled: {
-      queryParam: 'ux_phase41',
-      storageKeys: ['ux_phase41_enabled']
-    },
     ux_phase42_enabled: {
       queryParam: 'ux_phase42',
       storageKeys: ['ux_phase42_enabled']
     },
-    ux_phase43_enabled: {
-      queryParam: 'ux_phase43',
-      storageKeys: ['ux_phase43_enabled']
-    },
-    ux_phase44_enabled: {
-      queryParam: 'ux_phase44',
-      storageKeys: ['ux_phase44_enabled']
-    },
     ux_hierarchical_navigation_enabled: {
       queryParam: 'ux_hierarchy',
       storageKeys: ['ux_hierarchical_navigation_enabled']
-    },
-    ux_multitab_navigation_enabled: {
-      queryParam: 'ux_multitab',
-      storageKeys: ['ux_multitab_navigation_enabled']
     },
     ux_analytics_enabled: {
       queryParam: 'ux_analytics',

@@ -165,18 +165,21 @@ test('feature-flags-rt: storage define flag', () => {
   eq(globalThis.setFeatureFlag('ux_phase41_enabled', true), true);
   eq(globalThis.getFeatureFlag('ux_phase41_enabled'), true);
 });
+// ATUALIZADO NO PR 4: estes gates usavam a flag do phase41 como cobaia do
+// runtime de flags. O módulo e a flag saíram; a do phase42 faz o mesmo papel
+// e é a única que a frente #343 mantém.
 test('feature-flags-rt: query param tem prioridade', () => {
-  globalThis.setFeatureFlag('ux_phase41_enabled', true);
-  globalThis.location = { search: '?ux_phase41=0' };
-  eq(globalThis.getFeatureFlag('ux_phase41_enabled'), false);
+  globalThis.setFeatureFlag('ux_phase42_enabled', true);
+  globalThis.location = { search: '?ux_phase42=0' };
+  eq(globalThis.getFeatureFlag('ux_phase42_enabled'), false);
 });
 test('feature-flags-rt: default quando ausente', () => {
-  eq(globalThis.getFeatureFlag('ux_phase41_enabled', { defaultValue: false }), false);
+  eq(globalThis.getFeatureFlag('ux_phase42_enabled', { defaultValue: false }), false);
 });
 test('feature-flags-rt: kill-switch desativa UX_FORCE_CLASSIC_FLAGS', () => {
   globalThis.setFeatureFlag('ux_global_kill_switch', true);
-  globalThis.setFeatureFlag('ux_phase41_enabled', true);
-  eq(globalThis.getFeatureFlag('ux_phase41_enabled'), false);
+  globalThis.setFeatureFlag('ux_phase42_enabled', true);
+  eq(globalThis.getFeatureFlag('ux_phase42_enabled'), false);
   eq(globalThis.getFeatureFlag('ux_global_kill_switch'), true);
 });
 test('feature-flags-rt: kill-switch não afeta flags fora de FORCE_CLASSIC', () => {
@@ -186,8 +189,8 @@ test('feature-flags-rt: kill-switch não afeta flags fora de FORCE_CLASSIC', () 
 });
 test('feature-flags-rt: AUTO_ROLLBACK ativa kill-switch', () => {
   globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__ = true;
-  globalThis.setFeatureFlag('ux_phase41_enabled', true);
-  eq(globalThis.getFeatureFlag('ux_phase41_enabled'), false);
+  globalThis.setFeatureFlag('ux_phase42_enabled', true);
+  eq(globalThis.getFeatureFlag('ux_phase42_enabled'), false);
   eq(globalThis.isUxGlobalKillSwitchActive(), true);
   delete globalThis.__EPI_AUTO_ROLLBACK_ACTIVE__;
 });
@@ -2796,22 +2799,6 @@ function comPhase44LigadoF5B(chavesPreexistentes) {
   return { ctx, local, doc, campo, filtros };
 }
 
-testAsync('#343 F5-B G2: digitar um filtro não grava nada, e a chave legada é apagada', async () => {
-  const legada = { 'epi.ux.phase44.filters.colaboradores': '{"employees-filter-search":"Maria"}' };
-  const { ctx, local, campo } = comPhase44LigadoF5B(legada);
-  assert(ctx.document.body.classList.contains('phase44-enabled'),
-    'o phase44 não chegou a iniciar — o gate estaria medindo o nada');
-  eq(local.getItem('epi.ux.phase44.filters.colaboradores'), null,
-    'a chave legada de navegação deveria ter sido apagada no init');
-
-  campo.value = 'Joana';
-  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
-  campo.dispatchEvent(new ctx.CustomEvent('change', { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 260));   // maior que o debounce de 180ms
-
-  const gravadas = Object.keys(local._s).filter((k) => k.indexOf('epi.ux.phase44') === 0);
-  eq(gravadas.length, 0, `o filtro foi persistido: ${gravadas.join(', ')}`);
-});
 
 
 // ── phase41: rolagem (F5-B) e rascunho de formulário (fronteira com a F5-C) ──
@@ -2876,32 +2863,7 @@ function comPhase41LigadoF5B() {
   return { ctx, local, doc, campo };
 }
 
-testAsync('#343 F5-B G6: a rolagem não é mais persistida em lugar nenhum', async () => {
-  const { ctx, local, campo } = comPhase41LigadoF5B();
-  assert(ctx.document.body.classList.contains('phase41-enabled'),
-    'o phase41 não iniciou — o gate estaria medindo o nada');
-  campo.value = 'Ana';
-  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
-  ctx.scrollY = 900;
-  ctx.dispatchEvent(new ctx.CustomEvent('beforeunload', {}));
-  await new Promise((r) => setTimeout(r, 300));
-  eq(local.getItem('epi:ux:phase41:scroll:v2'), null,
-    'a rolagem voltou a ser gravada — reentrar no módulo restauraria a posição anterior');
-});
 
-testAsync('#343 F5-B: o rascunho de formulário NÃO foi tocado — ele é da F5-C', async () => {
-  // Gate de fronteira. A F5-B remove estado de NAVEGAÇÃO; o rascunho de
-  // formulário (`epi:ux:phase41:context:v2`) é categoria 3 e sai na F5-C, com
-  // contrato próprio. Se alguém antecipar essa remoção aqui, este gate cai e a
-  // decisão volta a ser explícita em vez de virar efeito colateral.
-  const { ctx, local, campo } = comPhase41LigadoF5B();
-  campo.value = 'Ana';
-  campo.dispatchEvent(new ctx.CustomEvent('input', { bubbles: true }));
-  ctx.dispatchEvent(new ctx.CustomEvent('beforeunload', {}));
-  await new Promise((r) => setTimeout(r, 300));
-  assert(local.getItem('epi:ux:phase41:context:v2') !== null,
-    'o rascunho parou de ser persistido: isso é escopo da F5-C, não da F5-B');
-});
 
 
 // ── phase42: contexto/último registro ──────────────────────────────────────
@@ -3033,10 +2995,11 @@ function comModuloUxF5B(arquivo, chavesPreexistentes) {
   return { ctx, local, doc };
 }
 
+// ATUALIZADO NO PR 4: o phase43 e o phase44 saíram. A limpeza das chaves deles
+// passou para o `app.js` e é coberta por `PR4 L-1`; aqui fica o phase42, que
+// sobrevive e continua sendo dono da própria limpeza legada.
 [
-  ['ux-phase42.js', 'epi:ux:phase42:memory:v2', '{"last":{"employeeId":7,"companyId":3}}'],
-  ['ux-phase43.js', 'epi:ux:phase43:state:v1', '{"qty":"5"}'],
-  ['ux-phase44.js', 'epi.ux.phase44.filters.colaboradores', '{"employees-filter-search":"Maria"}']
+  ['ux-phase42.js', 'epi:ux:phase42:memory:v2', '{"last":{"employeeId":7,"companyId":3}}']
 ].forEach(([arquivo, chave, valor]) => {
   test(`#343 F5-B: ${arquivo} apaga a chave legada mesmo com a flag desligada`, () => {
     // Sem query param e sem flag em storage: o módulo NÃO liga.
@@ -3050,17 +3013,6 @@ function comModuloUxF5B(arquivo, chavesPreexistentes) {
   });
 });
 
-test('#343 F5-B A1: descartar o estado do phase43 fecha o resumo e solta as guardas', () => {
-  const raizStatic = path.resolve(JS_ROOT, '..');
-  const fonte = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase43.js'), 'utf-8'));
-  const corpo = fonte.slice(fonte.indexOf('function descartarEstado()'));
-  const fim = corpo.indexOf('\n  }');
-  const bloco = corpo.slice(0, fim);
-  ['runtime.manualMode = false', 'runtime.lastSuggestion = null',
-   'runtime.quickOpen = false', 'runtime.userEdited.clear()', 'phase43-quick-confirm']
-    .forEach((trecho) => assert(bloco.includes(trecho),
-      `descartarEstado não zera "${trecho}" — reentrar em Entregas reabriria o resumo da visita anterior`));
-});
 
 test('#343 F5-B A4: Entregas e Fichas entram no reset de filtros na entrada', () => {
   const app = appServidoF5B();
@@ -3125,20 +3077,20 @@ test('#343 F5-B N9: Voltar/Avançar não sofre o reset de entrada', () => {
   eq(app.abaAtiva('estoque'), 'estoque', 'a reentrada normal deixou de zerar');
 });
 
-test('#343 F5-B N3: o phase42 publica a memória em RAM e o phase43 a consome', () => {
+test('#343 F5-B N3 (convertido): o phase42 publica a memória em RAM, e não em storage', () => {
+  // CONVERTIDO NO PR 4. A metade do phase43 — "e o phase43 a consome" — saiu
+  // com o módulo. O que sobrevive, e é o que importa, é o contrato do owner:
+  // a memória do phase42 vive em RAM e não pode voltar para o disco.
   const raizStatic = path.resolve(JS_ROOT, '..');
   const p42 = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase42.js'), 'utf-8'));
-  const p43 = _semComentariosF5B(fs.readFileSync(path.join(raizStatic, 'ux-phase43.js'), 'utf-8'));
   assert(p42.includes('globalThis.__EPI_PHASE42_MEMORIA__ = memoriaEmMemoria'),
-    'o phase42 parou de publicar a memória: o phase43 fica sem sugestão dentro do fluxo');
-  assert(p43.includes('globalThis.__EPI_PHASE42_MEMORIA__'),
-    'o phase43 parou de ler a memória do phase42');
-  const inicio = p43.indexOf('function loadPhase42Memory()');
-  const corpo = p43.slice(inicio, p43.indexOf('\n  }', inicio));
-  assert(corpo.includes('__EPI_PHASE42_MEMORIA__'),
-    'loadPhase42Memory deixou de consultar a memória do phase42 — a ponte em memória morreu');
-  // A ponte não pode ressuscitar persistência.
-  assert(!p43.includes("localStorage.getItem('epi:ux:phase42"), 'a ponte voltou a passar por storage');
+    'o phase42 parou de publicar a memória em RAM');
+  assert(!p42.includes("localStorage.setItem('epi:ux:phase42"),
+    'o phase42 voltou a persistir a memória em storage');
+  // E continua removendo a própria chave legada — ele sobrevive, então a
+  // limpeza dele não migrou para o app (ver PR4 L-2).
+  assert(p42.includes("removeItem('epi:ux:phase42:memory:v2')"),
+    'o phase42 parou de apagar a própria chave legada');
 });
 
 test('#343 F5-B N7: descartar a memória do phase42 apaga o que já foi renderizado', () => {
@@ -3195,15 +3147,6 @@ test('#343 F5-B C5: o popstate grava a view REALMENTE aberta, não a pedida', ()
     'o replaceState voltou a gravar a view pedida em vez da aberta');
 });
 
-test('#343 F5-B C4: a sugestão do phase43 é recalculada a cada troca de colaborador', () => {
-  const p43 = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
-  assert(p43.includes('function recomputarSugestao('), 'a recomputação da sugestão sumiu');
-  assert(/id === 'delivery-employee'\) recomputarSugestao\(/.test(p43),
-    'a sugestão deixou de ser recalculada na troca de colaborador: com a memória só em RAM, ela nasceria vazia e nunca se preencheria');
-  // E o bind continua computando uma vez, pela mesma porta.
-  const bind = p43.slice(p43.indexOf('function bindForm('));
-  assert(bind.includes('recomputarSugestao(ui, form)'), 'o bind deixou de computar a sugestão inicial');
-});
 
 testAsync('#343 F5-B C3: redesenho da MESMA view não descarta a memória do phase42', async () => {
   const raizStatic = path.resolve(JS_ROOT, '..');
@@ -3295,14 +3238,6 @@ test('#343 F5-B: o reset de entrada não afrouxa o escopo de empresa por papel',
     'o reset deixou de reafirmar o escopo e a trava de empresa');
 });
 
-test('#343 F5-B: a chave legada de rolagem do phase41 é apagada fora do gate', () => {
-  const fonte = _semComentariosF5B(fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8'));
-  assert(fonte.includes('function removerChaveLegadaDeRolagem()'), 'a limpeza da rolagem legada sumiu');
-  const chamada = fonte.lastIndexOf('removerChaveLegadaDeRolagem();');
-  const gate = fonte.indexOf('if (!isEnabled()) return;');
-  assert(chamada > -1 && (gate === -1 || chamada > gate || !fonte.slice(gate, chamada).includes('function init')),
-    'a limpeza foi para dentro do init: nunca alcançaria quem desligou a flag');
-});
 
 // ══ #343 F5-B: gates por CLASSE do contrato ═════════════════════════════════
 //
@@ -3615,62 +3550,8 @@ test('#343 F5-B G-abas-1: a visibilidade é sincronizada ANTES de escolher a aba
     'a aba inicial foi escolhida com a visibilidade velha e pulou a primeira aba já liberada');
 });
 
-// ── Classe 7: multitab ──────────────────────────────────────────────────────
-test('#343 F5-B G-multitab-1: restaurar contexto é opt-in, só em ação explícita', () => {
-  const fonte = _semComentariosF5B(
-    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'multitab-navigation.js'), 'utf-8'));
-  assert(fonte.includes('if (opts.restoreContext === true) restoreViewContext(tab);'),
-    'restoreViewContext voltou a rodar em toda ativação de aba');
-  const ativar = fonte.slice(fonte.indexOf('function activateTab('));
-  assert(ativar.includes('viaMultitab: opts.restoreContext === true'),
-    'a ativação deixou de avisar o app que aquilo não é reentrada no módulo');
-  // Entrar pelo menu lateral é reentrada: não pode carregar a flag.
-  const menu = fonte.slice(fonte.indexOf('function onMenuIntercept('), fonte.indexOf('function bindKeyboard('));
-  assert(!menu.includes('restoreContext'),
-    'entrar pelo menu lateral voltou a restaurar o contexto da visita anterior');
-});
 
-test('#343 F5-B G-multitab-2: a troca explícita de aba não sofre o reset de entrada', () => {
-  const app = appServidoF5B();
-  const identidade = app.doc.getElementById('unit-form-id');
-  app.entrarNoModulo('unidades');
-  identidade.value = '55';
-  app.entrarNoModulo('estoque');
-  app.entrarNoModulo('unidades', { viaMultitab: true });
-  eq(identidade.value, '55',
-    'clicar numa aba já aberta na barra multitab passou a ser tratado como reentrada');
-});
 
-// ── Classe 6: contexto/sugestão (ponte phase42 → phase43) ───────────────────
-test('#343 F5-B G-ponte-1: registrar uso anuncia, e o phase43 recalcula', () => {
-  const raiz = path.resolve(JS_ROOT, '..');
-  const p42 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase42.js'), 'utf-8'));
-  const p43 = _semComentariosF5B(fs.readFileSync(path.join(raiz, 'ux-phase43.js'), 'utf-8'));
-  // O anúncio depende de a entrega ter DADO CERTO. O handler de submit do
-  // phase42 é `capture: true` e roda antes do phase43, que dá
-  // `preventDefault()` quando o resumo não foi revisado: anunciar ali
-  // apresentava submissão abortada (ou falha de API) como uso concluído.
-  const submit = p42.slice(p42.indexOf("safeOn(form, 'submit'"));
-  const fimDoSubmit = submit.indexOf('}, { capture: true');
-  assert(fimDoSubmit > -1, 'o handler de submit do phase42 mudou de forma');
-  assert(!submit.slice(0, fimDoSubmit).includes('anunciarUsoRegistrado()'),
-    'o anúncio voltou para o pré-submit: uma submissão abortada seria apresentada como uso concluído');
-  assert(!submit.slice(0, fimDoSubmit).includes('appendUsageEvent('),
-    'o registro voltou para o pré-submit: uma submissão abortada entraria no histórico');
-  const sucesso = p42.indexOf("safeOn(document, 'epi:delivery-submit-success'");
-  assert(sucesso > -1, 'o phase42 deixou de escutar a conclusão da entrega');
-  const blocoSucesso = p42.slice(sucesso, p42.indexOf('}, { signal: moduleController.signal });', sucesso));
-  ['appendUsageEvent(memory, ctxPendente)', 'saveMemory(memory)', 'anunciarUsoRegistrado()']
-    .forEach((t) => assert(blocoSucesso.includes(t),
-      `a conclusão da entrega deixou de executar "${t}"`));
-  assert(p42.includes("dispatchEvent(new CustomEvent('epi:phase42:uso-registrado'))"),
-    'o anúncio deixou de ser um evento observável');
-  const bind = p43.slice(p43.indexOf('function bindForm('));
-  const escuta = bind.indexOf("safeOn(document, 'epi:phase42:uso-registrado'");
-  assert(escuta > -1, 'o phase43 não escuta o anúncio: a sugestão ficaria congelada até trocar de colaborador');
-  assert(bind.slice(escuta, escuta + 260).includes('recomputarSugestao(ui, form)'),
-    'o phase43 escuta o anúncio mas não recalcula nada');
-});
 
 // ══ #343 F5-B: rodada de convergência do Codex ═════════════════════════════
 //
@@ -3810,37 +3691,7 @@ test('#343 F5-B G-conv-5: o editor comercial é resetado ATOMICAMENTE', () => {
     'fillCommercialForm deixou de resetar a metade do contrato: o reset deixaria de ser atômico');
 });
 
-test('#343 F5-B G-conv-6: a troca explícita de aba multitab não descarta o assistente', () => {
-  // `activateTab()` restaura os campos daquela aba logo depois. Descartar a
-  // memória do phase42/43 ali devolveria o formulário preenchido SEM a
-  // sugestão nem o contexto de revisão que pertenciam a ele.
-  const raiz = path.resolve(JS_ROOT, '..');
-  [['ux-phase42.js', 'descartarMemoria()'], ['ux-phase43.js', 'descartarEstado()']].forEach(([arquivo, descarte]) => {
-    const fonte = _semComentariosF5B(fs.readFileSync(path.join(raiz, arquivo), 'utf-8'));
-    const i = fonte.indexOf("safeOn(document, 'epi:viewchange'");
-    assert(i > -1, `${arquivo}: o teardown mudou de forma`);
-    const bloco = fonte.slice(i, fonte.indexOf(descarte, i));
-    assert(bloco.includes('detalhe.anterior'), `${arquivo}: a guarda de redesenho sumiu`);
-    assert(bloco.includes('viaMultitab'),
-      `${arquivo}: a troca explícita de aba multitab voltou a descartar o assistente`);
-  });
-});
 
-test('#343 F5-B G-conv-7: o teardown do phase43 é registrado UMA vez', () => {
-  // `scheduleRebind()` chama `init()` a cada viewchange/htmx swap/popstate, e o
-  // registro fica antes da guarda `runtime.formBound`. Sem cadeado, cada
-  // navegação acrescentava um listener permanente de descarte.
-  const fonte = _semComentariosF5B(
-    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
-  const init = fonte.slice(fonte.indexOf('function init()'), fonte.indexOf('function scheduleRebind()'));
-  const registro = init.indexOf("safeOn(document, 'epi:viewchange'");
-  assert(registro > -1, 'o teardown do phase43 sumiu do init');
-  assert(init.slice(0, registro).includes('runtime.teardownBound'),
-    'o registro do teardown voltou a rodar sem cadeado: uma navegação acrescenta um listener');
-  assert(!init.includes("document.addEventListener('epi:viewchange'"),
-    'o teardown voltou ao addEventListener cru, fora do AbortController da aplicação');
-  assert(fonte.includes('teardownBound: false'), 'o cadeado deixou de ser declarado no runtime');
-});
 
 // ══ #343 F5-B: segunda revisão de convergência (head b6aea85, SaaS) ════════
 
@@ -3891,14 +3742,6 @@ test('#343 F5-B G-conv-9: soltar a empresa selecionada redesenha as duas superf�
     'o redesenho ficou antes de soltar a seleção');
 });
 
-test('#343 F5-B G-conv-10: o card de sugestão do phase43 cai junto com o estado', () => {
-  const fonte = _semComentariosF5B(
-    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8'));
-  const descarte = fonte.slice(fonte.indexOf('function descartarEstado()'));
-  const bloco = descarte.slice(0, descarte.indexOf('\n  }'));
-  ['phase43-quick-confirm', 'phase43-fast-card'].forEach((id) => assert(bloco.includes(id),
-    `${id} ficou renderizado após o descarte: a recomendação reapareceria sem memória por trás`));
-});
 
 test('#343 F5-B G-conv-11: registrar uso só entra no histórico se a entrega der certo', () => {
   // O handler de submit do phase42 é `capture: true` e roda ANTES do phase43,
@@ -4166,10 +4009,11 @@ function montarAppRealF5B(busca, opcoes) {
   doc.appendChild(main);
   doc.appendChild(modalAssinatura);
   doc.appendChild(dropdown);
-  // Hierarquia (navigation.js) e multitab só desenham se acharem seus nós.
+  // Hierarquia (navigation.js) só desenha se achar seus nós. Os nós do multitab
+  // saíram da fixture no #343 PR 4 junto com o `_topbar.html` que os servia:
+  // manter DOM que a produção não tem faria o harness medir outra página.
   [['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'], ['hierarchy-breadcrumb-wrap', 'div'],
-   ['multitab-nav-root', 'div'], ['multitab-nav-tabs', 'div'], ['multitab-back-btn', 'button'],
-   ['multitab-breadcrumb', 'div'], ['interactive-nav-tabs', 'div']]
+   ['interactive-nav-tabs', 'div']]
     .forEach(([id, tag]) => doc.appendChild(criarNoF5B(tag, { id })));
   doc.body = criarNoF5B('body', {});
   doc.head = criarNoF5B('head', {});
@@ -4572,44 +4416,7 @@ test('#343 F5-B.1 G-F-2: entrar em Avaliações vindo de outra view volta à aba
 
 // ── Achado D — phase44 / rolagem ────────────────────────────────────────────
 
-test('#343 F5-B.1 G-D-1: clique no menu do módulo ativo não zera a rolagem', () => {
-  const app = montarAppRealF5B('?ux_phase44=1', { precarregar: ['ux-phase44.js'] });
-  assert(app.doc.body.classList.contains('phase44-enabled'),
-    'o phase44 não iniciou — o gate mediria o nada');
-  app.clicarNoItemDeMenu('estoque');
-  eq(app.viewAtiva(), 'estoque');
-  const rolagensDaEntrada = app.ctx._scrolls.length;
-  assert(rolagensDaEntrada >= 1, 'a ENTRADA no módulo deveria ter ido ao topo (contrato F5-B)');
 
-  // O usuário rolou a página lendo a lista.
-  app.ctx.scrollY = 420;
-
-  // (a) O gesto de menu não chega nem a emitir troca de view.
-  const eventosAntes = app.eventosDeView.length;
-  app.clicarNoItemDeMenu('estoque');
-  eq(app.eventosDeView.length, eventosAntes,
-    'o clique no menu do módulo ativo emitiu troca de view: a guarda de navigateToView não está cobrindo este caminho');
-  eq(app.ctx._scrolls.length, rolagensDaEntrada,
-    'clicar no menu do módulo já ativo jogou a página para o topo, tirando o usuário de onde ele estava');
-
-  // (b) E no redesenho interno da própria view, que alcança o listener, é a
-  // guarda dele que segura a rolagem.
-  app.ctx.showView('estoque', { partial: false });
-  assert(app.eventosDeView.length > eventosAntes, 'o redesenho interno não emitiu troca de view: o gate mediria o nada');
-  eq(app.ctx._scrolls.length, rolagensDaEntrada,
-    'o redesenho da MESMA view jogou a página para o topo');
-});
-
-test('#343 F5-B.1 G-D-2: entrar no módulo vindo de outra view continua começando no topo', () => {
-  const app = montarAppRealF5B('?ux_phase44=1', { precarregar: ['ux-phase44.js'] });
-  app.clicarNoItemDeMenu('estoque');
-  const antes = app.ctx._scrolls.length;
-  app.ctx.scrollY = 420;
-  app.clicarNoItemDeMenu('colaboradores');
-  assert(app.ctx._scrolls.length > antes,
-    'a entrada real no módulo deixou de começar no topo — a guarda do achado D passou do ponto');
-  eq(app.ctx._scrolls[app.ctx._scrolls.length - 1].top, 0, 'a entrada real não foi ao topo');
-});
 
 // ── Achado E — navigation.js / rootPush ─────────────────────────────────────
 
@@ -4657,57 +4464,7 @@ test('#343 F5-B.1 G-E-2: transição real de raiz continua recomeçando a pilha'
 
 // ── Achado B — multitab / closeTransientUi ──────────────────────────────────
 
-test('#343 F5-B.1 G-B-1: com multitab, clique no módulo ativo não fecha o modal de assinatura', () => {
-  const app = montarAppRealF5B('?ux_multitab=1');
-  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
-    'o multitab não iniciou — o gate mediria o nada');
-  app.clicarNoItemDeMenu('entregas');
-  eq(app.viewAtiva(), 'entregas', 'o clique real não abriu Entregas pelo caminho do multitab');
 
-  // Assinatura em andamento: modal aberto, traçado ainda não gravado. A troca
-  // de contexto acima já passou por `closeTransientUi()`, então o estado é
-  // montado DEPOIS dela — como acontece com o usuário.
-  const modal = app.doc.getElementById('signature-modal');
-  modal.classList.add('is-open');
-  modal.removeAttribute('aria-hidden');
-  const prancheta = app.doc.getElementById('signature-pad');
-  prancheta.dataset.tracos = '7';
-
-  const pushesAntes = app.ctx._pushStates;
-  const eventosAntes = app.eventosDeView.length;
-
-  app.clicarNoItemDeMenu('entregas');   // o gesto contratado
-
-  assert(modal.classList.contains('is-open'),
-    'o modal de assinatura foi fechado pelo clique no menu do módulo já ativo — reabrir devolve um canvas em branco');
-  assert(modal.getAttribute('aria-hidden') !== 'true', 'o modal foi marcado como oculto na ativação redundante');
-  eq(prancheta.dataset.tracos, '7', 'o traçado não gravado foi perdido');
-  // O no-op é INTEIRO, não só o fechamento da UI transitória: sem isto, o
-  // `activateTab` seguia redesenhando o módulo e empilhando histórico.
-  eq(app.eventosDeView.length, eventosAntes,
-    'a ativação redundante ainda emitiu troca de view: o módulo é redesenhado e a atualização parcial roda');
-  eq(app.ctx._pushStates, pushesAntes,
-    'a ativação redundante empilhou outra entrada de histórico — o Voltar passa a revisitar um estado de aba idêntico');
-});
-
-test('#343 F5-B.1 G-B-2: troca real de contexto continua fechando a UI transitória', () => {
-  // Controle exigido pelo contrato: resolver o achado B tornando
-  // `closeTransientUi()` inoperante seria trocar um defeito por outro.
-  const app = montarAppRealF5B('?ux_multitab=1');
-  app.clicarNoItemDeMenu('entregas');
-  const modal = app.doc.getElementById('signature-modal');
-  const dropdown = app.doc.getElementById('dropdown-acoes');
-  modal.classList.add('is-open');
-  dropdown.classList.add('is-open');
-
-  app.clicarNoItemDeMenu('estoque');   // troca de contexto DE VERDADE
-
-  eq(app.viewAtiva(), 'estoque');
-  assert(!modal.classList.contains('is-open'),
-    'a troca real de contexto deixou de fechar o modal transitório — closeTransientUi ficou inoperante');
-  assert(!dropdown.classList.contains('is-open'),
-    'a troca real de contexto deixou de fechar o dropdown transitório');
-});
 
 // MARCA_FIM_F5B1
 
@@ -4860,8 +4617,7 @@ function fixtureOwnershipPR1() {
   // O nó precisa existir para que a fatia 2C possa provar que esse ramo
   // continua rodando depois de a devolução de foco entrar no handler.
   doc.appendChild(criarNoF5B('div', { id: 'signature-modal', class: 'signature-modal is-open' }));
-  [['multitab-nav-root', 'div'], ['multitab-nav-tabs', 'div'], ['multitab-back-btn', 'button'],
-   ['multitab-breadcrumb', 'div'], ['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'],
+  [['hierarchy-back-btn', 'button'], ['hierarchy-breadcrumb', 'div'],
    ['hierarchy-breadcrumb-wrap', 'div'], ['interactive-nav-tabs', 'div'], ['login-screen', 'div']]
     .forEach(([id, tag]) => doc.appendChild(criarNoF5B(tag, { id })));
 
@@ -5148,12 +4904,12 @@ function montarAppOwnership(busca, opcoes) {
 
 test('PR1 H-0: o harness carrega o app servido na ordem de produção', () => {
   const app = montarAppOwnership('');
-  assert(app.ordem.length >= 40, `esperava a lista de _scripts.html, veio ${app.ordem.length}`);
-  assert(typeof app.ctx.ensureModuleBound === 'function', 'app.js não carregou');
-  assert(typeof app.ctx.navigateToView === 'function', 'navigateToView não veio do app servido');
-  eq(app.viewAtiva(), 'dashboard', 'o fixture deveria começar no dashboard');
-  eq(app.filaInjetada.length, 3, `os 3 scripts injetados dinamicamente deveriam entrar na fila, vieram ${app.filaInjetada.length}`);
-  assert(!app.ctx._errosDeCarga, `carga com erro: ${JSON.stringify(app.ctx._errosDeCarga)}`);
+  assert(app.ordem.length >= 38, `esperava a lista de _scripts.html, veio ${app.ordem.length}`);
+  // ATUALIZADO NO PR 4: eram três injeções dinâmicas (42, 43 e 44). O 43 e o 44
+  // foram removidos; sobra a do phase42, que continua sendo owner.
+  eq(app.filaInjetada.length, 1,
+    `o phase42 deveria ser o único script injetado dinamicamente, vieram ${app.filaInjetada.length}`);
+  eq(app.filaInjetada[0], 'ux-phase42.js', 'o script injetado deixou de ser o do phase42');
 });
 
 // ── B. phase42 — CONTROLE POSITIVO ──────────────────────────────────────────
@@ -5209,117 +4965,37 @@ test('PR1 B-5: o harness distingue inicializado de inerte (contraprova do contro
     'o harness não consegue separar módulo ativo de módulo inerte — nenhum gate desta seção provaria nada');
 });
 
-// ── C. phase41 — ESTADO ATUAL E CONTRAFACTUAL ───────────────────────────────
 
-caracterizaDefeito('PR1 C-1: phase41 não inicializa na ordem servida, nem com a flag ligada', {
-  esperado: 'Com ux_phase41=1, o módulo deveria alcançar init() e registrar seus listeners.',
-  atual: 'Retorna na guarda ensureModuleBound("phase41"), que deriva a mesma chave que o IIFE gravou duas linhas antes.',
-  motivo: 'Colisão de chave entre a guarda local do IIFE e o guard central do app.js.',
-  responsabilidade: 'Persistência/restauração de contexto de formulário + atalhos de teclado.',
-  decisaoFutura: 'Não reativar antes do contrato de escopo (tenant/usuário/TTL/logout) da F5-C.'
-}, () => {
-  const app = montarAppOwnership('?ux_phase41=1');
-  eq(app.ctx.__EPI_PHASE41_BOUND__, true, 'o IIFE deveria ter gravado a própria chave de guarda');
-  assert(!app.doc.body.classList.contains('phase41-enabled'),
-    'phase41 marcou o body: então ele INICIALIZOU e esta caracterização está obsoleta');
-  eq(app.contarListeners(app.doc, 'keydown'), 0, 'phase41 não deveria ter registrado atalhos de teclado');
-  eq(app.contarListeners(app.doc, 'input'), 0, 'phase41 não deveria ter registrado a gravação de contexto');
-});
 
-caracterizaDefeito('PR1 C-2: a flag do phase41 nunca chega a ser consultada', {
-  esperado: 'O módulo deveria ler ux_phase41_enabled para decidir se inicializa.',
-  atual: 'A guarda retorna antes do gate de flag; a flag não é lida nenhuma vez.',
-  motivo: 'A ordem das linhas no IIFE põe a guarda antes do isEnabled().',
-  responsabilidade: 'Governança de ativação por flag.',
-  decisaoFutura: 'Enquanto durar, ligar a flag do 4.1 em produção é um no-op — a documentação já registra isso.'
-}, () => {
-  const app = montarAppOwnership('?ux_phase41=1', { espiarFlags: true });
-  const leituras = (app.ctx._leiturasDeFlag || []).filter((l) => l.flag === 'ux_phase41_enabled');
-  eq(leituras.length, 0,
-    `a flag do phase41 foi consultada ${leituras.length}x — se passou a ser lida, o módulo voltou a iniciar`);
-  // Contraprova no mesmo harness: a flag do phase42, que INICIALIZA, é lida.
-  const controle = montarAppOwnership('?ux_phase42=1', { espiarFlags: true });
-  assert((controle.ctx._leiturasDeFlag || []).some((l) => l.flag === 'ux_phase42_enabled'),
-    'a espiã não registra leitura nenhuma: ela está cega, e o gate acima não provaria nada');
-});
-
-caracterizaDefeito('PR1 C-3: a limpeza de chave legada da F5-B não é alcançada em 41, 43 e 44', {
-  esperado: 'A migração deveria apagar as chaves legadas mesmo com a flag desligada — foi posta fora do gate da flag justamente para isso.',
-  atual: 'Ela está DEPOIS da guarda no topo do IIFE, que retorna antes. Só a do phase42 roda.',
-  motivo: 'Mesma colisão de chave; a limpeza é a vítima colateral mais concreta dela.',
-  responsabilidade: 'Migração/retenção de dados em localStorage.',
-  decisaoFutura: 'Se os módulos forem removidos, a limpeza precisa sobreviver a eles em algum lugar que execute.'
-}, () => {
+// CONVERTIDO NO PR 4. Este gate era uma caracterização de DEFEITO: a limpeza
+// das chaves legadas estava dentro dos módulos, DEPOIS da guarda que os fazia
+// retornar cedo, e por isso nunca rodava em 41, 43 e 44. A `decisaoFutura`
+// registrada no PR 1 dizia: "se os módulos forem removidos, a limpeza precisa
+// sobreviver a eles em algum lugar que execute".
+//
+// É o que o PR 4 fez. O defeito não foi corrigido dentro dos módulos — eles
+// foram embora, e a limpeza passou para o `app.js`. O gate vira o contrato
+// positivo dessa decisão.
+test('PR1 C-3 (convertido): a limpeza das chaves legadas sobrevive aos módulos removidos', () => {
   const legadas = {
     'epi:ux:phase41:scroll:v2': '{"de":"quem usou a maquina antes"}',
+    'epi:ux:phase41:context:v2': '{"delivery-role":"encarregado"}',
     'epi:ux:phase42:memory:v2': '{"last":{"employeeId":7,"companyId":3}}',
     'epi:ux:phase43:state:v1': '{"qty":"5"}',
     'epi.ux.phase44.filters.entregas': '{"deliveries-filter-company":"3"}'
   };
   const app = montarAppOwnership('', { storageInicial: legadas });
-  eq(app.local.getItem('epi:ux:phase42:memory:v2'), null,
-    'a limpeza do phase42 parou de rodar — ela é a única que hoje funciona');
-  ['epi:ux:phase41:scroll:v2', 'epi:ux:phase43:state:v1', 'epi.ux.phase44.filters.entregas']
-    .forEach((chave) => assert(app.local.getItem(chave) !== null,
-      `a chave legada "${chave}" foi removida — o bootstrap foi corrigido e esta caracterização está obsoleta`));
+
+  // Agora TODAS somem — as três do cleanup do app e a do phase42, que ele
+  // próprio continua limpando por sobreviver.
+  Object.keys(legadas).forEach((chave) => {
+    eq(app.local.getItem(chave), null,
+      `a chave legada "${chave}" sobreviveu: a limpeza deixou de alcançá-la`);
+  });
 });
 
-test('PR1 C-4 (contrafactual): sem a colisão, phase41 inicializa e persiste campos', () => {
-  const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true });
-  assert(app.doc.body.classList.contains('phase41-enabled'),
-    'nem com o bloqueio neutralizado o phase41 iniciou: o contrafactual não mede o que promete');
-  const nome = app.doc.getElementById('employee-name');
-  nome.value = 'Maria Aparecida';
-  app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
-  app.descarregarStorage();
-  const bruto = app.local.getItem('epi:ux:phase41:context:v2');
-  assert(bruto, 'phase41 não gravou contexto nenhum');
-  const gravado = JSON.parse(bruto);
-  eq(gravado['employee-name'], 'Maria Aparecida',
-    'o nome do colaborador não foi persistido — o contrafactual precisa exercitar a gravação real');
-});
 
-test('PR1 C-5 (contrafactual): a chave de contexto do phase41 não tem escopo de tenant nem de usuário', () => {
-  const chaveDe = (usuario) => {
-    const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true, usuario });
-    app.doc.getElementById('employee-name').value = `rascunho de ${usuario.id}`;
-    app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
-    app.descarregarStorage();
-    return Object.keys(app.local._s).filter((k) => k.startsWith('epi:ux:phase41:'));
-  };
-  const deA = chaveDe({ id: 1, role: 'general_admin', company_id: 1 });
-  const deB = chaveDe({ id: 2, role: 'general_admin', company_id: 99 });
-  eq(deA.length, 1, `esperava uma chave de contexto, vieram ${JSON.stringify(deA)}`);
-  eq(JSON.stringify(deA), JSON.stringify(deB),
-    'as chaves passaram a diferir por usuário/tenant — o contrato de escopo foi implementado e este gate precisa ser revisto');
-  assert(!deA[0].includes('1') || !deA[0].includes('99'),
-    'a chave passou a carregar identificador: escopo implementado');
-});
 
-caracterizaDefeito('PR1 C-6 (contrafactual): o contexto do phase41 sobrevive à limpeza de rascunho do logout', {
-  esperado: 'Encerrar a sessão deveria eliminar todo rascunho de quem saiu, inclusive o persistido pelo phase41.',
-  atual: 'resetAppFormDrafts() limpa o DOM; a chave em localStorage permanece e seria restaurada na carga seguinte.',
-  motivo: 'phase41 grava em localStorage, que sobrevive à recarga por design (F2), e nada no encerramento varre esse prefixo.',
-  responsabilidade: 'Isolamento de rascunho entre identidades na mesma máquina.',
-  decisaoFutura: 'A F5-C precisa varrer o prefixo no terminateSession() antes de qualquer ativação do 4.1.'
-}, () => {
-  const app = montarAppOwnership('?ux_phase41=1', { contrafactualBootstrap: true });
-  const nome = app.doc.getElementById('employee-name');
-  nome.value = 'Maria Aparecida';
-  app.doc.dispatchEvent(new app.ctx.Event('input', { bubbles: true }));
-  app.descarregarStorage();
-  assert(app.local.getItem('epi:ux:phase41:context:v2'), 'o rascunho não chegou a ser gravado');
-
-  // A limpeza REAL do app, a mesma que o encerramento de sessão dispara.
-  assert(typeof app.ctx.resetAppFormDrafts === 'function', 'resetAppFormDrafts não veio do app servido');
-  app.ctx.resetAppFormDrafts();
-  eq(nome.value, '', 'a limpeza do app deveria ter zerado o campo no DOM');
-  assert(app.local.getItem('epi:ux:phase41:context:v2') !== null,
-    'a chave do phase41 foi limpa junto — o contrato de escopo foi implementado e esta caracterização está obsoleta');
-  const remanescente = JSON.parse(app.local.getItem('epi:ux:phase41:context:v2'));
-  eq(remanescente['employee-name'], 'Maria Aparecida',
-    'o nome de quem saiu continua legível no storage depois do encerramento');
-});
 
 // ── D. phase42 × phase43 — MATRIZ DE DEPENDÊNCIA ────────────────────────────
 //
@@ -5335,68 +5011,9 @@ function celulaDaMatriz42x43(busca, opcoes) {
   return app;
 }
 
-test('PR1 D-1: matriz 42×43 — quantos gates de submit existem em cada combinação', () => {
-  const gates = (busca) => celulaDaMatriz42x43(busca).contarListeners(
-    celulaDaMatriz42x43(busca).form, 'submit');
-  // Medido no MESMO app, não em dois: a linha acima monta duas vezes de propósito
-  // para provar que a montagem é determinística; abaixo mede-se uma só.
-  const medir = (busca) => {
-    const app = celulaDaMatriz42x43(busca);
-    return app.contarListeners(app.form, 'submit');
-  };
-  eq(medir(''), 0, '42 OFF / 43 OFF deveria não ter gate nenhum sobre o submit de entrega');
-  eq(medir('?ux_phase42=1'), 1, '42 ON / 43 OFF deveria ter exatamente um gate');
-  eq(medir('?ux_phase43=1'), 1, '43 ON / 42 OFF deveria ter exatamente um gate (o do 43)');
-  eq(medir('?ux_phase42=1&ux_phase43=1'), 2,
-    '42 ON / 43 ON deveria ter DOIS gates independentes sobre o mesmo formulário');
-  eq(typeof gates, 'function');
-});
 
-caracterizaDefeito('PR1 D-2 (contrafactual): com 42 e 43 ativos, satisfazer um gate não libera o outro', {
-  esperado: 'Um formulário deveria ter uma única pré-condição de envio, de um único dono.',
-  atual: 'phase42 exige o checkbox de revisão; phase43 exige o resumo rápido aberto e válido. São dois preventDefault() independentes, em captura, que não se conhecem.',
-  motivo: 'Dois módulos assumiram a mesma responsabilidade sobre #delivery-form sem contrato entre si.',
-  responsabilidade: 'Pré-condição de envio da entrega de EPI.',
-  decisaoFutura: 'Escolher um owner. O phase42 é o que hoje funciona; o que for exclusivo do 43 se absorve nele.'
-}, () => {
-  const app = celulaDaMatriz42x43('?ux_phase42=1&ux_phase43=1');
-  // Satisfaz o gate do phase42 pelo caminho legítimo dele.
-  app.doc.getElementById('phase42-review-check').checked = true;
-  const evento = app.enviarFormularioDeEntrega();
-  eq(evento.defaultPrevented, true,
-    'com o gate do phase42 satisfeito o envio passou — o segundo gate deixou de existir e esta caracterização está obsoleta');
-  const resumo = app.doc.getElementById('phase43-quick-confirm');
-  assert(resumo && resumo.hidden === false,
-    'quem barrou não foi o phase43: ele abriria o próprio resumo de confirmação ao bloquear');
-  assert(String(resumo.innerHTML || '').includes('Confirmação rápida'),
-    'o painel aberto não é o do phase43');
-});
 
-test('PR1 D-3 (contrafactual): 43 ON com 42 OFF bloqueia o envio sem entregar sugestão', () => {
-  const app = celulaDaMatriz42x43('?ux_phase43=1');
-  // A ponte existe mesmo com o phase42 desligado — ela é publicada ACIMA do
-  // gate de flag. Logo, a presença dela não prova que o 42 está ativo.
-  assert(app.ctx.__EPI_PHASE42_MEMORIA__ && typeof app.ctx.__EPI_PHASE42_MEMORIA__ === 'object',
-    'a ponte em memória deixou de ser publicada com a flag do 42 desligada');
-  eq(Object.keys(app.ctx.__EPI_PHASE42_MEMORIA__).length, 0,
-    'a ponte veio preenchida com o phase42 desligado: alguém mais está alimentando o histórico');
 
-  const evento = app.enviarFormularioDeEntrega();
-  eq(evento.defaultPrevented, true, 'o phase43 sozinho deveria barrar o envio');
-  const card = app.doc.getElementById('phase43-fast-card');
-  assert(!card || card.hidden === true,
-    'o card de sugestão apareceu sem o phase42 alimentar o histórico — a dependência não é o que a auditoria mediu');
-});
-
-test('PR1 D-4: a existência da ponte 42→43 não é sinal de que o phase42 está ativo', () => {
-  const desligado = montarAppOwnership('', { contrafactualBootstrap: true });
-  const ligado = montarAppOwnership('?ux_phase42=1', { contrafactualBootstrap: true });
-  assert(desligado.ctx.__EPI_PHASE42_MEMORIA__, 'a ponte deveria existir mesmo com tudo desligado');
-  assert(ligado.ctx.__EPI_PHASE42_MEMORIA__, 'a ponte deveria existir com o 42 ligado');
-  // Nenhuma verificação em runtime pode usar a ponte como discriminador: ela é
-  // igual nos dois estados. Quem quiser declarar a dependência precisa de outro sinal.
-  eq(typeof desligado.ctx.__EPI_PHASE42_MEMORIA__, typeof ligado.ctx.__EPI_PHASE42_MEMORIA__);
-});
 
 // ── E. phase44 × error-monitor.js — INTERCEPTAÇÃO DE fetch ──────────────────
 
@@ -5419,40 +5036,7 @@ test('PR1 E-2: o wrapper do error-monitor é idempotente contra a própria recar
   eq(app.ctx.fetch, primeiro, 'a segunda carga do error-monitor embrulhou o fetch de novo');
 });
 
-caracterizaDefeito('PR1 E-3 (contrafactual): o bridge do phase44 empilha sobre o do error-monitor', {
-  esperado: 'Uma única camada de instrumentação sobre o fetch, de um único dono.',
-  atual: 'phase44 consulta só __EPI_PHASE44_FETCH_BRIDGED__ e o error-monitor só __EPI_MONITORED_FETCH__. Nenhum reconhece a marca do outro, então os dois embrulham.',
-  motivo: 'Duas implementações da mesma responsabilidade, cada uma com marca de idempotência privada.',
-  responsabilidade: 'Instrumentação de requisições HTTP.',
-  decisaoFutura: 'REVISTO NO PR 2B: manter o error-monitor como owner e NÃO absorver nada. A única capacidade do bridge — emitir epi:action-* — não tem consumidor na produção padrão (B-6) e, quando tem, alimenta métrica de duração zero (B-7). O caminho concorrente sai no PR 4.'
-}, () => {
-  const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
-  eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, true, 'o phase44 não chegou a instalar o bridge');
-  assert(typeof app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__ === 'function',
-    'o error-monitor deixou de instalar o dele');
-  // A marca do monitor não está mais na camada externa: o phase44 ficou por cima.
-  assert(app.ctx.fetch.__EPI_MONITORED_FETCH__ !== true,
-    'o phase44 não ficou por cima — a ordem mudou e a caracterização precisa ser revista');
-  // E o monitor continua na cadeia: o original guardado não é o fetch atual.
-  assert(app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__ !== app.ctx.fetch,
-    'a cadeia tem uma camada só: o empilhamento não se reproduziu');
-});
 
-testAsync('PR1 E-4 (contrafactual): uma requisição atravessa as DUAS camadas', async () => {
-  const app = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
-  const eventos = [];
-  app.doc.addEventListener('epi:action-error', (ev) => eventos.push(ev));
-  app.responderPara('/api/deliveries/caracterizacao', { ok: false, status: 500 });
-  await app.ctx.fetch('/api/deliveries/caracterizacao');
-
-  eq(app.chamadasPara('/api/deliveries/caracterizacao').length, 1,
-    'a requisição não chegou ao fetch base uma única vez');
-  eq(eventos.length, 1, 'o bridge do phase44 não emitiu epi:action-error: a camada dele não rodou');
-  const snapshot = app.ctx.__EPI_MONITORING__ && app.ctx.__EPI_MONITORING__.getSnapshot();
-  const instaveis = Object.keys((snapshot && snapshot.unstableApis) || {});
-  assert(instaveis.some((k) => k.includes('/api/deliveries/caracterizacao')),
-    `o error-monitor não registrou a instabilidade desta requisição: ${JSON.stringify(instaveis)}`);
-});
 
 // ── F. phase44 × app.js — DROPDOWN [data-ui-dropdown] ───────────────────────
 //
@@ -5512,122 +5096,11 @@ test('PR1 F-1: owner atual do dropdown é o app.js — abre, fecha e sincroniza 
   eq(fechado.aria, 'false', 'aria-expanded não voltou');
 });
 
-test('PR1 F-2 (contrafactual): o phase44 cobre o mesmo gesto básico de abrir e fechar', () => {
-  const app = appComDropdownDoPhase44();
-  clicarNoGatilho(app, 'acoes');
-  const aberto = estadoDoDropdown(app, 'acoes');
-  eq(aberto.aberto, true, 'o phase44 não abriu o dropdown');
-  eq(aberto.painelVisivel, true, 'o painel continuou escondido');
-  eq(aberto.aria, 'true', 'aria-expanded não acompanhou');
-  clicarNoGatilho(app, 'acoes');
-  eq(estadoDoDropdown(app, 'acoes').aberto, false, 'o phase44 não fechou no segundo clique');
-});
 
-test('PR1 F-3: EQUIVALENTE no resultado — os dois mantêm exclusividade, por mecanismos diferentes', () => {
-  // Medido, não deduzido: a leitura do código sugeria que só o app.js fechava o
-  // anterior (`closeInteractiveDropdowns()` explícito, contra um `setOpen` que
-  // no phase44 só mexe na própria raiz). O gate mostrou o contrário — o phase44
-  // registra UM listener de clique no documento POR instância, e o clique no
-  // gatilho do vizinho cai como "clique fora" para todas as outras. O efeito
-  // observável é o mesmo; o caminho, não.
-  const doApp = appComDropdownDoApp();
-  clicarNoGatilho(doApp, 'acoes');
-  clicarNoGatilho(doApp, 'exportar');
-  eq(estadoDoDropdown(doApp, 'exportar').aberto, true, 'o segundo dropdown não abriu no app');
-  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'o app.js perdeu a exclusividade');
 
-  const do44 = appComDropdownDoPhase44();
-  clicarNoGatilho(do44, 'acoes');
-  clicarNoGatilho(do44, 'exportar');
-  eq(estadoDoDropdown(do44, 'exportar').aberto, true, 'o segundo dropdown não abriu no phase44');
-  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'o phase44 perdeu a exclusividade');
-});
 
-test('PR1 F-3b: DIFERENÇA de custo — o phase44 registra um listener de documento POR dropdown', () => {
-  const doApp = appComDropdownDoApp();
-  const do44 = appComDropdownDoPhase44();
-  const cliquesNoDoc = (app) => app.contarListeners(app.doc, 'click');
-  // O fixture tem dois dropdowns. O app.js fecha todos a partir de um único
-  // listener; o phase44 precisa de um por instância, e o número cresce com a
-  // quantidade de dropdowns da tela.
-  assert(cliquesNoDoc(do44) > cliquesNoDoc(doApp),
-    `o phase44 deveria custar mais listeners de documento (app=${cliquesNoDoc(doApp)}, 44=${cliquesNoDoc(do44)})`);
-});
 
-test('PR1 F-4: DIFERENÇA — Escape fecha pelo app.js a partir do documento; no phase44 só de dentro do dropdown', () => {
-  const doApp = appComDropdownDoApp();
-  clicarNoGatilho(doApp, 'acoes');
-  doApp.doc.dispatchEvent(new doApp.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
-  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'Escape no documento não fechou pelo app.js');
 
-  const do44 = appComDropdownDoPhase44();
-  clicarNoGatilho(do44, 'acoes');
-  do44.doc.dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
-  eq(estadoDoDropdown(do44, 'acoes').aberto, true,
-    'o Escape do documento fechou pelo phase44 — ele escuta na RAIZ do dropdown, não no documento');
-  // Pela raiz, como o phase44 espera, ele fecha — e devolve o foco ao gatilho.
-  do44.doc.getElementById('dropdown-acoes')
-    .dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
-  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'nem pela raiz o phase44 fechou com Escape');
-  // ATUALIZADO NO PR 2C. Esta era a única capacidade que o owner não tinha, e
-  // ela foi ABSORVIDA: hoje o app.js também devolve o foco (2C C-1). A
-  // asserção continua aqui porque mede o concorrente, e é dela que sai a
-  // equivalência verificada em 2C C-7 — mas já não descreve uma exclusividade.
-  assert(do44.doc.getElementById('dropdown-acoes-trigger')._focado === true,
-    'o phase44 deixou de devolver o foco ao gatilho: a equivalência de 2C C-7 precisa ser remedida');
-});
-
-test('PR1 F-5: ambos fecham por clique fora, mas o phase44 fecha o dropdown VIZINHO junto', () => {
-  const doApp = appComDropdownDoApp();
-  clicarNoGatilho(doApp, 'acoes');
-  doApp.doc.getElementById('menu').dispatchEvent(new doApp.ctx.Event('click', { bubbles: true }));
-  eq(estadoDoDropdown(doApp, 'acoes').aberto, false, 'o app.js não fechou por clique fora');
-
-  const do44 = appComDropdownDoPhase44();
-  clicarNoGatilho(do44, 'acoes');
-  do44.doc.getElementById('menu').dispatchEvent(new do44.ctx.Event('click', { bubbles: true }));
-  eq(estadoDoDropdown(do44, 'acoes').aberto, false, 'o phase44 não fechou por clique fora');
-
-  // A diferença fina: clicar DENTRO do dropdown vizinho. O app.js ignora
-  // (qualquer `[data-ui-dropdown]` conta como "dentro"); o phase44 fecha o
-  // outro, porque cada instância só reconhece a própria raiz.
-  const app2 = appComDropdownDoApp();
-  clicarNoGatilho(app2, 'acoes');
-  app2.doc.getElementById('dropdown-exportar-panel')
-    .dispatchEvent(new app2.ctx.Event('click', { bubbles: true }));
-  eq(estadoDoDropdown(app2, 'acoes').aberto, true,
-    'o app.js fechou por clique dentro de outro dropdown — ele trata qualquer [data-ui-dropdown] como "dentro"');
-
-  const p44b = appComDropdownDoPhase44();
-  clicarNoGatilho(p44b, 'acoes');
-  p44b.doc.getElementById('dropdown-exportar-panel')
-    .dispatchEvent(new p44b.ctx.Event('click', { bubbles: true }));
-  eq(estadoDoDropdown(p44b, 'acoes').aberto, false,
-    'o phase44 deixou aberto: ele usa root.contains por instância e deveria fechar o vizinho');
-});
-
-test('PR1 F-6: classificação da equivalência do dropdown — PARCIAL, com as diferenças nomeadas', () => {
-  // Este gate não mede comportamento novo: ele fixa a CONCLUSÃO que os gates
-  // F-1..F-5 sustentam, para que mudar o comportamento sem revisar a decisão
-  // quebre aqui.
-  const equivalentes = [
-    'abrir e fechar pelo gatilho, com aria-expanded e painel sincronizados (F-1, F-2)',
-    'exclusividade entre dropdowns, por mecanismos diferentes (F-3)',
-    'fechar por clique fora do conjunto (F-5)'
-  ];
-  const diferencas = [
-    'Escape: app.js escuta no documento, phase44 só na raiz do dropdown — capacidade do APP',
-    'foco de volta ao gatilho no Escape: phase44 SIM, app.js NÃO — capacidade do 44',
-    'clique dentro de OUTRO dropdown: app.js mantém o primeiro aberto, phase44 fecha',
-    'custo: app.js usa um listener de documento, phase44 usa um por dropdown (F-3b)',
-    'gate de ativação: app.js exige duas flags, phase44 exige a própria'
-  ];
-  eq(equivalentes.length, 3, 'a lista de equivalências mudou sem revisão da classificação');
-  eq(diferencas.length, 5, 'a lista de diferenças mudou sem revisão da classificação');
-  // PARCIAL, e não TOTAL: há capacidade em cada lado que o outro não tem.
-  const classificacao = 'PARCIAL';
-  eq(classificacao, 'PARCIAL');
-});
 
 // ── G. multitab-navigation × navegação principal ────────────────────────────
 //
@@ -5677,77 +5150,9 @@ test('PR1 G-2: a guarda de ativação redundante vive no owner atual', () => {
   eq(app.ctx._pushStates, 0, 'ativação redundante empilhou entrada de histórico');
 });
 
-test('PR1 G-3: na ordem servida o multitab não inicializa — a nav API nasce depois dele', () => {
-  const app = montarAppOwnership('?ux_multitab=1');
-  eq(app.doc.body.classList.contains('ux-multitab-enabled'), false,
-    'o multitab marcou o body: ele iniciou, e a caracterização de inércia está obsoleta');
-  eq(app.ctx.__EPI_MULTITAB_NAVIGATION_BOUND__, true,
-    'o guard central deveria ter sido queimado mesmo assim — é o que impede uma segunda tentativa');
-  eq(app.listenersDe(app.doc, 'click').filter((h) => h.captura).length, 0,
-    'há interceptador de clique em captura na ordem servida: o multitab iniciou');
-});
 
-caracterizaDefeito('PR1 G-4 (contrafactual): com a nav API publicada antes, o multitab assume o clique do menu', {
-  esperado: 'Um único owner da intenção de navegação; módulos auxiliares se integram por API, não por interceptação.',
-  atual: 'multitab registra um listener de CAPTURA no documento e chama stopImmediatePropagation(), silenciando o handler real do item de menu — navigateToView deixa de rodar.',
-  motivo: 'Interceptação em vez de ponto de extensão: a ordem de fase do DOM decide o owner, não um contrato.',
-  responsabilidade: 'Autoridade sobre a intenção de navegação (clique no menu lateral).',
-  decisaoFutura: 'Absorver no owner atual: navigateToView ganha resolvedor registrável e o multitab deixa de escutar cliques.'
-}, () => {
-  const semMultitab = appComNavegacaoDoApp();
-  semMultitab.clicarNoItemDeMenu('entregas');
-  eq(semMultitab.ctx._assigns.length, 1, 'controle: sem o multitab, o clique passa pelo owner do app');
 
-  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
-  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
-    'o contrafactual não ligou o multitab: ele não mede o que promete');
 
-  app.clicarNoItemDeMenu('entregas');
-
-  eq(app.ctx._assigns.length, 0,
-    'navigateToView ainda roda no clique — o multitab deixou de interceptar e esta caracterização está obsoleta');
-  eq(app.viewAtiva(), 'entregas',
-    'o multitab assumiu o clique mas não trocou a view: pior que interceptar é interceptar e não entregar');
-});
-
-test('PR1 G-5 (contrafactual): é o stopImmediatePropagation em captura que decide o owner', () => {
-  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
-  const captura = app.listenersDe(app.doc, 'click').filter((h) => h.captura);
-  assert(captura.length >= 1,
-    'o multitab deveria ter registrado ao menos um listener de clique em CAPTURA no documento');
-
-  // Contraprova: o handler do item de menu EXISTE — o que o impede de rodar é a
-  // fase de escuta, não a ausência de registro.
-  const item = app.doc.querySelector('.menu-link[data-view="entregas"]');
-  assert(app.contarListeners(item, 'click') >= 1,
-    'o handler real do item de menu não está ligado: o gate mediria a ausência dele, não a interceptação');
-  const evento = new app.ctx.Event('click', { bubbles: true });
-  item.dispatchEvent(evento);
-  eq(evento.defaultPrevented, true, 'o interceptador deveria ter chamado preventDefault');
-  eq(app.ctx._assigns.length, 0, 'o handler do app rodou: a interceptação não foi total');
-});
-
-caracterizaDefeito('PR1 G-6 (contrafactual): o multitab reimplementa a guarda de redundância em paralelo', {
-  esperado: 'Uma única definição de "ativação redundante", consultada por quem precisar.',
-  atual: 'O multitab consulta navApi.ativacaoRedundanteDeView quando existe, mas carrega um fallback próprio que recalcula a mesma regra a partir do DOM.',
-  motivo: 'Consequência de ter desviado do owner: quem não passa por navigateToView precisa refazer o que ela faz.',
-  responsabilidade: 'Semântica de ativação redundante de view.',
-  decisaoFutura: 'Com o resolvedor registrável, a guarda volta a ser consultada uma vez só, dentro do owner.'
-}, () => {
-  const fonte = fs.readFileSync(
-    path.join(path.resolve(JS_ROOT, '..'), 'multitab-navigation.js'), 'utf-8');
-  assert(fonte.includes('function ativacaoRedundanteDeView(view)'),
-    'o multitab deixou de ter definição própria da guarda — a duplicidade acabou');
-  assert(fonte.includes("navApi.ativacaoRedundanteDeView"),
-    'o multitab deixou de consultar a guarda canônica');
-  // E o comportamento: no contrafactual, clicar no menu da view ATIVA é no-op,
-  // porque a cópia da guarda também segura. Duas implementações concordando
-  // hoje não é contrato — é coincidência mantida à mão.
-  const app = appComNavegacaoDoApp('?ux_multitab=1', { publicarNavApiCedo: true });
-  const antes = app.vistos.length;
-  app.clicarNoItemDeMenu('dashboard');
-  eq(app.vistos.length, antes, 'a cópia da guarda no multitab deixou de segurar a ativação redundante');
-});
 
 // ── H. O que o phase43 acrescenta ao phase42 ────────────────────────────────
 //
@@ -5775,26 +5180,6 @@ test('PR1 H-1: o phase42 sozinho NÃO valida o código lido do item de estoque',
     'o phase42 passou a barrar por código não lido — ele absorveu a capacidade e o 43 perdeu a exclusividade');
 });
 
-test('PR1 H-2: o phase43 também exige o código lido — mas a capacidade não é dele (ver PR2A A-1)', () => {
-  const app = montarAppOwnership('?ux_phase43=1', { contrafactualBootstrap: true });
-  app.doc.getElementById('delivery-employee').value = '100';
-  app.doc.getElementById('delivery-epi').value = '1000';
-  app.doc.getElementById('delivery-unit-filter').value = '10';
-  app.doc.getElementById('delivery-quantity').value = '2';
-  app.doc.getElementById('delivery-stock-item-code').value = '';
-
-  const evento = app.enviarFormularioDeEntrega();
-  eq(evento.defaultPrevented, true, 'o phase43 deveria barrar o envio sem o código lido');
-  const resumo = app.doc.getElementById('phase43-quick-confirm');
-  assert(String(resumo && resumo.innerHTML || '').includes('código lido'),
-    `o phase43 deveria nomear o campo que falta, veio: ${String(resumo && resumo.innerHTML || '').slice(0, 200)}`);
-
-  // E com o código lido, ele deixa de reclamar DESSE campo.
-  app.doc.getElementById('delivery-stock-item-code').value = 'LOTE-4711';
-  app.enviarFormularioDeEntrega();
-  assert(!String(resumo.innerHTML || '').includes('Faltando'),
-    `com todos os campos preenchidos não deveria faltar nada: ${String(resumo.innerHTML || '').slice(0, 200)}`);
-});
 
 // ── Z. MATRIZES — conclusões ancoradas em medição ───────────────────────────
 
@@ -5944,25 +5329,18 @@ test('PR1 Z-2: matriz de decisão por módulo — cada decisão tem gate que a s
   eq(matriz.length, 5, 'a matriz de decisão mudou de tamanho sem revisão');
 });
 
-test('PR1 Z-3: toda caracterização de defeito declara os cinco campos e é visível no relatório', () => {
-  assert(DEFEITOS_CARACTERIZADOS.length >= 6,
-    `esperava as caracterizações de defeito registradas, vieram ${DEFEITOS_CARACTERIZADOS.length}`);
+test('PR1 Z-3: o registro de caracterizações exige os cinco campos — e está vazio', () => {
+  // ATUALIZADO NO PR 4. Toda caracterização de DEFEITO desta frente afirmava o
+  // comportamento de um módulo que já não existe: elas saíram com o sujeito. O
+  // registro fica, e continua exigindo os cinco campos de quem voltar a usá-lo
+  // — é a trava que impede um `skip` disfarçado de entrar.
   DEFEITOS_CARACTERIZADOS.forEach((d) => {
     ['esperado', 'atual', 'motivo', 'responsabilidade', 'decisaoFutura'].forEach((campo) => {
-      assert(String(d[campo] || '').length > 20, `"${d.nome}" tem o campo "${campo}" vazio ou curto demais`);
+      assert(String(d[campo] || '').trim() !== '', `"${d.nome}" sem o campo "${campo}"`);
     });
   });
-  // Nenhuma delas é `skip`: todas asseguram o estado ATUAL e falham no dia em
-  // que o defeito for corrigido — que é o sinal que este PR quer deixar armado.
-  console.log('\n── #343 PR1 · defeitos caracterizados (falham quando forem corrigidos) ──');
-  DEFEITOS_CARACTERIZADOS.forEach((d) => {
-    console.log(`  • ${d.nome}`);
-    console.log(`      responsabilidade: ${d.responsabilidade}`);
-    console.log(`      atual:            ${d.atual}`);
-    console.log(`      esperado:         ${d.esperado}`);
-    console.log(`      decisão futura:   ${d.decisaoFutura}`);
-  });
-  console.log('');
+  eq(DEFEITOS_CARACTERIZADOS.length, 0,
+    'apareceu caracterização de defeito nova: ela precisa de decisão, não de convivência');
 });
 
 // ── PR 2A — phase43 × phase42: quem é o owner da exigência do código lido ───
@@ -6040,51 +5418,18 @@ testAsync('PR2A A-3: o owner isenta a DEVOLUÇÃO da exigência do código lido'
     `a devolução foi barrada pela exigência de leitura, que não se aplica a ela: ${JSON.stringify(avisos)}`);
 });
 
-caracterizaDefeito('PR2A A-4: o phase43 exigiria o código lido também na devolução', {
-  esperado: 'A exigência de leitura vale para entrega, não para devolução — que o app roteia para /api/devolutions sem stock_item_id nem stock_qr_code.',
-  atual: 'validateContext() do phase43 exige stockCode incondicionalmente. O arquivo inteiro não menciona devolução.',
-  motivo: 'Terceira cópia de uma regra que já tem dono, escrita sem as exceções que o dono conhece.',
-  responsabilidade: 'Pré-condição de envio da entrega de EPI.',
-  decisaoFutura: 'Não absorver: a capacidade não é exclusiva e a cópia é pior que o original. phase43 vai para REMOVER NO PR 4.'
-}, () => {
-  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase43.js'), 'utf-8');
-  assert(fonte.includes("missing.push('código lido')"),
-    'o phase43 deixou de exigir o código lido — esta caracterização está obsoleta');
-  assert(!/devolu|devolution/i.test(fonte),
-    'o phase43 passou a conhecer devolução: a caracterização precisa ser revista');
 
-  // E o comportamento, no contrafactual: com a devolução marcada, ele barra.
-  const app = montarAppOwnership('?ux_phase43=1', { contrafactualBootstrap: true });
-  app.doc.getElementById('delivery-employee').value = '100';
-  app.doc.getElementById('delivery-epi').value = '1000';
-  app.doc.getElementById('delivery-unit-filter').value = '10';
-  app.doc.getElementById('delivery-quantity').value = '1';
-  app.doc.getElementById('delivery-is-devolution').checked = true;
-  app.doc.getElementById('delivery-stock-item-code').value = '';
-
-  const evento = app.enviarFormularioDeEntrega();
-  eq(evento.defaultPrevented, true, 'o phase43 deixou de barrar: caracterização obsoleta');
-  const resumo = app.doc.getElementById('phase43-quick-confirm');
-  assert(String(resumo && resumo.innerHTML || '').includes('código lido'),
-    'o phase43 barrou por outro motivo que não a leitura');
-});
-
-test('PR2A A-5: quantos gates de submit existem depois da consolidação, e de quem são', () => {
-  // O contrato "um owner por responsabilidade" é sobre a REGRA, não sobre a
-  // contagem de listeners. Esta medição deixa explícito o arranjo autorizado,
-  // para ninguém precisar deduzi-lo depois.
-  const contar = (busca, opcoes) => {
-    const app = montarAppOwnership(busca, opcoes);
+test('PR2A A-5: quantos gates de submit existem, e de quem são', () => {
+  // ATUALIZADO NO PR 4: a terceira medição somava o phase43, removido nesta
+  // fatia. O que sobra é o contrato que interessa — e é o mais forte dos dois.
+  const contar = (busca) => {
+    const app = montarAppOwnership(busca);
     app.dispararBootstrapDoApp();
     return app.contarListeners(app.form, 'submit');
   };
-  eq(contar(''), 1,
-    'produção hoje: só o handler do app.js, dono da regra de negócio da entrega');
+  eq(contar(''), 1, 'produção hoje: só o handler do app.js, dono da regra de negócio da entrega');
   eq(contar('?ux_phase42=1'), 2,
-    'com o phase42 ligado somam-se dois: o do app (regra) e o do phase42 (revisão explícita). Arranjo autorizado — o phase42 é o owner do assistente e a revisão é dele.');
-  // E o que a consolidação evita: o terceiro.
-  eq(contar('?ux_phase42=1&ux_phase43=1', { contrafactualBootstrap: true }), 3,
-    'com o phase43 somado seriam TRÊS gates sobre o mesmo formulário — é este o terceiro que o PR 2A dispensa');
+    'com o phase42 ligado somam-se dois: o do app (regra) e o do phase42 (revisão explícita). Arranjo autorizado.');
 });
 
 // ── PR 2B. CONSOLIDAÇÃO — fetch: ux-phase44 × error-monitor.js ──────────────
@@ -6166,163 +5511,52 @@ testAsync('PR2B B-5: erro de rede — o owner registra e RE-LANÇA o mesmo erro'
     `o owner não registrou a falha de rede: ${JSON.stringify(instaveis)}`);
 });
 
-testAsync('PR2B B-6: a capacidade candidata não tem EMISSOR, e o consumidor é duplamente condicionado', async () => {
-  // Este é o gate que decide o PR 2B. O único consumidor de
-  // `epi:action-success`/`epi:action-error` fora do próprio phase44 é o
-  // `ux-analytics.js` — e ele só se registra quando DUAS condições valem ao
-  // mesmo tempo: a flag `ux_analytics_enabled` (falsa por padrão) e o papel
-  // master. Na configuração padrão de produção não há consumidor NENHUM.
-  const padrao = montarAppOwnership('');
-  eq(padrao.contarListeners(padrao.doc, 'epi:action-success'), 0,
-    'apareceu consumidor de epi:action-success na carga padrão: a análise do PR 2B precisa ser refeita');
-  eq(padrao.contarListeners(padrao.doc, 'epi:action-error'), 0,
-    'apareceu consumidor de epi:action-error na carga padrão');
-
-  // Com a flag ligada E papel master, o consumidor existe — e continua ligado
-  // a nada, porque em produção ninguém emite esses eventos.
+testAsync('PR2B B-6: `epi:action-*` não tem produtor nem consumidor', async () => {
+  // CONVERTIDO NO PR 4. O gate media um consumidor órfão: o ux-analytics ouvia
+  // `epi:action-*` e o único produtor era o bridge de fetch do phase44, inerte.
+  // Os dois saíram nesta fatia. O contrato agora é a AUSÊNCIA dos dois lados.
   const app = montarAppOwnership('?ux_analytics=1', {
     usuario: { id: 9, role: 'master_admin', company_id: 1 }
   });
   assert(!(app.ctx._errosDeCarga || []).some((e) => e.rel.includes('ux-analytics')),
     `ux-analytics não carregou no harness: ${JSON.stringify(app.ctx._errosDeCarga)}`);
-  assert(app.contarListeners(app.doc, 'epi:action-success') >= 1,
-    'nem com flag e papel master o ux-analytics ouve epi:action-success: o consumidor sumiu');
-  assert(app.contarListeners(app.doc, 'epi:action-error') >= 1,
-    'nem com flag e papel master o ux-analytics ouve epi:action-error');
 
-  // E o emissor, medido: uma requisição de verdade atravessa o owner e não
-  // produz evento nenhum.
+  eq(app.contarListeners(app.doc, 'epi:action-success'), 0,
+    'voltou a existir consumidor de epi:action-success sem produtor que o alimente');
+  eq(app.contarListeners(app.doc, 'epi:action-error'), 0,
+    'voltou a existir consumidor de epi:action-error sem produtor que o alimente');
+
   const emitidos = [];
   app.doc.addEventListener('epi:action-success', () => emitidos.push('ok'));
   app.doc.addEventListener('epi:action-error', () => emitidos.push('erro'));
   app.responderPara('/api/consolidacao/emissor', { ok: true, status: 200 });
   await app.ctx.fetch('/api/consolidacao/emissor');
-  eq(emitidos.length, 0, 'alguém passou a emitir epi:action-* em produção — a análise precisa ser refeita');
+  eq(emitidos.length, 0, 'alguém passou a emitir epi:action-* em produção');
 
-  // Contraprova de que o par do fluxo de entrega, esse sim, TEM emissor no dono
-  // do domínio: o padrão que funciona é o app.js anunciar o evento de negócio.
-  // Emissor = quem DISPARA o evento. `dispatchEvent(...)` e o nome do evento na
-  // mesma instrução; quem só faz `addEventListener` é consumidor, não emissor.
-  const emissoresDeAcao = ['ux-phase44.js', 'app.js', 'ux-analytics.js', 'error-monitor.js']
-    .filter((arq) => /dispatchEvent\([^;]*epi:action-/.test(
-      fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), arq), 'utf-8')));
-  eq(emissoresDeAcao.join(','), 'ux-phase44.js',
-    'o conjunto de emissores de epi:action-* mudou: a decisão do PR 2B precisa ser revista');
-  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
-  assert(appJs.includes("CustomEvent('epi:delivery-submit-start')"),
-    'o app.js deixou de emitir o par de eventos do fluxo de entrega');
+  // E nenhum arquivo servido dispara esses eventos.
+  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const emissores = servidos.filter((rel) => /dispatchEvent\([^;]*epi:action-/.test(fonteServida(rel)));
+  eq(emissores.length, 0, `voltou a haver emissor de epi:action-*: ${emissores.join(', ')}`);
 });
 
-testAsync('PR2B B-7: o que a absorção produziria — medido no contrafactual, não suposto', async () => {
-  // Se o owner passasse a emitir `epi:action-*` por requisição, o consumidor
-  // ativo registraria um `flow_success`/`flow_error` para CADA chamada HTTP.
-  // Aqui o bridge do phase44 roda de verdade e o resultado é inspecionado no
-  // mesmo armazenamento que o analytics usa em produção.
-  const app = montarAppOwnership('?ux_phase44=1&ux_analytics=1', {
-    contrafactualBootstrap: true,
-    usuario: { id: 9, role: 'master_admin', company_id: 1 }
-  });
-  eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, true, 'o bridge não instalou: o contrafactual não mediu nada');
 
-  // A própria carga da página já fez requisições que o usuário não pediu — é
-  // exatamente esse tráfego que passaria a ser rotulado como "ação".
-  const requisicoesDoBoot = app.chamadasDeRede.length;
-  assert(requisicoesDoBoot >= 1,
-    'a página não fez requisição própria no boot: o custo (b) não seria observável');
 
-  app.responderPara('/api/consolidacao/infraestrutura', { ok: true, status: 200 });
-  await app.ctx.fetch('/api/consolidacao/infraestrutura');
-  await new Promise((r) => setTimeout(r, 0));
+test('PR2B B-9: o fetch tem um dono, e nenhum segundo wrapper voltou', () => {
+  // CONVERTIDO NO PR 4. Era a matriz de destino do concorrente; o destino foi
+  // executado — o phase44 saiu. O que fica é o contrato de ausência.
+  const app = montarAppOwnership('');
+  eq(app.ctx.fetch.__EPI_MONITORED_FETCH__, true, 'o owner do fetch não está ativo');
+  eq(app.ctx.__EPI_FETCH_MONITOR_ORIGINAL__, app.fetchBase,
+    'apareceu uma segunda camada entre o owner e o fetch base');
+  eq(app.ctx.__EPI_PHASE44_FETCH_BRIDGED__, undefined,
+    'a marca do bridge removido reapareceu no contexto');
 
-  const eventos = JSON.parse(app.local.getItem('epi.analytics.master.events') || '[]');
-  const genericos = eventos.filter((e) => e && e.metadata && e.metadata.flow === 'generic_action');
-  assert(genericos.length >= 1,
-    `a requisição de infraestrutura não virou evento de analytics: ${JSON.stringify(eventos.map((e) => e.event))}`);
-
-  // (a) O evento não mede nada: `flowStart('generic_action')` não existe em
-  //     produção, então a duração é sempre zero.
-  genericos.forEach((e) => {
-    eq(e.duration, 0, 'a duração deixou de ser zero: alguém passou a abrir o fluxo generic_action');
-  });
-  const analyticsJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-analytics.js'), 'utf-8');
-  assert(!analyticsJs.includes("flowStart('generic_action'"),
-    'o generic_action ganhou abertura de fluxo: o custo medido aqui mudou');
-
-  // (b) O evento é atribuído a uma "ação" que o usuário não fez: a requisição
-  //     é de infraestrutura, disparada pela própria página.
-  eq(app.chamadasPara('/api/consolidacao/infraestrutura').length, 1,
-    'a requisição de infraestrutura não chegou à camada base');
-
-  // (c) E ocupa lugar no MESMO buffer limitado do analytics do master.
-  assert(analyticsJs.includes('while (events.length > MAX_EVENTS) events.shift();'),
-    'o buffer do analytics deixou de ser limitado: o custo (c) precisa ser remedido');
-  assert(/var MAX_EVENTS = 100;/.test(analyticsJs), 'o limite do buffer mudou de valor sem revisão');
-});
-
-testAsync('PR2B B-8: 4xx — o owner NÃO chama isso de falha; o concorrente chamaria', async () => {
-  // Não é detalhe de implementação: é o significado de "erro". Para o owner,
-  // 4xx é resposta legítima do servidor (o cliente errou), e só 5xx é
-  // instabilidade. Para o bridge, todo `!response.ok` é erro de ação.
-  const padrao = montarAppOwnership('');
-  padrao.responderPara('/api/consolidacao/proibido', { ok: false, status: 403 });
-  await padrao.ctx.fetch('/api/consolidacao/proibido');
-  const instaveis = Object.keys(padrao.ctx.__EPI_MONITORING__.getSnapshot().unstableApis);
-  assert(!instaveis.some((k) => k.includes('/api/consolidacao/proibido')),
-    `o owner passou a tratar 4xx como instabilidade de API: ${JSON.stringify(instaveis)}`);
-
-  const contra = montarAppOwnership('?ux_phase44=1', { contrafactualBootstrap: true });
-  const erros = [];
-  contra.doc.addEventListener('epi:action-error', (ev) => erros.push(ev));
-  contra.responderPara('/api/consolidacao/proibido', { ok: false, status: 403 });
-  await contra.ctx.fetch('/api/consolidacao/proibido');
-  eq(erros.length, 1, 'o bridge deixou de classificar 4xx como erro de ação: a divergência sumiu');
-});
-
-test('PR2B B-9: destino de cada caminho concorrente do fetch, no vocabulário do PR 2', () => {
-  // A matriz não se declara: cada linha reafirma, no app servido, o estado que
-  // sustenta o destino. Se algum caminho mudar de estado, este gate quebra
-  // antes de a decisão virar remoção no PR 4.
-  const padrao = montarAppOwnership('');
-  const comAnalytics = montarAppOwnership('?ux_analytics=1', {
-    usuario: { id: 9, role: 'master_admin', company_id: 1 }
-  });
-  eq(padrao.ctx.fetch.__EPI_MONITORED_FETCH__, true, 'o owner do fetch não está ativo na carga padrão');
-  eq(padrao.ctx.__EPI_PHASE44_FETCH_BRIDGED__ === true, false, 'o bridge do phase44 passou a instalar em produção');
-  eq(padrao.contarListeners(padrao.doc, 'epi:action-success'), 0,
-    'o consumidor órfão passou a existir na carga padrão');
-  assert(comAnalytics.contarListeners(comAnalytics.doc, 'epi:action-success') >= 1,
-    'o consumidor órfão sumiu mesmo com flag e papel master: a linha dele precisa ser revista');
-
-  const DESTINOS = Object.freeze([
-    'REMOVER AGORA',
-    'REMOVER NO PR 4',
-    'MANTER TEMPORARIAMENTE POR DEPENDÊNCIA',
-    'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA'
-  ]);
-  const matriz = [
-    { caminho: 'error-monitor.js (monitoredFetch)', papel: 'OWNER',
-      absorveu: 'nada — nenhuma capacidade do concorrente se mostrou necessária',
-      destino: 'AINDA POSSUI RESPONSABILIDADE EXCLUSIVA', gates: ['B-1', 'B-2', 'B-3', 'B-4', 'B-5'] },
-    { caminho: 'ux-phase44.js (bindFetchFeedbackBridge)', papel: 'CONCORRENTE',
-      absorveu: 'nada — a única capacidade candidata alimenta métrica que não mede nada (B-7)',
-      destino: 'REMOVER NO PR 4', gates: ['B-6', 'B-7', 'B-8', 'E-3', 'E-4'] },
-    // O phase44 inteiro NÃO sai no PR 2B: o eixo do dropdown ainda está aberto
-    // e é decidido no PR 2C. Este destino vale para o caminho do fetch.
-    { caminho: 'ux-analytics.js (ouvintes epi:action-*)', papel: 'CONSUMIDOR ÓRFÃO',
-      absorveu: 'não se aplica',
-      destino: 'REMOVER NO PR 4', gates: ['B-6', 'B-7'] }
-  ];
-  matriz.forEach((m) => {
-    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
-    assert(m.gates.length >= 2, `"${m.caminho}" precisa de mais de um gate sustentando o destino`);
-  });
-  // Nenhuma flag entra em produção por conta desta consolidação: nada foi
-  // absorvido, então não há código novo atrás de flag nova.
-  eq(matriz.filter((m) => m.absorveu !== 'nada — nenhuma capacidade do concorrente se mostrou necessária'
-    && m.absorveu !== 'nada — a única capacidade candidata alimenta métrica que não mede nada (B-7)'
-    && m.absorveu !== 'não se aplica').length, 0,
-    'algo foi absorvido nesta fatia: o inventário de flags do PR 2B precisa ser preenchido');
-  eq(matriz.length, 3, 'a matriz do PR 2B mudou de tamanho sem revisão');
+  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const embrulhadores = servidos.filter((rel) => /(globalThis|window|win)\.fetch\s*=/.test(fonteServida(rel)));
+  eq(embrulhadores.join(','), 'error-monitor.js',
+    `o conjunto de quem embrulha fetch mudou: ${embrulhadores.join(', ')}`);
 });
 
 
@@ -6408,9 +5642,10 @@ test('PR2C C-4: o mesmo Escape continua fechando o modal de assinatura', () => {
     'a devolução de foco e o fechamento do modal não convivem no mesmo Escape');
 });
 
-test('PR2C C-5: a absorção não trouxe o custo de listeners do concorrente', () => {
-  // F-3b mediu que o phase44 registra um listener de documento POR dropdown.
-  // O owner registra um par fixo, e absorver não podia mudar isso.
+test('PR2C C-5: o owner do dropdown mantém um par fixo de listeners no documento', () => {
+  // CONVERTIDO NO PR 4. A segunda metade comparava com o custo por instância do
+  // phase44, removido. O contrato do owner — par fixo, independente do número
+  // de dropdowns — é o que precisava ser protegido, e continua medido.
   const semDropdown = montarAppOwnership('');
   const base = {
     click: semDropdown.contarListeners(semDropdown.doc, 'click'),
@@ -6421,11 +5656,9 @@ test('PR2C C-5: a absorção não trouxe o custo de listeners do concorrente', (
     'o owner passou a registrar mais de um listener de clique no documento');
   eq(comOwner.contarListeners(comOwner.doc, 'keydown') - base.keydown, 1,
     'o owner passou a registrar mais de um listener de teclado no documento');
-
-  // Contraste: o concorrente cresce com o número de dropdowns do fixture (2).
-  const com44 = appComDropdownDoPhase44();
-  eq(com44.contarListeners(com44.doc, 'click') - base.click, 2,
-    'o custo por instância do phase44 mudou: a comparação de F-3b precisa ser revista');
+  // O fixture tem DOIS dropdowns: o par fixo é o que distingue o owner de uma
+  // implementação por instância.
+  eq(comOwner.dropdowns.length, 2, 'o fixture deixou de ter dois dropdowns: a medição perde o sentido');
 });
 
 test('PR2C C-6: exclusividade e clique fora seguem exatamente como antes', () => {
@@ -6448,36 +5681,6 @@ test('PR2C C-6: exclusividade e clique fora seguem exatamente como antes', () =>
     'o clique dentro de outro dropdown passou a fechar o aberto: comportamento novo, não absorvido');
 });
 
-test('PR2C C-7: no gesto que o concorrente cobria, os dois agora terminam igual', () => {
-  // Fecha pelo teclado a partir de dentro: mesmo estado final e mesmo foco.
-  const doApp = appComDropdownDoApp();
-  clicarNoGatilho(doApp, 'acoes');
-  focar(doApp, 'dropdown-acoes-item');
-  doApp.doc.getElementById('dropdown-acoes')
-    .dispatchEvent(new doApp.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
-  // Lido AGORA, antes da segunda montagem: o foco é global no modelo, como no
-  // navegador — ver o limite declarado no fixture.
-  const focoDoOwner = String(doApp.doc.activeElement && doApp.doc.activeElement.id);
-
-  const do44 = appComDropdownDoPhase44();
-  clicarNoGatilho(do44, 'acoes');
-  focar(do44, 'dropdown-acoes-item');
-  do44.doc.getElementById('dropdown-acoes')
-    .dispatchEvent(new do44.ctx.Event('keydown', { key: 'Escape', bubbles: true }));
-
-  eq(estadoDoDropdown(doApp, 'acoes').aberto, estadoDoDropdown(do44, 'acoes').aberto,
-    'o estado final do dropdown divergiu entre owner e concorrente');
-  eq(focoDoOwner, 'dropdown-acoes-trigger', 'o owner não devolveu o foco no gesto de dentro');
-  assert(do44.doc.getElementById('dropdown-acoes-trigger')._focado === true,
-    'o concorrente deixou de devolver o foco: a equivalência precisa ser remedida');
-
-  // E o que o concorrente NÃO cobre continua sendo vantagem do owner (F-4):
-  // Escape a partir do documento.
-  const soOwner = appComDropdownDoApp();
-  clicarNoGatilho(soOwner, 'acoes');
-  teclarEscapeNoDocumento(soOwner);
-  eq(estadoDoDropdown(soOwner, 'acoes').aberto, false, 'o owner perdeu o alcance do Escape pelo documento');
-});
 
 test('PR2C C-8: destino de cada caminho concorrente do dropdown, e inventário de flags', () => {
   const DESTINOS = Object.freeze([
@@ -6544,135 +5747,26 @@ test('PR2D D-1: existe UMA autoridade capaz de decidir a navegação — e o cli
     `alguém escuta o clique em captura no documento e pode decidir antes do owner: ${emCaptura.length}`);
 });
 
-test('PR2D D-2: o mecanismo que derrubaria a autoridade única está identificado e isolado', () => {
-  // Medido no app servido: hoje o interceptador não chega a existir, e é isso
-  // que mantém a resposta de D-1 em SIM.
-  const padrao = montarAppOwnership('');
-  eq(padrao.listenersDe(padrao.doc, 'click').filter((l) => l.captura === true).length, 0,
-    'apareceu interceptador de clique em captura na carga servida');
 
-  // Não é opinião sobre estilo: captura + stopImmediatePropagation silencia o
-  // handler real do item de menu, e `navigateToView` deixa de rodar (G-4).
-  const multitab = fonteServida('multitab-navigation.js');
-  assert(/safeOn\(document, 'click', onMenuIntercept, \{ capture: true \}\)/.test(multitab),
-    'o multitab mudou de mecanismo: a caracterização de G-4/G-5 precisa ser refeita');
-  assert(multitab.includes('event.stopImmediatePropagation();'),
-    'o multitab deixou de silenciar os demais handlers');
-
-  // O contrato: nenhum OUTRO arquivo servido faz isso. O multitab é a única
-  // ocorrência, e ela sai no PR 4 — até lá, esta contagem impede que o padrão
-  // seja copiado para um segundo lugar.
-  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
-    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
-  const interceptadores = servidos.filter((rel) => {
-    const fonte = fonteServida(rel);
-    return /addEventListener\(\s*'click'[^)]*capture|'click',[^,]+,\s*\{\s*capture:\s*true/.test(fonte)
-      && fonte.includes('stopImmediatePropagation');
-  });
-  eq(interceptadores.join(','), 'multitab-navigation.js',
-    'apareceu um segundo interceptador de clique em captura entre os arquivos servidos');
-});
-
-test('PR2D D-3: "ativação redundante" tem uma definição, e ela mora no owner', () => {
+test('PR2D D-3: "ativação redundante" tem UMA definição, e nenhuma cópia sobrou', () => {
   const app = appComNavegacaoDoApp();
   const antes = app.vistos.length;
   app.clicarNoItemDeMenu('dashboard'); // já ativa
   eq(app.ctx._assigns.length, 0, 'a ativação redundante recarregou a página');
   eq(app.vistos.length, antes, 'a ativação redundante emitiu troca de view');
-  assert(typeof app.ctx.ativacaoRedundanteDeView === 'function',
-    'a definição canônica sumiu do owner');
+  assert(typeof app.ctx.ativacaoRedundanteDeView === 'function', 'a definição canônica sumiu do owner');
 
-  // E a cópia: só o multitab a reimplementa (G-6), e ela sai no PR 4.
+  // CONVERTIDO NO PR 4: a única cópia era a do multitab, removido nesta fatia.
+  // O contrato deixa de ser "só ele copia" e passa a ser "ninguém copia".
   const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
     .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
   const copias = servidos.filter((rel) => rel !== 'app.js'
     && /function ativacaoRedundanteDeView/.test(fonteServida(rel)));
-  eq(copias.join(','), 'multitab-navigation.js',
-    'apareceu uma segunda cópia da guarda entre os arquivos servidos');
+  eq(copias.length, 0, `reapareceu cópia da guarda de redundância: ${copias.join(', ')}`);
 });
 
-test('PR2D D-4: a capacidade candidata do multitab é um CACHE de tudo que foi digitado', () => {
-  // Medido no app servido: hoje esse cache não chega a existir, porque o
-  // módulo não inicializa (G-3). O que segue descreve o que ele faria.
-  const padrao = montarAppOwnership('');
-  eq(padrao.doc.body.classList.contains('ux-multitab-enabled'), false,
-    'o multitab passou a iniciar em produção: a análise do PR 2D precisa ser refeita');
 
-  // O que o PR 1 chamou de "abas com contexto preservado" é, no código,
-  // `captureViewContext`: uma varredura de todo input/select/textarea com id
-  // dentro da view, guardada num objeto JS por aba.
-  const multitab = fonteServida('multitab-navigation.js');
-  assert(multitab.includes("viewNode.querySelectorAll('input[id], select[id], textarea[id]')"),
-    'o multitab mudou o que captura: a análise do PR 2D precisa ser refeita');
 
-  // O filtro é por TIPO de campo, não por natureza do dado: só `password` e
-  // `hidden` ficam de fora. Não há noção de CPF, CNPJ, e-mail ou documento —
-  // que são exatamente os dados que a política do app nomeia (ver D-5).
-  assert(multitab.includes("field.type === 'password' || field.type === 'hidden'"),
-    'o filtro do multitab mudou de forma');
-  assert(!/cpf|cnpj|documento|sensiv|sensitive/i.test(multitab),
-    'o multitab passou a conhecer campos sensíveis: a objeção do PR 2D precisa ser revista');
-});
-
-test('PR2D D-5: pelo MENU o multitab NÃO restaura — ele respeita o contrato de reentrada', () => {
-  // CORREÇÃO DE HIPÓTESE. Ao abrir o PR 2D eu esperava que o cache de contexto
-  // do multitab brigasse com a política de limpeza do app em qualquer troca de
-  // view. O código diz o contrário, e de forma deliberada: `restoreViewContext`
-  // só roda com `opts.restoreContext === true`, e o caminho do menu lateral não
-  // passa esse sinal — "entrar pelo menu lateral é reentrada no módulo e tem de
-  // chegar no estado inicial" (contrato F5-B, no próprio arquivo).
-  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
-  assert(app.doc.body.classList.contains('ux-multitab-enabled'),
-    'o multitab não iniciou no contrafactual: o gate mediria o nada');
-
-  app.clicarNoItemDeMenu('entregas');
-  app.doc.getElementById('delivery-role').value = 'DIGITADO-ANTES';
-  app.clicarNoItemDeMenu('estoque');   // captura o contexto de entregas
-
-  // Esvaziado com a aba fora de foco: sem isso o campo continuaria preenchido
-  // por inércia — a view só fica escondida — e o gate não distinguiria
-  // "restaurou" de "ninguém apagou".
-  app.doc.getElementById('delivery-role').value = '';
-  app.clicarNoItemDeMenu('entregas');  // volta PELO MENU
-
-  eq(app.doc.getElementById('delivery-role').value, '',
-    'o multitab restaurou pelo menu: o contrato de reentrada do app deixou de ser respeitado');
-});
-
-test('PR2D D-6: a restauração existe, por gesto da barra — e devolve o que a limpeza do app apagou', () => {
-  // O que sobra da objeção, medido no gesto certo: Ctrl+Tab restaura. A captura
-  // é INCONDICIONAL (toda troca de aba varre os campos) e o cache é um objeto
-  // JS; `resetAppFormDrafts()` opera no DOM e não o alcança.
-  const app = appComNavegacaoDoApp('?ux_multitab=1&ux_spa_navigation=1', { publicarNavApiCedo: true });
-  app.clicarNoItemDeMenu('entregas');
-  app.doc.getElementById('delivery-role').value = 'DADO-DE-QUEM-SAIU';
-  app.clicarNoItemDeMenu('estoque');   // captura o contexto de entregas
-
-  app.ctx.resetAppFormDrafts();        // a limpeza do app, no DOM
-  eq(app.doc.getElementById('delivery-role').value, '',
-    'a limpeza do app não alcançou nem o DOM: o gate mediria outra coisa');
-
-  // Ctrl+Tab: um dos gestos que pedem o contexto de volta (os outros são
-  // clique na aba, fechar aba e popstate — todos com restoreContext: true).
-  // Ele CICLA pelas abas abertas (dashboard, entregas, estoque), então repete-se
-  // até chegar na de entregas — o gesto do usuário é o mesmo.
-  for (let i = 0; i < 3 && app.viewAtiva() !== 'entregas'; i += 1) {
-    app.doc.dispatchEvent(new app.ctx.Event('keydown', { key: 'Tab', ctrlKey: true, bubbles: true }));
-  }
-  eq(app.viewAtiva(), 'entregas', 'o Ctrl+Tab não alcançou a aba de entregas: o gate mediria outra coisa');
-
-  eq(app.doc.getElementById('delivery-role').value, 'DADO-DE-QUEM-SAIU',
-    'o cache não devolveu o valor: a objeção do PR 2D precisa ser remedida');
-
-  // O que hoje cobre o encerramento é a RECARGA — `terminateSession()` termina
-  // em `location.reload()` e o heap morre junto. É reforço de ambiente, não a
-  // limpeza. Absorver o cache no owner faria a política passar a depender disso.
-  const appJs = fonteServida('app.js');
-  assert(appJs.includes('globalThis.location.reload();'),
-    'o encerramento deixou de recarregar: a avaliação de risco do PR 2D muda');
-  assert(/CPF, nome, e-mail e WhatsApp/.test(appJs),
-    'o comentário que declara a política de limpeza mudou: a citação do PR 2D precisa ser revista');
-});
 
 
 test('PR2D D-7: destino de cada caminho da navegação, e inventário de flags', () => {
@@ -6774,51 +5868,41 @@ test('PR2D D-8: matriz final — responsabilidade × owner antes/concorrente/dep
   eq(linhas.length, 6, 'a matriz final de responsabilidades mudou de tamanho sem revisão');
 });
 
-test('PR2D D-9: matriz final — módulo × estado × flag × destino', () => {
-  const DESTINOS = Object.freeze([
-    'MANTER — OWNER',
-    'REMOVER NO PR 4',
-    'FORA DO ESCOPO DO PR 2 — DECISÃO DO PR 3/F5-C'
-  ]);
-  const padrao = montarAppOwnership('');
-  const ligado = (busca, marca) => montarAppOwnership(busca).doc.body.classList.contains(marca);
+test('PR2D D-9: matriz final — módulo × estado × destino, depois do PR 4', () => {
+  const ESTADOS = Object.freeze(['SERVIDO — OWNER', 'REMOVIDO']);
+  const servidos = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const existe = (arq) => fs.existsSync(path.join(raizStatic, arq));
+  const appJs = fs.readFileSync(path.join(raizStatic, 'app.js'), 'utf-8');
 
   const matriz = [
-    { modulo: 'ux-phase42.js', inerteHoje: !padrao.doc.body.classList.contains('phase42-enabled'),
-      ligaComFlag: ligado('?ux_phase42=1', 'phase42-enabled'),
-      flag: 'ux_phase42_enabled', destino: 'MANTER — OWNER' },
-    { modulo: 'ux-phase41.js', inerteHoje: !padrao.doc.body.classList.contains('phase41-enabled'),
-      // Não liga nem com a flag: a colisão de chave de guard barra antes.
-      ligaComFlag: ligado('?ux_phase41=1', 'phase41-enabled'),
-      flag: 'ux_phase41_enabled', destino: 'FORA DO ESCOPO DO PR 2 — DECISÃO DO PR 3/F5-C' },
-    { modulo: 'ux-phase43.js', inerteHoje: !padrao.doc.body.classList.contains('phase43-enabled'),
-      ligaComFlag: ligado('?ux_phase43=1', 'phase43-enabled'),
-      flag: 'ux_phase43_enabled', destino: 'REMOVER NO PR 4' },
-    { modulo: 'ux-phase44.js', inerteHoje: !padrao.doc.body.classList.contains('phase44-enabled'),
-      ligaComFlag: ligado('?ux_phase44=1', 'phase44-enabled'),
-      flag: 'ux_phase44_enabled', destino: 'REMOVER NO PR 4' },
-    { modulo: 'multitab-navigation.js', inerteHoje: !padrao.doc.body.classList.contains('ux-multitab-enabled'),
-      ligaComFlag: ligado('?ux_multitab=1', 'ux-multitab-enabled'),
-      flag: 'ux_multitab_navigation_enabled', destino: 'REMOVER NO PR 4' }
+    { modulo: 'ux-phase42.js', estado: 'SERVIDO — OWNER', flag: 'ux_phase42_enabled',
+      ownerSobrevivente: 'ux-phase42.js' },
+    { modulo: 'ux-phase41.js', estado: 'REMOVIDO', flag: null,
+      ownerSobrevivente: 'nenhum — rascunho não é requisito (PR 3)' },
+    { modulo: 'ux-phase43.js', estado: 'REMOVIDO', flag: null,
+      ownerSobrevivente: 'app.js — dono da regra de envio da entrega' },
+    { modulo: 'ux-phase44.js', estado: 'REMOVIDO', flag: null,
+      ownerSobrevivente: 'error-monitor.js (fetch) + app.js (dropdown)' },
+    { modulo: 'multitab-navigation.js', estado: 'REMOVIDO', flag: null,
+      ownerSobrevivente: 'app.js — bindMenuNavigation → navigateToView' }
   ];
 
   matriz.forEach((m) => {
-    assert(DESTINOS.includes(m.destino), `destino fora do vocabulário: ${m.destino}`);
-    assert(m.inerteHoje === true, `"${m.modulo}" deixou de estar inerte na carga padrão`);
-    // A flag existe mesmo: o nome precisa casar com o registro do app.
-    assert(fonteServida('app.js').includes(`${m.flag}: {`),
-      `"${m.modulo}" aponta para uma flag que não existe no registro: ${m.flag}`);
+    assert(ESTADOS.includes(m.estado), `estado fora do vocabulário: ${m.estado}`);
+    if (m.estado === 'REMOVIDO') {
+      assert(!existe(m.modulo), `"${m.modulo}" consta como REMOVIDO mas o arquivo ainda existe`);
+      assert(!servidos.includes(m.modulo), `"${m.modulo}" continua na lista de scripts servidos`);
+      eq(m.flag, null, `"${m.modulo}" foi removido mas ainda declara flag`);
+    } else {
+      assert(existe(m.modulo), `"${m.modulo}" deveria continuar existindo`);
+      assert(appJs.includes(`${m.flag}: {`), `a flag do owner mantido sumiu do registro: ${m.flag}`);
+    }
+    assert(String(m.ownerSobrevivente || '').trim() !== '', `"${m.modulo}" sem owner sobrevivente declarado`);
   });
-
-  // O phase42 é o único que a flag consegue LIGAR de fato. Nos outros quatro a
-  // flag é inócua — a colisão de chave de guard barra antes dela (PR 0/PR 1).
-  // É por isso que "desligar a flag" nunca foi resposta para nenhum deles.
-  eq(matriz.filter((m) => m.ligaComFlag).map((m) => m.modulo).join(','), 'ux-phase42.js',
-    'mudou o conjunto de módulos que a flag consegue ligar: as conclusões do PR 0 e do PR 1 precisam ser revistas');
-
-  eq(matriz.filter((m) => m.destino === 'REMOVER NO PR 4').length, 3,
-    'mudou o número de módulos que o PR 2 libera para remoção');
-  eq(matriz.length, 5, 'a matriz final de módulos mudou de tamanho sem revisão');
+  eq(matriz.filter((m) => m.estado === 'REMOVIDO').length, 4, 'mudou o número de módulos removidos');
+  eq(matriz.length, 5, 'a matriz final mudou de tamanho sem revisão');
 });
 
 
@@ -6873,33 +5957,6 @@ test('PR3 A-1: a superfície real de formulários, medida — e quanto dela o ph
     'os campos pessoais do employee-form mudaram de forma: a medição de cobertura do phase41 precisa ser refeita');
 });
 
-test('PR3 A-2 (contrafactual): o filtro por EXCLUSÃO do phase41 deixa passar dado pessoal', () => {
-  const app = montarAppOwnership('');
-  assert(app.ordem.includes('ux-phase41.js'), 'o phase41 saiu da ordem servida: este gate perdeu o objeto');
-
-  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8');
-  const linha = (fonte.match(/var SENSITIVE_FIELD_PATTERN = \/\(([^)]+)\)\/i;/) || [])[1];
-  assert(linha, 'o filtro do phase41 mudou de forma: a análise precisa ser refeita');
-
-  // O que a lista de exclusão NÃO conhece. Não é lapso de digitação: é a
-  // natureza de uma lista de exclusão — ela envelhece no primeiro campo novo.
-  ['email', 'phone', 'telefone', 'whats', 'endereco', 'address', 'cep', 'matricula']
-    .forEach((termo) => {
-      assert(!linha.includes(termo),
-        `o filtro do phase41 passou a conhecer "${termo}": a conclusão do PR 3 precisa ser revista`);
-    });
-
-  // E o efeito, medido sobre a superfície real.
-  const excluidos = new RegExp(`(${linha})`, 'i');
-  const pessoal = /(email|mail|whats|phone|fone|telefone|celular|address|endereco|cep|matricula|nascimento|birth)/i;
-  const { campos } = inventarioDeFormularios();
-  const passariam = campos.filter((c) => c.id
-    && !['password', 'file', 'hidden'].includes(c.tipo)
-    && !excluidos.test(c.id) && !excluidos.test(c.nome)
-    && pessoal.test(`${c.id} ${c.nome}`));
-  assert(passariam.length >= 5,
-    `o filtro deixaria passar ${passariam.length} campos pessoais — se caiu a zero, a conclusão mudou`);
-});
 
 testAsync('PR3 A-3: a política ATIVA é a oposta — o app apaga rascunho, inclusive fora de <form>', async () => {
   // Não é ausência de decisão: é decisão tomada, implementada e comentada. O
@@ -6990,59 +6047,274 @@ test('PR3 A-6: onde o requisito de rascunho é REAL, ele já existe — e é ser
     'o ciclo de rascunho de cotações mudou: a comparação A/B/C precisa ser refeita');
 });
 
-test('PR3 A-7: comparação A/B/C e destino do phase41 e da flag', () => {
-  // O par que sustenta a Etapa 12: inerte SEM a flag e inerte COM ela. É por
-  // isso que corrigir o bootstrap seria trabalho perdido — a flag não é o que
-  // segura o módulo, e com ele indo embora a colisão deixa de importar.
-  const semFlag = montarAppOwnership('');
-  const comFlag = montarAppOwnership('?ux_phase41=1');
-  eq(semFlag.doc.body.classList.contains('phase41-enabled'), false,
-    'o phase41 passou a iniciar na carga padrão');
-  eq(comFlag.doc.body.classList.contains('phase41-enabled'), false,
-    'a flag passou a ligar o phase41: a Etapa 12 (bootstrap) muda de resposta');
+test('PR3 A-7: a decisão da F5-C foi executada — nenhum mecanismo de rascunho nasceu', () => {
+  // CONVERTIDO NO PR 4. Era a comparação A/B/C com o destino do phase41 e da
+  // flag. A alternativa escolhida era "remover sem substituição": ela foi
+  // executada, e o gate passa a afirmar o resultado.
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  assert(!fs.existsSync(path.join(raizStatic, 'ux-phase41.js')),
+    'o ux-phase41.js voltou a existir');
+  const appJs = fs.readFileSync(path.join(raizStatic, 'app.js'), 'utf-8');
+  // Mira o REGISTRO, não qualquer menção: o cleanup legado cita a chave
+  // justamente para apagá-la do disco de quem a ligou um dia.
+  assert(!/ux_phase41_enabled: \{/.test(appJs), 'a flag do phase41 voltou ao registro de flags');
+  assert(!appJs.includes('uxPhase41Enabled'), 'a flag do phase41 voltou ao mapa de chaves');
 
-  const ALTERNATIVAS = [
-    { opcao: 'A', desenho: 'remover phase41 sem substituição',
-      telasBeneficiadas: 0, superficieDeDados: 'nenhuma', risco: 'nenhum',
-      manutencao: 'nenhuma', escolhida: true },
-    { opcao: 'B', desenho: 'draft só para formulários explicitamente selecionados',
-      telasBeneficiadas: 0, superficieDeDados: 'a allowlist que fosse definida', risco: 'médio',
-      manutencao: 'allowlist + ciclo de vida + isolamento', escolhida: false },
-    { opcao: 'C', desenho: 'mecanismo geral de drafts seguro',
-      telasBeneficiadas: 0, superficieDeDados: '315 campos em 27 formulários', risco: 'alto',
-      manutencao: 'allowlist + TTL + schema version + isolamento por tenant/usuário', escolhida: false }
-  ];
-  const escolhidas = ALTERNATIVAS.filter((a) => a.escolhida);
-  eq(escolhidas.length, 1, 'a comparação A/B/C precisa de exatamente uma escolha');
-  eq(escolhidas[0].opcao, 'A', 'a alternativa escolhida no PR 3 mudou sem revisão');
-  // B e C só se justificariam com tela beneficiada comprovada. A contagem é
-  // zero porque nenhum requisito foi encontrado em docs/, spec/ ou no produto.
-  ALTERNATIVAS.filter((a) => !a.escolhida).forEach((a) => {
-    eq(a.telasBeneficiadas, 0,
-      `"${a.opcao}" passou a ter tela beneficiada: a decisão do PR 3 precisa ser refeita`);
+  // O contrato da F5-C é sobre PERSISTÊNCIA, não sobre varrer campos.
+  //
+  // A primeira versão deste gate afirmava que a única varredura de
+  // `input[id], select[id], textarea[id]` era a do phase41. Estava errado, e o
+  // gate apanhou: `static/navigation.js` tem a mesma varredura em
+  // `captureContext()` — só que EM MEMÓRIA, sem storage, e atrás de
+  // `ux_hierarchical_navigation_enabled`, que esta frente nunca auditou.
+  // Registrado para outra frente; aqui o que se trava é o que a F5-C decidiu.
+  const servidos = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const persistidores = servidos.filter((rel) => {
+    const fonte = fonteServida(rel);
+    const varre = /querySelectorAll\('input\[id\], select\[id\], textarea\[id\]'\)/.test(fonte);
+    const grava = /(localStorage|sessionStorage)[^\n]*setItem|queueStorageWrite\(/.test(fonte);
+    return varre && grava;
+  });
+  eq(persistidores.length, 0,
+    `voltou a existir arquivo que varre campos E os persiste: ${persistidores.join(', ')}`);
+
+  // A política ativa continua sendo a oposta.
+  assert(appJs.includes('function resetAppFormDrafts()'), 'a política de limpeza de rascunho sumiu do app');
+});
+
+
+// ── PR 4. LIMPEZA FINAL DA FRENTE #343 ──────────────────────────────────────
+//
+// Quatro módulos saem: ux-phase41, ux-phase43, ux-phase44 e
+// multitab-navigation. O phase42 fica, como owner.
+//
+// A parte crítica não é apagar arquivo: é garantir que o que eles JÁ gravaram
+// no navegador de quem usou as versões anteriores continue sendo limpo depois
+// que o código que limpava for embora.
+
+const STORAGE_LEGADO_DE_EXEMPLO = Object.freeze({
+  'epi:ux:phase41:context:v2': '{"delivery-role":"resíduo"}',
+  'epi:ux:phase41:scroll:v2': '820',
+  'epi:ux:phase43:state:v1': '{"aberto":true}',
+  'epi.ux.phase44.filters.entregas': '{"busca":"resíduo"}',
+  'epi.ux.phase44.filters.estoque': '{"busca":"outro resíduo"}',
+  'epi.ux.phase44.filters.dashboard': '{}',
+  // As próprias chaves de flag, que ficavam no disco de quem as ligou um dia.
+  'ux_phase41_enabled': '1',
+  'ux_phase43_enabled': '1',
+  'ux_phase44_enabled': '1',
+  'ux_multitab_navigation_enabled': '1',
+  // Legado do phase42 — mas NÃO é deste cleanup: o phase42 sobrevive e já
+  // remove a própria chave. Entra no fixture para provar que a limpeza dele
+  // continua funcionando depois desta fatia (L-2).
+  'epi:ux:phase42:memory:v2': '{"employeeId":1}',
+  // Alheias: não pertencem a módulo nenhum desta frente e têm de sobreviver.
+  'epi-session-v4': '{"id":1,"role":"general_admin"}',
+  // Neutra de propósito. A primeira versão deste fixture usava
+  // `epi.analytics.master.events` — e o ux-analytics a apaga sozinho quando o
+  // papel não é master, contrato DELE, não deste cleanup. O gate media a coisa
+  // errada. Uma chave que módulo nenhum conhece prova o que interessa: o
+  // cleanup só alcança namespace declarado.
+  'preferencias:impressora:v1': 'balcao-2'
+});
+
+test('PR4 L-1: o cleanup legado apaga as chaves dos módulos removidos', () => {
+  const app = montarAppOwnership('', { storageInicial: STORAGE_LEGADO_DE_EXEMPLO });
+  // A limpeza roda na AVALIAÇÃO do app.js, antes de qualquer flag — não é
+  // preciso disparar bootstrap nem ligar nada.
+  Object.keys(STORAGE_LEGADO_DE_EXEMPLO)
+    .filter((k) => /^epi:ux:phase4[13]:/.test(k) || k.indexOf('epi.ux.phase44.') === 0
+      || /^(ux_phase4[134]_enabled|ux_multitab_navigation_enabled)$/.test(k))
+    .forEach((chave) => {
+      eq(app.local.getItem(chave), null, `a chave legada "${chave}" sobreviveu ao cleanup`);
+    });
+});
+
+test('PR4 L-2: dado alheio sobrevive — e o phase42 continua limpando o dele', () => {
+  const app = montarAppOwnership('', { storageInicial: STORAGE_LEGADO_DE_EXEMPLO });
+
+  // O que não é desta frente não pode ser tocado.
+  eq(app.local.getItem('epi-session-v4'), '{"id":1,"role":"general_admin"}',
+    'o cleanup apagou a sessão do app');
+  eq(app.local.getItem('preferencias:impressora:v1'), 'balcao-2',
+    'o cleanup alcançou chave de namespace que ele não declara');
+
+  // O phase42 SOBREVIVE e continua dono da própria limpeza legada. Quem apaga
+  // esta chave é ele, não o cleanup do app — e é assim que tem de ser, senão a
+  // fatia que elimina owners duplicados criaria mais um.
+  eq(app.local.getItem('epi:ux:phase42:memory:v2'), null,
+    'a limpeza legada do próprio phase42 parou de rodar');
+  const phase42 = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase42.js'), 'utf-8');
+  assert(phase42.includes("removeItem('epi:ux:phase42:memory:v2')"),
+    'quem remove a chave do phase42 deixou de ser o próprio phase42');
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  assert(!appJs.includes("'epi:ux:phase42:memory:v2'"),
+    'o cleanup do app assumiu a chave do phase42 — owner duplicado');
+});
+
+test('PR4 L-3: o cleanup é idempotente — a segunda execução não quebra nem apaga a mais', () => {
+  const app = montarAppOwnership('', { storageInicial: STORAGE_LEGADO_DE_EXEMPLO });
+  const antes = app.local.length;
+  app.ctx.limparResiduosLegadosDaUx();
+  app.ctx.limparResiduosLegadosDaUx();
+  eq(app.local.length, antes, 'a reexecução do cleanup mexeu no storage de novo');
+  eq(app.local.getItem('epi-session-v4'), '{"id":1,"role":"general_admin"}',
+    'a reexecução alcançou dado alheio');
+});
+
+test('PR4 L-4: sem localStorage, o cleanup não derruba a inicialização', () => {
+  const app = montarAppOwnership('');
+  const original = app.ctx.localStorage;
+  try {
+    // Janela privativa / storage desligado: o acesso LANÇA, não devolve null.
+    Object.defineProperty(app.ctx, 'localStorage', {
+      configurable: true,
+      get() { throw new Error('storage indisponível'); }
+    });
+    app.ctx.limparResiduosLegadosDaUx();   // não pode lançar
+  } finally {
+    Object.defineProperty(app.ctx, 'localStorage', { configurable: true, value: original });
+  }
+});
+
+test('PR4 L-5: o cleanup não usa clear() nem varre por heurística', () => {
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  // Só CHAMADAS contam. A primeira versão deste gate casou com o próprio
+  // comentário do cleanup, que citava a construção para dizer que não a usa —
+  // o texto foi reescrito e a asserção passou a exigir início de instrução.
+  const chamadasDeLimpezaTotal = (appJs.match(/(^|[\s;{(=])localStorage\.clear\s*\(/gm) || []).length;
+  eq(chamadasDeLimpezaTotal, 0,
+    'apareceu chamada de limpeza total do storage no app: o cleanup passaria a apagar dado de terceiros');
+  // O prefixo precisa terminar em ponto: sem isso, `epi.ux.phase440` entraria.
+  assert(appJs.includes("PREFIXOS_LEGADOS_UX = Object.freeze(['epi.ux.phase44.'])"),
+    'o prefixo do cleanup mudou de forma — reavaliar o risco de varrer namespace vizinho');
+  assert(appJs.includes("const CLEANUP_LEGADO_UX_VERSAO = '343-pr4';"),
+    'a versão do cleanup sumiu: sem ela não há critério de aposentadoria rastreável');
+});
+
+
+test('PR4 R-1: os quatro módulos não existem e não são servidos', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const REMOVIDOS = ['ux-phase41.js', 'ux-phase43.js', 'ux-phase44.js', 'multitab-navigation.js'];
+  const servidos = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8');
+  const indexHtml = fs.readFileSync(path.join(raizStatic, 'index.html'), 'utf-8');
+  const appJs = fs.readFileSync(path.join(raizStatic, 'app.js'), 'utf-8');
+
+  REMOVIDOS.forEach((arq) => {
+    assert(!fs.existsSync(path.join(raizStatic, arq)), `"${arq}" voltou a existir`);
+    assert(!servidos.includes(arq), `"${arq}" voltou para _scripts.html`);
+    assert(!indexHtml.includes(arq), `"${arq}" voltou para o index.html`);
+    assert(!appJs.includes(`/${arq}`), `o app.js voltou a injetar "${arq}"`);
   });
 
-  const DESTINOS_MODULO = [
-    'MANTER COMO OWNER REDESENHADO',
-    'SUBSTITUIR POR OWNER EXISTENTE',
-    'SUBSTITUIR POR NOVO OWNER ESPECÍFICO',
-    'REMOVER — RESPONSABILIDADE DESNECESSÁRIA'
-  ];
-  const destino = {
-    modulo: 'ux-phase41.js',
-    decisao: 'REMOVER — RESPONSABILIDADE DESNECESSÁRIA',
-    flag: 'ux_phase41_enabled',
-    destinoDaFlag: 'REMOVER NO PR 4 — fica órfã junto com o módulo',
-    gates: ['PR3 A-1', 'PR3 A-2', 'PR3 A-3', 'PR3 A-4', 'PR3 A-5', 'PR3 A-6']
-  };
-  assert(DESTINOS_MODULO.includes(destino.decisao), `destino fora do vocabulário: ${destino.decisao}`);
-  assert(destino.gates.length >= 4, 'a decisão precisa de mais gates sustentando-a');
+  // E o harness confirma pelo caminho real: a ordem servida não os menciona.
+  const app = montarAppOwnership('');
+  REMOVIDOS.forEach((arq) => {
+    assert(!app.ordem.includes(arq), `"${arq}" apareceu na ordem carregada pelo harness`);
+  });
+  eq((app.ctx._errosDeCarga || []).length, 0,
+    `algum script servido falhou ao carregar: ${JSON.stringify(app.ctx._errosDeCarga)}`);
+});
 
-  // Etapa 12: o bootstrap NÃO é corrigido. Com o módulo indo embora, a colisão
-  // deixa de ser problema — e o gate registra que ela segue lá, de propósito.
-  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8');
-  assert(fonte.includes('globalThis.__EPI_PHASE41_BOUND__ = true;'),
-    'a colisão de guarda do phase41 foi mexida — a Etapa 12 dizia para não corrigir');
+test('PR4 R-2: as quatro flags não são lidas por ninguém', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const FLAGS = ['ux_phase41_enabled', 'ux_phase43_enabled', 'ux_phase44_enabled',
+    'ux_multitab_navigation_enabled'];
+  const servidos = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+
+  servidos.forEach((rel) => {
+    const fonte = fonteServida(rel);
+    FLAGS.forEach((flag) => {
+      // A ÚNICA menção tolerada é a do cleanup legado, que cita a chave para
+      // apagá-la do disco. Qualquer leitura de flag é resíduo.
+      const lendo = fonte.includes("getFeatureFlag('" + flag)
+        || fonte.includes('getFeatureFlag("' + flag)
+        || fonte.includes(flag + ': {')
+        || fonte.includes(flag.replace(/_(.)/g, (_, c) => c.toUpperCase()));
+      assert(!lendo, `"${rel}" ainda declara ou lê a flag removida "${flag}"`);
+    });
+  });
+
+  // E o registro de flags do app não as conhece mais.
+  const app = montarAppOwnership('?ux_phase41=1&ux_phase43=1&ux_phase44=1&ux_multitab=1');
+  FLAGS.forEach((flag) => {
+    eq(app.ctx.getFeatureFlag(flag, { defaultValue: false }), false,
+      `a flag removida "${flag}" continua respondendo, e ainda por querystring`);
+  });
+});
+
+test('PR4 R-3: os owners continuam únicos depois da remoção', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const servidos = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const fontes = servidos.map((rel) => [rel, fonteServida(rel)]);
+
+  // fetch: um só embrulhador
+  const embrulham = fontes.filter(([, f]) => /(globalThis|window|win)\.fetch\s*=/.test(f)).map(([r]) => r);
+  eq(embrulham.join(','), 'error-monitor.js', `mais de um owner de fetch: ${embrulham.join(', ')}`);
+
+  // navegação: nenhum interceptador de clique em captura com silenciamento
+  const interceptam = fontes.filter(([, f]) =>
+    /'click'[^)]*capture:\s*true/.test(f) && f.includes('stopImmediatePropagation')).map(([r]) => r);
+  eq(interceptam.length, 0, `reapareceu interceptador de navegação em captura: ${interceptam.join(', ')}`);
+
+  // dropdown: o que define OWNER é ligar o clique do gatilho, não citar o
+  // atributo. O `navigation.js` fecha dropdown já aberto como UI transitória e
+  // nunca registra listener no gatilho — isso não o torna um segundo dono.
+  const donosDeDropdown = fontes.filter(([, f]) =>
+    /(safeOn|addEventListener)\(\s*trigger,\s*'click'/.test(f)).map(([r]) => r);
+  eq(donosDeDropdown.join(','), 'app.js', 'mais de um owner de dropdown: ' + donosDeDropdown.join(', '));
+
+  // E, no app montado, nenhum listener de clique em captura no documento.
+  const app = montarAppOwnership('');
+  eq(app.listenersDe(app.doc, 'click').filter((l) => l.captura === true).length, 0,
+    'apareceu listener de clique em captura no documento');
+});
+
+test('PR4 R-4: o DOM e o CSS dos quatro módulos saíram junto com eles', () => {
+  // Remover o `.js` e deixar o `<section>` e as regras de estilo que só ele
+  // usava é meia remoção: o markup continua sendo servido para todo mundo, e a
+  // folha continua carregando ~200 linhas de regras que nenhum seletor alcança.
+  // Foi a busca residual do #343 PR 4 que achou os dois — este gate é o que
+  // impede que voltem.
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const NOMES = /phase41|phase43|phase44|multitab/i;
+
+  const fragmentos = fs.readdirSync(path.join(raizStatic, 'views'))
+    .filter((n) => n.endsWith('.html'))
+    .map((n) => ['views/' + n, fs.readFileSync(path.join(raizStatic, 'views', n), 'utf-8')]);
+  fragmentos.push(['index.html', fs.readFileSync(path.join(raizStatic, 'index.html'), 'utf-8')]);
+  fragmentos.push(['styles.css', fs.readFileSync(path.join(raizStatic, 'styles.css'), 'utf-8')]);
+
+  fragmentos.forEach(([rel, corpo]) => {
+    const linhas = corpo.split('\n')
+      .map((linha, n) => [n + 1, linha])
+      .filter(([, linha]) => NOMES.test(linha));
+    eq(linhas.length, 0,
+      `"${rel}" voltou a citar um dos quatro módulos removidos: ` +
+      linhas.map(([n, linha]) => `${n}: ${linha.trim()}`).join(' | '));
+  });
+
+  // Contrato POSITIVO do mesmo achado: o que sobreviveu continua de pé. O
+  // gatilho de confirmação do analytics ficou só com o atributo do app, e o
+  // `styles.css` mantém a regra de transição das DUAS famílias que restaram.
+  const analytics = fonteServida('ux-analytics.js');
+  assert(analytics.includes("closest?.('[data-confirm-action]')"),
+    'o gatilho de confirmação do analytics perdeu o seletor que sobreviveu');
+  const css = fs.readFileSync(path.join(raizStatic, 'styles.css'), 'utf-8');
+  assert(css.includes('body.ux-hierarchy-enabled .view.active.hierarchy-view-enter,\n'
+    + 'body.spa-navigation-enabled .view.active.spa-view-enter {'),
+    'a regra compartilhada de transição perdeu os seletores que não eram do phase44');
+
+  // E o evento de troca de view perdeu o campo que só o multitab produzia — o
+  // `app.js` inteiro deixou de conhecer o sinal, produtor e consumidor.
+  const appJs = fs.readFileSync(path.join(raizStatic, 'app.js'), 'utf-8');
+  assert(appJs.includes('viaHistorico: options.viaHistorico === true'),
+    'o `viaHistorico` saiu do detalhe do evento: Voltar/Avançar voltaria a resetar');
+  assert(!appJs.includes('viaMultitab'),
+    'o `viaMultitab` voltou ao app.js sem que exista produtor para ele');
 });
 
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {

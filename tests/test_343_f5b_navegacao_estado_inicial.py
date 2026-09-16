@@ -48,11 +48,13 @@ def _fonte(rel: str) -> str:
 
 # ── G10 — não existe caminho de gravação de estado de navegação ─────────────
 
+# ATUALIZADO NO #343 PR 4: as chaves do phase41 e do phase43 saíram desta lista
+# porque os arquivos que as gravavam foram removidos. A garantia de que elas
+# não voltam — e de que o que já está no disco é apagado — passou para o
+# cleanup legado do `app.js`, coberto por `PR4 L-1` na suíte JS.
 CHAVES_PROIBIDAS = (
     ("epi_vtab_", 'static/app.js', 'última aba interna por grupo'),
-    ("epi:ux:phase41:scroll:v2", 'static/ux-phase41.js', 'posição de rolagem'),
     ("epi:ux:phase42:memory:v2", 'static/ux-phase42.js', 'último colaborador/EPI/unidade + companyId'),
-    ("epi:ux:phase43:state:v1", 'static/ux-phase43.js', 'estado do fluxo de entrega'),
 )
 
 
@@ -81,39 +83,6 @@ def test_g10_a_chave_de_navegacao_nao_e_mais_escrita(chave, arquivo, oque):
             assert chave not in achado.group(1), (
                 f'{arquivo} voltou a gravar `{chave}` via {gravacao}'
             )
-
-
-def test_g10_o_phase44_nao_grava_filtro_mas_ainda_limpa_o_legado():
-    corpo = _fonte('static/ux-phase44.js')
-    for simbolo in ('STORAGE_FILTER_PREFIX', 'persistContext', 'restoreContext',
-                    'safeLocalStorageSet', 'safeLocalStorageGet'):
-        assert simbolo not in corpo, f'`{simbolo}` voltou ao phase44: o filtro está sendo persistido de novo'
-    # A limpeza precisa continuar: quem já rodou a versão anterior tem as
-    # chaves gravadas no navegador, e ninguém mais as lê.
-    assert 'removePhase44Storage();' in corpo, (
-        'a limpeza das chaves legadas do phase44 sumiu — elas ficariam paradas '
-        'no disco do usuário sem nunca mais serem lidas'
-    )
-    assert "STORAGE_NAMESPACE = 'epi.ux.phase44'" in corpo, (
-        'o namespace some junto com a limpeza: `removePhase44Storage` precisa dele'
-    )
-
-
-def test_g10_os_modulos_de_contexto_e_filtro_nao_gravam_nada():
-    """Varredura direta: phase42, phase43 e phase44 não escrevem em storage.
-
-    O phase41 fica de fora desta varredura porque ainda persiste o RASCUNHO de
-    formulário — categoria 3, escopo da F5-C. O que a F5-B tirou dele (rolagem)
-    tem gate próprio acima.
-    """
-    for nome in ('ux-phase42.js', 'ux-phase43.js', 'ux-phase44.js'):
-        corpo = _fonte(f'static/{nome}')
-        assert 'localStorage.setItem' not in corpo, (
-            f'{nome} voltou a gravar em localStorage: estado de navegação não persiste'
-        )
-        assert 'sessionStorage.setItem' not in corpo, (
-            f'{nome} passou a gravar em sessionStorage — mesma proibição'
-        )
 
 
 def test_g10_o_reset_de_entrada_existe_e_esta_na_costura_de_troca_de_view():
@@ -298,63 +267,7 @@ def test_limpar_filtro_notifica_a_tela():
     assert "new Event('input'" in limpador and "new Event('change'" in limpador
 
 
-# ── Multitab: restaurar contexto é exceção, não padrão ─────────────────────
-
-def test_o_multitab_restaura_contexto_apenas_em_acao_explicita():
-    """A flag estar desligada por padrão não elimina o requisito: com ela
-    ligada, entrar pelo menu lateral restaurava os campos da visita anterior
-    logo depois de o reset de entrada tê-los limpado."""
-    corpo = _fonte('static/multitab-navigation.js')
-    assert 'if (opts.restoreContext === true) restoreViewContext(tab);' in corpo, (
-        'restoreViewContext voltou a rodar em toda ativação de aba'
-    )
-    ativar = corpo[corpo.index('function activateTab('):]
-    assert 'viaMultitab: opts.restoreContext === true' in ativar, (
-        'a ativação deixou de distinguir troca explícita de aba de reentrada no módulo'
-    )
-    menu = corpo[corpo.index('function onMenuIntercept('):corpo.index('function bindKeyboard(')]
-    assert 'restoreContext' not in menu, (
-        'entrar pelo menu lateral voltou a restaurar o contexto da visita anterior'
-    )
-    app = _fonte('static/app.js')
-    listener = app[app.index("safeOn(document, 'epi:viewchange'"):][:1800]
-    assert 'viaMultitab' in listener, (
-        'o app deixou de tratar a troca explícita de aba como exceção ao reset'
-    )
-
-
-# ── Ponte phase42 → phase43 (contexto/sugestão em RAM) ─────────────────────
-
-def test_registrar_uso_so_entra_no_historico_se_a_entrega_der_certo():
-    """O handler de submit do phase42 é `capture: true` e roda ANTES do phase43,
-    que aborta quando o resumo não foi revisado, o codigo do item esta errado ou
-    a quantidade e invalida. Gravar ali punha no historico uma entrega que nunca
-    existiu — e o phase43 passava a recomendar a partir dela."""
-    p42 = _fonte('static/ux-phase42.js')
-    p43 = _fonte('static/ux-phase43.js')
-    submit = p42[p42.index("safeOn(form, 'submit'"):]
-    fim = submit.index('}, { capture: true')
-    assert 'ctxPendente = getContext(memory)' in submit[:fim], (
-        'o contexto deixou de ser capturado no submit, com o formulário ainda cheio'
-    )
-    for trecho in ('appendUsageEvent(', 'saveMemory(', 'anunciarUsoRegistrado('):
-        assert trecho not in submit[:fim], (
-            f'"{trecho}" voltou para o pré-submit: submissão abortada entraria no histórico'
-        )
-    sucesso = p42.index("safeOn(document, 'epi:delivery-submit-success'")
-    bloco = p42[sucesso:p42.index('}, { signal: moduleController.signal });', sucesso)]
-    for trecho in ('appendUsageEvent(memory, ctxPendente)', 'saveMemory(memory)',
-                   'anunciarUsoRegistrado()'):
-        assert trecho in bloco, f'a conclusão da entrega deixou de executar "{trecho}"' 
-    assert "CustomEvent('epi:phase42:uso-registrado')" in p42
-    bind = p43[p43.index('function bindForm('):]
-    escuta = bind.index("safeOn(document, 'epi:phase42:uso-registrado'")
-    assert 'recomputarSugestao(ui, form)' in bind[escuta:escuta + 300], (
-        'o phase43 escuta o anúncio mas não recalcula nada'
-    )
-
-
-# ── Rodada de convergência do Codex ────────────────────────────────────────
+# ── Reset de entrada: modais e filtros com identidade ───────────────────────
 
 def test_os_sete_modais_entram_no_reset_com_suas_identidades():
     """Contagem corrigida. A auditoria achou 3 porque procurou em `app.js`; os
@@ -403,36 +316,6 @@ def test_o_editor_comercial_e_resetado_atomicamente():
     )
 
 
-def test_a_troca_explicita_de_aba_multitab_nao_descarta_o_assistente():
-    """`activateTab()` restaura os campos daquela aba logo depois; descartar o
-    assistente ali devolveria o formulário preenchido SEM a sugestão nem o
-    contexto de revisão que pertenciam a ele."""
-    for arquivo, descarte in (('static/ux-phase42.js', 'descartarMemoria()'),
-                              ('static/ux-phase43.js', 'descartarEstado()')):
-        corpo = _fonte(arquivo)
-        i = corpo.index("safeOn(document, 'epi:viewchange'")
-        bloco = corpo[i:corpo.index(descarte, i)]
-        assert 'detalhe.anterior' in bloco, f'{arquivo}: a guarda de redesenho sumiu'
-        assert 'viaMultitab' in bloco, (
-            f'{arquivo}: a troca explícita de aba multitab voltou a descartar o assistente'
-        )
-
-
-def test_o_teardown_do_phase43_e_registrado_uma_vez():
-    """`scheduleRebind()` chama `init()` a cada viewchange, htmx swap e
-    popstate, e o registro fica antes da guarda `runtime.formBound`. Sem
-    cadeado, cada navegação acrescentava um listener permanente de descarte."""
-    corpo = _fonte('static/ux-phase43.js')
-    init = corpo[corpo.index('function init()'):corpo.index('function scheduleRebind()')]
-    registro = init.index("safeOn(document, 'epi:viewchange'")
-    assert 'runtime.teardownBound' in init[:registro], (
-        'o registro do teardown voltou a rodar sem cadeado'
-    )
-    assert "document.addEventListener('epi:viewchange'" not in init, (
-        'o teardown voltou ao addEventListener cru, fora do AbortController da aplicação'
-    )
-
-
 def test_compras_avaliacoes_e_migracao_entram_no_reset_de_filtros():
     corpo = _fonte('static/app.js')
     mapa = corpo[corpo.index('const VIEW_FILTER_RESET'):corpo.index('function limparFiltrosArquivados')]
@@ -458,17 +341,6 @@ def test_soltar_a_empresa_selecionada_redesenha_as_duas_superficies():
     assert 'renderCompanyDetails()' in depois and 'renderCompanies()' in depois, (
         'as superfícies de Empresas não são redesenhadas após soltar a seleção'
     )
-
-
-def test_o_card_de_sugestao_do_phase43_cai_junto_com_o_estado():
-    corpo = _fonte('static/ux-phase43.js')
-    descarte = corpo[corpo.index('function descartarEstado()'):]
-    bloco = descarte[:descarte.index('\n  }')]
-    for node_id in ('phase43-quick-confirm', 'phase43-fast-card'):
-        assert node_id in bloco, (
-            f'{node_id} ficou renderizado após o descarte: a recomendação '
-            'reapareceria sem memória por trás'
-        )
 
 
 def test_o_descarte_do_phase42_restaura_o_valor_que_a_sugestao_substituiu():
@@ -508,9 +380,15 @@ def test_clique_no_menu_da_view_ativa_e_no_op_por_decisao_de_contrato():
     assert listener.index('nome === anterior') < listener.index('resetViewTabsToInitial(nav)'), (
         'a guarda deixou de preceder os resets'
     )
-    # As outras duas exceções continuam com a semântica já definida.
-    for sinal in ('viaHistorico', 'viaMultitab'):
-        assert sinal in listener, f'a exceção {sinal} sumiu do listener'
+    # ATUALIZADO NO #343 PR 4: eram duas exceções. `viaMultitab` saiu junto com
+    # o `multitab-navigation.js`, que era o ÚNICO produtor do sinal — sem ele o
+    # campo do evento era sempre `false` e a guarda, um ramo morto. `viaHistorico`
+    # continua com produtor (`popstate`) e continua sendo exceção.
+    assert 'viaHistorico' in listener, 'a exceção viaHistorico sumiu do listener'
+    assert 'viaMultitab' not in listener, (
+        'a guarda do multitab voltou ao listener: o módulo que produzia o sinal '
+        'saiu no #343 PR 4, então o ramo nunca executa'
+    )
 
 
 # ── F5-B.1 — ATIVAÇÃO REDUNDANTE: cinco caminhos, uma única semântica ────────
@@ -551,9 +429,14 @@ def test_f5b1_a_semantica_de_ativacao_redundante_e_unica_e_sem_fallback():
         'viewAtivaNoDom ganhou fallback para defaultView(): a primeira navegação '
         'para a view padrão passaria a ser tratada como redundante'
     )
-    assert 'ativacaoRedundanteDeView,' in corpo, (
-        'a semântica deixou de ser publicada em __EPI_APP_NAV_API__ — o multitab '
-        'voltaria a ter uma resposta própria para a mesma pergunta'
+    # ATUALIZADO NO #343 PR 4: era `'ativacaoRedundanteDeView,'`, com vírgula.
+    # O `rerunSafeSetups` que vinha depois era exclusivo do multitab e saiu, o
+    # que tornou esta a última propriedade do objeto. A publicação é o contrato;
+    # a vírgula era acidente de posição.
+    assert re.search(r'^    ativacaoRedundanteDeView,?$', corpo, re.M), (
+        'a semântica deixou de ser publicada em __EPI_APP_NAV_API__ — quem '
+        'consome a API (hoje o navigation-controls.js) voltaria a precisar de '
+        'uma resposta própria para a mesma pergunta'
     )
 
 
@@ -589,34 +472,6 @@ def test_f5b1_achado_a_a_guarda_precede_todo_efeito_de_transicao():
         )
 
 
-def test_f5b1_achado_b_ativacao_redundante_nao_fecha_ui_transitoria():
-    """O multitab não fecha modal/dropdown quando nada transiciona.
-
-    E o contrário também é gate: troca real de contexto CONTINUA fechando.
-    Tornar `closeTransientUi()` inoperante seria trocar um defeito por outro.
-    """
-    bloco = _bloco('static/multitab-navigation.js', 'function activateTab(tabId, options)',
-                   'function pushInternalNode')
-    # A medida de redundância tem de existir e de ser lida pela saída antecipada
-    # (gate próprio, abaixo). Aqui o que se fixa é a ORDEM em que ela é tirada.
-    assert 'closeTransientUi();' in bloco, (
-        'closeTransientUi deixou de ser chamado em activateTab: a troca real de '
-        'contexto pararia de fechar dropdown, modal e painel transitório'
-    )
-    pos_medida = bloco.find('var redundante =')
-    pos_troca = bloco.find('activeTabId = tab.id;')
-    assert pos_medida > -1 and pos_troca > -1, 'activateTab mudou de forma'
-    assert pos_medida < pos_troca, (
-        'a medida de redundância passou para depois de `activeTabId = tab.id`: '
-        'a aba corrente viraria a própria aba pedida e TODA ativação pareceria '
-        'redundante — nenhuma troca fecharia mais nada'
-    )
-    corpo = _fonte('static/multitab-navigation.js')
-    assert 'function closeTransientUi()' in corpo, (
-        'closeTransientUi foi removido em vez de guardado'
-    )
-
-
 def test_f5b1_achado_c_a_aba_de_compras_tem_guarda_de_anterior():
     """O listener independente de Compras — o único dos cinco sem feature flag."""
     bloco = _bloco('static/app.js', "safeOn(document, 'epi:viewchange', (e) => {",
@@ -630,18 +485,6 @@ def test_f5b1_achado_c_a_aba_de_compras_tem_guarda_de_anterior():
     assert pos_guarda < pos_troca, (
         'a troca de aba de Compras voltou a acontecer antes da guarda: clicar no '
         'menu de Compras estando em Compras descartaria a aba aberta'
-    )
-
-
-def test_f5b1_achado_d_a_rolagem_so_zera_em_entrada_de_verdade():
-    bloco = _bloco('static/ux-phase44.js', 'function bindScrollPattern()', "safeOn(document, 'invalid'")
-    pos_guarda = bloco.find('if (anterior && anterior === nextView) return;')
-    pos_scroll = bloco.find('globalThis.scrollTo({ top: 0')
-    assert pos_guarda > -1, 'a guarda de ativação redundante saiu do padrão de rolagem do phase44'
-    assert pos_scroll > -1, 'bindScrollPattern mudou de forma'
-    assert pos_guarda < pos_scroll, (
-        'a rolagem volta ao topo antes da guarda decidir: o clique no menu do '
-        'módulo ativo arrancaria o usuário de onde ele estava lendo'
     )
 
 
@@ -717,35 +560,6 @@ def test_f5b1_a_insuficiencia_dos_gates_anteriores_esta_registrada():
     )
 
 
-def test_f5b1_achado_b_ativacao_redundante_e_no_op_inteiro():
-    """Sair ANTES de redesenhar, e não só pular o fechamento da UI transitária.
-
-    A primeira versão desta correção pulava apenas `closeTransientUi()` e deixava
-    passar todo o resto de uma transição: `showView` com `partial: true` (que
-    rebusca e redesenha o módulo), os rebinds, a animação e o `updateHistory`
-    empilhando outra entrada — `onMenuIntercept` passa `historyMode: 'push'`.
-    """
-    bloco = _bloco('static/multitab-navigation.js', 'function activateTab(tabId, options)',
-                   'function pushInternalNode')
-    pos_saida = bloco.find("if (redundante && opts.restoreContext !== true) return;")
-    assert pos_saida > -1, (
-        'a saída antecipada da ativação redundante saiu do activateTab: o clique no '
-        'menu do módulo ativo voltaria a redesenhar o módulo e a empilhar histórico'
-    )
-    for nome, agulha in (
-        ('a atribuição de aba ativa', 'activeTabId = tab.id;'),
-        ('o redesenho da view', 'navApi.showView('),
-    ):
-        pos = bloco.find(agulha)
-        assert pos > -1, f'activateTab mudou de forma: não achei {nome}'
-        assert pos_saida < pos, f'a saída antecipada passou para depois de {nome}'
-    # `restoreContext` continua sendo a exceção — e não pode virar um `viaMenu`
-    # ao contrário, valendo para qualquer chamador.
-    assert 'viaMenu' not in _fonte('static/multitab-navigation.js'), (
-        'apareceu um sinal de menu no multitab, que a decisão de contrato proíbe'
-    )
-
-
 def test_f5b1_achado_f_a_aba_de_avaliacoes_tem_guarda_de_anterior():
     """Sexto caminho, mesma classe do achado C, também sem feature flag."""
     # Fim no `bindAvaliacoesView();` — a CHAMADA, que vem depois do listener; a
@@ -776,13 +590,8 @@ LISTENERS_DE_VIEWCHANGE = {
     'static/app.js': (3, 'os tres com guarda de `anterior`'),
     # rootPush da hierarquia (E).
     'static/navigation.js': (1, 'guarda de `anterior` (E)'),
-    # rolagem (D) e rebind de view (idempotente por WeakSet).
-    'static/ux-phase44.js': (2, 'rolagem com guarda (D); o rebind e idempotente'),
     # teardown de memoria/estado: guarda `view === anterior` desde a F5-B.
     'static/ux-phase42.js': (1, 'teardown com guarda de mesma-view'),
-    'static/ux-phase43.js': (2, 'teardown com guarda de mesma-view; o rebind e idempotente'),
-    # titulo da aba: tem guarda propria (`view !== tab.view` retorna).
-    'static/multitab-navigation.js': (1, 'guarda propria de mesma-view'),
     # melhoria progressiva: nao mexe em estado de trabalho.
     'static/ux-global.js': (1, 'apenas enriquece o DOM da view'),
     # telemetria: registra o que aconteceu, nao muda estado.
@@ -818,15 +627,8 @@ def test_f5b1_o_inventario_de_listeners_de_viewchange_esta_fechado():
 ARQUIVOS_PAREADOS_F5B = (
     # o reset na entrada do módulo + a remoção do epi_vtab_
     'static/app.js',
-    # rolagem (F5-B); o rascunho de formulário fica para a F5-C
-    'static/ux-phase41.js',
     # contexto de negócio sai do storage e vira RAM
     'static/ux-phase42.js',
-    'static/ux-phase43.js',
-    # filtros por view
-    'static/ux-phase44.js',
-    # restauração de contexto de aba vira opt-in (só ação explícita de multitab)
-    'static/multitab-navigation.js',
     # F5-B.1: a pilha de raiz da hierarquia não é mais zerada em ativação
     # redundante da mesma view
     'static/navigation.js',
@@ -839,7 +641,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = 'ba26a83ebbd1579e619d50fbd60c4efcafe25e3f1f7e3fa66adcf5ab5266c545'
+DIGESTO_PARIDADE_F5B = '0b5a8fa2c4fc8b6775fee64e8c632d4c6b98d3d57d115c38b6297f10f28b24cc'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:
@@ -871,7 +673,7 @@ def _digesto_dos_pareados() -> str:
 def test_g11_os_arquivos_pareados_existem_todos():
     for rel in ARQUIVOS_PAREADOS_F5B:
         assert (RAIZ / rel).is_file(), f'arquivo pareado sumiu: {rel}'
-    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 9
+    assert len(set(ARQUIVOS_PAREADOS_F5B)) == 5
 
 
 def test_g11_index_html_nao_entra_na_igualdade_byte_a_byte():
@@ -882,7 +684,7 @@ def test_g11_index_html_nao_entra_na_igualdade_byte_a_byte():
 
 
 def test_g11_paridade_f5b_entre_corporate_e_saas():
-    """Um único dígito sobre os 9 arquivos do contrato da F5-B/F5-B.1.
+    """Um único dígito sobre os 5 arquivos do contrato da F5-B/F5-B.1.
 
     Os dois repositórios calculam o mesmo número e comparam com a mesma
     constante. Editar um lado sem o outro derruba o gate no lado editado.

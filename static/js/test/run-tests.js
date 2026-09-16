@@ -6189,8 +6189,18 @@ test('PR4 L-5: o cleanup não usa clear() nem varre por heurística', () => {
   // O prefixo precisa terminar em ponto: sem isso, `epi.ux.phase440` entraria.
   assert(appJs.includes("PREFIXOS_LEGADOS_UX = Object.freeze(['epi.ux.phase44.'])"),
     'o prefixo do cleanup mudou de forma — reavaliar o risco de varrer namespace vizinho');
-  assert(appJs.includes("const CLEANUP_LEGADO_UX_VERSAO = '343-pr4';"),
-    'a versão do cleanup sumiu: sem ela não há critério de aposentadoria rastreável');
+  // A rastreabilidade da aposentadoria vive no COMENTÁRIO do cleanup, não numa
+  // constante: a primeira versão declarava uma que nada lia, e o CodeQL apanhou
+  // (#991). Não há leitor em runtime porque a decisão registrada no documento é
+  // não gravar marcador de "já limpei" — ele seria uma chave nova, precisando de
+  // outra limpeza depois.
+  const inicio = appJs.indexOf('function limparResiduosLegadosDaUx');
+  assert(inicio > -1, 'a função de limpeza legada sumiu do app.js');
+  const cabecalho = appJs.slice(Math.max(0, inicio - 3000), inicio);
+  assert(cabecalho.includes('APOSENTADORIA') && cabecalho.includes('343-pr4'),
+    'a marca de aposentadoria do cleanup sumiu: sem ela não há critério de retirada rastreável no código');
+  assert(!/(^|[\s;{(=])const\s+CLEANUP_LEGADO_UX_VERSAO/m.test(appJs),
+    'voltou uma constante de versão que nada lê: dívida com aparência de mecanismo');
 });
 
 

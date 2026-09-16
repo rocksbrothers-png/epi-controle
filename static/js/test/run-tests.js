@@ -7422,12 +7422,23 @@ testAsync('ISOL C-14: cópia de sessão de OUTRO principal não é aceita', asyn
   // encerramento. Faltava o caso em que ela SOBREVIVE: o login de B na mesma
   // aba não passa por `terminateSession()`, então a cópia de A continua lá até
   // o bootstrap de B chegar. O carimbo é a única coisa que a recusa.
-  const sessaoDaAba = armazemPreferencias({
-    'epi-prefs-sessao': JSON.stringify({ p: 'A', ...PERFIL_A })
+  //
+  // A cópia é escrita pelo CAMINHO REAL, não semeada na mão: o formato do
+  // carimbo é detalhe do dono, e um gate que o escrevesse à mão passaria a
+  // medir a própria suposição em vez do mecanismo.
+  const servidor = servidorDePreferencias();
+  const sessaoDaAba = armazemPreferencias();
+  const a1 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDaAba
   });
+  await a1.configurar(PERFIL_A);
+  assert(sessaoDaAba.getItem('epi-prefs-sessao'),
+    'A não deixou cópia na aba — o gate não mediria nada');
+
+  // B entra na MESMA aba, sem passar pelo encerramento (login direto) e antes
+  // de o bootstrap dele voltar.
   const b = montarDocumentoPreferencias(armazemPreferencias(), {
-    usuario: { id: 'B' }, servidor: servidorDePreferencias(),
-    sessao: sessaoDaAba, semBootstrap: true
+    usuario: { id: 'B' }, servidor, sessao: sessaoDaAba, semBootstrap: true
   });
   const resposta = b.ctx.preferenciasDoPrincipal();
   Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
@@ -7439,19 +7450,33 @@ testAsync('ISOL C-14: cópia de sessão de OUTRO principal não é aceita', asyn
   eq(sessaoDaAba.getItem('epi-prefs-sessao'), null,
     'a cópia de A continuou na aba — o próximo pré-paint a aplicaria');
 
-  // Controle: a cópia DO PRÓPRIO principal continua sendo aceita — senão a
-  // correção seria "ignorar a cópia sempre", e o pré-paint voltaria a piscar.
-  const sessaoDoA = armazemPreferencias({
-    'epi-prefs-sessao': JSON.stringify({ p: 'A', ...PERFIL_A })
+  // Controle positivo: a cópia DO PRÓPRIO principal continua sendo aceita —
+  // senão a correção seria "ignorar a cópia sempre", e o pré-paint voltaria a
+  // piscar a cada F5.
+  const sessaoDoA = armazemPreferencias();
+  const a2 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDoA
   });
-  const a = montarDocumentoPreferencias(armazemPreferencias(), {
-    usuario: { id: 'A' }, servidor: servidorDePreferencias(),
-    sessao: sessaoDoA, semBootstrap: true
+  await a2.configurar(PERFIL_A);
+  const a3 = montarDocumentoPreferencias(armazemPreferencias(), {
+    usuario: { id: 'A' }, servidor, sessao: sessaoDoA, semBootstrap: true
   });
-  eq(a.ctx.preferenciasDoPrincipal().tema, PERFIL_A.tema,
+  eq(a3.ctx.preferenciasDoPrincipal().tema, PERFIL_A.tema,
     'A deixou de reconhecer a própria cópia de sessão');
-  eq(a.temaNoPrePaint, PERFIL_A.tema,
+  eq(a3.temaNoPrePaint, PERFIL_A.tema,
     'o pré-paint parou de usar a cópia da própria aba: o tema volta a piscar no F5');
+});
+
+// O carimbo é um DERIVADO do principal, não o id. Um gate para que ele não
+// volte a ser o id em texto claro — foi assim que o CodeQL leu a gravação.
+test('ISOL C-15: o carimbo da cópia não é o identificador do principal', () => {
+  const appJs = _read('app.js');
+  const corpo = appJs.slice(appJs.indexOf('function prefsGravarCopiaDeSessao()'));
+  const ateOFim = corpo.slice(0, corpo.indexOf('\nfunction '));
+  assert(ateOFim.includes('prefsCarimboDoPrincipal()'),
+    'a gravação da cópia voltou a carimbar com algo que não é o derivado');
+  assert(!ateOFim.includes('prefsPrincipalCorrente()'),
+    'o id do principal voltou a ser gravado em texto claro na cópia de sessão');
 });
 
 test('ISOL C-12: o servidor é o dono, e o cliente não grava preferência em localStorage', () => {

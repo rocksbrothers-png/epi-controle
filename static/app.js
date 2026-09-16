@@ -4548,6 +4548,31 @@ function prefsPrincipalCorrente() {
   return (id === undefined || id === null) ? '' : String(id);
 }
 
+// O carimbo da cópia de sessão responde a UMA pergunta: "esta cópia é minha?".
+// É comparação, nunca leitura de volta — nada no código precisa recuperar o id
+// a partir dele. Então ele não é o id: é um derivado.
+//
+// Duas consequências, e é honesto separá-las. A primeira é de contrato: o que
+// vai para o disco passa a ser exatamente o necessário para comparar, e nada
+// além. A segunda é de análise: `prefsPrincipalCorrente()` alcança o objeto
+// `state`, que também guarda `requirePasswordChange` e token de sessão, e o
+// CodeQL — que não distingue campos dentro dele — lia a gravação do id como
+// gravação de dado sensível em texto claro. Tinha razão sobre a forma.
+//
+// Isto NÃO é segredo criptográfico: o espaço de ids é pequeno e quem lê o
+// `sessionStorage` pode enumerar. Não é essa a finalidade — a cópia morre com
+// a aba, e o que se ganha é guardar menos e deixar o fluxo legível.
+function prefsCarimboDoPrincipal() {
+  const bruto = prefsPrincipalCorrente();
+  if (!bruto) return '';
+  let h = 0x811c9dc5;
+  for (let i = 0; i < bruto.length; i += 1) {
+    h ^= bruto.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `c${h.toString(36)}`;
+}
+
 function prefsNormalizar(bruto) {
   const origem = (bruto && typeof bruto === 'object') ? bruto : {};
   const saida = { ...PREFS_PADRAO };
@@ -4581,7 +4606,7 @@ function prefsLerCopiaDeSessao() {
     const salvo = JSON.parse(cru);
     // Sem carimbo de principal, ou carimbo de outro: a cópia não prova ser
     // desta identidade. Ausência de prova é recusa, não permissão.
-    if (!salvo || String(salvo.p ?? '') !== prefsPrincipalCorrente()) {
+    if (!salvo || String(salvo.p ?? '') !== prefsCarimboDoPrincipal()) {
       // E não basta recusar: uma cópia alheia deixada na aba seria lida pelo
       // PRÉ-PAINT da próxima carga, que não tem como conferir carimbo nenhum.
       // Se o bootstrap desta carga falhar (modo degradado) e ela sobrevivesse,
@@ -4597,13 +4622,11 @@ function prefsGravarCopiaDeSessao() {
   // Os quatro campos são NOMEADOS, um a um, em vez de espalhados com `...`.
   // O espalhamento copiava o objeto inteiro: se algum dia entrasse ali uma
   // chave vinda do bootstrap, ela iria para o disco junto, e nem a leitura do
-  // código nem a análise estática conseguiriam afirmar o contrário. Achado do
-  // CodeQL (`js/clear-text-storage-of-sensitive-data`) e correção real: a
-  // cópia de sessão só pode conter preferência de interface.
+  // código nem a análise estática conseguiriam afirmar o contrário.
   const p = prefsNormalizar(_prefsEmMemoria);
   try {
     sessionStorage.setItem(PREFS_SESSAO_KEY, JSON.stringify({
-      p: prefsPrincipalCorrente(),
+      p: prefsCarimboDoPrincipal(),
       tema: p.tema, densidade: p.densidade, sidebar: p.sidebar, idioma: p.idioma
     }));
   } catch (_e) { /* sem storage: só o pré-paint perde o atalho */ }

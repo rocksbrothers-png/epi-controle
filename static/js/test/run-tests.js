@@ -4852,6 +4852,10 @@ function fixtureOwnershipPR1() {
   doc.appendChild(menu);
   doc.appendChild(main);
   dropdowns.forEach((d) => doc.appendChild(d));
+  // Campo SOLTO, fora de qualquer <form>. Espelha `#compras-supplier-name` e
+  // irmãos: `form.reset()` não os alcança, e foi por isso que a política de
+  // limpeza do app deixou de ser escopada por <form> (#343 PR 3).
+  doc.appendChild(criarNoF5B('input', { id: 'compras-supplier-name', type: 'text' }));
   // O mesmo Escape que fecha o dropdown também fecha o modal de assinatura.
   // O nó precisa existir para que a fatia 2C possa provar que esse ramo
   // continua rodando depois de a devolução de foco entrar no handler.
@@ -6815,6 +6819,230 @@ test('PR2D D-9: matriz final — módulo × estado × flag × destino', () => {
   eq(matriz.filter((m) => m.destino === 'REMOVER NO PR 4').length, 3,
     'mudou o número de módulos que o PR 2 libera para remoção');
   eq(matriz.length, 5, 'a matriz final de módulos mudou de tamanho sem revisão');
+});
+
+
+// ── PR 3 / F5-C. RASCUNHO DE FORMULÁRIO — DECISÃO ───────────────────────────
+//
+// A pergunta da frente não era "como fazer o phase41 voltar a funcionar", e sim
+// "a aplicação precisa desta responsabilidade?". A resposta medida é NÃO, e os
+// gates abaixo são o contrato dessa decisão: eles falham se alguém reintroduzir
+// persistência de rascunho no cliente sem refazer a análise.
+
+function inventarioDeFormularios() {
+  const raizViews = path.join(path.resolve(JS_ROOT, '..'), 'views');
+  const arquivos = fs.readdirSync(raizViews).filter((f) => f.endsWith('.html'));
+  const campos = [];
+  let formularios = 0;
+  arquivos.forEach((arq) => {
+    const html = fs.readFileSync(path.join(raizViews, arq), 'utf-8');
+    const blocos = html.match(/<form\b[^>]*>[\s\S]*?<\/form>/gi) || [];
+    formularios += blocos.length;
+    blocos.forEach((bloco) => {
+      const controles = bloco.match(/<(?:input|select|textarea)\b[^>]*>/gi) || [];
+      controles.forEach((c) => {
+        const id = (c.match(/\bid="([^"]+)"/) || [])[1] || '';
+        const nome = (c.match(/\bname="([^"]+)"/) || [])[1] || '';
+        const tipo = ((c.match(/\btype="([^"]+)"/) || [])[1] || (/^<select/i.test(c) ? 'select' : 'text')).toLowerCase();
+        campos.push({ arq, id, nome, tipo });
+      });
+    });
+  });
+  return { formularios, campos };
+}
+
+test('PR3 A-1: a superfície real de formulários, medida — e quanto dela o phase41 sequer enxerga', () => {
+  const app = montarAppOwnership('');
+  eq(app.doc.body.classList.contains('phase41-enabled'), false,
+    'o phase41 passou a iniciar: a premissa desta frente mudou');
+
+  const { formularios, campos } = inventarioDeFormularios();
+  assert(formularios >= 25, `esperava a superfície completa de formulários, vieram ${formularios}`);
+  assert(campos.length >= 300, `esperava a superfície completa de campos, vieram ${campos.length}`);
+
+  // O phase41 indexa por `id` (`if (!field || !field.id) return false`). Campo
+  // sem id é invisível para ele — e quase metade da superfície é assim.
+  const semId = campos.filter((c) => !c.id);
+  assert(semId.length >= 130,
+    `campos sem id caíram para ${semId.length}: a cobertura acidental do phase41 mudou e a análise precisa ser refeita`);
+
+  // O caso que decide: o formulário que a política do app cita por nome.
+  const doColaborador = campos.filter((c) => c.arq === 'colaboradores.html');
+  const pessoaisSemId = doColaborador.filter((c) => !c.id && /^(cpf|name|email|whatsapp)$/.test(c.nome));
+  eq(pessoaisSemId.length, 4,
+    'os campos pessoais do employee-form mudaram de forma: a medição de cobertura do phase41 precisa ser refeita');
+});
+
+test('PR3 A-2 (contrafactual): o filtro por EXCLUSÃO do phase41 deixa passar dado pessoal', () => {
+  const app = montarAppOwnership('');
+  assert(app.ordem.includes('ux-phase41.js'), 'o phase41 saiu da ordem servida: este gate perdeu o objeto');
+
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8');
+  const linha = (fonte.match(/var SENSITIVE_FIELD_PATTERN = \/\(([^)]+)\)\/i;/) || [])[1];
+  assert(linha, 'o filtro do phase41 mudou de forma: a análise precisa ser refeita');
+
+  // O que a lista de exclusão NÃO conhece. Não é lapso de digitação: é a
+  // natureza de uma lista de exclusão — ela envelhece no primeiro campo novo.
+  ['email', 'phone', 'telefone', 'whats', 'endereco', 'address', 'cep', 'matricula']
+    .forEach((termo) => {
+      assert(!linha.includes(termo),
+        `o filtro do phase41 passou a conhecer "${termo}": a conclusão do PR 3 precisa ser revista`);
+    });
+
+  // E o efeito, medido sobre a superfície real.
+  const excluidos = new RegExp(`(${linha})`, 'i');
+  const pessoal = /(email|mail|whats|phone|fone|telefone|celular|address|endereco|cep|matricula|nascimento|birth)/i;
+  const { campos } = inventarioDeFormularios();
+  const passariam = campos.filter((c) => c.id
+    && !['password', 'file', 'hidden'].includes(c.tipo)
+    && !excluidos.test(c.id) && !excluidos.test(c.nome)
+    && pessoal.test(`${c.id} ${c.nome}`));
+  assert(passariam.length >= 5,
+    `o filtro deixaria passar ${passariam.length} campos pessoais — se caiu a zero, a conclusão mudou`);
+});
+
+testAsync('PR3 A-3: a política ATIVA é a oposta — o app apaga rascunho, inclusive fora de <form>', async () => {
+  // Não é ausência de decisão: é decisão tomada, implementada e comentada. O
+  // `resetAppFormDrafts()` alcança controle solto porque `form.reset()` não
+  // alcança — e é exatamente onde mora rascunho sensível.
+  const app = montarAppOwnership('');
+  app.dispararBootstrapDoApp();
+
+  app.doc.getElementById('delivery-role').value = 'DENTRO-DE-FORM';
+  app.doc.getElementById('compras-supplier-name').value = 'FORA-DE-FORM';
+
+  app.ctx.resetAppFormDrafts();
+
+  eq(app.doc.getElementById('delivery-role').value, '', 'a limpeza não alcançou campo dentro de <form>');
+  eq(app.doc.getElementById('compras-supplier-name').value, '',
+    'a limpeza não alcançou controle solto — é justamente o caso que motivou a política');
+});
+
+test('PR3 A-4: estado digitado que sobrevive à navegação JÁ tem owner, e ele é escopado', () => {
+  // Filtros de lista são estado digitado que precisa sobreviver ao Voltar. O
+  // owner existe (snapshots de navegação SPA), vive em sessionStorage e é
+  // invalidado por encerramento E por troca de principal.
+  const app = montarAppOwnership('');
+  assert(typeof app.ctx.snapshotScopeId === 'function', 'o owner de escopo de snapshot sumiu');
+  assert(typeof app.ctx.rotateSnapshotScope === 'function', 'a invalidação de escopo sumiu');
+
+  // O mecanismo não é "gerar um escopo novo": é DESCARTAR o escopo herdado e
+  // voltar ao do documento atual. O cenário que ele fecha está documentado no
+  // app: A logado, backend cai, F5 — o sessionStorage sobrevive com o escopo de
+  // A —, B entra sem que nenhum encerramento tenha acontecido. Sem descartar,
+  // as entradas de histórico de A continuariam casando com o state de B.
+  app.ctx.rotateSnapshotScope();                       // zera o cache do mount
+  app.ctx.sessionStorage.setItem('epi-snapshot-scope', 'ESCOPO-DE-OUTRO-PRINCIPAL');
+
+  const herdado = app.ctx.snapshotScopeId();
+  eq(herdado, 'ESCOPO-DE-OUTRO-PRINCIPAL', 'o escopo herdado do sessionStorage deixou de ser lido');
+
+  app.ctx.rotateSnapshotScope();                       // a troca de principal
+  const depois = app.ctx.snapshotScopeId();
+  assert(depois !== herdado,
+    'a troca de principal não descartou o escopo do principal anterior');
+  eq(app.ctx.snapshotScopeId(), depois, 'o escopo não é estável depois da troca');
+
+  // E o meio é sessionStorage, não localStorage: o escopo não sobrevive ao
+  // fechamento do navegador, que é o contrato certo para estado de navegação.
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  assert(/sessionStorage\.setItem\(SNAPSHOT_SCOPE_KEY/.test(appJs),
+    'o escopo de snapshot mudou de meio de armazenamento');
+});
+
+test('PR3 A-5: o frontend não tem identidade própria para namespacear nada', () => {
+  // Etapa 5 da frente. Qualquer chave "por tenant/usuário" no cliente seria
+  // carimbada com um valor que o próprio cliente controla — o que repete a
+  // afirmação do cliente em vez de provar isolamento.
+  const app = montarAppOwnership('');
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  assert(/user: safeJsonParse\(safeStorageRead\(STORAGE_KEYS\.session/.test(appJs),
+    'a origem de state.user mudou: o trust boundary do PR 3 precisa ser refeito');
+  eq(app.ctx.STORAGE_KEYS.session, 'epi-session-v4',
+    'a chave de sessão do cliente mudou de nome');
+
+  // A autoridade real é do servidor, e está no backend.
+  const raizRepo = path.resolve(JS_ROOT, '..', '..');
+  const seguranca = fs.readFileSync(path.join(raizRepo, 'epi_backend', 'security.py'), 'utf-8');
+  assert(seguranca.includes('def decode_jwt_token(token):'), 'a autoridade de identidade do backend mudou');
+  assert(seguranca.includes('hmac.compare_digest(expected_signature, provided_signature)'),
+    'a verificação de assinatura do token mudou');
+});
+
+test('PR3 A-6: onde o requisito de rascunho é REAL, ele já existe — e é server-side', () => {
+  const raizRepo = path.resolve(JS_ROOT, '..', '..');
+  const appJs = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+
+  // Contrato comercial: o formulário mais longo da aplicação (37 campos) grava
+  // rascunho no servidor, não no navegador.
+  // Afirmado pelo NOME da função e pelo caminho SEM o prefixo de API. Com o
+  // prefixo, `tests/test_frontend_api_contract.py` varre todo .js sob static/ e
+  // lê esta linha como uma chamada de API do frontend — cobrando rota GET para
+  // o que é POST. O nome da função é tão específico quanto, e não se disfarça.
+  assert(appJs.includes('async function saveCommercialContractDraft('),
+    'o rascunho server-side do contrato comercial sumiu: a comparação A/B/C precisa ser refeita');
+  assert(appJs.includes("commercial-contract/save"),
+    'o endpoint do rascunho do contrato comercial mudou de caminho');
+
+  // Compras: ciclo de vida de rascunho completo, no banco.
+  const cotacoes = fs.readFileSync(path.join(raizRepo, 'modules', 'purchases', 'quotes_service.py'), 'utf-8');
+  assert(/QUOTE_STATUSES = \('draft'/.test(cotacoes),
+    'o ciclo de rascunho de cotações mudou: a comparação A/B/C precisa ser refeita');
+});
+
+test('PR3 A-7: comparação A/B/C e destino do phase41 e da flag', () => {
+  // O par que sustenta a Etapa 12: inerte SEM a flag e inerte COM ela. É por
+  // isso que corrigir o bootstrap seria trabalho perdido — a flag não é o que
+  // segura o módulo, e com ele indo embora a colisão deixa de importar.
+  const semFlag = montarAppOwnership('');
+  const comFlag = montarAppOwnership('?ux_phase41=1');
+  eq(semFlag.doc.body.classList.contains('phase41-enabled'), false,
+    'o phase41 passou a iniciar na carga padrão');
+  eq(comFlag.doc.body.classList.contains('phase41-enabled'), false,
+    'a flag passou a ligar o phase41: a Etapa 12 (bootstrap) muda de resposta');
+
+  const ALTERNATIVAS = [
+    { opcao: 'A', desenho: 'remover phase41 sem substituição',
+      telasBeneficiadas: 0, superficieDeDados: 'nenhuma', risco: 'nenhum',
+      manutencao: 'nenhuma', escolhida: true },
+    { opcao: 'B', desenho: 'draft só para formulários explicitamente selecionados',
+      telasBeneficiadas: 0, superficieDeDados: 'a allowlist que fosse definida', risco: 'médio',
+      manutencao: 'allowlist + ciclo de vida + isolamento', escolhida: false },
+    { opcao: 'C', desenho: 'mecanismo geral de drafts seguro',
+      telasBeneficiadas: 0, superficieDeDados: '315 campos em 27 formulários', risco: 'alto',
+      manutencao: 'allowlist + TTL + schema version + isolamento por tenant/usuário', escolhida: false }
+  ];
+  const escolhidas = ALTERNATIVAS.filter((a) => a.escolhida);
+  eq(escolhidas.length, 1, 'a comparação A/B/C precisa de exatamente uma escolha');
+  eq(escolhidas[0].opcao, 'A', 'a alternativa escolhida no PR 3 mudou sem revisão');
+  // B e C só se justificariam com tela beneficiada comprovada. A contagem é
+  // zero porque nenhum requisito foi encontrado em docs/, spec/ ou no produto.
+  ALTERNATIVAS.filter((a) => !a.escolhida).forEach((a) => {
+    eq(a.telasBeneficiadas, 0,
+      `"${a.opcao}" passou a ter tela beneficiada: a decisão do PR 3 precisa ser refeita`);
+  });
+
+  const DESTINOS_MODULO = [
+    'MANTER COMO OWNER REDESENHADO',
+    'SUBSTITUIR POR OWNER EXISTENTE',
+    'SUBSTITUIR POR NOVO OWNER ESPECÍFICO',
+    'REMOVER — RESPONSABILIDADE DESNECESSÁRIA'
+  ];
+  const destino = {
+    modulo: 'ux-phase41.js',
+    decisao: 'REMOVER — RESPONSABILIDADE DESNECESSÁRIA',
+    flag: 'ux_phase41_enabled',
+    destinoDaFlag: 'REMOVER NO PR 4 — fica órfã junto com o módulo',
+    gates: ['PR3 A-1', 'PR3 A-2', 'PR3 A-3', 'PR3 A-4', 'PR3 A-5', 'PR3 A-6']
+  };
+  assert(DESTINOS_MODULO.includes(destino.decisao), `destino fora do vocabulário: ${destino.decisao}`);
+  assert(destino.gates.length >= 4, 'a decisão precisa de mais gates sustentando-a');
+
+  // Etapa 12: o bootstrap NÃO é corrigido. Com o módulo indo embora, a colisão
+  // deixa de ser problema — e o gate registra que ela segue lá, de propósito.
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'ux-phase41.js'), 'utf-8');
+  assert(fonte.includes('globalThis.__EPI_PHASE41_BOUND__ = true;'),
+    'a colisão de guarda do phase41 foi mexida — a Etapa 12 dizia para não corrigir');
 });
 
 test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a troca de view', () => {

@@ -6986,6 +6986,267 @@ test('ISOL B-6: storage malformado falha fechado', () => {
 });
 
 
+// ════════════════════════════════════════════════════════════════════════════
+// ISOLAMENTO ENTRE USUÁRIOS — PR C (preferências pessoais de interface)
+//
+// C-5: CARACTERIZAÇÃO, escrita ANTES de qualquer correção. Os gates que
+// descrevem o vazamento nascem VERMELHOS — é o que eles existem para provar.
+//
+// Contrato ATUAL (#343 F3): tema, densidade, sidebar e idioma são DEVICE, por
+// decisão de produto declarada na UI ("As preferências são salvas neste
+// dispositivo."). A frente de Isolamento substitui essa decisão; estes gates
+// medem o ponto de partida.
+// ════════════════════════════════════════════════════════════════════════════
+
+const CHAVES_DE_PREFERENCIA = Object.freeze({
+  tema: 'epi-theme',
+  densidade: 'epi-density',
+  sidebar: 'epi-sidebar-collapsed',
+  idioma: 'epi_language'
+});
+
+// Uma CARGA de página, com o `localStorage` atravessando as cargas (mesmo
+// navegador) e o `sessionStorage` atravessando também (mesma aba).
+//
+// Diferente dos harnesses anteriores, este roda TAMBÉM o script inline de
+// pré-paint do `_head.html` — é lá que o tema é aplicado antes da
+// autenticação, e é esse o momento que o PR C precisa medir.
+function montarDocumentoPreferencias(local, opcoes) {
+  const o = opcoes || {};
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const doc = criarNoF5B('document', {});
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (tag) => criarNoF5B(tag, {});
+  doc.querySelector = () => null;
+  doc.querySelectorAll = () => [];
+
+  const armazemVazio = () => ({
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  });
+
+  const ctx = {
+    document: doc, localStorage: local, sessionStorage: o.sessao || armazemVazio(),
+    location: { search: o.busca || '', href: `http://local/${o.busca || ''}`, pathname: '/', assign() {}, reload() {} },
+    history: { pushState() {}, replaceState() {}, back() {}, length: 1, state: null },
+    navigator: { userAgent: 'node', language: 'pt-BR', languages: ['pt-BR'] },
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    crypto: { randomUUID: () => 'doc-' + Math.random().toString(16).slice(2) },
+    CustomEvent: class { constructor(tipo, init) { this.type = tipo; Object.assign(this, init || {}); } },
+    Event: class { constructor(tipo, init) { this.type = tipo; this.bubbles = false; Object.assign(this, init || {}); } },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    fetch: () => Promise.resolve({
+      ok: true, status: 200, headers: { get: () => 'application/json' },
+      json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('{"items":[]}')
+    }),
+    alert() {}, scrollTo() {}, matchMedia: () => ({ matches: false, addEventListener() {} })
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_e) { /* isolado */ } });
+    return true;
+  };
+  vmF5B.createContext(ctx);
+
+  // MOMENTO 1 — antes de conhecer a identidade. O script de pré-paint REAL,
+  // extraído do `_head.html` servido.
+  const head = fs.readFileSync(path.join(raizStatic, 'views', '_head.html'), 'utf-8');
+  const inline = head.match(/<script>(\/\* Bootstrap de tema[\s\S]*?)<\/script>/);
+  assert(inline, 'o bootstrap de tema sumiu do _head.html — o gate mediria outra página');
+  vmF5B.runInContext(inline[1], ctx, { filename: '_head.html:pre-paint' });
+  const temaNoPrePaint = doc.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+
+  // Os scripts servidos, na ordem real.
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  ordem.forEach((rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_e) { /* dependência de browser ausente não invalida o gate */ }
+  });
+
+  // MOMENTO 2 — identidade autenticada disponível.
+  const entrar = (usuario) => {
+    const st = ctx.__EPI_APP_STATE__;
+    if (st) st.user = Object.assign({ role: 'admin', company_id: 'c1' }, usuario || {});
+    return st;
+  };
+  if (o.usuario) entrar(o.usuario);
+
+  return {
+    ctx, doc, entrar, temaNoPrePaint,
+    // MOMENTO 3 — o que o usuário efetivamente VÊ depois da carga.
+    preferenciasVisiveis: () => {
+      try { ctx.applyTableDensityPref && ctx.applyTableDensityPref(); } catch (_e) {}
+      try { ctx.applySidebarCollapsed && ctx.applySidebarCollapsed(); } catch (_e) {}
+      return {
+        tema: doc.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+        densidade: doc.body.classList.contains('ux-density-compact') ? 'compact' : 'normal',
+        sidebar: doc.body.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded',
+        idioma: local.getItem(CHAVES_DE_PREFERENCIA.idioma) || 'pt-BR'
+      };
+    },
+    // Configura pelo caminho REAL do app, não escrevendo no storage na mão.
+    configurar: ({ tema, densidade, sidebar, idioma }) => {
+      if (tema || densidade) {
+        ctx._applySettings({ theme: tema || 'light', lang: null, density: densidade || 'normal' });
+      }
+      if (sidebar) {
+        const querColapsada = sidebar === 'collapsed';
+        const estaColapsada = ctx.safeStorageRead(CHAVES_DE_PREFERENCIA.sidebar, '0') === '1';
+        if (querColapsada !== estaColapsada) ctx.toggleSidebarCollapsed();
+      }
+      // O idioma tem dono próprio (`i18n.js`); o gate usa a MESMA chave que ele.
+      if (idioma) local.setItem(CHAVES_DE_PREFERENCIA.idioma, idioma);
+    }
+  };
+}
+
+function armazemPreferencias(inicial) {
+  return {
+    _s: Object.assign({}, inicial || {}),
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; },
+    instantaneo() { return Object.assign({}, this._s); }
+  };
+}
+
+const PERFIL_A = Object.freeze({ tema: 'dark', densidade: 'compact', sidebar: 'collapsed', idioma: 'en-GB' });
+const PERFIL_B = Object.freeze({ tema: 'light', densidade: 'normal', sidebar: 'expanded', idioma: 'es-ES' });
+const PADRAO_OFICIAL = Object.freeze({ tema: 'light', densidade: 'normal', sidebar: 'expanded', idioma: 'pt-BR' });
+
+test('ISOL C-0: o harness monta o pré-paint REAL e o app servido', () => {
+  const local = armazemPreferencias();
+  const d = montarDocumentoPreferencias(local, { usuario: { id: 'A' } });
+  assert(typeof d.ctx._applySettings === 'function', '_applySettings não veio do app servido');
+  assert(typeof d.ctx.applyTableDensityPref === 'function', 'applyTableDensityPref não veio do app servido');
+  assert(typeof d.ctx.toggleSidebarCollapsed === 'function', 'toggleSidebarCollapsed não veio do app servido');
+  eq(d.temaNoPrePaint, 'light', 'sem preferência gravada, o pré-paint deveria ficar no padrão');
+});
+
+['tema', 'densidade', 'sidebar', 'idioma'].forEach((qual, indice) => {
+  test(`ISOL C-${indice + 1}: B não herda ${qual} de A`, () => {
+    const local = armazemPreferencias();
+    const a = montarDocumentoPreferencias(local, { usuario: { id: 'A' } });
+    a.configurar({ [qual]: PERFIL_A[qual] });
+    eq(a.preferenciasVisiveis()[qual], PERFIL_A[qual],
+      `A não conseguiu aplicar ${qual} — o gate não mediu nada`);
+
+    // B entra numa carga nova, mesmo navegador.
+    const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' } });
+    eq(b.preferenciasVisiveis()[qual], PADRAO_OFICIAL[qual],
+      `B herdou ${qual}="${PERFIL_A[qual]}" de A`);
+  });
+});
+
+test('ISOL C-5: conjunto completo, alternando A → B → A → B', () => {
+  // O teste forte. Cada identidade deve receber somente o próprio conjunto.
+  const local = armazemPreferencias();
+  const perfis = { A: PERFIL_A, B: PERFIL_B };
+  const ordem = ['A', 'B', 'A', 'B'];
+  const falhas = [];
+  ordem.forEach((quem, i) => {
+    const d = montarDocumentoPreferencias(local, { usuario: { id: quem } });
+    const aoEntrar = d.preferenciasVisiveis();
+    if (i > 0) {
+      // Contrato: ou o usuário reencontra o que é dele, ou recebe o padrão
+      // oficial — nunca o que o ANTERIOR deixou.
+      const doAnterior = perfis[ordem[i - 1]];
+      Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+        if (aoEntrar[k] === doAnterior[k] && doAnterior[k] !== perfis[quem][k]) {
+          falhas.push(`entrada ${i + 1} (${quem}): ${k}="${aoEntrar[k]}" veio de ${ordem[i - 1]}`);
+        }
+      });
+    }
+    d.configurar(perfis[quem]);
+  });
+  eq(falhas.length, 0, `herança entre identidades: ${falhas.join(' | ')}`);
+});
+
+test('ISOL C-6: troca de principal SEM recarga não muda a aparência para a de A', () => {
+  // Obrigatório desde o `ISOL A-8`: nem toda troca de identidade recarrega.
+  const local = armazemPreferencias();
+  const d = montarDocumentoPreferencias(local, { usuario: { id: 'A' } });
+  d.configurar(PERFIL_A);
+  eq(d.preferenciasVisiveis().tema, 'dark', 'A não aplicou o próprio tema — o gate não mediu nada');
+
+  d.entrar({ id: 'B' });          // login de B no MESMO documento
+  const vistoPorB = d.preferenciasVisiveis();
+  eq(vistoPorB.tema, PADRAO_OFICIAL.tema, `sem recarga, B continuou vendo o tema de A`);
+  eq(vistoPorB.densidade, PADRAO_OFICIAL.densidade, 'sem recarga, B continuou vendo a densidade de A');
+});
+
+test('ISOL C-7: primeiro acesso recebe os padrões oficiais', () => {
+  const local = armazemPreferencias();
+  const c = montarDocumentoPreferencias(local, { usuario: { id: 'C' } });
+  const visto = c.preferenciasVisiveis();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(visto[k], PADRAO_OFICIAL[k], `usuário sem preferência recebeu ${k}="${visto[k]}"`);
+  });
+});
+
+test('ISOL C-8: legado DEVICE não é atribuído a ninguém', () => {
+  // Valores gravados por versão anterior não têm dono comprovável. Entregá-los
+  // ao primeiro que logar transforma preferência compartilhada em preferência
+  // pessoal da pessoa errada.
+  const local = armazemPreferencias({
+    'epi-theme': 'dark', 'epi-density': 'compact',
+    'epi-sidebar-collapsed': '1', 'epi_language': 'en-GB'
+  });
+  const primeiro = montarDocumentoPreferencias(local, { usuario: { id: 'PRIMEIRO' } });
+  const visto = primeiro.preferenciasVisiveis();
+  Object.keys(CHAVES_DE_PREFERENCIA).forEach((k) => {
+    eq(visto[k], PADRAO_OFICIAL[k],
+      `o primeiro usuário após a atualização herdou ${k}="${visto[k]}" do legado sem dono`);
+  });
+});
+
+test('ISOL C-9: o PRÉ-PAINT não aplica preferência de principal desconhecido', () => {
+  // O risco principal desta fatia. Hoje o `_head.html` lê `epi-theme` antes de
+  // qualquer autenticação: quem carregou a página recebe visualmente a escolha
+  // de quem usou o navegador antes. "Aplicar e corrigir depois" continua sendo
+  // vazamento — B já viu a tela de A.
+  const local = armazemPreferencias({ 'epi-theme': 'dark' });
+  const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' } });
+  eq(b.temaNoPrePaint, PADRAO_OFICIAL.tema,
+    'o pré-paint aplicou um tema antes de saber de quem ele é');
+});
+
+test('ISOL C-10: expiração de sessão não deixa a aparência anterior para o próximo', () => {
+  const local = armazemPreferencias();
+  const a = montarDocumentoPreferencias(local, { usuario: { id: 'A' } });
+  a.configurar(PERFIL_A);
+  // Expiração passa pelo mesmo caminho do logout: `terminateSession()` recarrega.
+  try {
+    a.ctx.clearSession = () => {};
+    a.ctx.stopDeliveryQrCamera = () => Promise.resolve();
+    a.ctx.terminateSession('sessão expirada');
+  } catch (_e) { /* o que importa é o estado do storage depois */ }
+  const b = montarDocumentoPreferencias(local, { usuario: { id: 'B' } });
+  eq(b.preferenciasVisiveis().tema, PADRAO_OFICIAL.tema,
+    'depois da expiração, o próximo principal ainda recebeu o tema do anterior');
+});
+
+
 (async () => {
   for (const t of asyncTests) {
     try {

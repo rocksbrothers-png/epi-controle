@@ -589,24 +589,41 @@ def test_o_snapshot_de_navegacao_carimba_o_documento_de_origem(js):
 
 
 def test_o_snapshot_de_outro_documento_e_descartado(js):
-    """A metade que fecha o furo: carimbar sem conferir não protege nada."""
+    """A metade que fecha o furo: carimbar sem conferir não protege nada.
+
+    ATUALIZADO na frente de Isolamento (PR A): a comparação saiu daqui e virou
+    `escopoDoEstadoConfere()`. Não é diluição — é o oposto. A regra passou a ter
+    UM dono, porque o `popstate` também precisa dela, e antes: enquanto ela
+    morava só aqui, a VIEW escapava, já aplicada quando esta função rodava.
+    """
     corpo = _corpo_de(js, 'restoreInteractiveSnapshot')
-    assert 'snapshot.sid !== snapshotScopeId()' in corpo, \
+    assert 'escopoDoEstadoConfere(snapshot)' in corpo, \
         'sem a conferência, o filtro do usuário anterior volta pelo botão Voltar'
     # A rejeição vem ANTES de qualquer escrita em `state`.
-    assert corpo.index('snapshot.sid !== snapshotScopeId()') < corpo.index('state.employeesFilters')
+    assert corpo.index('escopoDoEstadoConfere(snapshot)') < corpo.index('state.employeesFilters')
+    # E a regra continua sendo a comparação de carimbo, não um apelido vazio.
+    regra = _corpo_de(js, 'escopoDoEstadoConfere')
+    assert 'estado.sid === snapshotScopeId()' in regra, \
+        'a regra de escopo deixou de comparar o carimbo'
+    assert 'if (!estado || typeof estado !==' in regra, \
+        'estado sem carimbo precisa ser RECUSADO, não aceito por omissão'
 
 
 def test_o_carimbo_muda_a_cada_carga_do_documento(js):
     """É o que faz o encerramento invalidar os snapshots antigos: ele recarrega,
     a página gera outro identificador, e nada de antes casa."""
-    i = js.index('const DOCUMENT_INSTANCE_ID')
-    bloco = js[i:i + 600]
+    # ATUALIZADO na frente de Isolamento (PR A): o gerador virou função
+    # reutilizável, porque a rotação sem recarga também precisa de um valor
+    # novo. A propriedade é a mesma; o que mudou é que ela agora vale para
+    # DOIS pontos de geração em vez de um.
+    gerador = _corpo_de(js, 'novoDiscriminadorDeEscopo')
     # Web Crypto, não `Math.random()`: é a API correta para identificador único
     # no navegador, e um PRNG fraco aqui seria lido como credencial.
-    assert 'crypto' in bloco and 'Math.random()' not in bloco
+    assert 'crypto' in gerador and 'Math.random()' not in gerador
     assert js.count('const DOCUMENT_INSTANCE_ID') == 1, \
         'dois identificadores fariam snapshots casarem por acidente'
+    assert 'const DOCUMENT_INSTANCE_ID = novoDiscriminadorDeEscopo();' in js, \
+        'o identificador do documento deixou de vir do gerador único'
 
 
 def test_a_navegacao_por_voltar_continua_funcionando(js):
@@ -654,10 +671,22 @@ def test_a_troca_de_principal_invalida_os_snapshots(js):
     `sessionStorage` sobreviveu ao F5, e as entradas de histórico de A
     continuariam casando com o escopo.
     """
+    # ATUALIZADO na frente de Isolamento (PR A). Rotacionar deixou de ser
+    # "apagar a marca" e passou a ser "gerar e publicar uma nova".
+    #
+    # Apagar bastava quando a rotação só ocorria no `terminateSession()`, que
+    # recarrega: a carga seguinte tinha outro `DOCUMENT_INSTANCE_ID`. No login
+    # NÃO há recarga — e `snapshotScopeId()` recaía no MESMO identificador de
+    # documento, tornando a rotação um no-op exatamente no cenário que este
+    # teste descreve. O gate JS `ISOL A-8` mede o caminho e foi ele que expôs.
+    corpo = _corpo_de(js, 'rotateSnapshotScope')
+    assert 'novoDiscriminadorDeEscopo(' in corpo, \
+        'a rotação voltou a só apagar a marca: sem recarga, isso é um no-op'
+    assert 'sessionStorage.setItem(SNAPSHOT_SCOPE_KEY' in corpo, \
+        'o escopo novo precisa ser publicado, senão a leitura seguinte o recria'
     # Um mecanismo só, chamado nos DOIS pontos.
-    assert js.count('removeItem(SNAPSHOT_SCOPE_KEY)') == 1, \
+    assert js.count('_escopoDeSnapshot = novoDiscriminadorDeEscopo(') == 1, \
         'a rotação precisa ficar num lugar só, senão as duas cópias divergem'
-    assert 'removeItem(SNAPSHOT_SCOPE_KEY)' in _corpo_de(js, 'rotateSnapshotScope')
     assert 'rotateSnapshotScope();' in _corpo_de(js, 'terminateSession')
     assert 'rotateSnapshotScope();' in _corpo_de(js, 'handleLogin')
 
@@ -666,8 +695,11 @@ def test_a_rotacao_derruba_tambem_o_cache_em_memoria(js):
     """No login não há recarga para zerar o cache do módulo. Sem isso, o valor
     antigo continuaria valendo dentro do mesmo documento."""
     corpo = _corpo_de(js, 'rotateSnapshotScope')
-    assert '_escopoDeSnapshot = null;' in corpo
-    assert corpo.index('_escopoDeSnapshot = null;') < corpo.index('removeItem')
+    # ATUALIZADO (PR A): o cache não é zerado, é SUBSTITUÍDO — e antes de
+    # publicar, para que nenhuma leitura entre as duas linhas veja o valor
+    # antigo. Zerar sozinho era o que tornava a rotação inócua sem recarga.
+    assert '_escopoDeSnapshot = novoDiscriminadorDeEscopo(' in corpo
+    assert corpo.index('_escopoDeSnapshot =') < corpo.index('sessionStorage.setItem')
 
 
 def test_a_rotacao_no_login_vem_depois_do_save_session(js):

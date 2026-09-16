@@ -5983,22 +5983,37 @@ test('PR3 A-4: estado digitado que sobrevive à navegação JÁ tem owner, e ele
   assert(typeof app.ctx.snapshotScopeId === 'function', 'o owner de escopo de snapshot sumiu');
   assert(typeof app.ctx.rotateSnapshotScope === 'function', 'a invalidação de escopo sumiu');
 
-  // O mecanismo não é "gerar um escopo novo": é DESCARTAR o escopo herdado e
-  // voltar ao do documento atual. O cenário que ele fecha está documentado no
-  // app: A logado, backend cai, F5 — o sessionStorage sobrevive com o escopo de
-  // A —, B entra sem que nenhum encerramento tenha acontecido. Sem descartar,
-  // as entradas de histórico de A continuariam casando com o state de B.
-  app.ctx.rotateSnapshotScope();                       // zera o cache do mount
-  app.ctx.sessionStorage.setItem('epi-snapshot-scope', 'ESCOPO-DE-OUTRO-PRINCIPAL');
-
-  const herdado = app.ctx.snapshotScopeId();
+  // ATUALIZADO na frente de Isolamento (PR A). O mecanismo MUDOU de propósito.
+  //
+  // Antes, rotacionar era DESCARTAR o escopo herdado e recair no do documento
+  // atual. Isso só invalidava de fato quando havia recarga — o caso do
+  // `terminateSession()`. No login de outro principal, que NÃO recarrega,
+  // `snapshotScopeId()` voltava ao MESMO `DOCUMENT_INSTANCE_ID` e a rotação era
+  // um no-op: as entradas de A continuavam casando com o state de B. O gate
+  // `ISOL A-8` mede esse caminho e foi ele que expôs o defeito.
+  //
+  // Agora rotacionar GERA um escopo novo e o publica. As duas propriedades que
+  // importam continuam valendo, e a segunda ficou mais forte.
+  //
+  // Herança: um documento NOVO (o F5) lê o escopo que sobreviveu no
+  // sessionStorage. Modelado com um mount próprio, porque só um documento
+  // recém-carregado tem o cache de escopo vazio.
+  const sessaoHerdada = {
+    _s: { 'epi-snapshot-scope': 'ESCOPO-DE-OUTRO-PRINCIPAL' },
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const herdeiro = montarDocumentoIsolamento(sessaoHerdada, '');
+  const herdado = herdeiro.ctx.snapshotScopeId();
   eq(herdado, 'ESCOPO-DE-OUTRO-PRINCIPAL', 'o escopo herdado do sessionStorage deixou de ser lido');
 
-  app.ctx.rotateSnapshotScope();                       // a troca de principal
-  const depois = app.ctx.snapshotScopeId();
+  herdeiro.ctx.rotateSnapshotScope();                  // a troca de principal
+  const depois = herdeiro.ctx.snapshotScopeId();
   assert(depois !== herdado,
     'a troca de principal não descartou o escopo do principal anterior');
-  eq(app.ctx.snapshotScopeId(), depois, 'o escopo não é estável depois da troca');
+  eq(herdeiro.ctx.snapshotScopeId(), depois, 'o escopo não é estável depois da troca');
+  eq(sessaoHerdada.getItem('epi-snapshot-scope'), depois,
+    'o escopo novo precisa ser publicado, senão a próxima leitura ressuscita o anterior');
 
   // E o meio é sessionStorage, não localStorage: o escopo não sobrevive ao
   // fechamento do navegador, que é o contrato certo para estado de navegação.
@@ -6394,6 +6409,332 @@ test('PR1 Z-4: todo gate desta seção parte do app REAL, e nenhum fabrica a tro
 // Os testes assíncronos rodam ANTES do relatório. Assertar em cima de um
 // handler `async` sem esperar por ele daria verde por não ter chegado a
 // executar — que é a forma mais silenciosa de falso-verde.
+// ════════════════════════════════════════════════════════════════════════════
+// ISOLAMENTO ENTRE USUÁRIOS EM COMPUTADOR COMPARTILHADO — PR A (View)
+//
+// Premissa de produto: o mesmo computador e navegador podem ser usados por
+// pessoas diferentes. Preferência pessoal, estado de navegação e telemetria de
+// um usuário não devem ser herdados por outro.
+//
+// Esta fatia trata SÓ o estado de navegação: `history.state.view`. A
+// investigação mostrou que o carimbo `sid` da #343 F2 protege os FILTROS, mas
+// roda DEPOIS do `showView` — então a VIEW de quem saiu ainda era aplicada a
+// quem entrou, pelo Voltar da mesma aba.
+//
+// O que esta fatia NÃO faz: não persiste View em storage, não cria owner de
+// navegação, não toca `bindMenuNavigation`/`navigateToView`.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Monta um DOCUMENTO do app servido. Cada chamada é uma CARGA de página — é
+// assim que se modela "A sai, a página recarrega, B entra na mesma aba".
+//
+// Diferente de `montarAppServidoF5B`: aceita um `sessionStorage` vindo de fora
+// (o `sessionStorage` sobrevive à recarga na mesma aba, e é onde vive o escopo
+// de snapshot) e declara `crypto`. Sem `crypto`, `DOCUMENT_INSTANCE_ID` cai no
+// fallback `t${Date.now()}` e duas cargas no mesmo milissegundo receberiam o
+// MESMO identificador — o gate passaria ou falharia por relógio.
+function montarDocumentoIsolamento(sessaoCompartilhada, busca) {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const vistas = {
+    dashboard: montarVistaSimplesF5B('dashboard', []),
+    estoque: montarVistaSimplesF5B('estoque', []),
+    colaboradores: montarVistaSimplesF5B('colaboradores', [])
+  };
+  vistas.dashboard._classes.add('active');
+  const main = criarNoF5B('div', { id: 'main-content' });
+  Object.values(vistas).forEach((v) => main.appendChild(v));
+  const doc = criarNoF5B('document', {});
+  doc.appendChild(main);
+  doc.body = criarNoF5B('body', {});
+  doc.head = criarNoF5B('head', {});
+  doc.documentElement = criarNoF5B('html', {});
+  doc.readyState = 'complete';
+  doc.title = '';
+  doc.getElementById = (id) => descendentesF5B(doc).find((n) => n.id === id) || null;
+  doc.createElement = (t) => criarNoF5B(t, {});
+
+  const armazem = () => ({
+    _s: {},
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); },
+    removeItem(k) { delete this._s[k]; },
+    key(i) { return Object.keys(this._s)[i] ?? null; },
+    get length() { return Object.keys(this._s).length; }
+  });
+
+  const url = { busca: busca || '' };
+  const ctx = {
+    document: doc, localStorage: armazem(), sessionStorage: sessaoCompartilhada,
+    get location() {
+      return { search: url.busca, href: `http://local/${url.busca}`, pathname: '/', assign() {}, reload() {} };
+    },
+    history: { pushState() {}, replaceState() {}, back() {}, length: 1, state: null },
+    navigator: { userAgent: 'node' },
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    crypto: { randomUUID: () => 'doc-' + Math.random().toString(16).slice(2) + '-' + Math.random().toString(16).slice(2) },
+    CustomEvent: class { constructor(t, o) { this.type = t; Object.assign(this, o || {}); } },
+    Event: class { constructor(t, o) { this.type = t; this.bubbles = false; Object.assign(this, o || {}); } },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
+    AbortController: class { constructor() { this.signal = { addEventListener() {} }; } abort() {} },
+    MutationObserver: class { observe() {} disconnect() {} },
+    setTimeout, clearTimeout, setInterval, clearInterval, Promise, URL, URLSearchParams,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    // Resposta com a FORMA que o cliente de API do app espera. Entrar numa view
+    // dispara carregamento de dados de verdade; sem `headers.get` o
+    // `parseApiPayload` lança fora de qualquer `try`, e o processo morre antes
+    // de o gate medir qualquer coisa.
+    fetch: () => Promise.resolve({
+      ok: true, status: 200,
+      headers: { get: () => 'application/json' },
+      json: () => Promise.resolve({ items: [] }),
+      text: () => Promise.resolve('{"items":[]}')
+    }),
+    alert() {}, scrollTo() {}, matchMedia: () => ({ matches: false, addEventListener() {} })
+  };
+  ctx._handlers = {};
+  ctx.addEventListener = (ev, fn) => { (ctx._handlers[ev] = ctx._handlers[ev] || []).push(fn); };
+  ctx.removeEventListener = () => {};
+  ctx.dispatchEvent = (ev) => {
+    (ctx._handlers[ev.type] || []).forEach((fn) => { try { fn(ev); } catch (_e) { /* isolado, como no navegador */ } });
+    return true;
+  };
+  ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
+  vmF5B.createContext(ctx);
+
+  const ordem = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  ordem.forEach((rel) => {
+    try {
+      vmF5B.runInContext(fs.readFileSync(path.join(raizStatic, rel), 'utf-8'), ctx, { filename: rel });
+    } catch (_e) { /* dependência de browser ausente não invalida o gate */ }
+  });
+
+  // Identidade logada: o handler de popstate retorna cedo sem ela. As
+  // permissões são as REAIS exigidas por `VIEW_PERMISSIONS` — `showView`
+  // redireciona para `defaultView()` quando falta uma, e o gate mediria um
+  // redirecionamento por RBAC em vez do isolamento que ele se propõe a medir.
+  const entrar = (usuario) => {
+    const st = ctx.__EPI_APP_STATE__;
+    st.user = Object.assign({ role: 'master_admin', company_id: 'c1' }, usuario || {});
+    st.permissions = ['dashboard:view', 'stock:view', 'employees:view'];
+    return st;
+  };
+
+  // `bindSpaNavigationHistory()` é chamada por `init()`, que é `async function`
+  // declarada dentro do bloco que envolve o app.js e por isso não alcança o
+  // global. O harness chama a MESMA função que a produção chama — não registra
+  // um listener próprio.
+  if (typeof ctx.bindSpaNavigationHistory === 'function') ctx.bindSpaNavigationHistory();
+
+  return {
+    ctx, doc, vistas,
+    entrar,
+    definirBusca: (b) => { url.busca = b || ''; },
+    viewAtiva: () => {
+      const no = doc.querySelector('.view.active');
+      return no && no.id ? no.id.replace(/-view$/, '') : '';
+    },
+    abrirView: (nome) => { ctx.showView(nome, { partial: true }); },
+    // Dispara o popstate REAL, com o `state` que o navegador entregaria.
+    voltarPara: (estado) => {
+      ctx.dispatchEvent(Object.assign(new ctx.Event('popstate', {}), { state: estado }));
+    }
+  };
+}
+
+const BUSCA_ISOL = '?ux_spa_navigation=1&ux_interactive_app=1';
+
+test('ISOL A-0: o harness monta o app servido e alcança o caminho de Voltar', () => {
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  d.entrar({ id: 'A' });
+  assert(typeof d.ctx.showView === 'function', 'showView não veio do app servido');
+  assert(typeof d.ctx.collectInteractiveSnapshot === 'function', 'collectInteractiveSnapshot não veio do app servido');
+  assert(typeof d.ctx.snapshotScopeId === 'function', 'snapshotScopeId não veio do app servido');
+  assert(d.ctx.isSpaNavigationEnabled() === true, 'a flag de navegação SPA deveria estar ligada no harness');
+  eq((d.ctx._handlers.popstate || []).length, 1, 'o app deveria registrar exatamente um listener de popstate');
+});
+
+test('ISOL A-1: a View de quem saiu NÃO é aplicada a quem entra (Voltar na mesma aba)', () => {
+  // Uma aba só. `sessionStorage` sobrevive à recarga; é por isso que ele é
+  // compartilhado entre os dois documentos.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+
+  // ── A entra, navega para estoque e a entrada de histórico é gravada ──
+  const docA = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  docA.entrar({ id: 'A' });
+  docA.abrirView('estoque');
+  eq(docA.viewAtiva(), 'estoque', 'A deveria estar em estoque');
+  const entradaDeA = docA.ctx.collectInteractiveSnapshot('estoque');
+  assert(entradaDeA.sid, 'o snapshot de A deveria vir carimbado');
+
+  // ── logout de A: é o que `terminateSession()` faz antes de recarregar ──
+  docA.ctx.rotateSnapshotScope();
+
+  // ── B entra: nova CARGA da página, mesma aba ──
+  const docB = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  docB.entrar({ id: 'B' });
+  eq(docB.viewAtiva(), 'dashboard', 'B deveria começar na view inicial');
+  assert(entradaDeA.sid !== docB.ctx.snapshotScopeId(),
+    'os escopos de A e B deveriam diferir depois do encerramento');
+
+  // ── B aperta Voltar e o navegador entrega a entrada de A ──
+  docB.voltarPara(entradaDeA);
+  assert(docB.viewAtiva() !== 'estoque',
+    `B foi levado para a view de A ("${docB.viewAtiva()}"): o estado de navegação atravessou identidades`);
+  eq(docB.viewAtiva(), 'dashboard', 'sem escopo válido, o Voltar deveria cair na view inicial do contrato');
+});
+
+test('ISOL A-2: o Voltar legítimo da MESMA sessão continua funcionando', () => {
+  // O contrapositivo do A-1, e a razão de ele não poder ser resolvido
+  // desligando o Voltar: dentro da sessão, a navegação histórica é do usuário.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  d.entrar({ id: 'A' });
+  d.abrirView('estoque');
+  const entrada = d.ctx.collectInteractiveSnapshot('estoque');
+  d.abrirView('colaboradores');
+  eq(d.viewAtiva(), 'colaboradores', 'A deveria ter saído de estoque');
+  d.voltarPara(entrada);
+  eq(d.viewAtiva(), 'estoque', 'o Voltar do próprio usuário deveria devolvê-lo à view anterior');
+});
+
+test('ISOL A-3: estado sem carimbo não escolhe a View', () => {
+  // Um `state` sem `sid` não prova a quem pertence. Aceitar por omissão é o
+  // caminho mais fácil e o errado: entradas antigas, de antes do carimbo,
+  // pertencem a quem estava ali antes.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  d.entrar({ id: 'B' });
+  d.voltarPara({ view: 'estoque' });
+  eq(d.viewAtiva(), 'dashboard', 'estado sem `sid` não deveria escolher a view');
+});
+
+test('ISOL A-4: a URL antiga com ?view= não é porta dos fundos', () => {
+  // A entrada de histórico de A carrega TAMBÉM `?view=estoque` na URL. Recusar
+  // o `state` e então ler a URL daquela mesma entrada devolveria o vazamento
+  // por outro caminho.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const docA = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  docA.entrar({ id: 'A' });
+  const entradaDeA = docA.ctx.collectInteractiveSnapshot('estoque');
+  docA.ctx.rotateSnapshotScope();
+
+  const docB = montarDocumentoIsolamento(sessao, BUSCA_ISOL + '&view=estoque');
+  docB.entrar({ id: 'B' });
+  docB.voltarPara(entradaDeA);
+  assert(docB.viewAtiva() !== 'estoque',
+    'a view de A voltou pela URL da entrada de histórico dela');
+});
+
+test('ISOL A-5: popstate sem estado nenhum não quebra e não escolhe View alheia', () => {
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  d.entrar({ id: 'B' });
+  d.voltarPara(null);
+  eq(d.viewAtiva(), 'dashboard', 'popstate sem estado deveria manter a view inicial');
+  d.voltarPara(undefined);
+  eq(d.viewAtiva(), 'dashboard', 'popstate indefinido deveria manter a view inicial');
+});
+
+test('ISOL A-8: troca de identidade SEM logout também invalida a View anterior', () => {
+  // O cenário que o próprio `rotateSnapshotScope` documenta: o backend cai, A
+  // dá F5, o app mantém `state.user` de A e oferece login manual; B entra com
+  // sucesso e NENHUM encerramento aconteceu. A rotação no login é o que fecha
+  // essa porta — e a View precisa obedecer a ela igual aos filtros.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL);
+  d.entrar({ id: 'A' });
+  d.abrirView('estoque');
+  const entradaDeA = d.ctx.collectInteractiveSnapshot('estoque');
+  d.abrirView('dashboard');
+
+  // Login de B no MESMO documento: é aqui que a rotação acontece na produção.
+  d.ctx.rotateSnapshotScope();
+  d.entrar({ id: 'B' });
+
+  d.voltarPara(entradaDeA);
+  assert(d.viewAtiva() !== 'estoque',
+    'sem encerramento, a View de A continuou alcançável para B pelo Voltar');
+});
+
+test('ISOL A-9: o link direto ?view= na ENTRADA INICIAL continua funcionando', () => {
+  // A guarda é do `popstate`, não da carga. Um link compartilhado
+  // (`?view=estoque`) precisa continuar abrindo a tela para quem está logado —
+  // caso contrário a correção teria trocado um defeito por outro.
+  const sessao = {
+    _s: {}, getItem(k) { return Object.prototype.hasOwnProperty.call(this._s, k) ? this._s[k] : null; },
+    setItem(k, v) { this._s[k] = String(v); }, removeItem(k) { delete this._s[k]; }
+  };
+  const d = montarDocumentoIsolamento(sessao, BUSCA_ISOL + '&view=estoque');
+  d.entrar({ id: 'A' });
+  eq(d.ctx.resolveViewFromLocation(), 'estoque', 'a URL deveria declarar o destino');
+  // A MESMA expressão que o bootstrap do app usa para a carga inicial.
+  const preferida = d.ctx.isSpaNavigationEnabled() ? d.ctx.resolveViewFromLocation() : '';
+  d.ctx.showView(preferida, { partial: true });
+  eq(d.viewAtiva(), 'estoque', 'o link direto deixou de abrir a tela pedida');
+});
+
+test('ISOL A-6: a validação de escopo PRECEDE a aplicação da View', () => {
+  // Estrutural, e deliberado: o defeito original não era a ausência de
+  // verificação — era a ORDEM. O `sid` já existia e já era testado, mas depois
+  // do `showView`, e cobrindo só os filtros.
+  const fonte = fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'app.js'), 'utf-8');
+  const i = fonte.indexOf("safeOn(globalThis, 'popstate'");
+  assert(i > -1, 'o handler de popstate mudou de forma');
+  const trecho = fonte.slice(i, i + 3000);
+  const posEscopo = trecho.indexOf('escopoDoEstadoConfere');
+  const posShow = trecho.indexOf('showView(');
+  assert(posEscopo > -1, 'a validação de escopo sumiu do handler de popstate');
+  assert(posShow > -1, 'o showView sumiu do handler de popstate');
+  assert(posEscopo < posShow,
+    'a validação de escopo voltou a rodar DEPOIS do showView — foi exatamente esse o defeito');
+});
+
+test('ISOL A-7: a fatia não cria persistência de View nem segundo dono de navegação', () => {
+  const raizStatic = path.resolve(JS_ROOT, '..');
+  const servidos = fs.readFileSync(path.join(raizStatic, 'views', '_scripts.html'), 'utf-8')
+    .match(/src="\/([^"?]+\.js)/g).map((m) => m.slice(6));
+  const fontes = servidos.map((rel) => [rel, fonteServida(rel)]);
+
+  // Nenhuma chave de storage nova para View.
+  fontes.forEach(([rel, f]) => {
+    assert(!/(setItem|safeStorageWrite|queueStorageWrite)\(\s*['"`][^'"`]*v(iew|tab)/i.test(f),
+      `"${rel}" passou a persistir View em storage — a View é estado de navegação, não preferência`);
+  });
+  // Nenhum interceptador de navegação em captura reintroduzido (#343 PR 2D).
+  const interceptam = fontes.filter(([, f]) =>
+    /'click'[^)]*capture:\s*true/.test(f) && f.includes('stopImmediatePropagation')).map(([r]) => r);
+  eq(interceptam.length, 0, `reapareceu interceptador de navegação em captura: ${interceptam.join(', ')}`);
+  // A autoridade de navegação continua sendo uma só.
+  const appJs = fonteServida('app.js');
+  assert(appJs.includes('bindMenuNavigation'), 'bindMenuNavigation sumiu do app.js');
+  assert(appJs.includes('function navigateToView('), 'navigateToView deixou de ser a autoridade de navegação');
+  assert(!servidos.includes('multitab-navigation.js'), 'o multitab voltou a ser servido');
+});
+
+
 (async () => {
   for (const t of asyncTests) {
     try {

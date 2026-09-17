@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import traceback as _traceback
 from urllib.parse import parse_qs
 # `get_user_password_policy` mora em core.repository (ver nota lá): reexportada
@@ -40,7 +41,55 @@ INITIAL_MASTER_ADMIN = {
 }
 
 MSG_LOGIN_FAILED = 'auth.login_failed'
-MSG_USER_NOT_FOUND = 'Usuário não encontrado.'
+
+# ── Não enumeração de credenciais (frente de Hardening do Login) ─────────────
+#
+# Para o cliente NÃO AUTENTICADO existe UMA resposta para qualquer falha de
+# credencial. Antes eram quatro, e as quatro eram alcançáveis sem saber a
+# senha: usuário inexistente, senha incorreta, conta inativa e perfil
+# funcionário. Cada uma confirmava que o identificador existe — com a lista de
+# códigos, enumerar a base era uma requisição por palpite.
+#
+# `MSG_USER_NOT_FOUND` foi REMOVIDA em vez de reaproveitada: uma constante com
+# aquele texto continuaria disponível para o próximo chamador reintroduzir.
+MSG_CREDENCIAIS_INVALIDAS = 'Usuário ou senha incorretos.'
+CODIGO_CREDENCIAIS_INVALIDAS = 'INVALID_CREDENTIALS'
+
+# Hash real, de senha aleatória, usado quando o usuário NÃO existe.
+#
+# Sem ele o caminho de usuário inexistente retornava antes do `bcrypt`: medido
+# neste repositório, 0,06 ms contra 269 ms de uma senha incorreta — 4260×. A
+# mensagem ficaria uniforme e a enumeração continuaria funcionando por
+# cronômetro. Isto NÃO é `sleep()`: é fazer o mesmo trabalho, que é o que torna
+# os dois caminhos indistinguíveis.
+#
+# Preguiçoso de propósito: gerar na importação somaria um `bcrypt` a todo
+# arranque do processo, inclusive nos que nunca veem um login inexistente.
+_HASH_FICTICIO = None
+
+
+def _hash_ficticio():
+    global _HASH_FICTICIO
+    if _HASH_FICTICIO is None:
+        _HASH_FICTICIO = hash_password(secrets.token_urlsafe(32))
+    return _HASH_FICTICIO
+
+
+def _recusa_de_credencial(username, motivo, user_id=None):
+    """A ÚNICA resposta pública para falha de credencial.
+
+    O motivo técnico continua indo para o log — diagnóstico interno legítimo
+    não é sacrificado para uniformizar a resposta pública. Nunca entra aqui
+    senha digitada, senha correta nem hash.
+    """
+    campos = {'username': username, 'reason': motivo}
+    if user_id is not None:
+        campos['user_id'] = user_id
+    structured_log('warning', MSG_LOGIN_FAILED, **campos)
+    return None, 401, {
+        'error': MSG_CREDENCIAIS_INVALIDAS,
+        'code': CODIGO_CREDENCIAIS_INVALIDAS,
+    }
 
 
 def authenticate_login(connection, username, password, totp_code=None):
@@ -63,22 +112,29 @@ def authenticate_login(connection, username, password, totp_code=None):
         (normalized_username,)
     ).fetchone()
 
+    # A verificação de senha roda SEMPRE, inclusive sem usuário — contra o hash
+    # fictício. É o que iguala o custo dos dois caminhos; a ordem das decisões
+    # abaixo deixou de importar para quem cronometra de fora.
+    senha_confere = verify_password(
+        row['password'] if row else _hash_ficticio(), provided_password)
+
     if not row:
-        structured_log('warning', MSG_LOGIN_FAILED, username=normalized_username, reason='user_not_found')
-        return None, 401, {'error': MSG_USER_NOT_FOUND, 'code': 'USER_NOT_FOUND'}
+        return _recusa_de_credencial(normalized_username, 'user_not_found')
 
+    if not senha_confere:
+        return _recusa_de_credencial(normalized_username, 'invalid_password', row['id'])
+
+    # `active` e o perfil passaram a ser avaliados DEPOIS da senha. Antes vinham
+    # antes e respondiam 403 com código próprio: quem testasse uma lista de
+    # identificadores reconhecia as contas inativas e as de funcionário sem
+    # precisar acertar senha nenhuma. O bloqueio continua valendo — o que mudou
+    # é que ele deixou de ser observável por quem não tem a credencial.
     if int(row['active']) != 1:
-        structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='user_inactive')
-        return None, 403, {'error': 'Usuário inativo.', 'code': 'USER_INACTIVE'}
-
-    if not verify_password(row['password'], provided_password):
-        structured_log('warning', 'auth.login_failed', username=normalized_username, user_id=row['id'], reason='invalid_password')
-        return None, 401, {'error': 'Senha incorreta.', 'code': 'INVALID_PASSWORD'}
+        return _recusa_de_credencial(normalized_username, 'user_inactive', row['id'])
 
     resolved_role = normalize_role_name(row.get('role'))
     if resolved_role == 'employee':
-        structured_log('warning', 'auth.login_blocked', username=normalized_username, user_id=row['id'], reason='employee_external_only')
-        return None, 403, {'error': 'Funcionário não pode acessar o sistema interno.', 'code': 'EMPLOYEE_EXTERNAL_ONLY'}
+        return _recusa_de_credencial(normalized_username, 'employee_external_only', row['id'])
 
     if not is_bcrypt_hash(row['password']):
         connection.execute('UPDATE users SET password = ? WHERE id = ?', (hash_password(provided_password), row['id']))

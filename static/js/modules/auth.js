@@ -59,6 +59,15 @@
 
   // ── Classificação de erros (puro) ────────────────────────────────────────
 
+  // Uma resposta para qualquer falha de credencial. O texto é o mesmo do
+  // backend (`MSG_CREDENCIAIS_INVALIDAS`): se os dois divergirem, o usuário vê
+  // uma frase diferente conforme o caminho, e a diferença volta a informar.
+  const MSG_CREDENCIAIS_INVALIDAS = 'Usuário ou senha incorretos.';
+  const CODIGOS_DE_CREDENCIAL = new Set([
+    'INVALID_CREDENTIALS', 'USER_NOT_FOUND', 'INVALID_PASSWORD',
+    'USER_INACTIVE', 'EMPLOYEE_EXTERNAL_ONLY',
+  ]);
+
   function getLoginErrorMessage(error) {
     const code = String(error?.code || '').toUpperCase();
     if (error?.phase === 'post_login_bootstrap') {
@@ -67,9 +76,13 @@
       }
       return `Autenticação concluída, porém falhou o carregamento inicial: ${error?.message || 'erro inesperado.'}`;
     }
-    if (code === 'USER_NOT_FOUND') {return 'Usuário não encontrado.';}
-    if (code === 'INVALID_CREDENTIALS') {return 'Usuário ou senha inválidos.';}
-    if (code === 'USER_INACTIVE') {return 'Usuário inativo. Procure o administrador do sistema.';}
+    // Não enumeração de credenciais (frente de Hardening do Login). O backend
+    // só emite `INVALID_CREDENTIALS` para falha de credencial; os outros três
+    // códigos ficam mapeados aqui como REDE DE SEGURANÇA, para o caso de uma
+    // versão anterior do backend — ou uma regressão — voltar a distingui-los.
+    // Sem isso, o cliente novo continuaria exibindo "Usuário não encontrado"
+    // contra um servidor antigo, e a interface reabriria a enumeração sozinha.
+    if (CODIGOS_DE_CREDENCIAL.has(code)) {return MSG_CREDENCIAIS_INVALIDAS;}
     if (code === 'FORCE_PASSWORD_CHANGE') {return 'É necessário redefinir a senha antes de continuar.';}
     if (code === 'TOTP_REQUIRED') {return 'Informe o código de autenticação em duas etapas.';}
     if (code === 'TOTP_INVALID') {return 'Código de autenticação em duas etapas inválido.';}

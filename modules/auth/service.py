@@ -897,25 +897,33 @@ def generate_user_recovery_token(connection, user_id):
 
 
 def validate_and_clear_recovery_token(connection, username, provided_token):
-    """Validates per-user token, clears it from DB, returns user row. Raises on any failure."""
+    """Valida o token por usuário, limpa-o do banco e devolve a linha.
+
+    Levanta SINAL INTERNO em qualquer falha. As mensagens deixaram de ser texto
+    de usuário na frente de não enumeração do recovery: quem chama converte
+    tudo numa recusa única, e o motivo aqui serve ao log. Um texto legível
+    devolvido daqui voltaria a dizer ao solicitante se a conta existe.
+
+    Chamador único: `handle_post_recover_password`.
+    """
     from datetime import datetime
     from epi_backend.config import UTC
     user = get_user_by_username(connection, username)
     if not user:
-        raise ValueError('Usuário não encontrado.')
+        raise ValueError('recovery_user_not_found')
     row = connection.execute(
         'SELECT id, username, password, full_name, role, recovery_token_hash, recovery_token_expires_at FROM users WHERE id = ?',
         (user['id'],)
     ).fetchone()
     if not row:
-        raise ValueError('Usuário não encontrado.')
+        raise ValueError('recovery_user_row_missing')
     token_hash = row['recovery_token_hash'] if hasattr(row, '__getitem__') else None
     try:
         token_hash = row['recovery_token_hash']
     except Exception:
         token_hash = None
     if not token_hash:
-        raise ValueError('Nenhuma chave de recuperação ativa para este usuário. Solicite ao administrador.')
+        raise ValueError('recovery_no_active_token')
     expires_str = None
     try:
         expires_str = row['recovery_token_expires_at']
@@ -931,13 +939,13 @@ def validate_and_clear_recovery_token(connection, username, provided_token):
                     'UPDATE users SET recovery_token_hash = NULL, recovery_token_expires_at = NULL WHERE id = ?',
                     (row['id'],)
                 )
-                raise ValueError('Chave de recuperação expirada. Solicite uma nova ao administrador.')
+                raise ValueError('recovery_token_expired')
         except ValueError:
             raise
         except Exception:
             pass
     if not verify_password(token_hash, provided_token):
-        raise ValueError('Chave de recuperação inválida.')
+        raise ValueError('recovery_token_mismatch')
     connection.execute(
         'UPDATE users SET recovery_token_hash = NULL, recovery_token_expires_at = NULL WHERE id = ?',
         (row['id'],)

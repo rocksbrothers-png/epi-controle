@@ -368,11 +368,17 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
 def handle_get_proxy_chain_diagnostics(handler, parsed, payload, match):
     from epi_backend.proxy_chain_probe import autorizado, medir
 
+    # `send_json` não devolve nada, e o router documenta que handler retornando
+    # None é o caso normal — ele converte em `HANDLED`. Por isso a chamada fica
+    # separada do `return`: `return send_json(...)` propagaria um valor que não
+    # significa coisa alguma, e o CodeQL acusa isso com razão. Os handlers
+    # vizinhos ainda usam a forma antiga; esta cerca é nova, então nasce certa.
     if not autorizado(handler):
         # 404 em vez de 403: sem `PROXY_CHAIN_PROBE_KEY` no ambiente, a rota não
         # admite sequer existir. Um 403 confirmaria a sonda para quem sondasse.
-        return send_json(handler, 404, {'error': 'Not found'})
-    return send_json(handler, 200, medir(handler))
+        send_json(handler, 404, {'error': 'Not found'})
+        return
+    send_json(handler, 200, medir(handler))
 # ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM ──────────────────────────
 
 

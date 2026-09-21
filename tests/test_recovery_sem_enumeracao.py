@@ -100,19 +100,25 @@ class _Conn:
     def close(self): pass
 
 
-# O endpoint B é limitado a 5 chamadas por IP a cada 5 minutos. Um harness que
-# reusasse o mesmo IP começaria a receber 429 no meio da bateria e passaria a
-# medir o LIMITADOR em vez do contrato — dois controles que deveriam ficar
-# verdes ficaram vermelhos assim, na primeira rodada. Cada chamada usa um IP
-# próprio, o que isola o contrato sem desligar a proteção.
-_PROXIMO_IP = iter(f'198.51.100.{n}' for n in range(1, 255))
+# O endpoint B é limitado a 5 chamadas por origem a cada 5 minutos. Um harness
+# que reusasse a mesma origem começaria a receber 429 no meio da bateria e
+# passaria a medir o LIMITADOR em vez do contrato — dois controles que deveriam
+# ficar verdes ficaram vermelhos assim, na primeira rodada. Cada chamada usa
+# uma origem própria, o que isola o contrato sem desligar a proteção.
+#
+# ATUALIZADO na R0: a origem varia pelo PEER DO SOCKET, não mais pelo
+# `X-Forwarded-For`. O cabeçalho deixou de decidir bucket justamente porque o
+# cliente o escolhe — e um harness que continuasse variando o header estaria
+# exercitando um caminho que o produto não honra mais.
+_PROXIMA_ORIGEM = iter(f'198.51.100.{n}' for n in range(1, 255))
 
 
 class _Handler:
     def __init__(self):
         self.status, self.corpo = None, None
         self.path, self.command = '/api/x', 'POST'
-        self.headers = {'X-Forwarded-For': next(_PROXIMO_IP), 'Host': 'local'}
+        self.client_address = (next(_PROXIMA_ORIGEM), 54321)
+        self.headers = {'Host': 'local'}
         handler = self
 
         class _W:

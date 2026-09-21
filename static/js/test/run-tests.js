@@ -196,11 +196,22 @@ test('feature-flags-rt: AUTO_ROLLBACK ativa kill-switch', () => {
 });
 
 // ── modules/auth ──────────────────────────────────────────────────────────
-test('auth: getLoginErrorMessage USER_NOT_FOUND', () => {
-  eq(globalThis.getLoginErrorMessage({ code: 'USER_NOT_FOUND' }), 'Usuário não encontrado.');
+// ATUALIZADOS na frente de Hardening do Login. Os dois gates exigiam que a
+// interface mostrasse mensagens DIFERENTES conforme o código — `USER_NOT_FOUND`
+// dizia ao visitante que o identificador existe, e `INVALID_CREDENTIALS` usava
+// um texto próprio, distinto do que o servidor manda. O contrato anterior ficou
+// obsoleto porque essa distinção É o defeito: ela permite enumerar a base de
+// usuários uma requisição por palpite.
+//
+// O que os gates protegiam — "o mapeador traduz código em mensagem, e não
+// vaza objeto de erro na tela" — continua valendo, e é o que eles checam
+// agora. A cobertura de que TODOS os códigos de credencial convergem está no
+// `LOGIN L-1`; aqui fica a verificação pontual, no mesmo lugar de sempre.
+test('auth: getLoginErrorMessage USER_NOT_FOUND é genérico', () => {
+  eq(globalThis.getLoginErrorMessage({ code: 'USER_NOT_FOUND' }), 'Usuário ou senha incorretos.');
 });
-test('auth: getLoginErrorMessage INVALID_CREDENTIALS', () => {
-  eq(globalThis.getLoginErrorMessage({ code: 'INVALID_CREDENTIALS' }), 'Usuário ou senha inválidos.');
+test('auth: getLoginErrorMessage INVALID_CREDENTIALS é genérico', () => {
+  eq(globalThis.getLoginErrorMessage({ code: 'INVALID_CREDENTIALS' }), 'Usuário ou senha incorretos.');
 });
 test('auth: getLoginErrorMessage post_login_bootstrap DB_BOOTSTRAP_NOT_READY', () => {
   const err = { phase: 'post_login_bootstrap', code: 'DB_BOOTSTRAP_NOT_READY' };
@@ -7506,6 +7517,71 @@ test('ISOL C-12: o servidor é o dono, e o cliente não grava preferência em lo
   assert(appJs.includes('function prefsDescartarSeTrocouPrincipal()'),
     'sumiu o descarte por troca de principal — o `ISOL C-6` voltaria a vazar');
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// HARDENING DO LOGIN — não enumeração de credenciais
+//
+// O backend passou a responder uma coisa só para qualquer falha de credencial.
+// Estes gates cobrem a outra ponta: o cliente não pode reintroduzir a
+// distinção, nem exibindo texto próprio por código, nem divergindo do texto do
+// servidor.
+// ════════════════════════════════════════════════════════════════════════════
+
+const MSG_CREDENCIAL_ESPERADA = 'Usuário ou senha incorretos.';
+
+function _mensagemDeLogin(erro) {
+  // Monta o módulo de auth servido e chama o mapeador REAL.
+  const ctx = {
+    console: { log() {}, warn() {}, error() {}, info() {}, debug() {} },
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    document: { getElementById: () => null },
+    setTimeout, clearTimeout, clearInterval,
+  };
+  ctx.globalThis = ctx; ctx.window = ctx; ctx.self = ctx;
+  vmF5B.createContext(ctx);
+  vmF5B.runInContext(
+    fs.readFileSync(path.join(path.resolve(JS_ROOT, '..'), 'js', 'modules', 'auth.js'), 'utf-8'),
+    ctx, { filename: 'auth.js' });
+  return ctx.__EPI_AUTH__.getLoginErrorMessage(erro);
+}
+
+test('LOGIN L-1: todo código de falha de credencial rende a MESMA mensagem', () => {
+  const codigos = ['INVALID_CREDENTIALS', 'USER_NOT_FOUND', 'INVALID_PASSWORD',
+                   'USER_INACTIVE', 'EMPLOYEE_EXTERNAL_ONLY'];
+  const vistas = codigos.map((code) => _mensagemDeLogin({ code, status: 401 }));
+  const distintas = [...new Set(vistas)];
+  eq(distintas.length, 1,
+    `a interface separa os casos: ${codigos.map((c, i) => `${c}="${vistas[i]}"`).join(' | ')}`);
+  eq(distintas[0], MSG_CREDENCIAL_ESPERADA, `mensagem inesperada: "${distintas[0]}"`);
+});
+
+test('LOGIN L-2: o texto do cliente é o mesmo do servidor', () => {
+  // Divergirem é o mesmo defeito por outro caminho: o usuário veria uma frase
+  // conforme o servidor respondesse e outra conforme o cliente decidisse, e a
+  // diferença voltaria a informar.
+  const py = fs.readFileSync(
+    path.join(path.resolve(JS_ROOT, '..', '..'), 'modules', 'auth', 'service.py'), 'utf-8');
+  assert(py.includes(`MSG_CREDENCIAIS_INVALIDAS = '${MSG_CREDENCIAL_ESPERADA}'`),
+    'o backend mudou o texto da falha de credencial sem o cliente acompanhar');
+  const js = _read('js/modules/auth.js');
+  assert(js.includes(`MSG_CREDENCIAIS_INVALIDAS = '${MSG_CREDENCIAL_ESPERADA}'`),
+    'o cliente mudou o texto da falha de credencial sem o backend acompanhar');
+});
+
+test('LOGIN L-3: estados pós-senha continuam distintos', () => {
+  // A metade que impede o falso verde: uniformizar TUDO passaria no L-1 e
+  // quebraria o 2FA. Quem chega nestes já provou conhecer a senha.
+  eq(_mensagemDeLogin({ code: 'TOTP_REQUIRED', status: 401 }),
+    'Informe o código de autenticação em duas etapas.', 'o desafio de 2FA foi uniformizado');
+  eq(_mensagemDeLogin({ code: 'TOTP_INVALID', status: 401 }),
+    'Código de autenticação em duas etapas inválido.', 'o erro de 2FA foi uniformizado');
+  const indisponivel = _mensagemDeLogin({
+    status: 503, message: 'Servidor temporariamente indisponível. Tente novamente em instantes.' });
+  assert(!indisponivel.includes('senha'),
+    `indisponibilidade aparece como erro de credencial: "${indisponivel}"`);
+});
+
 
 
 (async () => {

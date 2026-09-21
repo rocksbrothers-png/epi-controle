@@ -214,10 +214,24 @@ def test_auth_service_has_authenticate_login():
 
 
 def test_auth_service_has_msg_constants():
+    """ATUALIZADO na frente de Hardening do Login.
+
+    A constante da mensagem de usuário inexistente foi REMOVIDA, não
+    renomeada: o contrato de não enumeração diz que falha de credencial tem
+    uma resposta só, e manter uma constante com aquele texto deixaria a frase
+    disponível para o próximo chamador reintroduzi-la.
+
+    O que este gate protege — "as mensagens do login moram em constantes
+    nomeadas, não espalhadas em literais" — continua valendo, e agora aponta
+    para as constantes do contrato novo.
+    """
     from modules.auth import service as as_
     assert hasattr(as_, 'MSG_LOGIN_FAILED')
-    assert hasattr(as_, 'MSG_USER_NOT_FOUND')
-    assert as_.MSG_USER_NOT_FOUND == 'Usuário não encontrado.'
+    assert hasattr(as_, 'MSG_CREDENCIAIS_INVALIDAS')
+    assert as_.MSG_CREDENCIAIS_INVALIDAS == 'Usuário ou senha incorretos.'
+    assert as_.CODIGO_CREDENCIAIS_INVALIDAS == 'INVALID_CREDENTIALS'
+    assert not hasattr(as_, 'MSG_USER_NOT_FOUND'), \
+        'a constante da mensagem reveladora voltou: ver Hardening do Login'
 
 
 def test_auth_service_login_signature():

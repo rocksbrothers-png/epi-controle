@@ -45,14 +45,23 @@
     }
   }
 
+  // Espelha `MSG_RECUPERACAO_SOLICITADA` do backend. Gate `RECOV R-1` prova
+  // que os dois textos não divergiram.
+  const MSG_RECUPERACAO_SOLICITADA = 'Se os dados informados estiverem cadastrados, '
+    + 'você receberá as instruções para recuperação.';
+
   async function handleEmailRecoveryRequest() {
     const btn = document.getElementById('recovery-send-email');
     const username = String(document.getElementById('recovery-email-username')?.value || '').trim();
     if (!username) { alert('Informe o nome de usuário.'); return; }
     if (btn) { btn.disabled = true; }
     try {
-      await api('/api/auth/request-email-recovery', { method: 'POST', body: JSON.stringify({ username }) });
-      alert('Se o usuário existir com e-mail configurado, a chave de recuperação foi enviada por e-mail.');
+      const resposta = await api('/api/auth/request-email-recovery', { method: 'POST', body: JSON.stringify({ username }) });
+      // A frase vem do SERVIDOR, com o texto local só como rede. Duas frases
+      // mantidas em paralelo divergem, e a divergência volta a informar: o
+      // usuário leria uma coisa conforme o servidor respondesse e outra
+      // conforme o cliente decidisse.
+      alert(resposta?.message || MSG_RECUPERACAO_SOLICITADA);
     } catch (error) {
       alert(error.message);
     } finally {

@@ -7584,6 +7584,47 @@ test('LOGIN L-3: estados pós-senha continuam distintos', () => {
 
 
 
+// ════════════════════════════════════════════════════════════════════════════
+// HARDENING DO RECOVERY — não enumeração na recuperação de senha
+// ════════════════════════════════════════════════════════════════════════════
+
+test('RECOV R-1: o texto do cliente é o mesmo do servidor', () => {
+  const py = fs.readFileSync(
+    path.join(path.resolve(JS_ROOT, '..', '..'), 'modules', 'auth', 'routes.py'), 'utf-8');
+  const js = _read('js/views/profile.js');
+  const doServidor = py.match(/MSG_RECUPERACAO_SOLICITADA = \(\s*'([^']+)'\s*'([^']+)'/);
+  assert(doServidor, 'MSG_RECUPERACAO_SOLICITADA sumiu do backend');
+  const frase = (doServidor[1] + doServidor[2]).trim();
+  assert(js.includes(frase.slice(0, 40)),
+    `o cliente divergiu do servidor: o backend diz "${frase}"`);
+});
+
+test('RECOV R-2: o cliente não exibe frase própria que nomeie a causa', () => {
+  const js = _read('js/views/profile.js');
+  const semComentarios = js.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  ['não encontrado', 'nao encontrado', 'não existe', 'inexistente', 'não cadastrado']
+    .forEach((revelador) => {
+      assert(!semComentarios.toLowerCase().includes(revelador),
+        `o cliente da recuperação nomeia a causa: "${revelador}"`);
+    });
+});
+
+test('RECOV R-3: a resposta do pedido de instruções vem do servidor', () => {
+  // Sem isto, "alinhar os textos" viraria "o cliente ignora o servidor e
+  // mostra o que quiser" — e a próxima mudança no backend passaria batida.
+  //
+  // O gate NÃO cita o caminho da rota de propósito: `test_frontend_api_contract`
+  // varre literais de `/api/...` para achar chamada sem rota no backend, e não
+  // distingue uma chamada de uma asserção SOBRE outro arquivo. Citá-lo aqui
+  // inventava um `GET` que não existe. Quem guarda a rota é aquele contrato;
+  // este guarda de onde vem a frase.
+  const js = _read('js/views/profile.js');
+  assert(/alert\(resposta\?\.message/.test(js),
+    'o cliente parou de exibir a mensagem que o servidor mandou');
+});
+
+
+
 (async () => {
   for (const t of asyncTests) {
     try {

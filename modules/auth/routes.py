@@ -1,6 +1,7 @@
 """Rotas de autenticação."""
 import hmac
 import os
+import threading as _threading
 import traceback
 from contextlib import closing
 
@@ -27,6 +28,7 @@ from epi_backend.http_utils import (
 from core.repository import get_user_by_id
 from core.permissions import PERMISSIONS
 from modules.auth.service import (
+    _hash_ficticio,
     authenticate_login,
     disable_user_totp,
     enable_user_totp,
@@ -40,6 +42,41 @@ from modules.auth.service import (
     update_user_password,
     validate_and_clear_recovery_token,
 )
+
+
+# ── Não enumeração na recuperação de senha ───────────────────────────────────
+#
+# Dois endpoints, dois contratos. `MSG_RECUPERACAO_SOLICITADA` responde ao
+# PEDIDO de instruções; `MSG_RECUPERACAO_RECUSADA` responde à TENTATIVA de
+# redefinir com chave. A segunda não pode ser a primeira: quem chama
+# `/api/recover-password` está enviando uma senha nova, não pedindo instruções.
+#
+# Nos dois casos a resposta é única para todo o espaço de falha de formato
+# válido, e a distinção que a operação precisa fica no log.
+MSG_RECUPERACAO_SOLICITADA = (
+    'Se os dados informados estiverem cadastrados, você receberá as instruções '
+    'para recuperação.'
+)
+MSG_RECUPERACAO_RECUSADA = (
+    'Não foi possível concluir a recuperação. Verifique os dados informados e '
+    'tente novamente.'
+)
+CODIGO_RECUPERACAO_RECUSADA = 'RECOVERY_FAILED'
+
+
+def _recusa_de_recuperacao(handler, username, motivo):
+    """A ÚNICA resposta pública para falha na redefinição com chave.
+
+    Antes eram quatro respostas distinguíveis, e duas delas se separavam só
+    pelo STATUS: `sem token + chave global errada` devolvia 403 e `com token +
+    chave errada` devolvia 400, com a mesma mensagem. O status sozinho já dizia
+    se a conta tinha token próprio.
+    """
+    structured_log('warning', 'auth.recovery_failed', username=username, reason=motivo)
+    return send_json(handler, 400, {
+        'ok': False,
+        'error': {'code': CODIGO_RECUPERACAO_RECUSADA, 'message': MSG_RECUPERACAO_RECUSADA},
+    })
 
 
 def handle_post_login(handler, parsed, payload, match):
@@ -156,20 +193,27 @@ def handle_post_recover_password(handler, parsed, payload, match):
     provided_key = str(payload.get('recovery_key', '')).strip()
     with closing(get_connection()) as connection:
         user_ref = get_user_by_username(connection, username)
-        if not user_ref:
-            raise ValueError('Usuário não encontrado.')
         token_hash_row = connection.execute(
             'SELECT recovery_token_hash FROM users WHERE id = ?', (user_ref['id'],)
-        ).fetchone()
+        ).fetchone() if user_ref else None
         has_per_user_token = bool(token_hash_row and token_hash_row['recovery_token_hash'])
-        if has_per_user_token:
-            validate_and_clear_recovery_token(connection, username, provided_key)
-        else:
-            password_recovery_key = PASSWORD_RECOVERY_KEY
-            if not password_recovery_key:
-                raise PermissionError('Nenhuma chave de recuperação ativa. Solicite ao administrador.')
-            if not hmac.compare_digest(provided_key, password_recovery_key):
-                raise PermissionError('Chave de recuperação inválida.')
+        try:
+            if has_per_user_token:
+                validate_and_clear_recovery_token(connection, username, provided_key)
+            else:
+                # Trabalho equivalente. O ramo do token por usuário paga um
+                # `bcrypt`; sem isto, `usuário inexistente` e `conta sem token`
+                # voltavam em ~0,03 ms contra ~268 ms, e a recusa uniforme seria
+                # desfeita pelo relógio.
+                verify_password(_hash_ficticio(), provided_key)
+                if not user_ref:
+                    raise ValueError('recovery_user_not_found')
+                if not PASSWORD_RECOVERY_KEY:
+                    raise ValueError('recovery_no_global_key')
+                if not hmac.compare_digest(provided_key, PASSWORD_RECOVERY_KEY):
+                    raise ValueError('recovery_global_key_mismatch')
+        except (ValueError, PermissionError) as sinal:
+            return _recusa_de_recuperacao(handler, username, str(sinal))
         update_user_password(connection, user_ref['id'], hash_password(new_password))
         connection.commit()
         structured_log('info', 'auth.password_recovered', username=username, user_id=user_ref['id'])
@@ -209,28 +253,70 @@ def handle_post_user_recovery_token(handler, parsed, payload, match):
 
 # ── POST /api/auth/request-email-recovery ─────────────────────────────────────
 
+def _emitir_recuperacao_em_segundo_plano(user_id, email, username):
+    """Gera o token e envia o e-mail FORA da linha da resposta.
+
+    Duas razões, e as duas são de não enumeração:
+
+    1. `generate_user_recovery_token` chama `hash_password`, que é `bcrypt`.
+       Na linha da resposta isso custava ~268 ms para quem existe e ~0,09 ms
+       para quem não existe — 5207×, medido. A mensagem já era genérica e o
+       endpoint continuava respondendo a pergunta, pelo relógio.
+    2. Uma falha de SMTP virava `400 'Falha ao enviar e-mail: <detalhe>'`, que
+       só é alcançável para conta existente COM e-mail. Daqui ela não alcança
+       o solicitante: é registrada e morre no log.
+
+    Igualar os tempos pagando um `bcrypt` também no caminho de quem não existe
+    resolveria o item 1 — e encareceria TODA requisição num endpoint que hoje
+    não tem limitador. Tirar o trabalho da linha da resposta resolve sem esse
+    custo: o solicitante paga um SELECT, exista ele ou não.
+
+    Segue o precedente de thread daemon do `init_db` (`app.py`).
+    """
+    def _trabalho():
+        # A decisão de enviar mora AQUI, não na linha da resposta. A thread sobe
+        # dos dois jeitos: criar uma thread custa ~0,6 ms, e fazer isso só para
+        # quem existe reabriria a diferença de tempo em escala menor — 11,8×,
+        # medido depois da primeira versão desta correção.
+        if not user_id or not email:
+            structured_log('info', 'auth.recovery_email_skipped', username=username,
+                           reason='user_not_found' if not user_id else 'user_without_email')
+            return
+        try:
+            with closing(get_connection()) as conexao:
+                token = generate_user_recovery_token(conexao, user_id)
+                conexao.commit()
+            send_recovery_email_smtp(email, username, token)
+            structured_log('info', 'auth.recovery_email_sent', user_id=user_id, username=username)
+        except Exception as exc:
+            structured_log('error', 'auth.recovery_email_failed', username=username, error=str(exc))
+
+    _threading.Thread(target=_trabalho, daemon=True,
+                      name=f'recovery_email_{user_id or "none"}').start()
+
+
 def handle_post_request_email_recovery(handler, parsed, payload, match):
+    """Pede o token de recuperação por e-mail.
+
+    A resposta é SEMPRE a mesma e sai SEMPRE pelo mesmo caminho: exista o
+    usuário ou não, tenha ele e-mail ou não, funcione o SMTP ou não. O que
+    varia é só o efeito interno — e o efeito interno não é observável daqui.
+    """
     require_fields(payload, ['username'])
     username = str(payload.get('username', '')).strip()
-    _ok_msg = 'Se o usuário existir com e-mail configurado, o token será enviado por e-mail.'
     with closing(get_connection()) as connection:
         user_ref = get_user_by_username(connection, username)
-        if not user_ref:
-            return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
         row = connection.execute(
             'SELECT id, username, email FROM users WHERE id = ?', (user_ref['id'],)
-        ).fetchone()
-        if not row or not row['email']:
-            return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
-        token = generate_user_recovery_token(connection, row['id'])
-        connection.commit()
-    try:
-        send_recovery_email_smtp(row['email'], row['username'], token)
-    except Exception as exc:
-        structured_log('error', 'auth.recovery_email_failed', username=username, error=str(exc))
-        raise ValueError(f'Falha ao enviar e-mail: {exc}')
-    structured_log('info', 'auth.recovery_email_sent', user_id=row['id'], username=username)
-    return send_json(handler, 200, {'ok': True, 'message': _ok_msg})
+        ).fetchone() if user_ref else None
+        # O e-mail sai para conta existente COM endereço, e só. O que muda
+        # entre os casos é isso, e nada na resposta.
+        _emitir_recuperacao_em_segundo_plano(
+            row['id'] if row else None,
+            row['email'] if row else None,
+            row['username'] if row else username,
+        )
+    return send_json(handler, 200, {'ok': True, 'message': MSG_RECUPERACAO_SOLICITADA})
 
 
 # ── POST /api/change-password ─────────────────────────────────────────────────

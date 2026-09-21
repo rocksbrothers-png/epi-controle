@@ -357,6 +357,25 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
         return send_json(handler, 200, auth_diagnostics(public=True))
 
 
+# ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — INÍCIO ───────────────────────
+# Diagnóstico de topologia, não funcionalidade. Mora aqui porque este módulo já
+# é o dono da superfície de diagnóstico (`/api/auth-diagnostics`) e já importa
+# `core.rate_limit`; a lógica inteira vive em `epi_backend/proxy_chain_probe.py`
+# para que a remoção seja apagar um arquivo e esta cerca.
+#
+# Sai do repositório assim que `docs/R05_CADEIA_DE_PROXY.md` deixar de declarar
+# a cadeia como INDETERMINADA. O gate `R05-9` reprova a suíte se não sair.
+def handle_get_proxy_chain_diagnostics(handler, parsed, payload, match):
+    from epi_backend.proxy_chain_probe import autorizado, medir
+
+    if not autorizado(handler):
+        # 404 em vez de 403: sem `PROXY_CHAIN_PROBE_KEY` no ambiente, a rota não
+        # admite sequer existir. Um 403 confirmaria a sonda para quem sondasse.
+        return send_json(handler, 404, {'error': 'Not found'})
+    return send_json(handler, 200, medir(handler))
+# ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM ──────────────────────────
+
+
 def handle_get_db_pool_status(handler, parsed, payload, match):
     from core.database import db_pool_status
     with closing(get_connection()) as connection:
@@ -571,6 +590,9 @@ def handle_put_auth_me_preferences(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
+    # ── R0.5 SONDA TEMPORÁRIA — INÍCIO ──────────────────────────────────────
+    router.register('GET',  '/api/proxy-chain-diagnostics', handle_get_proxy_chain_diagnostics)
+    # ── R0.5 SONDA TEMPORÁRIA — FIM ─────────────────────────────────────────
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
     router.register('GET',  '/api/auth/me',           handle_get_auth_me)

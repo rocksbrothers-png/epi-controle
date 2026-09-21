@@ -1,0 +1,394 @@
+"""R0.5 — gates da determinação da cadeia de proxy.
+
+A R0 deixou `RATE_LIMIT_TRUSTED_PROXY_HOPS` com padrão `0` porque não havia
+como comprovar outro número: o egresso do ambiente onde o código é escrito nega
+`render.com`, `docs.render.com` e `*.onrender.com` com 403 no CONNECT, enquanto
+`pypi.org` responde 200. Não é rede quebrada — é política.
+
+Esta fatia não configura o valor. Ela constrói o instrumento de medição e trava
+quatro regressões, mais uma quinta que a própria fatia cria:
+
+- `R05-6`  valor ausente no deployment DEPOIS que o contrato for fechado
+- `R05-2`  divergência do contrato entre Corporate e SaaS
+- `R05-7`  regressão para confiança irrestrita no primeiro elemento do XFF
+- `R05-8`  configuração incompatível com o modelo documentado
+- `R05-9`  a sonda temporária virar API permanente
+
+Os gates `R05-6`, `R05-8` e `R05-9` são condicionais ao estado do contrato: eles
+mudam de exigência sozinhos quando `ESTADO-DA-CADEIA` passar de `INDETERMINADO`
+a `DETERMINADO`. Isso é deliberado — um gate que precisa que alguém lembre de
+ativá-lo não é um gate.
+"""
+
+import hashlib
+import inspect
+import ipaddress
+import re
+from pathlib import Path
+
+import core.rate_limit as RL
+from epi_backend import proxy_chain_probe as SONDA
+
+RAIZ = Path(__file__).resolve().parents[1]
+CONTRATO = RAIZ / 'docs' / 'R05_CADEIA_DE_PROXY.md'
+ENV_EXEMPLO = RAIZ / 'env.example'
+RENDER = RAIZ / 'render.yaml'
+SONDA_MODULO = RAIZ / 'epi_backend' / 'proxy_chain_probe.py'
+ROTAS_AUTH = RAIZ / 'modules' / 'auth' / 'routes.py'
+SCRIPT = RAIZ / 'scripts' / 'certificar_cadeia_de_proxy.py'
+
+INICIO = '<!-- CONTRATO-R05-INICIO -->'
+FIM = '<!-- CONTRATO-R05-FIM -->'
+
+# Digesto do bloco de contrato. Os dois repositórios carregam a MESMA constante,
+# então editar o contrato de um lado só deixa aquele lado vermelho. É a mesma
+# mecânica dos digestos de paridade que o projeto já usa — e tem a mesma
+# limitação honesta: pega edição unilateral, não pega os dois editando igual e
+# errado ao mesmo tempo.
+DIGESTO_CONTRATO_R05 = '4d840ae596cd52da5c483e1c33a450be4fcec0fb790e2db847c741c7d6f298ef'
+
+VARIAVEL = 'RATE_LIMIT_TRUSTED_PROXY_HOPS'
+
+
+def _bloco_do_contrato() -> str:
+    texto = CONTRATO.read_text(encoding='utf-8')
+    assert INICIO in texto and FIM in texto, 'marcadores do contrato sumiram'
+    miolo = texto.split(INICIO, 1)[1].split(FIM, 1)[0]
+    return miolo.strip()
+
+
+def _campos_do_contrato() -> dict:
+    campos = {}
+    for linha in _bloco_do_contrato().splitlines():
+        if ':' in linha:
+            chave, valor = linha.split(':', 1)
+            campos[chave.strip()] = valor.strip()
+    return campos
+
+
+def _determinado() -> bool:
+    return _campos_do_contrato().get('ESTADO-DA-CADEIA') == 'DETERMINADO'
+
+
+# ── R05-1: o contrato existe e é legível por máquina ────────────────────────
+
+def test_r05_1_o_contrato_e_legivel_por_maquina():
+    campos = _campos_do_contrato()
+    for obrigatorio in ('ESTADO-DA-CADEIA', 'SALTOS-CONFIAVEIS',
+                        'MODELO-DA-BORDA', 'EVIDENCIA'):
+        assert obrigatorio in campos, f'contrato sem o campo {obrigatorio}'
+    assert campos['ESTADO-DA-CADEIA'] in ('INDETERMINADO', 'DETERMINADO'), \
+        'ESTADO-DA-CADEIA só admite INDETERMINADO ou DETERMINADO'
+
+
+# ── R05-2: paridade Corporate × SaaS do contrato ────────────────────────────
+
+def test_r05_2_o_contrato_e_identico_nos_dois_repositorios():
+    """Gate (b). Não compara com o outro repo — nenhum dos dois enxerga o
+    outro. Compara com o digesto que os dois carregam igual, o que reprova
+    quem editar de um lado só."""
+    atual = hashlib.sha256(_bloco_do_contrato().encode('utf-8')).hexdigest()
+    assert atual == DIGESTO_CONTRATO_R05, (
+        'o bloco de contrato mudou sem o digesto ser recalculado nos DOIS '
+        f'repositórios. Atual: {atual}'
+    )
+
+
+# ── R05-3: a sonda não vaza endereço nenhum ─────────────────────────────────
+
+_ADVERSARIAIS = [
+    ('203.0.113.7, 198.51.100.9, 192.0.2.10', '203.0.113.7'),
+    ('', '198.51.100.200'),
+    ('192.0.2.10', '10.1.2.3'),
+    ('nao-e-ip, 192.0.2.11, 203.0.113.250', '::1'),
+    ('  192.0.2.12  ,  203.0.113.1  ', ''),
+]
+
+
+def _cada_texto(objeto):
+    if isinstance(objeto, str):
+        yield objeto
+    elif isinstance(objeto, dict):
+        for chave, valor in objeto.items():
+            yield str(chave)
+            yield from _cada_texto(valor)
+    elif isinstance(objeto, (list, tuple)):
+        for item in objeto:
+            yield from _cada_texto(item)
+
+
+def test_r05_3_a_saida_da_sonda_nao_contem_endereco():
+    """Gate de redação. Varre a saída inteira procurando qualquer coisa que o
+    `ipaddress` aceite como endereço. Não basta "não devolvemos o peer": o teste
+    tem de valer para a estrutura toda, inclusive campos futuros."""
+    for cadeia, peer in _ADVERSARIAIS:
+        saida = SONDA.analisar(cadeia, peer, SONDA.CABECALHOS_DE_FORWARDING)
+        for texto in _cada_texto(saida):
+            for pedaco in re.split(r'[\s,;]+', texto):
+                if not pedaco:
+                    continue
+                try:
+                    ipaddress.ip_address(pedaco.strip('[]'))
+                except ValueError:
+                    continue
+                raise AssertionError(
+                    f'a sonda devolveu algo que é endereço: {pedaco!r} '
+                    f'(entrada cadeia={cadeia!r})'
+                )
+
+
+def test_r05_3b_os_nomes_de_cabecalho_saem_de_lista_fixa():
+    """Nome de cabeçalho também é dado. Se a sonda ecoasse os nomes recebidos,
+    um cliente poderia escrever o que quisesse dentro da resposta."""
+    fonte = SONDA_MODULO.read_text(encoding='utf-8')
+    assert 'CABECALHOS_DE_FORWARDING = (' in fonte, \
+        'a lista fixa de cabeçalhos sumiu'
+    saida = SONDA.analisar('192.0.2.10', '', ['X-Forwarded-For'])
+    assert saida['cabecalhos_de_forwarding'] == ['X-Forwarded-For']
+
+
+# ── R05-4: a sonda falha fechada ────────────────────────────────────────────
+
+class _HandlerFalso:
+    def __init__(self, chave='', xff=None, peer='192.0.2.10'):
+        self.headers = {}
+        if chave:
+            self.headers['X-Diagnostics-Key'] = chave
+        if xff is not None:
+            self.headers['X-Forwarded-For'] = xff
+        self.client_address = (peer, 54321)
+
+
+def test_r05_4_sem_chave_no_ambiente_a_sonda_nao_responde(monkeypatch):
+    monkeypatch.delenv('PROXY_CHAIN_PROBE_KEY', raising=False)
+    assert SONDA.autorizado(_HandlerFalso(chave='qualquer-coisa')) is False, \
+        'a sonda respondeu sem chave configurada no ambiente'
+
+
+def test_r05_4b_chave_errada_nao_autoriza(monkeypatch):
+    monkeypatch.setenv('PROXY_CHAIN_PROBE_KEY', 'a-chave-certa')
+    assert SONDA.autorizado(_HandlerFalso(chave='a-chave-errada')) is False
+    assert SONDA.autorizado(_HandlerFalso(chave='')) is False
+    assert SONDA.autorizado(_HandlerFalso(chave='a-chave-certa')) is True
+
+
+def _sem_comentarios(texto):
+    """Os comentários citam justamente o que o gate proíbe, para explicar por
+    que aquilo está proibido. Convenção já usada em
+    `tests/test_343_f2_teardown_logout.py`."""
+    return '\n'.join(
+        linha for linha in texto.splitlines() if not linha.lstrip().startswith('#')
+    )
+
+
+def test_r05_4c_a_rota_devolve_404_e_nao_403():
+    """403 confirmaria a existência da sonda para quem sondasse."""
+    fonte = ROTAS_AUTH.read_text(encoding='utf-8')
+    trecho = fonte.split('SONDA TEMPORÁRIA DA CADEIA DE PROXY — INÍCIO', 1)[1]
+    trecho = _sem_comentarios(
+        trecho.split('SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM', 1)[0])
+    assert 'send_json(handler, 404' in trecho, \
+        'a sonda desligada precisa devolver 404'
+    assert '403' not in trecho, 'a sonda não pode devolver 403'
+
+
+# ── R05-5: a tabela de decisão da borda ─────────────────────────────────────
+
+def test_r05_5_os_quatro_modelos_de_borda_sao_distinguidos():
+    """A pergunta obrigatória: anexa, sobrescreve ou higieniza. Se dois modelos
+    colapsassem no mesmo veredito, o número sairia de um empate."""
+    casos = [
+        # (cadeia recebida, veredito, elementos da borda à direita do sentinela)
+        ('192.0.2.10, 203.0.113.9',            'ANEXA',        1),
+        ('192.0.2.10, 203.0.113.9, 10.0.0.1',  'ANEXA',        2),
+        ('203.0.113.9',                        'SOBRESCREVE',  None),
+        ('',                                   'HIGIENIZA',    None),
+        ('192.0.2.10',                         'PASSA_DIRETO', 0),
+        ('203.0.113.9, 192.0.2.10',            'INDETERMINADO', 0),
+    ]
+    for cadeia, esperado, a_direita in casos:
+        saida = SONDA.analisar(cadeia, '198.51.100.1', [])
+        assert saida['veredito'] == esperado, \
+            f'{cadeia!r} deveria ser {esperado}, veio {saida["veredito"]}'
+        if a_direita is not None:
+            assert saida['elementos_a_direita_do_sentinela'] == a_direita
+
+
+def test_r05_5b_a_cadeia_de_sentinelas_mede_a_borda_e_nao_o_cliente():
+    """Controle C manda três sentinelas. O que interessa é o que a borda pôs
+    DEPOIS do último — se o número mudasse com o tamanho do que o cliente
+    escreve, ele seria escolhido pelo cliente."""
+    um = SONDA.analisar('192.0.2.10, 203.0.113.9', '203.0.113.9', [])
+    tres = SONDA.analisar('192.0.2.10, 192.0.2.11, 192.0.2.12, 203.0.113.9',
+                          '203.0.113.9', [])
+    assert um['elementos_a_direita_do_sentinela'] == 1
+    assert tres['elementos_a_direita_do_sentinela'] == 1, \
+        'a contribuição medida da borda mudou com o tamanho do envio do cliente'
+
+
+# ── R05-6: gate (a) — valor no deployment depois do contrato fechado ────────
+
+def _declara_variavel(caminho: Path) -> bool:
+    if not caminho.exists():
+        return False
+    return VARIAVEL in caminho.read_text(encoding='utf-8')
+
+
+def test_r05_6_o_valor_so_existe_depois_de_comprovado():
+    """Gate (a), nos dois sentidos.
+
+    INDETERMINADO → declarar um número é proibido. Um valor não comprovado numa
+    superfície de deployment é pior que nenhum: parece configuração.
+
+    DETERMINADO → declarar é obrigatório, em `env.example` E em `render.yaml`,
+    com o mesmo número do contrato."""
+    campos = _campos_do_contrato()
+    if not _determinado():
+        assert not _declara_variavel(ENV_EXEMPLO), (
+            f'{VARIAVEL} declarada em env.example com a cadeia ainda '
+            'INDETERMINADA — isso é um palpite com cara de configuração'
+        )
+        assert not _declara_variavel(RENDER), (
+            f'{VARIAVEL} declarada em render.yaml com a cadeia ainda INDETERMINADA'
+        )
+        return
+
+    esperado = campos['SALTOS-CONFIAVEIS']
+    for caminho in (ENV_EXEMPLO, RENDER):
+        assert _declara_variavel(caminho), (
+            f'contrato DETERMINADO e {VARIAVEL} ausente em {caminho.name}'
+        )
+        texto = caminho.read_text(encoding='utf-8')
+        encontrados = re.findall(rf'{VARIAVEL}\s*[:=]\s*"?(\d+)"?', texto)
+        assert encontrados, f'{caminho.name} cita {VARIAVEL} sem valor numérico'
+        assert all(v == esperado for v in encontrados), (
+            f'{caminho.name} declara {encontrados}, contrato diz {esperado}'
+        )
+
+
+# ── R05-7: gate (c) — regressão para confiar no primeiro elemento ───────────
+
+def test_r05_7_o_primeiro_elemento_do_xff_nunca_volta_a_ser_a_origem():
+    fonte = inspect.getsource(RL.get_client_ip)
+    assert 'cadeia[0]' not in fonte, \
+        'get_client_ip voltou a ler o primeiro elemento da cadeia'
+    assert "split(',')[0]" not in fonte, \
+        'voltou o split(\',\')[0] que a R0 removeu'
+    assert 'TRUSTED_PROXY_HOPS' in fonte, \
+        'a origem deixou de consultar a confiança declarada'
+
+
+def test_r05_7b_sem_salto_declarado_o_cabecalho_nao_muda_a_origem():
+    """O comportamento, não só a forma do código."""
+    anterior = RL.TRUSTED_PROXY_HOPS
+    RL.TRUSTED_PROXY_HOPS = 0
+    try:
+        sem = RL.get_client_ip(_HandlerFalso(peer='198.51.100.7'))
+        com = RL.get_client_ip(_HandlerFalso(peer='198.51.100.7',
+                                             xff='192.0.2.10, 203.0.113.9'))
+        assert sem == com == '198.51.100.7', \
+            'o cabeçalho voltou a decidir origem sem proxy confiável declarado'
+    finally:
+        RL.TRUSTED_PROXY_HOPS = anterior
+
+
+# ── R05-8: gate (d) — contrato coerente com o modelo documentado ────────────
+
+def test_r05_8_o_contrato_e_internamente_coerente():
+    campos = _campos_do_contrato()
+    if not _determinado():
+        assert campos['SALTOS-CONFIAVEIS'] == 'nao-determinado', (
+            'a cadeia está INDETERMINADA mas o contrato já traz um número'
+        )
+        return
+
+    modelo = campos['MODELO-DA-BORDA']
+    assert modelo in SONDA.VEREDITOS, f'modelo de borda desconhecido: {modelo}'
+    assert modelo != 'INDETERMINADO', \
+        'contrato DETERMINADO não pode ter modelo de borda INDETERMINADO'
+    assert campos['EVIDENCIA'] != 'nao-produzida', \
+        'contrato DETERMINADO sem evidência registrada'
+
+    saltos = int(campos['SALTOS-CONFIAVEIS'])
+    if modelo in ('PASSA_DIRETO', 'HIGIENIZA'):
+        assert saltos == 0, (
+            f'{modelo} significa que a borda não contribui nada confiável; '
+            f'só 0 é compatível, o contrato diz {saltos}'
+        )
+    else:
+        assert saltos >= 1, (
+            f'{modelo} significa que a borda contribui; 0 é incompatível'
+        )
+
+
+# ── R05-9: a sonda é temporária, e isso é gateado ───────────────────────────
+
+def test_r05_9_a_sonda_sai_do_repositorio_quando_a_cadeia_for_determinada():
+    """Diagnóstico não vira API. Enquanto a cadeia está INDETERMINADA a sonda
+    pode existir; depois que ela cumpre a função, ficar é dívida."""
+    if not _determinado():
+        assert SONDA_MODULO.exists(), \
+            'a cadeia ainda está INDETERMINADA e a sonda já sumiu'
+        return
+
+    assert not SONDA_MODULO.exists(), (
+        'cadeia DETERMINADA e a sonda continua no repositório — ela era '
+        'temporária por contrato'
+    )
+    rotas = ROTAS_AUTH.read_text(encoding='utf-8')
+    assert 'proxy-chain-diagnostics' not in rotas, \
+        'a rota da sonda continua registrada'
+    assert 'proxy_chain_probe' not in rotas, \
+        'o handler da sonda continua em modules/auth/routes.py'
+
+
+# ── R05-10: o script de operador ────────────────────────────────────────────
+
+def test_r05_10_o_script_e_somente_leitura():
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    for verbo in ("'POST'", "'PUT'", "'DELETE'", "'PATCH'"):
+        assert verbo not in fonte, f'o script de determinação faz {verbo}'
+    assert "method='GET'" in fonte, 'o script deixou de declarar o método'
+
+
+def test_r05_10b_um_numero_nao_sai_de_uma_requisicao_so():
+    """O ponto que separa medição de palpite: três controles, repetidos, e um
+    veredito que só sai quando todos concordam."""
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    assert re.search(r'REPETICOES\s*=\s*([3-9]|\d{2,})', fonte), \
+        'o script precisa repetir cada sondagem ao menos 3 vezes'
+    for controle in ('A (sem XFF)', 'B (um sentinela)', 'C (três sentinelas)'):
+        assert controle in fonte, f'o controle {controle} sumiu do script'
+    assert 'Inconsistente' in fonte, \
+        'o script precisa recusar medições que se contradizem'
+
+
+# Faixas que RFC 5737 e RFC 1918 reservam para documentação e uso interno.
+# Nenhuma delas identifica uma pessoa.
+FAIXAS_SEGURAS = tuple(ipaddress.ip_network(r) for r in (
+    '192.0.2.0/24',     # TEST-NET-1
+    '198.51.100.0/24',  # TEST-NET-2
+    '203.0.113.0/24',   # TEST-NET-3
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+    '127.0.0.0/8',
+))
+
+
+def test_r05_10c_nenhum_endereco_real_em_lugar_nenhum_da_fatia():
+    """A instrução era explícita: nada de IP real em documentação, PR ou teste.
+    Este gate varre a fatia inteira, não só o literal que eu lembrei de olhar."""
+    arquivos = (SCRIPT, SONDA_MODULO, CONTRATO, Path(__file__))
+    for caminho in arquivos:
+        if not caminho.exists():
+            continue
+        for literal in re.findall(r'\b\d{1,3}(?:\.\d{1,3}){3}\b',
+                                  caminho.read_text(encoding='utf-8')):
+            try:
+                endereco = ipaddress.ip_address(literal)
+            except ValueError:
+                continue  # não é endereço: número de versão, porta, o que for
+            assert any(endereco in faixa for faixa in FAIXAS_SEGURAS), (
+                f'{caminho.name} contém {literal}, que não é de faixa reservada'
+            )

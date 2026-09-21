@@ -40,8 +40,11 @@ import threading
 import time
 from collections import deque
 
+# Um único caminho de importação. O módulo inteiro, e não nomes soltos,
+# porque `_com_saltos` precisa trocar `TRUSTED_PROXY_HOPS` no lugar onde
+# `get_client_ip` vai lê-lo — e porque importar o mesmo módulo das duas
+# formas deixa ambíguo qual binding o teste está exercitando.
 import core.rate_limit as RL
-from core.rate_limit import RateLimiter, get_client_ip
 
 
 class _Handler:
@@ -69,9 +72,9 @@ def test_r0_1_variar_o_cabecalho_nao_gera_buckets_ilimitados():
     """O gate que descreve o defeito. Sem proxy confiável declarado, o cliente
     não pode trocar de balde mudando o que ele mesmo escreve."""
     with _com_saltos(0):
-        limitador = RateLimiter(max_calls=3, period_seconds=60)
+        limitador = RL.RateLimiter(max_calls=3, period_seconds=60)
         permitidos = sum(
-            limitador.is_allowed(get_client_ip(_Handler(peer='203.0.113.9', xff=f'10.0.0.{i}')))
+            limitador.is_allowed(RL.get_client_ip(_Handler(peer='203.0.113.9', xff=f'10.0.0.{i}')))
             for i in range(10)
         )
     assert permitidos == 3, (
@@ -83,13 +86,13 @@ def test_r0_1_variar_o_cabecalho_nao_gera_buckets_ilimitados():
 def test_r0_1b_nem_uma_cadeia_inteira_forjada_muda_o_bucket():
     """Variação do mesmo ataque: em vez de um valor, o cliente manda uma lista."""
     with _com_saltos(0):
-        limitador = RateLimiter(max_calls=3, period_seconds=60)
+        limitador = RL.RateLimiter(max_calls=3, period_seconds=60)
         forjadas = [
             '1.1.1.1', '1.1.1.1, 2.2.2.2', '3.3.3.3, 4.4.4.4, 5.5.5.5',
             '6.6.6.6', '7.7.7.7, 8.8.8.8', '9.9.9.9',
         ]
         permitidos = sum(
-            limitador.is_allowed(get_client_ip(_Handler(peer='203.0.113.9', xff=c)))
+            limitador.is_allowed(RL.get_client_ip(_Handler(peer='203.0.113.9', xff=c)))
             for c in forjadas
         )
     assert permitidos == 3, f'{permitidos}/6 passaram num limite de 3'
@@ -99,9 +102,9 @@ def test_r0_1b_nem_uma_cadeia_inteira_forjada_muda_o_bucket():
 
 def test_r0_2_mesma_origem_real_compartilha_bucket():
     with _com_saltos(0):
-        limitador = RateLimiter(max_calls=3, period_seconds=60)
+        limitador = RL.RateLimiter(max_calls=3, period_seconds=60)
         permitidos = sum(
-            limitador.is_allowed(get_client_ip(_Handler(peer='203.0.113.9')))
+            limitador.is_allowed(RL.get_client_ip(_Handler(peer='203.0.113.9')))
             for _ in range(6)
         )
     assert permitidos == 3, f'a mesma origem deixou de compartilhar bucket: {permitidos}/6'
@@ -112,9 +115,9 @@ def test_r0_3_origens_diferentes_nao_sao_colapsadas():
     Sem este gate, ignorar o cabeçalho E o peer passaria em R0-1 e derrubaria
     o serviço inteiro no primeiro usuário que atingisse o limite."""
     with _com_saltos(0):
-        limitador = RateLimiter(max_calls=3, period_seconds=60)
+        limitador = RL.RateLimiter(max_calls=3, period_seconds=60)
         permitidos = sum(
-            limitador.is_allowed(get_client_ip(_Handler(peer=f'203.0.113.{i}')))
+            limitador.is_allowed(RL.get_client_ip(_Handler(peer=f'203.0.113.{i}')))
             for i in range(6)
         )
     assert permitidos == 6, (
@@ -126,16 +129,16 @@ def test_r0_3_origens_diferentes_nao_sao_colapsadas():
 
 def test_r0_4_sem_proxy_vale_o_peer_do_socket():
     with _com_saltos(0):
-        assert get_client_ip(_Handler(peer='192.0.2.55')) == '192.0.2.55'
+        assert RL.get_client_ip(_Handler(peer='192.0.2.55')) == '192.0.2.55'
         # …e o cabeçalho não muda nada.
-        assert get_client_ip(_Handler(peer='192.0.2.55', xff='evil')) == '192.0.2.55'
+        assert RL.get_client_ip(_Handler(peer='192.0.2.55', xff='evil')) == '192.0.2.55'
 
 
 def test_r0_4b_peer_indisponivel_nao_explode_nem_vira_bucket_unico():
     class _SemPeer:
         headers = {}
     with _com_saltos(0):
-        valor = get_client_ip(_SemPeer())
+        valor = RL.get_client_ip(_SemPeer())
     assert isinstance(valor, str) and valor, 'origem indeterminada devolveu valor inválido'
 
 
@@ -145,22 +148,22 @@ def test_r0_5_um_salto_confiavel_pega_o_endereco_que_o_proxy_observou():
     """Com 1 proxy que ACRESCENTA, o endereço observado por ele é o último.
     O lixo que o cliente mandou antes fica à esquerda e é ignorado."""
     with _com_saltos(1):
-        assert get_client_ip(_Handler(peer='10.0.0.1', xff='evil, 203.0.113.9')) == '203.0.113.9'
-        assert get_client_ip(_Handler(peer='10.0.0.1', xff='a, b, c, 203.0.113.9')) == '203.0.113.9'
+        assert RL.get_client_ip(_Handler(peer='10.0.0.1', xff='evil, 203.0.113.9')) == '203.0.113.9'
+        assert RL.get_client_ip(_Handler(peer='10.0.0.1', xff='a, b, c, 203.0.113.9')) == '203.0.113.9'
 
 
 def test_r0_5b_dois_saltos_confiaveis_andam_mais_uma_casa():
     with _com_saltos(2):
         # cliente -> proxy1 (acrescenta o cliente) -> proxy2 (acrescenta proxy1)
-        assert get_client_ip(_Handler(peer='10.0.0.2', xff='evil, 203.0.113.9, 10.0.0.1')) == '203.0.113.9'
+        assert RL.get_client_ip(_Handler(peer='10.0.0.2', xff='evil, 203.0.113.9, 10.0.0.1')) == '203.0.113.9'
 
 
 def test_r0_5c_cadeia_mais_curta_que_o_declarado_cai_no_peer():
     """Requisição que não atravessou a cadeia esperada não é confiável."""
     with _com_saltos(2):
-        assert get_client_ip(_Handler(peer='10.0.0.2', xff='203.0.113.9')) == '10.0.0.2'
+        assert RL.get_client_ip(_Handler(peer='10.0.0.2', xff='203.0.113.9')) == '10.0.0.2'
     with _com_saltos(1):
-        assert get_client_ip(_Handler(peer='10.0.0.2', xff='')) == '10.0.0.2'
+        assert RL.get_client_ip(_Handler(peer='10.0.0.2', xff='')) == '10.0.0.2'
 
 
 def test_r0_5d_com_salto_declarado_o_cliente_ainda_nao_escolhe_o_bucket():
@@ -168,9 +171,9 @@ def test_r0_5d_com_salto_declarado_o_cliente_ainda_nao_escolhe_o_bucket():
     cabeçalho de lixo não cria buckets novos, porque o proxy acrescenta o
     endereço real à direita."""
     with _com_saltos(1):
-        limitador = RateLimiter(max_calls=3, period_seconds=60)
+        limitador = RL.RateLimiter(max_calls=3, period_seconds=60)
         permitidos = sum(
-            limitador.is_allowed(get_client_ip(
+            limitador.is_allowed(RL.get_client_ip(
                 _Handler(peer='10.0.0.1', xff=f'forjado{i}, 203.0.113.9')))
             for i in range(10)
         )
@@ -197,7 +200,7 @@ def _corrida(limitador, fios=20):
 
 
 def test_r0_6_atomicidade_preservada():
-    assert _corrida(RateLimiter(max_calls=5, period_seconds=60)) == 5
+    assert _corrida(RL.RateLimiter(max_calls=5, period_seconds=60)) == 5
 
 
 class _FilaLenta(deque):
@@ -239,7 +242,7 @@ class _JanelaLenta(dict):
 
 
 def test_r0_6b_o_teto_se_mantem_mesmo_com_troca_de_contexto_no_meio():
-    limitador = RateLimiter(max_calls=5, period_seconds=60)
+    limitador = RL.RateLimiter(max_calls=5, period_seconds=60)
     limitador._windows = _JanelaLenta()
     liberados = _corrida(limitador)
     assert liberados == 5, (
@@ -252,7 +255,7 @@ def test_r0_6c_a_secao_critica_continua_sob_lock():
     """Antemural estrutural do gate acima. Um é comportamental e pode ficar
     verde por sorte de agendamento; o outro não depende de sorte nenhuma."""
     import inspect
-    fonte = inspect.getsource(RateLimiter.is_allowed)
+    fonte = inspect.getsource(RL.RateLimiter.is_allowed)
     assert 'with self._lock:' in fonte, (
         'a seção crítica de `is_allowed` saiu de baixo do lock'
     )
@@ -281,11 +284,11 @@ def test_r0_7_a_10_os_quatro_limitadores_protegem_de_verdade():
                      'supplier_portal_limiter'):
             limitador = getattr(RL, nome)
             teto = limitador._max
-            origem = get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}'))
+            origem = RL.get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}'))
             limitador.reset(origem)
             permitidos = sum(limitador.is_allowed(origem) for _ in range(teto + 5))
             assert permitidos == teto, f'{nome}: {permitidos} passaram, teto {teto}'
             # e o cabeçalho forjado não devolve fôlego a quem já estourou
-            forjado = get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}', xff='1.2.3.4'))
+            forjado = RL.get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}', xff='1.2.3.4'))
             assert not limitador.is_allowed(forjado), (
                 f'{nome}: cabeçalho forjado devolveu bucket novo')

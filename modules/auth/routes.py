@@ -357,8 +357,6 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
         return send_json(handler, 200, auth_diagnostics(public=True))
 
 
-
-
 def handle_get_db_pool_status(handler, parsed, payload, match):
     from core.database import db_pool_status
     with closing(get_connection()) as connection:

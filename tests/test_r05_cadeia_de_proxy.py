@@ -21,9 +21,13 @@ ativá-lo não é um gate.
 """
 
 import hashlib
+import importlib.util
 import inspect
 import ipaddress
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,15 +35,26 @@ import pytest
 import core.rate_limit as RL
 import scripts.certificar_cadeia_de_proxy as CERT
 
-try:
-    from epi_backend import proxy_chain_probe as SONDA
-except ImportError:
-    # A sonda é TEMPORÁRIA: quando a cadeia for determinada ela sai do
-    # repositório. Um import incondicional interrompia a coleta do arquivo
-    # inteiro nesse momento — e então `R05-9`, que existe justamente para
-    # exigir a ausência, nunca chegava a rodar. Não havia estado verde em que
-    # o contrato estivesse fechado E a sonda removida: o gate era inalcançável.
+# A sonda é TEMPORÁRIA: quando a cadeia for determinada ela sai do repositório.
+# Um import incondicional interrompia a coleta do arquivo inteiro nesse momento
+# — e então `R05-9`, que existe justamente para exigir a ausência, nunca
+# chegava a rodar. Não havia estado verde em que o contrato estivesse fechado E
+# a sonda removida: o gate era inalcançável.
+#
+# Mas `try/except ImportError` em volta do import engolia demais: uma sonda que
+# EXISTE e quebra ao importar deixava todos os gates `@com_sonda` pulados e a
+# suíte verde, enquanto a rota de produção estouraria ao carregar o mesmo
+# módulo. E estreitar para `ModuleNotFoundError` não resolve — medido: com o
+# arquivo ausente, `from epi_backend import proxy_chain_probe` levanta
+# `ImportError` puro ("cannot import name"), não `ModuleNotFoundError`. Aquela
+# guarda tornava o estado terminal inalcançável de novo.
+#
+# `find_spec` separa as duas perguntas sem executar nada: ausente é ausente;
+# presente importa de verdade, e o que estourar lá dentro derruba a coleta.
+if importlib.util.find_spec('epi_backend.proxy_chain_probe') is None:
     SONDA = None
+else:
+    from epi_backend import proxy_chain_probe as SONDA
 
 #: Vocabulário do modelo de borda. Declarado AQUI, e não lido da sonda, para
 #: que `R05-8` continue valendo depois que ela for removida. Um gate abaixo
@@ -69,7 +84,7 @@ FIM = '<!-- CONTRATO-R05-FIM -->'
 # mecânica dos digestos de paridade que o projeto já usa — e tem a mesma
 # limitação honesta: pega edição unilateral, não pega os dois editando igual e
 # errado ao mesmo tempo.
-DIGESTO_CONTRATO_R05 = '4d840ae596cd52da5c483e1c33a450be4fcec0fb790e2db847c741c7d6f298ef'
+DIGESTO_CONTRATO_R05 = 'a27ac5e2f6204262b2b3841938d7639bc10a68eba82e6c5623fd7609a924e312'
 
 VARIAVEL = 'RATE_LIMIT_TRUSTED_PROXY_HOPS'
 
@@ -99,7 +114,7 @@ def _determinado() -> bool:
 def test_r05_1_o_contrato_e_legivel_por_maquina():
     campos = _campos_do_contrato()
     for obrigatorio in ('ESTADO-DA-CADEIA', 'SALTOS-CONFIAVEIS',
-                        'MODELO-DA-BORDA', 'EVIDENCIA'):
+                        'MODELO-DA-BORDA', 'ORIGENS-CORROBORADAS', 'EVIDENCIA'):
         assert obrigatorio in campos, f'contrato sem o campo {obrigatorio}'
     assert campos['ESTADO-DA-CADEIA'] in ('INDETERMINADO', 'DETERMINADO'), \
         'ESTADO-DA-CADEIA só admite INDETERMINADO ou DETERMINADO'
@@ -386,6 +401,9 @@ def test_r05_8_o_contrato_e_internamente_coerente():
         assert campos['SALTOS-CONFIAVEIS'] == 'nao-determinado', (
             'a cadeia está INDETERMINADA mas o contrato já traz um número'
         )
+        assert campos['ORIGENS-CORROBORADAS'] == 'nao-determinado', (
+            'a cadeia está INDETERMINADA mas o contrato já conta origens'
+        )
         return
 
     modelo = campos['MODELO-DA-BORDA']
@@ -405,6 +423,16 @@ def test_r05_8_o_contrato_e_internamente_coerente():
     # nada — o oposto do que este gate afirma garantir.
     assert evidencia and evidencia != 'nao-produzida', \
         'contrato DETERMINADO sem evidência registrada'
+
+    # Uma origem mede UM caminho. `get_client_ip` lê `cadeia[-N]`, e num
+    # caminho com menos proxies que N esse elemento é escrito pelo cliente —
+    # o bypass que a R0 fechou. Por isso o número só vale corroborado, e o
+    # script sai com `[MEDIDO]` (código 3) de uma origem só.
+    origens = campos['ORIGENS-CORROBORADAS']
+    assert origens.isdigit() and int(origens) >= 2, (
+        f'contrato DETERMINADO com ORIGENS-CORROBORADAS={origens!r}: o número '
+        'precisa de pelo menos duas origens independentes'
+    )
 
     saltos = int(campos['SALTOS-CONFIAVEIS'])
     if modelo in ('PASSA_DIRETO', 'HIGIENIZA'):
@@ -653,3 +681,244 @@ def test_r05_18b_o_404_da_sonda_usa_o_corpo_canonico_do_projeto():
         .split('SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM', 1)[0])
     assert "'Rota não encontrada.'" in trecho, \
         'o 404 da sonda precisa usar o mesmo corpo de app.not_found()'
+
+
+# ── R05-19..23: terceira rodada da revisão automática ───────────────────────
+
+def _determinacao_falsa(ambiente, veredito, valor, tamanho=2):
+    """Uma `Determinacao` já concluída, para exercitar o rodapé do script sem
+    rede. Os controles carregam os campos decisivos porque é deles que
+    `_forma_da_determinacao` monta a forma salva."""
+    r = CERT.Determinacao(ambiente)
+    r.executado = True
+    r.veredito = veredito
+    r.valor = valor
+    amostra = {
+        'cadeia_tamanho': tamanho,
+        'sentinela_presente': True,
+        'sentinela_indice': 0,
+        'elementos_a_direita_do_sentinela': valor,
+        'veredito': veredito,
+        'cabecalhos_de_forwarding': ['X-Forwarded-For'],
+        'peer_classe': 'publico',
+        'peer_na_cadeia': False,
+        'peer_indice': None,
+    }
+    r.evidencia = [
+        ('A · sem X-Forwarded-For', amostra),
+        ('B · um sentinela', amostra),
+        ('C · três sentinelas', amostra),
+    ]
+    return r
+
+
+def _rodar_main(monkeypatch, resultados, **ambiente):
+    """Executa `CERT.main()` com `determinar` dublado e o ambiente controlado."""
+    for nome in ('EPI_PROXY_ORIGEM', 'EPI_PROXY_MEDICAO_ANTERIOR',
+                 'EPI_PROXY_SALVAR_MEDICAO'):
+        monkeypatch.delenv(nome, raising=False)
+    for nome, valor in ambiente.items():
+        monkeypatch.setenv(nome, valor)
+    monkeypatch.setenv('EPI_PROXY_CORP_URL', 'https://exemplo.invalid')
+    monkeypatch.setenv('EPI_PROXY_CORP_KEY', 'x')
+    monkeypatch.setenv('EPI_PROXY_SAAS_URL', 'https://exemplo.invalid')
+    monkeypatch.setenv('EPI_PROXY_SAAS_KEY', 'x')
+    fila = list(resultados)
+    monkeypatch.setattr(CERT, 'determinar', lambda *a, **k: fila.pop(0))
+    return CERT.main()
+
+
+def test_r05_19_uma_origem_so_nao_certifica(monkeypatch, capsys):
+    """Achado P1. Três repetições saem todas da mesma máquina e enxergam o
+    mesmo caminho. Se o roteamento da borda depender de origem, certificar N
+    daqui faz `cadeia[-N]` apontar para um elemento do CLIENTE nos caminhos
+    mais curtos — o bypass que a R0 fechou."""
+    resultados = [_determinacao_falsa('corporativo', 'ANEXA', 1),
+                  _determinacao_falsa('saas', 'ANEXA', 1)]
+    codigo = _rodar_main(monkeypatch, resultados)
+    saida = capsys.readouterr().out
+    assert codigo == 3, f'uma origem só devolveu código {codigo}'
+    assert '[MEDIDO]' in saida and '[DETERMINED]' not in saida
+    assert 'NÃO configure nada' in saida
+
+
+def test_r05_19b_duas_origens_que_concordam_certificam(monkeypatch, capsys, tmp_path):
+    """O contrapeso: se o gate acima só soubesse recusar, a R0.5 não teria
+    estado terminal e o número nunca poderia ser fechado."""
+    arquivo = tmp_path / 'medicao-casa.json'
+    CERT._salvar_medicao(str(arquivo), 'casa', [
+        _determinacao_falsa('corporativo', 'ANEXA', 1),
+        _determinacao_falsa('saas', 'ANEXA', 1),
+    ])
+    resultados = [_determinacao_falsa('corporativo', 'ANEXA', 1),
+                  _determinacao_falsa('saas', 'ANEXA', 1)]
+    codigo = _rodar_main(monkeypatch, resultados,
+                         EPI_PROXY_ORIGEM='4g',
+                         EPI_PROXY_MEDICAO_ANTERIOR=str(arquivo))
+    saida = capsys.readouterr().out
+    assert codigo == 0, f'duas origens concordes devolveram código {codigo}'
+    assert 'corroborada por duas origens' in saida
+
+
+def test_r05_19c_duas_origens_que_discordam_reprovam(monkeypatch, capsys, tmp_path):
+    arquivo = tmp_path / 'medicao-casa.json'
+    CERT._salvar_medicao(str(arquivo), 'casa', [
+        _determinacao_falsa('corporativo', 'ANEXA', 2),
+        _determinacao_falsa('saas', 'ANEXA', 2),
+    ])
+    resultados = [_determinacao_falsa('corporativo', 'ANEXA', 1),
+                  _determinacao_falsa('saas', 'ANEXA', 1)]
+    codigo = _rodar_main(monkeypatch, resultados,
+                         EPI_PROXY_ORIGEM='4g',
+                         EPI_PROXY_MEDICAO_ANTERIOR=str(arquivo))
+    saida = capsys.readouterr().out
+    assert codigo == 1, f'origens discordantes devolveram código {codigo}'
+    assert 'NÃO corroborado' in saida
+
+
+def test_r05_19d_a_mesma_origem_nao_corrobora_a_si_mesma(monkeypatch, capsys, tmp_path):
+    """Rodar duas vezes da mesma rede mede o mesmo caminho duas vezes."""
+    arquivo = tmp_path / 'medicao-casa.json'
+    CERT._salvar_medicao(str(arquivo), 'casa', [
+        _determinacao_falsa('corporativo', 'ANEXA', 1),
+        _determinacao_falsa('saas', 'ANEXA', 1),
+    ])
+    codigo = _rodar_main(monkeypatch,
+                         [_determinacao_falsa('corporativo', 'ANEXA', 1),
+                          _determinacao_falsa('saas', 'ANEXA', 1)],
+                         EPI_PROXY_ORIGEM='casa',
+                         EPI_PROXY_MEDICAO_ANTERIOR=str(arquivo))
+    assert codigo == 1
+    assert 'MESMA origem' in capsys.readouterr().out
+
+
+def test_r05_20_ambientes_com_modelos_diferentes_nao_passam_por_iguais(monkeypatch, capsys):
+    """`HIGIENIZA` e `PASSA_DIRETO` dão os dois o valor 0. Comparar só o número
+    dizia "cadeia determinada" com as bordas sendo de modelos diferentes — e o
+    contrato, que é idêntico nos dois repositórios, registra o MODELO."""
+    resultados = [_determinacao_falsa('corporativo', 'HIGIENIZA', 0),
+                  _determinacao_falsa('saas', 'PASSA_DIRETO', 0)]
+    codigo = _rodar_main(monkeypatch, resultados)
+    saida = capsys.readouterr().out
+    assert codigo == 1, f'modelos diferentes devolveram código {codigo}'
+    assert 'DIFERENTES' in saida
+    assert 'HIGIENIZA' in saida and 'PASSA_DIRETO' in saida
+
+
+class _RespostaFalsa:
+    """Resposta HTTP mínima, só o que `_sondar` consome."""
+
+    def __init__(self, corpo, status=200):
+        self._corpo = corpo.encode('utf-8')
+        self.status = status
+
+    def read(self):
+        return self._corpo
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def _sondar_com_corpo(monkeypatch, corpo):
+    monkeypatch.setattr(CERT._ABRIDOR, 'open',
+                        lambda req, timeout=None: _RespostaFalsa(corpo))
+    return CERT._sondar('https://exemplo.invalid', 'chave', None)
+
+
+def test_r05_21_resposta_json_que_nao_e_objeto_vira_nao_determinado(monkeypatch):
+    """`json.loads('[]')` devolve lista sem erro, e `_forma` chama `.get`. A
+    versão anterior estourava AttributeError no meio do relatório, justamente
+    no caso que o script existe para diagnosticar.
+
+    A primeira versão deste gate procurava `isinstance(dados, dict)` no texto
+    do script inteiro — e o script tem OUTRA ocorrência dessa mesma linha, em
+    `_carregar_medicao`. A sabotagem que apagava a verificação de `_sondar`
+    passava. Comportamento, não texto.
+    """
+    with pytest.raises(CERT.NaoDeterminado) as erro:
+        _sondar_com_corpo(monkeypatch, '[]')
+    assert 'não é um objeto' in str(erro.value)
+
+
+def test_r05_21b_resposta_de_objeto_continua_passando(monkeypatch):
+    """Contrapeso: um gate que só soubesse recusar quebraria o script."""
+    assert _sondar_com_corpo(monkeypatch, '{"veredito": "ANEXA"}') == {'veredito': 'ANEXA'}
+
+
+def test_r05_22_a_sonda_quebrada_nao_passa_por_sonda_removida():
+    """Uma sonda que existe e quebra ao importar não pode passar por sonda
+    removida: os gates `@com_sonda` ficariam pulados e a suíte verde, enquanto
+    a rota de produção estouraria ao carregar o mesmo módulo.
+
+    Duas versões anteriores deste gate falharam por motivos opostos, e as duas
+    foram descobertas por sabotagem: a primeira procurava o nome da exceção no
+    texto do próprio arquivo — e a asserção continha esse nome, então o teste
+    satisfazia a si mesmo; a segunda exigia `except ModuleNotFoundError`, que
+    não é o que o Python levanta quando o arquivo some (`from pacote import
+    modulo` ausente dá `ImportError` puro), e com ela o estado terminal ficava
+    inalcançável.
+    """
+    import ast
+
+    arvore = ast.parse(Path(__file__).read_text(encoding='utf-8'))
+    importes_da_sonda = [
+        no for no in ast.walk(arvore)
+        if isinstance(no, ast.ImportFrom) and no.module == 'epi_backend'
+        and any(alias.name == 'proxy_chain_probe' for alias in no.names)
+    ]
+    assert importes_da_sonda, 'o import da sonda sumiu do arquivo'
+
+    # Nenhum `try` pode envolver o import: é isso que engole a sonda quebrada.
+    protegidos = {
+        id(no) for tentativa in ast.walk(arvore) if isinstance(tentativa, ast.Try)
+        for no in ast.walk(tentativa)
+    }
+    for importe in importes_da_sonda:
+        assert id(importe) not in protegidos, (
+            'o import da sonda voltou para dentro de um try: uma sonda que '
+            'existe e quebra passaria por sonda removida'
+        )
+
+    # E a ausência continua tolerada pela via que não executa o módulo.
+    consultas = [
+        no for no in ast.walk(arvore)
+        if isinstance(no, ast.Call) and isinstance(no.func, ast.Attribute)
+        and no.func.attr == 'find_spec'
+        and any(isinstance(arg, ast.Constant)
+                and arg.value == 'epi_backend.proxy_chain_probe' for arg in no.args)
+    ]
+    assert consultas, (
+        'a guarda deixou de consultar `find_spec`: ou o import virou '
+        'incondicional (e o estado terminal fica inalcançável), ou voltou '
+        'para dentro de um try'
+    )
+
+
+
+def test_r05_23_o_padrao_sem_configuracao_e_zero():
+    """`R05-7b` troca `TRUSTED_PROXY_HOPS` por 0 antes de exercitar o
+    comportamento, então ele não enxerga o INICIALIZADOR. Trocar o default de
+    `'0'` para `'1'` em `core/rate_limit.py` passaria por toda a suíte e faria
+    implantações não configuradas confiarem no cabeçalho do cliente.
+
+    Import limpo, em processo separado, com a variável ausente: recarregar o
+    módulo aqui dentro criaria limitadores novos e `modules/auth/routes.py`
+    continuaria apontando para os antigos.
+    """
+    ambiente = {k: v for k, v in os.environ.items()
+                if k != 'RATE_LIMIT_TRUSTED_PROXY_HOPS'}
+    ambiente['PYTHONPATH'] = str(RAIZ)
+    saida = subprocess.run(
+        [sys.executable, '-c',
+         'import core.rate_limit as RL; print(RL.TRUSTED_PROXY_HOPS)'],
+        capture_output=True, text=True, env=ambiente, cwd=str(RAIZ),
+        timeout=60, check=False)
+    assert saida.returncode == 0, f'import limpo falhou: {saida.stderr}'
+    assert saida.stdout.strip() == '0', (
+        'sem RATE_LIMIT_TRUSTED_PROXY_HOPS no ambiente, o padrão deixou de ser '
+        f'0 e virou {saida.stdout.strip()!r} — implantação não configurada '
+        'passaria a confiar no cabeçalho do cliente'
+    )

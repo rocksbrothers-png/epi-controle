@@ -54,20 +54,63 @@ Três controles, cada um repetido, e o valor só é aceito quando todos concorda
 Divergência entre repetições da mesma sondagem também reprova: isso indicaria
 mais de um caminho de borda, e um número médio não protege ninguém.
 
+## Uma origem mede UM caminho, não a cadeia
+
+`get_client_ip` lê `cadeia[-N]`. Se algum caminho de produção atravessar MENOS
+proxies do que os N medidos aqui, nesse caminho `cadeia[-N]` é um elemento que
+o CLIENTE escreveu — o bypass que a R0 fechou, reaberto com aparência de
+medição.
+
+Com `N=2` e um caminho de 1 proxy: o cliente manda `evil`, o proxy anexa o
+endereço dele, a cadeia chega como `[evil, cliente]`, `len` não é menor que 2,
+e `cadeia[-2]` devolve `evil`.
+
+As três repetições de cada controle não ajudam aqui: elas saem todas da mesma
+máquina e enxergam o mesmo caminho. Se o roteamento da borda depender de origem
+ou região, este script pode observar, de forma perfeitamente consistente, uma
+cadeia que não vale para os outros usuários.
+
+Logo o valor seguro não é o que esta origem mediu: é o **menor** entre todos os
+caminhos. Por isso o script mede, salva a forma, e só certifica quando uma
+segunda origem independente produz a mesma forma:
+
+    # primeira máquina (ex.: rede de casa)
+    export EPI_PROXY_ORIGEM=casa
+    export EPI_PROXY_SALVAR_MEDICAO=medicao-casa.json
+    python3 scripts/certificar_cadeia_de_proxy.py        # -> [MEDIDO], saída 3
+
+    # segunda máquina, rede DIFERENTE (ex.: 4G, VPS em outra região)
+    export EPI_PROXY_ORIGEM=4g
+    export EPI_PROXY_MEDICAO_ANTERIOR=medicao-casa.json
+    python3 scripts/certificar_cadeia_de_proxy.py        # -> [DETERMINED], saída 0
+
+O rótulo da origem é declarado pelo operador, e o script não tem como
+verificá-lo. Está escrito assim de propósito: é um passo deliberado do
+procedimento, não uma garantia do instrumento. O arquivo salvo guarda só FORMA
+— as mesmas contagens e posições que a sonda devolve, nenhum endereço.
+
+Achado levantado pela revisão automática do Codex (P1) e confirmado lendo
+`core/rate_limit.py`: a versão anterior certificava, de uma origem só, um
+número que reabriria o bypass nos caminhos mais curtos.
+
 ## Uso
 
     export EPI_PROXY_CORP_URL=https://...        # API corporativa
     export EPI_PROXY_CORP_KEY=...                # PROXY_CHAIN_PROBE_KEY do serviço
     export EPI_PROXY_SAAS_URL=https://...        # API do SaaS
     export EPI_PROXY_SAAS_KEY=...
+    export EPI_PROXY_ORIGEM=casa                 # rótulo desta origem
+    export EPI_PROXY_SALVAR_MEDICAO=...          # onde gravar a forma medida
+    export EPI_PROXY_MEDICAO_ANTERIOR=...        # medição de OUTRA origem
     python3 scripts/certificar_cadeia_de_proxy.py
 
 Definir `PROXY_CHAIN_PROBE_KEY` no serviço é o que liga a sonda. Sem ela, a
 rota devolve 404 e este script reporta NOT DETERMINED — que é o comportamento
 correto, não uma falha.
 
-Saída: 0 = determinado nos ambientes informados · 1 = medições inconsistentes
-· 2 = não executado/não determinado.
+Saída: 0 = determinado E corroborado por duas origens · 1 = medições
+inconsistentes ou ambientes divergentes · 2 = não executado/não determinado ·
+3 = medido numa origem só, falta corroborar.
 """
 
 from __future__ import annotations
@@ -144,7 +187,19 @@ def _sondar(base_url: str, chave: str, xff: str | None) -> dict:
             corpo = resp.read().decode('utf-8', errors='replace')
             if resp.status != 200:
                 raise NaoDeterminado(f'HTTP {resp.status} em {ROTA}')
-            return json.loads(corpo)
+            dados = json.loads(corpo)
+            # `json.loads` aceita qualquer JSON válido, inclusive `[]` e
+            # `"ok"`. Uma URL errada, um proxy corporativo que responde por
+            # conta própria ou uma sonda de outra versão devolvem isso — e o
+            # valor escapava daqui para `_forma`, que chama `.get` e estourava
+            # AttributeError. O script morria com traceback justamente no caso
+            # que ele existe para diagnosticar.
+            if not isinstance(dados, dict):
+                raise NaoDeterminado(
+                    f'a resposta é JSON mas não é um objeto '
+                    f'({type(dados).__name__}) — a URL aponta mesmo para a sonda?'
+                )
+            return dados
     except urllib.error.HTTPError as e:
         if e.code == 404:
             raise NaoDeterminado(
@@ -318,6 +373,93 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
     return resultado
 
 
+# ── Corroboração por uma segunda origem ─────────────────────────────────────
+#
+# O raciocínio está no topo do arquivo. Aqui só a mecânica: guardar a FORMA
+# medida, e comparar com a forma que outra origem mediu. Nenhum endereço entra
+# no arquivo — os campos salvos são os mesmos que a sonda devolve.
+
+VERSAO_DA_MEDICAO = 1
+
+
+def _forma_da_determinacao(r: Determinacao) -> dict:
+    return {
+        'ambiente': r.ambiente,
+        'veredito': r.veredito,
+        'valor': r.valor,
+        'controles': [
+            {campo: amostra.get(campo) for campo in CAMPOS_DECISIVOS}
+            for _, amostra in r.evidencia
+        ],
+    }
+
+
+def _salvar_medicao(caminho: str, origem: str, resultados: list) -> str:
+    dados = {
+        'versao': VERSAO_DA_MEDICAO,
+        'origem': origem,
+        'ambientes': [_forma_da_determinacao(r) for r in resultados if r.determinado],
+    }
+    with open(caminho, 'w', encoding='utf-8') as arquivo:
+        json.dump(dados, arquivo, ensure_ascii=False, indent=2, sort_keys=True)
+    return caminho
+
+
+def _carregar_medicao(caminho: str) -> dict:
+    try:
+        with open(caminho, encoding='utf-8') as arquivo:
+            dados = json.load(arquivo)
+    except OSError as e:
+        raise NaoDeterminado(f'não consegui ler a medição anterior: {e}') from e
+    except json.JSONDecodeError as e:
+        raise NaoDeterminado(f'a medição anterior não é JSON válido: {e}') from e
+    if not isinstance(dados, dict) or dados.get('versao') != VERSAO_DA_MEDICAO:
+        raise NaoDeterminado(
+            'a medição anterior não tem o formato esperado — gere-a de novo '
+            'com esta versão do script'
+        )
+    if not str(dados.get('origem') or '').strip():
+        raise NaoDeterminado('a medição anterior não declara a origem')
+    return dados
+
+
+def _corroborar(resultados: list, origem: str, anterior: dict) -> tuple:
+    """Confere se outra origem mediu a MESMA forma. Devolve (certifica, motivo)."""
+    origem_anterior = str(anterior.get('origem') or '').strip()
+    if origem and origem == origem_anterior:
+        return False, (
+            f'a medição anterior declara a MESMA origem ({origem!r}). Duas '
+            'medições do mesmo caminho não dizem nada sobre os outros caminhos'
+        )
+    por_ambiente = {a.get('ambiente'): a for a in (anterior.get('ambientes') or [])}
+    determinados = [r for r in resultados if r.determinado]
+    if not determinados:
+        return False, 'nada determinado nesta origem para corroborar'
+    for r in determinados:
+        antes = por_ambiente.get(r.ambiente)
+        if antes is None:
+            return False, (
+                f'a medição de {origem_anterior!r} não cobre o ambiente '
+                f'{r.ambiente!r}'
+            )
+        agora = _forma_da_determinacao(r)
+        if (antes.get('veredito'), antes.get('valor')) != (agora['veredito'], agora['valor']):
+            return False, (
+                f'{r.ambiente}: as origens discordam — {origem_anterior!r} mediu '
+                f'{antes.get("veredito")}/{antes.get("valor")} e {origem!r} mediu '
+                f'{agora["veredito"]}/{agora["valor"]}. O roteamento da borda '
+                'depende da origem, e o valor seguro é o MENOR de todos os '
+                'caminhos: provar um mínimo exige medir todas as rotas, não duas'
+            )
+        if antes.get('controles') != agora['controles']:
+            return False, (
+                f'{r.ambiente}: o veredito e o número batem, mas a forma dos '
+                'controles difere entre as origens — há mais de um caminho de '
+                'borda e a leitura não é única'
+            )
+    return True, f'{origem_anterior!r} e {origem!r} mediram a mesma forma'
+
+
 def _linha_evidencia(rotulo: str, amostra: dict) -> str:
     return (
         f'    {rotulo:26} cadeia={amostra.get("cadeia_tamanho")} '
@@ -332,6 +474,20 @@ def _linha_evidencia(rotulo: str, amostra: dict) -> str:
 
 
 def main() -> int:
+    origem = os.environ.get('EPI_PROXY_ORIGEM', '').strip()
+    caminho_anterior = os.environ.get('EPI_PROXY_MEDICAO_ANTERIOR', '').strip()
+    caminho_salvar = os.environ.get('EPI_PROXY_SALVAR_MEDICAO', '').strip()
+
+    # Carregada ANTES de sondar: descobrir que o arquivo não serve depois de
+    # nove requisições seria desperdiçar a ida ao serviço.
+    anterior = None
+    erro_anterior = ''
+    if caminho_anterior:
+        try:
+            anterior = _carregar_medicao(caminho_anterior)
+        except NaoDeterminado as e:
+            erro_anterior = str(e)
+
     alvos = [
         ('corporativo', os.environ.get('EPI_PROXY_CORP_URL', ''),
          os.environ.get('EPI_PROXY_CORP_KEY', '')),
@@ -376,8 +532,10 @@ def main() -> int:
             print(f'   {r.motivo}')
             continue
 
-        print(f'[DETERMINED] {r.ambiente} — borda {r.veredito}')
-        print(f'   RATE_LIMIT_TRUSTED_PROXY_HOPS={r.valor}')
+        # `MEDIDO`, não `DETERMINED`: esta origem mediu um caminho. O
+        # veredito final só sai no rodapé, depois da corroboração.
+        print(f'[MEDIDO] {r.ambiente} — borda {r.veredito}')
+        print(f'   RATE_LIMIT_TRUSTED_PROXY_HOPS={r.valor} (medido desta origem)')
         if r.valor == 0:
             print('   A borda não contribui com nada confiável para o cabeçalho.')
             print('   O peer do socket continua sendo a única origem honesta.')
@@ -394,12 +552,47 @@ def main() -> int:
     if nao_executado:
         print('RESULTADO: NOT DETERMINED — mantenha RATE_LIMIT_TRUSTED_PROXY_HOPS=0.')
         return 2
-    valores = {r.valor for r in resultados if r.determinado}
-    if len(valores) > 1:
+    # Valor E modelo. `HIGIENIZA` e `PASSA_DIRETO` produzem os dois o valor
+    # `0`, então comparar só o número dizia "determinada" enquanto os dois
+    # ambientes tinham bordas de modelos diferentes. O contrato registra
+    # `MODELO-DA-BORDA` e é idêntico nos dois repositórios: fechar os dois a
+    # partir desse sucesso gravaria um modelo errado em um deles.
+    assinaturas = {(r.valor, r.veredito) for r in resultados if r.determinado}
+    if len(assinaturas) > 1:
         print('RESULTADO: os dois ambientes têm cadeias DIFERENTES.')
-        print('Cada repositório precisa do seu próprio valor — não unifique.')
+        for r in resultados:
+            if r.determinado:
+                print(f'   {r.ambiente}: borda {r.veredito} → {r.valor}')
+        print('Cada repositório precisa do seu próprio contrato — não unifique.')
         return 1
-    print('RESULTADO: cadeia determinada nos ambientes informados.')
+
+    if caminho_salvar:
+        try:
+            _salvar_medicao(caminho_salvar, origem or '(sem rótulo)', resultados)
+            print(f'Forma desta origem gravada em {caminho_salvar}.')
+        except OSError as e:
+            print(f'AVISO: não consegui gravar a medição — {e}')
+
+    if erro_anterior:
+        print(f'RESULTADO: MEDIDO, mas a medição anterior não serviu — {erro_anterior}')
+        return 3
+    if anterior is None:
+        print('RESULTADO: MEDIDO numa origem só — ainda NÃO configure nada.')
+        print('Uma origem mede um caminho, não a cadeia. Repita de uma rede')
+        print('independente com EPI_PROXY_MEDICAO_ANTERIOR apontando para a')
+        print('forma salva aqui.')
+        return 3
+    if not origem:
+        print('RESULTADO: MEDIDO, mas esta origem não declarou EPI_PROXY_ORIGEM.')
+        print('Sem rótulo não há como afirmar que as duas medições vieram de')
+        print('caminhos diferentes.')
+        return 3
+
+    corrobora, motivo = _corroborar(resultados, origem, anterior)
+    if not corrobora:
+        print(f'RESULTADO: NÃO corroborado — {motivo}')
+        return 1
+    print(f'RESULTADO: cadeia determinada e corroborada por duas origens ({motivo}).')
     return 0
 
 

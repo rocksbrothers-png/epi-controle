@@ -23,6 +23,7 @@ evidência na mão.
 ESTADO-DA-CADEIA: INDETERMINADO
 SALTOS-CONFIAVEIS: nao-determinado
 MODELO-DA-BORDA: nao-determinado
+ORIGENS-CORROBORADAS: nao-determinado
 EVIDENCIA: nao-produzida
 <!-- CONTRATO-R05-FIM -->
 
@@ -103,6 +104,33 @@ O valor só é aceito quando:
 - a contribuição da borda é **a mesma nos três controles**. Se ela variar com o
   que o cliente mandou, o modelo está errado e o script recusa o número.
 
+### Por que uma origem não basta
+
+Os três controles saem todos da mesma máquina e enxergam o mesmo caminho. Se o
+roteamento da borda depender de origem ou região, esse caminho pode não ser o
+que os outros usuários atravessam — e as repetições concordariam, de forma
+perfeitamente consistente, com uma cadeia que vale só para quem mediu.
+
+O estrago é concreto. `get_client_ip` lê `cadeia[-N]`, e o guarda é
+`len(cadeia) < N`. Com `N = 2` e um caminho de **um** proxy, o cliente manda
+`evil`, o proxy anexa o endereço dele, a cadeia chega como `[evil, cliente]`,
+o comprimento não é menor que 2, e `cadeia[-2]` devolve `evil`. É exatamente o
+bypass que a R0 fechou, reaberto com aparência de medição.
+
+Logo o valor seguro não é o que uma origem mediu: é o **menor** entre todos os
+caminhos. O script grava a forma que mediu e só certifica quando uma segunda
+origem independente produz a mesma forma — `EPI_PROXY_ORIGEM`,
+`EPI_PROXY_SALVAR_MEDICAO` e `EPI_PROXY_MEDICAO_ANTERIOR`. De uma origem só,
+ele sai com `[MEDIDO]` e código 3, que não é sinal verde.
+
+O rótulo da origem é declarado pelo operador e o instrumento não tem como
+verificá-lo. Está assim de propósito: é um passo deliberado do procedimento,
+não uma garantia do script. `ORIGENS-CORROBORADAS` registra quantas origens
+sustentaram o número, e o contrato não fecha com menos de duas.
+
+Achado levantado pela revisão automática do Codex (P1) e confirmado lendo
+`core/rate_limit.py` antes de ser aceito.
+
 ### Os sentinelas
 
 `192.0.2.10`, `192.0.2.11`, `192.0.2.12` — TEST-NET-1 (RFC 5737). Espaço de
@@ -180,13 +208,20 @@ alguém lembrar.
 1. Definir `PROXY_CHAIN_PROBE_KEY` no serviço (painel da Render), nos dois
    ambientes. Sem isso a sonda fica inerte.
 2. Rodar `scripts/certificar_cadeia_de_proxy.py` com `EPI_PROXY_CORP_URL`,
-   `EPI_PROXY_CORP_KEY`, `EPI_PROXY_SAAS_URL`, `EPI_PROXY_SAAS_KEY`.
-3. Conferir a evidência impressa. Se sair `NOT DETERMINED` ou `INCONSISTENT`,
-   **não configure nada** — o `0` continua valendo.
-4. Com o número em mãos: preencher o bloco de contrato acima nos dois
-   repositórios, declarar `RATE_LIMIT_TRUSTED_PROXY_HOPS` em `env.example` e
-   `render.yaml`, confirmar o valor no painel da Render, e **remover a sonda**.
-5. Os gates passam a exigir exatamente isso — não é disciplina, é suíte
+   `EPI_PROXY_CORP_KEY`, `EPI_PROXY_SAAS_URL`, `EPI_PROXY_SAAS_KEY`,
+   `EPI_PROXY_ORIGEM` e `EPI_PROXY_SALVAR_MEDICAO`.
+3. Rodar **de novo, de uma rede independente** — outra operadora, 4G, uma
+   máquina em outra região — com um `EPI_PROXY_ORIGEM` diferente e
+   `EPI_PROXY_MEDICAO_ANTERIOR` apontando para o arquivo do passo 2.
+4. Conferir a evidência impressa. `NOT DETERMINED`, `INCONSISTENT` ou
+   `[MEDIDO]` (código 3) significam **não configure nada** — o `0` continua
+   valendo. Só `RESULTADO: cadeia determinada e corroborada por duas origens`
+   libera o passo seguinte.
+5. Com o número em mãos: preencher o bloco de contrato acima nos dois
+   repositórios — incluindo `ORIGENS-CORROBORADAS` —, declarar
+   `RATE_LIMIT_TRUSTED_PROXY_HOPS` em `env.example` e `render.yaml`, confirmar
+   o valor no painel da Render, e **remover a sonda**.
+6. Os gates passam a exigir exatamente isso — não é disciplina, é suíte
    vermelha.
 
 Se os dois ambientes tiverem cadeias diferentes, cada repositório recebe o seu

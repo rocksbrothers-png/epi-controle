@@ -94,15 +94,52 @@ P3 acrescenta:   <lixo>, <cliente>, <P1>, <P2>
 aplicação vê:    peer = P3
 ```
 
-`cadeia[-3]` é `<cliente>` — o endereço que o proxy mais externo observou. É o
-que `get_client_ip` devolve com `TRUSTED_PROXY_HOPS = 3`, e bate com as três
-medições:
+`cadeia[-3]` é o endereço que o proxy mais externo observou como peer. É o que
+`get_client_ip` devolve com `TRUSTED_PROXY_HOPS = 3`, e a posição bate com as
+três medições:
 
-| controle | cadeia | `cadeia[-3]` |
+| controle | cadeia | posição de `cadeia[-3]` |
 |---|---|---|
-| A | 3 elementos | índice 0 — o cliente |
-| B | 4 elementos | índice 1 — o cliente, logo após o sentinela |
-| C | 6 elementos | índice 3 — o cliente, logo após os três sentinelas |
+| A | 3 elementos | índice 0 |
+| B | 4 elementos | índice 1 — logo após o sentinela |
+| C | 6 elementos | índice 3 — logo após os três sentinelas |
+
+### O que é medido e o que é inferido
+
+Esta distinção decide o que o número vale, e a primeira versão deste documento
+a apagou: ela afirmava que `cadeia[-3]` **é o cliente**, como se isso tivesse
+sido observado.
+
+**Medido:** a borda contribui com 3 elementos, e essa contribuição não muda com
+o que o cliente envia. Os três controles estabelecem isso e nada além disso.
+
+**Inferido:** que o primeiro desses 3 elementos seja o endereço de origem. A
+sonda devolvia só forma — contagens e posições —, nunca identidade. Ela nunca
+comparou `cadeia[-3]` com endereço nenhum, por construção: era essa a
+propriedade de privacidade que a fazia aceitável.
+
+**E a inferência tem um contraexemplo que a medição não separa.** Se o
+elemento mais externo da contribuição não for o cliente e sim um proxy
+compartilhado a montante — que repasse o `X-Forwarded-For` intocado e **não**
+acrescente entrada própria —, as três formas são byte a byte as mesmas:
+
+| controle | cliente atrás de proxy compartilhado | cliente direto |
+|---|---|---|
+| A | cadeia 3, sem sentinela | cadeia 3, sem sentinela |
+| B | cadeia 4, sentinela@0, 3 à direita | cadeia 4, sentinela@0, 3 à direita |
+| C | cadeia 6, sentinela@2, 3 à direita | cadeia 6, sentinela@2, 3 à direita |
+
+E `cadeia[-3]` seria aquele proxy, igual para todo mundo atrás dele.
+
+**A consequência é colapso, não spoofing** — e a diferença importa para
+priorizar. O elemento é escrito pelo proxy, não pelo cliente, então ninguém
+escolhe o próprio balde por esse caminho. O risco é o valor `3` não separar
+origem nenhuma e a mudança não entregar o que promete, ficando equivalente ao
+`0` de hoje. É diferente, em natureza e em gravidade, do risco de cobertura de
+rota descrito no §3.
+
+Achado levantado pela revisão automática do Codex (P1) e confirmado por
+construção antes de ser aceito.
 
 ---
 
@@ -125,6 +162,12 @@ instrumento local verifica.
 mudança de plano ou região no Render — o número 3 deixa de valer **em silêncio**,
 e para pior: ele passa a apontar para dentro do território que o cliente
 escreve. Mudança de borda exige nova medição, não ajuste por dedução.
+
+**A identidade de `cadeia[-3]` não foi observada.** A sonda media forma, nunca
+identidade. Ver §2, "O que é medido e o que é inferido": um proxy compartilhado
+a montante que não acrescente entrada própria produz exatamente as mesmas três
+formas, e nesse caso o valor `3` não separaria origem nenhuma. Confirmar exige
+comparar `cadeia[-N]` com um endereço que o chamador saiba ser o seu — ver §7.
 
 **O peer do socket não é o cliente.** `peer_na_cadeia=não` e `peer=privado` nos
 dois ambientes: o endereço da outra ponta do socket é da infraestrutura da
@@ -259,7 +302,16 @@ quem precisar medir de novo:
    três sentinelas —, cada um repetido, aceitando o número só quando as
    repetições concordam, B e C concordam no modelo, e a contribuição da borda é
    a mesma nos três.
-3. Ler o resultado pela tabela do §2, e registrar aqui a evidência antes de
+3. **Um booleano que a primeira versão não teve:** `cadeia[-N]` coincide com o
+   endereço que o chamador sabe ser o seu? A sonda pode responder isso sem
+   devolver endereço nenhum — o chamador informa o endereço que observa de si,
+   a sonda compara e devolve só `true`/`false`. Sem essa comparação, a forma
+   medida não distingue "o elemento é o cliente" de "o elemento é um proxy
+   compartilhado a montante", e o número fica sustentado por inferência em vez
+   de observação.
+4. Repetir de uma segunda origem independente, em rede diferente, para atacar
+   a lacuna de cobertura de rota do §3.
+5. Ler o resultado pela tabela do §2, e registrar aqui a evidência antes de
    configurar qualquer coisa.
 
 A implementação anterior está no histórico do PR que fechou esta fatia.

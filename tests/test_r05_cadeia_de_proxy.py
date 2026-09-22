@@ -338,6 +338,58 @@ def test_r05_4c_o_documento_registra_o_que_a_medicao_nao_prova():
         'sumiu do documento a ressalva sobre medir de uma origem só'
 
 
+def test_r05_4d_o_documento_separa_o_medido_do_inferido():
+    """A sonda devolvia FORMA, nunca identidade — era essa a propriedade de
+    privacidade que a fazia aceitável. Então o número está sustentado por duas
+    afirmações de naturezas diferentes:
+
+    medido    a borda contribui com 3, e a contribuição não muda com o cliente;
+    inferido  o primeiro desses 3 é o endereço de origem.
+
+    A inferência tem contraexemplo que a medição não separa: um proxy
+    compartilhado a montante, que repasse o cabeçalho intocado e não acrescente
+    entrada própria, produz as três formas byte a byte iguais — e `cadeia[-3]`
+    seria ele, igual para todos. A consequência é colapso, não spoofing, mas o
+    documento não pode apresentar a inferência como observação.
+
+    A primeira versão deste documento fazia exatamente isso. Achado do Codex
+    (P1), confirmado por construção antes de ser aceito.
+    """
+    if not _determinado():
+        return
+    texto = CONTRATO.read_text(encoding='utf-8')
+
+    # Pelo CABEÇALHO, não por substring solta: a primeira versão deste gate
+    # procurava a frase no documento inteiro, e ela também aparece na remissão
+    # do §3 — apagar a seção deixava o gate verde. A sabotagem mostrou.
+    cabecalhos = [linha.strip() for linha in texto.splitlines()
+                  if linha.startswith('#')]
+    assert '### O que é medido e o que é inferido' in cabecalhos, (
+        'sumiu do documento a seção que separa a forma medida da identidade '
+        f'inferida de `cadeia[-N]`. Cabeçalhos presentes: {cabecalhos}'
+    )
+
+    # Dentro da SEÇÃO, não no documento inteiro. Duas sabotagens seguidas
+    # passaram por causa disso: a frase procurada também aparece na remissão do
+    # §3, então apagá-la do §2 deixava o gate verde.
+    #
+    # E com espaço normalizado: o documento é quebrado em ~78 colunas, então
+    # uma frase procurada como substring literal atravessa quebra de linha e
+    # não casa. A primeira versão reprovou sozinha por isso, e o motivo era o
+    # gate, não o documento.
+    corpo = texto.split('### O que é medido e o que é inferido', 1)[1]
+    corpo = corpo.split('\n---', 1)[0].split('\n## ', 1)[0]
+    corrido = ' '.join(corpo.split())
+
+    for marca, falta in (
+        ('**Medido:**', 'o que os controles realmente estabelecem'),
+        ('**Inferido:**', 'a parte que não foi observada'),
+        ('proxy compartilhado a montante', 'o contraexemplo'),
+        ('colapso, não spoofing', 'a natureza da consequência'),
+    ):
+        assert marca in corrido, f'sumiu da seção {falta} ({marca!r})'
+
+
 # ── R05-5: a sonda temporária saiu, e não volta ─────────────────────────────
 
 def test_r05_5_a_sonda_nao_esta_no_repositorio():

@@ -27,8 +27,10 @@ EVIDENCIA: medicao-render-2026-09-22-corporate-e-saas
 Este bloco é lido por gate, não só por gente. Com `ESTADO-DA-CADEIA` em
 `DETERMINADO`:
 
-- `RATE_LIMIT_TRUSTED_PROXY_HOPS=3` é **obrigatório** nas superfícies de
-  deployment versionadas dos dois repositórios;
+- `RATE_LIMIT_TRUSTED_PROXY_HOPS=3` é **obrigatório** em `render.yaml`, nos
+  dois repositórios — é a superfície específica da topologia medida;
+- `env.example` continua em **`0`**: é modelo para qualquer implantação, e
+  `spec/09-deployment.md` manda copiá-lo para `.env`. Ver §4.1;
 - a sonda temporária é **proibida** no repositório;
 - `PROXY_CHAIN_PROBE_KEY` deixa de ser dependência de qualquer caminho.
 
@@ -138,9 +140,37 @@ O gate cobre o que está no repositório. Metade da configuração efetiva não 
 
 | superfície | quem aplica | gate cobre? |
 |---|---|---|
-| `env.example` | ninguém (é exemplo) | sim — o valor tem de estar lá |
-| `render.yaml` | blueprint, quando aplicado | sim — o valor tem de estar lá |
+| `env.example` | quem copia para `.env` | sim — tem de continuar em **`0`** |
+| `render.yaml` | blueprint, quando aplicado | sim — tem de trazer **`3`** |
 | painel do Render | **o operador, à mão** | **não** |
+
+### 4.1 Por que `env.example` fica em `0`
+
+`env.example` não é exemplo inerte: `spec/09-deployment.md:112` manda
+`cp env.example .env`, e `app.py` importa `epi_backend.config` — que chama
+`load_dotenv()` — **antes** de importar `core/rate_limit.py`. O que estiver no
+modelo vira a fronteira de confiança de quem seguiu o procedimento.
+
+Numa implantação sem proxy — execução local, container direto — declarar `3`
+ali é um buraco. Medido:
+
+```
+HOPS=3, nenhum proxy na frente:
+  atacante manda 'evilA', x, y  ->  bucket evilA
+  atacante manda 'evilB', x, y  ->  bucket evilB
+```
+
+O cliente completa a cadeia até o comprimento exigido, o guarda
+`len(cadeia) < 3` passa, e `cadeia[-3]` devolve o primeiro elemento — que foi
+ele quem escreveu. Baldes ilimitados: exatamente o defeito que a R0 fechou.
+
+O `3` é específico da topologia do Render e mora onde essa topologia é
+declarada. Valor topológico não entra em modelo genérico — e o gate `R05-3b`
+reprova se voltar a entrar.
+
+Achado levantado pela revisão automática do Codex (P1) e reproduzido de ponta a
+ponta antes de ser aceito: a primeira versão desta fatia escreveu `3` no
+modelo.
 
 `render.yaml` **não é provadamente a configuração efetiva**: o do repositório
 corporativo não declara `DATABASE_URL`, `JWT_SECRET` nem `APP_ENV`, e
@@ -181,6 +211,7 @@ O valor declarado não afrouxa nenhuma das proteções da R0:
 | situação | comportamento | por quê |
 |---|---|---|
 | variável ausente | `0` — ignora o cabeçalho, usa o peer | ausência de configuração nunca vira confiança |
+| modelo copiado para `.env` | `0` — o modelo carrega o padrão seguro | topologia desconhecida não recebe confiança emprestada |
 | valor negativo | `0` — `max(0, ...)` | idem |
 | cadeia mais curta que 3 | peer do socket | a requisição não atravessou a cadeia esperada; nada nela prova origem |
 | cliente manda lixo | `cadeia[-3]` continua sendo o cliente | a borda acrescenta 3 independentemente — medido em C |

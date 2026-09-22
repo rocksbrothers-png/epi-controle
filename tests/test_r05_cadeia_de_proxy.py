@@ -9,7 +9,8 @@ regressões que o fechamento cria ou mantém:
 
 - `R05-1`  o contrato continua legível por máquina
 - `R05-2`  paridade Corporate × SaaS do contrato e do limitador
-- `R05-3`  o valor do deployment bate com o contrato
+- `R05-3`  o valor do deployment bate com o contrato, e o modelo genérico
+           nunca carrega valor topológico
 - `R05-4`  o contrato bate com a evidência medida
 - `R05-5`  a sonda temporária saiu, e não volta
 - `R05-6`  `PROXY_CHAIN_PROBE_KEY` não é dependência de nada
@@ -190,14 +191,17 @@ def test_r05_2b_o_limitador_e_identico_nos_dois_repositorios():
 
 # ── R05-3: o valor do deployment bate com o contrato ────────────────────────
 
-def test_r05_3_o_deployment_declara_exatamente_o_valor_do_contrato():
+def test_r05_3_o_render_declara_exatamente_o_valor_do_contrato():
     """Condicional: enquanto INDETERMINADO, declarar um número é o erro; depois
-    de DETERMINADO, NÃO declarar é o erro."""
+    de DETERMINADO, NÃO declarar é o erro.
+
+    Vale para `render.yaml`, que é específico da topologia medida. O
+    `env.example` tem regra própria, no gate seguinte — e mais estrita.
+    """
     campos = _campos_do_contrato()
-    superficies = [ENV_EXEMPLO, RENDER]
 
     if not _determinado():
-        for caminho in superficies:
+        for caminho in (ENV_EXEMPLO, RENDER):
             if caminho.exists():
                 assert VARIAVEL not in caminho.read_text(encoding='utf-8'), (
                     f'{caminho.name} declara {VARIAVEL} com a cadeia ainda '
@@ -206,18 +210,48 @@ def test_r05_3_o_deployment_declara_exatamente_o_valor_do_contrato():
         return
 
     esperado = campos['SALTOS-CONFIAVEIS']
-    for caminho in superficies:
-        assert caminho.exists(), f'{caminho.name} sumiu'
-        valores = _valores_declarados(caminho.read_text(encoding='utf-8'))
-        assert valores, (
-            f'contrato DETERMINADO e {caminho.name} não declara {VARIAVEL}. '
-            'Deployment sem o valor volta ao padrão 0 e colapsa as origens'
+    assert RENDER.exists(), 'render.yaml sumiu'
+    valores = _valores_declarados(RENDER.read_text(encoding='utf-8'))
+    assert valores, (
+        f'contrato DETERMINADO e render.yaml não declara {VARIAVEL}. '
+        'Deployment sem o valor volta ao padrão 0 e colapsa as origens'
+    )
+    for valor in valores:
+        assert valor == esperado, (
+            f'render.yaml declara {VARIAVEL}={valor} e o contrato diz '
+            f'{esperado} — documentação e deployment discordam'
         )
-        for valor in valores:
-            assert valor == esperado, (
-                f'{caminho.name} declara {VARIAVEL}={valor} e o contrato diz '
-                f'{esperado} — documentação e deployment discordam'
-            )
+
+
+def test_r05_3b_o_modelo_generico_nunca_carrega_valor_topologico():
+    """`env.example` é modelo para QUALQUER implantação, e
+    `spec/09-deployment.md` manda copiá-lo para `.env`.
+
+    A cadeia que torna isso perigoso foi medida: `app.py` importa
+    `epi_backend.config` — que chama `load_dotenv()` — antes de importar
+    `core.rate_limit`, então o que está no `.env` vira a fronteira de confiança
+    de quem seguiu o procedimento. Num ambiente sem proxy, declarar 3 ali deixa
+    o cliente mandar três elementos, alcançar o comprimento exigido e receber
+    `cadeia[-3]`, que é o primeiro — escrito por ele. Baldes ilimitados.
+
+    O valor medido é específico da topologia do Render e mora em
+    `render.yaml`. No modelo genérico só cabe o padrão que falha fechado.
+
+    Achado do Codex (P1), reproduzido de ponta a ponta antes de ser aceito: a
+    primeira versão desta fatia escreveu `3` aqui.
+    """
+    assert ENV_EXEMPLO.exists(), 'env.example sumiu'
+    valores = _valores_declarados(ENV_EXEMPLO.read_text(encoding='utf-8'))
+    assert valores, (
+        f'env.example deixou de documentar {VARIAVEL}; quem copia o modelo '
+        'perde a variável de vista'
+    )
+    for valor in valores:
+        assert valor == '0', (
+            f'env.example declara {VARIAVEL}={valor}. Modelo genérico com valor '
+            'topológico vira buraco em implantação sem proxy: o cliente '
+            'completa a cadeia e escolhe o próprio balde'
+        )
 
 
 # ── R05-4: o contrato bate com a evidência medida ───────────────────────────

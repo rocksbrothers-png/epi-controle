@@ -374,9 +374,18 @@ def handle_get_proxy_chain_diagnostics(handler, parsed, payload, match):
     # significa coisa alguma, e o CodeQL acusa isso com razão. Os handlers
     # vizinhos ainda usam a forma antiga; esta cerca é nova, então nasce certa.
     if not autorizado(handler):
-        # 404 em vez de 403: sem `PROXY_CHAIN_PROBE_KEY` no ambiente, a rota não
-        # admite sequer existir. Um 403 confirmaria a sonda para quem sondasse.
-        send_json(handler, 404, {'error': 'Not found'})
+        # 404 em vez de 403: um 403 confirmaria a sonda para quem sondasse.
+        #
+        # O corpo é o MESMO de `app.not_found()`, a resposta canônica do
+        # projeto para rota de API inexistente. Antes era um literal próprio,
+        # que distinguia a sonda pelo texto para quem comparasse.
+        #
+        # Limite honesto: uma rota realmente inexistente cai, no `do_GET`, no
+        # handler estático e devolve HTML — não este JSON. Então o 404 esconde
+        # a sonda entre as rotas de API, não entre todos os caminhos possíveis.
+        # Esconder por completo exigiria devolver HTML daqui, o que seria pior:
+        # uma rota de API mentindo sobre o próprio tipo.
+        send_json(handler, 404, {'error': 'Rota não encontrada.'})
         return
     send_json(handler, 200, medir(handler))
 # ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM ──────────────────────────

@@ -73,6 +73,14 @@ def _e_sentinela(elemento: str) -> bool:
         return False
 
 
+# `is_private` NÃO cobre CGNAT. Medido no Python 3.11.15 deste projeto:
+# `ipaddress.ip_address('100.64.0.1').is_private` devolve False. A docstring
+# abaixo prometia cobrir, e não cobria — e como o aviso de colapso só dispara
+# para `privado`, uma borda em 100.64.0.0/10 (faixa comum em infraestrutura
+# compartilhada) passaria por cliente direto e o aviso sumiria em silêncio.
+_CGNAT = ipaddress.ip_network('100.64.0.0/10')
+
+
 def _classe_do_endereco(valor: str) -> str:
     """Classifica sem revelar. 'privado' cobre RFC1918, loopback e CGNAT."""
     if not valor:
@@ -82,6 +90,8 @@ def _classe_do_endereco(valor: str) -> str:
     except ValueError:
         return 'nao_e_ip'
     if endereco.is_loopback or endereco.is_private:
+        return 'privado'
+    if endereco.version == 4 and endereco in _CGNAT:
         return 'privado'
     return 'publico'
 

@@ -389,8 +389,15 @@ def test_r05_8_o_contrato_e_internamente_coerente():
 
     modelo = campos['MODELO-DA-BORDA']
     assert modelo in VEREDITOS_CONHECIDOS, f'modelo de borda desconhecido: {modelo}'
-    assert modelo != 'INDETERMINADO', \
-        'contrato DETERMINADO não pode ter modelo de borda INDETERMINADO'
+    # Só três modelos fecham contrato. `INDETERMINADO` nunca foi aceitável; e
+    # `SOBRESCREVE` deixou de ser quando o script passou a recusar produzir
+    # número para ele — forma constante não prova que o elemento restante seja
+    # o cliente. Sem esta linha o gate abençoaria, escrito à mão, exatamente o
+    # valor que o script se recusa a emitir.
+    assert modelo in ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA'), (
+        f'modelo {modelo} não fecha contrato: o script não consegue provar o '
+        'número a partir dele'
+    )
     evidencia = campos['EVIDENCIA']
     # `EVIDENCIA:` sozinho parseia para string vazia, que é != do marcador e
     # passava. O contrato podia fechar e liberar a configuração sem registrar
@@ -404,7 +411,7 @@ def test_r05_8_o_contrato_e_internamente_coerente():
             f'{modelo} significa que a borda não contribui nada confiável; '
             f'só 0 é compatível, o contrato diz {saltos}'
         )
-    else:
+    else:  # ANEXA é o único que sobra, pela asserção acima
         assert saltos >= 1, (
             f'{modelo} significa que a borda contribui; 0 é incompatível'
         )
@@ -462,6 +469,7 @@ FAIXAS_SEGURAS = tuple(ipaddress.ip_network(r) for r in (
     '172.16.0.0/12',
     '192.168.0.0/16',
     '127.0.0.0/8',
+    '100.64.0.0/10',    # CGNAT, RFC 6598 — reservado, não identifica ninguém
 ))
 
 
@@ -578,3 +586,69 @@ def test_r05_14_a_chave_nao_segue_redirecionamento():
         assert 'redirect' in str(e).lower()
     else:
         raise AssertionError('o redirecionamento não foi recusado')
+
+
+# ── R05-15..18: segunda rodada da revisão automática ────────────────────────
+
+def test_r05_15_sobrescreve_nao_fecha_contrato():
+    """O script recusa emitir número para `SOBRESCREVE`. Sem este gate, alguém
+    podia escrever o mesmo valor à mão no contrato e passar — o gate
+    abençoaria justamente o que o instrumento se recusa a afirmar."""
+    campos = dict(MODELO_VALIDOS=None)  # noqa: F841 — legibilidade do cenário
+    for modelo, fecha in (
+        ('ANEXA', True), ('PASSA_DIRETO', True), ('HIGIENIZA', True),
+        ('SOBRESCREVE', False), ('INDETERMINADO', False),
+    ):
+        permitido = modelo in ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA')
+        assert permitido is fecha, f'{modelo} mudou de classificação'
+    fonte = _sem_comentarios(Path(__file__).read_text(encoding='utf-8'))
+    assert "modelo in ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA')" in fonte, \
+        'a lista de modelos que fecham contrato saiu do R05-8'
+
+
+def test_r05_16_veredito_desconhecido_falha_fechado(monkeypatch):
+    """Sonda com versão diferente pode devolver veredito que este script não
+    conhece. Antes ele caía por exaustão no `valor = n_borda` e recomendava um
+    número para um modelo que não entende."""
+    estranho = _forma('MODELO_QUE_NAO_EXISTE', 2, True, 0, 1)
+    monkeypatch.setattr(CERT, '_controle', lambda *a, **k: estranho)
+    r = CERT.determinar('teste', 'https://exemplo.invalido', 'chave')
+    assert r.valor is None, 'veredito desconhecido não pode virar número'
+    assert 'MODELO_QUE_NAO_EXISTE' in r.motivo
+
+
+def test_r05_17_a_chave_exige_https():
+    """A recusa de redirecionamento cobre o segundo salto; esta checagem cobre
+    o primeiro. Com `http://`, a chave iria em claro antes de existir redirect."""
+    try:
+        CERT._sondar('http://exemplo.invalido', 'chave-secreta', None)
+    except CERT.NaoDeterminado as e:
+        assert 'https' in str(e).lower()
+    else:
+        raise AssertionError('URL sem TLS foi aceita')
+
+
+@com_sonda
+def test_r05_18_cgnat_conta_como_privado():
+    """`is_private` não cobre 100.64.0.0/10 neste Python, e o aviso de colapso
+    só dispara para `privado` — uma borda em CGNAT passaria por cliente direto
+    e o aviso sumiria em silêncio."""
+    rede = SONDA._CGNAT
+    assert SONDA._classe_do_endereco(str(rede.network_address)) == 'privado'
+    assert SONDA._classe_do_endereco(str(rede.broadcast_address)) == 'privado'
+    # As fronteiras de FORA são endereços roteáveis de verdade, então são
+    # calculadas a partir da rede em vez de escritas como literal — o
+    # `R05-10c` reprova, com razão, endereço real dentro desta fatia.
+    assert SONDA._classe_do_endereco(str(rede.network_address - 1)) == 'publico'
+    assert SONDA._classe_do_endereco(str(rede.broadcast_address + 1)) == 'publico'
+
+
+@com_sonda
+def test_r05_18b_o_404_da_sonda_usa_o_corpo_canonico_do_projeto():
+    """Um literal próprio distinguia a sonda pelo texto da resposta."""
+    trecho = _sem_comentarios(
+        ROTAS_AUTH.read_text(encoding='utf-8')
+        .split('SONDA TEMPORÁRIA DA CADEIA DE PROXY — INÍCIO', 1)[1]
+        .split('SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM', 1)[0])
+    assert "'Rota não encontrada.'" in trecho, \
+        'o 404 da sonda precisa usar o mesmo corpo de app.not_found()'

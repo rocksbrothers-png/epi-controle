@@ -127,6 +127,14 @@ _ABRIDOR = urllib.request.build_opener(_RecusaRedirecionamento)
 
 def _sondar(base_url: str, chave: str, xff: str | None) -> dict:
     url = base_url.rstrip('/') + ROTA
+    # A recusa de redirecionamento protege o SEGUNDO salto; esta checagem
+    # protege o primeiro. Com `http://`, a chave iria em claro na rede antes de
+    # existir redirect algum — um `s` esquecido ao copiar a URL bastava.
+    if not url.lower().startswith('https://'):
+        raise NaoDeterminado(
+            'a URL precisa ser https. A chave da sonda viaja em cabeçalho e '
+            'seria enviada em claro'
+        )
     req = urllib.request.Request(url, method='GET')
     req.add_header('X-Diagnostics-Key', chave)
     if xff is not None:
@@ -291,6 +299,18 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
             'escreve o próprio peer produz esta mesma medição e faria todos os '
             'usuários caírem num bucket só. Determinar exige observar, de duas '
             'origens distintas, que o elemento escolhido varia com o cliente.'
+        )
+        return resultado
+
+    # Lista de PERMISSÃO explícita, não queda por exaustão. Uma sonda com
+    # versão diferente, ou com resposta malformada, pode devolver um veredito
+    # que este script não conhece; se B e C concordarem nele e as contribuições
+    # baterem, a versão anterior chegava aqui e recomendava um número para um
+    # modelo que ela não entende. Falhar fechado é a única leitura honesta.
+    if resultado.veredito not in ('ANEXA', 'HIGIENIZA'):
+        resultado.motivo = (
+            f'veredito {resultado.veredito!r} não é um modelo que este script '
+            'saiba converter em número. Versão da sonda diferente da esperada?'
         )
         return resultado
 

@@ -357,38 +357,6 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
         return send_json(handler, 200, auth_diagnostics(public=True))
 
 
-# ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — INÍCIO ───────────────────────
-# Diagnóstico de topologia, não funcionalidade. Mora aqui porque este módulo já
-# é o dono da superfície de diagnóstico (`/api/auth-diagnostics`) e já importa
-# `core.rate_limit`; a lógica inteira vive em `epi_backend/proxy_chain_probe.py`
-# para que a remoção seja apagar um arquivo e esta cerca.
-#
-# Sai do repositório assim que `docs/R05_CADEIA_DE_PROXY.md` deixar de declarar
-# a cadeia como INDETERMINADA. O gate `R05-9` reprova a suíte se não sair.
-def handle_get_proxy_chain_diagnostics(handler, parsed, payload, match):
-    from epi_backend.proxy_chain_probe import autorizado, medir
-
-    # `send_json` não devolve nada, e o router documenta que handler retornando
-    # None é o caso normal — ele converte em `HANDLED`. Por isso a chamada fica
-    # separada do `return`: `return send_json(...)` propagaria um valor que não
-    # significa coisa alguma, e o CodeQL acusa isso com razão. Os handlers
-    # vizinhos ainda usam a forma antiga; esta cerca é nova, então nasce certa.
-    if not autorizado(handler):
-        # 404 em vez de 403: um 403 confirmaria a sonda para quem sondasse.
-        #
-        # O corpo é o MESMO de `app.not_found()`, a resposta canônica do
-        # projeto para rota de API inexistente. Antes era um literal próprio,
-        # que distinguia a sonda pelo texto para quem comparasse.
-        #
-        # Limite honesto: uma rota realmente inexistente cai, no `do_GET`, no
-        # handler estático e devolve HTML — não este JSON. Então o 404 esconde
-        # a sonda entre as rotas de API, não entre todos os caminhos possíveis.
-        # Esconder por completo exigiria devolver HTML daqui, o que seria pior:
-        # uma rota de API mentindo sobre o próprio tipo.
-        send_json(handler, 404, {'error': 'Rota não encontrada.'})
-        return
-    send_json(handler, 200, medir(handler))
-# ── R0.5 SONDA TEMPORÁRIA DA CADEIA DE PROXY — FIM ──────────────────────────
 
 
 def handle_get_db_pool_status(handler, parsed, payload, match):
@@ -605,9 +573,6 @@ def handle_put_auth_me_preferences(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
-    # ── R0.5 SONDA TEMPORÁRIA — INÍCIO ──────────────────────────────────────
-    router.register('GET',  '/api/proxy-chain-diagnostics', handle_get_proxy_chain_diagnostics)
-    # ── R0.5 SONDA TEMPORÁRIA — FIM ─────────────────────────────────────────
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
     router.register('GET',  '/api/auth/me',           handle_get_auth_me)

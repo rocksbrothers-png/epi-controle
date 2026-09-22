@@ -29,6 +29,7 @@ from pathlib import Path
 import pytest
 
 import core.rate_limit as RL
+import scripts.certificar_cadeia_de_proxy as CERT
 
 try:
     from epi_backend import proxy_chain_probe as SONDA
@@ -493,9 +494,6 @@ def test_r05_10c_nenhum_endereco_real_em_lugar_nenhum_da_fatia():
 
 # ── R05-11..14: o que a revisão do Codex mostrou que faltava ────────────────
 
-import scripts.certificar_cadeia_de_proxy as CERT  # noqa: E402
-
-
 def _forma(veredito, tamanho, sentinela, indice, a_direita, peer_classe='publico'):
     return {
         'cadeia_tamanho': tamanho,
@@ -590,20 +588,23 @@ def test_r05_14_a_chave_nao_segue_redirecionamento():
 
 # ── R05-15..18: segunda rodada da revisão automática ────────────────────────
 
-def test_r05_15_sobrescreve_nao_fecha_contrato():
-    """O script recusa emitir número para `SOBRESCREVE`. Sem este gate, alguém
-    podia escrever o mesmo valor à mão no contrato e passar — o gate
-    abençoaria justamente o que o instrumento se recusa a afirmar."""
-    campos = dict(MODELO_VALIDOS=None)  # noqa: F841 — legibilidade do cenário
-    for modelo, fecha in (
-        ('ANEXA', True), ('PASSA_DIRETO', True), ('HIGIENIZA', True),
-        ('SOBRESCREVE', False), ('INDETERMINADO', False),
-    ):
-        permitido = modelo in ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA')
-        assert permitido is fecha, f'{modelo} mudou de classificação'
+def test_r05_15_so_tres_modelos_fecham_contrato():
+    """O script recusa emitir número para `SOBRESCREVE`. Sem a restrição no
+    `R05-8`, alguém podia escrever o mesmo valor à mão no contrato e passar —
+    o gate abençoando justamente o que o instrumento se recusa a afirmar.
+
+    Este teste é estrutural de propósito: ele guarda a lista. A prova de
+    comportamento é a sabotagem que fecha o contrato com `SOBRESCREVE` e vê o
+    `R05-8` reprovar — um teste que só reafirmasse a lista contra ela mesma
+    não provaria nada.
+    """
     fonte = _sem_comentarios(Path(__file__).read_text(encoding='utf-8'))
     assert "modelo in ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA')" in fonte, \
         'a lista de modelos que fecham contrato saiu do R05-8'
+    # Os dois que ficaram de fora precisam continuar no vocabulário: sumir da
+    # lista de vereditos conhecidos os deixaria passar por outro caminho.
+    for excluido in ('SOBRESCREVE', 'INDETERMINADO'):
+        assert excluido in VEREDITOS_CONHECIDOS
 
 
 def test_r05_16_veredito_desconhecido_falha_fechado(monkeypatch):

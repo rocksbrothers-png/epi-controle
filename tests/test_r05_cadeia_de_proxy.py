@@ -26,8 +26,31 @@ import ipaddress
 import re
 from pathlib import Path
 
+import pytest
+
 import core.rate_limit as RL
-from epi_backend import proxy_chain_probe as SONDA
+
+try:
+    from epi_backend import proxy_chain_probe as SONDA
+except ImportError:
+    # A sonda é TEMPORÁRIA: quando a cadeia for determinada ela sai do
+    # repositório. Um import incondicional interrompia a coleta do arquivo
+    # inteiro nesse momento — e então `R05-9`, que existe justamente para
+    # exigir a ausência, nunca chegava a rodar. Não havia estado verde em que
+    # o contrato estivesse fechado E a sonda removida: o gate era inalcançável.
+    SONDA = None
+
+#: Vocabulário do modelo de borda. Declarado AQUI, e não lido da sonda, para
+#: que `R05-8` continue valendo depois que ela for removida. Um gate abaixo
+#: confere que os dois não divergem enquanto a sonda existe.
+VEREDITOS_CONHECIDOS = (
+    'ANEXA', 'SOBRESCREVE', 'HIGIENIZA', 'PASSA_DIRETO', 'INDETERMINADO',
+)
+
+com_sonda = pytest.mark.skipif(
+    SONDA is None,
+    reason='a sonda já foi removida do repositório; `R05-9` cobre a ausência',
+)
 
 RAIZ = Path(__file__).resolve().parents[1]
 CONTRATO = RAIZ / 'docs' / 'R05_CADEIA_DE_PROXY.md'
@@ -117,6 +140,7 @@ def _cada_texto(objeto):
             yield from _cada_texto(item)
 
 
+@com_sonda
 def test_r05_3_a_saida_da_sonda_nao_contem_endereco():
     """Gate de redação. Varre a saída inteira procurando qualquer coisa que o
     `ipaddress` aceite como endereço. Não basta "não devolvemos o peer": o teste
@@ -137,6 +161,7 @@ def test_r05_3_a_saida_da_sonda_nao_contem_endereco():
                 )
 
 
+@com_sonda
 def test_r05_3b_os_nomes_de_cabecalho_saem_de_lista_fixa():
     """Nome de cabeçalho também é dado. Se a sonda ecoasse os nomes recebidos,
     um cliente poderia escrever o que quisesse dentro da resposta."""
@@ -159,12 +184,14 @@ class _HandlerFalso:
         self.client_address = (peer, 54321)
 
 
+@com_sonda
 def test_r05_4_sem_chave_no_ambiente_a_sonda_nao_responde(monkeypatch):
     monkeypatch.delenv('PROXY_CHAIN_PROBE_KEY', raising=False)
     assert SONDA.autorizado(_HandlerFalso(chave='qualquer-coisa')) is False, \
         'a sonda respondeu sem chave configurada no ambiente'
 
 
+@com_sonda
 def test_r05_4b_chave_errada_nao_autoriza(monkeypatch):
     monkeypatch.setenv('PROXY_CHAIN_PROBE_KEY', 'a-chave-certa')
     assert SONDA.autorizado(_HandlerFalso(chave='a-chave-errada')) is False
@@ -181,6 +208,7 @@ def _sem_comentarios(texto):
     )
 
 
+@com_sonda
 def test_r05_4c_a_rota_devolve_404_e_nao_403():
     """403 confirmaria a existência da sonda para quem sondasse."""
     fonte = ROTAS_AUTH.read_text(encoding='utf-8')
@@ -194,6 +222,7 @@ def test_r05_4c_a_rota_devolve_404_e_nao_403():
 
 # ── R05-5: a tabela de decisão da borda ─────────────────────────────────────
 
+@com_sonda
 def test_r05_5_os_quatro_modelos_de_borda_sao_distinguidos():
     """A pergunta obrigatória: anexa, sobrescreve ou higieniza. Se dois modelos
     colapsassem no mesmo veredito, o número sairia de um empate."""
@@ -214,6 +243,7 @@ def test_r05_5_os_quatro_modelos_de_borda_sao_distinguidos():
             assert saida['elementos_a_direita_do_sentinela'] == a_direita
 
 
+@com_sonda
 def test_r05_5b_a_cadeia_de_sentinelas_mede_a_borda_e_nao_o_cliente():
     """Controle C manda três sentinelas. O que interessa é o que a borda pôs
     DEPOIS do último — se o número mudasse com o tamanho do que o cliente
@@ -227,6 +257,41 @@ def test_r05_5b_a_cadeia_de_sentinelas_mede_a_borda_e_nao_o_cliente():
 
 
 # ── R05-6: gate (a) — valor no deployment depois do contrato fechado ────────
+
+def _valores_declarados(texto: str) -> list:
+    """Extrai os valores de `RATE_LIMIT_TRUSTED_PROXY_HOPS` nas DUAS formas.
+
+    `env.example` usa `VARIAVEL=1`. O `render.yaml` usa a estrutura de lista
+    que o blueprint da Render consome:
+
+        - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
+          value: "1"
+
+    A primeira versão deste gate procurava `VARIAVEL` seguida de `:` ou `=` e
+    um número na MESMA linha. Isso reprovava a declaração correta do
+    `render.yaml` — e empurraria quem tentasse satisfazê-lo a escrever um
+    mapeamento inline que a Render não lê.
+    """
+    valores = []
+    linhas = texto.splitlines()
+    for i, linha in enumerate(linhas):
+        # Forma de arquivo .env
+        casou = re.match(rf'\s*{VARIAVEL}\s*=\s*"?(\d+)"?\s*$', linha)
+        if casou:
+            valores.append(casou.group(1))
+            continue
+        # Forma de blueprint: `- key: VARIAVEL` e, logo abaixo, `value: N`
+        if not re.search(rf'key:\s*{VARIAVEL}\s*$', linha):
+            continue
+        for seguinte in linhas[i + 1:]:
+            if re.match(r'\s*-\s', seguinte):
+                break  # começou outra entrada de envVars sem declarar valor
+            casou = re.match(r'\s*value:\s*"?(\d+)"?\s*$', seguinte)
+            if casou:
+                valores.append(casou.group(1))
+                break
+    return valores
+
 
 def _declara_variavel(caminho: Path) -> bool:
     if not caminho.exists():
@@ -258,12 +323,32 @@ def test_r05_6_o_valor_so_existe_depois_de_comprovado():
         assert _declara_variavel(caminho), (
             f'contrato DETERMINADO e {VARIAVEL} ausente em {caminho.name}'
         )
-        texto = caminho.read_text(encoding='utf-8')
-        encontrados = re.findall(rf'{VARIAVEL}\s*[:=]\s*"?(\d+)"?', texto)
+        encontrados = _valores_declarados(caminho.read_text(encoding='utf-8'))
         assert encontrados, f'{caminho.name} cita {VARIAVEL} sem valor numérico'
         assert all(v == esperado for v in encontrados), (
             f'{caminho.name} declara {encontrados}, contrato diz {esperado}'
         )
+
+
+def test_r05_6b_o_gate_entende_as_duas_formas_de_declaracao():
+    """O gate de deployment precisa aceitar o que a Render realmente consome."""
+    blueprint = (
+        'services:\n'
+        '  - type: web\n'
+        '    envVars:\n'
+        '      - key: OCR_REQUIRED\n'
+        '        value: "1"\n'
+        f'      - key: {VARIAVEL}\n'
+        '        value: "2"\n'
+    )
+    assert _valores_declarados(blueprint) == ['2'], \
+        'a forma de lista do blueprint precisa ser reconhecida'
+    assert _valores_declarados(f'{VARIAVEL}=3\n') == ['3'], \
+        'a forma de arquivo .env precisa ser reconhecida'
+    # Chave declarada sem valor logo abaixo não conta como declaração.
+    sem_valor = f'      - key: {VARIAVEL}\n      - key: OUTRA\n        value: "9"\n'
+    assert _valores_declarados(sem_valor) == [], \
+        'chave sem valor não pode ser lida como configurada'
 
 
 # ── R05-7: gate (c) — regressão para confiar no primeiro elemento ───────────
@@ -303,10 +388,14 @@ def test_r05_8_o_contrato_e_internamente_coerente():
         return
 
     modelo = campos['MODELO-DA-BORDA']
-    assert modelo in SONDA.VEREDITOS, f'modelo de borda desconhecido: {modelo}'
+    assert modelo in VEREDITOS_CONHECIDOS, f'modelo de borda desconhecido: {modelo}'
     assert modelo != 'INDETERMINADO', \
         'contrato DETERMINADO não pode ter modelo de borda INDETERMINADO'
-    assert campos['EVIDENCIA'] != 'nao-produzida', \
+    evidencia = campos['EVIDENCIA']
+    # `EVIDENCIA:` sozinho parseia para string vazia, que é != do marcador e
+    # passava. O contrato podia fechar e liberar a configuração sem registrar
+    # nada — o oposto do que este gate afirma garantir.
+    assert evidencia and evidencia != 'nao-produzida', \
         'contrato DETERMINADO sem evidência registrada'
 
     saltos = int(campos['SALTOS-CONFIAVEIS'])
@@ -392,3 +481,100 @@ def test_r05_10c_nenhum_endereco_real_em_lugar_nenhum_da_fatia():
             assert any(endereco in faixa for faixa in FAIXAS_SEGURAS), (
                 f'{caminho.name} contém {literal}, que não é de faixa reservada'
             )
+
+
+# ── R05-11..14: o que a revisão do Codex mostrou que faltava ────────────────
+
+import scripts.certificar_cadeia_de_proxy as CERT  # noqa: E402
+
+
+def _forma(veredito, tamanho, sentinela, indice, a_direita, peer_classe='publico'):
+    return {
+        'cadeia_tamanho': tamanho,
+        'sentinela_presente': sentinela,
+        'sentinela_indice': indice,
+        'elementos_a_direita_do_sentinela': a_direita,
+        'peer_na_cadeia': False,
+        'peer_indice': None,
+        'peer_classe': peer_classe,
+        'cabecalhos_de_forwarding': ['X-Forwarded-For'],
+        'veredito': veredito,
+    }
+
+
+@com_sonda
+def test_r05_11_chave_nao_ascii_nao_autoriza_e_nao_explode(monkeypatch):
+    """`compare_digest` sobre `str` levanta TypeError com caractere fora de
+    ASCII. A exceção escapava de `autorizado` e o handler devolvia 500 — o que
+    distingue rota protegida de rota ausente para quem sonda, destruindo a
+    razão de ser do 404."""
+    monkeypatch.setenv('PROXY_CHAIN_PROBE_KEY', 'chave-ascii-comum')
+    assert SONDA.autorizado(_HandlerFalso(chave='chavé-com-acento')) is False
+    assert SONDA.autorizado(_HandlerFalso(chave='ключ')) is False
+
+
+@com_sonda
+def test_r05_11b_o_vocabulario_de_veredito_nao_diverge_da_sonda():
+    """`R05-8` passou a declarar os vereditos localmente para sobreviver à
+    remoção da sonda. Enquanto ela existe, os dois têm de bater."""
+    assert tuple(SONDA.VEREDITOS) == VEREDITOS_CONHECIDOS
+
+
+def test_r05_12_sobrescreve_nao_vira_numero(monkeypatch):
+    """Forma constante não prova que o elemento restante seja o cliente.
+
+    Dois proxies, o interno sobrescrevendo o cabeçalho com o próprio peer,
+    produzem esta medição de forma perfeitamente consistente — e certificar
+    um número aqui colapsaria todos os usuários num bucket só, com aparência
+    de medição."""
+    sobrescreve = _forma('SOBRESCREVE', 1, False, None, None)
+    monkeypatch.setattr(CERT, '_controle', lambda *a, **k: sobrescreve)
+    r = CERT.determinar('teste', 'https://exemplo.invalido', 'chave')
+    assert r.executado is True
+    assert r.valor is None, 'SOBRESCREVE não pode produzir número'
+    assert r.contradicao is False, 'não é contradição — é prova insuficiente'
+    assert 'SOBRESCREVE' in r.motivo
+
+
+def test_r05_12b_anexa_com_controles_coerentes_produz_o_numero(monkeypatch):
+    """Controle positivo: o caminho que DEVE determinar continua determinando."""
+    anexa = _forma('ANEXA', 2, True, 0, 1)
+    monkeypatch.setattr(CERT, '_controle', lambda *a, **k: anexa)
+    r = CERT.determinar('teste', 'https://exemplo.invalido', 'chave')
+    assert r.valor == 1, f'esperava 1 salto, veio {r.valor}'
+    assert r.veredito == 'ANEXA'
+
+
+def test_r05_13_medicoes_contraditorias_nao_derrubam_o_relatorio(monkeypatch, capsys):
+    """A evidência vem vazia quando as repetições se contradizem. Indexá-la
+    estourava IndexError exatamente no caso que o script existe para
+    diagnosticar."""
+    def contraditorio(ambiente, url, chave):
+        r = CERT.Determinacao(ambiente)
+        r.executado = True
+        r.contradicao = True
+        r.motivo = 'formas diferentes entre repetições'
+        return r
+
+    monkeypatch.setattr(CERT, 'determinar', contraditorio)
+    codigo = CERT.main()
+    saida = capsys.readouterr().out
+    assert codigo == 1, 'contradição precisa sair com código 1'
+    assert '[INCONSISTENT]' in saida
+    assert 'NÃO configure' in saida
+
+
+def test_r05_14_a_chave_nao_segue_redirecionamento():
+    """O `urllib` copia cabeçalhos para o destino do redirect — só
+    `content-length` e `content-type` ficam de fora. Um redirect entre origens
+    entregaria a chave da sonda a outro host."""
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    assert 'urllib.request.urlopen(' not in fonte, \
+        'abrir direto pelo urlopen volta a seguir redirecionamento'
+    manipulador = CERT._RecusaRedirecionamento()
+    try:
+        manipulador.redirect_request(None, None, 302, 'Found', {}, 'https://outro.invalido/')
+    except CERT.NaoDeterminado as e:
+        assert 'redirect' in str(e).lower()
+    else:
+        raise AssertionError('o redirecionamento não foi recusado')

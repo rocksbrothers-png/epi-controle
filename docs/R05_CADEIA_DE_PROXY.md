@@ -118,7 +118,7 @@ nos testes, nem neste documento.
 | veredito | o que a borda fez | `RATE_LIMIT_TRUSTED_PROXY_HOPS` |
 |---|---|---|
 | `ANEXA` | manteve o do cliente e acrescentou N à direita | **N** |
-| `SOBRESCREVE` | descartou o do cliente e escreveu N elementos | **N** |
+| `SOBRESCREVE` | descartou o do cliente e escreveu por conta própria | **nenhum** — ver abaixo |
 | `PASSA_DIRETO` | repassou intocado, sem acrescentar nada | **0** — o cabeçalho é escolha do cliente |
 | `HIGIENIZA` | removeu o cabeçalho inteiro | **0** — não há nada encaminhado para confiar |
 | `INDETERMINADO` | inseriu algo à esquerda do cliente | **nenhum** — recusar é mais honesto que ler errado |
@@ -127,6 +127,23 @@ Em `PASSA_DIRETO` e `HIGIENIZA` o `0` deixa de ser padrão de segurança e passa
 a ser **a resposta medida**. Nos dois casos o peer do socket é a única origem
 honesta — e se esse peer for o da borda, o colapso de origens é real e precisa
 ser resolvido em outro lugar que não a posição de um cabeçalho.
+
+### Por que `SOBRESCREVE` não vira número
+
+A primeira versão desta tabela certificava `N` para sobrescrita, e estava
+errada. Forma constante não prova que o elemento restante seja o cliente.
+
+Contraexemplo: dois proxies, e o interno sobrescreve o `X-Forwarded-For` com o
+peer **dele** — que é o proxy externo. Os três controles produzem, de forma
+perfeitamente consistente, uma cadeia de um elemento sem sentinela. A regra
+antiga diria `1`, e `get_client_ip` passaria a devolver o proxy externo para
+todo usuário: um bucket só para a base inteira. Seria exatamente o dano que
+esta frente existe para evitar, agora com aparência de medição.
+
+Separar esse caso do benigno exige observar, de **duas origens distintas**, que
+o elemento escolhido muda com o cliente. O script tem um ponto de vista só,
+então recusa. Achado levantado pela revisão automática do Codex no PR e
+confirmado por contraexemplo antes de ser aceito.
 
 ---
 

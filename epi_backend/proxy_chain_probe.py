@@ -167,7 +167,12 @@ def autorizado(handler) -> bool:
         fornecida = str(handler.headers.get('X-Diagnostics-Key', '')).strip()
     except Exception:  # noqa: BLE001 — sem cabeçalho legível, não autoriza
         return False
-    return hmac.compare_digest(fornecida, chave)
+    # Compara BYTES, não `str`. Com `str`, `compare_digest` levanta TypeError
+    # quando qualquer lado tem caractere fora de ASCII — e a exceção escaparia
+    # daqui, virando 500. Isso quebraria justamente a propriedade que o 404
+    # existe para dar: quem sonda não distingue rota ausente de rota protegida.
+    # Um 500 distinguiria.
+    return hmac.compare_digest(fornecida.encode('utf-8'), chave.encode('utf-8'))
 
 
 def medir(handler) -> dict:

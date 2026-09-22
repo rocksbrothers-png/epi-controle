@@ -106,6 +106,25 @@ class Inconsistente(Exception):
     """Mediu, e as medições se contradizem."""
 
 
+class _RecusaRedirecionamento(urllib.request.HTTPRedirectHandler):
+    """A chave da sonda viaja em cabeçalho, e o `urllib` COPIA os cabeçalhos
+    para o destino do redirecionamento — só `content-length` e `content-type`
+    ficam de fora. Um redirect de canonicalização (apex → www, http → https)
+    ou uma configuração errada entregaria o segredo a outro host.
+
+    Diagnóstico não segue redirecionamento. Quem informou a URL informa a
+    final."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise NaoDeterminado(
+            f'a URL respondeu com redirecionamento (HTTP {code}). Informe a URL '
+            'final: a sonda não segue redirect para não expor a chave a outro host'
+        )
+
+
+_ABRIDOR = urllib.request.build_opener(_RecusaRedirecionamento)
+
+
 def _sondar(base_url: str, chave: str, xff: str | None) -> dict:
     url = base_url.rstrip('/') + ROTA
     req = urllib.request.Request(url, method='GET')
@@ -113,7 +132,7 @@ def _sondar(base_url: str, chave: str, xff: str | None) -> dict:
     if xff is not None:
         req.add_header('X-Forwarded-For', xff)
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with _ABRIDOR.open(req, timeout=TIMEOUT) as resp:
             corpo = resp.read().decode('utf-8', errors='replace')
             if resp.status != 200:
                 raise NaoDeterminado(f'HTTP {resp.status} em {ROTA}')
@@ -127,6 +146,8 @@ def _sondar(base_url: str, chave: str, xff: str | None) -> dict:
         raise NaoDeterminado(f'HTTP {e.code} em {ROTA}') from e
     except json.JSONDecodeError as e:
         raise NaoDeterminado('resposta não é JSON — a rota existe mesmo?') from e
+    except NaoDeterminado:
+        raise  # já tem mensagem própria (ex.: recusa de redirecionamento)
     except Exception as e:  # noqa: BLE001 — rede é imprevisível; vira relatório
         raise NaoDeterminado(f'não alcançou o serviço: {e}') from e
 
@@ -166,6 +187,10 @@ class Determinacao:
         self.valor: int | None = None
         self.veredito = ''
         self.colapso = False
+        #: True quando as medições se CONTRADIZEM. Diferente de medir de forma
+        #: consistente e a forma medida não bastar para concluir — os dois
+        #: impedem configurar, mas pedem ações diferentes do operador.
+        self.contradicao = False
         self.evidencia: list[tuple[str, dict]] = []
 
     @property
@@ -188,6 +213,7 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
         return resultado
     except Inconsistente as e:
         resultado.executado = True
+        resultado.contradicao = True
         resultado.motivo = str(e)
         return resultado
 
@@ -198,11 +224,17 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
         ('C · três sentinelas', tres),
     ]
 
-    # A borda é interna se o peer que a aplicação enxerga é privado. Isso não
-    # prova colapso sozinho, mas junto com "o peer não está na cadeia" é o
-    # sinal de que todo mundo chega pelo mesmo endereço.
+    # Os DOIS sinais juntos, não um ou outro. Numa implantação direta, sem
+    # borda nenhuma, a cadeia vem vazia e o peer não está nela — mas esse peer
+    # É o cliente. Com `or`, esse caso disparava o aviso de colapso e o
+    # relatório afirmava que a auditoria grava o endereço da borda onde borda
+    # não existe. O texto ao lado já descrevia a conjunção; o código é que
+    # estava escrito com disjunção.
+    #
+    # Continua sendo heurística: uma borda com endereço público se parece com
+    # um cliente direto. Prova mesmo só com duas origens distintas.
     resultado.colapso = (
-        sem_xff.get('peer_classe') == 'privado' or not sem_xff.get('peer_na_cadeia')
+        sem_xff.get('peer_classe') == 'privado' and not sem_xff.get('peer_na_cadeia')
     )
 
     n_borda = _contribuicao_da_borda(sem_xff)
@@ -210,6 +242,7 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
     contrib_c = _contribuicao_da_borda(tres)
 
     if um.get('veredito') != tres.get('veredito'):
+        resultado.contradicao = True
         resultado.motivo = (
             f"B e C discordam do modelo: {um.get('veredito')} × {tres.get('veredito')} "
             '— o tratamento da borda depende do que o cliente manda'
@@ -226,6 +259,7 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
         return resultado
 
     if not (n_borda == contrib_b == contrib_c):
+        resultado.contradicao = True
         resultado.motivo = (
             f'contribuição da borda não é constante: A={n_borda} · B={contrib_b} '
             f'· C={contrib_c} — o número dependeria do que o cliente enviou'
@@ -237,6 +271,27 @@ def determinar(ambiente: str, base_url: str, chave: str) -> Determinacao:
         # cabeçalho inteiro é escolha do cliente. `0` não é um default aqui —
         # é a resposta.
         resultado.valor = 0
+        return resultado
+
+    if resultado.veredito == 'SOBRESCREVE':
+        # Forma constante NÃO prova que o elemento restante seja o cliente.
+        # Contraexemplo: dois proxies, e o interno sobrescreve o cabeçalho com
+        # o peer DELE — que é o proxy externo. Os três controles produzem, de
+        # forma perfeitamente consistente, uma cadeia de um elemento sem
+        # sentinela. Certificar 1 aqui faria `get_client_ip` devolver o proxy
+        # externo para todo mundo e colapsar os buckets: exatamente o dano que
+        # esta frente existe para evitar, agora com aparência de medição.
+        #
+        # Separar os casos exigiria observar de DUAS origens distintas que o
+        # elemento escolhido muda com o cliente. O script tem um ponto de vista
+        # só, então recusa — recusar é mais honesto que ler errado.
+        resultado.motivo = (
+            'a borda SOBRESCREVE o cabeçalho, e a forma constante não prova que '
+            'o elemento restante represente o cliente. Um proxy interno que '
+            'escreve o próprio peer produz esta mesma medição e faria todos os '
+            'usuários caírem num bucket só. Determinar exige observar, de duas '
+            'origens distintas, que o elemento escolhido varia com o cliente.'
+        )
         return resultado
 
     resultado.valor = n_borda
@@ -280,15 +335,24 @@ def main() -> int:
             print(f'   {r.motivo}')
             continue
 
-        for rotulo, amostra in r.evidencia:
-            print(_linha_evidencia(rotulo, amostra))
-        cabecalhos = r.evidencia[0][1].get('cabecalhos_de_forwarding') or []
-        print(f'    {"cabeçalhos recebidos":26} {", ".join(cabecalhos) or "(nenhum)"}')
-        print()
+        # A evidência vem VAZIA quando as repetições se contradizem: o
+        # `determinar` desiste antes de montar os controles. Indexar aqui
+        # estourava IndexError justamente no caso que o script existe para
+        # diagnosticar — o relatório morria antes de dizer o que houve.
+        if r.evidencia:
+            for rotulo, amostra in r.evidencia:
+                print(_linha_evidencia(rotulo, amostra))
+            cabecalhos = r.evidencia[0][1].get('cabecalhos_de_forwarding') or []
+            print(f'    {"cabeçalhos recebidos":26} {", ".join(cabecalhos) or "(nenhum)"}')
+            print()
 
         if r.valor is None:
-            inconsistente = True
-            print(f'[INCONSISTENT] {r.ambiente}')
+            if r.contradicao:
+                inconsistente = True
+                print(f'[INCONSISTENT] {r.ambiente}')
+            else:
+                nao_executado = True
+                print(f'[NOT DETERMINED] {r.ambiente}')
             print(f'   {r.motivo}')
             continue
 

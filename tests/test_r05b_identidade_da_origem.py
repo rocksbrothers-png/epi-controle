@@ -1286,3 +1286,60 @@ def test_r05b_33_backend_inalcancavel_e_nao_executado(monkeypatch, tmp_path, cap
                             EPI_IDENT_MEU_IP=_IP_A))
     assert codigo in (1, 3), f'contradição devolveu {codigo}'
     capsys.readouterr()
+
+
+# ── Quinta rodada da revisão ────────────────────────────────────────────────
+
+def test_r05b_34_instancias_repetidas_do_cabecalho_sao_todas_lidas():
+    """`HTTPMessage.get()` devolve só a PRIMEIRA instância. Uma borda que emita
+    o próprio endereço numa e preserve o sentinela do cliente noutra fazia a
+    classificação dizer `substituida` com o sentinela vivo na requisição — o
+    mesmo erro caro do achado da vírgula, pela porta ao lado."""
+    if SONDA is None:
+        return
+
+    from email.message import Message
+
+    class _Repetido:
+        def __init__(self, pares):
+            self.headers = Message()
+            for chave, valor in pares:
+                self.headers[chave] = valor
+
+    for nome, campo in (('CF-Connecting-Ip', 'cf_connecting_ip'),
+                        ('True-Client-Ip', 'true_client_ip')):
+        sobrevive = SONDA.medir(_Repetido([(nome, '198.51.100.7'),
+                                           (nome, '192.0.2.10')]))
+        assert sobrevive[campo] == 'sentinela_sobrevive', (
+            f'{nome} repetido com sentinela na 2ª instância deu '
+            f'{sobrevive[campo]!r}'
+        )
+        limpo = SONDA.medir(_Repetido([(nome, '198.51.100.7'),
+                                       (nome, '198.51.100.8')]))
+        assert limpo[campo] == 'substituida', 'classificou sentinela onde não há'
+
+    # e a cadeia repetida vira uma cadeia só, que é a semântica de HTTP
+    cadeia = SONDA.medir(_Repetido([('X-Forwarded-For', '192.0.2.21'),
+                                    ('X-Forwarded-For', '203.0.113.9, 198.51.100.200')]))
+    assert cadeia['cadeia_tamanho'] == 3
+    assert cadeia['prefixo_do_cliente_presente'] is True
+
+
+def test_r05b_35_o_compromisso_nao_sobrevive_a_certificacao(monkeypatch, tmp_path, capsys):
+    """O arquivo guarda o sal e o compromisso do endereço público. Mantê-lo
+    depois do fechamento o deixa reutilizável como evidência de primeira origem
+    em execuções posteriores, quando a topologia já pode ter mudado."""
+    if CERT is None:
+        return
+
+    estado = tmp_path / 'e.json'
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    assert estado.exists(), 'a origem A não gravou o compromisso'
+    capsys.readouterr()
+
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                       EPI_IDENT_MEU_IP=_IP_B,
+                                       EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
+    assert not estado.exists(), 'o compromisso sobreviveu à certificação'
+    assert 'apagado' in capsys.readouterr().out

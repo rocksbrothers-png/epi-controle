@@ -885,6 +885,21 @@ def main() -> int:
         print('cada borda precisa da sua própria conclusão sobre adotá-los.')
         print()
 
+    # O compromisso sai de cena junto com a certificação. Deixá-lo guardaria o
+    # sal e o compromisso do endereço público indefinidamente — e, pior, ele
+    # continuaria REUTILIZÁVEL como evidência de primeira origem em execuções
+    # posteriores, quando o deployment ou a topologia já podem ter mudado.
+    # Achado de revisão.
+    try:
+        _caminho_do_estado().unlink()
+        print('Compromisso da primeira origem apagado: a certificação fechou.')
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        print(f'ATENÇÃO: não consegui apagar {_caminho_do_estado()}: {e}')
+        print('Apague à mão — ele não deve sobreviver à certificação.')
+    print()
+
     print('RESULTADO: P1, P2 e P4 satisfeitos nos dois backends.')
     print(f'   ORIGEM_A != ORIGEM_B: true   (origem desta execução: {origem!r})')
     print('   Isto cobre identidade. Cobertura de rota continua sendo pergunta')

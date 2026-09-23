@@ -83,34 +83,52 @@ HOPS_MAXIMO = 16
 
 
 def _cabecalho(handler, nome: str) -> str:
-    """Lê um cabeçalho SEM depender da grafia nem do container.
+    """Lê um cabeçalho juntando TODAS as instâncias, em qualquer grafia.
 
-    Em produção `handler.headers` é um `HTTPMessage`, que já é insensível a
-    maiúsculas. Depender disso deixava a sonda frágil de dois jeitos: um gate
-    com dicionário simples reprovava, e um cliente que mandasse
-    `cf-connecting-ip` em outra grafia passaria despercebido. A busca abaixo
-    resolve os dois — e o gate `R05B-8c` foi quem mostrou.
+    Três armadilhas, cada uma encontrada por uma rodada de revisão:
+
+    1. grafia — em produção `handler.headers` é `HTTPMessage`, insensível a
+       maiúsculas, mas um gate com dicionário simples reprovava e um cliente
+       mandando `cf-connecting-ip` noutra caixa passaria despercebido;
+    2. instâncias repetidas — `HTTPMessage.get()` devolve só a PRIMEIRA. Uma
+       borda que emita o próprio endereço numa instância e preserve o
+       sentinela do cliente noutra faria a classificação dizer
+       `substituida` com o sentinela vivo na requisição;
+    3. vírgula — resolvida em `_classe_do_cabecalho`, que varre os elementos.
+
+    Juntar com vírgula é o que a própria semântica de HTTP manda: instâncias
+    repetidas de um cabeçalho equivalem a uma lista separada por vírgula.
+    Para `X-Forwarded-For` isso é exatamente a cadeia; para a chave de
+    diagnóstico, um valor duplicado deixa de bater e a rota devolve 404, que
+    é a falha fechada correta.
     """
     try:
         cabecalhos = handler.headers
     except Exception:  # noqa: BLE001 — leitura defensiva de handler arbitrário
         return ''
+
     try:
-        direto = cabecalhos.get(nome)
-        if direto:
-            return str(direto).strip()
-    except Exception:  # noqa: BLE001 — container arbitrário
-        pass
+        todos = cabecalhos.get_all(nome)
+    except Exception:  # noqa: BLE001 — container sem get_all
+        todos = None
+    if todos:
+        return ', '.join(str(v).strip() for v in todos if str(v).strip())
+
     alvo = nome.lower()
     try:
-        itens = cabecalhos.items()
+        itens = list(cabecalhos.items())
     except Exception:  # noqa: BLE001 — container sem items()
-        return ''
-    for chave, valor in itens:
-        if str(chave).lower() == alvo and valor:
-            return str(valor).strip()
-    return ''
+        itens = []
+    achados = [str(valor).strip() for chave, valor in itens
+               if str(chave).lower() == alvo and str(valor).strip()]
+    if achados:
+        return ', '.join(achados)
 
+    try:
+        direto = cabecalhos.get(nome)
+    except Exception:  # noqa: BLE001 — container arbitrário
+        return ''
+    return str(direto).strip() if direto else ''
 
 def _e_sentinela(valor: str) -> bool:
     """O valor é um sentinela de TEST-NET-1, em qualquer grafia?

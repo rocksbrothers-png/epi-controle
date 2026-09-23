@@ -459,3 +459,39 @@ As faixas de documentação (RFC 5737, RFC 3849) são **aceitas de propósito**:
 com elas que os gates exercitam o instrumento, já que `R05B-10` proíbe endereço
 real nas superfícies da fatia. Nenhum eco de IP devolve uma delas, e uma medição
 real declarada assim reprova em P1 de qualquer jeito.
+
+### Quinta rodada: três achados, dois corrigidos e um que não é meu
+
+| | achado | estado | gate |
+|---|---|---|---|
+| 1 | `render.yaml` declara `3` enquanto o contrato R0.5B exige `0` no ambiente | **não corrigido — decisão do autor** | — |
+| 2 | o compromisso da primeira origem sobrevivia à certificação | corrigido | `R05B-35` |
+| 3 | instâncias **repetidas** do cabeçalho: só a primeira era lida | corrigido | `R05B-34` |
+
+O achado 3 é o terceiro a atingir a sonda, e fecha a terceira porta do mesmo
+cômodo: primeiro a grafia (`R05B-8c`), depois a vírgula (`R05B-26`), agora as
+instâncias repetidas. `HTTPMessage.get()` devolve só a primeira, então uma borda
+que emitisse o próprio endereço numa instância e preservasse o sentinela noutra
+seria classificada `substituida` com o sentinela vivo na requisição. Juntar as
+instâncias com vírgula é o que a semântica de HTTP já manda.
+
+A sabotagem `AO` não pegou na primeira tentativa: desabilitar só o `get_all`
+deixava o caminho de `items()` coletando tudo do mesmo jeito. Os dois caminhos
+são redundantes de propósito; a sabotagem que isola o mecanismo reintroduz o
+comportamento antigo nos dois.
+
+#### Sobre o achado 1
+
+A tensão é real e está registrada: o repositório declara `3` em `render.yaml`
+e, ao mesmo tempo, declara no contrato R0.5B que o valor no ambiente tem de ser
+`0` enquanto a identidade não fechar. Se um deployment consumir o blueprint,
+o `3` entra em vigor sem que ninguém decida isso.
+
+A mitigação hoje é documental: a descrição do PR e o roteiro de medição mandam
+conferir o painel depois de qualquer deploy deste branch. Isso depende de
+disciplina humana, que é exatamente o que esta fatia existe para substituir por
+gate.
+
+**Não foi corrigido porque o número não é meu para mudar.** A declaração do `3`
+foi autorizada na R0.5, e a autorização da R0.5B é explícita: não alterar o
+número de saltos. Levado ao autor como decisão, com recomendação registrada.

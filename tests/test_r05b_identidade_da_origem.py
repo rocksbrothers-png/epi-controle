@@ -1476,3 +1476,88 @@ def test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota():
             os.environ.pop('PROXY_CHAIN_PROBE_KEY', None)
         else:
             os.environ['PROXY_CHAIN_PROBE_KEY'] = anterior
+
+
+# ── O 503 da triagem: o portão de bootstrap intercepta a sonda ──────────────
+
+def test_r05b_38_a_sonda_e_interceptada_pelo_portao_de_bootstrap():
+    """A triagem sem chave devolveu 503 nos dois backends, com
+    `content-type: application/json` e `x-render-origin-server:
+    SimpleHTTP/0.6 Python/…` — isto é, a própria aplicação respondendo.
+
+    Este gate reproduz essa interceptação e trava o formato: enquanto o
+    bootstrap não estiver pronto, TODA rota `/api/` fora da lista de isenção —
+    inclusive a sonda — responde 503 antes do handler. Não é a sonda recusando
+    nada; ela nem é alcançada.
+    """
+    if SONDA is None:
+        return
+
+    import http.client
+    import os
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    import app as APP
+    from epi_backend.bootstrap import (BOOTSTRAP_READY_EXEMPT_PATHS,
+                                       DB_BOOTSTRAP_STATE,
+                                       DB_BOOTSTRAP_STATE_LOCK)
+
+    # A rota da sonda NÃO é isenta, e isso é decisão registrada: isentá-la a
+    # tornaria alcançável num estado em que o resto da API não está, e faria
+    # medir topologia de um serviço que não está servindo.
+    assert '/api/origin-identity-diagnostics' not in BOOTSTRAP_READY_EXEMPT_PATHS
+
+    chave = 'chave-do-gate-r05b-38'
+    anterior = os.environ.get('PROXY_CHAIN_PROBE_KEY')
+    os.environ['PROXY_CHAIN_PROBE_KEY'] = chave
+    with DB_BOOTSTRAP_STATE_LOCK:
+        pronto_antes = DB_BOOTSTRAP_STATE.get('ready')
+        DB_BOOTSTRAP_STATE['ready'] = False
+
+    servidor = ThreadingHTTPServer(('127.0.0.1', 0), APP.EpiHandler)
+    porta = servidor.server_address[1]
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+
+    def pedir(rota, cabecalhos=None):
+        conexao = http.client.HTTPConnection('127.0.0.1', porta, timeout=10)
+        conexao.request('GET', rota, headers=cabecalhos or {})
+        resposta = conexao.getresponse()
+        corpo = resposta.read().decode('utf-8', 'replace')
+        cabecalho = {
+            'server': resposta.getheader('Server') or '',
+            'content-type': resposta.getheader('Content-Type') or '',
+        }
+        conexao.close()
+        return resposta.status, cabecalho, corpo
+
+    try:
+        # com a chave CERTA e o bootstrap pendente: 503, não 200 e não 404
+        status, cabecalhos, corpo = pedir(
+            '/api/origin-identity-diagnostics', {'X-Diagnostics-Key': chave})
+        assert status == 503, f'esperado 503 do portão, veio {status}'
+        assert cabecalhos['content-type'] == 'application/json; charset=utf-8'
+        assert cabecalhos['server'].startswith('SimpleHTTP/'), cabecalhos['server']
+        assert 'DB_BOOTSTRAP_NOT_READY' in corpo
+
+        # e o diagnóstico keyless que diz POR QUE, fora de `/api/`
+        status_saude, _, corpo_saude = pedir('/health/ready')
+        assert status_saude == 503
+        assert 'DB_BOOTSTRAP_NOT_READY' in corpo_saude
+        assert 'phase' in corpo_saude, 'a saúde precisa dizer a fase do bootstrap'
+
+        # com o bootstrap pronto, a mesma requisição volta a ser da sonda
+        with DB_BOOTSTRAP_STATE_LOCK:
+            DB_BOOTSTRAP_STATE['ready'] = True
+        status, _, _ = pedir('/api/origin-identity-diagnostics',
+                             {'X-Diagnostics-Key': chave})
+        assert status == 200, f'com bootstrap pronto esperava 200, veio {status}'
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+        with DB_BOOTSTRAP_STATE_LOCK:
+            DB_BOOTSTRAP_STATE['ready'] = pronto_antes
+        if anterior is None:
+            os.environ.pop('PROXY_CHAIN_PROBE_KEY', None)
+        else:
+            os.environ['PROXY_CHAIN_PROBE_KEY'] = anterior

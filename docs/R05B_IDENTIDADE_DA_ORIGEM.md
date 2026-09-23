@@ -555,3 +555,62 @@ comprovada**, e nomear uma sem evidência seria o mesmo erro que esta fatia
 inteira existe para não cometer.
 
 A próxima execução traz essa evidência no próprio relatório, sem medição extra.
+
+### O 503 da triagem: é nosso, e não é o 403
+
+A triagem sem chave devolveu **503** nos dois backends, e os cabeçalhos dizem de
+quem é:
+
+| observado em produção | reproduzido localmente |
+|---|---|
+| `HTTP/1.1 503` | `503` |
+| `content-type: application/json; charset=utf-8` | idêntico, é o que `send_json` emite |
+| `x-render-origin-server: SimpleHTTP/0.6 Python/…` | `Server: SimpleHTTP/0.6 Python/…`, que é o `version_string()` do `EpiHandler` |
+| `server: cloudflare` + `CF-RAY` | a borda repassou; o corpo veio da origem |
+
+**É o portão de bootstrap.** `_require_bootstrap_ready` roda para toda rota
+`/api/` **antes** do dispatch e responde 503 enquanto
+`DB_BOOTSTRAP_STATE['ready']` for falso. A sonda não recusa nada aqui — ela nem
+é alcançada.
+
+A condição exata: o caminho normalizado começa com `/api/`, não está em
+`BOOTSTRAP_READY_EXEMPT_PATHS`, não começa com `/api/i18n/` nem `/api/tenant/`,
+e o bootstrap não completou.
+
+#### A rota NÃO é isenta, e isso é decisão registrada
+
+Isentá-la seria tecnicamente inócuo — a sonda não toca no banco. E ainda assim é
+a decisão errada, por dois motivos:
+
+1. **O 503 é informação verdadeira.** Ele diz que a superfície `/api/` inteira
+   dos dois serviços está indisponível. Medir topologia de proxy num backend que
+   não está servindo certificaria um caminho degradado — outro sabor da
+   certificação falsa que esta fatia existe para impedir.
+2. **Seria um bypass de portão fail-closed.** A sonda passaria a ser alcançável
+   num estado em que nada mais da API é, com pré-condição mais fraca que a de
+   todo o resto.
+
+Gate `R05B-38` trava a interceptação e a não-isenção; a sabotagem `AT`, que põe
+a rota na lista de isenção, o deixa vermelho.
+
+#### 403 e 503 são fenômenos distintos
+
+Mesma URL, mesmo método, resultados diferentes conforme o cliente:
+
+| cliente | resultado | chegou à aplicação? |
+|---|---|---|
+| `curl`, sem chave | **503** com corpo da origem | **sim** |
+| `urllib` (o script), com chave | **403** | **não** — o portão teria dado 503 |
+
+Se o 403 viesse da aplicação, ele seria 503: o portão dispara antes do handler,
+para qualquer cliente. O script recebeu algo que o `curl` não recebeu, então a
+diferença está **na requisição**, não na rota — e alguma camada à frente a trata
+de outro jeito.
+
+As variáveis que diferem são três: o `User-Agent` (`Python-urllib/3.x`), e os
+cabeçalhos `X-Probe-Hops` e `X-Origin-Claim`. Isolá-las é um A/B de uma variável
+por vez, sem chave nenhuma.
+
+**Ressalva honesta:** o 403 e o 503 foram observados em momentos diferentes. O
+teste limpo roda as duas requisições **em sequência imediata**, para que o
+estado do serviço não seja uma explicação alternativa.

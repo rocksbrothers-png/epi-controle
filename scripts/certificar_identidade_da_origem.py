@@ -91,6 +91,7 @@ import os
 import secrets
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -361,7 +362,14 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
 
         cf = _controle('P3 (CF-Connecting-IP)', **comum, cf=SENTINELA_CF)
         tc = _controle('P3 (True-Client-IP)', **comum, tc=SENTINELA_TC)
-        longa = _controle('P4 (cadeia longa)', **comum, xff=CADEIA_LONGA)
+        # P4 declara a origem TAMBÉM. Sem isso, o controle só perguntava se o
+        # sufixo sobreviveu — e `cadeia[-N]` podia ter virado um proxy
+        # compartilhado na rota com cadeia longa, sem sentinela nenhuma. P1
+        # passaria na rota sem cabeçalho, P4 passaria com outro candidato, e a
+        # certificação sairia com as requisições de cadeia longa colapsando num
+        # balde só. É a distinção B/C do §4, dentro do próprio controle.
+        longa = _controle('P4 (cadeia longa)', **comum, xff=CADEIA_LONGA,
+                          reivindicacao=meu_ip)
     except NaoAlcancado as e:
         alvo.motivo = str(e)
         return
@@ -387,7 +395,8 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
     alvo.p3_cf = cf.get('cf_connecting_ip')
     alvo.p3_tc = tc.get('true_client_ip')
     alvo.p4 = bool(longa.get('sufixo_confiavel_preservado')
-                   and not longa.get('candidato_e_do_cliente'))
+                   and not longa.get('candidato_e_do_cliente')
+                   and longa.get('candidato_bate_com_origem_declarada') is True)
 
 
 def _caminho_do_estado() -> Path:
@@ -396,7 +405,28 @@ def _caminho_do_estado() -> Path:
 
 
 def _normalizar_url(url: str) -> str:
-    return str(url or '').strip().rstrip('/').lower()
+    """Forma canônica de URL, para comparar ENDPOINT e não grafia.
+
+    `https://host` e `https://host:443` vão para o mesmo lugar, e comparar
+    texto cru os trataria como distintos — o que deixava dois backends
+    "distintos" serem o mesmo deployment. Achado de revisão.
+    """
+    bruto = str(url or '').strip()
+    if not bruto:
+        return ''
+    partes = urllib.parse.urlsplit(bruto)
+    esquema = (partes.scheme or '').lower()
+    host = (partes.hostname or '').lower()
+    try:
+        porta = partes.port
+    except ValueError:
+        porta = None
+    if porta is None or (esquema, porta) in (('https', 443), ('http', 80)):
+        autoridade = host
+    else:
+        autoridade = f'{host}:{porta}'
+    caminho = (partes.path or '').rstrip('/')
+    return f'{esquema}://{autoridade}{caminho}'
 
 
 def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list,
@@ -425,13 +455,45 @@ def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list,
     return caminho
 
 
+ESQUEMA_DO_ESTADO = {
+    'origem': str,
+    'hops': int,
+    'sal': str,
+    'compromisso': str,
+    'backends_com_p1': list,
+    'urls': dict,
+}
+
+
 def _ler_estado():
+    """Carrega o estado da primeira origem, ou `None`.
+
+    O arquivo atravessa máquinas, e JSON válido não quer dizer esquema
+    válido: `backends_com_p1` vindo como inteiro fazia `set(...)` levantar
+    `TypeError` FORA de todo caminho controlado — traceback e status 1, o
+    mesmo de uma propriedade reprovada. Achado de revisão.
+    """
     caminho = _caminho_do_estado()
     try:
         dados = json.loads(caminho.read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError):
         return None
-    return dados if isinstance(dados, dict) else None
+    if not isinstance(dados, dict):
+        return None
+    for campo, tipo in ESQUEMA_DO_ESTADO.items():
+        valor = dados.get(campo)
+        if not isinstance(valor, tipo) or isinstance(valor, bool):
+            return None
+    if not all(isinstance(x, str) for x in dados['backends_com_p1']):
+        return None
+    if not all(isinstance(k, str) and isinstance(v, str)
+               for k, v in dados['urls'].items()):
+        return None
+    try:
+        bytes.fromhex(dados['sal'])
+    except ValueError:
+        return None
+    return dados
 
 
 def _validar_anterior(estado, ip_anterior: str, origem: str, hops: int,
@@ -629,6 +691,14 @@ def main() -> int:
         print('entre backends viraria a mesma medição consigo mesma.')
         return 2
 
+    # URL sem chave (ou o contrário) não é "não investigado": é o operador
+    # pedindo para investigar e o alvo sendo pulado em silêncio.
+    if bool(alt.url) != bool(alt.chave):
+        print()
+        print('PARE: o hostname alternativo está configurado pela metade.')
+        print('Defina EPI_IDENT_ALT_URL e EPI_IDENT_ALT_KEY, ou nenhum dos dois.')
+        return 2
+
     urls_atuais = {a.nome: a.url for a in obrigatorios}
     estado = _ler_estado() if ip_anterior else None
     nomes_obrigatorios = [a.nome for a in obrigatorios]
@@ -699,8 +769,13 @@ def main() -> int:
         # uma entrada pública onde a janela `N` não vale. A primeira versão só
         # reprovava a contradição e deixava o negativo estável passar como
         # informativo. Achado de revisão.
-        alt.anterior_ligado = ligado if tem_anterior else None
-        ok_alt, pendente_alt, motivo_alt = _veredito(alt, tem_anterior)
+        # `tem_anterior=False` de propósito: o estado da primeira origem NÃO
+        # guarda evidência para o alternativo, então P2 nunca está estabelecido
+        # aqui. Com `False`, o veredito devolve PENDENTE quando tudo o mais
+        # passa — o alternativo serve para REJEITAR, nunca para certificar.
+        # Emprestar o `ligado` dos obrigatórios deixaria uma rota adicional
+        # passar por coberta sem medição nenhuma na origem A.
+        ok_alt, pendente_alt, motivo_alt = _veredito(alt, False)
         if not ok_alt and not pendente_alt:
             print(f'   mas REPROVA: {motivo_alt}')
             print('   Uma entrada pública onde a janela não vale derruba a')

@@ -157,12 +157,23 @@ def _hops_pedido(handler) -> int:
 def _classe_do_cabecalho(handler, nome: str) -> str:
     """P3. Diz se o valor recebido é o sentinela que o cliente mandou (logo o
     cliente controla o cabeçalho) ou outra coisa (logo a borda o reescreveu).
-    Nunca devolve o valor."""
+    Nunca devolve o valor.
+
+    Olha TODOS os elementos, não só o primeiro. Uma borda que ANTEPÕE o próprio
+    endereço e preserva o do cliente à direita — `real, 192.0.2.10` — faria a
+    leitura do primeiro elemento dizer `substituida` com o sentinela vivo na
+    mesma linha. O mesmo vale para instâncias repetidas do cabeçalho, que o
+    container junta com vírgula. Achado de revisão: aqui um falso `substituida`
+    é pior que um falso `sentinela_sobrevive`, porque leva a ADOTAR um
+    cabeçalho que o cliente controla.
+    """
     valor = _cabecalho(handler, nome)
     if not valor:
         return 'ausente'
-    primeiro = valor.split(',')[0].strip()
-    return 'sentinela_sobrevive' if _e_sentinela(primeiro) else 'substituida'
+    elementos = [parte.strip() for parte in valor.split(',') if parte.strip()]
+    if any(_e_sentinela(elemento) for elemento in elementos):
+        return 'sentinela_sobrevive'
+    return 'substituida'
 
 
 def analisar(cadeia: list, hops: int, reivindicacao: str, alternativa: str,

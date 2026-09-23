@@ -22,6 +22,7 @@ Cada gate existe para uma sabotagem nomeada em `docs/R05B_IDENTIDADE_DA_ORIGEM.m
 """
 
 import hashlib
+import json
 import importlib.util
 import re
 from pathlib import Path
@@ -607,10 +608,17 @@ def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
         if cabecalho_tc is not None:
             return _resposta(hops=hops, true_client_ip=tc)
         if xff is not None:
+            # Borda que ANEXA: com 30 sentinelas do cliente mais N da borda,
+            # `cadeia[-N]` continua sendo o endereço que a borda escreveu para
+            # este chamador — então a reivindicação bate aqui também. É isso
+            # que o controle P4 passou a exigir, para separar "sufixo intacto"
+            # de "sufixo intacto apontando para um proxy compartilhado".
             return _resposta(hops=hops, cadeia_tamanho=hops + 30,
                              cadeia_maior_que_hops=True,
                              prefixo_do_cliente_presente=True,
-                             sentinelas_na_cadeia=30)
+                             sentinelas_na_cadeia=30,
+                             candidato_bate_com_origem_declarada=(
+                                 True if reivindicacao else None))
         bate_alt = None
         if alternativa:
             bate_alt = CERT._canonico(alternativa) == CERT._canonico(reivindicacao)
@@ -993,3 +1001,173 @@ def test_r05b_23_nenhum_gate_depende_do_que_some_no_fechamento():
                 assert ('.exists()' in corpo) or ('if CERT is None' in corpo), (
                     f'{nome} lê {alvo} sem conferir que o arquivo existe'
                 )
+
+
+# ── Terceira rodada da revisão ──────────────────────────────────────────────
+#
+# O padrão das duas rodadas anteriores se repetiu: cada correção minha abriu a
+# lacuna vizinha. Reprovei o alternativo contraditório e depois o negativo
+# estável — e deixei o alternativo EMPRESTAR o vínculo dos obrigatórios.
+
+def test_r05b_24_o_veredito_do_alternativo_nao_depende_de_p2(monkeypatch, tmp_path, capsys):
+    """O estado da primeira origem não guarda evidência para o alternativo,
+    então `p2_alt` não significa nada ali. Emprestar o vínculo dos obrigatórios
+    fazia o veredito do alternativo depender de um dado que ele não tem.
+
+    A primeira versão deste gate não pegava a regressão: no cenário que montei,
+    emprestar ou não dava o MESMO resultado observável. A propriedade que
+    separa as duas versões é esta — mesma medição, `p2_alt` trocado, veredito
+    tem de ser igual.
+    """
+    if CERT is None:
+        return
+
+    # sem lastro próprio, mesmo com tudo verdadeiro, nunca é OK
+    ok, pendente, _ = CERT._veredito(_alvo(), False)
+    assert not ok and pendente, 'o alternativo certificou sem lastro próprio'
+
+    def roda_alt(p2_alt):
+        def sonda(base_url, chave, hops, *, xff=None, reivindicacao='',
+                  alternativa='', **resto):
+            resposta = _sonda_falsa()(base_url, chave, hops, xff=xff,
+                                      reivindicacao=reivindicacao,
+                                      alternativa=alternativa, **resto)
+            if 'alternativo' in base_url and alternativa:
+                resposta['candidato_bate_com_origem_alternativa'] = p2_alt
+            return resposta
+        return sonda
+
+    resultados = []
+    for p2_alt in (False, True):
+        estado = tmp_path / f'e{int(p2_alt)}.json'
+        comum = dict(EPI_IDENT_ALT_URL='https://alternativo.invalid',
+                     EPI_IDENT_ALT_KEY='k3')
+        assert _rodar(monkeypatch, sonda=roda_alt(p2_alt),
+                      **_base(estado, EPI_IDENT_ORIGEM='A',
+                              EPI_IDENT_MEU_IP=_IP_A, **comum)) == 3
+        resultados.append(_rodar(monkeypatch, sonda=roda_alt(p2_alt),
+                                 **_base(estado, EPI_IDENT_ORIGEM='B',
+                                         EPI_IDENT_MEU_IP=_IP_B,
+                                         EPI_IDENT_IP_ANTERIOR=_IP_A, **comum)))
+        capsys.readouterr()
+
+    assert resultados[0] == resultados[1], (
+        f'o veredito do alternativo mudou com p2_alt: {resultados} — ele está '
+        'usando um vínculo que não é dele'
+    )
+    assert resultados[0] == 0
+
+
+def test_r05b_25_estado_malformado_nao_vira_traceback(tmp_path, monkeypatch):
+    """JSON válido não é esquema válido. `backends_com_p1` como inteiro fazia
+    `set(...)` levantar TypeError fora de todo caminho controlado."""
+    if CERT is None:
+        return
+
+    sal = 'ab' * 32
+    bom = {'versao': CERT.VERSAO_DO_ESTADO, 'origem': 'A', 'hops': 3, 'sal': sal,
+           'compromisso': CERT._compromisso(sal, _IP_A),
+           'backends_com_p1': ['corporativo', 'saas'],
+           'urls': {'corporativo': 'https://c.invalid', 'saas': 'https://s.invalid'}}
+
+    caminho = tmp_path / 'estado.json'
+    monkeypatch.setenv('EPI_IDENT_ESTADO', str(caminho))
+
+    caminho.write_text(json.dumps(bom), encoding='utf-8')
+    assert CERT._ler_estado() is not None, 'o estado legítimo foi recusado'
+
+    for descricao, mudanca in (
+        ('backends como inteiro', {'backends_com_p1': 7}),
+        ('backends com item não-string', {'backends_com_p1': [1, 2]}),
+        ('urls como lista', {'urls': ['a', 'b']}),
+        ('urls com valor não-string', {'urls': {'corporativo': 9}}),
+        ('hops como texto', {'hops': 'tres'}),
+        ('sal não-hexadecimal', {'sal': 'zz'}),
+        ('campo faltando', {'compromisso': None}),
+    ):
+        caminho.write_text(json.dumps({**bom, **mudanca}), encoding='utf-8')
+        assert CERT._ler_estado() is None, f'estado aceito com {descricao}'
+
+
+def test_r05b_26_o_sentinela_e_procurado_em_todo_o_cabecalho():
+    """Uma borda que ANTEPÕE o próprio endereço e preserva o do cliente à
+    direita — `real, 192.0.2.10` — fazia a leitura do primeiro elemento dizer
+    `substituida` com o sentinela vivo na mesma linha. Falso `substituida` é o
+    erro caro: leva a ADOTAR um cabeçalho que o cliente controla."""
+    if SONDA is None:
+        return
+
+    for nome, campo in (('CF-Connecting-Ip', 'cf_connecting_ip'),
+                        ('True-Client-Ip', 'true_client_ip')):
+        for valor in ('192.0.2.10',
+                      '198.51.100.7, 192.0.2.10',
+                      '198.51.100.7,192.0.2.10,198.51.100.8'):
+            saida = SONDA.medir(_HandlerFalso(**{nome: valor}))
+            assert saida[campo] == 'sentinela_sobrevive', (
+                f'{nome} = {valor!r} foi classificado {saida[campo]!r}'
+            )
+
+        saida = SONDA.medir(_HandlerFalso(**{nome: '198.51.100.7, 198.51.100.8'}))
+        assert saida[campo] == 'substituida', 'classificou sentinela onde não há'
+
+
+def test_r05b_27_p4_confere_identidade_e_nao_so_o_sufixo(monkeypatch, tmp_path, capsys):
+    """Sufixo intacto não basta. Com cadeia longa, `cadeia[-N]` pode virar um
+    proxy compartilhado SEM sentinela nenhum: P1 passa na rota sem cabeçalho,
+    P4 passa com outro candidato, e as requisições de cadeia longa colapsam
+    num balde só. É a distinção B/C dentro do controle."""
+    if CERT is None:
+        return
+
+    def colapso_na_cadeia_longa(base_url, chave, hops, *, xff=None,
+                                reivindicacao='', alternativa='', **resto):
+        resposta = _sonda_falsa()(base_url, chave, hops, xff=xff,
+                                  reivindicacao=reivindicacao,
+                                  alternativa=alternativa, **resto)
+        if xff is not None:
+            # sufixo sem sentinela, candidato não é do cliente — e mesmo assim
+            # não é o chamador: é o proxy compartilhado
+            resposta['candidato_bate_com_origem_declarada'] = False
+        return resposta
+
+    codigo = _rodar(monkeypatch, sonda=colapso_na_cadeia_longa,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    assert codigo != 0, 'colapso na rota de cadeia longa passou por P4'
+    assert 'P4 falso' in capsys.readouterr().out
+
+
+def test_r05b_28_alternativo_pela_metade_e_configuracao_incompleta(monkeypatch, tmp_path, capsys):
+    """URL sem chave não é "não investigado": é o operador pedindo para
+    investigar e o alvo sendo pulado em silêncio."""
+    if CERT is None:
+        return
+
+    for parcial in ({'EPI_IDENT_ALT_URL': 'https://alternativo.invalid'},
+                    {'EPI_IDENT_ALT_KEY': 'k3'}):
+        codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                             EPI_IDENT_ORIGEM='A',
+                                             EPI_IDENT_MEU_IP=_IP_A, **parcial))
+        assert codigo == 2, f'alternativo pela metade ({parcial}) foi ignorado'
+        assert 'pela metade' in capsys.readouterr().out
+
+
+def test_r05b_29_urls_equivalentes_contam_como_o_mesmo_endpoint(monkeypatch, tmp_path, capsys):
+    """`https://host` e `https://host:443` vão para o mesmo lugar. Comparar
+    texto cru deixava um deployment passar por dois."""
+    if CERT is None:
+        return
+
+    assert CERT._normalizar_url('https://h.invalid') == \
+           CERT._normalizar_url('https://H.invalid:443/')
+    assert CERT._normalizar_url('http://h.invalid:80') == \
+           CERT._normalizar_url('http://h.invalid')
+    assert CERT._normalizar_url('https://h.invalid') != \
+           CERT._normalizar_url('https://h.invalid:8443')
+
+    codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                         EPI_IDENT_ORIGEM='A',
+                                         EPI_IDENT_MEU_IP=_IP_A,
+                                         EPI_IDENT_SAAS_URL='https://corporativo.invalid:443/'))
+    assert codigo == 2, 'o mesmo endpoint com outra grafia passou por dois'
+    assert 'MESMO endpoint' in capsys.readouterr().out

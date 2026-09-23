@@ -401,3 +401,36 @@ teste que use o script sem guarda. Ele também nasceu fraco — usava fronteira 
 função por texto, engolia os helpers de módulo entre os testes e acusou o
 `R05B-10`, que nem usa o script. Gate que erra a fronteira acusa o inocente e
 deixa passar o culpado.
+
+### Terceira rodada: mais seis, e o mesmo padrão
+
+| | achado | a lacuna que a correção anterior abriu | gate |
+|---|---|---|---|
+| 1 | o alternativo **emprestava** o vínculo dos obrigatórios | reprovei o contraditório e o negativo estável, e deixei o veredito dele depender de um `p2_alt` que ele não tem | `R05B-24` |
+| 2 | estado carregado sem validar esquema | `backends_com_p1` como inteiro → `TypeError` fora de todo caminho controlado | `R05B-25` |
+| 3 | sentinela procurado **só no primeiro elemento** | borda que antepõe e preserva (`real, 192.0.2.10`) dava `substituida` com o sentinela vivo | `R05B-26` |
+| 4 | P4 não conferia identidade | sufixo intacto apontando para proxy compartilhado: P1 passa sem cabeçalho, P4 passa com outro candidato, e a cadeia longa colapsa num balde | `R05B-27` |
+| 5 | alternativo configurado pela metade | URL sem chave era tratada como "não investigado" | `R05B-28` |
+| 6 | `https://host` ≠ `https://host:443` | a checagem de endpoints distintos comparava texto cru | `R05B-29` |
+
+O achado 3 é o único que atinge a **sonda**, não o veredito — e é o mais caro
+dos seis: um falso `substituida` leva a **adotar** um cabeçalho que o cliente
+controla. Os outros cinco levam a recusar ou a travar, que erra para o lado
+seguro.
+
+O achado 4 é a distinção B/C do §4 aparecendo dentro de um controle: sem
+declarar origem, P4 respondia "o sufixo sobreviveu" e não "o sufixo sobreviveu
+apontando para quem chamou".
+
+#### Duas sabotagens que não isolaram o mecanismo
+
+`AD` passou na primeira tentativa: o cenário que montei tornava emprestar ou não
+emprestar o vínculo **indistinguíveis**. A propriedade que separa as duas
+versões é outra — mesma medição, `p2_alt` trocado, veredito tem de ser igual —,
+e o gate foi reescrito assim.
+
+`Q` passou porque a correção do negativo estável criou um **segundo caminho** que
+também reprova o alternativo contraditório. Os dois são redundantes de
+propósito: desabilitar qualquer um sozinho não muda o resultado; desabilitados
+juntos, `R05B-13` e `R05B-17` ficam vermelhos. O gate mede o resultado, não o
+caminho.

@@ -241,9 +241,19 @@ silenciosa.
    com `3`, dois clientes distintos deixam de compartilhar bucket. Se todos
    continuarem colapsando num só, a variável não chegou ao processo.
 
-Os serviços são `epi-controle` (corporativo) e
+Os serviços são **`epi-controle-app-gupy`** (corporativo) e
 `epi-controle-app-livamobile-api` (SaaS). O static site do SaaS não roda o
 backend e não precisa da variável.
+
+> **Atenção ao nome.** `render.yaml` deste repositório declara
+> `name: epi-controle`, que **não** é o serviço medido. Os hostnames medidos
+> foram `epi-controle-app-gupy.onrender.com` e
+> `epi-controle-app-livamobile-api.onrender.com`, e o primeiro é o que
+> `.github/workflows/ios_ci.yml:105`, `flutter/pubspec.yaml:46,59` e
+> `docs/ci-cd/README.md:126` usam como API corporativa. Configurar um serviço
+> chamado `epi-controle` deixaria o serviço medido sem a variável. A divergência
+> entre o blueprint e o serviço real é anterior a esta fatia e está registrada
+> como achado, não corrigida aqui.
 
 ---
 

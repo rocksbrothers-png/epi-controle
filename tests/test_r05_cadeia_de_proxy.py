@@ -103,6 +103,39 @@ def _determinado() -> bool:
     return _campos_do_contrato().get('ESTADO-DA-CADEIA') == 'DETERMINADO'
 
 
+CONTRATO_R05B = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
+
+#: Superfícies que a R0.5B declara como autorizadas a ler a chave enquanto a
+#: certificação de identidade estiver aberta. Lista fechada: qualquer leitura
+#: fora dela é regressão, mesmo com a fatia aberta.
+SUPERFICIES_R05B = (
+    'epi_backend/proxy_identity_probe.py',
+    'modules/auth/routes.py',
+    'scripts/certificar_identidade_da_origem.py',
+    'docs/R05B_IDENTIDADE_DA_ORIGEM.md',
+    'tests/test_r05b_identidade_da_origem.py',
+)
+
+
+def _identidade_em_aberto() -> bool:
+    """A R0.5B ainda está certificando identidade?
+
+    Enquanto estiver, a sonda dela pode existir e ler a chave — e só ela. Ver
+    `docs/R05B_IDENTIDADE_DA_ORIGEM.md` §1.
+    """
+    if not CONTRATO_R05B.exists():
+        return False
+    texto = CONTRATO_R05B.read_text(encoding='utf-8')
+    if 'CONTRATO-R05B-INICIO' not in texto:
+        return False
+    bloco = texto.split('<!-- CONTRATO-R05B-INICIO -->', 1)[1]
+    bloco = bloco.split('<!-- CONTRATO-R05B-FIM -->', 1)[0]
+    for linha in bloco.splitlines():
+        if linha.strip().startswith('ESTADO-DA-IDENTIDADE:'):
+            return linha.split(':', 1)[1].strip() == 'INDETERMINADO'
+    return False
+
+
 def _valores_declarados(texto: str) -> list:
     """Extrai os valores de `RATE_LIMIT_TRUSTED_PROXY_HOPS` nas DUAS formas.
 
@@ -442,8 +475,13 @@ def test_r05_6_a_chave_da_sonda_nao_e_dependencia_de_nenhum_caminho():
     painel."""
     if not _determinado():
         return
+
     sobreviventes = []
     for caminho in RAIZ.rglob('*'):
+        # Só CÓDIGO. A primeira versão desta condicional varreu `.md` também,
+        # e reprovou pela instrução do §4 da R0.5 que manda o operador REMOVER
+        # a variável — menção não é dependência, e o gate existe para proibir
+        # dependência.
         if not caminho.is_file() or caminho.suffix not in ('.py', '.yaml', '.yml', '.js'):
             continue
         if '__pycache__' in caminho.parts or '.git' in caminho.parts:
@@ -451,7 +489,18 @@ def test_r05_6_a_chave_da_sonda_nao_e_dependencia_de_nenhum_caminho():
         if caminho == Path(__file__):
             continue
         if CHAVE_DA_SONDA in caminho.read_text(encoding='utf-8', errors='replace'):
-            sobreviventes.append(str(caminho.relative_to(RAIZ)))
+            sobreviventes.append(str(caminho.relative_to(RAIZ)).replace('\\', '/'))
+
+    if _identidade_em_aberto():
+        # A R0.5B reabriu a leitura da chave — mas só para as superfícies que
+        # ela declara. Qualquer outra é regressão.
+        fora = [c for c in sobreviventes if c not in SUPERFICIES_R05B]
+        assert not fora, (
+            f'{CHAVE_DA_SONDA} é lida fora das superfícies que a R0.5B declara: '
+            f'{fora}. Autorizadas: {list(SUPERFICIES_R05B)}'
+        )
+        return
+
     assert not sobreviventes, (
         f'{CHAVE_DA_SONDA} ainda é lida em: {sobreviventes}. A variável some do '
         'painel do Render no fechamento da R0.5'

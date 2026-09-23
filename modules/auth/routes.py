@@ -357,6 +357,26 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
         return send_json(handler, 200, auth_diagnostics(public=True))
 
 
+# ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — INÍCIO ─────────────────
+#
+# Responde P1–P4 da certificação de identidade (docs/R05B_IDENTIDADE_DA_ORIGEM.md).
+# Sai do repositório quando a certificação fechar; o gate `R05B-7` reprova a
+# suíte enquanto ela ficar depois disso.
+def handle_get_origin_identity_diagnostics(handler, parsed, payload, match):
+    from epi_backend.proxy_identity_probe import autorizado, medir
+
+    # `send_json` não devolve nada, e `core/router.py` documenta que handler
+    # retornando None é o caso normal — ele converte em HANDLED. Devolver o
+    # resultado de `send_json` propagaria um valor sem significado.
+    if not autorizado(handler):
+        # 404 com o MESMO corpo de `app.not_found()`: um 403, ou um corpo
+        # próprio, confirmaria a existência da sonda para quem sondasse.
+        send_json(handler, 404, {'error': 'Rota não encontrada.'})
+        return
+    send_json(handler, 200, medir(handler))
+# ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — FIM ────────────────────
+
+
 def handle_get_db_pool_status(handler, parsed, payload, match):
     from core.database import db_pool_status
     with closing(get_connection()) as connection:
@@ -571,6 +591,9 @@ def handle_put_auth_me_preferences(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
+    # ── R0.5B SONDA TEMPORÁRIA — INÍCIO ─────────────────────────────────────
+    router.register('GET',  '/api/origin-identity-diagnostics', handle_get_origin_identity_diagnostics)
+    # ── R0.5B SONDA TEMPORÁRIA — FIM ────────────────────────────────────────
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
     router.register('GET',  '/api/auth/me',           handle_get_auth_me)

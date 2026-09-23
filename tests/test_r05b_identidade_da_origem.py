@@ -1343,3 +1343,136 @@ def test_r05b_35_o_compromisso_nao_sobrevive_a_certificacao(monkeypatch, tmp_pat
                                        EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
     assert not estado.exists(), 'o compromisso sobreviveu à certificação'
     assert 'apagado' in capsys.readouterr().out
+
+
+# ── O 403 da medição real: o instrumento jogava fora a evidência ────────────
+
+def _erro_http(codigo, cabecalhos, corpo):
+    import email.message
+    import io as _io
+    import urllib.error
+    msg = email.message.Message()
+    for chave, valor in cabecalhos:
+        msg[chave] = valor
+    return urllib.error.HTTPError(
+        'https://exemplo.invalid/api/origin-identity-diagnostics',
+        codigo, 'Forbidden', msg, _io.BytesIO(corpo.encode('utf-8')))
+
+
+def test_r05b_36_erro_http_identifica_a_camada_sem_vazar_nada():
+    """A medição real devolveu `HTTP 403` nos dois backends e nada mais. Com
+    isso não dá para saber se quem recusou foi a aplicação ou a borda — e a
+    aplicação, exercitada no caminho HTTP real, só devolve 200 ou 404.
+
+    O instrumento tinha a resposta na mão e a descartava: `_sondar` colapsava
+    todo HTTPError não-404 em `HTTP {code}`, jogando fora cabeçalhos e corpo,
+    que são justamente o que distingue as camadas.
+
+    Nada do corpo pode sair no relatório: a página de bloqueio da Cloudflare
+    EXIBE o endereço do visitante, e o relatório vai ser colado numa revisão.
+    """
+    if CERT is None:
+        return
+
+    cenarios = [
+        ('borda',
+         [('Server', 'cloudflare'), ('CF-Ray', '8f0a1b2c3d4e5f60-GRU'),
+          ('Content-Type', 'text/html; charset=UTF-8')],
+         '<!DOCTYPE html><html><body>Sorry, you have been blocked. '
+         'Your IP: 203.0.113.77 · Cloudflare Ray ID: 8f0a</body></html>'),
+        ('aplicacao',
+         [('Content-Type', 'application/json')],
+         '{"error": "Acesso negado."}'),
+    ]
+
+    for esperado, cabecalhos, corpo in cenarios:
+        erro = _erro_http(403, cabecalhos, corpo)
+
+        class _Abridor:
+            def open(self, *a, **k):
+                raise erro
+
+        original = CERT._ABRIDOR
+        CERT._ABRIDOR = _Abridor()
+        try:
+            CERT._sondar('https://exemplo.invalid', 'k', 3)
+        except CERT.NaoAlcancado as e:
+            texto = str(e)
+        finally:
+            CERT._ABRIDOR = original
+
+        assert '403' in texto, f'o status sumiu: {texto!r}'
+        assert esperado in texto, (
+            f'não identificou a camada {esperado!r}: {texto!r}'
+        )
+        # e NADA do corpo, que numa página de bloqueio traz o IP do visitante
+        assert '203.0.113.77' not in texto, f'vazou endereço do corpo: {texto!r}'
+        assert 'Sorry, you have been blocked' not in texto, \
+            f'ecoou o corpo da resposta: {texto!r}'
+
+
+def test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota():
+    """Reprodução do caminho HTTP REAL, contra o `EpiHandler` de verdade.
+
+    É esta a evidência que move o 403 da medição para fora da aplicação: com a
+    chave certa a rota devolve 200, com chave errada ou ausente devolve 404, e
+    o controle P4 de cadeia longa também passa. 403 não é uma resposta que este
+    caminho saiba produzir.
+    """
+    if SONDA is None:
+        return
+
+    import http.client
+    import os
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    import app as APP
+    from epi_backend.bootstrap import DB_BOOTSTRAP_STATE, DB_BOOTSTRAP_STATE_LOCK
+
+    chave = 'chave-do-gate-r05b-37'
+    anterior = os.environ.get('PROXY_CHAIN_PROBE_KEY')
+    os.environ['PROXY_CHAIN_PROBE_KEY'] = chave
+    with DB_BOOTSTRAP_STATE_LOCK:
+        pronto_antes = DB_BOOTSTRAP_STATE.get('ready')
+        DB_BOOTSTRAP_STATE['ready'] = True
+
+    servidor = ThreadingHTTPServer(('127.0.0.1', 0), APP.EpiHandler)
+    porta = servidor.server_address[1]
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+
+    def pedir(cabecalhos):
+        conexao = http.client.HTTPConnection('127.0.0.1', porta, timeout=10)
+        conexao.request('GET', '/api/origin-identity-diagnostics', headers=cabecalhos)
+        resposta = conexao.getresponse()
+        resposta.read()
+        conexao.close()
+        return resposta.status
+
+    try:
+        casos = {
+            'chave correta': (
+                {'X-Diagnostics-Key': chave, 'X-Probe-Hops': '3',
+                 'X-Origin-Claim': '203.0.113.11'}, 200),
+            'chave errada': ({'X-Diagnostics-Key': 'outra'}, 404),
+            'sem chave': ({'X-Probe-Hops': '3'}, 404),
+            'cadeia longa (P4)': (
+                {'X-Diagnostics-Key': chave, 'X-Probe-Hops': '3',
+                 'X-Forwarded-For': ', '.join(f'192.0.2.{n}' for n in range(20, 50))},
+                200),
+        }
+        for rotulo, (cabecalhos, esperado) in casos.items():
+            obtido = pedir(cabecalhos)
+            assert obtido == esperado, (
+                f'{rotulo}: esperado {esperado}, veio {obtido}'
+            )
+            assert obtido != 403, f'{rotulo}: a aplicação devolveu 403'
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+        with DB_BOOTSTRAP_STATE_LOCK:
+            DB_BOOTSTRAP_STATE['ready'] = pronto_antes
+        if anterior is None:
+            os.environ.pop('PROXY_CHAIN_PROBE_KEY', None)
+        else:
+            os.environ['PROXY_CHAIN_PROBE_KEY'] = anterior

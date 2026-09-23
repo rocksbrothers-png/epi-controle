@@ -159,6 +159,64 @@ ESTADO_PADRAO = Path.home() / '.r05b_origem_anterior.json'
 VERSAO_DO_ESTADO = 1
 
 
+#: Cabeçalhos de RESPOSTA que identificam a camada que recusou. Lista fechada:
+#: nenhum cabeçalho arbitrário entra no relatório.
+CABECALHOS_DE_DIAGNOSTICO = (
+    'server', 'content-type', 'cf-ray', 'cf-mitigated',
+    'x-render-routing', 'retry-after',
+)
+
+
+def _diagnostico_do_erro(erro) -> str:
+    """Descreve uma recusa HTTP o suficiente para saber DE QUEM ela é.
+
+    A medição real devolveu `HTTP 403` nos dois backends e nada mais, e com
+    isso não dava para distinguir a aplicação da borda — enquanto a
+    aplicação, exercitada no caminho HTTP real, só devolve 200 ou 404. A
+    resposta trazia a distinção nos cabeçalhos, e este script a descartava.
+
+    O CORPO nunca sai daqui. A página de bloqueio da Cloudflare EXIBE o
+    endereço do visitante, e o relatório é feito para ser colado numa
+    revisão. Do corpo sai apenas se ele PARECE JSON ou HTML.
+    """
+    partes = [f'HTTP {erro.code} em {ROTA}']
+
+    achados = {}
+    try:
+        for nome in CABECALHOS_DE_DIAGNOSTICO:
+            valor = erro.headers.get(nome)
+            if valor:
+                achados[nome] = str(valor).strip()
+    except Exception:  # noqa: BLE001 — resposta de erro arbitrária
+        pass
+
+    tipo = achados.get('content-type', '').lower()
+    servidor = achados.get('server', '').lower()
+    e_json = 'json' in tipo
+    e_html = 'html' in tipo
+    tem_marca_de_borda = bool(achados.get('cf-ray') or achados.get('cf-mitigated')
+                              or 'cloudflare' in servidor
+                              or achados.get('x-render-routing'))
+
+    if tem_marca_de_borda or (e_html and not e_json):
+        camada = 'borda'
+    elif e_json:
+        camada = 'aplicacao'
+    else:
+        camada = 'indeterminado'
+    partes.append(f'recusa da camada: {camada}')
+
+    if achados:
+        partes.append('; '.join(f'{k}={v}' for k, v in sorted(achados.items())))
+
+    if camada == 'borda':
+        partes.append(
+            'a aplicação não produz 403 nesta rota (200 com chave, 404 sem): '
+            'quem recusou está à frente dela'
+        )
+    return ' | '.join(partes)
+
+
 class NaoAlcancado(Exception):
     """Não deu para medir. Diferente de medir e reprovar."""
 
@@ -220,7 +278,7 @@ def _sondar(base_url: str, chave: str, hops: int, *, xff=None, cf=None,
                 'sonda desligada ou ausente (404) — o serviço precisa estar '
                 'rodando a versão com a sonda E ter PROXY_CHAIN_PROBE_KEY'
             ) from e
-        raise NaoAlcancado(f'HTTP {e.code} em {ROTA}') from e
+        raise NaoAlcancado(_diagnostico_do_erro(e)) from e
     except json.JSONDecodeError as e:
         raise NaoAlcancado('resposta não é JSON — este host serve a API?') from e
     except NaoAlcancado:

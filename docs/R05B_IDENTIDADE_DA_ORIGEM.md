@@ -495,3 +495,63 @@ gate.
 **Não foi corrigido porque o número não é meu para mudar.** A declaração do `3`
 foi autorizada na R0.5, e a autorização da R0.5B é explícita: não alterar o
 número de saltos. Levado ao autor como decisão, com recomendação registrada.
+
+---
+
+## 8. O 403 da primeira medição real
+
+A primeira execução com os heads implantados devolveu, nos **dois** backends:
+
+```
+NÃO ALCANÇADO — HTTP 403 em /api/origin-identity-diagnostics
+$LASTEXITCODE = 2
+```
+
+### O que está provado
+
+**A aplicação não sabe devolver 403 nesta rota.** Exercitada no caminho HTTP
+real — `EpiHandler` num socket, requisição idêntica à do script — ela devolve:
+
+| requisição | resposta |
+|---|---|
+| chave correta | **200** com o JSON da sonda |
+| chave errada | **404** `{"error": "Rota não encontrada."}` |
+| sem chave | **404**, idem |
+| controle P4, cadeia longa | **200** |
+
+Gate `R05B-37`, que sobe o servidor de verdade e reprova se algum desses virar
+403.
+
+O caminho antes do handler também não produz 403: o único portão pré-dispatch
+para `/api/` é o de bootstrap, que responde **503**; `router.dispatch` não tem
+hook algum; e os 403 de `do_GET` vêm só de `PasswordChangeRequiredError` e
+`PermissionError`, que este handler não levanta — ele nem toca em sessão.
+
+**Conclusão: quem recusou está à frente da aplicação.**
+
+### O que NÃO estava provado, e por quê
+
+Qual camada, e por qual regra. E aqui o instrumento tinha a resposta na mão e a
+jogou fora: `_sondar` colapsava todo `HTTPError` não-404 em `HTTP {code}`,
+descartando cabeçalhos e corpo — exatamente o que distingue uma recusa da borda
+de uma recusa da aplicação.
+
+Uma medição que produz um número sem conteúdo diagnóstico é uma medição
+desperdiçada. Corrigido: a recusa agora reporta o status, a **camada**
+(`borda` · `aplicacao` · `indeterminado`) e uma lista fechada de cabeçalhos de
+resposta que identificam quem respondeu.
+
+**O corpo nunca sai.** A página de bloqueio da Cloudflare **exibe o endereço do
+visitante**, e o relatório existe para ser colado numa revisão. Do corpo sai
+apenas se ele parece JSON ou HTML. Gate `R05B-36` prova as duas metades:
+identifica a camada, e não ecoa nem o corpo nem o endereço que ele contém.
+
+### O que ainda não dá para afirmar daqui
+
+A política de egresso deste ambiente nega CONNECT para `*.onrender.com`, então
+não consigo observar a resposta real. Cloudflare está comprovadamente à frente
+(§3.1), o que a torna a candidata mais provável — mas **candidata não é causa
+comprovada**, e nomear uma sem evidência seria o mesmo erro que esta fatia
+inteira existe para não cometer.
+
+A próxima execução traz essa evidência no próprio relatório, sem medição extra.

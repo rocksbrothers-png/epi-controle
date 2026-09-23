@@ -614,3 +614,50 @@ por vez, sem chave nenhuma.
 **Ressalva honesta:** o 403 e o 503 foram observados em momentos diferentes. O
 teste limpo roda as duas requisições **em sequência imediata**, para que o
 estado do serviço não seja uma explicação alternativa.
+
+### Sexta rodada: cinco achados, e um deles derrubou uma afirmação minha
+
+| | achado | gate |
+|---|---|---|
+| 1 | o 404 da sonda **não** era indistinguível de rota inexistente | `R05B-39` |
+| 2 | `HOSTNAMES-COBERTOS` comparado por substring | `R05B-40` |
+| 3 | falha ao **gravar** o compromisso virava traceback com status 1 | `R05B-41` |
+| 4 | falha ao **apagar** o compromisso saía 0, declarando fechado o que não fechou | `R05B-41` |
+| 5 | contrato ABERTO sem o script deixava a suíte verde | `R05B-7` |
+
+#### O achado 1 desmente o que este documento afirmava
+
+Estava escrito aqui que a rota devolvia 404 "com o mesmo corpo de
+`app.not_found()`, para não confirmar a existência da rota". **Era falso.**
+Medido:
+
+| requisição | status | content-type | bytes |
+|---|---|---|---|
+| sonda sem chave | 404 | `application/json; charset=utf-8` | 34 |
+| rota inexistente sob `/api/` | 404 | `text/html;charset=utf-8` | 335 |
+
+Quem sondasse distinguiria "sonda desligada" de "rota ausente" por inspeção
+trivial. A correção usa `send_error(404, 'File not found')`, que é exatamente o
+caminho do fallthrough, e o gate compara status, content-type e **corpo byte a
+byte** contra uma rota que não existe.
+
+A evidência já estava na reprodução do caminho HTTP que eu mesmo rodei para
+investigar o 403 — e eu não a li.
+
+#### O achado 5 é buraco criado por uma correção anterior
+
+O import condicional do script (rodada 2) resolveu o estado fechado e abriu o
+aberto: com o contrato `INDETERMINADO`, apagar o script fazia todo teste
+dependente dele **pular**, e a suíte ficava verde enquanto o operador perdia a
+capacidade de medir e de fechar. `R05B-7` agora exige presença no aberto e
+ausência no fechado — simetria que faltava.
+
+#### Códigos de saída: agora há um `4`
+
+Falha de filesystem não é veredito sobre propriedade, e as duas direções
+estavam erradas:
+
+| situação | era | virou |
+|---|---|---|
+| não consegue **gravar** o compromisso | traceback, status 1 (igual a propriedade reprovada) | **2**, não executado |
+| não consegue **apagar** o compromisso | **0**, certificação "fechada" com o compromisso vivo no disco | **4**, propriedades satisfeitas e encerramento falho |

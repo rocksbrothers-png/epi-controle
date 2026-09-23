@@ -369,9 +369,14 @@ def handle_get_origin_identity_diagnostics(handler, parsed, payload, match):
     # retornando None é o caso normal — ele converte em HANDLED. Devolver o
     # resultado de `send_json` propagaria um valor sem significado.
     if not autorizado(handler):
-        # 404 com o MESMO corpo de `app.not_found()`: um 403, ou um corpo
-        # próprio, confirmaria a existência da sonda para quem sondasse.
-        send_json(handler, 404, {'error': 'Rota não encontrada.'})
+        # `send_error(404, 'File not found')` é EXATAMENTE o que o fallthrough
+        # do `SimpleHTTPRequestHandler` emite para uma rota inexistente sob
+        # `/api/`. A versão anterior mandava JSON aqui, enquanto uma rota que
+        # não existe devolve HTML — 34 bytes contra 335, content-type
+        # diferente. Quem sondasse distinguiria a sonda desligada de uma rota
+        # ausente por inspeção trivial, que é justamente o que este 404 existe
+        # para impedir. Achado de revisão; a afirmação de ocultação era falsa.
+        handler.send_error(404, 'File not found')
         return
     send_json(handler, 200, medir(handler))
 # ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — FIM ────────────────────

@@ -155,13 +155,21 @@ def test_r05b_1_contrato_legivel_e_com_digesto_de_paridade():
             )
         cobertos = campos['HOSTNAMES-COBERTOS']
         # `!= 'nao-medidos'` sozinho aceitava vazio, ou `qualquer-coisa`, e
-        # liberava a remoção da sonda sem provar cobertura nenhuma. Achado de
-        # revisão: o campo tem de nomear as duas entradas onde HOPS será
-        # aplicado.
+        # liberava a remoção da sonda sem provar cobertura nenhuma.
+        #
+        # E `hostname in cobertos` — substring — aceitava
+        # `epi-controle-app-gupy.onrender.com.invalid`, que não é o hostname
+        # medido. A comparação agora é por ENTRADA EXATA. Dois achados de
+        # revisão, o segundo sobre a correção do primeiro.
+        entradas = {
+            parte.strip().rstrip('.').lower()
+            for parte in re.split(r'[,\s]+', cobertos)
+            if parte.strip()
+        }
         for hostname in HOSTNAMES_OBRIGATORIOS:
-            assert hostname in cobertos, (
-                f'contrato DETERMINADA sem cobrir {hostname}: '
-                f'HOSTNAMES-COBERTOS = {cobertos!r}'
+            assert hostname in entradas, (
+                f'contrato DETERMINADA sem cobrir {hostname} como entrada '
+                f'exata: HOSTNAMES-COBERTOS = {cobertos!r}'
             )
 
     atual = hashlib.sha256(_bloco().encode('utf-8')).hexdigest()
@@ -386,10 +394,22 @@ def test_r05b_6c_mesma_origem_duas_vezes_nao_conta_como_duas():
 # ── R05B-7: a sonda é temporária ────────────────────────────────────────────
 
 def test_r05b_7_a_sonda_sai_quando_a_identidade_for_determinada():
-    """Sabotagem K."""
+    """Sabotagem K, e o simétrico dela.
+
+    Fechado: sonda, script, handler e rota têm de SUMIR.
+    Aberto: têm de EXISTIR — o import condicional faz todo teste dependente do
+    script pular quando ele some, então apagá-lo com o contrato aberto deixava
+    a suíte verde enquanto o operador perdia a capacidade de medir e de fechar
+    a certificação. Achado de revisão, e buraco criado pela própria correção do
+    import.
+    """
     if _em_aberto():
         assert SONDA_MODULO.exists(), \
             'a identidade está INDETERMINADA e a sonda já sumiu'
+        assert SCRIPT.exists(), (
+            'contrato ABERTO sem scripts/certificar_identidade_da_origem.py: '
+            'não há como medir nem fechar a certificação'
+        )
         return
 
     assert not SONDA_MODULO.exists(), \
@@ -1431,8 +1451,8 @@ def test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota():
     from epi_backend.bootstrap import DB_BOOTSTRAP_STATE, DB_BOOTSTRAP_STATE_LOCK
 
     chave = 'chave-do-gate-r05b-37'
-    anterior = os.environ.get('PROXY_CHAIN_PROBE_KEY')
-    os.environ['PROXY_CHAIN_PROBE_KEY'] = chave
+    anterior = os.environ.get(SONDA.NOME_DA_VARIAVEL)
+    os.environ[SONDA.NOME_DA_VARIAVEL] = chave
     with DB_BOOTSTRAP_STATE_LOCK:
         pronto_antes = DB_BOOTSTRAP_STATE.get('ready')
         DB_BOOTSTRAP_STATE['ready'] = True
@@ -1473,9 +1493,9 @@ def test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota():
         with DB_BOOTSTRAP_STATE_LOCK:
             DB_BOOTSTRAP_STATE['ready'] = pronto_antes
         if anterior is None:
-            os.environ.pop('PROXY_CHAIN_PROBE_KEY', None)
+            os.environ.pop(SONDA.NOME_DA_VARIAVEL, None)
         else:
-            os.environ['PROXY_CHAIN_PROBE_KEY'] = anterior
+            os.environ[SONDA.NOME_DA_VARIAVEL] = anterior
 
 
 # ── O 503 da triagem: o portão de bootstrap intercepta a sonda ──────────────
@@ -1509,8 +1529,8 @@ def test_r05b_38_a_sonda_e_interceptada_pelo_portao_de_bootstrap():
     assert '/api/origin-identity-diagnostics' not in BOOTSTRAP_READY_EXEMPT_PATHS
 
     chave = 'chave-do-gate-r05b-38'
-    anterior = os.environ.get('PROXY_CHAIN_PROBE_KEY')
-    os.environ['PROXY_CHAIN_PROBE_KEY'] = chave
+    anterior = os.environ.get(SONDA.NOME_DA_VARIAVEL)
+    os.environ[SONDA.NOME_DA_VARIAVEL] = chave
     with DB_BOOTSTRAP_STATE_LOCK:
         pronto_antes = DB_BOOTSTRAP_STATE.get('ready')
         DB_BOOTSTRAP_STATE['ready'] = False
@@ -1558,6 +1578,130 @@ def test_r05b_38_a_sonda_e_interceptada_pelo_portao_de_bootstrap():
         with DB_BOOTSTRAP_STATE_LOCK:
             DB_BOOTSTRAP_STATE['ready'] = pronto_antes
         if anterior is None:
-            os.environ.pop('PROXY_CHAIN_PROBE_KEY', None)
+            os.environ.pop(SONDA.NOME_DA_VARIAVEL, None)
         else:
-            os.environ['PROXY_CHAIN_PROBE_KEY'] = anterior
+            os.environ[SONDA.NOME_DA_VARIAVEL] = anterior
+
+
+# ── Sexta rodada da revisão ─────────────────────────────────────────────────
+
+def test_r05b_39_404_da_sonda_e_indistinguivel_de_rota_inexistente():
+    """A sonda sem chave devolvia JSON (34 bytes) enquanto uma rota inexistente
+    devolve HTML (335 bytes), com content-type diferente. Quem sondasse
+    distinguiria "sonda desligada" de "rota ausente" por inspeção trivial — o
+    contrário do que este 404 existe para fazer. A afirmação de ocultação que
+    eu tinha escrito era falsa, e a evidência estava na minha própria
+    reprodução do caminho HTTP.
+    """
+    if SONDA is None:
+        return
+
+    import http.client
+    import os
+    import threading
+    from http.server import ThreadingHTTPServer
+
+    import app as APP
+    from epi_backend.bootstrap import DB_BOOTSTRAP_STATE, DB_BOOTSTRAP_STATE_LOCK
+
+    anterior = os.environ.get(SONDA.NOME_DA_VARIAVEL)
+    os.environ[SONDA.NOME_DA_VARIAVEL] = 'chave-do-gate-r05b-39'
+    with DB_BOOTSTRAP_STATE_LOCK:
+        pronto_antes = DB_BOOTSTRAP_STATE.get('ready')
+        DB_BOOTSTRAP_STATE['ready'] = True
+
+    servidor = ThreadingHTTPServer(('127.0.0.1', 0), APP.EpiHandler)
+    porta = servidor.server_address[1]
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+
+    def pedir(rota, cabecalhos=None):
+        conexao = http.client.HTTPConnection('127.0.0.1', porta, timeout=10)
+        conexao.request('GET', rota, headers=cabecalhos or {})
+        resposta = conexao.getresponse()
+        corpo = resposta.read()
+        tipo = resposta.getheader('Content-Type')
+        conexao.close()
+        return resposta.status, tipo, corpo
+
+    try:
+        sonda = pedir('/api/origin-identity-diagnostics')
+        ausente = pedir('/api/rota-que-nao-existe-r05b-39')
+        errada = pedir('/api/origin-identity-diagnostics',
+                       {'X-Diagnostics-Key': 'chave-errada'})
+
+        for rotulo, obtido in (('sem chave', sonda), ('chave errada', errada)):
+            assert obtido[0] == ausente[0] == 404, rotulo
+            assert obtido[1] == ausente[1], (
+                f'{rotulo}: content-type {obtido[1]!r} denuncia a rota; '
+                f'uma rota ausente devolve {ausente[1]!r}'
+            )
+            assert obtido[2] == ausente[2], (
+                f'{rotulo}: o corpo difere de uma rota ausente '
+                f'({len(obtido[2])} vs {len(ausente[2])} bytes)'
+            )
+    finally:
+        servidor.shutdown()
+        servidor.server_close()
+        with DB_BOOTSTRAP_STATE_LOCK:
+            DB_BOOTSTRAP_STATE['ready'] = pronto_antes
+        if anterior is None:
+            os.environ.pop(SONDA.NOME_DA_VARIAVEL, None)
+        else:
+            os.environ[SONDA.NOME_DA_VARIAVEL] = anterior
+
+
+def test_r05b_40_hostname_coberto_e_comparado_por_entrada_exata():
+    """`hostname in cobertos` aceitava `…onrender.com.invalid`, que não é o
+    hostname medido — e liberava a remoção da sonda sem cobertura."""
+    def entradas(bruto):
+        return {parte.strip().rstrip('.').lower()
+                for parte in re.split(r'[,\s]+', bruto) if parte.strip()}
+
+    gupy, api = HOSTNAMES_OBRIGATORIOS
+    legitimo = f'{gupy}, {api}'
+    assert all(h in entradas(legitimo) for h in HOSTNAMES_OBRIGATORIOS)
+
+    for impostor in (f'{gupy}.invalid, {api}.invalid',
+                     f'nao-{gupy}, nao-{api}',
+                     f'{gupy}.evil.example, {api}.evil.example'):
+        assert not all(h in entradas(impostor) for h in HOSTNAMES_OBRIGATORIOS), (
+            f'{impostor!r} passou por cobertura das entradas obrigatórias'
+        )
+
+
+def test_r05b_41_falhas_de_filesystem_nao_viram_veredito(monkeypatch, tmp_path, capsys):
+    """Gravar ou apagar o compromisso pode falhar por filesystem, e nenhuma das
+    duas é veredito sobre propriedade:
+
+    - não conseguir GRAVAR deixava traceback com status 1, o mesmo de uma
+      propriedade reprovada;
+    - não conseguir APAGAR saía 0, declarando a certificação fechada enquanto o
+      compromisso continuava reutilizável como evidência de primeira origem.
+    """
+    if CERT is None:
+        return
+
+    # gravar falhando → 2 (não executado), não traceback nem 1
+    codigo = _rodar(monkeypatch, **_base(tmp_path / 'sem-tal-pasta' / 'e.json',
+                                         EPI_IDENT_ORIGEM='A',
+                                         EPI_IDENT_MEU_IP=_IP_A))
+    assert codigo == 2, f'falha ao gravar devolveu {codigo}'
+    assert 'não consegui gravar o compromisso' in capsys.readouterr().out
+
+    # apagar falhando → 4, nunca 0
+    estado = tmp_path / 'e2.json'
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    capsys.readouterr()
+
+    def recusa_apagar(self):
+        raise OSError(30, 'Read-only file system')
+
+    monkeypatch.setattr(CERT.Path, 'unlink', recusa_apagar)
+    codigo = _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                         EPI_IDENT_MEU_IP=_IP_B,
+                                         EPI_IDENT_IP_ANTERIOR=_IP_A))
+    saida = capsys.readouterr().out
+    assert codigo == 4, f'encerramento falhando devolveu {codigo}, não 4'
+    assert 'continua reutilizável' in saida
+    assert estado.exists(), 'o compromisso sumiu apesar do erro simulado'

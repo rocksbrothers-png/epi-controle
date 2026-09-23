@@ -79,7 +79,8 @@ rede (4G, tethering) não precisa: ele já está lá.
 Saída: 0 = **P1, P2 e P4** satisfeitos nos DOIS backends · 1 = propriedade
 reprovada, medições contraditórias ou backends discordantes · 2 = não executado
 / configuração incompleta / alvo inalcançável · 3 = medido numa origem, falta a
-segunda.
+segunda · 4 = propriedades satisfeitas mas o ENCERRAMENTO falhou (o compromisso
+não pôde ser apagado e continua reutilizável).
 
 P3 **não** entra no veredito: ele classifica cabeçalhos, e a classificação é
 reportada à parte. Um `sentinela_sobrevive` não reprova `HOPS`, mas é achado
@@ -926,7 +927,19 @@ def main() -> int:
         limpos = [a.nome for a in obrigatorios
                   if a.p1 is True and a.p1_contaminado is False
                   and a.candidato_do_cliente is False]
-        caminho = _gravar_estado(origem, hops, meu_ip, limpos, urls_atuais)
+        try:
+            caminho = _gravar_estado(origem, hops, meu_ip, limpos, urls_atuais)
+        except OSError as e:
+            # Sem o compromisso gravado, a segunda origem não tem como se ligar
+            # à primeira. A medição aconteceu, mas a cadeia A→B não pode
+            # prosseguir — isso é "não executado", não "propriedade reprovada".
+            # Sem este tratamento saía traceback com status 1, o mesmo de uma
+            # propriedade rejeitada. Achado de revisão.
+            print(f'PARE: não consegui gravar o compromisso em '
+                  f'{_caminho_do_estado()}: {e}')
+            print('Sem ele a segunda origem não tem como se ligar a esta.')
+            print('Aponte EPI_IDENT_ESTADO para um caminho gravável e repita.')
+            return 2
         print(f'RESULTADO: medido na origem {origem!r}, falta a SEGUNDA origem.')
         print(f'Compromisso gravado em {caminho} — LOCAL, não vai em commit,')
         print('não sai no relatório. Leve-o se a segunda origem for outra máquina.')
@@ -965,8 +978,17 @@ def main() -> int:
         # máquina e o arquivo já saiu na primeira passagem.
         pass
     except OSError as e:
-        print(f'ATENÇÃO: não consegui apagar {_caminho_do_estado()}: {e}')
-        print('Apague à mão — ele não deve sobreviver à certificação.')
+        # Sair 0 aqui declararia a certificação fechada deixando o compromisso
+        # REUTILIZÁVEL como evidência de primeira origem numa execução futura,
+        # quando a topologia já pode ter mudado. As propriedades passaram, mas
+        # o encerramento não — e são coisas distintas. Achado de revisão.
+        print(f'PARE: não consegui apagar {_caminho_do_estado()}: {e}')
+        print()
+        print('As propriedades P1, P2 e P4 foram satisfeitas, mas o')
+        print('encerramento NÃO fechou: o compromisso continua no disco e')
+        print('continua reutilizável como evidência de primeira origem.')
+        print('Apague-o à mão e repita a segunda origem.')
+        return 4
     print()
 
     print('RESULTADO: P1, P2 e P4 satisfeitos nos dois backends.')

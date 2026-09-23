@@ -81,6 +81,12 @@ CABECALHO_REIVINDICACAO_ALT = 'X-Origin-Claim-Alt'
 
 HOPS_MAXIMO = 16
 
+#: Nome da variável de ambiente que arma a sonda, declarado UMA vez, no módulo
+#: que a lê. Os gates usam esta constante em vez do literal: assim o nome sai do
+#: repositório junto com a sonda, e `R05-6` — que proíbe qualquer leitura da
+#: chave depois do fechamento — continua verdadeiro sem exceção para os testes.
+NOME_DA_VARIAVEL = 'PROXY_CHAIN_PROBE_KEY'
+
 
 def _cabecalho(handler, nome: str) -> str:
     """Lê um cabeçalho juntando TODAS as instâncias, em qualquer grafia.
@@ -277,7 +283,7 @@ def analisar(cadeia: list, hops: int, reivindicacao: str, alternativa: str,
 
 
 def chave_configurada() -> str:
-    return str(os.environ.get('PROXY_CHAIN_PROBE_KEY', '')).strip()
+    return str(os.environ.get(NOME_DA_VARIAVEL, '')).strip()
 
 
 def autorizado(handler) -> bool:

@@ -140,7 +140,7 @@ assumida: cada hostname é medido, ou registrado como não comprovado.
 |---|---|---|
 | `epi-controle-app-gupy.onrender.com` | API corporativa | a medir |
 | `epi-controle-app-livamobile-api.onrender.com` | API SaaS | a medir |
-| `epi-controle.onrender.com` | documentado como Produção em `spec/09-deployment.md:7`; o `render.yaml` declara `name: epi-controle` | **a investigar** — pode não existir, não responder, ou não ser o mesmo serviço |
+| `epi-controle.onrender.com` | documentado como Produção em `spec/09-deployment.md:7`; o `render.yaml` corporativo declara `name: epi-controle` | **a investigar** — pode não existir, não responder, ou não ser o mesmo serviço |
 
 **Domínios customizados:** o produto suporta CNAME de cliente
 (`modules/tenant/domains_service.py`, resolução por `Host` em
@@ -223,6 +223,7 @@ regras normais do repositório.
 **Não corrige o flake do bucket global** — `epi-controle#1002` e
 `epi-controle-app#375` são fatia própria posterior.
 
-**Não corrige a divergência de nome de serviço** entre `render.yaml`
-(`name: epi-controle`) e o serviço medido (`epi-controle-app-gupy`). Achado
+**Não corrige a divergência de nome de serviço** entre o `render.yaml`
+corporativo (`name: epi-controle`) e o serviço medido
+(`epi-controle-app-gupy`). Achado
 registrado, correção fora de escopo.

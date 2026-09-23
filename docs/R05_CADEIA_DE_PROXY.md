@@ -245,8 +245,11 @@ Os serviços são **`epi-controle-app-gupy`** (corporativo) e
 `epi-controle-app-livamobile-api` (SaaS). O static site do SaaS não roda o
 backend e não precisa da variável.
 
-> **Atenção ao nome.** `render.yaml` deste repositório declara
-> `name: epi-controle`, que **não** é o serviço medido. Os hostnames medidos
+> **Atenção ao nome.** O blueprint corporativo — `render.yaml` de
+> `epi-controle` — declara `name: epi-controle`, que **não** é o serviço
+> medido. O blueprint do SaaS declara `epi-controle-app-livamobile-api` e
+> `epi-controle-app-livamobile-web`; nenhum dos dois nomeia
+> `epi-controle-app-gupy`. Os hostnames medidos
 > foram `epi-controle-app-gupy.onrender.com` e
 > `epi-controle-app-livamobile-api.onrender.com`, e o primeiro é o que
 > `.github/workflows/ios_ci.yml:105`, `flutter/pubspec.yaml:46,59` e

@@ -148,6 +148,45 @@ assumida: cada hostname é medido, ou registrado como não comprovado.
 ativo**. Enquanto não houver evidência de um domínio configurado e acessível, o
 registro é `nenhum domínio customizado ativo comprovado`.
 
+### 3.1 DNS não decide se um serviço existe — medido
+
+`*.onrender.com` é **wildcard**. Medido em 2026-09-23: um nome inventado
+(`nome-que-nao-existe-r05b-7f3a91.onrender.com`) resolve para os **mesmos**
+endereços e a **mesma** cadeia de CNAME que `epi-controle.onrender.com` e que os
+dois serviços medidos:
+
+```
+<nome qualquer>.onrender.com
+  → gcp-us-west1-1.origin.onrender.com.cdn.cloudflare.net
+  → o MESMO par de endereços, para todos os nomes acima
+```
+
+> Os endereços não são transcritos aqui de propósito: o gate `R05B-10` proíbe
+> literal fora de faixa reservada em qualquer superfície da fatia, e ele
+> reprovou a primeira redação desta seção. O que importa é a igualdade, não o
+> valor — e a igualdade é reproduzível com `getent hosts`.
+
+Consequência direta: **resolver DNS não é evidência de que o serviço existe.**
+`epi-controle.onrender.com` continua `NÃO COMPROVADO`, e só uma resposta HTTP
+da aplicação decide — nunca o DNS.
+
+A cadeia terminar em `.cdn.cloudflare.net` **corrobora** a Cloudflare estar à
+frente da borda do Render, o que é consistente com `CF-Connecting-IP` ter
+chegado à aplicação na R0.5. Corrobora e nada mais: o registro é do wildcard
+compartilhado, não de um serviço, e não diz **qual** elemento da cadeia é qual.
+Identidade continua sendo o que o §2 mede.
+
+### 3.2 Por que a medição é humana
+
+O ambiente onde este agente roda tem política de egresso que **nega CONNECT**
+para `*.onrender.com` — os três hostnames foram recusados com o mesmo 403 do
+gateway, inclusive os dois que se sabe estarem vivos. Logo a recusa **não é
+evidência** sobre nenhum deles.
+
+Some-se a isso as duas origens públicas realmente distintas que o P2 exige, que
+um agente em container único não tem. A medição é do operador, e as instruções
+exatas estão em `scripts/certificar_identidade_da_origem.py`.
+
 ---
 
 ## 4. Critério para `HOPS=3` PROVADO

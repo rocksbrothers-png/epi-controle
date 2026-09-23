@@ -125,10 +125,31 @@ CAMPOS_DECISIVOS = (
     'true_client_ip',
 )
 
-#: A sonda promete escalares. Um campo que chegue como lista ou dicionário
-#: rebentaria a construção do conjunto de formas com `TypeError`, FORA dos
-#: caminhos controlados — o operador veria traceback em vez de código de saída.
-TIPOS_ESCALARES = (bool, int, float, str, type(None))
+#: Contrato de tipo POR CAMPO, não só "é escalar".
+#:
+#: A primeira versão aceitava qualquer escalar, e `None` é escalar. Uma sonda
+#: de versão diferente que OMITISSE `prefixo_do_cliente_presente` produziria
+#: `None` via `.get()`, o campo passaria, e `medir` converteria a ausência em
+#: `p1_contaminado = False` — um P1 sem guarda nenhuma certificaria. Achado de
+#: revisão.
+#:
+#: Os dois `bate_com_*` são os únicos legitimamente nulos: valem `None` quando
+#: o chamador não declarou endereço.
+CAMPOS_BOOLEANOS = (
+    'cadeia_suficiente_para_hops',
+    'candidato_e_do_cliente',
+    'sufixo_confiavel_preservado',
+    'prefixo_do_cliente_presente',
+    'cadeia_maior_que_hops',
+    'reivindicacao_fora_do_candidato',
+)
+CAMPOS_BOOLEANOS_OU_NULOS = (
+    'candidato_bate_com_origem_declarada',
+    'candidato_bate_com_origem_alternativa',
+)
+CAMPOS_INTEIROS = ('cadeia_tamanho', 'hops_avaliado')
+CAMPOS_CLASSIFICADOS = ('cf_connecting_ip', 'true_client_ip')
+CLASSES_VALIDAS = ('ausente', 'sentinela_sobrevive', 'substituida')
 
 #: Estado que liga a segunda origem à primeira. Fica FORA do repositório de
 #: propósito: não entra em commit por acidente, e o gate que varre endereços
@@ -215,17 +236,29 @@ def _forma(nome: str, amostra: dict) -> tuple:
     unhashable type` fora de `NaoAlcancado`/`Inconsistente`, e o operador
     receberia traceback em vez de um dos códigos documentados.
     """
-    valores = []
-    for campo in CAMPOS_DECISIVOS:
-        valor = amostra.get(campo)
-        if not isinstance(valor, TIPOS_ESCALARES):
+    def exigir(campo, condicao, esperado):
+        if campo not in amostra:
             raise NaoAlcancado(
-                f'controle {nome}: o campo {campo!r} veio como '
-                f'{type(valor).__name__}, não escalar — a resposta não segue o '
-                'contrato da sonda R0.5B'
+                f'controle {nome}: a resposta não trouxe {campo!r} — sonda de '
+                'outra versão, ou resposta truncada'
             )
-        valores.append(valor)
-    return tuple(valores)
+        if not condicao(amostra[campo]):
+            raise NaoAlcancado(
+                f'controle {nome}: {campo!r} veio como '
+                f'{type(amostra[campo]).__name__}, esperado {esperado}'
+            )
+
+    for campo in CAMPOS_BOOLEANOS:
+        exigir(campo, lambda v: isinstance(v, bool), 'booleano')
+    for campo in CAMPOS_BOOLEANOS_OU_NULOS:
+        exigir(campo, lambda v: v is None or isinstance(v, bool), 'booleano ou nulo')
+    for campo in CAMPOS_INTEIROS:
+        exigir(campo, lambda v: isinstance(v, int) and not isinstance(v, bool), 'inteiro')
+    for campo in CAMPOS_CLASSIFICADOS:
+        exigir(campo, lambda v: v in CLASSES_VALIDAS,
+               f'uma de {CLASSES_VALIDAS}')
+
+    return tuple(amostra[campo] for campo in CAMPOS_DECISIVOS)
 
 
 def _canonico(endereco: str) -> str:
@@ -240,17 +273,31 @@ def _canonico(endereco: str) -> str:
     return str(alvo)
 
 
-def _compromisso(sal_hex: str, endereco: str) -> str:
-    """`sha256(sal || endereço canônico)`.
+#: Custo do compromisso. `scrypt` com estes parâmetros leva ~0,1 s e ~16 MB por
+#: avaliação — irrelevante para as duas verificações que o roteiro faz, e
+#: proibitivo para enumerar 2^32 endereços.
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
 
-    O sal existe porque o espaço IPv4 tem 2^32 elementos: um digesto sem sal
-    seria consulta de tabela. Com sal, o arquivo continua local e nunca sai no
-    relatório — o relatório diz apenas se bateu.
+
+def _compromisso(sal_hex: str, endereco: str) -> str:
+    """Compromisso com o endereço, de custo deliberadamente alto.
+
+    A primeira versão usava `sha256(sal || endereço)`. O sal impede tabela
+    precomputada e **não** impede enumeração: IPv4 tem 2^32 valores, e quem
+    tivesse o arquivo — que o roteiro manda levar de uma máquina para outra —
+    recuperaria o endereço em segundos. Isso contradizia a premissa do
+    instrumento, que é não registrar endereço. Achado de revisão.
+
+    `scrypt` não torna a recuperação impossível; torna o custo proibitivo, e é
+    memória-dura, então GPU não ajuda como ajudaria com SHA-256. Somado a isso,
+    o arquivo é local e some quando a certificação fecha.
     """
     canonico = _canonico(endereco)
     if not canonico:
         return ''
-    return hashlib.sha256(bytes.fromhex(sal_hex) + canonico.encode('utf-8')).hexdigest()
+    bruto = hashlib.scrypt(canonico.encode('utf-8'), salt=bytes.fromhex(sal_hex),
+                           n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=32)
+    return bruto.hex()
 
 
 def _controle(nome: str, **kwargs) -> dict:
@@ -260,6 +307,20 @@ def _controle(nome: str, **kwargs) -> dict:
     de coincidência.
     """
     amostras = [_sondar(**kwargs) for _ in range(REPETICOES)]
+
+    # A sonda pode ter avaliado OUTRO N: `_hops_pedido` satura em
+    # `HOPS_MAXIMO`, e uma versão diferente pode interpretar o cabeçalho de
+    # outro jeito. Certificar a janela errada é certificar nada. Achado de
+    # revisão.
+    pedido = kwargs.get('hops')
+    for amostra in amostras:
+        if amostra.get('hops_avaliado') != pedido:
+            raise NaoAlcancado(
+                f'controle {nome}: pedi hops={pedido} e a sonda avaliou '
+                f'hops={amostra.get("hops_avaliado")} — janela diferente da '
+                'que seria aplicada'
+            )
+
     formas = {_forma(nome, a) for a in amostras}
     if len(formas) != 1:
         raise Inconsistente(
@@ -334,7 +395,12 @@ def _caminho_do_estado() -> Path:
     return Path(bruto) if bruto else ESTADO_PADRAO
 
 
-def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list) -> Path:
+def _normalizar_url(url: str) -> str:
+    return str(url or '').strip().rstrip('/').lower()
+
+
+def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list,
+                   urls: dict) -> Path:
     """Compromisso da primeira origem. Só é chamado com P1 limpo.
 
     Guarda o que a segunda execução precisa para PROVAR que o endereço
@@ -350,6 +416,11 @@ def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list) -> Path:
         'sal': sal,
         'compromisso': _compromisso(sal, meu_ip),
         'backends_com_p1': sorted(nomes_ok),
+        # Os rótulos `corporativo`/`saas` são estáticos: sem as URLs, trocar um
+        # endpoint entre a origem A e a B deixaria combinar P1 de um serviço com
+        # P2 de outro. Achado de revisão. As URLs já saem no relatório, então
+        # guardá-las aqui não acrescenta exposição.
+        'urls': {nome: _normalizar_url(url) for nome, url in urls.items()},
     }, indent=2), encoding='utf-8')
     return caminho
 
@@ -364,7 +435,7 @@ def _ler_estado():
 
 
 def _validar_anterior(estado, ip_anterior: str, origem: str, hops: int,
-                      obrigatorios: list) -> tuple:
+                      obrigatorios: list, urls: dict = None) -> tuple:
     """A segunda origem só conta se estiver LIGADA a uma primeira medida.
 
     Sem esta verificação, qualquer endereço válido diferente do candidato faria
@@ -395,6 +466,20 @@ def _validar_anterior(estado, ip_anterior: str, origem: str, hops: int,
         return False, (
             'a primeira origem não teve P1 verdadeiro em: ' + ', '.join(faltando)
         )
+    if urls is not None:
+        guardadas = estado.get('urls') or {}
+        atuais = {nome: _normalizar_url(url) for nome, url in urls.items()}
+        if guardadas != atuais:
+            divergentes = sorted(
+                nome for nome in set(guardadas) | set(atuais)
+                if guardadas.get(nome) != atuais.get(nome)
+            )
+            return False, (
+                'a primeira origem mediu outro endpoint em: '
+                + ', '.join(divergentes) + ' — P1 de um serviço não sustenta '
+                'P2 de outro'
+            )
+
     sal = str(estado.get('sal', ''))
     esperado = str(estado.get('compromisso', ''))
     try:
@@ -536,12 +621,21 @@ def main() -> int:
         print('aplicado, ou não vale. Não há meia certificação.')
         return 2
 
+    distintas = {_normalizar_url(a.url) for a in obrigatorios}
+    if len(distintas) != len(obrigatorios):
+        print()
+        print('PARE: EPI_IDENT_CORP_URL e EPI_IDENT_SAAS_URL apontam para o')
+        print('MESMO endpoint. Um deployment não certifica dois: a comparação')
+        print('entre backends viraria a mesma medição consigo mesma.')
+        return 2
+
+    urls_atuais = {a.nome: a.url for a in obrigatorios}
     estado = _ler_estado() if ip_anterior else None
     nomes_obrigatorios = [a.nome for a in obrigatorios]
     ligado, motivo_do_vinculo = (False, 'primeira origem')
     if ip_anterior:
         ligado, motivo_do_vinculo = _validar_anterior(
-            estado, ip_anterior, origem, hops, nomes_obrigatorios)
+            estado, ip_anterior, origem, hops, nomes_obrigatorios, urls_atuais)
 
     tem_anterior = bool(ip_anterior)
     for alvo in alvos:
@@ -601,6 +695,21 @@ def main() -> int:
     elif alt.alcancado:
         print('hostname alternativo: RESPONDE a sonda R0.5B — é uma entrada '
               'pública adicional e entra na matriz')
+        # Responder e REPROVAR de forma estável é pior que se contradizer: é
+        # uma entrada pública onde a janela `N` não vale. A primeira versão só
+        # reprovava a contradição e deixava o negativo estável passar como
+        # informativo. Achado de revisão.
+        alt.anterior_ligado = ligado if tem_anterior else None
+        ok_alt, pendente_alt, motivo_alt = _veredito(alt, tem_anterior)
+        if not ok_alt and not pendente_alt:
+            print(f'   mas REPROVA: {motivo_alt}')
+            print('   Uma entrada pública onde a janela não vale derruba a')
+            print('   premissa de rota do critério.')
+            print()
+            print('RESULTADO: cobertura de rota REPROVADA. HOPS permanece')
+            print('PARCIALMENTE PROVADO e RATE_LIMIT_TRUSTED_PROXY_HOPS '
+                  'permanece 0.')
+            return 1
     else:
         print(f'hostname alternativo: não comprovado — {alt.motivo}')
 
@@ -613,7 +722,7 @@ def main() -> int:
         limpos = [a.nome for a in obrigatorios
                   if a.p1 is True and a.p1_contaminado is False
                   and a.candidato_do_cliente is False]
-        caminho = _gravar_estado(origem, hops, meu_ip, limpos)
+        caminho = _gravar_estado(origem, hops, meu_ip, limpos, urls_atuais)
         print(f'RESULTADO: medido na origem {origem!r}, falta a SEGUNDA origem.')
         print(f'Compromisso gravado em {caminho} — LOCAL, não vai em commit,')
         print('não sai no relatório. Leve-o se a segunda origem for outra máquina.')

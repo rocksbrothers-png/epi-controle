@@ -56,6 +56,13 @@ DIGESTO_CONTRATO_R05B = '0630ad453fced15de54578d302aa0a6c00b9dec8d38bda33d41b9dd
 #: único aberto: quando medido, carrega a lista de hostnames.
 _MEDIDA = ('nao-medida', 'provada', 'reprovada')
 _CLASSE = ('nao-medida', 'sentinela-sobrevive', 'substituida', 'ausente')
+#: As duas entradas públicas onde `HOPS` será aplicado. Fechar o contrato sem
+#: cobrir as duas é fechar sem cobertura.
+HOSTNAMES_OBRIGATORIOS = (
+    'epi-controle-app-gupy.onrender.com',
+    'epi-controle-app-livamobile-api.onrender.com',
+)
+
 VOCABULARIO_DO_CONTRATO = {
     'P1-IDENTIDADE': _MEDIDA,
     'P2-DUAS-ORIGENS': _MEDIDA,
@@ -145,13 +152,33 @@ def test_r05b_1_contrato_legivel_e_com_digesto_de_paridade():
             assert campos[campo] != 'nao-medida', (
                 f'contrato DETERMINADA com {campo} ainda não medido'
             )
-        assert campos['HOSTNAMES-COBERTOS'] != 'nao-medidos', \
-            'contrato DETERMINADA sem nenhum hostname coberto'
+        cobertos = campos['HOSTNAMES-COBERTOS']
+        # `!= 'nao-medidos'` sozinho aceitava vazio, ou `qualquer-coisa`, e
+        # liberava a remoção da sonda sem provar cobertura nenhuma. Achado de
+        # revisão: o campo tem de nomear as duas entradas onde HOPS será
+        # aplicado.
+        for hostname in HOSTNAMES_OBRIGATORIOS:
+            assert hostname in cobertos, (
+                f'contrato DETERMINADA sem cobrir {hostname}: '
+                f'HOSTNAMES-COBERTOS = {cobertos!r}'
+            )
 
     atual = hashlib.sha256(_bloco().encode('utf-8')).hexdigest()
+    # O que este digesto prova, e o que NÃO prova.
+    #
+    # Ele é auto-referente: compara o documento com uma constante ao lado dele,
+    # no MESMO repositório. Editar o contrato e a constante juntos passa —
+    # então ele NÃO observa o outro repositório e NÃO prova paridade.
+    #
+    # O que ele pega é a edição unilateral que esquece a constante, que é o
+    # acidente comum, e obriga qualquer mudança legítima a tocar os dois lados
+    # (a constante é a mesma nos dois). É quebra-molas com dente, não prova.
+    # Provar paridade exigiria um passo de CI comparando os dois repositórios —
+    # fora do escopo desta fatia, e registrado como tal.
     assert atual == DIGESTO_CONTRATO_R05B, (
-        'o contrato R0.5B mudou sem o digesto ser recalculado nos DOIS '
-        f'repositórios. Atual: {atual}'
+        'o contrato R0.5B mudou sem o digesto ser recalculado. A constante é a '
+        'mesma nos dois repositórios, então recalcule nos DOIS. '
+        f'Atual: {atual}'
     )
 
 
@@ -244,6 +271,8 @@ def test_r05b_4_o_hops_avaliado_acompanha_o_contrato_da_r05():
     esperado = _saltos_do_contrato_r05()
     if esperado < 1:
         return
+    if not SCRIPT.exists():
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     fonte = SCRIPT.read_text(encoding='utf-8')
     casou = re.search(r"EPI_IDENT_HOPS', '(\d+)'", fonte)
     assert casou, 'o script deixou de declarar o hops default'
@@ -284,6 +313,8 @@ def test_r05b_5_candidato_vindo_do_cliente_e_denunciado():
 
 def test_r05b_5b_contaminacao_de_p1_e_denunciada():
     """Os três guardas que tornam P1 evidência em vez de suposição."""
+    if CERT is None:
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     if SONDA is None:
         return
     cliente = '203.0.113.9'
@@ -474,6 +505,8 @@ def test_r05b_9_truncamento_da_janela_reprova_p4():
 
 
 def test_r05b_9b_o_script_reprova_p4_falso():
+    if CERT is None:
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     ok, pendente, motivo = CERT._veredito(_alvo(p4=False), True)
     assert not ok and not pendente
     assert 'P4' in motivo
@@ -489,13 +522,16 @@ FAIXAS_SEGURAS = (
 
 
 def test_r05b_10_nenhum_endereco_real_na_fatia():
+    # Este gate NÃO depende do script: ele varre o que existir. Com o contrato
+    # fechado, `SCRIPT` e `SONDA_MODULO` somem da lista e o contrato e este
+    # arquivo continuam sendo varridos — que é o certo. Uma guarda `CERT is
+    # None` aqui o transformaria em no-op justamente no estado fechado.
     import ipaddress
 
     faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
     padrao = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3})\b')
-    alvos = [CONTRATO, Path(__file__), SCRIPT]
-    if SONDA_MODULO.exists():
-        alvos.append(SONDA_MODULO)
+    alvos = [CONTRATO, Path(__file__)]
+    alvos += [caminho for caminho in (SCRIPT, SONDA_MODULO) if caminho.exists()]
     for caminho in alvos:
         for literal in set(padrao.findall(caminho.read_text(encoding='utf-8'))):
             try:
@@ -781,3 +817,179 @@ def test_r05b_16_p3_controlado_pelo_cliente_e_denunciado(monkeypatch, tmp_path, 
     _rodar(monkeypatch, sonda=_sonda_falsa(),
            **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A))
     assert 'ALERTA P3' not in capsys.readouterr().out, 'alerta falso-positivo'
+
+
+# ── Segunda rodada da revisão do Codex, sobre a versão já corrigida ─────────
+#
+# Nove achados novos. O padrão deles é instrutivo: quase todos são "a correção
+# anterior fechou metade do caso". Só reprovar a contradição do hostname
+# alternativo, e não o negativo estável. Só exigir os dois backends, e não que
+# sejam distintos. Só amarrar o IP anterior, e não o endpoint. Só rejeitar
+# container, e não campo ausente.
+
+def test_r05b_17_alternativo_com_negativo_estavel_reprova(monkeypatch, tmp_path, capsys):
+    """Responder de forma consistente e REPROVAR é pior que se contradizer: é
+    uma entrada pública onde a janela `N` não vale. Antes só a contradição
+    reprovava, e o negativo estável era anunciado como "entra na matriz"."""
+    if CERT is None:
+        return
+
+    def sonda(base_url, chave, hops, *, xff=None, reivindicacao='',
+              alternativa='', **resto):
+        # o alternativo é uma borda mais curta: o candidato vem do cliente
+        if 'alternativo' in base_url and resto.get('cf') is None \
+                and resto.get('tc') is None and xff is None:
+            return _resposta(hops=hops, candidato_bate_com_origem_declarada=False,
+                             candidato_e_do_cliente=True)
+        return _sonda_falsa()(base_url, chave, hops, xff=xff,
+                              reivindicacao=reivindicacao,
+                              alternativa=alternativa, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=sonda,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A,
+                            EPI_IDENT_ALT_URL='https://alternativo.invalid',
+                            EPI_IDENT_ALT_KEY='k3'))
+    assert codigo == 1, 'entrada pública reprovando não derrubou a certificação'
+    assert 'cobertura de rota REPROVADA' in capsys.readouterr().out
+
+
+def test_r05b_18_os_dois_backends_precisam_ser_distintos(monkeypatch, tmp_path, capsys):
+    """Exigir as duas variáveis não basta: apontadas para o MESMO endpoint, um
+    deployment se compara consigo mesmo e passa por dois."""
+    if CERT is None:
+        return
+
+    mesma = 'https://corporativo.invalid'
+    codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                         EPI_IDENT_ORIGEM='A',
+                                         EPI_IDENT_MEU_IP=_IP_A,
+                                         EPI_IDENT_SAAS_URL=mesma))
+    assert codigo == 2, 'o mesmo endpoint certificou os dois backends'
+    assert 'MESMO endpoint' in capsys.readouterr().out
+
+
+def test_r05b_19_o_vinculo_amarra_tambem_o_endpoint(tmp_path):
+    """Os rótulos são estáticos. Sem as URLs, trocar um endpoint entre a origem
+    A e a B deixaria combinar P1 de um serviço com P2 de outro."""
+    if CERT is None:
+        return
+
+    sal = 'cd' * 32
+    urls = {'corporativo': 'https://corp.invalid', 'saas': 'https://saas.invalid'}
+    estado = {'versao': CERT.VERSAO_DO_ESTADO, 'origem': 'A', 'hops': 3, 'sal': sal,
+              'compromisso': CERT._compromisso(sal, _IP_A),
+              'backends_com_p1': ['corporativo', 'saas'],
+              'urls': dict(urls)}
+    nomes = ['corporativo', 'saas']
+
+    ok, _ = CERT._validar_anterior(estado, _IP_A, 'B', 3, nomes, urls)
+    assert ok, 'o caminho legítimo foi recusado'
+
+    trocada = dict(urls, saas='https://outro.invalid')
+    ok, motivo = CERT._validar_anterior(estado, _IP_A, 'B', 3, nomes, trocada)
+    assert not ok, 'endpoint trocado entre as origens passou'
+    assert 'outro endpoint' in motivo
+
+    sem_urls = {k: v for k, v in estado.items() if k != 'urls'}
+    ok, _ = CERT._validar_anterior(sem_urls, _IP_A, 'B', 3, nomes, urls)
+    assert not ok, 'estado sem as URLs foi aceito'
+
+
+def test_r05b_20_campo_ausente_nao_vira_guarda_falsa():
+    """`None` é escalar. Uma sonda que OMITA um guarda de contaminação fazia
+    `.get()` devolver `None`, o campo passava, e `p1_contaminado` virava False —
+    um P1 sem guarda nenhuma certificaria."""
+    if CERT is None:
+        return
+
+    for guarda in ('prefixo_do_cliente_presente', 'cadeia_maior_que_hops',
+                   'reivindicacao_fora_do_candidato'):
+        amostra = _resposta()
+        del amostra[guarda]
+        try:
+            CERT._forma('teste', amostra)
+        except CERT.NaoAlcancado as e:
+            assert guarda in str(e)
+        else:
+            raise AssertionError(f'{guarda} ausente passou por válido')
+
+    for campo, ruim in (('cadeia_tamanho', True),
+                        ('candidato_e_do_cliente', 'sim'),
+                        ('cf_connecting_ip', 'inventada')):
+        try:
+            CERT._forma('teste', _resposta(**{campo: ruim}))
+        except CERT.NaoAlcancado:
+            pass
+        else:
+            raise AssertionError(f'{campo}={ruim!r} passou por válido')
+
+
+def test_r05b_21_hops_avaliado_tem_de_bater_com_o_pedido(monkeypatch, tmp_path, capsys):
+    """`_hops_pedido` satura em HOPS_MAXIMO, e uma sonda de outra versão pode
+    interpretar o cabeçalho de outro jeito. Certificar a janela errada é
+    certificar nada."""
+    if CERT is None:
+        return
+
+    def sonda_que_avalia_outro(base_url, chave, hops, **resto):
+        resposta = _sonda_falsa()(base_url, chave, hops, **resto)
+        resposta['hops_avaliado'] = hops - 1
+        return resposta
+
+    codigo = _rodar(monkeypatch, sonda=sonda_que_avalia_outro,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    assert codigo != 0, 'janela diferente da pedida foi certificada'
+    assert 'janela diferente' in capsys.readouterr().out
+
+
+def test_r05b_22_o_compromisso_nao_e_enumeravel_em_segundos():
+    """O sal impede tabela precomputada e NÃO impede enumeração: IPv4 tem 2^32
+    valores. Quem tivesse o arquivo — que o roteiro manda levar entre máquinas —
+    recuperaria o endereço em segundos com SHA-256."""
+    if CERT is None:
+        return
+
+    sal = 'ef' * 32
+    obtido = CERT._compromisso(sal, _IP_A)
+    ingenuo = hashlib.sha256(bytes.fromhex(sal) + _IP_A.encode()).hexdigest()
+    assert obtido != ingenuo, 'o compromisso voltou a ser sha256 de custo zero'
+
+    fonte = SCRIPT.read_text(encoding='utf-8')
+    assert 'hashlib.scrypt' in fonte, 'o compromisso deixou de usar KDF de custo'
+
+    # e continua determinístico, senão o vínculo nunca bateria
+    assert CERT._compromisso(sal, _IP_A) == obtido
+    assert CERT._compromisso(sal, _IP_B) != obtido
+
+
+def test_r05b_23_nenhum_gate_depende_do_que_some_no_fechamento():
+    """Meta-gate. `R05B-7` exige que o script suma quando o contrato fechar;
+    qualquer teste que o leia sem guarda torna o estado fechado inalcançável
+    com a suíte verde — e aí a promessa de remoção não é executável."""
+    import ast
+
+    # Fronteira de função por `ast`, não por "próxima linha que começa com
+    # `def test_`". A primeira versão deste gate usava a heurística de texto, e
+    # engolia os helpers de módulo que ficam ENTRE os testes — acusou o
+    # `R05B-10`, que não usa CERT. Gate que erra a fronteira acusa o inocente e
+    # deixa passar o culpado.
+    fonte = Path(__file__).read_text(encoding='utf-8')
+    arvore = ast.parse(fonte)
+
+    for no in arvore.body:
+        if not isinstance(no, ast.FunctionDef) or not no.name.startswith('test_'):
+            continue
+        corpo = ast.get_source_segment(fonte, no) or ''
+        nome = no.name
+        if 'CERT.' in corpo:
+            assert 'if CERT is None' in corpo, (
+                f'{nome} usa CERT sem guarda: com o contrato fechado a suíte '
+                'quebraria em vez de provar a remoção'
+            )
+        for alvo in ('SCRIPT.read_text', 'SONDA_MODULO.read_text'):
+            if alvo in corpo:
+                assert ('.exists()' in corpo) or ('if CERT is None' in corpo), (
+                    f'{nome} lê {alvo} sem conferir que o arquivo existe'
+                )

@@ -55,8 +55,24 @@ depois que a sonda e o script saíssem, **nada mais reprovava esse fechamento
 sem medição nenhuma**. O instrumento inteiro existe para impedir exatamente
 isso.
 
-O bloco é idêntico nos dois repositórios, e um gate de digesto reprova quem
-editar de um lado só.
+`HOSTNAMES-COBERTOS` precisa **nomear** as duas entradas onde `HOPS` será
+aplicado; "diferente de `nao-medidos`" aceitava vazio e aceitava
+`qualquer-coisa`.
+
+### O que o digesto de paridade prova, e o que não prova
+
+Ele é **auto-referente**: compara o documento com uma constante ao lado dele, no
+mesmo repositório. Editar os dois juntos passa — então ele **não observa o outro
+repositório e não prova paridade**.
+
+O que ele pega é a edição unilateral que esquece a constante, que é o acidente
+comum; e como a constante é a mesma nos dois lados, qualquer mudança legítima
+obriga a tocar os dois. É quebra-molas com dente, não prova. Provar paridade
+exigiria um passo de CI comparando os dois repositórios, fora do escopo desta
+fatia.
+
+A sabotagem `M` está rotulada de acordo: ela prova que o gate pega a **edição
+sem recálculo**, não que pega divergência entre repositórios.
 
 ---
 
@@ -124,6 +140,20 @@ verdadeiro nos dois backends já na primeira.
 O arquivo fica **fora do repositório** (`~/.r05b_origem_anterior.json`), nunca é
 impresso, e o relatório diz apenas se o vínculo bateu. Gates `R05B-11` e
 `R05B-11b`.
+
+Três coisas que a primeira versão do vínculo deixou passar:
+
+- **o compromisso era reversível.** `sha256(sal ‖ endereço)` com o sal guardado
+  ao lado: o sal impede tabela precomputada e não impede enumeração — IPv4 tem
+  2^32 valores, e o roteiro manda levar o arquivo de uma máquina para outra.
+  Agora é `scrypt` (memória-dura), que não torna a recuperação impossível mas
+  torna o custo proibitivo. Gate `R05B-22`.
+- **o vínculo não amarrava o endpoint.** Os rótulos `corporativo` e `saas` são
+  estáticos: trocar uma URL entre A e B combinaria P1 de um serviço com P2 de
+  outro. O estado guarda as URLs medidas. Gate `R05B-19`.
+- **os dois backends podiam ser o mesmo endpoint.** Exigir as duas variáveis não
+  basta se apontarem para o mesmo lugar: um deployment se compara consigo mesmo
+  e passa por dois. Gate `R05B-18`.
 
 ### P3 — confiança dos cabeçalhos de identidade
 
@@ -343,3 +373,31 @@ Um décimo achado — "remova a rota de diagnóstico de produção, `AGENTS.md` 
 permite refatoração estrutural" — é decisão já tomada pelo autor, não defeito.
 A resposta está na thread: a sonda é autorizada, protegida por chave, 404 por
 omissão, e sai por gate quando a certificação fechar.
+
+### Segunda rodada: mais nove, e um padrão
+
+A revisão voltou sobre a versão corrigida e achou **mais nove**. O padrão é
+instrutivo: quase todos são *a correção anterior fechou metade do caso*.
+
+| | achado | a metade que faltou | gate |
+|---|---|---|---|
+| 1 | alternativo com negativo **estável** | só a contradição reprovava | `R05B-17` |
+| 2 | os dois backends podiam ser o **mesmo** endpoint | exigi as variáveis, não que fossem distintas | `R05B-18` |
+| 3 | o vínculo não amarrava o **endpoint** | amarrei o IP anterior, não o serviço | `R05B-19` |
+| 4 | `HOSTNAMES-COBERTOS` aceitava qualquer valor | rejeitei um placeholder, não validei a lista | `R05B-1` |
+| 5 | campo **ausente** virava guarda falsa | rejeitei container, não ausência (`None` é escalar) | `R05B-20` |
+| 6 | `hops_avaliado` nunca conferido | a sonda satura em `HOPS_MAXIMO` | `R05B-21` |
+| 7 | compromisso **reversível** em segundos | sal impede tabela, não enumeração | `R05B-22` |
+| 8 | digesto de paridade é auto-referente | limitação real — registrada, não "corrigida" | §1 |
+| 9 | gates ainda liam o script removido | corrigi o import, não as leituras | `R05B-23` |
+
+O achado 9 tinha consequência concreta: **o estado fechado não existia com a
+suíte verde**, então a promessa de remoção não era executável. Agora é, e está
+verificado — contrato `DETERMINADA`, sonda, script, handler e rota removidos:
+**53 gates passam**.
+
+`R05B-23` é meta-gate: varre este próprio arquivo por `ast` e reprova qualquer
+teste que use o script sem guarda. Ele também nasceu fraco — usava fronteira de
+função por texto, engolia os helpers de módulo entre os testes e acusou o
+`R05B-10`, que nem usa o script. Gate que erra a fronteira acusa o inocente e
+deixa passar o culpado.

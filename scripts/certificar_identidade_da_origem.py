@@ -31,9 +31,13 @@ A distinção é provada sem registrar endereço: na segunda origem você declar
 seu endereço **e** o da primeira, e a sonda responde os dois booleanos.
 
 **E não basta declarar.** A primeira execução grava um COMPROMISSO local —
-`sha256(sal || endereço)`, com sal aleatório — e só o grava se P1 tiver sido
-verdadeiro ali. A segunda execução recalcula o compromisso a partir do que você
-declarou em `EPI_IDENT_IP_ANTERIOR` e exige que bata.
+`scrypt(sal, endereço)`, com sal aleatório — e só o grava se P1 tiver sido
+verdadeiro ali, em cada backend. A segunda execução recalcula o compromisso a
+partir do que você declarou em `EPI_IDENT_IP_ANTERIOR` e exige que bata, com o
+mesmo `N` e nos mesmos endpoints.
+
+`scrypt` e não `sha256`: o sal impede tabela precomputada e não impede enumerar
+2^32 endereços, e o roteiro manda levar o arquivo entre máquinas.
 
 Sem isso, um endereço inventado (ou um erro de digitação) faria `p2_alt` dar
 `False` e certificaria duas origens a partir de uma máquina só. Achado de
@@ -188,6 +192,10 @@ def _diagnostico_do_erro(erro) -> str:
             if valor:
                 achados[nome] = str(valor).strip()
     except Exception:  # noqa: BLE001 — resposta de erro arbitrária
+        # Uma resposta de erro pode vir de qualquer camada, com um container de
+        # cabeçalhos que não promete interface nenhuma. Sem pistas, o
+        # diagnóstico sai como `indeterminado` — que é honesto — em vez de a
+        # leitura derrubar a medição inteira.
         pass
 
     tipo = achados.get('content-type', '').lower()
@@ -952,6 +960,9 @@ def main() -> int:
         _caminho_do_estado().unlink()
         print('Compromisso da primeira origem apagado: a certificação fechou.')
     except FileNotFoundError:
+        # Já não existe: é o estado desejado, não um erro. Acontece quando a
+        # certificação roda duas vezes, ou quando a origem A e a B são a mesma
+        # máquina e o arquivo já saiu na primeira passagem.
         pass
     except OSError as e:
         print(f'ATENÇÃO: não consegui apagar {_caminho_do_estado()}: {e}')

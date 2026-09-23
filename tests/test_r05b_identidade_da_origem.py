@@ -26,7 +26,15 @@ import importlib.util
 import re
 from pathlib import Path
 
-import scripts.certificar_identidade_da_origem as CERT
+
+# O script é TEMPORÁRIO e `R05B-7` exige que ele suma quando o contrato fechar.
+# Um import de módulo incondicional rebentaria a coleta ANTES de o gate rodar —
+# e não existiria estado fechado com a suíte verde. Mesma lição do módulo da
+# sonda, logo abaixo; achado de revisão.
+if importlib.util.find_spec('scripts.certificar_identidade_da_origem') is None:
+    CERT = None
+else:
+    import scripts.certificar_identidade_da_origem as CERT
 
 RAIZ = Path(__file__).resolve().parents[1]
 CONTRATO = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
@@ -43,6 +51,18 @@ ROTA_DA_SONDA = 'origin-identity-diagnostics'
 # Digesto do bloco de contrato, carregado igual nos dois repositórios: editar
 # de um lado só deixa aquele lado vermelho (sabotagem M).
 DIGESTO_CONTRATO_R05B = '0630ad453fced15de54578d302aa0a6c00b9dec8d38bda33d41b9dd44e433612'
+
+#: Vocabulário fechado de cada campo do contrato. `HOSTNAMES-COBERTOS` é o
+#: único aberto: quando medido, carrega a lista de hostnames.
+_MEDIDA = ('nao-medida', 'provada', 'reprovada')
+_CLASSE = ('nao-medida', 'sentinela-sobrevive', 'substituida', 'ausente')
+VOCABULARIO_DO_CONTRATO = {
+    'P1-IDENTIDADE': _MEDIDA,
+    'P2-DUAS-ORIGENS': _MEDIDA,
+    'P3-CF-CONNECTING-IP': _CLASSE,
+    'P3-TRUE-CLIENT-IP': _CLASSE,
+    'P4-SUFIXO-PRESERVADO': _MEDIDA,
+}
 
 # A sonda é temporária. Enquanto a identidade estiver INDETERMINADA ela pode
 # existir; depois, a presença dela reprova.
@@ -100,6 +120,33 @@ def test_r05b_1_contrato_legivel_e_com_digesto_de_paridade():
         assert obrigatorio in campos, f'contrato R0.5B sem o campo {obrigatorio}'
     assert campos['ESTADO-DA-IDENTIDADE'] in ('INDETERMINADO', 'DETERMINADA'), \
         'ESTADO-DA-IDENTIDADE só admite INDETERMINADO ou DETERMINADA'
+
+    # Fechar o contrato exige EVIDÊNCIA, não só trocar uma palavra.
+    #
+    # Antes, este gate conferia apenas que o estado era uma das duas strings.
+    # Dava para pôr `DETERMINADA`, recalcular o digesto, deixar P1..P4 e os
+    # hostnames em `nao-medida`, e — depois que a sonda e o script saíssem —
+    # nada mais reprovava esse fechamento sem medição nenhuma. Achado de
+    # revisão, e era o buraco mais sério do conjunto: o instrumento inteiro
+    # existe para impedir certificação vazia.
+    for campo, permitido in VOCABULARIO_DO_CONTRATO.items():
+        assert campos[campo] in permitido, (
+            f'{campo} = {campos[campo]!r} está fora do vocabulário fechado '
+            f'{sorted(permitido)}'
+        )
+
+    if campos['ESTADO-DA-IDENTIDADE'] == 'DETERMINADA':
+        for campo in ('P1-IDENTIDADE', 'P2-DUAS-ORIGENS', 'P4-SUFIXO-PRESERVADO'):
+            assert campos[campo] == 'provada', (
+                f'contrato DETERMINADA com {campo} = {campos[campo]!r}: '
+                'fechamento sem evidência'
+            )
+        for campo in ('P3-CF-CONNECTING-IP', 'P3-TRUE-CLIENT-IP'):
+            assert campos[campo] != 'nao-medida', (
+                f'contrato DETERMINADA com {campo} ainda não medido'
+            )
+        assert campos['HOSTNAMES-COBERTOS'] != 'nao-medidos', \
+            'contrato DETERMINADA sem nenhum hostname coberto'
 
     atual = hashlib.sha256(_bloco().encode('utf-8')).hexdigest()
     assert atual == DIGESTO_CONTRATO_R05B, (
@@ -263,6 +310,7 @@ def _alvo(**kwargs):
     a.p1 = kwargs.get('p1', True)
     a.p1_contaminado = kwargs.get('contaminado', False)
     a.p2_alt = kwargs.get('p2_alt', False)
+    a.anterior_ligado = kwargs.get('ligado', True)
     a.p4 = kwargs.get('p4', True)
     a.candidato_do_cliente = kwargs.get('do_cliente', False)
     return a
@@ -270,6 +318,8 @@ def _alvo(**kwargs):
 
 def test_r05b_6a_p1_falso_nao_passa():
     """Sabotagem E."""
+    if CERT is None:
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     ok, pendente, _ = CERT._veredito(_alvo(p1=False), True)
     assert not ok and not pendente
 
@@ -282,6 +332,8 @@ def test_r05b_6a_p1_falso_nao_passa():
 
 def test_r05b_6b_uma_origem_so_nao_certifica():
     """Sabotagem F. Sem a segunda origem o resultado é PENDENTE, nunca OK."""
+    if CERT is None:
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     ok, pendente, _ = CERT._veredito(_alvo(), False)
     assert not ok and pendente, 'uma origem só passou por certificação completa'
 
@@ -292,6 +344,8 @@ def test_r05b_6b_uma_origem_so_nao_certifica():
 def test_r05b_6c_mesma_origem_duas_vezes_nao_conta_como_duas():
     """Sabotagem G. Se o candidato desta origem é o endereço declarado da
     anterior, as duas execuções vieram do mesmo caminho."""
+    if CERT is None:
+        return  # contrato fechado: o script saiu, e `R05B-7` cobre isso
     ok, _, motivo = CERT._veredito(_alvo(p2_alt=True), True)
     assert not ok, 'duas execuções da mesma origem passaram por duas origens'
     assert 'origens distintas' in motivo
@@ -451,3 +505,279 @@ def test_r05b_10_nenhum_endereco_real_na_fatia():
             assert any(endereco in faixa for faixa in faixas), (
                 f'{caminho.name} contém {literal}, que não é de faixa reservada'
             )
+
+
+# ── Achados da revisão do Codex em 699983ed ─────────────────────────────────
+#
+# Nove defeitos reais no INSTRUMENTO — e três deles deixavam o instrumento
+# certificar o que ele existe para impedir. Cada correção ganhou gate próprio,
+# porque correção sem gate volta.
+
+_VARIAVEIS = ('EPI_IDENT_CORP_URL', 'EPI_IDENT_CORP_KEY', 'EPI_IDENT_SAAS_URL',
+              'EPI_IDENT_SAAS_KEY', 'EPI_IDENT_ALT_URL', 'EPI_IDENT_ALT_KEY',
+              'EPI_IDENT_ORIGEM', 'EPI_IDENT_MEU_IP', 'EPI_IDENT_IP_ANTERIOR',
+              'EPI_IDENT_HOPS', 'EPI_IDENT_ESTADO')
+
+_IP_A = '203.0.113.11'
+_IP_B = '203.0.113.22'
+
+
+def _env(monkeypatch, **valores):
+    for nome in _VARIAVEIS:
+        monkeypatch.delenv(nome, raising=False)
+    for nome, valor in valores.items():
+        monkeypatch.setenv(nome, str(valor))
+
+
+def _resposta(hops=3, **sobrescreve):
+    base = {
+        'probe': 'R05B',
+        'hops_avaliado': hops,
+        'cadeia_tamanho': hops,
+        'cadeia_suficiente_para_hops': True,
+        'sentinelas_na_cadeia': 0,
+        'prefixo_do_cliente_presente': False,
+        'cadeia_maior_que_hops': False,
+        'reivindicacao_fora_do_candidato': False,
+        'candidato_e_do_cliente': False,
+        'sufixo_confiavel_preservado': True,
+        'candidato_bate_com_origem_declarada': None,
+        'candidato_bate_com_origem_alternativa': None,
+        'cf_connecting_ip': 'ausente',
+        'true_client_ip': 'ausente',
+        'cabecalhos_presentes': [],
+    }
+    base.update(sobrescreve)
+    return base
+
+
+def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
+    """Uma borda ideal: P1 sempre bate, P4 sempre preserva, nada contaminado.
+
+    Serve para provar que o veredito reprova pelos motivos ESTRUTURAIS — vínculo
+    ausente, backend faltando, hostname contraditório — e não por acaso.
+    """
+    contador = {'n': 0}
+
+    def falso(base_url, chave, hops, *, xff=None, cf_=None, tc_=None,
+              reivindicacao='', alternativa='', **resto):
+        contador['n'] += 1
+        cabecalho_cf = resto.get('cf', cf_)
+        cabecalho_tc = resto.get('tc', tc_)
+        if alt_contradiz and 'alternativo' in base_url:
+            return _resposta(hops=hops, cadeia_tamanho=3 + contador['n'] % 2)
+        if cabecalho_cf is not None:
+            return _resposta(hops=hops, cf_connecting_ip=cf)
+        if cabecalho_tc is not None:
+            return _resposta(hops=hops, true_client_ip=tc)
+        if xff is not None:
+            return _resposta(hops=hops, cadeia_tamanho=hops + 30,
+                             cadeia_maior_que_hops=True,
+                             prefixo_do_cliente_presente=True,
+                             sentinelas_na_cadeia=30)
+        bate_alt = None
+        if alternativa:
+            bate_alt = CERT._canonico(alternativa) == CERT._canonico(reivindicacao)
+        return _resposta(hops=hops,
+                         candidato_bate_com_origem_declarada=True,
+                         candidato_bate_com_origem_alternativa=bate_alt)
+
+    return falso
+
+
+def _rodar(monkeypatch, sonda=None, **env):
+    monkeypatch.setattr(CERT, '_sondar', sonda or _sonda_falsa())
+    _env(monkeypatch, **env)
+    return CERT.main()
+
+
+def _base(estado, **extra):
+    valores = {
+        'EPI_IDENT_CORP_URL': 'https://corporativo.invalid',
+        'EPI_IDENT_CORP_KEY': 'k1',
+        'EPI_IDENT_SAAS_URL': 'https://saas.invalid',
+        'EPI_IDENT_SAAS_KEY': 'k2',
+        'EPI_IDENT_ESTADO': str(estado),
+        'EPI_IDENT_HOPS': '3',
+    }
+    valores.update(extra)
+    return valores
+
+
+# ── R05B-11: P2 precisa de LASTRO na primeira origem ────────────────────────
+
+def test_r05b_11_p2_sem_lastro_nao_certifica(monkeypatch, tmp_path, capsys):
+    """Achado P1 do Codex, e o mais grave dos três.
+
+    `EPI_IDENT_IP_ANTERIOR` com QUALQUER endereço válido diferente do candidato
+    fazia `candidato_bate_com_origem_alternativa` dar `False`, e o veredito
+    lia isso como prova de duas origens. Um erro de digitação — ou um endereço
+    inventado — certificava `ORIGEM_A != ORIGEM_B` de uma máquina só, sem a
+    origem A ter existido.
+    """
+    if CERT is None:
+        return
+
+    # (a) o veredito rejeita o alvo sem vínculo
+    ok, pendente, motivo = CERT._veredito(_alvo(ligado=False), True)
+    assert not ok and not pendente, 'P2 sem lastro passou pelo veredito'
+    assert 'lastro' in motivo
+
+    # (b) ponta a ponta: origem única + endereço anterior inventado
+    estado = tmp_path / 'estado.json'
+    codigo = _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                         EPI_IDENT_MEU_IP=_IP_B,
+                                         EPI_IDENT_IP_ANTERIOR=_IP_A))
+    assert codigo != 0, 'uma máquina só certificou duas origens'
+    assert 'ORIGEM_A != ORIGEM_B' not in capsys.readouterr().out
+
+    # (c) A e depois B, de verdade: aí sim fecha
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    assert estado.exists(), 'a origem A não gravou o compromisso'
+    assert _IP_A not in estado.read_text(encoding='utf-8'), \
+        'o compromisso guardou o endereço em claro'
+
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                       EPI_IDENT_MEU_IP=_IP_B,
+                                       EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
+
+
+def test_r05b_11b_o_vinculo_recusa_cada_atalho(tmp_path):
+    """Cada caminho que transformaria declaração em medição."""
+    if CERT is None:
+        return
+
+    sal = 'ab' * 32
+    bom = {'versao': CERT.VERSAO_DO_ESTADO, 'origem': 'A', 'hops': 3, 'sal': sal,
+           'compromisso': CERT._compromisso(sal, _IP_A),
+           'backends_com_p1': ['corporativo', 'saas']}
+    nomes = ['corporativo', 'saas']
+
+    ok, _ = CERT._validar_anterior(bom, _IP_A, 'B', 3, nomes)
+    assert ok, 'o caminho legítimo foi recusado'
+
+    for descricao, estado, ip, origem, hops in (
+        ('sem estado nenhum', None, _IP_A, 'B', 3),
+        ('endereço inventado', bom, '203.0.113.99', 'B', 3),
+        ('mesmo rótulo de origem', bom, _IP_A, 'A', 3),
+        ('hops diferente', bom, _IP_A, 'B', 4),
+        ('backend sem P1 na origem A', {**bom, 'backends_com_p1': ['saas']},
+         _IP_A, 'B', 3),
+        ('versão desconhecida', {**bom, 'versao': 999}, _IP_A, 'B', 3),
+    ):
+        ok, _ = CERT._validar_anterior(estado, ip, origem, hops, nomes)
+        assert not ok, f'o vínculo aceitou: {descricao}'
+
+
+# ── R05B-12: os DOIS backends, ou nenhum ────────────────────────────────────
+
+def test_r05b_12_um_backend_so_nao_certifica(monkeypatch, tmp_path, capsys):
+    """Achado P1 do Codex. Faltando URL/chave de um lado, `obrigatorios` ficava
+    com um alvo só, tudo passava, e o script anunciava "nos dois backends"."""
+    if CERT is None:
+        return
+
+    env = _base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A)
+    del env['EPI_IDENT_SAAS_URL']
+    del env['EPI_IDENT_SAAS_KEY']
+
+    assert _rodar(monkeypatch, **env) == 2, \
+        'um backend só produziu resultado diferente de "não executado"'
+    saida = capsys.readouterr().out
+    assert 'saas' in saida, 'o relatório não disse qual backend faltou'
+    assert 'nos dois backends' not in saida
+
+
+# ── R05B-13: entrada pública contraditória reprova ──────────────────────────
+
+def test_r05b_13_hostname_alternativo_contraditorio_reprova(monkeypatch, tmp_path, capsys):
+    """Achado P1 do Codex. Repetições divergentes num hostname público são
+    evidência de MAIS DE UM caminho de borda — ataca a premissa de rota do
+    critério. Antes isso era reportado como "responde" e ignorado."""
+    if CERT is None:
+        return
+
+    codigo = _rodar(
+        monkeypatch, sonda=_sonda_falsa(alt_contradiz=True),
+        **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A,
+                EPI_IDENT_ALT_URL='https://alternativo.invalid',
+                EPI_IDENT_ALT_KEY='k3'))
+
+    assert codigo == 1, 'hostname público contraditório não reprovou'
+    assert 'cobertura de rota REPROVADA' in capsys.readouterr().out
+
+
+# ── R05B-14: os guardas de contaminação entram na comparação ────────────────
+
+def test_r05b_14_guardas_de_contaminacao_sao_campos_decisivos():
+    """Achado P2 do Codex. São eles que decidem `p1_contaminado`. Fora de
+    `CAMPOS_DECISIVOS`, repetições contaminadas passavam por idênticas e o
+    script devolvia a primeira amostra — a que parecia limpa."""
+    if CERT is None:
+        return
+    for campo in ('prefixo_do_cliente_presente', 'cadeia_maior_que_hops',
+                  'reivindicacao_fora_do_candidato'):
+        assert campo in CERT.CAMPOS_DECISIVOS, (
+            f'{campo} decide contaminação mas não invalida repetições divergentes'
+        )
+
+
+# ── R05B-15: erro de operador e resposta malformada viram resultado ─────────
+
+def test_r05b_15_entradas_invalidas_nao_viram_traceback(monkeypatch, tmp_path, capsys):
+    """Achados P2 do Codex. Os dois produziam exceção fora dos caminhos
+    controlados: o operador via traceback, e o shell via status 1 — o MESMO de
+    uma propriedade reprovada. Erro de digitação não pode virar evidência."""
+    if CERT is None:
+        return
+
+    # (a) campo decisivo não escalar
+    try:
+        CERT._forma('teste', _resposta(cf_connecting_ip=[]))
+    except CERT.NaoAlcancado:
+        pass
+    except Exception as e:  # noqa: BLE001 — é exatamente o que o gate proíbe
+        raise AssertionError(f'resposta malformada virou {type(e).__name__}') from e
+    else:
+        raise AssertionError('resposta malformada passou por válida')
+
+    # (b) hops inválido — erro de digitação vira "não executado", nunca 1
+    for ruim in ('abc', '3.5', '0', '-2'):
+        codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                             EPI_IDENT_ORIGEM='A',
+                                             EPI_IDENT_MEU_IP=_IP_A,
+                                             EPI_IDENT_HOPS=ruim))
+        assert codigo == 2, f'EPI_IDENT_HOPS={ruim!r} não deu "não executado"'
+
+    # (c) vazio ou só espaço é indistinguível de "não definida" no shell, e cair
+    # no padrão DOCUMENTADO é o certo. A primeira versão deste gate exigia `2`
+    # aqui; quem estava errado era o gate, e enfraquecer o código para satisfazê-lo
+    # teria trocado um padrão previsível por uma recusa surpresa.
+    for vazio in ('', '   '):
+        codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                             EPI_IDENT_ORIGEM='A',
+                                             EPI_IDENT_MEU_IP=_IP_A,
+                                             EPI_IDENT_HOPS=vazio))
+        assert codigo == 3, f'EPI_IDENT_HOPS={vazio!r} não caiu no padrão'
+    capsys.readouterr()
+
+
+# ── R05B-16: P3 não some dentro de um "tudo certo" ──────────────────────────
+
+def test_r05b_16_p3_controlado_pelo_cliente_e_denunciado(monkeypatch, tmp_path, capsys):
+    """Achado P2 do Codex. `sentinela_sobrevive` significa que o CLIENTE
+    controla o cabeçalho de identidade. Não reprova HOPS — P3 não está no
+    critério —, mas não pode sair diluído: o relatório tem de gritar."""
+    if CERT is None:
+        return
+
+    _rodar(monkeypatch, sonda=_sonda_falsa(cf='sentinela_sobrevive'),
+           **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A))
+    saida = capsys.readouterr().out
+    assert 'ALERTA P3' in saida and 'CF-Connecting-IP' in saida
+    assert 'todas as propriedades' not in saida
+
+    _rodar(monkeypatch, sonda=_sonda_falsa(),
+           **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A))
+    assert 'ALERTA P3' not in capsys.readouterr().out, 'alerta falso-positivo'

@@ -35,6 +35,26 @@ Quando passar a `DETERMINADA`, os três se invertem: a sonda passa a ser
 proibida, a leitura da chave passa a ser proibida em qualquer lugar, e o
 veredito de `HOPS` passa a depender do §4.
 
+### Vocabulário fechado, e por que fechar exige evidência
+
+| campo | valores |
+|---|---|
+| `ESTADO-DA-IDENTIDADE` | `INDETERMINADO` · `DETERMINADA` |
+| `P1-IDENTIDADE`, `P2-DUAS-ORIGENS`, `P4-SUFIXO-PRESERVADO` | `nao-medida` · `provada` · `reprovada` |
+| `P3-CF-CONNECTING-IP`, `P3-TRUE-CLIENT-IP` | `nao-medida` · `sentinela-sobrevive` · `substituida` · `ausente` |
+| `HOSTNAMES-COBERTOS` | `nao-medidos` · a lista medida |
+
+`R05B-1` recusa `DETERMINADA` enquanto P1, P2 e P4 não forem `provada`, os dois
+campos de P3 continuarem `nao-medida`, ou os hostnames continuarem
+`nao-medidos`.
+
+Isso fechou o buraco mais sério do conjunto. Antes, o gate conferia só que o
+estado era uma das duas palavras: dava para trocar `INDETERMINADO` por
+`DETERMINADA`, recalcular o digesto, deixar todo o resto em `nao-medida` — e,
+depois que a sonda e o script saíssem, **nada mais reprovava esse fechamento
+sem medição nenhuma**. O instrumento inteiro existe para impedir exatamente
+isso.
+
 O bloco é idêntico nos dois repositórios, e um gate de digesto reprova quem
 editar de um lado só.
 
@@ -88,6 +108,23 @@ O terceiro booleano é o que fecha: o candidato em B não é o endereço de A, l
 os candidatos diferem, logo o candidato acompanha o chamador. O relatório
 registra só `ORIGEM_A != ORIGEM_B: true`.
 
+**E declarar não é medir.** Os dois booleanos acima, sozinhos, não bastavam:
+`EPI_IDENT_IP_ANTERIOR` com qualquer endereço válido diferente do candidato —
+um endereço inventado, um erro de digitação — faria
+`candidato_bate_com_origem_alternativa` dar `false`, e o veredito leria isso
+como prova de duas origens. **Uma máquina só certificava
+`ORIGEM_A != ORIGEM_B`.**
+
+Por isso a primeira origem grava um **compromisso**: `sha256(sal || endereço)`,
+com sal aleatório, e só o grava se P1 tiver sido verdadeiro ali, em cada
+backend. A segunda recalcula o compromisso a partir do que foi declarado e
+exige que bata — além de exigir rótulo de origem diferente, o mesmo `N`, e P1
+verdadeiro nos dois backends já na primeira.
+
+O arquivo fica **fora do repositório** (`~/.r05b_origem_anterior.json`), nunca é
+impresso, e o relatório diz apenas se o vínculo bateu. Gates `R05B-11` e
+`R05B-11b`.
+
 ### P3 — confiança dos cabeçalhos de identidade
 
 `CF-Connecting-IP` e `True-Client-IP` chegaram à aplicação na medição da R0.5,
@@ -109,6 +146,13 @@ Teste: enviar sentinela de TEST-NET-1 em cada um e classificar o que chega.
 | `sentinela_sobrevive` | o cliente controla o cabeçalho → **não adotável** |
 | `substituida` | a borda o reescreveu → candidato a fonte confiável |
 | `ausente` | a borda o removeu |
+
+P3 **não entra no critério de `HOPS`** — o limitador é posicional sobre
+`X-Forwarded-For` e não lê esses cabeçalhos. Mas `sentinela_sobrevive` é achado
+grave por conta própria: significa que o cliente controla um cabeçalho de
+identidade, em toda rota. O relatório o destaca em `ALERTA P3`, e o veredito
+deixou de anunciar "todas as propriedades satisfeitas" — ele diz exatamente
+quais. Gate `R05B-16`.
 
 **`X-Forwarded-For` já está classificado pela R0.5**: os controles B e C
 mostraram o sentinela sobrevivendo no índice 0. O cliente controla o prefixo.
@@ -266,3 +310,36 @@ regras normais do repositório.
 corporativo (`name: epi-controle`) e o serviço medido
 (`epi-controle-app-gupy`). Achado
 registrado, correção fora de escopo.
+
+---
+
+## 7. O instrumento falhou na revisão, antes de medir
+
+Uma revisão automatizada encontrou **nove defeitos** na primeira versão desta
+fatia. Três deles deixavam o instrumento certificar o que ele existe para
+impedir:
+
+| | defeito | consequência | gate |
+|---|---|---|---|
+| 1 | P2 aceitava `IP_ANTERIOR` declarado, sem lastro | **uma máquina certificava duas origens** | `R05B-11`, `R05B-11b` |
+| 2 | um backend configurado bastava | **meia certificação anunciada como inteira** | `R05B-12` |
+| 3 | `DETERMINADA` sem P1–P4 medidos | **fechamento sem evidência nenhuma** | `R05B-1` |
+| 4 | hostname alternativo contraditório era informativo | mais de um caminho de borda numa entrada pública, ignorado | `R05B-13` |
+| 5 | guardas de contaminação fora de `CAMPOS_DECISIVOS` | repetição contaminada passava por idêntica | `R05B-14` |
+| 6 | campo malformado virava `TypeError` | traceback no lugar do código de saída | `R05B-15` |
+| 7 | `EPI_IDENT_HOPS` inválido virava `ValueError` | erro de digitação com o mesmo status de propriedade reprovada | `R05B-15` |
+| 8 | P3 fora do veredito | `sentinela_sobrevive` dentro de um "tudo certo" | `R05B-16` |
+| 9 | import incondicional do script nos testes | nenhum estado fechado com a suíte verde | coleta, sabotagem V |
+
+Nenhum foi encontrado por gate meu: os 19 primeiros gates cobriam a **sonda** e
+não o **veredito**. Os dezenove não eram suficientes — e a medição ainda não
+tinha rodado, então o custo foi só de tempo.
+
+Cada correção ganhou gate, e cada gate foi provado por sabotagem (N–V): defeito
+reintroduzido, gate vermelho, defeito revertido, gate verde. A sabotagem U foi
+refeita recalculando o digesto junto, senão ela provaria só o gate de paridade.
+
+Um décimo achado — "remova a rota de diagnóstico de produção, `AGENTS.md` só
+permite refatoração estrutural" — é decisão já tomada pelo autor, não defeito.
+A resposta está na thread: a sonda é autorizada, protegida por chave, 404 por
+omissão, e sai por gate quando a certificação fechar.

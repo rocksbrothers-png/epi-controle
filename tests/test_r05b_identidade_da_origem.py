@@ -519,6 +519,9 @@ FAIXAS_SEGURAS = (
     '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24',
     '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16',
     '100.64.0.0/10', '127.0.0.0/8', '0.0.0.0/8',
+    # não-roteáveis, necessários para exercitar `_origem_plausivel`: nenhum
+    # deles é endereço público de alguém, que é o que este gate protege
+    '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4',
 )
 
 
@@ -1171,3 +1174,115 @@ def test_r05b_29_urls_equivalentes_contam_como_o_mesmo_endpoint(monkeypatch, tmp
                                          EPI_IDENT_SAAS_URL='https://corporativo.invalid:443/'))
     assert codigo == 2, 'o mesmo endpoint com outra grafia passou por dois'
     assert 'MESMO endpoint' in capsys.readouterr().out
+
+
+# ── Quarta rodada da revisão ────────────────────────────────────────────────
+
+def test_r05b_30_sentinela_mapeado_em_ipv6_nao_fica_invisivel():
+    """`_e_sentinela` alimenta SEIS campos, não só P3. Uma borda que preserve o
+    sentinela e o escreva como `::ffff:192.0.2.10` deixaria todas as guardas de
+    contaminação cegas ao mesmo tempo — e um cabeçalho controlado pelo cliente
+    passaria por `substituida`, que é o erro que leva a ADOTÁ-LO."""
+    if SONDA is None:
+        return
+
+    for grafia in ('192.0.2.10', '::ffff:192.0.2.10', '::FFFF:192.0.2.10'):
+        assert SONDA._e_sentinela(grafia), f'{grafia} não foi reconhecido'
+        assert SONDA.medir(
+            _HandlerFalso(**{'CF-Connecting-Ip': grafia})
+        )['cf_connecting_ip'] == 'sentinela_sobrevive'
+
+    cliente = '203.0.113.9'
+    cadeia = ['::ffff:192.0.2.21', '::ffff:192.0.2.22', cliente,
+              '198.51.100.200', '198.51.100.201']
+    saida = SONDA.analisar(cadeia, 3, cliente, '', {}, [])
+    assert saida['prefixo_do_cliente_presente'] is True
+    assert saida['sentinelas_na_cadeia'] == 2
+
+    # e o sentinela mapeado DENTRO da janela derruba P4
+    dentro = [cliente, '::ffff:192.0.2.30', '198.51.100.200']
+    assert SONDA.analisar(dentro, 3, '', '', {}, [])['sufixo_confiavel_preservado'] is False
+
+
+def test_r05b_31_a_origem_declarada_tem_de_ser_publica(monkeypatch, tmp_path, capsys):
+    """Dois candidatos PRIVADOS podem satisfazer as duas execuções sem que haja
+    duas origens públicas — e endereços privados se repetem entre redes não
+    relacionadas, então não são identidade de rate limit."""
+    if CERT is None:
+        return
+
+    for privado in ('10.0.0.1', '192.168.1.1', '172.16.0.1', '127.0.0.1',
+                    '100.64.0.1', '169.254.1.1', '224.0.0.1', '::1'):
+        assert not CERT._origem_plausivel(privado), f'{privado} passou por público'
+
+    # as faixas de documentação existem para os gates, e são aceitas de propósito
+    for doc in (_IP_A, _IP_B, '192.0.2.10', '2001:db8::1'):
+        assert CERT._origem_plausivel(doc), f'{doc} foi recusado'
+
+    assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP='10.0.0.1')) == 2
+    assert 'não é um endereço público' in capsys.readouterr().out
+
+    assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='B',
+                                       EPI_IDENT_MEU_IP=_IP_B,
+                                       EPI_IDENT_IP_ANTERIOR='192.168.0.7')) == 2
+    assert 'IP_ANTERIOR não é um endereço público' in capsys.readouterr().out
+
+
+def test_r05b_32_p3_divergente_entre_backends_nao_reprova(monkeypatch, tmp_path, capsys):
+    """P3 é classificação, não critério de HOPS — o próprio roteiro diz isso.
+    Duas bordas podem classificar um cabeçalho de formas legítimas e diferentes,
+    e reprovar por causa disso contradizia o contrato documentado."""
+    if CERT is None:
+        return
+
+    def classes_diferentes(base_url, chave, hops, **resto):
+        resposta = _sonda_falsa()(base_url, chave, hops, **resto)
+        if 'saas' in base_url and resposta['cf_connecting_ip'] != 'ausente':
+            resposta['cf_connecting_ip'] = 'ausente'
+        return resposta
+
+    estado = tmp_path / 'e.json'
+    assert _rodar(monkeypatch, sonda=classes_diferentes,
+                  **_base(estado, EPI_IDENT_ORIGEM='A', EPI_IDENT_MEU_IP=_IP_A)) == 3
+    capsys.readouterr()
+    codigo = _rodar(monkeypatch, sonda=classes_diferentes,
+                    **_base(estado, EPI_IDENT_ORIGEM='B', EPI_IDENT_MEU_IP=_IP_B,
+                            EPI_IDENT_IP_ANTERIOR=_IP_A))
+    saida = capsys.readouterr().out
+    assert codigo == 0, 'divergência de P3 reprovou uma certificação válida'
+    assert 'NOTA' in saida and 'Não reprova HOPS' in saida
+
+
+def test_r05b_33_backend_inalcancavel_e_nao_executado(monkeypatch, tmp_path, capsys):
+    """Ausência de medição não é medição que reprovou. Devolver 1 nos dois casos
+    impedia automação de distinguir "a sonda não respondeu" de "a produção
+    rejeitou a propriedade"."""
+    if CERT is None:
+        return
+
+    def saas_fora_do_ar(base_url, chave, hops, **resto):
+        if 'saas' in base_url:
+            raise CERT.NaoAlcancado('sonda desligada ou ausente (404)')
+        return _sonda_falsa()(base_url, chave, hops, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=saas_fora_do_ar,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = capsys.readouterr().out
+    assert codigo == 2, f'backend inalcançável devolveu {codigo}, não "não executado"'
+    assert 'backend inalcançável' in saida
+    assert 'NÃO é evidência' in saida
+
+    # mas CONTRADIÇÃO é outra coisa: foi medido, e as medições brigam → 1
+    def saas_contraditorio(base_url, chave, hops, **resto):
+        resposta = _sonda_falsa()(base_url, chave, hops, **resto)
+        if 'saas' in base_url:
+            resposta['cadeia_tamanho'] = resposta['cadeia_tamanho'] + (id(resposta) % 2)
+        return resposta
+
+    codigo = _rodar(monkeypatch, sonda=saas_contraditorio,
+                    **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    assert codigo in (1, 3), f'contradição devolveu {codigo}'
+    capsys.readouterr()

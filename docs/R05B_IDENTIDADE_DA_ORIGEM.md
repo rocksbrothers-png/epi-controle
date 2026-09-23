@@ -434,3 +434,28 @@ também reprova o alternativo contraditório. Os dois são redundantes de
 propósito: desabilitar qualquer um sozinho não muda o resultado; desabilitados
 juntos, `R05B-13` e `R05B-17` ficam vermelhos. O gate mede o resultado, não o
 caminho.
+
+### Quarta rodada: mais quatro, um deles na sonda
+
+| | achado | por que importa | gate |
+|---|---|---|---|
+| 1 | sentinela **mapeado em IPv6** ficava invisível | `_e_sentinela` alimenta seis campos: um `::ffff:192.0.2.10` cegaria **todas** as guardas de contaminação de uma vez, e faria um cabeçalho controlado pelo cliente passar por `substituida` | `R05B-30` |
+| 2 | origem declarada podia ser **privada** | dois candidatos privados satisfazem as duas execuções sem que haja duas origens públicas; e endereço privado se repete entre redes não relacionadas | `R05B-31` |
+| 3 | P3 entrava na **concordância entre backends** | duas bordas classificando um cabeçalho de formas legítimas e diferentes reprovavam a certificação — contra o contrato que diz que P3 não é critério | `R05B-32` |
+| 4 | backend inalcançável devolvia **1** | ausência de medição ficava indistinguível de produção que rejeitou a propriedade; o documentado para alvo inalcançável é **2** | `R05B-33` |
+
+O achado 1 é o segundo a atingir a **sonda**, e tem o mesmo formato do anterior:
+a classificação olhava a forma errada do valor. Aqui a correção é num ponto só,
+e conserta os seis campos juntos.
+
+#### `is_global` não basta
+
+A primeira versão da checagem do achado 2 usava `alvo.is_global`. O gate pegou:
+em CPython, **multicast é `is_global=True`** (`224.0.0.0/4`, `ff00::/8`).
+Multicast não é origem de ninguém. A recusa agora é explícita para multicast,
+reservado e não-especificado, antes do `is_global`.
+
+As faixas de documentação (RFC 5737, RFC 3849) são **aceitas de propósito**: é
+com elas que os gates exercitam o instrumento, já que `R05B-10` proíbe endereço
+real nas superfícies da fatia. Nenhum eco de IP devolve uma delas, e uma medição
+real declarada assim reprova em P1 de qualquer jeito.

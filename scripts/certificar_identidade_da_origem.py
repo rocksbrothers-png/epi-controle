@@ -280,6 +280,46 @@ def _canonico(endereco: str) -> str:
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
 
 
+#: Faixas de documentação (RFC 5737, RFC 3849). Não são públicas, e nenhum
+#: eco de IP devolve uma delas — existem aqui só para os gates poderem
+#: exercitar o instrumento sem escrever endereço real nas superfícies da
+#: fatia, o que `R05B-10` proíbe. Uma medição real declarada com uma destas
+#: reprova em P1 de qualquer jeito.
+FAIXAS_DE_DOCUMENTACAO = (
+    ipaddress.ip_network('192.0.2.0/24'),
+    ipaddress.ip_network('198.51.100.0/24'),
+    ipaddress.ip_network('203.0.113.0/24'),
+    ipaddress.ip_network('2001:db8::/32'),
+)
+
+
+def _origem_plausivel(endereco: str) -> bool:
+    """O endereço declarado pode ser uma origem PÚBLICA?
+
+    O contrato exige duas origens públicas distintas. Só validar a sintaxe
+    aceitava RFC 1918, loopback, CGNAT — e dois candidatos privados podem
+    satisfazer as duas execuções sem que haja duas origens públicas, além de
+    se repetirem entre redes não relacionadas. Achado de revisão.
+
+    `is_global` é o teste forte, e ele recusa também CGNAT (100.64.0.0/10),
+    que `is_private` deixaria passar.
+    """
+    try:
+        alvo = ipaddress.ip_address(str(endereco).strip())
+    except ValueError:
+        return False
+    if alvo.version == 6 and alvo.ipv4_mapped is not None:
+        alvo = alvo.ipv4_mapped
+    # `is_global` é True para MULTICAST em CPython (224.0.0.0/4, ff00::/8).
+    # Multicast não é origem de ninguém, e o gate pegou isso. Reservado e
+    # não-especificado entram na mesma recusa.
+    if alvo.is_multicast or alvo.is_reserved or alvo.is_unspecified:
+        return False
+    if alvo.is_global:
+        return True
+    return any(alvo in faixa for faixa in FAIXAS_DE_DOCUMENTACAO)
+
+
 def _compromisso(sal_hex: str, endereco: str) -> str:
     """Compromisso com o endereço, de custo deliberadamente alto.
 
@@ -670,6 +710,16 @@ def main() -> int:
         print()
         print('PARE: EPI_IDENT_MEU_IP não é um endereço IP válido.')
         return 2
+    if not _origem_plausivel(meu_ip):
+        print()
+        print('PARE: EPI_IDENT_MEU_IP não é um endereço público.')
+        print('Privado, loopback, CGNAT ou multicast não é origem pública, e o')
+        print('contrato exige duas origens PÚBLICAS distintas.')
+        return 2
+    if ip_anterior and not _origem_plausivel(ip_anterior):
+        print()
+        print('PARE: EPI_IDENT_IP_ANTERIOR não é um endereço público.')
+        return 2
 
     # Os DOIS backends, sempre. Antes, configurar só um deixava `obrigatorios`
     # com um alvo, todas as conferências passavam, e o script anunciava "nos
@@ -721,6 +771,19 @@ def main() -> int:
         print(f'vínculo com a primeira origem: {"OK" if ligado else "AUSENTE"}'
               f' — {motivo_do_vinculo}')
         print()
+
+    # Alvo inalcançável é AUSÊNCIA de medição, não medição que reprovou. O
+    # veredito devolvia (False, False) para os dois casos e `main` respondia 1,
+    # então automação não distinguia "a sonda não respondeu" de "a produção
+    # rejeitou a propriedade". Contradição é outra coisa: foi medido, e as
+    # medições se contradizem — isso continua sendo 1.
+    inalcancados = [a for a in obrigatorios if not a.alcancado]
+    if inalcancados:
+        print('RESULTADO: não executado — backend inalcançável:')
+        for alvo in inalcancados:
+            print(f'   {alvo.nome}: {alvo.motivo}')
+        print('Isto NÃO é evidência sobre nenhuma propriedade.')
+        return 2
 
     veredito = [(_veredito(a, tem_anterior), a) for a in obrigatorios]
 
@@ -804,11 +867,23 @@ def main() -> int:
         print('Lá, defina EPI_IDENT_IP_ANTERIOR com o endereço público DESTA.')
         return 3
 
-    resultados = {(a.p1, a.p2_alt, a.p3_cf, a.p3_tc, a.p4) for a in obrigatorios}
+    # P3 fica FORA da concordância: ele é classificação, não critério de HOPS,
+    # e o próprio roteiro diz isso. Duas bordas podem classificar um cabeçalho
+    # de identidade de formas diferentes de maneira legítima — `substituida`
+    # num lado e `ausente` no outro — e reprovar a certificação por causa disso
+    # contradizia o contrato documentado. Achado de revisão.
+    resultados = {(a.p1, a.p2_alt, a.p4) for a in obrigatorios}
     if len(resultados) > 1:
-        print('RESULTADO: os dois backends NÃO concordam. Cada um precisa da')
-        print('sua própria conclusão — não unifique.')
+        print('RESULTADO: os dois backends NÃO concordam em P1/P2/P4. Cada um')
+        print('precisa da sua própria conclusão — não unifique.')
         return 1
+
+    classes = {(a.p3_cf, a.p3_tc) for a in obrigatorios}
+    if len(classes) > 1:
+        print('NOTA: os backends classificam os cabeçalhos de identidade de')
+        print('formas diferentes. Não reprova HOPS — P3 não é critério —, mas')
+        print('cada borda precisa da sua própria conclusão sobre adotá-los.')
+        print()
 
     print('RESULTADO: P1, P2 e P4 satisfeitos nos dois backends.')
     print(f'   ORIGEM_A != ORIGEM_B: true   (origem desta execução: {origem!r})')

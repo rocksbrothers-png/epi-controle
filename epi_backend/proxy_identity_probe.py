@@ -113,10 +113,23 @@ def _cabecalho(handler, nome: str) -> str:
 
 
 def _e_sentinela(valor: str) -> bool:
+    """O valor é um sentinela de TEST-NET-1, em qualquer grafia?
+
+    Canoniza antes de testar. Uma borda que preserve o sentinela mas o
+    escreva como `::ffff:192.0.2.10` daria `False` num teste de pertinência
+    à rede IPv4 — e isso não afeta só P3: esta função alimenta
+    `prefixo_do_cliente_presente`, `cadeia_maior_que_hops`,
+    `candidato_e_do_cliente`, `sentinelas_na_cadeia` e
+    `sufixo_confiavel_preservado`. Um sentinela invisível deixaria TODAS as
+    guardas de contaminação cegas ao mesmo tempo. Achado de revisão.
+    """
     try:
-        return ipaddress.ip_address(valor) in REDE_SENTINELA
+        endereco = ipaddress.ip_address(str(valor).strip())
     except ValueError:
         return False
+    if endereco.version == 6 and endereco.ipv4_mapped is not None:
+        endereco = endereco.ipv4_mapped
+    return endereco in REDE_SENTINELA
 
 
 def _normalizar(valor: str) -> str:

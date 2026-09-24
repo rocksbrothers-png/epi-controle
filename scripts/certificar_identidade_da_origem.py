@@ -144,9 +144,19 @@ SENTINELA_TC_CGNAT = '100.64.0.11'
 #: faixa testada cobre tudo o que ela aceita. Achado de revisão.
 TAMANHOS_DE_P4 = (1, 30, 120, 480, 1920, 7680, 30720, 122880)
 
-#: Status que significam "a requisição é grande/malformada demais". Só estes
-#: contam como fronteira; qualquer outro erro volta a ser falha de alcance.
-STATUS_DE_RECUSA_POR_TAMANHO = (400, 413, 414, 431, 494)
+#: Status que dizem ESPECIFICAMENTE "o que você mandou é grande demais". Só
+#: estes fecham a fronteira de P4.
+#:
+#: `400` saiu daqui: é genérico. Um gateway que recuse por regra de WAF, por
+#: conteúdo ou por qualquer outro motivo devolve 400 do mesmo jeito, e repetir
+#: a requisição não estabelece a CAUSA — a repetição prova consistência, não
+#: motivo. Tratar 400 como limite de tamanho fazia P4 passar por uma recusa
+#: que não tem nada a ver com tamanho. Achado de revisão.
+STATUS_DE_RECUSA_POR_TAMANHO = (413, 414, 431, 494)
+
+#: Recusa que interrompe a escada mas NÃO prova fronteira de tamanho. A
+#: varredura para, e P4 fica inconclusivo em vez de aprovado.
+STATUS_DE_RECUSA_AMBIGUA = (400, 403, 501)
 
 
 def _cadeia_de(tamanho: int) -> str:
@@ -546,6 +556,8 @@ class Alvo:
         self.p4_maior_testado = 0
         self.p4_quebrou_em = None
         self.p4_recusada_em = None
+        self.p4_ambigua_em = None
+        self.p4_nao_chegou_em = None
         self.p4 = None
         self.candidato_do_cliente = None
 
@@ -606,26 +618,46 @@ def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     cliente numa requisição que a aplicação aceita do mesmo jeito.
     """
     maior_testado, quebrou_em, recusada_em = 0, None, None
+    ambigua_em, nao_chegou_em = None, None
+    amostras = []
     for tamanho in TAMANHOS_DE_P4:
         try:
             amostra = _controle(f'P4 (cadeia de {tamanho})', **comum,
                                 xff=_cadeia_de(tamanho), reivindicacao=meu_ip)
         except NaoAlcancado as e:
-            # Recusa POR STATUS é fronteira medida: acima dela o cliente não
-            # consegue nem enviar a cadeia. Falha de rede não é evidência de
-            # nada e continua abortando a medição.
+            # Recusa POR STATUS DE TAMANHO é fronteira medida: acima dela o
+            # cliente não consegue nem enviar a cadeia.
             if e.http in STATUS_DE_RECUSA_POR_TAMANHO and maior_testado:
                 _confirmar_recusa(comum, meu_ip, tamanho)
                 recusada_em = tamanho
                 break
+            # Recusa genérica interrompe a escada sem provar nada sobre
+            # tamanho: P4 fica INCONCLUSIVO, não aprovado. Achado de revisão.
+            if e.http in STATUS_DE_RECUSA_AMBIGUA and maior_testado:
+                ambigua_em = tamanho
+                break
+            # Falha de rede não é evidência de nada e aborta a medição.
             raise
-        maior_testado = tamanho
+        amostras.append(amostra)
+        # A propriedade de P4 vem PRIMEIRO. Uma borda que trunca de verdade
+        # devolve cadeia curta E sufixo destruído; diagnosticar isso como
+        # "não chegou" trocaria o achado certo por outro. A primeira versão
+        # desta rodada invertia a ordem e o gate `R05B-47` me corrigiu.
         if not (amostra.get('sufixo_confiavel_preservado')
                 and not amostra.get('candidato_e_do_cliente')
                 and amostra.get('candidato_bate_com_origem_declarada') is True):
             quebrou_em = tamanho
             break
-    return quebrou_em is None, maior_testado, quebrou_em, recusada_em
+        # Sufixo intacto: mas a cadeia CHEGOU? Se a borda filtra faixa de
+        # documentação, todo elemento enviado some antes da sonda, o sufixo
+        # aparece intacto em qualquer tamanho e P4 certifica sem ter testado
+        # nada. A amostra que não chega não é evidência. Achado de revisão.
+        if int(amostra.get('cadeia_tamanho') or 0) <= tamanho:
+            nao_chegou_em = tamanho
+            break
+        maior_testado = tamanho
+    ok = (quebrou_em is None and ambigua_em is None and nao_chegou_em is None)
+    return ok, maior_testado, quebrou_em, recusada_em, ambigua_em, nao_chegou_em, amostras
 
 
 def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
@@ -654,7 +686,8 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
         # passaria na rota sem cabeçalho, P4 passaria com outro candidato, e a
         # certificação sairia com as requisições de cadeia longa colapsando num
         # balde só. É a distinção B/C do §4, dentro do próprio controle.
-        p4_ok, p4_maior, p4_quebrou, p4_recusa = _varrer_p4(comum, meu_ip)
+        (p4_ok, p4_maior, p4_quebrou, p4_recusa, p4_ambigua,
+         p4_nao_chegou, p4_amostras) = _varrer_p4(comum, meu_ip)
     except NaoAlcancado as e:
         alvo.motivo = str(e)
         return
@@ -668,8 +701,18 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
     alvo.p1 = identidade.get('candidato_bate_com_origem_declarada')
     alvo.p2_alt = identidade.get('candidato_bate_com_origem_alternativa')
     alvo.candidato_do_cliente = identidade.get('candidato_e_do_cliente')
-    alvo.xff_duplicado = identidade.get('xff_instancias_repetidas')
-    alvo.candidato_canonico = identidade.get('candidato_ja_canonico')
+    # As duas guardas do LIMITADOR valem para TODA amostra, não só para P1.
+    #
+    # A requisição de P1 não manda `X-Forwarded-For`. Uma borda que só
+    # acrescente uma segunda instância QUANDO o cliente manda a dele produziria
+    # `xff_instancias_repetidas=false` em P1 e `true` em todas as de P4 — e o
+    # veredito, olhando só P1, certificaria. O mesmo vale para a canonicidade:
+    # a rota da cadeia longa pode escrever outra grafia. Achado de revisão.
+    todas = [identidade, cf_doc, cf_cgnat, tc_doc, tc_cgnat] + list(p4_amostras)
+    alvo.xff_duplicado = any(
+        a.get('xff_instancias_repetidas') is not False for a in todas)
+    alvo.candidato_canonico = all(
+        a.get('candidato_ja_canonico') is True for a in todas)
 
     # Contaminação: os três guardas juntos. Se qualquer um disparar, P1 não é
     # evidência de nada — o candidato pode ter vindo do que o chamador enviou.
@@ -690,6 +733,8 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
     alvo.p4_maior_testado = p4_maior
     alvo.p4_quebrou_em = p4_quebrou
     alvo.p4_recusada_em = p4_recusa
+    alvo.p4_ambigua_em = p4_ambigua
+    alvo.p4_nao_chegou_em = p4_nao_chegou
 
 
 def _caminho_do_estado() -> Path:
@@ -714,7 +759,11 @@ def _host_canonico(host: str) -> str:
     try:
         alvo = ipaddress.ip_address(host)
     except ValueError:
-        return host                  # nome de host: não há o que canonicalizar
+        # Nome de host: o ponto-raiz é opcional no DNS. `example.com` e
+        # `example.com.` resolvem para o mesmo lugar, e preservá-lo deixava o
+        # MESMO deployment passar pelos dois backends obrigatórios. Achado de
+        # revisão.
+        return host.rstrip('.')
     if alvo.version == 6 and alvo.ipv4_mapped is not None:
         alvo = alvo.ipv4_mapped      # mesma canonicalização que a sonda faz
     return f'[{alvo}]' if alvo.version == 6 else str(alvo)
@@ -817,6 +866,15 @@ def _ler_estado():
     for campo, tipo in ESQUEMA_DO_ESTADO.items():
         valor = dados.get(campo)
         if not isinstance(valor, tipo) or isinstance(valor, bool):
+            return None
+    # `p3` ser um dict não basta: faltando uma chave, ou com classificação
+    # desconhecida, `_classe_conservadora` simplesmente ignora a observação da
+    # primeira origem — e um `sentinela_sobrevive` de A vira silêncio no
+    # veredito de B. O estado atravessa máquinas; conferir o conteúdo é a
+    # mesma disciplina que já vale para os outros campos. Achado de revisão.
+    p3 = dados.get('p3') or {}
+    for chave in ('cf', 'tc'):
+        if p3.get(chave) not in CLASSES_VALIDAS:
             return None
     if not all(isinstance(x, str) for x in dados['backends_com_p1']):
         return None
@@ -957,6 +1015,13 @@ def _relatar(alvo: Alvo, tem_anterior: bool) -> None:
     detalhe = f'até {alvo.p4_maior_testado} elementos'
     if alvo.p4_quebrou_em:
         detalhe = f'QUEBROU em {alvo.p4_quebrou_em} elementos'
+    elif alvo.p4_nao_chegou_em:
+        detalhe = (f'NÃO CHEGOU: em {alvo.p4_nao_chegou_em} elementos a cadeia '
+                   'recebida não cresceu — a borda filtra o que foi enviado, '
+                   'e a amostra não testa nada')
+    elif alvo.p4_ambigua_em:
+        detalhe = (f'INCONCLUSIVO: recusa genérica em {alvo.p4_ambigua_em} '
+                   'elementos não prova limite de TAMANHO')
     elif alvo.p4_recusada_em:
         detalhe += f'; a borda RECUSOU {alvo.p4_recusada_em} (fronteira)'
     else:
@@ -1158,9 +1223,15 @@ def main() -> int:
     # P3 é classificação, não critério de HOPS. Mas um sentinela que SOBREVIVE
     # significa que o cliente controla o cabeçalho, e isso não pode sair
     # diluído no meio de um "tudo certo".
+    # TODA rota alcançada entra no resumo, não só as obrigatórias. Um
+    # alternativo que RESPONDE é uma entrada pública de verdade: se o cliente
+    # controla o cabeçalho lá, o resumo não pode terminar com "nenhum
+    # cabeçalho sobreviveu" — o operador fecharia o contrato adotando um
+    # cabeçalho que a seção por alvo já mostrou controlado. Achado de revisão.
+    alcancadas = [a for a in alvos if a.alcancado and not a.contradicao]
     p3_desta_origem = {
-        'cf': _classe_conservadora(*[a.p3_cf for a in obrigatorios]),
-        'tc': _classe_conservadora(*[a.p3_tc for a in obrigatorios]),
+        'cf': _classe_conservadora(*[a.p3_cf for a in alcancadas]),
+        'tc': _classe_conservadora(*[a.p3_tc for a in alcancadas]),
     }
     # E o que a PRIMEIRA origem observou. Sobreviver em QUALQUER uma das duas
     # execuções torna o cabeçalho não adotável: o tratamento pode variar por

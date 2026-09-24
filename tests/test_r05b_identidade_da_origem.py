@@ -731,7 +731,12 @@ def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
             # este chamador — então a reivindicação bate aqui também. É isso
             # que o controle P4 passou a exigir, para separar "sufixo intacto"
             # de "sufixo intacto apontando para um proxy compartilhado".
-            return _resposta(hops=hops, cadeia_tamanho=hops + 30,
+            # O tamanho acompanha o que foi ENVIADO: uma borda que anexa
+            # devolve `enviado + hops`. Fixá-lo em `hops + 30` fazia o dublê
+            # parecer uma borda que FILTRA cadeias longas — e desde a 12ª
+            # rodada isso reprova P4 de propósito.
+            enviados = xff.count(',') + 1 if xff else 0
+            return _resposta(hops=hops, cadeia_tamanho=hops + enviados,
                              cadeia_maior_que_hops=True,
                              prefixo_do_cliente_presente=True,
                              sentinelas_na_cadeia=30,
@@ -2504,3 +2509,174 @@ def test_r05b_54_recusa_isolada_nao_vira_fronteira(monkeypatch, tmp_path, capsys
     )
     assert 'INCONSISTENTE' in saida
     assert 'mais de um caminho de borda' in saida
+
+
+# ── Décima segunda rodada ───────────────────────────────────────────────────
+#
+# Sete achados, e o fio comum de quatro deles é o mesmo: uma propriedade era
+# conferida numa amostra e afirmada para todas as outras.
+
+def test_r05b_55_amostra_que_nao_chega_nao_e_evidencia(monkeypatch, tmp_path, capsys):
+    """Se a borda filtra faixa de documentação, a cadeia enviada some antes da
+    sonda: o sufixo aparece intacto em qualquer tamanho e P4 certifica sem ter
+    testado nada. A amostra que não chega não é evidência."""
+    if CERT is None:
+        return
+
+    def filtra_documentacao(base_url, chave, hops, *, xff=None, **resto):
+        # A borda descarta tudo que o cliente mandou: a cadeia recebida é só a
+        # dela, do mesmo tamanho com ou sem cadeia longa. Tudo o mais parece
+        # PERFEITO — é justamente isso que fazia P4 certificar sem testar.
+        return _resposta(hops=hops, cadeia_tamanho=hops,
+                         candidato_bate_com_origem_declarada=True)
+
+    codigo = _rodar(monkeypatch, sonda=filtra_documentacao,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 1, (
+        f'a borda filtrou a cadeia inteira e P4 devolveu {codigo}: certificou '
+        'sem ter testado nada'
+    )
+    assert 'NÃO CHEGOU' in saida, 'o relatório não diz que a amostra não chegou'
+
+    # e um truncamento DE VERDADE continua sendo diagnosticado como quebra,
+    # não como "não chegou" — a ordem das duas conferências importa
+    def trunca_de_verdade(base_url, chave, hops, *, xff=None, **resto):
+        enviados = xff.count(',') + 1 if xff else 0
+        if enviados > 30:
+            return _resposta(hops=hops, cadeia_tamanho=hops + enviados,
+                             sufixo_confiavel_preservado=False,
+                             candidato_e_do_cliente=True)
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=trunca_de_verdade,
+                    **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 1
+    assert 'QUEBROU em' in saida, (
+        'truncamento real foi diagnosticado como "não chegou": a conferência '
+        'de crescimento passou à frente da propriedade de P4'
+    )
+
+
+def test_r05b_56_recusa_generica_nao_fecha_fronteira(monkeypatch, tmp_path, capsys):
+    """`400` é genérico: um gateway que recuse por regra de WAF devolve 400 do
+    mesmo jeito, e repetir a requisição prova consistência, não CAUSA.
+
+    Tratar isso como limite de tamanho fazia P4 passar por uma recusa que não
+    tem nada a ver com tamanho.
+    """
+    if CERT is None:
+        return
+
+    assert 400 not in CERT.STATUS_DE_RECUSA_POR_TAMANHO, (
+        'status genérico voltou a fechar fronteira de tamanho'
+    )
+    assert 431 in CERT.STATUS_DE_RECUSA_POR_TAMANHO
+
+    def recusa_generica(base_url, chave, hops, *, xff=None, **resto):
+        if xff is not None and xff.count(',') + 1 > 120:
+            erro = CERT.NaoAlcancado('HTTP 400 em /api/…')
+            erro.http = 400
+            raise erro
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=recusa_generica,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 1, f'recusa genérica virou fronteira e P4 passou ({codigo})'
+    assert 'INCONCLUSIVO' in saida
+    assert 'não prova limite de TAMANHO' in saida
+
+
+def test_r05b_57_as_guardas_do_limitador_valem_para_toda_amostra(monkeypatch, tmp_path, capsys):
+    """A requisição de P1 não manda `X-Forwarded-For`.
+
+    Uma borda que só acrescente uma SEGUNDA instância quando o cliente manda a
+    dele daria `xff_instancias_repetidas=false` em P1 e `true` em todas as de
+    P4 — e o veredito, olhando só P1, certificaria. O mesmo para a grafia: a
+    rota da cadeia longa pode escrever outra, e o limitador usa a crua.
+    """
+    if CERT is None:
+        return
+
+    for campo, trecho in (('xff_instancias_repetidas', 'MAIS DE UMA instância'),
+                          ('candidato_ja_canonico', 'string CRUA')):
+        def so_na_cadeia_longa(base_url, chave, hops, *, xff=None, _campo=campo,
+                               **resto):
+            amostra = _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+            if xff is not None:
+                amostra[_campo] = (_campo == 'xff_instancias_repetidas')
+            return amostra
+
+        codigo = _rodar(monkeypatch, sonda=so_na_cadeia_longa,
+                        **_base(tmp_path / f'{campo}.json', EPI_IDENT_ORIGEM='A',
+                                EPI_IDENT_MEU_IP=_IP_A))
+        saida = ' '.join(capsys.readouterr().out.split())
+        assert codigo == 1, (
+            f'{campo} só na rota de cadeia longa devolveu {codigo}: a guarda '
+            'olhava apenas a amostra de P1'
+        )
+        assert trecho in saida
+
+
+def test_r05b_58_tres_buracos_de_borda_do_veredito(monkeypatch, tmp_path, capsys):
+    """Três achados pequenos da mesma rodada, cada um com sua consequência.
+
+    1. ponto-raiz do DNS: `h.invalid` e `h.invalid.` são o mesmo endpoint;
+    2. `p3` guardado sem chave (ou com classificação desconhecida) fazia a
+       observação insegura da primeira origem virar silêncio;
+    3. o alternativo que RESPONDE ficava fora do resumo de P3.
+    """
+    if CERT is None:
+        return
+
+    # 1. ponto-raiz
+    assert (CERT._normalizar_url('https://h.invalid.')
+            == CERT._normalizar_url('https://h.invalid')), (
+        'o ponto-raiz do DNS sobreviveu à normalização'
+    )
+    codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                         EPI_IDENT_ORIGEM='A',
+                                         EPI_IDENT_MEU_IP=_IP_A,
+                                         EPI_IDENT_SAAS_URL='https://corporativo.invalid.'))
+    assert codigo == 2, 'o ponto-raiz do DNS fez um deployment passar por dois'
+    assert 'MESMO endpoint' in capsys.readouterr().out
+
+    # 2. estado com `p3` inválido é recusado
+    estado = tmp_path / 'p3.json'
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    capsys.readouterr()
+    for estrago in ({'cf': 'substituida'}, {'cf': 'inventada', 'tc': 'substituida'}):
+        guardado = json.loads(estado.read_text(encoding='utf-8'))
+        guardado['p3'] = estrago
+        estado.write_text(json.dumps(guardado), encoding='utf-8')
+        assert CERT._ler_estado() is None or _rodar(
+            monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                 EPI_IDENT_MEU_IP=_IP_B,
+                                 EPI_IDENT_IP_ANTERIOR=_IP_A)) != 0, (
+            f'estado com p3={estrago} foi aceito: a observação de A vira silêncio'
+        )
+        capsys.readouterr()
+
+    # 3. o alternativo alcançado entra no resumo de P3
+    def alternativo_inseguro(base_url, chave, hops, **resto):
+        amostra = _sonda_falsa()(base_url, chave, hops, **resto)
+        if 'alternativo' in base_url and resto.get('cf') is not None:
+            amostra['cf_connecting_ip'] = 'sentinela_sobrevive'
+        return amostra
+
+    _rodar(monkeypatch, sonda=alternativo_inseguro,
+           **_base(tmp_path / 'alt.json', EPI_IDENT_ORIGEM='A',
+                   EPI_IDENT_MEU_IP=_IP_A,
+                   EPI_IDENT_ALT_URL='https://alternativo.invalid',
+                   EPI_IDENT_ALT_KEY='k3'))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'ALERTA P3: o cliente CONTROLA CF-Connecting-IP' in saida, (
+        'o alternativo que RESPONDE ficou fora do resumo: o relatório termina '
+        'dizendo que nenhum cabeçalho sobreviveu'
+    )

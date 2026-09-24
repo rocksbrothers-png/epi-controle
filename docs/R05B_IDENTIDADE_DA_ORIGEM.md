@@ -1117,3 +1117,83 @@ A sonda mudou de novo: **os dois serviços precisam ser reimplantados**. E a
 resposta ganhou dois campos obrigatórios, então uma sonda antiga passa a ser
 recusada pelo script com "a resposta não trouxe …" — que é a falha fechada
 correta.
+
+### Décima segunda rodada: uma amostra não fala pelas outras
+
+Sete achados, e o fio comum de quatro deles é o mesmo erro: uma propriedade era
+conferida **numa amostra** e afirmada para **todas**.
+
+| | achado | gate |
+|---|---|---|
+| 1 | a cadeia de P4 podia nunca chegar, e P4 certificava assim mesmo | `R05B-55` |
+| 2 | `400` genérico fechava a fronteira de tamanho | `R05B-56` |
+| 3 | a guarda de duplicidade olhava só a amostra de P1 | `R05B-57` |
+| 4 | a guarda de canonicidade olhava só a amostra de P1 | `R05B-57` |
+| 5 | o ponto-raiz do DNS fazia um endpoint passar por dois | `R05B-58` |
+| 6 | o `p3` guardado era aceito sem conferir o conteúdo | `R05B-58` |
+| 7 | o alternativo que responde ficava fora do resumo de P3 | `R05B-58` |
+
+#### 1. A amostra que não chega não é evidência
+
+O controle de P4 manda uma cadeia de TEST-NET-1. Uma borda que **filtra faixa de
+documentação** descarta tudo antes da sonda: o sufixo aparece intacto em
+qualquer tamanho, e P4 certifica **sem ter testado nada**.
+
+A correção não precisou de endereço público: a própria sonda já devolve
+`cadeia_tamanho`, então dá para exigir que a cadeia recebida tenha **crescido**.
+Se não cresceu, a amostra não testa nada e P4 reprova dizendo isso.
+
+A ordem das duas conferências importa e me custou uma tentativa: a propriedade
+de P4 vem **primeiro**, porque uma borda que trunca de verdade devolve cadeia
+curta **e** sufixo destruído — diagnosticar isso como "não chegou" trocaria o
+achado certo por outro. O gate `R05B-47` pegou a inversão.
+
+#### 2. `400` não quer dizer "grande demais"
+
+Um gateway que recuse por regra de WAF, por conteúdo ou por qualquer outro
+motivo devolve `400` igual. Repetir a requisição prova **consistência**, não
+**causa** — então `_confirmar_recusa` não resolvia isso. Agora só
+`413`, `414`, `431` e `494` fecham a fronteira; `400`, `403` e `501` interrompem
+a escada e deixam P4 **inconclusivo**, que é diferente de aprovado.
+
+#### 3 e 4. A requisição de P1 não manda `X-Forwarded-For`
+
+E é exatamente por isso que ela não podia ser a única fonte das duas guardas do
+limitador. Uma borda que só acrescente uma **segunda instância** quando o
+cliente manda a dele produz `xff_instancias_repetidas=false` em P1 e `true` em
+todas as de P4 — e o veredito, olhando só P1, certificava. O mesmo vale para a
+grafia: a rota da cadeia longa pode escrever outra, e o limitador usa a crua.
+
+As duas guardas passaram a valer para **toda amostra**: P1, os quatro controles
+de P3 e todas as de P4.
+
+#### 5, 6 e 7. Três buracos de borda
+
+- **Ponto-raiz**: `h.invalid` e `h.invalid.` resolvem para o mesmo lugar. A
+  normalização preservava o ponto, e o **mesmo** deployment passava pelos dois
+  backends obrigatórios.
+- **`p3` guardado**: ser um `dict` não bastava. Faltando uma chave, ou com
+  classificação desconhecida, `_classe_conservadora` simplesmente ignorava a
+  observação — e um `sentinela_sobrevive` da origem A virava silêncio no
+  veredito da B. O estado atravessa máquinas; conferir o conteúdo é a mesma
+  disciplina que já valia para os outros campos.
+- **Alternativo no resumo**: um alternativo que **responde** é entrada pública
+  de verdade. O resumo olhava só os obrigatórios e podia terminar com "nenhum
+  cabeçalho sobreviveu" enquanto a seção por alvo mostrava o contrário.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BP | a amostra que não chega volta a ser evidência | `R05B-55` | vermelho |
+| BQ | status genérico volta a fechar fronteira | `R05B-56` | vermelho |
+| BR-1 | a guarda de duplicidade volta a olhar só P1 | `R05B-57` | vermelho |
+| BR-2 | a guarda de canonicidade volta a olhar só P1 | `R05B-57` | vermelho |
+| BS | o ponto-raiz volta a diferenciar endpoints | `R05B-58` | vermelho |
+| BT | o `p3` guardado volta a não ser conferido | `R05B-58` | vermelho |
+| BU | o alternativo sai do resumo de P3 | `R05B-58` | vermelho |
+
+#### Sem novo redeploy
+
+**A sonda não mudou nesta rodada** — os sete achados eram do script. Quem já
+tiver implantado o head da 11ª rodada não precisa reimplantar.

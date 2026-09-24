@@ -62,28 +62,49 @@ MEU_IP=$(curl -s https://api.ipify.org)          # seu IP público
 CHAVE='<valor do painel>'                        # não versione
 SEM='192.0.2.1,192.0.2.2,192.0.2.3'              # prefixo sentinela (RFC 5737)
 
-for N in 1 2 3 4; do
-  echo "--- hops=$N"
-  curl -s -H "X-Diagnostics-Key: $CHAVE" \
-          -H "X-Probe-Hops: $N" \
-          -H "X-Origin-Claim: $MEU_IP" \
-          -H "X-Forwarded-For: $SEM" \
-          "$BACKEND/api/origin-identity-diagnostics"
-done
+LONGA=$(python3 -c "print(','.join(f'192.0.2.{i+1}' for i in range(100)))")
+
+sonda() {  # $1=hops  $2=XFF (vazio = sem o cabeçalho) — 3×, e as 3 têm de concordar
+  for _ in 1 2 3; do curl -s -H "X-Diagnostics-Key: $CHAVE" -H "X-Probe-Hops: $1" \
+    -H "X-Origin-Claim: $MEU_IP" ${2:+-H "X-Forwarded-For: $2"} \
+    "$BACKEND/api/origin-identity-diagnostics"; done
+}
+
+for N in 1 2 3 4; do echo "--- hops=$N"; sonda $N "$SEM"; done
+echo "--- hops=3 SEM cabeçalho";      sonda 3 ""
+echo "--- hops=3 cadeia longa (100)"; sonda 3 "$LONGA"
 ```
 
-**Como ler.** O `N` correto é aquele em que, **nas duas origens e nos dois
-backends**:
+**Como ler.** O `N` correto é aquele em que, **nas duas origens, nos dois
+backends e nas três repetições**:
 
 - `candidato_bate_com_origem_declarada: true`
 - `candidato_e_do_cliente: false`
 - `prefixo_do_cliente_presente: true` (prova que o teste chegou de verdade)
 
-Se nenhum `N` satisfizer isso nas duas origens, a posição **não é estável** e
-o valor continua `0`. Um `N` que só funciona numa origem não é resposta.
+Se as três repetições discordarem, há mais de um caminho de borda e a posição
+**não é estável**. Se nenhum `N` satisfizer isso nas duas origens, o valor
+continua `0`. Um `N` que só funciona numa origem não é resposta.
 
-Repita sem o `X-Forwarded-For` sentinela: `cadeia_tamanho` deve cair em 3. Se
-não cair, a borda não está apenas anexando, e a leitura acima não vale.
+Os dois controles com `N=3` exigem, campo a campo:
+
+| campo | sem cabeçalho | cadeia longa (100) |
+|---|---|---|
+| `cadeia_tamanho` | `3` | `103` |
+| `candidato_bate_com_origem_declarada` | `true` | `true` |
+| `candidato_e_do_cliente` | `false` | `false` |
+| `prefixo_do_cliente_presente` | `false` | `true` |
+
+O primeiro representa o **cliente normal**, que não envia `X-Forwarded-For`:
+conferir só o tamanho deixaria passar uma borda que monta a cadeia de outro
+jeito quando o cliente cala. No segundo, tamanho abaixo de 103 significa que a
+borda **truncou** — e aí `cadeia[-3]` pode cair em elemento do cliente sem que
+a guarda de cadeia curta dispare.
+
+> **Limitação registrada.** A medição demonstra ausência de truncamento até o
+> tamanho efetivamente testado; não constitui prova para cadeias
+> arbitrariamente maiores. Esta limitação é para ficar registrada, não para
+> gerar varredura, escada, bisseção ou busca de fronteira.
 
 ## D, E e F — classificação
 

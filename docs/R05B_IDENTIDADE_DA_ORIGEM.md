@@ -661,3 +661,88 @@ estavam erradas:
 |---|---|---|
 | não consegue **gravar** o compromisso | traceback, status 1 (igual a propriedade reprovada) | **2**, não executado |
 | não consegue **apagar** o compromisso | **0**, certificação "fechada" com o compromisso vivo no disco | **4**, propriedades satisfeitas e encerramento falho |
+
+### Sétima rodada: três achados, e o primeiro derruba uma escolha minha
+
+| | achado | gate |
+|---|---|---|
+| 1 | faixa de documentação era aceita como **origem pública** em produção | `R05B-31` |
+| 2 | URL malformada (`https://[`) virava traceback com status 1 | `R05B-42` |
+| 3 | a varredura antivazamento de endereço era **IPv4-only** | `R05B-10b` |
+
+#### O achado 1: eu tinha enfraquecido a validação de produção por conveniência de teste
+
+`_origem_plausivel` aceitava RFC 5737 e RFC 3849 para que os gates pudessem
+exercitar `main()` sem escrever endereço real nas superfícies da fatia — que é
+o que `R05B-10` proíbe. A troca era ruim e era minha: um placeholder esquecido
+em `EPI_IDENT_MEU_IP` produziria certificação a partir de endereço não
+roteável, e a identidade de rate limit que a fatia existe para provar sairia de
+um endereço que não é de ninguém.
+
+Quem cede agora é o teste, não o código. Produção recusa documentação; os gates
+que precisam dirigir `main()` substituem a função por
+`_plausivel_com_documentacao`, e o gate que testa a **função** usa os endereços
+de verdade — o global vem de um inteiro (`0x60606060`), porque literal pontuado
+fora de faixa reservada é justamente o que `R05B-10` proíbe.
+
+#### O achado 2: erro de operador com o código de saída de veredito
+
+`urlsplit('https://[')` levanta `ValueError: Invalid IPv6 URL`. O erro escapava
+de `main()`: traceback e **status 1** — o mesmo status de propriedade
+reprovada. Um erro de digitação na variável de ambiente ficava indistinguível,
+para quem lê só o código de saída, de "a cadeia não provou a identidade".
+
+| situação | era | virou |
+|---|---|---|
+| `EPI_IDENT_CORP_URL` / `EPI_IDENT_SAAS_URL` malformada | traceback, status 1 | **2**, `PARE: URL inválida em: …` |
+| `EPI_IDENT_ALT_URL` malformada | `hostname alternativo: não comprovado — não alcançou o serviço` | **2**, `PARE: URL inválida em: …` |
+
+O alternativo entrou na mesma conferência por ser o mesmo defeito com outra
+roupa: `não comprovado` é conclusão sobre o mundo — "esta entrada pública não
+responde à sonda" — e o que houve foi erro de digitação. É a razão pela qual o
+alternativo **pela metade** já era `2` (`R05B-28`): o operador pediu para
+investigar aquele alvo.
+
+#### O achado 3: o gate antivazamento só enxergava metade das famílias
+
+`R05B-10` varria `\b(\d{1,3}(?:\.\d{1,3}){3})\b` — só IPv4. O instrumento
+aceita reivindicação **IPv6** de ponta a ponta (`_origem_plausivel`,
+`_e_sentinela`, a seleção da sonda), e a própria lista de faixas seguras já
+citava `2001:db8::/32`. Um endereço IPv6 real caído no contrato, no script, na
+sonda ou no arquivo de testes não era achado por ninguém, e o gate seguia verde
+afirmando que a fatia não grava endereço de ninguém.
+
+A varredura agora casa o token bruto e corta do fim até algo analisar — porque
+literal de endereço não tem fronteira `\b` que sirva: `2001:db8::1` acaba em
+dígito, `2001:db8::` acaba em dois-pontos, `127.0.0.1:8000` continua depois do
+endereço e a pontuação da prosa cola no fim.
+
+Duas decisões que não são óbvias:
+
+1. **Toda grafia IPv6 que embute um IPv4 é julgada pelo IPv4 embutido.** Sem
+   isso, `::ffff:<real>` e `::<real>` entrariam pelas faixas reservadas
+   `::ffff:0:0/96` e `::/96` carregando dentro o endereço real de alguém. É a
+   mesma canonicalização que `_e_sentinela` faz na sonda, e pelo mesmo motivo:
+   a grafia muda, o endereço não.
+2. **A mensagem de falha não ecoa o endereço**, só arquivo e linha. Um gate que
+   existe para impedir que endereço real seja gravado não pode publicá-lo no
+   log do CI ao falhar.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| AZ | documentação volta a ser origem pública | `R05B-31` | vermelho |
+| BA-1 | `urlsplit` volta a levantar de `main()` | `R05B-42` | vermelho |
+| BA-2 | a conferência de URL inválida some | `R05B-42` | vermelho |
+| BA-3 | as duas ao mesmo tempo | `R05B-42` | vermelho |
+| BA-4 | o alternativo sai da conferência de URL | `R05B-42` | vermelho |
+| BB-1 | a varredura volta a ser IPv4-only | `R05B-10b` | vermelho |
+| BB-2 | IPv6 real plantado no contrato | `R05B-10` | vermelho |
+| BB-3 | IPv6 real plantado **+** varredura IPv4-only | `R05B-10` | **verde** |
+| BB-4 | IPv4 real plantado no contrato | `R05B-10` | vermelho |
+
+BB-3 é a linha que importa: com a varredura anterior, o endereço plantado
+passa. Não é falha do gate — é a demonstração do estado que o achado 3
+descreve. BB-4 existe porque reescrever a varredura podia perder a cobertura
+IPv4 em silêncio.

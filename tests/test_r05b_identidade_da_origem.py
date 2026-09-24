@@ -22,6 +22,7 @@ Cada gate existe para uma sabotagem nomeada em `docs/R05B_IDENTIDADE_DA_ORIGEM.m
 """
 
 import hashlib
+import ipaddress
 import json
 import importlib.util
 import re
@@ -542,7 +543,57 @@ FAIXAS_SEGURAS = (
     # não-roteáveis, necessários para exercitar `_origem_plausivel`: nenhum
     # deles é endereço público de alguém, que é o que este gate protege
     '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4',
+    # IPv6. O instrumento aceita reivindicação IPv6 — `_origem_plausivel`,
+    # `_e_sentinela` e os gates da sonda todos operam nas duas famílias —, então
+    # a proibição de gravar endereço real de alguém tem de valer para a família
+    # inteira. Achado da sétima rodada.
+    '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'ff00::/8', '100::/64',
 )
+
+#: Literal de endereço não tem fronteira `\b` que sirva: `2001:db8::1` acaba em
+#: dígito, `2001:db8::` acaba em dois-pontos, `127.0.0.1:8000` continua depois
+#: do endereço e a pontuação da prosa cola no fim. Casa-se o bruto e corta-se
+#: do fim até algo analisar — ou até não sobrar nada analisável.
+_TOKEN_DE_ENDERECO = re.compile(r'[0-9A-Fa-f:][0-9A-Fa-f.:]*')
+
+
+def _enderecos_no_texto(texto):
+    """Cada literal de IP do texto — v4 ou v6 — e a linha em que ele aparece.
+
+    A varredura antiga era `\\b(\\d{1,3}(?:\\.\\d{1,3}){3})\\b`: só IPv4. Um
+    endereço IPv6 real caído no contrato, no script, na sonda ou neste arquivo
+    não era achado por ninguém, e o gate seguia verde afirmando que a fatia não
+    grava endereço de ninguém. Achado da sétima rodada.
+    """
+    achados = {}
+    for numero, linha in enumerate(texto.splitlines(), start=1):
+        for bruto in _TOKEN_DE_ENDERECO.findall(linha):
+            if ':' not in bruto and bruto.count('.') < 3:
+                continue  # nem dotted-quad nem v6: não há endereço a extrair
+            candidato = bruto
+            while len(candidato) > 1:
+                try:
+                    achados.setdefault(ipaddress.ip_address(candidato), numero)
+                    break
+                except ValueError:
+                    candidato = candidato[:-1]
+    return achados
+
+
+def _endereco_seguro(endereco, faixas):
+    """Toda forma IPv6 que EMBUTE um IPv4 é julgada por esse IPv4.
+
+    Sem isso, `::ffff:<ip real>` e `::<ip real>` entrariam por `::ffff:0:0/96`
+    e `::/96` — que são faixas reservadas — carregando dentro o endereço real
+    de alguém. É a mesma canonicalização que `_e_sentinela` faz na sonda, e
+    pelo mesmo motivo: a grafia muda, o endereço não.
+    """
+    if endereco.version == 6 and int(endereco) < 2 ** 32:
+        endereco = ipaddress.ip_address(int(endereco))     # `::`, `::1`, `::a.b.c.d`
+    elif getattr(endereco, 'ipv4_mapped', None) is not None:
+        endereco = endereco.ipv4_mapped                     # `::ffff:a.b.c.d`
+    return any(endereco in faixa for faixa in faixas
+               if faixa.version == endereco.version)
 
 
 def test_r05b_10_nenhum_endereco_real_na_fatia():
@@ -550,21 +601,59 @@ def test_r05b_10_nenhum_endereco_real_na_fatia():
     # fechado, `SCRIPT` e `SONDA_MODULO` somem da lista e o contrato e este
     # arquivo continuam sendo varridos — que é o certo. Uma guarda `CERT is
     # None` aqui o transformaria em no-op justamente no estado fechado.
-    import ipaddress
-
     faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
-    padrao = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3})\b')
     alvos = [CONTRATO, Path(__file__)]
     alvos += [caminho for caminho in (SCRIPT, SONDA_MODULO) if caminho.exists()]
     for caminho in alvos:
-        for literal in set(padrao.findall(caminho.read_text(encoding='utf-8'))):
-            try:
-                endereco = ipaddress.ip_address(literal)
-            except ValueError:
-                continue
-            assert any(endereco in faixa for faixa in faixas), (
-                f'{caminho.name} contém {literal}, que não é de faixa reservada'
+        achados = _enderecos_no_texto(caminho.read_text(encoding='utf-8'))
+        for endereco, linha in achados.items():
+            # A mensagem NÃO ecoa o endereço: um gate que existe para impedir
+            # que endereço real seja gravado não pode publicá-lo no log do CI
+            # ao falhar. Arquivo e linha bastam para achar.
+            assert _endereco_seguro(endereco, faixas), (
+                f'{caminho.name}:{linha} tem um endereço IPv{endereco.version} '
+                'fora das faixas reservadas'
             )
+
+
+def test_r05b_10b_a_varredura_enxerga_ipv6():
+    """Meta-gate do gate acima. A varredura só protege a família que ela
+    enxerga; quando era IPv4-only, `R05B-10` ficava verde com um IPv6 real
+    dentro do arquivo. Nenhum literal real mora aqui: os endereços de prova
+    são construídos a partir de inteiros, senão o próprio `R05B-10` os pegaria.
+    """
+    faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
+
+    real_v6 = ipaddress.ip_address((0x2a01 << 112) | 1)     # espaço alocado
+    real_v4 = ipaddress.ip_address(0x60606060)
+    achados = _enderecos_no_texto(
+        f'a borda respondeu de {real_v6} e antes de {real_v4}.'
+    )
+    assert real_v6 in achados, 'literal IPv6 passou invisível pela varredura'
+    assert real_v4 in achados, 'literal IPv4 passou invisível pela varredura'
+    assert not _endereco_seguro(real_v6, faixas), 'IPv6 real passou por seguro'
+    assert not _endereco_seguro(real_v4, faixas), 'IPv4 real passou por seguro'
+
+    # Grafias que EMBUTEM um IPv4: julgadas pelo IPv4 embutido, nunca pela
+    # faixa reservada que as contém.
+    embutido_real = (f'::ffff:{real_v4}', f'::{real_v4}')
+    for grafia in embutido_real:
+        endereco = ipaddress.ip_address(grafia)
+        assert not _endereco_seguro(endereco, faixas), (
+            f'{grafia!r} escondeu um endereço real dentro de faixa reservada'
+        )
+
+    # E as grafias legítimas que a fatia usa de fato continuam passando.
+    for grafia in ('2001:db8::1', '::ffff:192.0.2.10', '::1', '::',
+                   'ff00::', '203.0.113.1'):
+        assert _endereco_seguro(ipaddress.ip_address(grafia), faixas), (
+            f'{grafia!r} deixou de ser aceito e a fatia inteira ficaria vermelha'
+        )
+
+    # Ruído que parece endereço e não é: nada disso pode virar achado.
+    for ruido in ('21:00', '3.14.3', 'SimpleHTTP/0.6', 'deadbeef',
+                  '0630ad453fced15de54578d302aa0a6c00b9dec8d38bda33d41b9dd44'):
+        assert not _enderecos_no_texto(ruido), f'{ruido!r} virou endereço'
 
 
 # ── Achados da revisão do Codex em 699983ed ─────────────────────────────────
@@ -652,8 +741,40 @@ def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
     return falso
 
 
+#: Faixas de documentação (RFC 5737, RFC 3849). `_origem_plausivel` de PRODUÇÃO
+#: as recusa, e deve recusar: um placeholder esquecido em `EPI_IDENT_MEU_IP`
+#: produziria certificação a partir de endereço não roteável.
+#:
+#: Os gates que dirigem `main()` precisam de endereços que `R05B-10` permita nas
+#: superfícies da fatia, então substituem o validador aqui — acrescentando as
+#: faixas de documentação ao que `is_global` já aceita, e só isso. Privado,
+#: loopback, CGNAT e multicast continuam recusados, inclusive nos testes.
+FAIXAS_DE_DOCUMENTACAO = (
+    ipaddress.ip_network('192.0.2.0/24'),
+    ipaddress.ip_network('198.51.100.0/24'),
+    ipaddress.ip_network('203.0.113.0/24'),
+    ipaddress.ip_network('2001:db8::/32'),
+)
+
+
+#: Referência à função REAL, capturada antes de qualquer substituição: sem isto
+#: a substituta chamaria a si mesma, porque é ela que passa a estar no módulo.
+_ORIGEM_PLAUSIVEL_REAL = None if CERT is None else CERT._origem_plausivel
+
+
+def _plausivel_com_documentacao(endereco: str) -> bool:
+    if _ORIGEM_PLAUSIVEL_REAL(endereco):
+        return True
+    try:
+        alvo = ipaddress.ip_address(str(endereco).strip())
+    except ValueError:
+        return False
+    return any(alvo in faixa for faixa in FAIXAS_DE_DOCUMENTACAO)
+
+
 def _rodar(monkeypatch, sonda=None, **env):
     monkeypatch.setattr(CERT, '_sondar', sonda or _sonda_falsa())
+    monkeypatch.setattr(CERT, '_origem_plausivel', _plausivel_com_documentacao)
     _env(monkeypatch, **env)
     return CERT.main()
 
@@ -1235,9 +1356,22 @@ def test_r05b_31_a_origem_declarada_tem_de_ser_publica(monkeypatch, tmp_path, ca
                     '100.64.0.1', '169.254.1.1', '224.0.0.1', '::1'):
         assert not CERT._origem_plausivel(privado), f'{privado} passou por público'
 
-    # as faixas de documentação existem para os gates, e são aceitas de propósito
+    # documentação NÃO é origem pública. Uma versão anterior desta função as
+    # aceitava para conveniência dos gates — enfraquecer a validação de produção
+    # por causa de teste. Agora quem cede é o teste, não o código.
     for doc in (_IP_A, _IP_B, '192.0.2.10', '2001:db8::1'):
-        assert CERT._origem_plausivel(doc), f'{doc} foi recusado'
+        assert not CERT._origem_plausivel(doc), (
+            f'{doc} é faixa de documentação e passou por origem pública'
+        )
+
+    # e o ramo de ACEITAÇÃO, com um endereço global de verdade. Ele vem de um
+    # inteiro porque `R05B-10` proíbe literal pontuado fora de faixa reservada
+    # nas superfícies da fatia — a forma inteira deixa a intenção explícita e
+    # não se confunde com infraestrutura deste projeto.
+    global_de_verdade = str(ipaddress.ip_address(0x60606060))
+    assert CERT._origem_plausivel(global_de_verdade), (
+        'um endereço global foi recusado: a validação virou recusa de tudo'
+    )
 
     assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
                                        EPI_IDENT_MEU_IP='10.0.0.1')) == 2
@@ -1705,3 +1839,48 @@ def test_r05b_41_falhas_de_filesystem_nao_viram_veredito(monkeypatch, tmp_path, 
     assert codigo == 4, f'encerramento falhando devolveu {codigo}, não 4'
     assert 'continua reutilizável' in saida
     assert estado.exists(), 'o compromisso sumiu apesar do erro simulado'
+
+
+# ── Sétima rodada da revisão ────────────────────────────────────────────────
+#
+# Três achados, e o primeiro derruba uma escolha MINHA: eu tinha aceitado faixa
+# de documentação como origem pública para os gates não precisarem de endereço
+# real. Era enfraquecer a validação de PRODUÇÃO por conveniência de teste —
+# quem cede agora é o teste (`_plausivel_com_documentacao`), não o código.
+
+def test_r05b_42_url_malformada_nao_vira_traceback(monkeypatch, tmp_path, capsys):
+    """`https://[` faz `urlsplit` levantar `ValueError: Invalid IPv6 URL`.
+
+    O erro escapava de `main()`: traceback e status 1 — o MESMO status de
+    propriedade reprovada. Um erro de digitação na variável de ambiente ficava
+    indistinguível, para quem lê só o código de saída, de "a cadeia não provou
+    a identidade". Erro de operador é 2, sempre.
+    """
+    if CERT is None:
+        return
+
+    # a normalização absorve o malformado em vez de levantar
+    for quebrada in ('https://[', 'https://[::1', ''):
+        assert CERT._normalizar_url(quebrada) == '', (
+            f'{quebrada!r} não foi reconhecida como URL inválida'
+        )
+
+    # O alternativo também: com URL malformada ele cairia em "não comprovado",
+    # que é conclusão sobre o mundo, e o que houve foi erro de digitação.
+    casos = [('EPI_IDENT_CORP_URL', {}), ('EPI_IDENT_SAAS_URL', {}),
+             ('EPI_IDENT_ALT_URL', {'EPI_IDENT_ALT_KEY': 'k3'})]
+
+    for variavel, extra in casos:
+        codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                             EPI_IDENT_ORIGEM='A',
+                                             EPI_IDENT_MEU_IP=_IP_A,
+                                             **{variavel: 'https://['}, **extra))
+        saida = capsys.readouterr().out
+        assert codigo == 2, (
+            f'{variavel} malformada devolveu {codigo} — 1 é veredito de '
+            'propriedade, e isto é erro de operador'
+        )
+        assert 'URL inválida' in saida
+        assert not tmp_path.joinpath('e.json').exists(), (
+            'gravou compromisso a partir de uma execução que nem sondou'
+        )

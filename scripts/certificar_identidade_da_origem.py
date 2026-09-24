@@ -347,19 +347,6 @@ def _canonico(endereco: str) -> str:
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
 
 
-#: Faixas de documentação (RFC 5737, RFC 3849). Não são públicas, e nenhum
-#: eco de IP devolve uma delas — existem aqui só para os gates poderem
-#: exercitar o instrumento sem escrever endereço real nas superfícies da
-#: fatia, o que `R05B-10` proíbe. Uma medição real declarada com uma destas
-#: reprova em P1 de qualquer jeito.
-FAIXAS_DE_DOCUMENTACAO = (
-    ipaddress.ip_network('192.0.2.0/24'),
-    ipaddress.ip_network('198.51.100.0/24'),
-    ipaddress.ip_network('203.0.113.0/24'),
-    ipaddress.ip_network('2001:db8::/32'),
-)
-
-
 def _origem_plausivel(endereco: str) -> bool:
     """O endereço declarado pode ser uma origem PÚBLICA?
 
@@ -370,6 +357,14 @@ def _origem_plausivel(endereco: str) -> bool:
 
     `is_global` é o teste forte, e ele recusa também CGNAT (100.64.0.0/10),
     que `is_private` deixaria passar.
+
+    As faixas de documentação (RFC 5737, RFC 3849) foram aceitas por uma versão
+    desta função, para os gates poderem exercitar `main()` sem escrever endereço
+    real nas superfícies da fatia. Era enfraquecer a validação de PRODUÇÃO por
+    conveniência de teste: um placeholder esquecido em `EPI_IDENT_MEU_IP`
+    produziria certificação a partir de endereço não roteável. Achado de
+    revisão. Os gates que exercitam `main()` agora substituem esta função; o
+    gate que testa a função usa os endereços de verdade.
     """
     try:
         alvo = ipaddress.ip_address(str(endereco).strip())
@@ -382,9 +377,7 @@ def _origem_plausivel(endereco: str) -> bool:
     # não-especificado entram na mesma recusa.
     if alvo.is_multicast or alvo.is_reserved or alvo.is_unspecified:
         return False
-    if alvo.is_global:
-        return True
-    return any(alvo in faixa for faixa in FAIXAS_DE_DOCUMENTACAO)
+    return bool(alvo.is_global)
 
 
 def _compromisso(sal_hex: str, endereco: str) -> str:
@@ -521,7 +514,13 @@ def _normalizar_url(url: str) -> str:
     bruto = str(url or '').strip()
     if not bruto:
         return ''
-    partes = urllib.parse.urlsplit(bruto)
+    try:
+        partes = urllib.parse.urlsplit(bruto)
+    except ValueError:
+        # IPv6 malformado (`https://[`) faz `urlsplit` levantar. Sem isto saía
+        # traceback com status 1 — o mesmo de uma propriedade reprovada — antes
+        # de qualquer sondagem. Achado de revisão.
+        return ''
     esquema = (partes.scheme or '').lower()
     host = (partes.hostname or '').lower()
     try:
@@ -798,6 +797,16 @@ def main() -> int:
         print('PARE: faltam URL e/ou chave de: ' + ', '.join(faltando) + '.')
         print('A certificação vale para os DOIS backends onde HOPS será')
         print('aplicado, ou não vale. Não há meia certificação.')
+        return 2
+
+    # O alternativo entra aqui quando CONFIGURADO: com URL malformada ele
+    # cairia em "não comprovado — não alcançou o serviço", que é conclusão
+    # sobre o mundo, quando o que houve foi erro de digitação. Mesma razão do
+    # `pela metade` logo abaixo: o operador pediu para investigar.
+    malformadas = [a.nome for a in alvos if a.configurado and not _normalizar_url(a.url)]
+    if malformadas:
+        print()
+        print('PARE: URL inválida em: ' + ', '.join(malformadas) + '.')
         return 2
 
     distintas = {_normalizar_url(a.url) for a in obrigatorios}

@@ -210,8 +210,42 @@ def _normalizar(valor: str) -> str:
     return str(endereco)
 
 
+def _cabecalho_como_o_limitador(handler, nome: str) -> str:
+    """Lê o cabeçalho EXATAMENTE como `core/rate_limit.py` lê.
+
+    `get_client_ip` usa `handler.headers.get(nome, '')`, e `HTTPMessage.get`
+    devolve só a PRIMEIRA instância. A sonda juntava todas — correção da 5ª
+    rodada, certa para classificar P3 — e com isso passou a medir uma função
+    DIFERENTE da que a produção calcula.
+
+    A diferença não é acadêmica: se a borda acrescenta uma instância NOVA em
+    vez de estender a do cliente, a produção lê a instância do cliente inteira
+    e `cadeia[-N]` fica sob controle dele. A certificação aprovaria a cadeia
+    combinada enquanto o limitador usa outra. Achado de revisão.
+
+    Então a seleção do candidato passa a espelhar a produção, e a diferença
+    entre as duas leituras vira um campo próprio — visível, não silenciosa.
+    """
+    try:
+        return str(handler.headers.get(nome, '') or '')
+    except Exception:  # noqa: BLE001 — leitura defensiva de handler arbitrário
+        return ''
+
+
+def _instancias_repetidas(handler, nome: str) -> bool:
+    """A requisição trouxe MAIS DE UMA instância deste cabeçalho?
+
+    É a condição em que a leitura da produção e a leitura completa divergem —
+    e, portanto, a condição em que a certificação não pode concluir nada sobre
+    o que o limitador vai usar.
+    """
+    return _cabecalho(handler, nome) != _cabecalho_como_o_limitador(handler, nome)
+
+
 def _cadeia(handler) -> list:
-    bruto = _cabecalho(handler, 'X-Forwarded-For')
+    # Leitura da PRODUÇÃO, não a completa: o que se mede tem de ser o que o
+    # limitador calcula.
+    bruto = _cabecalho_como_o_limitador(handler, 'X-Forwarded-For')
     return [parte.strip() for parte in bruto.split(',') if parte.strip()]
 
 
@@ -252,7 +286,8 @@ def _classe_do_cabecalho(handler, nome: str) -> str:
 
 
 def analisar(cadeia: list, hops: int, reivindicacao: str, alternativa: str,
-             classes: dict, presentes: list) -> dict:
+             classes: dict, presentes: list, *,
+             instancias_repetidas: bool = False) -> dict:
     """Avalia P1–P4 sobre uma cadeia já extraída. Nunca devolve endereço.
 
     Separada do handler para que os gates possam exercitá-la com cadeias
@@ -311,6 +346,20 @@ def analisar(cadeia: list, hops: int, reivindicacao: str, alternativa: str,
         'cadeia_maior_que_hops': tamanho > hops,
         'reivindicacao_fora_do_candidato': fora_do_candidato,
         'candidato_e_do_cliente': bool(suficiente) and _e_sentinela(cadeia[indice_candidato]),
+        # O limitador usa a string CRUA de `cadeia[-N]` como chave de balde
+        # (`core/rate_limit.py`). Se a borda não escreve a forma canônica, duas
+        # grafias do MESMO endereço ocupam baldes diferentes e passam mais
+        # requisições do que o configurado. A sonda normaliza para comparar —
+        # e é justamente por isso que precisa DIZER se a normalização mudou
+        # alguma coisa. Achado de revisão.
+        'candidato_ja_canonico': (
+            not suficiente
+            or cadeia[indice_candidato].strip() == _normalizar(cadeia[indice_candidato])
+        ),
+        # Mais de uma instância de `X-Forwarded-For`: a leitura da produção e a
+        # leitura completa divergem, e o que o limitador usará não é o que a
+        # certificação mediria.
+        'xff_instancias_repetidas': bool(instancias_repetidas),
         'sufixo_confiavel_preservado': sufixo_preservado,
         'candidato_bate_com_origem_declarada': bate,
         'candidato_bate_com_origem_alternativa': bate_alt,
@@ -350,4 +399,5 @@ def medir(handler) -> dict:
         _cabecalho(handler, CABECALHO_REIVINDICACAO_ALT),
         classes,
         presentes,
+        instancias_repetidas=_instancias_repetidas(handler, 'X-Forwarded-For'),
     )

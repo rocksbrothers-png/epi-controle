@@ -355,6 +355,8 @@ def _alvo(**kwargs):
     a.anterior_ligado = kwargs.get('ligado', True)
     a.p4 = kwargs.get('p4', True)
     a.candidato_do_cliente = kwargs.get('do_cliente', False)
+    a.xff_duplicado = kwargs.get('xff_duplicado', False)
+    a.candidato_canonico = kwargs.get('canonico', True)
     return a
 
 
@@ -689,6 +691,9 @@ def _resposta(hops=3, **sobrescreve):
         'prefixo_do_cliente_presente': False,
         'cadeia_maior_que_hops': False,
         'reivindicacao_fora_do_candidato': False,
+        # campos da 11ª rodada: o que o LIMITADOR vai usar bate com o medido?
+        'xff_instancias_repetidas': False,
+        'candidato_ja_canonico': True,
         'candidato_e_do_cliente': False,
         'sufixo_confiavel_preservado': True,
         'candidato_bate_com_origem_declarada': None,
@@ -1497,11 +1502,31 @@ def test_r05b_34_instancias_repetidas_do_cabecalho_sao_todas_lidas():
                                        (nome, '198.51.100.8')]))
         assert limpo[campo] == 'substituida', 'classificou sentinela onde não há'
 
-    # e a cadeia repetida vira uma cadeia só, que é a semântica de HTTP
+    # ── A 11ª rodada REVERTE esta parte, e só esta ──────────────────────────
+    #
+    # Juntar as instâncias é a semântica de HTTP, e continua valendo para
+    # CLASSIFICAR P3 (as asserções acima). Mas a CADEIA que alimenta
+    # `cadeia[-N]` tem de ser a que a produção lê, e `core/rate_limit.py` usa
+    # `handler.headers.get()`, que devolve só a primeira instância. Medir a
+    # cadeia combinada era medir uma função que o limitador não calcula.
+    #
+    # Então: cadeia = primeira instância (como a produção), e a existência de
+    # instâncias extras vira campo próprio, que o veredito trata como
+    # contaminação.
     cadeia = SONDA.medir(_Repetido([('X-Forwarded-For', '192.0.2.21'),
                                     ('X-Forwarded-For', '203.0.113.9, 198.51.100.200')]))
-    assert cadeia['cadeia_tamanho'] == 3
+    assert cadeia['cadeia_tamanho'] == 1, (
+        'a cadeia deixou de espelhar a leitura da produção: o limitador usa '
+        '`headers.get()`, que lê só a primeira instância'
+    )
     assert cadeia['prefixo_do_cliente_presente'] is True
+    assert cadeia['xff_instancias_repetidas'] is True, (
+        'instância repetida de X-Forwarded-For passou despercebida'
+    )
+
+    uma_so = SONDA.medir(_Repetido([('X-Forwarded-For', '192.0.2.21, 203.0.113.9')]))
+    assert uma_so['xff_instancias_repetidas'] is False
+    assert uma_so['cadeia_tamanho'] == 2
 
 
 def test_r05b_35_o_compromisso_nao_sobrevive_a_certificacao(monkeypatch, tmp_path, capsys):
@@ -2336,3 +2361,146 @@ def test_r05b_50_a_idade_da_evidencia_fica_visivel(monkeypatch, tmp_path, capsys
     futuro = (datetime.datetime.now(datetime.timezone.utc)
               + datetime.timedelta(hours=2)).replace(microsecond=0)
     assert 'FUTURO' in CERT._idade_do_estado({'instante': futuro.isoformat()})
+
+
+# ── Décima primeira rodada ──────────────────────────────────────────────────
+#
+# Dois achados desta rodada dizem que o instrumento media uma FUNÇÃO DIFERENTE
+# da que `core/rate_limit.py` calcula. É o achado mais fundo das onze rodadas:
+# não adianta o gate estar certo se ele mede outra coisa.
+
+def _handler_com(pares):
+    """Handler com cabeçalhos repetidos de verdade, como o container entrega."""
+    from email.message import Message
+
+    class _H:
+        def __init__(self):
+            self.headers = Message()
+            for chave, valor in pares:
+                self.headers[chave] = valor
+    return _H()
+
+
+def test_r05b_51_a_cadeia_espelha_a_leitura_do_limitador():
+    """`core/rate_limit.py` lê `handler.headers.get('X-Forwarded-For')`, e
+    `HTTPMessage.get` devolve só a PRIMEIRA instância.
+
+    A sonda juntava todas — correção da 5ª rodada, certa para classificar P3 —
+    e com isso passou a medir uma cadeia que o limitador não usa. Se a borda
+    acrescenta uma instância NOVA em vez de estender a do cliente, a produção
+    lê a instância do cliente inteira e `cadeia[-N]` sai de dado dele; a
+    certificação aprovaria a cadeia combinada.
+    """
+    if SONDA is None:
+        return
+
+    combinada = SONDA.medir(_handler_com([
+        ('X-Forwarded-For', '192.0.2.21'),
+        ('X-Forwarded-For', '203.0.113.9, 198.51.100.200'),
+    ]))
+    assert combinada['cadeia_tamanho'] == 1, (
+        'a cadeia não espelha a leitura da produção'
+    )
+    assert combinada['xff_instancias_repetidas'] is True
+
+    # P3 continua lendo TODAS as instâncias: lá a pergunta é "o sentinela do
+    # cliente sobreviveu em algum lugar", e juntar é o conservador.
+    p3 = SONDA.medir(_handler_com([('CF-Connecting-Ip', '198.51.100.7'),
+                                   ('CF-Connecting-Ip', '192.0.2.10')]))
+    assert p3['cf_connecting_ip'] == 'sentinela_sobrevive', (
+        'a 11ª rodada desfez a correção da 5ª em P3, que não era para mudar'
+    )
+
+    # e o veredito RECUSA quando há instância repetida
+    if CERT is not None:
+        ok, pendente, motivo = CERT._veredito(_alvo(xff_duplicado=True), True)
+        assert not ok and not pendente, 'certificou com XFF duplicado'
+        assert 'MAIS DE UMA instância' in motivo
+
+
+def test_r05b_52_candidato_nao_canonico_nao_certifica():
+    """O limitador usa a string CRUA de `cadeia[-N]` como chave de balde.
+
+    Se a borda não escreve a forma canônica, duas grafias do MESMO endereço
+    ocupam baldes diferentes e passam mais requisições do que o configurado. A
+    sonda normaliza para comparar — e por isso precisa dizer se normalizar
+    mudou alguma coisa.
+    """
+    if SONDA is None:
+        return
+
+    canonico = SONDA.analisar(['192.0.2.1', '198.51.100.7', '203.0.113.9'],
+                              3, '', '', {}, [])
+    assert canonico['candidato_ja_canonico'] is True
+
+    # `::ffff:192.0.2.1` é o MESMO endereço que `192.0.2.1`, escrito de outro
+    # jeito: a sonda compara igual e o limitador tratava como outro balde.
+    #
+    # A grafia torta vai na POSIÇÃO DO CANDIDATO. Com `hops=3` numa cadeia de
+    # 3, `cadeia[-3]` é `cadeia[0]` — a primeira versão deste gate pôs a
+    # grafia no fim e o gate me corrigiu.
+    torto = SONDA.analisar(['::ffff:192.0.2.1', '198.51.100.7', '203.0.113.9'],
+                           3, '', '', {}, [])
+    assert torto['candidato_ja_canonico'] is False, (
+        'grafia não canônica passou por canônica: o balde do limitador '
+        'dependeria da forma que a borda escolheu escrever'
+    )
+
+    if CERT is not None:
+        ok, pendente, motivo = CERT._veredito(_alvo(canonico=False), True)
+        assert not ok and not pendente, 'certificou com candidato não canônico'
+        assert 'string CRUA' in motivo
+
+
+def test_r05b_53_a_varredura_sobe_ate_a_borda_recusar(monkeypatch, tmp_path, capsys):
+    """Parar num teto fixo é a amostra fixa outra vez, só que maior: uma borda
+    que trunque em 481 passaria por uma varredura que para em 480."""
+    if CERT is None:
+        return
+
+    assert max(CERT.TAMANHOS_DE_P4) >= 100000, (
+        'a varredura voltou a ter teto baixo: uma borda que trunque logo acima '
+        'dele passaria batido'
+    )
+
+    # sem recusa nenhuma: o relatório precisa DIZER que não há fronteira
+    assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'SEM fronteira imposta' in saida, (
+        'a ausência de fronteira ficou invisível: "até N elementos" sozinho '
+        'esconde que nada limita o cabeçalho'
+    )
+
+
+def test_r05b_54_recusa_isolada_nao_vira_fronteira(monkeypatch, tmp_path, capsys):
+    """`_controle` aborta na primeira exceção e não compara as repetições.
+
+    Uma recusa isolada — outra rota de borda, ou resposta transitória — era
+    registrada como fronteira segura, e P4 passava sem ter detectado o caminho
+    que ACEITA o mesmo tamanho.
+    """
+    if CERT is None:
+        return
+
+    estado = {'recusou': False}
+
+    def recusa_uma_vez_so(base_url, chave, hops, *, xff=None, **resto):
+        grande = xff is not None and xff.count(',') + 1 > 120
+        if grande and not estado['recusou']:
+            estado['recusou'] = True
+            erro = CERT.NaoAlcancado('HTTP 431 em /api/…')
+            erro.http = 431
+            raise erro
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=recusa_uma_vez_so,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 1, (
+        f'recusa isolada virou {codigo}: uma sondagem recusou e outra aceitou '
+        'o MESMO tamanho, o que é contradição, não fronteira'
+    )
+    assert 'INCONSISTENTE' in saida
+    assert 'mais de um caminho de borda' in saida

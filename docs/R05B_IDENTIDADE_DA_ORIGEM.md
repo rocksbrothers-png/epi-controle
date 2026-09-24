@@ -1019,3 +1019,101 @@ O harness desta rodada confere **qual** asserção falhou: sabotagem que deixa o
 gate vermelho pelo motivo errado não prova nada. `BH-1a` e `BH-1b` existem
 separadas por isso — a primeira derruba a guarda estrutural, a segunda derruba
 a varredura de verdade.
+
+### Décima primeira rodada: o instrumento media outra função
+
+Dois dos quatro achados desta rodada dizem que a sonda calculava **uma função
+diferente da que `core/rate_limit.py` calcula**. É o achado mais fundo das onze
+rodadas: não adianta o gate estar certo se ele mede outra coisa.
+
+| | achado | gate |
+|---|---|---|
+| 1 | a cadeia juntava instâncias que a produção não junta | `R05B-51` |
+| 2 | o balde do limitador usa a string **crua**, não a canônica | `R05B-52` |
+| 3 | a varredura de P4 parava num teto fixo | `R05B-53` |
+| 4 | uma recusa **isolada** virava fronteira | `R05B-54` |
+
+#### 1. A cadeia medida não era a cadeia usada
+
+```python
+# core/rate_limit.py
+bruto = handler.headers.get('X-Forwarded-For', '') or ''
+```
+
+`HTTPMessage.get` devolve **só a primeira instância**. A sonda juntava todas —
+correção da 5ª rodada, e ela continua certa para **classificar P3**, onde a
+pergunta é "o sentinela do cliente sobreviveu em algum lugar".
+
+Mas para a **seleção do candidato** isso era fatal: se a borda acrescenta uma
+instância NOVA em vez de estender a do cliente, a produção lê a instância do
+cliente inteira e `cadeia[-N]` sai de dado dele. A certificação aprovaria a
+cadeia combinada enquanto o limitador usa outra.
+
+A 11ª rodada **reverte a 5ª nesta parte, e só nesta**: a cadeia passa a ser a
+leitura da produção, e a existência de instâncias extras vira campo próprio
+(`xff_instancias_repetidas`) que o veredito trata como contaminação.
+
+#### 2. O balde depende da grafia
+
+```python
+# core/rate_limit.py
+return cadeia[-TRUSTED_PROXY_HOPS]
+```
+
+String **crua**. Se a borda escreve `::ffff:192.0.2.1` numa rota e `192.0.2.1`
+noutra, o mesmo endereço ocupa **dois baldes** e passa o dobro do configurado.
+A sonda normaliza antes de comparar — e é exatamente por isso que ela precisa
+**dizer** se normalizar mudou alguma coisa (`candidato_ja_canonico`).
+
+#### As duas correções de produção NÃO foram feitas, e não são minhas
+
+Fechar 1 e 2 de verdade exige mexer em `core/rate_limit.py`:
+
+| | correção em produção | efeito |
+|---|---|---|
+| **D** | juntar (ou recusar) instâncias repetidas de `X-Forwarded-For` | tira do cliente o controle de `cadeia[-N]` quando a borda duplica o cabeçalho |
+| **E** | canonicalizar a chave de balde | impede que duas grafias do mesmo endereço virem dois baldes |
+
+**A autorização vigente proíbe alterar esse arquivo.** O que o instrumento faz
+agora é o que lhe cabe: **medir a função certa** e **recusar a certificação**
+quando ela diverge do que o limitador usará. Na prática isso significa que
+`HOPS=3` não fecha enquanto **D** e **E** não forem decididas — e essa é a
+conclusão honesta, não um obstáculo do instrumento.
+
+#### 3. Teto fixo é amostra fixa, só que maior
+
+A 10ª rodada trocou a amostra de 30 por uma varredura que parava em 480. Uma
+borda que truncasse em 481 passaria igual. A escada agora sobe até **122880
+elementos** (≈1,5 MB) ou até a borda **recusar** — e aí a faixa testada cobre
+tudo o que ela aceita. Quando a escada acaba sem recusa, o relatório diz
+`SEM fronteira imposta: nada limita o cabeçalho`, em vez de esconder isso atrás
+de um "até N".
+
+**Decisão do autor:** impor um limite de tamanho do `X-Forwarded-For` na
+aplicação fecharia o caso por construção. É lógica de produção, e não é minha.
+
+#### 4. Uma recusa não é uma fronteira
+
+`_controle` aborta na primeira exceção e não chega a comparar as `REPETICOES`.
+Uma recusa isolada — outra rota de borda, ou resposta transitória — era
+registrada como fronteira segura, e P4 passava sem ter detectado o caminho que
+**aceita** o mesmo tamanho. Agora a recusa é repetida; se alguma repetição
+aceita o que outra recusou, não existe fronteira: existe **contradição**, que já
+é fatal no instrumento.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BL-1 | a cadeia volta a juntar todas as instâncias | `R05B-51` | vermelho |
+| BL-2 | o veredito aceita XFF duplicado | `R05B-51` | vermelho |
+| BM | o veredito aceita candidato não canônico | `R05B-52` | vermelho |
+| BN | a varredura volta a ter teto baixo | `R05B-53` | vermelho |
+| BO | a recusa deixa de ser confirmada | `R05B-54` | vermelho |
+
+#### Consequência operacional
+
+A sonda mudou de novo: **os dois serviços precisam ser reimplantados**. E a
+resposta ganhou dois campos obrigatórios, então uma sonda antiga passa a ser
+recusada pelo script com "a resposta não trouxe …" — que é a falha fechada
+correta.

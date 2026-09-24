@@ -137,7 +137,12 @@ SENTINELA_TC_CGNAT = '100.64.0.11'
 #: status HTTP, isso é fronteira segura: acima dela o cliente não consegue nem
 #: enviar a cadeia. Recusa por status é evidência; falha de rede não é, e
 #: continua abortando a medição.
-TAMANHOS_DE_P4 = (1, 30, 120, 480)
+#: A lista sobe até muito além de qualquer limite de cabeçalho praticado
+#: (122880 elementos ≈ 1,5 MB), porque parar num teto fixo é o mesmo defeito da
+#: amostra fixa, só que maior: uma borda que trunque em 481 passaria por uma
+#: varredura que para em 480. A varredura sobe até a borda RECUSAR — e aí a
+#: faixa testada cobre tudo o que ela aceita. Achado de revisão.
+TAMANHOS_DE_P4 = (1, 30, 120, 480, 1920, 7680, 30720, 122880)
 
 #: Status que significam "a requisição é grande/malformada demais". Só estes
 #: contam como fronteira; qualquer outro erro volta a ser falha de alcance.
@@ -165,6 +170,11 @@ CAMPOS_DECISIVOS = (
     'prefixo_do_cliente_presente',
     'cadeia_maior_que_hops',
     'reivindicacao_fora_do_candidato',
+    # A divergência entre a leitura da produção e a leitura completa, e a
+    # canonicidade da chave de balde: se variarem entre repetições, a medição
+    # não é de uma coisa só. Achado de revisão.
+    'xff_instancias_repetidas',
+    'candidato_ja_canonico',
     'cf_connecting_ip',
     'true_client_ip',
 )
@@ -186,6 +196,8 @@ CAMPOS_BOOLEANOS = (
     'prefixo_do_cliente_presente',
     'cadeia_maior_que_hops',
     'reivindicacao_fora_do_candidato',
+    'xff_instancias_repetidas',
+    'candidato_ja_canonico',
 )
 CAMPOS_BOOLEANOS_OU_NULOS = (
     'candidato_bate_com_origem_declarada',
@@ -529,6 +541,8 @@ class Alvo:
         self.anterior_ligado = None
         self.p3_cf = None
         self.p3_tc = None
+        self.xff_duplicado = None
+        self.candidato_canonico = None
         self.p4_maior_testado = 0
         self.p4_quebrou_em = None
         self.p4_recusada_em = None
@@ -557,6 +571,31 @@ def _classe_conservadora(*classes) -> str:
     return vistas[0]
 
 
+def _confirmar_recusa(comum: dict, meu_ip: str, tamanho: int) -> None:
+    """A recusa tem de se REPETIR para valer como fronteira.
+
+    `_controle` aborta na primeira exceção e não chega a comparar as
+    `REPETICOES`. Uma recusa isolada pode ser outra rota de borda, ou resposta
+    transitória — e registrá-la como fronteira segura faria P4 passar sem ter
+    detectado o caminho que ACEITA o mesmo tamanho. Achado de revisão.
+
+    Se alguma repetição aceita o que outra recusou, não existe fronteira:
+    existe contradição, e contradição já é fatal no instrumento.
+    """
+    for _ in range(REPETICOES):
+        try:
+            _sondar(**comum, xff=_cadeia_de(tamanho), reivindicacao=meu_ip)
+        except NaoAlcancado as e:
+            if e.http in STATUS_DE_RECUSA_POR_TAMANHO:
+                continue
+            raise
+        raise Inconsistente(
+            f'cadeia de {tamanho} elementos: uma sondagem foi RECUSADA e outra '
+            'foi ACEITA — há mais de um caminho de borda para a mesma '
+            'requisição, e aí não existe fronteira, existe contradição'
+        )
+
+
 def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     """P4 em vários tamanhos de cadeia, procurando a fronteira.
 
@@ -576,6 +615,7 @@ def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
             # consegue nem enviar a cadeia. Falha de rede não é evidência de
             # nada e continua abortando a medição.
             if e.http in STATUS_DE_RECUSA_POR_TAMANHO and maior_testado:
+                _confirmar_recusa(comum, meu_ip, tamanho)
                 recusada_em = tamanho
                 break
             raise
@@ -628,6 +668,8 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
     alvo.p1 = identidade.get('candidato_bate_com_origem_declarada')
     alvo.p2_alt = identidade.get('candidato_bate_com_origem_alternativa')
     alvo.candidato_do_cliente = identidade.get('candidato_e_do_cliente')
+    alvo.xff_duplicado = identidade.get('xff_instancias_repetidas')
+    alvo.candidato_canonico = identidade.get('candidato_ja_canonico')
 
     # Contaminação: os três guardas juntos. Se qualquer um disparar, P1 não é
     # evidência de nada — o candidato pode ter vindo do que o chamador enviou.
@@ -917,9 +959,18 @@ def _relatar(alvo: Alvo, tem_anterior: bool) -> None:
         detalhe = f'QUEBROU em {alvo.p4_quebrou_em} elementos'
     elif alvo.p4_recusada_em:
         detalhe += f'; a borda RECUSOU {alvo.p4_recusada_em} (fronteira)'
+    else:
+        # Sem recusa até o teto: a propriedade vale na faixa testada e NÃO há
+        # fronteira imposta. Dizer só "até N" esconderia isso.
+        detalhe += ' — SEM fronteira imposta: nada limita o cabeçalho'
     print(f'       cadeia do cliente ......... {detalhe}')
     print(f'       candidato é do cliente .... {_rotulo(alvo.candidato_do_cliente)}'
           '   (precisa ser FALSE)')
+    # As duas linhas do LIMITADOR: o que foi medido é o que ele vai usar?
+    print(f'   LIM X-Forwarded-For repetido .. {_rotulo(alvo.xff_duplicado)}'
+          '   (precisa ser FALSE)')
+    print(f'       candidato já canônico ..... {_rotulo(alvo.candidato_canonico)}'
+          '   (precisa ser true)')
 
 
 def _veredito(alvo: Alvo, tem_anterior: bool) -> tuple:
@@ -928,6 +979,22 @@ def _veredito(alvo: Alvo, tem_anterior: bool) -> tuple:
         return False, False, alvo.motivo or 'não medido'
     if alvo.p1_contaminado:
         return False, False, 'P1 contaminado: o candidato pode ter vindo do chamador'
+    # As duas condições abaixo são sobre o LIMITADOR, não sobre a cadeia: elas
+    # dizem que o que foi medido não é o que `core/rate_limit.py` vai usar.
+    # Certificar assim mesmo seria licenciar `HOPS=3` para uma função
+    # diferente da que se mediu. Achado de revisão.
+    if alvo.xff_duplicado is not False:
+        return False, False, (
+            'X-Forwarded-For chegou em MAIS DE UMA instância: o limitador lê '
+            'só a primeira (`headers.get`), e a borda pode ter posto a cadeia '
+            'confiável noutra — `cadeia[-N]` sairia de dado do cliente'
+        )
+    if alvo.candidato_canonico is not True:
+        return False, False, (
+            'a borda não escreve o candidato em forma canônica, e o limitador '
+            'usa a string CRUA como chave de balde: duas grafias do mesmo '
+            'endereço ocupariam baldes diferentes'
+        )
     if alvo.p1 is not True:
         return False, False, 'P1 falso: o candidato não é o endereço declarado'
     if alvo.candidato_do_cliente is not False:

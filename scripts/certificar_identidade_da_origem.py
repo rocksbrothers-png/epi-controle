@@ -485,6 +485,14 @@ def _origem_plausivel(endereco: str) -> bool:
     # não-especificado entram na mesma recusa.
     if alvo.is_multicast or alvo.is_reserved or alvo.is_unspecified:
         return False
+    # `fec0::/10` é SITE-LOCAL, descontinuado pela RFC 3879 — e o CPython 3.11
+    # o reporta como `is_global=True`, sem ser multicast, reservado nem
+    # não-especificado. Verificado no runtime fixado: `fec0::1` passava.
+    # Duas máquinas internas satisfariam P1/P2 num contrato que exige duas
+    # origens PÚBLICAS. `IPv4Address` não tem o atributo, daí o `getattr`.
+    # Achado de revisão.
+    if getattr(alvo, 'is_site_local', False):
+        return False
     return bool(alvo.is_global)
 
 
@@ -608,6 +616,49 @@ def _confirmar_recusa(comum: dict, meu_ip: str, tamanho: int) -> None:
         )
 
 
+def _medir_tamanho(comum: dict, meu_ip: str, tamanho: int) -> tuple:
+    """Uma sondagem de P4 num tamanho de cadeia.
+
+    Devolve `(veredito, amostra)`, com `veredito` em `'ok'`, `'quebrou'`,
+    `'nao_chegou'`, `'recusou'` e `'ambigua'`. Nos dois vereditos de recusa o
+    segundo elemento é a EXCEÇÃO original, para quem não puder usar a recusa
+    poder relevantá-la com o status e a mensagem que a borda deu. Falha de rede
+    sobe: não é evidência de nada.
+
+    Existe porque a escada e a BISSEÇÃO precisam aplicar exatamente os mesmos
+    critérios. Duas cópias das mesmas condições divergiriam, e a bisseção
+    aceitaria um tamanho que a escada reprovaria.
+    """
+    try:
+        amostra = _controle(f'P4 (cadeia de {tamanho})', **comum,
+                            xff=_cadeia_de(tamanho), reivindicacao=meu_ip)
+    except NaoAlcancado as e:
+        # Recusa POR STATUS DE TAMANHO é fronteira medida: acima dela o
+        # cliente não consegue nem enviar a cadeia.
+        if e.http in STATUS_DE_RECUSA_POR_TAMANHO:
+            return 'recusou', e
+        # Recusa genérica interrompe a escada sem provar nada sobre tamanho:
+        # P4 fica INCONCLUSIVO, não aprovado. Achado de revisão.
+        if e.http in STATUS_DE_RECUSA_AMBIGUA:
+            return 'ambigua', e
+        raise
+    # A propriedade de P4 vem PRIMEIRO. Uma borda que trunca de verdade
+    # devolve cadeia curta E sufixo destruído; diagnosticar isso como
+    # "não chegou" trocaria o achado certo por outro. A primeira versão
+    # daquela rodada invertia a ordem e o gate `R05B-47` me corrigiu.
+    if not (amostra.get('sufixo_confiavel_preservado')
+            and not amostra.get('candidato_e_do_cliente')
+            and amostra.get('candidato_bate_com_origem_declarada') is True):
+        return 'quebrou', amostra
+    # Sufixo intacto: mas a cadeia CHEGOU? Se a borda filtra faixa de
+    # documentação, todo elemento enviado some antes da sonda, o sufixo
+    # aparece intacto em qualquer tamanho e P4 certifica sem ter testado
+    # nada. A amostra que não chega não é evidência. Achado de revisão.
+    if int(amostra.get('cadeia_tamanho') or 0) <= tamanho:
+        return 'nao_chegou', amostra
+    return 'ok', amostra
+
+
 def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     """P4 em vários tamanhos de cadeia, procurando a fronteira.
 
@@ -617,46 +668,83 @@ def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     Uma amostra única não sustenta veredito de produção: a preservação pode
     valer em 30 elementos e quebrar em 300, e aí `cadeia[-N]` cai em dado do
     cliente numa requisição que a aplicação aceita do mesmo jeito.
+
+    São duas fases. A ESCADA sobe exponencialmente até achar a primeira recusa;
+    a BISSEÇÃO desce dentro do último salto até que o maior aceito e o menor
+    recusado fiquem ADJACENTES.
     """
     maior_testado, quebrou_em, recusada_em = 0, None, None
     ambigua_em, nao_chegou_em = None, None
     amostras = []
     for tamanho in TAMANHOS_DE_P4:
-        try:
-            amostra = _controle(f'P4 (cadeia de {tamanho})', **comum,
-                                xff=_cadeia_de(tamanho), reivindicacao=meu_ip)
-        except NaoAlcancado as e:
-            # Recusa POR STATUS DE TAMANHO é fronteira medida: acima dela o
-            # cliente não consegue nem enviar a cadeia.
-            if e.http in STATUS_DE_RECUSA_POR_TAMANHO and maior_testado:
-                _confirmar_recusa(comum, meu_ip, tamanho)
-                recusada_em = tamanho
-                break
-            # Recusa genérica interrompe a escada sem provar nada sobre
-            # tamanho: P4 fica INCONCLUSIVO, não aprovado. Achado de revisão.
-            if e.http in STATUS_DE_RECUSA_AMBIGUA and maior_testado:
-                ambigua_em = tamanho
-                break
-            # Falha de rede não é evidência de nada e aborta a medição.
-            raise
+        veredito, amostra = _medir_tamanho(comum, meu_ip, tamanho)
+        if veredito == 'recusou':
+            # Recusa logo no primeiro degrau não tem faixa aceita abaixo dela:
+            # não há o que bissecar, e a borda recusa até o que a aplicação
+            # aceitaria. Isso não é fronteira medida, é rota inalcançável.
+            # Sem faixa aceita abaixo dela não há o que bissecar, e a borda
+            # recusa até o que a aplicação aceitaria: isso não é fronteira
+            # medida, é rota inalcançável. Relevanto a exceção ORIGINAL para
+            # não perder o status nem a mensagem que a borda deu.
+            if not maior_testado:
+                raise amostra
+            _confirmar_recusa(comum, meu_ip, tamanho)
+            recusada_em = tamanho
+            break
+        if veredito == 'ambigua':
+            if not maior_testado:
+                raise amostra
+            ambigua_em = tamanho
+            break
         amostras.append(amostra)
-        # A propriedade de P4 vem PRIMEIRO. Uma borda que trunca de verdade
-        # devolve cadeia curta E sufixo destruído; diagnosticar isso como
-        # "não chegou" trocaria o achado certo por outro. A primeira versão
-        # desta rodada invertia a ordem e o gate `R05B-47` me corrigiu.
-        if not (amostra.get('sufixo_confiavel_preservado')
-                and not amostra.get('candidato_e_do_cliente')
-                and amostra.get('candidato_bate_com_origem_declarada') is True):
+        if veredito == 'quebrou':
             quebrou_em = tamanho
             break
-        # Sufixo intacto: mas a cadeia CHEGOU? Se a borda filtra faixa de
-        # documentação, todo elemento enviado some antes da sonda, o sufixo
-        # aparece intacto em qualquer tamanho e P4 certifica sem ter testado
-        # nada. A amostra que não chega não é evidência. Achado de revisão.
-        if int(amostra.get('cadeia_tamanho') or 0) <= tamanho:
+        if veredito == 'nao_chegou':
             nao_chegou_em = tamanho
             break
         maior_testado = tamanho
+
+    # A ESCADA é EXPONENCIAL, e isso deixa um VÃO: com 30 aceito e 120
+    # recusado, nada foi medido entre 31 e 119. Uma borda que aceitasse 64 e
+    # truncasse a cadeia ali dentro passaria por "fronteira em 120", e
+    # `cadeia[-N]` cairia em dado do cliente numa requisição que a aplicação
+    # aceita. A recusa exponencial não cobre as requisições aceitas abaixo
+    # dela. Achado de revisão, e é o mesmo erro das duas rodadas anteriores
+    # numa terceira casa: amostra esparsa apresentada como faixa.
+    #
+    # A bisseção fecha o vão até a ADJACÊNCIA: termina com `maior_testado`
+    # aceito e `recusada_em == maior_testado + 1` recusado, e verifica a
+    # propriedade de P4 em cada tamanho que aceita no caminho — inclusive nos
+    # imediatamente abaixo da recusa, que é onde o truncamento moraria.
+    if (recusada_em is not None and quebrou_em is None
+            and ambigua_em is None and nao_chegou_em is None):
+        baixo, alto = maior_testado, recusada_em
+        while alto - baixo > 1:
+            meio = (baixo + alto) // 2
+            veredito, amostra = _medir_tamanho(comum, meu_ip, meio)
+            if veredito == 'recusou':
+                alto = meio
+                continue
+            if veredito == 'ambigua':
+                ambigua_em = meio
+                break
+            amostras.append(amostra)  # aqui `amostra` é medição, não exceção
+            if veredito == 'quebrou':
+                quebrou_em = meio
+                break
+            if veredito == 'nao_chegou':
+                nao_chegou_em = meio
+                break
+            baixo = meio
+        else:
+            # Só quando a bisseção fechou sozinha: a fronteira final tem de
+            # se REPETIR, pela mesma razão que a primeira. A recusa que a
+            # bisseção encontrou pode ser outra rota de borda.
+            if alto != recusada_em:
+                _confirmar_recusa(comum, meu_ip, alto)
+            maior_testado, recusada_em = baixo, alto
+
     # Sem RECUSA, a faixa testada não tem topo provado, e a propriedade de P4 é
     # sobre TODA requisição que a aplicação aceita. A 11ª rodada trocou a
     # amostra fixa por uma escada com teto e eu declarei isso aprovado com
@@ -666,7 +754,7 @@ def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     # Fechar isso de verdade exige limite de tamanho na APLICAÇÃO, que é
     # decisão do autor e não está autorizada aqui.
     ok = (quebrou_em is None and ambigua_em is None and nao_chegou_em is None
-          and recusada_em is not None)
+          and recusada_em is not None and recusada_em == maior_testado + 1)
     return ok, maior_testado, quebrou_em, recusada_em, ambigua_em, nao_chegou_em, amostras
 
 
@@ -1037,8 +1125,17 @@ def _relatar(alvo: Alvo, tem_anterior: bool) -> None:
     elif alvo.p4_ambigua_em:
         detalhe = (f'INCONCLUSIVO: recusa genérica em {alvo.p4_ambigua_em} '
                    'elementos não prova limite de TAMANHO')
+    elif alvo.p4_recusada_em == alvo.p4_maior_testado + 1:
+        # Adjacente: a bisseção fechou o vão, e não existe tamanho não medido
+        # entre o maior aceito e o menor recusado.
+        detalhe += (f'; a borda RECUSOU {alvo.p4_recusada_em} — fronteira '
+                    f'EXATA, nada entre os dois ficou sem medir')
     elif alvo.p4_recusada_em:
-        detalhe += f'; a borda RECUSOU {alvo.p4_recusada_em} (fronteira)'
+        # A bisseção parou antes de fechar. Sobrou VÃO, e o vão é onde um
+        # truncamento moraria sem ser visto.
+        detalhe += (f'; a borda RECUSOU {alvo.p4_recusada_em}, mas de '
+                    f'{alvo.p4_maior_testado + 1} a {alvo.p4_recusada_em - 1} '
+                    f'NADA foi medido — a fronteira não cobre o vão')
     else:
         # Sem recusa até o teto: a faixa testada não tem topo provado, e P4 não
         # é aprovado — é INCONCLUSIVO. Dizer só "até N" esconderia isso.
@@ -1096,6 +1193,20 @@ def _veredito(alvo: Alvo, tem_anterior: bool) -> tuple:
                 f'requisição que a aplicação aceita'
             )
         return False, False, 'P4 falso: a janela confiável não sobreviveu à cadeia longa'
+    # SEGUNDA TRANCA da 14ª rodada. A varredura já fecha o vão por bisseção,
+    # mas quem certifica é este veredito, e ele não deve depender de outra
+    # função para recusar fronteira com buraco: se o maior aceito e o menor
+    # recusado não forem ADJACENTES, existe tamanho que ninguém mediu, e é ali
+    # que um truncamento moraria. A primeira versão desta rodada deixou a
+    # condição só na varredura, e a sabotagem `BZ` voltou VERDE — não havia
+    # como prová-la. Aqui ela é provável.
+    if alvo.p4_recusada_em != alvo.p4_maior_testado + 1:
+        return False, False, (
+            f'fronteira de P4 com VÃO: o maior aceito foi '
+            f'{alvo.p4_maior_testado} e o menor recusado {alvo.p4_recusada_em}; '
+            f'nada entre os dois foi medido, e a recusa lá em cima não diz '
+            f'nada sobre as requisições aceitas no vão'
+        )
     if not tem_anterior:
         return False, True, 'falta a segunda origem'
     if alvo.anterior_ligado is not True:

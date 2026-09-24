@@ -357,6 +357,12 @@ def _alvo(**kwargs):
     a.candidato_do_cliente = kwargs.get('do_cliente', False)
     a.xff_duplicado = kwargs.get('xff_duplicado', False)
     a.candidato_canonico = kwargs.get('canonico', True)
+    # Fronteira de P4 COERENTE por omissão: maior aceito e menor recusado
+    # adjacentes. Sem isto o dublê representaria um estado que a varredura
+    # nunca produz — e o veredito, desde a 14ª rodada, recusa fronteira com
+    # vão. Os gates que querem o vão passam `p4_maior`/`p4_recusada`.
+    a.p4_maior_testado = kwargs.get('p4_maior', 1000)
+    a.p4_recusada_em = kwargs.get('p4_recusada', 1001)
     return a
 
 
@@ -551,6 +557,12 @@ FAIXAS_SEGURAS = (
     # a proibição de gravar endereço real de alguém tem de valer para a família
     # inteira. Achado da sétima rodada.
     '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'ff00::/8', '100::/64',
+    # `fec0::/10` é SITE-LOCAL, descontinuado pela RFC 3879. Entrou na lista
+    # na 14ª rodada, quando `_origem_plausivel` passou a recusá-lo: a correção
+    # precisa nomear a faixa no comentário e no gate, e a faixa não é endereço
+    # público de ninguém — que é o que este gate protege. Faixa não-roteável
+    # não afrouxa nada aqui.
+    'fec0::/10',
 )
 
 #: Literal de endereço não tem fronteira `\b` que sirva: `2001:db8::1` acaba em
@@ -2482,7 +2494,7 @@ def test_r05b_53_a_varredura_sobe_ate_a_borda_recusar(monkeypatch, tmp_path, cap
     assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
                                        EPI_IDENT_MEU_IP=_IP_A)) == 3
     saida = ' '.join(capsys.readouterr().out.split())
-    assert 'RECUSOU' in saida and '(fronteira)' in saida, (
+    assert 'RECUSOU' in saida and 'fronteira EXATA' in saida, (
         'a varredura não registrou a fronteira que a borda impôs: sem ela o '
         'relatório não diz até onde o veredito de P4 vale'
     )
@@ -2735,13 +2747,16 @@ def test_r05b_59_sem_fronteira_p4_e_inconclusivo(monkeypatch, tmp_path, capsys):
     # aqui seria mentira: o sufixo sobreviveu em todos os tamanhos medidos —
     # o que faltou foi fronteira. Quem lê a frase errada vai caçar uma borda
     # que trunca e não vai achar nada.
-    ok, pendente, motivo = CERT._veredito(_alvo(p4=False), True)
+    # "Inconclusivo" é ausência de fronteira: nenhuma recusa em tamanho nenhum.
+    sem_fronteira = _alvo(p4=False, p4_maior=max(CERT.TAMANHOS_DE_P4),
+                          p4_recusada=None)
+    ok, pendente, motivo = CERT._veredito(sem_fronteira, True)
     assert not ok and not pendente
     assert 'P4 INCONCLUSIVO' in motivo and 'não recusou nenhum tamanho' in motivo, (
         f'o veredito sem fronteira descreveu o desfecho errado: {motivo!r}'
     )
     # E o desfecho REALMENTE diferente continua com a frase dele.
-    quebrado = _alvo(p4=False)
+    quebrado = _alvo(p4=False, p4_maior=120, p4_recusada=None)
     quebrado.p4_quebrou_em = 480
     assert 'P4 falso' in CERT._veredito(quebrado, True)[2], (
         'truncamento real e ausência de fronteira passaram a sair com a mesma '
@@ -2809,3 +2824,128 @@ def test_r05b_60_estado_ilegivel_nao_vira_traceback(monkeypatch, tmp_path, capsy
         f'ilegível ({ilegivel}) e ausente ({ausente}) divergiram: um dos dois '
         f'saiu por caminho não controlado'
     )
+
+
+def test_r05b_61_a_escada_exponencial_nao_deixa_vao(monkeypatch, tmp_path, capsys):
+    """Fronteira exponencial é fronteira com buracos.
+
+    Com 30 aceito e 120 recusado, nada foi medido entre 31 e 119. Uma borda que
+    aceitasse 64 e truncasse a cadeia ali passaria por "fronteira em 120", e
+    `cadeia[-N]` cairia em dado do cliente numa requisição que a aplicação
+    aceita. É o mesmo erro das duas rodadas anteriores numa terceira casa:
+    amostra esparsa apresentada como faixa.
+
+    Duas metades: a fronteira sai ADJACENTE, e o truncamento escondido DENTRO
+    do salto é encontrado.
+    """
+    if CERT is None:
+        return
+
+    comum = {'base_url': 'https://x.invalid', 'chave': 'k', 'hops': 3}
+
+    # 1. a bisseção fecha o vão até a adjacência
+    monkeypatch.setattr(CERT, '_sondar', _sonda_falsa(borda=1000))
+    ok, maior, quebrou, recusada, ambigua, nao_chegou, _ = CERT._varrer_p4(comum, _IP_A)
+    assert (maior, recusada) == (1000, 1001), (
+        f'a fronteira ficou em ({maior}, {recusada}): entre o maior aceito e o '
+        f'menor recusado sobrou tamanho que ninguém mediu, e é exatamente ali '
+        f'que um truncamento moraria'
+    )
+    assert ok is True and quebrou is None, (
+        f'a borda é sadia e a fronteira é adjacente, e ainda assim P4 reprovou '
+        f'(ok={ok}, quebrou={quebrou}): a varredura passou a reprovar tudo'
+    )
+
+    # 2. truncamento DENTRO do salto da escada. A borda aceita até 2500 e
+    #    recusa acima; mas de 700 em diante ela TRUNCA o que aceita. A escada
+    #    sozinha veria 480 ok, 1920 ok... — não: 1920 já trunca. O caso que
+    #    importa é o truncamento numa faixa que a escada PULA inteira.
+    def trunca_no_vao(base_url, chave, hops, *, xff=None, **resto):
+        enviados = xff.count(',') + 1 if xff else 0
+        if enviados > 2500:
+            erro = CERT.NaoAlcancado('HTTP 431 em /api/…')
+            erro.http = 431
+            raise erro
+        amostra = _sonda_falsa(borda=None)(base_url, chave, hops, xff=xff, **resto)
+        if xff is not None and 1921 <= enviados <= 2500:
+            # janela que a escada (…, 1920, 7680, …) nunca visita
+            amostra['sufixo_confiavel_preservado'] = False
+            amostra['candidato_e_do_cliente'] = True
+        return amostra
+
+    monkeypatch.setattr(CERT, '_sondar', trunca_no_vao)
+    ok, maior, quebrou, recusada, ambigua, nao_chegou, _ = CERT._varrer_p4(comum, _IP_A)
+    assert ok is False, (
+        'a borda truncou numa faixa que a escada pula, e P4 passou assim '
+        'mesmo: a recusa em 2501 foi tomada como se cobrisse tudo abaixo dela'
+    )
+    assert quebrou is not None and 1921 <= quebrou <= 2500, (
+        f'o truncamento no vão saiu diagnosticado como outra coisa '
+        f'(quebrou={quebrou}, ambigua={ambigua}, nao_chegou={nao_chegou})'
+    )
+
+    # 3. o VEREDITO tem a própria tranca. A varredura fecha o vão, mas quem
+    #    certifica é o veredito, e ele não pode depender de outra função para
+    #    recusar fronteira com buraco. A primeira versão desta rodada deixou a
+    #    condição só na varredura e a sabotagem voltou VERDE: não havia como
+    #    prová-la.
+    com_vao = _alvo(p4_maior=480, p4_recusada=1920)
+    ok, pendente, motivo = CERT._veredito(com_vao, True)
+    assert not ok and not pendente, (
+        'o veredito certificou uma fronteira com vão: de 481 a 1919 ninguém '
+        'mediu nada, e a recusa em 1920 não fala pelas requisições aceitas ali'
+    )
+    assert 'VÃO' in motivo and '480' in motivo and '1920' in motivo, (
+        f'o motivo não diz onde está o buraco: {motivo!r}'
+    )
+    assert CERT._veredito(_alvo(p4_maior=1919, p4_recusada=1920), True)[0] is True, (
+        'a fronteira ADJACENTE passou a ser recusada junto: aí a tranca não '
+        'distingue fronteira exata de fronteira com vão'
+    )
+
+    # 4. e o relatório DIZ que a fronteira é exata, senão a garantia fica
+    #    invisível para quem lê
+    _rodar(monkeypatch, sonda=_sonda_falsa(borda=1000),
+           **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                   EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'fronteira EXATA' in saida and 'nada entre os dois ficou sem medir' in saida
+
+
+def test_r05b_62_site_local_v6_nao_e_origem_publica(monkeypatch, tmp_path, capsys):
+    """`fec0::/10` é site-local, descontinuado pela RFC 3879 — e o CPython o
+    reporta como `is_global=True`.
+
+    Verificado no runtime fixado (3.11): `fec0::1` não é multicast, nem
+    reservado, nem não-especificado, então passava por todas as guardas e
+    `_origem_plausivel` devolvia `True`. Duas máquinas internas satisfariam
+    P1/P2 num contrato que exige duas origens PÚBLICAS.
+    """
+    if CERT is None:
+        return
+
+    import ipaddress as _ip
+    assert _ip.ip_address('fec0::1').is_global is True, (
+        'o runtime deixou de reportar site-local como global; este gate '
+        'guarda uma correção que dependia desse comportamento'
+    )
+
+    for endereco in ('fec0::1', 'fecf:ffff:ffff:ffff::1', 'feff::abcd'):
+        assert CERT._origem_plausivel(endereco) is False, (
+            'endereço site-local passou por origem pública: duas máquinas '
+            'internas certificariam P1/P2 sem duas origens de verdade'
+        )
+
+    # e o público de verdade continua passando — senão o gate acima ficaria
+    # verde com uma função que recusa tudo
+    assert CERT._origem_plausivel(str(_ip.ip_address((0x2606 << 112) | 1))) is True
+    assert CERT._origem_plausivel(str(_ip.ip_address(0x60606060))) is True
+
+    # e a recusa chega ao operador como PARADA DE CONFIGURAÇÃO (código 2),
+    # não como propriedade reprovada
+    codigo = _rodar(monkeypatch,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP='fec0::1'))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 2, f'site-local em EPI_IDENT_MEU_IP terminou com {codigo}'
+    assert 'não é um endereço público' in saida

@@ -1276,3 +1276,74 @@ aberta, em vez de só reprovar tudo.
 
 **A sonda não mudou nesta rodada** — os três achados são do script de operador.
 Quem já tiver implantado o head da 11ª rodada não precisa reimplantar.
+
+### Décima quarta rodada: fronteira exponencial é fronteira com buracos
+
+Dois achados. O primeiro é o mesmo erro das duas rodadas anteriores numa
+terceira casa, e ele é meu: **amostra esparsa apresentada como faixa**.
+
+#### 1. O vão entre o último aceito e o primeiro recusado
+
+A 13ª rodada passou a exigir fronteira medida. Mas a escada é **exponencial**
+(`1, 30, 120, 480, 1920, 7680, 30720, 122880`): com 30 aceito e 120 recusado,
+**nada entre 31 e 119 foi medido**. Uma borda que aceitasse 64 e truncasse a
+cadeia ali dentro passaria por "fronteira em 120", e `cadeia[-N]` cairia em dado
+do cliente numa requisição que a aplicação aceita. A recusa lá em cima não diz
+nada sobre as requisições aceitas abaixo dela.
+
+A varredura virou duas fases:
+
+1. a **escada** sobe exponencialmente até a primeira recusa;
+2. a **bisseção** desce dentro do último salto até que o maior aceito e o menor
+   recusado fiquem **adjacentes** — e verifica a propriedade de P4 em cada
+   tamanho que aceita no caminho, inclusive nos imediatamente abaixo da recusa,
+   que é justamente onde o truncamento moraria.
+
+O relatório passou a dizer `fronteira EXATA, nada entre os dois ficou sem medir`.
+Custo: a medição faz muito mais requisições (ordem de 80 por backend em P4, com
+`REPETICOES = 3`), e demora proporcionalmente mais.
+
+**Limitação registrada:** a bisseção pressupõe que a transição aceita→recusa é
+monótona. Uma borda não-monótona — que recusasse uma faixa no meio e voltasse a
+aceitar acima — poderia esconder um truncamento abaixo do maior aceito. Provar
+isso exigiria varrer todos os tamanhos, o que não é executável. O que a
+correção garante é que **não existe tamanho não medido entre o maior aceito e o
+menor recusado**, que é onde o risco concreto está.
+
+#### 2. `fec0::/10` passava por origem pública
+
+O CPython 3.11 reporta site-local (descontinuado pela RFC 3879) como
+`is_global=True`, e ele não é multicast, nem reservado, nem não-especificado —
+então atravessava todas as guardas de `_origem_plausivel`. Duas máquinas
+internas satisfariam P1/P2 num contrato que exige duas origens **públicas**.
+Reproduzido no runtime fixado antes de corrigir.
+
+`fec0::/10` entrou também na lista de faixas seguras do `R05B-10`: a correção
+precisa nomear a faixa, e faixa não-roteável não é endereço público de ninguém
+— que é o que aquele gate protege.
+
+#### Uma sabotagem voltou VERDE, e isso mudou o desenho
+
+A primeira versão desta rodada pôs a exigência de adjacência **só na
+varredura**. A sabotagem `BZ` — tirar a cláusula — deixou o gate **verde**: com
+a bisseção presente a adjacência já vale, e a cláusula nunca era a decisora.
+Correção que não pode ser sabotada não está provada, e uma tranca que só
+funciona porque outra função se comportou não é tranca.
+
+A exigência mudou de lugar: quem certifica é `_veredito`, e agora é **ele** que
+recusa fronteira com vão, a partir dos campos do alvo, sem depender da
+varredura. Aí a sabotagem pega.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BY | a bisseção some e o vão volta | `R05B-61` | vermelho |
+| BZ | o veredito para de exigir adjacência | `R05B-61` | vermelho |
+| CA | a bisseção para de checar a propriedade no meio | `R05B-61` | vermelho |
+| CA-b | a borda **sadia** continua aprovando | `R05B-53` | verde |
+| CB | site-local volta a ser origem pública | `R05B-62` | vermelho |
+
+#### Sem novo redeploy
+
+**A sonda não mudou nesta rodada** — os dois achados são do script de operador.

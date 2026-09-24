@@ -1,50 +1,20 @@
 """R0.5B — sonda TEMPORÁRIA de identidade da origem.
 
-## Por que existe uma sonda nova
+Responde UMA pergunta: qual elemento da cadeia recebida corresponde à origem
+pública real do chamador, e essa posição é estável entre duas origens
+distintas?
 
-A R0.5 mediu a **forma** da cadeia: a borda contribui com 3 elementos, e essa
-contribuição não varia com o que o cliente envia. Isso refutou spoofing na rota
-medida e não provou mais nada.
+Nunca devolve endereço — nem o peer, nem elementos da cadeia, nem a
+reivindicação enviada. Só booleanos e contagens. O operador compara; a sonda
+não certifica.
 
-O que ficou sem observação é a **identidade**: que o elemento escolhido por
-`cadeia[-N]` represente quem originou a requisição. A sonda anterior não podia
-responder isso por construção — ela devolvia só contagens e posições, nunca
-comparava nada com endereço nenhum.
-
-Esta sonda existe para responder quatro propriedades, e só elas:
-
-    P1  o elemento em `cadeia[-N]` é o endereço que o próprio chamador
-        observa como sendo o seu?
-    P2  isso vale a partir de duas origens públicas realmente distintas?
-    P3  `CF-Connecting-IP` e `True-Client-IP` são escritos pela borda, ou o
-        cliente consegue controlá-los?
-    P4  uma cadeia longa enviada pelo cliente desloca ou trunca o sufixo que
-        `cadeia[-N]` pretende usar?
-
-Ela **não** reaproveita o desenho anterior: outra rota, outro módulo, outro
-esquema de resposta.
-
-## O que ela nunca devolve
-
-Endereço nenhum — nem o peer, nem elementos da cadeia, nem o valor de cabeçalho
-nenhum, nem a reivindicação que o chamador enviou. A resposta é composta só de
-booleanos, contagens estritamente necessárias e classificações de um
-vocabulário fixo declarado aqui. O gate `R05B-2` prova isso varrendo a saída
-com entradas adversariais.
-
-## O oráculo, dito em voz alta
-
-`candidato_bate_com_origem_declarada` é, por definição, um oráculo de
-igualdade: quem tem a chave pode testar endereços um a um. Isso é aceito
-deliberadamente — a chave é do operador, a sonda é temporária e sai do
-repositório quando a certificação fechar, e sem esse booleano a identidade
-continua não observável. O que **não** é aceito é devolver o endereço, que
+`candidato_bate_com_origem_declarada` é um oráculo de igualdade: quem tem a
+chave testa endereços um a um. Aceito deliberadamente — a chave é do operador
+e a sonda sai do repositório quando a medição fechar. Devolver o endereço
 transformaria um oráculo lento em vazamento direto.
 
-## Falha fechada
-
-Sem `PROXY_CHAIN_PROBE_KEY` no ambiente, a rota devolve 404 — como se não
-existisse. Sem modo aberto, sem variante pública, sem fallback por sessão.
+Sem `PROXY_CHAIN_PROBE_KEY` no ambiente a rota devolve 404, como se não
+existisse.
 """
 
 from __future__ import annotations
@@ -53,156 +23,42 @@ import hmac
 import ipaddress
 import os
 
-# TEST-NET-1 (RFC 5737). Espaço de documentação, não roteável, que nenhuma
-# infraestrutura real emite. Se um desses chega à aplicação, só pode ter vindo
-# do cliente — é isso que o torna sentinela.
+#: TEST-NET-1 (RFC 5737): espaço de documentação que nenhuma infraestrutura
+#: real emite. Se chega à aplicação, veio do cliente — é isso que o torna
+#: sentinela, e é como se distingue o que a borda escreveu do que o cliente
+#: enviou.
 REDE_SENTINELA = ipaddress.ip_network('192.0.2.0/24')
 
-#: SEGUNDA classe de sentinela, usada SÓ em P3.
-#:
-#: Uma borda que higienize por FAIXA — descarta o que é de documentação e
-#: repassa o que parece endereço público — devolveria `substituida` para um
-#: sentinela de `192.0.2.0/24` e mesmo assim deixaria o cliente escrever o
-#: cabeçalho com um valor de forma pública. A classificação diria "a borda
-#: escreve isto" onde a verdade é "a borda descarta ISTO". Achado de revisão.
-#:
-#: CGNAT (RFC 6598) não é faixa de documentação e passa por validadores que só
-#: conhecem RFC 5737 — então separa os dois comportamentos. Não fecha o caso
-#: geral: uma borda que higienize tudo que não é global continuaria
-#: classificada como `substituida`. Essa limitação está registrada no §7 do
-#: contrato.
-#:
-#: Fica FORA de `_e_sentinela` de propósito. Aquela função alimenta as guardas
-#: de contaminação, e endereço CGNAT aparece de verdade em cadeia de operadora
-#: móvel — contá-lo como sentinela ali reprovaria P1 numa medição legítima
-#: feita de 4G, que é justamente a segunda origem que o roteiro sugere.
-REDES_SENTINELA_P3 = (REDE_SENTINELA, ipaddress.ip_network('100.64.0.0/10'))
-
-#: Vocabulário fechado das classificações de cabeçalho (P3).
-CLASSES_DE_CABECALHO = ('ausente', 'sentinela_sobrevive', 'substituida')
-
-#: Presença reportada apenas para estes nomes. Lista fixa: nenhum cabeçalho
-#: arbitrário — que poderia carregar dado no próprio nome — entra na resposta.
-CABECALHOS_OBSERVADOS = (
-    'X-Forwarded-For',
-    'X-Forwarded-Proto',
-    'CF-Connecting-Ip',
-    'True-Client-Ip',
-    'X-Real-Ip',
-    'Forwarded',
-    'Via',
-)
-
-#: Cabeçalhos de entrada que esta sonda consome.
 CABECALHO_CHAVE = 'X-Diagnostics-Key'
 CABECALHO_HOPS = 'X-Probe-Hops'
 CABECALHO_REIVINDICACAO = 'X-Origin-Claim'
-CABECALHO_REIVINDICACAO_ALT = 'X-Origin-Claim-Alt'
-
 HOPS_MAXIMO = 16
 
-#: Nome da variável de ambiente que arma a sonda, declarado UMA vez, no módulo
-#: que a lê. Os gates usam esta constante em vez do literal: assim o nome sai do
-#: repositório junto com a sonda, e `R05-6` — que proíbe qualquer leitura da
-#: chave depois do fechamento — continua verdadeiro sem exceção para os testes.
+#: Declarado aqui, onde é lido: o nome sai do repositório junto com a sonda.
 NOME_DA_VARIAVEL = 'PROXY_CHAIN_PROBE_KEY'
 
 
 def _cabecalho(handler, nome: str) -> str:
-    """Lê um cabeçalho juntando TODAS as instâncias, em qualquer grafia.
-
-    Três armadilhas, cada uma encontrada por uma rodada de revisão:
-
-    1. grafia — em produção `handler.headers` é `HTTPMessage`, insensível a
-       maiúsculas, mas um gate com dicionário simples reprovava e um cliente
-       mandando `cf-connecting-ip` noutra caixa passaria despercebido;
-    2. instâncias repetidas — `HTTPMessage.get()` devolve só a PRIMEIRA. Uma
-       borda que emita o próprio endereço numa instância e preserve o
-       sentinela do cliente noutra faria a classificação dizer
-       `substituida` com o sentinela vivo na requisição;
-    3. vírgula — resolvida em `_classe_do_cabecalho`, que varre os elementos.
-
-    Juntar com vírgula é o que a própria semântica de HTTP manda: instâncias
-    repetidas de um cabeçalho equivalem a uma lista separada por vírgula.
-    Para `X-Forwarded-For` isso é exatamente a cadeia; para a chave de
-    diagnóstico, um valor duplicado deixa de bater e a rota devolve 404, que
-    é a falha fechada correta.
-    """
+    """Todas as instâncias, juntadas por vírgula — a semântica de HTTP."""
     try:
-        cabecalhos = handler.headers
-    except Exception:  # noqa: BLE001 — leitura defensiva de handler arbitrário
+        valores = handler.headers.get_all(nome) or []
+    except Exception:
+        valores = []
+    return ', '.join(str(v).strip() for v in valores if str(v).strip())
+
+
+def _como_o_limitador(handler, nome: str) -> str:
+    """Só a PRIMEIRA instância: é o que `core/rate_limit.py` lê."""
+    try:
+        return str(handler.headers.get(nome, '') or '').strip()
+    except Exception:
         return ''
-
-    try:
-        todos = cabecalhos.get_all(nome)
-    except Exception:  # noqa: BLE001 — container sem get_all
-        todos = None
-    if todos:
-        return ', '.join(str(v).strip() for v in todos if str(v).strip())
-
-    alvo = nome.lower()
-    try:
-        itens = list(cabecalhos.items())
-    except Exception:  # noqa: BLE001 — container sem items()
-        itens = []
-    achados = [str(valor).strip() for chave, valor in itens
-               if str(chave).lower() == alvo and str(valor).strip()]
-    if achados:
-        return ', '.join(achados)
-
-    try:
-        direto = cabecalhos.get(nome)
-    except Exception:  # noqa: BLE001 — container arbitrário
-        return ''
-    return str(direto).strip() if direto else ''
-
-def _e_sentinela(valor: str) -> bool:
-    """O valor é um sentinela de TEST-NET-1, em qualquer grafia?
-
-    Canoniza antes de testar. Uma borda que preserve o sentinela mas o
-    escreva como `::ffff:192.0.2.10` daria `False` num teste de pertinência
-    à rede IPv4 — e isso não afeta só P3: esta função alimenta
-    `prefixo_do_cliente_presente`, `cadeia_maior_que_hops`,
-    `candidato_e_do_cliente`, `sentinelas_na_cadeia` e
-    `sufixo_confiavel_preservado`. Um sentinela invisível deixaria TODAS as
-    guardas de contaminação cegas ao mesmo tempo. Achado de revisão.
-    """
-    try:
-        endereco = ipaddress.ip_address(str(valor).strip())
-    except ValueError:
-        return False
-    if endereco.version == 6 and endereco.ipv4_mapped is not None:
-        endereco = endereco.ipv4_mapped
-    return endereco in REDE_SENTINELA
-
-
-def _e_sentinela_p3(valor: str) -> bool:
-    """O valor é sentinela de QUALQUER uma das classes de P3?
-
-    Só P3 usa as duas classes; as guardas de contaminação continuam com
-    `_e_sentinela`, e o comentário de `REDES_SENTINELA_P3` diz por quê.
-    """
-    try:
-        endereco = ipaddress.ip_address(str(valor).strip())
-    except ValueError:
-        return False
-    if endereco.version == 6 and endereco.ipv4_mapped is not None:
-        endereco = endereco.ipv4_mapped
-    return any(endereco in rede for rede in REDES_SENTINELA_P3)
 
 
 def _normalizar(valor: str) -> str:
-    """Forma canônica para comparar endereços sem depender de grafia.
-
-    `203.0.113.9` e ` 203.0.113.009 ` não são a mesma string, e
-    `::ffff:192.0.2.9` e `192.0.2.9` são o mesmo endereço. Comparar texto cru
-    produziria `false` onde a resposta certa é `true`, e um P1 falso-negativo
-    pareceria evidência de que a identidade não bate.
-    """
-    if not valor:
-        return ''
+    """Forma canônica do endereço; '' se não for endereço."""
     try:
-        endereco = ipaddress.ip_address(valor)
+        endereco = ipaddress.ip_address(str(valor).strip())
     except ValueError:
         return ''
     if endereco.version == 6 and endereco.ipv4_mapped is not None:
@@ -210,162 +66,49 @@ def _normalizar(valor: str) -> str:
     return str(endereco)
 
 
-def _cabecalho_como_o_limitador(handler, nome: str) -> str:
-    """Lê o cabeçalho EXATAMENTE como `core/rate_limit.py` lê.
-
-    `get_client_ip` usa `handler.headers.get(nome, '')`, e `HTTPMessage.get`
-    devolve só a PRIMEIRA instância. A sonda juntava todas — correção da 5ª
-    rodada, certa para classificar P3 — e com isso passou a medir uma função
-    DIFERENTE da que a produção calcula.
-
-    A diferença não é acadêmica: se a borda acrescenta uma instância NOVA em
-    vez de estender a do cliente, a produção lê a instância do cliente inteira
-    e `cadeia[-N]` fica sob controle dele. A certificação aprovaria a cadeia
-    combinada enquanto o limitador usa outra. Achado de revisão.
-
-    Então a seleção do candidato passa a espelhar a produção, e a diferença
-    entre as duas leituras vira um campo próprio — visível, não silenciosa.
-    """
+def _e_sentinela(valor: str) -> bool:
+    canonico = _normalizar(valor)
+    if not canonico:
+        return False
     try:
-        return str(handler.headers.get(nome, '') or '')
-    except Exception:  # noqa: BLE001 — leitura defensiva de handler arbitrário
-        return ''
-
-
-def _instancias_repetidas(handler, nome: str) -> bool:
-    """A requisição trouxe MAIS DE UMA instância deste cabeçalho?
-
-    É a condição em que a leitura da produção e a leitura completa divergem —
-    e, portanto, a condição em que a certificação não pode concluir nada sobre
-    o que o limitador vai usar.
-    """
-    return _cabecalho(handler, nome) != _cabecalho_como_o_limitador(handler, nome)
-
-
-def _cadeia(handler) -> list:
-    # Leitura da PRODUÇÃO, não a completa: o que se mede tem de ser o que o
-    # limitador calcula.
-    bruto = _cabecalho_como_o_limitador(handler, 'X-Forwarded-For')
-    return [parte.strip() for parte in bruto.split(',') if parte.strip()]
-
-
-def _hops_pedido(handler) -> int:
-    """Quantos saltos avaliar. Vem do pedido porque o ambiente ainda declara 0:
-    a sonda precisa conseguir avaliar o número PROPOSTO, não o configurado."""
-    bruto = _cabecalho(handler, CABECALHO_HOPS)
-    try:
-        valor = int(bruto)
+        return ipaddress.ip_address(canonico) in REDE_SENTINELA
     except ValueError:
-        return 0
-    return max(0, min(valor, HOPS_MAXIMO))
+        return False
 
 
-def _classe_do_cabecalho(handler, nome: str) -> str:
-    """P3. Diz se o valor recebido é o sentinela que o cliente mandou (logo o
-    cliente controla o cabeçalho) ou outra coisa (logo a borda o reescreveu).
-    Nunca devolve o valor.
-
-    Olha TODOS os elementos, não só o primeiro. Uma borda que ANTEPÕE o próprio
-    endereço e preserva o do cliente à direita — `real, 192.0.2.10` — faria a
-    leitura do primeiro elemento dizer `substituida` com o sentinela vivo na
-    mesma linha. O mesmo vale para instâncias repetidas do cabeçalho, que o
-    container junta com vírgula. Achado de revisão: aqui um falso `substituida`
-    é pior que um falso `sentinela_sobrevive`, porque leva a ADOTAR um
-    cabeçalho que o cliente controla.
-    """
-    valor = _cabecalho(handler, nome)
-    if not valor:
-        return 'ausente'
-    elementos = [parte.strip() for parte in valor.split(',') if parte.strip()]
-    # `_e_sentinela_p3`, não `_e_sentinela`: aqui valem as DUAS classes, e a
-    # razão de elas não valerem nas guardas de contaminação está em
-    # `REDES_SENTINELA_P3`.
-    if any(_e_sentinela_p3(elemento) for elemento in elementos):
-        return 'sentinela_sobrevive'
-    return 'substituida'
-
-
-def analisar(cadeia: list, hops: int, reivindicacao: str, alternativa: str,
-             classes: dict, presentes: list, *,
-             instancias_repetidas: bool = False) -> dict:
-    """Avalia P1–P4 sobre uma cadeia já extraída. Nunca devolve endereço.
-
-    Separada do handler para que os gates possam exercitá-la com cadeias
-    montadas à mão, sem inventar um objeto de requisição.
-    """
+def analisar(cadeia: list, hops: int, reivindicacao: str,
+             *, instancias_repetidas: bool = False) -> dict:
+    """Avalia a cadeia já extraída. Nunca devolve endereço."""
     tamanho = len(cadeia)
     suficiente = hops >= 1 and tamanho >= hops
-
-    indice_candidato = tamanho - hops if suficiente else None
-    candidato = _normalizar(cadeia[indice_candidato]) if suficiente else ''
-
-    # P4 — o sufixo que `cadeia[-hops]` usa sobreviveu inteiro?
-    #
-    # "Preservado" é definido como: nenhum dos `hops` elementos mais à direita
-    # veio do cliente. É essa a região que a seleção consome, e é ela que um
-    # truncamento pela direita destruiria — empurrando `cadeia[-hops]` para
-    # dentro do que o cliente escreveu.
-    #
-    # Truncamento pela ESQUERDA não quebra a propriedade: ele descarta prefixo
-    # do cliente, que já era ignorado. Por isso a definição olha só a janela.
-    sufixo = cadeia[-hops:] if suficiente else []
-    sufixo_preservado = bool(sufixo) and not any(_e_sentinela(e) for e in sufixo)
-
-    # Guardas de contaminação (P1). A reivindicação NUNCA entra na construção
-    # do candidato — ele sai da cadeia e só dela. Estes três booleanos deixam o
-    # script provar que o teste não foi contaminado, em vez de assumir:
-    #
-    #   prefixo_do_cliente_presente  algum elemento é sentinela;
-    #   cadeia_maior_que_hops        o cliente acrescentou algo à esquerda;
-    #   reivindicacao_fora_do_candidato  o valor declarado aparece em OUTRA
-    #                                    posição da cadeia — sinal de que o
-    #                                    chamador o injetou.
+    i = tamanho - hops if suficiente else None
+    candidato = _normalizar(cadeia[i]) if suficiente else ''
     alvo = _normalizar(reivindicacao)
-    fora_do_candidato = bool(alvo) and any(
-        _normalizar(elemento) == alvo
-        for i, elemento in enumerate(cadeia)
-        if i != indice_candidato
-    )
-
-    bate = None
-    if alvo and suficiente:
-        bate = hmac.compare_digest(candidato.encode('utf-8'), alvo.encode('utf-8'))
-
-    alvo_alt = _normalizar(alternativa)
-    bate_alt = None
-    if alvo_alt and suficiente:
-        bate_alt = hmac.compare_digest(candidato.encode('utf-8'), alvo_alt.encode('utf-8'))
-
     return {
         'probe': 'R05B',
         'hops_avaliado': hops,
         'cadeia_tamanho': tamanho,
         'cadeia_suficiente_para_hops': suficiente,
-        'sentinelas_na_cadeia': sum(1 for e in cadeia if _e_sentinela(e)),
+        # O candidato é o endereço que o chamador diz ser o seu?
+        'candidato_bate_com_origem_declarada': (
+            hmac.compare_digest(candidato.encode(), alvo.encode())
+            if alvo and suficiente else None
+        ),
+        # O candidato saiu do prefixo que o CLIENTE enviou? Se sim, `hops` está
+        # errado e a seleção cairia em dado escolhido pelo chamador.
+        'candidato_e_do_cliente': suficiente and _e_sentinela(cadeia[i]),
         'prefixo_do_cliente_presente': any(_e_sentinela(e) for e in cadeia),
-        'cadeia_maior_que_hops': tamanho > hops,
-        'reivindicacao_fora_do_candidato': fora_do_candidato,
-        'candidato_e_do_cliente': bool(suficiente) and _e_sentinela(cadeia[indice_candidato]),
-        # O limitador usa a string CRUA de `cadeia[-N]` como chave de balde
-        # (`core/rate_limit.py`). Se a borda não escreve a forma canônica, duas
-        # grafias do MESMO endereço ocupam baldes diferentes e passam mais
-        # requisições do que o configurado. A sonda normaliza para comparar —
-        # e é justamente por isso que precisa DIZER se a normalização mudou
-        # alguma coisa. Achado de revisão.
+        # Mais de uma instância de X-Forwarded-For: o limitador lê só a
+        # primeira (`headers.get`), então mediríamos uma coisa e ele usaria
+        # outra. Ver a classificação de D em docs/R05B_IDENTIDADE_DA_ORIGEM.md.
+        'xff_instancias_repetidas': bool(instancias_repetidas),
+        # O limitador usa a string CRUA como chave de balde. Se a borda não
+        # escreve a forma canônica, duas grafias do mesmo endereço ocupam
+        # baldes diferentes. Classificação de E no mesmo documento.
         'candidato_ja_canonico': (
             not suficiente
-            or cadeia[indice_candidato].strip() == _normalizar(cadeia[indice_candidato])
+            or cadeia[i].strip() == _normalizar(cadeia[i])
         ),
-        # Mais de uma instância de `X-Forwarded-For`: a leitura da produção e a
-        # leitura completa divergem, e o que o limitador usará não é o que a
-        # certificação mediria.
-        'xff_instancias_repetidas': bool(instancias_repetidas),
-        'sufixo_confiavel_preservado': sufixo_preservado,
-        'candidato_bate_com_origem_declarada': bate,
-        'candidato_bate_com_origem_alternativa': bate_alt,
-        'cf_connecting_ip': classes.get('CF-Connecting-Ip', 'ausente'),
-        'true_client_ip': classes.get('True-Client-Ip', 'ausente'),
-        'cabecalhos_presentes': list(presentes),
     }
 
 
@@ -377,27 +120,23 @@ def autorizado(handler) -> bool:
     chave = chave_configurada()
     if not chave:
         return False
-    fornecida = _cabecalho(handler, CABECALHO_CHAVE)
-    # Compara BYTES: com `str`, `compare_digest` levanta TypeError quando
-    # qualquer lado tem caractere fora de ASCII, e a exceção viraria 500 —
-    # distinguindo rota protegida de rota ausente, que é justamente o que o
-    # 404 existe para impedir.
-    return hmac.compare_digest(fornecida.encode('utf-8'), chave.encode('utf-8'))
+    # Compara BYTES: com `str`, `compare_digest` levanta TypeError em caractere
+    # fora de ASCII, e o 500 distinguiria rota protegida de rota ausente.
+    return hmac.compare_digest(
+        _como_o_limitador(handler, CABECALHO_CHAVE).encode('utf-8'),
+        chave.encode('utf-8'),
+    )
 
 
 def medir(handler) -> dict:
-    """Ponto único de entrada do handler."""
-    presentes = [nome for nome in CABECALHOS_OBSERVADOS if _cabecalho(handler, nome)]
-    classes = {
-        'CF-Connecting-Ip': _classe_do_cabecalho(handler, 'CF-Connecting-Ip'),
-        'True-Client-Ip': _classe_do_cabecalho(handler, 'True-Client-Ip'),
-    }
+    bruto = _como_o_limitador(handler, 'X-Forwarded-For')
+    try:
+        hops = int(_como_o_limitador(handler, CABECALHO_HOPS) or '0')
+    except ValueError:
+        hops = 0
     return analisar(
-        _cadeia(handler),
-        _hops_pedido(handler),
-        _cabecalho(handler, CABECALHO_REIVINDICACAO),
-        _cabecalho(handler, CABECALHO_REIVINDICACAO_ALT),
-        classes,
-        presentes,
-        instancias_repetidas=_instancias_repetidas(handler, 'X-Forwarded-For'),
+        [p.strip() for p in bruto.split(',') if p.strip()],
+        max(0, min(hops, HOPS_MAXIMO)),
+        _como_o_limitador(handler, CABECALHO_REIVINDICACAO),
+        instancias_repetidas=_cabecalho(handler, 'X-Forwarded-For') != bruto,
     )

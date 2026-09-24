@@ -359,23 +359,16 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
 
 # ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — INÍCIO ─────────────────
 #
-# Responde P1–P4 da certificação de identidade (docs/R05B_IDENTIDADE_DA_ORIGEM.md).
-# Sai do repositório quando a certificação fechar; o gate `R05B-7` reprova a
-# suíte enquanto ela ficar depois disso.
+# Mede a posição da origem na cadeia (docs/R05B_IDENTIDADE_DA_ORIGEM.md).
+# Sai do repositório quando a medição fechar; o gate `R05B-1` reprova a suíte
+# enquanto ela ficar depois disso.
 def handle_get_origin_identity_diagnostics(handler, parsed, payload, match):
     from epi_backend.proxy_identity_probe import autorizado, medir
 
-    # `send_json` não devolve nada, e `core/router.py` documenta que handler
-    # retornando None é o caso normal — ele converte em HANDLED. Devolver o
-    # resultado de `send_json` propagaria um valor sem significado.
     if not autorizado(handler):
-        # `send_error(404, 'File not found')` é EXATAMENTE o que o fallthrough
-        # do `SimpleHTTPRequestHandler` emite para uma rota inexistente sob
-        # `/api/`. A versão anterior mandava JSON aqui, enquanto uma rota que
-        # não existe devolve HTML — 34 bytes contra 335, content-type
-        # diferente. Quem sondasse distinguiria a sonda desligada de uma rota
-        # ausente por inspeção trivial, que é justamente o que este 404 existe
-        # para impedir. Achado de revisão; a afirmação de ocultação era falsa.
+        # EXATAMENTE o que o fallthrough do `SimpleHTTPRequestHandler` emite
+        # para rota inexistente sob `/api/`. Responder JSON aqui distinguiria
+        # sonda desligada de rota ausente por inspeção trivial.
         handler.send_error(404, 'File not found')
         return
     send_json(handler, 200, medir(handler))

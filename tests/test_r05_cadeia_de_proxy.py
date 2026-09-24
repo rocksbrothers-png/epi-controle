@@ -110,8 +110,6 @@ CONTRATO_R05B = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
 #: fora dela é regressão, mesmo com a fatia aberta.
 SUPERFICIES_R05B = (
     'epi_backend/proxy_identity_probe.py',
-    'modules/auth/routes.py',
-    'scripts/certificar_identidade_da_origem.py',
     'docs/R05B_IDENTIDADE_DA_ORIGEM.md',
     'tests/test_r05b_identidade_da_origem.py',
 )

@@ -2027,3 +2027,105 @@ def test_r05b_44_os_gates_do_servidor_real_nao_dependem_do_ambiente():
         'os gates do servidor real dependem do ambiente de quem roda a suíte:\n'
         + resultado.stdout[-2000:]
     )
+
+
+# ── Nona rodada da revisão ──────────────────────────────────────────────────
+#
+# O primeiro achado desta rodada é o mais grave da fatia inteira: o SEGREDO
+# saía no relatório que o operador cola. Não era hipótese — reproduzi.
+
+def test_r05b_45_chave_malformada_nao_vaza_no_relatorio(capsys):
+    """`urllib` valida cabeçalho na hora de ENVIAR e levanta
+    `ValueError: Invalid header value b'<valor>'` — com o valor inteiro dentro.
+
+    A chave viaja em cabeçalho. O catch-all de `_sondar` interpolava a exceção
+    crua em `alvo.motivo`, e `_relatar` imprime `motivo` no relatório que o
+    roteiro manda colar. Uma chave com quebra de linha publicava o segredo.
+
+    Medido antes da correção:
+
+        não alcançou o serviço: Invalid header value b'<a chave inteira>'
+    """
+    if CERT is None:
+        return
+
+    segredo = 'chave-secreta-do-operador-r05b'
+    endereco = '203.0.113.7'
+
+    # 1. as três grafias que `urllib` recusa: nenhuma leva o valor junto
+    for rotulo, chave in (('quebra de linha', segredo + '\nX-Injetado: 1'),
+                          ('nulo', segredo + '\x00'),
+                          # `ção` CABE em latin-1 — a primeira versão deste gate
+                          # usou isso e o próprio gate me corrigiu
+                          ('fora de latin-1', segredo + '-\u2713')):
+        try:
+            CERT._sondar('https://127.0.0.1:1', chave, 3, reivindicacao=endereco)
+        except CERT.NaoAlcancado as e:
+            assert segredo not in str(e), f'{rotulo}: a chave saiu no motivo'
+            assert 'cabeçalho HTTP' in str(e), f'{rotulo}: mensagem não explica'
+        else:
+            raise AssertionError(f'{rotulo}: chave inválida passou por válida')
+
+    # 2. a redação cobre o caminho que eu não previ: qualquer exceção que ecoe
+    #    a chave ou o endereço declarado sai redigida
+    assert CERT._redigir(f'eco {segredo} e {endereco}', segredo, endereco) == \
+        'eco [redigido] e [redigido]'
+
+    # 3. e o fim da linha: o RELATÓRIO, que é o que o operador cola
+    alvo = CERT.Alvo('corporativo', 'https://127.0.0.1:1',
+                     segredo + '\nX-Injetado: 1')
+    CERT.medir(alvo, 3, endereco, '')
+    CERT._relatar(alvo, False)
+    saida = capsys.readouterr().out
+    assert segredo not in saida, 'a chave apareceu no relatório'
+    assert 'X-Injetado' not in saida, 'o cabeçalho injetado apareceu no relatório'
+
+    # 4. controle negativo: chave válida não é recusada por esta conferência
+    assert CERT._cabecalho_valido('chave-normal-sem-nada-de-errado')
+    assert CERT._cabecalho_valido('')  # ausente é outro caminho, não este
+
+
+def test_r05b_46_o_compromisso_nao_promete_o_que_nao_alcanca(monkeypatch, tmp_path, capsys):
+    """O script só apaga a cópia que ele enxerga.
+
+    O roteiro manda LEVAR o compromisso para a segunda máquina, e um operador
+    normalmente COPIA. A execução de fechamento apagava a cópia local e
+    anunciava "Compromisso da primeira origem apagado: a certificação fechou" —
+    afirmação que ele não pode sustentar: a cópia na primeira máquina continua
+    valendo como evidência de primeira origem numa execução futura, quando o
+    deployment ou a topologia já podem ter mudado.
+
+    Não dá para consertar o mecanismo daqui: nenhuma execução alcança outra
+    máquina, e arquivo carregado à mão sempre pode ser copiado. O que dá para
+    consertar é a PROMESSA — e é isso que este gate trava. A mitigação real
+    (validade com prazo) muda o procedimento humano e está levada ao autor
+    como decisão, não aplicada por mim.
+    """
+    if CERT is None:
+        return
+
+    estado = tmp_path / 'e.json'
+
+    # origem A: manda MOVER, e diz o que acontece se copiar
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    saida_a = ' '.join(capsys.readouterr().out.split())
+    assert 'MOVA o arquivo, não copie' in saida_a, (
+        'a primeira origem não avisa para mover: o operador copia, e a cópia '
+        'esquecida vira evidência reutilizável'
+    )
+    assert 'continua valendo como evidência' in saida_a
+
+    # origem B: apaga o que alcança, e NÃO afirma mais do que isso
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                       EPI_IDENT_MEU_IP=_IP_B,
+                                       EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
+    # espaço normalizado: o `print` quebra a frase em linhas, e procurar
+    # substring crua torna o gate refém da largura da coluna. Lição do `R05-4d`.
+    saida_b = ' '.join(capsys.readouterr().out.split())
+    assert not estado.exists(), 'a cópia local sobreviveu ao fechamento'
+    assert 'apagado AQUI' in saida_b, (
+        'o fechamento promete um apagamento que não alcança outra máquina'
+    )
+    assert 'apague a cópia de lá' in saida_b
+    assert 'esta execução não alcança nada fora desta máquina' in saida_b

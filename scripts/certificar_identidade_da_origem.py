@@ -249,11 +249,47 @@ class _RecusaRedirecionamento(urllib.request.HTTPRedirectHandler):
 _ABRIDOR = urllib.request.build_opener(_RecusaRedirecionamento)
 
 
+def _cabecalho_valido(valor: str) -> bool:
+    """O valor cabe num cabeçalho HTTP sem quebrar a requisição?
+
+    `urllib` valida na hora de ENVIAR e levanta `ValueError: Invalid header
+    value b'<valor>'` — com o valor inteiro dentro. Como a chave viaja em
+    cabeçalho, esse texto levava o SEGREDO para `alvo.motivo`, que o relatório
+    imprime e o operador cola. Conferir antes troca o vazamento por uma
+    mensagem de configuração. Achado de revisão.
+    """
+    try:
+        valor.encode('latin-1')
+    except UnicodeEncodeError:
+        return False
+    return not any(c in valor for c in '\r\n\x00')
+
+
+def _redigir(texto: str, *segredos: str) -> str:
+    """Nenhum segredo sai daqui, venha de onde vier a mensagem.
+
+    A conferência acima fecha o caminho conhecido; esta função fecha os que
+    eu não previ. Qualquer exceção de rede que ecoe o cabeçalho passa por
+    aqui antes de virar `motivo`.
+    """
+    limpo = str(texto)
+    for segredo in segredos:
+        if segredo and len(segredo) >= 4:
+            limpo = limpo.replace(segredo, '[redigido]')
+    return limpo
+
+
 def _sondar(base_url: str, chave: str, hops: int, *, xff=None, cf=None,
             tc=None, reivindicacao='', alternativa='') -> dict:
     url = base_url.rstrip('/') + ROTA
     if not url.lower().startswith('https://'):
         raise NaoAlcancado('a URL precisa ser https — a chave viaja em cabeçalho')
+    if not _cabecalho_valido(chave):
+        raise NaoAlcancado(
+            'a chave configurada tem caractere que não cabe em cabeçalho HTTP '
+            '(quebra de linha, nulo ou fora de latin-1) — confira a variável '
+            'de ambiente; o valor NÃO é mostrado aqui'
+        )
 
     req = urllib.request.Request(url, method='GET')
     req.add_header('X-Diagnostics-Key', chave)
@@ -293,7 +329,8 @@ def _sondar(base_url: str, chave: str, hops: int, *, xff=None, cf=None,
     except NaoAlcancado:
         raise
     except Exception as e:  # noqa: BLE001 — rede é imprevisível; vira relatório
-        raise NaoAlcancado(f'não alcançou o serviço: {e}') from e
+        raise NaoAlcancado(_redigir(f'não alcançou o serviço: {e}',
+                                    chave, reivindicacao, alternativa)) from e
 
 
 def _forma(nome: str, amostra: dict) -> tuple:
@@ -976,6 +1013,15 @@ def main() -> int:
         print(f'Compromisso gravado em {caminho} — LOCAL, não vai em commit,')
         print('não sai no relatório. Leve-o se a segunda origem for outra máquina.')
         print('Lá, defina EPI_IDENT_IP_ANTERIOR com o endereço público DESTA.')
+        # A segunda execução só apaga a cópia que ela enxerga. Dizer "leve" e
+        # deixar o operador COPIAR guarda uma evidência de primeira origem
+        # viva aqui, reutilizável quando a topologia já mudou. Achado de
+        # revisão; o script não alcança outra máquina, então o que ele pode
+        # fazer é dizer a verdade e mandar mover.
+        print()
+        print('MOVA o arquivo, não copie. A segunda execução só consegue apagar')
+        print('a cópia que estiver na máquina dela; uma cópia esquecida aqui')
+        print('continua valendo como evidência de primeira origem depois.')
         return 3
 
     # P3 fica FORA da concordância: ele é classificação, não critério de HOPS,
@@ -1003,7 +1049,10 @@ def main() -> int:
     # Achado de revisão.
     try:
         _caminho_do_estado().unlink()
-        print('Compromisso da primeira origem apagado: a certificação fechou.')
+        print(f'Compromisso apagado AQUI ({_caminho_do_estado()}): a certificação')
+        print('fechou. Se a primeira origem foi outra máquina e você COPIOU o')
+        print('arquivo em vez de mover, apague a cópia de lá: esta execução não')
+        print('alcança nada fora desta máquina, e aquela cópia continua valendo.')
     except FileNotFoundError:
         # Já não existe: é o estado desejado, não um erro. Acontece quando a
         # certificação roda duas vezes, ou quando a origem A e a B são a mesma

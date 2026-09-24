@@ -827,3 +827,85 @@ correção pertence a `tests/conftest.py` — fora do escopo daqui.
 | BD-a | contradição obrigatória vira PENDENTE | `R05B-33` | vermelho |
 | BD-b | a mesma regressão, com o gate na forma **antiga** | `R05B-33` | **verde** |
 | BE | o import de `app` volta a depender do ambiente | `R05B-44` | vermelho |
+
+### Nona rodada: o instrumento vazava o segredo no relatório
+
+| | achado | estado | gate |
+|---|---|---|---|
+| 1 | a rota de diagnóstico não deveria existir em produção (`AGENTS.md`) | **não corrigido — decisão do autor, já tomada** | — |
+| 2 | o compromisso copiado sobrevive na primeira máquina | corrigido **na parte alcançável** | `R05B-46` |
+| 3 | chave malformada vazava **inteira** no relatório | corrigido | `R05B-45` |
+
+#### O achado 3 é o mais grave da fatia, e não era hipótese
+
+`urllib` valida cabeçalho na hora de **enviar** e levanta
+`ValueError: Invalid header value b'<valor>'` — com o valor inteiro dentro. A
+chave viaja em cabeçalho, e o `except Exception` de `_sondar` interpolava a
+exceção crua em `alvo.motivo`, que `_relatar` imprime no relatório que o roteiro
+manda o operador colar. Reproduzido:
+
+```
+não alcançou o serviço: Invalid header value b'<a chave inteira>'
+```
+
+Uma chave com quebra de linha — copiada de um painel, colada com `\n` no fim —
+publicava o segredo para quem lesse o relatório.
+
+Duas correções, e cada uma é provada por sabotagem própria:
+
+1. **Conferir antes de montar a requisição.** `_cabecalho_valido` recusa
+   quebra de linha, nulo e o que não couber em latin-1, com mensagem que nomeia
+   a variável e **não** mostra o valor.
+2. **Redigir na saída.** `_redigir` remove chave, reivindicação e alternativa de
+   qualquer mensagem que o catch-all produza. A conferência fecha o caminho
+   conhecido; a redação fecha os que eu não previ.
+
+A sabotagem `BF-3` desliga as duas e o gate acusa **o vazamento**, não a
+redação da mensagem — é a linha que prova que o gate mede a propriedade certa.
+
+O gate nasceu errado numa parte: eu usei `ção` como exemplo de "fora de
+latin-1", e `ç` e `ã` **cabem** em latin-1. O próprio gate me corrigiu.
+
+#### O achado 2 não tem correção completa possível daqui
+
+O roteiro manda **levar** o compromisso para a segunda máquina, e um operador
+normalmente **copia**. A execução de fechamento apagava a cópia local e
+anunciava:
+
+> Compromisso da primeira origem apagado: a certificação fechou.
+
+Afirmação que o script não pode sustentar. Nenhuma execução alcança outra
+máquina, e arquivo carregado à mão sempre pode ser copiado — então a cópia
+esquecida na primeira máquina continua valendo como evidência de primeira
+origem depois, quando o deployment ou a topologia já podem ter mudado.
+
+**Limitação registrada, como a do digesto auto-referente no §1.** O que dá para
+consertar daqui é a promessa, e foi o que se fez: a primeira origem manda
+**mover, não copiar**, e diz o que acontece se copiar; o fechamento nomeia o
+caminho que apagou e manda apagar a cópia de lá.
+
+**A mitigação real é decisão do autor.** Dar prazo de validade ao compromisso
+(a primeira origem grava o instante, a segunda recusa um compromisso velho
+demais) limita a janela de reuso sem depender de disciplina — mas muda o
+procedimento humano: as duas origens passariam a ter de ser medidas dentro do
+prazo. Levado como decisão, não aplicado.
+
+#### O achado 1 já tinha sido decidido
+
+É o mesmo achado da segunda rodada — a rota de diagnóstico existir em produção
+contraria as diretrizes de `AGENTS.md`. A decisão do autor foi manter a sonda,
+temporária e fechada por gate (`R05B-7`), porque sem ela a identidade da origem
+não é observável e `HOPS=3` não sai de PARCIALMENTE PROVADO. **Reabrir a
+decisão não é minha.** A revisão automatizada não a conhece e a levanta de novo
+a cada rodada; o registro fica aqui para que a resposta não precise ser
+redescoberta.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BF-1 | a chave deixa de ser conferida antes do envio | `R05B-45` | vermelho |
+| BF-2 | a redação vira no-op | `R05B-45` | vermelho |
+| BF-3 | as duas — o **segredo volta ao relatório** | `R05B-45` | vermelho, acusando o vazamento |
+| BG-1 | a primeira origem para de mandar mover | `R05B-46` | vermelho |
+| BG-2 | o fechamento volta a prometer o que não alcança | `R05B-46` | vermelho |

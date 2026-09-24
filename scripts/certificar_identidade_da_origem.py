@@ -504,6 +504,29 @@ def _caminho_do_estado() -> Path:
     return Path(bruto) if bruto else ESTADO_PADRAO
 
 
+def _host_canonico(host: str) -> str:
+    """Host canônico, com colchetes de volta quando o literal é IPv6.
+
+    Literal de endereço tem mais de uma grafia para o MESMO destino: a forma
+    comprimida e a expandida do mesmo IPv6, e `::ffff:<v4>` e `<v4>`. Comparar
+    a grafia deixava DUAS grafias do mesmo endpoint passarem por dois backends
+    distintos — exatamente o que a conferência de distinção existe para
+    impedir, e a mesma classe do achado da porta padrão.
+
+    Os colchetes voltam porque `partes.hostname` os remove: sem eles a
+    autoridade reconstruída não diz onde o endereço acaba e a porta começa
+    (`https://::1:8443`), e endpoints DIFERENTES colidiriam na comparação.
+    Achado de revisão.
+    """
+    try:
+        alvo = ipaddress.ip_address(host)
+    except ValueError:
+        return host                  # nome de host: não há o que canonicalizar
+    if alvo.version == 6 and alvo.ipv4_mapped is not None:
+        alvo = alvo.ipv4_mapped      # mesma canonicalização que a sonda faz
+    return f'[{alvo}]' if alvo.version == 6 else str(alvo)
+
+
 def _normalizar_url(url: str) -> str:
     """Forma canônica de URL, para comparar ENDPOINT e não grafia.
 
@@ -522,7 +545,7 @@ def _normalizar_url(url: str) -> str:
         # de qualquer sondagem. Achado de revisão.
         return ''
     esquema = (partes.scheme or '').lower()
-    host = (partes.hostname or '').lower()
+    host = _host_canonico((partes.hostname or '').lower())
     try:
         porta = partes.port
     except ValueError:

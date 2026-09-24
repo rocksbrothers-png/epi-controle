@@ -1429,17 +1429,33 @@ def test_r05b_33_backend_inalcancavel_e_nao_executado(monkeypatch, tmp_path, cap
     assert 'NÃO é evidência' in saida
 
     # mas CONTRADIÇÃO é outra coisa: foi medido, e as medições brigam → 1
+    #
+    # A primeira versão variava a amostra com `id(resposta) % 2`. Em CPython os
+    # objetos são alinhados e esse resto é SEMPRE 0: as três repetições do SaaS
+    # saíam idênticas e o teste nunca criava a contradição que diz exercitar.
+    # Pior: aceitava 3 junto com 1, então uma regressão que tratasse medições
+    # contraditórias como PENDENTES passaria por este gate. Achado de revisão.
+    chamadas = []
+
     def saas_contraditorio(base_url, chave, hops, **resto):
         resposta = _sonda_falsa()(base_url, chave, hops, **resto)
         if 'saas' in base_url:
-            resposta['cadeia_tamanho'] = resposta['cadeia_tamanho'] + (id(resposta) % 2)
+            chamadas.append(base_url)
+            resposta['cadeia_tamanho'] += len(chamadas) % 2
         return resposta
 
     codigo = _rodar(monkeypatch, sonda=saas_contraditorio,
                     **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A',
                             EPI_IDENT_MEU_IP=_IP_A))
-    assert codigo in (1, 3), f'contradição devolveu {codigo}'
-    capsys.readouterr()
+    saida = capsys.readouterr().out
+    assert chamadas, 'o dublê contraditório nem chegou a ser chamado'
+    assert codigo == 1, (
+        f'contradição devolveu {codigo}: medição que briga consigo mesma é '
+        'REPROVAÇÃO, não pendência — 3 diria "falta a segunda origem"'
+    )
+    assert 'INCONSISTENTE' in saida, (
+        'a contradição não apareceu no relatório: o dublê não contradisse nada'
+    )
 
 
 # ── Quinta rodada da revisão ────────────────────────────────────────────────
@@ -1513,6 +1529,35 @@ def _erro_http(codigo, cabecalhos, corpo):
         codigo, 'Forbidden', msg, _io.BytesIO(corpo.encode('utf-8')))
 
 
+#: Ambiente mínimo para importar `app`. `epi_backend.config` LEVANTA no import
+#: quando `APP_ENV`/`ENVIRONMENT` é produção e não há `JWT_SECRET` — e três
+#: gates desta fatia importam `app` para subir o servidor real. Sem isto eles
+#: dependeriam do ambiente de quem roda a suíte. Achado de revisão.
+#:
+#: Isto NÃO torna a suíte inteira compatível com `ENVIRONMENT=production`:
+#: `tests/test_login_bootstrap_gate.py` (e mais nove arquivos) importam `app`
+#: no topo do módulo e morrem na COLETA, antes de qualquer gate rodar. Essa
+#: parte é anterior a esta fatia e não é dela.
+_AMBIENTE_DE_TESTE = {'APP_ENV': 'test', 'ENVIRONMENT': 'test'}
+
+
+def _importar_app():
+    """Importa `app` com ambiente previsível, e devolve o módulo."""
+    import os
+
+    anteriores = {n: os.environ.get(n) for n in _AMBIENTE_DE_TESTE}
+    os.environ.update(_AMBIENTE_DE_TESTE)
+    try:
+        import app as APP
+        return APP
+    finally:
+        for nome, valor in anteriores.items():
+            if valor is None:
+                os.environ.pop(nome, None)
+            else:
+                os.environ[nome] = valor
+
+
 def test_r05b_36_erro_http_identifica_a_camada_sem_vazar_nada():
     """A medição real devolveu `HTTP 403` nos dois backends e nada mais. Com
     isso não dá para saber se quem recusou foi a aplicação ou a borda — e a
@@ -1581,7 +1626,7 @@ def test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota():
     import threading
     from http.server import ThreadingHTTPServer
 
-    import app as APP
+    APP = _importar_app()
     from epi_backend.bootstrap import DB_BOOTSTRAP_STATE, DB_BOOTSTRAP_STATE_LOCK
 
     chave = 'chave-do-gate-r05b-37'
@@ -1652,7 +1697,7 @@ def test_r05b_38_a_sonda_e_interceptada_pelo_portao_de_bootstrap():
     import threading
     from http.server import ThreadingHTTPServer
 
-    import app as APP
+    APP = _importar_app()
     from epi_backend.bootstrap import (BOOTSTRAP_READY_EXEMPT_PATHS,
                                        DB_BOOTSTRAP_STATE,
                                        DB_BOOTSTRAP_STATE_LOCK)
@@ -1735,7 +1780,7 @@ def test_r05b_39_404_da_sonda_e_indistinguivel_de_rota_inexistente():
     import threading
     from http.server import ThreadingHTTPServer
 
-    import app as APP
+    APP = _importar_app()
     from epi_backend.bootstrap import DB_BOOTSTRAP_STATE, DB_BOOTSTRAP_STATE_LOCK
 
     anterior = os.environ.get(SONDA.NOME_DA_VARIAVEL)
@@ -1884,3 +1929,101 @@ def test_r05b_42_url_malformada_nao_vira_traceback(monkeypatch, tmp_path, capsys
         assert not tmp_path.joinpath('e.json').exists(), (
             'gravou compromisso a partir de uma execução que nem sondou'
         )
+
+
+# ── Oitava rodada da revisão ────────────────────────────────────────────────
+#
+# Três achados, e os dois primeiros são o mesmo padrão de sempre: a correção
+# da rodada anterior fechou a porta e deixou a janela. A conferência de
+# endpoints distintos já normalizava esquema e porta — e continuava comparando
+# a GRAFIA do literal IPv6.
+
+def test_r05b_43_grafia_de_ipv6_nao_inventa_endpoint_distinto(monkeypatch, tmp_path, capsys):
+    """Duas grafias do mesmo IPv6 são o mesmo lugar.
+
+    `https://[2001:db8::1]` e a forma expandida chegam ao mesmo socket, e
+    comparar texto deixava UM deployment fornecer as DUAS medições
+    obrigatórias — exatamente o que a conferência de distinção existe para
+    impedir, e a mesma classe do achado da porta padrão.
+
+    E os colchetes têm de voltar: `partes.hostname` os remove, e sem eles
+    `[::1]:8443` e `[::1:8443]` — endereços DIFERENTES — colidiam na mesma
+    string. A correção erra nas duas direções se olhar só uma.
+    """
+    if CERT is None:
+        return
+
+    comprimido = 'https://[2001:db8::1]'
+    expandido = 'https://[2001:0db8:0000:0000:0000:0000:0000:0001]'
+    maiusculo = 'https://[2001:DB8::1]:443'
+    for grafia in (expandido, maiusculo):
+        assert CERT._normalizar_url(grafia) == CERT._normalizar_url(comprimido), (
+            f'{grafia} não bateu com {comprimido}: uma grafia virou outro endpoint'
+        )
+
+    # colchetes preservados, e sem colisão entre endereços diferentes
+    assert CERT._normalizar_url(comprimido) == 'https://[2001:db8::1]'
+    porta_alta = CERT._normalizar_url('https://[::1]:8443')
+    outro_endereco = CERT._normalizar_url('https://[::1:8443]')
+    assert porta_alta == 'https://[::1]:8443', f'colchetes sumiram: {porta_alta}'
+    assert porta_alta != outro_endereco, (
+        'endereço com porta colidiu com outro endereço: sem colchetes, '
+        f'{porta_alta!r} e {outro_endereco!r} viravam a mesma string'
+    )
+
+    # `::ffff:<v4>` e `<v4>` são o mesmo destino, como na sonda
+    assert CERT._normalizar_url('https://[::ffff:192.0.2.1]') == \
+           CERT._normalizar_url('https://192.0.2.1')
+
+    # nome de host continua intocado
+    assert CERT._normalizar_url('https://h.invalid:8443') == 'https://h.invalid:8443'
+
+    # e o fim da linha: duas grafias do mesmo endpoint não certificam dois
+    codigo = _rodar(monkeypatch, **_base(tmp_path / 'e.json',
+                                         EPI_IDENT_ORIGEM='A',
+                                         EPI_IDENT_MEU_IP=_IP_A,
+                                         EPI_IDENT_CORP_URL=comprimido,
+                                         EPI_IDENT_SAAS_URL=expandido))
+    assert codigo == 2, f'duas grafias do mesmo IPv6 passaram por dois backends ({codigo})'
+    assert 'MESMO endpoint' in capsys.readouterr().out
+
+
+def test_r05b_44_os_gates_do_servidor_real_nao_dependem_do_ambiente():
+    """`epi_backend.config` LEVANTA no import quando `APP_ENV`/`ENVIRONMENT` é
+    produção e não há `JWT_SECRET`. Três gates desta fatia importam `app` para
+    subir o servidor real; sem ambiente próprio eles reprovavam por causa de
+    uma variável de quem roda a suíte, não por causa do que medem.
+
+    Este gate roda os três num processo à parte, com o ambiente hostil.
+
+    O que ele NÃO afirma: que a suíte inteira sobrevive a
+    `ENVIRONMENT=production`. Não sobrevive — dez arquivos importam `app` no
+    topo do módulo e morrem na COLETA. Isso é anterior a esta fatia.
+    """
+    import os
+    import subprocess
+    import sys
+
+    if os.environ.get('EPI_R05B_SUBPROCESSO'):
+        return  # o filho não roda este gate: recursão não prova nada
+
+    alvos = [f'{Path(__file__).name}::{nome}' for nome in (
+        'test_r05b_37_a_aplicacao_nunca_devolve_403_nesta_rota',
+        'test_r05b_38_a_sonda_e_interceptada_pelo_portao_de_bootstrap',
+        'test_r05b_39_404_da_sonda_e_indistinguivel_de_rota_inexistente',
+    )]
+
+    ambiente = dict(os.environ)
+    ambiente.pop('JWT_SECRET', None)
+    ambiente['ENVIRONMENT'] = 'production'
+    ambiente['EPI_R05B_SUBPROCESSO'] = '1'
+
+    resultado = subprocess.run(
+        [sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider',
+         *[f'tests/{a}' for a in alvos]],
+        cwd=str(RAIZ), env=ambiente, capture_output=True, text=True, timeout=300)
+
+    assert resultado.returncode == 0, (
+        'os gates do servidor real dependem do ambiente de quem roda a suíte:\n'
+        + resultado.stdout[-2000:]
+    )

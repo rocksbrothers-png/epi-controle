@@ -746,3 +746,84 @@ BB-3 é a linha que importa: com a varredura anterior, o endereço plantado
 passa. Não é falha do gate — é a demonstração do estado que o achado 3
 descreve. BB-4 existe porque reescrever a varredura podia perder a cobertura
 IPv4 em silêncio.
+
+### Oitava rodada: três achados, e dois são a janela que a correção anterior deixou
+
+| | achado | gate |
+|---|---|---|
+| 1 | grafia de **IPv6** fazia um endpoint passar por dois | `R05B-43` |
+| 2 | o gate da contradição **nunca criava a contradição** que diz exercitar | `R05B-33` |
+| 3 | três gates importavam `app` dependendo do ambiente de quem roda a suíte | `R05B-44` |
+
+#### O achado 1: normalizar esquema e porta não bastava
+
+A rodada 6 corrigiu `https://host` versus `https://host:443`. Ficou de fora o
+literal: `https://[2001:db8::1]` e a forma expandida do mesmo endereço chegam ao
+mesmo socket, e a comparação de texto os tratava como **dois backends
+distintos** — deixando um deployment fornecer as duas medições obrigatórias, que
+é precisamente o que a conferência existe para impedir.
+
+E o erro tem duas direções, não uma. `partes.hostname` **remove os colchetes**:
+
+| URL | normalizava para | problema |
+|---|---|---|
+| `https://[2001:db8::1]` | `https://2001:db8::1` | ≠ da forma expandida do mesmo endereço |
+| `https://[::1]:8443` | `https://::1:8443` | **colide** com `https://[::1:8443]`, que é outro endereço |
+
+Corrigir só a canonicalização e deixar os colchetes de fora trocaria um defeito
+pelo outro. A sabotagem `BC-2` existe por isso.
+
+`::ffff:<v4>` e `<v4>` entram na mesma canonicalização — é o mesmo destino, e é
+a mesma regra que `_e_sentinela` já aplica na sonda.
+
+#### O achado 2: o gate passava porque o dublê não sabotava nada
+
+```python
+resposta['cadeia_tamanho'] = resposta['cadeia_tamanho'] + (id(resposta) % 2)
+```
+
+Em CPython os objetos são alinhados: `id(x) % 2` é **sempre 0**. As três
+repetições do SaaS saíam idênticas, `_forma` concordava, e a contradição que o
+gate diz exercitar nunca acontecia. A asserção ainda aceitava `3` junto com `1`,
+então uma regressão que tratasse medição contraditória como **pendente** — em vez
+de reprovada — passaria batido.
+
+Agora o dublê alterna por contador próprio, o gate exige **1** e exige ver
+`INCONSISTENTE` no relatório. A sabotagem `BD-b` mostra o estado anterior:
+com a mesma regressão em produção, a forma antiga do gate fica **verde**.
+
+Montar essa sabotagem custou duas tentativas. A primeira trocava o ramo inteiro
+de `_veredito` por pendente, o que atingia também o **inalcançável** — e o gate
+ficava vermelho pela primeira metade, sem dizer nada sobre a contradição. Uma
+sabotagem que não isola o mecanismo não prova o gate.
+
+#### O achado 3: `app` importado com o ambiente de quem roda a suíte
+
+`epi_backend/config.py` **levanta no import** quando `APP_ENV`/`ENVIRONMENT` é
+produção e não há `JWT_SECRET`. Três gates desta fatia importam `app` para subir
+o servidor real, e reprovariam por causa de uma variável de ambiente, não por
+causa do que medem. Agora passam por `_importar_app()`, que define o ambiente
+mínimo antes do import e restaura depois; `R05B-44` roda os três num processo à
+parte, com `ENVIRONMENT=production` e sem `JWT_SECRET`.
+
+**O que isso não afirma:** que a suíte inteira sobrevive a esse ambiente. Não
+sobrevive — dez arquivos de teste importam `app` no topo do módulo e morrem na
+**coleta**, antes de qualquer gate rodar:
+
+```
+ERROR collecting tests/test_login_bootstrap_gate.py
+E   RuntimeError: JWT_SECRET é obrigatório quando APP_ENV/ENVIRONMENT=prod|production.
+```
+
+Isso é anterior a esta fatia, está em arquivos que este PR não toca, e a
+correção pertence a `tests/conftest.py` — fora do escopo daqui.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BC-1 | grafia de IPv6 volta a não ser canonicalizada | `R05B-43` | vermelho |
+| BC-2 | os colchetes somem da autoridade | `R05B-43` | vermelho |
+| BD-a | contradição obrigatória vira PENDENTE | `R05B-33` | vermelho |
+| BD-b | a mesma regressão, com o gate na forma **antiga** | `R05B-33` | **verde** |
+| BE | o import de `app` volta a depender do ambiente | `R05B-44` | vermelho |

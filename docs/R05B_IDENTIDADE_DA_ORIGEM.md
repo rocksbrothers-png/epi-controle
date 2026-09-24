@@ -1065,20 +1065,25 @@ noutra, o mesmo endereço ocupa **dois baldes** e passa o dobro do configurado.
 A sonda normaliza antes de comparar — e é exatamente por isso que ela precisa
 **dizer** se normalizar mudou alguma coisa (`candidato_ja_canonico`).
 
-#### As duas correções de produção NÃO foram feitas, e não são minhas
+#### As correções de produção NÃO foram feitas, e não são minhas
 
-Fechar 1 e 2 de verdade exige mexer em `core/rate_limit.py`:
+Fechar 1 e 2 de verdade exige mexer em `core/rate_limit.py` — e a 13ª rodada
+acrescentou **F**, que não é nesse arquivo, mas é da mesma natureza: correção em
+produção, fora do que esta fatia pode decidir.
 
 | | correção em produção | efeito |
 |---|---|---|
 | **D** | juntar (ou recusar) instâncias repetidas de `X-Forwarded-For` | tira do cliente o controle de `cadeia[-N]` quando a borda duplica o cabeçalho |
 | **E** | canonicalizar a chave de balde | impede que duas grafias do mesmo endereço virem dois baldes |
+| **F** | limitar o TAMANHO do cabeçalho na aplicação *(13ª rodada)* | dá a P4 uma fronteira provável quando a borda não impõe nenhuma |
 
 **A autorização vigente proíbe alterar esse arquivo.** O que o instrumento faz
 agora é o que lhe cabe: **medir a função certa** e **recusar a certificação**
 quando ela diverge do que o limitador usará. Na prática isso significa que
 `HOPS=3` não fecha enquanto **D** e **E** não forem decididas — e essa é a
-conclusão honesta, não um obstáculo do instrumento.
+conclusão honesta, não um obstáculo do instrumento. A 13ª rodada acrescentou
+**F** à mesma lista pelo mesmo motivo: em borda sem limite de tamanho, P4 fica
+inconclusivo, e inconclusivo não certifica.
 
 #### 3. Teto fixo é amostra fixa, só que maior
 
@@ -1197,3 +1202,77 @@ de P3 e todas as de P4.
 
 **A sonda não mudou nesta rodada** — os sete achados eram do script. Quem já
 tiver implantado o head da 11ª rodada não precisa reimplantar.
+
+### Décima terceira rodada: a escada tinha teto, e teto é amostra
+
+Três achados. O primeiro derruba uma decisão minha da 11ª rodada — a segunda
+vez nesta fatia em que a revisão me mostra que "aprovado com ressalva impressa"
+é aprovado, e ressalva não é medição.
+
+#### 1. Sem fronteira, P4 é INCONCLUSIVO — não aprovado
+
+A 11ª rodada trocou a amostra única de P4 por uma escada
+(`TAMANHOS_DE_P4 = (1, 30, 120, 480, 1920, 7680, 30720, 122880)`), e eu declarei
+o resultado **aprovado** quando a escada chegava ao topo sem recusa, com uma
+linha no relatório dizendo "SEM fronteira imposta". A revisão apontou que isso é
+o mesmo defeito uma casa adiante: **teto fixo é amostra fixa**. A propriedade de
+P4 é sobre *toda* requisição que a aplicação aceita, e uma borda sem limite de
+tamanho aceita cadeias acima de 122880 que ninguém mediu.
+
+A revisão está certa e eu estava errado. O veredito passou a exigir fronteira:
+
+```python
+ok = (quebrou_em is None and ambigua_em is None and nao_chegou_em is None
+      and recusada_em is not None)
+```
+
+Consequência operacional, e ela é grande: **em borda sem limite de tamanho de
+cabeçalho, P4 nunca fecha, e a certificação não sai.** Fechar isso de verdade
+exige limite de tamanho na *aplicação* — decisão do autor, não autorizada aqui,
+registrada como decisão **F** na tabela de correções de produção da 11ª rodada,
+ao lado de **D** e **E**. Ela não é em `core/rate_limit.py` — é um limite de
+tamanho de cabeçalho na aplicação —, mas é decisão do autor pelo mesmo motivo.
+
+#### 2. O motivo do veredito mentia no caso novo
+
+Consequência que eu mesmo introduzi: com `p4` em falso por falta de fronteira, o
+veredito imprimia `P4 falso: a janela confiável não sobreviveu à cadeia longa` —
+e o sufixo **sobreviveu** em todos os tamanhos medidos. Quem lesse essa frase
+iria caçar uma borda que trunca e não acharia nada. Os dois desfechos agora têm
+frases distintas, e `R05B-59` prova que continuam distintos.
+
+#### 3. Arquivo de compromisso ilegível virava traceback
+
+`UnicodeDecodeError` **não** é subclasse de `JSONDecodeError`: um byte corrompido
+na transferência do estado entre as duas máquinas escapava da captura e saía como
+traceback com status 1 — o mesmo status de *propriedade reprovada*. O operador
+leria "a borda falhou em P1/P2/P4" quando o que houve foi um arquivo ilegível.
+Agora arquivo ilegível é **estado ausente**, que já tem caminho controlado, e
+`R05B-60` prova que os dois desfechos terminam iguais.
+
+#### 4. `render.yaml`: não mudou, e por quê
+
+A revisão repetiu, agora como P1, o pedido de tirar o `3` do blueprint. Continua
+valendo a decisão do autor registrada na quinta rodada (achado 1): o valor está
+no arquivo como
+**contrato documentado**, não aplicado — `RATE_LIMIT_TRUSTED_PROXY_HOPS`
+permanece `0` no painel, e é o painel que vale. Mudar o arquivo é decisão do
+autor, e esta fatia não a toma.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BV | escada sem recusa volta a certificar P4 | `R05B-59` | vermelho |
+| BV-b | a borda **com** fronteira continua aprovando | `R05B-53` | verde |
+| BW | estado ilegível volta a virar traceback | `R05B-60` | vermelho |
+| BX | os dois desfechos de P4 voltam à mesma frase | `R05B-59` | vermelho |
+
+`BV-b` existe porque uma varredura que reprovasse **sempre** deixaria `R05B-59`
+verde pelo motivo errado: ela prova que a regra distingue borda limitada de borda
+aberta, em vez de só reprovar tudo.
+
+#### Sem novo redeploy
+
+**A sonda não mudou nesta rodada** — os três achados são do script de operador.
+Quem já tiver implantado o head da 11ª rodada não precisa reimplantar.

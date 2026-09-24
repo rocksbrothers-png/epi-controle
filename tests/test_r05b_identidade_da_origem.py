@@ -706,7 +706,8 @@ def _resposta(hops=3, **sobrescreve):
     return base
 
 
-def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
+def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False,
+                 borda=1920):
     """Uma borda ideal: P1 sempre bate, P4 sempre preserva, nada contaminado.
 
     Serve para provar que o veredito reprova pelos motivos ESTRUTURAIS — vínculo
@@ -717,6 +718,14 @@ def _sonda_falsa(cf='substituida', tc='substituida', alt_contradiz=False):
     def falso(base_url, chave, hops, *, xff=None, cf_=None, tc_=None,
               reivindicacao='', alternativa='', **resto):
         contador['n'] += 1
+        # Borda REAL recusa cabeçalho grande demais — nginx com
+        # `large_client_header_buffers` padrão para por volta de 1920
+        # elementos. Sem essa recusa não existe fronteira, e desde a 13ª
+        # rodada P4 sem fronteira é INCONCLUSIVO, não aprovado.
+        if borda is not None and xff is not None and xff.count(',') + 1 > borda:
+            erro = CERT.NaoAlcancado('HTTP 431 em /api/…')
+            erro.http = 431
+            raise erro
         cabecalho_cf = resto.get('cf', cf_)
         cabecalho_tc = resto.get('tc', tc_)
         if alt_contradiz and 'alternativo' in base_url:
@@ -2468,14 +2477,16 @@ def test_r05b_53_a_varredura_sobe_ate_a_borda_recusar(monkeypatch, tmp_path, cap
         'dele passaria batido'
     )
 
-    # sem recusa nenhuma: o relatório precisa DIZER que não há fronteira
+    # Borda REAL: recusa por tamanho em algum ponto. A varredura tem de
+    # ENCONTRAR essa fronteira e dizer onde ela está.
     assert _rodar(monkeypatch, **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
                                        EPI_IDENT_MEU_IP=_IP_A)) == 3
     saida = ' '.join(capsys.readouterr().out.split())
-    assert 'SEM fronteira imposta' in saida, (
-        'a ausência de fronteira ficou invisível: "até N elementos" sozinho '
-        'esconde que nada limita o cabeçalho'
+    assert 'RECUSOU' in saida and '(fronteira)' in saida, (
+        'a varredura não registrou a fronteira que a borda impôs: sem ela o '
+        'relatório não diz até onde o veredito de P4 vale'
     )
+    assert 'P4 sufixo preservado ......... true' in saida
 
 
 def test_r05b_54_recusa_isolada_nao_vira_fronteira(monkeypatch, tmp_path, capsys):
@@ -2679,4 +2690,122 @@ def test_r05b_58_tres_buracos_de_borda_do_veredito(monkeypatch, tmp_path, capsys
     assert 'ALERTA P3: o cliente CONTROLA CF-Connecting-IP' in saida, (
         'o alternativo que RESPONDE ficou fora do resumo: o relatório termina '
         'dizendo que nenhum cabeçalho sobreviveu'
+    )
+
+
+def test_r05b_59_sem_fronteira_p4_e_inconclusivo(monkeypatch, tmp_path, capsys):
+    """Teto fixo é amostra fixa, só que maior.
+
+    A 11ª rodada trocou a amostra única de P4 por uma escada e eu declarei o
+    resultado APROVADO quando a escada chegava ao topo sem recusa — "aprovado
+    com ressalva impressa". A revisão está certa e eu estava errado: a
+    propriedade de P4 é sobre TODA requisição que a aplicação aceita, e uma
+    borda sem limite de tamanho aceita cadeias acima de 122880 que ninguém
+    mediu. Sem fronteira, a faixa testada não tem topo provado.
+
+    Este gate fixa a inversão: com uma borda que aceita TUDO, P4 não pode sair
+    aprovado nem o veredito pode certificar.
+    """
+    if CERT is None:
+        return
+
+    # `borda=None`: nenhum tamanho é recusado, exatamente o caso em que a
+    # versão anterior devolvia `ok=True`. Status 1 é PROPRIEDADE REPROVADA —
+    # com P4 em falso a execução nem chega a gravar compromisso (3).
+    codigo = _rodar(monkeypatch, sonda=_sonda_falsa(borda=None),
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    assert codigo == 1, (
+        f'P4 saiu aprovado sem nenhuma fronteira medida (status {codigo}): a '
+        f'escada parou no teto do SCRIPT, nenhuma borda recusou nada, e a '
+        f'execução seguiu para gravar compromisso como se a propriedade '
+        f'estivesse provada acima de {max(CERT.TAMANHOS_DE_P4)} elementos'
+    )
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'P4 sufixo preservado ......... FALSE' in saida, (
+        'o relatório chamou de propriedade satisfeita uma escada que nenhuma '
+        'borda recusou'
+    )
+    assert 'INCONCLUSIVO: nenhuma fronteira foi encontrada' in saida, (
+        'a ausência de fronteira ficou invisível: "até N elementos" sozinho '
+        'esconde que nada prova o comportamento acima de N'
+    )
+
+    # E o veredito recusa por P4 dizendo O QUE aconteceu. "Não sobreviveu"
+    # aqui seria mentira: o sufixo sobreviveu em todos os tamanhos medidos —
+    # o que faltou foi fronteira. Quem lê a frase errada vai caçar uma borda
+    # que trunca e não vai achar nada.
+    ok, pendente, motivo = CERT._veredito(_alvo(p4=False), True)
+    assert not ok and not pendente
+    assert 'P4 INCONCLUSIVO' in motivo and 'não recusou nenhum tamanho' in motivo, (
+        f'o veredito sem fronteira descreveu o desfecho errado: {motivo!r}'
+    )
+    # E o desfecho REALMENTE diferente continua com a frase dele.
+    quebrado = _alvo(p4=False)
+    quebrado.p4_quebrou_em = 480
+    assert 'P4 falso' in CERT._veredito(quebrado, True)[2], (
+        'truncamento real e ausência de fronteira passaram a sair com a mesma '
+        'frase: aí o motivo não diz mais o que medir em seguida'
+    )
+
+    # A função de varredura é onde a regra vive: com recusa, aprova; sem
+    # recusa, não. Sem esta metade o gate passaria por uma varredura que
+    # reprovasse SEMPRE.
+    comum = {'base_url': 'https://x.invalid', 'chave': 'k', 'hops': 3}
+    monkeypatch.setattr(CERT, '_sondar', _sonda_falsa())
+    com_borda = CERT._varrer_p4(comum, _IP_A)
+    assert com_borda[0] is True and com_borda[3] is not None, (
+        'a varredura passou a reprovar mesmo COM fronteira medida: aí ela não '
+        'distingue borda limitada de borda aberta, só reprova tudo'
+    )
+    monkeypatch.setattr(CERT, '_sondar', _sonda_falsa(borda=None))
+    sem_borda = CERT._varrer_p4(comum, _IP_A)
+    assert sem_borda[0] is False and sem_borda[3] is None
+
+
+def test_r05b_60_estado_ilegivel_nao_vira_traceback(monkeypatch, tmp_path, capsys):
+    """O arquivo de compromisso atravessa máquinas — e chega corrompido.
+
+    `read_text(encoding='utf-8')` levanta `UnicodeDecodeError` em byte inválido,
+    e `UnicodeDecodeError` NÃO é subclasse de `JSONDecodeError`: a captura
+    anterior não pegava. Saía traceback com status 1, o mesmo status de
+    propriedade REPROVADA — o operador leria "a borda falhou em P1/P2/P4"
+    quando o que houve foi um arquivo ilegível.
+    """
+    if CERT is None:
+        return
+
+    caminho = tmp_path / 'corrompido.json'
+    # Byte 0x80 não é UTF-8 válido em nenhuma posição.
+    caminho.write_bytes(b'{"origem": "A", "hops": 3, "sal": "\x80"}')
+
+    _env(monkeypatch, **_base(caminho))
+    # A leitura devolve ausência de estado, que já tem caminho controlado.
+    assert CERT._ler_estado() is None, (
+        'arquivo ilegível não virou estado ausente: a exceção sobe até o topo '
+        'e vira traceback'
+    )
+
+    # E o programa inteiro termina por um caminho com MENSAGEM, nunca por
+    # exceção: o mesmo desfecho do arquivo que não existe. A conflação é
+    # deliberada — o script não conserta o arquivo, e "ilegível" e "ausente"
+    # querem dizer a mesma coisa para o operador: o compromisso da primeira
+    # origem não está aqui. O que não pode é terminar em traceback.
+    ilegivel = _rodar(monkeypatch, **_base(caminho, EPI_IDENT_ORIGEM='B',
+                                           EPI_IDENT_MEU_IP=_IP_B,
+                                           EPI_IDENT_IP_ANTERIOR=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'RESULTADO:' in saida, (
+        'estado ilegível não produziu veredito nenhum: a exceção subiu antes '
+        'do relatório e o operador recebeu traceback'
+    )
+
+    ausente = _rodar(monkeypatch, **_base(tmp_path / 'nao-existe.json',
+                                          EPI_IDENT_ORIGEM='B',
+                                          EPI_IDENT_MEU_IP=_IP_B,
+                                          EPI_IDENT_IP_ANTERIOR=_IP_A))
+    capsys.readouterr()
+    assert ilegivel == ausente, (
+        f'ilegível ({ilegivel}) e ausente ({ausente}) divergiram: um dos dois '
+        f'saiu por caminho não controlado'
     )

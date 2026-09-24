@@ -611,7 +611,8 @@ def _confirmar_recusa(comum: dict, meu_ip: str, tamanho: int) -> None:
 def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
     """P4 em vários tamanhos de cadeia, procurando a fronteira.
 
-    Devolve `(ok, maior_testado, quebrou_em, recusada_em)`.
+    Devolve `(ok, maior_testado, quebrou_em, recusada_em, ambigua_em,
+    nao_chegou_em, amostras)`.
 
     Uma amostra única não sustenta veredito de produção: a preservação pode
     valer em 30 elementos e quebrar em 300, e aí `cadeia[-N]` cai em dado do
@@ -656,7 +657,16 @@ def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
             nao_chegou_em = tamanho
             break
         maior_testado = tamanho
-    ok = (quebrou_em is None and ambigua_em is None and nao_chegou_em is None)
+    # Sem RECUSA, a faixa testada não tem topo provado, e a propriedade de P4 é
+    # sobre TODA requisição que a aplicação aceita. A 11ª rodada trocou a
+    # amostra fixa por uma escada com teto e eu declarei isso aprovado com
+    # ressalva — era o mesmo erro uma casa adiante, e a revisão está certa:
+    # teto fixo é amostra fixa. Sem fronteira, o resultado é INCONCLUSIVO.
+    #
+    # Fechar isso de verdade exige limite de tamanho na APLICAÇÃO, que é
+    # decisão do autor e não está autorizada aqui.
+    ok = (quebrou_em is None and ambigua_em is None and nao_chegou_em is None
+          and recusada_em is not None)
     return ok, maior_testado, quebrou_em, recusada_em, ambigua_em, nao_chegou_em, amostras
 
 
@@ -859,7 +869,12 @@ def _ler_estado():
     caminho = _caminho_do_estado()
     try:
         dados = json.loads(caminho.read_text(encoding='utf-8'))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        # `UnicodeDecodeError` não é subclasse de `JSONDecodeError`: um byte
+        # corrompido na transferência entre as duas máquinas saía como
+        # traceback com status 1 — o mesmo de propriedade reprovada. Arquivo
+        # ilegível é estado ausente, que já tem caminho controlado. Achado de
+        # revisão. `ValueError` cobre o resto da família de decodificação.
         return None
     if not isinstance(dados, dict):
         return None
@@ -1025,9 +1040,10 @@ def _relatar(alvo: Alvo, tem_anterior: bool) -> None:
     elif alvo.p4_recusada_em:
         detalhe += f'; a borda RECUSOU {alvo.p4_recusada_em} (fronteira)'
     else:
-        # Sem recusa até o teto: a propriedade vale na faixa testada e NÃO há
-        # fronteira imposta. Dizer só "até N" esconderia isso.
-        detalhe += ' — SEM fronteira imposta: nada limita o cabeçalho'
+        # Sem recusa até o teto: a faixa testada não tem topo provado, e P4 não
+        # é aprovado — é INCONCLUSIVO. Dizer só "até N" esconderia isso.
+        detalhe += (' — INCONCLUSIVO: nenhuma fronteira foi encontrada, então '
+                    'nada prova o comportamento acima deste tamanho')
     print(f'       cadeia do cliente ......... {detalhe}')
     print(f'       candidato é do cliente .... {_rotulo(alvo.candidato_do_cliente)}'
           '   (precisa ser FALSE)')
@@ -1065,6 +1081,20 @@ def _veredito(alvo: Alvo, tem_anterior: bool) -> tuple:
     if alvo.candidato_do_cliente is not False:
         return False, False, 'o elemento selecionado veio do cliente'
     if alvo.p4 is not True:
+        # DOIS desfechos diferentes moram em `p4 is not True`, e dizer "não
+        # sobreviveu" nos dois mente num deles: quando a escada chega ao topo
+        # sem recusa, o sufixo sobreviveu em TODOS os tamanhos medidos — o que
+        # falta é FRONTEIRA. O operador que lê "não sobreviveu" vai procurar
+        # uma borda que trunca e não vai achar nada. Achado da 13ª rodada,
+        # consequência de tornar a ausência de fronteira reprovável.
+        if (alvo.p4_quebrou_em is None and alvo.p4_ambigua_em is None
+                and alvo.p4_nao_chegou_em is None and alvo.p4_recusada_em is None):
+            return False, False, (
+                f'P4 INCONCLUSIVO: o sufixo sobreviveu até {alvo.p4_maior_testado} '
+                f'elementos e a borda não recusou nenhum tamanho — sem fronteira, '
+                f'nada mediu o que acontece acima disso, e P4 vale para TODA '
+                f'requisição que a aplicação aceita'
+            )
         return False, False, 'P4 falso: a janela confiável não sobreviveu à cadeia longa'
     if not tem_anterior:
         return False, True, 'falta a segunda origem'

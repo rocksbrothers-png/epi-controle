@@ -58,6 +58,26 @@ import os
 # do cliente — é isso que o torna sentinela.
 REDE_SENTINELA = ipaddress.ip_network('192.0.2.0/24')
 
+#: SEGUNDA classe de sentinela, usada SÓ em P3.
+#:
+#: Uma borda que higienize por FAIXA — descarta o que é de documentação e
+#: repassa o que parece endereço público — devolveria `substituida` para um
+#: sentinela de `192.0.2.0/24` e mesmo assim deixaria o cliente escrever o
+#: cabeçalho com um valor de forma pública. A classificação diria "a borda
+#: escreve isto" onde a verdade é "a borda descarta ISTO". Achado de revisão.
+#:
+#: CGNAT (RFC 6598) não é faixa de documentação e passa por validadores que só
+#: conhecem RFC 5737 — então separa os dois comportamentos. Não fecha o caso
+#: geral: uma borda que higienize tudo que não é global continuaria
+#: classificada como `substituida`. Essa limitação está registrada no §7 do
+#: contrato.
+#:
+#: Fica FORA de `_e_sentinela` de propósito. Aquela função alimenta as guardas
+#: de contaminação, e endereço CGNAT aparece de verdade em cadeia de operadora
+#: móvel — contá-lo como sentinela ali reprovaria P1 numa medição legítima
+#: feita de 4G, que é justamente a segunda origem que o roteiro sugere.
+REDES_SENTINELA_P3 = (REDE_SENTINELA, ipaddress.ip_network('100.64.0.0/10'))
+
 #: Vocabulário fechado das classificações de cabeçalho (P3).
 CLASSES_DE_CABECALHO = ('ausente', 'sentinela_sobrevive', 'substituida')
 
@@ -156,6 +176,21 @@ def _e_sentinela(valor: str) -> bool:
     return endereco in REDE_SENTINELA
 
 
+def _e_sentinela_p3(valor: str) -> bool:
+    """O valor é sentinela de QUALQUER uma das classes de P3?
+
+    Só P3 usa as duas classes; as guardas de contaminação continuam com
+    `_e_sentinela`, e o comentário de `REDES_SENTINELA_P3` diz por quê.
+    """
+    try:
+        endereco = ipaddress.ip_address(str(valor).strip())
+    except ValueError:
+        return False
+    if endereco.version == 6 and endereco.ipv4_mapped is not None:
+        endereco = endereco.ipv4_mapped
+    return any(endereco in rede for rede in REDES_SENTINELA_P3)
+
+
 def _normalizar(valor: str) -> str:
     """Forma canônica para comparar endereços sem depender de grafia.
 
@@ -208,7 +243,10 @@ def _classe_do_cabecalho(handler, nome: str) -> str:
     if not valor:
         return 'ausente'
     elementos = [parte.strip() for parte in valor.split(',') if parte.strip()]
-    if any(_e_sentinela(elemento) for elemento in elementos):
+    # `_e_sentinela_p3`, não `_e_sentinela`: aqui valem as DUAS classes, e a
+    # razão de elas não valerem nas guardas de contaminação está em
+    # `REDES_SENTINELA_P3`.
+    if any(_e_sentinela_p3(elemento) for elemento in elementos):
         return 'sentinela_sobrevive'
     return 'substituida'
 

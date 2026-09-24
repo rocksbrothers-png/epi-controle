@@ -909,3 +909,113 @@ redescoberta.
 | BF-3 | as duas — o **segredo volta ao relatório** | `R05B-45` | vermelho, acusando o vazamento |
 | BG-1 | a primeira origem para de mandar mover | `R05B-46` | vermelho |
 | BG-2 | o fechamento volta a prometer o que não alcança | `R05B-46` | vermelho |
+
+### Décima rodada: quatro ataques à VALIDADE da medição
+
+As nove rodadas anteriores acharam defeito no instrumento. Esta achou defeito
+no **desenho da medição** — um instrumento que roda certo e mede a coisa errada
+certifica com a mesma confiança.
+
+| | achado | gate |
+|---|---|---|
+| 1 | P4 media um tamanho fixo e concluía sobre produção | `R05B-47` |
+| 2 | P3 inferia confiança de sentinela **só de documentação** | `R05B-48` |
+| 3 | o P3 da primeira origem sumia do veredito final | `R05B-49` |
+| 4 | a evidência da primeira origem não tinha instante | `R05B-50` |
+
+#### 1. Uma amostra não é uma fronteira
+
+O controle de P4 mandava 30 elementos e concluía "o sufixo é preservado". Uma
+borda que preserve em 30 e trunque em 120 passava — e `cadeia[-N]` continuava
+podendo cair em dado do cliente numa requisição maior, que a aplicação aceita
+igual. **Nada na aplicação limita o tamanho do `X-Forwarded-For`.**
+
+Agora o controle **varre** `(1, 30, 120, 480)` e procura a fronteira:
+
+| observação | conclusão | resultado |
+|---|---|---|
+| preserva em todos | P4 vale **até o maior tamanho testado**, e o relatório diz qual | segue |
+| quebra em algum | P4 reprova e o relatório **nomeia o tamanho** | reprova |
+| a borda **recusa** com status de tamanho (400/413/414/431/494) | fronteira segura: acima dela o cliente não consegue nem enviar | segue, e registra |
+
+A distinção entre **recusa por status** e **falha de rede** é o ponto delicado:
+um timeout num tamanho maior não é evidência de limite seguro, e continua
+abortando a medição como "não executado". A sabotagem `BH-2` prova isso.
+
+#### 2. O sentinela de documentação não separa dois comportamentos diferentes
+
+P3 mandava `192.0.2.10` e concluía `substituida` quando o valor não voltava. Mas
+uma borda que **higieniza por faixa** — descarta documentação, repassa o que
+parece endereço público — produz exatamente essa observação **e mesmo assim
+deixa o cliente escrever o cabeçalho**. A classificação dizia "a borda escreve
+isto" onde a verdade é "a borda descarta ISTO".
+
+Agora cada cabeçalho é sondado com **duas** classes de sentinela — documentação
+(RFC 5737) e CGNAT (RFC 6598) — e a classificação que vale é a mais
+conservadora: `substituida` exige **unanimidade**, porque é a única que licencia
+adotar o cabeçalho.
+
+**Limitação que fica:** uma borda que higienize tudo que não é global e ainda
+assim repasse um valor de forma pública continua sendo classificada como
+`substituida`. Fechar isso exigiria um sentinela de forma pública — ou seja, o
+endereço real de alguém —, que é justamente o que `R05B-10` proíbe gravar nesta
+fatia. **Decisão do autor:** acrescentar `inconclusiva` ao vocabulário do
+contrato mudaria o bloco e o digesto, e não faço isso sem autorização.
+
+Um detalhe que não é óbvio: a segunda classe entra **só em P3**. As guardas de
+contaminação continuam com documentação apenas, porque endereço CGNAT aparece de
+verdade em cadeia de operadora móvel — contá-lo como sentinela ali reprovaria P1
+numa medição legítima feita de 4G, que é exatamente a segunda origem que o
+roteiro sugere. A sabotagem `BI-2` trava essa separação.
+
+#### 3. O que a primeira origem viu tem de sobreviver até o veredito
+
+O tratamento de cabeçalho pode variar por rota: a origem A pode observar
+`sentinela_sobrevive` e a B, `substituida`. O estado carregado guardava só P1 e
+URLs, então o relatório final da segunda origem não tinha **traço** do resultado
+inseguro de A — e o operador fecharia o contrato adotando um cabeçalho que o
+cliente controla na outra rota.
+
+O compromisso agora carrega a classificação de P3 da primeira origem, o
+relatório final a mostra, e **sobreviver em qualquer uma das duas origens**
+torna o cabeçalho não adotável.
+
+#### 4. A idade da evidência estava invisível
+
+O compromisso não tinha instante. Medir a origem B semanas depois — com outro
+deployment ou outra topologia — era aceito desde que URL e `hops` batessem, e o
+relatório não dizia nada sobre isso.
+
+O compromisso agora grava o instante e o relatório final imprime a idade da
+evidência, com o alerta de que medições de topologias diferentes não são
+comparáveis. **O script não expira nada**: prazo de validade obriga as duas
+origens a serem medidas dentro da janela, e elas são, por desenho, em redes
+diferentes e possivelmente em dias diferentes. Isso muda o procedimento humano,
+e é **decisão do autor** — levada a ele junto com a alternativa melhor: amarrar
+as duas execuções à mesma revisão implantada, em vez de a um prazo.
+
+O relógio para trás não vira "0 min": a idade negativa aparece como sintoma no
+relatório, porque uma das máquinas está com a hora errada.
+
+#### Consequência operacional
+
+A sonda mudou (`_e_sentinela_p3`), então **os dois serviços precisam ser
+reimplantados** antes da próxima medição. A medição também passou a fazer mais
+requisições por backend — quatro controles de P3 e até quatro de P4, além de P1.
+
+#### Sabotagens da rodada
+
+| | sabotagem | gate | resultado |
+|---|---|---|---|
+| BH-1a | a constante volta à amostra fixa de 30 | `R05B-47` | vermelho |
+| BH-1b | a varredura para no primeiro tamanho | `R05B-47` | vermelho |
+| BH-2 | qualquer erro vira "fronteira segura" | `R05B-47` | vermelho |
+| BI-1 | P3 volta a uma classe de sentinela só | `R05B-48` | vermelho |
+| BI-2 | CGNAT entra nas guardas de contaminação | `R05B-48` | vermelho |
+| BJ | o P3 da primeira origem some do veredito | `R05B-49` | vermelho |
+| BK | a idade da evidência some do relatório | `R05B-50` | vermelho |
+
+O harness desta rodada confere **qual** asserção falhou: sabotagem que deixa o
+gate vermelho pelo motivo errado não prova nada. `BH-1a` e `BH-1b` existem
+separadas por isso — a primeira derruba a guarda estrutural, a segunda derruba
+a varredura de verdade.

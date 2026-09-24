@@ -91,6 +91,7 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import datetime
 import json
 import os
 import secrets
@@ -108,7 +109,44 @@ REPETICOES = 3
 # infraestrutura real. Serve de sentinela justamente por isso.
 SENTINELA_CF = '192.0.2.10'
 SENTINELA_TC = '192.0.2.11'
-CADEIA_LONGA = ', '.join(f'192.0.2.{n}' for n in range(20, 50))  # 30 elementos
+
+#: SEGUNDA classe de sentinela para P3 (RFC 6598, CGNAT).
+#:
+#: Uma borda que higienize por FAIXA — descarta documentação, repassa o que
+#: parece endereço público — devolve `substituida` para o sentinela de
+#: documentação e ainda assim deixa o cliente escrever o cabeçalho. A
+#: classificação diria "a borda escreve isto" onde a verdade é "a borda
+#: descarta ISTO". Achado de revisão.
+#:
+#: CGNAT não é faixa de documentação e passa por validador que só conhece
+#: RFC 5737, então separa os dois comportamentos. NÃO fecha o caso geral: uma
+#: borda que higienize tudo que não é global continua sendo classificada como
+#: `substituida`. Limitação registrada no §7 do contrato.
+SENTINELA_CF_CGNAT = '100.64.0.10'
+SENTINELA_TC_CGNAT = '100.64.0.11'
+
+#: Tamanhos da cadeia do cliente no controle de P4.
+#:
+#: Uma amostra fixa de 30 elementos não sustenta veredito de PRODUÇÃO: uma
+#: borda que preserve o sufixo em 30 e trunque em 300 passaria por P4 e ainda
+#: deixaria `cadeia[-N]` cair em dado do cliente numa requisição maior — e
+#: nada na aplicação limita o tamanho do `X-Forwarded-For`. Achado de revisão.
+#:
+#: A varredura procura a FRONTEIRA. Se algum tamanho quebrar a preservação, P4
+#: reprova e o relatório nomeia o tamanho. Se a borda RECUSAR o tamanho com
+#: status HTTP, isso é fronteira segura: acima dela o cliente não consegue nem
+#: enviar a cadeia. Recusa por status é evidência; falha de rede não é, e
+#: continua abortando a medição.
+TAMANHOS_DE_P4 = (1, 30, 120, 480)
+
+#: Status que significam "a requisição é grande/malformada demais". Só estes
+#: contam como fronteira; qualquer outro erro volta a ser falha de alcance.
+STATUS_DE_RECUSA_POR_TAMANHO = (400, 413, 414, 431, 494)
+
+
+def _cadeia_de(tamanho: int) -> str:
+    """Cadeia de cliente com `tamanho` elementos, toda de TEST-NET-1."""
+    return ', '.join(f'192.0.2.{20 + (n % 200)}' for n in range(tamanho))
 
 #: Campos cuja divergência entre repetições invalida a medição.
 #:
@@ -161,7 +199,7 @@ CLASSES_VALIDAS = ('ausente', 'sentinela_sobrevive', 'substituida')
 #: propósito: não entra em commit por acidente, e o gate que varre endereços
 #: reais nas superfícies da fatia continua valendo.
 ESTADO_PADRAO = Path.home() / '.r05b_origem_anterior.json'
-VERSAO_DO_ESTADO = 1
+VERSAO_DO_ESTADO = 2
 
 
 #: Cabeçalhos de RESPOSTA que identificam a camada que recusou. Lista fechada:
@@ -227,7 +265,14 @@ def _diagnostico_do_erro(erro) -> str:
 
 
 class NaoAlcancado(Exception):
-    """Não deu para medir. Diferente de medir e reprovar."""
+    """Não deu para medir. Diferente de medir e reprovar.
+
+    `http` guarda o status quando a borda RESPONDEU recusando. A varredura de
+    P4 precisa distinguir "a borda recusou este tamanho" — que é fronteira
+    medida, e segura — de "a rede falhou", que não é evidência de nada.
+    """
+
+    http = None
 
 
 class Inconsistente(Exception):
@@ -319,11 +364,15 @@ def _sondar(base_url: str, chave: str, hops: int, *, xff=None, cf=None,
             return dados
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            raise NaoAlcancado(
+            erro = NaoAlcancado(
                 'sonda desligada ou ausente (404) — o serviço precisa estar '
                 'rodando a versão com a sonda E ter PROXY_CHAIN_PROBE_KEY'
-            ) from e
-        raise NaoAlcancado(_diagnostico_do_erro(e)) from e
+            )
+            erro.http = e.code
+            raise erro from e
+        erro = NaoAlcancado(_diagnostico_do_erro(e))
+        erro.http = e.code
+        raise erro from e
     except json.JSONDecodeError as e:
         raise NaoAlcancado('resposta não é JSON — este host serve a API?') from e
     except NaoAlcancado:
@@ -480,12 +529,63 @@ class Alvo:
         self.anterior_ligado = None
         self.p3_cf = None
         self.p3_tc = None
+        self.p4_maior_testado = 0
+        self.p4_quebrou_em = None
+        self.p4_recusada_em = None
         self.p4 = None
         self.candidato_do_cliente = None
 
     @property
     def configurado(self) -> bool:
         return bool(self.url and self.chave)
+
+
+#: Precedência entre classificações de P3, da mais conservadora para a que
+#: licencia adoção. `substituida` é a ÚNICA que diz "a borda escreve este
+#: cabeçalho", então só vale por unanimidade: qualquer outra observação vence.
+PRECEDENCIA_P3 = ('sentinela_sobrevive', 'ausente', 'substituida')
+
+
+def _classe_conservadora(*classes) -> str:
+    """A classificação que menos licencia adotar o cabeçalho."""
+    vistas = [c for c in classes if c]
+    if not vistas:
+        return None
+    for classe in PRECEDENCIA_P3:
+        if classe in vistas:
+            return classe
+    return vistas[0]
+
+
+def _varrer_p4(comum: dict, meu_ip: str) -> tuple:
+    """P4 em vários tamanhos de cadeia, procurando a fronteira.
+
+    Devolve `(ok, maior_testado, quebrou_em, recusada_em)`.
+
+    Uma amostra única não sustenta veredito de produção: a preservação pode
+    valer em 30 elementos e quebrar em 300, e aí `cadeia[-N]` cai em dado do
+    cliente numa requisição que a aplicação aceita do mesmo jeito.
+    """
+    maior_testado, quebrou_em, recusada_em = 0, None, None
+    for tamanho in TAMANHOS_DE_P4:
+        try:
+            amostra = _controle(f'P4 (cadeia de {tamanho})', **comum,
+                                xff=_cadeia_de(tamanho), reivindicacao=meu_ip)
+        except NaoAlcancado as e:
+            # Recusa POR STATUS é fronteira medida: acima dela o cliente não
+            # consegue nem enviar a cadeia. Falha de rede não é evidência de
+            # nada e continua abortando a medição.
+            if e.http in STATUS_DE_RECUSA_POR_TAMANHO and maior_testado:
+                recusada_em = tamanho
+                break
+            raise
+        maior_testado = tamanho
+        if not (amostra.get('sufixo_confiavel_preservado')
+                and not amostra.get('candidato_e_do_cliente')
+                and amostra.get('candidato_bate_com_origem_declarada') is True):
+            quebrou_em = tamanho
+            break
+    return quebrou_em is None, maior_testado, quebrou_em, recusada_em
 
 
 def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
@@ -497,16 +597,24 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
         identidade = _controle('P1 (identidade)', **comum,
                                reivindicacao=meu_ip, alternativa=ip_anterior)
 
-        cf = _controle('P3 (CF-Connecting-IP)', **comum, cf=SENTINELA_CF)
-        tc = _controle('P3 (True-Client-IP)', **comum, tc=SENTINELA_TC)
+        # P3 com as DUAS classes de sentinela. Uma borda que higienize só as
+        # faixas de documentação devolveria `substituida` para o sentinela de
+        # RFC 5737 e deixaria o cliente controlar o cabeçalho assim mesmo.
+        cf_doc = _controle('P3 (CF-Connecting-IP, documentação)',
+                           **comum, cf=SENTINELA_CF)
+        cf_cgnat = _controle('P3 (CF-Connecting-IP, CGNAT)',
+                             **comum, cf=SENTINELA_CF_CGNAT)
+        tc_doc = _controle('P3 (True-Client-IP, documentação)',
+                           **comum, tc=SENTINELA_TC)
+        tc_cgnat = _controle('P3 (True-Client-IP, CGNAT)',
+                             **comum, tc=SENTINELA_TC_CGNAT)
         # P4 declara a origem TAMBÉM. Sem isso, o controle só perguntava se o
         # sufixo sobreviveu — e `cadeia[-N]` podia ter virado um proxy
         # compartilhado na rota com cadeia longa, sem sentinela nenhuma. P1
         # passaria na rota sem cabeçalho, P4 passaria com outro candidato, e a
         # certificação sairia com as requisições de cadeia longa colapsando num
         # balde só. É a distinção B/C do §4, dentro do próprio controle.
-        longa = _controle('P4 (cadeia longa)', **comum, xff=CADEIA_LONGA,
-                          reivindicacao=meu_ip)
+        p4_ok, p4_maior, p4_quebrou, p4_recusa = _varrer_p4(comum, meu_ip)
     except NaoAlcancado as e:
         alvo.motivo = str(e)
         return
@@ -529,11 +637,17 @@ def medir(alvo: Alvo, hops: int, meu_ip: str, ip_anterior: str) -> None:
         or identidade.get('reivindicacao_fora_do_candidato')
     )
 
-    alvo.p3_cf = cf.get('cf_connecting_ip')
-    alvo.p3_tc = tc.get('true_client_ip')
-    alvo.p4 = bool(longa.get('sufixo_confiavel_preservado')
-                   and not longa.get('candidato_e_do_cliente')
-                   and longa.get('candidato_bate_com_origem_declarada') is True)
+    # A classificação que vale é a MAIS CONSERVADORA entre as duas classes:
+    # `substituida` é a única que licencia adotar o cabeçalho, então exige
+    # unanimidade.
+    alvo.p3_cf = _classe_conservadora(cf_doc.get('cf_connecting_ip'),
+                                      cf_cgnat.get('cf_connecting_ip'))
+    alvo.p3_tc = _classe_conservadora(tc_doc.get('true_client_ip'),
+                                      tc_cgnat.get('true_client_ip'))
+    alvo.p4 = p4_ok
+    alvo.p4_maior_testado = p4_maior
+    alvo.p4_quebrou_em = p4_quebrou
+    alvo.p4_recusada_em = p4_recusa
 
 
 def _caminho_do_estado() -> Path:
@@ -596,7 +710,7 @@ def _normalizar_url(url: str) -> str:
 
 
 def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list,
-                   urls: dict) -> Path:
+                   urls: dict, p3: dict = None) -> Path:
     """Compromisso da primeira origem. Só é chamado com P1 limpo.
 
     Guarda o que a segunda execução precisa para PROVAR que o endereço
@@ -617,6 +731,16 @@ def _gravar_estado(origem: str, hops: int, meu_ip: str, nomes_ok: list,
         # P2 de outro. Achado de revisão. As URLs já saem no relatório, então
         # guardá-las aqui não acrescenta exposição.
         'urls': {nome: _normalizar_url(url) for nome, url in urls.items()},
+        # P3 da PRIMEIRA origem. Sem isto, um `sentinela_sobrevive` observado
+        # em A desaparecia do relatório final: a segunda execução só mostrava a
+        # classificação dela, e o operador podia fechar o contrato adotando um
+        # cabeçalho que o cliente controla na outra rota. Achado de revisão.
+        'p3': dict(p3 or {}),
+        # Instante da medição. Não expira nada por conta própria — o prazo é
+        # decisão do autor —, mas deixa a IDADE da evidência visível no
+        # relatório em vez de invisível. Achado de revisão.
+        'instante': datetime.datetime.now(datetime.timezone.utc)
+                            .replace(microsecond=0).isoformat(),
     }, indent=2), encoding='utf-8')
     return caminho
 
@@ -628,6 +752,8 @@ ESQUEMA_DO_ESTADO = {
     'compromisso': str,
     'backends_com_p1': list,
     'urls': dict,
+    'p3': dict,
+    'instante': str,
 }
 
 
@@ -660,6 +786,33 @@ def _ler_estado():
     except ValueError:
         return None
     return dados
+
+
+def _idade_do_estado(estado) -> str:
+    """Quanto tempo separa a primeira medição desta, em texto legível.
+
+    Não expira nada: o prazo é decisão do autor. O que isto faz é tirar a
+    idade da evidência da invisibilidade — sem ela, uma medição de semanas
+    atrás fecha o contrato sem que o relatório diga isso. Achado de revisão.
+    """
+    bruto = str((estado or {}).get('instante') or '')
+    if not bruto:
+        return ''
+    try:
+        quando = datetime.datetime.fromisoformat(bruto)
+    except ValueError:
+        return ''
+    if quando.tzinfo is None:
+        quando = quando.replace(tzinfo=datetime.timezone.utc)
+    segundos = int((datetime.datetime.now(datetime.timezone.utc) - quando)
+                   .total_seconds())
+    if segundos < 0:
+        return 'um instante no FUTURO — relógio de uma das máquinas está errado'
+    if segundos < 3600:
+        return f'{segundos // 60} min'
+    if segundos < 86400:
+        return f'{segundos // 3600} h {(segundos % 3600) // 60} min'
+    return f'{segundos // 86400} dia(s) e {(segundos % 86400) // 3600} h'
 
 
 def _validar_anterior(estado, ip_anterior: str, origem: str, hops: int,
@@ -757,6 +910,14 @@ def _relatar(alvo: Alvo, tem_anterior: bool) -> None:
     print(f'   P3  CF-Connecting-IP .......... {_rotulo(alvo.p3_cf)}')
     print(f'   P3  True-Client-IP ............ {_rotulo(alvo.p3_tc)}')
     print(f'   P4  sufixo preservado ......... {_rotulo(alvo.p4)}')
+    # A varredura é o que separa "preservou naquela amostra" de "preserva em
+    # produção": sem o tamanho, o veredito de P4 não diz até onde vale.
+    detalhe = f'até {alvo.p4_maior_testado} elementos'
+    if alvo.p4_quebrou_em:
+        detalhe = f'QUEBROU em {alvo.p4_quebrou_em} elementos'
+    elif alvo.p4_recusada_em:
+        detalhe += f'; a borda RECUSOU {alvo.p4_recusada_em} (fronteira)'
+    print(f'       cadeia do cliente ......... {detalhe}')
     print(f'       candidato é do cliente .... {_rotulo(alvo.candidato_do_cliente)}'
           '   (precisa ser FALSE)')
 
@@ -930,20 +1091,39 @@ def main() -> int:
     # P3 é classificação, não critério de HOPS. Mas um sentinela que SOBREVIVE
     # significa que o cliente controla o cabeçalho, e isso não pode sair
     # diluído no meio de um "tudo certo".
-    controlados = sorted({
-        nome
-        for alvo in obrigatorios
-        for nome, classe in (('CF-Connecting-IP', alvo.p3_cf),
-                             ('True-Client-IP', alvo.p3_tc))
-        if classe == 'sentinela_sobrevive'
-    })
+    p3_desta_origem = {
+        'cf': _classe_conservadora(*[a.p3_cf for a in obrigatorios]),
+        'tc': _classe_conservadora(*[a.p3_tc for a in obrigatorios]),
+    }
+    # E o que a PRIMEIRA origem observou. Sobreviver em QUALQUER uma das duas
+    # execuções torna o cabeçalho não adotável: o tratamento pode variar por
+    # rota, e sem isto o resultado de A sumia do relatório final — o operador
+    # fecharia o contrato com a classificação de B só. Achado de revisão.
+    p3_anterior = (estado.get('p3') or {}) if (ligado and estado) else {}
+    p3_final = {chave: _classe_conservadora(p3_desta_origem.get(chave),
+                                            p3_anterior.get(chave))
+                for chave in ('cf', 'tc')}
+    controlados = sorted(
+        nome for chave, nome in (('cf', 'CF-Connecting-IP'),
+                                 ('tc', 'True-Client-IP'))
+        if p3_final.get(chave) == 'sentinela_sobrevive'
+    )
     print()
+    if p3_anterior:
+        print(f'P3 da primeira origem: CF-Connecting-IP='
+              f'{p3_anterior.get("cf") or "?"}, '
+              f'True-Client-IP={p3_anterior.get("tc") or "?"}')
+        print('   A classificação que vale é a das DUAS origens juntas.')
     if controlados:
         print('ALERTA P3: o cliente CONTROLA ' + ', '.join(controlados) + '.')
         print('   Esses cabeçalhos não são adotáveis como fonte de identidade,')
         print('   em rota nenhuma. Não reprova HOPS — é achado próprio, e grave.')
     else:
         print('P3: nenhum cabeçalho de identidade sobreviveu ao sentinela.')
+        print('   Medido com sentinela de documentação E de CGNAT. Uma borda')
+        print('   que higienize tudo que não é global e ainda assim repasse')
+        print('   valor de forma pública não é separada por este controle —')
+        print('   limitação registrada no §7 do contrato.')
 
     # O hostname alternativo entra como evidência, nunca como equivalência.
     print()
@@ -987,6 +1167,15 @@ def main() -> int:
     else:
         print(f'hostname alternativo: não comprovado — {alt.motivo}')
 
+    if ligado and estado:
+        idade = _idade_do_estado(estado)
+        if idade:
+            print()
+            print(f'Evidência da primeira origem gravada há {idade}.')
+            print('   O script NÃO expira o compromisso: se o deployment ou a')
+            print('   topologia mudaram entre as duas medições, elas não são')
+            print('   comparáveis, e só você sabe se mudaram.')
+
     print()
     if any(not ok and not pendente for (ok, pendente, _), _ in veredito):
         print('RESULTADO: propriedade REPROVADA. HOPS permanece PARCIALMENTE')
@@ -997,7 +1186,8 @@ def main() -> int:
                   if a.p1 is True and a.p1_contaminado is False
                   and a.candidato_do_cliente is False]
         try:
-            caminho = _gravar_estado(origem, hops, meu_ip, limpos, urls_atuais)
+            caminho = _gravar_estado(origem, hops, meu_ip, limpos,
+                                     urls_atuais, p3_desta_origem)
         except OSError as e:
             # Sem o compromisso gravado, a segunda origem não tem como se ligar
             # à primeira. A medição aconteceu, mas a cadeia A→B não pode

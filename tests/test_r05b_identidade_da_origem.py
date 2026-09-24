@@ -21,6 +21,7 @@ Cada gate existe para uma sabotagem nomeada em `docs/R05B_IDENTIDADE_DA_ORIGEM.m
     M  Corporate e SaaS divergem no contrato           R05B-1
 """
 
+import datetime
 import hashlib
 import ipaddress
 import json
@@ -1136,7 +1137,12 @@ def test_r05b_23_nenhum_gate_depende_do_que_some_no_fechamento():
         corpo = ast.get_source_segment(fonte, no) or ''
         nome = no.name
         if 'CERT.' in corpo:
-            assert 'if CERT is None' in corpo, (
+            # As DUAS grafias de guarda contam. A primeira versão exigia
+            # literalmente `if CERT is None` e acusou um gate que usava
+            # `if CERT is not None:` — guarda igualmente correta, e o gate
+            # ficou vermelho por causa da grafia, não da propriedade. É a
+            # segunda vez que este meta-gate erra a fronteira do que mede.
+            assert ('if CERT is None' in corpo) or ('if CERT is not None' in corpo), (
                 f'{nome} usa CERT sem guarda: com o contrato fechado a suíte '
                 'quebraria em vez de provar a remoção'
             )
@@ -1212,7 +1218,10 @@ def test_r05b_25_estado_malformado_nao_vira_traceback(tmp_path, monkeypatch):
     bom = {'versao': CERT.VERSAO_DO_ESTADO, 'origem': 'A', 'hops': 3, 'sal': sal,
            'compromisso': CERT._compromisso(sal, _IP_A),
            'backends_com_p1': ['corporativo', 'saas'],
-           'urls': {'corporativo': 'https://c.invalid', 'saas': 'https://s.invalid'}}
+           'urls': {'corporativo': 'https://c.invalid', 'saas': 'https://s.invalid'},
+           # campos da versão 2: P3 da primeira origem e instante da medição
+           'p3': {'cf': 'substituida', 'tc': 'substituida'},
+           'instante': '2026-01-01T00:00:00+00:00'}
 
     caminho = tmp_path / 'estado.json'
     monkeypatch.setenv('EPI_IDENT_ESTADO', str(caminho))
@@ -2129,3 +2138,201 @@ def test_r05b_46_o_compromisso_nao_promete_o_que_nao_alcanca(monkeypatch, tmp_pa
     )
     assert 'apague a cópia de lá' in saida_b
     assert 'esta execução não alcança nada fora desta máquina' in saida_b
+
+
+# ── Décima rodada da revisão ────────────────────────────────────────────────
+#
+# Os quatro achados desta rodada não são defeito de CÓDIGO: são ataques à
+# VALIDADE da medição. Um instrumento que roda certo e mede a coisa errada
+# certifica com a mesma confiança.
+
+def test_r05b_47_p4_procura_a_fronteira_do_tamanho(monkeypatch, tmp_path, capsys):
+    """Amostra fixa de 30 elementos não sustenta veredito de produção.
+
+    Uma borda que preserve o sufixo em 30 e trunque em 120 passava por P4 — e
+    `cadeia[-N]` continuava podendo cair em dado do cliente numa requisição
+    maior, que a aplicação aceita igual. Nada limita o `X-Forwarded-For`.
+    """
+    if CERT is None:
+        return
+
+    assert 30 in CERT.TAMANHOS_DE_P4, 'a amostra histórica saiu da varredura'
+    assert max(CERT.TAMANHOS_DE_P4) > 30, 'a varredura não passa de 30: não varre'
+
+    # 1. quebra só ACIMA de 30 → P4 reprova, e o relatório nomeia o tamanho
+    def quebra_acima_de_30(base_url, chave, hops, *, xff=None, **resto):
+        if xff is not None and xff.count(',') + 1 > 30:
+            return _resposta(hops=hops, sufixo_confiavel_preservado=False,
+                             candidato_e_do_cliente=True)
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=quebra_acima_de_30,
+                    **_base(tmp_path / 'e.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 1, (
+        f'a borda trunca acima de 30 e a certificação devolveu {codigo}: '
+        'a amostra fixa deixava isso passar'
+    )
+    assert 'QUEBROU em' in saida, 'o relatório não nomeia o tamanho da quebra'
+
+    # 2. recusa POR STATUS é fronteira medida, não falha de alcance
+    def recusa_o_maior(base_url, chave, hops, *, xff=None, **resto):
+        if xff is not None and xff.count(',') + 1 > 120:
+            erro = CERT.NaoAlcancado('HTTP 431 em /api/…')
+            erro.http = 431
+            raise erro
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=recusa_o_maior,
+                    **_base(tmp_path / 'e2.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 3, f'recusa por tamanho virou {codigo}, não fronteira'
+    assert 'RECUSOU' in saida and 'fronteira' in saida
+
+    # 3. falha de REDE num tamanho maior NÃO vira fronteira: continua sendo
+    #    "não executado". Sem esta distinção, um timeout viraria evidência de
+    #    limite seguro.
+    def cai_a_rede(base_url, chave, hops, *, xff=None, **resto):
+        if xff is not None and xff.count(',') + 1 > 30:
+            raise CERT.NaoAlcancado('não alcançou o serviço: timeout')
+        return _sonda_falsa()(base_url, chave, hops, xff=xff, **resto)
+
+    codigo = _rodar(monkeypatch, sonda=cai_a_rede,
+                    **_base(tmp_path / 'e3.json', EPI_IDENT_ORIGEM='A',
+                            EPI_IDENT_MEU_IP=_IP_A))
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert codigo == 2, f'timeout no tamanho maior virou {codigo}, não "não executado"'
+    assert 'inalcançável' in saida
+
+
+def test_r05b_48_p3_usa_duas_classes_de_sentinela():
+    """Sentinela só de documentação não separa "a borda escreve o cabeçalho"
+    de "a borda descarta faixa de documentação".
+
+    Uma borda que higienize por faixa devolveria `substituida` para RFC 5737 e
+    ainda deixaria o cliente escrever o cabeçalho com valor de forma pública —
+    e o contrato trata `substituida` como licença para adotar o cabeçalho.
+    """
+    if SONDA is None:
+        return
+
+    cgnat = '100.64.0.10'
+    doc = '192.0.2.10'
+
+    # a sonda reconhece as DUAS classes em P3
+    assert SONDA._e_sentinela_p3(doc) and SONDA._e_sentinela_p3(cgnat)
+
+    # e as guardas de contaminação continuam SÓ com documentação: endereço
+    # CGNAT aparece de verdade em cadeia de operadora móvel, e contá-lo ali
+    # reprovaria P1 numa medição legítima feita de 4G — que é exatamente a
+    # segunda origem que o roteiro sugere.
+    assert SONDA._e_sentinela(doc)
+    assert not SONDA._e_sentinela(cgnat), (
+        'CGNAT virou sentinela das guardas de contaminação: medir de 4G '
+        'passaria a reprovar P1 sem que nada estivesse errado'
+    )
+
+    # borda que troca o sentinela de documentação e repassa o de CGNAT
+    class _Cabecalhos(dict):
+        def get_all(self, nome, padrao=None):
+            valor = self.get(nome)
+            return [valor] if valor is not None else padrao
+
+    class _Handler:
+        def __init__(self, valor):
+            self.headers = _Cabecalhos({'CF-Connecting-IP': valor})
+
+    assert SONDA._classe_do_cabecalho(_Handler(cgnat), 'CF-Connecting-IP') == \
+        'sentinela_sobrevive', 'o sentinela de CGNAT passou por substituído'
+    assert SONDA._classe_do_cabecalho(_Handler('198.51.100.200'),
+                                      'CF-Connecting-IP') == 'substituida'
+
+    # e a agregação do script escolhe a classificação mais conservadora
+    if CERT is not None:
+        assert CERT._classe_conservadora('substituida', 'sentinela_sobrevive') \
+            == 'sentinela_sobrevive', 'a sobrevivência numa das classes sumiu'
+        assert CERT._classe_conservadora('substituida', 'ausente') == 'ausente'
+        assert CERT._classe_conservadora('substituida', 'substituida') == \
+            'substituida', 'unanimidade deixou de ser unanimidade'
+
+
+def test_r05b_49_p3_da_primeira_origem_nao_some(monkeypatch, tmp_path, capsys):
+    """Tratamento de cabeçalho pode variar por rota: A observa
+    `sentinela_sobrevive` e B observa `substituida`.
+
+    O estado carregado guardava só P1 e URLs, então o relatório final da
+    segunda origem não tinha traço do resultado inseguro de A — e o operador
+    fecharia o contrato adotando um cabeçalho que o cliente controla na outra
+    rota.
+    """
+    if CERT is None:
+        return
+
+    estado = tmp_path / 'e.json'
+    assert _rodar(monkeypatch, sonda=_sonda_falsa(cf='sentinela_sobrevive'),
+                  **_base(estado, EPI_IDENT_ORIGEM='A',
+                          EPI_IDENT_MEU_IP=_IP_A)) == 3
+    saida_a = capsys.readouterr().out
+    assert 'ALERTA P3' in saida_a, 'a origem A não alertou sobre o cabeçalho'
+
+    guardado = json.loads(estado.read_text(encoding='utf-8'))
+    assert guardado['p3']['cf'] == 'sentinela_sobrevive', (
+        'a classificação de P3 da primeira origem não foi guardada'
+    )
+
+    # segunda origem com a borda "limpa": sem carregar o de A, o relatório
+    # diria que nenhum cabeçalho sobreviveu
+    assert _rodar(monkeypatch, sonda=_sonda_falsa(),
+                  **_base(estado, EPI_IDENT_ORIGEM='B',
+                          EPI_IDENT_MEU_IP=_IP_B,
+                          EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
+    saida_b = ' '.join(capsys.readouterr().out.split())
+    assert 'P3 da primeira origem' in saida_b, (
+        'o relatório final não mostra o que a primeira origem observou'
+    )
+    assert 'ALERTA P3: o cliente CONTROLA CF-Connecting-IP' in saida_b, (
+        'sobreviver em UMA das origens deixou de tornar o cabeçalho '
+        'não adotável: o resultado de A sumiu do veredito'
+    )
+
+
+def test_r05b_50_a_idade_da_evidencia_fica_visivel(monkeypatch, tmp_path, capsys):
+    """O compromisso não tinha instante. Se a origem B for medida semanas
+    depois — com outro deployment ou outra topologia —, `_validar_anterior`
+    aceitava a evidência antiga sem que o relatório dissesse a idade dela.
+
+    O script NÃO expira: o prazo muda o procedimento humano e é decisão do
+    autor. O que ele faz é tirar a idade da invisibilidade.
+    """
+    if CERT is None:
+        return
+
+    estado = tmp_path / 'e.json'
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='A',
+                                       EPI_IDENT_MEU_IP=_IP_A)) == 3
+    capsys.readouterr()
+
+    guardado = json.loads(estado.read_text(encoding='utf-8'))
+    assert guardado['instante'], 'o compromisso não guarda o instante'
+
+    # envelhece o compromisso em nove dias
+    velho = (datetime.datetime.now(datetime.timezone.utc)
+             - datetime.timedelta(days=9, hours=3)).replace(microsecond=0)
+    guardado['instante'] = velho.isoformat()
+    estado.write_text(json.dumps(guardado), encoding='utf-8')
+
+    assert _rodar(monkeypatch, **_base(estado, EPI_IDENT_ORIGEM='B',
+                                       EPI_IDENT_MEU_IP=_IP_B,
+                                       EPI_IDENT_IP_ANTERIOR=_IP_A)) == 0
+    saida = ' '.join(capsys.readouterr().out.split())
+    assert 'Evidência da primeira origem gravada há 9 dia(s)' in saida, (
+        'a idade da evidência não apareceu no relatório'
+    )
+    assert 'topologia mudaram' in saida
+
+    # relógio para trás não vira "0 min": é sintoma, e tem de aparecer
+    futuro = (datetime.datetime.now(datetime.timezone.utc)
+              + datetime.timedelta(hours=2)).replace(microsecond=0)
+    assert 'FUTURO' in CERT._idade_do_estado({'instante': futuro.isoformat()})

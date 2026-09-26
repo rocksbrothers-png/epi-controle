@@ -357,6 +357,24 @@ def handle_get_auth_diagnostics(handler, parsed, payload, match):
         return send_json(handler, 200, auth_diagnostics(public=True))
 
 
+# ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — INÍCIO ─────────────────
+#
+# Mede a posição da origem na cadeia (docs/R05B_IDENTIDADE_DA_ORIGEM.md).
+# Sai do repositório quando a medição fechar; o gate `R05B-1` reprova a suíte
+# enquanto ela ficar depois disso.
+def handle_get_origin_identity_diagnostics(handler, parsed, payload, match):
+    from epi_backend.proxy_identity_probe import autorizado, medir
+
+    if not autorizado(handler):
+        # EXATAMENTE o que o fallthrough do `SimpleHTTPRequestHandler` emite
+        # para rota inexistente sob `/api/`. Responder JSON aqui distinguiria
+        # sonda desligada de rota ausente por inspeção trivial.
+        handler.send_error(404, 'File not found')
+        return
+    send_json(handler, 200, medir(handler))
+# ── R0.5B SONDA TEMPORÁRIA DE IDENTIDADE DA ORIGEM — FIM ────────────────────
+
+
 def handle_get_db_pool_status(handler, parsed, payload, match):
     from core.database import db_pool_status
     with closing(get_connection()) as connection:
@@ -571,6 +589,9 @@ def handle_put_auth_me_preferences(handler, parsed, payload, match):
 
 def register_routes(router):
     router.register('GET',  '/api/auth-diagnostics',  handle_get_auth_diagnostics)
+    # ── R0.5B SONDA TEMPORÁRIA — INÍCIO ─────────────────────────────────────
+    router.register('GET',  '/api/origin-identity-diagnostics', handle_get_origin_identity_diagnostics)
+    # ── R0.5B SONDA TEMPORÁRIA — FIM ────────────────────────────────────────
     router.register('GET',  '/api/db-pool/status',    handle_get_db_pool_status)
     router.register('GET',  '/api/bootstrap',          handle_get_bootstrap)
     router.register('GET',  '/api/auth/me',           handle_get_auth_me)

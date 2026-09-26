@@ -106,6 +106,60 @@ a guarda de cadeia curta dispare.
 > arbitrariamente maiores. Esta limitação é para ficar registrada, não para
 > gerar varredura, escada, bisseção ou busca de fronteira.
 
+## Evidência de campo — 2026-09-26
+
+Medido nos heads `42871aec` (Corporate) e `ac30cd1` (SaaS), implantados e
+`ready`, com `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` no painel dos dois serviços.
+Duas origens públicas distintas, `N=3`, três repetições por cenário.
+
+| cenário | `cadeia` | `bate` | `do_cliente` | `prefixo` | `repetidas` | `canonico` | rep. |
+|---|---|---|---|---|---|---|---|
+| A, sem XFF | 3 | true | false | false | false | true | 3/3 |
+| A, 1 sentinela | 4 | true | false | true | false | true | 3/3 |
+| B, sem XFF | 3 | true | false | false | false | true | 3/3 |
+| B, 1 sentinela | 4 | true | false | true | false | true | 3/3 |
+
+Idêntico nos dois backends. A borda contribui com **exatamente 3** elementos
+nos dois tamanhos, e o elemento injetado pelo cliente **não desloca**
+`cadeia[-3]`: com cadeia de 3 o candidato é o índice 0, com cadeia de 4 é o
+índice 1, e nos dois casos é o endereço público declarado pelo chamador.
+
+**A identidade está estabelecida**: `cadeia[-3]` corresponde à origem pública
+real, e a posição é estável nas duas origens, nos dois backends e nas três
+repetições.
+
+### O controle de cadeia longa NÃO foi obtido
+
+`LONGA100` devolveu **HTTP 403 em 3/3 nos dois backends, sem corpo JSON**.
+Nenhum dos quatro campos exigidos foi observado.
+
+O que é demonstrável: **não é desta aplicação**. A rota emite somente `404`
+(não autorizado) e `200` (`medir`); os `403` do projeto são tratadores de
+`PermissionError` e `PasswordChangeRequiredError` em volta de
+`router.dispatch`, e este handler não levanta nenhuma das duas. O portão de
+bootstrap responde `503`. Qual camada acima produziu o 403 — borda, WAF ou a
+rede de saída da origem — a evidência **não permite nomear**, e `403` não é
+status de tamanho: pode ser regra sobre o conteúdo, já que a cadeia enviada
+era feita de endereços de documentação.
+
+Consequência: permanece **não medido** o intervalo entre 2 e 99 elementos, e
+não se sabe se a recusa em 100 é por tamanho ou por conteúdo. O controle fica
+**INCONCLUSIVO** — não é aprovação nem reprovação.
+
+### Por que o contrato continua INDETERMINADO
+
+O bloco de contrato tem três campos e nenhum deles é sobre truncamento; o
+`LONGA100`, porém, está escrito no procedimento acima como controle
+**exigido**, campo a campo. Ele não foi satisfeito, então a medição não foi
+executada como especificada — e o estado **não** é promovido a `DETERMINADA`
+com base numa execução incompleta. `RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece
+`0`.
+
+Os campos `P1-IDENTIDADE` e `P2-DUAS-ORIGENS` seguem escritos como
+`nao-medida` por conservadorismo: alterá-los é mudança do bloco de contrato,
+e mudança de contrato é decisão do autor, não consequência automática de uma
+medição parcial.
+
 ## D, E e F — classificação
 
 Exigência: demonstrar que, **com a posição correta já determinada**, o
@@ -119,15 +173,14 @@ alonga a cadeia; `-N` conta do fim. Cadeia mais curta que `N` cai no peer.
 
 | | correção | classificação | demonstração |
 |---|---|---|---|
-| **D** | juntar instâncias repetidas de `X-Forwarded-For` | **NÃO COMPROVADO NECESSÁRIO** *(condicional)* | com **duas** instâncias e o cliente escolhendo 3 elementos na primeira, `get_client_ip` devolveu o valor do CLIENTE — bypass real. Mas só ocorre se a borda **emitir segunda instância** em vez de anexar, o que ninguém mediu. `xff_instancias_repetidas` responde isso em uma requisição |
-| **E** | canonicalizar a chave de balde | **NÃO COMPROVADO NECESSÁRIO** *(condicional)* | com a borda escrevendo `::ffff:<ip>`, o balde saiu diferente do balde de `<ip>` — mesmo endereço, dois baldes. Não é bypass: a posição `-N` é escrita por proxy confiável e o cliente não escolhe a grafia. Efeito máximo: dobrar o limite para quem alterna família de endereço. `candidato_ja_canonico` responde em uma requisição |
-| **F** | limitar tamanho de cabeçalho na aplicação | **NÃO COMPROVADO NECESSÁRIO** | cadeia de 5000 elementos enviada pelo cliente **não** deslocou a janela: `get_client_ip` continuou devolvendo o endereço certo. O risco real é a borda **truncar** o fim — e aí `get_client_ip` devolve dado do cliente. Mas limite na aplicação **não previne truncamento a montante**: quando o cabeçalho chega, já veio truncado. A correção proposta não trata o risco que a motivou |
+| **D** | juntar instâncias repetidas de `X-Forwarded-For` | **NÃO COMPROVADO NECESSÁRIO** | com **duas** instâncias e o cliente escolhendo 3 elementos na primeira, `get_client_ip` devolveu o valor do CLIENTE — bypass real. Mas depende de a borda **emitir segunda instância** em vez de anexar, e o campo agora está **medido**: `xff_instancias_repetidas: false` nas quatro células, nos dois backends, 3/3. O bypass não é alcançável nesta borda |
+| **E** | canonicalizar a chave de balde | **NÃO COMPROVADO NECESSÁRIO** | com a borda escrevendo `::ffff:<ip>`, o balde saiu diferente do balde de `<ip>` — mesmo endereço, dois baldes. Não é bypass: a posição `-N` é escrita por proxy confiável e o cliente não escolhe a grafia. Campo **medido**: `candidato_ja_canonico: true` nas quatro células, nos dois backends, 3/3. A borda escreve a forma canônica |
+| **F** | limitar tamanho de cabeçalho na aplicação | **INCONCLUSIVO** | em simulação, cadeia de 5000 elementos **não** deslocou a janela, e limite na aplicação **não previne truncamento a montante** — quando o cabeçalho chega, já veio truncado. Mas em campo o controle `LONGA100` devolveu 403 sem corpo, então o intervalo entre 2 e 99 elementos segue **não medido**. Não é "descartada": é não respondida |
 
-**Nenhuma das três é bloqueadora.** D e E viram necessárias apenas se a
-medição devolver `xff_instancias_repetidas: true` ou
-`candidato_ja_canonico: false` — cada uma é correção de **uma linha**, e só
-então se justifica tocar em `core/rate_limit.py`. F fica registrada como
-descartada, com o motivo.
+**D e E estão respondidas pela medição**: ambos os campos vieram no valor
+seguro em todas as observações, então nenhuma das duas correções é necessária
+nesta borda, e `core/rate_limit.py` não precisa ser tocado. **F continua
+aberta** — o controle que a responderia não produziu observação.
 
 O que continua valendo sem depender de D/E/F: o `len(cadeia) < N → peer`
 existente já faz o truncamento severo falhar **fechando**.

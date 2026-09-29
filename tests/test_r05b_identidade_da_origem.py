@@ -22,6 +22,7 @@ import hashlib
 import importlib
 import ipaddress
 import re
+import subprocess
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -33,14 +34,39 @@ EXEMPLO_ENV = RAIZ / 'env.example'
 
 #: Digesto do bloco de contrato. Fechar a identidade exige recalcular — o que
 #: obriga a passar por aqui de propósito, e não por acidente de edição.
-DIGESTO_CONTRATO = '0b9901d5bb2cc1d62a65568ce2e435152e23dc0c517047b9a652d5cd1bce8bbf'
+DIGESTO_CONTRATO = '15c52826a60c1729e9f4249967d75c7bb6942c6ae8e51afca705c6ee76db6786'
 
 ESTADOS_VALIDOS = ('INDETERMINADO', 'DETERMINADA')
 
-try:
+#: Vocabulário dos campos de propriedade do contrato. Antes não existia: os
+#: campos eram texto livre que nenhum gate conferia, e `nao-medida` podia virar
+#: qualquer coisa sem ninguém notar. Três valores é o menor conjunto COERENTE —
+#: com dois, uma medição reprovada não teria como ser escrita e alguém
+#: inventaria um valor em silêncio, que é o que este vocabulário existe para
+#: impedir.
+VALORES_DE_PROPRIEDADE = ('nao-medida', 'medida-aprovada', 'medida-reprovada')
+
+#: Campos de propriedade do bloco. `ESTADO-DA-IDENTIDADE` tem vocabulário
+#: próprio e fica de fora.
+CAMPOS_DE_PROPRIEDADE = ('P1-IDENTIDADE', 'P2-DUAS-ORIGENS')
+
+#: Guarda de esquema do procedimento, verbatim. O gate confere que ela está no
+#: documento E que ela se comporta — declarar sem executar provaria só que o
+#: texto existe.
+GUARDA_HTTPS = (
+    'case "$BACKEND" in https://*) ;; '
+    '*) echo "ABORTA: BACKEND precisa ser https://"; exit 1;; esac'
+)
+
+#: A AUSÊNCIA do arquivo é o estado fechado; um `ImportError` de dentro de um
+#: módulo que EXISTE é defeito, e tem de derrubar a suíte. Capturar `ImportError`
+#: aqui confundia os dois: sonda quebrada por dependência ou refactor passava
+#: por "contrato fechado", os gates dependentes saíam cedo, e os nove ficavam
+#: verdes com a rota quebrada em produção. Achado de revisão.
+if SONDA_MODULO.exists():
     SONDA = importlib.import_module('epi_backend.proxy_identity_probe')
-except ImportError:                                   # contrato fechado
-    SONDA = None
+else:
+    SONDA = None                                      # contrato fechado
 
 #: O nome da variável vem da SONDA, nunca como literal aqui. Assim ele sai do
 #: repositório junto com ela, e o gate `R05-6` — que no fechamento proíbe
@@ -68,6 +94,20 @@ def _leitores_da_chave() -> list:
     return [p for p in RAIZ.rglob('*.py')
             if 'tests' not in p.parts
             and NOME_DA_CHAVE in p.read_text(encoding='utf-8', errors='ignore')]
+
+
+def _procedimento() -> str:
+    """Só o bloco executável do procedimento.
+
+    Asserção que varre o documento inteiro é satisfeita pela PROSA: a sabotagem
+    que tirou `--proto` do comando deixou o gate verde porque o texto explicativo
+    ainda citava a flag. Critério tem de olhar o que o operador executa.
+    """
+    texto = CONTRATO.read_text(encoding='utf-8')
+    inicio = texto.index('## Procedimento de medição')
+    bloco = re.search(r'```bash\n(.*?)```', texto[inicio:], re.DOTALL)
+    assert bloco, 'o bloco executável do procedimento sumiu'
+    return bloco.group(1)
 
 
 def _estado() -> str:
@@ -104,6 +144,16 @@ def test_r05b_1_o_contrato_dirige_a_existencia_da_sonda():
     bloco = _bloco_do_contrato()
     estado = _estado()
     assert estado in ESTADOS_VALIDOS, f'estado fora do vocabulário: {estado}'
+
+    # Os campos de propriedade também têm vocabulário fechado. Sem isto,
+    # `P1-IDENTIDADE` aceitaria qualquer texto e o contrato deixaria de ser
+    # legível por máquina exatamente onde ele afirma o que foi medido.
+    for campo in CAMPOS_DE_PROPRIEDADE:
+        achado = re.search(rf'{campo}:\s*(\S+)', bloco)
+        assert achado, f'o contrato não declara {campo}'
+        assert achado.group(1) in VALORES_DE_PROPRIEDADE, (
+            f'{campo} fora do vocabulário: {achado.group(1)!r}'
+        )
 
     atual = hashlib.sha256(bloco.encode('utf-8')).hexdigest()
     assert atual == DIGESTO_CONTRATO, (
@@ -355,4 +405,50 @@ def test_r05b_8_a_sonda_mede_o_que_o_limitador_usa():
     assert torto['candidato_ja_canonico'] is False, (
         'a grafia não canônica passou por canônica: o balde do limitador '
         'dependeria da forma que a borda escolheu escrever'
+    )
+
+
+# ── R05B-9 ──────────────────────────────────────────────────────────────────
+def test_r05b_9_o_procedimento_exige_https_antes_da_chave():
+    """A chave de diagnóstico não pode sair em claro.
+
+    O procedimento manda o operador definir `BACKEND` e enviar
+    `X-Diagnostics-Key`. Com `BACKEND` em `http://`, a chave de produção ia na
+    primeira requisição, em texto claro. Duas defesas, e o gate exige as duas:
+    a guarda que ABORTA antes de qualquer requisição, e `--proto '=https'`, que
+    impede o curl de cair em http por redirecionamento.
+    """
+    comandos = _procedimento()
+    assert GUARDA_HTTPS in comandos, (
+        'o procedimento perdeu a guarda de esquema: com `BACKEND` em http:// a '
+        'chave sairia em claro antes de qualquer verificação'
+    )
+    assert "--proto '=https'" in comandos, (
+        'sem `--proto`, um redirecionamento 30x para http levaria o cabeçalho '
+        'com a chave junto'
+    )
+
+    # E a guarda FUNCIONA: aceita https, aborta em http — antes de enviar nada.
+    for url, esperado in (('https://exemplo.invalid', 0), ('http://exemplo.invalid', 1),
+                          ('ftp://exemplo.invalid', 1), ('exemplo.invalid', 1)):
+        r = subprocess.run(['bash', '-c', f'BACKEND={url}\n{GUARDA_HTTPS}\nexit 0'],
+                           capture_output=True, text=True)
+        assert r.returncode == esperado, (
+            f'a guarda devolveu {r.returncode} para {url!r}, esperado {esperado}'
+        )
+        if esperado:
+            assert 'ABORTA' in (r.stdout + r.stderr)
+
+
+def test_r05b_9b_o_criterio_de_aceitacao_cobre_o_campo_do_balde():
+    """`candidato_ja_canonico` foi medido em todas as observações, mas ficou
+    fora da tabela de aceitação — e é ele que diz se a chave de balde do
+    limitador é a forma canônica. Critério que não o exige aceita uma borda que
+    escreve canônico nas amostras curtas e expandido na longa."""
+    tabela = CONTRATO.read_text(encoding='utf-8')
+    inicio = tabela.index('Os dois controles com `N=3` exigem, campo a campo:')
+    fim = tabela.index('> **Limitação registrada.**')
+    assert '`candidato_ja_canonico`' in tabela[inicio:fim], (
+        'a tabela de aceitação dos dois controles não exige '
+        '`candidato_ja_canonico`, que é o campo que o limitador usa como chave'
     )

@@ -16,9 +16,20 @@ Enquanto a resposta não existir, `RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece
 
 <!-- CONTRATO-R05B-INICIO -->
 ESTADO-DA-IDENTIDADE: INDETERMINADO
-P1-IDENTIDADE: nao-medida
-P2-DUAS-ORIGENS: nao-medida
+P1-IDENTIDADE: medida-aprovada
+P2-DUAS-ORIGENS: medida-aprovada
 <!-- CONTRATO-R05B-FIM -->
+
+Vocabulário fechado, conferido por gate: `ESTADO-DA-IDENTIDADE` aceita
+`INDETERMINADO` ou `DETERMINADA`; os campos de propriedade aceitam
+`nao-medida`, `medida-aprovada` ou `medida-reprovada`.
+
+> **P1 e P2 aprovados NÃO fecham a R0.5B.** Os dois campos registram o que a
+> medição de campo estabeleceu. O estado global continua `INDETERMINADO`
+> porque o procedimento exige também o controle de cadeia longa, e esse
+> controle não produziu observação — ver a seção de evidência. Estado global
+> só muda quando o procedimento inteiro tiver sido satisfeito, e essa é uma
+> decisão separada.
 
 Bloco lido por gate. Enquanto `ESTADO-DA-IDENTIDADE` for `INDETERMINADO`, a
 sonda temporária **pode** existir e `PROXY_CHAIN_PROBE_KEY` **pode** ser lida
@@ -55,6 +66,10 @@ Precisa de **duas origens públicas distintas** (ex.: banda larga e 4G) e da
 chave, que fica só no painel do Render. Nunca cole a chave, o IP nem a saída
 bruta em lugar nenhum versionado.
 
+`BACKEND` **tem de ser `https://`**. A guarda abaixo aborta antes de enviar
+qualquer coisa, e `--proto '=https'` impede que um redirecionamento leve o
+cabeçalho com a chave para uma conexão em claro.
+
 Em cada origem, para cada backend:
 
 ```bash
@@ -62,10 +77,14 @@ MEU_IP=$(curl -s https://api.ipify.org)          # seu IP público
 CHAVE='<valor do painel>'                        # não versione
 SEM='192.0.2.1,192.0.2.2,192.0.2.3'              # prefixo sentinela (RFC 5737)
 
+# A chave NUNCA sai em claro: aborta antes de qualquer requisição.
+case "$BACKEND" in https://*) ;; *) echo "ABORTA: BACKEND precisa ser https://"; exit 1;; esac
+
 LONGA=$(python3 -c "print(','.join(f'192.0.2.{i+1}' for i in range(100)))")
 
 sonda() {  # $1=hops  $2=XFF (vazio = sem o cabeçalho) — 3×, e as 3 têm de concordar
-  for _ in 1 2 3; do curl -s -H "X-Diagnostics-Key: $CHAVE" -H "X-Probe-Hops: $1" \
+  for _ in 1 2 3; do curl -s --proto '=https' \
+    -H "X-Diagnostics-Key: $CHAVE" -H "X-Probe-Hops: $1" \
     -H "X-Origin-Claim: $MEU_IP" ${2:+-H "X-Forwarded-For: $2"} \
     "$BACKEND/api/origin-identity-diagnostics"; done
 }
@@ -81,6 +100,11 @@ backends e nas três repetições**:
 - `candidato_bate_com_origem_declarada: true`
 - `candidato_e_do_cliente: false`
 - `prefixo_do_cliente_presente: true` (prova que o teste chegou de verdade)
+- `candidato_ja_canonico: true` e `xff_instancias_repetidas: false` — são os
+  dois campos que dizem se o que foi medido é o que `core/rate_limit.py` vai
+  usar como chave de balde; a sonda normaliza antes de comparar, então sem
+  exigi-los uma borda podia escrever forma canônica nas amostras curtas e
+  expandida na longa, e os outros campos ainda passariam
 
 Se as três repetições discordarem, há mais de um caminho de borda e a posição
 **não é estável**. Se nenhum `N` satisfizer isso nas duas origens, o valor
@@ -94,6 +118,8 @@ Os dois controles com `N=3` exigem, campo a campo:
 | `candidato_bate_com_origem_declarada` | `true` | `true` |
 | `candidato_e_do_cliente` | `false` | `false` |
 | `prefixo_do_cliente_presente` | `false` | `true` |
+| `candidato_ja_canonico` | `true` | `true` |
+| `xff_instancias_repetidas` | `false` | `false` |
 
 O primeiro representa o **cliente normal**, que não envia `X-Forwarded-For`:
 conferir só o tamanho deixaria passar uma borda que monta a cadeia de outro

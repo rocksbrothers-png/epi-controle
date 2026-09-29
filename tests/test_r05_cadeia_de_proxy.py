@@ -688,3 +688,31 @@ def test_r05_9_nenhum_endereco_real_na_fatia():
             assert any(endereco in faixa for faixa in faixas), (
                 f'{caminho.name} contém {literal}, que não é de faixa reservada'
             )
+
+
+def test_r05_6b_a_instrucao_nao_manda_remover_chave_que_a_r05b_usa():
+    """Conflito entre fatias: a R0.5 fechou mandando remover
+    `PROXY_CHAIN_PROBE_KEY` sob a premissa de que não havia mais sonda no
+    código. A R0.5B reintroduziu uma sonda que lê a MESMA variável.
+
+    Um operador seguindo a instrução antiga desliga a sonda de identidade — a
+    rota passa a 404 — e fica impedido de concluir a medição que falta. Este
+    gate só cobra enquanto a R0.5B depender da chave; quando a identidade
+    fechar e a instrumentação sair, ele para de cobrar sozinho.
+    """
+    if not _identidade_em_aberto():
+        return
+
+    texto = CONTRATO.read_text(encoding='utf-8')
+    inicio = texto.index('### Instruções para o operador, nos dois serviços')
+    instrucoes = texto[inicio:inicio + 2000]
+
+    assert CHAVE_DA_SONDA in instrucoes, (
+        'as instruções pararam de mencionar a chave; quem seguir não saberá '
+        'que ela precisa permanecer enquanto a R0.5B estiver aberta'
+    )
+    assert 'mantenha a variável configurada' in instrucoes, (
+        'a instrução voltou a mandar remover a chave sem condição: seguir isso '
+        'com a R0.5B aberta desliga a sonda de identidade e impede concluir a '
+        'medição'
+    )

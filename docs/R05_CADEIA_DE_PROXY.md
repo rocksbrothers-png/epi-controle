@@ -228,9 +228,17 @@ silenciosa.
 
 1. **Adicionar** a variável de ambiente:
    `RATE_LIMIT_TRUSTED_PROXY_HOPS` = `3`
-2. **Remover** a variável `PROXY_CHAIN_PROBE_KEY`, que existia só para a sonda.
-   Sem a sonda no código ela não faz nada; removê-la evita deixar credencial
-   órfã no painel.
+2. **`PROXY_CHAIN_PROBE_KEY` — condicional.** A premissa desta instrução era
+   "não existe mais sonda no código". Ela deixou de valer: a R0.5B introduziu
+   `epi_backend/proxy_identity_probe.py`, que lê essa MESMA variável.
+
+   - **Enquanto `ESTADO-DA-IDENTIDADE` for `INDETERMINADO`** em
+     `docs/R05B_IDENTIDADE_DA_ORIGEM.md`, **mantenha a variável configurada**.
+     Removê-la faz a sonda de identidade responder 404 e impede concluir a
+     medição que falta.
+   - **Só remova** depois que a instrumentação temporária que depende dela
+     tiver saído do repositório — o que a própria R0.5B força por gate quando
+     a identidade fechar. Aí a chave vira credencial órfã e sai do painel.
 3. **Redeploy é necessário.** As variáveis são lidas no import de
    `core/rate_limit.py`, ou seja, na subida do processo. Alterar no painel sem
    reiniciar não muda o comportamento do processo que já está rodando. No

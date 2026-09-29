@@ -181,10 +181,11 @@ executada como especificada — e o estado **não** é promovido a `DETERMINADA`
 com base numa execução incompleta. `RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece
 `0`.
 
-Os campos `P1-IDENTIDADE` e `P2-DUAS-ORIGENS` seguem escritos como
-`nao-medida` por conservadorismo: alterá-los é mudança do bloco de contrato,
-e mudança de contrato é decisão do autor, não consequência automática de uma
-medição parcial.
+Os campos `P1-IDENTIDADE` e `P2-DUAS-ORIGENS` estão em `medida-aprovada`:
+eles registram o que a medição de campo estabeleceu, e registrar não é
+fechar. O estado global depende do procedimento inteiro, e o gate recusa
+`DETERMINADA` com qualquer propriedade que não esteja aprovada — assim o
+contrato não consegue afirmar um fechamento que a evidência não sustenta.
 
 ## D, E e F — classificação
 

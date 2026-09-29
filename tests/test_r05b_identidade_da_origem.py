@@ -148,11 +148,25 @@ def test_r05b_1_o_contrato_dirige_a_existencia_da_sonda():
     # Os campos de propriedade também têm vocabulário fechado. Sem isto,
     # `P1-IDENTIDADE` aceitaria qualquer texto e o contrato deixaria de ser
     # legível por máquina exatamente onde ele afirma o que foi medido.
+    propriedades = {}
     for campo in CAMPOS_DE_PROPRIEDADE:
         achado = re.search(rf'{campo}:\s*(\S+)', bloco)
         assert achado, f'o contrato não declara {campo}'
         assert achado.group(1) in VALORES_DE_PROPRIEDADE, (
             f'{campo} fora do vocabulário: {achado.group(1)!r}'
+        )
+        propriedades[campo] = achado.group(1)
+
+    # INVARIANTE DE FECHAMENTO. Pertencer ao vocabulário não basta: `DETERMINADA`
+    # com uma propriedade `medida-reprovada` ou `nao-medida` passava por válido,
+    # e o CI endossaria um fechamento que a evidência não sustenta. Este buraco
+    # nasceu junto com o vocabulário de três valores, na tarefa anterior.
+    if estado == 'DETERMINADA':
+        reprovadas = {c: v for c, v in propriedades.items() if v != 'medida-aprovada'}
+        assert not reprovadas, (
+            f'contrato DETERMINADA com propriedade que não foi aprovada: '
+            f'{reprovadas}. O estado global só fecha quando cada propriedade '
+            f'decisiva estiver em medida-aprovada'
         )
 
     atual = hashlib.sha256(bloco.encode('utf-8')).hexdigest()

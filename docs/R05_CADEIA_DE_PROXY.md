@@ -27,8 +27,13 @@ EVIDENCIA: medicao-render-2026-09-22-corporate-e-saas
 Este bloco é lido por gate, não só por gente. Com `ESTADO-DA-CADEIA` em
 `DETERMINADO`:
 
-- `RATE_LIMIT_TRUSTED_PROXY_HOPS=3` é **obrigatório** em `render.yaml`, nos
-  dois repositórios — é a superfície específica da topologia medida;
+- `render.yaml` declara **`0`** nos dois repositórios. O `3` medido **não** vai
+  para o blueprint: medição histórica não é autorização de ativação, e o
+  blueprint sincroniza para ambientes cuja borda não foi medida. Declarar `0` é
+  melhor que omitir — sobrescreve um `3` posto à mão no painel. Ligar o valor
+  exige `ATIVACAO-HOPS: autorizada` em `docs/R05B_IDENTIDADE_DA_ORIGEM.md`, que
+  por gate só pode ser escrito com revalidação do ambiente definitivo. Decisão
+  normativa de 29/09, e o `R05-3` inverte junto com aquele campo;
 - `env.example` continua em **`0`**: é modelo para qualquer implantação, e
   `spec/09-deployment.md` manda copiá-lo para `.env`. Ver §4.1;
 - a sonda temporária é **proibida** no repositório;
@@ -184,7 +189,7 @@ O gate cobre o que está no repositório. Metade da configuração efetiva não 
 | superfície | quem aplica | gate cobre? |
 |---|---|---|
 | `env.example` | quem copia para `.env` | sim — tem de continuar em **`0`** |
-| `render.yaml` | blueprint, quando aplicado | sim — tem de trazer **`3`** |
+| `render.yaml` | blueprint, quando aplicado | sim — tem de trazer **`0`** enquanto a ativação não for autorizada |
 | painel do Render | **o operador, à mão** | **não** |
 
 ### 4.1 Por que `env.example` fica em `0`
@@ -207,9 +212,10 @@ O cliente completa a cadeia até o comprimento exigido, o guarda
 `len(cadeia) < 3` passa, e `cadeia[-3]` devolve o primeiro elemento — que foi
 ele quem escreveu. Baldes ilimitados: exatamente o defeito que a R0 fechou.
 
-O `3` é específico da topologia do Render e mora onde essa topologia é
-declarada. Valor topológico não entra em modelo genérico — e o gate `R05-3b`
-reprova se voltar a entrar.
+O `3` é específico da topologia medida e mora onde essa topologia é
+**registrada** — neste documento, no campo `SALTOS-CONFIAVEIS`. Registrar não é
+aplicar: nenhuma superfície versionada o carrega hoje. Valor topológico não
+entra em modelo genérico — e o gate `R05-3b` reprova se voltar a entrar.
 
 Achado levantado pela revisão automática do Codex (P1) e reproduzido de ponta a
 ponta antes de ser aceito: a primeira versão desta fatia escreveu `3` no
@@ -220,25 +226,41 @@ corporativo não declara `DATABASE_URL`, `JWT_SECRET` nem `APP_ENV`, e
 `epi_backend/config.py` recusa subir em produção sem `JWT_SECRET`. Se o serviço
 sobe, esses valores vêm do painel — o `docs/DEPLOY_SAAS.md` confirma o modelo.
 
-Escrever `3` em `render.yaml` **não garante** que `3` chegue ao processo. A
-segunda metade é do operador, e está escrita aqui para ser deliberada em vez de
+Isso corta nos dois sentidos. Escrever um valor em `render.yaml` **não garante**
+que ele chegue ao processo; e não escrevê-lo **não garante** que o processo não
+o receba, porque o painel é editado à mão. É por isso que o blueprint declara
+`0` explicitamente em vez de omitir a variável: é o único meio que o
+repositório tem de desfazer um valor posto no painel. A segunda metade continua
+sendo do operador, e está escrita aqui para ser deliberada em vez de
 silenciosa.
 
 ### Instruções para o operador, nos dois serviços
 
-1. **Adicionar** a variável de ambiente:
-   `RATE_LIMIT_TRUSTED_PROXY_HOPS` = `3`
-2. **`PROXY_CHAIN_PROBE_KEY` — condicional.** A premissa desta instrução era
-   "não existe mais sonda no código". Ela deixou de valer: a R0.5B introduziu
-   `epi_backend/proxy_identity_probe.py`, que lê essa MESMA variável.
+1. **NÃO adicionar** `RATE_LIMIT_TRUSTED_PROXY_HOPS` = `3`. **Deixe em `0`.**
 
-   - **Enquanto `ESTADO-DA-IDENTIDADE` for `INDETERMINADO`** em
-     `docs/R05B_IDENTIDADE_DA_ORIGEM.md`, **mantenha a variável configurada**.
-     Removê-la faz a sonda de identidade responder 404 e impede concluir a
-     medição que falta.
-   - **Só remova** depois que a instrumentação temporária que depende dela
-     tiver saído do repositório — o que a própria R0.5B força por gate quando
-     a identidade fechar. Aí a chave vira credencial órfã e sai do painel.
+   A versão original desta instrução mandava adicionar, tratando a medição como
+   autorização. A decisão normativa de 29/09 separou as duas coisas: o `3`
+   continua sendo o resultado da medição de 2026-09-22 — a §2 não muda — e
+   continua **não autorizado** para aplicação, porque a medição saiu de
+   infraestrutura provisória e a §3 já registra que mudança de plano ou região
+   invalida o número em silêncio.
+
+   Ligar o valor exige, nesta ordem: revalidar no ambiente definitivo (forma da
+   cadeia, identidade, e a propriedade que o controle de cadeia longa deixou
+   aberta na R0.5B); escrever o ambiente novo em `AMBIENTE-DA-EVIDENCIA` e
+   `ATIVACAO-HOPS: autorizada` em `docs/R05B_IDENTIDADE_DA_ORIGEM.md`; e só
+   então declarar o valor em `render.yaml` e no painel. Os gates `R05-3` e
+   `R05B-11` recusam qualquer ordem diferente dessa.
+
+2. **Remover `PROXY_CHAIN_PROBE_KEY`** do painel dos dois serviços.
+
+   Esta instrução ficou condicional por uma fatia: a R0.5B introduziu
+   `epi_backend/proxy_identity_probe.py`, que lia essa MESMA variável, e
+   removê-la teria desligado a sonda de identidade no meio da medição. A sonda
+   saiu do repositório no fechamento de 29/09, junto com a rota e o import —
+   nenhum caminho depende mais da chave, e o gate `R05-6` reprova a suíte se
+   algum voltar a depender. A chave virou credencial órfã e sai do painel.
+
 3. **Redeploy é necessário.** As variáveis são lidas no import de
    `core/rate_limit.py`, ou seja, na subida do processo. Alterar no painel sem
    reiniciar não muda o comportamento do processo que já está rodando. No

@@ -11,40 +11,75 @@ Falta a **identidade**: o elemento que `cadeia[-N]` seleciona é mesmo quem
 originou a requisição, e essa posição é estável a partir de **duas origens
 públicas distintas**?
 
-Enquanto a resposta não existir, `RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece
-`0` — o limitador ignora o cabeçalho e usa o peer do socket.
+A medição de campo respondeu **sim, no ambiente em que foi feita**. Fechar essa
+pergunta **não** autoriza ligar `RATE_LIMIT_TRUSTED_PROXY_HOPS`. São dois
+estados diferentes, e o contrato abaixo os declara em campos separados.
 
 <!-- CONTRATO-R05B-INICIO -->
-ESTADO-DA-IDENTIDADE: INDETERMINADO
+ESTADO-DA-IDENTIDADE: DETERMINADA
 P1-IDENTIDADE: medida-aprovada
 P2-DUAS-ORIGENS: medida-aprovada
+AMBIENTE-DA-EVIDENCIA: render-free-2026-09-26-corporate-e-saas
+F-CADEIA-LONGA: inconclusiva
+ATIVACAO-HOPS: nao-autorizada
 <!-- CONTRATO-R05B-FIM -->
 
-Vocabulário fechado, conferido por gate: `ESTADO-DA-IDENTIDADE` aceita
-`INDETERMINADO` ou `DETERMINADA`; os campos de propriedade aceitam
-`nao-medida`, `medida-aprovada` ou `medida-reprovada`.
+Vocabulário fechado, conferido por gate:
 
-> **P1 e P2 aprovados NÃO fecham a R0.5B.** Os dois campos registram o que a
-> medição de campo estabeleceu. O estado global continua `INDETERMINADO`
-> porque o procedimento exige também o controle de cadeia longa, e esse
-> controle não produziu observação — ver a seção de evidência. Estado global
-> só muda quando o procedimento inteiro tiver sido satisfeito, e essa é uma
-> decisão separada.
+| campo | valores |
+|---|---|
+| `ESTADO-DA-IDENTIDADE` | `INDETERMINADO`, `DETERMINADA` |
+| `P1-IDENTIDADE`, `P2-DUAS-ORIGENS` | `nao-medida`, `medida-aprovada`, `medida-reprovada` |
+| `AMBIENTE-DA-EVIDENCIA` | token livre, não vazio — onde a evidência foi obtida |
+| `F-CADEIA-LONGA` | `inconclusiva`, `medida-aprovada`, `medida-reprovada` |
+| `ATIVACAO-HOPS` | `nao-autorizada`, `autorizada` |
 
-Bloco lido por gate. Enquanto `ESTADO-DA-IDENTIDADE` for `INDETERMINADO`, a
-sonda temporária **pode** existir e `PROXY_CHAIN_PROBE_KEY` **pode** ser lida
-— somente por `epi_backend/proxy_identity_probe.py`. Quando passar a
-`DETERMINADA`, os dois se invertem: sonda proibida, leitura da chave proibida
-em qualquer lugar. O gate `R05B-1` inverte junto, automaticamente.
+`F-CADEIA-LONGA` tem vocabulário próprio porque `inconclusiva` é um resultado
+que os campos de propriedade **não** admitem: eles registram medição aprovada
+ou reprovada, e F não foi nenhuma das duas. Por isso F também **não** entra na
+invariante de fechamento — ver abaixo por que isso não é uma brecha.
 
-## O instrumento
+## Medição concluída não é autorização
+
+São duas perguntas, e confundi-las é o erro que este contrato existe para
+impedir:
+
+**`ESTADO-DA-IDENTIDADE: DETERMINADA`** diz que a identidade foi medida e
+aprovada **no ambiente nomeado em `AMBIENTE-DA-EVIDENCIA`**. Nada além disso.
+
+**`ATIVACAO-HOPS: nao-autorizada`** diz que nenhuma superfície do repositório
+pode carregar `RATE_LIMIT_TRUSTED_PROXY_HOPS` diferente de `0`.
+
+A evidência registrada aqui foi obtida no plano **Free** do Render, que é
+infraestrutura provisória. A R0.5 já registra que mudança de borda — CDN
+retirada ou acrescentada, hostname de origem exposto, **mudança de plano ou
+região** — invalida o número em silêncio, e para pior: ele passa a apontar para
+dentro do território que o cliente escreve. Mudança de borda exige nova
+medição, não ajuste por dedução.
+
+Então a barreira é esta: **`ATIVACAO-HOPS` só pode virar `autorizada` junto com
+um `AMBIENTE-DA-EVIDENCIA` diferente do atual.** Ligar `HOPS > 0` no ambiente
+definitivo exige revalidar lá — forma da cadeia, identidade e a propriedade que
+F deixou aberta — e escrever o ambiente novo no contrato. O gate `R05B-11`
+recusa autorizar com a evidência de hoje, e o digesto do bloco força que a
+mudança seja deliberada em vez de acidental.
+
+O gate não proíbe `HOPS > 0` para sempre. Ele proíbe **herdar** a autorização
+de uma medição feita em outro ambiente.
+
+Enquanto `ESTADO-DA-IDENTIDADE` era `INDETERMINADO`, a sonda temporária podia
+existir e `PROXY_CHAIN_PROBE_KEY` podia ser lida. Com o fechamento, os dois se
+inverteram: sonda proibida, leitura da chave proibida em qualquer lugar. O gate
+`R05B-1` inverteu junto, sem edição.
+
+## O instrumento — removido
 
 `epi_backend/proxy_identity_probe.py` (~80 linhas) exposto em
 `GET /api/origin-identity-diagnostics`, atrás de `X-Diagnostics-Key`. Sem a
-variável no ambiente, a rota responde **404** — byte a byte igual ao de uma
-rota inexistente.
+variável no ambiente, a rota respondia **404** — byte a byte igual ao de uma
+rota inexistente. Saiu do repositório no fechamento, com a rota e o import.
 
-A sonda **nunca devolve endereço**. Ela devolve:
+A sonda **nunca devolvia endereço**. Ela devolvia:
 
 | campo | o que diz |
 |---|---|
@@ -56,14 +91,22 @@ A sonda **nunca devolve endereço**. Ela devolve:
 | `xff_instancias_repetidas` | chegou **mais de uma** instância de `X-Forwarded-For` |
 | `candidato_ja_canonico` | a borda escreveu o candidato na forma canônica |
 
-Os dois últimos existem porque `core/rate_limit.py` lê só a **primeira**
+Os dois últimos existiam porque `core/rate_limit.py` lê só a **primeira**
 instância (`headers.get`) e usa a string **crua** como chave de balde. Ver a
 classificação de **D** e **E** abaixo.
 
+Esta seção fica porque a tabela de evidência reporta esses campos: sem a
+descrição do instrumento, a evidência deixa de ser auditável.
+
 ## Procedimento de medição
 
-Precisa de **duas origens públicas distintas** (ex.: banda larga e 4G) e da
-chave, que fica só no painel do Render. Nunca cole a chave, o IP nem a saída
+Registro histórico do que foi executado. A rota não existe mais, então o
+procedimento não é executável — fica para que a evidência possa ser conferida
+e, se alguém precisar remedir, para que a próxima medição parta daqui em vez de
+ser reinventada.
+
+Precisava de **duas origens públicas distintas** (ex.: banda larga e 4G) e da
+chave, que ficava só no painel do Render. Nunca cole a chave, o IP nem a saída
 bruta em lugar nenhum versionado.
 
 `BACKEND` **tem de ser `https://`**. A guarda abaixo aborta antes de enviar
@@ -132,11 +175,28 @@ a guarda de cadeia curta dispare.
 > arbitrariamente maiores. Esta limitação é para ficar registrada, não para
 > gerar varredura, escada, bisseção ou busca de fronteira.
 
+### Limitação de reprodutibilidade — as duas origens
+
+O procedimento pedia duas origens públicas **distintas** e não verificava que
+elas eram distintas. A sonda compara `cadeia[-N]` com o endereço que o chamador
+declara (`X-Origin-Claim`) — ela nunca devolve endereço, e por isso não tem como
+dizer se a segunda execução veio de outro endereço que a primeira.
+
+A evidência operacional usada foi **banda larga versus 4G/5G, com recaptura do
+IP na Origem B** antes de medir. Isso é indício, não verificação.
+
+`P2-DUAS-ORIGENS` continua `medida-aprovada`: o que foi observado sustenta o
+campo, e não há evidência nova que o reprove. A limitação fica registrada como
+**dívida de reprodutibilidade**, obrigatória de resolver antes de qualquer
+certificação ou ativação futura — não nesta fatia, e não por instrumentação
+nova.
+
 ## Evidência de campo — 2026-09-26
 
 Medido nos heads `42871aec` (Corporate) e `ac30cd1` (SaaS), implantados e
-`ready`, com `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` no painel dos dois serviços.
-Duas origens públicas distintas, `N=3`, três repetições por cenário.
+`ready`, no plano **Free** do Render, com `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` no
+painel dos dois serviços. Duas origens públicas distintas, `N=3`, três
+repetições por cenário.
 
 | cenário | `cadeia` | `bate` | `do_cliente` | `prefixo` | `repetidas` | `canonico` | rep. |
 |---|---|---|---|---|---|---|---|
@@ -150,42 +210,69 @@ nos dois tamanhos, e o elemento injetado pelo cliente **não desloca**
 `cadeia[-3]`: com cadeia de 3 o candidato é o índice 0, com cadeia de 4 é o
 índice 1, e nos dois casos é o endereço público declarado pelo chamador.
 
-**A identidade está estabelecida**: `cadeia[-3]` corresponde à origem pública
-real, e a posição é estável nas duas origens, nos dois backends e nas três
-repetições.
+**A identidade está estabelecida neste ambiente**: `cadeia[-3]` corresponde à
+origem pública real, e a posição é estável nas duas origens, nos dois backends
+e nas três repetições.
 
 ### O controle de cadeia longa NÃO foi obtido
 
 `LONGA100` devolveu **HTTP 403 em 3/3 nos dois backends, sem corpo JSON**.
 Nenhum dos quatro campos exigidos foi observado.
 
-O que é demonstrável: **não é desta aplicação**. A rota emite somente `404`
+O que é demonstrável: **não é desta aplicação**. A rota emitia somente `404`
 (não autorizado) e `200` (`medir`); os `403` do projeto são tratadores de
 `PermissionError` e `PasswordChangeRequiredError` em volta de
-`router.dispatch`, e este handler não levanta nenhuma das duas. O portão de
+`router.dispatch`, e aquele handler não levantava nenhuma das duas. O portão de
 bootstrap responde `503`. Qual camada acima produziu o 403 — borda, WAF ou a
 rede de saída da origem — a evidência **não permite nomear**, e `403` não é
-status de tamanho: pode ser regra sobre o conteúdo, já que a cadeia enviada
-era feita de endereços de documentação.
+status de tamanho: pode ser regra sobre o conteúdo, já que a cadeia enviada era
+feita de endereços de documentação.
 
 Consequência: permanece **não medido** o intervalo entre 2 e 99 elementos, e
 não se sabe se a recusa em 100 é por tamanho ou por conteúdo. O controle fica
 **INCONCLUSIVO** — não é aprovação nem reprovação.
 
-### Por que o contrato continua INDETERMINADO
+Uma requisição recusada acima da aplicação não consegue escolher balde nenhum,
+porque `get_client_ip` não é chamada para ela. Isso vale **só para as entradas
+efetivamente recusadas**: como a regra que produziu o 403 não está
+caracterizada, não há generalização defensável a partir dela.
 
-O bloco de contrato tem três campos e nenhum deles é sobre truncamento; o
-`LONGA100`, porém, está escrito no procedimento acima como controle
-**exigido**, campo a campo. Ele não foi satisfeito, então a medição não foi
-executada como especificada — e o estado **não** é promovido a `DETERMINADA`
-com base numa execução incompleta. `RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece
-`0`.
+### `LONGA100` era método, não a propriedade
 
-Os campos `P1-IDENTIDADE` e `P2-DUAS-ORIGENS` estão em `medida-aprovada`:
-eles registram o que a medição de campo estabeleceu, e registrar não é
-fechar. O estado global depende do procedimento inteiro, e o gate recusa
-`DETERMINADA` com qualquer propriedade que não esteja aprovada — assim o
-contrato não consegue afirmar um fechamento que a evidência não sustenta.
+A propriedade que F precisa provar é universal sobre **toda requisição que a
+aplicação aceita**: os três elementos mais à direita da cadeia recebida foram
+escritos pela borda confiável, e `cadeia[-3]` é o endereço que o proxy mais
+externo observou. A guarda `len(cadeia) < N → peer` cobre só a cadeia **mais
+curta** que `N`; truncamento que deixe 3 ou mais elementos não a dispara.
+
+`LONGA100` é **um ponto amostral**. Testar exatamente 100 não é necessário — a
+propriedade não menciona 100 — nem suficiente: passar em 100 nada diz sobre 99
+ou 101. Nenhuma escada finita de tamanhos prova uma propriedade universal, e
+foi esse regresso que levou o instrumento anterior a 7.334 linhas de diff.
+
+Com borda que **anexa**, a aplicação não consegue distinguir o prefixo do
+cliente da contribuição da borda olhando só a cadeia recebida. F é, portanto, da
+mesma natureza da premissa que a R0.5 já registra como não verificável
+localmente — "todo tráfego externo entra pela mesma borda, sem rota publicada
+que a contorne". Fechar F exige garantia de infraestrutura no ambiente
+definitivo, ou uma invariante de aplicação independente de comprimento; não
+exige mais amostragem.
+
+Por isso F não bloqueia o fechamento da identidade e também não é declarada
+aprovada. Ela fica `inconclusiva`, e a barreira de `ATIVACAO-HOPS` é o que
+impede que essa lacuna chegue a produção por herança.
+
+### Por que o fechamento não autoriza ativação
+
+`ESTADO-DA-IDENTIDADE` fechou porque as duas propriedades decisivas da
+pergunta — a identidade de `cadeia[-3]` e a estabilidade a partir de duas
+origens — foram medidas e aprovadas, e o gate recusa `DETERMINADA` com qualquer
+uma delas fora de `medida-aprovada`.
+
+`ATIVACAO-HOPS` continua `nao-autorizada` por três motivos, cada um suficiente:
+a evidência é de infraestrutura provisória; F está `inconclusiva`; e `P2` se
+apoia em indício operacional em vez de verificação. `RATE_LIMIT_TRUSTED_PROXY_HOPS`
+permanece `0` em todas as superfícies do repositório e no painel.
 
 ## D, E e F — classificação
 
@@ -200,14 +287,14 @@ alonga a cadeia; `-N` conta do fim. Cadeia mais curta que `N` cai no peer.
 
 | | correção | classificação | demonstração |
 |---|---|---|---|
-| **D** | juntar instâncias repetidas de `X-Forwarded-For` | **NÃO COMPROVADO NECESSÁRIO** | com **duas** instâncias e o cliente escolhendo 3 elementos na primeira, `get_client_ip` devolveu o valor do CLIENTE — bypass real. Mas depende de a borda **emitir segunda instância** em vez de anexar, e o campo agora está **medido**: `xff_instancias_repetidas: false` nas quatro células, nos dois backends, 3/3. O bypass não é alcançável nesta borda |
+| **D** | juntar instâncias repetidas de `X-Forwarded-For` | **NÃO COMPROVADO NECESSÁRIO** | com **duas** instâncias e o cliente escolhendo 3 elementos na primeira, `get_client_ip` devolveu o valor do CLIENTE — bypass real. Mas depende de a borda **emitir segunda instância** em vez de anexar, e o campo ficou **medido**: `xff_instancias_repetidas: false` nas quatro células, nos dois backends, 3/3. O bypass não é alcançável nesta borda |
 | **E** | canonicalizar a chave de balde | **NÃO COMPROVADO NECESSÁRIO** | com a borda escrevendo `::ffff:<ip>`, o balde saiu diferente do balde de `<ip>` — mesmo endereço, dois baldes. Não é bypass: a posição `-N` é escrita por proxy confiável e o cliente não escolhe a grafia. Campo **medido**: `candidato_ja_canonico: true` nas quatro células, nos dois backends, 3/3. A borda escreve a forma canônica |
-| **F** | limitar tamanho de cabeçalho na aplicação | **INCONCLUSIVO** | em simulação, cadeia de 5000 elementos **não** deslocou a janela, e limite na aplicação **não previne truncamento a montante** — quando o cabeçalho chega, já veio truncado. Mas em campo o controle `LONGA100` devolveu 403 sem corpo, então o intervalo entre 2 e 99 elementos segue **não medido**. Não é "descartada": é não respondida |
+| **F** | limitar tamanho de cabeçalho na aplicação | **INCONCLUSIVO** | em simulação, cadeia de 5000 elementos **não** deslocou a janela, e limite na aplicação **não previne truncamento a montante** — quando o cabeçalho chega, já veio truncado. Em campo o controle `LONGA100` devolveu 403 sem corpo, então o intervalo entre 2 e 99 elementos segue **não medido**. Não é "descartada": é não respondida, e o motivo está acima |
 
 **D e E estão respondidas pela medição**: ambos os campos vieram no valor
 seguro em todas as observações, então nenhuma das duas correções é necessária
 nesta borda, e `core/rate_limit.py` não precisa ser tocado. **F continua
-aberta** — o controle que a responderia não produziu observação.
+aberta**, e a barreira de ativação é o que a mantém fora de produção.
 
 O que continua valendo sem depender de D/E/F: o `len(cadeia) < N → peer`
 existente já faz o truncamento severo falhar **fechando**.
@@ -218,9 +305,17 @@ existente já faz o truncamento severo falhar **fechando**.
 - não aplica `RATE_LIMIT_TRUSTED_PROXY_HOPS` — o painel continua em `0`;
 - não classifica `CF-Connecting-IP` nem `True-Client-IP`: são outra pergunta,
   e a sonda que os media foi removida com o resto do instrumento;
-- não decide o `3` declarado em `render.yaml`, que é contrato documentado e
-  decisão do autor;
+- não resolve F, e não transforma F em bloqueio permanente;
+- não verifica que as duas origens eram distintas — ver a limitação acima;
 - não isenta a sonda do portão de bootstrap.
+
+## Risco histórico da instrumentação temporária
+
+O procedimento passava a chave em `argv` (`-H "X-Diagnostics-Key: $CHAVE"`),
+então ela podia ficar no histórico do shell e na tabela de processos da máquina
+do operador. A sonda saiu do repositório e a chave sai do painel, então o risco
+morre com o instrumento. Fica registrado porque já esteve exposto, não para
+gerar redesenho de um mecanismo que não existe mais.
 
 ## Histórico, em um parágrafo
 
@@ -230,6 +325,9 @@ diff — sem nunca ter medido a borda real, porque a rota ficou atrás do portã
 de bootstrap durante a janela em que foi tentada. A auditoria de 24/09
 concluiu que a pergunta é de **leitura**, não de certificação automatizada:
 quatro campos lidos de duas origens respondem. O certificador, os 62 gates que
-só o protegiam e o histórico rodada a rodada foram removidos. O que sobrou são
-as propriedades que protegem **produção**, e as três descobertas de campo
-(D, E, F) acima, classificadas com demonstração em vez de asserção.
+só o protegiam e o histórico rodada a rodada foram removidos. A medição de
+26/09 fechou a identidade e deixou F sem observação; a decisão normativa de
+29/09 separou **medição concluída** de **autorização para ativar**, fechou o
+contrato com a barreira de ambiente e retirou a instrumentação temporária. O
+que sobrou são as propriedades que protegem **produção** e as três descobertas
+de campo (D, E, F) acima, classificadas com demonstração em vez de asserção.

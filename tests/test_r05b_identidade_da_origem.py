@@ -1,16 +1,21 @@
 """R0.5B — gates que protegem PRODUÇÃO.
 
-Esta suíte não certifica nada. Ela garante oito propriedades que precisam valer
-independentemente do resultado da medição:
+Esta suíte não certifica nada. Ela garante as propriedades que precisam valer
+depois que a medição de identidade fechou:
 
-  R05B-1  o contrato dirige a existência da sonda, e inverte sozinho
-  R05B-2  a sonda nunca devolve endereço
-  R05B-3  sem chave, a rota é indistinguível de rota inexistente
-  R05B-4  o `hops` avaliado é o pedido, e um `hops` errado é detectável
-  R05B-5  nenhum endereço real fica versionado nesta fatia
-  R05B-6  nenhuma configuração de proxy é aplicada antes da evidência
-  R05B-7  o limitador não lê cabeçalho de identidade não certificado
-  R05B-8  o que a sonda mede é o que `core/rate_limit.py` vai usar
+  R05B-1   o contrato dirige a existência da sonda, e inverte sozinho
+  R05B-5   nenhum endereço real fica versionado nesta fatia
+  R05B-6   nenhuma configuração de proxy é aplicada sem autorização
+  R05B-7   o limitador não lê cabeçalho de identidade não certificado
+  R05B-9   o procedimento registrado não expõe a chave em claro
+  R05B-10  o valor de F não pode contradizer o registro do 403
+  R05B-11  autorização de ativação não se herda de outro ambiente
+
+`R05B-2`, `-3`, `-4` e `-8` verificavam a sonda temporária campo a campo. Ela
+saiu do repositório no fechamento de 29/09, então eles saíram com ela — gate
+que não tem sujeito é gate oco. As duas asserções do `-8` que falavam do
+LIMITADOR, e não da sonda, foram preservadas no `-6`: é delas que depende a
+classificação de D e E continuar verdadeira.
 
 O certificador de ~1.550 linhas e os 62 gates que só o protegiam foram
 removidos na simplificação de 24/09 — ver o histórico em
@@ -19,7 +24,6 @@ removidos na simplificação de 24/09 — ver o histórico em
 from __future__ import annotations
 
 import hashlib
-import importlib
 import ipaddress
 import re
 import subprocess
@@ -32,9 +36,9 @@ ROTAS = RAIZ / 'modules' / 'auth' / 'routes.py'
 LIMITADOR = RAIZ / 'core' / 'rate_limit.py'
 EXEMPLO_ENV = RAIZ / 'env.example'
 
-#: Digesto do bloco de contrato. Fechar a identidade exige recalcular — o que
+#: Digesto do bloco de contrato. Mudar o contrato exige recalcular — o que
 #: obriga a passar por aqui de propósito, e não por acidente de edição.
-DIGESTO_CONTRATO = '15c52826a60c1729e9f4249967d75c7bb6942c6ae8e51afca705c6ee76db6786'
+DIGESTO_CONTRATO = '7ff4ab1635b915e66b518082f5840dc136eb930db736c0c8223b784e1831d92d'
 
 ESTADOS_VALIDOS = ('INDETERMINADO', 'DETERMINADA')
 
@@ -46,9 +50,23 @@ ESTADOS_VALIDOS = ('INDETERMINADO', 'DETERMINADA')
 #: impedir.
 VALORES_DE_PROPRIEDADE = ('nao-medida', 'medida-aprovada', 'medida-reprovada')
 
-#: Campos de propriedade do bloco. `ESTADO-DA-IDENTIDADE` tem vocabulário
-#: próprio e fica de fora.
+#: Campos de propriedade DECISIVOS para o estado global. `F-CADEIA-LONGA` fica
+#: fora de propósito: ela não é decisiva para a identidade, e `inconclusiva`
+#: não é um valor que este vocabulário admita.
 CAMPOS_DE_PROPRIEDADE = ('P1-IDENTIDADE', 'P2-DUAS-ORIGENS')
+
+#: F tem vocabulário próprio porque o resultado dela foi INCONCLUSIVO — nem
+#: aprovação nem reprovação. Forçá-la no vocabulário acima obrigaria a mentir
+#: em um dos dois sentidos.
+VALORES_DE_F = ('inconclusiva', 'medida-aprovada', 'medida-reprovada')
+
+VALORES_DE_ATIVACAO = ('nao-autorizada', 'autorizada')
+
+#: O ambiente em que a evidência de hoje foi obtida. A barreira do `R05B-11` é
+#: escrita contra ESTE token: autorizar ativação sem trocá-lo é herdar a
+#: autorização de um ambiente provisório, que é exatamente o que a decisão
+#: normativa de 29/09 proibiu.
+AMBIENTE_DA_MEDICAO_ATUAL = 'render-free-2026-09-26-corporate-e-saas'
 
 #: Guarda de esquema do procedimento, verbatim. O gate confere que ela está no
 #: documento E que ela se comporta — declarar sem executar provaria só que o
@@ -58,42 +76,56 @@ GUARDA_HTTPS = (
     '*) echo "ABORTA: BACKEND precisa ser https://"; exit 1;; esac'
 )
 
-#: A AUSÊNCIA do arquivo é o estado fechado; um `ImportError` de dentro de um
-#: módulo que EXISTE é defeito, e tem de derrubar a suíte. Capturar `ImportError`
-#: aqui confundia os dois: sonda quebrada por dependência ou refactor passava
-#: por "contrato fechado", os gates dependentes saíam cedo, e os nove ficavam
-#: verdes com a rota quebrada em produção. Achado de revisão.
-if SONDA_MODULO.exists():
-    SONDA = importlib.import_module('epi_backend.proxy_identity_probe')
-else:
-    SONDA = None                                      # contrato fechado
+#: Fatos do controle `LONGA100` que o documento tem de continuar registrando.
+#: Apagar qualquer um deles reescreveria o que a medição produziu; e é a
+#: presença do segundo que trava o valor de F no `R05B-10`.
+FATOS_DO_403 = (
+    'HTTP 403 em 3/3 nos dois backends, sem corpo JSON',
+    'Nenhum dos quatro campos exigidos foi observado',
+    'não permite nomear',
+    'não é status de tamanho',
+    'o intervalo entre 2 e 99 elementos',
+)
 
-#: O nome da variável vem da SONDA, nunca como literal aqui. Assim ele sai do
-#: repositório junto com ela, e o gate `R05-6` — que no fechamento proíbe
-#: qualquer leitura da chave — continua verdadeiro sem exceção para os testes.
-NOME_DA_CHAVE = SONDA.NOME_DA_VARIAVEL if SONDA else None
+#: O registro de que o controle não produziu observação. Enquanto ele estiver
+#: no documento, F não pode estar medida.
+SEM_OBSERVACAO = 'Nenhum dos quatro campos exigidos foi observado'
+
+
+def _texto() -> str:
+    return CONTRATO.read_text(encoding='utf-8')
+
+
+def _corrido() -> str:
+    """Documento com espaço normalizado.
+
+    O texto é quebrado em ~78 colunas, então frase procurada como substring
+    literal atravessa quebra de linha e não casa. Mesma convenção do
+    `test_r05_4d`.
+    """
+    return ' '.join(_texto().split())
 
 
 def _bloco_do_contrato() -> str:
-    texto = CONTRATO.read_text(encoding='utf-8')
     achado = re.search(
         r'<!-- CONTRATO-R05B-INICIO -->\n(.*?)<!-- CONTRATO-R05B-FIM -->',
-        texto, re.DOTALL)
+        _texto(), re.DOTALL)
     assert achado, 'o bloco de contrato sumiu do documento'
     return achado.group(1)
 
 
-def _leitores_da_chave() -> list:
-    """Arquivos de RUNTIME que mencionam o nome da variável.
+def _campo(nome: str) -> str:
+    """Valor de um campo do bloco, ou '' se o campo estiver vazio.
 
-    Testes ficam de fora de propósito: um gate que nomeia a chave para proibir
-    sua leitura não é uma superfície que a lê.
+    O espaço horizontal é casado com `[^\\S\\n]`, não com `\\s`: `\\s` atravessa
+    a quebra de linha, então `CAMPO:` vazio capturaria o conteúdo da linha
+    SEGUINTE e o gate de campo vazio nunca dispararia. A R0.5 já levou esse
+    achado uma vez, em `EVIDENCIA:`.
     """
-    if not NOME_DA_CHAVE:
-        return []
-    return [p for p in RAIZ.rglob('*.py')
-            if 'tests' not in p.parts
-            and NOME_DA_CHAVE in p.read_text(encoding='utf-8', errors='ignore')]
+    achado = re.search(rf'^{nome}:[^\S\n]*(\S*)[^\S\n]*$',
+                       _bloco_do_contrato(), re.MULTILINE)
+    assert achado, f'o contrato não declara {nome}'
+    return achado.group(1)
 
 
 def _procedimento() -> str:
@@ -103,7 +135,7 @@ def _procedimento() -> str:
     que tirou `--proto` do comando deixou o gate verde porque o texto explicativo
     ainda citava a flag. Critério tem de olhar o que o operador executa.
     """
-    texto = CONTRATO.read_text(encoding='utf-8')
+    texto = _texto()
     inicio = texto.index('## Procedimento de medição')
     bloco = re.search(r'```bash\n(.*?)```', texto[inicio:], re.DOTALL)
     assert bloco, 'o bloco executável do procedimento sumiu'
@@ -111,68 +143,66 @@ def _procedimento() -> str:
 
 
 def _estado() -> str:
-    achado = re.search(r'ESTADO-DA-IDENTIDADE:\s*(\S+)', _bloco_do_contrato())
-    assert achado, 'o contrato não declara ESTADO-DA-IDENTIDADE'
-    return achado.group(1)
-
-
-class _Req:
-    """Requisição falsa. `get` devolve a PRIMEIRA instância, como HTTPMessage."""
-
-    def __init__(self, **cabecalhos):
-        self._c = {k.replace('_', '-'): (v if isinstance(v, list) else [v])
-                   for k, v in cabecalhos.items()}
-
-    def get(self, nome, default=''):
-        return self._c.get(nome, [default])[0]
-
-    def get_all(self, nome):
-        return self._c.get(nome)
-
-    @property
-    def headers(self):
-        return self
+    return _campo('ESTADO-DA-IDENTIDADE')
 
 
 # ── R05B-1 ──────────────────────────────────────────────────────────────────
 def test_r05b_1_o_contrato_dirige_a_existencia_da_sonda():
     """O contrato é a chave: o gate inverte junto com ele, sem edição.
 
-    INDETERMINADO → a sonda pode existir, e só ela lê a chave.
-    DETERMINADA   → sonda, rota e qualquer leitura da chave são proibidas.
+    INDETERMINADO → a sonda pode existir.
+    DETERMINADA   → sonda e rota são proibidas, e o fechamento exige que cada
+                    propriedade decisiva esteja aprovada E que o ambiente da
+                    evidência esteja nomeado.
     """
     bloco = _bloco_do_contrato()
     estado = _estado()
     assert estado in ESTADOS_VALIDOS, f'estado fora do vocabulário: {estado}'
 
-    # Os campos de propriedade também têm vocabulário fechado. Sem isto,
-    # `P1-IDENTIDADE` aceitaria qualquer texto e o contrato deixaria de ser
-    # legível por máquina exatamente onde ele afirma o que foi medido.
-    propriedades = {}
-    for campo in CAMPOS_DE_PROPRIEDADE:
-        achado = re.search(rf'{campo}:\s*(\S+)', bloco)
-        assert achado, f'o contrato não declara {campo}'
-        assert achado.group(1) in VALORES_DE_PROPRIEDADE, (
-            f'{campo} fora do vocabulário: {achado.group(1)!r}'
+    # Vocabulário fechado em todos os campos. Sem isto, `P1-IDENTIDADE`
+    # aceitaria qualquer texto e o contrato deixaria de ser legível por máquina
+    # exatamente onde ele afirma o que foi medido.
+    propriedades = {c: _campo(c) for c in CAMPOS_DE_PROPRIEDADE}
+    for campo, valor in propriedades.items():
+        assert valor in VALORES_DE_PROPRIEDADE, (
+            f'{campo} fora do vocabulário: {valor!r}'
         )
-        propriedades[campo] = achado.group(1)
+    assert _campo('F-CADEIA-LONGA') in VALORES_DE_F, (
+        f"F-CADEIA-LONGA fora do vocabulário: {_campo('F-CADEIA-LONGA')!r}"
+    )
+    assert _campo('ATIVACAO-HOPS') in VALORES_DE_ATIVACAO, (
+        f"ATIVACAO-HOPS fora do vocabulário: {_campo('ATIVACAO-HOPS')!r}"
+    )
 
-    # INVARIANTE DE FECHAMENTO. Pertencer ao vocabulário não basta: `DETERMINADA`
-    # com uma propriedade `medida-reprovada` ou `nao-medida` passava por válido,
-    # e o CI endossaria um fechamento que a evidência não sustenta. Este buraco
-    # nasceu junto com o vocabulário de três valores, na tarefa anterior.
     if estado == 'DETERMINADA':
-        reprovadas = {c: v for c, v in propriedades.items() if v != 'medida-aprovada'}
+        # INVARIANTE DE FECHAMENTO. Pertencer ao vocabulário não basta:
+        # `DETERMINADA` com uma propriedade `medida-reprovada` ou `nao-medida`
+        # passava por válido, e o CI endossaria um fechamento que a evidência
+        # não sustenta. Este buraco nasceu junto com o vocabulário de três
+        # valores, e foi fechado no hotfix de 28/09.
+        reprovadas = {c: v for c, v in propriedades.items()
+                      if v != 'medida-aprovada'}
         assert not reprovadas, (
             f'contrato DETERMINADA com propriedade que não foi aprovada: '
             f'{reprovadas}. O estado global só fecha quando cada propriedade '
             f'decisiva estiver em medida-aprovada'
         )
 
+        # VÍNCULO DE AMBIENTE. Identidade medida é medida EM ALGUM LUGAR.
+        # Fechamento sem o ambiente nomeado é uma afirmação sem escopo, e é
+        # dela que a barreira do `R05B-11` depende para saber o que não pode
+        # ser herdado.
+        ambiente = _campo('AMBIENTE-DA-EVIDENCIA')
+        assert ambiente, (
+            'contrato DETERMINADA sem AMBIENTE-DA-EVIDENCIA. Evidência sem '
+            'ambiente nomeado não delimita onde ela vale, e a barreira de '
+            'ativação não tem contra o que comparar'
+        )
+
     atual = hashlib.sha256(bloco.encode('utf-8')).hexdigest()
     assert atual == DIGESTO_CONTRATO, (
         'o bloco de contrato mudou sem que o digesto fosse recalculado — '
-        'fechar a identidade tem de ser deliberado'
+        'mudar o estado da identidade ou a autorização tem de ser deliberado'
     )
 
     rotas = ROTAS.read_text(encoding='utf-8')
@@ -180,108 +210,12 @@ def test_r05b_1_o_contrato_dirige_a_existencia_da_sonda():
         assert not SONDA_MODULO.exists(), 'a sonda ficou depois do fechamento'
         assert 'origin-identity-diagnostics' not in rotas, 'a rota ficou'
         assert 'proxy_identity_probe' not in rotas, 'o import ficou'
-        # A ausência de leitores da chave no estado fechado é do `R05-6`, que
-        # varre o repositório inteiro. Aqui o nome nem existe mais: ele veio da
-        # sonda, e a sonda acabou de ser removida.
+        # A ausência de leitores da chave é do `R05-6`, que varre o
+        # repositório inteiro com o nome literal da variável.
     else:
         assert SONDA_MODULO.exists(), 'contrato aberto e sonda ausente'
-        assert 'origin-identity-diagnostics' in rotas, 'contrato aberto e rota ausente'
-        # A chave só pode ser lida pela sonda. Qualquer outro leitor amplia a
-        # superfície do segredo para além do que o contrato autoriza.
-        outros = [p for p in _leitores_da_chave() if p != SONDA_MODULO]
-        assert not outros, f'a chave é lida fora da sonda: {outros}'
-
-
-# ── R05B-2 ──────────────────────────────────────────────────────────────────
-def test_r05b_2_a_sonda_nunca_devolve_endereco():
-    """Varre a resposta com entradas adversariais.
-
-    Se qualquer valor da resposta contiver um endereço analisável, a sonda
-    deixou de ser redigida — e a rota vira vazamento em vez de oráculo.
-    """
-    if SONDA is None:
-        return
-
-    v6 = str(ipaddress.ip_address((0x2001 << 112) | 0xdb8))
-    entradas = [
-        _Req(X_Forwarded_For='192.0.2.1, 192.0.2.2, 198.51.100.7',
-             X_Probe_Hops='3', X_Origin_Claim='198.51.100.7'),
-        _Req(X_Forwarded_For=f'{v6}, 203.0.113.9', X_Probe_Hops='2',
-             X_Origin_Claim=v6),
-        _Req(X_Forwarded_For=['192.0.2.1', '198.51.100.7'], X_Probe_Hops='1',
-             X_Origin_Claim='198.51.100.7'),
-        _Req(X_Probe_Hops='0', X_Origin_Claim='198.51.100.7'),
-    ]
-    for req in entradas:
-        resposta = SONDA.medir(req)
-        for chave, valor in resposta.items():
-            if not isinstance(valor, str):
-                continue
-            for pedaco in re.split(r'[\s,]+', valor):
-                try:
-                    ipaddress.ip_address(pedaco.strip())
-                except ValueError:
-                    continue
-                raise AssertionError(f'campo {chave!r} devolveu um endereço')
-
-
-# ── R05B-3 ──────────────────────────────────────────────────────────────────
-def test_r05b_3_sem_chave_a_rota_nao_existe(monkeypatch):
-    """Falha FECHADA: sem a variável, e com chave errada, não autoriza."""
-    if SONDA is None:
-        return
-
-    monkeypatch.delenv(SONDA.NOME_DA_VARIAVEL, raising=False)
-    assert SONDA.autorizado(_Req(X_Diagnostics_Key='qualquer')) is False, (
-        'sem a variável no ambiente a sonda autorizou — a rota deixaria de ser '
-        'indistinguível de uma rota inexistente'
-    )
-
-    monkeypatch.setenv(SONDA.NOME_DA_VARIAVEL, 'segredo-de-teste')
-    assert SONDA.autorizado(_Req(X_Diagnostics_Key='errada')) is False
-    assert SONDA.autorizado(_Req()) is False
-    assert SONDA.autorizado(_Req(X_Diagnostics_Key='segredo-de-teste')) is True
-
-    # Caractere fora de ASCII não pode virar 500: a exceção distinguiria rota
-    # protegida de rota ausente.
-    assert SONDA.autorizado(_Req(X_Diagnostics_Key='✓')) is False
-
-    # E a rota responde o 404 do fallthrough, não JSON.
-    assert "send_error(404, 'File not found')" in ROTAS.read_text(encoding='utf-8')
-
-
-# ── R05B-4 ──────────────────────────────────────────────────────────────────
-def test_r05b_4_o_hops_avaliado_e_o_pedido():
-    """`hops` errado tem de ser DETECTÁVEL, senão a medição não vale nada."""
-    if SONDA is None:
-        return
-
-    # Cadeia: 3 sentinelas do cliente + 3 escritos pela borda.
-    cadeia = ['192.0.2.1', '192.0.2.2', '192.0.2.3',
-              '198.51.100.7', '203.0.113.1', '203.0.113.2']
-
-    certo = SONDA.analisar(cadeia, 3, '198.51.100.7')
-    assert certo['hops_avaliado'] == 3
-    assert certo['candidato_bate_com_origem_declarada'] is True
-    assert certo['candidato_e_do_cliente'] is False
-    assert certo['prefixo_do_cliente_presente'] is True
-
-    # `hops` grande demais: a janela entra no prefixo do CLIENTE, e isso tem de
-    # aparecer — é o que impede certificar a posição errada.
-    errado = SONDA.analisar(cadeia, 6, '198.51.100.7')
-    assert errado['candidato_e_do_cliente'] is True, (
-        'a janela caiu em dado do cliente e a sonda não acusou'
-    )
-    assert errado['candidato_bate_com_origem_declarada'] is False
-
-    # Cadeia curta: nada a afirmar.
-    curta = SONDA.analisar(['198.51.100.7'], 3, '198.51.100.7')
-    assert curta['cadeia_suficiente_para_hops'] is False
-    assert curta['candidato_bate_com_origem_declarada'] is None
-
-    # `X-Probe-Hops` absurdo satura em vez de explodir.
-    assert SONDA.medir(_Req(X_Probe_Hops='999999'))['hops_avaliado'] == SONDA.HOPS_MAXIMO
-    assert SONDA.medir(_Req(X_Probe_Hops='nao-numero'))['hops_avaliado'] == 0
+        assert 'origin-identity-diagnostics' in rotas, \
+            'contrato aberto e rota ausente'
 
 
 # ── R05B-5 ──────────────────────────────────────────────────────────────────
@@ -344,8 +278,15 @@ def test_r05b_5b_a_varredura_enxerga_as_duas_familias():
 
 
 # ── R05B-6 ──────────────────────────────────────────────────────────────────
-def test_r05b_6_nenhuma_configuracao_de_proxy_antes_da_evidencia():
-    """`HOPS` fica em 0 enquanto a identidade não for determinada."""
+def test_r05b_6_nenhuma_configuracao_de_proxy_sem_autorizacao():
+    """`HOPS` fica em 0 no modelo genérico, e o padrão do limitador é 0.
+
+    As duas últimas asserções vinham do `R05B-8`, que media a sonda. Elas não
+    falam da sonda: fixam que o limitador lê a PRIMEIRA instância do cabeçalho
+    e usa a string CRUA de `cadeia[-N]` como chave de balde. São as duas
+    premissas da classificação de D e E no documento — se o limitador mudar
+    qualquer uma, aquela classificação para de valer em silêncio.
+    """
     linhas = [l.strip() for l in EXEMPLO_ENV.read_text(encoding='utf-8').splitlines()
               if l.strip().startswith('RATE_LIMIT_TRUSTED_PROXY_HOPS')]
     assert linhas, 'o modelo de ambiente parou de declarar a variável'
@@ -362,8 +303,14 @@ def test_r05b_6_nenhuma_configuracao_de_proxy_antes_da_evidencia():
         'o limitador deixou de tratar 0 como "ignore o cabeçalho"'
     )
 
-    if _estado() != 'DETERMINADA':
-        assert 'HOPS=3' not in _bloco_do_contrato()
+    assert "handler.headers.get('X-Forwarded-For', '')" in fonte, (
+        'o limitador mudou a forma de ler o cabeçalho; a classificação de D no '
+        'documento depende de ele ler só a PRIMEIRA instância'
+    )
+    assert 'return cadeia[-TRUSTED_PROXY_HOPS]' in fonte, (
+        'o limitador deixou de usar a string crua de cadeia[-N] como chave; a '
+        'classificação de E no documento depende disso'
+    )
 
 
 # ── R05B-7 ──────────────────────────────────────────────────────────────────
@@ -379,58 +326,15 @@ def test_r05b_7_o_limitador_nao_le_cabecalho_nao_certificado():
         assert nome not in fonte, f'o limitador passou a ler {nome!r}'
 
 
-# ── R05B-8 ──────────────────────────────────────────────────────────────────
-def test_r05b_8_a_sonda_mede_o_que_o_limitador_usa():
-    """Sem isto, D e E seriam opinião em vez de medição.
-
-    O limitador lê a PRIMEIRA instância de `X-Forwarded-For` e usa a string
-    CRUA como chave de balde. A sonda precisa reportar os dois fatos, senão a
-    medição descreveria uma função diferente da que roda em produção.
-    """
-    if SONDA is None:
-        return
-
-    fonte = LIMITADOR.read_text(encoding='utf-8')
-    assert "handler.headers.get('X-Forwarded-For', '')" in fonte, (
-        'o limitador mudou a forma de ler o cabeçalho; a sonda mede a antiga'
-    )
-    assert 'return cadeia[-TRUSTED_PROXY_HOPS]' in fonte, (
-        'o limitador deixou de usar a string crua de cadeia[-N] como chave'
-    )
-
-    # Duas instâncias: a sonda acusa a divergência que o limitador ignoraria.
-    repetido = SONDA.medir(_Req(
-        X_Forwarded_For=['192.0.2.1,192.0.2.2,192.0.2.3', '198.51.100.7'],
-        X_Probe_Hops='3', X_Origin_Claim='198.51.100.7'))
-    assert repetido['xff_instancias_repetidas'] is True
-    assert repetido['candidato_e_do_cliente'] is True, (
-        'com duas instâncias o limitador selecionaria dado do cliente, e a '
-        'sonda não acusou'
-    )
-
-    uma_so = SONDA.medir(_Req(X_Forwarded_For='192.0.2.1,192.0.2.2,198.51.100.7',
-                              X_Probe_Hops='1', X_Origin_Claim='198.51.100.7'))
-    assert uma_so['xff_instancias_repetidas'] is False
-
-    # Grafia não canônica na posição do candidato.
-    torto = SONDA.analisar(['::ffff:198.51.100.7', '203.0.113.1', '203.0.113.2'],
-                           3, '198.51.100.7')
-    assert torto['candidato_bate_com_origem_declarada'] is True
-    assert torto['candidato_ja_canonico'] is False, (
-        'a grafia não canônica passou por canônica: o balde do limitador '
-        'dependeria da forma que a borda escolheu escrever'
-    )
-
-
 # ── R05B-9 ──────────────────────────────────────────────────────────────────
 def test_r05b_9_o_procedimento_exige_https_antes_da_chave():
     """A chave de diagnóstico não pode sair em claro.
 
-    O procedimento manda o operador definir `BACKEND` e enviar
-    `X-Diagnostics-Key`. Com `BACKEND` em `http://`, a chave de produção ia na
-    primeira requisição, em texto claro. Duas defesas, e o gate exige as duas:
-    a guarda que ABORTA antes de qualquer requisição, e `--proto '=https'`, que
-    impede o curl de cair em http por redirecionamento.
+    O procedimento ficou no documento como registro histórico e como base de
+    uma remedição futura. Enquanto esse texto existir, ele não pode voltar a
+    ser um comando que manda a chave sem `https`: a guarda que ABORTA antes de
+    qualquer requisição e `--proto '=https'`, que impede o curl de cair em http
+    por redirecionamento.
     """
     comandos = _procedimento()
     assert GUARDA_HTTPS in comandos, (
@@ -459,10 +363,70 @@ def test_r05b_9b_o_criterio_de_aceitacao_cobre_o_campo_do_balde():
     fora da tabela de aceitação — e é ele que diz se a chave de balde do
     limitador é a forma canônica. Critério que não o exige aceita uma borda que
     escreve canônico nas amostras curtas e expandido na longa."""
-    tabela = CONTRATO.read_text(encoding='utf-8')
+    tabela = _texto()
     inicio = tabela.index('Os dois controles com `N=3` exigem, campo a campo:')
     fim = tabela.index('> **Limitação registrada.**')
     assert '`candidato_ja_canonico`' in tabela[inicio:fim], (
         'a tabela de aceitação dos dois controles não exige '
         '`candidato_ja_canonico`, que é o campo que o limitador usa como chave'
+    )
+
+
+# ── R05B-10 ─────────────────────────────────────────────────────────────────
+def test_r05b_10_o_valor_de_f_nao_contradiz_o_registro_do_403():
+    """F não pode virar aprovada por edição de campo.
+
+    O controle `LONGA100` devolveu 403 sem corpo: nenhum dos quatro campos
+    exigidos foi observado. Enquanto esse registro estiver no documento,
+    `F-CADEIA-LONGA` medida seria uma afirmação contra a própria evidência
+    registrada ao lado.
+
+    Duas travas, de propósito: os fatos do 403 têm de continuar escritos, e o
+    valor de F tem de concordar com eles. Apagar o registro para liberar o
+    campo derruba a primeira; mudar só o campo derruba a segunda.
+    """
+    corrido = _corrido()
+    for fato in FATOS_DO_403:
+        assert fato in corrido, (
+            f'sumiu do documento um fato do controle LONGA100: {fato!r}. O '
+            'resultado 403 é histórico e não se reescreve'
+        )
+
+    if _campo('F-CADEIA-LONGA') != 'inconclusiva':
+        assert SEM_OBSERVACAO not in corrido, (
+            f"F-CADEIA-LONGA está {_campo('F-CADEIA-LONGA')!r} e o documento "
+            f'continua registrando {SEM_OBSERVACAO!r}. Um dos dois é falso: '
+            'F só sai de inconclusiva com observação que hoje não existe'
+        )
+
+
+# ── R05B-11 ─────────────────────────────────────────────────────────────────
+def test_r05b_11_a_autorizacao_de_ativacao_nao_se_herda():
+    """A barreira da decisão B.
+
+    Medir a identidade no Render Free não autoriza ligar
+    `RATE_LIMIT_TRUSTED_PROXY_HOPS` no ambiente definitivo: a R0.5 já registra
+    que mudança de plano ou região invalida o número em silêncio, e para pior —
+    ele passa a apontar para dentro do território que o cliente escreve.
+
+    Este gate NÃO proíbe `HOPS > 0` para sempre, que seria bloqueio permanente
+    por construção. Ele proíbe autorizar com a evidência de OUTRO ambiente:
+    `autorizada` exige um `AMBIENTE-DA-EVIDENCIA` diferente do atual, e trocar
+    esse token passa pelo digesto do bloco. Uma revalidação no ambiente
+    definitivo escreve o ambiente novo e o gate abre.
+
+    A metade que olha as superfícies de deployment — `render.yaml` e
+    `env.example` — é do `R05-3`, que já tem o parser das duas formas de
+    declaração.
+    """
+    ativacao = _campo('ATIVACAO-HOPS')
+    if ativacao != 'autorizada':
+        return
+
+    ambiente = _campo('AMBIENTE-DA-EVIDENCIA')
+    assert ambiente != AMBIENTE_DA_MEDICAO_ATUAL, (
+        f'ATIVACAO-HOPS: autorizada com AMBIENTE-DA-EVIDENCIA={ambiente!r}, '
+        'que é a medição do Render Free. Autorização herdada de outro '
+        'ambiente é exatamente o que a decisão normativa de 29/09 proibiu: '
+        'revalide no ambiente definitivo e escreva o ambiente novo'
     )

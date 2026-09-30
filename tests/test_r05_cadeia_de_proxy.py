@@ -9,8 +9,8 @@ regressões que o fechamento cria ou mantém:
 
 - `R05-1`  o contrato continua legível por máquina
 - `R05-2`  paridade Corporate × SaaS do contrato e do limitador
-- `R05-3`  o valor do deployment bate com o contrato, e o modelo genérico
-           nunca carrega valor topológico
+- `R05-3`  o deployment não transforma medição histórica em ativação, e o
+           modelo genérico nunca carrega valor topológico
 - `R05-4`  o contrato bate com a evidência medida
 - `R05-5`  a sonda temporária saiu, e não volta
 - `R05-6`  `PROXY_CHAIN_PROBE_KEY` não é dependência de nada
@@ -21,6 +21,11 @@ Os gates `R05-3`, `R05-5` e `R05-6` mudaram de exigência sozinhos quando o
 contrato passou de `INDETERMINADO` para `DETERMINADO` — era para isso que a
 condicional existia. Eles continuam condicionais: se uma remedição reabrir o
 contrato, a exigência se inverte de novo sem ninguém lembrar de mexer aqui.
+
+O `R05-3` ganhou um segundo eixo na decisão normativa de 29/09. Medir a cadeia
+determina o NÚMERO; não autoriza aplicá-lo. Quem autoriza é `ATIVACAO-HOPS`, no
+contrato da R0.5B — então este arquivo pergunta lá em vez de reimplementar a
+decisão.
 """
 
 import hashlib
@@ -105,33 +110,29 @@ def _determinado() -> bool:
 
 CONTRATO_R05B = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
 
-#: Superfícies que a R0.5B declara como autorizadas a ler a chave enquanto a
-#: certificação de identidade estiver aberta. Lista fechada: qualquer leitura
-#: fora dela é regressão, mesmo com a fatia aberta.
-SUPERFICIES_R05B = (
-    'epi_backend/proxy_identity_probe.py',
-    'docs/R05B_IDENTIDADE_DA_ORIGEM.md',
-    'tests/test_r05b_identidade_da_origem.py',
-)
 
+def _ativacao_de_hops() -> str:
+    """Lê `ATIVACAO-HOPS` do contrato da R0.5B.
 
-def _identidade_em_aberto() -> bool:
-    """A R0.5B ainda está certificando identidade?
+    A R0.5 mediu o número; a R0.5B decide se ele pode ser APLICADO. Perguntar
+    aqui, em vez de reimplementar o critério, é o que impede as duas fatias de
+    divergirem em silêncio.
 
-    Enquanto estiver, a sonda dela pode existir e ler a chave — e só ela. Ver
-    `docs/R05B_IDENTIDADE_DA_ORIGEM.md` §1.
+    Falha FECHADA de propósito: documento ausente, bloco ausente ou campo
+    ausente devolvem `nao-autorizada`. Uma decisão de ativação que não está
+    escrita não existe.
     """
     if not CONTRATO_R05B.exists():
-        return False
+        return 'nao-autorizada'
     texto = CONTRATO_R05B.read_text(encoding='utf-8')
     if 'CONTRATO-R05B-INICIO' not in texto:
-        return False
+        return 'nao-autorizada'
     bloco = texto.split('<!-- CONTRATO-R05B-INICIO -->', 1)[1]
     bloco = bloco.split('<!-- CONTRATO-R05B-FIM -->', 1)[0]
     for linha in bloco.splitlines():
-        if linha.strip().startswith('ESTADO-DA-IDENTIDADE:'):
-            return linha.split(':', 1)[1].strip() == 'INDETERMINADO'
-    return False
+        if linha.strip().startswith('ATIVACAO-HOPS:'):
+            return linha.split(':', 1)[1].strip()
+    return 'nao-autorizada'
 
 
 def _valores_declarados(texto: str) -> list:
@@ -222,11 +223,23 @@ def test_r05_2b_o_limitador_e_identico_nos_dois_repositorios():
 
 # ── R05-3: o valor do deployment bate com o contrato ────────────────────────
 
-def test_r05_3_o_render_declara_exatamente_o_valor_do_contrato():
-    """Condicional: enquanto INDETERMINADO, declarar um número é o erro; depois
-    de DETERMINADO, NÃO declarar é o erro.
+def test_r05_3_o_deployment_nao_transforma_medicao_em_ativacao():
+    """Condicional em DOIS eixos.
 
-    Vale para `render.yaml`, que é específico da topologia medida. O
+    Enquanto a cadeia está INDETERMINADA, declarar um número é o palpite que a
+    R0 recusou. Depois de DETERMINADO o número existe — mas **medir não é
+    autorizar**. A medição saiu do plano Free do Render, e a §1 deste contrato
+    já registra que mudança de plano ou região invalida o número em silêncio,
+    apontando para dentro do território que o cliente escreve. Quem decide se o
+    número pode ser aplicado é `ATIVACAO-HOPS`, na R0.5B.
+
+    Sem autorização, `render.yaml` tem de declarar `0` — e declarar, não
+    omitir. Omitir deixa o padrão do limitador valendo no processo, mas deixa um
+    `3` posto no painel sobreviver a uma sincronização do blueprint. Declarar
+    `0` faz o blueprint sobrescrever esse `3`, que é a diferença entre o
+    repositório não aplicar o valor e o repositório impedir que ele seja
+    aplicado.
+
     `env.example` tem regra própria, no gate seguinte — e mais estrita.
     """
     campos = _campos_do_contrato()
@@ -240,13 +253,28 @@ def test_r05_3_o_render_declara_exatamente_o_valor_do_contrato():
                 )
         return
 
-    esperado = campos['SALTOS-CONFIAVEIS']
     assert RENDER.exists(), 'render.yaml sumiu'
     valores = _valores_declarados(RENDER.read_text(encoding='utf-8'))
     assert valores, (
-        f'contrato DETERMINADO e render.yaml não declara {VARIAVEL}. '
-        'Deployment sem o valor volta ao padrão 0 e colapsa as origens'
+        f'render.yaml não declara {VARIAVEL}. Sem a declaração, um valor posto '
+        'no painel sobrevive à sincronização do blueprint — inclusive um valor '
+        'que nenhuma medição do ambiente definitivo sustenta'
     )
+
+    ativacao = _ativacao_de_hops()
+    if ativacao != 'autorizada':
+        for valor in valores:
+            assert valor == '0', (
+                f'render.yaml declara {VARIAVEL}={valor} com '
+                f'ATIVACAO-HOPS={ativacao!r} na R0.5B. O blueprint sincroniza '
+                'para um ambiente cuja borda não foi medida; ali este número '
+                'aponta para dentro do prefixo que o cliente escreve, e o '
+                'cliente escolhe o próprio balde. Autorize a ativação com '
+                'revalidação do ambiente antes de declarar o valor aqui'
+            )
+        return
+
+    esperado = campos['SALTOS-CONFIAVEIS']
     for valor in valores:
         assert valor == esperado, (
             f'render.yaml declara {VARIAVEL}={valor} e o contrato diz '
@@ -489,16 +517,9 @@ def test_r05_6_a_chave_da_sonda_nao_e_dependencia_de_nenhum_caminho():
         if CHAVE_DA_SONDA in caminho.read_text(encoding='utf-8', errors='replace'):
             sobreviventes.append(str(caminho.relative_to(RAIZ)).replace('\\', '/'))
 
-    if _identidade_em_aberto():
-        # A R0.5B reabriu a leitura da chave — mas só para as superfícies que
-        # ela declara. Qualquer outra é regressão.
-        fora = [c for c in sobreviventes if c not in SUPERFICIES_R05B]
-        assert not fora, (
-            f'{CHAVE_DA_SONDA} é lida fora das superfícies que a R0.5B declara: '
-            f'{fora}. Autorizadas: {list(SUPERFICIES_R05B)}'
-        )
-        return
-
+    # A R0.5B reabriu esta leitura por uma fatia, para a sonda de identidade.
+    # A sonda saiu no fechamento de 29/09 e a exceção saiu com ela: voltou a
+    # valer a regra incondicional.
     assert not sobreviventes, (
         f'{CHAVE_DA_SONDA} ainda é lida em: {sobreviventes}. A variável some do '
         'painel do Render no fechamento da R0.5'
@@ -688,31 +709,3 @@ def test_r05_9_nenhum_endereco_real_na_fatia():
             assert any(endereco in faixa for faixa in faixas), (
                 f'{caminho.name} contém {literal}, que não é de faixa reservada'
             )
-
-
-def test_r05_6b_a_instrucao_nao_manda_remover_chave_que_a_r05b_usa():
-    """Conflito entre fatias: a R0.5 fechou mandando remover
-    `PROXY_CHAIN_PROBE_KEY` sob a premissa de que não havia mais sonda no
-    código. A R0.5B reintroduziu uma sonda que lê a MESMA variável.
-
-    Um operador seguindo a instrução antiga desliga a sonda de identidade — a
-    rota passa a 404 — e fica impedido de concluir a medição que falta. Este
-    gate só cobra enquanto a R0.5B depender da chave; quando a identidade
-    fechar e a instrumentação sair, ele para de cobrar sozinho.
-    """
-    if not _identidade_em_aberto():
-        return
-
-    texto = CONTRATO.read_text(encoding='utf-8')
-    inicio = texto.index('### Instruções para o operador, nos dois serviços')
-    instrucoes = texto[inicio:inicio + 2000]
-
-    assert CHAVE_DA_SONDA in instrucoes, (
-        'as instruções pararam de mencionar a chave; quem seguir não saberá '
-        'que ela precisa permanecer enquanto a R0.5B estiver aberta'
-    )
-    assert 'mantenha a variável configurada' in instrucoes, (
-        'a instrução voltou a mandar remover a chave sem condição: seguir isso '
-        'com a R0.5B aberta desliga a sonda de identidade e impede concluir a '
-        'medição'
-    )

@@ -10,7 +10,7 @@ Oito gates, um por propriedade:
 
   R05-1  a configuração versionada declara 0
   R05-2  sem configuração, ou com lixo, o padrão continua 0
-  R05-3  o limitador é idêntico nos dois repositórios
+  R05-3  o limitador não muda sem decisão deliberada (pino local)
   R05-4  o limitador não lê cabeçalho de identidade não certificado
   R05-5  a instrumentação temporária não está no repositório
   R05-6  os documentos são registro histórico, não autorização
@@ -54,10 +54,10 @@ LIMITADOR = RAIZ / 'core' / 'rate_limit.py'
 
 VARIAVEL = 'RATE_LIMIT_TRUSTED_PROXY_HOPS'
 
-#: Digesto de `core/rate_limit.py`. Os dois repositórios carregam a MESMA
-#: constante: quem mexer no limitador de um lado só deixa aquele lado vermelho.
-#: Limitação honesta — pega edição unilateral, não pega os dois editando igual e
-#: errado ao mesmo tempo.
+#: Digesto de `core/rate_limit.py`. Pino LOCAL: prova que o arquivo deste
+#: repositório é byte a byte o que a constante fixa. Não prova paridade com o
+#: outro repositório — a constante mora no mesmo arquivo, no mesmo commit, e
+#: recalculá-la junto com a mudança deixa o gate verde. Ver o `R05-3`.
 DIGESTO_LIMITADOR = 'aab6c8acb2212232c3558887eac85f8061033e323baeb7ee59592a9903f0237e'
 
 
@@ -173,16 +173,32 @@ def test_r05_2_sem_configuracao_ou_com_lixo_o_padrao_e_zero():
     assert 'ValueError' in saida.stderr
 
 
-# ── R05-3: o limitador é idêntico nos dois repositórios ─────────────────────
+# ── R05-3: o limitador não muda sem decisão deliberada ──────────────────────
 
-def test_r05_3_o_limitador_e_identico_nos_dois_repositorios():
-    """Corporate e SaaS rodam o mesmo algoritmo de origem. Se um lado mexer no
-    limitador e o outro não, os dois produtos passam a decidir bucket de formas
-    diferentes — e nenhum teste local de cada repositório notaria."""
+def test_r05_3_o_limitador_nao_muda_sem_decisao_deliberada():
+    """Pino LOCAL de digesto — e a descrição agora diz só isso.
+
+    **O que prova:** `core/rate_limit.py` neste repositório é byte a byte o
+    arquivo que a constante fixa. Mexer nele obriga a recalcular a constante, o
+    que torna a mudança deliberada em vez de acidental.
+
+    **O que NÃO prova: paridade entre Corporate e SaaS.** A constante mora no
+    mesmo arquivo, no mesmo repositório, no mesmo commit. Alterar o limitador de
+    um lado e recalcular o digesto junto deixa os DOIS CIs verdes com
+    limitadores divergentes — reproduzido antes de esta descrição ser escrita.
+    A versão anterior chamava isto de paridade e afirmava uma garantia que a
+    suíte de um repositório sozinho não tem como dar: nenhum dos dois faz
+    checkout do outro.
+
+    A paridade real é medida no fechamento, comparando byte a byte os arquivos
+    dos dois worktrees, e registrada separadamente. É verificação de processo,
+    não de CI, e fingir o contrário é pior do que não ter.
+    """
     atual = hashlib.sha256(LIMITADOR.read_bytes()).hexdigest()
     assert atual == DIGESTO_LIMITADOR, (
-        'core/rate_limit.py mudou sem o digesto ser recalculado, ou divergiu '
-        'entre os repositórios. Esta fatia não altera o limitador'
+        'core/rate_limit.py mudou sem o digesto ser recalculado. Esta fatia não '
+        'altera o limitador; se a mudança for intencional, recalcule a constante '
+        'NOS DOIS repositórios — este gate não confere o outro lado'
     )
 
 
@@ -396,6 +412,22 @@ def _seguro(endereco, faixas) -> bool:
     return any(endereco in f for f in faixas if f.version == endereco.version)
 
 
+def _violacoes(caminhos, faixas) -> list:
+    """Rótulos SANITIZADOS: documento e família, nunca o endereço.
+
+    Devolver rótulo em vez de endereço é o que permite ao gate falhar sem
+    publicar justamente o que ele existe para proteger.
+    """
+    achadas = []
+    for caminho in caminhos:
+        for endereco in _enderecos(caminho.read_text(encoding='utf-8')):
+            if not _seguro(endereco, faixas):
+                achadas.append(
+                    f'{caminho.name}: um endereço IPv{endereco.version} fora '
+                    'das faixas reservadas')
+    return achadas
+
+
 def test_r05_7_nenhum_endereco_real_nos_documentos():
     """As medições foram feitas de origens públicas reais. Os documentos contam
     o que foi observado sem jamais gravar de onde — só sentinelas de
@@ -404,16 +436,19 @@ def test_r05_7_nenhum_endereco_real_nos_documentos():
     Havia dois scanners: um IPv4-only sobre o documento da R0.5 e este, que
     enxerga as duas famílias, sobre o da R0.5B. Um IPv6 real no primeiro passava
     pelos dois. Ficou um scanner, sobre os dois documentos.
+
+    **A falha não passa por `assert` sobre expressão que contenha o endereço.**
+    A reescrita de asserção do pytest imprime as subexpressões avaliadas, então
+    `assert _seguro(endereco, faixas)` publicava
+    `_seguro(IPv4Address('<real>'), ...)` no log do CI — o gate existe para
+    impedir que um endereço real seja gravado e o publicava em texto claro,
+    justo quando disparava. `raise AssertionError` não é reescrito, e o rótulo
+    que ele carrega é sanitizado na origem.
     """
     faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
-    for caminho in (DOC_R05, DOC_R05B, Path(__file__)):
-        for endereco in _enderecos(caminho.read_text(encoding='utf-8')):
-            # A mensagem NÃO ecoa o endereço: o gate existe para impedir que
-            # endereço real seja gravado, e não pode publicá-lo no log do CI.
-            assert _seguro(endereco, faixas), (
-                f'{caminho.name} tem um endereço IPv{endereco.version} fora das '
-                'faixas reservadas'
-            )
+    violacoes = _violacoes((DOC_R05, DOC_R05B, Path(__file__)), faixas)
+    if violacoes:
+        raise AssertionError('endereço real versionado — ' + '; '.join(violacoes))
 
 
 #: Contextos em que o endereço chega colado ao que vem antes — o que a varredura
@@ -468,3 +503,29 @@ def test_r05_7b_a_varredura_enxerga_as_duas_familias():
             assert _seguro(achado, faixas), f'2001:db8::1 reprovado em {contexto!r}'
     for prosa in PROSA_SEM_ENDERECO:
         assert _enderecos(prosa) == [], 'texto sem endereço virou endereço'
+
+    # A falha do `R05-7` não pode publicar o que ele protege. Duas metades: o
+    # rótulo é sanitizado na origem, e o gate não volta a usar `assert` sobre
+    # expressão que contenha o endereço — a reescrita do pytest imprimiria o
+    # objeto, e a mensagem sanitizada ao lado não impediria nada.
+    class _DocumentoDeProva:
+        name = 'documento-de-prova'
+
+        def read_text(self, encoding='utf-8'):
+            return f'origem:{ipaddress.ip_address(0x60606060)}'
+
+    rotulos = _violacoes((_DocumentoDeProva(),), faixas)
+    assert rotulos, 'o coletor de violações não enxergou o endereço real'
+    vazou = any(str(ipaddress.ip_address(0x60606060)) in r for r in rotulos)
+    assert not vazou, 'o rótulo da violação carrega o endereço detectado'
+
+    # Procura STATEMENT, não menção: a prosa acima cita o padrão proibido para
+    # explicá-lo, e uma busca por substring no arquivo inteiro se acusaria.
+    linhas = Path(__file__).read_text(encoding='utf-8').splitlines()
+    reincidencia = [n + 1 for n, l in enumerate(linhas)
+                    if l.strip().startswith('assert _seguro(endereco')]
+    assert not reincidencia, (
+        f'linha(s) {reincidencia}: o R05-7 voltou a afirmar sobre o endereço '
+        'dentro de um `assert`, e a reescrita do pytest publicaria o endereço '
+        'real no log do CI'
+    )

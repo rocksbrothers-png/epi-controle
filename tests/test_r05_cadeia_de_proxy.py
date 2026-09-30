@@ -15,7 +15,7 @@ Oito gates, um por propriedade:
   R05-5  a instrumentação temporária não está no repositório
   R05-6  os documentos são registro histórico, não autorização
   R05-7  nenhum endereço real ficou nos documentos
-  R05-7b a varredura de endereços enxerga IPv4 e IPv6
+  R05-7b a varredura de endereços enxerga IPv4 e IPv6, colados ou não
 
 ## Por que esta suíte encolheu de 29 gates para 8
 
@@ -350,18 +350,40 @@ FAIXAS_SEGURAS = (
     '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'ff00::/8', '100::/64',
 )
 _TOKEN = re.compile(r'[0-9A-Fa-f:][0-9A-Fa-f.:]*')
+_SEPARADOR = re.compile(r'[:.]')
+
+
+def _endereco_no_inicio(candidato: str):
+    """O maior prefixo de `candidato` que é um endereço, ou `None`."""
+    while candidato:
+        try:
+            return ipaddress.ip_address(candidato)
+        except ValueError:
+            candidato = candidato[:-1]
+    return None
 
 
 def _enderecos(texto: str) -> list:
+    """O token é uma corrida de caracteres de endereço, e não sabe onde o
+    endereço começa: `origem:<ip>` entrega o token `:<ip>`, e `fonte:<ip>` ou
+    `IPv4:<ip>` entregam `e:<ip>` e `4:<ip>`, porque o rótulo termina em dígito
+    hexadecimal. Aparar só da direita nunca chegava ao endereço.
+
+    Só quando NENHUM prefixo do token é endereço o início avança para depois do
+    próximo separador. Token que já rendia endereço rende o mesmo de antes, e um
+    endereço que casou nunca é relido a partir do meio."""
     achados = []
     for bruto in _TOKEN.findall(texto):
-        candidato = bruto
-        while candidato:
-            try:
-                achados.append(ipaddress.ip_address(candidato))
+        inicio = 0
+        while inicio < len(bruto):
+            endereco = _endereco_no_inicio(bruto[inicio:])
+            if endereco is not None:
+                achados.append(endereco)
                 break
-            except ValueError:
-                candidato = candidato[:-1]
+            separador = _SEPARADOR.search(bruto, inicio)
+            if separador is None:
+                break
+            inicio = separador.end()
     return achados
 
 
@@ -394,16 +416,55 @@ def test_r05_7_nenhum_endereco_real_nos_documentos():
             )
 
 
+#: Contextos em que o endereço chega colado ao que vem antes — o que a varredura
+#: perdia: `:` logo antes do endereço, e rótulo que termina em dígito
+#: hexadecimal (`fonte`, `IPv4`) grudado ao token.
+CONTEXTOS_COLADOS = (
+    'origem:{}', 'ip:{}', 'fonte:{}', 'IPv4:{}', 'X-Forwarded-For:{}',
+    '| origem | {} |', '| ip:{} |', '(origem:{})',
+)
+
+#: Texto corrente com `:` e sem endereço nenhum.
+PROSA_SEM_ENDERECO = (
+    'Status: pronto; horário 12:30; razão 3:1; proporção 16:9; chave:valor.',
+    'X-Forwarded-For: lista de origens; Forwarded: for=, by=; Via: 1.1 borda.',
+    'dead:beef, fe:ed:fa:ce e aa:bb:cc:dd:ee:ff não são endereços.',
+)
+
+
 def test_r05_7b_a_varredura_enxerga_as_duas_familias():
     """Meta-gate, e ele se paga: uma varredura IPv4-only deixa o gate acima
     verde com um IPv6 real dentro do arquivo, que foi exatamente o defeito do
-    scanner anterior. Os endereços de prova vêm de inteiros, senão o próprio
-    `R05-7` os pegaria aqui."""
+    scanner anterior. Uma que só apara o token pela direita deixa passar o
+    endereço colado a `:`, que foi o segundo. Os endereços de prova vêm de
+    inteiros, senão o próprio `R05-7` os pegaria aqui.
+
+    Nos contextos colados, o critério é o do `R05-7`: algum achado FORA das
+    faixas reservadas. Não é igualdade com o endereço escrito, porque um IPv6
+    colado a rótulo terminado em hexadecimal é lido como um vizinho, com o
+    dígito do rótulo na frente — igualmente global, igualmente vermelho."""
     faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
     for real in (ipaddress.ip_address((0x2a01 << 112) | 1),
                  ipaddress.ip_address(0x60606060)):
         achados = _enderecos(f'a borda respondeu de {real}.')
         assert real in achados, f'a varredura não enxergou IPv{real.version}'
         assert not _seguro(real, faixas), 'endereço real passou por reservado'
+        for contexto in CONTEXTOS_COLADOS:
+            achados = _enderecos(contexto.format(real))
+            assert any(not _seguro(a, faixas) for a in achados), (
+                f'a varredura perdeu um IPv{real.version} real no contexto '
+                f'{contexto!r}'
+            )
     for reservado in ('192.0.2.1', '2001:db8::1', '::ffff:192.0.2.1'):
         assert _seguro(ipaddress.ip_address(reservado), faixas)
+    # Faixa documental colada continua aceita. O IPv6 documental fica de fora
+    # dos rótulos que terminam em hexadecimal: ali ele sempre foi lido como um
+    # vizinho e reprovado — fail-closed, e inalterado por esta correção.
+    for contexto in CONTEXTOS_COLADOS:
+        for achado in _enderecos(contexto.format('192.0.2.1')):
+            assert _seguro(achado, faixas), f'192.0.2.1 reprovado em {contexto!r}'
+    for contexto in ('origem:{}', 'ip:{}', '| origem | {} |', '(origem:{})'):
+        for achado in _enderecos(contexto.format('2001:db8::1')):
+            assert _seguro(achado, faixas), f'2001:db8::1 reprovado em {contexto!r}'
+    for prosa in PROSA_SEM_ENDERECO:
+        assert _enderecos(prosa) == [], 'texto sem endereço virou endereço'

@@ -31,6 +31,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 CONTRATO = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
+#: O documento da R0.5 entra na varredura daqui, não da suíte dele: o
+#: `test_r05_9` tem regex de IPv4 pontilhado e faixas só IPv4, então um IPv6
+#: real commitado lá passava pelos dois gates. Este scanner já enxerga as duas
+#: famílias — incluir o alvo é menor que duplicar o mecanismo.
+CONTRATO_R05 = RAIZ / 'docs' / 'R05_CADEIA_DE_PROXY.md'
 SONDA_MODULO = RAIZ / 'epi_backend' / 'proxy_identity_probe.py'
 ROTAS = RAIZ / 'modules' / 'auth' / 'routes.py'
 LIMITADOR = RAIZ / 'core' / 'rate_limit.py'
@@ -61,6 +66,14 @@ CAMPOS_DE_PROPRIEDADE = ('P1-IDENTIDADE', 'P2-DUAS-ORIGENS')
 VALORES_DE_F = ('inconclusiva', 'medida-aprovada', 'medida-reprovada')
 
 VALORES_DE_ATIVACAO = ('nao-autorizada', 'autorizada')
+
+#: Acesso ao cabeçalho `Forwarded` (RFC 7239), que nunca foi medido. Casa a
+#: FORMA DE ACESSO, não o nome solto: `x-forwarded-for` é leitura legítima e
+#: está no limitador, então proibir a palavra reprovaria o uso correto. A lista
+#: de nomes proibidos do `R05B-7` não pegava `.get('Forwarded')`, porque o único
+#: literal com `forwarded` era `'forwarded ='` — e `.get('forwarded')` não
+#: contém espaço nem igual.
+ACESSO_AO_FORWARDED = re.compile(r"""(?:\.get\(|\[)\s*['"]forwarded['"]""")
 
 #: O ambiente em que a evidência de hoje foi obtida. A barreira do `R05B-11` é
 #: escrita contra ESTE token: autorizar ativação sem trocá-lo é herdar a
@@ -104,6 +117,25 @@ SEM_OBSERVACAO = 'Nenhum dos quatro campos exigidos foi observado'
 #: seção, e aí o gate aceita um valor sem evidência por trás.
 SECAO_DA_EVIDENCIA_DE_F = '### Evidência de cadeia longa'
 
+#: Campos que a evidência precisa trazer DENTRO dessa seção. A primeira versão
+#: exigia só o cabeçalho, e cabeçalho não é evidência: um `###` sozinho, sem uma
+#: linha abaixo, aprovava F e o `R05B-11` liberava HOPS > 0 em cima disso.
+#: Reproduzido antes de ser aceito.
+#:
+#: Nomes no estilo do bloco de contrato; a semântica vem dos campos que a sonda
+#: reportava, que é o vocabulário com que este documento já descreve observação.
+CAMPOS_DA_EVIDENCIA_DE_F = (
+    'CADEIA-TAMANHO',
+    'CANDIDATO-E-DO-CLIENTE',
+    'OBSERVACOES',
+    'AMBIENTE-DA-REVALIDACAO',
+)
+
+#: A maior cadeia que a evidência de 26/09 registra. Medição de cadeia LONGA
+#: tem de observar mais que isso — abaixo disso ela repete o que já está provado
+#: e não responde F. Não é fronteira nem limite: é o piso da relevância.
+MAIOR_CADEIA_JA_REGISTRADA = 4
+
 
 def _texto() -> str:
     return CONTRATO.read_text(encoding='utf-8')
@@ -139,6 +171,25 @@ def _campo(nome: str) -> str:
                        _bloco_do_contrato(), re.MULTILINE)
     assert achado, f'o contrato não declara {nome}'
     return achado.group(1)
+
+
+def _secao_da_evidencia_de_f():
+    """Corpo da seção de evidência de F, ou None se ela não existir.
+
+    Escopado à SEÇÃO: campo solto em outro lugar do documento não conta. A
+    evidência tem de estar onde ela é afirmada.
+    """
+    linhas = _texto().splitlines()
+    for i, linha in enumerate(linhas):
+        if linha.strip() != SECAO_DA_EVIDENCIA_DE_F:
+            continue
+        corpo = []
+        for seguinte in linhas[i + 1:]:
+            if seguinte.startswith('#'):
+                break
+            corpo.append(seguinte)
+        return '\n'.join(corpo)
+    return None
 
 
 def _procedimento() -> str:
@@ -265,7 +316,8 @@ def _seguro(endereco, faixas) -> bool:
 
 def test_r05b_5_nenhum_endereco_real_na_fatia():
     faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
-    alvos = [CONTRATO, Path(__file__)] + [p for p in (SONDA_MODULO,) if p.exists()]
+    alvos = ([CONTRATO, CONTRATO_R05, Path(__file__)]
+             + [p for p in (SONDA_MODULO,) if p.exists()])
     for caminho in alvos:
         for endereco in _enderecos(caminho.read_text(encoding='utf-8')):
             # A mensagem NÃO ecoa o endereço: o gate existe para impedir que
@@ -337,6 +389,13 @@ def test_r05b_7_o_limitador_nao_le_cabecalho_nao_certificado():
     for nome in ('cf-connecting-ip', 'cf_connecting_ip', 'true-client-ip',
                  'true_client_ip', 'x-real-ip', 'x_real_ip', 'forwarded ='):
         assert nome not in fonte, f'o limitador passou a ler {nome!r}'
+
+    achado = ACESSO_AO_FORWARDED.search(fonte)
+    assert not achado, (
+        f'o limitador passou a ler o cabeçalho `Forwarded` ({achado.group(0)!r}) '
+        'da RFC 7239. Ele não foi medido nesta borda e o cliente pode escrevê-lo: '
+        'seria identidade escolhida pelo cliente entrando na chave de balde'
+    )
 
 
 # ── R05B-9 ──────────────────────────────────────────────────────────────────
@@ -417,12 +476,41 @@ def test_r05b_10_o_valor_de_f_concorda_com_a_evidencia():
         )
         return
 
+    corpo = _secao_da_evidencia_de_f()
     cabecalhos = [l.strip() for l in _texto().splitlines() if l.startswith('#')]
-    assert SECAO_DA_EVIDENCIA_DE_F in cabecalhos, (
+    assert corpo is not None, (
         f'F-CADEIA-LONGA está {f!r} e o documento não tem a seção '
         f'{SECAO_DA_EVIDENCIA_DE_F!r}. Sair de inconclusiva exige registrar a '
         f'medição que sustenta o valor, não só escrever a palavra. '
         f'Cabeçalhos presentes: {cabecalhos}'
+    )
+
+    campos = {}
+    for campo in CAMPOS_DA_EVIDENCIA_DE_F:
+        achado = re.search(rf'^{campo}:[^\S\n]*(\S*)[^\S\n]*$', corpo,
+                           re.MULTILINE)
+        assert achado and achado.group(1), (
+            f'a seção {SECAO_DA_EVIDENCIA_DE_F!r} não traz {campo} com valor. '
+            'Cabeçalho não é evidência: sem os campos, F seria aprovada por uma '
+            'seção vazia e o R05B-11 liberaria HOPS > 0 em cima de nada'
+        )
+        campos[campo] = achado.group(1)
+
+    tamanho = campos['CADEIA-TAMANHO']
+    assert tamanho.isdigit() and int(tamanho) > MAIOR_CADEIA_JA_REGISTRADA, (
+        f'CADEIA-TAMANHO={tamanho!r} não estabelece cadeia longa: a evidência '
+        f'de 26/09 já registra até {MAIOR_CADEIA_JA_REGISTRADA}. Aprovar F com '
+        'isso é repetir o que já está provado e chamar de resposta'
+    )
+    assert campos['CANDIDATO-E-DO-CLIENTE'] == 'false', (
+        f"CANDIDATO-E-DO-CLIENTE={campos['CANDIDATO-E-DO-CLIENTE']!r}. F só é "
+        'aprovada se o candidato ficou FORA do prefixo escrito pelo cliente — é '
+        'essa a propriedade, e qualquer outro valor a nega'
+    )
+    obs = re.fullmatch(r'(\d+)/(\d+)', campos['OBSERVACOES'])
+    assert obs and obs.group(1) == obs.group(2) and int(obs.group(1)) >= 1, (
+        f"OBSERVACOES={campos['OBSERVACOES']!r} não é N/N com N >= 1 e as duas "
+        'partes iguais. Repetições que discordam não estabelecem posição estável'
     )
 
 
@@ -457,10 +545,29 @@ def test_r05b_11_a_autorizacao_de_ativacao_exige_f_e_ambiente_novo():
     if ativacao != 'autorizada':
         return
 
-    # F PRIMEIRO, e a mensagem diz por quê: é a lacuna que move `cadeia[-3]`
-    # para território do cliente sob truncamento a montante. Sem esta asserção
-    # a barreira só verificava a PROCEDÊNCIA da evidência, nunca se ela estava
-    # completa.
+    # IDENTIDADE PRIMEIRO. A versão anterior conferia F e ambiente, e deixava
+    # passar identidade REABERTA com P1/P2 em `nao-medida`: o `R05B-1` só cobra
+    # as propriedades no ramo `DETERMINADA`, então com o contrato reaberto
+    # ninguém cobrava, e o `R05-3` liberava o número no blueprint. Naquele
+    # cenário o que ficava vermelho era o `R05-6`, por causa da sonda
+    # restaurada — cobertura ACIDENTAL, não a propriedade. Autorização não pode
+    # depender da presença de uma sonda para ser segura.
+    estado = _estado()
+    assert estado == 'DETERMINADA', (
+        f'ATIVACAO-HOPS: autorizada com ESTADO-DA-IDENTIDADE={estado!r}. '
+        'Autorizar HOPS > 0 enquanto a identidade está em remedição é ligar o '
+        'número sem saber quem cadeia[-N] seleciona no ambiente atual'
+    )
+    for campo in CAMPOS_DE_PROPRIEDADE:
+        valor = _campo(campo)
+        assert valor == 'medida-aprovada', (
+            f'ATIVACAO-HOPS: autorizada com {campo}={valor!r}. A autorização '
+            'pressupõe cada propriedade decisiva aprovada, não só o estado '
+            'global escrito'
+        )
+
+    # F DEPOIS, e a mensagem diz por quê: é a lacuna que move `cadeia[-3]`
+    # para território do cliente sob truncamento a montante.
     f = _campo('F-CADEIA-LONGA')
     assert f == 'medida-aprovada', (
         f'ATIVACAO-HOPS: autorizada com F-CADEIA-LONGA={f!r}. Ligar '

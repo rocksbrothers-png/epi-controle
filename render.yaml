@@ -6,6 +6,18 @@ services:
     dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
+      # Fronteira de confiança de proxy — DESARMADA por decisão normativa.
+      #
+      # A R0.5 mediu 3 saltos e a R0.5B mediu a identidade, ambas no plano Free
+      # do Render. Medição histórica NÃO é autorização de ativação: o blueprint
+      # sincroniza para um ambiente que pode ter outra borda, e ali o 3 aponta
+      # para dentro do território que o cliente escreve. Declarar 0 aqui não é
+      # só omitir o 3 — é sobrescrever um 3 que alguém tenha posto no painel.
+      #
+      # Ligar isto é assunto de OUTRA PR, no ambiente definitivo, que medirá
+      # aquele ambiente. Esta PR não tem como autorizar um valor positivo.
+      - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
+        value: "0"
       - key: TESSERACT_CMD
         value: /usr/bin/tesseract
       - key: OCR_REQUIRED

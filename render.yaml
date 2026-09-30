@@ -14,9 +14,8 @@ services:
       # para dentro do território que o cliente escreve. Declarar 0 aqui não é
       # só omitir o 3 — é sobrescrever um 3 que alguém tenha posto no painel.
       #
-      # Ligar isto exige `ATIVACAO-HOPS: autorizada` em
-      # docs/R05B_IDENTIDADE_DA_ORIGEM.md, que por gate só pode ser escrito
-      # junto com a revalidação do ambiente definitivo.
+      # Ligar isto é assunto de OUTRA PR, no ambiente definitivo, que medirá
+      # aquele ambiente. Esta PR não tem como autorizar um valor positivo.
       - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
         value: "0"
       - key: TESSERACT_CMD

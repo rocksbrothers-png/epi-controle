@@ -14,33 +14,37 @@ ele veio de medição, não de documentação presumida.
 
 ---
 
-## 1. Contrato
+## 1. Registro histórico
 
-<!-- CONTRATO-R05-INICIO -->
-ESTADO-DA-CADEIA: DETERMINADO
-SALTOS-CONFIAVEIS: 3
-MODELO-DA-BORDA: ANEXA
-ORIGENS-CORROBORADAS: 1
-EVIDENCIA: medicao-render-2026-09-22-corporate-e-saas
-<!-- CONTRATO-R05-FIM -->
+**Este documento não é contrato executável.** Ele registra o que foi medido, em
+que ambiente, e o que a medição não estabelece. Nenhuma máquina lê estes fatos
+para decidir configuração; um humano lê.
 
-Este bloco é lido por gate, não só por gente. Com `ESTADO-DA-CADEIA` em
-`DETERMINADO`:
+Da medição de 2026-09-22, no plano Free do Render, em Corporate e SaaS:
 
-- `render.yaml` declara **`0`** nos dois repositórios. O `3` medido **não** vai
-  para o blueprint: medição histórica não é autorização de ativação, e o
-  blueprint sincroniza para ambientes cuja borda não foi medida. Declarar `0` é
-  melhor que omitir — sobrescreve um `3` posto à mão no painel. Ligar o valor
-  exige `ATIVACAO-HOPS: autorizada` em `docs/R05B_IDENTIDADE_DA_ORIGEM.md`, que
-  por gate só pode ser escrito com revalidação do ambiente definitivo. Decisão
-  normativa de 29/09, e o `R05-3` inverte junto com aquele campo;
-- `env.example` continua em **`0`**: é modelo para qualquer implantação, e
-  `spec/09-deployment.md` manda copiá-lo para `.env`. Ver §4.1;
-- a sonda temporária é **proibida** no repositório;
-- `PROXY_CHAIN_PROBE_KEY` deixa de ser dependência de qualquer caminho.
+- **a borda contribui com 3 elementos** na cadeia recebida;
+- **a contribuição não varia com o que o cliente envia** — controles A, B e C
+  abaixo;
+- **a borda ANEXA: acrescenta à direita sem apagar o que veio**;
+- **uma origem pública** corroborou a medição. O limite disso está no §3.
 
-O bloco é idêntico nos dois repositórios, e um gate de digesto reprova quem
-editar só de um lado.
+O número **3** é, portanto, um fato observado naquele ambiente — não uma
+configuração aprovada.
+
+### O que isto NÃO é
+
+**Esta PR não autoriza RATE_LIMIT_TRUSTED_PROXY_HOPS > 0.** A única
+configuração suportada aqui é `0`, e é o que `render.yaml` e `env.example`
+declaram, explicitamente, nos dois repositórios.
+
+Ativar um valor positivo exige **outra PR**, no ambiente definitivo, com
+medição daquele ambiente: a topologia do Free não vale para ele, e o §3 explica
+por quê. Versões anteriores desta fatia mantinham aqui um contrato legível por
+máquina, com campos de estado e invariantes de transição, para representar e
+depois bloquear essa ativação. A máquina foi removida: é mais seguro não ter
+como representar a autorização do que tê-la e bloqueá-la bem.
+
+A sonda temporária e `PROXY_CHAIN_PROBE_KEY` saíram do repositório e do painel.
 
 ---
 
@@ -156,7 +160,8 @@ proxies faria `cadeia[-3]` devolver um elemento escrito pelo cliente — o bypas
 que a R0 fechou. Três repetições de cada controle não cobrem isso: elas saem
 todas do mesmo lugar.
 
-`ORIGENS-CORROBORADAS: 1` registra esse limite em vez de escondê-lo. Amostragem
+O registro de **uma** origem corroborada guarda esse limite em vez de
+escondê-lo. Amostragem
 refuta um roteamento divergente; ela não prova que toda rota tenha esta forma.
 O que fecharia a lacuna é uma premissa de arquitetura — *todo tráfego externo
 entra pela mesma borda, sem rota publicada que a contorne* — que nenhum
@@ -213,7 +218,7 @@ O cliente completa a cadeia até o comprimento exigido, o guarda
 ele quem escreveu. Baldes ilimitados: exatamente o defeito que a R0 fechou.
 
 O `3` é específico da topologia medida e mora onde essa topologia é
-**registrada** — neste documento, no campo `SALTOS-CONFIAVEIS`. Registrar não é
+**registrada** — neste documento, no §1. Registrar não é
 aplicar: nenhuma superfície versionada o carrega hoje. Valor topológico não
 entra em modelo genérico — e o gate `R05-3b` reprova se voltar a entrar.
 
@@ -239,18 +244,14 @@ silenciosa.
 1. **NÃO adicionar** `RATE_LIMIT_TRUSTED_PROXY_HOPS` = `3`. **Deixe em `0`.**
 
    A versão original desta instrução mandava adicionar, tratando a medição como
-   autorização. A decisão normativa de 29/09 separou as duas coisas: o `3`
-   continua sendo o resultado da medição de 2026-09-22 — a §2 não muda — e
-   continua **não autorizado** para aplicação, porque a medição saiu de
-   infraestrutura provisória e a §3 já registra que mudança de plano ou região
+   autorização. São coisas diferentes: o `3` é o resultado observado em
+   2026-09-22 — o §2 não muda — e não é configuração aprovada, porque saiu de
+   infraestrutura provisória e o §3 registra que mudança de plano ou região
    invalida o número em silêncio.
 
-   Ligar o valor exige, nesta ordem: revalidar no ambiente definitivo (forma da
-   cadeia, identidade, e a propriedade que o controle de cadeia longa deixou
-   aberta na R0.5B); escrever o ambiente novo em `AMBIENTE-DA-EVIDENCIA` e
-   `ATIVACAO-HOPS: autorizada` em `docs/R05B_IDENTIDADE_DA_ORIGEM.md`; e só
-   então declarar o valor em `render.yaml` e no painel. Os gates `R05-3` e
-   `R05B-11` recusam qualquer ordem diferente dessa.
+   Ligar um valor positivo é assunto de **outra PR**, no ambiente definitivo,
+   que medirá aquele ambiente e decidirá lá. Esta fatia não tem como autorizar
+   isso, e isso é deliberado.
 
 2. **Remover `PROXY_CHAIN_PROBE_KEY`** do painel dos dois serviços.
 

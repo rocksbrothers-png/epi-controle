@@ -1,76 +1,59 @@
 # R0.5B — identidade da origem
 
-## A pergunta
+## A pergunta, e o que foi respondido
 
 A R0.5 mediu a **forma** da cadeia: a borda contribui com 3 elementos, e essa
 contribuição não varia com o que o cliente envia
 (`docs/R05_CADEIA_DE_PROXY.md`). Isso refutou spoofing na rota medida e não
 provou mais nada.
 
-Falta a **identidade**: o elemento que `cadeia[-N]` seleciona é mesmo quem
-originou a requisição, e essa posição é estável a partir de **duas origens
-públicas distintas**?
+Faltava a **identidade**: o elemento que `cadeia[-N]` seleciona é mesmo quem
+originou a requisição, e essa posição é estável a partir de duas origens
+públicas distintas?
 
-A medição de campo respondeu **sim, no ambiente em que foi feita**. Fechar essa
-pergunta **não** autoriza ligar `RATE_LIMIT_TRUSTED_PROXY_HOPS`. São dois
-estados diferentes, e o contrato abaixo os declara em campos separados.
+A medição de campo de 2026-09-26 respondeu, no ambiente em que foi feita.
 
-<!-- CONTRATO-R05B-INICIO -->
-ESTADO-DA-IDENTIDADE: DETERMINADA
-P1-IDENTIDADE: medida-aprovada
-P2-DUAS-ORIGENS: medida-aprovada
-AMBIENTE-DA-EVIDENCIA: render-free-2026-09-26-corporate-e-saas
-F-CADEIA-LONGA: inconclusiva
-ATIVACAO-HOPS: nao-autorizada
-<!-- CONTRATO-R05B-FIM -->
+## Registro histórico
 
-Vocabulário fechado, conferido por gate:
+**Este documento não é contrato executável.** Ele registra o que foi medido, em
+que ambiente, e o que ficou sem resposta.
 
-| campo | valores |
-|---|---|
-| `ESTADO-DA-IDENTIDADE` | `INDETERMINADO`, `DETERMINADA` |
-| `P1-IDENTIDADE`, `P2-DUAS-ORIGENS` | `nao-medida`, `medida-aprovada`, `medida-reprovada` |
-| `AMBIENTE-DA-EVIDENCIA` | token livre, não vazio — onde a evidência foi obtida |
-| `F-CADEIA-LONGA` | `inconclusiva`, `medida-aprovada`, `medida-reprovada` |
-| `ATIVACAO-HOPS` | `nao-autorizada`, `autorizada` |
+- **P1 — identidade: medida e aprovada.** `cadeia[-3]` correspondeu à origem
+  pública real declarada pelo chamador, nos dois backends, 3/3.
+- **P2 — duas origens: medida e aprovada.** A posição foi estável a partir de
+  duas origens públicas, nos dois backends, 3/3.
+- **Limitação de P2:** **o procedimento não verificava que as duas origens eram
+  distintas.** A evidência operacional foi banda larga versus 4G/5G, com
+  recaptura do IP na Origem B antes de medir. Isso é indício, não verificação —
+  dívida de reprodutibilidade para quem for medir de novo.
+- **F — cadeia longa: sem resposta.** O controle `LONGA100` devolveu **HTTP 403
+  em 3/3 nos dois backends, sem corpo JSON**. Qual camada recusou — borda, WAF
+  ou a rede de saída da origem — **a evidência não permite nomear a camada**, e
+  **403 não é status de tamanho**: pode ser regra sobre o conteúdo, já que a
+  cadeia enviada era feita de endereços de documentação. **F permanece
+  INCONCLUSIVA**: não é aprovação nem reprovação.
+- **LONGA100 é um ponto amostral e não prova F.** A propriedade quantifica
+  sobre toda requisição aceita; nenhuma escada finita de tamanhos a estabelece.
+  O detalhamento está mais abaixo.
+- **Ambiente:** tudo isto saiu do plano **Free** do Render, e **o plano Free do
+  Render não certifica o ambiente definitivo**.
 
-`F-CADEIA-LONGA` tem vocabulário próprio porque `inconclusiva` é um resultado
-que os campos de propriedade **não** admitem: eles registram medição aprovada
-ou reprovada, e F não foi nenhuma das duas. Por isso F também **não** entra na
-invariante de fechamento — ver abaixo por que isso não é uma brecha.
+### O que isto NÃO é
 
-## Medição concluída não é autorização
+**Esta PR não autoriza RATE_LIMIT_TRUSTED_PROXY_HOPS > 0.** A única
+configuração suportada é `0`, e é o que as superfícies versionadas declaram.
 
-São duas perguntas, e confundi-las é o erro que este contrato existe para
-impedir:
+Ativar um valor positivo exige **outra PR**, no ambiente definitivo, que medirá
+a cadeia, a identidade e a propriedade que F deixou aberta naquele ambiente.
 
-**`ESTADO-DA-IDENTIDADE: DETERMINADA`** diz que a identidade foi medida e
-aprovada **no ambiente nomeado em `AMBIENTE-DA-EVIDENCIA`**. Nada além disso.
-
-**`ATIVACAO-HOPS: nao-autorizada`** diz que nenhuma superfície do repositório
-pode carregar `RATE_LIMIT_TRUSTED_PROXY_HOPS` diferente de `0`.
-
-A evidência registrada aqui foi obtida no plano **Free** do Render, que é
-infraestrutura provisória. A R0.5 já registra que mudança de borda — CDN
-retirada ou acrescentada, hostname de origem exposto, **mudança de plano ou
-região** — invalida o número em silêncio, e para pior: ele passa a apontar para
-dentro do território que o cliente escreve. Mudança de borda exige nova
-medição, não ajuste por dedução.
-
-Então a barreira é esta: **`ATIVACAO-HOPS` só pode virar `autorizada` junto com
-um `AMBIENTE-DA-EVIDENCIA` diferente do atual.** Ligar `HOPS > 0` no ambiente
-definitivo exige revalidar lá — forma da cadeia, identidade e a propriedade que
-F deixou aberta — e escrever o ambiente novo no contrato. O gate `R05B-11`
-recusa autorizar com a evidência de hoje, e o digesto do bloco força que a
-mudança seja deliberada em vez de acidental.
-
-O gate não proíbe `HOPS > 0` para sempre. Ele proíbe **herdar** a autorização
-de uma medição feita em outro ambiente.
-
-Enquanto `ESTADO-DA-IDENTIDADE` era `INDETERMINADO`, a sonda temporária podia
-existir e `PROXY_CHAIN_PROBE_KEY` podia ser lida. Com o fechamento, os dois se
-inverteram: sonda proibida, leitura da chave proibida em qualquer lugar. O gate
-`R05B-1` inverteu junto, sem edição.
+Versões anteriores desta fatia mantinham aqui um contrato legível por máquina —
+campos de estado, invariantes de transição, barreira de ambiente — para
+representar e depois bloquear essa ativação. Três rodadas de revisão
+automatizada produziram quatorze achados; nove estavam dentro dessa máquina. O
+último observou que o gate de evidência aceitava uma amostra finita para
+aprovar uma propriedade que este mesmo documento define como universal — o
+regresso infinito que a máquina existia para impedir, reproduzido dentro dela.
+A máquina foi removida.
 
 ## O instrumento — removido
 
@@ -188,11 +171,10 @@ dizer se a segunda execução veio de outro endereço que a primeira.
 A evidência operacional usada foi **banda larga versus 4G/5G, com recaptura do
 IP na Origem B** antes de medir. Isso é indício, não verificação.
 
-`P2-DUAS-ORIGENS` continua `medida-aprovada`: o que foi observado sustenta o
-campo, e não há evidência nova que o reprove. A limitação fica registrada como
-**dívida de reprodutibilidade**, obrigatória de resolver antes de qualquer
-certificação ou ativação futura — não nesta fatia, e não por instrumentação
-nova.
+P2 continua registrada como medida e aprovada: o que foi observado sustenta o
+registro, e não há evidência nova que o reprove. A limitação fica como **dívida
+de reprodutibilidade**, a resolver por quem for medir o ambiente definitivo —
+não nesta fatia, e não por instrumentação nova.
 
 ## Evidência de campo — 2026-09-26
 
@@ -280,20 +262,20 @@ definitivo, ou uma invariante de aplicação independente de comprimento; não
 exige mais amostragem.
 
 Por isso F não bloqueia o fechamento da identidade e também não é declarada
-aprovada. Ela fica `inconclusiva`, e a barreira de `ATIVACAO-HOPS` é o que
-impede que essa lacuna chegue a produção por herança.
+aprovada. Ela fica sem resposta — e o que impede a lacuna de chegar a produção
+não é uma barreira de contrato, é o fato de esta PR não ter como configurar
+`HOPS > 0`.
 
-### Por que o fechamento não autoriza ativação
+### Por que a identidade medida não vira configuração
 
-`ESTADO-DA-IDENTIDADE` fechou porque as duas propriedades decisivas da
-pergunta — a identidade de `cadeia[-3]` e a estabilidade a partir de duas
-origens — foram medidas e aprovadas, e o gate recusa `DETERMINADA` com qualquer
-uma delas fora de `medida-aprovada`.
+As duas propriedades decisivas da pergunta — a identidade de `cadeia[-3]` e a
+estabilidade a partir de duas origens — foram medidas e aprovadas **no plano
+Free**. Isso responde a pergunta desta investigação e não configura nada.
 
-`ATIVACAO-HOPS` continua `nao-autorizada` por três motivos, cada um suficiente:
-a evidência é de infraestrutura provisória; F está `inconclusiva`; e `P2` se
-apoia em indício operacional em vez de verificação. `RATE_LIMIT_TRUSTED_PROXY_HOPS`
-permanece `0` em todas as superfícies do repositório e no painel.
+Três motivos, cada um suficiente: a evidência é de infraestrutura provisória; F
+está sem resposta; e P2 se apoia em indício operacional em vez de verificação.
+`RATE_LIMIT_TRUSTED_PROXY_HOPS` permanece `0` em todas as superfícies do
+repositório e no painel.
 
 ## D, E e F — classificação
 

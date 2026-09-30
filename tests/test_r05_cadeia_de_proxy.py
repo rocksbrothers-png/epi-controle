@@ -1,148 +1,76 @@
-"""R0.5 — gates do contrato FECHADO da cadeia de proxy.
+"""R0.5 — o que protege o comportamento de HOJE.
 
-A R0 deixou `RATE_LIMIT_TRUSTED_PROXY_HOPS` com padrão `0` porque não havia
-como comprovar outro número. A R0.5 mediu em produção, com três controles e
-três repetições cada, e o contrato fechou em **3**.
+`RATE_LIMIT_TRUSTED_PROXY_HOPS = 0` é a única configuração suportada nesta
+fatia. Com `0`, `core/rate_limit.py` devolve o peer do socket e ignora
+`X-Forwarded-For` por completo: dez linhas do algoritmo não executam. Quem
+prova o COMPORTAMENTO do limitador é `tests/test_r0_origem_do_rate_limit.py`,
+com quinze gates que exercitam a função real. Esta suíte não repete isso.
 
-`docs/R05_CADEIA_DE_PROXY.md` registra a evidência. Este arquivo trava as sete
-regressões que o fechamento cria ou mantém:
+Oito gates, um por propriedade:
 
-- `R05-1`  o contrato continua legível por máquina
-- `R05-2`  paridade Corporate × SaaS do contrato e do limitador
-- `R05-3`  o deployment não transforma medição histórica em ativação, e o
-           modelo genérico nunca carrega valor topológico
-- `R05-4`  o contrato bate com a evidência medida
-- `R05-5`  a sonda temporária saiu, e não volta
-- `R05-6`  `PROXY_CHAIN_PROBE_KEY` não é dependência de nada
-- `R05-7`  a origem falha fechada quando a configuração é inválida
-- `R05-8`  a proteção anti-spoofing da R0 continua de pé
+  R05-1  a configuração versionada declara 0
+  R05-2  sem configuração, ou com lixo, o padrão continua 0
+  R05-3  o limitador é idêntico nos dois repositórios
+  R05-4  o limitador não lê cabeçalho de identidade não certificado
+  R05-5  a instrumentação temporária não está no repositório
+  R05-6  os documentos são registro histórico, não autorização
+  R05-7  nenhum endereço real ficou nos documentos
+  R05-7b a varredura de endereços enxerga IPv4 e IPv6
 
-Os gates `R05-3`, `R05-5` e `R05-6` mudaram de exigência sozinhos quando o
-contrato passou de `INDETERMINADO` para `DETERMINADO` — era para isso que a
-condicional existia. Eles continuam condicionais: se uma remedição reabrir o
-contrato, a exigência se inverte de novo sem ninguém lembrar de mexer aqui.
+## Por que esta suíte encolheu de 29 gates para 8
 
-O `R05-3` ganhou um segundo eixo na decisão normativa de 29/09. Medir a cadeia
-determina o NÚMERO; não autoriza aplicá-lo. Quem autoriza é `ATIVACAO-HOPS`, no
-contrato da R0.5B — então este arquivo pergunta lá em vez de reimplementar a
-decisão.
+As versões anteriores construíram uma máquina de estados executável — onze
+campos de contrato, seis invariantes de transição, vinte e quatro sabotagens —
+cuja única finalidade era permitir e depois bloquear uma transição para
+`HOPS > 0`. Nenhum arquivo de runtime lia qualquer um desses campos.
+
+Três rodadas de revisão automatizada produziram quatorze achados; nove estavam
+dentro dessa máquina, protegendo uma configuração que esta PR não ativa. O
+último deles observou que o gate de evidência aceitava uma amostra finita para
+aprovar uma propriedade que o próprio documento define como universal — o mesmo
+regresso infinito que já havia produzido um certificador de 7.334 linhas, agora
+reproduzido dentro do mecanismo criado para impedi-lo.
+
+A decisão foi retirar a máquina em vez de continuar corrigindo-a. Ativar
+`HOPS > 0` passa a exigir outra PR, no ambiente definitivo, com medição própria.
+Os fatos medidos no Render Free continuam registrados nos documentos, como
+história — o `R05-6` trava cada um deles.
 """
 
 import hashlib
-import inspect
+import ipaddress
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-import core.rate_limit as RL
-
-#: Vocabulário do modelo de borda. Declarado aqui, e não lido da sonda, porque
-#: a sonda não existe mais — o contrato continua precisando ser verificável.
-VEREDITOS_CONHECIDOS = (
-    'ANEXA', 'SOBRESCREVE', 'HIGIENIZA', 'PASSA_DIRETO', 'INDETERMINADO',
-)
-
-#: Só três modelos fecham contrato. `INDETERMINADO` nunca foi aceitável, e
-#: `SOBRESCREVE` deixou de ser quando um contraexemplo mostrou que forma
-#: constante não prova que o elemento restante seja o cliente.
-MODELOS_QUE_FECHAM = ('ANEXA', 'PASSA_DIRETO', 'HIGIENIZA')
-
 RAIZ = Path(__file__).resolve().parents[1]
-CONTRATO = RAIZ / 'docs' / 'R05_CADEIA_DE_PROXY.md'
+DOC_R05 = RAIZ / 'docs' / 'R05_CADEIA_DE_PROXY.md'
+DOC_R05B = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
 ENV_EXEMPLO = RAIZ / 'env.example'
 RENDER = RAIZ / 'render.yaml'
-SONDA_MODULO = RAIZ / 'epi_backend' / 'proxy_chain_probe.py'
-SCRIPT_SONDA = RAIZ / 'scripts' / 'certificar_cadeia_de_proxy.py'
-ROTAS_AUTH = RAIZ / 'modules' / 'auth' / 'routes.py'
 LIMITADOR = RAIZ / 'core' / 'rate_limit.py'
 
-INICIO = '<!-- CONTRATO-R05-INICIO -->'
-FIM = '<!-- CONTRATO-R05-FIM -->'
-
 VARIAVEL = 'RATE_LIMIT_TRUSTED_PROXY_HOPS'
-CHAVE_DA_SONDA = 'PROXY_CHAIN_PROBE_KEY'
-ROTA_DA_SONDA = 'proxy-chain-diagnostics'
 
-# Digesto do bloco de contrato. Os dois repositórios carregam a MESMA
-# constante, então editar o contrato de um lado só deixa aquele lado vermelho.
-# Limitação honesta, a mesma dos outros digestos de paridade do projeto: pega
-# edição unilateral, não pega os dois editando igual e errado ao mesmo tempo.
-DIGESTO_CONTRATO_R05 = 'eb2f9b9c323f9077b53c57fb003708676ce945cfa5a643ce698b13c516f44fd6'
-
-# Digesto de `core/rate_limit.py`. O contrato é sobre um número, mas quem lê
-# esse número é este módulo: se um repositório mexer nele e o outro não, a
-# cadeia declarada deixa de significar a mesma coisa nos dois.
-DIGESTO_LIMITADOR_R05 = 'aab6c8acb2212232c3558887eac85f8061033e323baeb7ee59592a9903f0237e'
+#: Digesto de `core/rate_limit.py`. Os dois repositórios carregam a MESMA
+#: constante: quem mexer no limitador de um lado só deixa aquele lado vermelho.
+#: Limitação honesta — pega edição unilateral, não pega os dois editando igual e
+#: errado ao mesmo tempo.
+DIGESTO_LIMITADOR = 'aab6c8acb2212232c3558887eac85f8061033e323baeb7ee59592a9903f0237e'
 
 
-def _sem_comentarios(fonte: str) -> str:
-    """Tira linhas de comentário antes de procurar estrutura.
-
-    Convenção que o projeto já usa em `tests/test_343_f2_teardown_logout.py`:
-    sem ela, um gate reprova pelo comentário que explica o que ele proíbe.
-    """
-    return '\n'.join(
-        linha for linha in fonte.splitlines()
-        if not linha.lstrip().startswith('#')
-    )
-
-
-def _bloco_do_contrato() -> str:
-    texto = CONTRATO.read_text(encoding='utf-8')
-    assert INICIO in texto and FIM in texto, 'marcadores do contrato sumiram'
-    return texto.split(INICIO, 1)[1].split(FIM, 1)[0].strip()
-
-
-def _campos_do_contrato() -> dict:
-    campos = {}
-    for linha in _bloco_do_contrato().splitlines():
-        if ':' in linha:
-            chave, valor = linha.split(':', 1)
-            campos[chave.strip()] = valor.strip()
-    return campos
-
-
-def _determinado() -> bool:
-    return _campos_do_contrato().get('ESTADO-DA-CADEIA') == 'DETERMINADO'
-
-
-CONTRATO_R05B = RAIZ / 'docs' / 'R05B_IDENTIDADE_DA_ORIGEM.md'
-
-
-def _ativacao_de_hops() -> str:
-    """Lê `ATIVACAO-HOPS` do contrato da R0.5B.
-
-    A R0.5 mediu o número; a R0.5B decide se ele pode ser APLICADO. Perguntar
-    aqui, em vez de reimplementar o critério, é o que impede as duas fatias de
-    divergirem em silêncio.
-
-    Falha FECHADA de propósito: documento ausente, bloco ausente ou campo
-    ausente devolvem `nao-autorizada`. Uma decisão de ativação que não está
-    escrita não existe.
-    """
-    if not CONTRATO_R05B.exists():
-        return 'nao-autorizada'
-    texto = CONTRATO_R05B.read_text(encoding='utf-8')
-    if 'CONTRATO-R05B-INICIO' not in texto:
-        return 'nao-autorizada'
-    bloco = texto.split('<!-- CONTRATO-R05B-INICIO -->', 1)[1]
-    bloco = bloco.split('<!-- CONTRATO-R05B-FIM -->', 1)[0]
-    for linha in bloco.splitlines():
-        if linha.strip().startswith('ATIVACAO-HOPS:'):
-            return linha.split(':', 1)[1].strip()
-    return 'nao-autorizada'
-
+# ── R05-1: a configuração versionada declara 0 ──────────────────────────────
 
 def _valores_declarados(texto: str) -> list:
-    """Extrai os valores de `RATE_LIMIT_TRUSTED_PROXY_HOPS` nas DUAS formas.
+    """Extrai os valores da variável nas DUAS formas.
 
-    `env.example` usa `VARIAVEL=3`. O `render.yaml` usa a estrutura de lista que
+    `env.example` usa `VARIAVEL=0`. O `render.yaml` usa a estrutura de lista que
     o blueprint da Render consome:
 
         - key: RATE_LIMIT_TRUSTED_PROXY_HOPS
-          value: "3"
+          value: "0"
 
     Procurar a variável e um número na MESMA linha reprovaria a declaração
     correta do blueprint — e empurraria quem tentasse satisfazer o gate a
@@ -167,385 +95,38 @@ def _valores_declarados(texto: str) -> list:
     return valores
 
 
-def _contribuicoes_medidas() -> list:
-    """Lê a contribuição da borda na tabela de medição do documento.
+def test_r05_1_a_configuracao_versionada_declara_zero():
+    """Owner único da configuração de deployment.
 
-    A tabela do §2 tem a contribuição na última coluna, em negrito. Ler dali
-    amarra o número do contrato à evidência registrada, em vez de deixar os
-    dois como declarações independentes que podem divergir em silêncio.
+    As duas superfícies declaram `0`, e declaram — não omitem. Omitir parece
+    equivalente, porque o padrão do limitador também é `0`, mas não é: um valor
+    posto à mão no painel do Render SOBREVIVE a uma sincronização de blueprint
+    que não menciona a variável. Declarar `0` sobrescreve esse valor. É a única
+    alavanca que o repositório tem sobre o painel, e por isso é deliberada.
+
+    `env.example` é o caso mais perigoso dos dois: `spec/09-deployment.md:112`
+    manda `cp env.example .env`, e `app.py` importa `epi_backend.config` — que
+    chama `load_dotenv()` — ANTES de importar `core.rate_limit`. Num ambiente
+    sem proxy, um valor positivo aqui deixa o cliente completar a cadeia até o
+    comprimento exigido e receber `cadeia[-N]`, que foi ele quem escreveu.
+    Baldes ilimitados: exatamente o defeito que a R0 fechou.
     """
-    texto = CONTRATO.read_text(encoding='utf-8')
-    contribuicoes = []
-    for linha in texto.splitlines():
-        if not linha.startswith('| **'):
-            continue
-        celulas = [c.strip() for c in linha.strip('|').split('|')]
-        ultima = celulas[-1]
-        casou = re.fullmatch(r'\*\*(\d+)\*\*', ultima)
-        if casou:
-            contribuicoes.append(int(casou.group(1)))
-    return contribuicoes
-
-
-# ── R05-1: o contrato continua legível por máquina ──────────────────────────
-
-def test_r05_1_o_contrato_e_legivel_por_maquina():
-    campos = _campos_do_contrato()
-    for obrigatorio in ('ESTADO-DA-CADEIA', 'SALTOS-CONFIAVEIS',
-                        'MODELO-DA-BORDA', 'ORIGENS-CORROBORADAS', 'EVIDENCIA'):
-        assert obrigatorio in campos, f'contrato sem o campo {obrigatorio}'
-    assert campos['ESTADO-DA-CADEIA'] in ('INDETERMINADO', 'DETERMINADO'), \
-        'ESTADO-DA-CADEIA só admite INDETERMINADO ou DETERMINADO'
-
-
-# ── R05-2: paridade Corporate × SaaS ────────────────────────────────────────
-
-def test_r05_2_o_contrato_e_identico_nos_dois_repositorios():
-    """Nenhum dos dois repositórios enxerga o outro. Compara com o digesto que
-    os dois carregam igual, o que reprova quem editar de um lado só."""
-    atual = hashlib.sha256(_bloco_do_contrato().encode('utf-8')).hexdigest()
-    assert atual == DIGESTO_CONTRATO_R05, (
-        'o bloco de contrato mudou sem o digesto ser recalculado nos DOIS '
-        f'repositórios. Atual: {atual}'
-    )
-
-
-def test_r05_2b_o_limitador_e_identico_nos_dois_repositorios():
-    """O contrato é sobre um número; quem lê o número é `core/rate_limit.py`.
-    Se um repositório mexer nele e o outro não, `3` deixa de significar a mesma
-    coisa nos dois — e o gate do contrato, que olha só o documento, não veria."""
-    atual = hashlib.sha256(LIMITADOR.read_bytes()).hexdigest()
-    assert atual == DIGESTO_LIMITADOR_R05, (
-        'core/rate_limit.py divergiu entre os repositórios, ou mudou sem o '
-        f'digesto ser recalculado nos dois. Atual: {atual}'
-    )
-
-
-# ── R05-3: o valor do deployment bate com o contrato ────────────────────────
-
-def test_r05_3_o_deployment_nao_transforma_medicao_em_ativacao():
-    """Condicional em DOIS eixos.
-
-    Enquanto a cadeia está INDETERMINADA, declarar um número é o palpite que a
-    R0 recusou. Depois de DETERMINADO o número existe — mas **medir não é
-    autorizar**. A medição saiu do plano Free do Render, e a §1 deste contrato
-    já registra que mudança de plano ou região invalida o número em silêncio,
-    apontando para dentro do território que o cliente escreve. Quem decide se o
-    número pode ser aplicado é `ATIVACAO-HOPS`, na R0.5B.
-
-    Sem autorização, `render.yaml` tem de declarar `0` — e declarar, não
-    omitir. Omitir deixa o padrão do limitador valendo no processo, mas deixa um
-    `3` posto no painel sobreviver a uma sincronização do blueprint. Declarar
-    `0` faz o blueprint sobrescrever esse `3`, que é a diferença entre o
-    repositório não aplicar o valor e o repositório impedir que ele seja
-    aplicado.
-
-    `env.example` tem regra própria, no gate seguinte — e mais estrita.
-    """
-    campos = _campos_do_contrato()
-
-    if not _determinado():
-        # Cadeia reaberta: o número volta a não existir, então nenhuma
-        # superfície pode carregar valor positivo. Mas exigir AUSÊNCIA era
-        # errado por dois motivos, e o segundo é uma contradição interna:
-        #
-        #  - omitir deixa um valor já posto no painel sobreviver à
-        #    sincronização do blueprint, que é o oposto de fail-closed;
-        #  - o `R05-3b` exige, SEM condição, que `env.example` declare `0`.
-        #    Os dois gates juntos eram insatisfazíveis com a cadeia reaberta.
-        #
-        # Achado da revisão automatizada, reproduzido antes de ser aceito.
-        for caminho in (ENV_EXEMPLO, RENDER):
-            if not caminho.exists():
-                continue
-            valores = _valores_declarados(caminho.read_text(encoding='utf-8'))
-            assert valores, (
-                f'{caminho.name} não declara {VARIAVEL} com a cadeia '
-                'INDETERMINADA. Omitir não é fail-closed: um valor posto no '
-                'painel sobrevive à sincronização. Declare 0'
-            )
-            for valor in valores:
-                assert valor == '0', (
-                    f'{caminho.name} declara {VARIAVEL}={valor} com a cadeia '
-                    'ainda INDETERMINADA — é exatamente o palpite que a R0 '
-                    'recusou'
-                )
-        return
-
-    assert RENDER.exists(), 'render.yaml sumiu'
-    valores = _valores_declarados(RENDER.read_text(encoding='utf-8'))
-    assert valores, (
-        f'render.yaml não declara {VARIAVEL}. Sem a declaração, um valor posto '
-        'no painel sobrevive à sincronização do blueprint — inclusive um valor '
-        'que nenhuma medição do ambiente definitivo sustenta'
-    )
-
-    ativacao = _ativacao_de_hops()
-    if ativacao != 'autorizada':
+    for caminho in (ENV_EXEMPLO, RENDER):
+        assert caminho.exists(), f'{caminho.name} sumiu'
+        valores = _valores_declarados(caminho.read_text(encoding='utf-8'))
+        assert valores, (
+            f'{caminho.name} não declara {VARIAVEL}. Omitir não é fail-closed: '
+            'um valor posto no painel sobrevive à sincronização do blueprint'
+        )
         for valor in valores:
             assert valor == '0', (
-                f'render.yaml declara {VARIAVEL}={valor} com '
-                f'ATIVACAO-HOPS={ativacao!r} na R0.5B. O blueprint sincroniza '
-                'para um ambiente cuja borda não foi medida; ali este número '
-                'aponta para dentro do prefixo que o cliente escreve, e o '
-                'cliente escolhe o próprio balde. Autorize a ativação com '
-                'revalidação do ambiente antes de declarar o valor aqui'
+                f'{caminho.name} declara {VARIAVEL}={valor}. Esta fatia suporta '
+                'apenas 0; ativar um valor positivo exige outra PR, no ambiente '
+                'definitivo, com medição daquele ambiente'
             )
-        return
-
-    esperado = campos['SALTOS-CONFIAVEIS']
-    for valor in valores:
-        assert valor == esperado, (
-            f'render.yaml declara {VARIAVEL}={valor} e o contrato diz '
-            f'{esperado} — documentação e deployment discordam'
-        )
 
 
-def test_r05_3b_o_modelo_generico_nunca_carrega_valor_topologico():
-    """`env.example` é modelo para QUALQUER implantação, e
-    `spec/09-deployment.md` manda copiá-lo para `.env`.
-
-    A cadeia que torna isso perigoso foi medida: `app.py` importa
-    `epi_backend.config` — que chama `load_dotenv()` — antes de importar
-    `core.rate_limit`, então o que está no `.env` vira a fronteira de confiança
-    de quem seguiu o procedimento. Num ambiente sem proxy, declarar 3 ali deixa
-    o cliente mandar três elementos, alcançar o comprimento exigido e receber
-    `cadeia[-3]`, que é o primeiro — escrito por ele. Baldes ilimitados.
-
-    O valor medido é específico da topologia do Render e mora em
-    `render.yaml`. No modelo genérico só cabe o padrão que falha fechado.
-
-    Achado do Codex (P1), reproduzido de ponta a ponta antes de ser aceito: a
-    primeira versão desta fatia escreveu `3` aqui.
-    """
-    assert ENV_EXEMPLO.exists(), 'env.example sumiu'
-    valores = _valores_declarados(ENV_EXEMPLO.read_text(encoding='utf-8'))
-    assert valores, (
-        f'env.example deixou de documentar {VARIAVEL}; quem copia o modelo '
-        'perde a variável de vista'
-    )
-    for valor in valores:
-        assert valor == '0', (
-            f'env.example declara {VARIAVEL}={valor}. Modelo genérico com valor '
-            'topológico vira buraco em implantação sem proxy: o cliente '
-            'completa a cadeia e escolhe o próprio balde'
-        )
-
-
-# ── R05-4: o contrato bate com a evidência medida ───────────────────────────
-
-def test_r05_4_o_contrato_e_coerente_consigo_mesmo():
-    campos = _campos_do_contrato()
-
-    if not _determinado():
-        assert campos['SALTOS-CONFIAVEIS'] == 'nao-determinado', \
-            'a cadeia está INDETERMINADA mas o contrato já traz um número'
-        assert campos['ORIGENS-CORROBORADAS'] == 'nao-determinado', \
-            'a cadeia está INDETERMINADA mas o contrato já conta origens'
-        return
-
-    modelo = campos['MODELO-DA-BORDA']
-    assert modelo in VEREDITOS_CONHECIDOS, f'modelo de borda desconhecido: {modelo}'
-    assert modelo in MODELOS_QUE_FECHAM, (
-        f'modelo {modelo} não fecha contrato: não dá para provar o número a '
-        'partir dele'
-    )
-
-    evidencia = campos['EVIDENCIA']
-    # `EVIDENCIA:` sozinho parseia para string vazia, que é != do marcador e
-    # passava. O contrato podia fechar sem registrar nada.
-    assert evidencia and evidencia != 'nao-produzida', \
-        'contrato DETERMINADO sem evidência registrada'
-
-    saltos = int(campos['SALTOS-CONFIAVEIS'])
-    if modelo in ('PASSA_DIRETO', 'HIGIENIZA'):
-        assert saltos == 0, (
-            f'{modelo} significa que a borda não contribui nada confiável; '
-            f'só 0 é compatível, o contrato diz {saltos}'
-        )
-    else:  # ANEXA é o único que sobra
-        assert saltos >= 1, f'{modelo} significa que a borda contribui; 0 é incompatível'
-
-
-def test_r05_4b_o_numero_do_contrato_e_o_numero_medido():
-    """Amarra o contrato à tabela de medição do documento.
-
-    Sem isto, `SALTOS-CONFIAVEIS` e a evidência são duas declarações
-    independentes: trocar o número para 2 ou 4 passaria, com a tabela ao lado
-    dizendo 3. Uma remedição legítima muda os dois juntos.
-    """
-    if not _determinado():
-        return
-    contribuicoes = _contribuicoes_medidas()
-    assert len(contribuicoes) >= 3, (
-        'a tabela de medição do documento perdeu linhas — a evidência dos três '
-        f'controles é o que sustenta o número (encontrei {contribuicoes})'
-    )
-    assert len(set(contribuicoes)) == 1, (
-        f'os controles registram contribuições diferentes: {contribuicoes}. '
-        'Contribuição que varia com o que o cliente manda invalida o número'
-    )
-    saltos = int(_campos_do_contrato()['SALTOS-CONFIAVEIS'])
-    assert saltos == contribuicoes[0], (
-        f'o contrato diz {saltos} saltos e a medição registrada diz '
-        f'{contribuicoes[0]} — um dos dois está errado'
-    )
-
-
-def test_r05_4c_o_documento_registra_o_que_a_medicao_nao_prova():
-    """Uma origem mede um caminho. Enquanto `ORIGENS-CORROBORADAS` for menor
-    que 2, o documento tem de dizer o que a amostra não cobre — amostragem
-    refuta um roteamento divergente, não prova que toda rota tenha esta forma.
-
-    Registrar o limite é o que separa um número medido de um número que parece
-    medido."""
-    if not _determinado():
-        return
-    origens = _campos_do_contrato()['ORIGENS-CORROBORADAS']
-    assert origens.isdigit() and int(origens) >= 1, (
-        f'contrato DETERMINADO com ORIGENS-CORROBORADAS={origens!r}'
-    )
-    if int(origens) >= 2:
-        return
-    texto = CONTRATO.read_text(encoding='utf-8')
-    assert 'O que a medição NÃO estabelece' in texto, (
-        'o contrato fechou com uma origem só e o documento não registra o que '
-        'a medição não cobre'
-    )
-    assert 'Uma origem mede um caminho' in texto, \
-        'sumiu do documento a ressalva sobre medir de uma origem só'
-
-
-def test_r05_4d_o_documento_separa_o_medido_do_inferido():
-    """A sonda devolvia FORMA, nunca identidade — era essa a propriedade de
-    privacidade que a fazia aceitável. Então o número está sustentado por duas
-    afirmações de naturezas diferentes:
-
-    medido    a borda contribui com 3, e a contribuição não muda com o cliente;
-    inferido  o primeiro desses 3 é o endereço de origem.
-
-    A inferência tem contraexemplo que a medição não separa: um proxy
-    compartilhado a montante, que repasse o cabeçalho intocado e não acrescente
-    entrada própria, produz as três formas byte a byte iguais — e `cadeia[-3]`
-    seria ele, igual para todos. A consequência é colapso, não spoofing, mas o
-    documento não pode apresentar a inferência como observação.
-
-    A primeira versão deste documento fazia exatamente isso. Achado do Codex
-    (P1), confirmado por construção antes de ser aceito.
-    """
-    if not _determinado():
-        return
-    texto = CONTRATO.read_text(encoding='utf-8')
-
-    # Pelo CABEÇALHO, não por substring solta: a primeira versão deste gate
-    # procurava a frase no documento inteiro, e ela também aparece na remissão
-    # do §3 — apagar a seção deixava o gate verde. A sabotagem mostrou.
-    cabecalhos = [linha.strip() for linha in texto.splitlines()
-                  if linha.startswith('#')]
-    assert '### O que é medido e o que é inferido' in cabecalhos, (
-        'sumiu do documento a seção que separa a forma medida da identidade '
-        f'inferida de `cadeia[-N]`. Cabeçalhos presentes: {cabecalhos}'
-    )
-
-    # Dentro da SEÇÃO, não no documento inteiro. Duas sabotagens seguidas
-    # passaram por causa disso: a frase procurada também aparece na remissão do
-    # §3, então apagá-la do §2 deixava o gate verde.
-    #
-    # E com espaço normalizado: o documento é quebrado em ~78 colunas, então
-    # uma frase procurada como substring literal atravessa quebra de linha e
-    # não casa. A primeira versão reprovou sozinha por isso, e o motivo era o
-    # gate, não o documento.
-    corpo = texto.split('### O que é medido e o que é inferido', 1)[1]
-    corpo = corpo.split('\n---', 1)[0].split('\n## ', 1)[0]
-    corrido = ' '.join(corpo.split())
-
-    for marca, falta in (
-        ('**Medido:**', 'o que os controles realmente estabelecem'),
-        ('**Inferido:**', 'a parte que não foi observada'),
-        ('proxy compartilhado a montante', 'o contraexemplo'),
-        ('colapso, não spoofing', 'a natureza da consequência'),
-    ):
-        assert marca in corrido, f'sumiu da seção {falta} ({marca!r})'
-
-
-# ── R05-5: a sonda temporária saiu, e não volta ─────────────────────────────
-
-def test_r05_5_a_sonda_nao_esta_no_repositorio():
-    """Diagnóstico não vira API. Enquanto a cadeia estava INDETERMINADA a sonda
-    podia existir; depois que ela cumpriu a função, ficar é dívida."""
-    if not _determinado():
-        assert SONDA_MODULO.exists(), \
-            'a cadeia ainda está INDETERMINADA e a sonda já sumiu'
-        return
-
-    assert not SONDA_MODULO.exists(), (
-        'cadeia DETERMINADA e a sonda continua no repositório — ela era '
-        'temporária por contrato'
-    )
-    assert not SCRIPT_SONDA.exists(), (
-        'o script de certificação continua no repositório; ele só fala com a '
-        'rota que foi removida, então é código morto'
-    )
-    rotas = ROTAS_AUTH.read_text(encoding='utf-8')
-    assert ROTA_DA_SONDA not in rotas, 'a rota da sonda continua registrada'
-    assert 'proxy_chain_probe' not in rotas, \
-        'o handler da sonda continua em modules/auth/routes.py'
-
-
-def test_r05_5b_nenhum_arquivo_do_projeto_menciona_a_rota_da_sonda():
-    """Não basta o handler sair: uma referência sobrevivente — um registro de
-    rota esquecido, um cliente, um teste que ainda a chame — mantém o
-    diagnóstico vivo por outro caminho."""
-    if not _determinado():
-        return
-    sobreviventes = []
-    for caminho in RAIZ.rglob('*'):
-        if not caminho.is_file() or caminho.suffix not in ('.py', '.yaml', '.yml', '.js'):
-            continue
-        if '__pycache__' in caminho.parts or '.git' in caminho.parts:
-            continue
-        if caminho == Path(__file__):
-            continue
-        if ROTA_DA_SONDA in caminho.read_text(encoding='utf-8', errors='replace'):
-            sobreviventes.append(str(caminho.relative_to(RAIZ)))
-    assert not sobreviventes, f'a rota da sonda ainda aparece em: {sobreviventes}'
-
-
-# ── R05-6: a chave da sonda não é dependência de nada ───────────────────────
-
-def test_r05_6_a_chave_da_sonda_nao_e_dependencia_de_nenhum_caminho():
-    """`PROXY_CHAIN_PROBE_KEY` existia só para a sonda. Com a sonda fora, nada
-    pode continuar lendo essa variável: uma leitura sobrevivente significaria
-    que algum caminho ainda depende de um segredo que o operador vai apagar do
-    painel."""
-    if not _determinado():
-        return
-
-    sobreviventes = []
-    for caminho in RAIZ.rglob('*'):
-        # Só CÓDIGO. A primeira versão desta condicional varreu `.md` também,
-        # e reprovou pela instrução do §4 da R0.5 que manda o operador REMOVER
-        # a variável — menção não é dependência, e o gate existe para proibir
-        # dependência.
-        if not caminho.is_file() or caminho.suffix not in ('.py', '.yaml', '.yml', '.js'):
-            continue
-        if '__pycache__' in caminho.parts or '.git' in caminho.parts:
-            continue
-        if caminho == Path(__file__):
-            continue
-        if CHAVE_DA_SONDA in caminho.read_text(encoding='utf-8', errors='replace'):
-            sobreviventes.append(str(caminho.relative_to(RAIZ)).replace('\\', '/'))
-
-    # A R0.5B reabriu esta leitura por uma fatia, para a sonda de identidade.
-    # A sonda saiu no fechamento de 29/09 e a exceção saiu com ela: voltou a
-    # valer a regra incondicional.
-    assert not sobreviventes, (
-        f'{CHAVE_DA_SONDA} ainda é lida em: {sobreviventes}. A variável some do '
-        'painel do Render no fechamento da R0.5'
-    )
-
-
-# ── R05-7: a origem falha fechada quando a configuração é inválida ──────────
+# ── R05-2: sem configuração, ou com lixo, o padrão continua 0 ───────────────
 
 def _hops_com_ambiente(valor):
     """Import limpo em processo separado. `importlib.reload` aqui dentro criaria
@@ -557,16 +138,17 @@ def _hops_com_ambiente(valor):
     ambiente['PYTHONPATH'] = str(RAIZ)
     return subprocess.run(
         [sys.executable, '-c',
-         f'import core.rate_limit as RL; print(RL.{"TRUSTED_PROXY_HOPS"})'],
+         'import core.rate_limit as RL; print(RL.TRUSTED_PROXY_HOPS)'],
         capture_output=True, text=True, env=ambiente, cwd=str(RAIZ),
         timeout=60, check=False)
 
 
-def test_r05_7_sem_configuracao_o_padrao_continua_zero():
-    """O gate que o `R05-8b` não cobre: ele força a confiança antes de exercitar
-    o comportamento, então nunca enxerga o INICIALIZADOR. Trocar o default de
-    `'0'` para um número positivo faria implantação não configurada confiar no
-    cabeçalho do cliente — e passaria por toda a suíte."""
+def test_r05_2_sem_configuracao_ou_com_lixo_o_padrao_e_zero():
+    """O INICIALIZADOR, que os gates comportamentais da R0 não enxergam: eles
+    forçam `RL.TRUSTED_PROXY_HOPS` antes de exercitar a função, então nunca
+    passam pela linha que lê o ambiente. Trocar o default de `'0'` para um
+    número positivo faria toda implantação não configurada confiar no cabeçalho
+    do cliente, e passaria por aquela suíte inteira."""
     saida = _hops_com_ambiente(None)
     assert saida.returncode == 0, f'import limpo falhou: {saida.stderr}'
     assert saida.stdout.strip() == '0', (
@@ -574,10 +156,6 @@ def test_r05_7_sem_configuracao_o_padrao_continua_zero():
         'implantação não configurada passaria a confiar no cabeçalho do cliente'
     )
 
-
-def test_r05_7b_configuracao_invalida_nao_vira_confianca():
-    """Valor vazio ou negativo cai para 0; valor não numérico derruba a subida
-    do processo. Nenhum dos dois pode virar confiança silenciosa."""
     for invalido in ('', '-5', '-1'):
         saida = _hops_com_ambiente(invalido)
         assert saida.returncode == 0, f'{invalido!r} quebrou o import: {saida.stderr}'
@@ -595,136 +173,237 @@ def test_r05_7b_configuracao_invalida_nao_vira_confianca():
     assert 'ValueError' in saida.stderr
 
 
-def test_r05_7c_cadeia_mais_curta_que_a_declarada_cai_no_peer():
-    """A requisição que não atravessou a cadeia esperada não prova origem
-    nenhuma. Com o contrato em 3, uma cadeia de 2 elementos vale o peer."""
-    saltos = int(_campos_do_contrato().get('SALTOS-CONFIAVEIS', 0) or 0)
-    if saltos < 1:
-        return
-    anterior = RL.TRUSTED_PROXY_HOPS
-    RL.TRUSTED_PROXY_HOPS = saltos
-    try:
-        curta = ', '.join(f'192.0.2.{i}' for i in range(10, 10 + saltos - 1))
-        assert RL.get_client_ip(_HandlerFalso(peer='192.0.2.55', xff=curta)) == '192.0.2.55'
-        assert RL.get_client_ip(_HandlerFalso(peer='192.0.2.55', xff='')) == '192.0.2.55'
-    finally:
-        RL.TRUSTED_PROXY_HOPS = anterior
+# ── R05-3: o limitador é idêntico nos dois repositórios ─────────────────────
+
+def test_r05_3_o_limitador_e_identico_nos_dois_repositorios():
+    """Corporate e SaaS rodam o mesmo algoritmo de origem. Se um lado mexer no
+    limitador e o outro não, os dois produtos passam a decidir bucket de formas
+    diferentes — e nenhum teste local de cada repositório notaria."""
+    atual = hashlib.sha256(LIMITADOR.read_bytes()).hexdigest()
+    assert atual == DIGESTO_LIMITADOR, (
+        'core/rate_limit.py mudou sem o digesto ser recalculado, ou divergiu '
+        'entre os repositórios. Esta fatia não altera o limitador'
+    )
 
 
-# ── R05-8: a proteção anti-spoofing da R0 continua de pé ────────────────────
+# ── R05-4: o limitador não lê cabeçalho não certificado ─────────────────────
 
-class _HandlerFalso:
-    def __init__(self, peer='192.0.2.55', xff=None):
-        self.client_address = (peer, 54321)
-        self.headers = {} if xff is None else {'X-Forwarded-For': xff}
-
-
-def test_r05_8_o_primeiro_elemento_do_xff_nunca_volta_a_ser_a_origem():
-    fonte = inspect.getsource(RL.get_client_ip)
-    assert 'cadeia[0]' not in fonte, \
-        'get_client_ip voltou a ler o primeiro elemento da cadeia'
-    assert "split(',')[0]" not in fonte, \
-        "voltou o split(',')[0] que a R0 removeu"
-    assert 'TRUSTED_PROXY_HOPS' in fonte, \
-        'a origem deixou de consultar a confiança declarada'
+#: Acesso ao cabeçalho `Forwarded` (RFC 7239). Casa a FORMA DE ACESSO, não o
+#: nome solto: `x-forwarded-for` é leitura legítima e está no limitador, então
+#: proibir a palavra reprovaria o uso correto.
+ACESSO_AO_FORWARDED = re.compile(r"""(?:\.get\(|\[)\s*['"]forwarded['"]""")
 
 
-def test_r05_8b_sem_salto_declarado_o_cabecalho_nao_muda_a_origem():
-    """O comportamento, não só a forma do código."""
-    anterior = RL.TRUSTED_PROXY_HOPS
-    RL.TRUSTED_PROXY_HOPS = 0
-    try:
-        sem = RL.get_client_ip(_HandlerFalso(peer='192.0.2.7'))
-        com = RL.get_client_ip(_HandlerFalso(peer='192.0.2.7',
-                                             xff='192.0.2.10, 192.0.2.11'))
-        assert sem == com == '192.0.2.7', \
-            'o cabeçalho voltou a decidir origem sem proxy confiável declarado'
-    finally:
-        RL.TRUSTED_PROXY_HOPS = anterior
+def test_r05_4_o_limitador_nao_le_cabecalho_nao_certificado():
+    """`CF-Connecting-IP`, `True-Client-IP`, `X-Real-IP` e `Forwarded` nunca
+    foram medidos nesta borda. Enquanto não forem, o limitador não pode lê-los:
+    seriam identidade escolhida pelo cliente entrando na chave de balde por
+    outra porta, contornando o `0` sem que nada mais mudasse."""
+    fonte = LIMITADOR.read_text(encoding='utf-8').lower()
+    for nome in ('cf-connecting-ip', 'cf_connecting_ip', 'true-client-ip',
+                 'true_client_ip', 'x-real-ip', 'x_real_ip'):
+        assert nome not in fonte, f'o limitador passou a ler {nome!r}'
+
+    achado = ACESSO_AO_FORWARDED.search(fonte)
+    assert not achado, (
+        f'o limitador passou a ler o cabeçalho `Forwarded` ({achado.group(0)!r}) '
+        'da RFC 7239, que não foi medido e o cliente pode escrever'
+    )
 
 
-def test_r05_8c_com_a_cadeia_medida_o_cliente_nao_escolhe_o_proprio_bucket():
-    """O gate que a medição tornou possível, e o que ela realmente prova.
+# ── R05-5: a instrumentação temporária não está no repositório ──────────────
 
-    Com o contrato em 3 e a borda acrescentando 3, o que o cliente escreve fica
-    à ESQUERDA da janela. Mandar mais lixo alonga a cadeia e empurra o lixo para
-    longe de `cadeia[-3]` — nunca para dentro dela. É o controle C da medição,
-    reencenado aqui com a cadeia que ele registrou.
-    """
-    saltos = int(_campos_do_contrato().get('SALTOS-CONFIAVEIS', 0) or 0)
-    if saltos < 1:
-        return
-    anterior = RL.TRUSTED_PROXY_HOPS
-    RL.TRUSTED_PROXY_HOPS = saltos
-    try:
-        # A borda acrescenta `saltos` elementos, e o PRIMEIRO deles é o
-        # endereço do cliente: P1 acrescenta o cliente, P2 acrescenta P1, P3
-        # acrescenta P2. São 3 no total, não cliente mais três — a primeira
-        # versão deste gate montou quatro e ele reprovou, com razão.
-        cliente = '192.0.2.99'
-        # Gerada a partir de `saltos`, não escrita como lista fixa: com uma
-        # lista fixa o gate reprovava por falta de elementos quando o contrato
-        # declarava um número maior, em vez de reprovar pela propriedade.
-        contribuicao = [cliente] + [f'192.0.2.{200 + i}' for i in range(saltos - 1)]
-        assert len(contribuicao) == saltos
-        buckets = set()
-        for i in range(8):
-            forjado = ', '.join(f'192.0.2.{j}' for j in range(10, 10 + i))
-            cadeia = ([forjado] if forjado else []) + contribuicao
-            buckets.add(RL.get_client_ip(
-                _HandlerFalso(peer='10.0.0.1', xff=', '.join(cadeia))))
-        assert buckets == {cliente}, (
-            f'variar o cabeçalho produziu {len(buckets)} buckets: {sorted(buckets)}. '
-            'O cliente voltou a escolher a própria identidade de limitação'
-        )
-    finally:
-        RL.TRUSTED_PROXY_HOPS = anterior
-
-
-def test_r05_8d_os_limites_numericos_nao_foram_tocados():
-    """Esta fatia muda QUEM ocupa o bucket, não QUANTAS requisições ele aceita."""
-    esperado = {
-        'login_limiter': (10, 60),
-        'recovery_limiter': (5, 300),
-        'tenant_limiter': (60, 60),
-        'supplier_portal_limiter': (30, 60),
-    }
-    for nome, (chamadas, periodo) in esperado.items():
-        limitador = getattr(RL, nome)
-        assert (limitador._max, limitador._period) == (chamadas, periodo), \
-            f'{nome} mudou de limite: {limitador._max}/{limitador._period}s'
-
-
-# ── R05-9: nenhum endereço real em lugar nenhum da fatia ────────────────────
-
-FAIXAS_SEGURAS = (
-    '192.0.2.0/24',     # TEST-NET-1
-    '198.51.100.0/24',  # TEST-NET-2
-    '203.0.113.0/24',   # TEST-NET-3
-    '10.0.0.0/8',       # RFC 1918
-    '172.16.0.0/12',
-    '192.168.0.0/16',
-    '100.64.0.0/10',    # RFC 6598 (CGNAT)
-    '127.0.0.0/8',
-    '0.0.0.0/8',
+#: Superfícies das duas sondas temporárias — a da R0.5 e a da R0.5B. Ambas
+#: cumpriram a função e saíram. Qualquer uma de volta é diagnóstico virando API.
+RASTROS_DA_INSTRUMENTACAO = (
+    'proxy_chain_probe',
+    'proxy-chain-diagnostics',
+    'proxy_identity_probe',
+    'origin-identity-diagnostics',
+    'PROXY_CHAIN_PROBE_KEY',
+    'certificar_cadeia_de_proxy',
+    'certificar_identidade_da_origem',
 )
 
 
-def test_r05_9_nenhum_endereco_real_na_fatia():
-    """Nada nesta fatia — código, teste ou documento — pode carregar endereço
-    de gente de verdade. Os sentinelas são espaço de documentação; o resto é
-    faixa reservada."""
-    import ipaddress
+def test_r05_5_a_instrumentacao_temporaria_nao_esta_no_repositorio():
+    """Varredura do repositório INTEIRO, não de um arquivo.
 
-    faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
-    padrao = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3})\b')
-    for caminho in (CONTRATO, Path(__file__)):
-        texto = caminho.read_text(encoding='utf-8')
-        for literal in set(padrao.findall(texto)):
-            try:
-                endereco = ipaddress.ip_address(literal)
-            except ValueError:
-                continue
-            assert any(endereco in faixa for faixa in faixas), (
-                f'{caminho.name} contém {literal}, que não é de faixa reservada'
+    A versão anterior deste gate lia só `modules/auth/routes.py`. O projeto tem
+    vinte e oito módulos com `register_routes`, todos importados por `app.py`:
+    o handler podia reaparecer em qualquer um dos outros vinte e sete e o gate
+    passaria. Achado de revisão, e o motivo de a varredura ser repo-wide.
+
+    Cobre as três superfícies de uma vez — módulo, rota e chave — porque são uma
+    responsabilidade só: a instrumentação saiu.
+    """
+    sobreviventes = {}
+    for caminho in RAIZ.rglob('*'):
+        if not caminho.is_file() or caminho.suffix not in ('.py', '.yaml', '.yml', '.js'):
+            continue
+        if '__pycache__' in caminho.parts or '.git' in caminho.parts:
+            continue
+        if caminho == Path(__file__):
+            continue  # nomear para proibir não é depender
+        texto = caminho.read_text(encoding='utf-8', errors='replace')
+        achados = [r for r in RASTROS_DA_INSTRUMENTACAO if r in texto]
+        if achados:
+            sobreviventes[str(caminho.relative_to(RAIZ)).replace('\\', '/')] = achados
+
+    assert not sobreviventes, (
+        f'a instrumentação temporária voltou: {sobreviventes}. Ela era '
+        'temporária por contrato — a rota é um oráculo de igualdade protegido '
+        'por uma chave que sai do painel'
+    )
+
+
+# ── R05-6: os documentos são registro histórico, não autorização ────────────
+
+#: Fatos que os documentos têm de continuar afirmando. Alterar qualquer um deles
+#: muda a interpretação de segurança da fatia — por isso são travados, e só
+#: eles. O resto do texto é livre.
+FATOS_HISTORICOS = {
+    DOC_R05: (
+        'a borda contribui com 3 elementos',
+        'a contribuição não varia com o que o cliente envia',
+        'a borda ANEXA: acrescenta à direita sem apagar o que veio',
+        'medição de 2026-09-22, no plano Free do Render',
+        'Uma origem mede um caminho',
+    ),
+    DOC_R05B: (
+        'P1 — identidade: medida e aprovada',
+        'P2 — duas origens: medida e aprovada',
+        'o procedimento não verificava que as duas origens eram distintas',
+        'HTTP 403 em 3/3 nos dois backends, sem corpo JSON',
+        'a evidência não permite nomear a camada',
+        '403 não é status de tamanho',
+        'LONGA100 é um ponto amostral e não prova F',
+        'F permanece INCONCLUSIVA',
+        'o plano Free do Render não certifica o ambiente definitivo',
+    ),
+}
+
+#: A afirmação que separa história de autorização. Tem de estar nos DOIS
+#: documentos: quem ler um só não pode concluir que a medição autoriza.
+NAO_AUTORIZA = 'Esta PR não autoriza RATE_LIMIT_TRUSTED_PROXY_HOPS > 0'
+
+#: Vocabulário de contrato executável. Estes marcadores faziam os documentos
+#: serem lidos por máquina para decidir uma transição de autorização. A máquina
+#: saiu; se voltarem, voltou com ela.
+MAQUINA_REMOVIDA = (
+    'CONTRATO-R05-INICIO',
+    'CONTRATO-R05B-INICIO',
+    'ATIVACAO-HOPS',
+    'ESTADO-DA-IDENTIDADE',
+    'AMBIENTE-DA-EVIDENCIA',
+)
+
+
+def _corrido(caminho) -> str:
+    """Texto com espaço normalizado: o documento é quebrado em ~78 colunas, e
+    frase procurada como substring literal atravessa quebra de linha e não casa.
+    """
+    return ' '.join(caminho.read_text(encoding='utf-8').split())
+
+
+def test_r05_6_os_documentos_sao_registro_historico_nao_autorizacao():
+    """O gate documental mínimo, e o que ele trava.
+
+    Os dois documentos deixaram de ser contrato executável. Eles registram o que
+    foi medido no Render Free, em 2026-09-22 e 2026-09-26, e registram o que a
+    medição NÃO estabelece. Nenhuma máquina lê esses fatos; um humano lê.
+
+    Três coisas, e só três:
+
+    - os fatos essenciais continuam escritos, porque apagá-los mudaria a
+      interpretação de segurança da fatia;
+    - os dois documentos afirmam que esta PR não autoriza `HOPS > 0`;
+    - o vocabulário da máquina de autorização não volta.
+    """
+    for caminho, fatos in FATOS_HISTORICOS.items():
+        assert caminho.exists(), f'{caminho.name} sumiu'
+        corrido = _corrido(caminho)
+        for fato in fatos:
+            assert fato in corrido, (
+                f'sumiu de {caminho.name} um fato da medição: {fato!r}. '
+                'A investigação do Render Free é registro histórico e não se '
+                'reescreve'
             )
+        assert NAO_AUTORIZA in corrido, (
+            f'{caminho.name} não afirma {NAO_AUTORIZA!r}. Sem isso, quem ler só '
+            'este documento pode concluir que a medição autoriza a ativação'
+        )
+        for marcador in MAQUINA_REMOVIDA:
+            assert marcador not in corrido, (
+                f'{caminho.name} voltou a trazer {marcador!r}, que é vocabulário '
+                'da máquina de autorização removida. Ativar HOPS > 0 é assunto '
+                'de outra PR, no ambiente definitivo'
+            )
+
+
+# ── R05-7: nenhum endereço real nos documentos ──────────────────────────────
+
+FAIXAS_SEGURAS = (
+    '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24',
+    '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10',
+    '127.0.0.0/8', '0.0.0.0/8', '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4',
+    '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'ff00::/8', '100::/64',
+)
+_TOKEN = re.compile(r'[0-9A-Fa-f:][0-9A-Fa-f.:]*')
+
+
+def _enderecos(texto: str) -> list:
+    achados = []
+    for bruto in _TOKEN.findall(texto):
+        candidato = bruto
+        while candidato:
+            try:
+                achados.append(ipaddress.ip_address(candidato))
+                break
+            except ValueError:
+                candidato = candidato[:-1]
+    return achados
+
+
+def _seguro(endereco, faixas) -> bool:
+    """Toda forma IPv6 que EMBUTE um IPv4 é julgada por esse IPv4."""
+    if endereco.version == 6 and int(endereco) < 2 ** 32:
+        endereco = ipaddress.ip_address(int(endereco))
+    elif getattr(endereco, 'ipv4_mapped', None) is not None:
+        endereco = endereco.ipv4_mapped
+    return any(endereco in f for f in faixas if f.version == endereco.version)
+
+
+def test_r05_7_nenhum_endereco_real_nos_documentos():
+    """As medições foram feitas de origens públicas reais. Os documentos contam
+    o que foi observado sem jamais gravar de onde — só sentinelas de
+    documentação e faixas reservadas.
+
+    Havia dois scanners: um IPv4-only sobre o documento da R0.5 e este, que
+    enxerga as duas famílias, sobre o da R0.5B. Um IPv6 real no primeiro passava
+    pelos dois. Ficou um scanner, sobre os dois documentos.
+    """
+    faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
+    for caminho in (DOC_R05, DOC_R05B, Path(__file__)):
+        for endereco in _enderecos(caminho.read_text(encoding='utf-8')):
+            # A mensagem NÃO ecoa o endereço: o gate existe para impedir que
+            # endereço real seja gravado, e não pode publicá-lo no log do CI.
+            assert _seguro(endereco, faixas), (
+                f'{caminho.name} tem um endereço IPv{endereco.version} fora das '
+                'faixas reservadas'
+            )
+
+
+def test_r05_7b_a_varredura_enxerga_as_duas_familias():
+    """Meta-gate, e ele se paga: uma varredura IPv4-only deixa o gate acima
+    verde com um IPv6 real dentro do arquivo, que foi exatamente o defeito do
+    scanner anterior. Os endereços de prova vêm de inteiros, senão o próprio
+    `R05-7` os pegaria aqui."""
+    faixas = [ipaddress.ip_network(f) for f in FAIXAS_SEGURAS]
+    for real in (ipaddress.ip_address((0x2a01 << 112) | 1),
+                 ipaddress.ip_address(0x60606060)):
+        achados = _enderecos(f'a borda respondeu de {real}.')
+        assert real in achados, f'a varredura não enxergou IPv{real.version}'
+        assert not _seguro(real, faixas), 'endereço real passou por reservado'
+    for reservado in ('192.0.2.1', '2001:db8::1', '::ffff:192.0.2.1'):
+        assert _seguro(ipaddress.ip_address(reservado), faixas)

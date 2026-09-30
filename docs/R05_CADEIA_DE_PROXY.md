@@ -267,9 +267,22 @@ silenciosa.
    Render, salvar variáveis de ambiente dispara um deploy automaticamente; se o
    serviço estiver com deploy manual, dispare um *Manual Deploy → Deploy latest
    commit*.
-4. **Conferir depois do deploy** que o rate limiting passou a separar origens:
-   com `3`, dois clientes distintos deixam de compartilhar bucket. Se todos
-   continuarem colapsando num só, a variável não chegou ao processo.
+4. **Conferir depois do deploy — e o que conferir depende do estado.**
+
+   **Com `HOPS=0`, que é o estado atual e o único autorizado:** todas as
+   origens **compartilham** bucket. `get_client_ip` devolve o peer do socket, e
+   o peer é a borda do Render, igual para todo mundo. Colapso aqui é o
+   comportamento **correto**, não sinal de variável faltando. O que se confere
+   é que a variável está ausente ou `0` no painel.
+
+   **Somente após ativação autorizada, com o `N` revalidado no ambiente:** dois
+   clientes distintos deixam de compartilhar bucket. Se todos continuarem
+   colapsando num só, aí sim a variável não chegou ao processo.
+
+   A versão original desta instrução mandava conferir a separação sem condição,
+   enquanto o passo 1 manda deixar em `0`: uma implantação saudável reprovava o
+   próprio runbook, e quem seguisse concluiria que o deploy falhou. Achado da
+   revisão automatizada.
 
 Os serviços são **`epi-controle-app-gupy`** (corporativo) e
 `epi-controle-app-livamobile-api` (SaaS). O static site do SaaS não roda o

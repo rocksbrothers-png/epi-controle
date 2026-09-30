@@ -100,10 +100,13 @@ descrição do instrumento, a evidência deixa de ser auditável.
 
 ## Procedimento de medição
 
-Registro histórico do que foi executado. A rota não existe mais, então o
-procedimento não é executável — fica para que a evidência possa ser conferida
-e, se alguém precisar remedir, para que a próxima medição parta daqui em vez de
-ser reinventada.
+**Comandos representativos, não reprodução integral.** A rota não existe mais,
+então nada aqui é executável. O bloco fica para que a próxima medição parta
+dele em vez de ser reinventada — mas ele **não** gera todas as formas de cadeia
+que a evidência registra: o `SEM` abaixo envia três sentinelas, e a tabela de
+evidência também tem uma célula de **uma** sentinela, obtida em execução cujo
+comando exato não foi preservado. A seção *Como cada célula foi obtida* diz de
+onde veio cada linha.
 
 Precisava de **duas origens públicas distintas** (ex.: banda larga e 4G) e da
 chave, que ficava só no painel do Render. Nunca cole a chave, o IP nem a saída
@@ -213,6 +216,24 @@ nos dois tamanhos, e o elemento injetado pelo cliente **não desloca**
 **A identidade está estabelecida neste ambiente**: `cadeia[-3]` corresponde à
 origem pública real, e a posição é estável nas duas origens, nos dois backends
 e nas três repetições.
+
+### Como cada célula foi obtida
+
+Esta seção existe porque o bloco de comandos acima não gera as duas formas da
+tabela, e rotulá-lo como registro do que foi executado era afirmação falsa.
+Achado da revisão automatizada. Nenhum valor medido foi alterado, e nenhuma das
+execuções foi apagada.
+
+| célula | como foi obtida |
+|---|---|
+| `sem XFF`, cadeia 3 | `sonda 3 ""` do bloco acima — sem o cabeçalho |
+| `1 sentinela`, cadeia 4 | execução com **exatamente um** elemento artificial de `X-Forwarded-For`, `hops=3`, três repetições por origem e por backend. **3/3 na Origem A e 3/3 na Origem B, nos dois backends.** Os valores de campo observados são os da tabela acima. O comando exato não foi preservado, e não é reconstruído aqui por dedução |
+
+O loop `for N in 1 2 3 4` do bloco envia `SEM`, que tem três sentinelas e
+produz cadeia de tamanho 6 — é a varredura de `N`, não uma das duas células de
+identidade. A R0.5 também mediu com três sentinelas e registrou cadeia 6, no
+controle **C** de `docs/R05_CADEIA_DE_PROXY.md`; as duas observações são
+consistentes e nenhuma substitui a outra.
 
 ### O controle de cadeia longa NÃO foi obtido
 

@@ -8,8 +8,8 @@ depois que a medição de identidade fechou:
   R05B-6   nenhuma configuração de proxy é aplicada sem autorização
   R05B-7   o limitador não lê cabeçalho de identidade não certificado
   R05B-9   o procedimento registrado não expõe a chave em claro
-  R05B-10  o valor de F não pode contradizer o registro do 403
-  R05B-11  autorização de ativação não se herda de outro ambiente
+  R05B-10  o valor de F concorda com a evidência — nos DOIS sentidos
+  R05B-11  ativação exige F aprovada e ambiente revalidado
 
 `R05B-2`, `-3`, `-4` e `-8` verificavam a sonda temporária campo a campo. Ela
 saiu do repositório no fechamento de 29/09, então eles saíram com ela — gate
@@ -76,20 +76,33 @@ GUARDA_HTTPS = (
     '*) echo "ABORTA: BACKEND precisa ser https://"; exit 1;; esac'
 )
 
-#: Fatos do controle `LONGA100` que o documento tem de continuar registrando.
-#: Apagar qualquer um deles reescreveria o que a medição produziu; e é a
-#: presença do segundo que trava o valor de F no `R05B-10`.
+#: Fatos do controle `LONGA100` que o documento tem de continuar registrando,
+#: em QUALQUER estado de F. São afirmações sobre o teste de 26/09 — o que ele
+#: devolveu, o que a evidência não permite nomear, o que `403` não significa —
+#: e medição futura nenhuma as torna falsas.
+#:
+#: `SEM_OBSERVACAO` saiu deste conjunto no hotfix de 30/09. Ela estava aqui E
+#: na asserção condicional que exigia sua AUSÊNCIA quando F saísse de
+#: `inconclusiva`: as duas juntas são insatisfazíveis, então F não podia
+#: evoluir com evidência nenhuma. Era o bloqueio permanente que a decisão B
+#: existe justamente para não construir.
 FATOS_DO_403 = (
     'HTTP 403 em 3/3 nos dois backends, sem corpo JSON',
-    'Nenhum dos quatro campos exigidos foi observado',
     'não permite nomear',
     'não é status de tamanho',
     'o intervalo entre 2 e 99 elementos',
 )
 
-#: O registro de que o controle não produziu observação. Enquanto ele estiver
-#: no documento, F não pode estar medida.
+#: Afirmação de ESTADO, não fato histórico: nenhuma requisição aceita com
+#: cadeia longa foi observada. Enquanto F for `inconclusiva` o documento tem de
+#: registrá-la; quando houver medição válida, a evidência nova a supera.
 SEM_OBSERVACAO = 'Nenhum dos quatro campos exigidos foi observado'
+
+#: Cabeçalho que uma medição futura de cadeia longa precisa acrescentar para F
+#: poder sair de `inconclusiva`. Lido como CABEÇALHO, não como substring solta:
+#: o `test_r05_4d` já mostrou que substring é satisfeita pela prosa de outra
+#: seção, e aí o gate aceita um valor sem evidência por trás.
+SECAO_DA_EVIDENCIA_DE_F = '### Evidência de cadeia longa'
 
 
 def _texto() -> str:
@@ -373,17 +386,21 @@ def test_r05b_9b_o_criterio_de_aceitacao_cobre_o_campo_do_balde():
 
 
 # ── R05B-10 ─────────────────────────────────────────────────────────────────
-def test_r05b_10_o_valor_de_f_nao_contradiz_o_registro_do_403():
-    """F não pode virar aprovada por edição de campo.
+def test_r05b_10_o_valor_de_f_concorda_com_a_evidencia():
+    """F não pode virar aprovada por edição de campo — nem ficar intravável.
 
-    O controle `LONGA100` devolveu 403 sem corpo: nenhum dos quatro campos
-    exigidos foi observado. Enquanto esse registro estiver no documento,
-    `F-CADEIA-LONGA` medida seria uma afirmação contra a própria evidência
-    registrada ao lado.
+    Três obrigações, e nenhuma delas insatisfazível:
 
-    Duas travas, de propósito: os fatos do 403 têm de continuar escritos, e o
-    valor de F tem de concordar com eles. Apagar o registro para liberar o
-    campo derruba a primeira; mudar só o campo derruba a segunda.
+    - os fatos do teste `LONGA100` ficam escritos em qualquer estado de F;
+    - `inconclusiva` exige o registro de que nenhuma requisição aceita com
+      cadeia longa foi observada;
+    - qualquer outro valor exige a seção que registra a medição que o sustenta.
+
+    A primeira versão deste gate exigia a MESMA frase presente sem condição e
+    ausente quando F saísse de `inconclusiva` — insatisfazível. Nenhum
+    documento passava com F medida, e a sabotagem que a acompanhava ficou
+    vermelha por isso, não pela contradição com a evidência. Vermelho pelo
+    motivo errado não prova nada, e foi o que aconteceu.
     """
     corrido = _corrido()
     for fato in FATOS_DO_403:
@@ -392,16 +409,25 @@ def test_r05b_10_o_valor_de_f_nao_contradiz_o_registro_do_403():
             'resultado 403 é histórico e não se reescreve'
         )
 
-    if _campo('F-CADEIA-LONGA') != 'inconclusiva':
-        assert SEM_OBSERVACAO not in corrido, (
-            f"F-CADEIA-LONGA está {_campo('F-CADEIA-LONGA')!r} e o documento "
-            f'continua registrando {SEM_OBSERVACAO!r}. Um dos dois é falso: '
-            'F só sai de inconclusiva com observação que hoje não existe'
+    f = _campo('F-CADEIA-LONGA')
+    if f == 'inconclusiva':
+        assert SEM_OBSERVACAO in corrido, (
+            f'F está inconclusiva e o documento não registra '
+            f'{SEM_OBSERVACAO!r}. Enquanto a lacuna existir, ela fica escrita'
         )
+        return
+
+    cabecalhos = [l.strip() for l in _texto().splitlines() if l.startswith('#')]
+    assert SECAO_DA_EVIDENCIA_DE_F in cabecalhos, (
+        f'F-CADEIA-LONGA está {f!r} e o documento não tem a seção '
+        f'{SECAO_DA_EVIDENCIA_DE_F!r}. Sair de inconclusiva exige registrar a '
+        f'medição que sustenta o valor, não só escrever a palavra. '
+        f'Cabeçalhos presentes: {cabecalhos}'
+    )
 
 
 # ── R05B-11 ─────────────────────────────────────────────────────────────────
-def test_r05b_11_a_autorizacao_de_ativacao_nao_se_herda():
+def test_r05b_11_a_autorizacao_de_ativacao_exige_f_e_ambiente_novo():
     """A barreira da decisão B.
 
     Medir a identidade no Render Free não autoriza ligar
@@ -415,6 +441,14 @@ def test_r05b_11_a_autorizacao_de_ativacao_nao_se_herda():
     esse token passa pelo digesto do bloco. Uma revalidação no ambiente
     definitivo escreve o ambiente novo e o gate abre.
 
+    E exige F respondida. A primeira versão desta barreira olhava só o
+    ambiente: `F-CADEIA-LONGA: inconclusiva` com `ATIVACAO-HOPS: autorizada` e
+    `render.yaml` em `3` ficava VERDE — ligava o número com a lacuna de
+    truncamento aberta, que é o cenário em que `cadeia[-3]` cai dentro do
+    prefixo escrito pelo cliente. Pior: a sabotagem que eu chamei de controle
+    positivo passou verde ATRAVESSANDO esse buraco, e eu li o verde como prova
+    de que o desenho estava certo.
+
     A metade que olha as superfícies de deployment — `render.yaml` e
     `env.example` — é do `R05-3`, que já tem o parser das duas formas de
     declaração.
@@ -422,6 +456,20 @@ def test_r05b_11_a_autorizacao_de_ativacao_nao_se_herda():
     ativacao = _campo('ATIVACAO-HOPS')
     if ativacao != 'autorizada':
         return
+
+    # F PRIMEIRO, e a mensagem diz por quê: é a lacuna que move `cadeia[-3]`
+    # para território do cliente sob truncamento a montante. Sem esta asserção
+    # a barreira só verificava a PROCEDÊNCIA da evidência, nunca se ela estava
+    # completa.
+    f = _campo('F-CADEIA-LONGA')
+    assert f == 'medida-aprovada', (
+        f'ATIVACAO-HOPS: autorizada com F-CADEIA-LONGA={f!r}. Ligar '
+        'RATE_LIMIT_TRUSTED_PROXY_HOPS com a cadeia longa sem resposta é '
+        'aceitar que um truncamento a montante deixe 3 ou mais elementos do '
+        'cliente na cadeia recebida — a guarda de cadeia curta não dispara, e '
+        'cadeia[-3] passa a ser valor escolhido pelo atacante. F tem de estar '
+        'medida-aprovada, com a seção de evidência que o R05B-10 cobra'
+    )
 
     ambiente = _campo('AMBIENTE-DA-EVIDENCIA')
     assert ambiente != AMBIENTE_DA_MEDICAO_ATUAL, (

@@ -245,11 +245,30 @@ def test_r05_3_o_deployment_nao_transforma_medicao_em_ativacao():
     campos = _campos_do_contrato()
 
     if not _determinado():
+        # Cadeia reaberta: o número volta a não existir, então nenhuma
+        # superfície pode carregar valor positivo. Mas exigir AUSÊNCIA era
+        # errado por dois motivos, e o segundo é uma contradição interna:
+        #
+        #  - omitir deixa um valor já posto no painel sobreviver à
+        #    sincronização do blueprint, que é o oposto de fail-closed;
+        #  - o `R05-3b` exige, SEM condição, que `env.example` declare `0`.
+        #    Os dois gates juntos eram insatisfazíveis com a cadeia reaberta.
+        #
+        # Achado da revisão automatizada, reproduzido antes de ser aceito.
         for caminho in (ENV_EXEMPLO, RENDER):
-            if caminho.exists():
-                assert VARIAVEL not in caminho.read_text(encoding='utf-8'), (
-                    f'{caminho.name} declara {VARIAVEL} com a cadeia ainda '
-                    'INDETERMINADA — é exatamente o palpite que a R0 recusou'
+            if not caminho.exists():
+                continue
+            valores = _valores_declarados(caminho.read_text(encoding='utf-8'))
+            assert valores, (
+                f'{caminho.name} não declara {VARIAVEL} com a cadeia '
+                'INDETERMINADA. Omitir não é fail-closed: um valor posto no '
+                'painel sobrevive à sincronização. Declare 0'
+            )
+            for valor in valores:
+                assert valor == '0', (
+                    f'{caminho.name} declara {VARIAVEL}={valor} com a cadeia '
+                    'ainda INDETERMINADA — é exatamente o palpite que a R0 '
+                    'recusou'
                 )
         return
 

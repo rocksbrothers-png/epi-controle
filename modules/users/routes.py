@@ -41,16 +41,18 @@ def handle_get_user(handler, parsed, payload, match):
 
 def handle_post_users(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+    actor_user_id = resolve_actor_user_id(handler, parsed, payload)
     with closing(get_connection()) as connection:
-        create_user(connection, payload)
+        create_user(connection, payload, actor_user_id=actor_user_id)
         return send_json(handler, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
 
 
 def handle_put_user(handler, parsed, payload, match):
     user_id = int(match.group(1))
     require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+    actor_user_id = resolve_actor_user_id(handler, parsed, payload)
     with closing(get_connection()) as connection:
-        update_user(connection, user_id, payload)
+        update_user(connection, user_id, payload, actor_user_id=actor_user_id)
         return send_json(handler, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
 
 

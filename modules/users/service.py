@@ -239,10 +239,11 @@ def resolve_user_employee_link(connection, actor, payload, company_id, allow_man
     return int(cursor.lastrowid), int(company_id)
 
 
-def create_user(connection, payload):
-    from core.security import resolve_actor_user_id as _resolve
-    actor_user_id = int(str(payload.get('actor_user_id', '')).strip())
-    actor = authorize_user_management(connection, actor_user_id, 'create', payload.get('role'), None, payload.get('company_id'))
+def create_user(connection, payload, *, actor_user_id):
+    # `actor_user_id` vem do chamador, já resolvido pelo mecanismo autenticado
+    # (`resolve_actor_user_id` na rota). `payload['actor_user_id']` NÃO é fonte
+    # de autoridade aqui: lê-lo deixava o cliente escolher o próprio ator (F-01).
+    actor = authorize_user_management(connection, int(actor_user_id), 'create', payload.get('role'), None, payload.get('company_id'))
 
     role = normalize_role_name(payload.get('role', ''))
     if role not in ROLE_WEIGHT:
@@ -273,8 +274,10 @@ def create_user(connection, payload):
     connection.commit()
 
 
-def update_user(connection, user_id, payload):
-    actor = authorize_user_management(connection, int(str(payload.get('actor_user_id', '')).strip()), 'update', payload.get('role'), user_id, payload.get('company_id'))
+def update_user(connection, user_id, payload, *, actor_user_id):
+    # Mesmo contrato de `create_user`: o ator é o resolvido pela rota, nunca o
+    # `actor_user_id` do corpo (F-01).
+    actor = authorize_user_management(connection, int(actor_user_id), 'update', payload.get('role'), user_id, payload.get('company_id'))
     current = get_user_by_id(connection, user_id)
     if not current:
         raise ValueError('Usuário não encontrado.')

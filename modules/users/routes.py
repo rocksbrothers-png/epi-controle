@@ -5,7 +5,7 @@ from contextlib import closing
 from core.auth import ensure_resource_company
 from core.database import get_connection
 from core.repository import authorize_action
-from core.security import resolve_actor_user_id
+from core.security import require_bearer_actor, resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.auth.service import fetch_users, get_user_by_id
 from modules.users.service import create_user, delete_user, update_user
@@ -41,16 +41,18 @@ def handle_get_user(handler, parsed, payload, match):
 
 def handle_post_users(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+    actor_user_id = require_bearer_actor(handler, parsed, payload)
     with closing(get_connection()) as connection:
-        create_user(connection, payload)
+        create_user(connection, payload, actor_user_id=actor_user_id)
         return send_json(handler, 201, {'ok': True, 'message': 'Usuário criado com sucesso.'})
 
 
 def handle_put_user(handler, parsed, payload, match):
     user_id = int(match.group(1))
     require_fields(payload, ['actor_user_id', 'username', 'full_name', 'role'])
+    actor_user_id = require_bearer_actor(handler, parsed, payload)
     with closing(get_connection()) as connection:
-        update_user(connection, user_id, payload)
+        update_user(connection, user_id, payload, actor_user_id=actor_user_id)
         return send_json(handler, 200, {'ok': True, 'message': 'Usuário atualizado com sucesso.'})
 
 

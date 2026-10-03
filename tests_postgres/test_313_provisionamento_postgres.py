@@ -111,7 +111,7 @@ def test_criacao_sem_colaborador_e_sem_campos_employee(cenario):
     with closing(get_connection()) as conexao:
         antes = _colaboradores(conexao)
 
-        create_user(conexao, {
+        create_user(conexao, actor_user_id=cenario['master'], payload={
             'actor_user_id': cenario['master'],
             'username': USUARIO,
             'full_name': 'Certificacao B4-B (automacao)',
@@ -150,7 +150,7 @@ def test_promocao_de_registry_admin_para_a_identidade_tecnica(cenario):
         # Sem `password` de propósito: `update_user` chama `mark_temp_password`
         # sempre que recebe senha, e isso religaria `must_change_password = 1`,
         # que bloqueia toda rota autenticada com 403.
-        update_user(conexao, alvo, {
+        update_user(conexao, alvo, actor_user_id=cenario['master'], payload={
             'actor_user_id': cenario['master'],
             'username': ALVO,
             'full_name': 'Alvo',
@@ -181,7 +181,7 @@ def test_empresa_continua_obrigatoria(cenario):
     """
     with closing(get_connection()) as conexao, \
             pytest.raises(ValueError, match='exige empresa vinculada'):
-        create_user(conexao, {
+        create_user(conexao, actor_user_id=cenario['master'], payload={
             'actor_user_id': cenario['master'],
             'username': USUARIO,
             'full_name': 'Sem empresa',
@@ -199,7 +199,7 @@ def test_vinculo_explicito_continua_recusado(cenario):
     """
     with closing(get_connection()) as conexao, \
             pytest.raises(ValueError, match='não pode ser vinculada'):
-        create_user(conexao, {
+        create_user(conexao, actor_user_id=cenario['master'], payload={
             'actor_user_id': cenario['master'],
             'username': USUARIO,
             'full_name': 'Com vinculo',
@@ -233,7 +233,7 @@ def test_papeis_operacionais_mantem_a_exigencia_de_colaborador(cenario):
         for papel in ('admin', 'user'):
             nome = f'{USUARIO}_{papel}'
             with pytest.raises(ValueError):
-                create_user(conexao, {
+                create_user(conexao, actor_user_id=cenario['master'], payload={
                     'actor_user_id': cenario['master'],
                     'username': nome,
                     'full_name': f'Operacional {papel}',
@@ -268,7 +268,7 @@ def test_campos_de_colaborador_nao_criam_colaborador_para_a_identidade(cenario):
         unidade = conexao.execute(
             'SELECT id FROM units WHERE company_id = ? LIMIT 1', (cenario['empresa'],)).fetchone()
 
-        create_user(conexao, {
+        create_user(conexao, actor_user_id=cenario['master'], payload={
             'actor_user_id': cenario['master'],
             'username': USUARIO,
             'full_name': 'Certificacao B4-B (automacao)',

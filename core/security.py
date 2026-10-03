@@ -217,6 +217,31 @@ def resolve_actor_user_id(handler, parsed, payload=None):
     return int(actor_user_id)
 
 
+def require_bearer_actor(handler, parsed, payload=None):
+    """Como `resolve_actor_user_id`, mas exige um Bearer presente SEMPRE.
+
+    Para operações privilegiadas — hoje a gestão de usuários (`POST /api/users`
+    e `PUT /api/users/{id}`), que pode criar administradores e trocar senhas em
+    qualquer empresa. A autoridade nunca pode vir só de `actor_user_id` fornecido
+    pelo cliente (F-01), então sem `Authorization: Bearer` → 401, mesmo quando o
+    rollout global do JWT (`JWT_ENFORCEMENT_MODE`) está em `off`/`shadow`. É uma
+    exigência LOCAL de quem chama: não altera o modo global nem as demais rotas.
+
+    Com Bearer presente, delega a `resolve_actor_user_id`, que decodifica o token
+    e impõe a coerência token↔ator (#337): um `actor_user_id` divergente no
+    corpo/query vira 403 (personificação), nunca aceito em silêncio.
+
+    Mantido aqui, no único módulo do contrato 401/403, para que a classe
+    `AuthenticationError` não se espalhe por handlers (gate da #337). Sem Bearer,
+    reusa o ponto de autenticação ÚNICO "token ausente" de `decode_jwt_token`
+    (401) — não cria um novo ponto no contrato nem um novo `raise` neste arquivo.
+    """
+    token = parse_bearer_token(handler)
+    if not token:
+        decode_jwt_token(token)  # AuthenticationError('Token ausente.') — 401
+    return resolve_actor_user_id(handler, parsed, payload)
+
+
 def is_bcrypt_hash(value):
     raw = str(value or '')
     return raw.startswith('$2a$') or raw.startswith('$2b$') or raw.startswith('$2y$')

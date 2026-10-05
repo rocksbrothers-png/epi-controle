@@ -305,7 +305,8 @@ def test_t14_webhook_uses_persisted_company(monkeypatch):
 
 def test_t15_client_key_lifecycle():
     js = (os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    src = open(os.path.join(js, 'static', 'js', 'pagamento.js'), encoding='utf-8').read()
+    with open(os.path.join(js, 'static', 'js', 'pagamento.js'), encoding='utf-8') as fh:
+        src = fh.read()
     assert 'checkoutIntentKey' in src and 'function newIntentKey' in src
     # nova seleção regenera a chave…
     assert 'checkoutIntentKey = newIntentKey()' in src

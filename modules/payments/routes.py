@@ -269,9 +269,11 @@ def handle_post_subscription(handler, parsed, payload, match):
         except Exception as exc:
             connection.rollback()
             structured_log('error', 'checkout.persist_failed', error=str(exc))
-            return send_json(handler, 503, {'ok': False, 'error': {
+            persist_pending = {'ok': False, 'error': {
                 'code': 'CHECKOUT_PERSIST_PENDING',
-                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}})
+                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}}
+            send_json(handler, 503, persist_pending)
+            return 503, persist_pending
         return send_json(handler, 201, {'ok': True, 'subscription': result})
 
 
@@ -318,9 +320,11 @@ def _handle_authenticated_oneoff(handler, parsed, payload, method_id):
         except Exception as exc:
             connection.rollback()
             structured_log('error', 'checkout.persist_failed', error=str(exc))
-            return send_json(handler, 503, {'ok': False, 'error': {
+            persist_pending = {'ok': False, 'error': {
                 'code': 'CHECKOUT_PERSIST_PENDING',
-                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}})
+                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}}
+            send_json(handler, 503, persist_pending)
+            return 503, persist_pending
         return send_json(handler, 201, {'ok': True, 'payment': result})
 
 

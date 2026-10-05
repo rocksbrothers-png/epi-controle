@@ -9,9 +9,10 @@ Endpoints:
   GET  /api/payments/catalog       → catálogo público de planos (site/app)
   GET  /api/payments/plans         → lista planos persistidos (master)
   POST /api/payments/plans         → cria preapproval plan (master)
-  POST /api/payments/subscriptions → cria assinatura com cartão tokenizado
-  POST /api/payments/pix           → cria pagamento Pix
-  POST /api/payments/boleto        → cria pagamento boleto
+  POST /api/payments/subscriptions → assinatura com cartão (AUTENTICADO: Bearer;
+                                     empresa/preço server-side — 1G-C #1009/#1010)
+  POST /api/payments/pix           → pagamento Pix (AUTENTICADO; preço server-side)
+  POST /api/payments/boleto        → pagamento boleto (AUTENTICADO; preço server-side)
   POST /api/payments/webhook       → recebe notificações do Mercado Pago
   GET  /api/payments/status        → consulta status de um pagamento
 
@@ -26,9 +27,9 @@ from urllib.parse import parse_qs
 
 from core.database import get_connection
 from core.repository import require_actor, require_master_actor
-from core.security import resolve_actor_user_id
+from core.security import require_bearer_actor, resolve_actor_user_id
 from epi_backend.config import BASE_DIR
-from epi_backend.http_utils import send_bytes, send_json, structured_log
+from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
 from modules.payments import service, subscriptions_service
 from modules.payments.mp_client import MercadoPagoError
 
@@ -109,29 +110,110 @@ def handle_post_plan(handler, parsed, payload, match):
         return send_json(handler, 201, {'ok': True, 'plan': result})
 
 
+# ── Checkout AUTENTICADO seguro (1G-C, #1009/#1010) ───────────────────────────
+#
+# Contrato do checkout Corporate: a IDENTIDADE vem do Bearer (obrigatório LOCAL,
+# independente de JWT_ENFORCEMENT_MODE — F-01); a EMPRESA vem da identidade
+# server-side do ator; o PREÇO vem do catálogo server-side. O cliente NÃO pode
+# informar empresa, tenant, ator, created_by, preço nem o plano do MP — esses
+# campos no corpo geram 400 (falha explícita, nunca ignorados em silêncio).
+#
+# DIVERGÊNCIA INTENCIONAL vs. SaaS (PR #391): o SaaS liga a empresa por uma
+# capability de signup público (um token opaco emitido no cadastro); o Corporate
+# a liga pela identidade autenticada. Por isso o Corporate NÃO introduz essa
+# capability nem o token de checkout (§14).
+
+_FORBIDDEN_AUTHORITY_FIELDS = (
+    'company_id', 'tenant_id', 'actor_user_id', 'created_by', 'amount',
+    'plan_id', 'frequency', 'frequency_type', 'currency',
+)
+
+_PAYER_FIELDS = (
+    'payer_email', 'payer_first_name', 'payer_last_name',
+    'payer_doc_type', 'payer_doc_number',
+)
+
+
+def _reject_authority_fields(payload, parsed=None):
+    """Nenhuma AUTORIDADE pode vir do cliente (corpo, e por robustez a query) → 400.
+
+    Empresa, tenant, ator, created_by e preço/plano são SEMPRE server-side.
+    """
+    present = [f for f in _FORBIDDEN_AUTHORITY_FIELDS if f in (payload or {})]
+    if parsed is not None:
+        query = parse_qs(parsed.query)
+        present += [f'{f} (query)' for f in _FORBIDDEN_AUTHORITY_FIELDS if f in query]
+    if present:
+        raise ValueError(
+            'Campos não permitidos no checkout: ' + ', '.join(present)
+            + '. Empresa, tenant, ator e preço são determinados pelo servidor.'
+        )
+
+
+def _authenticated_checkout_actor_id(handler, parsed, payload):
+    """Gate de autoridade do checkout: Bearer obrigatório (401) + rejeição de
+    campos de autoridade (400). Devolve o actor_user_id resolvido DO TOKEN.
+
+    `require_bearer_actor` (F-01) sem Bearer → 401 (mesmo com
+    JWT_ENFORCEMENT_MODE=off/shadow); com token, impõe a coerência token↔ator.
+    `payload=None`: a identidade vem do token, nunca de `actor_user_id` do corpo
+    (que, se presente, já é rejeitado como campo de autoridade)."""
+    actor_user_id = require_bearer_actor(handler, parsed, None)
+    _reject_authority_fields(payload, parsed)
+    return actor_user_id
+
+
+def _resolve_checkout_company(connection, actor_user_id):
+    """Empresa/tenant SERVER-SIDE da identidade autenticada (nunca do corpo).
+
+    O Corporate não possui `tenant_id` server-side (company_id é a autoridade de
+    escopo); o tenant persistido fica vazio — nunca vem do cliente.
+    """
+    actor = require_actor(connection, actor_user_id)
+    company_id = actor.get('company_id')
+    if company_id in (None, ''):
+        raise PermissionError('Usuário sem empresa associada.')
+    return actor, int(company_id), ''
+
+
+def _server_external_reference(company_id, plan_key, cycle):
+    return f'checkout|company={company_id}|plan={plan_key}|cycle={cycle}'
+
+
 def handle_post_subscription(handler, parsed, payload, match):
     payload = payload or {}
+    # Bearer (401) + rejeição de autoridade (400) ANTES de tocar o banco/MP.
+    actor_user_id = _authenticated_checkout_actor_id(handler, parsed, payload)
+    require_fields(payload, ['plan_key', 'cycle', 'payer_email', 'card_token'])
+    service.resolve_catalog_plan(payload.get('plan_key'), payload.get('cycle'))  # 400 cedo
+    plan_key = str(payload.get('plan_key') or '')
+    cycle = service.normalize_cycle(payload.get('cycle'))
     with closing(get_connection()) as connection:
+        actor, company_id, tenant_id = _resolve_checkout_company(connection, actor_user_id)
         try:
-            result = service.create_card_subscription(connection, payload)
+            result = service.create_catalog_card_subscription(
+                connection, plan_key=plan_key, cycle=payload.get('cycle'),
+                payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
+                company_id=company_id,
+                external_reference=_server_external_reference(company_id, plan_key, cycle),
+            )
         except MercadoPagoError as exc:
             connection.rollback()
             return _mp_error_response(handler, exc)
-        # Persiste a assinatura para o ciclo de vida (Minha Assinatura/histórico).
-        # Best-effort: uma falha aqui não invalida a assinatura já criada no MP.
+        # Persiste a assinatura com o binding server-side (origin=authenticated,
+        # created_by=ator autenticado). Best-effort: uma falha aqui não invalida a
+        # assinatura já criada no MP.
         try:
             subscriptions_service.record_subscription(
                 connection,
-                company_id=payload.get('company_id'),
-                plan_key=str(payload.get('plan_key') or payload.get('plan_id') or ''),
-                cycle=service.normalize_cycle(payload.get('cycle')),
-                payment_method='card',
+                company_id=company_id, plan_key=result.get('plan_key') or plan_key,
+                cycle=result.get('cycle') or cycle, payment_method='card',
                 preapproval_id=result.get('subscription_id'),
-                preapproval_plan_id=str(payload.get('plan_id') or ''),
+                preapproval_plan_id=result.get('preapproval_plan_id') or '',
                 status=result.get('status') or 'pending',
-                amount=payload.get('amount') or 0,
-                tenant_id=str(payload.get('tenant_id') or ''),
-                created_by=payload.get('actor_user_id'),
+                amount=result.get('amount') or 0, tenant_id=tenant_id,
+                created_by=actor['id'],
+                origin=subscriptions_service.ORIGIN_AUTHENTICATED,
                 is_recurring=True, raw=result,
             )
         except Exception as exc:  # pragma: no cover - defensivo
@@ -140,26 +222,35 @@ def handle_post_subscription(handler, parsed, payload, match):
         return send_json(handler, 201, {'ok': True, 'subscription': result})
 
 
-def handle_post_pix(handler, parsed, payload, match):
+def _handle_authenticated_oneoff(handler, parsed, payload, method_id):
+    payload = payload or {}
+    actor_user_id = _authenticated_checkout_actor_id(handler, parsed, payload)
+    require_fields(payload, ['plan_key', 'cycle', 'payer_email'])
+    service.resolve_catalog_plan(payload.get('plan_key'), payload.get('cycle'))  # 400 cedo
+    plan_key = str(payload.get('plan_key') or '')
+    cycle = service.normalize_cycle(payload.get('cycle'))
     with closing(get_connection()) as connection:
+        _actor, company_id, _tenant = _resolve_checkout_company(connection, actor_user_id)
+        payer_payload = {k: payload[k] for k in _PAYER_FIELDS if k in payload}
         try:
-            result = service.create_pix_payment(connection, payload or {})
+            result = service.create_catalog_oneoff_payment(
+                connection, method_id=method_id, plan_key=plan_key, cycle=payload.get('cycle'),
+                company_id=company_id, payer_payload=payer_payload,
+                external_reference=_server_external_reference(company_id, plan_key, cycle),
+            )
         except MercadoPagoError as exc:
             connection.rollback()
             return _mp_error_response(handler, exc)
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'payment': result})
+
+
+def handle_post_pix(handler, parsed, payload, match):
+    return _handle_authenticated_oneoff(handler, parsed, payload, 'pix')
 
 
 def handle_post_boleto(handler, parsed, payload, match):
-    with closing(get_connection()) as connection:
-        try:
-            result = service.create_boleto_payment(connection, payload or {})
-        except MercadoPagoError as exc:
-            connection.rollback()
-            return _mp_error_response(handler, exc)
-        connection.commit()
-        return send_json(handler, 201, {'ok': True, 'payment': result})
+    return _handle_authenticated_oneoff(handler, parsed, payload, 'bolbradesco')
 
 
 # ── Assinaturas (ciclo de vida, autenticado e escopado por empresa) ────────────

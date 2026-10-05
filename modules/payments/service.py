@@ -128,6 +128,12 @@ _SUBSCRIPTION_EVOLUTION_COLUMNS = (
     ("subscriptions", "cancel_reason", "TEXT NOT NULL DEFAULT ''"),
     ("subscriptions", "created_by", "INTEGER"),
     ("subscriptions", "updated_by", "INTEGER"),
+    # origin: como o binding empresa/tenant foi estabelecido. No Corporate só
+    # existe 'authenticated' (ator logado via Bearer); vazio = linha legada,
+    # anterior ao binding server-side (1G-C, #1009/#1010). Coluna não-RLS: a
+    # evolução idempotente dispensa migration (RLS de subscriptions já mora em
+    # 028_billing_rls.py; o gate #309 proíbe apenas DDL de RLS em modules/).
+    ("subscriptions", "origin", "TEXT NOT NULL DEFAULT ''"),
     ("invoices", "tenant_id", "TEXT NOT NULL DEFAULT ''"),
     ("invoices", "receipt_url", "TEXT NOT NULL DEFAULT ''"),
     ("invoices", "invoice_url", "TEXT NOT NULL DEFAULT ''"),
@@ -165,6 +171,7 @@ def ensure_subscription_tables(connection):
             cancel_reason TEXT NOT NULL DEFAULT '',
             created_by INTEGER,
             updated_by INTEGER,
+            origin TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -608,6 +615,155 @@ def create_pix_payment(connection, payload):
 
 def create_boleto_payment(connection, payload):
     return _create_payment(connection, payload, 'bolbradesco')
+
+
+# ── Checkout autenticado seguro (preço server-side) ───────────────────────────
+#
+# Estas funções atendem o checkout autenticado do Corporate (1G-C, #1009/#1010).
+# O PREÇO vem EXCLUSIVAMENTE do catálogo server-side (SUBSCRIPTION_PLANS) e o
+# preapproval_plan do Mercado Pago é resolvido por mapeamento server-side — o
+# cliente NUNCA informa `amount`/`plan_id`. A `company_id` é resolvida pelo
+# chamador a partir da IDENTIDADE AUTENTICADA (Bearer), nunca do corpo.
+#
+# Propriedade COMPARTILHADA com o SaaS (PR #391): preço server-side por
+# (plan_key, cycle). DIVERGÊNCIA INTENCIONAL: o SaaS resolve a empresa por uma
+# capability de signup público (token opaco emitido no cadastro); o Corporate a
+# resolve pela identidade autenticada. Por isso o Corporate NÃO introduz essa
+# capability (§14).
+
+def resolve_catalog_plan(plan_key, cycle):
+    """Resolve (preço, rótulo) de um plano comprável a partir do catálogo.
+
+    Levanta ValueError para plano inexistente, ciclo inválido, ciclo sem preço,
+    ou plano `contact_only` (enterprise — não comprável pelo checkout).
+    """
+    key = str(plan_key or '').strip().lower()
+    cyc = normalize_cycle(cycle)
+    if str(cycle or '').strip().lower() not in ('monthly', 'annual', 'mensal', 'anual',
+                                                'month', 'year', 'yearly'):
+        raise ValueError('Ciclo inválido.')
+    plan = SUBSCRIPTION_PLANS.get(key)
+    if not plan:
+        raise ValueError('Plano inexistente.')
+    if plan.get('contact_only'):
+        raise ValueError('Plano sob consulta (enterprise) não é comprável por este checkout.')
+    amount = (plan.get('prices') or {}).get(cyc)
+    if amount is None:
+        raise ValueError('Ciclo indisponível para este plano.')
+    return {'plan_key': key, 'cycle': cyc, 'amount': float(amount), 'label': plan['label']}
+
+
+def _cycle_recurrence(cycle):
+    """(frequency, frequency_type) do Mercado Pago para o ciclo do catálogo."""
+    return (1, 'years') if normalize_cycle(cycle) == 'annual' else (1, 'months')
+
+
+def create_catalog_card_subscription(connection, *, plan_key, cycle, payer_email,
+                                     card_token, company_id, external_reference=''):
+    """Cria uma assinatura (preapproval) com preço server-side (catálogo).
+
+    `company_id` já vem resolvido da identidade autenticada (Bearer) — nunca do
+    corpo. O cliente informa apenas plan_key/cycle/payer_email/card_token.
+    """
+    plan = resolve_catalog_plan(plan_key, cycle)
+    if not str(payer_email or '').strip():
+        raise ValueError('Campo obrigatório: payer_email')
+    if not str(card_token or '').strip():
+        raise ValueError('Campo obrigatório: card_token')
+
+    mp_plan_id = _mp_plan_ids_by_key(connection).get((plan['plan_key'], plan['cycle']), '')
+    body = {
+        'payer_email': str(payer_email),
+        'card_token_id': str(card_token),
+        'status': 'authorized',
+    }
+    if external_reference:
+        body['external_reference'] = str(external_reference)
+    if mp_plan_id:
+        # Preço vive no preapproval_plan do MP (criado pelo master com o preço do
+        # catálogo). O cliente não o informa: resolvido server-side.
+        body['preapproval_plan_id'] = str(mp_plan_id)
+    else:
+        # Sem preapproval_plan configurado: preço do catálogo server-side.
+        frequency, frequency_type = _cycle_recurrence(plan['cycle'])
+        body['reason'] = f"EPI Controle {plan['label']}"
+        body['auto_recurring'] = {
+            'frequency': frequency,
+            'frequency_type': frequency_type,
+            'transaction_amount': plan['amount'],
+            'currency_id': 'BRL',
+        }
+
+    result = mp_client.post('/preapproval', body)
+    mp_id = str(result.get('id') or '')
+    status = str(result.get('status') or 'pending')
+
+    _record_payment(
+        connection,
+        company_id=company_id, plan_id=plan['plan_key'], mp_payment_id=mp_id,
+        resource_type='preapproval', payer_email=payer_email,
+        payment_method='subscription', amount=plan['amount'], currency='BRL',
+        status=status, status_detail='', external_reference=external_reference,
+        qr_code='', qr_code_base64='', ticket_url=str(result.get('init_point') or ''),
+        raw=result,
+    )
+    return {
+        'subscription_id': mp_id,
+        'status': status,
+        'init_point': str(result.get('init_point') or ''),
+        'payment_method': 'subscription',
+        'preapproval_plan_id': str(mp_plan_id or ''),
+        'amount': plan['amount'],
+        'plan_key': plan['plan_key'],
+        'cycle': plan['cycle'],
+    }
+
+
+def create_catalog_oneoff_payment(connection, *, method_id, plan_key, cycle,
+                                  company_id, payer_payload, external_reference=''):
+    """Cria um pagamento avulso (Pix/boleto) com preço server-side (catálogo).
+
+    `company_id` vem da identidade autenticada; o preço, do catálogo. O cliente
+    não informa `amount`.
+    """
+    plan = resolve_catalog_plan(plan_key, cycle)
+    body = {
+        'transaction_amount': plan['amount'],
+        'description': f"Assinatura EPI Controle — {plan['label']}",
+        'payment_method_id': method_id,
+        'payer': _build_payer(payer_payload),
+    }
+    if external_reference:
+        body['external_reference'] = str(external_reference)
+
+    result = mp_client.post('/v1/payments', body)
+    mp_id = str(result.get('id') or '')
+    status = str(result.get('status') or 'pending')
+    status_detail = str(result.get('status_detail') or '')
+    transaction_data = ((result.get('point_of_interaction') or {}).get('transaction_data') or {})
+    qr_code = str(transaction_data.get('qr_code') or '')
+    qr_code_base64 = str(transaction_data.get('qr_code_base64') or '')
+    ticket_url = str(
+        transaction_data.get('ticket_url')
+        or (result.get('transaction_details') or {}).get('external_resource_url')
+        or ''
+    )
+    _record_payment(
+        connection,
+        company_id=company_id, plan_id=plan['plan_key'], mp_payment_id=mp_id,
+        resource_type='payment', payer_email=payer_payload.get('payer_email'),
+        payment_method=('pix' if method_id == 'pix' else 'boleto'),
+        amount=plan['amount'], currency=str(result.get('currency_id') or 'BRL'),
+        status=status, status_detail=status_detail, external_reference=external_reference,
+        qr_code=qr_code, qr_code_base64=qr_code_base64, ticket_url=ticket_url,
+        raw=result,
+    )
+    return {
+        'payment_id': mp_id, 'status': status, 'status_detail': status_detail,
+        'payment_method': ('pix' if method_id == 'pix' else 'boleto'),
+        'qr_code': qr_code, 'qr_code_base64': qr_code_base64, 'ticket_url': ticket_url,
+        'amount': plan['amount'], 'plan_key': plan['plan_key'], 'cycle': plan['cycle'],
+    }
 
 
 # ── Consulta de status ────────────────────────────────────────────────────────

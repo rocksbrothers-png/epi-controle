@@ -26,6 +26,7 @@ const API = {
 const I18N = {
   pt: {
     plan_unavailable: 'Plano indisponível no momento. Tente novamente mais tarde ou fale com o suporte.',
+    login_required: 'Faça login para assinar. Abra o checkout pelo painel administrativo (sessão autenticada).',
     pix_instructions: 'Escaneie o QR Code ou copie o código Pix abaixo.',
     boleto_opened: 'Boleto gerado. Abrindo em nova aba…',
     processing: 'Processando…',
@@ -50,6 +51,7 @@ const I18N = {
   },
   en: {
     plan_unavailable: 'Plan unavailable right now. Try again later or contact support.',
+    login_required: 'Sign in to subscribe. Open the checkout from the admin panel (authenticated session).',
     pix_instructions: 'Scan the QR Code or copy the Pix code below.',
     boleto_opened: 'Boleto generated. Opening in a new tab…',
     processing: 'Processing…',
@@ -103,9 +105,24 @@ async function getJson(url) {
   return res.json().catch(() => ({}));
 }
 
+// Token da sessão autenticada (mesma origem da API). O checkout Corporate é
+// AUTENTICADO (1G-C, #1009/#1010): a identidade/empresa vêm do Bearer, não do
+// corpo. A chave de storage espelha STORAGE_KEYS.token do app (constants.js).
+const SESSION_TOKEN_KEY = 'epi-session-v4-token';
+function getAuthToken() {
+  try { return (window.localStorage.getItem(SESSION_TOKEN_KEY) || '').trim(); }
+  catch (_e) { return ''; }
+}
+
 async function postJson(url, body) {
+  const token = getAuthToken();
+  // Sem sessão não há como provar a identidade: o servidor responderia 401.
+  // Falha cedo, com mensagem clara, sem disparar a requisição.
+  if (!token) { throw new Error(t('login_required')); }
   const res = await fetch(url, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
@@ -235,13 +252,15 @@ function selectOption(id) {
 }
 
 function basePayload() {
+  // Contrato 1G-C (#1009/#1010): o cliente envia APENAS plan_key/cycle/
+  // payer_email/payment_method (e card_token no cartão). Empresa, tenant, ator,
+  // auditoria, preço e o plano do Mercado Pago são SEMPRE server-side — enviar
+  // campos de autoridade agora resulta em HTTP 400.
   return {
-    plan_id: selected ? (selected.plan_id || ctx.plan) : ctx.plan,
-    payer_email: $('payer_email').value.trim(),
-    amount: selected ? selected.amount : undefined,
+    plan_key: ctx.plan,
     cycle: selected ? selected.cycle : ctx.cycle,
-    external_reference: `web|${ctx.plan}|${selected ? selected.cycle : ctx.cycle}|${selected ? selected.method : ''}`,
-    description: `Assinatura EPI Controle — ${planLabel()} (${selected ? cycleLabel(selected) : ctx.cycle})`,
+    payer_email: $('payer_email').value.trim(),
+    payment_method: selected ? selected.method : '',
   };
 }
 

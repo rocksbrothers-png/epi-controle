@@ -30,6 +30,7 @@ from modules.commercial.service import (
     ensure_commercial_settings as _ensure_commercial_settings,
     ensure_commercial_contract_tables as _ensure_commercial_tables,
 )
+from core.checkout_idempotency import ensure_payment_attempt_tables as _ensure_payment_attempt_tables
 from modules.payments.service import (
     ensure_payment_tables as _ensure_payment_tables,
     ensure_subscription_tables as _ensure_subscription_tables,
@@ -348,6 +349,9 @@ def init_db():
             _ensure_commercial_tables,
             _ensure_payment_tables,
             _ensure_subscription_tables,
+            # Idempotência do checkout (1J-C): tabela + índice UNIQUE criados
+            # antes de run_pending_migrations (que versiona a RLS, migration 029).
+            _ensure_payment_attempt_tables,
             schema.ensure_user_columns,
             schema.ensure_delivery_signature_columns,
             schema.ensure_delivery_handover_columns,

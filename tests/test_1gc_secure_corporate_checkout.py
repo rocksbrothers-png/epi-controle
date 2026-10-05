@@ -29,6 +29,7 @@ from pathlib import Path
 import pytest
 
 import core.security as seguranca
+from core import checkout_idempotency
 from modules.payments import mp_client, routes, service, subscriptions_service
 
 AuthenticationError = seguranca.AuthenticationError
@@ -72,6 +73,7 @@ class NoCloseConn:
         self._c.row_factory = sqlite3.Row
         service.ensure_payment_tables(self._c)
         service.ensure_subscription_tables(self._c)
+        checkout_idempotency.ensure_payment_attempt_tables(self._c)  # 1J-C
 
     def __getattr__(self, name):
         return getattr(self._c, name)
@@ -136,9 +138,12 @@ def _pay_rows(conn):
     return [dict(r) for r in conn.execute('SELECT * FROM payments ORDER BY id').fetchall()]
 
 
-_CARD_BODY = {'plan_key': 'start', 'cycle': 'monthly',
-              'payer_email': 'adm@empresa.com', 'card_token': 'tok_abc'}
-_PIX_BODY = {'plan_key': 'start', 'cycle': 'monthly', 'payer_email': 'adm@empresa.com'}
+# idempotency_key agora é obrigatório no checkout (1J-C). Cada teste usa uma
+# conexão :memory: nova (uma criação por teste), então uma chave fixa não colide.
+_CARD_BODY = {'plan_key': 'start', 'cycle': 'monthly', 'payer_email': 'adm@empresa.com',
+              'card_token': 'tok_abc', 'idempotency_key': 'idem-key-1gc'}
+_PIX_BODY = {'plan_key': 'start', 'cycle': 'monthly', 'payer_email': 'adm@empresa.com',
+             'idempotency_key': 'idem-key-1gc'}
 
 
 # ── T1/T2 — Bearer obrigatório LOCAL (401) nos três modos ─────────────────────
@@ -262,7 +267,7 @@ class TestPriceAuthority:
     def test_t10_card_preco_catalogo(self, monkeypatch, mp_calls):
         conn = _wire_authenticated(monkeypatch, actor={'id': 7, 'role': 'general_admin', 'company_id': 1})
         routes.handle_post_subscription(_Handler(auth=_bearer(7)), _Parsed(),
-                                        {'plan_key': 'start', 'cycle': 'monthly',
+                                        {'plan_key': 'start', 'cycle': 'monthly', 'idempotency_key': 'idem-key-1gc',
                                          'payer_email': 'a@b.com', 'card_token': 't'}, None)
         body = mp_calls[0]['body']
         # Sem preapproval_plan criado, o preço vai no auto_recurring — do CATÁLOGO.
@@ -273,7 +278,7 @@ class TestPriceAuthority:
     def test_t10b_card_annual_preco_catalogo(self, monkeypatch, mp_calls):
         _wire_authenticated(monkeypatch, actor={'id': 7, 'role': 'general_admin', 'company_id': 1})
         routes.handle_post_subscription(_Handler(auth=_bearer(7)), _Parsed(),
-                                        {'plan_key': 'corporate', 'cycle': 'annual',
+                                        {'plan_key': 'corporate', 'cycle': 'annual', 'idempotency_key': 'idem-key-1gc',
                                          'payer_email': 'a@b.com', 'card_token': 't'}, None)
         body = mp_calls[0]['body']
         assert body['auto_recurring']['transaction_amount'] == 12970.00
@@ -282,7 +287,8 @@ class TestPriceAuthority:
     def test_t12_pix_preco_catalogo(self, monkeypatch, mp_calls):
         conn = _wire_authenticated(monkeypatch, actor={'id': 7, 'role': 'general_admin', 'company_id': 1})
         routes.handle_post_pix(_Handler(auth=_bearer(7)), _Parsed(path='/api/payments/pix'),
-                               {'plan_key': 'business', 'cycle': 'monthly', 'payer_email': 'a@b.com'}, None)
+                               {'plan_key': 'business', 'cycle': 'monthly', 'payer_email': 'a@b.com',
+                                'idempotency_key': 'idem-key-1gc'}, None)
         body = mp_calls[0]['body']
         assert body['payment_method_id'] == 'pix'
         assert body['transaction_amount'] == 597.00
@@ -292,7 +298,8 @@ class TestPriceAuthority:
     def test_t13_boleto_preco_catalogo(self, monkeypatch, mp_calls):
         _wire_authenticated(monkeypatch, actor={'id': 7, 'role': 'general_admin', 'company_id': 1})
         routes.handle_post_boleto(_Handler(auth=_bearer(7)), _Parsed(path='/api/payments/boleto'),
-                                  {'plan_key': 'start', 'cycle': 'monthly', 'payer_email': 'a@b.com'}, None)
+                                  {'plan_key': 'start', 'cycle': 'monthly', 'payer_email': 'a@b.com',
+                                   'idempotency_key': 'idem-key-1gc'}, None)
         body = mp_calls[0]['body']
         assert body['payment_method_id'] == 'bolbradesco'
         assert body['transaction_amount'] == 297.00
@@ -302,14 +309,14 @@ class TestPriceAuthority:
 
 class TestContactOnly:
     def test_t11_enterprise_recusado(self, monkeypatch, no_db, mp_calls):
-        body = {'plan_key': 'enterprise', 'cycle': 'monthly',
+        body = {'plan_key': 'enterprise', 'cycle': 'monthly', 'idempotency_key': 'idem-key-1gc',
                 'payer_email': 'a@b.com', 'card_token': 't'}
         with pytest.raises(ValueError):
             routes.handle_post_subscription(_Handler(auth=_bearer(7)), _Parsed(), body, None)
         assert mp_calls == []
 
     def test_t11b_plano_inexistente_recusado(self, monkeypatch, no_db, mp_calls):
-        body = {'plan_key': 'nao_existe', 'cycle': 'monthly',
+        body = {'plan_key': 'nao_existe', 'cycle': 'monthly', 'idempotency_key': 'idem-key-1gc',
                 'payer_email': 'a@b.com', 'card_token': 't'}
         with pytest.raises(ValueError):
             routes.handle_post_subscription(_Handler(auth=_bearer(7)), _Parsed(), body, None)

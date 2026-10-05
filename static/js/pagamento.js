@@ -96,6 +96,25 @@ let selected = null;       // opção selecionada
 let cardBrickController = null;
 let statusTimer = null;
 
+// Idempotência (1J-C): nonce ESTÁVEL por intenção de checkout. Gerado uma vez
+// por seleção (plano/ciclo/método); reutilizado em TODO retry da MESMA intenção
+// (timeout, duplo clique, re-tokenização do cartão) para que o backend/Mercado
+// Pago nunca criem um segundo preapproval. Uma nova seleção gera uma nova chave.
+let checkoutIntentKey = '';
+function newIntentKey() {
+  try {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return `corp-${window.crypto.randomUUID()}`;
+    }
+    if (window.crypto && window.crypto.getRandomValues) {
+      const b = new Uint8Array(16);
+      window.crypto.getRandomValues(b);
+      return 'corp-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (_e) { /* fallthrough */ }
+  return `corp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function showResult(data) {
   $('result').textContent = data == null ? '' : (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
 }
@@ -239,6 +258,9 @@ function renderSummary() {
 
 function selectOption(id) {
   selected = options.find((o) => o.id === id) || null;
+  // Nova seleção = nova intenção → nova chave de idempotência. Retries da MESMA
+  // seleção (sem passar por aqui de novo) mantêm a mesma chave.
+  checkoutIntentKey = newIntentKey();
   renderOptions();
   renderSummary();
   $('renew-note').hidden = !(selected && selected.recurring);
@@ -261,6 +283,8 @@ function basePayload() {
     cycle: selected ? selected.cycle : ctx.cycle,
     payer_email: $('payer_email').value.trim(),
     payment_method: selected ? selected.method : '',
+    // Nonce da intenção (1J-C): estável no retry, novo a cada nova seleção.
+    idempotency_key: checkoutIntentKey || (checkoutIntentKey = newIntentKey()),
   };
 }
 

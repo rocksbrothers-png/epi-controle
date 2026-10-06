@@ -25,6 +25,7 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import parse_qs
 
+from core import checkout_idempotency
 from core.database import get_connection
 from core.repository import require_actor, require_master_actor
 from core.security import require_bearer_actor, resolve_actor_user_id
@@ -180,29 +181,73 @@ def _server_external_reference(company_id, plan_key, cycle):
     return f'checkout|company={company_id}|plan={plan_key}|cycle={cycle}'
 
 
+# ── Idempotência do checkout (1J-C) ───────────────────────────────────────────
+#
+# Cada CHECKOUT carrega um `idempotency_key` (nonce da intenção; não é
+# autoridade — empresa/ator/preço continuam server-side, #1017). `claim` o
+# reivindica atomicamente (UNIQUE no banco); o efeito externo vai ao MP com uma
+# chave DETERMINÍSTICA namespaced por empresa, de modo que retry/concorrência
+# nunca produzem um segundo preapproval. Detalhes em core/checkout_idempotency.
+
+def _checkout_in_progress(handler):
+    return send_json(handler, 503, {'ok': False, 'error': {
+        'code': 'CHECKOUT_IN_PROGRESS',
+        'message': 'Checkout em processamento; repita com a MESMA idempotency_key.'}})
+
+
+def _idempotent_replay(handler, prior, fingerprint_value, result_key):
+    """Reconcilia uma intenção já registrada: replay idempotente (200) ou 409.
+
+    Mesma chave + payload diferente → 409 (nunca reinterpretado como nova
+    intenção, §18). Mesma chave + mesmo payload, já persistida → devolve o MESMO
+    resultado (sem segundo efeito externo)."""
+    if str(prior.get('fingerprint') or '') != fingerprint_value:
+        return send_json(handler, 409, {'ok': False, 'error': {
+            'code': 'IDEMPOTENCY_KEY_CONFLICT',
+            'message': 'idempotency_key reutilizada para um checkout diferente.'}})
+    stored = checkout_idempotency.stored_result(prior)
+    if prior.get('status') == checkout_idempotency.STATUS_PERSISTED and stored is not None:
+        return send_json(handler, 200, {'ok': True, result_key: stored, 'idempotent_replay': True})
+    return _checkout_in_progress(handler)
+
+
 def handle_post_subscription(handler, parsed, payload, match):
     payload = payload or {}
     # Bearer (401) + rejeição de autoridade (400) ANTES de tocar o banco/MP.
     actor_user_id = _authenticated_checkout_actor_id(handler, parsed, payload)
-    require_fields(payload, ['plan_key', 'cycle', 'payer_email', 'card_token'])
+    require_fields(payload, ['idempotency_key', 'plan_key', 'cycle', 'payer_email', 'card_token'])
+    client_key = checkout_idempotency.validate_key(payload.get('idempotency_key'))
     service.resolve_catalog_plan(payload.get('plan_key'), payload.get('cycle'))  # 400 cedo
     plan_key = str(payload.get('plan_key') or '')
     cycle = service.normalize_cycle(payload.get('cycle'))
+    fp = checkout_idempotency.fingerprint('card', plan_key, cycle)
     with closing(get_connection()) as connection:
         actor, company_id, tenant_id = _resolve_checkout_company(connection, actor_user_id)
+        ext_ref = checkout_idempotency.server_external_reference(company_id, plan_key, cycle, client_key)
+        try:
+            outcome, prior = checkout_idempotency.claim(
+                connection, company_id=company_id, client_key=client_key, fingerprint=fp,
+                actor_user_id=actor['id'], payment_method='card', plan_key=plan_key,
+                cycle=cycle, external_reference=ext_ref)
+        except checkout_idempotency.IdempotencyTransient:
+            connection.rollback()
+            return _checkout_in_progress(handler)
+        if outcome == 'exists':
+            return _idempotent_replay(handler, prior, fp, 'subscription')
+        # Vencemos a reivindicação: efeito externo com chave estável (X-Idempotency-Key).
+        mp_key = checkout_idempotency.mp_idempotency_key(company_id, client_key)
         try:
             result = service.create_catalog_card_subscription(
                 connection, plan_key=plan_key, cycle=payload.get('cycle'),
                 payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
-                company_id=company_id,
-                external_reference=_server_external_reference(company_id, plan_key, cycle),
+                company_id=company_id, external_reference=ext_ref, idempotency_key=mp_key,
             )
         except MercadoPagoError as exc:
-            connection.rollback()
+            connection.rollback()  # claim revertido → retry legítimo permitido (P4)
             return _mp_error_response(handler, exc)
-        # Persiste a assinatura com o binding server-side (origin=authenticated,
-        # created_by=ator autenticado). Best-effort: uma falha aqui não invalida a
-        # assinatura já criada no MP.
+        # Caminho crítico: NÃO engolir (§25). Se a persistência falhar, reverte
+        # TUDO (inclusive o claim) e devolve 503 — o retry com a MESMA chave
+        # reconcilia via idempotência do MP (nunca um segundo preapproval).
         try:
             subscriptions_service.record_subscription(
                 connection,
@@ -216,32 +261,70 @@ def handle_post_subscription(handler, parsed, payload, match):
                 origin=subscriptions_service.ORIGIN_AUTHENTICATED,
                 is_recurring=True, raw=result,
             )
-        except Exception as exc:  # pragma: no cover - defensivo
-            structured_log('warning', 'subscriptions.record_failed', error=str(exc))
-        connection.commit()
+            checkout_idempotency.finalize(
+                connection, company_id=company_id, client_key=client_key,
+                status=checkout_idempotency.STATUS_PERSISTED, mp_resource_type='preapproval',
+                mp_id=result.get('subscription_id'), result=result)
+            connection.commit()
+        except Exception as exc:
+            connection.rollback()
+            structured_log('error', 'checkout.persist_failed', error=str(exc))
+            persist_pending = {'ok': False, 'error': {
+                'code': 'CHECKOUT_PERSIST_PENDING',
+                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}}
+            send_json(handler, 503, persist_pending)
+            return 503, persist_pending
         return send_json(handler, 201, {'ok': True, 'subscription': result})
 
 
 def _handle_authenticated_oneoff(handler, parsed, payload, method_id):
     payload = payload or {}
     actor_user_id = _authenticated_checkout_actor_id(handler, parsed, payload)
-    require_fields(payload, ['plan_key', 'cycle', 'payer_email'])
+    require_fields(payload, ['idempotency_key', 'plan_key', 'cycle', 'payer_email'])
+    client_key = checkout_idempotency.validate_key(payload.get('idempotency_key'))
     service.resolve_catalog_plan(payload.get('plan_key'), payload.get('cycle'))  # 400 cedo
     plan_key = str(payload.get('plan_key') or '')
     cycle = service.normalize_cycle(payload.get('cycle'))
+    method_label = 'pix' if method_id == 'pix' else 'boleto'
+    fp = checkout_idempotency.fingerprint(method_label, plan_key, cycle)
     with closing(get_connection()) as connection:
-        _actor, company_id, _tenant = _resolve_checkout_company(connection, actor_user_id)
+        actor, company_id, _tenant = _resolve_checkout_company(connection, actor_user_id)
+        ext_ref = checkout_idempotency.server_external_reference(company_id, plan_key, cycle, client_key)
+        try:
+            outcome, prior = checkout_idempotency.claim(
+                connection, company_id=company_id, client_key=client_key, fingerprint=fp,
+                actor_user_id=actor['id'], payment_method=method_label, plan_key=plan_key,
+                cycle=cycle, external_reference=ext_ref)
+        except checkout_idempotency.IdempotencyTransient:
+            connection.rollback()
+            return _checkout_in_progress(handler)
+        if outcome == 'exists':
+            return _idempotent_replay(handler, prior, fp, 'payment')
+        mp_key = checkout_idempotency.mp_idempotency_key(company_id, client_key)
         payer_payload = {k: payload[k] for k in _PAYER_FIELDS if k in payload}
         try:
             result = service.create_catalog_oneoff_payment(
                 connection, method_id=method_id, plan_key=plan_key, cycle=payload.get('cycle'),
                 company_id=company_id, payer_payload=payer_payload,
-                external_reference=_server_external_reference(company_id, plan_key, cycle),
+                external_reference=ext_ref, idempotency_key=mp_key,
             )
         except MercadoPagoError as exc:
             connection.rollback()
             return _mp_error_response(handler, exc)
-        connection.commit()
+        try:
+            checkout_idempotency.finalize(
+                connection, company_id=company_id, client_key=client_key,
+                status=checkout_idempotency.STATUS_PERSISTED, mp_resource_type='payment',
+                mp_id=result.get('payment_id'), result=result)
+            connection.commit()
+        except Exception as exc:
+            connection.rollback()
+            structured_log('error', 'checkout.persist_failed', error=str(exc))
+            persist_pending = {'ok': False, 'error': {
+                'code': 'CHECKOUT_PERSIST_PENDING',
+                'message': 'Pagamento iniciado; reconciliação pendente. Repita com a MESMA idempotency_key.'}}
+            send_json(handler, 503, persist_pending)
+            return 503, persist_pending
         return send_json(handler, 201, {'ok': True, 'payment': result})
 
 

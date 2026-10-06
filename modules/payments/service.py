@@ -659,7 +659,8 @@ def _cycle_recurrence(cycle):
 
 
 def create_catalog_card_subscription(connection, *, plan_key, cycle, payer_email,
-                                     card_token, company_id, external_reference=''):
+                                     card_token, company_id, external_reference='',
+                                     idempotency_key=None):
     """Cria uma assinatura (preapproval) com preço server-side (catálogo).
 
     `company_id` já vem resolvido da identidade autenticada (Bearer) — nunca do
@@ -694,7 +695,10 @@ def create_catalog_card_subscription(connection, *, plan_key, cycle, payer_email
             'currency_id': 'BRL',
         }
 
-    result = mp_client.post('/preapproval', body)
+    # idempotency_key → X-Idempotency-Key do MP (1J-C): mesma intenção/retry →
+    # mesmo preapproval; namespaced por empresa pelo chamador. Sem a chave, o
+    # mp_client geraria um uuid4() novo por chamada (o furo do #392).
+    result = mp_client.post('/preapproval', body, idempotency_key=idempotency_key)
     mp_id = str(result.get('id') or '')
     status = str(result.get('status') or 'pending')
 
@@ -720,7 +724,8 @@ def create_catalog_card_subscription(connection, *, plan_key, cycle, payer_email
 
 
 def create_catalog_oneoff_payment(connection, *, method_id, plan_key, cycle,
-                                  company_id, payer_payload, external_reference=''):
+                                  company_id, payer_payload, external_reference='',
+                                  idempotency_key=None):
     """Cria um pagamento avulso (Pix/boleto) com preço server-side (catálogo).
 
     `company_id` vem da identidade autenticada; o preço, do catálogo. O cliente
@@ -736,7 +741,9 @@ def create_catalog_oneoff_payment(connection, *, method_id, plan_key, cycle,
     if external_reference:
         body['external_reference'] = str(external_reference)
 
-    result = mp_client.post('/v1/payments', body)
+    # idempotency_key → X-Idempotency-Key do MP (1J-C): retry da mesma intenção
+    # não gera um segundo pagamento; namespaced por empresa pelo chamador.
+    result = mp_client.post('/v1/payments', body, idempotency_key=idempotency_key)
     mp_id = str(result.get('id') or '')
     status = str(result.get('status') or 'pending')
     status_detail = str(result.get('status_detail') or '')

@@ -94,10 +94,17 @@ jobs:
 
       - name: Build AAB (signed)
         working-directory: flutter/apps/epi_admin
+        env:
+          # Backend do app PUBLICADO. Owner: GitHub Variable `vars.API_BASE_URL`
+          # (mesmo owner do ios_ci.yml); fallback = URL de produção já usada na
+          # CI. Sem isto, o release nativo cairia no fallback localhost:5000 de
+          # main.dart — que agora falha explicitamente (fail-closed). (BP1)
+          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://epi-controle-app-gupy.onrender.com' }}
         run: |
           flutter build appbundle --release \
             --build-name="${{ steps.version.outputs.build_name }}" \
-            --build-number="${{ steps.version.outputs.build_number }}"
+            --build-number="${{ steps.version.outputs.build_number }}" \
+            --dart-define=API_BASE_URL="${API_BASE_URL}"
 
       # ── Upload ─────────────────────────────────────────────────────────────
       - name: Upload to Google Play

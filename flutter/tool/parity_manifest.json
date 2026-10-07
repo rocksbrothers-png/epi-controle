@@ -122,7 +122,7 @@
     "apps/epi_admin/lib/features/units/units_screen.dart": "45caae746b59a1120025a512614bc3691c7875393ff3048534d87afdf4adf804",
     "apps/epi_admin/lib/features/users/users_screen.dart": "3b69235ae172733be21df1c23584c0461a35b2aa54956c1e4a17a49ed14b2fe0",
     "apps/epi_admin/lib/firebase_options.dart": "1bc4690d6d374142d2f996214181ebfca628c2a4109431b72409e65fee0922d7",
-    "apps/epi_admin/lib/main.dart": "df804181ada329a108e9f4a965571f6f328dc2014e9770f24a6c355d34a523b3",
+    "apps/epi_admin/lib/main.dart": "72378e5057cf438ea9a2f845bb9f29fc2307b905f449dba73d60b664a006df33",
     "apps/epi_admin/test/api_client_actor_test.dart": "31e9e2363de6de1d5e78a0995ae06c5aac96c73b027a7c6edce15eced71e68a7",
     "apps/epi_admin/test/app_monitoring_test.dart": "a69300c870773360c3bd60c2f0e70ad0e506518d0290ed453746e00b6f31ba0f",
     "apps/epi_admin/test/app_shell_navigation_test.dart": "2fcf3648e83ddfd98e6a8fe366d509e579f2f724f8a192e8f95c3ee02f404584",

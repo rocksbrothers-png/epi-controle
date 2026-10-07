@@ -151,6 +151,30 @@ def _reject_authority_fields(payload, parsed=None):
         )
 
 
+# Autoridade financeira do ciclo de vida (#1018): o cliente escolhe apenas a
+# INTENÇÃO comercial (plan_key/cycle); preço, moeda, recorrência e o identificador
+# de plano do Mercado Pago são SEMPRE server-side (catálogo do #1017). Estes campos
+# no corpo ou na query → 400 (falha explícita, antes de tocar MP/DB), nunca o
+# `amount` do cliente chegando ao preapproval (o furo do #1018).
+_FORBIDDEN_FINANCIAL_FIELDS = (
+    'amount', 'price', 'value', 'transaction_amount', 'currency', 'auto_recurring',
+    'plan_id', 'mp_plan_id', 'preapproval_plan_id', 'frequency', 'frequency_type',
+)
+
+
+def _reject_financial_fields(payload, parsed=None):
+    present = [f for f in _FORBIDDEN_FINANCIAL_FIELDS if f in (payload or {})]
+    if parsed is not None:
+        query = parse_qs(parsed.query)
+        present += [f'{f} (query)' for f in _FORBIDDEN_FINANCIAL_FIELDS if f in query]
+    if present:
+        raise ValueError(
+            'Campos financeiros não permitidos: ' + ', '.join(present)
+            + '. Preço e parâmetros do Mercado Pago são determinados pelo servidor '
+            '(catálogo); o cliente informa apenas plan_key/cycle.'
+        )
+
+
 def _authenticated_checkout_actor_id(handler, parsed, payload):
     """Gate de autoridade do checkout: Bearer obrigatório (401) + rejeição de
     campos de autoridade (400). Devolve o actor_user_id resolvido DO TOKEN.
@@ -419,14 +443,14 @@ def handle_post_subscription_change_plan(handler, parsed, payload, match):
     payload = payload or {}
     with closing(get_connection()) as connection:
         actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        # #1018: nenhuma autoridade financeira do cliente (400 antes de MP/DB).
+        _reject_financial_fields(payload, parsed)
         try:
             result = subscriptions_service.change_plan(
-                connection, company_id=company_id,
-                plan_id=payload.get('plan_id'), plan_key=payload.get('plan_key'),
+                connection, company_id=company_id, plan_key=payload.get('plan_key'),
                 cycle=service.normalize_cycle(payload.get('cycle')),
                 payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
-                amount=payload.get('amount'), actor_user_id=actor['id'],
-                ip=_client_ip(handler), tenant_id=str(payload.get('tenant_id') or ''),
+                actor_user_id=actor['id'], ip=_client_ip(handler),
             )
         except MercadoPagoError as exc:
             connection.rollback()
@@ -439,14 +463,14 @@ def handle_post_subscription_reactivate(handler, parsed, payload, match):
     payload = payload or {}
     with closing(get_connection()) as connection:
         actor, company_id = _actor_and_company(connection, handler, parsed, payload)
+        # #1018: nenhuma autoridade financeira do cliente (400 antes de MP/DB).
+        _reject_financial_fields(payload, parsed)
         try:
             result = subscriptions_service.reactivate_subscription(
-                connection, company_id=company_id,
-                plan_id=payload.get('plan_id'), plan_key=payload.get('plan_key'),
+                connection, company_id=company_id, plan_key=payload.get('plan_key'),
                 cycle=service.normalize_cycle(payload.get('cycle')),
                 payer_email=payload.get('payer_email'), card_token=payload.get('card_token'),
-                amount=payload.get('amount'), actor_user_id=actor['id'],
-                ip=_client_ip(handler), tenant_id=str(payload.get('tenant_id') or ''),
+                actor_user_id=actor['id'], ip=_client_ip(handler),
             )
         except MercadoPagoError as exc:
             connection.rollback()

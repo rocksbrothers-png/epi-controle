@@ -301,14 +301,20 @@ def change_card(connection, *, company_id, card_token, actor_user_id=None, ip=''
     return get_subscription(connection, sub['subscription_id'])
 
 
-def change_plan(connection, *, company_id, plan_id, plan_key, cycle, payer_email,
-                card_token, amount=None, actor_user_id=None, ip='', tenant_id=''):
+def change_plan(connection, *, company_id, plan_key, cycle, payer_email,
+                card_token, actor_user_id=None, ip='', tenant_id=''):
     """Troca de plano (upgrade/downgrade) — MVP: troca imediata sem proração.
 
-    Cancela o preapproval atual (se houver) e cria um novo para o novo
-    plano/ciclo. Registra auditoria ligando a assinatura antiga à nova.
+    Autoridade financeira (#1018): preço, moeda, recorrência e o plano do Mercado
+    Pago são SEMPRE server-side, resolvidos pelo catálogo canônico do #1017
+    (`create_catalog_card_subscription`). O cliente informa apenas a INTENÇÃO
+    comercial (plan_key/cycle) + payer_email/card_token — nunca amount/plan_id.
+    Cancela o preapproval atual (se houver) e cria um novo. Auditoria liga a
+    assinatura antiga à nova.
     """
     from modules.payments import service  # import tardio evita ciclo de import
+
+    plan = service.resolve_catalog_plan(plan_key, cycle)  # 400: plano inválido/contact_only
 
     previous = get_current_subscription(connection, company_id)
     # Cancela o preapproval anterior no MP (best-effort) e marca no banco.
@@ -327,45 +333,59 @@ def change_plan(connection, *, company_id, plan_id, plan_key, cycle, payer_email
             updated_by=int(actor_user_id) if actor_user_id not in (None, '') else None,
         )
 
-    created = service.create_card_subscription(connection, {
-        'plan_id': plan_id, 'payer_email': payer_email, 'card_token': card_token,
-        'company_id': company_id, 'amount': amount,
-        'external_reference': f'change_plan|{plan_key}|{cycle}',
-    })
+    created = service.create_catalog_card_subscription(
+        connection, plan_key=plan['plan_key'], cycle=plan['cycle'],
+        payer_email=payer_email, card_token=card_token, company_id=company_id,
+        external_reference=f"change_plan|{plan['plan_key']}|{plan['cycle']}",
+    )
     new_sub = record_subscription(
-        connection, company_id=company_id, plan_key=plan_key, cycle=cycle,
+        connection, company_id=company_id, plan_key=created.get('plan_key') or plan['plan_key'],
+        cycle=created.get('cycle') or plan['cycle'],
         payment_method='card', preapproval_id=created.get('subscription_id'),
-        preapproval_plan_id=str(plan_id), status=created.get('status') or 'pending',
-        amount=amount or 0, tenant_id=tenant_id, created_by=actor_user_id,
-        is_recurring=True, raw=created, origin=ORIGIN_AUTHENTICATED,
+        preapproval_plan_id=created.get('preapproval_plan_id') or '',
+        status=created.get('status') or 'pending',
+        amount=created.get('amount') or plan['amount'], tenant_id=tenant_id,
+        created_by=actor_user_id, is_recurring=True, raw=created, origin=ORIGIN_AUTHENTICATED,
     )
     record_audit(connection, subscription_id=new_sub['subscription_id'], action='changed_plan',
                  actor_user_id=actor_user_id, company_id=company_id, tenant_id=tenant_id, ip=ip,
                  detail={'from': previous and previous.get('subscription_id'),
-                         'to_plan_key': plan_key, 'to_cycle': cycle})
+                         'to_plan_key': plan['plan_key'], 'to_cycle': plan['cycle']})
     return new_sub
 
 
-def reactivate_subscription(connection, *, company_id, plan_id, plan_key, cycle,
-                            payer_email, card_token, amount=None, actor_user_id=None,
+def reactivate_subscription(connection, *, company_id, plan_key, cycle,
+                            payer_email, card_token, actor_user_id=None,
                             ip='', tenant_id=''):
     """Reativa criando um novo preapproval (assinaturas canceladas no MP não
-    voltam ao ar). Reusa o fluxo de criação e registra auditoria."""
+    voltam ao ar).
+
+    Autoridade financeira (#1018): preço/parâmetros/plano do Mercado Pago são
+    server-side, resolvidos pelo catálogo canônico do #1017 a partir da INTENÇÃO
+    comercial (plan_key/cycle) informada pelo cliente. NÃO há preço histórico a
+    preservar e o cliente NUNCA informa amount/plan_id. O plano a reativar é
+    determinado inequivocamente pelo plan_key/cycle (intenção permitida), sem
+    depender de dado financeiro do cliente — por isso não há ambiguidade a parar.
+    """
     from modules.payments import service  # import tardio evita ciclo de import
 
-    created = service.create_card_subscription(connection, {
-        'plan_id': plan_id, 'payer_email': payer_email, 'card_token': card_token,
-        'company_id': company_id, 'amount': amount,
-        'external_reference': f'reactivate|{plan_key}|{cycle}',
-    })
+    plan = service.resolve_catalog_plan(plan_key, cycle)  # 400: plano inválido/contact_only
+
+    created = service.create_catalog_card_subscription(
+        connection, plan_key=plan['plan_key'], cycle=plan['cycle'],
+        payer_email=payer_email, card_token=card_token, company_id=company_id,
+        external_reference=f"reactivate|{plan['plan_key']}|{plan['cycle']}",
+    )
     new_sub = record_subscription(
-        connection, company_id=company_id, plan_key=plan_key, cycle=cycle,
+        connection, company_id=company_id, plan_key=created.get('plan_key') or plan['plan_key'],
+        cycle=created.get('cycle') or plan['cycle'],
         payment_method='card', preapproval_id=created.get('subscription_id'),
-        preapproval_plan_id=str(plan_id), status=created.get('status') or 'pending',
-        amount=amount or 0, tenant_id=tenant_id, created_by=actor_user_id,
-        is_recurring=True, raw=created, origin=ORIGIN_AUTHENTICATED,
+        preapproval_plan_id=created.get('preapproval_plan_id') or '',
+        status=created.get('status') or 'pending',
+        amount=created.get('amount') or plan['amount'], tenant_id=tenant_id,
+        created_by=actor_user_id, is_recurring=True, raw=created, origin=ORIGIN_AUTHENTICATED,
     )
     record_audit(connection, subscription_id=new_sub['subscription_id'], action='reactivated',
                  actor_user_id=actor_user_id, company_id=company_id, tenant_id=tenant_id, ip=ip,
-                 detail={'plan_key': plan_key, 'cycle': cycle})
+                 detail={'plan_key': plan['plan_key'], 'cycle': plan['cycle']})
     return new_sub

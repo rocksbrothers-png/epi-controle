@@ -112,5 +112,54 @@ void main() {
         'http://localhost:5000',
       );
     });
+
+    // ── Validação estrutural no release nativo (EST-V1.6-R1, defesa em prof.) ──
+    String releaseWith(String define) => resolveApiBaseUrl(
+          isWeb: false,
+          isDebugMode: false,
+          isReleaseMode: true,
+          apiBaseUrlDefine: define,
+        );
+
+    test('Release nativo com https válido → aceita', () {
+      expect(releaseWith('https://api.exemplo.com'), 'https://api.exemplo.com');
+    });
+
+    test('Release nativo com localhost (valor) → fail-closed', () {
+      expect(() => releaseWith('http://localhost:5000'), throwsStateError);
+      expect(() => releaseWith('https://localhost:5000'), throwsStateError);
+      expect(() => releaseWith('http://127.0.0.1:8080'), throwsStateError);
+      expect(() => releaseWith('https://10.0.2.2'), throwsStateError);
+    });
+
+    test('Release nativo com http (não https) → fail-closed', () {
+      expect(() => releaseWith('http://api.exemplo.com'), throwsStateError);
+    });
+
+    test('Release nativo com whitespace → fail-closed', () {
+      expect(() => releaseWith('   '), throwsStateError);
+    });
+
+    test('Release nativo com userinfo/fragmento → fail-closed', () {
+      expect(() => releaseWith('https://user:pass@api.exemplo.com'), throwsStateError);
+      expect(() => releaseWith('https://api.exemplo.com/#x'), throwsStateError);
+    });
+
+    test('Release nativo com URL malformada → fail-closed', () {
+      expect(() => releaseWith('not a url'), throwsStateError);
+      expect(() => releaseWith('api.exemplo.com'), throwsStateError); // sem scheme
+    });
+
+    test('Web release com define explícito (split deploy) → usa define', () {
+      expect(
+        resolveApiBaseUrl(
+          isWeb: true,
+          isDebugMode: false,
+          isReleaseMode: true,
+          apiBaseUrlDefine: 'https://api.exemplo.com',
+        ),
+        'https://api.exemplo.com',
+      );
+    });
   });
 }

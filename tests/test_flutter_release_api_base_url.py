@@ -127,6 +127,85 @@ def test_web_build_stays_same_origin():
     )
 
 
+# ── EST-V1.6-R1: isolamento de backend por produto ──────────────────────────
+import json  # noqa: E402
+
+CI_DIR = REPO_ROOT / 'ci'
+GUARD = CI_DIR / 'api_backend_guard.py'
+ALLOWLIST = CI_DIR / 'authorized_backend.json'
+KNOWN_BACKENDS = {
+    'saas': 'epi-controle-app-livamobile-api.onrender.com',
+    'corporate': 'epi-controle-app-gupy.onrender.com',
+}
+# Arquivos que NÃO podem conter o host do OUTRO produto (comandos de build/config).
+_BUILD_FILES = (
+    [WORKFLOWS / n for n in ('deploy-android.yml', 'deploy-ios.yml', 'ios_ci.yml', 'flutter.yml')]
+    + [PUBSPEC, REPO_ROOT / 'flutter' / 'apps' / 'epi_admin' / 'ios' / 'fastlane' / 'Fastfile']
+)
+
+
+def _authorized_host():
+    data = json.loads(ALLOWLIST.read_text(encoding='utf-8'))
+    return data['authorized_hosts'][0]
+
+
+def _forbidden_host():
+    auth = _authorized_host()
+    return KNOWN_BACKENDS['corporate'] if auth == KNOWN_BACKENDS['saas'] else KNOWN_BACKENDS['saas']
+
+
+def test_guard_and_allowlist_exist():
+    assert GUARD.exists(), 'ci/api_backend_guard.py ausente'
+    assert ALLOWLIST.exists(), 'ci/authorized_backend.json ausente'
+    assert _authorized_host() in KNOWN_BACKENDS.values(), _authorized_host()
+
+
+def test_no_cross_tenant_host_in_build_or_config():
+    """O host do OUTRO produto não pode aparecer em NENHUM arquivo de build/config."""
+    forbidden = _forbidden_host()
+    offenders = []
+    for p in _BUILD_FILES:
+        if p.exists() and forbidden in p.read_text(encoding='utf-8'):
+            offenders.append(p.name)
+    assert not offenders, (
+        f'host cross-tenant {forbidden} presente em: {offenders} (deve ser removido)'
+    )
+
+
+def test_release_paths_invoke_guard():
+    """Deploy Android/iOS, ios_ci e flutter.yml resolvem via o guard."""
+    for n in ('deploy-android.yml', 'deploy-ios.yml', 'ios_ci.yml', 'flutter.yml'):
+        text = (WORKFLOWS / n).read_text(encoding='utf-8')
+        assert 'api_backend_guard.py' in text, f'{n} não chama o guard de backend'
+
+
+def test_melos_native_builds_have_no_hardcoded_url():
+    """melos build:android/apk/ios não hardcodam URL — são env-driven (fail-closed)."""
+    text = PUBSPEC.read_text(encoding='utf-8')
+    for host in KNOWN_BACKENDS.values():
+        assert host not in text, f'pubspec melos hardcoda {host} (deve ser ${{API_BASE_URL}})'
+    # os 3 nativos exigem API_BASE_URL do ambiente
+    for script in ('build:android', 'build:apk', 'build:ios'):
+        i = text.find(f'{script}:')
+        assert i != -1, script
+        assert 'API_BASE_URL' in text[i:i + 1400], f'{script} não consome API_BASE_URL'
+
+
+def test_fastfile_validates_and_passes_define():
+    """Fastlane beta/release resolve+valida o backend e passa o define (S8)."""
+    ff = REPO_ROOT / 'flutter' / 'apps' / 'epi_admin' / 'ios' / 'fastlane' / 'Fastfile'
+    text = ff.read_text(encoding='utf-8')
+    assert 'resolve_api_base_url!' in text, 'Fastfile não valida o backend via guard'
+    assert '--dart-define=API_BASE_URL' in text, 'Fastfile build sem --dart-define=API_BASE_URL'
+
+
+def test_deploy_has_no_cross_tenant_fallback():
+    """Os deploys não usam `vars.API_BASE_URL || '<url>'` (fallback removido)."""
+    for n in ('deploy-android.yml', 'deploy-ios.yml'):
+        text = (WORKFLOWS / n).read_text(encoding='utf-8')
+        assert 'vars.API_BASE_URL ||' not in text, f'{n} ainda tem fallback cross-tenant'
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     failures = 0

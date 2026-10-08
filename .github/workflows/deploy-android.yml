@@ -92,19 +92,27 @@ jobs:
           echo "build_name=${BUILD_NAME}" >> "$GITHUB_OUTPUT"
           echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
+      # Isolamento de backend (EST-V1.6-R1): resolve e VALIDA a API_BASE_URL
+      # contra a allowlist do PRÓPRIO produto (ci/authorized_backend.json) ANTES
+      # do build. `vars.API_BASE_URL` pode sobrescrever, mas é validada; vazia →
+      # usa o backend autorizado do produto. Backend de outro produto, localhost,
+      # http, malformada ou ausente → falha o job aqui, antes de gerar o AAB.
+      # Sem fallback cross-tenant (corrige o BLOCKER da EST-V1.6-I).
+      - name: Resolve & validate production backend (fail-closed)
+        id: backend
+        env:
+          API_BASE_URL_INPUT: ${{ vars.API_BASE_URL }}
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve "$API_BASE_URL_INPUT")"
+          echo "url=$RESOLVED" >> "$GITHUB_OUTPUT"
+
       - name: Build AAB (signed)
         working-directory: flutter/apps/epi_admin
-        env:
-          # Backend do app PUBLICADO. Owner: GitHub Variable `vars.API_BASE_URL`
-          # (mesmo owner do ios_ci.yml); fallback = URL de produção já usada na
-          # CI. Sem isto, o release nativo cairia no fallback localhost:5000 de
-          # main.dart — que agora falha explicitamente (fail-closed). (BP1)
-          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://epi-controle-app-gupy.onrender.com' }}
         run: |
           flutter build appbundle --release \
             --build-name="${{ steps.version.outputs.build_name }}" \
             --build-number="${{ steps.version.outputs.build_number }}" \
-            --dart-define=API_BASE_URL="${API_BASE_URL}"
+            --dart-define=API_BASE_URL="${{ steps.backend.outputs.url }}"
 
       # ── Upload ─────────────────────────────────────────────────────────────
       - name: Upload to Google Play

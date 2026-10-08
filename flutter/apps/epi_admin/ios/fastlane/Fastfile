@@ -9,10 +9,27 @@
 #   APP_STORE_CONNECT_API_KEY_ID / _ISSUER_ID / _KEY_BASE64 (.p8)
 #   (certificado + provisioning já importados pelo workflow)
 
+require "shellwords"
+
 default_platform(:ios)
 
 APP_ROOT  = File.expand_path("../..", __dir__)   # .../flutter/apps/epi_admin
 IOS_DIR   = File.expand_path("..", __dir__)       # .../ios
+REPO_ROOT = File.expand_path("../../..", APP_ROOT) # raiz do repo (onde fica ci/)
+
+# Isolamento de backend (EST-V1.6-R1): resolve e VALIDA a API_BASE_URL contra
+# ci/authorized_backend.json antes de qualquer build publicável. Backend de
+# outro produto / localhost / http / ausente → aborta (nunca publica errado).
+def resolve_api_base_url!
+  guard = File.join(REPO_ROOT, "ci", "api_backend_guard.py")
+  input = ENV["API_BASE_URL"].to_s
+  resolved = `python3 #{guard.shellescape} resolve #{input.shellescape}`.strip
+  unless $?.success? && !resolved.empty?
+    UI.user_error!("API_BASE_URL rejeitada pelo guard de isolamento (ci/authorized_backend.json). " \
+                   "Defina API_BASE_URL com o backend autorizado DESTE produto.")
+  end
+  resolved
+end
 
 platform :ios do
   # Gera (se faltar) o projeto Xcode e aplica os artefatos M1 (entitlements +
@@ -41,8 +58,11 @@ platform :ios do
       key_content: ENV["APP_STORE_CONNECT_API_KEY_BASE64"],
       is_key_content_base64: true,
     )
+    api_base_url = resolve_api_base_url!
     Dir.chdir(APP_ROOT) do
-      sh("flutter build ipa --release --export-options-plist=ios/ExportOptions.plist")
+      sh("flutter build ipa --release " \
+         "--dart-define=API_BASE_URL=#{api_base_url.shellescape} " \
+         "--export-options-plist=ios/ExportOptions.plist")
     end
     upload_to_testflight(
       ipa: File.join(APP_ROOT, "build/ios/ipa") + "/" + Dir.children(File.join(APP_ROOT, "build/ios/ipa")).find { |f| f.end_with?(".ipa") },

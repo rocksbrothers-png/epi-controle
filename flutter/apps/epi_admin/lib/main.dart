@@ -37,16 +37,54 @@ String resolveApiBaseUrl({
   required bool isReleaseMode,
   required String apiBaseUrlDefine,
 }) {
-  if (apiBaseUrlDefine.isNotEmpty) return apiBaseUrlDefine;
-  if (isWeb) return isDebugMode ? 'http://localhost:5000' : '';
-  if (isReleaseMode) {
-    throw StateError(
-      'API_BASE_URL ausente em build RELEASE nativo. Compile com '
-      '--dart-define=API_BASE_URL=<url do backend> (ver workflows de deploy). '
-      'O fallback http://localhost:5000 só vale para debug/desenvolvimento.',
-    );
+  final define = apiBaseUrlDefine;
+  // Web: contrato inalterado — define explícito (split deploy) ou same-origin
+  // (release) / localhost (debug).
+  if (isWeb) {
+    if (define.isNotEmpty) return define;
+    return isDebugMode ? 'http://localhost:5000' : '';
   }
+  // Nativo RELEASE: fail-closed + validação ESTRUTURAL (defesa em profundidade).
+  // Product-agnostic de propósito: NÃO amarra a um domínio (a allowlist por
+  // produto é imposta no workflow, antes do build — ver ci/api_backend_guard.py),
+  // para que este arquivo permaneça idêntico nos dois repositórios (paridade).
+  if (isReleaseMode) {
+    final value = define.trim();
+    if (value.isEmpty) {
+      throw StateError(
+        'API_BASE_URL ausente em build RELEASE nativo. Compile com '
+        '--dart-define=API_BASE_URL=<url https do backend do produto> '
+        '(ver workflows de deploy). O fallback localhost só vale para debug.',
+      );
+    }
+    if (!_isStructurallyValidReleaseUrl(value)) {
+      throw StateError(
+        'API_BASE_URL inválida para RELEASE nativo: "$value". Exigido https, '
+        'host real (sem localhost/loopback), sem userinfo (user:pass@) nem '
+        'fragmento (#...).',
+      );
+    }
+    return value;
+  }
+  // Nativo debug/profile: contrato inalterado — localhost permitido; um define
+  // explícito continua valendo.
+  if (define.isNotEmpty) return define;
   return 'http://localhost:5000';
+}
+
+/// Validação estrutural (sem domínio) de uma API_BASE_URL para release nativo.
+/// Não substitui a allowlist por produto do workflow; é defesa em profundidade
+/// contra localhost/http/whitespace/malformada embutidos no binário publicado.
+bool _isStructurallyValidReleaseUrl(String value) {
+  final uri = Uri.tryParse(value);
+  if (uri == null) return false;
+  if (uri.scheme != 'https') return false;
+  if (uri.host.isEmpty) return false;
+  if (uri.userInfo.isNotEmpty) return false;
+  if (uri.hasFragment) return false;
+  const loopback = {'localhost', '127.0.0.1', '::1', '0.0.0.0', '10.0.2.2'};
+  if (loopback.contains(uri.host.toLowerCase())) return false;
+  return true;
 }
 
 Future<void> main() async {

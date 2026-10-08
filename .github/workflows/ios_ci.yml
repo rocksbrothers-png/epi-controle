@@ -100,9 +100,12 @@ jobs:
     # Públicas (config de cliente, não são segredos de verdade): podem vir de
     # "Repository variables" (vars.*). Sensíveis de assinatura ficam em secrets.
     env:
-      # API Python. Default aponta para o backend de produção (mesmo usado no
-      # build Android do melos). Defina `vars.API_BASE_URL` para sobrescrever.
-      API_BASE_URL: ${{ vars.API_BASE_URL || 'https://epi-controle-app-gupy.onrender.com' }}
+      # API Python do PRÓPRIO produto. SEM fallback cross-tenant: o valor é
+      # resolvido e VALIDADO contra ci/authorized_backend.json no passo
+      # "Resolve & validate" abaixo (EST-V1.6-R1). Vazio aqui é esperado quando
+      # vars.API_BASE_URL não está definida — o guard usa então o backend
+      # autorizado do produto.
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
       # Firebase (FlutterFire) — config de cliente. Mantido em secrets para
       # paridade com os demais workflows; o app funciona sem (push desabilitado).
       FIREBASE_PROJECT_ID:    ${{ secrets.FIREBASE_PROJECT_ID }}
@@ -232,6 +235,18 @@ jobs:
           ruby ios/fastlane/pin_ios_deployment_target.rb
           pod --version
           (cd ios && pod install) || (cd ios && pod repo update && pod install)
+
+      # Isolamento de backend (EST-V1.6-R1): resolve+valida e reexporta a
+      # API_BASE_URL validada para os passos seguintes. Falha o job se a URL
+      # for de outro produto, localhost, http ou malformada. Este é um build de
+      # CI SEM assinatura (não publicado) → `resolve-ci`: sem vars.API_BASE_URL,
+      # usa o backend AUTORIZADO do próprio produto (allowlist versionada), nunca
+      # cross-tenant. A PUBLICAÇÃO assinada (deploy-ios.yml) usa `resolve`
+      # (fail-closed: exige a variável do operador).
+      - name: Resolve & validate production backend (fail-closed)
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve-ci "${API_BASE_URL}")"
+          echo "API_BASE_URL=$RESOLVED" >> "$GITHUB_ENV"
 
       # ── Build iOS SEM ASSINATURA ─────────────────────────────────────────────
       - name: Build iOS (release, no codesign)

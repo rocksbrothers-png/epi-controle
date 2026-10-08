@@ -34,6 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # EST-V1.6-R2-B — gate de integridade do isolamento ANTES de qualquer build
+      # publicável, contra o MESMO ref que será publicado (sem depender de check de
+      # outra ref). Os testes comparam a allowlist com a identidade REAL do produto
+      # (applicationId + PRODUCT_TRUTH) e provam rejeição de backend cruzado; não
+      # comparam a allowlist consigo mesma. Allowlist adulterada / app_id incompatível
+      # / guard enfraquecido → falha AQUI, antes do signing e do build.
+      - name: Backend isolation integrity gate (fail-closed, pre-build)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 -I tests/test_api_backend_guard.py
+          python3 -I tests/test_flutter_release_api_base_url.py
+
       - uses: subosito/flutter-action@v2
         with:
           # Melos 8.x + pub workspaces exige Dart SDK >= 3.9.0 (ver
@@ -129,12 +141,24 @@ jobs:
           test -f ios/Podfile || { echo "::error::Podfile ausente — verifique a geração do projeto iOS"; exit 1; }
           ruby ios/fastlane/pin_ios_deployment_target.rb
 
+      # Isolamento de backend (EST-V1.6-R1): resolve e VALIDA a API_BASE_URL
+      # contra a allowlist do PRÓPRIO produto ANTES do build. Sem fallback
+      # cross-tenant; backend de outro produto / localhost / ausente → falha aqui.
+      - name: Resolve & validate production backend (fail-closed)
+        id: backend
+        env:
+          API_BASE_URL_INPUT: ${{ vars.API_BASE_URL }}
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve "$API_BASE_URL_INPUT")"
+          echo "url=$RESOLVED" >> "$GITHUB_OUTPUT"
+
       - name: Build IPA
         working-directory: flutter/apps/epi_admin
         run: |
           flutter build ipa --release \
             --build-name="${{ steps.version.outputs.build_name }}" \
             --build-number="${{ steps.version.outputs.build_number }}" \
+            --dart-define=API_BASE_URL="${{ steps.backend.outputs.url }}" \
             --export-options-plist=ios/ExportOptions.plist
 
       # ── Upload ─────────────────────────────────────────────────────────────

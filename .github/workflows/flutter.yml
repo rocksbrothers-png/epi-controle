@@ -99,6 +99,17 @@ jobs:
       - name: Code generation (retrofit, json_serializable)
         run: melos run gen
 
+      # Build de CI (APK debug, não publicado) → `resolve-ci`: sem
+      # vars.API_BASE_URL usa o backend autorizado do próprio produto (allowlist
+      # versionada), nunca cross-tenant. Publicação (deploy-android.yml) usa
+      # `resolve` (fail-closed).
+      - name: Resolve & validate production backend (fail-closed)
+        env:
+          API_BASE_URL_INPUT: ${{ vars.API_BASE_URL }}
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve-ci "$API_BASE_URL_INPUT")"
+          echo "API_BASE_URL=$RESOLVED" >> "$GITHUB_ENV"
+
       - name: Build APK debug
         run: melos run build:apk
         env:
@@ -226,6 +237,16 @@ jobs:
             "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_PASSWORD" "$ANDROID_KEY_ALIAS" \
             > apps/epi_admin/android/key.properties
           echo "Signing configured."
+
+      # Build de CI (AAB-artefato, não publicado na store aqui — a publicação é
+      # deploy-android.yml) → `resolve-ci`: sem vars.API_BASE_URL usa o backend
+      # autorizado do próprio produto (allowlist versionada), nunca cross-tenant.
+      - name: Resolve & validate production backend (fail-closed)
+        env:
+          API_BASE_URL_INPUT: ${{ vars.API_BASE_URL }}
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve-ci "$API_BASE_URL_INPUT")"
+          echo "API_BASE_URL=$RESOLVED" >> "$GITHUB_ENV"
 
       - name: Build AAB
         run: melos run build:android

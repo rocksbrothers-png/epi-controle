@@ -43,7 +43,7 @@ melos:
     build:android:
       run: >
         melos exec --scope="epi_admin" -- flutter build appbundle --release
-        --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+        "--dart-define=API_BASE_URL=${API_BASE_URL:?API_BASE_URL ausente: resolva com ci/api_backend_guard.py}"
         "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
         "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
         "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
@@ -56,7 +56,7 @@ melos:
     build:apk:
       run: >
         melos exec --scope="epi_admin" -- flutter build apk --debug
-        --dart-define=API_BASE_URL=https://epi-controle-app-gupy.onrender.com
+        "--dart-define=API_BASE_URL=${API_BASE_URL:?API_BASE_URL ausente: resolva com ci/api_backend_guard.py}"
         "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
         "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
         "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"
@@ -69,6 +69,7 @@ melos:
     build:ios:
       run: >
         melos exec --scope="epi_admin" -- flutter build ipa --release --no-codesign
+        "--dart-define=API_BASE_URL=${API_BASE_URL:?API_BASE_URL ausente: resolva com ci/api_backend_guard.py}"
         "--dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}"
         "--dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID:-}"
         "--dart-define=FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET:-}"

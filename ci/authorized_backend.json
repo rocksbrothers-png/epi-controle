@@ -1,0 +1,10 @@
+{
+  "_comentario": "Owner auditável do backend de produção AUTORIZADO deste produto (EST-V1.6-R1). Por produto, versionado, NÃO sincronizado byte-a-byte com o outro repositório (diferença legítima de ambiente). Corporate (com.rocksbrothers) só pode falar com o backend corporativo. Fontes: docs/ci-cd/README.md, docs/R05_CADEIA_DE_PROXY.md.",
+  "product": "corporate",
+  "app_id": "com.rocksbrothers.epicontrole",
+  "api_base_url": "https://epi-controle-app-gupy.onrender.com",
+  "authorized_hosts": [
+    "epi-controle-app-gupy.onrender.com"
+  ],
+  "forbidden_note": "epi-controle-app-livamobile-api.onrender.com é o backend do SaaS (Liva Mobile) e é PROIBIDO aqui."
+}

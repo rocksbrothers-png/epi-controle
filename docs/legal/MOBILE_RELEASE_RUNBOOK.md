@@ -22,7 +22,7 @@ configuração é **automatizada** e roda no **macOS** (CI `deploy-ios.yml` ou M
 cd flutter/apps/epi_admin/ios
 bundle install
 bundle exec fastlane prepare   # gera Runner.xcodeproj + entitlements + Privacy Manifest
-bundle exec fastlane beta      # build assinado + upload TestFlight (precisa secrets ASC)
+bundle exec fastlane beta      # resolve+valida API_BASE_URL (ci/authorized_backend.json); build assinado + upload TestFlight
 ```
 
 > `prepare` roda `flutter create . --platforms=ios` se faltar o projeto, **restaura** os
@@ -31,17 +31,31 @@ bundle exec fastlane beta      # build assinado + upload TestFlight (precisa sec
 > configurada no portal Apple / via `match`. ⚠️ **Validar em execução real no macOS** — não é
 > executável no ambiente Linux deste repo.
 
+> **Backend obrigatório (EST-V1.6-R1):** todo release nativo deve apontar para o
+> backend autorizado DO PRÓPRIO produto. Resolva/valide com o guard — vazio usa o
+> backend autorizado (`ci/authorized_backend.json`); backend de outro produto,
+> localhost, http ou ausente **abortam** antes do build. Nunca passe uma URL
+> manual sem validar.
+
 ## 1) Android — AAB
 ```bash
+# na raiz do repo — resolve (vazio → backend autorizado) e valida o backend
+API_BASE_URL="$(python3 ci/api_backend_guard.py resolve "${API_BASE_URL:-}")" || exit 1
 cd flutter/apps/epi_admin
-flutter build appbundle --release    # artefato Play (NÃO APK)
+flutter build appbundle --release \
+  --dart-define=API_BASE_URL="$API_BASE_URL"    # artefato Play (NÃO APK)
 ```
 - Assinatura via `key.properties` (CI: `deploy-android.yml` com secrets de keystore).
 - Subir no **Internal testing** antes de produção.
 
 ## 2) iOS — IPA (após passo 0)
 ```bash
-flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+# na raiz do repo — resolve+valida o backend do produto (vazio → autorizado)
+API_BASE_URL="$(python3 ci/api_backend_guard.py resolve "${API_BASE_URL:-}")" || exit 1
+cd flutter/apps/epi_admin
+flutter build ipa --release \
+  --dart-define=API_BASE_URL="$API_BASE_URL" \
+  --export-options-plist=ios/ExportOptions.plist
 ```
 - CI: `deploy-ios.yml` (macOS, certificados + provisioning + upload TestFlight).
 

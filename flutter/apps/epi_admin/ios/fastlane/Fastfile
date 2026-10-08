@@ -31,6 +31,20 @@ def resolve_api_base_url!
   resolved
 end
 
+# EST-V1.6-R2-B — gate de integridade do isolamento antes de publicar. Roda os
+# testes ancorados à identidade REAL do produto (applicationId + PRODUCT_TRUTH) e
+# à rejeição de backend cruzado — NÃO compara a allowlist consigo mesma. Allowlist
+# adulterada / app_id incompatível / guard enfraquecido → aborta antes do build.
+def verify_backend_integrity!
+  [
+    File.join(REPO_ROOT, "tests", "test_api_backend_guard.py"),
+    File.join(REPO_ROOT, "tests", "test_flutter_release_api_base_url.py"),
+  ].each do |t|
+    # fastlane `sh` aborta a lane se o comando sair != 0 (integridade falhou).
+    sh("python3 -I #{t.shellescape}")
+  end
+end
+
 platform :ios do
   # Gera (se faltar) o projeto Xcode e aplica os artefatos M1 (entitlements +
   # PrivacyInfo). Resolve o bloqueador "projeto iOS ausente no repo".
@@ -51,6 +65,7 @@ platform :ios do
 
   desc "Build assinado + upload para o TestFlight"
   lane :beta do
+    verify_backend_integrity!
     prepare
     app_store_connect_api_key(
       key_id:      ENV["APP_STORE_CONNECT_API_KEY_ID"],

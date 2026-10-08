@@ -234,6 +234,98 @@ def test_ci_build_paths_use_resolve_ci():
         assert 'resolve-ci' in text, f'{n} (CI) deveria usar `resolve-ci`'
 
 
+# ── EST-V1.6-R2: hardening dos gates de isolamento ──────────────────────────
+
+def test_saas_web_build_backend_pinned_to_allowlist():
+    """R2-C — builds Web que embutem API_BASE_URL FORA do guard (render.yaml,
+    Dockerfile.web, Dockerfile.fullstack) devem usar EXATAMENTE o host autorizado
+    do próprio produto, nunca o host cross-tenant. Drift/adulteração → RED.
+    Web Corporate = same-origin (sem define): nada a verificar, o que é válido."""
+    import urllib.parse
+    allow_host = _authorized_host()
+    forbidden = _forbidden_host()
+    for name in ('render.yaml', 'Dockerfile.web', 'Dockerfile.fullstack'):
+        p = REPO_ROOT / name
+        if not p.exists():
+            continue
+        text = p.read_text(encoding='utf-8')
+        # só URLs LITERAIS (ignora interpolações de shell como $API_BASE_URL)
+        for m in re.finditer(r'API_BASE_URL[=:]\s*["\']?(https?://[^\s"\'\\$]+)', text):
+            url = m.group(1)
+            host = (urllib.parse.urlsplit(url).hostname or '').lower()
+            assert host != forbidden, f'{name}: build Web aponta para backend PROIBIDO {url}'
+            assert host == allow_host, (
+                f'{name}: build Web backend {url} (host {host}) != allowlist {allow_host}'
+            )
+
+
+def _iter_build_publish_surfaces():
+    """Descoberta DINÂMICA (sem lista fixa) das superfícies executáveis de
+    build/publicação — workflows, Dockerfiles, render.yaml, pubspec (melos),
+    Fastlane, scripts shell. Exclui testes, docs, markdown, .git e a allowlist
+    (cujo forbidden_note cita o host proibido de propósito)."""
+    import os
+    SKIP_DIRS = {'.git', 'node_modules', 'build', '.dart_tool', '.pub-cache'}
+    SKIP_TOP = {'docs', 'tests', 'tests_postgres'}
+    for base, dirs, files in os.walk(REPO_ROOT):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        rel = pathlib.Path(base).relative_to(REPO_ROOT)
+        if rel.parts and rel.parts[0] in SKIP_TOP:
+            continue
+        for f in files:
+            relp = (rel / f).as_posix()
+            if relp == 'ci/authorized_backend.json' or f.endswith('.md'):
+                continue
+            surface = (
+                (relp.startswith('.github/workflows/') and (f.endswith('.yml') or f.endswith('.yaml')))
+                or f.startswith('Dockerfile')
+                or f in ('render.yaml', 'pubspec.yaml', 'Fastfile', 'Appfile')
+                or f.endswith('.sh')
+                or ('fastlane' in rel.parts and f.endswith('.rb'))
+            )
+            if surface:
+                yield rel / f
+
+
+def test_no_cross_tenant_host_in_any_build_or_publish_surface():
+    """R2-D (fecha S14b) — NENHUMA superfície executável de build/publicação pode
+    conter o host do OUTRO produto, por descoberta DINÂMICA (não lista fixa). Um
+    novo workflow/Dockerfile/script com backend cruzado hardcoded → RED."""
+    forbidden = _forbidden_host()
+    offenders = []
+    for rel in _iter_build_publish_surfaces():
+        p = REPO_ROOT / rel
+        try:
+            if forbidden in p.read_text(encoding='utf-8'):
+                offenders.append(rel.as_posix())
+        except (UnicodeDecodeError, OSError):
+            continue
+    assert not offenders, (
+        f'host cross-tenant {forbidden} presente em superfície de build/publicação '
+        f'(descoberta dinâmica): {offenders}'
+    )
+
+
+def test_dio_baseurl_comes_from_resolved_param():
+    """R2-E (fecha S13) — o cliente Dio efetivo deve usar a baseUrl RESOLVIDA
+    (parâmetro de ApiClient.init), nunca uma URL hardcoded. Sabotagem que troque
+    `baseUrl: baseUrl` por um literal em Dio(BaseOptions(...)) → RED.
+    LIMITAÇÃO (estático): verifica o padrão de fonte, não executa o Dio — o teste
+    comportamental equivalente só roda no CI Flutter; este roda também no gate
+    always-on (R2-A) e localmente. Uma sabotagem real o torna vermelho."""
+    api = REPO_ROOT / 'flutter' / 'apps' / 'epi_admin' / 'lib' / 'core' / 'api' / 'api_client.dart'
+    src = api.read_text(encoding='utf-8')
+    assert re.search(r'init\(\{\s*required\s+String\s+baseUrl\s*\}\)', src), (
+        'assinatura ApiClient.init({required String baseUrl}) ausente/alterada'
+    )
+    assigns = re.findall(r'baseUrl:\s*([^,\n)]+)', src)
+    assert assigns, 'nenhuma atribuição `baseUrl:` encontrada em api_client.dart'
+    bad = [a.strip() for a in assigns if a.strip() != 'baseUrl']
+    assert not bad, f'`baseUrl:` recebeu valor não-resolvido (possível hardcode): {bad}'
+    for host in KNOWN_BACKENDS.values():
+        assert host not in src, f'api_client.dart hardcoda host de backend {host}'
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     failures = 0

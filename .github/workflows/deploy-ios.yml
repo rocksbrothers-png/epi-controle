@@ -34,6 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # EST-V1.6-R2-B — gate de integridade do isolamento ANTES de qualquer build
+      # publicável, contra o MESMO ref que será publicado (sem depender de check de
+      # outra ref). Os testes comparam a allowlist com a identidade REAL do produto
+      # (applicationId + PRODUCT_TRUTH) e provam rejeição de backend cruzado; não
+      # comparam a allowlist consigo mesma. Allowlist adulterada / app_id incompatível
+      # / guard enfraquecido → falha AQUI, antes do signing e do build.
+      - name: Backend isolation integrity gate (fail-closed, pre-build)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 -I tests/test_api_backend_guard.py
+          python3 -I tests/test_flutter_release_api_base_url.py
+
       - uses: subosito/flutter-action@v2
         with:
           # Melos 8.x + pub workspaces exige Dart SDK >= 3.9.0 (ver

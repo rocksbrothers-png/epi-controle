@@ -1,0 +1,51 @@
+name: Backend Isolation Guard
+
+# EST-V1.6-R2-A — Gate de integridade do ISOLAMENTO de backend por produto.
+#
+# Por que este workflow existe (achado da validação independente EST-V1.6-R1-I):
+# os testes que mantêm a allowlist/guard honestos (tests/test_api_backend_guard.py,
+# tests/test_flutter_release_api_base_url.py) rodavam só no job `test` do
+# backend-ci.yml, condicionado ao filtro `backend` do dorny/paths-filter — que NÃO
+# inclui `ci/**`. Logo, uma PR que mexesse SOMENTE em ci/authorized_backend.json ou
+# ci/api_backend_guard.py (exatamente os arquivos que codificam o isolamento) PULAVA
+# os testes que a defenderiam.
+#
+# Correção: um job DEDICADO, de nome estável, que roda em TODO push/PR SEM filtro de
+# path — não há como uma mudança nos arquivos protegidos omiti-lo (não existe falso
+# verde por filtro). Os testes são Python puro (stdlib), rápidos e sem dependências.
+#
+# NOTA (fora do escopo desta PR): tornar este check OBRIGATÓRIO (required status
+# check) é configuração de branch protection do GitHub, decisão humana — não é
+# alterada aqui. Enquanto não for required, ele roda e fica vermelho, mas não
+# bloqueia merge por si só.
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    name: Backend isolation integrity (allowlist + guard + release contract)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Âncora de identidade: estes testes comparam a allowlist com a identidade
+      # REAL do produto (applicationId do Android em flutter/.../build.gradle e o
+      # mapa PRODUCT_TRUTH), e provam rejeição de backend CRUZADO — nunca comparam
+      # a allowlist consigo mesma. Executáveis como script (exit!=0 em falha).
+      - name: Allowlist + guard identity & cross-backend isolation
+        run: python3 -I tests/test_api_backend_guard.py
+
+      - name: Release-path contract (publish fail-closed, no cross-tenant, web pinned, Dio wiring)
+        run: python3 -I tests/test_flutter_release_api_base_url.py

@@ -43,6 +43,13 @@ def _resolve(value):
     )
 
 
+def _resolve_ci(value):
+    return subprocess.run(
+        [sys.executable, str(GUARD), 'resolve-ci', value],
+        capture_output=True, text=True,
+    )
+
+
 def _validate(value):
     return subprocess.run(
         [sys.executable, str(GUARD), 'validate', value],
@@ -110,10 +117,24 @@ def test_T_empty_fails():
     assert _validate('').returncode != 0
 
 
-def test_T_resolve_empty_uses_own_authorized_backend():
-    """input vazio → backend do PRÓPRIO produto (nunca cross-tenant, nunca localhost)."""
-    rr = _resolve('')
+def test_T5_resolve_empty_fails_closed():
+    """T5/S3 — PUBLICAÇÃO: variável ausente/vazia → ERRO antes do build.
+    `resolve` (publicação) nunca inventa um valor; exige a variável do operador."""
+    assert _resolve('').returncode != 0, 'resolve vazio deveria FALHAR (fail-closed)'
+    assert _resolve('   ').returncode != 0, 'resolve whitespace deveria FALHAR'
+
+
+def test_resolve_ci_empty_uses_own_authorized_backend():
+    """CI/teste (não publicado): input vazio → backend AUTORIZADO do PRÓPRIO
+    produto (allowlist versionada). Nunca cross-tenant, nunca localhost."""
+    rr = _resolve_ci('')
     assert rr.returncode == 0 and rr.stdout.strip() == _authorized_url(), rr.stderr
+
+
+def test_resolve_ci_still_rejects_cross_backend():
+    """resolve-ci NÃO é um bypass: um input não-vazio do OUTRO produto falha."""
+    assert _resolve_ci(_forbidden_url()).returncode != 0, 'resolve-ci cross-backend deveria FALHAR'
+    assert _resolve_ci('http://localhost:5000').returncode != 0, 'resolve-ci localhost deveria FALHAR'
 
 
 def test_T_whitespace_fails():

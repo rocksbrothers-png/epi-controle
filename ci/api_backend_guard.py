@@ -10,15 +10,26 @@ whitespace, não-HTTPS, loopback/localhost, com userinfo/fragment, ou host
 apenas "parecido" (substring/sufixo) → ERRO, antes do build.
 
 Comandos:
-  resolve <input> : imprime (stdout) a URL autorizada a usar no build.
-        input vazio → usa `api_base_url` da allowlist (backend do PRÓPRIO produto);
-        input não-vazio → valida contra a allowlist e imprime; erro se não autorizado.
-        Saída nonzero (falha o job) se a URL final não for autorizada.
-        Apenas a URL vai para stdout — seguro para `$(...)`.
+  resolve <input> : PUBLICAÇÃO (fail-closed). Valida `input` contra a allowlist
+        e imprime a URL em stdout. input vazio/ausente → ERRO (exit 2): publicar
+        exige a variável de ambiente configurada e validada. Backend de outro
+        produto / localhost / http / malformada → ERRO. Apenas a URL vai para
+        stdout — seguro para `$(...)`.
+  resolve-ci <input> : BUILD DE CI/TESTE (não publicado — APK debug, iOS
+        --no-codesign, AAB-artefato). Igual a `resolve`, mas input vazio → usa
+        o `api_base_url` da allowlist (backend AUTORIZADO do PRÓPRIO produto,
+        arquivo versionado e revisado). NÃO é fallback silencioso de publicação
+        nem cross-tenant: é o backend do próprio produto, com owner auditável.
+        Qualquer input NÃO-vazio continua sendo validado (cross-tenant/localhost
+        /http → ERRO).
   validate <url>  : valida `url` contra a allowlist; exit 0 (OK) / 2 (REJECT).
+        url vazia → REJECT.
 
-A allowlist NÃO é a própria API_BASE_URL: é um arquivo versionado, por produto,
-owner auditável. Comparar a variável consigo mesma não provaria isolamento.
+A allowlist NÃO é a própria API_BASE_URL de runtime: é um arquivo versionado,
+por produto, owner auditável. Comparar a variável consigo mesma não provaria
+isolamento. A distinção resolve/resolve-ci existe para que a PUBLICAÇÃO falhe
+sem a variável do operador (§3/§4/T5/S3), enquanto um build de CI/teste do
+próprio produto permanece verde usando o backend autorizado versionado.
 """
 from __future__ import annotations
 
@@ -75,9 +86,25 @@ def validation_errors(url, authorized_hosts):
     return reasons
 
 
-def cmd_resolve(raw_input):
+def cmd_resolve(raw_input, allow_empty_authorized):
     product, primary, hosts = load_allowlist()
-    chosen = (raw_input or '').strip() or primary  # vazio → backend do PRÓPRIO produto
+    val = (raw_input or '').strip()
+    if val == '':
+        if allow_empty_authorized:
+            # Build de CI/teste do PRÓPRIO produto: usa o backend autorizado da
+            # allowlist versionada (owner auditável). Nunca cross-tenant.
+            chosen = primary
+        else:
+            # Publicação sem a variável do operador → fail-closed.
+            print(
+                f"::error::guard[{product}] API_BASE_URL ausente/vazia. "
+                "A publicação exige a variável configurada e validada "
+                "(fail-closed — resolve). Builds de CI usam 'resolve-ci'.",
+                file=sys.stderr,
+            )
+            return 2
+    else:
+        chosen = val
     errors = validation_errors(chosen, hosts)
     if errors:
         print(
@@ -104,10 +131,12 @@ def main(argv):
     cmd = argv[1] if len(argv) > 1 else ''
     arg = argv[2] if len(argv) > 2 else ''
     if cmd == 'resolve':
-        return cmd_resolve(arg)
+        return cmd_resolve(arg, allow_empty_authorized=False)
+    if cmd == 'resolve-ci':
+        return cmd_resolve(arg, allow_empty_authorized=True)
     if cmd == 'validate':
         return cmd_validate(arg)
-    print('uso: api_backend_guard.py resolve|validate <url>', file=sys.stderr)
+    print('uso: api_backend_guard.py resolve|resolve-ci|validate <url>', file=sys.stderr)
     return 64
 
 

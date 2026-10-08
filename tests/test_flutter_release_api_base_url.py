@@ -206,6 +206,34 @@ def test_deploy_has_no_cross_tenant_fallback():
         assert 'vars.API_BASE_URL ||' not in text, f'{n} ainda tem fallback cross-tenant'
 
 
+def test_publication_paths_are_fail_closed():
+    """T5/S3 — PUBLICAÇÃO (store) exige a variável: usa `resolve` (fail-closed),
+    nunca `resolve-ci`. Sem a variável do operador, o job de publicação falha
+    antes do build. Cobre deploy Android/iOS e o Fastlane."""
+    fastfile = REPO_ROOT / 'flutter' / 'apps' / 'epi_admin' / 'ios' / 'fastlane' / 'Fastfile'
+    for p in (WORKFLOWS / 'deploy-android.yml', WORKFLOWS / 'deploy-ios.yml', fastfile):
+        text = p.read_text(encoding='utf-8')
+        assert 'api_backend_guard.py' in text, f'{p.name} não chama o guard'
+        assert 'resolve-ci' not in text, (
+            f'{p.name} é PUBLICAÇÃO: deve usar `resolve` (fail-closed), nunca `resolve-ci`'
+        )
+        # Invoca o subcomando `resolve` (fail-closed). `resolve-ci` já foi
+        # excluído acima, então um `resolve` isolado é necessariamente o
+        # fail-closed de publicação.
+        assert re.search(r'\bresolve\b', text), (
+            f'{p.name} deve invocar o subcomando `resolve` (fail-closed)'
+        )
+
+
+def test_ci_build_paths_use_resolve_ci():
+    """CI de build/teste (não publicado) usa `resolve-ci`: sem vars.API_BASE_URL
+    cai no backend AUTORIZADO do próprio produto (allowlist), mantendo o CI verde
+    sem jamais aceitar backend cruzado/localhost."""
+    for n in ('ios_ci.yml', 'flutter.yml'):
+        text = (WORKFLOWS / n).read_text(encoding='utf-8')
+        assert 'resolve-ci' in text, f'{n} (CI) deveria usar `resolve-ci`'
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     failures = 0

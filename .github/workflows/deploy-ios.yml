@@ -34,6 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install release contract dependencies
+        working-directory: ${{ github.workspace }}
+        run: python3 -m pip install -r ci/requirements-release.txt
+
       # EST-V1.6-R2-B — gate de integridade do isolamento ANTES de qualquer build
       # publicável, contra o MESMO ref que será publicado (sem depender de check de
       # outra ref). Os testes comparam a allowlist com a identidade REAL do produto

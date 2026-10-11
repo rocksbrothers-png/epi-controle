@@ -89,9 +89,16 @@ jobs:
         # A versão é a MESMA do job de lint, e o gate reprova se as duas
         # divergirem: dois pins que se soltam um do outro medem árvores
         # diferentes e voltam a produzir baseline móvel.
-        run: pip install -r requirements.txt pytest pytest-cov ruff==0.16.5
+        run: pip install -r requirements.txt -r ci/requirements-release.txt pytest pytest-cov ruff==0.16.5
+
+      - name: Set up Ruby for Fastlane contract probes
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
 
       - name: Run tests with coverage
+        # The release contract tests execute Fastlane with instrumented commands.
+        # Ruby is installed explicitly in the preceding step.
         # Cobertura é relatada mas ainda NÃO é gate (sem --cov-fail-under).
         # Meça o baseline nos primeiros runs e então ative o mínimo (ex.: 80%).
         run: |

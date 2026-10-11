@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+import runpy
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKFLOWS = REPO_ROOT / '.github' / 'workflows'
@@ -165,7 +166,7 @@ def test_no_cross_tenant_host_in_build_or_config():
     forbidden = _forbidden_host()
     offenders = []
     for p in _BUILD_FILES:
-        if p.exists() and forbidden in p.read_text(encoding='utf-8'):
+        if p.exists() and forbidden in p.read_text(encoding='utf-8').lower():
             offenders.append(p.name)
     assert not offenders, (
         f'host cross-tenant {forbidden} presente em: {offenders} (deve ser removido)'
@@ -250,7 +251,7 @@ def test_saas_web_build_backend_pinned_to_allowlist():
             continue
         text = p.read_text(encoding='utf-8')
         # só URLs LITERAIS (ignora interpolações de shell como $API_BASE_URL)
-        for m in re.finditer(r'API_BASE_URL[=:]\s*["\']?(https?://[^\s"\'\\$]+)', text):
+        for m in re.finditer(r'API_BASE_URL[=:]\s*["\']?(https?://[^\s"\'\\$]+)', text, re.IGNORECASE):
             url = m.group(1)
             host = (urllib.parse.urlsplit(url).hostname or '').lower()
             assert host != forbidden, f'{name}: build Web aponta para backend PROIBIDO {url}'
@@ -296,7 +297,7 @@ def test_no_cross_tenant_host_in_any_build_or_publish_surface():
     for rel in _iter_build_publish_surfaces():
         p = REPO_ROOT / rel
         try:
-            if forbidden in p.read_text(encoding='utf-8'):
+            if forbidden in p.read_text(encoding='utf-8').lower():
                 offenders.append(rel.as_posix())
         except (UnicodeDecodeError, OSError):
             continue
@@ -324,6 +325,44 @@ def test_dio_baseurl_comes_from_resolved_param():
     assert not bad, f'`baseUrl:` recebeu valor não-resolvido (possível hardcode): {bad}'
     for host in KNOWN_BACKENDS.values():
         assert host not in src, f'api_client.dart hardcoda host de backend {host}'
+
+
+def _executable_contract(name):
+    support = runpy.run_path(str(REPO_ROOT / 'tests' / 'release_integrity_support.py'))
+    support[name]()
+
+
+def test_integrity_workflow_is_unconditional_and_failure_stops_execution():
+    _executable_contract('always_on_contract')
+
+
+def test_publish_gates_and_actual_build_arguments_use_the_validated_output():
+    _executable_contract('publication_contracts')
+
+
+def test_fastlane_lanes_abort_on_gate_failure_and_use_resolved_build_url():
+    _executable_contract('fastlane_contract')
+
+
+def _regression(name):
+    regressions = runpy.run_path(str(REPO_ROOT / 'tests/release_integrity_regressions.py'))
+    regressions[name]()
+
+
+def test_b01_alternative_dart_define_cannot_override_validated_backend():
+    _regression('b01')
+
+
+def test_b02_unrelated_no_codesign_flag_cannot_hide_native_build():
+    _regression('b02')
+
+
+def test_b03_second_fastlane_build_is_checked_before_upload():
+    _regression('b03')
+
+
+def test_b04_step_job_workflow_and_ambient_overrides_are_rejected():
+    _regression('b04')
 
 
 if __name__ == '__main__':

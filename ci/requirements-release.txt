@@ -1,0 +1,2 @@
+# Development dependency for structural parsing of release workflow contracts.
+PyYAML==6.0.3

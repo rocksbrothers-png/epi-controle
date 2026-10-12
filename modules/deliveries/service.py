@@ -254,6 +254,17 @@ def create_delivery_service(
         raise ValueError('Código lido não confere com a unidade informada.')
     if str(stock_item['status']) != 'in_stock':
         raise ValueError('Entrega bloqueada: item já baixado, entregue, descartado ou inválido.')
+    # EST-V3 (G02): além da validade do catálogo (gate acima), recusa a entrega
+    # quando a validade FÍSICA do LOTE desta peça está vencida — um lote vencido
+    # é barrado mesmo com o catálogo do EPI em dia. Fallback ao catálogo quando a
+    # peça não tem validade física própria (itens anteriores à captura por lote).
+    from modules.stock.service import effective_delivery_expiry
+    lote_validity = effective_delivery_expiry(connection, stock_item_id, epi.get('epi_validity_date'))
+    if is_expired(lote_validity):
+        raise ValueError(
+            'Entrega bloqueada: validade do fabricante do lote vencida em '
+            f'{lote_validity}. Retire o item do estoque (NT 146/2015).'
+        )
     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
     current_stock = int((stock_row or {}).get('quantity') or 0)
     if current_stock < quantity:

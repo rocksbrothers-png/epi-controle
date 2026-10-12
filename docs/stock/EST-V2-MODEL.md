@@ -39,6 +39,12 @@ Saldo agregado recebe CHECK não negativo. Constraints sobre tabelas legadas
 usam `NOT VALID`: protegem novas escritas sem inventar correções do histórico.
 Reconciliar inconsistências existentes e validar essas constraints é EST-V3/V7.
 
+A revisão independente identificou que `blocked_by_user_id` ainda aceitava ator
+de outra empresa. A migração aditiva `031_stock_item_actor_scope` fecha esse
+vínculo na inserção, troca de responsável e troca de empresa. Os testes novos
+falharam contra a 030 com `DID NOT RAISE`, antes da correção. Alterações posteriores
+do usuário continuam preservando a responsabilidade histórica registrada.
+
 Nenhum lote, custo ou vencimento é inferido do catálogo. Colunas físicas novas
 de peças legadas permanecem NULL. Fabricação antiga já registrada é preservada
 como legado; a cópia automática da fabricação do catálogo foi removida. A

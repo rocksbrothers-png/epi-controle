@@ -155,6 +155,29 @@ def test_item_cannot_link_a_foreign_lot_or_unit(stock):
     rejected(stock['c'], lambda: stock['item'](unit_id=stock['units'][1]), ('23503',))
 
 
+def test_item_blocking_actor_cannot_cross_company(stock):
+    rejected(stock['c'], lambda: stock['item'](blocked_by_user_id=stock['actors'][1]), ('23514',))
+    identifier = stock['item'](blocked_by_user_id=stock['actors'][0])
+    assert stock['c'].execute('SELECT blocked_by_user_id FROM epi_stock_items WHERE id=?',
+                             (identifier,)).fetchone()[0] == stock['actors'][0]
+
+
+def test_item_actor_scope_is_checked_on_company_change(stock):
+    identifier = stock['item'](blocked_by_user_id=stock['actors'][0])
+    rejected(stock['c'], lambda: stock['c'].execute(
+        'UPDATE epi_stock_items SET company_id=?,unit_id=?,epi_id=? WHERE id=?',
+        (stock['companies'][1], stock['units'][1], stock['epis'][1], identifier)), ('23514',))
+
+
+def test_historical_blocking_actor_is_preserved_after_actor_moves_company(stock):
+    identifier = stock['item'](blocked_by_user_id=stock['actors'][0])
+    stock['c'].execute('UPDATE users SET company_id=? WHERE id=?',
+                       (stock['companies'][1], stock['actors'][0]))
+    stock['c'].execute('UPDATE epi_stock_items SET row_version=row_version+1 WHERE id=?', (identifier,))
+    assert stock['c'].execute('SELECT blocked_by_user_id FROM epi_stock_items WHERE id=?',
+                             (identifier,)).fetchone()[0] == stock['actors'][0]
+
+
 def test_physical_item_date_requires_evidence_and_cannot_precede_manufacture(stock):
     rejected(stock['c'], lambda: stock['item'](physical_expiry_date='2027-01-01', expiry_source='label'), ('23514',))
     rejected(stock['c'], lambda: stock['item'](physical_manufacture_date='2028-01-01',

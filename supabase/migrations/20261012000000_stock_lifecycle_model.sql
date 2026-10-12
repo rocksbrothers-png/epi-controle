@@ -214,8 +214,11 @@ CREATE TRIGGER stock_event_actor_scope BEFORE INSERT ON epi_stock_events
 
 -- PostgREST não é um caminho autorizado de escrita/consulta do estoque.
 -- O backend impõe empresa/unidade/RBAC; o owner do banco usa o backend.
-DO $$ DECLARE tbl TEXT; BEGIN
-    FOREACH tbl IN ARRAY ARRAY['epi_stock_lots', 'company_stock_validity_config', 'epi_stock_decisions', 'epi_stock_events'] LOOP
+DO $$ DECLARE
+    tbl TEXT;
+    tbls text[] := ARRAY['epi_stock_lots', 'company_stock_validity_config', 'epi_stock_decisions', 'epi_stock_events'];
+BEGIN
+    FOREACH tbl IN ARRAY tbls LOOP
         EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl);
         IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = tbl AND policyname = 'block_direct_api_access') THEN
             EXECUTE format('CREATE POLICY block_direct_api_access ON public.%I AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)', tbl);

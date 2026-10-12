@@ -45,6 +45,11 @@ vínculo na inserção, troca de responsável e troca de empresa. Os testes novo
 falharam contra a 030 com `DID NOT RAISE`, antes da correção. Alterações posteriores
 do usuário continuam preservando a responsabilidade histórica registrada.
 
+O gate `ci_migrations_report.py` requer os alvos RLS em um dos moldes derivados
+das migrações. A declaração da030 foi adaptada para `tbls text[] := ARRAY[...]`;
+as quatro tabelas, RLS e policies permanecem iguais. O mesmo comando de CI foi
+reproduzido contra PostgreSQL local, sem relaxar o verificador ou suas exigências.
+
 Nenhum lote, custo ou vencimento é inferido do catálogo. Colunas físicas novas
 de peças legadas permanecem NULL. Fabricação antiga já registrada é preservada
 como legado; a cópia automática da fabricação do catálogo foi removida. A

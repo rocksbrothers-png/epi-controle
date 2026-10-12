@@ -189,13 +189,12 @@ def create_delivery_service(
         )
     # Regra NT 146/2015: após a aquisição (com CA válido), o uso/entrega do EPI
     # não fica proibido pelo vencimento do CA — passa a valer a validade do
-    # produto informada pelo fabricante. Portanto, bloqueia-se a entrega quando a
-    # validade do fabricante está vencida; o CA vencido NÃO bloqueia a entrega.
-    if is_expired(epi.get('epi_validity_date')):
-        raise ValueError(
-            'Entrega bloqueada: validade do fabricante do EPI vencida em '
-            f"{epi.get('epi_validity_date')}. Retire o item do estoque (NT 146/2015)."
-        )
+    # produto informada pelo fabricante; o CA vencido NÃO bloqueia a entrega.
+    # EST-V3.5 (G02, ponto 3): removida a dependência INDEVIDA do CATÁLOGO
+    # (epis.epi_validity_date) neste gate — o catálogo era sobrescrito pelo último
+    # lote e barrava lotes VÁLIDOS. A validação de validade do fabricante passou a
+    # ser por LOTE FÍSICO da peça, aplicada adiante (após a leitura da unidade
+    # etiquetada), preservando a segurança por item (NT 146/2015).
     quantity = int(payload['quantity'])
     if quantity != 1:
         raise ValueError('Entrega por leitura exige quantidade unitária (1).')

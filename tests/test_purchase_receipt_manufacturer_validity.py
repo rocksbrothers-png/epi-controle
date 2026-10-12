@@ -91,9 +91,14 @@ def _actor():
     return {'id': 1, 'full_name': 'Admin Teste', 'role': 'admin', 'company_id': 1}
 
 
-def test_manufacturer_validity_saved_on_epi_and_labels():
+def test_manufacturer_validity_saved_on_piece_not_catalog():
+    # EST-V3.5 (G02): a conferência grava a validade do fabricante NA PEÇA
+    # (física, por lote), NÃO no catálogo (epis.epi_validity_date, que vira só
+    # default de cadastro). As etiquetas seguem carregando a data para exibição.
+    from core.schema import ensure_stock_lifecycle_model
     from modules.purchases.service import update_purchase_request_status
     conn = _conn()
+    ensure_stock_lifecycle_model(conn)
     conn.execute(
         "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
         "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
@@ -110,17 +115,22 @@ def test_manufacturer_validity_saved_on_epi_and_labels():
         [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30'}], '1.2.3.4'
     )
     assert result['stock_entries'] == 2
-    # validade do fabricante persistida no EPI
+    # catálogo NÃO é mais escrito no recebimento
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
-    assert epi['epi_validity_date'] == '2027-09-30'
+    assert epi['epi_validity_date'] == ''
+    # a validade vive na PEÇA (física do lote)
+    rows = conn.execute('SELECT physical_expiry_date FROM epi_stock_items WHERE epi_id = 100').fetchall()
+    assert len(rows) == 2 and all(r['physical_expiry_date'] == '2027-09-30' for r in rows)
     # etiquetas carregam a validade para exibição/impressão
     assert all(l['manufacturer_validity_date'] == '2027-09-30' for l in result['qr_labels'])
 
 
 def test_first_date_of_same_epi_applies_to_all_items():
     """Por lote: informada a data em um item, vale para os demais do mesmo EPI."""
+    from core.schema import ensure_stock_lifecycle_model
     from modules.purchases.service import update_purchase_request_status
     conn = _conn()
+    ensure_stock_lifecycle_model(conn)
     conn.execute(
         "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
         "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
@@ -146,8 +156,11 @@ def test_first_date_of_same_epi_applies_to_all_items():
         ], ''
     )
     assert result['stock_entries'] == 2
+    # catálogo NÃO escrito; validade por lote nas PEÇAS (herdada por lote)
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
-    assert epi['epi_validity_date'] == '2028-01-15'
+    assert epi['epi_validity_date'] == ''
+    rows = conn.execute('SELECT physical_expiry_date FROM epi_stock_items WHERE epi_id = 100').fetchall()
+    assert len(rows) == 2 and all(r['physical_expiry_date'] == '2028-01-15' for r in rows)
     # ambas as etiquetas (dos dois itens) herdam a mesma data
     assert all(l['manufacturer_validity_date'] == '2028-01-15' for l in result['qr_labels'])
 
@@ -168,6 +181,7 @@ def _po_conn():
         CREATE TABLE purchase_order_items (
             id INTEGER PRIMARY KEY, purchase_order_id INTEGER, company_id INTEGER, unit_id INTEGER,
             epi_id INTEGER, quantity INTEGER DEFAULT 1, quantity_received INTEGER DEFAULT 0,
+            manufacturer_validity_date TEXT DEFAULT '',
             status TEXT DEFAULT 'open', updated_at TEXT
         );
         CREATE TABLE purchase_events (
@@ -198,8 +212,12 @@ def test_po_receive_persists_manufacturer_validity_with_batch_fallback():
         ], '', ''
     )
     assert result['status'] == 'received'
+    # EST-V3.5 (G02): validade do lote guardada NO ITEM DA PO (não no catálogo);
+    # o item 2 herda por lote. A conferência ('checked') materializa na peça.
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
-    assert epi['epi_validity_date'] == '2029-04-30'
+    assert epi['epi_validity_date'] == ''
+    items = conn.execute('SELECT manufacturer_validity_date FROM purchase_order_items ORDER BY id').fetchall()
+    assert [i['manufacturer_validity_date'] for i in items] == ['2029-04-30', '2029-04-30']
 
 
 # ── EST-V3 (G02/G15): validade física POR PEÇA no recebimento ─────────────────

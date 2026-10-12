@@ -1948,6 +1948,11 @@ def ensure_epi_operational_tables(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
+    # EST-V3.5 (G02): validade do fabricante do LOTE recebido, capturada na
+    # conferência da PO e materializada na peça ao entrar em estoque — substitui
+    # a antiga escrita no catálogo (epis.epi_validity_date), que era por EPI.
+    # Adicionada via _safe_add_column (cross-engine, idempotente) — sem migration.
+    _safe_add_column(connection, 'purchase_order_items', 'manufacturer_validity_date', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''

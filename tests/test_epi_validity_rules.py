@@ -108,14 +108,20 @@ def _delivery_kwargs():
 _epi_full = None
 
 
-def test_delivery_blocked_when_manufacturer_validity_expired():
+def test_delivery_not_blocked_early_by_catalog_validity():
+    """EST-V3.5 (G02, ponto 3): o gate de entrega NÃO bloqueia mais pela validade
+    do CATÁLOGO (epis.epi_validity_date). A validação de validade do fabricante
+    passou a ser por LOTE FÍSICO da peça, aplicada após a leitura da unidade
+    etiquetada (coberta de ponta a ponta na suíte PostgreSQL). Aqui provamos que
+    um catálogo vencido isolado não produz mais o erro de validade do fabricante
+    (falha adiante, exigindo a leitura da peça)."""
     global _epi_full
     from modules.deliveries.service import create_delivery_service
     _epi_full = {'id': 30, 'company_id': 1, 'unit_id': 7, 'epi_validity_date': PAST, 'ca_expiry': FUTURE, 'unit_measure': 'UN'}
     payload = {'company_id': 1, 'employee_id': 21, 'epi_id': 30, 'quantity': 1}
     with pytest.raises(ValueError) as exc:
         create_delivery_service(None, payload, **_delivery_kwargs())
-    assert 'validade do fabricante' in str(exc.value).lower()
+    assert 'validade do fabricante' not in str(exc.value).lower()
 
 
 def test_delivery_not_blocked_by_expired_ca_alone():

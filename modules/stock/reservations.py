@@ -76,18 +76,24 @@ def unit_balance(connection, company_id, unit_id, epi_id) -> dict:
     """
     from modules.stock.service import get_unit_stock
 
+    from modules.stock.service import blocked_physical_quantity, get_unit_stock
+
     stock = get_unit_stock(connection, int(company_id), int(unit_id), int(epi_id))
     physical = int((stock or {}).get('quantity') or 0)
     reserved = reserved_quantity(connection, company_id, unit_id, epi_id)
+    # EST-V3/G01: a peça bloqueada continua FÍSICA (não some do estoque), mas sai
+    # do DISPONÍVEL — não se reserva nem se promete peça bloqueada. Derivado do
+    # status real das peças (epi_stock_items), não de um contador paralelo.
+    blocked = blocked_physical_quantity(connection, company_id, unit_id, epi_id)
     return {
         'company_id': int(company_id),
         'unit_id': int(unit_id),
         'epi_id': int(epi_id),
         'physical': physical,
         'reserved': reserved,
-        # Reserva órfã (maior que o físico, por ajuste manual do saldo) não
-        # pode virar saldo livre negativo e liberar entrega.
-        'free': max(0, physical - reserved),
+        # Reserva órfã / bloqueio além do físico (por ajuste manual do saldo) não
+        # pode virar saldo livre negativo e liberar entrega: piso zero.
+        'free': max(0, physical - reserved - blocked),
     }
 
 

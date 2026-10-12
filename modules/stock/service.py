@@ -1239,6 +1239,26 @@ def effective_delivery_expiry(connection, stock_item_id, catalog_validity):
     return item_physical_expiry(connection, stock_item_id) or str(catalog_validity or '').strip()
 
 
+def blocked_physical_quantity(connection, company_id, unit_id, epi_id):
+    """Peças FISICAMENTE presentes porém bloqueadas (status ``blocked_*``) na
+    unidade. Base do desconto de disponibilidade (G01): o agregado
+    ``unit_epi_stock.quantity`` conta o físico (inclui o bloqueado); o disponível
+    real exclui o bloqueado. Derivado do status real das peças — sem contador
+    paralelo. Degrada para 0 onde ``epi_stock_items`` não existe (migração)."""
+    try:
+        row = connection.execute(
+            'SELECT COUNT(*) AS n FROM epi_stock_items '
+            'WHERE company_id = ? AND unit_id = ? AND epi_id = ? '
+            "AND LOWER(COALESCE(status, '')) LIKE 'blocked_%'",
+            (int(company_id), int(unit_id), int(epi_id)),
+        ).fetchone()
+    except Exception:
+        return 0
+    if not row:
+        return 0
+    return int((row['n'] if hasattr(row, 'keys') else row[0]) or 0)
+
+
 def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
     # FEFO (First Expire, First Out): prioriza a peça que vence primeiro.
     # EST-V3 (G03): ordena pela VALIDADE FÍSICA do lote (physical_expiry_date)
@@ -1372,9 +1392,28 @@ def set_stock_item_status(connection, item, new_status, reason, actor_user_id, a
                 'Item vencido não retorna ao estoque — destine para descarte ou devolução (NT 146/2015).'
             )
     old_status = str(item['status'] or '')
+    # EST-V3 (§12): o bloqueio deixa de ser só uma troca de string — grava motivo
+    # estruturado, responsável e horário na própria peça (colunas EST-V2). O
+    # desbloqueio limpa esses campos. Dinâmico e guardado: onde as colunas ainda
+    # não existem (schema antigo), apenas status/updated_at são atualizados.
+    set_fragments = ['status = ?', 'updated_at = ?']
+    set_params = [status, now]
+    if _has_col(connection, 'epi_stock_items', 'blocking_reason_code'):
+        if status == UNBLOCK_STATUS:
+            set_fragments += [
+                'blocking_reason_code = NULL', 'blocking_justification = NULL',
+                'blocked_by_user_id = NULL', 'blocked_at = NULL',
+            ]
+        else:
+            reason_code = status[len('blocked_'):] if status.startswith('blocked_') else status
+            set_fragments += [
+                'blocking_reason_code = ?', 'blocking_justification = ?',
+                'blocked_by_user_id = ?', 'blocked_at = ?',
+            ]
+            set_params += [reason_code, str(reason or '').strip(), int(actor_user_id), now]
     connection.execute(
-        'UPDATE epi_stock_items SET status = ?, updated_at = ? WHERE id = ?',
-        (status, now, int(item['id'])),
+        f'UPDATE epi_stock_items SET {", ".join(set_fragments)} WHERE id = ?',  # noqa: S608
+        (*set_params, int(item['id'])),
     )
     create_stock_movement(
         connection, int(item['company_id']), int(item['unit_id']), int(item['epi_id']),

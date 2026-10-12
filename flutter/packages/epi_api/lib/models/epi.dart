@@ -273,7 +273,13 @@ class Epi {
         code: (json['purchase_code'] ?? json['code']) as String?,
         caNumber: (json['ca'] ?? json['ca_number']) as String?,
         caExpiryDate: (json['ca_expiry'] ?? json['ca_expiry_date']) as String?,
-        manufacturerValidityDate: (json['epi_validity_date'] ??
+        // EST-V3.5-F (G02): a conformidade da validade do fabricante usa a
+        // validade EFETIVA por lote físico quando o backend a fornece
+        // (`effective_validity_date` em /api/stock/epis); o catálogo
+        // (`epi_validity_date`) é só fallback / default de cadastro. Assim o
+        // cliente deixa de classificar conformidade pelo catálogo.
+        manufacturerValidityDate: (json['effective_validity_date'] ??
+            json['epi_validity_date'] ??
             json['manufacturer_validity_date']) as String?,
         validityDays: (json['validity_days'] as num?)?.toInt(),
         stockQuantity:

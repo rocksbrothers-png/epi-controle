@@ -1948,11 +1948,14 @@ def ensure_epi_operational_tables(connection) -> None:
         )
     except Exception as _e:
         structured_log('warning', 'db.col_skip', error=str(_e))
-    # EST-V3.5 (G02): validade do fabricante do LOTE recebido, capturada na
-    # conferência da PO e materializada na peça ao entrar em estoque — substitui
-    # a antiga escrita no catálogo (epis.epi_validity_date), que era por EPI.
-    # Adicionada via _safe_add_column (cross-engine, idempotente) — sem migration.
-    _safe_add_column(connection, 'purchase_order_items', 'manufacturer_validity_date', "TEXT NOT NULL DEFAULT ''")
+    # EST-V3.5-F (G02, ponto 4): validade do fabricante do LOTE recebido,
+    # capturada na conferência da PO ('received') e materializada na peça
+    # ('checked') — substitui a antiga escrita no catálogo (epis.epi_validity_date).
+    # Fonte ÚNICA por engine, sem duplicidade de aplicação: em SQLite a coluna vem
+    # daqui (migrations numeradas são puladas no SQLite); em PostgreSQL vem da
+    # migration numerada, versionada e auditável 032 (app_migrations + supabase/).
+    if _is_sqlite_connection(connection):
+        _safe_add_column(connection, 'purchase_order_items', 'manufacturer_validity_date', "TEXT NOT NULL DEFAULT ''")
     try:
         connection.execute(
             '''

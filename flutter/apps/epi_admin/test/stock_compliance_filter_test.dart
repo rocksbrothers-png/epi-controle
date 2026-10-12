@@ -51,4 +51,24 @@ void main() {
     final s = StockState(epis: epis);
     expect(s.filtered.length, 4);
   });
+
+  // EST-V3.5-F (G02): os contadores/filtro de conformidade do fabricante vêm da
+  // validade FÍSICA do lote (effective_validity_date), não do catálogo.
+  test('conformidade por LOTE: effective_validity_date rege contadores e filtro', () {
+    final porLote = <Epi>[
+      Epi.fromJson({
+        'id': 10, 'name': 'Lote vencido', 'stock': 5, 'minimum_stock': 1,
+        'ca_expiry': _d(200), 'effective_validity_date': _d(-2), 'epi_validity_date': _d(200),
+      }),
+      Epi.fromJson({
+        'id': 11, 'name': 'Lote valido, catalogo vencido', 'stock': 5, 'minimum_stock': 1,
+        'ca_expiry': _d(200), 'effective_validity_date': _d(200), 'epi_validity_date': _d(-2),
+      }),
+    ];
+    final s = StockState(epis: porLote);
+    expect(s.manufacturerExpiredCount, 1); // só o lote físico vencido conta
+    final filtrado = StockState(
+        epis: porLote, compliance: StockComplianceFilter.manufacturerExpired);
+    expect(filtrado.filtered.map((e) => e.id).toList(), [10]);
+  });
 }

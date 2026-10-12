@@ -66,4 +66,46 @@ void main() {
       expect(epi.manufacturerValidityStatus, isNull);
     });
   });
+
+  // EST-V3.5-F (G02): a conformidade da validade do fabricante vem da validade
+  // FÍSICA do lote (effective_validity_date), não do catálogo. Adversarial: se
+  // o modelo voltar a priorizar epi_validity_date, estes testes falham.
+  group('Epi — validade por lote (effective_validity_date tem precedência)', () {
+    test('lote físico vencido sob catálogo em dia → vencido/bloqueia', () {
+      final epi = Epi.fromJson({
+        'id': 10,
+        'name': 'Capacete',
+        'ca_expiry': _d(200),
+        'effective_validity_date': _d(-5), // lote físico vencido
+        'epi_validity_date': _d(200), // catálogo em dia (NÃO deve prevalecer)
+        'stock': 3,
+      });
+      expect(epi.manufacturerValidityStatus, 'expired');
+      expect(epi.isBlockedForDelivery, isTrue);
+    });
+
+    test('lote físico válido sob catálogo vencido → válido/não bloqueia', () {
+      final epi = Epi.fromJson({
+        'id': 11,
+        'name': 'Luva',
+        'ca_expiry': _d(200),
+        'effective_validity_date': _d(200), // lote físico em dia
+        'epi_validity_date': _d(-5), // catálogo vencido (NÃO deve prevalecer)
+        'stock': 3,
+      });
+      expect(epi.manufacturerValidityStatus, 'valid');
+      expect(epi.isBlockedForDelivery, isFalse);
+    });
+
+    test('sem effective_validity_date → fallback ao catálogo (compat)', () {
+      final epi = Epi.fromJson({
+        'id': 12,
+        'name': 'Bota',
+        'ca_expiry': _d(200),
+        'epi_validity_date': _d(-5),
+        'stock': 3,
+      });
+      expect(epi.manufacturerValidityStatus, 'expired');
+    });
+  });
 }

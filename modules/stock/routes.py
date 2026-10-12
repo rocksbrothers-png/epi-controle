@@ -31,6 +31,7 @@ from modules.stock.service import (
     create_stock_item_reprint,
     create_stock_movement,
     epi_ids_with_manufacturer_validity,
+    epi_physical_validity_map,
     fetch_available_stock_items,
     fetch_blocked_stock_items,
     fetch_validity_overview,
@@ -895,6 +896,12 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             name=name, section=section, manufacturer=manufacturer, ca=ca, protection=protection,
         )
         target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
+        # EST-V3.5-F (G02): validade EFETIVA por lote físico por EPI (menor
+        # physical_expiry_date entre as peças in_stock), fonte autoritativa para o
+        # cliente — que deixa de classificar a conformidade do fabricante pelo
+        # catálogo. Fallback ao catálogo para EPIs sem validade física própria.
+        physical_validity = epi_physical_validity_map(
+            connection, company_scope_id or None, unit_filter or None)
         items = []
         for epi in epis:
             if company_filter and str(epi.get('company_id')) != str(company_filter):
@@ -994,6 +1001,13 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)
             item['stock'] = company_stock
             item['size_balances'] = size_rows
+            # EST-V3.5-F (G02): validade do fabricante que o cliente usa na
+            # conformidade = a FÍSICA do lote (fallback catálogo). epi_validity_date
+            # segue presente como atributo do catálogo (default de cadastro).
+            item['effective_validity_date'] = (
+                physical_validity.get(int(epi.get('id') or 0))
+                or str(epi.get('epi_validity_date') or '').strip()
+            )
             items.append(item)
         items = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/stock/epis', dataset_name='epis', legacy_items=items)
         return send_json(handler, 200, {'items': items})

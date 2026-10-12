@@ -105,9 +105,21 @@ def test_validity_filter_ids_on_pg(seed):
 
 
 def test_po_item_manufacturer_validity_column_provisioned_on_pg(seed):
-    # _safe_add_column rodou no PG (via init_db) → a coluna existe e aceita valor.
+    # Migration numerada 032 rodou no PG (via init_db) → a coluna existe.
+    # Adversarial de schema: falha se a coluna não foi provisionada.
     row = seed['c'].execute(
         "SELECT COUNT(*) AS n FROM information_schema.columns "
         "WHERE table_name = 'purchase_order_items' AND column_name = 'manufacturer_validity_date'"
     ).fetchone()
     assert int(row['n'] if hasattr(row, 'keys') else row[0]) == 1
+
+
+def test_migration_032_is_numbered_and_auditable(seed):
+    # Ponto 4: a coluna em PostgreSQL vem de uma migration NUMERADA e AUDITÁVEL
+    # (registrada em app_migrations), não de _safe_add_column (que é gated a
+    # SQLite). Adversarial: falha se a migration não foi aplicada/registrada.
+    row = seed['c'].execute(
+        "SELECT status FROM app_migrations WHERE migration_id = '032_po_item_manufacturer_validity'"
+    ).fetchone()
+    assert row is not None
+    assert str(row['status'] if hasattr(row, 'keys') else row[0]) == 'applied'

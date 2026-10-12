@@ -133,3 +133,56 @@ def test_overview_valid_lot_under_expired_catalog_not_at_risk():
     _add(conn, 8, FUTURE)   # catálogo PAST, lote válido
     ov = fetch_validity_overview(conn, 1, today=TODAY)
     assert ov['summary']['product_expired'] == 0
+
+
+# ── alertas (compute_alerts) por lote físico ──────────────────────────────────
+
+def _alerts(conn, epi_row):
+    from modules.alerts.service import compute_alerts
+    return compute_alerts(
+        conn, {'role': 'general_admin', 'company_id': 1},
+        fetch_low_stock_items=lambda c, a: [],
+        actor_operational_unit_id=lambda c, a: None,
+        fetch_epis=lambda c, a, u: [epi_row],
+    )
+
+
+def test_alert_manufacturer_fires_on_expired_lot_with_catalog_valid():
+    # PAST/FUTURE são absolutos (passado/futuro) relativos ao hoje real do alerta.
+    conn = _conn()
+    _add(conn, 7, PAST)  # EPI 7: catálogo FUTURE, lote físico vencido
+    manu = [a for a in _alerts(conn, {
+        'id': 7, 'company_id': 1, 'unit_id': 2, 'active': 1, 'name': 'Capacete',
+        'company_name': 'Acme', 'stock': 5, 'unit_measure': 'un',
+        'ca_expiry': FUTURE, 'epi_validity_date': FUTURE,
+    }) if a.get('category') == 'manufacturer']
+    assert len(manu) == 1 and manu[0]['type'] == 'danger'
+    assert PAST in manu[0]['description']  # mostra a validade do LOTE, não do catálogo
+
+
+def test_alert_manufacturer_silent_for_valid_lot_under_expired_catalog():
+    conn = _conn()
+    _add(conn, 8, FUTURE)  # EPI 8: catálogo PAST, lote físico válido
+    manu = [a for a in _alerts(conn, {
+        'id': 8, 'company_id': 1, 'unit_id': 2, 'active': 1, 'name': 'Luva',
+        'company_name': 'Acme', 'stock': 5, 'unit_measure': 'un',
+        'ca_expiry': FUTURE, 'epi_validity_date': PAST,
+    }) if a.get('category') == 'manufacturer']
+    assert manu == []  # lote físico válido → sem falso alerta de validade vencida
+
+
+# ── dashboard (_epis_a_vencer) por lote físico ────────────────────────────────
+
+SOON = '2026-08-01'  # 14 dias após TODAY (2026-07-18), dentro da janela de atenção
+
+
+def test_dashboard_expiring_uses_physical_lot():
+    from modules.dashboard.service import _epis_a_vencer
+    # EPI nível empresa (unit_id None) conta em qualquer recorte
+    epi_ok = {'id': 7, 'unit_id': None, 'ca_expiry': FUTURE, 'epi_validity_date': FUTURE}
+    assert _epis_a_vencer([epi_ok], None, TODAY) == 0               # catálogo em dia, sem mapa
+    assert _epis_a_vencer([epi_ok], None, TODAY, {7: SOON}) == 1    # lote a vencer → conta
+    # reverso: catálogo a vencer, lote físico em dia → não conta
+    epi_cat = {'id': 8, 'unit_id': None, 'ca_expiry': FUTURE, 'epi_validity_date': SOON}
+    assert _epis_a_vencer([epi_cat], None, TODAY) == 1             # sem mapa: catálogo a vencer
+    assert _epis_a_vencer([epi_cat], None, TODAY, {8: FUTURE}) == 0  # lote em dia → não conta

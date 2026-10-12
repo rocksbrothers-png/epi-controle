@@ -2,7 +2,11 @@
 
 from datetime import date
 
-from modules.stock.service import STATUS_CRITICAL, STATUS_NEAR_MINIMUM
+from modules.stock.service import (
+    STATUS_CRITICAL,
+    STATUS_NEAR_MINIMUM,
+    epi_physical_validity_map,
+)
 
 from modules.epis.validity import (
     MANUFACTURER_VALIDITY_WARNING_DAYS,
@@ -77,6 +81,12 @@ def compute_alerts(
             'size_balances': size_balances,
         })
 
+    # EST-V3.5 (G02): a validade do fabricante que rege o alerta é a FÍSICA do
+    # lote em estoque (a mais próxima de vencer, FEFO), não o catálogo — que
+    # virou só default de cadastro. Catálogo permanece como fallback (peças sem
+    # validade física / itens anteriores à captura por lote). Mapa montado uma
+    # vez (degrada para {} sem a coluna/conexão → fallback ao catálogo).
+    phys_validity = epi_physical_validity_map(connection, None, scope_unit_id)
     for epi in fetch_epis(connection, actor, scope_unit_id):
         if int(epi.get('active', 1) or 0) != 1:
             continue
@@ -96,7 +106,10 @@ def compute_alerts(
         # Validade do fabricante: rege o uso/entrega do EPI (NT 146/2015). EPIs
         # com validade mais próxima devem sair primeiro do estoque (PEPS) e os já
         # vencidos devem ser retirados do estoque, pois não podem ser entregues.
-        mv_days = days_until(epi.get('epi_validity_date'), today)
+        # EST-V3.5 (G02): usa a validade FÍSICA do lote mais próximo de vencer em
+        # estoque; o catálogo é apenas fallback para peças sem validade física.
+        effective_mv = phys_validity.get(int(epi.get('id') or 0)) or str(epi.get('epi_validity_date') or '')
+        mv_days = days_until(effective_mv, today)
         if mv_days is not None and mv_days <= MANUFACTURER_VALIDITY_WARNING_DAYS:
             stock = int(epi.get('stock') or 0)
             unit_measure = str(epi.get('unit_measure') or 'unidade')
@@ -107,7 +120,7 @@ def compute_alerts(
                     'title': f"Validade do fabricante vencida: {epi['name']}",
                     'description': (
                         f"{epi['company_name']} - validade do fabricante venceu em "
-                        f"{epi['epi_validity_date']}. Retire do estoque ({stock} {unit_measure}(s)): "
+                        f"{effective_mv}. Retire do estoque ({stock} {unit_measure}(s)): "
                         f"EPI vencido não pode ser entregue ao trabalhador."
                     ),
                     'company_id': epi.get('company_id'),
@@ -122,7 +135,7 @@ def compute_alerts(
                     'title': f"Validade do fabricante próxima: {epi['name']}",
                     'description': (
                         f"{epi['company_name']} - validade do fabricante vence em "
-                        f"{epi['epi_validity_date']} (em {mv_days} dia(s)). Priorize a entrega "
+                        f"{effective_mv} (em {mv_days} dia(s)). Priorize a entrega "
                         f"deste lote ({stock} {unit_measure}(s) em estoque) antes do vencimento (PEPS)."
                     ),
                     'company_id': epi.get('company_id'),

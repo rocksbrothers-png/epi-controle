@@ -1245,12 +1245,15 @@ def blocked_physical_quantity(connection, company_id, unit_id, epi_id):
     ``unit_epi_stock.quantity`` conta o físico (inclui o bloqueado); o disponível
     real exclui o bloqueado. Derivado do status real das peças — sem contador
     paralelo. Degrada para 0 onde ``epi_stock_items`` não existe (migração)."""
+    # IN explícito (não LIKE 'blocked_%'): preciso e cross-engine — o '%' literal
+    # colidiria com a formatação de parâmetros do psycopg2 e o '_' é curinga.
+    placeholders = ','.join(['?'] * len(BLOCKED_STOCK_STATUSES))
     try:
         row = connection.execute(
-            'SELECT COUNT(*) AS n FROM epi_stock_items '
+            'SELECT COUNT(*) AS n FROM epi_stock_items '  # noqa: S608
             'WHERE company_id = ? AND unit_id = ? AND epi_id = ? '
-            "AND LOWER(COALESCE(status, '')) LIKE 'blocked_%'",
-            (int(company_id), int(unit_id), int(epi_id)),
+            f"AND LOWER(COALESCE(status, '')) IN ({placeholders})",
+            (int(company_id), int(unit_id), int(epi_id), *BLOCKED_STOCK_STATUSES.keys()),
         ).fetchone()
     except Exception:
         return 0
@@ -1301,8 +1304,11 @@ def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
     has_phys = _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
     phys_select = 'esi.physical_expiry_date, ' if has_phys else ''
     if has_phys:
+        # CAST(... AS TEXT) para o teste de "sem validade física" funcionar nos
+        # dois engines: em PostgreSQL physical_expiry_date é DATE (COALESCE com ''
+        # quebraria); em SQLite é TEXT. A ordenação por data real segue à parte.
         order_by = (
-            "ORDER BY (CASE WHEN COALESCE(esi.physical_expiry_date, '') = '' THEN 1 ELSE 0 END) ASC, "
+            "ORDER BY (CASE WHEN COALESCE(CAST(esi.physical_expiry_date AS TEXT), '') = '' THEN 1 ELSE 0 END) ASC, "
             'esi.physical_expiry_date ASC, '
             "(CASE WHEN COALESCE(esi.manufacture_date, '') = '' THEN 1 ELSE 0 END) ASC, "
             'esi.manufacture_date ASC, esi.id ASC'

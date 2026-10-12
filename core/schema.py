@@ -1434,18 +1434,9 @@ def ensure_epi_operational_tables(connection) -> None:
     _safe_add_column(connection, 'epi_stock_items', 'label_print_format', "TEXT NOT NULL DEFAULT ''")
     _safe_add_column(connection, 'epi_stock_items', 'reprint_count', 'INTEGER NOT NULL DEFAULT 0')
     _safe_add_column(connection, 'epi_stock_items', 'generated_by_user_id', 'INTEGER')
-    try:
-        connection.execute(
-            """
-            UPDATE epi_stock_items
-            SET manufacture_date = COALESCE(NULLIF(manufacture_date, ''), (
-                SELECT COALESCE(epis.manufacture_date, '') FROM epis WHERE epis.id = epi_stock_items.epi_id
-            ), '')
-            WHERE COALESCE(NULLIF(manufacture_date, ''), '') = ''
-            """
-        )
-    except Exception as _e:
-        structured_log('warning', 'db.col_skip', error=str(_e))
+    # EST-V2: o catálogo não comprova a fabricação de uma peça/lote recebido.
+    # Ausência permanece desconhecida; valores legados já gravados não são
+    # apagados nem promovidos a physical_manufacture_date pela migração.
     try:
         connection.execute(
             '''

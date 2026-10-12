@@ -13,6 +13,7 @@ from datetime import date
 from core.schema import ensure_stock_lifecycle_model
 from modules.stock.service import (
     compute_stock_compliance,
+    epi_ids_with_manufacturer_validity,
     epi_physical_validity_map,
     fetch_validity_overview,
 )
@@ -28,8 +29,8 @@ def _conn():
     conn.executescript(
         """
         CREATE TABLE companies (id INTEGER PRIMARY KEY, name TEXT);
-        CREATE TABLE epis (id INTEGER PRIMARY KEY, name TEXT, ca TEXT DEFAULT '',
-            manufacturer TEXT DEFAULT '', ca_expiry TEXT DEFAULT '',
+        CREATE TABLE epis (id INTEGER PRIMARY KEY, company_id INTEGER DEFAULT 1, unit_id INTEGER,
+            name TEXT, ca TEXT DEFAULT '', manufacturer TEXT DEFAULT '', ca_expiry TEXT DEFAULT '',
             epi_validity_date TEXT DEFAULT '', unit_measure TEXT DEFAULT 'un');
         CREATE TABLE units (id INTEGER PRIMARY KEY, name TEXT);
         CREATE TABLE epi_stock_items (
@@ -186,3 +187,26 @@ def test_dashboard_expiring_uses_physical_lot():
     epi_cat = {'id': 8, 'unit_id': None, 'ca_expiry': FUTURE, 'epi_validity_date': SOON}
     assert _epis_a_vencer([epi_cat], None, TODAY) == 1             # sem mapa: catálogo a vencer
     assert _epis_a_vencer([epi_cat], None, TODAY, {8: FUTURE}) == 0  # lote em dia → não conta
+
+
+# ── filtro do relatório de movimentações (epi_ids_with_manufacturer_validity) ──
+
+def test_validity_filter_ids_prefer_physical_lot():
+    conn = _conn()
+    _add(conn, 7, PAST)    # EPI 7: catálogo FUTURE, lote físico vencido → entra em 'expired'
+    _add(conn, 8, FUTURE)  # EPI 8: catálogo PAST, lote físico válido → NÃO entra
+    expired = epi_ids_with_manufacturer_validity(conn, 'expired', company_id=1, today=TODAY)
+    assert 7 in expired and 8 not in expired
+
+
+def test_validity_filter_ids_fallback_to_catalog_without_physical():
+    conn = _conn()
+    _add(conn, 8, '')  # EPI 8: catálogo PAST, sem validade física → fallback → 'expired'
+    expired = epi_ids_with_manufacturer_validity(conn, 'expired', company_id=1, today=TODAY)
+    assert 8 in expired
+
+
+def test_validity_filter_ids_empty_for_unknown_status():
+    conn = _conn()
+    _add(conn, 7, PAST)
+    assert epi_ids_with_manufacturer_validity(conn, '', company_id=1, today=TODAY) == set()

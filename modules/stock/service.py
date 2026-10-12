@@ -9,7 +9,7 @@ from typing import NamedTuple
 
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.db import row_to_dict
-from modules.epis.validity import is_expired
+from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS, is_expired
 
 UTC = timezone.utc
 
@@ -1278,6 +1278,50 @@ def epi_physical_validity_map(connection, company_id=None, unit_id=None):
         d = str((r['d'] if hasattr(r, 'keys') else r[1]) or '').strip()
         if eid and d:
             out[eid] = d
+    return out
+
+
+def epi_ids_with_manufacturer_validity(connection, status, company_id=None, unit_id=None,
+                                       today=None, warning_days=MANUFACTURER_VALIDITY_WARNING_DAYS):
+    """EST-V3.5 (G02): conjunto de ``epi_id`` cuja validade EFETIVA do fabricante
+    — a FÍSICA do lote mais próximo de vencer em estoque (FEFO), senão o catálogo
+    (fallback) — está ``'expired'`` (vencida) ou ``'expiring'`` (dentro da
+    janela). Base por lote do filtro de conformidade do relatório de
+    movimentações, no lugar de ``epis.epi_validity_date`` (catálogo = só default).
+    Degrada para ``set()`` em erro/entrada inválida.
+    """
+    status = str(status or '').strip().lower()
+    if status not in ('expired', 'expiring', 'expiring_soon', 'near'):
+        return set()
+    today = today or datetime.now(UTC).date()
+    phys = epi_physical_validity_map(connection, company_id, unit_id)
+    sql = 'SELECT id, epi_validity_date FROM epis'  # noqa: S608
+    clauses, params = [], []
+    if company_id is not None:
+        clauses.append('company_id = ?')
+        params.append(int(company_id))
+    if unit_id:
+        clauses.append('(unit_id = ? OR unit_id IS NULL)')
+        params.append(int(unit_id))
+    if clauses:
+        sql += ' WHERE ' + ' AND '.join(clauses)
+    try:
+        rows = connection.execute(sql, tuple(params)).fetchall()
+    except Exception:
+        return set()
+    out = set()
+    for r in rows:
+        eid = int((r['id'] if hasattr(r, 'keys') else r[0]) or 0)
+        catalog = str((r['epi_validity_date'] if hasattr(r, 'keys') else r[1]) or '').strip()
+        effective = phys.get(eid) or catalog  # validade física do lote tem precedência
+        d = _validity_days_until(effective, today)
+        if d is None:
+            continue
+        if status == 'expired':
+            if d < 0:
+                out.add(eid)
+        elif 0 <= d <= warning_days:
+            out.add(eid)
     return out
 
 

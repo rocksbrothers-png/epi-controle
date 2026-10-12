@@ -1,7 +1,7 @@
 """Rotas de gestão de estoque de EPIs."""
 
 from contextlib import closing
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company
@@ -20,7 +20,6 @@ from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
-from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS
 from modules.purchases.service import actor_has_no_purchase_unit_scope, get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
@@ -31,6 +30,7 @@ from modules.stock.service import (
     compute_stock_compliance,
     create_stock_item_reprint,
     create_stock_movement,
+    epi_ids_with_manufacturer_validity,
     fetch_available_stock_items,
     fetch_blocked_stock_items,
     fetch_validity_overview,
@@ -297,14 +297,21 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         if ca_status_filter == 'expired':
             clauses.append("COALESCE(e.ca_expiry, '') <> '' AND e.ca_expiry < ?")
             params.append(today_str)
-        if manufacturer_validity_filter == 'expired':
-            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date < ?")
-            params.append(today_str)
-        elif manufacturer_validity_filter in ('expiring', 'expiring_soon', 'near'):
-            threshold_str = (date.today() + timedelta(days=MANUFACTURER_VALIDITY_WARNING_DAYS)).isoformat()
-            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date >= ? AND e.epi_validity_date <= ?")
-            params.append(today_str)
-            params.append(threshold_str)
+        # EST-V3.5 (G02): conformidade de validade do fabricante POR LOTE físico.
+        # Em vez de filtrar pelo catálogo (epis.epi_validity_date, agora só default
+        # de cadastro), restringe às movimentações dos EPIs cuja validade efetiva
+        # (física do lote em estoque, senão catálogo) está vencida/próxima.
+        if manufacturer_validity_filter in ('expired', 'expiring', 'expiring_soon', 'near'):
+            validity_epi_ids = epi_ids_with_manufacturer_validity(
+                connection, manufacturer_validity_filter,
+                company_id=int(company_filter or 0) or None, unit_id=scope_unit_id or None,
+            )
+            if validity_epi_ids:
+                ph = ','.join(['?'] * len(validity_epi_ids))
+                clauses.append(f'sm.epi_id IN ({ph})')
+                params.extend(sorted(validity_epi_ids))
+            else:
+                clauses.append('1 = 0')  # nenhum EPI em conformidade → relatório vazio
         rows = fetch_stock_movements(connection, clauses, params)
         items = [row_to_dict(r) for r in rows]
         items = canary_evaluate_visibility_dataset(

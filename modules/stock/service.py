@@ -1239,6 +1239,48 @@ def effective_delivery_expiry(connection, stock_item_id, catalog_validity):
     return item_physical_expiry(connection, stock_item_id) or str(catalog_validity or '').strip()
 
 
+def epi_physical_validity_map(connection, company_id=None, unit_id=None):
+    """EST-V3.5 (G02): menor validade FÍSICA entre as peças EM ESTOQUE
+    (``in_stock``) de cada EPI — a "próxima a vencer" (FEFO) por EPI.
+
+    Fonte por lote para alertas/painel que operam por EPI (não por peça), no
+    lugar de ``epis.epi_validity_date`` (catálogo, que vira só default de
+    cadastro). Só peças ``in_stock`` com validade física conhecida entram —
+    peça sem validade física não opina aqui (o chamador cai no catálogo);
+    peça bloqueada já está fora do disponível. Retorna ``{epi_id: 'YYYY-MM-DD'}``.
+    Degrada para ``{}`` onde a coluna/tabela não existe (compatibilidade).
+    """
+    if not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return {}
+    # CAST(... AS TEXT): em PostgreSQL physical_expiry_date é DATE; o MIN textual
+    # de datas ISO 'YYYY-MM-DD' coincide com o cronológico nos dois engines.
+    sql = (
+        "SELECT epi_id, MIN(CAST(physical_expiry_date AS TEXT)) AS d "  # noqa: S608
+        'FROM epi_stock_items '
+        "WHERE LOWER(COALESCE(status, 'in_stock')) = 'in_stock' "
+        "AND COALESCE(CAST(physical_expiry_date AS TEXT), '') <> '' "
+    )
+    params = []
+    if company_id is not None:
+        sql += 'AND company_id = ? '
+        params.append(int(company_id))
+    if unit_id:
+        sql += 'AND unit_id = ? '
+        params.append(int(unit_id))
+    sql += 'GROUP BY epi_id'
+    try:
+        rows = connection.execute(sql, tuple(params)).fetchall()
+    except Exception:
+        return {}
+    out = {}
+    for r in rows:
+        eid = int((r['epi_id'] if hasattr(r, 'keys') else r[0]) or 0)
+        d = str((r['d'] if hasattr(r, 'keys') else r[1]) or '').strip()
+        if eid and d:
+            out[eid] = d
+    return out
+
+
 def blocked_physical_quantity(connection, company_id, unit_id, epi_id):
     """Peças FISICAMENTE presentes porém bloqueadas (status ``blocked_*``) na
     unidade. Base do desconto de disponibilidade (G01): o agregado
@@ -1522,11 +1564,19 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
     """
     today = today or datetime.now(UTC).date()
     prices = _validity_reference_prices(connection, int(company_id))
+    # EST-V3.5 (G02): a validade do produto que rege a conformidade é a FÍSICA do
+    # lote (por peça); o catálogo é só fallback para peças sem validade própria.
+    prod_expr = (
+        "COALESCE(NULLIF(CAST(esi.physical_expiry_date AS TEXT), ''), epis.epi_validity_date)"
+        if _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
+        else 'epis.epi_validity_date'
+    )
     sql = (
         'SELECT esi.id, esi.epi_id, esi.unit_id, esi.company_id, esi.lot_code, '
         'esi.manufacture_date, esi.status, epis.name AS epi_name, '
         "COALESCE(epis.manufacturer, '') AS manufacturer, epis.ca, epis.ca_expiry, "
         'epis.epi_validity_date, epis.unit_measure, '
+        f'{prod_expr} AS product_validity, '  # noqa: S608
         'units.name AS unit_name, companies.name AS company_name '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
@@ -1564,7 +1614,7 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
 
     for raw in rows:
         row = row_to_dict(raw)
-        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        product_days = _validity_days_until(row.get('product_validity'), today)
         ca_days = _validity_days_until(row.get('ca_expiry'), today)
         is_product_expired = product_days is not None and product_days < 0
         is_product_expiring = product_days is not None and 0 <= product_days <= warning_days
@@ -1636,10 +1686,18 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
       - admin_blocked: bloqueio administrativo (status blocked_*)
     """
     today = today or datetime.now(timezone.utc).date()
+    # EST-V3.5 (G02): conformidade de produto pela validade FÍSICA do lote (por
+    # peça); catálogo apenas como fallback para peças sem validade própria.
+    prod_expr = (
+        "COALESCE(NULLIF(CAST(esi.physical_expiry_date AS TEXT), ''), epis.epi_validity_date)"
+        if _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
+        else 'epis.epi_validity_date'
+    )
     rows = connection.execute(
-        'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '
+        'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '  # noqa: S608
         'esi.lot_code, esi.manufacture_date, esi.status, esi.qr_code_value, '
         'epis.name AS epi_name, epis.ca, epis.ca_expiry, epis.epi_validity_date, '
+        f'{prod_expr} AS product_validity, '
         'units.name AS unit_name '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
@@ -1660,7 +1718,11 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
         is_blocked = status.startswith('blocked_')
         is_available = status in ('in_stock', 'available')
         ca_days = _validity_days_until(row.get('ca_expiry'), today)
-        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        # EST-V3.5: dias de produto pela validade EFETIVA (física do lote, senão
+        # catálogo). `product_validity` é exposto para a UI mostrar a validade da
+        # peça; `epi_validity_date` segue como referência do catálogo (default).
+        product_validity = str(row.get('product_validity') or '').strip()
+        product_days = _validity_days_until(product_validity, today)
         record = {
             'stock_item_id': int(row.get('stock_item_id') or 0),
             'epi_id': int(row.get('epi_id') or 0),
@@ -1668,6 +1730,7 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
             'ca': row.get('ca') or '',
             'ca_expiry': row.get('ca_expiry') or '',
             'epi_validity_date': row.get('epi_validity_date') or '',
+            'product_validity': product_validity,
             'manufacture_date': row.get('manufacture_date') or '',
             'lot_code': (row.get('lot_code') or '').strip(),
             'unit_id': int(row.get('unit_id') or 0),

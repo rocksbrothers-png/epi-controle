@@ -1361,6 +1361,137 @@ def ensure_stock_columns(connection) -> None:
     ensure_stock_movement_size_columns(connection)
 
 
+def ensure_stock_lifecycle_model(connection) -> None:
+    """EST-V3: provisiona em SQLite o modelo físico de estoque da EST-V2.
+
+    Em PostgreSQL o modelo é criado e versionado pelas migrations 030/031
+    (tabelas, RLS, triggers de imutabilidade e de empresa do responsável,
+    constraints ``NOT VALID``). Esta função é **NO-OP em PostgreSQL** para não
+    divergir do DDL versionado — só provisiona a ESTRUTURA equivalente
+    (tabelas + colunas) no SQLite, onde a suíte de testes exercita o código
+    operacional (EST-V3+). Sem FKs/CHECKs/triggers exclusivos de PostgreSQL: as
+    regras são impostas pelo código operacional (e, em produção, pelas
+    migrations). Idempotente.
+    """
+    if not _is_sqlite_connection(connection):
+        return
+    # epi_stock_lots — recebimento/lote físico (espelha a 030; a identidade do
+    # recebimento é (company_id, receipt_key): repetir rótulo não funde lotes).
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_stock_lots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            receipt_unit_id INTEGER NOT NULL,
+            receipt_key TEXT NOT NULL,
+            receipt_source TEXT NOT NULL DEFAULT 'manual',
+            receipt_source_id INTEGER,
+            lot_code TEXT,
+            manufacture_date TEXT,
+            physical_expiry_date TEXT,
+            manufacturer_life_value INTEGER,
+            manufacturer_life_unit TEXT,
+            expiry_source TEXT NOT NULL DEFAULT 'unknown',
+            expiry_evidence TEXT,
+            ca_snapshot TEXT,
+            ca_expiry_snapshot TEXT,
+            received_quantity INTEGER NOT NULL DEFAULT 0,
+            supplier_id INTEGER,
+            supplier_name_snapshot TEXT,
+            unit_cost REAL,
+            currency TEXT NOT NULL DEFAULT 'BRL',
+            received_by_user_id INTEGER NOT NULL,
+            received_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (company_id, receipt_key)
+        )
+        '''
+    )
+    # Dados físicos por peça em epi_stock_items (descolados do catálogo).
+    _safe_add_column(connection, 'epi_stock_items', 'lot_id', 'INTEGER')
+    _safe_add_column(connection, 'epi_stock_items', 'physical_manufacture_date', 'TEXT')
+    _safe_add_column(connection, 'epi_stock_items', 'physical_expiry_date', 'TEXT')
+    _safe_add_column(connection, 'epi_stock_items', 'expiry_source', "TEXT NOT NULL DEFAULT 'unknown'")
+    _safe_add_column(connection, 'epi_stock_items', 'expiry_evidence', 'TEXT')
+    _safe_add_column(connection, 'epi_stock_items', 'unit_cost', 'REAL')
+    _safe_add_column(connection, 'epi_stock_items', 'row_version', 'INTEGER NOT NULL DEFAULT 0')
+    _safe_add_column(connection, 'epi_stock_items', 'blocking_reason_code', 'TEXT')
+    _safe_add_column(connection, 'epi_stock_items', 'blocking_justification', 'TEXT')
+    _safe_add_column(connection, 'epi_stock_items', 'blocked_by_user_id', 'INTEGER')
+    _safe_add_column(connection, 'epi_stock_items', 'blocked_at', 'TEXT')
+    connection.execute(
+        'CREATE INDEX IF NOT EXISTS ix_stock_items_fefo '
+        'ON epi_stock_items (company_id, unit_id, epi_id, status, physical_expiry_date, id)'
+    )
+    connection.execute(
+        'CREATE INDEX IF NOT EXISTS ix_stock_items_lot ON epi_stock_items (company_id, lot_id)'
+    )
+    # epi_stock_events — histórico append-only (a imutabilidade é trigger só-PG;
+    # em SQLite o código operacional trata a tabela como somente-inserção).
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_stock_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            stock_item_id INTEGER NOT NULL,
+            lot_id INTEGER,
+            quantity INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            origin_unit_id INTEGER,
+            destination_unit_id INTEGER,
+            reason_code TEXT NOT NULL,
+            justification TEXT NOT NULL,
+            actor_user_id INTEGER NOT NULL,
+            actor_name_snapshot TEXT NOT NULL DEFAULT '',
+            actor_role_snapshot TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT '',
+            before_values TEXT NOT NULL DEFAULT '{}',
+            after_values TEXT NOT NULL DEFAULT '{}',
+            decision_id INTEGER,
+            stock_movement_id INTEGER
+        )
+        '''
+    )
+    connection.execute(
+        'CREATE INDEX IF NOT EXISTS ix_stock_events_history '
+        'ON epi_stock_events (company_id, stock_item_id, created_at, id)'
+    )
+    # epi_stock_decisions — pedido de desbloqueio/destinação (fluxo EST-V5).
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS epi_stock_decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            unit_id INTEGER NOT NULL,
+            epi_id INTEGER NOT NULL,
+            stock_item_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            justification TEXT NOT NULL,
+            reason_code TEXT NOT NULL,
+            requested_by_user_id INTEGER NOT NULL,
+            requested_at TEXT NOT NULL DEFAULT '',
+            decided_by_user_id INTEGER,
+            decided_at TEXT,
+            decision_justification TEXT,
+            row_version INTEGER NOT NULL DEFAULT 0
+        )
+        '''
+    )
+    # company_stock_validity_config — janela de alerta por empresa (G20).
+    connection.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS company_stock_validity_config (
+            company_id INTEGER PRIMARY KEY,
+            warning_days INTEGER NOT NULL DEFAULT 30,
+            updated_by_user_id INTEGER NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT ''
+        )
+        '''
+    )
+
+
 def ensure_epi_operational_tables(connection) -> None:
     try:
         connection.execute(

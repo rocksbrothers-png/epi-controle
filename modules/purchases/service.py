@@ -945,6 +945,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                     actor_id, now, now
                 )
             )
+            # EST-V3 (G02/G15): descola a validade do catálogo — grava a validade
+            # física do lote NA PEÇA; lote já vencido não entra como disponível.
+            from modules.stock.service import record_received_item_physical
+            record_received_item_physical(
+                connection, int(item_cursor.lastrowid), manufacturer_validity, int(actor_id), now,
+                evidence=f'Conferência de requisição #{pr_id}',
+            )
             qr_labels.append({
                 'qr_code_value': qr_value,
                 'epi_name': epi_name,
@@ -2205,7 +2212,7 @@ def _add_po_received_items_to_stock(connection, po, actor, now):
         for _ in range(quantity):
             seq_value = next_company_qr_sequence(connection, company_id)
             qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
-            connection.execute(
+            item_cursor = connection.execute(
                 'INSERT INTO epi_stock_items ('
                 'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
                 'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
@@ -2215,6 +2222,22 @@ def _add_po_received_items_to_stock(connection, po, actor, now):
                     company_id, unit_id, epi_id, glove_size, size, uniform_size,
                     seq_value, qr_value, movement_id, int(actor['id']), now, now
                 )
+            )
+            # EST-V3 (G02/G15): valida a peça pela validade física do lote. Na PO
+            # a validade do fabricante foi persistida no catálogo na conferência
+            # ('received'); aqui ela é materializada na peça e, se vencida, o item
+            # recebido já entra bloqueado (não disponível).
+            catalog_validity = ''
+            try:
+                crow = connection.execute('SELECT epi_validity_date FROM epis WHERE id = ?', (epi_id,)).fetchone()
+                if crow is not None:
+                    catalog_validity = str((crow['epi_validity_date'] if hasattr(crow, 'keys') else crow[0]) or '').strip()
+            except Exception:
+                catalog_validity = ''
+            from modules.stock.service import record_received_item_physical
+            record_received_item_physical(
+                connection, int(item_cursor.lastrowid), catalog_validity, int(actor['id']), now,
+                evidence=f'Conferência de PO {po.get("po_number") or po_id}',
             )
         total_units += quantity
     return total_units

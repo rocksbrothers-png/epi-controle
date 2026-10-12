@@ -1259,6 +1259,40 @@ def blocked_physical_quantity(connection, company_id, unit_id, epi_id):
     return int((row['n'] if hasattr(row, 'keys') else row[0]) or 0)
 
 
+def record_received_item_physical(connection, stock_item_id, physical_expiry, actor_user_id, now,
+                                  *, evidence='Conferência de recebimento'):
+    """EST-V3 (G02/G15): grava a validade FÍSICA do lote na peça recebida.
+
+    - Preenche physical_expiry_date/expiry_source/expiry_evidence da peça: a
+      validade passa a viver NA PEÇA, não só no catálogo (G02) — dois lotes do
+      mesmo EPI com validades diferentes coexistem.
+    - Se o lote chega JÁ VENCIDO, a peça NÃO entra como disponível: vai para
+      ``blocked_expired`` com motivo estruturado (G15); permanece física
+      (contada no agregado), mas fora do disponível (ver blocked_physical_quantity).
+
+    ``expiry_source``/``expiry_evidence`` são obrigatórios junto de uma validade
+    física (constraint EST-V2); por isso a evidência nunca é vazia. NO-OP quando
+    a validade é desconhecida ou as colunas físicas não existem (compatibilidade).
+    """
+    physical_expiry = str(physical_expiry or '').strip()
+    if not physical_expiry or not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return
+    fragments = ['physical_expiry_date = ?', "expiry_source = 'manufacturer_document'", 'expiry_evidence = ?']
+    params = [physical_expiry, str(evidence or 'Conferência de recebimento')]
+    if is_expired(physical_expiry):
+        fragments.append("status = 'blocked_expired'")
+        if _has_col(connection, 'epi_stock_items', 'blocking_reason_code'):
+            fragments += [
+                'blocking_reason_code = ?', 'blocking_justification = ?',
+                'blocked_by_user_id = ?', 'blocked_at = ?',
+            ]
+            params += ['expired', 'Lote recebido já vencido (NT 146/2015)', int(actor_user_id), now]
+    connection.execute(
+        f'UPDATE epi_stock_items SET {", ".join(fragments)} WHERE id = ?',  # noqa: S608
+        (*params, int(stock_item_id)),
+    )
+
+
 def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
     # FEFO (First Expire, First Out): prioriza a peça que vence primeiro.
     # EST-V3 (G03): ordena pela VALIDADE FÍSICA do lote (physical_expiry_date)

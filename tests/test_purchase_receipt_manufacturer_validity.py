@@ -200,3 +200,71 @@ def test_po_receive_persists_manufacturer_validity_with_batch_fallback():
     assert result['status'] == 'received'
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
     assert epi['epi_validity_date'] == '2029-04-30'
+
+
+# ── EST-V3 (G02/G15): validade física POR PEÇA no recebimento ─────────────────
+
+def test_est_v3_received_items_carry_physical_expiry():
+    """Com o modelo físico provisionado, a conferência grava a validade física
+    na peça (não só no catálogo): a validade passa a viver no lote/peça (G02)."""
+    from core.schema import ensure_stock_lifecycle_model
+    from modules.purchases.service import update_purchase_request_status
+    conn = _conn()
+    ensure_stock_lifecycle_model(conn)
+    conn.execute(
+        "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
+        "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, "
+        "quantity_requested, status, created_at, updated_at) "
+        "VALUES (1, 1, 1, 1, 100, 'Capacete', 2, 'received', '2024-01-01', '2024-01-01')"
+    )
+    conn.commit()
+    pr = {'id': 1, 'company_id': 1, 'status': 'received'}
+    update_purchase_request_status(
+        conn, _actor(), pr, 'checked', '', '',
+        [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30'}], ''
+    )
+    rows = conn.execute(
+        "SELECT physical_expiry_date, expiry_source, status FROM epi_stock_items WHERE epi_id = 100"
+    ).fetchall()
+    assert len(rows) == 2
+    assert all(r['physical_expiry_date'] == '2027-09-30' for r in rows)
+    assert all(r['expiry_source'] == 'manufacturer_document' for r in rows)
+    assert all(r['status'] == 'in_stock' for r in rows)
+
+
+def test_est_v3_expired_lot_at_receipt_enters_blocked_not_available():
+    """G15: um lote que chega JÁ VENCIDO não entra como disponível — a peça
+    recebida vai para blocked_expired (física, porém fora do disponível)."""
+    from datetime import date, timedelta
+    from core.schema import ensure_stock_lifecycle_model
+    from modules.purchases.service import update_purchase_request_status
+    from modules.stock.service import blocked_physical_quantity
+    past = (date.today() - timedelta(days=5)).isoformat()
+    conn = _conn()
+    ensure_stock_lifecycle_model(conn)
+    conn.execute(
+        "INSERT INTO purchase_requests (id, company_id, unit_id, status, title, created_at, updated_at) "
+        "VALUES (1, 1, 1, 'received', 'Req', '2024-01-01', '2024-01-01')"
+    )
+    conn.execute(
+        "INSERT INTO purchase_request_items (id, purchase_request_id, company_id, unit_id, epi_id, epi_name, "
+        "quantity_requested, status, created_at, updated_at) "
+        "VALUES (1, 1, 1, 1, 100, 'Capacete', 1, 'received', '2024-01-01', '2024-01-01')"
+    )
+    conn.commit()
+    pr = {'id': 1, 'company_id': 1, 'status': 'received'}
+    update_purchase_request_status(
+        conn, _actor(), pr, 'checked', '', '',
+        [{'id': 1, 'received': True, 'manufacturer_validity_date': past}], ''
+    )
+    r = conn.execute(
+        "SELECT status, physical_expiry_date, blocking_reason_code FROM epi_stock_items WHERE epi_id = 100"
+    ).fetchone()
+    assert r['status'] == 'blocked_expired'
+    assert r['physical_expiry_date'] == past
+    assert r['blocking_reason_code'] == 'expired'
+    # fisicamente presente, porém fora do disponível
+    assert blocked_physical_quantity(conn, 1, 1, 100) == 1

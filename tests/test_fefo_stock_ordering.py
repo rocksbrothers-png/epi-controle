@@ -8,6 +8,7 @@ que estoque bloqueado nunca é oferecido na entrega.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 
 from modules.stock.service import fetch_available_stock_items
 
@@ -38,6 +39,11 @@ def _conn():
     add(12, '')                    # sem data → vai ao final
     add(13, '2026-02-01')          # meio
     add(99, '2025-01-01', status='blocked_expired')  # bloqueado → não aparece
+    conn.commit()
+    ensure_test_physical_schema(conn)
+    conn.execute('CREATE TABLE IF NOT EXISTS unit_epi_stock(id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, epi_id INTEGER, quantity INTEGER, updated_at TEXT)')
+    conn.execute('INSERT INTO unit_epi_stock(company_id,unit_id,epi_id,quantity) VALUES(1,2,7,20)')
+    conn.execute("UPDATE epi_stock_items SET physical_expiry_date='9999-12-31'")
     conn.commit()
     return conn
 

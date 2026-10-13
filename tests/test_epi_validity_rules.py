@@ -49,7 +49,13 @@ def _compute(epis):
     # lógica de geração de alerta de validade, não o escopo por unidade — que é
     # coberto em test_low_stock_alert_scope.py.
     from modules.alerts.service import compute_alerts
-    return compute_alerts(
+    from unittest.mock import patch
+    from modules.stock.eligibility import classify_physical
+    physical = {int(e['id']): dict(as_of_date=TODAY.isoformat(), warning_days=30, timezone='UTC',
+                 nearest_known_expiry=e.get('physical_expiry_date'), **{k: int(classify_physical(e.get('physical_expiry_date'), {'as_of_date': TODAY.isoformat(), 'warning_days': 30})['status'] == k) for k in ('valid','expired','expiring','unknown')})
+                for e in epis if e.get('physical_expiry_date')}
+    with patch('modules.alerts.service.physical_summary_map', return_value=physical):
+        return compute_alerts(
         None, {'role': 'general_admin', 'company_id': 1},
         fetch_low_stock_items=lambda conn, act: [],
         actor_operational_unit_id=lambda conn, act: None,
@@ -68,7 +74,7 @@ def _epi(**over):
 
 
 def test_alert_manufacturer_validity_expired():
-    alerts = _compute([_epi(epi_validity_date=PAST)])
+    alerts = _compute([_epi(physical_expiry_date=PAST)])
     manu = [a for a in alerts if 'Validade do fabricante vencida' in a['title']]
     assert len(manu) == 1
     assert manu[0]['type'] == 'danger'
@@ -76,15 +82,15 @@ def test_alert_manufacturer_validity_expired():
 
 
 def test_alert_manufacturer_validity_expiring_soon():
-    alerts = _compute([_epi(epi_validity_date=SOON)])
+    alerts = _compute([_epi(physical_expiry_date=SOON)])
     manu = [a for a in alerts if 'Validade do fabricante próxima' in a['title']]
     assert len(manu) == 1
     assert 'PEPS' in manu[0]['description']
 
 
 def test_no_manufacturer_alert_when_valid_or_inactive():
-    assert _compute([_epi(epi_validity_date=FUTURE)]) == []
-    assert _compute([_epi(active=0, epi_validity_date=PAST)]) == []
+    assert _compute([_epi(physical_expiry_date=FUTURE)]) == []
+    assert _compute([_epi(active=0, physical_expiry_date=PAST)]) == []
 
 
 # ── bloqueio de entrega: validade do fabricante vencida ───────────────────────
@@ -108,14 +114,20 @@ def _delivery_kwargs():
 _epi_full = None
 
 
-def test_delivery_blocked_when_manufacturer_validity_expired():
+def test_delivery_not_blocked_early_by_catalog_validity():
+    """EST-V3.5 (G02, ponto 3): o gate de entrega NÃO bloqueia mais pela validade
+    do CATÁLOGO (epis.epi_validity_date). A validação de validade do fabricante
+    passou a ser por LOTE FÍSICO da peça, aplicada após a leitura da unidade
+    etiquetada (coberta de ponta a ponta na suíte PostgreSQL). Aqui provamos que
+    um catálogo vencido isolado não produz mais o erro de validade do fabricante
+    (falha adiante, exigindo a leitura da peça)."""
     global _epi_full
     from modules.deliveries.service import create_delivery_service
     _epi_full = {'id': 30, 'company_id': 1, 'unit_id': 7, 'epi_validity_date': PAST, 'ca_expiry': FUTURE, 'unit_measure': 'UN'}
     payload = {'company_id': 1, 'employee_id': 21, 'epi_id': 30, 'quantity': 1}
     with pytest.raises(ValueError) as exc:
         create_delivery_service(None, payload, **_delivery_kwargs())
-    assert 'validade do fabricante' in str(exc.value).lower()
+    assert 'validade do fabricante' not in str(exc.value).lower()
 
 
 def test_delivery_not_blocked_by_expired_ca_alone():

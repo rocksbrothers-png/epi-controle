@@ -1,0 +1,5 @@
+# Exact fingerprints of the removed, deterministic disposable-CI fixture key.
+# No production credential existed. New fixtures generate a random key in memory.
+# Preserve PR commit history; no future file/line or rule is exempted.
+11e05c6fadb8804068815a2238ef8e1e5a0f24aa:.github/workflows/stock-validity-integration.yml:generic-api-key:31
+b2ab7f2b5d60c3cfb61fb869f0f4076b37ec4916:.github/workflows/stock-validity-integration.yml:generic-api-key:31

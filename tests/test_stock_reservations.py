@@ -5,6 +5,7 @@ aprovadas sobre a mesma peça e a segunda descobria o problema na entrega.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import seed_test_physical_backing
 
 import pytest
 
@@ -60,6 +61,8 @@ def _conn(stock_matriz=10, stock_filial=7, with_reservations=True):
     if with_reservations:
         ensure_stock_reservations(conn)
         conn.commit()
+    seed_test_physical_backing(conn)
+    conn.commit()
     return conn
 
 
@@ -78,6 +81,7 @@ def test_free_equals_physical_when_nothing_is_reserved():
     assert balance == {
         'company_id': 1, 'unit_id': MATRIZ, 'epi_id': EPI,
         'physical': 10, 'reserved': 0, 'free': 10,
+        'operational_capacity': 10, 'eligible': 10, 'tracked_physical': 10, 'reservation_shortfall': 0, 'reconciliation_delta': 0,
     }
 
 

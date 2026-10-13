@@ -31,19 +31,13 @@ class NewDeliveryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NewDeliveryCubit(),
-      child: _NewDeliveryBody(
-        employees: employees,
-        companyId: companyId,
-      ),
+      child: _NewDeliveryBody(employees: employees, companyId: companyId),
     );
   }
 }
 
 class _NewDeliveryBody extends StatelessWidget {
-  const _NewDeliveryBody({
-    required this.employees,
-    required this.companyId,
-  });
+  const _NewDeliveryBody({required this.employees, required this.companyId});
 
   final List<Employee> employees;
   final int companyId;
@@ -75,10 +69,7 @@ class _NewDeliveryBody extends StatelessWidget {
                   ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(48),
-              child: _StepIndicator(
-                steps: stepTitles,
-                current: stepIdx,
-              ),
+              child: _StepIndicator(steps: stepTitles, current: stepIdx),
             ),
           ),
           body: BlocListener<NewDeliveryCubit, NewDeliveryState>(
@@ -113,6 +104,8 @@ class _NewDeliveryBody extends StatelessWidget {
                 DeliveryBlock.employeeWithoutUnit =>
                   l10n.deliveryEmployeeWithoutUnit,
                 DeliveryBlock.qrFromAnotherEpi => l10n.deliveryQrOtherEpi,
+                DeliveryBlock.ineligibleStockItem =>
+                  l10n.deliveryPhysicalItemIneligible,
                 DeliveryBlock.none => null,
               };
               final mensagem = impedimento ?? state.error;
@@ -168,10 +161,9 @@ class _StepIndicator extends StatelessWidget {
                 Text(
                   e.value,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w400,
-                      ),
+                    color: color,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -237,9 +229,12 @@ class _EmployeeStepState extends State<_EmployeeStep> {
               return ListTile(
                 leading: EpiAvatar(name: emp.name),
                 title: Text(emp.name),
-                subtitle: Text([emp.sector, emp.role]
-                    .where((s) => s != null && s.isNotEmpty)
-                    .join(' · ')),
+                subtitle: Text(
+                  [
+                    emp.sector,
+                    emp.role,
+                  ].where((s) => s != null && s.isNotEmpty).join(' · '),
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () =>
                     context.read<NewDeliveryCubit>().selectEmployee(emp),
@@ -295,9 +290,9 @@ class _EpiStepState extends State<_EpiStep> {
             buildWhen: (p, c) => p.selectedEmployee != c.selectedEmployee,
             builder: (_, state) => Text(
               state.selectedEmployee?.name ?? '',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: EpiColors.textMuted,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(color: EpiColors.textMuted),
             ),
           ),
         ),
@@ -335,7 +330,7 @@ class _EpiStepState extends State<_EpiStep> {
                   // Saldo DA UNIDADE do colaborador. O corporativo não aparece
                   // aqui: numa operação física ele não significa nada — a
                   // entrega sai deste estoque, não do agregado da empresa.
-                  final saldoLocal = epi.unitStockQuantity ?? 0;
+                  final saldoLocal = epi.availableQuantity ?? 0;
                   // Classificação DA UNIDADE, decidida pelo backend (#271) e
                   // devolvida por `/api/stock/epis` junto com o saldo local
                   // (#278, item 6 da DoD). A 1.1D-C2 tirou daqui o badge de
@@ -369,8 +364,7 @@ class _EpiStepState extends State<_EpiStep> {
                     // disponibilidade real é decidida no passo do item, onde só
                     // existem unidades etiquetadas `in_stock` desta Unidade.
                     onTap: saldoLocal > 0
-                        ? () =>
-                            context.read<NewDeliveryCubit>().selectEpi(epi)
+                        ? () => context.read<NewDeliveryCubit>().selectEpi(epi)
                         : null,
                     enabled: saldoLocal > 0,
                   );
@@ -444,27 +438,31 @@ class _ItemStep extends StatelessWidget {
               child: state.isLoadingItems
                   ? const Center(child: CircularProgressIndicator())
                   : state.availableItems.isEmpty
-                      ? Center(child: Text(l10n.deliveryItemEmpty))
-                      : ListView.builder(
-                          itemCount: state.availableItems.length,
-                          itemBuilder: (_, i) {
-                            final item = state.availableItems[i];
-                            return ListTile(
-                              leading: const Icon(Icons.qr_code_2_rounded),
-                              title: Text(item.qrCodeValue ?? '#${item.id}'),
-                              subtitle: Text([
-                                item.lotCode,
-                                item.gloveSize ?? item.size ?? item.uniformSize,
-                                item.epiValidityDate,
-                              ].where((t) => t != null && t.isNotEmpty).join(' · ')),
-                              trailing:
-                                  const Icon(Icons.chevron_right_rounded),
-                              onTap: () => context
-                                  .read<NewDeliveryCubit>()
-                                  .selectItem(item),
-                            );
-                          },
-                        ),
+                  ? Center(child: Text(l10n.deliveryItemEmpty))
+                  : ListView.builder(
+                      itemCount: state.availableItems.length,
+                      itemBuilder: (_, i) {
+                        final item = state.availableItems[i];
+                        return ListTile(
+                          leading: const Icon(Icons.qr_code_2_rounded),
+                          title: Text(item.qrCodeValue ?? '#${item.id}'),
+                          subtitle: Text(
+                            [
+                                  item.lotCode,
+                                  item.gloveSize ??
+                                      item.size ??
+                                      item.uniformSize,
+                                  item.epiValidityDate,
+                                ]
+                                .where((t) => t != null && t.isNotEmpty)
+                                .join(' · '),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () =>
+                              context.read<NewDeliveryCubit>().selectItem(item),
+                        );
+                      },
+                    ),
             ),
           ],
         );
@@ -486,8 +484,7 @@ class _DetailsStepState extends State<_DetailsStep> {
   final _sectorController = TextEditingController();
   final _roleController = TextEditingController();
   DateTime _deliveryDate = DateTime.now();
-  DateTime _nextReplacementDate =
-      DateTime.now().add(const Duration(days: 365));
+  DateTime _nextReplacementDate = DateTime.now().add(const Duration(days: 365));
 
   bool _initialized = false;
 
@@ -523,13 +520,16 @@ class _DetailsStepState extends State<_DetailsStep> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(state.selectedEmployee?.name ?? '',
-                        style: Theme.of(context).textTheme.titleSmall),
-                    Text(state.selectedEpi?.name ?? '',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: EpiColors.textMuted)),
+                    Text(
+                      state.selectedEmployee?.name ?? '',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      state.selectedEpi?.name ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: EpiColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -572,16 +572,18 @@ class _DetailsStepState extends State<_DetailsStep> {
               label: AppLocalizations.of(context).next,
               onPressed: () {
                 ctx.read<NewDeliveryCubit>().setDetails(
-                      // Uma unidade etiquetada, uma unidade entregue.
-                      quantity: 1,
-                      deliveryDate:
-                          _deliveryDate.toIso8601String().substring(0, 10),
-                      nextReplacementDate: _nextReplacementDate
-                          .toIso8601String()
-                          .substring(0, 10),
-                      sector: _sectorController.text.trim(),
-                      roleName: _roleController.text.trim(),
-                    );
+                  // Uma unidade etiquetada, uma unidade entregue.
+                  quantity: 1,
+                  deliveryDate: _deliveryDate.toIso8601String().substring(
+                    0,
+                    10,
+                  ),
+                  nextReplacementDate: _nextReplacementDate
+                      .toIso8601String()
+                      .substring(0, 10),
+                  sector: _sectorController.text.trim(),
+                  roleName: _roleController.text.trim(),
+                );
                 ctx.read<NewDeliveryCubit>().goToSignature();
               },
               fullWidth: true,
@@ -693,7 +695,8 @@ class _SignatureStepState extends State<_SignatureStep> {
                       icon: Icons.inventory_2_outlined,
                       // Item físico que sai do estoque — é ele que a entrega
                       // baixa, e é o seu id que vai no `stock_item_id`.
-                      text: state.selectedItem?.qrCodeValue ??
+                      text:
+                          state.selectedItem?.qrCodeValue ??
                           '#${state.selectedItem?.id ?? 0}',
                     ),
                     _SummaryRow(
@@ -705,15 +708,16 @@ class _SignatureStepState extends State<_SignatureStep> {
               ),
             ),
             const SizedBox(height: EpiSpacing.xl),
-            Text(l10n.deliveryStep4,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              l10n.deliveryStep4,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: EpiSpacing.sm),
             Text(
               l10n.portalSignatureInstruction,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: EpiColors.textMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
             ),
             const SizedBox(height: EpiSpacing.md),
             ClipRRect(
@@ -765,8 +769,7 @@ class _SignatureStepState extends State<_SignatureStep> {
     if (!_dirty || _signatureController.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(AppLocalizations.of(context).deliverySignatureRequired),
+          content: Text(AppLocalizations.of(context).deliverySignatureRequired),
           backgroundColor: EpiColors.danger,
         ),
       );
@@ -777,9 +780,9 @@ class _SignatureStepState extends State<_SignatureStep> {
     final signatureData = base64Encode(pngBytes);
 
     await ctx.read<NewDeliveryCubit>().submit(
-          companyId: widget.companyId,
-          signatureData: signatureData,
-        );
+      companyId: widget.companyId,
+      signatureData: signatureData,
+    );
   }
 }
 

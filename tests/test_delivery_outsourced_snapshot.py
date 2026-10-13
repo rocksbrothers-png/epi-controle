@@ -14,6 +14,7 @@ Cobre:
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 
 import pytest
 
@@ -209,11 +210,18 @@ def _delivery_conn():
 
 
 def _stock_item(conn, company_id, *, unit_id=7, epi_id=30, qr='QR-001'):
+    conn.execute('CREATE TABLE IF NOT EXISTS epis(id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT)')
+    conn.execute('INSERT OR IGNORE INTO epis(id,company_id,name) VALUES(?,?,?)', (epi_id, company_id, 'Fixture EPI'))
+    conn.execute('CREATE TABLE IF NOT EXISTS unit_epi_stock(id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, epi_id INTEGER, quantity INTEGER, updated_at TEXT)')
+    conn.execute('INSERT INTO unit_epi_stock(company_id,unit_id,epi_id,quantity) VALUES(?,?,?,5)', (company_id, unit_id, epi_id))
+    conn.execute('INSERT OR IGNORE INTO units(id,company_id,name) VALUES(?,?,?)', (unit_id, company_id, 'Fixture Unit'))
+    ensure_test_physical_schema(conn)
     cur = conn.execute(
         'INSERT INTO epi_stock_items (company_id, unit_id, epi_id, status, qr_code_value) '
         "VALUES (?, ?, ?, 'in_stock', ?)",
         (company_id, unit_id, epi_id, qr),
     )
+    conn.execute("UPDATE epi_stock_items SET physical_expiry_date='9999-12-31' WHERE company_id=? AND unit_id=? AND epi_id=?", (company_id, unit_id, epi_id))
     conn.commit()
     return int(cur.lastrowid), qr
 

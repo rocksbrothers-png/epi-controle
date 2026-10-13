@@ -31,10 +31,45 @@ class EpiSizeBalance {
   }
 
   factory EpiSizeBalance.fromJson(Map<String, dynamic> json) => EpiSizeBalance(
-        quantity: (json['quantity'] as num?)?.toInt() ?? 0,
-        gloveSize: _texto(json['glove_size']),
-        size: _texto(json['size']),
-        uniformSize: _texto(json['uniform_size']),
+    quantity: (json['quantity'] as num?)?.toInt() ?? 0,
+    gloveSize: _texto(json['glove_size']),
+    size: _texto(json['size']),
+    uniformSize: _texto(json['uniform_size']),
+  );
+}
+
+/// Authoritative counts of physical pieces in the selected stock scope.
+class PhysicalValiditySummary {
+  const PhysicalValiditySummary({
+    required this.physicalPieces,
+    required this.eligiblePieces,
+    required this.valid,
+    required this.expiring,
+    required this.expired,
+    required this.unknown,
+    required this.asOfDate,
+    required this.warningDays,
+    required this.timezone,
+  });
+  final int physicalPieces,
+      eligiblePieces,
+      valid,
+      expiring,
+      expired,
+      unknown,
+      warningDays;
+  final String asOfDate, timezone;
+  factory PhysicalValiditySummary.fromJson(Map<String, dynamic> json) =>
+      PhysicalValiditySummary(
+        physicalPieces: (json['physical_pieces'] as num).toInt(),
+        eligiblePieces: (json['eligible_pieces'] as num).toInt(),
+        valid: (json['valid'] as num).toInt(),
+        expiring: (json['expiring'] as num).toInt(),
+        expired: (json['expired'] as num).toInt(),
+        unknown: (json['unknown'] as num).toInt(),
+        asOfDate: json['as_of_date'] as String,
+        warningDays: (json['warning_days'] as num).toInt(),
+        timezone: json['timezone'] as String,
       );
 }
 
@@ -46,6 +81,9 @@ class Epi {
     this.caNumber,
     this.caExpiryDate,
     this.manufacturerValidityDate,
+    this.catalogValidityDate,
+    this.physicalValiditySummary,
+    this.availableQuantity,
     this.validityDays,
     this.stockQuantity = 0,
     this.minimumStock = 0,
@@ -81,6 +119,11 @@ class Epi {
   /// do EPI: após a aquisição com CA válido, é esta data — e não mais o CA — que
   /// rege se o EPI pode ser entregue ao trabalhador (NT 146/2015).
   final String? manufacturerValidityDate;
+
+  /// Catalog date is information only; it never represents physical stock.
+  final String? catalogValidityDate;
+  final PhysicalValiditySummary? physicalValiditySummary;
+  final int? availableQuantity;
 
   final int? validityDays;
   final int stockQuantity;
@@ -204,21 +247,32 @@ class Epi {
   //   • `isCompanyStockCritical` — corporativa (bootstrap, catálogo).
 
   /// 'expired' | 'expiring' | 'valid' | null (sem data) para uma data ISO.
-  static String? _dateStatus(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return null;
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return null;
-    final now = DateTime.now();
-    if (date.isBefore(now)) return 'expired';
-    if (date.isBefore(now.add(const Duration(days: 30)))) return 'expiring';
-    return 'valid';
+  static DateTime? _calendarDate(String? value) {
+    if (value == null || !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value))
+      return null;
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null || parsed.toIso8601String().substring(0, 10) != value)
+      return null;
+    return DateTime.utc(parsed.year, parsed.month, parsed.day);
   }
 
-  static int? _daysUntil(String? dateStr) {
-    if (dateStr == null || dateStr.isEmpty) return null;
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return null;
-    return date.difference(DateTime.now()).inDays;
+  int? _daysUntil(String? value) {
+    final target = _calendarDate(value);
+    if (target == null) return null;
+    final now = DateTime.now();
+    final reference =
+        _calendarDate(physicalValiditySummary?.asOfDate) ??
+        DateTime.utc(now.year, now.month, now.day);
+    return target.difference(reference).inDays;
+  }
+
+  String? _dateStatus(String? value) {
+    final days = _daysUntil(value);
+    if (days == null) return null;
+    if (days < 0) return 'expired';
+    return days <= (physicalValiditySummary?.warningDays ?? 30)
+        ? 'expiring'
+        : 'valid';
   }
 
   /// 'expired' | 'expiring' | 'valid' | null (no CA date)
@@ -227,82 +281,115 @@ class Epi {
   int? get daysUntilCaExpiry => _daysUntil(caExpiryDate);
 
   /// 'expired' | 'expiring' | 'valid' | null (sem data do fabricante)
-  String? get manufacturerValidityStatus =>
-      _dateStatus(manufacturerValidityDate);
+  String? get manufacturerValidityStatus {
+    final summary = physicalValiditySummary;
+    if (summary == null) return _dateStatus(manufacturerValidityDate);
+    if (summary.physicalPieces == 0) return 'empty';
+    if (summary.expired > 0) return 'expired';
+    if (summary.unknown > 0) return 'unknown';
+    if (summary.expiring > 0) return 'expiring';
+    return 'valid';
+  }
+
+  bool get hasExpiredPhysicalPieces => physicalValiditySummary != null
+      ? physicalValiditySummary!.expired > 0
+      : manufacturerValidityStatus == 'expired';
+  bool get hasExpiringPhysicalPieces => physicalValiditySummary != null
+      ? physicalValiditySummary!.expiring > 0
+      : manufacturerValidityStatus == 'expiring';
+  bool get hasUnknownPhysicalPieces =>
+      (physicalValiditySummary?.unknown ?? 0) > 0;
+  bool get hasNoPhysicalStock => physicalValiditySummary?.physicalPieces == 0;
 
   int? get daysUntilManufacturerValidity =>
       _daysUntil(manufacturerValidityDate);
 
   /// True quando o EPI não pode ser entregue por validade do fabricante vencida
   /// (NT 146/2015). CA vencido NÃO impede a entrega.
-  bool get isBlockedForDelivery => manufacturerValidityStatus == 'expired';
+  bool get isBlockedForDelivery => physicalValiditySummary != null
+      ? (availableQuantity ?? 0) == 0
+      : manufacturerValidityStatus == 'expired' ||
+            manufacturerValidityDate == null;
 
   Epi copyWith({int? stockQuantity, int? unitStockQuantity}) => Epi(
-        id: id,
-        name: name,
-        code: code,
-        caNumber: caNumber,
-        caExpiryDate: caExpiryDate,
-        manufacturerValidityDate: manufacturerValidityDate,
-        validityDays: validityDays,
-        stockQuantity: stockQuantity ?? this.stockQuantity,
-        minimumStock: minimumStock,
-        photoUrl: photoUrl,
-        companyId: companyId,
-        unitStockQuantity: unitStockQuantity ?? this.unitStockQuantity,
-        companyStockQuantity: companyStockQuantity,
-        isCompanyStockCritical: isCompanyStockCritical,
-        unitScopeId: unitScopeId,
-        sizeBalances: sizeBalances,
-        unitMinimumStock: unitMinimumStock,
-        minimumStockSource: minimumStockSource,
-        effectiveAttentionPercentage: effectiveAttentionPercentage,
-        attentionPercentageSource: attentionPercentageSource,
-        attentionLimit: attentionLimit,
-        stockAlertEnabled: stockAlertEnabled,
-        alertSource: alertSource,
-        underlyingStatus: underlyingStatus,
-        stockStatus: stockStatus,
-        stockCondition: stockCondition,
-      );
+    id: id,
+    name: name,
+    code: code,
+    caNumber: caNumber,
+    caExpiryDate: caExpiryDate,
+    manufacturerValidityDate: manufacturerValidityDate,
+    catalogValidityDate: catalogValidityDate,
+    physicalValiditySummary: physicalValiditySummary,
+    availableQuantity: availableQuantity,
+    validityDays: validityDays,
+    stockQuantity: stockQuantity ?? this.stockQuantity,
+    minimumStock: minimumStock,
+    photoUrl: photoUrl,
+    companyId: companyId,
+    unitStockQuantity: unitStockQuantity ?? this.unitStockQuantity,
+    companyStockQuantity: companyStockQuantity,
+    isCompanyStockCritical: isCompanyStockCritical,
+    unitScopeId: unitScopeId,
+    sizeBalances: sizeBalances,
+    unitMinimumStock: unitMinimumStock,
+    minimumStockSource: minimumStockSource,
+    effectiveAttentionPercentage: effectiveAttentionPercentage,
+    attentionPercentageSource: attentionPercentageSource,
+    attentionLimit: attentionLimit,
+    stockAlertEnabled: stockAlertEnabled,
+    alertSource: alertSource,
+    underlyingStatus: underlyingStatus,
+    stockStatus: stockStatus,
+    stockCondition: stockCondition,
+  );
 
   factory Epi.fromJson(Map<String, dynamic> json) => Epi(
-        id: (json['id'] as num).toInt(),
-        name: json['name'] as String? ?? '',
-        // Aceita as chaves canônicas do backend e as legadas (compat.).
-        code: (json['purchase_code'] ?? json['code']) as String?,
-        caNumber: (json['ca'] ?? json['ca_number']) as String?,
-        caExpiryDate: (json['ca_expiry'] ?? json['ca_expiry_date']) as String?,
-        manufacturerValidityDate: (json['epi_validity_date'] ??
-            json['manufacturer_validity_date']) as String?,
-        validityDays: (json['validity_days'] as num?)?.toInt(),
-        stockQuantity:
-            ((json['stock'] ?? json['stock_quantity']) as num?)?.toInt() ?? 0,
-        minimumStock: (json['minimum_stock'] as num?)?.toInt() ?? 0,
-        photoUrl: (json['epi_photo_data'] ?? json['photo_url']) as String?,
-        // Campos do contrato de /api/stock/epis. Ausentes no bootstrap, e por
-        // isso anuláveis: um payload sem semântica de unidade não deve produzir
-        // zero, que seria lido como "unidade sem estoque".
-        companyId: (json['company_id'] as num?)?.toInt(),
-        unitStockQuantity: (json['unit_stock_quantity'] as num?)?.toInt(),
-        companyStockQuantity: (json['company_stock_quantity'] as num?)?.toInt(),
-        isCompanyStockCritical: json['is_company_stock_critical'] as bool?,
-        unitScopeId: (json['unit_scope_id'] as num?)?.toInt(),
-        sizeBalances: ((json['size_balances'] as List<dynamic>?) ?? const [])
-            .map((e) => EpiSizeBalance.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        // Classificação por Unidade (#271). Anuláveis pelo mesmo motivo dos
-        // campos acima: o bootstrap não carrega semântica de unidade.
-        unitMinimumStock: (json['unit_minimum_stock'] as num?)?.toInt(),
-        minimumStockSource: json['minimum_stock_source'] as String?,
-        effectiveAttentionPercentage:
-            (json['effective_attention_percentage'] as num?)?.toInt(),
-        attentionPercentageSource: json['attention_percentage_source'] as String?,
-        attentionLimit: (json['attention_limit'] as num?)?.toInt(),
-        stockAlertEnabled: json['stock_alert_enabled'] as bool?,
-        alertSource: json['alert_source'] as String?,
-        underlyingStatus: json['underlying_status'] as String?,
-        stockStatus: json['stock_status'] as String?,
-        stockCondition: json['stock_condition'] as String?,
-      );
+    id: (json['id'] as num).toInt(),
+    name: json['name'] as String? ?? '',
+    // Aceita as chaves canônicas do backend e as legadas (compat.).
+    code: (json['purchase_code'] ?? json['code']) as String?,
+    caNumber: (json['ca'] ?? json['ca_number']) as String?,
+    caExpiryDate: (json['ca_expiry'] ?? json['ca_expiry_date']) as String?,
+    manufacturerValidityDate: json['effective_validity_date'] as String?,
+    catalogValidityDate:
+        (json['catalog_validity_date'] ??
+                json['epi_validity_date'] ??
+                json['manufacturer_validity_date'])
+            as String?,
+    physicalValiditySummary: json['physical_validity_summary'] == null
+        ? null
+        : PhysicalValiditySummary.fromJson(
+            json['physical_validity_summary'] as Map<String, dynamic>,
+          ),
+    availableQuantity: (json['available_quantity'] as num?)?.toInt(),
+    validityDays: (json['validity_days'] as num?)?.toInt(),
+    stockQuantity:
+        ((json['stock'] ?? json['stock_quantity']) as num?)?.toInt() ?? 0,
+    minimumStock: (json['minimum_stock'] as num?)?.toInt() ?? 0,
+    photoUrl: (json['epi_photo_data'] ?? json['photo_url']) as String?,
+    // Campos do contrato de /api/stock/epis. Ausentes no bootstrap, e por
+    // isso anuláveis: um payload sem semântica de unidade não deve produzir
+    // zero, que seria lido como "unidade sem estoque".
+    companyId: (json['company_id'] as num?)?.toInt(),
+    unitStockQuantity: (json['unit_stock_quantity'] as num?)?.toInt(),
+    companyStockQuantity: (json['company_stock_quantity'] as num?)?.toInt(),
+    isCompanyStockCritical: json['is_company_stock_critical'] as bool?,
+    unitScopeId: (json['unit_scope_id'] as num?)?.toInt(),
+    sizeBalances: ((json['size_balances'] as List<dynamic>?) ?? const [])
+        .map((e) => EpiSizeBalance.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    // Classificação por Unidade (#271). Anuláveis pelo mesmo motivo dos
+    // campos acima: o bootstrap não carrega semântica de unidade.
+    unitMinimumStock: (json['unit_minimum_stock'] as num?)?.toInt(),
+    minimumStockSource: json['minimum_stock_source'] as String?,
+    effectiveAttentionPercentage:
+        (json['effective_attention_percentage'] as num?)?.toInt(),
+    attentionPercentageSource: json['attention_percentage_source'] as String?,
+    attentionLimit: (json['attention_limit'] as num?)?.toInt(),
+    stockAlertEnabled: json['stock_alert_enabled'] as bool?,
+    alertSource: json['alert_source'] as String?,
+    underlyingStatus: json['underlying_status'] as String?,
+    stockStatus: json['stock_status'] as String?,
+    stockCondition: json['stock_condition'] as String?,
+  );
 }

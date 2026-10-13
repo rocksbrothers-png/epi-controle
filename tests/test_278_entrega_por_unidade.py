@@ -54,7 +54,7 @@ def _normalizado(texto):
 def test_a_entrega_envia_o_item_fisico_e_nao_o_epi():
     corpo = _sem_comentarios(CUBIT.read_text(encoding='utf-8'))
     assert 'final stockItemId = s.selectedItem!.id;' in corpo
-    assert "final qrCode      = s.selectedItem!.qrCodeValue ?? '';" in corpo
+    assert "final qrCode = s.selectedItem!.qrCodeValue ?? '';" in corpo
     # As duas formas antigas, explicitamente proibidas.
     assert "'stock_item_id': s.selectedEpi!.id" not in corpo
     assert 's.selectedEpi!.code' not in corpo, \
@@ -120,7 +120,7 @@ def test_a_tela_de_entrega_nao_recebe_mais_o_catalogo_corporativo():
 
 def test_o_passo_de_epi_usa_o_saldo_da_unidade():
     tela = _sem_comentarios(TELA.read_text(encoding='utf-8'))
-    assert 'epi.unitStockQuantity ?? 0' in tela
+    assert 'epi.availableQuantity ?? 0' in tela
     assert 'saldoLocal > 0' in tela
     # A habilitação pelo saldo corporativo, que era o defeito relatado.
     assert 'epi.stockQuantity > 0' not in tela
@@ -287,13 +287,13 @@ def test_o_backend_exige_o_item_etiquetado_daquela_unidade():
     assert "raise ValueError('Unidade etiquetada não encontrada.')" in corpo
     assert "int(stock_item['unit_id']) != int(delivery_unit_id)" in corpo
     assert "int(stock_item['epi_id']) != int(payload['epi_id'])" in corpo
-    assert "str(stock_item['status']) != 'in_stock'" in corpo
+    assert "str(stock_item['status']) not in ('in_stock', 'available')" in corpo
 
 
 def test_o_backend_reivindica_o_item_atomicamente():
     """Sem o claim, duas entregas simultâneas baixariam o mesmo item."""
     corpo = ENTREGAS.read_text(encoding='utf-8')
-    assert "WHERE id = ? AND status = 'in_stock'" in corpo
+    assert "WHERE id = ? AND status IN ('in_stock', 'available')" in corpo
 
 
 def test_a_entrega_ocorre_na_unidade_atual_do_colaborador():

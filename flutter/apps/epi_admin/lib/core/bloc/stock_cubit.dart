@@ -12,7 +12,14 @@ import '../../features/stock/domain/repositories/stock_repository.dart';
 
 /// Filtros de conformidade do estoque, conforme NT 146/2015: o CA é relevante
 /// na compra, e a validade do fabricante rege a entrega do EPI.
-enum StockComplianceFilter { none, caExpired, manufacturerExpiring, manufacturerExpired }
+enum StockComplianceFilter {
+  none,
+  caExpired,
+  manufacturerExpiring,
+  manufacturerExpired,
+  manufacturerUnknown,
+  noPhysicalStock,
+}
 
 /// Estado de cada lista carregada sob demanda (itens disponíveis, bloqueados).
 ///
@@ -80,25 +87,32 @@ class StockState extends Equatable {
   /// EPIs cuja validade do fabricante já venceu — não podem ser entregues e
   /// devem ser retirados do estoque (NT 146/2015).
   int get manufacturerExpiredCount =>
-      epis.where((e) => e.manufacturerValidityStatus == 'expired').length;
+      epis.where((e) => e.hasExpiredPhysicalPieces).length;
 
   /// EPIs com validade do fabricante próxima do vencimento — devem sair primeiro
   /// do estoque (PEPS — primeiro a expirar, primeiro a sair).
   int get manufacturerExpiringCount =>
-      epis.where((e) => e.manufacturerValidityStatus == 'expiring').length;
+      epis.where((e) => e.hasExpiringPhysicalPieces).length;
 
   /// EPIs com CA vencido (relevante na compra de novos lotes).
-  int get caExpiredCount =>
-      epis.where((e) => e.caStatus == 'expired').length;
+  int get caExpiredCount => epis
+      .where((e) => !e.hasNoPhysicalStock && e.caStatus == 'expired')
+      .length;
+
+  int get manufacturerUnknownCount =>
+      epis.where((e) => e.hasUnknownPhysicalPieces).length;
+  int get noPhysicalStockCount =>
+      epis.where((e) => e.hasNoPhysicalStock).length;
 
   bool _matchesCompliance(Epi e) => switch (compliance) {
-        StockComplianceFilter.none => true,
-        StockComplianceFilter.caExpired => e.caStatus == 'expired',
-        StockComplianceFilter.manufacturerExpiring =>
-          e.manufacturerValidityStatus == 'expiring',
-        StockComplianceFilter.manufacturerExpired =>
-          e.manufacturerValidityStatus == 'expired',
-      };
+    StockComplianceFilter.none => true,
+    StockComplianceFilter.manufacturerUnknown => e.hasUnknownPhysicalPieces,
+    StockComplianceFilter.noPhysicalStock => e.hasNoPhysicalStock,
+    StockComplianceFilter.caExpired =>
+      !e.hasNoPhysicalStock && e.caStatus == 'expired',
+    StockComplianceFilter.manufacturerExpiring => e.hasExpiringPhysicalPieces,
+    StockComplianceFilter.manufacturerExpired => e.hasExpiredPhysicalPieces,
+  };
 
   List<Epi> get filtered {
     // Só o filtro de conformidade fica no cliente: ele deriva de datas já
@@ -134,34 +148,33 @@ class StockState extends Equatable {
     List<StockItem>? blockedItems,
     List<String>? blockedStatusKeys,
     String? blockedError,
-  }) =>
-      StockState(
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-        epis: epis ?? this.epis,
-        query: query ?? this.query,
-        compliance: compliance ?? this.compliance,
-        companyId: companyId ?? this.companyId,
-        unitId: unitId ?? this.unitId,
-        actorUserId: actorUserId ?? this.actorUserId,
-        availableStatus: availableStatus ?? this.availableStatus,
-        availableItems: availableItems ?? this.availableItems,
-        availableEpiId: availableEpiId ?? this.availableEpiId,
-        availableError: availableError,
-        blockedStatus: blockedStatus ?? this.blockedStatus,
-        blockedItems: blockedItems ?? this.blockedItems,
-        blockedStatusKeys: blockedStatusKeys ?? this.blockedStatusKeys,
-        blockedError: blockedError,
-      );
+  }) => StockState(
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+    epis: epis ?? this.epis,
+    query: query ?? this.query,
+    compliance: compliance ?? this.compliance,
+    companyId: companyId ?? this.companyId,
+    unitId: unitId ?? this.unitId,
+    actorUserId: actorUserId ?? this.actorUserId,
+    availableStatus: availableStatus ?? this.availableStatus,
+    availableItems: availableItems ?? this.availableItems,
+    availableEpiId: availableEpiId ?? this.availableEpiId,
+    availableError: availableError,
+    blockedStatus: blockedStatus ?? this.blockedStatus,
+    blockedItems: blockedItems ?? this.blockedItems,
+    blockedStatusKeys: blockedStatusKeys ?? this.blockedStatusKeys,
+    blockedError: blockedError,
+  );
 
   @override
   List<Object?> get props => [
-        isLoading, error, epis, query, compliance, companyId, unitId, actorUserId,
-        // Sem estes em props, trocar de aba ou recarregar uma lista não
-        // reconstruiria a tela: dois estados diferentes compararia como iguais.
-        availableStatus, availableItems, availableEpiId, availableError,
-        blockedStatus, blockedItems, blockedStatusKeys, blockedError,
-      ];
+    isLoading, error, epis, query, compliance, companyId, unitId, actorUserId,
+    // Sem estes em props, trocar de aba ou recarregar uma lista não
+    // reconstruiria a tela: dois estados diferentes compararia como iguais.
+    availableStatus, availableItems, availableEpiId, availableError,
+    blockedStatus, blockedItems, blockedStatusKeys, blockedError,
+  ];
 }
 
 class StockCubit extends Cubit<StockState> {
@@ -169,11 +182,11 @@ class StockCubit extends Cubit<StockState> {
     StockRepository? repository,
     ConnectivityChecker? connectivity,
     OfflineQueue? offlineQueue,
-  })  : _repository = repository ??
-            const StockRepositoryImpl(ApiStockRemoteDataSource()),
-        _connectivity = connectivity ?? const RealConnectivityChecker(),
-        _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
-        super(const StockState());
+  }) : _repository =
+           repository ?? const StockRepositoryImpl(ApiStockRemoteDataSource()),
+       _connectivity = connectivity ?? const RealConnectivityChecker(),
+       _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
+       super(const StockState());
 
   final StockRepository _repository;
   final ConnectivityChecker _connectivity;
@@ -199,23 +212,27 @@ class StockCubit extends Cubit<StockState> {
       // O ator continua vindo da sessão (antes vinha junto do bootstrap). Sem
       // isto as consultas de itens e o movimento sairiam com `actor_user_id=0`.
       final actorUserId = await _repository.currentActorUserId();
-      emit(state._copyWith(
-        isLoading: false,
-        epis: epis,
-        companyId: comEscopo.isEmpty ? 0 : (comEscopo.first.companyId ?? 0),
-        unitId: comEscopo.isEmpty ? 0 : (comEscopo.first.unitScopeId ?? 0),
-        actorUserId: actorUserId,
-      ));
+      emit(
+        state._copyWith(
+          isLoading: false,
+          epis: epis,
+          companyId: comEscopo.isEmpty ? 0 : (comEscopo.first.companyId ?? 0),
+          unitId: comEscopo.isEmpty ? 0 : (comEscopo.first.unitScopeId ?? 0),
+          actorUserId: actorUserId,
+        ),
+      );
       // Alerta de estoque crítico — DA UNIDADE, classificado pelo backend.
       // Notificar por criticidade corporativa avisava o operador sobre um
       // problema que podia não existir no estoque dele.
       final criticos = epis.where(epiIsUnitCritical).toList();
       if (criticos.isNotEmpty) {
-        NotificationService().simulateNotification(AppNotification(
-          title: 'Estoque Crítico',
-          body: '${criticos.length} EPI(s) abaixo do estoque mínimo',
-          data: const {},
-        ));
+        NotificationService().simulateNotification(
+          AppNotification(
+            title: 'Estoque Crítico',
+            body: '${criticos.length} EPI(s) abaixo do estoque mínimo',
+            data: const {},
+          ),
+        );
       }
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
@@ -245,45 +262,60 @@ class StockCubit extends Cubit<StockState> {
   /// aplica o escopo de empresa/unidade a partir do ator — por isso nenhum
   /// `companyId`/`unitId` sai daqui.
   Future<void> loadAvailableItems(int epiId) async {
-    emit(state._copyWith(
-      availableStatus: StockListStatus.loading,
-      availableEpiId: epiId,
-      availableItems: const [],
-    ));
+    emit(
+      state._copyWith(
+        availableStatus: StockListStatus.loading,
+        availableEpiId: epiId,
+        availableItems: const [],
+      ),
+    );
     try {
       final items = await _repository.fetchAvailableItems(
         actorUserId: await _actor(),
         epiId: epiId,
       );
-      emit(state._copyWith(
-        availableStatus: StockListStatus.ready,
-        availableItems: items,
-      ));
+      emit(
+        state._copyWith(
+          availableStatus: StockListStatus.ready,
+          availableItems: items
+              .where((item) => item.isEligibleCandidate)
+              .toList(),
+        ),
+      );
     } on Object catch (e) {
-      emit(state._copyWith(
-        availableStatus:
-            _isForbidden(e) ? StockListStatus.forbidden : StockListStatus.error,
-        availableError: e.toString(),
-      ));
+      emit(
+        state._copyWith(
+          availableStatus: _isForbidden(e)
+              ? StockListStatus.forbidden
+              : StockListStatus.error,
+          availableError: e.toString(),
+        ),
+      );
     }
   }
 
   Future<void> loadBlockedItems() async {
     emit(state._copyWith(blockedStatus: StockListStatus.loading));
     try {
-      final result =
-          await _repository.fetchBlockedItems(actorUserId: await _actor());
-      emit(state._copyWith(
-        blockedStatus: StockListStatus.ready,
-        blockedItems: result.items,
-        blockedStatusKeys: result.statusKeys,
-      ));
+      final result = await _repository.fetchBlockedItems(
+        actorUserId: await _actor(),
+      );
+      emit(
+        state._copyWith(
+          blockedStatus: StockListStatus.ready,
+          blockedItems: result.items,
+          blockedStatusKeys: result.statusKeys,
+        ),
+      );
     } on Object catch (e) {
-      emit(state._copyWith(
-        blockedStatus:
-            _isForbidden(e) ? StockListStatus.forbidden : StockListStatus.error,
-        blockedError: e.toString(),
-      ));
+      emit(
+        state._copyWith(
+          blockedStatus: _isForbidden(e)
+              ? StockListStatus.forbidden
+              : StockListStatus.error,
+          blockedError: e.toString(),
+        ),
+      );
     }
   }
 
@@ -312,8 +344,12 @@ class StockCubit extends Cubit<StockState> {
 
     // O movimento incide sobre a unidade que o SERVIDOR resolveu para este EPI.
     final alvo = state.epis.where((e) => e.id == epiId).toList();
-    final companyId = alvo.isEmpty ? state.companyId : (alvo.first.companyId ?? state.companyId);
-    final unitId = alvo.isEmpty ? state.unitId : (alvo.first.unitScopeId ?? state.unitId);
+    final companyId = alvo.isEmpty
+        ? state.companyId
+        : (alvo.first.companyId ?? state.companyId);
+    final unitId = alvo.isEmpty
+        ? state.unitId
+        : (alvo.first.unitScopeId ?? state.unitId);
 
     // Atualização otimista do saldo da UNIDADE — é ele que a tela mostra.
     final optimistic = state.epis.map((e) {

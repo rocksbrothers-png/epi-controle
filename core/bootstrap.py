@@ -345,6 +345,12 @@ def init_db():
             schema.ensure_unit_epi_minimum_stock,
             schema.ensure_stock_classification_config,
             schema.ensure_procurement_supplier_tables,
+            # EST-V3: modelo físico de estoque (EST-V2) provisionado em SQLite
+            # para a suíte de testes; NO-OP em PostgreSQL, onde vem das migrations
+            # 030/031. Depois de ensure_epi_operational_tables (epi_stock_items/
+            # unit_epi_stock) e de ensure_procurement_supplier_tables
+            # (authorized_suppliers), tabelas que o modelo referencia.
+            schema.ensure_stock_lifecycle_model,
             _ensure_commercial_settings,
             _ensure_commercial_tables,
             _ensure_payment_tables,

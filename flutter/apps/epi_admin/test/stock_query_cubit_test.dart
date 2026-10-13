@@ -38,7 +38,9 @@ class _FakeRepository implements StockRepository {
   }
 
   @override
-  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) async {
+  Future<BlockedStockItems> fetchBlockedItems({
+    required int actorUserId,
+  }) async {
     atorRecebidoBloqueados = actorUserId;
     if (erro != null) throw erro!;
     return blocked ?? const BlockedStockItems(items: [], statusKeys: []);
@@ -57,8 +59,7 @@ class _FakeRepository implements StockRepository {
     String? manufacturer,
     String? ca,
     String? protection,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   // ignore: deprecated_member_use_from_same_package
@@ -77,19 +78,59 @@ class _FakeRepository implements StockRepository {
 }
 
 DioException _http(int status) => DioException(
-      requestOptions: RequestOptions(path: '/api/stock/blocked-items'),
-      response: Response<void>(
-        requestOptions: RequestOptions(path: '/api/stock/blocked-items'),
-        statusCode: status,
-      ),
-    );
+  requestOptions: RequestOptions(path: '/api/stock/blocked-items'),
+  response: Response<void>(
+    requestOptions: RequestOptions(path: '/api/stock/blocked-items'),
+    statusCode: status,
+  ),
+);
 
 StockItem _item(int id, {String status = 'in_stock'}) => StockItem.fromJson({
-      'id': id, 'epi_id': 1, 'epi_name': 'EPI $id', 'status': status,
-    });
+  'id': id,
+  'epi_id': 1,
+  'epi_name': 'EPI $id',
+  'status': status,
+  'physical_expiry_date': '9999-12-31',
+  'eligible_for_delivery': status == 'in_stock',
+});
 
 void main() {
   group('itens disponíveis', () {
+    test(
+      'unsafe transport candidates are filtered before any delivery selection',
+      () async {
+        final unknown = StockItem.fromJson({
+          'id': 3,
+          'epi_id': 1,
+          'epi_name': 'unknown',
+          'status': 'in_stock',
+          'epi_validity_date': '2099-01-01',
+          'eligible_for_delivery': true,
+        });
+        final expired = StockItem.fromJson({
+          'id': 4,
+          'epi_id': 1,
+          'epi_name': 'expired',
+          'status': 'in_stock',
+          'physical_expiry_date': '2000-01-01',
+          'eligible_for_delivery': false,
+        });
+        final cubit = StockCubit(
+          repository: _FakeRepository(
+            items: [
+              _item(1),
+              unknown,
+              expired,
+              _item(2, status: 'blocked_expired'),
+            ],
+          ),
+        );
+        await cubit.loadAvailableItems(1);
+        expect(cubit.state.availableItems.map((item) => item.id), [1]);
+        await cubit.close();
+      },
+    );
+
     test('idle antes de qualquer consulta — não é lista vazia', () {
       // Sem esta distinção a tela diria "nenhum item disponível" antes de o
       // operador ter escolhido um EPI, o que é simplesmente falso.
@@ -149,7 +190,11 @@ void main() {
       await cubit.loadAvailableItems(42);
 
       expect(repo.atorRecebidoDisponiveis, 7);
-      expect(cubit.state.actorUserId, 7, reason: 'ator resolvido fica no estado');
+      expect(
+        cubit.state.actorUserId,
+        7,
+        reason: 'ator resolvido fica no estado',
+      );
       expect(cubit.state.availableStatus, StockListStatus.ready);
     });
 

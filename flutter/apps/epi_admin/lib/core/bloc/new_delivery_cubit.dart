@@ -19,11 +19,17 @@ enum DeliveryStep { employee, epi, item, details, signature }
 /// Impedimentos que a TELA traduz. O cubit não guarda texto voltado ao
 /// usuário: o app fala cinco idiomas, e uma string em português no estado
 /// chegaria assim a todos eles.
-enum DeliveryBlock { none, employeeWithoutUnit, qrFromAnotherEpi }
+enum DeliveryBlock {
+  none,
+  employeeWithoutUnit,
+  qrFromAnotherEpi,
+  ineligibleStockItem,
+}
 
 /// Carregadores injetáveis — os testes exercitam o fluxo sem rede.
 typedef UnitEpisLoader = Future<List<Epi>> Function(int unitId);
-typedef UnitItemsLoader = Future<List<StockItem>> Function(int unitId, int epiId);
+typedef UnitItemsLoader =
+    Future<List<StockItem>> Function(int unitId, int epiId);
 typedef UnitQrLookup = Future<StockItem> Function(int unitId, String qrCode);
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -127,51 +133,50 @@ class NewDeliveryState extends Equatable {
     int? successId,
     bool? offlineQueued,
     bool clearError = false,
-  }) =>
-      NewDeliveryState(
-        step: step ?? this.step,
-        selectedEmployee: selectedEmployee ?? this.selectedEmployee,
-        selectedEpi: selectedEpi ?? this.selectedEpi,
-        // Trocar de EPI invalida o item escolhido: ele pertence ao EPI
-        // anterior, e o backend recusaria a combinação.
-        selectedItem: clearItem ? null : (selectedItem ?? this.selectedItem),
-        unitEpis: unitEpis ?? this.unitEpis,
-        availableItems: availableItems ?? this.availableItems,
-        isLoadingEpis: isLoadingEpis ?? this.isLoadingEpis,
-        isLoadingItems: isLoadingItems ?? this.isLoadingItems,
-        block: clearError ? DeliveryBlock.none : (block ?? this.block),
-        quantity: quantity ?? this.quantity,
-        deliveryDate: deliveryDate ?? this.deliveryDate,
-        nextReplacementDate: nextReplacementDate ?? this.nextReplacementDate,
-        sector: sector ?? this.sector,
-        roleName: roleName ?? this.roleName,
-        isSubmitting: isSubmitting ?? this.isSubmitting,
-        error: clearError ? null : (error ?? this.error),
-        successId: successId ?? this.successId,
-        offlineQueued: offlineQueued ?? this.offlineQueued,
-      );
+  }) => NewDeliveryState(
+    step: step ?? this.step,
+    selectedEmployee: selectedEmployee ?? this.selectedEmployee,
+    selectedEpi: selectedEpi ?? this.selectedEpi,
+    // Trocar de EPI invalida o item escolhido: ele pertence ao EPI
+    // anterior, e o backend recusaria a combinação.
+    selectedItem: clearItem ? null : (selectedItem ?? this.selectedItem),
+    unitEpis: unitEpis ?? this.unitEpis,
+    availableItems: availableItems ?? this.availableItems,
+    isLoadingEpis: isLoadingEpis ?? this.isLoadingEpis,
+    isLoadingItems: isLoadingItems ?? this.isLoadingItems,
+    block: clearError ? DeliveryBlock.none : (block ?? this.block),
+    quantity: quantity ?? this.quantity,
+    deliveryDate: deliveryDate ?? this.deliveryDate,
+    nextReplacementDate: nextReplacementDate ?? this.nextReplacementDate,
+    sector: sector ?? this.sector,
+    roleName: roleName ?? this.roleName,
+    isSubmitting: isSubmitting ?? this.isSubmitting,
+    error: clearError ? null : (error ?? this.error),
+    successId: successId ?? this.successId,
+    offlineQueued: offlineQueued ?? this.offlineQueued,
+  );
 
   @override
   List<Object?> get props => [
-        step,
-        selectedEmployee,
-        selectedEpi,
-        selectedItem?.id,
-        unitEpis.map((e) => e.id).toList(),
-        availableItems.map((i) => i.id).toList(),
-        isLoadingEpis,
-        isLoadingItems,
-        block,
-        quantity,
-        deliveryDate,
-        nextReplacementDate,
-        sector,
-        roleName,
-        isSubmitting,
-        error,
-        successId,
-        offlineQueued,
-      ];
+    step,
+    selectedEmployee,
+    selectedEpi,
+    selectedItem?.id,
+    unitEpis.map((e) => e.id).toList(),
+    availableItems.map((i) => i.id).toList(),
+    isLoadingEpis,
+    isLoadingItems,
+    block,
+    quantity,
+    deliveryDate,
+    nextReplacementDate,
+    sector,
+    roleName,
+    isSubmitting,
+    error,
+    successId,
+    offlineQueued,
+  ];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
@@ -183,13 +188,14 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     UnitEpisLoader? episLoader,
     UnitItemsLoader? itemsLoader,
     UnitQrLookup? qrLookup,
-  })  : _repository = repository ??
-            const DeliveriesRepositoryImpl(ApiDeliveriesRemoteDataSource()),
-        _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
-        _episLoader = episLoader ?? _carregarEpisDaUnidade,
-        _itemsLoader = itemsLoader ?? _carregarItensDaUnidade,
-        _qrLookup = qrLookup ?? _resolverQr,
-        super(const NewDeliveryState());
+  }) : _repository =
+           repository ??
+           const DeliveriesRepositoryImpl(ApiDeliveriesRemoteDataSource()),
+       _offlineQueue = offlineQueue ?? const SyncDatabaseQueue(),
+       _episLoader = episLoader ?? _carregarEpisDaUnidade,
+       _itemsLoader = itemsLoader ?? _carregarItensDaUnidade,
+       _qrLookup = qrLookup ?? _resolverQr,
+       super(const NewDeliveryState());
 
   final DeliveriesRepository _repository;
   final OfflineQueue _offlineQueue;
@@ -197,21 +203,17 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
   final UnitItemsLoader _itemsLoader;
   final UnitQrLookup _qrLookup;
 
-  static Future<List<Epi>> _carregarEpisDaUnidade(int unitId) =>
-      ApiClient.stock.fetchUnitStockEpis(
-        actorUserId: ApiClient.actorUserId,
-        unitId: unitId,
-      );
+  static Future<List<Epi>> _carregarEpisDaUnidade(int unitId) => ApiClient.stock
+      .fetchUnitStockEpis(actorUserId: ApiClient.actorUserId, unitId: unitId);
 
   static Future<List<StockItem>> _carregarItensDaUnidade(
     int unitId,
     int epiId,
-  ) =>
-      ApiClient.stock.fetchUnitAvailableItems(
-        actorUserId: ApiClient.actorUserId,
-        unitId: unitId,
-        epiId: epiId,
-      );
+  ) => ApiClient.stock.fetchUnitAvailableItems(
+    actorUserId: ApiClient.actorUserId,
+    unitId: unitId,
+    epiId: epiId,
+  );
 
   static Future<StockItem> _resolverQr(int unitId, String qrCode) =>
       ApiClient.stock.lookupQr(
@@ -228,25 +230,29 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     if (unidade == null) {
       // Colaborador sem Unidade não tem estoque de onde a entrega sairia.
       // Recusar aqui é mais honesto do que deixar avançar e falhar no fim.
-      emit(state.copyWith(
+      emit(
+        state.copyWith(
+          selectedEmployee: employee,
+          sector: employee.sector,
+          roleName: employee.role,
+          block: DeliveryBlock.employeeWithoutUnit,
+        ),
+      );
+      return;
+    }
+    emit(
+      state.copyWith(
         selectedEmployee: employee,
         sector: employee.sector,
         roleName: employee.role,
-        block: DeliveryBlock.employeeWithoutUnit,
-      ));
-      return;
-    }
-    emit(state.copyWith(
-      selectedEmployee: employee,
-      sector: employee.sector,
-      roleName: employee.role,
-      step: DeliveryStep.epi,
-      isLoadingEpis: true,
-      unitEpis: const [],
-      availableItems: const [],
-      clearItem: true,
-      clearError: true,
-    ));
+        step: DeliveryStep.epi,
+        isLoadingEpis: true,
+        unitEpis: const [],
+        availableItems: const [],
+        clearItem: true,
+        clearError: true,
+      ),
+    );
     try {
       final epis = await _episLoader(unidade);
       if (isClosed) return;
@@ -262,18 +268,27 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
   Future<void> selectEpi(Epi epi) async {
     final unidade = state.unitId;
     if (unidade == null) return;
-    emit(state.copyWith(
-      selectedEpi: epi,
-      step: DeliveryStep.item,
-      isLoadingItems: true,
-      availableItems: const [],
-      clearItem: true,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        selectedEpi: epi,
+        step: DeliveryStep.item,
+        isLoadingItems: true,
+        availableItems: const [],
+        clearItem: true,
+        clearError: true,
+      ),
+    );
     try {
       final itens = await _itemsLoader(unidade, epi.id);
       if (isClosed) return;
-      emit(state.copyWith(isLoadingItems: false, availableItems: itens));
+      emit(
+        state.copyWith(
+          isLoadingItems: false,
+          availableItems: itens
+              .where((item) => item.isEligibleCandidate)
+              .toList(),
+        ),
+      );
     } on Exception catch (e) {
       if (isClosed) return;
       emit(state.copyWith(isLoadingItems: false, error: e.toString()));
@@ -282,6 +297,10 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
 
   /// Seleção manual entre os itens disponíveis da Unidade.
   void selectItem(StockItem item) {
+    if (!item.isEligibleCandidate) {
+      emit(state.copyWith(block: DeliveryBlock.ineligibleStockItem));
+      return;
+    }
     emit(state.copyWith(selectedItem: item, step: DeliveryStep.details));
   }
 
@@ -298,17 +317,30 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
       if (item.epiId != epi.id) {
         // O item existe e está nesta Unidade, mas é de outro EPI. O backend
         // recusaria igual; dizer isso aqui evita percorrer o resto do fluxo.
-        emit(state.copyWith(
-          isLoadingItems: false,
-          block: DeliveryBlock.qrFromAnotherEpi,
-        ));
+        emit(
+          state.copyWith(
+            isLoadingItems: false,
+            block: DeliveryBlock.qrFromAnotherEpi,
+          ),
+        );
         return;
       }
-      emit(state.copyWith(
-        isLoadingItems: false,
-        selectedItem: item,
-        step: DeliveryStep.details,
-      ));
+      if (!item.isEligibleCandidate) {
+        emit(
+          state.copyWith(
+            isLoadingItems: false,
+            block: DeliveryBlock.ineligibleStockItem,
+          ),
+        );
+        return;
+      }
+      emit(
+        state.copyWith(
+          isLoadingItems: false,
+          selectedItem: item,
+          step: DeliveryStep.details,
+        ),
+      );
     } on Exception catch (e) {
       if (isClosed) return;
       emit(state.copyWith(isLoadingItems: false, error: e.toString()));
@@ -322,13 +354,15 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     String? sector,
     String? roleName,
   }) {
-    emit(state.copyWith(
-      quantity: quantity,
-      deliveryDate: deliveryDate,
-      nextReplacementDate: nextReplacementDate,
-      sector: sector,
-      roleName: roleName,
-    ));
+    emit(
+      state.copyWith(
+        quantity: quantity,
+        deliveryDate: deliveryDate,
+        nextReplacementDate: nextReplacementDate,
+        sector: sector,
+        roleName: roleName,
+      ),
+    );
   }
 
   void goToSignature() {
@@ -361,8 +395,8 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     }
 
     emit(state.copyWith(isSubmitting: true, clearError: true));
-    final sector    = s.sector ?? s.selectedEmployee!.sector ?? '';
-    final roleName  = s.roleName ?? s.selectedEmployee!.role ?? '';
+    final sector = s.sector ?? s.selectedEmployee!.sector ?? '';
+    final roleName = s.roleName ?? s.selectedEmployee!.role ?? '';
     // `stock_item_id` e `stock_qr_code` vêm do ITEM, não do EPI.
     //
     // Até a #278 iam `s.selectedEpi!.id` e `s.selectedEpi!.code` — o id do
@@ -371,7 +405,7 @@ class NewDeliveryCubit extends Cubit<NewDeliveryState> {
     // identificadores de outro domínio, que só casariam por coincidência. A
     // entrega pelo app não podia dar certo.
     final stockItemId = s.selectedItem!.id;
-    final qrCode      = s.selectedItem!.qrCodeValue ?? '';
+    final qrCode = s.selectedItem!.qrCodeValue ?? '';
     // Uma chave por **tentativa de entrega**, não por requisição HTTP: ela vai
     // junto no payload da fila, então o reenvio depois de uma resposta perdida
     // repete a MESMA chave e o backend devolve a entrega original. Sem isso o

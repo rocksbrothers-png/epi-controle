@@ -1173,11 +1173,14 @@ def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, 
 # ── Route-level SQL extractions ───────────────────────────────────────────────
 
 def lookup_stock_item_by_qr(connection, company_id, unit_id, qr_code='', stock_item_id=0):
+    physical = ('CAST(esi.physical_expiry_date AS TEXT)'
+                if _has_col(connection, 'epi_stock_items', 'physical_expiry_date') else 'NULL')
     query_sql = (
         'SELECT esi.id, esi.company_id, esi.unit_id, esi.epi_id, esi.glove_size, esi.size, esi.uniform_size, '
         'esi.lot_code, esi.qr_code_value, esi.status, esi.reprint_count, esi.label_measure, '
         'esi.label_printer_name, esi.label_print_format, epis.name AS epi_name, epis.purchase_code, '
-        'epis.unit_measure, units.name AS unit_name '
+        'epis.unit_measure, units.name AS unit_name, '
+        f'{physical} AS physical_expiry_date '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
         'JOIN units ON units.id = esi.unit_id '
@@ -1200,26 +1203,194 @@ def lookup_stock_item_by_qr(connection, company_id, unit_id, qr_code='', stock_i
     return connection.execute(query_sql, tuple(query_params)).fetchone()
 
 
-def fetch_available_stock_items(connection, company_id, unit_id, epi_id):
-    # FEFO (First Expire, First Out): prioriza o lote com validade mais próxima.
-    # Como os itens de um mesmo EPI compartilham o prazo do fabricante, a data de
-    # fabricação mais antiga corresponde ao vencimento mais próximo → sai primeiro.
-    # Itens sem data de fabricação vão ao final (ordem de entrada), como fallback.
-    return connection.execute(
+def _has_col(connection, table, column):
+    """Coluna existe? (cross-engine). Degrada para False em qualquer erro —
+    janela de migração: código novo (EST-V3) convive com schema antigo."""
+    try:
+        from core.schema import _col_exists
+        return bool(_col_exists(connection, table, column))
+    except Exception:
+        return False
+
+
+def item_physical_expiry(connection, stock_item_id):
+    """Validade FÍSICA da peça/lote (EST-V2) quando conhecida; '' caso contrário.
+
+    Lê ``epi_stock_items.physical_expiry_date``, que descola a validade do
+    catálogo (G02). Onde a coluna ainda não existe (schema antigo), devolve ''
+    e comandos operacionais recusam a validade desconhecida.
+    """
+    if not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return ''
+    try:
+        row = connection.execute(
+            'SELECT physical_expiry_date FROM epi_stock_items WHERE id = ?', (int(stock_item_id),)
+        ).fetchone()
+    except Exception:
+        return ''
+    if not row:
+        return ''
+    value = row['physical_expiry_date'] if hasattr(row, 'keys') else row[0]
+    return str(value or '').strip()
+
+
+def effective_delivery_expiry(connection, stock_item_id, catalog_validity=None):
+    """Only the physical date; the optional legacy argument never substitutes it."""
+    return item_physical_expiry(connection, stock_item_id)
+
+
+def epi_physical_validity_map(connection, company_id=None, unit_id=None):
+    from modules.stock.eligibility import physical_summary_map
+    return {eid: data['nearest_known_expiry'] for eid, data in
+            physical_summary_map(connection, company_id, unit_id).items()
+            if data['nearest_known_expiry']}
+
+
+def epi_ids_with_manufacturer_validity(connection, status, company_id=None, unit_id=None,
+                                       today=None, warning_days=None):
+    from modules.stock.eligibility import physical_summary_map
+    status = 'expiring' if status in ('expiring_soon', 'near') else status
+    if status not in ('expired', 'expiring', 'unknown'):
+        return set()
+    # Use every physical lot, not MIN (which hides a second category).
+    if today is None and warning_days is None:
+        return {eid for eid, data in physical_summary_map(connection, company_id, unit_id).items()
+                if data[status] > 0}
+    from modules.stock.eligibility import classify_physical, stock_rows, validity_policy, ON_HAND_STATUSES
+    ids = set()
+    for row in stock_rows(connection, company_id, unit_id):
+        if row['status'] not in ON_HAND_STATUSES:
+            continue
+        policy = validity_policy(connection, row['company_id'])
+        if today is not None:
+            policy['as_of_date'] = str(today)
+        if warning_days is not None:
+            policy['warning_days'] = int(warning_days)
+        if classify_physical(row['physical_expiry_date'], policy)['status'] == status:
+            ids.add(int(row['epi_id']))
+    return ids
+
+
+def blocked_physical_quantity(connection, company_id, unit_id, epi_id):
+    """Peças FISICAMENTE presentes porém bloqueadas (status ``blocked_*``) na
+    unidade. Base do desconto de disponibilidade (G01): o agregado
+    ``unit_epi_stock.quantity`` conta o físico (inclui o bloqueado); o disponível
+    real exclui o bloqueado. Derivado do status real das peças — sem contador
+    paralelo. Degrada para 0 onde ``epi_stock_items`` não existe (migração)."""
+    # IN explícito (não LIKE 'blocked_%'): preciso e cross-engine — o '%' literal
+    # colidiria com a formatação de parâmetros do psycopg2 e o '_' é curinga.
+    placeholders = ','.join(['?'] * len(BLOCKED_STOCK_STATUSES))
+    try:
+        row = connection.execute(
+            'SELECT COUNT(*) AS n FROM epi_stock_items '  # noqa: S608
+            'WHERE company_id = ? AND unit_id = ? AND epi_id = ? '
+            f"AND LOWER(COALESCE(status, '')) IN ({placeholders})",
+            (int(company_id), int(unit_id), int(epi_id), *BLOCKED_STOCK_STATUSES.keys()),
+        ).fetchone()
+    except Exception:
+        return 0
+    if not row:
+        return 0
+    return int((row['n'] if hasattr(row, 'keys') else row[0]) or 0)
+
+
+def record_received_item_physical(connection, stock_item_id, physical_expiry, actor_user_id, now,
+                                  *, evidence='Conferência de recebimento'):
+    """EST-V3 (G02/G15): grava a validade FÍSICA do lote na peça recebida.
+
+    - Preenche physical_expiry_date/expiry_source/expiry_evidence da peça: a
+      validade passa a viver NA PEÇA, não só no catálogo (G02) — dois lotes do
+      mesmo EPI com validades diferentes coexistem.
+    - Se o lote chega JÁ VENCIDO, a peça NÃO entra como disponível: vai para
+      ``blocked_expired`` com motivo estruturado (G15); permanece física
+      (contada no agregado), mas fora do disponível (ver blocked_physical_quantity).
+
+    ``expiry_source``/``expiry_evidence`` são obrigatórios junto de uma validade
+    física (constraint EST-V2); por isso a evidência nunca é vazia. NO-OP quando
+    a validade é desconhecida ou as colunas físicas não existem (compatibilidade).
+    """
+    physical_expiry = str(physical_expiry or '').strip()
+    if not physical_expiry or not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return
+    fragments = ['physical_expiry_date = ?', "expiry_source = 'manufacturer_document'", 'expiry_evidence = ?']
+    params = [physical_expiry, str(evidence or 'Conferência de recebimento')]
+    from modules.stock.eligibility import classify_physical, validity_policy
+    owner = connection.execute('SELECT company_id FROM epi_stock_items WHERE id = ?', (int(stock_item_id),)).fetchone()
+    if classify_physical(physical_expiry, validity_policy(connection, owner['company_id']))['status'] == 'expired':
+        fragments.append("status = 'blocked_expired'")
+        if _has_col(connection, 'epi_stock_items', 'blocking_reason_code'):
+            fragments += [
+                'blocking_reason_code = ?', 'blocking_justification = ?',
+                'blocked_by_user_id = ?', 'blocked_at = ?',
+            ]
+            params += ['expired', 'Lote recebido já vencido (NT 146/2015)', int(actor_user_id), now]
+    connection.execute(
+        f'UPDATE epi_stock_items SET {", ".join(fragments)} WHERE id = ?',  # noqa: S608
+        (*params, int(stock_item_id)),
+    )
+
+
+def fetch_available_stock_items(connection, company_id, unit_id, epi_id, *, request_id=None):
+    # FEFO (First Expire, First Out): prioriza a peça que vence primeiro.
+    # EST-V3 (G03): ordena pela VALIDADE FÍSICA do lote (physical_expiry_date)
+    # quando a coluna existe. O gate abaixo exclui data desconhecida/vencida;
+    # fabricação e id apenas desempatarão peças com validade conhecida.
+    has_phys = _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
+    phys_select = 'esi.physical_expiry_date, ' if has_phys else ''
+    if has_phys:
+        # CAST(... AS TEXT) para o teste de "sem validade física" funcionar nos
+        # dois engines: em PostgreSQL physical_expiry_date é DATE (COALESCE com ''
+        # quebraria); em SQLite é TEXT. A ordenação por data real segue à parte.
+        order_by = (
+            "ORDER BY (CASE WHEN COALESCE(CAST(esi.physical_expiry_date AS TEXT), '') = '' THEN 1 ELSE 0 END) ASC, "
+            'esi.physical_expiry_date ASC, '
+            "(CASE WHEN COALESCE(esi.manufacture_date, '') = '' THEN 1 ELSE 0 END) ASC, "
+            'esi.manufacture_date ASC, esi.id ASC'
+        )
+    else:
+        order_by = (
+            "ORDER BY (CASE WHEN COALESCE(esi.manufacture_date, '') = '' THEN 1 ELSE 0 END) ASC, "
+            'esi.manufacture_date ASC, esi.id ASC'
+        )
+    rows = connection.execute(
         (
             'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
             'esi.glove_size, esi.size, esi.uniform_size, esi.manufacture_date, '
+            + phys_select +
             'epis.epi_validity_date '
             'FROM epi_stock_items esi '
             'JOIN epis ON epis.id = esi.epi_id '
             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
             "AND COALESCE(LOWER(esi.status), 'in_stock') IN ('in_stock', 'available') "
             "AND COALESCE(esi.qr_code_value, '') != '' "
-            "ORDER BY (CASE WHEN COALESCE(esi.manufacture_date, '') = '' THEN 1 ELSE 0 END) ASC, "
-            'esi.manufacture_date ASC, esi.id ASC'
+            + order_by
         ),
         (int(company_id), int(unit_id), int(epi_id))
     ).fetchall()
+
+    from modules.stock.eligibility import classify_physical, eligible_piece, validity_policy
+    if not rows:
+        return []
+    policy = validity_policy(connection, company_id)
+    items = []
+    for raw in rows:
+        item = row_to_dict(raw)
+        if not eligible_piece(item, policy):
+            continue
+        item['physical_expiry_date'] = str(item['physical_expiry_date'])
+        item.update(physical_validity_status=classify_physical(item['physical_expiry_date'], policy)['status'],
+                    eligible_for_delivery=True, validity_policy=policy)
+        items.append(item)
+    from modules.stock.reservations import unit_balance
+    balance = unit_balance(connection, company_id, unit_id, epi_id)
+    capacity = balance['free']
+    if request_id is not None:
+        from modules.stock.reservations import reservation_for_request, remaining_quantity
+        reservation = reservation_for_request(connection, int(request_id))
+        if reservation is None or (int(reservation['company_id']), int(reservation['unit_id']), int(reservation['epi_id'])) != (int(company_id), int(unit_id), int(epi_id)):
+            raise ValueError('Reserva não corresponde à empresa/unidade/EPI consultado.')
+        capacity = min(balance['operational_capacity'], capacity + remaining_quantity(reservation))
+    return items[:capacity]
 
 
 def fetch_stock_movements(connection, clauses, params):
@@ -1271,10 +1442,13 @@ UNBLOCK_STATUS = 'in_stock'
 
 
 def fetch_blocked_stock_items(connection, company_id, unit_id=None):
+    physical = ('CAST(esi.physical_expiry_date AS TEXT)'
+                if _has_col(connection, 'epi_stock_items', 'physical_expiry_date') else 'NULL')
     sql = (
         'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
         'esi.glove_size, esi.size, esi.uniform_size, esi.lot_code, esi.manufacture_date, '
-        'epis.epi_validity_date, epis.unit_measure, units.name AS unit_name, esi.unit_id, esi.updated_at '
+        'epis.epi_validity_date, epis.unit_measure, units.name AS unit_name, esi.unit_id, esi.updated_at, '
+        f'{physical} AS physical_expiry_date '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
         'JOIN units ON units.id = esi.unit_id '
@@ -1298,10 +1472,46 @@ def set_stock_item_status(connection, item, new_status, reason, actor_user_id, a
     status = str(new_status or '').strip().lower()
     if status != UNBLOCK_STATUS and status not in BLOCKED_STOCK_STATUSES:
         raise ValueError('Status de bloqueio inválido.')
+    from modules.stock.eligibility import lock_stock_scope, ON_HAND_STATUSES
+    lock_stock_scope(connection, item['company_id'], item['unit_id'], item['epi_id'])
+    current = connection.execute('SELECT * FROM epi_stock_items WHERE id=?', (int(item['id']),)).fetchone()
+    if current is None or str(current['status']) not in ON_HAND_STATUSES:
+        raise ValueError('Item entregue, descartado ou terminal não pode voltar ao estoque por bloqueio/desbloqueio.')
+    if any(int(current[key]) != int(item[key]) for key in ('company_id', 'unit_id', 'epi_id')):
+        raise ValueError('Item fora da empresa/unidade/EPI informado.')
+    item = row_to_dict(current)
+    # EST-V3 (G04): desbloquear (→ in_stock) uma peça FISICAMENTE vencida é
+    # proibido — só o bloqueio administrativo/inspeção pode ser liberado. Item
+    # vencido não volta ao estoque: destina-se a descarte ou devolução. Usa a
+    # validade física do lote (EST-V2) com fallback ao catálogo do EPI.
+    if status == UNBLOCK_STATUS:
+        from modules.stock.eligibility import classify_physical, validity_policy
+        expiry = item_physical_expiry(connection, int(item['id']))
+        if classify_physical(expiry, validity_policy(connection, item['company_id']))['status'] == 'expired':
+            raise ValueError(f'Desbloqueio recusado: item fisicamente vencido em {expiry}.')
     old_status = str(item['status'] or '')
+    # EST-V3 (§12): o bloqueio deixa de ser só uma troca de string — grava motivo
+    # estruturado, responsável e horário na própria peça (colunas EST-V2). O
+    # desbloqueio limpa esses campos. Dinâmico e guardado: onde as colunas ainda
+    # não existem (schema antigo), apenas status/updated_at são atualizados.
+    set_fragments = ['status = ?', 'updated_at = ?']
+    set_params = [status, now]
+    if _has_col(connection, 'epi_stock_items', 'blocking_reason_code'):
+        if status == UNBLOCK_STATUS:
+            set_fragments += [
+                'blocking_reason_code = NULL', 'blocking_justification = NULL',
+                'blocked_by_user_id = NULL', 'blocked_at = NULL',
+            ]
+        else:
+            reason_code = status[len('blocked_'):] if status.startswith('blocked_') else status
+            set_fragments += [
+                'blocking_reason_code = ?', 'blocking_justification = ?',
+                'blocked_by_user_id = ?', 'blocked_at = ?',
+            ]
+            set_params += [reason_code, str(reason or '').strip(), int(actor_user_id), now]
     connection.execute(
-        'UPDATE epi_stock_items SET status = ?, updated_at = ? WHERE id = ?',
-        (status, now, int(item['id'])),
+        f'UPDATE epi_stock_items SET {", ".join(set_fragments)} WHERE id = ?',  # noqa: S608
+        (*set_params, int(item['id'])),
     )
     create_stock_movement(
         connection, int(item['company_id']), int(item['unit_id']), int(item['epi_id']),
@@ -1360,7 +1570,7 @@ def _validity_reference_prices(connection, company_id):
 
 
 def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
-                            warning_days=VALIDITY_MANAGEMENT_WARNING_DAYS):
+                            warning_days=None):
     """Retorna a visão consolidada de validade para o painel de Gestão de Validade.
 
     Estrutura: summary (contagens dos 4 indicadores + total em risco + valor),
@@ -1368,13 +1578,24 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
     vencimento mais próximo (dias restantes). Cada item em risco é contado uma
     única vez no total/valor, ainda que se enquadre em mais de um indicador.
     """
-    today = today or datetime.now(UTC).date()
+    from modules.stock.eligibility import validity_policy
+    policy = validity_policy(connection, company_id)
+    today = today or datetime.fromisoformat(policy['as_of_date']).date()
+    warning_days = policy['warning_days'] if warning_days is None else warning_days
     prices = _validity_reference_prices(connection, int(company_id))
+    # EST-V3.5 (G02): a validade do produto que rege a conformidade é a FÍSICA do
+    # lote (por peça); ausência de data física continua desconhecida.
+    prod_expr = (
+        'CAST(esi.physical_expiry_date AS TEXT)'
+        if _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
+        else 'NULL'
+    )
     sql = (
         'SELECT esi.id, esi.epi_id, esi.unit_id, esi.company_id, esi.lot_code, '
         'esi.manufacture_date, esi.status, epis.name AS epi_name, '
         "COALESCE(epis.manufacturer, '') AS manufacturer, epis.ca, epis.ca_expiry, "
         'epis.epi_validity_date, epis.unit_measure, '
+        f'{prod_expr} AS product_validity, '  # noqa: S608
         'units.name AS unit_name, companies.name AS company_name '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
@@ -1412,7 +1633,8 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
 
     for raw in rows:
         row = row_to_dict(raw)
-        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        from modules.stock.eligibility import classify_physical
+        product_days = classify_physical(row.get('product_validity'), dict(policy, as_of_date=str(today)))['days_remaining']
         ca_days = _validity_days_until(row.get('ca_expiry'), today)
         is_product_expired = product_days is not None and product_days < 0
         is_product_expiring = product_days is not None and 0 <= product_days <= warning_days
@@ -1468,7 +1690,7 @@ def fetch_validity_overview(connection, company_id, unit_id=None, today=None,
 
 
 def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
-                             warning_days=VALIDITY_MANAGEMENT_WARNING_DAYS):
+                             warning_days=None):
     """Fonte ÚNICA de conformidade de estoque (item 2 da auditoria).
 
     Base única: itens de estoque (epi_stock_items) da empresa/unidade. O
@@ -1483,11 +1705,22 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
       - missing_lot: item disponível sem lote (lacuna)
       - admin_blocked: bloqueio administrativo (status blocked_*)
     """
-    today = today or datetime.now(timezone.utc).date()
+    from modules.stock.eligibility import validity_policy
+    policy = validity_policy(connection, company_id)
+    today = today or datetime.fromisoformat(policy['as_of_date']).date()
+    warning_days = policy['warning_days'] if warning_days is None else warning_days
+    # EST-V3.5 (G02): conformidade de produto pela validade FÍSICA do lote (por
+    # peça); ausência de data física continua desconhecida.
+    prod_expr = (
+        'CAST(esi.physical_expiry_date AS TEXT)'
+        if _has_col(connection, 'epi_stock_items', 'physical_expiry_date')
+        else 'NULL'
+    )
     rows = connection.execute(
-        'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '
+        'SELECT esi.id AS stock_item_id, esi.epi_id, esi.unit_id, esi.company_id, '  # noqa: S608
         'esi.lot_code, esi.manufacture_date, esi.status, esi.qr_code_value, '
         'epis.name AS epi_name, epis.ca, epis.ca_expiry, epis.epi_validity_date, '
+        f'{prod_expr} AS product_validity, '
         'units.name AS unit_name '
         'FROM epi_stock_items esi '
         'JOIN epis ON epis.id = esi.epi_id '
@@ -1500,15 +1733,19 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
     categories = {
         'ca_expired': [], 'ca_expiring': [],
         'product_expired': [], 'product_expiring': [],
-        'missing_manufacture': [], 'missing_lot': [], 'admin_blocked': [],
+        'missing_manufacture': [], 'missing_lot': [], 'admin_blocked': [], 'product_unknown': [],
     }
     for raw in rows:
         row = row_to_dict(raw)
         status = str(row.get('status') or 'in_stock').strip().lower()
         is_blocked = status.startswith('blocked_')
-        is_available = status in ('in_stock', 'available')
         ca_days = _validity_days_until(row.get('ca_expiry'), today)
-        product_days = _validity_days_until(row.get('epi_validity_date'), today)
+        # EST-V3.5: dias de produto pela validade EFETIVA (física do lote, senão
+        # catálogo). `product_validity` é exposto para a UI mostrar a validade da
+        # peça; `epi_validity_date` segue como referência cadastral separada.
+        product_validity = str(row.get('product_validity') or '').strip()
+        from modules.stock.eligibility import classify_physical
+        product_days = classify_physical(product_validity, dict(policy, as_of_date=str(today)))['days_remaining']
         record = {
             'stock_item_id': int(row.get('stock_item_id') or 0),
             'epi_id': int(row.get('epi_id') or 0),
@@ -1516,6 +1753,7 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
             'ca': row.get('ca') or '',
             'ca_expiry': row.get('ca_expiry') or '',
             'epi_validity_date': row.get('epi_validity_date') or '',
+            'product_validity': product_validity,
             'manufacture_date': row.get('manufacture_date') or '',
             'lot_code': (row.get('lot_code') or '').strip(),
             'unit_id': int(row.get('unit_id') or 0),
@@ -1525,15 +1763,17 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
             'ca_days': ca_days,
             'product_days': product_days,
         }
+        from modules.stock.eligibility import ON_HAND_STATUSES
+        if status not in ON_HAND_STATUSES:
+            continue
         if is_blocked:
             categories['admin_blocked'].append(record)
-            continue  # bloqueio administrativo é excludente das demais (item já fora de uso)
-        if not is_available:
-            continue  # entregue/em trânsito não entra na conformidade de estoque
         if ca_days is not None and ca_days < 0:
             categories['ca_expired'].append(record)
         elif ca_days is not None and 0 <= ca_days <= warning_days:
             categories['ca_expiring'].append(record)
+        if product_days is None:
+            categories['product_unknown'].append(record)
         if product_days is not None and product_days < 0:
             categories['product_expired'].append(record)
         elif product_days is not None and 0 <= product_days <= warning_days:
@@ -1545,6 +1785,8 @@ def compute_stock_compliance(connection, company_id, unit_id=None, today=None,
 
     return {
         'warning_days': int(warning_days),
+        'validity_policy': policy,
+        'count_unit': 'physical_pieces',
         'summary': {k: len(v) for k, v in categories.items()},
         'categories': categories,
     }

@@ -898,14 +898,10 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         manufacturer_validity = str(
             validity_by_item.get(pri_id) or validity_by_epi.get(epi_id) or ''
         ).strip()
-        if manufacturer_validity:
-            # Persiste a validade do fabricante no EPI (fonte usada pelas regras
-            # de alerta/relatório/bloqueio de entrega — NT 146/2015), garantindo
-            # que o item não entre em estoque sem data de vencimento.
-            connection.execute(
-                'UPDATE epis SET epi_validity_date = ? WHERE id = ?',
-                (manufacturer_validity, epi_id)
-            )
+        # EST-V3.5 (G02): a validade do fabricante NÃO é mais escrita no catálogo
+        # (epis.epi_validity_date) no recebimento — é gravada NA PEÇA, por lote
+        # (record_received_item_physical, adiante). O catálogo vira só default de
+        # cadastro. `manufacturer_validity` (do payload) alimenta a peça.
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
         uniform_size = str(item.get('uniform_size') or 'N/A')
@@ -944,6 +940,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                     seq_value, qr_value, movement_id,
                     actor_id, now, now
                 )
+            )
+            # EST-V3 (G02/G15): descola a validade do catálogo — grava a validade
+            # física do lote NA PEÇA; lote já vencido não entra como disponível.
+            from modules.stock.service import record_received_item_physical
+            record_received_item_physical(
+                connection, int(item_cursor.lastrowid), manufacturer_validity, int(actor_id), now,
+                evidence=f'Conferência de requisição #{pr_id}',
             )
             qr_labels.append({
                 'qr_code_value': qr_value,
@@ -2205,7 +2208,7 @@ def _add_po_received_items_to_stock(connection, po, actor, now):
         for _ in range(quantity):
             seq_value = next_company_qr_sequence(connection, company_id)
             qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
-            connection.execute(
+            item_cursor = connection.execute(
                 'INSERT INTO epi_stock_items ('
                 'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
                 'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
@@ -2215,6 +2218,17 @@ def _add_po_received_items_to_stock(connection, po, actor, now):
                     company_id, unit_id, epi_id, glove_size, size, uniform_size,
                     seq_value, qr_value, movement_id, int(actor['id']), now, now
                 )
+            )
+            # EST-V3 (G02/G15): valida a peça pela validade física do lote. Na PO
+            # a validade do fabricante foi capturada NO ITEM DA PO na conferência
+            # ('received', coluna manufacturer_validity_date); aqui é materializada
+            # na peça e, se vencida, o item recebido já entra bloqueado. EST-V3.5:
+            # sem leitura do catálogo (epis.epi_validity_date).
+            lot_validity = str(item.get('manufacturer_validity_date') or '').strip()
+            from modules.stock.service import record_received_item_physical
+            record_received_item_physical(
+                connection, int(item_cursor.lastrowid), lot_validity, int(actor['id']), now,
+                evidence=f'Conferência de PO {po.get("po_number") or po_id}',
             )
         total_units += quantity
     return total_units
@@ -2261,9 +2275,11 @@ def receive_purchase_order(connection, actor, po, action, items, notes, ip_addre
                 validity_by_item.get(item_id) or validity_by_epi.get(epi_id_for_item) or ''
             ).strip()
             if manufacturer_validity and qty > 0:
+                # EST-V3.5 (G02): guarda a validade do LOTE no item da PO (não no
+                # catálogo); a conferência ('checked') materializa na peça.
                 connection.execute(
-                    'UPDATE epis SET epi_validity_date = ? WHERE id = ?',
-                    (manufacturer_validity, epi_id_for_item)
+                    'UPDATE purchase_order_items SET manufacturer_validity_date = ? WHERE id = ?',
+                    (manufacturer_validity, item_id)
                 )
         connection.execute(
             'UPDATE purchase_orders SET status = ?, received_by_user_id = ?, received_by_name = ?, '

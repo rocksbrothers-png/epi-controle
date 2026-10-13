@@ -10,6 +10,7 @@ etiquetada, então uma solicitação de 3 gera 3 entregas contra a mesma reserva
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import seed_test_physical_backing
 
 import pytest
 
@@ -56,6 +57,8 @@ def _conn(fisico=10):
                 (EMPRESA, unidade, epi, fisico),
             )
     ensure_stock_reservations(conn)
+    conn.commit()
+    seed_test_physical_backing(conn)
     conn.commit()
     return conn
 

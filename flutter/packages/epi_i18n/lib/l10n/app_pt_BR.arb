@@ -767,7 +767,13 @@
   "settingsSectionSubscription": "Assinatura",
   "settingsCompanyLabel": "Empresa",
   "settingsCompanyScopeBanner": "Administrando a empresa: {name}",
-  "@settingsCompanyScopeBanner": { "placeholders": { "name": { "type": "String" } } },
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSelectCompanyFirst": "Selecione uma empresa em Configurações para continuar.",
   "settingsFichaTileTitle": "Ficha de EPI",
   "settingsFichaTileSubtitle": "Título, declaração, observações e rastreabilidade",
@@ -781,5 +787,37 @@
   "settingsSubscriptionTileSubtitle": "Plano, cobranças e cancelamento",
   "settingsInvoicesTileTitle": "Histórico Financeiro",
   "settingsInvoicesTileSubtitle": "Todas as cobranças e recibos",
-  "settingsNoPermission": "Você não tem permissão para alterar esta configuração."
+  "settingsNoPermission": "Você não tem permissão para alterar esta configuração.",
+  "stockPhysicalValidityUnknown": "Validade física desconhecida",
+  "stockNoPhysicalStock": "Sem estoque físico",
+  "stockComplianceEpiCount": "{label} — EPIs distintos: {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Item indisponível para entrega. Verifique validade física, status, reservas e saldo."
 }

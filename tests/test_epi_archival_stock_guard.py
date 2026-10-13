@@ -8,6 +8,7 @@ motivo e auditoria.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 
 
 from modules.epis.service import (
@@ -40,6 +41,8 @@ def _conn():
         INSERT INTO epis (id, name) VALUES (7, 'Capacete');
         """
     )
+    conn.commit()
+    ensure_test_physical_schema(conn)
     conn.commit()
     return conn
 

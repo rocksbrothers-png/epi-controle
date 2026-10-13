@@ -38,6 +38,7 @@ rastreada e deliberadamente fora desta fatia.
 """
 
 from datetime import date, datetime, timedelta, timezone
+from modules.stock.eligibility import physical_summary_map
 
 from core.repository import (
     UnitSelection,
@@ -163,7 +164,11 @@ def build_dashboard_summary(
         },
         'kpis': {
             'deliveries_today': _entregas_de_hoje(entregas, unidades_no_escopo, setor, hoje),
-            'expiring_epis': _epis_a_vencer(epis, unidades_no_escopo, hoje),
+            # EST-V3.5 (G02): "a vencer" pela validade FÍSICA do lote em estoque
+            # (FEFO), sem fallback cadastral. Resumo por EPI montado uma vez.
+            'expiring_epis': _epis_a_vencer(
+                epis, unidades_no_escopo, hoje,
+                physical_summary_map(connection, None, escopo.unit_id)),
             'critical_stock': _contagem_por_status(
                 connection, actor, epis, escopo, STATUS_CRITICAL),
             'near_minimum_stock': _contagem_por_status(
@@ -284,25 +289,34 @@ def _entregas_de_hoje(entregas, unidades_no_escopo, setor, hoje):
     return total
 
 
-def _epis_a_vencer(epis, unidades_no_escopo, hoje):
+def _epis_a_vencer(epis, unidades_no_escopo, hoje, phys_validity=None):
     """CA ou validade do fabricante vencendo na janela de atenção.
 
     EPI de nível empresa (`unit_id` nulo) conta em QUALQUER recorte: ele não
     pertence a uma Unidade específica, e escondê-lo ao filtrar por Unidade faria
     sumir do painel um CA prestes a vencer que afeta todas elas. Regra atual do
     cliente, preservada de propósito.
+
+    EST-V3.5 (G02): a validade do fabricante é a FÍSICA do lote mais próximo de
+    vencer em estoque (``phys_validity[epi_id]``); o catálogo é só fallback para
+    peças sem validade física. ``phys_validity`` ausente → só catálogo (compat).
     """
+    phys_validity = phys_validity or {}
     total = 0
     for epi in epis:
         unidade = epi.get('unit_id')
         if unidade is not None and not _no_escopo(unidades_no_escopo, unidade):
             continue
-        vencendo = (
-            _is_expiring(epi.get('ca_expiry') or epi.get('ca_expiry_date'), hoje)
-            or _is_expiring(
-                epi.get('epi_validity_date') or epi.get('manufacturer_validity_date'), hoje
-            )
+        validade_fabricante = (
+            phys_validity.get(int(epi.get('id') or 0))
         )
+        if isinstance(validade_fabricante, dict):
+            near = validade_fabricante.get('expiring', 0) > 0
+            reference = date.fromisoformat(validade_fabricante['as_of_date'])
+        else:
+            near = _is_expiring(validade_fabricante, hoje)
+            reference = hoje
+        vencendo = _is_expiring(epi.get('ca_expiry') or epi.get('ca_expiry_date'), reference) or near
         if vencendo:
             total += 1
     return total

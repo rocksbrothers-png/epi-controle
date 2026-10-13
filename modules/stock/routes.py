@@ -1,7 +1,7 @@
 """Rotas de gestão de estoque de EPIs."""
 
 from contextlib import closing
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from urllib.parse import parse_qs
 
 from core.auth import ensure_resource_company
@@ -17,10 +17,10 @@ from modules.employees.service import actor_has_no_operational_unit, actor_opera
 from modules.units.service import ensure_unit_operational
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
+from epi_backend.http_utils import _json_safe
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from epi_backend.manufacture_date_ocr import detect_manufacture_date, get_ocr_runtime_status
-from modules.epis.validity import MANUFACTURER_VALIDITY_WARNING_DAYS
 from modules.purchases.service import actor_has_no_purchase_unit_scope, get_actor_purchase_unit_scope
 from modules.settings.service import canary_evaluate_visibility_dataset
 from modules.stock.service import (
@@ -31,6 +31,7 @@ from modules.stock.service import (
     compute_stock_compliance,
     create_stock_item_reprint,
     create_stock_movement,
+    epi_ids_with_manufacturer_validity,
     fetch_available_stock_items,
     fetch_blocked_stock_items,
     fetch_validity_overview,
@@ -115,7 +116,16 @@ def handle_get_stock_lookup_qr(handler, parsed, payload, match):
         stock_item = lookup_stock_item_by_qr(connection, company_scope_id, unit_filter, requested_qr_code, query_stock_item_id)
         if not stock_item:
             raise ValueError('QR não encontrado com correspondência exata no estoque da unidade.')
-        return send_json(handler, 200, {'stock_item': row_to_dict(stock_item)})
+        from modules.stock.eligibility import classify_physical, eligible_piece, scope_operational, validity_policy
+        from modules.stock.reservations import unit_balance
+        item = row_to_dict(stock_item)
+        policy = validity_policy(connection, item['company_id'])
+        item['scope_operational'] = scope_operational(connection, item['company_id'], item['unit_id'], item['epi_id'])
+        item['physical_validity_status'] = classify_physical(item.get('physical_expiry_date'), policy)['status']
+        item['eligible_for_delivery'] = eligible_piece(item, policy) and unit_balance(
+            connection, item['company_id'], item['unit_id'], item['epi_id'])['free'] > 0
+        item['validity_policy'] = policy
+        return send_json(handler, 200, {'stock_item': _json_safe(item)})
 
 
 def handle_get_stock_available_items(handler, parsed, payload, match):
@@ -136,7 +146,8 @@ def handle_get_stock_available_items(handler, parsed, payload, match):
         if not company_scope_id:
             unit_row = get_unit_by_id(connection, int(unit_filter))
             company_scope_id = int(unit_row['company_id']) if unit_row else 0
-        raw_rows = fetch_available_stock_items(connection, company_scope_id, unit_filter, epi_id)
+        raw_rows = fetch_available_stock_items(connection, company_scope_id, unit_filter, epi_id,
+                                               request_id=int(query['request_id'][0]) if query.get('request_id') else None)
         items = [row_to_dict(item) for item in raw_rows]
         items = canary_evaluate_visibility_dataset(
             connection, actor, endpoint_name='/api/stock/available-items', dataset_name='stock_items', legacy_items=items
@@ -297,14 +308,21 @@ def handle_get_stock_movements_report(handler, parsed, payload, match):
         if ca_status_filter == 'expired':
             clauses.append("COALESCE(e.ca_expiry, '') <> '' AND e.ca_expiry < ?")
             params.append(today_str)
-        if manufacturer_validity_filter == 'expired':
-            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date < ?")
-            params.append(today_str)
-        elif manufacturer_validity_filter in ('expiring', 'expiring_soon', 'near'):
-            threshold_str = (date.today() + timedelta(days=MANUFACTURER_VALIDITY_WARNING_DAYS)).isoformat()
-            clauses.append("COALESCE(e.epi_validity_date, '') <> '' AND e.epi_validity_date >= ? AND e.epi_validity_date <= ?")
-            params.append(today_str)
-            params.append(threshold_str)
+        # EST-V3.5 (G02): conformidade de validade do fabricante POR LOTE físico.
+        # Em vez de filtrar pelo catálogo (epis.epi_validity_date, agora só default
+        # de cadastro), restringe às movimentações dos EPIs cuja validade efetiva
+        # (física do lote em estoque, senão catálogo) está vencida/próxima.
+        if manufacturer_validity_filter in ('expired', 'expiring', 'expiring_soon', 'near'):
+            validity_epi_ids = epi_ids_with_manufacturer_validity(
+                connection, manufacturer_validity_filter,
+                company_id=int(company_filter or 0) or None, unit_id=scope_unit_id or None,
+            )
+            if validity_epi_ids:
+                ph = ','.join(['?'] * len(validity_epi_ids))
+                clauses.append(f'sm.epi_id IN ({ph})')
+                params.extend(sorted(validity_epi_ids))
+            else:
+                clauses.append('1 = 0')  # nenhum EPI em conformidade → relatório vazio
         rows = fetch_stock_movements(connection, clauses, params)
         items = [row_to_dict(r) for r in rows]
         items = canary_evaluate_visibility_dataset(
@@ -888,6 +906,8 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             name=name, section=section, manufacturer=manufacturer, ca=ca, protection=protection,
         )
         target_unit_jv_name = get_unit_active_jv_name(connection, unit_filter) if unit_filter else ''
+        from modules.stock.eligibility import empty_summary, physical_summary_map, validity_policy
+        summaries = physical_summary_map(connection, company_scope_id or None, unit_filter or None)
         items = []
         for epi in epis:
             if company_filter and str(epi.get('company_id')) != str(company_filter):
@@ -987,6 +1007,15 @@ def handle_get_stock_epis(handler, parsed, payload, match):
             item['is_company_stock_critical'] = is_stock_critical(company_stock, minimum_stock)
             item['stock'] = company_stock
             item['size_balances'] = size_rows
+            summary = summaries.get(int(epi['id']))
+            if summary is None:
+                summary = empty_summary(validity_policy(connection, int(epi['company_id'])))
+            item['catalog_validity_date'] = str(epi.get('epi_validity_date') or '').strip() or None
+            item['effective_validity_date'] = summary['nearest_known_expiry']
+            item['physical_validity_summary'] = summary
+            from modules.stock.reservations import unit_balance
+            item['available_quantity'] = (unit_balance(connection, epi['company_id'], unit_filter, epi['id'])['free']
+                                          if unit_filter else None)
             items.append(item)
         items = canary_evaluate_visibility_dataset(connection, actor, endpoint_name='/api/stock/epis', dataset_name='epis', legacy_items=items)
         return send_json(handler, 200, {'items': items})

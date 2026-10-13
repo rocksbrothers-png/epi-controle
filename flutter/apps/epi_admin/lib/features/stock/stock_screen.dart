@@ -64,58 +64,56 @@ class _StockBodyState extends State<_StockBody> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.stockTitle),
-        actions: [
-          // Entrada da configuração sem EPI escolhido: a tela abre no seletor
-          // e o usuário escolhe lá. `unit_id` só é enviado quando o servidor já
-          // resolveu uma Unidade para esta listagem — e mesmo assim é
-          // revalidado no destino.
-          if (podeConfigurarEstoquePorUnidade(context))
-            BlocBuilder<StockCubit, StockState>(
-              buildWhen: (p, c) => p.unitId != c.unitId,
-              builder: (_, state) => IconButton(
-                icon: const Icon(Icons.tune_rounded),
-                tooltip: l10n.stockConfigTitle,
-                // `push`, não `go`: a configuração é um detour a partir desta
-                // tela e o operador precisa voltar para ela. É também o que os
-                // outros acessos a tela interna usam (Configurações → Minha
-                // Empresa, Entregas → Conferência).
-                onPressed: () => context.push(
-                  state.unitId != 0
-                      ? '${Routes.stockConfig}?unit_id=${state.unitId}'
-                      : Routes.stockConfig,
+        appBar: AppBar(
+          title: Text(l10n.stockTitle),
+          actions: [
+            // Entrada da configuração sem EPI escolhido: a tela abre no seletor
+            // e o usuário escolhe lá. `unit_id` só é enviado quando o servidor já
+            // resolveu uma Unidade para esta listagem — e mesmo assim é
+            // revalidado no destino.
+            if (podeConfigurarEstoquePorUnidade(context))
+              BlocBuilder<StockCubit, StockState>(
+                buildWhen: (p, c) => p.unitId != c.unitId,
+                builder: (_, state) => IconButton(
+                  icon: const Icon(Icons.tune_rounded),
+                  tooltip: l10n.stockConfigTitle,
+                  // `push`, não `go`: a configuração é um detour a partir desta
+                  // tela e o operador precisa voltar para ela. É também o que os
+                  // outros acessos a tela interna usam (Configurações → Minha
+                  // Empresa, Entregas → Conferência).
+                  onPressed: () => context.push(
+                    state.unitId != 0
+                        ? '${Routes.stockConfig}?unit_id=${state.unitId}'
+                        : Routes.stockConfig,
+                  ),
                 ),
               ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: () => context.read<StockCubit>().load(),
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => context.read<StockCubit>().load(),
-          ),
-        ],
-        bottom: TabBar(
-          // A aba de bloqueados carrega sob demanda: só o primeiro toque
-          // dispara a consulta, e trocar de aba não recarrega o que já veio.
-          onTap: (index) {
-            if (index == 1 &&
-                context.read<StockCubit>().state.blockedStatus ==
-                    StockListStatus.idle) {
-              context.read<StockCubit>().loadBlockedItems();
-            }
-          },
-          tabs: [
-            Tab(text: l10n.navEpis),
-            Tab(text: l10n.stockTabBlocked),
           ],
+          bottom: TabBar(
+            // A aba de bloqueados carrega sob demanda: só o primeiro toque
+            // dispara a consulta, e trocar de aba não recarrega o que já veio.
+            onTap: (index) {
+              if (index == 1 &&
+                  context.read<StockCubit>().state.blockedStatus ==
+                      StockListStatus.idle) {
+                context.read<StockCubit>().loadBlockedItems();
+              }
+            },
+            tabs: [
+              Tab(text: l10n.navEpis),
+              Tab(text: l10n.stockTabBlocked),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [_buildEpisTab(context, l10n), const _BlockedTab()],
         ),
       ),
-      body: TabBarView(
-        children: [
-          _buildEpisTab(context, l10n),
-          const _BlockedTab(),
-        ],
-      ),
-    ));
+    );
   }
 
   /// Aba de EPIs — a lista que já existia, agora em aba própria para dar
@@ -123,104 +121,113 @@ class _StockBodyState extends State<_StockBody> {
   /// conformidade para dentro de uma aba que não os usa.
   Widget _buildEpisTab(BuildContext context, AppLocalizations l10n) {
     return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              EpiSpacing.lg, EpiSpacing.lg, EpiSpacing.lg, 0,
-            ),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: l10n.episSearchHint,
-                prefixIcon: const Icon(Icons.search_rounded),
-                border: const OutlineInputBorder(),
-                isDense: true,
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
-                  builder: (_, v, __) => v.text.isEmpty
-                      ? const SizedBox.shrink()
-                      : IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            context.read<StockCubit>().search('');
-                          },
-                        ),
-                ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            EpiSpacing.lg,
+            EpiSpacing.lg,
+            EpiSpacing.lg,
+            0,
+          ),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: l10n.episSearchHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              border: const OutlineInputBorder(),
+              isDense: true,
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (_, v, __) => v.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _searchController.clear();
+                          context.read<StockCubit>().search('');
+                        },
+                      ),
               ),
-              onChanged: (q) => context.read<StockCubit>().search(q),
             ),
+            onChanged: (q) => context.read<StockCubit>().search(q),
           ),
-          const _ComplianceFilters(),
-          BlocBuilder<StockCubit, StockState>(
-            buildWhen: (p, c) =>
-                p.criticalCount != c.criticalCount ||
-                p.epis.length != c.epis.length,
-            builder: (_, state) => state.epis.isEmpty
-                ? const SizedBox.shrink()
-                : Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: EpiSpacing.lg,
-                      vertical: EpiSpacing.sm,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${state.epis.length} EPIs',
-                          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const _ComplianceFilters(),
+        BlocBuilder<StockCubit, StockState>(
+          buildWhen: (p, c) =>
+              p.criticalCount != c.criticalCount ||
+              p.epis.length != c.epis.length,
+          builder: (_, state) => state.epis.isEmpty
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: EpiSpacing.lg,
+                    vertical: EpiSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${state.epis.length} EPIs',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (state.criticalCount > 0) ...[
+                        const SizedBox(width: EpiSpacing.md),
+                        EpiBadge(
+                          status: EpiBadgeStatus.critical,
+                          label:
+                              '${state.criticalCount} ${AppLocalizations.of(context).stockMinimumAlert.toLowerCase()}',
                         ),
-                        if (state.criticalCount > 0) ...[
-                          const SizedBox(width: EpiSpacing.md),
-                          EpiBadge(
-                            status: EpiBadgeStatus.critical,
-                            label: '${state.criticalCount} ${AppLocalizations.of(context).stockMinimumAlert.toLowerCase()}',
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
-          ),
-          Expanded(
-            child: BlocBuilder<StockCubit, StockState>(
-              builder: (ctx, state) {
-                if (state.isLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (state.error != null) {
-                  return _RetryView(
-                    onRetry: () => context.read<StockCubit>().load(),
-                  );
-                }
-                final items = state.filtered;
-                if (items.isEmpty) {
-                  return EpiEmptyState(title: AppLocalizations.of(context).noResults);
-                }
-                return RefreshIndicator(
-                  onRefresh: () => context.read<StockCubit>().load(),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.only(
-                      top: EpiSpacing.sm, bottom: EpiSpacing.xl5,
-                    ),
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
-                    itemBuilder: (_, i) => _StockTile(
-                      epi: items[i],
-                      // Movimentação exige Unidade EXPLÍCITA (#278). Aqui não
-                      // há colaborador determinando o escopo como na entrega:
-                      // sem Unidade resolvida, o servidor recusaria — e a
-                      // visão corporativa não serve de substituto para uma
-                      // operação física.
-                      unitResolved: state.unitId != 0,
-                      onMove: (delta) => context
-                          .read<StockCubit>()
-                          .moveStock(epiId: items[i].id, delta: delta),
-                    ),
-                  ),
+                ),
+        ),
+        Expanded(
+          child: BlocBuilder<StockCubit, StockState>(
+            builder: (ctx, state) {
+              if (state.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state.error != null) {
+                return _RetryView(
+                  onRetry: () => context.read<StockCubit>().load(),
                 );
-              },
-            ),
+              }
+              final items = state.filtered;
+              if (items.isEmpty) {
+                return EpiEmptyState(
+                  title: AppLocalizations.of(context).noResults,
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: () => context.read<StockCubit>().load(),
+                child: ListView.separated(
+                  padding: const EdgeInsets.only(
+                    top: EpiSpacing.sm,
+                    bottom: EpiSpacing.xl5,
+                  ),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, indent: 16),
+                  itemBuilder: (_, i) => _StockTile(
+                    epi: items[i],
+                    // Movimentação exige Unidade EXPLÍCITA (#278). Aqui não
+                    // há colaborador determinando o escopo como na entrega:
+                    // sem Unidade resolvida, o servidor recusaria — e a
+                    // visão corporativa não serve de substituto para uma
+                    // operação física.
+                    unitResolved: state.unitId != 0,
+                    onMove: (delta) => context.read<StockCubit>().moveStock(
+                      epiId: items[i].id,
+                      delta: delta,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-        ],
+        ),
+      ],
     );
   }
 }
@@ -281,7 +288,8 @@ class _StockListView extends StatelessWidget {
         if (items.isEmpty) return EpiEmptyState(title: emptyMessage);
         return ListView.separated(
           padding: const EdgeInsets.only(
-            top: EpiSpacing.sm, bottom: EpiSpacing.xl5,
+            top: EpiSpacing.sm,
+            bottom: EpiSpacing.xl5,
           ),
           itemCount: items.length,
           separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
@@ -406,15 +414,18 @@ class _ComplianceFilters extends StatelessWidget {
           p.compliance != c.compliance ||
           p.caExpiredCount != c.caExpiredCount ||
           p.manufacturerExpiringCount != c.manufacturerExpiringCount ||
-          p.manufacturerExpiredCount != c.manufacturerExpiredCount,
+          p.manufacturerExpiredCount != c.manufacturerExpiredCount ||
+          p.manufacturerUnknownCount != c.manufacturerUnknownCount ||
+          p.noPhysicalStockCount != c.noPhysicalStockCount,
       builder: (context, state) {
         final cubit = context.read<StockCubit>();
+        final l10n = AppLocalizations.of(context);
         Widget chip(String label, StockComplianceFilter value, int count) {
           final selected = state.compliance == value;
           return Padding(
             padding: const EdgeInsets.only(right: EpiSpacing.sm),
             child: FilterChip(
-              label: Text(count > 0 ? '$label ($count)' : label),
+              label: Text(l10n.stockComplianceEpiCount(label, count)),
               selected: selected,
               onSelected: (_) => cubit.setCompliance(
                 selected ? StockComplianceFilter.none : value,
@@ -429,14 +440,31 @@ class _ComplianceFilters extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: EpiSpacing.lg),
             children: [
-              chip('CA vencido', StockComplianceFilter.caExpired,
-                  state.caExpiredCount),
-              chip('Validade do fabricante próxima',
-                  StockComplianceFilter.manufacturerExpiring,
-                  state.manufacturerExpiringCount),
-              chip('Validade do fabricante vencida',
-                  StockComplianceFilter.manufacturerExpired,
-                  state.manufacturerExpiredCount),
+              chip(
+                l10n.stockPhysicalValidityUnknown,
+                StockComplianceFilter.manufacturerUnknown,
+                state.manufacturerUnknownCount,
+              ),
+              chip(
+                l10n.stockNoPhysicalStock,
+                StockComplianceFilter.noPhysicalStock,
+                state.noPhysicalStockCount,
+              ),
+              chip(
+                'CA vencido',
+                StockComplianceFilter.caExpired,
+                state.caExpiredCount,
+              ),
+              chip(
+                'Validade do fabricante próxima',
+                StockComplianceFilter.manufacturerExpiring,
+                state.manufacturerExpiringCount,
+              ),
+              chip(
+                'Validade do fabricante vencida',
+                StockComplianceFilter.manufacturerExpired,
+                state.manufacturerExpiredCount,
+              ),
             ],
           ),
         );
@@ -475,6 +503,7 @@ class _StockTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final manufacturerNote = _manufacturerNote(AppLocalizations.of(context));
     final validade = epiValidityBadgeStatus(epi);
     final status = _status;
     final corSaldo = _barColor(context) ?? EpiColors.textMuted;
@@ -551,9 +580,9 @@ class _StockTile extends StatelessWidget {
                 Text(
                   '${_unitStock ?? '—'}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: corSaldo,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: corSaldo,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 // O mínimo exibido é o DAQUELA Unidade (`unit_minimum_stock`).
                 // Exibir `minimumStock` mostrava o padrão corporativo: uma
@@ -565,9 +594,9 @@ class _StockTile extends StatelessWidget {
                   ' ${epi.companyStockQuantity ?? epi.stockQuantity}'
                   ' / ${AppLocalizations.of(context).stockMinimumShort}'
                   ' ${epi.unitMinimumStock ?? '—'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: EpiColors.textMuted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
                 ),
               ],
             ),
@@ -583,7 +612,7 @@ class _StockTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(EpiRadius.full),
               ),
             ],
-            if (_manufacturerNote != null) ...[
+            if (manufacturerNote != null) ...[
               const SizedBox(height: EpiSpacing.xs),
               Row(
                 children: [
@@ -599,12 +628,12 @@ class _StockTile extends StatelessWidget {
                   const SizedBox(width: EpiSpacing.xs),
                   Expanded(
                     child: Text(
-                      _manufacturerNote!,
+                      manufacturerNote,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: epi.isBlockedForDelivery
-                                ? EpiColors.danger
-                                : EpiColors.warning,
-                          ),
+                        color: epi.isBlockedForDelivery
+                            ? EpiColors.danger
+                            : EpiColors.warning,
+                      ),
                     ),
                   ),
                 ],
@@ -617,7 +646,17 @@ class _StockTile extends StatelessWidget {
   }
 
   /// Mensagem sobre a validade do fabricante (NT 146/2015), quando aplicável.
-  String? get _manufacturerNote {
+  String? _manufacturerNote(AppLocalizations l10n) {
+    final physical = epi.physicalValiditySummary;
+    if (physical != null) {
+      if (physical.physicalPieces == 0) return l10n.stockNoPhysicalStock;
+      return l10n.stockPhysicalPieceCounts(
+        physical.valid,
+        physical.expiring,
+        physical.expired,
+        physical.unknown,
+      );
+    }
     final status = epi.manufacturerValidityStatus;
     if (status == 'expired') {
       return 'Validade do fabricante vencida — retirar do estoque (não entregar).';
@@ -686,10 +725,7 @@ class _StockMoveSheetState extends State<_StockMoveSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            widget.epi.name,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text(widget.epi.name, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: EpiSpacing.xs),
           // Saldo da UNIDADE, rotulado como tal (#278, ocorrência 2). Aqui se
           // digita uma entrada ou saída DAQUELA Unidade, e o número exibido
@@ -705,10 +741,9 @@ class _StockMoveSheetState extends State<_StockMoveSheet> {
           Text(
             '${l10n.epiStockLabel} ${l10n.stockUnitBalanceSuffix}: '
             '${widget.epi.unitStockQuantity ?? '—'}',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: EpiColors.textMuted),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: EpiColors.textMuted),
           ),
           const SizedBox(height: EpiSpacing.xl),
           // Move type toggle
@@ -817,9 +852,9 @@ class _MoveTypeButton extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: selected ? color : EpiColors.textMuted,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                color: selected ? color : EpiColors.textMuted,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -838,7 +873,11 @@ class _RetryView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(
             AppLocalizations.of(context).errorNetwork,

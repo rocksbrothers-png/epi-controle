@@ -18,7 +18,7 @@ import pytest
 from core.bootstrap import init_db
 from core.database import get_connection
 from core.security import create_jwt_token
-from modules.deliveries.routes import handle_post_deliveries
+import modules.deliveries.routes as delivery_routes
 from modules.stock.routes import handle_get_stock_epis
 from modules.stock.reservations import create_reservation, unit_balance
 from modules.stock.service import (
@@ -116,7 +116,7 @@ def delivery(s, kind, overrides=None):
     handler=ResponseSink('/api/deliveries',s['actor'],'POST')
     error=None
     try:
-        handle_post_deliveries(handler,urlparse(handler.path),payload,None)
+        delivery_routes.handle_post_deliveries(handler,urlparse(handler.path),payload,None)
     except (ValueError, PermissionError) as exc:
         error=dict(type=type(exc).__name__,message=str(exc))
     row=row_to_dict(s['c'].execute('SELECT id,status,physical_expiry_date,delivery_id FROM epi_stock_items WHERE id=?',(item['id'],)).fetchone())
@@ -323,13 +323,12 @@ def test_real_concurrent_operations_never_double_consume(connection, race, itera
 
 
 def test_delivery_rollback_after_claim_includes_balance_movement_and_ficha(connection, monkeypatch):
-    import modules.deliveries.routes as routes
     s = seed(connection, ['valid'])
 
     def reject_ficha(*args, **kwargs):
         raise RuntimeError('forced failure after physical claim and movement')
 
-    monkeypatch.setattr(routes, 'ensure_ficha_for_delivery', reject_ficha)
+    monkeypatch.setattr(delivery_routes, 'ensure_ficha_for_delivery', reject_ficha)
     with pytest.raises(RuntimeError, match='forced failure'):
         delivery(s, 'valid')
     row = connection.execute('SELECT status, delivery_id FROM epi_stock_items WHERE id=?',

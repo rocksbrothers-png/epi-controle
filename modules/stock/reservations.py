@@ -74,10 +74,12 @@ def unit_balance(connection, company_id, unit_id, epi_id) -> dict:
     É a fonte para decidir se a solicitação pode ser atendida (§3.5). Note que
     não há parâmetro de escopo: a decisão de atender olha uma unidade só.
     """
-    from modules.stock.service import get_unit_stock
     from modules.stock.eligibility import eligible_quantity, stock_rows, ON_HAND_STATUSES
-    stock = get_unit_stock(connection, int(company_id), int(unit_id), int(epi_id))
-    physical = int((stock or {}).get('quantity') or 0)
+    stock = connection.execute(
+        'SELECT quantity FROM unit_epi_stock WHERE company_id=? AND unit_id=? AND epi_id=?',
+        (int(company_id), int(unit_id), int(epi_id)),
+    ).fetchone()
+    physical = int(stock['quantity'] or 0) if stock else 0
     reserved = reserved_quantity(connection, company_id, unit_id, epi_id)
     eligible = eligible_quantity(connection, company_id, unit_id, epi_id)
     tracked = sum(str(row['status']).lower() in ON_HAND_STATUSES

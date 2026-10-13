@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final path = Platform.environment['EST35_HTTP_CONTEXT'];
+  final token = Platform.environment['EST35_HTTP_TOKEN'];
   test(
     'real application HTTP, JWT and PostgreSQL physical stock contract',
     () async {
@@ -16,7 +17,7 @@ void main() {
       final dio = Dio(
         BaseOptions(
           baseUrl: config['base_url'] as String,
-          headers: {'Authorization': 'Bearer ${config['token']}'},
+          headers: {'Authorization': 'Bearer $token'},
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
         ),
@@ -100,7 +101,7 @@ void main() {
       );
       dio.close(force: true);
     },
-    skip: path == null
+    skip: path == null || token == null
         ? 'Requires the isolated HTTP/PostgreSQL fixture; executed by Stock Validity Integration CI'
         : false,
   );

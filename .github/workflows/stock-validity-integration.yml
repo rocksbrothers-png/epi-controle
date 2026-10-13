@@ -28,7 +28,6 @@ jobs:
     env:
       APP_ENV: test
       DATABASE_URL: postgresql://epi:epi@127.0.0.1:5432/stock_r1_integration
-      JWT_SECRET: stock-r1-isolated-ci-fixture
       JWT_ENFORCEMENT_MODE: enforce
       PGPASSWORD: epi
     steps:
@@ -55,15 +54,4 @@ jobs:
         run: |
           set -euo pipefail
           export EST35_HTTP_OUTPUT="$RUNNER_TEMP/stock-r1"
-          export EST35_HTTP_CONTEXT="$EST35_HTTP_OUTPUT/stock-r1-http-context.json"
-          python scripts/stock_r1_http_fixture.py > "$RUNNER_TEMP/stock-r1-http.log" 2>&1 &
-          r1_fixture_pid=$!
-          trap 'kill "$r1_fixture_pid" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 30); do
-            if test -s "$EST35_HTTP_CONTEXT"; then break; fi
-            if ! kill -0 "$r1_fixture_pid" 2>/dev/null; then cat "$RUNNER_TEMP/stock-r1-http.log"; exit 1; fi
-            sleep 1
-          done
-          test -s "$EST35_HTTP_CONTEXT"
-          cd flutter/apps/epi_admin
-          flutter test --reporter expanded test/stock_http_integration_test.dart
+          python scripts/stock_r1_http_fixture.py

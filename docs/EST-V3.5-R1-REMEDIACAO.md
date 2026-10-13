@@ -58,7 +58,9 @@ python3 tool/check_parity_drift.py
 
 `tests/test_est_v3_5_r1_policy.py` cobre datas inválidas, coluna física ausente, último dia inclusivo, fusos com datas civis diferentes e janelas 0/60. Testes Flutter verificam contratos, filtros, catálogo separado e rejeição de seleção manual/QR inelegível.
 
-O novo workflow `Stock Validity Integration` executa `stock_http_integration_test.dart` com Dio, JWT real, `app.EpiHandler` e PostgreSQL 16 descartável. O teste é explicitamente pulado na suíte Flutter comum quando não há `EST35_HTTP_CONTEXT`; o workflow dedicado fornece o contexto e efetivamente o executa. O fixture `scripts/stock_r1_http_fixture.py` aceita somente APP_ENV=test e banco loopback de nome restrito; não usa credenciais ou dados de produção.
+O novo workflow `Stock Validity Integration` executa `stock_http_integration_test.dart` com Dio, JWT real, `app.EpiHandler` e PostgreSQL 16 descartável. O teste é explicitamente pulado na suíte Flutter comum quando não há `EST35_HTTP_CONTEXT`; o workflow dedicado fornece o contexto e efetivamente o executa. O fixture `scripts/stock_r1_http_fixture.py` aceita somente APP_ENV=test e banco loopback de nome restrito; não usa credenciais ou dados de produção. Gera chave aleatória em memória, inicia o servidor real e passa o JWT ao processo Flutter por ambiente. O arquivo de contexto contém somente identificadores; não contém JWT ou chave. O fixture encerra o servidor ao concluir o teste.
+
+A primeira CI detectou uma chave determinística de fixture no workflow e gravação do JWT de teste em arquivo. Ambas foram removidas. Para preservar o histórico dos PRs, `.gitleaksignore` contém apenas os dois fingerprints exatos dos commits que introduziram aquela chave pública de teste descartável, já retirada; nenhuma regra, diretório, arquivo futuro ou linha futura é ignorada. A configuração `.gitleaks.toml` não muda. Notas CodeQL de ciclo de importação e importação duplicada também foram corrigidas.
 
 Sabotagens executadas em cópias descartáveis, em ambos os produtos, com DB próprio por etapa e restauração de bytes:
 

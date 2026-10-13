@@ -304,10 +304,14 @@ def handle_get_stock_pending_regularization(handler, parsed, payload, match):
         company_scope_id = int(company_filter or 0)
         if not company_scope_id:
             raise ValueError('Empresa é obrigatória para listar pendências de regularização.')
-        scope_unit_id = actor_operational_unit_id(connection, actor)
-        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
-            raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
-        unit_filter = scope_unit_id or query.get('unit_id', [''])[0] or None
+        # resolve_unit_scope é o ponto ÚNICO de resolução de Unidade: descarta o
+        # unit_id do cliente para perfil travado (admin/user) e, para perfil
+        # livre, valida que a Unidade pedida existe e pertence ao tenant do ator
+        # (ValueError → 400) — isolamento garantido na origem, não por filtro.
+        unit_filter = resolve_unit_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            denial_message='Perfil sem unidade operacional ativa para consultar estoque.',
+        )
         items = pending_regularization_items(connection, company_scope_id, unit_filter)
         return send_json(handler, 200, {'items': items, 'count': len(items)})
 

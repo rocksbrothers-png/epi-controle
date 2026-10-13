@@ -72,7 +72,7 @@ def test_compliance_counts_expired_physical_lot_under_valid_catalog(seed):
     # PAST vira blocked_expired no recebimento (G15) → sai do disponível e entra
     # em admin_blocked; o válido não conta. A validade física rege a classificação.
     assert r['summary']['admin_blocked'] == 1
-    assert r['summary']['product_expired'] == 0  # o vencido já está bloqueado, não "disponível vencido"
+    assert r['summary']['product_expired'] == 1  # conformidade física e bloqueio são dimensões distintas
 
 
 def test_compliance_expired_in_stock_lot_counts_product_expired(seed):

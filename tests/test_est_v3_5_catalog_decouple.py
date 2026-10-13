@@ -103,19 +103,20 @@ def test_compliance_valid_lot_under_expired_catalog_not_flagged():
     assert r['summary']['product_expired'] == 0
 
 
-def test_compliance_falls_back_to_catalog_when_physical_unknown():
+def test_compliance_unknown_never_uses_catalog():
     """Peça sem validade física + catálogo vencido (EPI 8) → fallback → product_expired."""
     conn = _conn()
     _add(conn, 8, '')
     r = compute_stock_compliance(conn, 1, today=TODAY)
-    assert r['summary']['product_expired'] == 1
+    assert r['summary']['product_expired'] == 0
+    assert r['summary']['product_unknown'] == 1
 
 
 def test_compliance_blocked_lot_excluded_from_validity():
     conn = _conn()
     _add(conn, 7, PAST, status='blocked_expired')
     r = compute_stock_compliance(conn, 1, today=TODAY)
-    assert r['summary']['product_expired'] == 0
+    assert r['summary']['product_expired'] == 1
     assert r['summary']['admin_blocked'] == 1
 
 
@@ -185,7 +186,7 @@ def test_dashboard_expiring_uses_physical_lot():
     assert _epis_a_vencer([epi_ok], None, TODAY, {7: SOON}) == 1    # lote a vencer → conta
     # reverso: catálogo a vencer, lote físico em dia → não conta
     epi_cat = {'id': 8, 'unit_id': None, 'ca_expiry': FUTURE, 'epi_validity_date': SOON}
-    assert _epis_a_vencer([epi_cat], None, TODAY) == 1             # sem mapa: catálogo a vencer
+    assert _epis_a_vencer([epi_cat], None, TODAY) == 0             # sem mapa: catálogo a vencer
     assert _epis_a_vencer([epi_cat], None, TODAY, {8: FUTURE}) == 0  # lote em dia → não conta
 
 
@@ -199,11 +200,11 @@ def test_validity_filter_ids_prefer_physical_lot():
     assert 7 in expired and 8 not in expired
 
 
-def test_validity_filter_ids_fallback_to_catalog_without_physical():
+def test_validity_filter_ids_exclude_unknown_catalog():
     conn = _conn()
     _add(conn, 8, '')  # EPI 8: catálogo PAST, sem validade física → fallback → 'expired'
     expired = epi_ids_with_manufacturer_validity(conn, 'expired', company_id=1, today=TODAY)
-    assert 8 in expired
+    assert 8 not in expired
 
 
 def test_validity_filter_ids_empty_for_unknown_status():

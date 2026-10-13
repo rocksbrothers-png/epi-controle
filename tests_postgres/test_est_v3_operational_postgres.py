@@ -137,5 +137,8 @@ def test_fefo_orders_by_physical_expiry_on_real_schema(seed):
     unknown = seed['item']()
     record_received_item_physical(seed['c'], later, FUTURE, seed['actor'], seed['now'])
     record_received_item_physical(seed['c'], sooner, SOON, seed['actor'], seed['now'])
+    from modules.stock.service import upsert_unit_stock
+    upsert_unit_stock(seed['c'], seed['company'], seed['unit'], seed['epi'], 3)
     ids = [r['id'] for r in fetch_available_stock_items(seed['c'], seed['company'], seed['unit'], seed['epi'])]
-    assert ids.index(sooner) < ids.index(later) < ids.index(unknown)
+    assert ids == [sooner, later]
+    assert unknown not in ids

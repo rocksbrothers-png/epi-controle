@@ -1142,6 +1142,125 @@ class AppLocalizationsFr extends AppLocalizations {
   String get myCompanyDomainToken => 'Valor do TXT';
 
   @override
+  String get epiArchiveBlockTitle => 'Arquivar com bloqueio de saldo';
+
+  @override
+  String get epiArchiveBlockBody =>
+      'Este EPI possui saldo disponível ou vínculos vivos. Ao confirmar, o saldo disponível será movido para Estoque Bloqueado (rastreável) e o EPI será arquivado.';
+
+  @override
+  String get epiArchiveBlockConfirm => 'Bloquear saldo e arquivar';
+
+  @override
+  String get epiArchiveReasonLabel => 'Motivo do arquivamento (auditoria)';
+
+  @override
+  String get epiArchiveReasonRequired => 'Informe o motivo para prosseguir.';
+
+  @override
+  String get epiArchiveBlockableLabel => 'Saldo a bloquear';
+
+  @override
+  String get epiArchiveLiveLinksTitle => 'Vínculos vivos';
+
+  @override
+  String get epiArchiveAvailable => 'Disponível';
+
+  @override
+  String get epiArchiveInTransit => 'Em trânsito';
+
+  @override
+  String get epiArchiveInPossession => 'Em posse';
+
+  @override
+  String get epiArchivePendingRequests => 'Requisições abertas';
+
+  @override
+  String get epiArchivePendingPurchase => 'Compras abertas';
+
+  @override
+  String get dashboardComplianceTitle => 'Conformidade de estoque';
+
+  @override
+  String get dashboardComplianceAllOk => 'Estoque em conformidade';
+
+  @override
+  String get complianceCaExpired => 'CA vencido';
+
+  @override
+  String get complianceCaExpiring => 'CA a vencer';
+
+  @override
+  String get complianceProductExpired => 'Produto vencido';
+
+  @override
+  String get complianceProductExpiring => 'Produto a vencer';
+
+  @override
+  String get complianceMissingManufacture => 'Sem fabricação';
+
+  @override
+  String get complianceMissingLot => 'Sem lote';
+
+  @override
+  String get complianceAdminBlocked => 'Bloqueado';
+
+  @override
+  String get handoverTitle => 'Conferência de entrega';
+
+  @override
+  String get handoverPrompt => 'Escaneie o QR da entrega ou informe o código.';
+
+  @override
+  String get handoverCodeLabel => 'Código da entrega';
+
+  @override
+  String get handoverLookupButton => 'Buscar entrega';
+
+  @override
+  String get handoverScanButton => 'Escanear QR';
+
+  @override
+  String get handoverConfirmButton => 'Confirmar recebimento';
+
+  @override
+  String get handoverConfirmedTitle => 'Recebimento confirmado';
+
+  @override
+  String get handoverAlreadyConfirmed => 'Esta entrega já foi confirmada.';
+
+  @override
+  String get handoverNotFound => 'Entrega não encontrada para este código.';
+
+  @override
+  String get handoverConfirmError =>
+      'Não foi possível confirmar o recebimento.';
+
+  @override
+  String get handoverEmployeeLabel => 'Colaborador';
+
+  @override
+  String get handoverEpiLabel => 'EPI';
+
+  @override
+  String get handoverQuantityLabel => 'Quantidade';
+
+  @override
+  String get handoverSectorLabel => 'Setor';
+
+  @override
+  String get handoverRoleLabel => 'Função';
+
+  @override
+  String get handoverUnitLabel => 'Unidade';
+
+  @override
+  String get handoverDeliveryDateLabel => 'Data da entrega';
+
+  @override
+  String get handoverReceiverNameLabel => 'Nome de quem recebe (opcional)';
+
+  @override
   String get handoverScanAgain => 'Nova conferência';
 
   @override
@@ -1177,6 +1296,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get legalEntityMunicipalityLabel => 'Município';
+
+  @override
+  String get legalEntityCnpjLabel => 'CNPJ';
+
+  @override
+  String get legalEntityUfLabel => 'UF';
+
+  @override
+  String get legalEntitiesImportColumnsHint =>
+      'CNPJ\tRazão social\tNome fantasia\tTipo';
 
   @override
   String get legalEntitiesImport => 'Importar planilha';
@@ -1361,6 +1490,50 @@ class AppLocalizationsFr extends AppLocalizations {
   String get outsourcedCompanyUnitAll => 'Todas as unidades (padrão)';
 
   @override
+  String get outsourcedCompanyLinkTitle => 'Vincular empresa a esta Unidade';
+
+  @override
+  String get outsourcedCompanyLinkHint =>
+      'Buscar empresa já cadastrada no tenant…';
+
+  @override
+  String get outsourcedCompanyLinkSectionLinked =>
+      'Já vinculadas a esta Unidade';
+
+  @override
+  String get outsourcedCompanyLinkSectionAvailable =>
+      'Disponíveis para vincular';
+
+  @override
+  String get outsourcedCompanyLinkLink => 'Vincular a esta Unidade';
+
+  @override
+  String get outsourcedCompanyLinkActivate => 'Reativar nesta Unidade';
+
+  @override
+  String get outsourcedCompanyLinkDeactivate => 'Arquivar nesta Unidade';
+
+  @override
+  String get outsourcedCompanyLinkDeactivateReason =>
+      'Motivo do arquivamento (opcional):';
+
+  @override
+  String outsourcedCompanyLinkUsedByUnits(int count) {
+    return 'Usada por $count Unidade(s)';
+  }
+
+  @override
+  String get outsourcedCompanyLinkOriginUnit => 'Unidade de origem';
+
+  @override
+  String get outsourcedCompanyLinkEmpty =>
+      'Nenhuma empresa encontrada com esse termo.';
+
+  @override
+  String get outsourcedCompanyLinkNotInformed =>
+      'Vínculo não informado para o seu perfil';
+
+  @override
   String get outsourcedCompanyStatusLabel => 'Situação';
 
   @override
@@ -1464,6 +1637,41 @@ class AppLocalizationsFr extends AppLocalizations {
       'Desarquivar este colaborador?';
 
   @override
+  String get employeeUnitLinkColumn => 'Vínculo local';
+
+  @override
+  String get employeeUnitLink => 'Vincular à minha unidade';
+
+  @override
+  String get employeeUnitLinkActivate => 'Reativar nesta Unidade';
+
+  @override
+  String get employeeUnitLinkDeactivate => 'Arquivar nesta Unidade';
+
+  @override
+  String get employeeUnitLinkDeactivateReason =>
+      'Motivo do arquivamento (opcional):';
+
+  @override
+  String get employeeUnitLinkActive => 'Vinculado';
+
+  @override
+  String get employeeUnitLinkArchived => 'Arquivado nesta Unidade';
+
+  @override
+  String get employeeUnitLinkAbsent => 'Não vinculado';
+
+  @override
+  String get employeeUnitLinksTitle => 'Vínculos por Unidade';
+
+  @override
+  String get employeeUnitLinksEmpty =>
+      'Este colaborador não tem vínculo com nenhuma Unidade que você pode consultar.';
+
+  @override
+  String get employeeUnitLinksError => 'Não foi possível carregar os vínculos.';
+
+  @override
   String get outsourcedReportsError => 'Não foi possível carregar o relatório.';
 
   @override
@@ -1508,6 +1716,299 @@ class AppLocalizationsFr extends AppLocalizations {
   String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
 
   @override
+  String get stockTabAvailable => 'Disponíveis';
+
+  @override
+  String get stockTabBlocked => 'Bloqueados';
+
+  @override
+  String get stockAvailableSelectEpi =>
+      'Selecione um EPI para ver os itens disponíveis';
+
+  @override
+  String get stockAvailableEmpty =>
+      'Nenhum item disponível para este EPI nesta unidade';
+
+  @override
+  String get stockBlockedEmpty => 'Nenhum item bloqueado';
+
+  @override
+  String get stockNoOperationalUnit =>
+      'Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.';
+
+  @override
+  String get stockItemLotLabel => 'Lote';
+
+  @override
+  String get stockStatusBlockedExpired => 'Vencido';
+
+  @override
+  String get stockStatusBlockedDiscard => 'Aguardando descarte';
+
+  @override
+  String get stockStatusBlockedReturn => 'Aguardando devolução ao fornecedor';
+
+  @override
+  String get stockStatusBlockedAnalysis => 'Em análise';
+
+  @override
+  String get stockStatusBlockedRejected => 'Reprovado';
+
+  @override
+  String get stockStatusBlockedArchived => 'EPI arquivado';
+
+  @override
+  String get stockStatusUnknown => 'Status não reconhecido';
+
+  @override
+  String get stockUnitBalanceSuffix => 'na unidade';
+
+  @override
+  String get stockCompanyBalanceLabel => 'empresa';
+
+  @override
+  String get stockMinimumShort => 'mín';
+
+  @override
+  String get deliveryStepItem => 'Item';
+
+  @override
+  String get deliveryItemTitle => 'Selecione a unidade etiquetada';
+
+  @override
+  String get deliveryItemEmpty => 'Nenhum item disponível nesta Unidade.';
+
+  @override
+  String get deliveryItemScan => 'Ler QR do item';
+
+  @override
+  String deliveryUnitStockAvailable(int qty) {
+    return 'Estoque na Unidade: $qty';
+  }
+
+  @override
+  String get deliveryEmployeeWithoutUnit =>
+      'Colaborador sem Unidade operacional: não é possível registrar entrega.';
+
+  @override
+  String get deliveryQrOtherEpi => 'O código lido pertence a outro EPI.';
+
+  @override
+  String get stockUnitRequiredToMove =>
+      'Selecione uma Unidade para movimentar o estoque.';
+
+  @override
+  String get stockAttentionSectionTitle => 'Estoque';
+
+  @override
+  String get stockAttentionCompanyTitle =>
+      'Faixa de atenção — padrão da empresa';
+
+  @override
+  String get stockAttentionCompanyHelp =>
+      'Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.';
+
+  @override
+  String get stockAttentionPercentageLabel => 'Percentual da faixa de atenção';
+
+  @override
+  String get stockAttentionOriginLabel => 'Origem';
+
+  @override
+  String get stockAttentionOriginCompany => 'Configurado pela empresa';
+
+  @override
+  String get stockAttentionOriginSystem => 'Padrão do sistema';
+
+  @override
+  String get stockAttentionSave => 'Salvar padrão da empresa';
+
+  @override
+  String get stockAttentionRestore => 'Restaurar padrão do sistema';
+
+  @override
+  String get stockAttentionSaved => 'Padrão da empresa salvo.';
+
+  @override
+  String get stockAttentionRestored =>
+      'Padrão da empresa removido. A empresa voltou ao padrão do sistema.';
+
+  @override
+  String stockAttentionSystemDefaultHint(int value) {
+    return 'Padrão do sistema: $value%';
+  }
+
+  @override
+  String get stockConfigTitle => 'Configuração de estoque';
+
+  @override
+  String get stockConfigIntro =>
+      'Defina estoque mínimo, faixa de atenção e monitoramento de alerta de um EPI em uma Unidade. Cada parâmetro é salvo separadamente.';
+
+  @override
+  String get stockConfigUnitLabel => 'Unidade a configurar';
+
+  @override
+  String get stockConfigSelectUnit =>
+      'Selecione a Unidade para configurar os parâmetros.';
+
+  @override
+  String get stockConfigSelectEpi =>
+      'Selecione o EPI para ver e editar os parâmetros desta Unidade.';
+
+  @override
+  String get stockConfigEpiLabel => 'EPI';
+
+  @override
+  String get stockConfigEpisLoadError =>
+      'Não foi possível carregar os EPIs desta Unidade.';
+
+  @override
+  String get stockConfigNoEpisInUnit => 'Nenhum EPI visível nesta Unidade.';
+
+  @override
+  String get stockConfigUnitBalance => 'Saldo na Unidade';
+
+  @override
+  String get stockConfigAttentionLimit => 'Limite da faixa de atenção';
+
+  @override
+  String get stockConfigUnderlyingStatus => 'Condição física';
+
+  @override
+  String get stockConfigDerivedUnavailable =>
+      'Os valores calculados não puderam ser atualizados agora. Os parâmetros salvos acima estão corretos.';
+
+  @override
+  String get stockConfigStatusCritical => 'Crítico';
+
+  @override
+  String get stockConfigStatusNearMinimum => 'Próximo do mínimo';
+
+  @override
+  String get stockConfigStatusNormal => 'Normal';
+
+  @override
+  String get stockConfigStatusDisabled => 'Alerta desabilitado';
+
+  @override
+  String get stockConfigMinimumTitle => 'Estoque mínimo';
+
+  @override
+  String get stockConfigMinimumHelp =>
+      'Quantidade abaixo da qual o EPI é considerado crítico nesta Unidade. Vale só para esta Unidade.';
+
+  @override
+  String get stockConfigMinimumLabel => 'Estoque mínimo';
+
+  @override
+  String get stockConfigMinimumNegativeError =>
+      'Informe um número inteiro maior ou igual a zero.';
+
+  @override
+  String get stockConfigMinimumSaved =>
+      'Estoque mínimo salvo para esta Unidade.';
+
+  @override
+  String get stockConfigMinimumRestored =>
+      'Estoque mínimo restaurado. A Unidade voltou a herdar o padrão da empresa.';
+
+  @override
+  String get stockConfigAttentionTitle => 'Faixa de atenção';
+
+  @override
+  String get stockConfigAttentionHelp =>
+      'Percentual acima do mínimo em que o EPI já entra em atenção nesta Unidade. Independente do estoque mínimo.';
+
+  @override
+  String get stockConfigAttentionRangeError =>
+      'O percentual deve estar entre 0 e 100.';
+
+  @override
+  String get stockConfigAttentionSaved =>
+      'Faixa de atenção salva para esta Unidade.';
+
+  @override
+  String get stockConfigAttentionRestored =>
+      'Faixa de atenção restaurada. A Unidade voltou a herdar o padrão da empresa.';
+
+  @override
+  String get stockConfigAlertTitle => 'Monitoramento de alerta';
+
+  @override
+  String get stockConfigAlertHelp =>
+      'Desligar interrompe o alerta de estoque baixo e a reposição automática deste EPI nesta Unidade. Não altera saldo, mínimo nem percentual.';
+
+  @override
+  String get stockConfigAlertToggle => 'Monitorar o estoque deste EPI';
+
+  @override
+  String get stockConfigAlertPending =>
+      'Alteração pendente. Clique em Salvar para aplicar.';
+
+  @override
+  String get stockConfigAlertDisableTitle => 'Desabilitar o alerta?';
+
+  @override
+  String get stockConfigAlertDisableBody =>
+      'Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. A condição física continuará sendo exibida.';
+
+  @override
+  String get stockConfigAlertDisableConfirm => 'Desabilitar';
+
+  @override
+  String get stockConfigAlertSaved =>
+      'Monitoramento de alerta salvo para esta Unidade.';
+
+  @override
+  String get stockConfigAlertRestored =>
+      'Monitoramento restaurado. A Unidade voltou ao padrão do sistema.';
+
+  @override
+  String get stockConfigOriginUnit => 'Configurado por esta Unidade';
+
+  @override
+  String get stockConfigOriginCompany => 'Herdado do padrão da empresa';
+
+  @override
+  String get stockConfigOriginUnknown => 'Não informada';
+
+  @override
+  String get stockConfigSave => 'Salvar';
+
+  @override
+  String get stockConfigRestore => 'Restaurar herança';
+
+  @override
+  String stockAttentionRangeError(int max) {
+    return 'Informe um percentual inteiro entre 0 e $max.';
+  }
+
+  @override
+  String get stockAttentionLoadError =>
+      'Não foi possível carregar o padrão da empresa.';
+
+  @override
+  String get unitSelectorLabel => 'Unidade';
+
+  @override
+  String get unitSelectorAllUnits => 'Todas as Unidades';
+
+  @override
+  String get unitSelectorLockedHint => 'Seu perfil opera numa Unidade fixa.';
+
+  @override
+  String get unitSelectorLoadError => 'Não foi possível carregar as Unidades.';
+
+  @override
+  String get unitSelectorNoUnitsAssigned =>
+      'Você não tem Unidade atribuída. Fale com o administrador.';
+
+  @override
+  String get unitSelectorCompanyHasNoUnits =>
+      'A empresa ainda não tem Unidades cadastradas.';
+
+  @override
   String get settingsSectionCompany => 'Empresa';
 
   @override
@@ -1521,7 +2022,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String settingsCompanyScopeBanner(String name) {
-    return 'Administrando a empresa: ${name}';
+    return 'Administrando a empresa: $name';
   }
 
   @override
@@ -1572,6 +2073,31 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsNoPermission =>
       'Você não tem permissão para alterar esta configuração.';
+
+  @override
+  String get stockPhysicalValidityUnknown => 'Validade física desconhecida';
+
+  @override
+  String get stockNoPhysicalStock => 'Sem estoque físico';
+
+  @override
+  String stockComplianceEpiCount(String label, int count) {
+    return '$label — EPIs distintos: $count';
+  }
+
+  @override
+  String stockPhysicalPieceCounts(
+    int valid,
+    int expiring,
+    int expired,
+    int unknown,
+  ) {
+    return 'Peças físicas: válidas $valid, próximas $expiring, vencidas $expired, desconhecidas $unknown.';
+  }
+
+  @override
+  String get deliveryPhysicalItemIneligible =>
+      'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -2714,6 +3240,126 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get myCompanyDomainToken => 'Valeur du TXT';
 
   @override
+  String get epiArchiveBlockTitle => 'Archiver avec blocage du stock';
+
+  @override
+  String get epiArchiveBlockBody =>
+      'Cet EPI a du stock disponible ou des liens actifs. En confirmant, le stock disponible est déplacé vers le Stock bloqué (traçable) et l\'EPI est archivé.';
+
+  @override
+  String get epiArchiveBlockConfirm => 'Bloquer le stock et archiver';
+
+  @override
+  String get epiArchiveReasonLabel => 'Motif d\'archivage (audit)';
+
+  @override
+  String get epiArchiveReasonRequired => 'Indiquez un motif pour continuer.';
+
+  @override
+  String get epiArchiveBlockableLabel => 'Stock à bloquer';
+
+  @override
+  String get epiArchiveLiveLinksTitle => 'Liens actifs';
+
+  @override
+  String get epiArchiveAvailable => 'Disponible';
+
+  @override
+  String get epiArchiveInTransit => 'En transit';
+
+  @override
+  String get epiArchiveInPossession => 'En possession';
+
+  @override
+  String get epiArchivePendingRequests => 'Demandes ouvertes';
+
+  @override
+  String get epiArchivePendingPurchase => 'Achats ouverts';
+
+  @override
+  String get dashboardComplianceTitle => 'Conformité du stock';
+
+  @override
+  String get dashboardComplianceAllOk => 'Stock conforme';
+
+  @override
+  String get complianceCaExpired => 'CA expiré';
+
+  @override
+  String get complianceCaExpiring => 'CA à expirer';
+
+  @override
+  String get complianceProductExpired => 'Produit expiré';
+
+  @override
+  String get complianceProductExpiring => 'Produit à expirer';
+
+  @override
+  String get complianceMissingManufacture => 'Sans fabrication';
+
+  @override
+  String get complianceMissingLot => 'Sans lot';
+
+  @override
+  String get complianceAdminBlocked => 'Bloqué';
+
+  @override
+  String get handoverTitle => 'Remise de livraison';
+
+  @override
+  String get handoverPrompt =>
+      'Scannez le QR de livraison ou saisissez le code.';
+
+  @override
+  String get handoverCodeLabel => 'Code de livraison';
+
+  @override
+  String get handoverLookupButton => 'Rechercher la livraison';
+
+  @override
+  String get handoverScanButton => 'Scanner le QR';
+
+  @override
+  String get handoverConfirmButton => 'Confirmer la réception';
+
+  @override
+  String get handoverConfirmedTitle => 'Réception confirmée';
+
+  @override
+  String get handoverAlreadyConfirmed =>
+      'Cette livraison a déjà été confirmée.';
+
+  @override
+  String get handoverNotFound => 'Aucune livraison trouvée pour ce code.';
+
+  @override
+  String get handoverConfirmError => 'Impossible de confirmer la réception.';
+
+  @override
+  String get handoverEmployeeLabel => 'Employé';
+
+  @override
+  String get handoverEpiLabel => 'EPI';
+
+  @override
+  String get handoverQuantityLabel => 'Quantité';
+
+  @override
+  String get handoverSectorLabel => 'Secteur';
+
+  @override
+  String get handoverRoleLabel => 'Fonction';
+
+  @override
+  String get handoverUnitLabel => 'Unité';
+
+  @override
+  String get handoverDeliveryDateLabel => 'Date de livraison';
+
+  @override
+  String get handoverReceiverNameLabel => 'Nom du destinataire (facultatif)';
+
+  @override
   String get handoverScanAgain => 'Nouvelle remise';
 
   @override
@@ -2749,6 +3395,16 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get legalEntityMunicipalityLabel => 'Municipalité';
+
+  @override
+  String get legalEntityCnpjLabel => 'CNPJ (identifiant fiscal brésilien)';
+
+  @override
+  String get legalEntityUfLabel => 'État';
+
+  @override
+  String get legalEntitiesImportColumnsHint =>
+      'CNPJ\tRaison sociale\tNom commercial\tType';
 
   @override
   String get legalEntitiesImport => 'Importer une feuille';
@@ -2934,6 +3590,51 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get outsourcedCompanyUnitAll => 'Toutes les unités (par défaut)';
 
   @override
+  String get outsourcedCompanyLinkTitle =>
+      'Rattacher l\'entreprise à cette Unité';
+
+  @override
+  String get outsourcedCompanyLinkHint =>
+      'Rechercher une entreprise déjà enregistrée dans le tenant…';
+
+  @override
+  String get outsourcedCompanyLinkSectionLinked =>
+      'Déjà rattachées à cette Unité';
+
+  @override
+  String get outsourcedCompanyLinkSectionAvailable =>
+      'Disponibles au rattachement';
+
+  @override
+  String get outsourcedCompanyLinkLink => 'Rattacher à cette Unité';
+
+  @override
+  String get outsourcedCompanyLinkActivate => 'Réactiver dans cette Unité';
+
+  @override
+  String get outsourcedCompanyLinkDeactivate => 'Archiver dans cette Unité';
+
+  @override
+  String get outsourcedCompanyLinkDeactivateReason =>
+      'Motif de l\'archivage (facultatif) :';
+
+  @override
+  String outsourcedCompanyLinkUsedByUnits(int count) {
+    return 'Utilisée par $count Unité(s)';
+  }
+
+  @override
+  String get outsourcedCompanyLinkOriginUnit => 'Unité d\'origine';
+
+  @override
+  String get outsourcedCompanyLinkEmpty =>
+      'Aucune entreprise trouvée pour ce terme.';
+
+  @override
+  String get outsourcedCompanyLinkNotInformed =>
+      'Rattachement non communiqué pour votre profil';
+
+  @override
   String get outsourcedCompanyStatusLabel => 'Statut';
 
   @override
@@ -3039,6 +3740,42 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
       'Restaurer ce collaborateur ?';
 
   @override
+  String get employeeUnitLinkColumn => 'Lien local';
+
+  @override
+  String get employeeUnitLink => 'Rattacher à mon unité';
+
+  @override
+  String get employeeUnitLinkActivate => 'Réactiver dans cette Unité';
+
+  @override
+  String get employeeUnitLinkDeactivate => 'Archiver dans cette Unité';
+
+  @override
+  String get employeeUnitLinkDeactivateReason =>
+      'Motif de l\'archivage (facultatif) :';
+
+  @override
+  String get employeeUnitLinkActive => 'Rattaché';
+
+  @override
+  String get employeeUnitLinkArchived => 'Archivé dans cette Unité';
+
+  @override
+  String get employeeUnitLinkAbsent => 'Non rattaché';
+
+  @override
+  String get employeeUnitLinksTitle => 'Rattachements par Unité';
+
+  @override
+  String get employeeUnitLinksEmpty =>
+      'Ce collaborateur n\'a de rattachement à aucune Unité que vous pouvez consulter.';
+
+  @override
+  String get employeeUnitLinksError =>
+      'Impossible de charger les rattachements.';
+
+  @override
   String get outsourcedReportsError => 'Impossible de charger le rapport.';
 
   @override
@@ -3083,6 +3820,303 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get moduleVisibilityAllUnitsOption => 'Toutes les unités (par défaut)';
 
   @override
+  String get stockTabAvailable => 'Disponibles';
+
+  @override
+  String get stockTabBlocked => 'Bloqués';
+
+  @override
+  String get stockAvailableSelectEpi =>
+      'Sélectionnez un EPI pour voir les articles disponibles';
+
+  @override
+  String get stockAvailableEmpty =>
+      'Aucun article disponible pour cet EPI dans cette unité';
+
+  @override
+  String get stockBlockedEmpty => 'Aucun article bloqué';
+
+  @override
+  String get stockNoOperationalUnit =>
+      'Votre profil n\'a pas d\'unité opérationnelle active. Contactez un administrateur pour accéder au stock.';
+
+  @override
+  String get stockItemLotLabel => 'Lot';
+
+  @override
+  String get stockStatusBlockedExpired => 'Périmé';
+
+  @override
+  String get stockStatusBlockedDiscard => 'En attente de mise au rebut';
+
+  @override
+  String get stockStatusBlockedReturn => 'En attente de retour au fournisseur';
+
+  @override
+  String get stockStatusBlockedAnalysis => 'En cours d\'analyse';
+
+  @override
+  String get stockStatusBlockedRejected => 'Refusé';
+
+  @override
+  String get stockStatusBlockedArchived => 'EPI archivé';
+
+  @override
+  String get stockStatusUnknown => 'Statut non reconnu';
+
+  @override
+  String get stockUnitBalanceSuffix => 'dans l\'unité';
+
+  @override
+  String get stockCompanyBalanceLabel => 'entreprise';
+
+  @override
+  String get stockMinimumShort => 'min';
+
+  @override
+  String get deliveryStepItem => 'Article';
+
+  @override
+  String get deliveryItemTitle => 'Sélectionnez l\'unité étiquetée';
+
+  @override
+  String get deliveryItemEmpty => 'Aucun article disponible dans cette Unité.';
+
+  @override
+  String get deliveryItemScan => 'Scanner le QR de l\'article';
+
+  @override
+  String deliveryUnitStockAvailable(int qty) {
+    return 'Stock de l\'Unité : $qty';
+  }
+
+  @override
+  String get deliveryEmployeeWithoutUnit =>
+      'Collaborateur sans Unité opérationnelle : la remise ne peut pas être enregistrée.';
+
+  @override
+  String get deliveryQrOtherEpi => 'Le code scanné appartient à un autre EPI.';
+
+  @override
+  String get stockUnitRequiredToMove =>
+      'Sélectionnez une Unité pour déplacer le stock.';
+
+  @override
+  String get stockAttentionSectionTitle => 'Stock';
+
+  @override
+  String get stockAttentionCompanyTitle =>
+      'Plage d\'attention — valeur par défaut de l\'entreprise';
+
+  @override
+  String get stockAttentionCompanyHelp =>
+      'S\'applique aux Unités qui n\'ont pas défini leur propre pourcentage. Ne modifie aucune Unité déjà configurée.';
+
+  @override
+  String get stockAttentionPercentageLabel =>
+      'Pourcentage de la plage d\'attention';
+
+  @override
+  String get stockAttentionOriginLabel => 'Origine';
+
+  @override
+  String get stockAttentionOriginCompany => 'Défini par l\'entreprise';
+
+  @override
+  String get stockAttentionOriginSystem => 'Valeur par défaut du système';
+
+  @override
+  String get stockAttentionSave => 'Enregistrer la valeur de l\'entreprise';
+
+  @override
+  String get stockAttentionRestore => 'Rétablir la valeur du système';
+
+  @override
+  String get stockAttentionSaved =>
+      'Valeur par défaut de l\'entreprise enregistrée.';
+
+  @override
+  String get stockAttentionRestored =>
+      'Valeur de l\'entreprise supprimée. L\'entreprise revient à la valeur du système.';
+
+  @override
+  String stockAttentionSystemDefaultHint(int value) {
+    return 'Valeur du système : $value %';
+  }
+
+  @override
+  String get stockConfigTitle => 'Configuration du stock';
+
+  @override
+  String get stockConfigIntro =>
+      'Définissez le stock minimum, la plage d’attention et la surveillance d’alerte d’un EPI dans une Unité. Chaque paramètre est enregistré séparément.';
+
+  @override
+  String get stockConfigUnitLabel => 'Unité à configurer';
+
+  @override
+  String get stockConfigSelectUnit =>
+      'Sélectionnez l’Unité pour configurer ses paramètres.';
+
+  @override
+  String get stockConfigSelectEpi =>
+      'Sélectionnez l’EPI pour voir et modifier les paramètres de cette Unité.';
+
+  @override
+  String get stockConfigEpiLabel => 'EPI';
+
+  @override
+  String get stockConfigEpisLoadError =>
+      'Impossible de charger la liste des EPI de cette Unité.';
+
+  @override
+  String get stockConfigNoEpisInUnit =>
+      'Aucun EPI n’est visible dans cette Unité.';
+
+  @override
+  String get stockConfigUnitBalance => 'Solde dans l’Unité';
+
+  @override
+  String get stockConfigAttentionLimit => 'Limite de la plage d’attention';
+
+  @override
+  String get stockConfigUnderlyingStatus => 'État physique';
+
+  @override
+  String get stockConfigDerivedUnavailable =>
+      'Les valeurs calculées n’ont pas pu être actualisées maintenant. Les paramètres enregistrés ci-dessus sont corrects.';
+
+  @override
+  String get stockConfigStatusCritical => 'Critique';
+
+  @override
+  String get stockConfigStatusNearMinimum => 'Proche du minimum';
+
+  @override
+  String get stockConfigStatusNormal => 'Normal';
+
+  @override
+  String get stockConfigStatusDisabled => 'Alerte désactivée';
+
+  @override
+  String get stockConfigMinimumTitle => 'Stock minimum';
+
+  @override
+  String get stockConfigMinimumHelp =>
+      'Quantité en dessous de laquelle l’EPI est considéré comme critique dans cette Unité. Ne vaut que pour cette Unité.';
+
+  @override
+  String get stockConfigMinimumLabel => 'Stock minimum';
+
+  @override
+  String get stockConfigMinimumNegativeError =>
+      'Saisissez un nombre entier supérieur ou égal à zéro.';
+
+  @override
+  String get stockConfigMinimumSaved =>
+      'Stock minimum enregistré pour cette Unité.';
+
+  @override
+  String get stockConfigMinimumRestored =>
+      'Stock minimum rétabli. L’Unité hérite de nouveau de la valeur de l’entreprise.';
+
+  @override
+  String get stockConfigAttentionTitle => 'Plage d’attention';
+
+  @override
+  String get stockConfigAttentionHelp =>
+      'Pourcentage au-dessus du minimum à partir duquel l’EPI entre déjà en attention dans cette Unité. Indépendant du stock minimum.';
+
+  @override
+  String get stockConfigAttentionRangeError =>
+      'Le pourcentage doit être compris entre 0 et 100.';
+
+  @override
+  String get stockConfigAttentionSaved =>
+      'Plage d’attention enregistrée pour cette Unité.';
+
+  @override
+  String get stockConfigAttentionRestored =>
+      'Plage d’attention rétablie. L’Unité hérite de nouveau de la valeur de l’entreprise.';
+
+  @override
+  String get stockConfigAlertTitle => 'Surveillance d’alerte';
+
+  @override
+  String get stockConfigAlertHelp =>
+      'La désactiver interrompt l’alerte de stock bas et le réapprovisionnement automatique de cet EPI dans cette Unité. Elle ne modifie ni le solde, ni le minimum, ni le pourcentage.';
+
+  @override
+  String get stockConfigAlertToggle => 'Surveiller le stock de cet EPI';
+
+  @override
+  String get stockConfigAlertPending =>
+      'Modification en attente. Cliquez sur Enregistrer pour l’appliquer.';
+
+  @override
+  String get stockConfigAlertDisableTitle => 'Désactiver l’alerte ?';
+
+  @override
+  String get stockConfigAlertDisableBody =>
+      'Cet EPI cessera de générer des alertes de stock bas et du réapprovisionnement automatique dans cette Unité. L’état physique restera affiché.';
+
+  @override
+  String get stockConfigAlertDisableConfirm => 'Désactiver';
+
+  @override
+  String get stockConfigAlertSaved =>
+      'Surveillance d’alerte enregistrée pour cette Unité.';
+
+  @override
+  String get stockConfigAlertRestored =>
+      'Surveillance rétablie. L’Unité revient à la valeur du système.';
+
+  @override
+  String get stockConfigOriginUnit => 'Défini par cette Unité';
+
+  @override
+  String get stockConfigOriginCompany => 'Hérité de la valeur de l’entreprise';
+
+  @override
+  String get stockConfigOriginUnknown => 'Non renseignée';
+
+  @override
+  String get stockConfigSave => 'Enregistrer';
+
+  @override
+  String get stockConfigRestore => 'Rétablir l’héritage';
+
+  @override
+  String stockAttentionRangeError(int max) {
+    return 'Saisissez un pourcentage entier entre 0 et $max.';
+  }
+
+  @override
+  String get stockAttentionLoadError =>
+      'Impossible de charger la valeur par défaut de l\'entreprise.';
+
+  @override
+  String get unitSelectorLabel => 'Unité';
+
+  @override
+  String get unitSelectorAllUnits => 'Toutes les Unités';
+
+  @override
+  String get unitSelectorLockedHint =>
+      'Votre profil opère dans une Unité fixe.';
+
+  @override
+  String get unitSelectorLoadError => 'Impossible de charger les Unités.';
+
+  @override
+  String get unitSelectorNoUnitsAssigned =>
+      'Aucune Unité ne vous est attribuée. Contactez l\'administrateur.';
+
+  @override
+  String get unitSelectorCompanyHasNoUnits =>
+      'L\'entreprise n\'a encore aucune Unité enregistrée.';
+
+  @override
   String get settingsSectionCompany => 'Entreprise';
 
   @override
@@ -3096,7 +4130,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String settingsCompanyScopeBanner(String name) {
-    return 'Entreprise administrée : ${name}';
+    return 'Entreprise administrée : $name';
   }
 
   @override
@@ -3149,4 +4183,29 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   @override
   String get settingsNoPermission =>
       'Vous n\'avez pas l\'autorisation de modifier ce paramètre.';
+
+  @override
+  String get stockPhysicalValidityUnknown => 'Expiration physique inconnue';
+
+  @override
+  String get stockNoPhysicalStock => 'Aucun stock physique';
+
+  @override
+  String stockComplianceEpiCount(String label, int count) {
+    return '$label — EPI distincts : $count';
+  }
+
+  @override
+  String stockPhysicalPieceCounts(
+    int valid,
+    int expiring,
+    int expired,
+    int unknown,
+  ) {
+    return 'Pièces physiques : valides $valid, proches $expiring, expirées $expired, inconnues $unknown.';
+  }
+
+  @override
+  String get deliveryPhysicalItemIneligible =>
+      'Pièce indisponible pour remise. Vérifiez expiration physique, état, réservations et solde.';
 }

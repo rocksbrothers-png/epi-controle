@@ -764,7 +764,13 @@
   "settingsSectionSubscription": "Subscription",
   "settingsCompanyLabel": "Company",
   "settingsCompanyScopeBanner": "Managing company: {name}",
-  "@settingsCompanyScopeBanner": { "placeholders": { "name": { "type": "String" } } },
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSelectCompanyFirst": "Select a company in Settings to continue.",
   "settingsFichaTileTitle": "PPE record",
   "settingsFichaTileSubtitle": "Title, declaration, notes and traceability",
@@ -778,5 +784,37 @@
   "settingsSubscriptionTileSubtitle": "Plan, charges and cancellation",
   "settingsInvoicesTileTitle": "Billing history",
   "settingsInvoicesTileSubtitle": "All charges and receipts",
-  "settingsNoPermission": "You do not have permission to change this setting."
+  "settingsNoPermission": "You do not have permission to change this setting.",
+  "stockPhysicalValidityUnknown": "Unknown physical expiry",
+  "stockNoPhysicalStock": "No physical stock",
+  "stockComplianceEpiCount": "{label} — distinct PPE types: {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Physical pieces: valid {valid}, expiring {expiring}, expired {expired}, unknown {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Item unavailable for delivery. Check physical expiry, status, reservations and balance."
 }

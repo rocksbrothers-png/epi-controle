@@ -9,6 +9,7 @@ G04: desbloquear uma peça fisicamente vencida é recusado.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 from datetime import date, timedelta
 
 import pytest
@@ -49,6 +50,10 @@ def _conn():
     )
     ensure_stock_lifecycle_model(conn)
     conn.commit()
+    ensure_test_physical_schema(conn)
+    conn.execute('CREATE TABLE IF NOT EXISTS unit_epi_stock(id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, epi_id INTEGER, quantity INTEGER, updated_at TEXT)')
+    conn.execute('INSERT INTO unit_epi_stock(company_id,unit_id,epi_id,quantity) VALUES(1,2,7,20)')
+    conn.commit()
     return conn
 
 
@@ -74,11 +79,11 @@ def test_effective_expiry_prefers_physical_lot_over_catalog():
     assert item_physical_expiry(conn, 10) == PAST
 
 
-def test_effective_expiry_falls_back_to_catalog_when_physical_unknown():
+def test_effective_expiry_never_falls_back_to_catalog_when_physical_unknown():
     conn = _conn()
     _add_item(conn, 11, physical_expiry='', epi_validity=FUTURE)
     assert item_physical_expiry(conn, 11) == ''
-    assert effective_delivery_expiry(conn, 11, FUTURE) == FUTURE
+    assert effective_delivery_expiry(conn, 11, FUTURE) == ''
 
 
 def test_item_physical_expiry_degrades_without_column():
@@ -90,7 +95,7 @@ def test_item_physical_expiry_degrades_without_column():
         "INSERT INTO epi_stock_items (id, company_id) VALUES (99, 1);"
     )
     assert item_physical_expiry(conn, 99) == ''
-    assert effective_delivery_expiry(conn, 99, FUTURE) == FUTURE
+    assert effective_delivery_expiry(conn, 99, FUTURE) == ''
 
 
 # ── FEFO por validade física (G03) ────────────────────────────────────────────
@@ -104,7 +109,7 @@ def test_fefo_orders_by_physical_expiry_first():
     _add_item(conn, 13, physical_expiry='', mfg='2018-01-01')       # sem validade física → fallback (fim)
     ids = [r['id'] for r in fetch_available_stock_items(conn, 1, 2, 7)]
     # PAST < SOON < FUTURE ; item sem validade física vai ao final
-    assert ids == [11, 12, 10, 13], ids
+    assert ids == [12, 10], ids
 
 
 # ── desbloqueio recusa vencido (G04) ──────────────────────────────────────────
@@ -122,11 +127,11 @@ def test_unblock_refused_when_lot_physically_expired():
     assert _item(conn, 10)['status'] == 'blocked_analysis'
 
 
-def test_unblock_refused_by_catalog_when_physical_unknown():
+def test_unblock_unknown_remains_operationally_ineligible():
     conn = _conn()
     _add_item(conn, 11, status='blocked_discard', physical_expiry='', epi_validity=PAST)
-    with pytest.raises(ValueError, match='vencido'):
-        set_stock_item_status(conn, _item(conn, 11), 'in_stock', '', 3, 'Admin', 'now')
+    set_stock_item_status(conn, _item(conn, 11), 'in_stock', 'reinspeção administrativa', 3, 'Admin', 'now')
+    assert fetch_available_stock_items(conn, 1, 2, 7) == []
 
 
 def test_unblock_allowed_for_administrative_block_not_expired():

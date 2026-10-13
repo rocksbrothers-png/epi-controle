@@ -31,7 +31,11 @@ def _fake_epis(_conn, _actor, _scope):
 
 
 def _alerts():
-    return compute_alerts(
+    from unittest.mock import patch
+    physical = {7: {'nearest_known_expiry': (TODAY-timedelta(days=3)).isoformat(), 'expired': 1, 'expiring': 0, 'unknown': 0,
+                    'as_of_date': TODAY.isoformat(), 'warning_days': 30, 'timezone': 'UTC'}}
+    with patch('modules.alerts.service.physical_summary_map', return_value=physical):
+        return compute_alerts(
         None, {'id': 1},
         fetch_low_stock_items=_fake_low_stock,
         actor_operational_unit_id=lambda _c, _a: None,

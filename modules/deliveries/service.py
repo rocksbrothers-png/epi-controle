@@ -9,7 +9,6 @@ from modules.deliveries.evidence import (
     SIGNATURE_HANDWRITTEN,
     record_evidence,
 )
-from modules.epis.validity import is_expired
 from modules.stock.service import apply_effective_size_fields
 
 
@@ -146,6 +145,21 @@ def ensure_stock_movement_size_columns(connection):
     _ensure_canonical(connection)
 
 
+def _atomic_delivery(function):
+    from functools import wraps
+
+    @wraps(function)
+    def run(connection, *args, **kwargs):
+        try:
+            return function(connection, *args, **kwargs)
+        except Exception:
+            if connection is not None:
+                connection.rollback()
+            raise
+    return run
+
+
+@_atomic_delivery
 def create_delivery_service(
     connection,
     payload,
@@ -235,11 +249,19 @@ def create_delivery_service(
     ensure_employee_operational(connection, employee['id'], 'entregas de EPI')
     from modules.epis.service import ensure_epi_operational
     ensure_epi_operational(connection, epi['id'], 'entregas de EPI')
+    from modules.stock.eligibility import classify_physical, lock_stock_scope, validity_policy
+    from epi_backend.db import _is_sqlite_connection
+    lock_stock_scope(connection, payload['company_id'], delivery_unit_id, payload['epi_id'])
+    existing_id = find_delivery_by_idempotency_key(
+        connection, company_id=int(payload['company_id']), key=payload.get('idempotency_key'))
+    if existing_id is not None:
+        return existing_id
     stock_item = connection.execute(
         (
             'SELECT id, company_id, unit_id, epi_id, status, qr_code_value, glove_size, size, uniform_size '
             'FROM epi_stock_items '
             'WHERE id = ?'
+            + ('' if _is_sqlite_connection(connection) else ' FOR UPDATE')
         ),
         (stock_item_id,)
     ).fetchone()
@@ -251,19 +273,34 @@ def create_delivery_service(
         raise ValueError('Código lido não corresponde ao EPI selecionado.')
     if str(stock_item['qr_code_value']).strip().lower() != stock_qr_code.lower():
         raise ValueError('Código lido não confere com a unidade informada.')
-    if str(stock_item['status']) != 'in_stock':
+    if str(stock_item['status']) not in ('in_stock', 'available'):
         raise ValueError('Entrega bloqueada: item já baixado, entregue, descartado ou inválido.')
-    # EST-V3 (G02): além da validade do catálogo (gate acima), recusa a entrega
-    # quando a validade FÍSICA do LOTE desta peça está vencida — um lote vencido
-    # é barrado mesmo com o catálogo do EPI em dia. Fallback ao catálogo quando a
-    # peça não tem validade física própria (itens anteriores à captura por lote).
     from modules.stock.service import effective_delivery_expiry
-    lote_validity = effective_delivery_expiry(connection, stock_item_id, epi.get('epi_validity_date'))
-    if is_expired(lote_validity):
-        raise ValueError(
-            'Entrega bloqueada: validade do fabricante do lote vencida em '
-            f'{lote_validity}. Retire o item do estoque (NT 146/2015).'
-        )
+    policy = validity_policy(connection, payload['company_id'])
+    lote_validity = effective_delivery_expiry(connection, stock_item_id)
+    validity = classify_physical(lote_validity, policy)
+    if validity['status'] == 'unknown':
+        raise ValueError('Entrega bloqueada: validade física desconhecida, inválida ou indisponível. Regularize com evidência.')
+    if not validity['eligible_by_validity']:
+        raise ValueError(f'Entrega bloqueada: validade física do lote vencida em {lote_validity}.')
+    from modules.stock.reservations import unit_balance, reservation_for_request, remaining_quantity
+    balance = unit_balance(connection, payload['company_id'], delivery_unit_id, payload['epi_id'])
+    own_reserved = 0
+    if payload.get('request_id'):
+        request_row = connection.execute(
+            'SELECT company_id,unit_id,epi_id,employee_id FROM epi_requests WHERE id=? AND company_id=?',
+            (int(payload['request_id']), int(payload['company_id']))).fetchone()
+        if request_row is None or (int(request_row['unit_id']), int(request_row['epi_id']), int(request_row['employee_id'])) != (
+                delivery_unit_id, int(payload['epi_id']), int(payload['employee_id'])):
+            raise ValueError('Solicitação não corresponde à empresa/unidade/EPI/colaborador da entrega.')
+        reservation = reservation_for_request(connection, int(payload['request_id']))
+        if reservation and reservation['status'] == 'active':
+            if (int(reservation['company_id']), int(reservation['unit_id']), int(reservation['epi_id'])) != (
+                int(payload['company_id']), delivery_unit_id, int(payload['epi_id'])):
+                raise ValueError('Reserva não corresponde à empresa/unidade/EPI da entrega.')
+            own_reserved = remaining_quantity(reservation)
+    if balance['free'] + own_reserved < quantity:
+        raise ValueError('Estoque elegível disponível insuficiente; saldo reservado para outra operação.')
     stock_row = get_unit_stock(connection, int(payload['company_id']), delivery_unit_id, int(epi['id']))
     current_stock = int((stock_row or {}).get('quantity') or 0)
     if current_stock < quantity:
@@ -272,7 +309,7 @@ def create_delivery_service(
         (
             "UPDATE epi_stock_items "
             "SET status = 'delivering', updated_at = ? "
-            "WHERE id = ? AND status = 'in_stock'"
+            "WHERE id = ? AND status IN ('in_stock', 'available')"
         ),
         (datetime.now(UTC).isoformat(), stock_item_id)
     )
@@ -380,7 +417,7 @@ def create_delivery_service(
             collected_at=signature_at,
         )
     if str(payload.get('request_id', '')).strip():
-        consume_request_reservation(
+        consumed_reservation = consume_request_reservation(
             connection,
             request_id=int(payload['request_id']),
             company_id=int(payload['company_id']),
@@ -390,8 +427,9 @@ def create_delivery_service(
             delivery_id=int(cursor.lastrowid),
         )
         connection.execute(
-            "UPDATE epi_requests SET status = 'entregue', delivery_id = ?, last_updated_at = ? WHERE id = ?",
-            (int(cursor.lastrowid), datetime.now(UTC).isoformat(), int(payload['request_id']))
+            "UPDATE epi_requests SET status = ?, delivery_id = ?, last_updated_at = ? WHERE id = ? AND company_id = ?",
+            ('reservado' if consumed_reservation and consumed_reservation['status'] == 'active' else 'entregue',
+             int(cursor.lastrowid), datetime.now(UTC).isoformat(), int(payload['request_id']), int(payload['company_id']))
         )
     connection.commit()
     return int(cursor.lastrowid)

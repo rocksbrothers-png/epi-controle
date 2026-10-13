@@ -65,7 +65,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -88,11 +88,11 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +105,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR')
+    Locale('pt', 'BR'),
   ];
 
   /// Nome da aplicação
@@ -2316,6 +2316,240 @@ abstract class AppLocalizations {
   /// **'Valor do TXT'**
   String get myCompanyDomainToken;
 
+  /// No description provided for @epiArchiveBlockTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar com bloqueio de saldo'**
+  String get epiArchiveBlockTitle;
+
+  /// No description provided for @epiArchiveBlockBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Este EPI possui saldo disponível ou vínculos vivos. Ao confirmar, o saldo disponível será movido para Estoque Bloqueado (rastreável) e o EPI será arquivado.'**
+  String get epiArchiveBlockBody;
+
+  /// No description provided for @epiArchiveBlockConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Bloquear saldo e arquivar'**
+  String get epiArchiveBlockConfirm;
+
+  /// No description provided for @epiArchiveReasonLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Motivo do arquivamento (auditoria)'**
+  String get epiArchiveReasonLabel;
+
+  /// No description provided for @epiArchiveReasonRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe o motivo para prosseguir.'**
+  String get epiArchiveReasonRequired;
+
+  /// No description provided for @epiArchiveBlockableLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Saldo a bloquear'**
+  String get epiArchiveBlockableLabel;
+
+  /// No description provided for @epiArchiveLiveLinksTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vínculos vivos'**
+  String get epiArchiveLiveLinksTitle;
+
+  /// No description provided for @epiArchiveAvailable.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Disponível'**
+  String get epiArchiveAvailable;
+
+  /// No description provided for @epiArchiveInTransit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Em trânsito'**
+  String get epiArchiveInTransit;
+
+  /// No description provided for @epiArchiveInPossession.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Em posse'**
+  String get epiArchiveInPossession;
+
+  /// No description provided for @epiArchivePendingRequests.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Requisições abertas'**
+  String get epiArchivePendingRequests;
+
+  /// No description provided for @epiArchivePendingPurchase.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Compras abertas'**
+  String get epiArchivePendingPurchase;
+
+  /// No description provided for @dashboardComplianceTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conformidade de estoque'**
+  String get dashboardComplianceTitle;
+
+  /// No description provided for @dashboardComplianceAllOk.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque em conformidade'**
+  String get dashboardComplianceAllOk;
+
+  /// No description provided for @complianceCaExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA vencido'**
+  String get complianceCaExpired;
+
+  /// No description provided for @complianceCaExpiring.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA a vencer'**
+  String get complianceCaExpiring;
+
+  /// No description provided for @complianceProductExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Produto vencido'**
+  String get complianceProductExpired;
+
+  /// No description provided for @complianceProductExpiring.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Produto a vencer'**
+  String get complianceProductExpiring;
+
+  /// No description provided for @complianceMissingManufacture.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sem fabricação'**
+  String get complianceMissingManufacture;
+
+  /// No description provided for @complianceMissingLot.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sem lote'**
+  String get complianceMissingLot;
+
+  /// No description provided for @complianceAdminBlocked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Bloqueado'**
+  String get complianceAdminBlocked;
+
+  /// No description provided for @handoverTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conferência de entrega'**
+  String get handoverTitle;
+
+  /// No description provided for @handoverPrompt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Escaneie o QR da entrega ou informe o código.'**
+  String get handoverPrompt;
+
+  /// No description provided for @handoverCodeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Código da entrega'**
+  String get handoverCodeLabel;
+
+  /// No description provided for @handoverLookupButton.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Buscar entrega'**
+  String get handoverLookupButton;
+
+  /// No description provided for @handoverScanButton.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Escanear QR'**
+  String get handoverScanButton;
+
+  /// No description provided for @handoverConfirmButton.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar recebimento'**
+  String get handoverConfirmButton;
+
+  /// No description provided for @handoverConfirmedTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recebimento confirmado'**
+  String get handoverConfirmedTitle;
+
+  /// No description provided for @handoverAlreadyConfirmed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Esta entrega já foi confirmada.'**
+  String get handoverAlreadyConfirmed;
+
+  /// No description provided for @handoverNotFound.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Entrega não encontrada para este código.'**
+  String get handoverNotFound;
+
+  /// No description provided for @handoverConfirmError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível confirmar o recebimento.'**
+  String get handoverConfirmError;
+
+  /// No description provided for @handoverEmployeeLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Colaborador'**
+  String get handoverEmployeeLabel;
+
+  /// No description provided for @handoverEpiLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI'**
+  String get handoverEpiLabel;
+
+  /// No description provided for @handoverQuantityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade'**
+  String get handoverQuantityLabel;
+
+  /// No description provided for @handoverSectorLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Setor'**
+  String get handoverSectorLabel;
+
+  /// No description provided for @handoverRoleLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Função'**
+  String get handoverRoleLabel;
+
+  /// No description provided for @handoverUnitLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get handoverUnitLabel;
+
+  /// No description provided for @handoverDeliveryDateLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data da entrega'**
+  String get handoverDeliveryDateLabel;
+
+  /// No description provided for @handoverReceiverNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome de quem recebe (opcional)'**
+  String get handoverReceiverNameLabel;
+
   /// No description provided for @handoverScanAgain.
   ///
   /// In pt_BR, this message translates to:
@@ -2387,6 +2621,24 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Município'**
   String get legalEntityMunicipalityLabel;
+
+  /// No description provided for @legalEntityCnpjLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ'**
+  String get legalEntityCnpjLabel;
+
+  /// No description provided for @legalEntityUfLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'UF'**
+  String get legalEntityUfLabel;
+
+  /// No description provided for @legalEntitiesImportColumnsHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ\tRazão social\tNome fantasia\tTipo'**
+  String get legalEntitiesImportColumnsHint;
 
   /// No description provided for @legalEntitiesImport.
   ///
@@ -2736,6 +2988,78 @@ abstract class AppLocalizations {
   /// **'Todas as unidades (padrão)'**
   String get outsourcedCompanyUnitAll;
 
+  /// No description provided for @outsourcedCompanyLinkTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vincular empresa a esta Unidade'**
+  String get outsourcedCompanyLinkTitle;
+
+  /// No description provided for @outsourcedCompanyLinkHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Buscar empresa já cadastrada no tenant…'**
+  String get outsourcedCompanyLinkHint;
+
+  /// No description provided for @outsourcedCompanyLinkSectionLinked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Já vinculadas a esta Unidade'**
+  String get outsourcedCompanyLinkSectionLinked;
+
+  /// No description provided for @outsourcedCompanyLinkSectionAvailable.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Disponíveis para vincular'**
+  String get outsourcedCompanyLinkSectionAvailable;
+
+  /// No description provided for @outsourcedCompanyLinkLink.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vincular a esta Unidade'**
+  String get outsourcedCompanyLinkLink;
+
+  /// No description provided for @outsourcedCompanyLinkActivate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reativar nesta Unidade'**
+  String get outsourcedCompanyLinkActivate;
+
+  /// No description provided for @outsourcedCompanyLinkDeactivate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar nesta Unidade'**
+  String get outsourcedCompanyLinkDeactivate;
+
+  /// No description provided for @outsourcedCompanyLinkDeactivateReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Motivo do arquivamento (opcional):'**
+  String get outsourcedCompanyLinkDeactivateReason;
+
+  /// No description provided for @outsourcedCompanyLinkUsedByUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Usada por {count} Unidade(s)'**
+  String outsourcedCompanyLinkUsedByUnits(int count);
+
+  /// No description provided for @outsourcedCompanyLinkOriginUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade de origem'**
+  String get outsourcedCompanyLinkOriginUnit;
+
+  /// No description provided for @outsourcedCompanyLinkEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma empresa encontrada com esse termo.'**
+  String get outsourcedCompanyLinkEmpty;
+
+  /// No description provided for @outsourcedCompanyLinkNotInformed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vínculo não informado para o seu perfil'**
+  String get outsourcedCompanyLinkNotInformed;
+
   /// No description provided for @outsourcedCompanyStatusLabel.
   ///
   /// In pt_BR, this message translates to:
@@ -2922,6 +3246,72 @@ abstract class AppLocalizations {
   /// **'Desarquivar este colaborador?'**
   String get outsourcedEmployeeRestoreConfirmTitle;
 
+  /// No description provided for @employeeUnitLinkColumn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vínculo local'**
+  String get employeeUnitLinkColumn;
+
+  /// No description provided for @employeeUnitLink.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vincular à minha unidade'**
+  String get employeeUnitLink;
+
+  /// No description provided for @employeeUnitLinkActivate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reativar nesta Unidade'**
+  String get employeeUnitLinkActivate;
+
+  /// No description provided for @employeeUnitLinkDeactivate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar nesta Unidade'**
+  String get employeeUnitLinkDeactivate;
+
+  /// No description provided for @employeeUnitLinkDeactivateReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Motivo do arquivamento (opcional):'**
+  String get employeeUnitLinkDeactivateReason;
+
+  /// No description provided for @employeeUnitLinkActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vinculado'**
+  String get employeeUnitLinkActive;
+
+  /// No description provided for @employeeUnitLinkArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado nesta Unidade'**
+  String get employeeUnitLinkArchived;
+
+  /// No description provided for @employeeUnitLinkAbsent.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não vinculado'**
+  String get employeeUnitLinkAbsent;
+
+  /// No description provided for @employeeUnitLinksTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vínculos por Unidade'**
+  String get employeeUnitLinksTitle;
+
+  /// No description provided for @employeeUnitLinksEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Este colaborador não tem vínculo com nenhuma Unidade que você pode consultar.'**
+  String get employeeUnitLinksEmpty;
+
+  /// No description provided for @employeeUnitLinksError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar os vínculos.'**
+  String get employeeUnitLinksError;
+
   /// No description provided for @outsourcedReportsError.
   ///
   /// In pt_BR, this message translates to:
@@ -2999,6 +3389,522 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Todas as unidades (padrão)'**
   String get moduleVisibilityAllUnitsOption;
+
+  /// No description provided for @stockTabAvailable.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Disponíveis'**
+  String get stockTabAvailable;
+
+  /// No description provided for @stockTabBlocked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Bloqueados'**
+  String get stockTabBlocked;
+
+  /// No description provided for @stockAvailableSelectEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione um EPI para ver os itens disponíveis'**
+  String get stockAvailableSelectEpi;
+
+  /// No description provided for @stockAvailableEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum item disponível para este EPI nesta unidade'**
+  String get stockAvailableEmpty;
+
+  /// No description provided for @stockBlockedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum item bloqueado'**
+  String get stockBlockedEmpty;
+
+  /// No description provided for @stockNoOperationalUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.'**
+  String get stockNoOperationalUnit;
+
+  /// No description provided for @stockItemLotLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Lote'**
+  String get stockItemLotLabel;
+
+  /// No description provided for @stockStatusBlockedExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vencido'**
+  String get stockStatusBlockedExpired;
+
+  /// No description provided for @stockStatusBlockedDiscard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando descarte'**
+  String get stockStatusBlockedDiscard;
+
+  /// No description provided for @stockStatusBlockedReturn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando devolução ao fornecedor'**
+  String get stockStatusBlockedReturn;
+
+  /// No description provided for @stockStatusBlockedAnalysis.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Em análise'**
+  String get stockStatusBlockedAnalysis;
+
+  /// No description provided for @stockStatusBlockedRejected.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reprovado'**
+  String get stockStatusBlockedRejected;
+
+  /// No description provided for @stockStatusBlockedArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI arquivado'**
+  String get stockStatusBlockedArchived;
+
+  /// No description provided for @stockStatusUnknown.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Status não reconhecido'**
+  String get stockStatusUnknown;
+
+  /// No description provided for @stockUnitBalanceSuffix.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'na unidade'**
+  String get stockUnitBalanceSuffix;
+
+  /// No description provided for @stockCompanyBalanceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'empresa'**
+  String get stockCompanyBalanceLabel;
+
+  /// No description provided for @stockMinimumShort.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'mín'**
+  String get stockMinimumShort;
+
+  /// No description provided for @deliveryStepItem.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Item'**
+  String get deliveryStepItem;
+
+  /// No description provided for @deliveryItemTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione a unidade etiquetada'**
+  String get deliveryItemTitle;
+
+  /// No description provided for @deliveryItemEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum item disponível nesta Unidade.'**
+  String get deliveryItemEmpty;
+
+  /// No description provided for @deliveryItemScan.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ler QR do item'**
+  String get deliveryItemScan;
+
+  /// Saldo do EPI na Unidade do colaborador que vai receber.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque na Unidade: {qty}'**
+  String deliveryUnitStockAvailable(int qty);
+
+  /// No description provided for @deliveryEmployeeWithoutUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Colaborador sem Unidade operacional: não é possível registrar entrega.'**
+  String get deliveryEmployeeWithoutUnit;
+
+  /// No description provided for @deliveryQrOtherEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O código lido pertence a outro EPI.'**
+  String get deliveryQrOtherEpi;
+
+  /// No description provided for @stockUnitRequiredToMove.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione uma Unidade para movimentar o estoque.'**
+  String get stockUnitRequiredToMove;
+
+  /// No description provided for @stockAttentionSectionTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque'**
+  String get stockAttentionSectionTitle;
+
+  /// No description provided for @stockAttentionCompanyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Faixa de atenção — padrão da empresa'**
+  String get stockAttentionCompanyTitle;
+
+  /// No description provided for @stockAttentionCompanyHelp.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.'**
+  String get stockAttentionCompanyHelp;
+
+  /// No description provided for @stockAttentionPercentageLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Percentual da faixa de atenção'**
+  String get stockAttentionPercentageLabel;
+
+  /// No description provided for @stockAttentionOriginLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Origem'**
+  String get stockAttentionOriginLabel;
+
+  /// No description provided for @stockAttentionOriginCompany.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Configurado pela empresa'**
+  String get stockAttentionOriginCompany;
+
+  /// No description provided for @stockAttentionOriginSystem.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Padrão do sistema'**
+  String get stockAttentionOriginSystem;
+
+  /// No description provided for @stockAttentionSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar padrão da empresa'**
+  String get stockAttentionSave;
+
+  /// No description provided for @stockAttentionRestore.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Restaurar padrão do sistema'**
+  String get stockAttentionRestore;
+
+  /// No description provided for @stockAttentionSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Padrão da empresa salvo.'**
+  String get stockAttentionSaved;
+
+  /// No description provided for @stockAttentionRestored.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Padrão da empresa removido. A empresa voltou ao padrão do sistema.'**
+  String get stockAttentionRestored;
+
+  /// No description provided for @stockAttentionSystemDefaultHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Padrão do sistema: {value}%'**
+  String stockAttentionSystemDefaultHint(int value);
+
+  /// No description provided for @stockConfigTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Configuração de estoque'**
+  String get stockConfigTitle;
+
+  /// No description provided for @stockConfigIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Defina estoque mínimo, faixa de atenção e monitoramento de alerta de um EPI em uma Unidade. Cada parâmetro é salvo separadamente.'**
+  String get stockConfigIntro;
+
+  /// No description provided for @stockConfigUnitLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade a configurar'**
+  String get stockConfigUnitLabel;
+
+  /// No description provided for @stockConfigSelectUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione a Unidade para configurar os parâmetros.'**
+  String get stockConfigSelectUnit;
+
+  /// No description provided for @stockConfigSelectEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione o EPI para ver e editar os parâmetros desta Unidade.'**
+  String get stockConfigSelectEpi;
+
+  /// No description provided for @stockConfigEpiLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI'**
+  String get stockConfigEpiLabel;
+
+  /// No description provided for @stockConfigEpisLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar os EPIs desta Unidade.'**
+  String get stockConfigEpisLoadError;
+
+  /// No description provided for @stockConfigNoEpisInUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum EPI visível nesta Unidade.'**
+  String get stockConfigNoEpisInUnit;
+
+  /// No description provided for @stockConfigUnitBalance.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Saldo na Unidade'**
+  String get stockConfigUnitBalance;
+
+  /// No description provided for @stockConfigAttentionLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Limite da faixa de atenção'**
+  String get stockConfigAttentionLimit;
+
+  /// No description provided for @stockConfigUnderlyingStatus.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Condição física'**
+  String get stockConfigUnderlyingStatus;
+
+  /// No description provided for @stockConfigDerivedUnavailable.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Os valores calculados não puderam ser atualizados agora. Os parâmetros salvos acima estão corretos.'**
+  String get stockConfigDerivedUnavailable;
+
+  /// No description provided for @stockConfigStatusCritical.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Crítico'**
+  String get stockConfigStatusCritical;
+
+  /// No description provided for @stockConfigStatusNearMinimum.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próximo do mínimo'**
+  String get stockConfigStatusNearMinimum;
+
+  /// No description provided for @stockConfigStatusNormal.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Normal'**
+  String get stockConfigStatusNormal;
+
+  /// No description provided for @stockConfigStatusDisabled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Alerta desabilitado'**
+  String get stockConfigStatusDisabled;
+
+  /// No description provided for @stockConfigMinimumTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque mínimo'**
+  String get stockConfigMinimumTitle;
+
+  /// No description provided for @stockConfigMinimumHelp.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade abaixo da qual o EPI é considerado crítico nesta Unidade. Vale só para esta Unidade.'**
+  String get stockConfigMinimumHelp;
+
+  /// No description provided for @stockConfigMinimumLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque mínimo'**
+  String get stockConfigMinimumLabel;
+
+  /// No description provided for @stockConfigMinimumNegativeError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe um número inteiro maior ou igual a zero.'**
+  String get stockConfigMinimumNegativeError;
+
+  /// No description provided for @stockConfigMinimumSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque mínimo salvo para esta Unidade.'**
+  String get stockConfigMinimumSaved;
+
+  /// No description provided for @stockConfigMinimumRestored.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque mínimo restaurado. A Unidade voltou a herdar o padrão da empresa.'**
+  String get stockConfigMinimumRestored;
+
+  /// No description provided for @stockConfigAttentionTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Faixa de atenção'**
+  String get stockConfigAttentionTitle;
+
+  /// No description provided for @stockConfigAttentionHelp.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Percentual acima do mínimo em que o EPI já entra em atenção nesta Unidade. Independente do estoque mínimo.'**
+  String get stockConfigAttentionHelp;
+
+  /// No description provided for @stockConfigAttentionRangeError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O percentual deve estar entre 0 e 100.'**
+  String get stockConfigAttentionRangeError;
+
+  /// No description provided for @stockConfigAttentionSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Faixa de atenção salva para esta Unidade.'**
+  String get stockConfigAttentionSaved;
+
+  /// No description provided for @stockConfigAttentionRestored.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Faixa de atenção restaurada. A Unidade voltou a herdar o padrão da empresa.'**
+  String get stockConfigAttentionRestored;
+
+  /// No description provided for @stockConfigAlertTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Monitoramento de alerta'**
+  String get stockConfigAlertTitle;
+
+  /// No description provided for @stockConfigAlertHelp.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desligar interrompe o alerta de estoque baixo e a reposição automática deste EPI nesta Unidade. Não altera saldo, mínimo nem percentual.'**
+  String get stockConfigAlertHelp;
+
+  /// No description provided for @stockConfigAlertToggle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Monitorar o estoque deste EPI'**
+  String get stockConfigAlertToggle;
+
+  /// No description provided for @stockConfigAlertPending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Alteração pendente. Clique em Salvar para aplicar.'**
+  String get stockConfigAlertPending;
+
+  /// No description provided for @stockConfigAlertDisableTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desabilitar o alerta?'**
+  String get stockConfigAlertDisableTitle;
+
+  /// No description provided for @stockConfigAlertDisableBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. A condição física continuará sendo exibida.'**
+  String get stockConfigAlertDisableBody;
+
+  /// No description provided for @stockConfigAlertDisableConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desabilitar'**
+  String get stockConfigAlertDisableConfirm;
+
+  /// No description provided for @stockConfigAlertSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Monitoramento de alerta salvo para esta Unidade.'**
+  String get stockConfigAlertSaved;
+
+  /// No description provided for @stockConfigAlertRestored.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Monitoramento restaurado. A Unidade voltou ao padrão do sistema.'**
+  String get stockConfigAlertRestored;
+
+  /// No description provided for @stockConfigOriginUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Configurado por esta Unidade'**
+  String get stockConfigOriginUnit;
+
+  /// No description provided for @stockConfigOriginCompany.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Herdado do padrão da empresa'**
+  String get stockConfigOriginCompany;
+
+  /// No description provided for @stockConfigOriginUnknown.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não informada'**
+  String get stockConfigOriginUnknown;
+
+  /// No description provided for @stockConfigSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar'**
+  String get stockConfigSave;
+
+  /// No description provided for @stockConfigRestore.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Restaurar herança'**
+  String get stockConfigRestore;
+
+  /// No description provided for @stockAttentionRangeError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe um percentual inteiro entre 0 e {max}.'**
+  String stockAttentionRangeError(int max);
+
+  /// No description provided for @stockAttentionLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar o padrão da empresa.'**
+  String get stockAttentionLoadError;
+
+  /// No description provided for @unitSelectorLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade'**
+  String get unitSelectorLabel;
+
+  /// No description provided for @unitSelectorAllUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as Unidades'**
+  String get unitSelectorAllUnits;
+
+  /// No description provided for @unitSelectorLockedHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seu perfil opera numa Unidade fixa.'**
+  String get unitSelectorLockedHint;
+
+  /// No description provided for @unitSelectorLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar as Unidades.'**
+  String get unitSelectorLoadError;
+
+  /// No description provided for @unitSelectorNoUnitsAssigned.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Você não tem Unidade atribuída. Fale com o administrador.'**
+  String get unitSelectorNoUnitsAssigned;
+
+  /// No description provided for @unitSelectorCompanyHasNoUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A empresa ainda não tem Unidades cadastradas.'**
+  String get unitSelectorCompanyHasNoUnits;
 
   /// No description provided for @settingsSectionCompany.
   ///
@@ -3113,6 +4019,41 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Você não tem permissão para alterar esta configuração.'**
   String get settingsNoPermission;
+
+  /// No description provided for @stockPhysicalValidityUnknown.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade física desconhecida'**
+  String get stockPhysicalValidityUnknown;
+
+  /// No description provided for @stockNoPhysicalStock.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sem estoque físico'**
+  String get stockNoPhysicalStock;
+
+  /// Filter counts distinct PPE types; piece counts are provided separately by the backend.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{label} — EPIs distintos: {count}'**
+  String stockComplianceEpiCount(String label, int count);
+
+  /// No description provided for @stockPhysicalPieceCounts.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.'**
+  String stockPhysicalPieceCounts(
+    int valid,
+    int expiring,
+    int expired,
+    int unknown,
+  );
+
+  /// No description provided for @deliveryPhysicalItemIneligible.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.'**
+  String get deliveryPhysicalItemIneligible;
 }
 
 class _AppLocalizationsDelegate
@@ -3140,7 +4081,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'US':
             return app_localizations_en.loadLibrary().then(
-                (dynamic _) => app_localizations_en.AppLocalizationsEnUs());
+              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
+            );
         }
         break;
       }
@@ -3149,7 +4091,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'ES':
             return app_localizations_es.loadLibrary().then(
-                (dynamic _) => app_localizations_es.AppLocalizationsEsEs());
+              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
+            );
         }
         break;
       }
@@ -3158,7 +4101,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'FR':
             return app_localizations_fr.loadLibrary().then(
-                (dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
+              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
+            );
         }
         break;
       }
@@ -3167,7 +4111,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'NO':
             return app_localizations_no.loadLibrary().then(
-                (dynamic _) => app_localizations_no.AppLocalizationsNoNo());
+              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
+            );
         }
         break;
       }
@@ -3176,7 +4121,8 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
         switch (locale.countryCode) {
           case 'BR':
             return app_localizations_pt.loadLibrary().then(
-                (dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
+              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
+            );
         }
         break;
       }
@@ -3185,30 +4131,31 @@ Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'en':
-      return app_localizations_en
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_en.AppLocalizationsEn());
+      return app_localizations_en.loadLibrary().then(
+        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
+      );
     case 'es':
-      return app_localizations_es
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_es.AppLocalizationsEs());
+      return app_localizations_es.loadLibrary().then(
+        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
+      );
     case 'fr':
-      return app_localizations_fr
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
+      return app_localizations_fr.loadLibrary().then(
+        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
+      );
     case 'no':
-      return app_localizations_no
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_no.AppLocalizationsNo());
+      return app_localizations_no.loadLibrary().then(
+        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
+      );
     case 'pt':
-      return app_localizations_pt
-          .loadLibrary()
-          .then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
+      return app_localizations_pt.loadLibrary().then(
+        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
+      );
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

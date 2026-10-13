@@ -5,6 +5,7 @@ havia antiduplicidade (§4.2) nem rastro da origem até a compra (§3.8).
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import seed_test_physical_backing
 
 import pytest
 
@@ -69,6 +70,8 @@ def _conn(*, stock=4, minimum=10, maximum=30, ready=True):
     if ready:
         ensure_stock_replenishment_needs(conn)
         conn.execute('UPDATE epis SET maximum_stock = ? WHERE id = ?', (maximum, EPI))
+    conn.commit()
+    seed_test_physical_backing(conn)
     conn.commit()
     return conn
 

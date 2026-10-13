@@ -5,6 +5,7 @@ até alguém reparar manualmente.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import seed_test_physical_backing
 
 from core.schema import ensure_stock_reservations
 from modules.epis.request_states import RESERVED, WAITING_STOCK
@@ -52,6 +53,8 @@ def _conn(stock=0):
         )
     conn.commit()
     ensure_stock_reservations(conn)
+    conn.commit()
+    seed_test_physical_backing(conn)
     conn.commit()
     return conn
 
@@ -133,6 +136,7 @@ def test_incoming_stock_never_serves_another_unit():
     conn = _conn(stock=0)
     _request(conn, 1, unit_id=FILIAL, quantity=5)
     conn.execute('UPDATE unit_epi_stock SET quantity = 10 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     assert allocate_incoming_stock(conn, 1, MATRIZ, EPI) == []
@@ -146,6 +150,7 @@ def test_incoming_stock_reserves_for_whoever_was_waiting():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=3)
     conn.execute('UPDATE unit_epi_stock SET quantity = 5 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocated = allocate_incoming_stock(conn, 1, MATRIZ, EPI)
@@ -160,6 +165,7 @@ def test_allocation_reserves_but_never_writes_off():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=4)
     conn.execute('UPDATE unit_epi_stock SET quantity = 4 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocate_incoming_stock(conn, 1, MATRIZ, EPI)
@@ -174,6 +180,7 @@ def test_allocation_serves_the_queue_in_order_until_stock_runs_out():
     _request(conn, 1, quantity=2, urgency='normal', requested_at='2026-01-01')
     _request(conn, 2, quantity=2, urgency='alta', requested_at='2026-06-01')
     conn.execute('UPDATE unit_epi_stock SET quantity = 2 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocated = allocate_incoming_stock(conn, 1, MATRIZ, EPI)
@@ -191,6 +198,7 @@ def test_allocation_stops_instead_of_skipping_to_a_smaller_request():
     _request(conn, 1, quantity=10, requested_at='2026-01-01')
     _request(conn, 2, quantity=1, requested_at='2026-02-01')
     conn.execute('UPDATE unit_epi_stock SET quantity = 5 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     assert allocate_incoming_stock(conn, 1, MATRIZ, EPI) == []
@@ -203,6 +211,7 @@ def test_partial_fulfilment_is_never_automatic():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=10)
     conn.execute('UPDATE unit_epi_stock SET quantity = 6 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     assert allocate_incoming_stock(conn, 1, MATRIZ, EPI) == []
@@ -213,6 +222,7 @@ def test_existing_reservations_reduce_what_is_allocatable():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=3)
     conn.execute('UPDATE unit_epi_stock SET quantity = 5 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
     from modules.stock.reservations import create_reservation
     create_reservation(conn, company_id=1, unit_id=MATRIZ, epi_id=EPI, quantity=4)
@@ -225,6 +235,7 @@ def test_allocation_is_recorded_in_the_request_history():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=1)
     conn.execute('UPDATE unit_epi_stock SET quantity = 1 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocate_incoming_stock(conn, 1, MATRIZ, EPI)
@@ -238,6 +249,7 @@ def test_running_twice_does_not_double_reserve():
     conn = _conn(stock=0)
     _request(conn, 1, quantity=2)
     conn.execute('UPDATE unit_epi_stock SET quantity = 10 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocate_incoming_stock(conn, 1, MATRIZ, EPI)
@@ -251,6 +263,7 @@ def test_zero_quantity_request_is_skipped_without_breaking_the_queue():
     _request(conn, 1, quantity=0, requested_at='2026-01-01')
     _request(conn, 2, quantity=1, requested_at='2026-02-01')
     conn.execute('UPDATE unit_epi_stock SET quantity = 5 WHERE unit_id = ?', (MATRIZ,))
+    seed_test_physical_backing(conn)
     conn.commit()
 
     allocated = allocate_incoming_stock(conn, 1, MATRIZ, EPI)

@@ -49,7 +49,13 @@ def _compute(epis):
     # lógica de geração de alerta de validade, não o escopo por unidade — que é
     # coberto em test_low_stock_alert_scope.py.
     from modules.alerts.service import compute_alerts
-    return compute_alerts(
+    from unittest.mock import patch
+    from modules.stock.eligibility import classify_physical
+    physical = {int(e['id']): dict(as_of_date=TODAY.isoformat(), warning_days=30, timezone='UTC',
+                 nearest_known_expiry=e.get('physical_expiry_date'), **{k: int(classify_physical(e.get('physical_expiry_date'), {'as_of_date': TODAY.isoformat(), 'warning_days': 30})['status'] == k) for k in ('valid','expired','expiring','unknown')})
+                for e in epis if e.get('physical_expiry_date')}
+    with patch('modules.alerts.service.physical_summary_map', return_value=physical):
+        return compute_alerts(
         None, {'role': 'general_admin', 'company_id': 1},
         fetch_low_stock_items=lambda conn, act: [],
         actor_operational_unit_id=lambda conn, act: None,
@@ -68,7 +74,7 @@ def _epi(**over):
 
 
 def test_alert_manufacturer_validity_expired():
-    alerts = _compute([_epi(epi_validity_date=PAST)])
+    alerts = _compute([_epi(physical_expiry_date=PAST)])
     manu = [a for a in alerts if 'Validade do fabricante vencida' in a['title']]
     assert len(manu) == 1
     assert manu[0]['type'] == 'danger'
@@ -76,15 +82,15 @@ def test_alert_manufacturer_validity_expired():
 
 
 def test_alert_manufacturer_validity_expiring_soon():
-    alerts = _compute([_epi(epi_validity_date=SOON)])
+    alerts = _compute([_epi(physical_expiry_date=SOON)])
     manu = [a for a in alerts if 'Validade do fabricante próxima' in a['title']]
     assert len(manu) == 1
     assert 'PEPS' in manu[0]['description']
 
 
 def test_no_manufacturer_alert_when_valid_or_inactive():
-    assert _compute([_epi(epi_validity_date=FUTURE)]) == []
-    assert _compute([_epi(active=0, epi_validity_date=PAST)]) == []
+    assert _compute([_epi(physical_expiry_date=FUTURE)]) == []
+    assert _compute([_epi(active=0, physical_expiry_date=PAST)]) == []
 
 
 # ── bloqueio de entrega: validade do fabricante vencida ───────────────────────

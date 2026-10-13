@@ -7,6 +7,7 @@ física, fabricação, lote e bloqueio administrativo separados.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 
 from modules.stock.service import compute_stock_compliance
 
@@ -34,6 +35,8 @@ def _conn():
         """
     )
     conn.commit()
+    ensure_test_physical_schema(conn)
+    conn.commit()
     return conn
 
 
@@ -45,6 +48,7 @@ def test_ca_expired_counts_available_stock_items_not_catalog():
         [('in_stock', 'Q1'), ('available', 'Q2'), ('delivered', 'Q3')],
     )
     conn.commit()
+    conn.execute("UPDATE epi_stock_items SET physical_expiry_date='2026-02-01' WHERE company_id=1 AND epi_id=7")
     result = compute_stock_compliance(conn, 1, today=TODAY)
     # card = mesmo total que a tela: 2 itens disponíveis com CA vencido (o entregue não conta)
     assert result['summary']['ca_expired'] == 2
@@ -62,8 +66,9 @@ def test_admin_blocked_is_separate_and_excludes_from_validity():
     result = compute_stock_compliance(conn, 1, today=TODAY)
     assert result['summary']['admin_blocked'] == 1
     # item bloqueado não entra em CA/validade (já fora de uso)
-    assert result['summary']['ca_expired'] == 0
+    assert result['summary']['ca_expired'] == 1
     assert result['summary']['product_expired'] == 0
+    assert result['summary']['product_unknown'] == 1
 
 
 def test_missing_manufacture_and_lot_flagged():

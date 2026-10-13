@@ -85,7 +85,8 @@ class StockApi {
         if (manufacturer != null && manufacturer.isNotEmpty)
           'manufacturer': manufacturer,
         if (ca != null && ca.isNotEmpty) 'ca': ca,
-        if (protection != null && protection.isNotEmpty) 'protection': protection,
+        if (protection != null && protection.isNotEmpty)
+          'protection': protection,
       },
     );
     final items = (res.data?['items'] as List<dynamic>?) ?? const [];
@@ -161,6 +162,7 @@ class StockApi {
     required int actorUserId,
     required int unitId,
     required int epiId,
+    int? requestId,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/stock/available-items',
@@ -168,6 +170,7 @@ class StockApi {
         'actor_user_id': actorUserId,
         'unit_id': unitId,
         'epi_id': epiId,
+        if (requestId != null) 'request_id': requestId,
       },
     );
     final items = (res.data?['items'] as List<dynamic>?) ?? const [];
@@ -209,13 +212,16 @@ class StockApi {
   /// UI. `admin`/`user` recebem apenas a própria unidade — a restrição é
   /// aplicada no servidor, não escondida na tela.
   /// GET /api/stock/blocked-items.
-  Future<BlockedStockItems> fetchBlockedItems({required int actorUserId}) async {
+  Future<BlockedStockItems> fetchBlockedItems({
+    required int actorUserId,
+  }) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/stock/blocked-items',
       queryParameters: {'actor_user_id': actorUserId},
     );
     final items = (res.data?['items'] as List<dynamic>?) ?? const [];
-    final statuses = (res.data?['statuses'] as Map<String, dynamic>?) ?? const {};
+    final statuses =
+        (res.data?['statuses'] as Map<String, dynamic>?) ?? const {};
     return BlockedStockItems(
       items: items
           .map((e) => StockItem.fromJson(e as Map<String, dynamic>))
@@ -353,11 +359,7 @@ class StockApi {
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/stock/minimum/restore-default',
-      data: {
-        'actor_user_id': actorUserId,
-        'unit_id': unitId,
-        'epi_id': epiId,
-      },
+      data: {'actor_user_id': actorUserId, 'unit_id': unitId, 'epi_id': epiId},
     );
     return UnitEpiMinimum.fromJson(res.data ?? const {});
   }
@@ -391,11 +393,7 @@ class StockApi {
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/stock/attention-percentage/restore-default',
-      data: {
-        'actor_user_id': actorUserId,
-        'unit_id': unitId,
-        'epi_id': epiId,
-      },
+      data: {'actor_user_id': actorUserId, 'unit_id': unitId, 'epi_id': epiId},
     );
     return UnitEpiAttention.fromJson(res.data ?? const {});
   }
@@ -435,11 +433,7 @@ class StockApi {
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/stock/alert-enabled/restore-default',
-      data: {
-        'actor_user_id': actorUserId,
-        'unit_id': unitId,
-        'epi_id': epiId,
-      },
+      data: {'actor_user_id': actorUserId, 'unit_id': unitId, 'epi_id': epiId},
     );
     return UnitEpiAlert.fromJson(res.data ?? const {});
   }

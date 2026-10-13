@@ -30,7 +30,7 @@ CATEGORIAS = (
     'ca_expired', 'ca_expiring',
     'product_expired', 'product_expiring',
     'missing_manufacture', 'missing_lot',
-    'admin_blocked',
+    'admin_blocked', 'product_unknown',
 )
 
 
@@ -119,6 +119,8 @@ def test_summary_e_contagem_e_categories_traz_os_registros():
         'ca TEXT, ca_expiry TEXT, epi_validity_date TEXT, unit_id INTEGER)'
     )
     conn.execute('CREATE TABLE units (id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT)')
+    conn.execute('CREATE TABLE companies(id INTEGER PRIMARY KEY, timezone TEXT)')
+    conn.execute("INSERT INTO companies VALUES(1, 'UTC')")
     resultado = compute_stock_compliance(conn, 1)
 
     assert set(resultado['summary']) == set(CATEGORIAS)

@@ -75,25 +75,20 @@ def unit_balance(connection, company_id, unit_id, epi_id) -> dict:
     não há parâmetro de escopo: a decisão de atender olha uma unidade só.
     """
     from modules.stock.service import get_unit_stock
-
-    from modules.stock.service import blocked_physical_quantity, get_unit_stock
-
+    from modules.stock.eligibility import eligible_quantity, stock_rows, ON_HAND_STATUSES
     stock = get_unit_stock(connection, int(company_id), int(unit_id), int(epi_id))
     physical = int((stock or {}).get('quantity') or 0)
     reserved = reserved_quantity(connection, company_id, unit_id, epi_id)
-    # EST-V3/G01: a peça bloqueada continua FÍSICA (não some do estoque), mas sai
-    # do DISPONÍVEL — não se reserva nem se promete peça bloqueada. Derivado do
-    # status real das peças (epi_stock_items), não de um contador paralelo.
-    blocked = blocked_physical_quantity(connection, company_id, unit_id, epi_id)
+    eligible = eligible_quantity(connection, company_id, unit_id, epi_id)
+    tracked = sum(str(row['status']).lower() in ON_HAND_STATUSES
+                  for row in stock_rows(connection, company_id, unit_id, epi_id))
+    backed = min(max(0, physical), eligible)
     return {
-        'company_id': int(company_id),
-        'unit_id': int(unit_id),
-        'epi_id': int(epi_id),
-        'physical': physical,
-        'reserved': reserved,
-        # Reserva órfã / bloqueio além do físico (por ajuste manual do saldo) não
-        # pode virar saldo livre negativo e liberar entrega: piso zero.
-        'free': max(0, physical - reserved - blocked),
+        'company_id': int(company_id), 'unit_id': int(unit_id), 'epi_id': int(epi_id),
+        'physical': physical, 'tracked_physical': tracked, 'eligible': eligible,
+        'reserved': reserved, 'operational_capacity': backed, 'free': max(0, backed - reserved),
+        'reservation_shortfall': max(0, reserved - backed),
+        'reconciliation_delta': physical - tracked,
     }
 
 
@@ -123,6 +118,11 @@ def create_reservation(
     if not reservations_ready(connection):
         raise RuntimeError('Reservas de estoque ainda não provisionadas.')
 
+    from modules.stock.eligibility import lock_stock_scope
+    try:
+        lock_stock_scope(connection, company_id, unit_id, epi_id)
+    except ValueError as exc:
+        raise InsufficientFreeStock('Saldo livre insuficiente: estoque fora da empresa/unidade.') from exc
     balance = unit_balance(connection, company_id, unit_id, epi_id)
     if balance['free'] < quantity:
         raise InsufficientFreeStock(
@@ -150,7 +150,7 @@ def create_reservation(
 
     # Releitura sob a mesma transação: se outra reserva entrou entre o cálculo
     # e a inserção, o saldo livre ficaria negativo. Quem chegou segundo perde.
-    if unit_balance(connection, company_id, unit_id, epi_id)['physical'] < reserved_quantity(
+    if unit_balance(connection, company_id, unit_id, epi_id)['operational_capacity'] < reserved_quantity(
         connection, company_id, unit_id, epi_id
     ):
         connection.execute('DELETE FROM stock_reservations WHERE id = ?', (reservation_id,))
@@ -174,6 +174,11 @@ def _claim(connection, reservation_id, new_status, timestamp_column) -> dict:
     entrega: garante que só uma operação consuma (ou libere) a reserva, mesmo
     com duas requisições simultâneas.
     """
+    current = get_reservation(connection, reservation_id)
+    if current is None:
+        raise ReservationNotActive('Reserva inexistente.')
+    from modules.stock.eligibility import lock_stock_scope
+    lock_stock_scope(connection, current['company_id'], current['unit_id'], current['epi_id'])
     now = datetime.now(UTC).isoformat()
     cursor = connection.execute(
         f'UPDATE stock_reservations SET status = ?, {timestamp_column} = ?, '  # noqa: S608
@@ -223,6 +228,14 @@ def consume_reservation(connection, reservation_id, *, quantity=None, delivery_i
             f'Reserva já {reservation.get("status")}. Atualize e tente novamente.'
         )
 
+    current = get_reservation(connection, reservation_id)
+    if current is None:
+        raise ReservationNotActive('Reserva inexistente.')
+    from modules.stock.eligibility import lock_stock_scope
+    lock_stock_scope(connection, current['company_id'], current['unit_id'], current['epi_id'])
+    reservation = get_reservation(connection, reservation_id)
+    if str(reservation.get('status')) != ACTIVE:
+        raise ReservationNotActive('Reserva já consumida ou liberada.')
     remaining = remaining_quantity(reservation)
     amount = remaining if quantity is None else int(quantity)
     if amount <= 0:

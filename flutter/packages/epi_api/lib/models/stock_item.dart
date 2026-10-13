@@ -20,6 +20,9 @@ class StockItem {
     this.uniformSize,
     this.manufactureDate,
     this.epiValidityDate,
+    this.physicalExpiryDate,
+    this.catalogValidityDate,
+    this.eligibleForDelivery,
     this.lotCode,
     this.unitMeasure,
     this.unitName,
@@ -46,7 +49,23 @@ class StockItem {
   final String? uniformSize;
 
   final String? manufactureDate;
+
+  /// Deprecated display alias for the physical date, never the catalog.
   final String? epiValidityDate;
+  final String? physicalExpiryDate;
+  final String? catalogValidityDate;
+  final bool? eligibleForDelivery;
+
+  bool get isEligibleCandidate {
+    final value = physicalExpiryDate;
+    if (eligibleForDelivery != true ||
+        value == null ||
+        !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value) ||
+        !['in_stock', 'available'].contains(status))
+      return false;
+    final parsed = DateTime.tryParse(value);
+    return parsed != null && parsed.toIso8601String().substring(0, 10) == value;
+  }
 
   // ── Só em /api/stock/blocked-items ────────────────────────────────────────
   final String? lotCode;
@@ -73,23 +92,26 @@ class StockItem {
   }
 
   factory StockItem.fromJson(Map<String, dynamic> json) => StockItem(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        epiId: (json['epi_id'] as num?)?.toInt() ?? 0,
-        epiName: _text(json['epi_name']) ?? '',
-        // `in_stock` é o default do próprio backend quando a coluna está nula
-        // (COALESCE(LOWER(esi.status), 'in_stock')). Repetido aqui só para o
-        // parsing não produzir status vazio — não é regra de negócio nova.
-        status: _text(json['status']) ?? 'in_stock',
-        qrCodeValue: _text(json['qr_code_value']),
-        gloveSize: _text(json['glove_size']),
-        size: _text(json['size']),
-        uniformSize: _text(json['uniform_size']),
-        manufactureDate: _text(json['manufacture_date']),
-        epiValidityDate: _text(json['epi_validity_date']),
-        lotCode: _text(json['lot_code']),
-        unitMeasure: _text(json['unit_measure']),
-        unitName: _text(json['unit_name']),
-        unitId: (json['unit_id'] as num?)?.toInt(),
-        updatedAt: _text(json['updated_at']),
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    epiId: (json['epi_id'] as num?)?.toInt() ?? 0,
+    epiName: _text(json['epi_name']) ?? '',
+    // `in_stock` é o default do próprio backend quando a coluna está nula
+    // (COALESCE(LOWER(esi.status), 'in_stock')). Repetido aqui só para o
+    // parsing não produzir status vazio — não é regra de negócio nova.
+    status: _text(json['status']) ?? 'in_stock',
+    qrCodeValue: _text(json['qr_code_value']),
+    gloveSize: _text(json['glove_size']),
+    size: _text(json['size']),
+    uniformSize: _text(json['uniform_size']),
+    manufactureDate: _text(json['manufacture_date']),
+    epiValidityDate: _text(json['physical_expiry_date']),
+    physicalExpiryDate: _text(json['physical_expiry_date']),
+    catalogValidityDate: _text(json['epi_validity_date']),
+    eligibleForDelivery: json['eligible_for_delivery'] as bool?,
+    lotCode: _text(json['lot_code']),
+    unitMeasure: _text(json['unit_measure']),
+    unitName: _text(json['unit_name']),
+    unitId: (json['unit_id'] as num?)?.toInt(),
+    updatedAt: _text(json['updated_at']),
+  );
 }

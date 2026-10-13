@@ -1,0 +1,69 @@
+name: Stock Validity Integration
+
+on:
+  pull_request:
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', '.github/workflows/stock-validity-integration.yml']
+  push:
+    branches: ['claude/**']
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', '.github/workflows/stock-validity-integration.yml']
+
+jobs:
+  physical-stock-http:
+    name: Flutter HTTP + native JWT + PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: epi
+          POSTGRES_PASSWORD: epi
+          POSTGRES_DB: stock_r1_integration
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql://epi:epi@127.0.0.1:5432/stock_r1_integration
+      JWT_SECRET: stock-r1-isolated-ci-fixture
+      JWT_ENFORCEMENT_MODE: enforce
+      PGPASSWORD: epi
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare isolated backend
+        run: |
+          pip install -r requirements.txt pytest
+          psql -h 127.0.0.1 -U epi -d stock_r1_integration -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;'
+      - name: Prepare Flutter
+        working-directory: flutter
+        run: |
+          flutter pub get
+          dart run melos run gen:l10n
+          dart run melos run gen
+      - name: Exercise real HTTP and PostgreSQL from Flutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EST35_HTTP_OUTPUT="$RUNNER_TEMP/stock-r1"
+          export EST35_HTTP_CONTEXT="$EST35_HTTP_OUTPUT/stock-r1-http-context.json"
+          python scripts/stock_r1_http_fixture.py > "$RUNNER_TEMP/stock-r1-http.log" 2>&1 &
+          r1_fixture_pid=$!
+          trap 'kill "$r1_fixture_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if test -s "$EST35_HTTP_CONTEXT"; then break; fi
+            if ! kill -0 "$r1_fixture_pid" 2>/dev/null; then cat "$RUNNER_TEMP/stock-r1-http.log"; exit 1; fi
+            sleep 1
+          done
+          test -s "$EST35_HTTP_CONTEXT"
+          cd flutter/apps/epi_admin
+          flutter test --reporter expanded test/stock_http_integration_test.dart

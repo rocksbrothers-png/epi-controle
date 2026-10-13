@@ -17,7 +17,7 @@ void main() {
         'ca': 'CA-1',
         'purchase_code': 'P-1',
         'ca_expiry': _d(40),
-        'epi_validity_date': _d(5),
+        'effective_validity_date': _d(5),
         'stock': 7,
         'minimum_stock': 2,
       });
@@ -34,7 +34,7 @@ void main() {
         'id': 2,
         'name': 'Bota',
         'ca_expiry': _d(100),
-        'epi_validity_date': _d(-3),
+        'effective_validity_date': _d(-3),
         'stock': 1,
       });
       expect(epi.manufacturerValidityStatus, 'expired');
@@ -46,7 +46,7 @@ void main() {
         'id': 3,
         'name': 'Capacete',
         'ca_expiry': _d(-10),
-        'epi_validity_date': _d(200),
+        'effective_validity_date': _d(200),
         'stock': 4,
       });
       expect(epi.caStatus, 'expired');
@@ -97,7 +97,7 @@ void main() {
       expect(epi.isBlockedForDelivery, isFalse);
     });
 
-    test('sem effective_validity_date → fallback ao catálogo (compat)', () {
+    test('catálogo sozinho não representa validade física', () {
       final epi = Epi.fromJson({
         'id': 12,
         'name': 'Bota',
@@ -105,7 +105,9 @@ void main() {
         'epi_validity_date': _d(-5),
         'stock': 3,
       });
-      expect(epi.manufacturerValidityStatus, 'expired');
+      expect(epi.manufacturerValidityStatus, isNull);
+      expect(epi.catalogValidityDate, _d(-5));
+      expect(epi.isBlockedForDelivery, isTrue);
     });
   });
 }

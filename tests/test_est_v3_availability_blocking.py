@@ -8,6 +8,7 @@ na peça (colunas EST-V2) ao bloquear, e os limpa ao desbloquear.
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 
 from core.schema import ensure_stock_lifecycle_model
 from modules.stock.reservations import unit_balance
@@ -45,6 +46,8 @@ def _conn(quantity=10):
     )
     ensure_stock_lifecycle_model(conn)
     conn.commit()
+    ensure_test_physical_schema(conn)
+    conn.commit()
     return conn
 
 
@@ -54,6 +57,7 @@ def _add_item(conn, iid, status='in_stock'):
         "VALUES (?, 1, 2, 7, ?, ?)",
         (iid, f'QR-{iid}', status),
     )
+    conn.execute("UPDATE epi_stock_items SET physical_expiry_date='9999-12-31' WHERE id=?", (iid,))
     conn.commit()
     return conn.execute('SELECT * FROM epi_stock_items WHERE id = ?', (iid,)).fetchone()
 
@@ -63,7 +67,7 @@ def test_block_reduces_free_not_physical():
     for iid in (1, 2, 3):
         _add_item(conn, iid, 'in_stock')
     before = unit_balance(conn, 1, 2, 7)
-    assert before['physical'] == 10 and before['free'] == 10 and before['reserved'] == 0
+    assert before['physical'] == 10 and before['free'] == 3 and before['reserved'] == 0
 
     set_stock_item_status(conn, _add_item(conn, 4, 'in_stock'), 'blocked_expired', 'vencido', 3, 'Admin', 'now')
     set_stock_item_status(conn, conn.execute('SELECT * FROM epi_stock_items WHERE id=1').fetchone(),
@@ -71,7 +75,7 @@ def test_block_reduces_free_not_physical():
     after = unit_balance(conn, 1, 2, 7)
     assert after['physical'] == 10, 'físico preservado'
     assert blocked_physical_quantity(conn, 1, 2, 7) == 2
-    assert after['free'] == 8, 'disponível desconta as 2 peças bloqueadas'
+    assert after['free'] == 2, 'disponível desconta as 2 peças bloqueadas'
 
 
 def test_free_floors_at_zero_when_blocked_exceeds_physical():
@@ -85,7 +89,7 @@ def test_free_floors_at_zero_when_blocked_exceeds_physical():
 def test_unit_balance_dict_shape_preserved():
     # contrato de unit_balance: mesmas 5 chaves (sem 'blocked')
     conn = _conn(quantity=4)
-    assert set(unit_balance(conn, 1, 2, 7).keys()) == {'company_id', 'unit_id', 'epi_id', 'physical', 'reserved', 'free'}
+    assert set(unit_balance(conn, 1, 2, 7).keys()) == {'company_id', 'unit_id', 'epi_id', 'physical', 'reserved', 'free', 'eligible', 'operational_capacity', 'tracked_physical', 'reservation_shortfall', 'reconciliation_delta'}
 
 
 def test_block_records_structured_reason_and_actor():

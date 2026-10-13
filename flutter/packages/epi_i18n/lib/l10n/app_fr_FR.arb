@@ -737,7 +737,13 @@
   "settingsSectionSubscription": "Abonnement",
   "settingsCompanyLabel": "Entreprise",
   "settingsCompanyScopeBanner": "Entreprise administrée : {name}",
-  "@settingsCompanyScopeBanner": { "placeholders": { "name": { "type": "String" } } },
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSelectCompanyFirst": "Sélectionnez une entreprise dans Paramètres pour continuer.",
   "settingsFichaTileTitle": "Fiche d'EPI",
   "settingsFichaTileSubtitle": "Titre, déclaration, observations et traçabilité",
@@ -751,5 +757,37 @@
   "settingsSubscriptionTileSubtitle": "Formule, facturation et résiliation",
   "settingsInvoicesTileTitle": "Historique financier",
   "settingsInvoicesTileSubtitle": "Toutes les factures et tous les reçus",
-  "settingsNoPermission": "Vous n'avez pas l'autorisation de modifier ce paramètre."
+  "settingsNoPermission": "Vous n'avez pas l'autorisation de modifier ce paramètre.",
+  "stockPhysicalValidityUnknown": "Expiration physique inconnue",
+  "stockNoPhysicalStock": "Aucun stock physique",
+  "stockComplianceEpiCount": "{label} — EPI distincts : {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Pièces physiques : valides {valid}, proches {expiring}, expirées {expired}, inconnues {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Pièce indisponible pour remise. Vérifiez expiration physique, état, réservations et solde."
 }

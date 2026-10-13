@@ -5,8 +5,9 @@ from datetime import date
 from modules.stock.service import (
     STATUS_CRITICAL,
     STATUS_NEAR_MINIMUM,
-    epi_physical_validity_map,
 )
+
+from modules.stock.eligibility import physical_summary_map
 
 from modules.epis.validity import (
     MANUFACTURER_VALIDITY_WARNING_DAYS,
@@ -83,10 +84,9 @@ def compute_alerts(
 
     # EST-V3.5 (G02): a validade do fabricante que rege o alerta é a FÍSICA do
     # lote em estoque (a mais próxima de vencer, FEFO), não o catálogo — que
-    # virou só default de cadastro. Catálogo permanece como fallback (peças sem
-    # validade física / itens anteriores à captura por lote). Mapa montado uma
-    # vez (degrada para {} sem a coluna/conexão → fallback ao catálogo).
-    phys_validity = epi_physical_validity_map(connection, None, scope_unit_id)
+    # permanece um atributo cadastral separado. O resumo físico mantém lotes
+    # desconhecidos e vencidos, sem usar o catálogo como substituto.
+    phys_validity = physical_summary_map(connection, None, scope_unit_id)
     for epi in fetch_epis(connection, actor, scope_unit_id):
         if int(epi.get('active', 1) or 0) != 1:
             continue
@@ -107,10 +107,12 @@ def compute_alerts(
         # com validade mais próxima devem sair primeiro do estoque (PEPS) e os já
         # vencidos devem ser retirados do estoque, pois não podem ser entregues.
         # EST-V3.5 (G02): usa a validade FÍSICA do lote mais próximo de vencer em
-        # estoque; o catálogo é apenas fallback para peças sem validade física.
-        effective_mv = phys_validity.get(int(epi.get('id') or 0)) or str(epi.get('epi_validity_date') or '')
-        mv_days = days_until(effective_mv, today)
-        if mv_days is not None and mv_days <= MANUFACTURER_VALIDITY_WARNING_DAYS:
+        # estoque; o catálogo nunca substitui uma data física ausente.
+        physical = phys_validity.get(int(epi.get('id') or 0), {})
+        effective_mv = physical.get('nearest_known_expiry')
+        reference = date.fromisoformat(physical['as_of_date']) if physical else today
+        mv_days = days_until(effective_mv, reference)
+        if mv_days is not None and mv_days <= physical.get('warning_days', MANUFACTURER_VALIDITY_WARNING_DAYS):
             stock = int(epi.get('stock') or 0)
             unit_measure = str(epi.get('unit_measure') or 'unidade')
             if mv_days < 0:
@@ -143,6 +145,15 @@ def compute_alerts(
                     'epi_id': epi.get('id'),
                     'epi_name': epi.get('name'),
                 })
+        for category, count in [('physical_unknown', physical.get('unknown', 0)),
+                                ('physical_expiring', physical.get('expiring', 0) if mv_days is not None and mv_days < 0 else 0)]:
+            if count:
+                alerts.append({'type': 'warning', 'category': category,
+                    'title': 'Validade física desconhecida' if category == 'physical_unknown' else 'Lotes próximos do vencimento',
+                    'description': f"{epi['name']}: {count} peça(s) física(s).",
+                    'company_id': epi.get('company_id'), 'unit_id': scope_unit_id,
+                    'epi_id': epi.get('id'), 'epi_name': epi.get('name')})
+
     return alerts
 
 

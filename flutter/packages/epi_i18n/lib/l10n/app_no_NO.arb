@@ -737,7 +737,13 @@
   "settingsSectionSubscription": "Abonnement",
   "settingsCompanyLabel": "Selskap",
   "settingsCompanyScopeBanner": "Administrerer selskapet: {name}",
-  "@settingsCompanyScopeBanner": { "placeholders": { "name": { "type": "String" } } },
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSelectCompanyFirst": "Velg et selskap i Innstillinger for å fortsette.",
   "settingsFichaTileTitle": "PVU-skjema",
   "settingsFichaTileSubtitle": "Tittel, erklæring, merknader og sporbarhet",
@@ -751,5 +757,37 @@
   "settingsSubscriptionTileSubtitle": "Abonnement, betalinger og oppsigelse",
   "settingsInvoicesTileTitle": "Betalingshistorikk",
   "settingsInvoicesTileSubtitle": "Alle betalinger og kvitteringer",
-  "settingsNoPermission": "Du har ikke tillatelse til å endre denne innstillingen."
+  "settingsNoPermission": "Du har ikke tillatelse til å endre denne innstillingen.",
+  "stockPhysicalValidityUnknown": "Ukjent fysisk utløpsdato",
+  "stockNoPhysicalStock": "Ingen fysisk beholdning",
+  "stockComplianceEpiCount": "{label} — ulike verneutstyrstyper: {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Fysiske enheter: gyldige {valid}, utløper snart {expiring}, utløpt {expired}, ukjent {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Enheten kan ikke utleveres. Kontroller fysisk utløpsdato, status, reservasjoner og beholdning."
 }

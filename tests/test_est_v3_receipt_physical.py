@@ -5,6 +5,7 @@ na peça e, se o lote chega vencido, bloqueia a peça no recebimento (G15).
 """
 
 import sqlite3
+from tests.stock_physical_fixtures import ensure_test_physical_schema
 from datetime import date, timedelta
 
 from core.schema import ensure_stock_lifecycle_model
@@ -22,6 +23,8 @@ def _conn():
         "unit_id INTEGER, epi_id INTEGER, status TEXT DEFAULT 'in_stock', qr_code_value TEXT DEFAULT '');"
     )
     ensure_stock_lifecycle_model(conn)
+    conn.commit()
+    ensure_test_physical_schema(conn)
     conn.commit()
     return conn
 

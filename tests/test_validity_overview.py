@@ -71,6 +71,9 @@ def _seed(conn):
           (1, 9, 20, '2026-05-01T00:00:00');
         """
     )
+    conn.execute('ALTER TABLE epi_stock_items ADD COLUMN physical_expiry_date TEXT')
+    for eid, offset in [(7,-5),(8,10),(9,400),(10,400)]:
+        conn.execute('UPDATE epi_stock_items SET physical_expiry_date=? WHERE epi_id=?', (_iso(offset),eid))
     conn.commit()
 
 

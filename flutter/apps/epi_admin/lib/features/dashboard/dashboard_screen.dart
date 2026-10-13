@@ -180,10 +180,7 @@ class _DashboardContent extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: EpiSpacing.md),
-        const SizedBox(
-          height: 160,
-          child: _WeeklyChart(),
-        ),
+        const SizedBox(height: 160, child: _WeeklyChart()),
         const SizedBox(height: EpiSpacing.xl),
         // Alerts
         Text(
@@ -219,10 +216,23 @@ class _ComplianceSection extends StatelessWidget {
     final items = <(String, int, Color)>[
       (l10n.complianceCaExpired, c('ca_expired'), EpiColors.danger),
       (l10n.complianceProductExpired, c('product_expired'), EpiColors.danger),
+      (
+        l10n.stockPhysicalValidityUnknown,
+        c('product_unknown'),
+        EpiColors.warning,
+      ),
       (l10n.complianceAdminBlocked, c('admin_blocked'), EpiColors.danger),
       (l10n.complianceCaExpiring, c('ca_expiring'), EpiColors.warning),
-      (l10n.complianceProductExpiring, c('product_expiring'), EpiColors.warning),
-      (l10n.complianceMissingManufacture, c('missing_manufacture'), EpiColors.info),
+      (
+        l10n.complianceProductExpiring,
+        c('product_expiring'),
+        EpiColors.warning,
+      ),
+      (
+        l10n.complianceMissingManufacture,
+        c('missing_manufacture'),
+        EpiColors.info,
+      ),
       (l10n.complianceMissingLot, c('missing_lot'), EpiColors.info),
     ].where((e) => e.$2 > 0).toList();
 
@@ -230,8 +240,11 @@ class _ComplianceSection extends StatelessWidget {
       return EpiCard(
         child: Row(
           children: [
-            const Icon(Icons.verified_outlined,
-                color: EpiColors.success, size: 20),
+            const Icon(
+              Icons.verified_outlined,
+              color: EpiColors.success,
+              size: 20,
+            ),
             const SizedBox(width: EpiSpacing.sm),
             Expanded(child: Text(l10n.dashboardComplianceAllOk)),
           ],
@@ -246,7 +259,9 @@ class _ComplianceSection extends StatelessWidget {
         for (final it in items)
           Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: EpiSpacing.md, vertical: EpiSpacing.sm),
+              horizontal: EpiSpacing.md,
+              vertical: EpiSpacing.sm,
+            ),
             decoration: BoxDecoration(
               color: it.$3.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(EpiRadius.sm),
@@ -306,11 +321,9 @@ class _WeeklyChart extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, _) {
                 final idx = value.toInt();
-                if (idx < 0 || idx >= days.length) return const SizedBox.shrink();
-                return Text(
-                  days[idx],
-                  style: const TextStyle(fontSize: 11),
-                );
+                if (idx < 0 || idx >= days.length)
+                  return const SizedBox.shrink();
+                return Text(days[idx], style: const TextStyle(fontSize: 11));
               },
             ),
           ),
@@ -342,7 +355,8 @@ class _AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = alert['title'] as String? ?? alert['message'] as String? ?? '—';
+    final title =
+        alert['title'] as String? ?? alert['message'] as String? ?? '—';
     final description = alert['description'] as String?;
     // O backend (compute_alerts) classifica o alerta na chave 'type'
     // (danger/warning); mantém-se 'severity' como fallback de compatibilidade.
@@ -377,7 +391,11 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(
             AppLocalizations.of(context).errorNetwork,
@@ -488,22 +506,24 @@ class _DashboardFilterBar extends StatelessWidget {
     final locked = state.isLocked;
     final lockedEntities = locked
         ? state.legalEntities
-            .where((e) => e.id == state.selectedLegalEntityId)
-            .toList(growable: false)
+              .where((e) => e.id == state.selectedLegalEntityId)
+              .toList(growable: false)
         : state.legalEntities;
     final lockedUnits = locked
         ? state.units
-            .where((u) => u.id == state.selectedUnitId)
-            .toList(growable: false)
+              .where((u) => u.id == state.selectedUnitId)
+              .toList(growable: false)
         : state.availableUnits;
     // DropdownButtonFormField exige que `initialValue` combine com exatamente
     // um item da lista (ou seja null). Sem a própria unidade/CNPJ na lista
     // (ex.: unidade arquivada depois de vincular o usuário), cai pra null em
     // vez de violar essa regra — mesmo com o campo travado/desabilitado.
-    final entityValue =
-        (locked && lockedEntities.isEmpty) ? null : state.selectedLegalEntityId;
-    final unitValue =
-        (locked && lockedUnits.isEmpty) ? null : state.selectedUnitId;
+    final entityValue = (locked && lockedEntities.isEmpty)
+        ? null
+        : state.selectedLegalEntityId;
+    final unitValue = (locked && lockedUnits.isEmpty)
+        ? null
+        : state.selectedUnitId;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.md),
@@ -543,7 +563,9 @@ class _DashboardFilterBar extends StatelessWidget {
               child: DropdownButtonFormField<int?>(
                 initialValue: unitValue,
                 isExpanded: true,
-                decoration: InputDecoration(labelText: l10n.dashboardFilterUnit),
+                decoration: InputDecoration(
+                  labelText: l10n.dashboardFilterUnit,
+                ),
                 items: [
                   if (!locked)
                     DropdownMenuItem<int?>(
@@ -564,8 +586,9 @@ class _DashboardFilterBar extends StatelessWidget {
               child: DropdownButtonFormField<String?>(
                 initialValue: state.selectedSector,
                 isExpanded: true,
-                decoration:
-                    InputDecoration(labelText: l10n.dashboardFilterSector),
+                decoration: InputDecoration(
+                  labelText: l10n.dashboardFilterSector,
+                ),
                 items: [
                   DropdownMenuItem<String?>(
                     child: Text(l10n.dashboardFilterAll),

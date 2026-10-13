@@ -69,6 +69,8 @@ const _item = StockItem(
   epiId: 2,
   epiName: 'Luva',
   status: 'in_stock',
+  physicalExpiryDate: '9999-12-31',
+  eligibleForDelivery: true,
   qrCodeValue: 'QR-REAL-555',
 );
 
@@ -83,17 +85,16 @@ NewDeliveryCubit _cubit({
   List<StockItem>? itens,
   StockItem? porQr,
   Object? erroQr,
-}) =>
-    NewDeliveryCubit(
-      repository: repository ?? _FakeDeliveriesRepository(id: id, error: error),
-      offlineQueue: offlineQueue,
-      episLoader: (unitId) async => epis ?? const [_luva],
-      itemsLoader: (unitId, epiId) async => itens ?? const [_item],
-      qrLookup: (unitId, qrCode) async {
-        if (erroQr != null) throw Exception('$erroQr');
-        return porQr ?? _item;
-      },
-    );
+}) => NewDeliveryCubit(
+  repository: repository ?? _FakeDeliveriesRepository(id: id, error: error),
+  offlineQueue: offlineQueue,
+  episLoader: (unitId) async => epis ?? const [_luva],
+  itemsLoader: (unitId, epiId) async => itens ?? const [_item],
+  qrLookup: (unitId, qrCode) async {
+    if (erroQr != null) throw Exception('$erroQr');
+    return porQr ?? _item;
+  },
+);
 
 /// Percorre o fluxo até os detalhes, passando pelo passo do ITEM.
 Future<void> _fillForm(NewDeliveryCubit cubit) async {
@@ -110,22 +111,50 @@ Future<void> _fillForm(NewDeliveryCubit cubit) async {
 }
 
 void main() {
-  group('NewDeliveryCubit — stepper', () {
-    test('selectEmployee avança, herda setor/função e resolve a Unidade',
-        () async {
-      final cubit = _cubit();
-      expect(cubit.state.step, DeliveryStep.employee);
+  test(
+    'manual and QR selection reject unknown physical expiry under a valid catalog',
+    () async {
+      final unknown = StockItem.fromJson({
+        'id': 999,
+        'epi_id': 2,
+        'epi_name': 'Unknown',
+        'status': 'in_stock',
+        'epi_validity_date': '2099-01-01',
+        'eligible_for_delivery': true,
+      });
+      final cubit = _cubit(porQr: unknown);
       await cubit.selectEmployee(_ana);
-      expect(cubit.state.step, DeliveryStep.epi);
-      expect(cubit.state.sector, 'RH');
-      expect(cubit.state.roleName, 'Op');
-      // A Unidade da entrega é a do COLABORADOR — não há seletor de Unidade
-      // neste fluxo, e o ator não a determina.
-      expect(cubit.state.unitId, 10);
-      expect(cubit.state.canProceedFromEmployee, isTrue);
-      // E o estoque carregado é o daquela Unidade.
-      expect(cubit.state.unitEpis, [_luva]);
-    });
+      await cubit.selectEpi(_luva);
+      cubit.selectItem(unknown);
+      expect(cubit.state.step, DeliveryStep.item);
+      expect(cubit.state.selectedItem, isNull);
+      expect(cubit.state.block, DeliveryBlock.ineligibleStockItem);
+      await cubit.selectItemByQr('UNKNOWN');
+      expect(cubit.state.step, DeliveryStep.item);
+      expect(cubit.state.selectedItem, isNull);
+      expect(cubit.state.block, DeliveryBlock.ineligibleStockItem);
+      await cubit.close();
+    },
+  );
+
+  group('NewDeliveryCubit — stepper', () {
+    test(
+      'selectEmployee avança, herda setor/função e resolve a Unidade',
+      () async {
+        final cubit = _cubit();
+        expect(cubit.state.step, DeliveryStep.employee);
+        await cubit.selectEmployee(_ana);
+        expect(cubit.state.step, DeliveryStep.epi);
+        expect(cubit.state.sector, 'RH');
+        expect(cubit.state.roleName, 'Op');
+        // A Unidade da entrega é a do COLABORADOR — não há seletor de Unidade
+        // neste fluxo, e o ator não a determina.
+        expect(cubit.state.unitId, 10);
+        expect(cubit.state.canProceedFromEmployee, isTrue);
+        // E o estoque carregado é o daquela Unidade.
+        expect(cubit.state.unitEpis, [_luva]);
+      },
+    );
 
     test('colaborador sem Unidade não abre o passo de EPI', () async {
       // Sem Unidade não há estoque de onde a entrega sairia. Recusar aqui é
@@ -193,24 +222,26 @@ void main() {
   });
 
   group('NewDeliveryCubit — item físico (#278)', () {
-    test('a entrega envia o id REAL de epi_stock_items, não o id do EPI',
-        () async {
-      // O defeito que a #278 corrigiu: iam `epi.id` e `epi.code` — um id de
-      // catálogo e um código de compra. O backend procura o id em
-      // `epi_stock_items` e compara o código com `qr_code_value`; os dois só
-      // casariam por coincidência, e a entrega pelo app não podia dar certo.
-      final repository = _FakeDeliveriesRepository();
-      final cubit = _cubit(repository: repository);
-      await _fillForm(cubit);
+    test(
+      'a entrega envia o id REAL de epi_stock_items, não o id do EPI',
+      () async {
+        // O defeito que a #278 corrigiu: iam `epi.id` e `epi.code` — um id de
+        // catálogo e um código de compra. O backend procura o id em
+        // `epi_stock_items` e compara o código com `qr_code_value`; os dois só
+        // casariam por coincidência, e a entrega pelo app não podia dar certo.
+        final repository = _FakeDeliveriesRepository();
+        final cubit = _cubit(repository: repository);
+        await _fillForm(cubit);
 
-      await cubit.submit(companyId: 1, signatureData: 'sig');
+        await cubit.submit(companyId: 1, signatureData: 'sig');
 
-      expect(repository.stockItemIds.single, 555);
-      expect(repository.stockQrCodes.single, 'QR-REAL-555');
-      // E explicitamente NÃO os do EPI.
-      expect(repository.stockItemIds.single, isNot(_luva.id));
-      expect(repository.stockQrCodes.single, isNot(_luva.code));
-    });
+        expect(repository.stockItemIds.single, 555);
+        expect(repository.stockQrCodes.single, 'QR-REAL-555');
+        // E explicitamente NÃO os do EPI.
+        expect(repository.stockItemIds.single, isNot(_luva.id));
+        expect(repository.stockQrCodes.single, isNot(_luva.code));
+      },
+    );
 
     test('sem item físico escolhido a entrega não é enviada', () async {
       final repository = _FakeDeliveriesRepository();
@@ -250,6 +281,8 @@ void main() {
         epiId: 99,
         epiName: 'Capacete',
         status: 'in_stock',
+        physicalExpiryDate: '9999-12-31',
+        eligibleForDelivery: true,
         qrCodeValue: 'QR-777',
       );
       final cubit = _cubit(porQr: outro);
@@ -334,8 +367,11 @@ void main() {
       // A chave precisa viajar com a operação: sem ela o reenvio bate no item
       // já entregue, falha para sempre e a fila nunca drena.
       expect(op['idempotency_key'], isNotEmpty);
-      expect(op['idempotency_key'], repository.idempotencyKeys.single,
-          reason: 'a tentativa online e a enfileirada são a MESMA entrega');
+      expect(
+        op['idempotency_key'],
+        repository.idempotencyKeys.single,
+        reason: 'a tentativa online e a enfileirada são a MESMA entrega',
+      );
     });
 
     test('a chave identifica a tentativa, não a requisição', () async {

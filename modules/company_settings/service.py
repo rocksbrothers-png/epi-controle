@@ -9,6 +9,7 @@ permanecem exclusivos do Administrador Master e nunca entram no whitelist.
 from __future__ import annotations
 
 import re
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timezone
 
 from epi_backend.db import row_to_dict
@@ -101,6 +102,10 @@ def _validate_timezone(value: str) -> str:
         return 'America/Sao_Paulo'
     if not _TIMEZONE_RE.match(tz):
         raise ValueError(f"Fuso horário inválido: '{tz}'. Use o formato IANA (ex.: America/Sao_Paulo).")
+    try:
+        ZoneInfo(tz)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise ValueError('Fuso horário IANA desconhecido.') from exc
     return tz
 
 

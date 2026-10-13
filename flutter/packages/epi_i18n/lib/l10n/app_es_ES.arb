@@ -737,7 +737,13 @@
   "settingsSectionSubscription": "Suscripción",
   "settingsCompanyLabel": "Empresa",
   "settingsCompanyScopeBanner": "Administrando la empresa: {name}",
-  "@settingsCompanyScopeBanner": { "placeholders": { "name": { "type": "String" } } },
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSelectCompanyFirst": "Seleccione una empresa en Configuración para continuar.",
   "settingsFichaTileTitle": "Ficha de EPP",
   "settingsFichaTileSubtitle": "Título, declaración, observaciones y trazabilidad",
@@ -751,5 +757,37 @@
   "settingsSubscriptionTileSubtitle": "Plan, cobros y cancelación",
   "settingsInvoicesTileTitle": "Historial financiero",
   "settingsInvoicesTileSubtitle": "Todos los cobros y recibos",
-  "settingsNoPermission": "No tiene permiso para modificar esta configuración."
+  "settingsNoPermission": "No tiene permiso para modificar esta configuración.",
+  "stockPhysicalValidityUnknown": "Caducidad física desconocida",
+  "stockNoPhysicalStock": "Sin existencias físicas",
+  "stockComplianceEpiCount": "{label} — EPI distintos: {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Unidades físicas: válidas {valid}, próximas {expiring}, caducadas {expired}, desconocidas {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Unidad no disponible para entrega. Revise caducidad física, estado, reservas y saldo."
 }

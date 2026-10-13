@@ -13,7 +13,7 @@ Novas abas **EPIs Aprovados** e **Biblioteca de Segurança** no portal web e Flu
 
 Branches dedicadas `codex/portal-docs-v1`, checkouts separados e preservação dos HEADs e hashes do trabalho pendente nos checkouts originais. Nenhum backend, banco, applicationId, bundle identifier ou lista de backends autorizados foi compartilhado ou substituído. SaaS continua sendo o backend do seu Flutter web/Android/iOS; Corporate permanece independente.
 
-Na consulta inicial não havia PRs abertas. Surgiram durante a execução os drafts de regularização **Corporate #1029** e **SaaS #402**. Eles permanecem separados. Há arquivos comuns: permissões, exports de `epi_api` e manifesto de paridade. A integração futura deverá conservar ambas as alterações e regenerar o manifesto nos dois produtos, após decisão humana. Não foi importada implementação de estoque dessas PRs.
+Na consulta inicial não havia PRs abertas. Durante a execução surgiram as PRs de regularização **Corporate #1029** e **SaaS #402**, posteriormente integradas em main por outro ator. Main foi reconferido: Corporate `adb857e9d74cb68722a79825ecd10bfa3bc553a7` e SaaS `80406c438b75f220cd542c21f1422deadffdbbd0`. As branches dos drafts documentais foram sincronizadas com esses commits para resolver o conflito do manifesto de paridade; permissões, exports e traduções preservam ambas as funcionalidades. O diff documental contra main mantém escopo próprio. Nenhuma dessas PRs foi mergeada por esta execução.
 
 ## Auditoria inicial
 

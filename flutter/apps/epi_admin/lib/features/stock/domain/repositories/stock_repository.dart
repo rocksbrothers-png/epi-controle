@@ -64,4 +64,17 @@ abstract class StockRepository {
     required String movementType,
     required int quantity,
   });
+
+  /// EST-V3.5-R2: regulariza a validade física de uma peça já em estoque.
+  /// Identificação inequívoca pelo QR (id opcional só reforça a seleção);
+  /// RBAC/isolamento são do backend.
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  });
 }

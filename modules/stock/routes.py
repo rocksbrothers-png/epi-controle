@@ -45,6 +45,8 @@ from modules.stock.service import (
     next_company_qr_sequence,
     parse_int_flexible,
     parse_stock_qr_lookup_value,
+    pending_regularization_count,
+    regularize_item_physical_validity,
     resolve_item_size,
     resolve_minimum_stock,
     classify_unit_epi_stock,
@@ -218,6 +220,56 @@ def handle_post_stock_item_status(handler, parsed, payload, match):
         return send_json(handler, 200, {'ok': True, 'status': new_status})
 
 
+def handle_post_stock_item_regularize_validity(handler, parsed, payload, match):
+    # EST-V3.5-R2 (F4): regulariza a validade física de uma peça JÁ em estoque.
+    # Identificação INEQUÍVOCA pela leitura do QR (o `stock_item_id` é reforço
+    # OPCIONAL da seleção e, se vier, precisa casar com o QR). RBAC e isolamento
+    # são do BACKEND (independem da UI): permissão própria
+    # `stock:regularize_validity`, escopo empresa/unidade reaplicado sobre o item.
+    require_fields(payload, ['actor_user_id', 'qr_code',
+                             'physical_expiry_date', 'evidence', 'justification'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload),
+                                 'stock:regularize_validity')
+        company_id = actor['company_id'] if actor['role'] != 'master_admin' else int(payload.get('company_id') or 0)
+        if not company_id:
+            raise ValueError('Empresa é obrigatória.')
+        qr_code = str(payload.get('qr_code') or '').strip()
+        stock_item_id = int(payload.get('stock_item_id') or 0)   # opcional: reforço da seleção
+        if not qr_code:
+            raise ValueError('Leitura do QR/código da peça é obrigatória (identificação inequívoca).')
+        scope_unit_id = actor_operational_unit_id(connection, actor)
+        if actor.get('role') in ('admin', 'user') and not scope_unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para regularizar validade.')
+        lookup_unit = int(scope_unit_id) if scope_unit_id else int(payload.get('unit_id') or 0)
+        item = lookup_stock_item_by_qr(
+            connection, company_id, lookup_unit, qr_code=qr_code, stock_item_id=stock_item_id,
+        )
+        if not item:
+            raise ValueError('Item de estoque não encontrado para a empresa/unidade informada.')
+        ensure_resource_company(actor, item, 'Item de estoque')
+        if stock_item_id and int(item['id']) != stock_item_id:
+            raise ValueError('Seleção e QR inconsistentes: identifique a mesma peça.')
+        if str(item.get('qr_code_value') or '').strip().lower() != qr_code.lower():
+            raise ValueError('QR lido não confere com a peça selecionada.')
+        if scope_unit_id and int(item['unit_id']) != int(scope_unit_id):
+            raise PermissionError('Item fora da sua unidade operacional.')
+        now = datetime.now(timezone.utc).isoformat()
+        result = regularize_item_physical_validity(
+            connection, item, payload.get('physical_expiry_date'), payload.get('evidence'),
+            payload.get('justification'), int(actor['id']), str(actor.get('full_name') or ''),
+            str(actor.get('role') or ''), now,
+        )
+        connection.commit()
+        structured_log(
+            'info', 'stock.expiry_regularization',
+            stock_item_id=int(item['id']), company_id=int(company_id), unit_id=int(item['unit_id']),
+            actor_id=int(actor['id']), new_status=result['status'],
+            validity_status=result['validity_status'], idempotent=bool(result['idempotent']),
+        )
+        return send_json(handler, 200, {'ok': True, **result})
+
+
 def handle_get_stock_validity_overview(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
@@ -231,6 +283,11 @@ def handle_get_stock_validity_overview(handler, parsed, payload, match):
             raise PermissionError('Perfil sem unidade operacional ativa para consultar estoque.')
         unit_filter = scope_unit_id or query.get('unit_id', [''])[0] or None
         overview = fetch_validity_overview(connection, company_scope_id, unit_filter)
+        # EST-V3.5-R2 (item 7): contagem de peças com validade FÍSICA desconhecida,
+        # pendentes de regularização, por empresa/unidade — fato físico, nunca catálogo.
+        if isinstance(overview, dict):
+            overview['pending_regularization'] = pending_regularization_count(
+                connection, company_scope_id, unit_filter)
         return send_json(handler, 200, overview)
 
 
@@ -1033,6 +1090,7 @@ def register_routes(router):
     router.register('GET',  '/api/stock/validity-overview',      handle_get_stock_validity_overview)
     router.register('GET',  '/api/stock/compliance',             handle_get_stock_compliance)
     router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
+    router.register('POST', '/api/stock/items/regularize-validity', handle_post_stock_item_regularize_validity)
     router.register('GET',  '/api/stock/movements/report',       handle_get_stock_movements_report)
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)
     router.register('POST', '/api/stock/attention-percentage',   handle_post_stock_attention_percentage)

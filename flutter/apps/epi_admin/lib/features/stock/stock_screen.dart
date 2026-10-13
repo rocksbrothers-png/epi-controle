@@ -12,6 +12,7 @@ import '../../core/bloc/auth_state.dart';
 import '../../core/bloc/stock_cubit.dart';
 import '../../core/router/routes.dart';
 import '../../core/utils/epi_status_utils.dart';
+import 'regularize_validity_dialog.dart';
 
 /// Quem pode abrir a configuração por Unidade + EPI (#271-B2-a).
 ///
@@ -28,6 +29,20 @@ bool podeConfigurarEstoquePorUnidade(BuildContext context) {
   final authState = context.read<AuthCubit>().state;
   return authState is AuthAuthenticated &&
       authState.sessionContext.hasPermission('stock:adjust');
+}
+
+/// Quem pode regularizar a validade física de peças já em estoque (EST-V3.5-R2).
+///
+/// `stock:regularize_validity` — permissão DEDICADA, conferida a Administrador
+/// Geral e Administrador Local e negada ao Administrador Master (perde-a em
+/// `MASTER_ADMIN_OPERATIONAL_EXCLUSIONS`) e ao Administrador de Registro (nunca
+/// recebeu `STOCK_MANAGEMENT_PERMISSIONS`). O botão da ação só aparece com ela;
+/// o backend reconfere permissão e isolamento antes de gravar — a tela nunca é
+/// a autoridade.
+bool podeRegularizarValidade(BuildContext context) {
+  final authState = context.read<AuthCubit>().state;
+  return authState is AuthAuthenticated &&
+      authState.sessionContext.hasPermission('stock:regularize_validity');
 }
 
 class StockScreen extends StatelessWidget {
@@ -67,6 +82,17 @@ class _StockBodyState extends State<_StockBody> {
         appBar: AppBar(
           title: Text(l10n.stockTitle),
           actions: [
+            // Regularizar validade física (EST-V3.5-R2): ação guiada pela peça,
+            // escondida de quem não tem `stock:regularize_validity`. Abre a
+            // folha que coleta QR, validade comprovada, evidência e
+            // justificativa; a classificação e o bloqueio por vencimento são
+            // decididos e exibidos a partir do retorno do backend.
+            if (podeRegularizarValidade(context))
+              IconButton(
+                icon: const Icon(Icons.event_available_rounded),
+                tooltip: l10n.stockRegularizeValidityTitle,
+                onPressed: () => RegularizeValiditySheet.show(context),
+              ),
             // Entrada da configuração sem EPI escolhido: a tela abre no seletor
             // e o usuário escolhe lá. `unit_id` só é enviado quando o servidor já
             // resolveu uma Unidade para esta listagem — e mesmo assim é

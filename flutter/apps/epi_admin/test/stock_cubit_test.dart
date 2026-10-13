@@ -89,6 +89,18 @@ class _FakeStockRepository implements StockRepository {
     lastActorUserId = actorUserId;
     if (throwOnMove) throw Exception('network down');
   }
+
+  @override
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) =>
+      throw UnimplementedError('ver stock_regularize_cubit_test.dart');
 }
 
 /// Conectividade controlada para dirigir os ramos online/offline.

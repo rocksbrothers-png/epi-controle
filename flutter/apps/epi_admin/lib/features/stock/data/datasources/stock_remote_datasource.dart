@@ -26,6 +26,15 @@ abstract class StockRemoteDataSource {
     required String movementType,
     required int quantity,
   });
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  });
 }
 
 /// Implementação sobre `epi_api`. A lista de estoque vem do bootstrap (mesma
@@ -109,5 +118,25 @@ class ApiStockRemoteDataSource implements StockRemoteDataSource {
         epiId: epiId,
         movementType: movementType,
         quantity: quantity,
+      );
+
+  @override
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) =>
+      ApiClient.stock.regularizeValidity(
+        actorUserId: actorUserId,
+        companyId: companyId,
+        stockItemId: stockItemId,
+        qrCode: qrCode,
+        physicalExpiryDate: physicalExpiryDate,
+        evidence: evidence,
+        justification: justification,
       );
 }

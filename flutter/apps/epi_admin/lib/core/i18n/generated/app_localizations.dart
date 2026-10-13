@@ -64,8 +64,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -73,8 +72,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -86,13 +84,12 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +102,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR'),
+    Locale('pt', 'BR')
   ];
 
   /// Nome da aplicação
@@ -4032,6 +4029,78 @@ abstract class AppLocalizations {
   /// **'Sem estoque físico'**
   String get stockNoPhysicalStock;
 
+  /// No description provided for @stockRegularizeValidityTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Regularizar validade física'**
+  String get stockRegularizeValidityTitle;
+
+  /// No description provided for @stockRegularizeValiditySubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identifique a peça e informe a validade comprovada. A classificação é feita pelo sistema.'**
+  String get stockRegularizeValiditySubtitle;
+
+  /// No description provided for @stockRegularizeQrLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'QR ou código da peça'**
+  String get stockRegularizeQrLabel;
+
+  /// No description provided for @stockRegularizeExpiryLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade física comprovada'**
+  String get stockRegularizeExpiryLabel;
+
+  /// No description provided for @stockRegularizeExpirySelect.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar data'**
+  String get stockRegularizeExpirySelect;
+
+  /// No description provided for @stockRegularizeEvidenceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Evidência (documento ou registro verificável)'**
+  String get stockRegularizeEvidenceLabel;
+
+  /// No description provided for @stockRegularizeJustificationLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa'**
+  String get stockRegularizeJustificationLabel;
+
+  /// No description provided for @stockRegularizeSubmit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Regularizar'**
+  String get stockRegularizeSubmit;
+
+  /// No description provided for @stockRegularizeIncomplete.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha a peça, a validade, a evidência e a justificativa.'**
+  String get stockRegularizeIncomplete;
+
+  /// No description provided for @stockRegularizeResultEligible.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada. A peça está apta para entrega e reserva.'**
+  String get stockRegularizeResultEligible;
+
+  /// No description provided for @stockRegularizeResultBlocked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada. A peça está vencida e permanece bloqueada para entrega.'**
+  String get stockRegularizeResultBlocked;
+
+  /// No description provided for @stockRegularizeResultDone.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada.'**
+  String get stockRegularizeResultDone;
+
   /// Filter counts distinct PPE types; piece counts are provided separately by the backend.
   ///
   /// In pt_BR, this message translates to:
@@ -4042,12 +4111,7 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.'**
-  String stockPhysicalPieceCounts(
-    int valid,
-    int expiring,
-    int expired,
-    int unknown,
-  );
+  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown);
 
   /// No description provided for @deliveryPhysicalItemIneligible.
   ///
@@ -4479,12 +4543,7 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Versão {version} / revisão {revision} · {state} · Vigência {date}'**
-  String safetyVersionSummary(
-    String version,
-    String revision,
-    String state,
-    String date,
-  );
+  String safetyVersionSummary(String version, String revision, String state, String date);
 
   /// No description provided for @safetyActorDetails.
   ///
@@ -4553,8 +4612,7 @@ abstract class AppLocalizations {
   String get safetyStateArchived;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -4563,96 +4621,61 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
+
   // Lookup logic when language+country codes are specified.
   switch (locale.languageCode) {
-    case 'en':
-      {
-        switch (locale.countryCode) {
-          case 'US':
-            return app_localizations_en.loadLibrary().then(
-              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
-            );
-        }
-        break;
-      }
-    case 'es':
-      {
-        switch (locale.countryCode) {
-          case 'ES':
-            return app_localizations_es.loadLibrary().then(
-              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
-            );
-        }
-        break;
-      }
-    case 'fr':
-      {
-        switch (locale.countryCode) {
-          case 'FR':
-            return app_localizations_fr.loadLibrary().then(
-              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
-            );
-        }
-        break;
-      }
-    case 'no':
-      {
-        switch (locale.countryCode) {
-          case 'NO':
-            return app_localizations_no.loadLibrary().then(
-              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
-            );
-        }
-        break;
-      }
-    case 'pt':
-      {
-        switch (locale.countryCode) {
-          case 'BR':
-            return app_localizations_pt.loadLibrary().then(
-              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
-            );
-        }
-        break;
-      }
+    case 'en': {
+  switch (locale.countryCode) {
+    case 'US': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEnUs());
+   }
+  break;
+   }
+    case 'es': {
+  switch (locale.countryCode) {
+    case 'ES': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEsEs());
+   }
+  break;
+   }
+    case 'fr': {
+  switch (locale.countryCode) {
+    case 'FR': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
+   }
+  break;
+   }
+    case 'no': {
+  switch (locale.countryCode) {
+    case 'NO': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNoNo());
+   }
+  break;
+   }
+    case 'pt': {
+  switch (locale.countryCode) {
+    case 'BR': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
+   }
+  break;
+   }
   }
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return app_localizations_en.loadLibrary().then(
-        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
-      );
-    case 'es':
-      return app_localizations_es.loadLibrary().then(
-        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
-      );
-    case 'fr':
-      return app_localizations_fr.loadLibrary().then(
-        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
-      );
-    case 'no':
-      return app_localizations_no.loadLibrary().then(
-        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
-      );
-    case 'pt':
-      return app_localizations_pt.loadLibrary().then(
-        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
-      );
+    case 'en': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEn());
+    case 'es': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEs());
+    case 'fr': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
+    case 'no': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNo());
+    case 'pt': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

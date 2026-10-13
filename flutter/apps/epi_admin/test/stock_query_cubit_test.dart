@@ -75,6 +75,18 @@ class _FakeRepository implements StockRepository {
     required String movementType,
     required int quantity,
   }) async {}
+
+  @override
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) =>
+      throw UnimplementedError('ver stock_regularize_cubit_test.dart');
 }
 
 DioException _http(int status) => DioException(

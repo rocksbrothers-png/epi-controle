@@ -76,7 +76,7 @@ DO $$ DECLARE tbl text; BEGIN
   EXECUTE format('REVOKE ALL ON %I FROM PUBLIC',tbl);
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') AND EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN
    EXECUTE format('DROP POLICY IF EXISTS block_direct_api_access ON %I',tbl);
-   EXECUTE format('CREATE POLICY block_direct_api_access ON %I FOR ALL TO anon,authenticated USING(false) WITH CHECK(false)',tbl);
+   EXECUTE format('CREATE POLICY block_direct_api_access ON %I AS RESTRICTIVE FOR ALL TO anon,authenticated USING(false) WITH CHECK(false)',tbl);
   END IF;
  END LOOP;
 END $$;

@@ -1,5 +1,144 @@
 {
   "@@locale": "pt",
   "@@last_modified": "2026-06-02",
-  "@@comment": "Alias para pt_BR — use app_pt_BR.arb para traduções completas"
+  "@@comment": "Alias para pt_BR — use app_pt_BR.arb para traduções completas",
+  "safetyTitle": "Biblioteca de Segurança",
+  "safetyApproved": "EPIs Aprovados",
+  "safetyRetry": "Tentar novamente",
+  "safetyClose": "Fechar",
+  "safetyCancel": "Cancelar",
+  "safetyConfirm": "Confirmar",
+  "safetyAccess": "Acessar",
+  "safetyPortalConfirm": "Confirmar acesso ao portal",
+  "safetyCpfLast": "Três últimos dígitos do CPF",
+  "safetyView": "Visualizar",
+  "safetyFit": "Ajustar",
+  "safetyZoomIn": "Aumentar zoom",
+  "safetyZoomOut": "Diminuir zoom",
+  "safetyNextPage": "Próxima página",
+  "safetyPreviousPage": "Página anterior",
+  "safetyDocument": "Documento",
+  "safetyDetails": "Detalhes",
+  "safetyRelatedDocuments": "Documentos associados",
+  "safetyRelatedEpis": "EPIs relacionados",
+  "safetyRelatedEpi": "EPI relacionado",
+  "safetyAllEpis": "Todos os EPIs",
+  "safetyAllCategories": "Todas as categorias",
+  "safetyNoDocs": "Nenhum documento publicado para este contexto.",
+  "safetyNoRecords": "Nenhum registro publicado e autorizado neste contexto.",
+  "safetyCatalogueNotice": "Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.",
+  "safetyName": "EPI",
+  "safetyManufacturer": "Fabricante",
+  "safetyModel": "Modelo/referência",
+  "safetyCa": "CA",
+  "safetyCaExpiry": "Validade do CA",
+  "safetyUsefulLife": "Vida útil (meses)",
+  "safetyProtection": "Proteção",
+  "safetySection": "Seção",
+  "safetyRecommendations": "Recomendações/restrições",
+  "safetyUnknown": "Não informado",
+  "safetySearch": "Pesquisar",
+  "safetyViewEpi": "Ver EPI",
+  "safetyHistory": "Histórico",
+  "safetyDocumentHistory": "Histórico documental",
+  "safetyPublish": "Publicar",
+  "safetyPublishVersion": "Publicar versão",
+  "safetyArchive": "Arquivar documento",
+  "safetyArchiveVersions": "Arquivar documento e versões",
+  "safetyReason": "Justificativa obrigatória",
+  "safetyNew": "Novo documento",
+  "safetyCreateNew": "Criar novo documento",
+  "safetyMetadata": "Metadados da versão",
+  "safetyEmptyAdmin": "Nenhum documento cadastrado.",
+  "safetyPrivateNotice": "Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.",
+  "safetyAllowAdminDownloads": "Permitir download de originais aos administradores autorizados",
+  "safetyPreviewOnlyNotice": "Colaboradores sempre consultam somente a pré-visualização.",
+  "safetyPolicyReason": "Alterar política de download administrativo",
+  "safetySearchVersions": "Pesquisar título ou versão",
+  "safetyChooseFile": "Selecionar arquivo",
+  "safetyFilePickerLabel": "Documentos de SST",
+  "safetyUnitRequired": "Selecione ao menos uma unidade",
+  "safetyAllUnits": "Todas as unidades da empresa",
+  "safetyRequired": "Obrigatório",
+  "safetyDocumentTitle": "Título",
+  "safetyVersion": "Versão",
+  "safetyEffectiveDate": "Vigência (AAAA-MM-DD)",
+  "safetySectors": "Setores separados por vírgula (vazio = todos)",
+  "safetyActivities": "Atividades/funções separadas por vírgula (vazio = todas)",
+  "safetyUpload": "Cadastrar ou versionar documento",
+  "safetyRendering": "Gerando pré-visualização segura…",
+  "safetyFileLimit": "Selecione um arquivo de até 20 MiB.",
+  "safetyVersionDate": "Versão {version} · Vigência {date}",
+  "@safetyVersionDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUnit": "Unidade de consulta: {unit}",
+  "@safetyUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyPreviewError": "Pré-visualização indisponível: {error}",
+  "@safetyPreviewError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUploadError": "Cadastro recusado; pré-visualização indisponível: {error}",
+  "@safetyUploadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyVersionSummary": "Versão {version} / revisão {revision} · {state} · Vigência {date}",
+  "@safetyVersionSummary": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "revision": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyActorDetails": "Responsável {actor}\n{details}",
+  "@safetyActorDetails": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyCategoryEpi": "Matriz de Aplicação de EPIs",
+  "safetyCategoryGlove": "Matriz de Seleção de Luvas",
+  "safetyCategoryCare": "Guias de Higienização e Conservação",
+  "safetyCategoryUse": "Instruções de Uso dos EPIs",
+  "safetyCategoryTechnical": "Manuais e Fichas Técnicas",
+  "safetyCategoryOther": "Outros Documentos de SST",
+  "safetyStateDraft": "Rascunho",
+  "safetyStatePublished": "Publicado",
+  "safetyStateSuperseded": "Substituído",
+  "safetyStateArchived": "Arquivado"
 }

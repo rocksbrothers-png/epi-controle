@@ -1,18 +1,20 @@
+import 'library_labels.dart';
+import '../../core/i18n/l10n_x.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import 'library_viewer.dart';
 
-const epiLabels = <String, String>{
-  'name': 'EPI',
-  'manufacturer': 'Fabricante',
-  'model_reference': 'Modelo/referência',
-  'ca': 'CA',
-  'ca_expiry': 'Validade do CA',
-  'manufacturer_validity_months': 'Vida útil (meses)',
-  'sector': 'Proteção',
-  'epi_section': 'Seção',
-  'manufacturer_recommendations': 'Recomendações/restrições',
+Map<String, String> epiLabels(BuildContext context) => <String, String>{
+  'name': context.l10n.safetyName,
+  'manufacturer': context.l10n.safetyManufacturer,
+  'model_reference': context.l10n.safetyModel,
+  'ca': context.l10n.safetyCa,
+  'ca_expiry': context.l10n.safetyCaExpiry,
+  'manufacturer_validity_months': context.l10n.safetyUsefulLife,
+  'sector': context.l10n.safetyProtection,
+  'epi_section': context.l10n.safetySection,
+  'manufacturer_recommendations': context.l10n.safetyRecommendations,
 };
 
 class PortalLibraryTab extends StatefulWidget {
@@ -126,11 +128,11 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final field in epiLabels.entries)
+                for (final field in epiLabels(context).entries)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: EdgeInsets.only(bottom: 10),
                     child: Text(
-                      '${field.value}: ${epi[field.key] ?? 'Não informado'}',
+                      '${field.value}: ${epi[field.key] ?? context.l10n.safetyUnknown}',
                     ),
                   ),
                 if (photo != null)
@@ -138,15 +140,19 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
                     height: 240,
                     child: InteractiveViewer(child: Image.memory(photo)),
                   ),
-                const Text('Documentos associados'),
+                Text(context.l10n.safetyRelatedDocuments),
                 for (final d in documents)
                   ListTile(
                     title: Text('${d['title']}'),
-                    subtitle: Text('Versão ${d['version_label']}'),
+                    subtitle: Text(
+                      context.l10n.safetyVersionDate(
+                        '${d['version_label']}',
+                        '${d['effective_date']}',
+                      ),
+                    ),
                     onTap: () => _view(d),
                   ),
-                if (documents.isEmpty)
-                  const Text('Nenhum documento publicado para este contexto.'),
+                if (documents.isEmpty) Text(context.l10n.safetyNoDocs),
               ],
             ),
           ),
@@ -154,7 +160,7 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Fechar'),
+            child: Text(context.l10n.safetyClose),
           ),
         ],
       ),
@@ -176,12 +182,12 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(_error!),
-            TextButton(onPressed: _load, child: const Text('Tentar novamente')),
+            TextButton(onPressed: _load, child: Text(context.l10n.safetyRetry)),
           ],
         ),
       );
     }
-    if (_items == null) return const Center(child: CircularProgressIndicator());
+    if (_items == null) return Center(child: CircularProgressIndicator());
     final items = _items!.where((e) {
       final text = widget.approved
           ? '${e['name']}'
@@ -197,38 +203,41 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
           (_relatedEpi == null || (e['epi_ids'] as List).contains(_relatedEpi));
     }).toList();
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       children: [
         Text(
-          widget.approved ? 'EPIs Aprovados' : 'Biblioteca de Segurança',
+          widget.approved
+              ? context.l10n.safetyApproved
+              : context.l10n.safetyTitle,
           style: Theme.of(context).textTheme.titleLarge,
         ),
         if (widget.approved)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.',
-            ),
+            child: Text(context.l10n.safetyCatalogueNotice),
           ),
         Wrap(
           spacing: 12,
           runSpacing: 8,
           children: [
-            _filter('Pesquisar', (v) => _query = v),
-            Text('Unidade de consulta: $_unitName'),
+            _filter(context.l10n.safetySearch, (v) => _query = v),
+            Text(context.l10n.safetyUnit(_unitName)),
             if (widget.approved) ...[
-              _filter('Proteção', (v) => _protection = v),
-              _filter('Fabricante', (v) => _manufacturer = v),
-              _filter('Seção', (v) => _section = v),
-              _filter('CA', (v) => _ca = v),
+              _filter(context.l10n.safetyProtection, (v) => _protection = v),
+              _filter(
+                context.l10n.safetyManufacturer,
+                (v) => _manufacturer = v,
+              ),
+              _filter(context.l10n.safetySection, (v) => _section = v),
+              _filter(context.l10n.safetyCa, (v) => _ca = v),
             ],
             if (!widget.approved) ...[
               DropdownButton<String>(
                 value: _category,
                 items: [
-                  const DropdownMenuItem(
+                  DropdownMenuItem(
                     value: '',
-                    child: Text('Todas as categorias'),
+                    child: Text(context.l10n.safetyAllCategories),
                   ),
                   for (final category
                       in _items!.map((e) => '${e['category']}').toSet())
@@ -243,7 +252,7 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
               ),
               DropdownButton<int>(
                 value: _relatedEpi,
-                hint: const Text('EPI relacionado'),
+                hint: Text(context.l10n.safetyRelatedEpi),
                 items: [
                   for (final epi in _epis)
                     DropdownMenuItem(
@@ -256,40 +265,41 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
               if (_relatedEpi != null)
                 TextButton(
                   onPressed: () => setState(() => _relatedEpi = null),
-                  child: const Text('Todos os EPIs'),
+                  child: Text(context.l10n.safetyAllEpis),
                 ),
             ],
           ],
         ),
-        const SizedBox(height: 16),
-        if (items.isEmpty)
-          const Text('Nenhum registro publicado e autorizado neste contexto.'),
+        SizedBox(height: 16),
+        if (items.isEmpty) Text(context.l10n.safetyNoRecords),
         if (widget.approved && MediaQuery.sizeOf(context).width >= 900)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
               columns: [
-                for (final label in epiLabels.values)
+                for (final label in epiLabels(context).values)
                   DataColumn(label: Text(label)),
-                const DataColumn(label: Text('Detalhes')),
+                DataColumn(label: Text(context.l10n.safetyDetails)),
               ],
               rows: [
                 for (final e in items)
                   DataRow(
                     cells: [
-                      for (final key in epiLabels.keys)
+                      for (final key in epiLabels(context).keys)
                         DataCell(
                           SizedBox(
                             width: key == 'manufacturer_recommendations'
                                 ? 240
                                 : 140,
-                            child: Text('${e[key] ?? 'Não informado'}'),
+                            child: Text(
+                              '${e[key] ?? context.l10n.safetyUnknown}',
+                            ),
                           ),
                         ),
                       DataCell(
                         TextButton(
                           onPressed: () => _detail(e),
-                          child: const Text('Ver EPI'),
+                          child: Text(context.l10n.safetyViewEpi),
                         ),
                       ),
                     ],
@@ -305,9 +315,9 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
                 subtitle: Text(
                   widget.approved
                       ? '${item['manufacturer'] ?? ''} · CA ${item['ca'] ?? ''}\n${item['sector'] ?? ''}'
-                      : '${item['category_label']}\nVersão ${item['version_label']} · Vigência ${item['effective_date']}\n${_epis.where((p) => (item['epi_ids'] as List).contains(p['id'])).map((p) => p['name']).join(', ')}',
+                      : '${libraryCategory(context, '${item['category']}')}\n${context.l10n.safetyVersionDate('${item['version_label']}', '${item['effective_date']}')}\n${_epis.where((p) => (item['epi_ids'] as List).contains(p['id'])).map((p) => p['name']).join(', ')}',
                 ),
-                trailing: const Icon(Icons.visibility_outlined),
+                trailing: Icon(Icons.visibility_outlined),
                 onTap: () => widget.approved ? _detail(item) : _view(item),
               ),
             ),

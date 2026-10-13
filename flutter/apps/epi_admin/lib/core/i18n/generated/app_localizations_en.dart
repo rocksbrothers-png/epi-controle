@@ -2098,6 +2098,275 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
+
+  @override
+  String get safetyTitle => 'Safety Library';
+
+  @override
+  String get safetyApproved => 'Approved PPE';
+
+  @override
+  String get safetyRetry => 'Try again';
+
+  @override
+  String get safetyClose => 'Close';
+
+  @override
+  String get safetyCancel => 'Cancel';
+
+  @override
+  String get safetyConfirm => 'Confirm';
+
+  @override
+  String get safetyAccess => 'Continue';
+
+  @override
+  String get safetyPortalConfirm => 'Confirm portal access';
+
+  @override
+  String get safetyCpfLast => 'Last three CPF digits';
+
+  @override
+  String get safetyView => 'View';
+
+  @override
+  String get safetyFit => 'Fit page';
+
+  @override
+  String get safetyZoomIn => 'Zoom in';
+
+  @override
+  String get safetyZoomOut => 'Zoom out';
+
+  @override
+  String get safetyNextPage => 'Next page';
+
+  @override
+  String get safetyPreviousPage => 'Previous page';
+
+  @override
+  String get safetyDocument => 'Document';
+
+  @override
+  String get safetyDetails => 'Details';
+
+  @override
+  String get safetyRelatedDocuments => 'Related documents';
+
+  @override
+  String get safetyRelatedEpis => 'Related PPE';
+
+  @override
+  String get safetyRelatedEpi => 'Related PPE';
+
+  @override
+  String get safetyAllEpis => 'All PPE';
+
+  @override
+  String get safetyAllCategories => 'All categories';
+
+  @override
+  String get safetyNoDocs => 'No documents published for this context.';
+
+  @override
+  String get safetyNoRecords =>
+      'No published, authorized records in this context.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Catalogue approval does not indicate physical availability. CA expiry is separate from batch expiry.';
+
+  @override
+  String get safetyName => 'PPE';
+
+  @override
+  String get safetyManufacturer => 'Manufacturer';
+
+  @override
+  String get safetyModel => 'Model/reference';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'CA expiry';
+
+  @override
+  String get safetyUsefulLife => 'Service life (months)';
+
+  @override
+  String get safetyProtection => 'Protection';
+
+  @override
+  String get safetySection => 'Section';
+
+  @override
+  String get safetyRecommendations => 'Recommendations/restrictions';
+
+  @override
+  String get safetyUnknown => 'Not provided';
+
+  @override
+  String get safetySearch => 'Search';
+
+  @override
+  String get safetyViewEpi => 'View PPE';
+
+  @override
+  String get safetyHistory => 'History';
+
+  @override
+  String get safetyDocumentHistory => 'Document history';
+
+  @override
+  String get safetyPublish => 'Publish';
+
+  @override
+  String get safetyPublishVersion => 'Publish version';
+
+  @override
+  String get safetyArchive => 'Archive document';
+
+  @override
+  String get safetyArchiveVersions => 'Archive document and versions';
+
+  @override
+  String get safetyReason => 'Required justification';
+
+  @override
+  String get safetyNew => 'New document';
+
+  @override
+  String get safetyCreateNew => 'Create new document';
+
+  @override
+  String get safetyMetadata => 'Version details';
+
+  @override
+  String get safetyEmptyAdmin => 'No documents registered.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Private originals, preserved versions and history. Management restricted to General and Registry Administrators.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Allow original downloads for authorized administrators';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Employees always have preview-only access.';
+
+  @override
+  String get safetyPolicyReason => 'Change administrator download policy';
+
+  @override
+  String get safetySearchVersions => 'Search title or version';
+
+  @override
+  String get safetyChooseFile => 'Choose file';
+
+  @override
+  String get safetyFilePickerLabel => 'Safety documents';
+
+  @override
+  String get safetyUnitRequired => 'Select at least one unit';
+
+  @override
+  String get safetyAllUnits => 'All company units';
+
+  @override
+  String get safetyRequired => 'Required';
+
+  @override
+  String get safetyDocumentTitle => 'Title';
+
+  @override
+  String get safetyVersion => 'Version';
+
+  @override
+  String get safetyEffectiveDate => 'Effective date (YYYY-MM-DD)';
+
+  @override
+  String get safetySectors => 'Comma-separated sectors (empty = all)';
+
+  @override
+  String get safetyActivities =>
+      'Comma-separated activities/roles (empty = all)';
+
+  @override
+  String get safetyUpload => 'Register or version document';
+
+  @override
+  String get safetyRendering => 'Generating safe preview…';
+
+  @override
+  String get safetyFileLimit => 'Select a file up to 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Version $version · Effective $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Viewing unit: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Preview unavailable: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Upload rejected; preview unavailable: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Version $version / revision $revision · $state · Effective $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Responsible user $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'PPE Application Matrix';
+
+  @override
+  String get safetyCategoryGlove => 'Glove Selection Matrix';
+
+  @override
+  String get safetyCategoryCare => 'Cleaning and Care Guides';
+
+  @override
+  String get safetyCategoryUse => 'PPE Use Instructions';
+
+  @override
+  String get safetyCategoryTechnical => 'Manuals and Technical Sheets';
+
+  @override
+  String get safetyCategoryOther => 'Other Safety Documents';
+
+  @override
+  String get safetyStateDraft => 'Draft';
+
+  @override
+  String get safetyStatePublished => 'Published';
+
+  @override
+  String get safetyStateSuperseded => 'Superseded';
+
+  @override
+  String get safetyStateArchived => 'Archived';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -4172,4 +4441,273 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Item unavailable for delivery. Check physical expiry, status, reservations and balance.';
+
+  @override
+  String get safetyTitle => 'Safety Library';
+
+  @override
+  String get safetyApproved => 'Approved PPE';
+
+  @override
+  String get safetyRetry => 'Try again';
+
+  @override
+  String get safetyClose => 'Close';
+
+  @override
+  String get safetyCancel => 'Cancel';
+
+  @override
+  String get safetyConfirm => 'Confirm';
+
+  @override
+  String get safetyAccess => 'Continue';
+
+  @override
+  String get safetyPortalConfirm => 'Confirm portal access';
+
+  @override
+  String get safetyCpfLast => 'Last three CPF digits';
+
+  @override
+  String get safetyView => 'View';
+
+  @override
+  String get safetyFit => 'Fit page';
+
+  @override
+  String get safetyZoomIn => 'Zoom in';
+
+  @override
+  String get safetyZoomOut => 'Zoom out';
+
+  @override
+  String get safetyNextPage => 'Next page';
+
+  @override
+  String get safetyPreviousPage => 'Previous page';
+
+  @override
+  String get safetyDocument => 'Document';
+
+  @override
+  String get safetyDetails => 'Details';
+
+  @override
+  String get safetyRelatedDocuments => 'Related documents';
+
+  @override
+  String get safetyRelatedEpis => 'Related PPE';
+
+  @override
+  String get safetyRelatedEpi => 'Related PPE';
+
+  @override
+  String get safetyAllEpis => 'All PPE';
+
+  @override
+  String get safetyAllCategories => 'All categories';
+
+  @override
+  String get safetyNoDocs => 'No documents published for this context.';
+
+  @override
+  String get safetyNoRecords =>
+      'No published, authorized records in this context.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Catalogue approval does not indicate physical availability. CA expiry is separate from batch expiry.';
+
+  @override
+  String get safetyName => 'PPE';
+
+  @override
+  String get safetyManufacturer => 'Manufacturer';
+
+  @override
+  String get safetyModel => 'Model/reference';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'CA expiry';
+
+  @override
+  String get safetyUsefulLife => 'Service life (months)';
+
+  @override
+  String get safetyProtection => 'Protection';
+
+  @override
+  String get safetySection => 'Section';
+
+  @override
+  String get safetyRecommendations => 'Recommendations/restrictions';
+
+  @override
+  String get safetyUnknown => 'Not provided';
+
+  @override
+  String get safetySearch => 'Search';
+
+  @override
+  String get safetyViewEpi => 'View PPE';
+
+  @override
+  String get safetyHistory => 'History';
+
+  @override
+  String get safetyDocumentHistory => 'Document history';
+
+  @override
+  String get safetyPublish => 'Publish';
+
+  @override
+  String get safetyPublishVersion => 'Publish version';
+
+  @override
+  String get safetyArchive => 'Archive document';
+
+  @override
+  String get safetyArchiveVersions => 'Archive document and versions';
+
+  @override
+  String get safetyReason => 'Required justification';
+
+  @override
+  String get safetyNew => 'New document';
+
+  @override
+  String get safetyCreateNew => 'Create new document';
+
+  @override
+  String get safetyMetadata => 'Version details';
+
+  @override
+  String get safetyEmptyAdmin => 'No documents registered.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Private originals, preserved versions and history. Management restricted to General and Registry Administrators.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Allow original downloads for authorized administrators';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Employees always have preview-only access.';
+
+  @override
+  String get safetyPolicyReason => 'Change administrator download policy';
+
+  @override
+  String get safetySearchVersions => 'Search title or version';
+
+  @override
+  String get safetyChooseFile => 'Choose file';
+
+  @override
+  String get safetyFilePickerLabel => 'Safety documents';
+
+  @override
+  String get safetyUnitRequired => 'Select at least one unit';
+
+  @override
+  String get safetyAllUnits => 'All company units';
+
+  @override
+  String get safetyRequired => 'Required';
+
+  @override
+  String get safetyDocumentTitle => 'Title';
+
+  @override
+  String get safetyVersion => 'Version';
+
+  @override
+  String get safetyEffectiveDate => 'Effective date (YYYY-MM-DD)';
+
+  @override
+  String get safetySectors => 'Comma-separated sectors (empty = all)';
+
+  @override
+  String get safetyActivities =>
+      'Comma-separated activities/roles (empty = all)';
+
+  @override
+  String get safetyUpload => 'Register or version document';
+
+  @override
+  String get safetyRendering => 'Generating safe preview…';
+
+  @override
+  String get safetyFileLimit => 'Select a file up to 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Version $version · Effective $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Viewing unit: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Preview unavailable: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Upload rejected; preview unavailable: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Version $version / revision $revision · $state · Effective $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Responsible user $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'PPE Application Matrix';
+
+  @override
+  String get safetyCategoryGlove => 'Glove Selection Matrix';
+
+  @override
+  String get safetyCategoryCare => 'Cleaning and Care Guides';
+
+  @override
+  String get safetyCategoryUse => 'PPE Use Instructions';
+
+  @override
+  String get safetyCategoryTechnical => 'Manuals and Technical Sheets';
+
+  @override
+  String get safetyCategoryOther => 'Other Safety Documents';
+
+  @override
+  String get safetyStateDraft => 'Draft';
+
+  @override
+  String get safetyStatePublished => 'Published';
+
+  @override
+  String get safetyStateSuperseded => 'Superseded';
+
+  @override
+  String get safetyStateArchived => 'Archived';
 }

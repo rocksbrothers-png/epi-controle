@@ -1,3 +1,4 @@
+import '../../core/i18n/l10n_x.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -165,9 +166,7 @@ class _PortalEntryScreenState extends State<_PortalEntryScreen>
                               final digits = await showDialog<String>(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
-                                  title: const Text(
-                                    'Confirmar acesso ao portal',
-                                  ),
+                                  title: Text(context.l10n.safetyPortalConfirm),
                                   content: TextField(
                                     controller: controller,
                                     keyboardType: TextInputType.number,
@@ -175,14 +174,14 @@ class _PortalEntryScreenState extends State<_PortalEntryScreen>
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                     ],
-                                    decoration: const InputDecoration(
-                                      labelText: 'Três últimos dígitos do CPF',
+                                    decoration: InputDecoration(
+                                      labelText: context.l10n.safetyCpfLast,
                                     ),
                                   ),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(ctx),
-                                      child: const Text('Cancelar'),
+                                      child: Text(context.l10n.safetyCancel),
                                     ),
                                     TextButton(
                                       onPressed: () {
@@ -190,7 +189,7 @@ class _PortalEntryScreenState extends State<_PortalEntryScreen>
                                           Navigator.pop(ctx, controller.text);
                                         }
                                       },
-                                      child: const Text('Acessar'),
+                                      child: Text(context.l10n.safetyAccess),
                                     ),
                                   ],
                                 ),

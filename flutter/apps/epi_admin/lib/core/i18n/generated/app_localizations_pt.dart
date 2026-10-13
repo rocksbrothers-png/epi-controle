@@ -2098,6 +2098,276 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
+
+  @override
+  String get safetyTitle => 'Biblioteca de Segurança';
+
+  @override
+  String get safetyApproved => 'EPIs Aprovados';
+
+  @override
+  String get safetyRetry => 'Tentar novamente';
+
+  @override
+  String get safetyClose => 'Fechar';
+
+  @override
+  String get safetyCancel => 'Cancelar';
+
+  @override
+  String get safetyConfirm => 'Confirmar';
+
+  @override
+  String get safetyAccess => 'Acessar';
+
+  @override
+  String get safetyPortalConfirm => 'Confirmar acesso ao portal';
+
+  @override
+  String get safetyCpfLast => 'Três últimos dígitos do CPF';
+
+  @override
+  String get safetyView => 'Visualizar';
+
+  @override
+  String get safetyFit => 'Ajustar';
+
+  @override
+  String get safetyZoomIn => 'Aumentar zoom';
+
+  @override
+  String get safetyZoomOut => 'Diminuir zoom';
+
+  @override
+  String get safetyNextPage => 'Próxima página';
+
+  @override
+  String get safetyPreviousPage => 'Página anterior';
+
+  @override
+  String get safetyDocument => 'Documento';
+
+  @override
+  String get safetyDetails => 'Detalhes';
+
+  @override
+  String get safetyRelatedDocuments => 'Documentos associados';
+
+  @override
+  String get safetyRelatedEpis => 'EPIs relacionados';
+
+  @override
+  String get safetyRelatedEpi => 'EPI relacionado';
+
+  @override
+  String get safetyAllEpis => 'Todos os EPIs';
+
+  @override
+  String get safetyAllCategories => 'Todas as categorias';
+
+  @override
+  String get safetyNoDocs => 'Nenhum documento publicado para este contexto.';
+
+  @override
+  String get safetyNoRecords =>
+      'Nenhum registro publicado e autorizado neste contexto.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.';
+
+  @override
+  String get safetyName => 'EPI';
+
+  @override
+  String get safetyManufacturer => 'Fabricante';
+
+  @override
+  String get safetyModel => 'Modelo/referência';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'Validade do CA';
+
+  @override
+  String get safetyUsefulLife => 'Vida útil (meses)';
+
+  @override
+  String get safetyProtection => 'Proteção';
+
+  @override
+  String get safetySection => 'Seção';
+
+  @override
+  String get safetyRecommendations => 'Recomendações/restrições';
+
+  @override
+  String get safetyUnknown => 'Não informado';
+
+  @override
+  String get safetySearch => 'Pesquisar';
+
+  @override
+  String get safetyViewEpi => 'Ver EPI';
+
+  @override
+  String get safetyHistory => 'Histórico';
+
+  @override
+  String get safetyDocumentHistory => 'Histórico documental';
+
+  @override
+  String get safetyPublish => 'Publicar';
+
+  @override
+  String get safetyPublishVersion => 'Publicar versão';
+
+  @override
+  String get safetyArchive => 'Arquivar documento';
+
+  @override
+  String get safetyArchiveVersions => 'Arquivar documento e versões';
+
+  @override
+  String get safetyReason => 'Justificativa obrigatória';
+
+  @override
+  String get safetyNew => 'Novo documento';
+
+  @override
+  String get safetyCreateNew => 'Criar novo documento';
+
+  @override
+  String get safetyMetadata => 'Metadados da versão';
+
+  @override
+  String get safetyEmptyAdmin => 'Nenhum documento cadastrado.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Permitir download de originais aos administradores autorizados';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Colaboradores sempre consultam somente a pré-visualização.';
+
+  @override
+  String get safetyPolicyReason =>
+      'Alterar política de download administrativo';
+
+  @override
+  String get safetySearchVersions => 'Pesquisar título ou versão';
+
+  @override
+  String get safetyChooseFile => 'Selecionar arquivo';
+
+  @override
+  String get safetyFilePickerLabel => 'Documentos de SST';
+
+  @override
+  String get safetyUnitRequired => 'Selecione ao menos uma unidade';
+
+  @override
+  String get safetyAllUnits => 'Todas as unidades da empresa';
+
+  @override
+  String get safetyRequired => 'Obrigatório';
+
+  @override
+  String get safetyDocumentTitle => 'Título';
+
+  @override
+  String get safetyVersion => 'Versão';
+
+  @override
+  String get safetyEffectiveDate => 'Vigência (AAAA-MM-DD)';
+
+  @override
+  String get safetySectors => 'Setores separados por vírgula (vazio = todos)';
+
+  @override
+  String get safetyActivities =>
+      'Atividades/funções separadas por vírgula (vazio = todas)';
+
+  @override
+  String get safetyUpload => 'Cadastrar ou versionar documento';
+
+  @override
+  String get safetyRendering => 'Gerando pré-visualização segura…';
+
+  @override
+  String get safetyFileLimit => 'Selecione um arquivo de até 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Versão $version · Vigência $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Unidade de consulta: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Pré-visualização indisponível: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Cadastro recusado; pré-visualização indisponível: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Versão $version / revisão $revision · $state · Vigência $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Responsável $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'Matriz de Aplicação de EPIs';
+
+  @override
+  String get safetyCategoryGlove => 'Matriz de Seleção de Luvas';
+
+  @override
+  String get safetyCategoryCare => 'Guias de Higienização e Conservação';
+
+  @override
+  String get safetyCategoryUse => 'Instruções de Uso dos EPIs';
+
+  @override
+  String get safetyCategoryTechnical => 'Manuais e Fichas Técnicas';
+
+  @override
+  String get safetyCategoryOther => 'Outros Documentos de SST';
+
+  @override
+  String get safetyStateDraft => 'Rascunho';
+
+  @override
+  String get safetyStatePublished => 'Publicado';
+
+  @override
+  String get safetyStateSuperseded => 'Substituído';
+
+  @override
+  String get safetyStateArchived => 'Arquivado';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -4194,4 +4464,274 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
+
+  @override
+  String get safetyTitle => 'Biblioteca de Segurança';
+
+  @override
+  String get safetyApproved => 'EPIs Aprovados';
+
+  @override
+  String get safetyRetry => 'Tentar novamente';
+
+  @override
+  String get safetyClose => 'Fechar';
+
+  @override
+  String get safetyCancel => 'Cancelar';
+
+  @override
+  String get safetyConfirm => 'Confirmar';
+
+  @override
+  String get safetyAccess => 'Acessar';
+
+  @override
+  String get safetyPortalConfirm => 'Confirmar acesso ao portal';
+
+  @override
+  String get safetyCpfLast => 'Três últimos dígitos do CPF';
+
+  @override
+  String get safetyView => 'Visualizar';
+
+  @override
+  String get safetyFit => 'Ajustar';
+
+  @override
+  String get safetyZoomIn => 'Aumentar zoom';
+
+  @override
+  String get safetyZoomOut => 'Diminuir zoom';
+
+  @override
+  String get safetyNextPage => 'Próxima página';
+
+  @override
+  String get safetyPreviousPage => 'Página anterior';
+
+  @override
+  String get safetyDocument => 'Documento';
+
+  @override
+  String get safetyDetails => 'Detalhes';
+
+  @override
+  String get safetyRelatedDocuments => 'Documentos associados';
+
+  @override
+  String get safetyRelatedEpis => 'EPIs relacionados';
+
+  @override
+  String get safetyRelatedEpi => 'EPI relacionado';
+
+  @override
+  String get safetyAllEpis => 'Todos os EPIs';
+
+  @override
+  String get safetyAllCategories => 'Todas as categorias';
+
+  @override
+  String get safetyNoDocs => 'Nenhum documento publicado para este contexto.';
+
+  @override
+  String get safetyNoRecords =>
+      'Nenhum registro publicado e autorizado neste contexto.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.';
+
+  @override
+  String get safetyName => 'EPI';
+
+  @override
+  String get safetyManufacturer => 'Fabricante';
+
+  @override
+  String get safetyModel => 'Modelo/referência';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'Validade do CA';
+
+  @override
+  String get safetyUsefulLife => 'Vida útil (meses)';
+
+  @override
+  String get safetyProtection => 'Proteção';
+
+  @override
+  String get safetySection => 'Seção';
+
+  @override
+  String get safetyRecommendations => 'Recomendações/restrições';
+
+  @override
+  String get safetyUnknown => 'Não informado';
+
+  @override
+  String get safetySearch => 'Pesquisar';
+
+  @override
+  String get safetyViewEpi => 'Ver EPI';
+
+  @override
+  String get safetyHistory => 'Histórico';
+
+  @override
+  String get safetyDocumentHistory => 'Histórico documental';
+
+  @override
+  String get safetyPublish => 'Publicar';
+
+  @override
+  String get safetyPublishVersion => 'Publicar versão';
+
+  @override
+  String get safetyArchive => 'Arquivar documento';
+
+  @override
+  String get safetyArchiveVersions => 'Arquivar documento e versões';
+
+  @override
+  String get safetyReason => 'Justificativa obrigatória';
+
+  @override
+  String get safetyNew => 'Novo documento';
+
+  @override
+  String get safetyCreateNew => 'Criar novo documento';
+
+  @override
+  String get safetyMetadata => 'Metadados da versão';
+
+  @override
+  String get safetyEmptyAdmin => 'Nenhum documento cadastrado.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Permitir download de originais aos administradores autorizados';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Colaboradores sempre consultam somente a pré-visualização.';
+
+  @override
+  String get safetyPolicyReason =>
+      'Alterar política de download administrativo';
+
+  @override
+  String get safetySearchVersions => 'Pesquisar título ou versão';
+
+  @override
+  String get safetyChooseFile => 'Selecionar arquivo';
+
+  @override
+  String get safetyFilePickerLabel => 'Documentos de SST';
+
+  @override
+  String get safetyUnitRequired => 'Selecione ao menos uma unidade';
+
+  @override
+  String get safetyAllUnits => 'Todas as unidades da empresa';
+
+  @override
+  String get safetyRequired => 'Obrigatório';
+
+  @override
+  String get safetyDocumentTitle => 'Título';
+
+  @override
+  String get safetyVersion => 'Versão';
+
+  @override
+  String get safetyEffectiveDate => 'Vigência (AAAA-MM-DD)';
+
+  @override
+  String get safetySectors => 'Setores separados por vírgula (vazio = todos)';
+
+  @override
+  String get safetyActivities =>
+      'Atividades/funções separadas por vírgula (vazio = todas)';
+
+  @override
+  String get safetyUpload => 'Cadastrar ou versionar documento';
+
+  @override
+  String get safetyRendering => 'Gerando pré-visualização segura…';
+
+  @override
+  String get safetyFileLimit => 'Selecione um arquivo de até 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Versão $version · Vigência $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Unidade de consulta: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Pré-visualização indisponível: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Cadastro recusado; pré-visualização indisponível: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Versão $version / revisão $revision · $state · Vigência $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Responsável $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'Matriz de Aplicação de EPIs';
+
+  @override
+  String get safetyCategoryGlove => 'Matriz de Seleção de Luvas';
+
+  @override
+  String get safetyCategoryCare => 'Guias de Higienização e Conservação';
+
+  @override
+  String get safetyCategoryUse => 'Instruções de Uso dos EPIs';
+
+  @override
+  String get safetyCategoryTechnical => 'Manuais e Fichas Técnicas';
+
+  @override
+  String get safetyCategoryOther => 'Outros Documentos de SST';
+
+  @override
+  String get safetyStateDraft => 'Rascunho';
+
+  @override
+  String get safetyStatePublished => 'Publicado';
+
+  @override
+  String get safetyStateSuperseded => 'Substituído';
+
+  @override
+  String get safetyStateArchived => 'Arquivado';
 }

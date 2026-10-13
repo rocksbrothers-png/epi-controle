@@ -2098,6 +2098,276 @@ class AppLocalizationsNo extends AppLocalizations {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
+
+  @override
+  String get safetyTitle => 'Sikkerhetsbibliotek';
+
+  @override
+  String get safetyApproved => 'Godkjent verneutstyr';
+
+  @override
+  String get safetyRetry => 'Prøv igjen';
+
+  @override
+  String get safetyClose => 'Lukk';
+
+  @override
+  String get safetyCancel => 'Avbryt';
+
+  @override
+  String get safetyConfirm => 'Bekreft';
+
+  @override
+  String get safetyAccess => 'Fortsett';
+
+  @override
+  String get safetyPortalConfirm => 'Bekreft portaltilgang';
+
+  @override
+  String get safetyCpfLast => 'Tre siste CPF-sifre';
+
+  @override
+  String get safetyView => 'Vis';
+
+  @override
+  String get safetyFit => 'Tilpass';
+
+  @override
+  String get safetyZoomIn => 'Zoom inn';
+
+  @override
+  String get safetyZoomOut => 'Zoom ut';
+
+  @override
+  String get safetyNextPage => 'Neste side';
+
+  @override
+  String get safetyPreviousPage => 'Forrige side';
+
+  @override
+  String get safetyDocument => 'Dokument';
+
+  @override
+  String get safetyDetails => 'Detaljer';
+
+  @override
+  String get safetyRelatedDocuments => 'Tilknyttede dokumenter';
+
+  @override
+  String get safetyRelatedEpis => 'Tilknyttet verneutstyr';
+
+  @override
+  String get safetyRelatedEpi => 'Tilknyttet verneutstyr';
+
+  @override
+  String get safetyAllEpis => 'Alt verneutstyr';
+
+  @override
+  String get safetyAllCategories => 'Alle kategorier';
+
+  @override
+  String get safetyNoDocs =>
+      'Ingen publiserte dokumenter for denne konteksten.';
+
+  @override
+  String get safetyNoRecords =>
+      'Ingen publiserte, autoriserte oppføringer i denne konteksten.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Kataloggodkjenning angir ikke fysisk tilgjengelighet. CA-utløp er separat fra partiutløp.';
+
+  @override
+  String get safetyName => 'Verneutstyr';
+
+  @override
+  String get safetyManufacturer => 'Produsent';
+
+  @override
+  String get safetyModel => 'Modell/referanse';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'CA-utløp';
+
+  @override
+  String get safetyUsefulLife => 'Levetid (måneder)';
+
+  @override
+  String get safetyProtection => 'Beskyttelse';
+
+  @override
+  String get safetySection => 'Seksjon';
+
+  @override
+  String get safetyRecommendations => 'Anbefalinger/begrensninger';
+
+  @override
+  String get safetyUnknown => 'Ikke oppgitt';
+
+  @override
+  String get safetySearch => 'Søk';
+
+  @override
+  String get safetyViewEpi => 'Vis verneutstyr';
+
+  @override
+  String get safetyHistory => 'Historikk';
+
+  @override
+  String get safetyDocumentHistory => 'Dokumenthistorikk';
+
+  @override
+  String get safetyPublish => 'Publiser';
+
+  @override
+  String get safetyPublishVersion => 'Publiser versjon';
+
+  @override
+  String get safetyArchive => 'Arkiver dokument';
+
+  @override
+  String get safetyArchiveVersions => 'Arkiver dokument og versjoner';
+
+  @override
+  String get safetyReason => 'Begrunnelse kreves';
+
+  @override
+  String get safetyNew => 'Nytt dokument';
+
+  @override
+  String get safetyCreateNew => 'Opprett nytt dokument';
+
+  @override
+  String get safetyMetadata => 'Versjonsinformasjon';
+
+  @override
+  String get safetyEmptyAdmin => 'Ingen registrerte dokumenter.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Private originaler, bevarte versjoner og historikk. Administrasjon begrenset til generell administrator og registeradministrator.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Tillat originalnedlasting for autoriserte administratorer';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Ansatte har alltid kun forhåndsvisning.';
+
+  @override
+  String get safetyPolicyReason => 'Endre administrativ nedlastingspolicy';
+
+  @override
+  String get safetySearchVersions => 'Søk i tittel eller versjon';
+
+  @override
+  String get safetyChooseFile => 'Velg fil';
+
+  @override
+  String get safetyFilePickerLabel => 'Sikkerhetsdokumenter';
+
+  @override
+  String get safetyUnitRequired => 'Velg minst én enhet';
+
+  @override
+  String get safetyAllUnits => 'Alle bedriftsenheter';
+
+  @override
+  String get safetyRequired => 'Påkrevd';
+
+  @override
+  String get safetyDocumentTitle => 'Tittel';
+
+  @override
+  String get safetyVersion => 'Versjon';
+
+  @override
+  String get safetyEffectiveDate => 'Gyldig fra (ÅÅÅÅ-MM-DD)';
+
+  @override
+  String get safetySectors => 'Kommaseparerte avdelinger (tomt = alle)';
+
+  @override
+  String get safetyActivities =>
+      'Kommaseparerte aktiviteter/stillinger (tomt = alle)';
+
+  @override
+  String get safetyUpload => 'Registrer dokument eller versjon';
+
+  @override
+  String get safetyRendering => 'Genererer trygg forhåndsvisning…';
+
+  @override
+  String get safetyFileLimit => 'Velg en fil på opptil 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Versjon $version · Gyldig fra $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Visningsenhet: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Forhåndsvisning utilgjengelig: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Opplasting avvist; forhåndsvisning utilgjengelig: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Versjon $version / revisjon $revision · $state · Gyldig fra $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Ansvarlig $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'Bruksmatrise for verneutstyr';
+
+  @override
+  String get safetyCategoryGlove => 'Hanskematrise';
+
+  @override
+  String get safetyCategoryCare => 'Veiledninger for rengjøring og vedlikehold';
+
+  @override
+  String get safetyCategoryUse => 'Bruksanvisninger for verneutstyr';
+
+  @override
+  String get safetyCategoryTechnical => 'Håndbøker og tekniske datablad';
+
+  @override
+  String get safetyCategoryOther => 'Andre sikkerhetsdokumenter';
+
+  @override
+  String get safetyStateDraft => 'Utkast';
+
+  @override
+  String get safetyStatePublished => 'Publisert';
+
+  @override
+  String get safetyStateSuperseded => 'Erstattet';
+
+  @override
+  String get safetyStateArchived => 'Arkivert';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -4188,4 +4458,274 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   @override
   String get deliveryPhysicalItemIneligible =>
       'Enheten kan ikke utleveres. Kontroller fysisk utløpsdato, status, reservasjoner og beholdning.';
+
+  @override
+  String get safetyTitle => 'Sikkerhetsbibliotek';
+
+  @override
+  String get safetyApproved => 'Godkjent verneutstyr';
+
+  @override
+  String get safetyRetry => 'Prøv igjen';
+
+  @override
+  String get safetyClose => 'Lukk';
+
+  @override
+  String get safetyCancel => 'Avbryt';
+
+  @override
+  String get safetyConfirm => 'Bekreft';
+
+  @override
+  String get safetyAccess => 'Fortsett';
+
+  @override
+  String get safetyPortalConfirm => 'Bekreft portaltilgang';
+
+  @override
+  String get safetyCpfLast => 'Tre siste CPF-sifre';
+
+  @override
+  String get safetyView => 'Vis';
+
+  @override
+  String get safetyFit => 'Tilpass';
+
+  @override
+  String get safetyZoomIn => 'Zoom inn';
+
+  @override
+  String get safetyZoomOut => 'Zoom ut';
+
+  @override
+  String get safetyNextPage => 'Neste side';
+
+  @override
+  String get safetyPreviousPage => 'Forrige side';
+
+  @override
+  String get safetyDocument => 'Dokument';
+
+  @override
+  String get safetyDetails => 'Detaljer';
+
+  @override
+  String get safetyRelatedDocuments => 'Tilknyttede dokumenter';
+
+  @override
+  String get safetyRelatedEpis => 'Tilknyttet verneutstyr';
+
+  @override
+  String get safetyRelatedEpi => 'Tilknyttet verneutstyr';
+
+  @override
+  String get safetyAllEpis => 'Alt verneutstyr';
+
+  @override
+  String get safetyAllCategories => 'Alle kategorier';
+
+  @override
+  String get safetyNoDocs =>
+      'Ingen publiserte dokumenter for denne konteksten.';
+
+  @override
+  String get safetyNoRecords =>
+      'Ingen publiserte, autoriserte oppføringer i denne konteksten.';
+
+  @override
+  String get safetyCatalogueNotice =>
+      'Kataloggodkjenning angir ikke fysisk tilgjengelighet. CA-utløp er separat fra partiutløp.';
+
+  @override
+  String get safetyName => 'Verneutstyr';
+
+  @override
+  String get safetyManufacturer => 'Produsent';
+
+  @override
+  String get safetyModel => 'Modell/referanse';
+
+  @override
+  String get safetyCa => 'CA';
+
+  @override
+  String get safetyCaExpiry => 'CA-utløp';
+
+  @override
+  String get safetyUsefulLife => 'Levetid (måneder)';
+
+  @override
+  String get safetyProtection => 'Beskyttelse';
+
+  @override
+  String get safetySection => 'Seksjon';
+
+  @override
+  String get safetyRecommendations => 'Anbefalinger/begrensninger';
+
+  @override
+  String get safetyUnknown => 'Ikke oppgitt';
+
+  @override
+  String get safetySearch => 'Søk';
+
+  @override
+  String get safetyViewEpi => 'Vis verneutstyr';
+
+  @override
+  String get safetyHistory => 'Historikk';
+
+  @override
+  String get safetyDocumentHistory => 'Dokumenthistorikk';
+
+  @override
+  String get safetyPublish => 'Publiser';
+
+  @override
+  String get safetyPublishVersion => 'Publiser versjon';
+
+  @override
+  String get safetyArchive => 'Arkiver dokument';
+
+  @override
+  String get safetyArchiveVersions => 'Arkiver dokument og versjoner';
+
+  @override
+  String get safetyReason => 'Begrunnelse kreves';
+
+  @override
+  String get safetyNew => 'Nytt dokument';
+
+  @override
+  String get safetyCreateNew => 'Opprett nytt dokument';
+
+  @override
+  String get safetyMetadata => 'Versjonsinformasjon';
+
+  @override
+  String get safetyEmptyAdmin => 'Ingen registrerte dokumenter.';
+
+  @override
+  String get safetyPrivateNotice =>
+      'Private originaler, bevarte versjoner og historikk. Administrasjon begrenset til generell administrator og registeradministrator.';
+
+  @override
+  String get safetyAllowAdminDownloads =>
+      'Tillat originalnedlasting for autoriserte administratorer';
+
+  @override
+  String get safetyPreviewOnlyNotice =>
+      'Ansatte har alltid kun forhåndsvisning.';
+
+  @override
+  String get safetyPolicyReason => 'Endre administrativ nedlastingspolicy';
+
+  @override
+  String get safetySearchVersions => 'Søk i tittel eller versjon';
+
+  @override
+  String get safetyChooseFile => 'Velg fil';
+
+  @override
+  String get safetyFilePickerLabel => 'Sikkerhetsdokumenter';
+
+  @override
+  String get safetyUnitRequired => 'Velg minst én enhet';
+
+  @override
+  String get safetyAllUnits => 'Alle bedriftsenheter';
+
+  @override
+  String get safetyRequired => 'Påkrevd';
+
+  @override
+  String get safetyDocumentTitle => 'Tittel';
+
+  @override
+  String get safetyVersion => 'Versjon';
+
+  @override
+  String get safetyEffectiveDate => 'Gyldig fra (ÅÅÅÅ-MM-DD)';
+
+  @override
+  String get safetySectors => 'Kommaseparerte avdelinger (tomt = alle)';
+
+  @override
+  String get safetyActivities =>
+      'Kommaseparerte aktiviteter/stillinger (tomt = alle)';
+
+  @override
+  String get safetyUpload => 'Registrer dokument eller versjon';
+
+  @override
+  String get safetyRendering => 'Genererer trygg forhåndsvisning…';
+
+  @override
+  String get safetyFileLimit => 'Velg en fil på opptil 20 MiB.';
+
+  @override
+  String safetyVersionDate(String version, String date) {
+    return 'Versjon $version · Gyldig fra $date';
+  }
+
+  @override
+  String safetyUnit(String unit) {
+    return 'Visningsenhet: $unit';
+  }
+
+  @override
+  String safetyPreviewError(String error) {
+    return 'Forhåndsvisning utilgjengelig: $error';
+  }
+
+  @override
+  String safetyUploadError(String error) {
+    return 'Opplasting avvist; forhåndsvisning utilgjengelig: $error';
+  }
+
+  @override
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  ) {
+    return 'Versjon $version / revisjon $revision · $state · Gyldig fra $date';
+  }
+
+  @override
+  String safetyActorDetails(String actor, String details) {
+    return 'Ansvarlig $actor\n$details';
+  }
+
+  @override
+  String get safetyCategoryEpi => 'Bruksmatrise for verneutstyr';
+
+  @override
+  String get safetyCategoryGlove => 'Hanskematrise';
+
+  @override
+  String get safetyCategoryCare => 'Veiledninger for rengjøring og vedlikehold';
+
+  @override
+  String get safetyCategoryUse => 'Bruksanvisninger for verneutstyr';
+
+  @override
+  String get safetyCategoryTechnical => 'Håndbøker og tekniske datablad';
+
+  @override
+  String get safetyCategoryOther => 'Andre sikkerhetsdokumenter';
+
+  @override
+  String get safetyStateDraft => 'Utkast';
+
+  @override
+  String get safetyStatePublished => 'Publisert';
+
+  @override
+  String get safetyStateSuperseded => 'Erstattet';
+
+  @override
+  String get safetyStateArchived => 'Arkivert';
 }

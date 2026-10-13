@@ -4054,6 +4054,503 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.'**
   String get deliveryPhysicalItemIneligible;
+
+  /// No description provided for @safetyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Biblioteca de Segurança'**
+  String get safetyTitle;
+
+  /// No description provided for @safetyApproved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPIs Aprovados'**
+  String get safetyApproved;
+
+  /// No description provided for @safetyRetry.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tentar novamente'**
+  String get safetyRetry;
+
+  /// No description provided for @safetyClose.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fechar'**
+  String get safetyClose;
+
+  /// No description provided for @safetyCancel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelar'**
+  String get safetyCancel;
+
+  /// No description provided for @safetyConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar'**
+  String get safetyConfirm;
+
+  /// No description provided for @safetyAccess.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Acessar'**
+  String get safetyAccess;
+
+  /// No description provided for @safetyPortalConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar acesso ao portal'**
+  String get safetyPortalConfirm;
+
+  /// No description provided for @safetyCpfLast.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Três últimos dígitos do CPF'**
+  String get safetyCpfLast;
+
+  /// No description provided for @safetyView.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Visualizar'**
+  String get safetyView;
+
+  /// No description provided for @safetyFit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ajustar'**
+  String get safetyFit;
+
+  /// No description provided for @safetyZoomIn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aumentar zoom'**
+  String get safetyZoomIn;
+
+  /// No description provided for @safetyZoomOut.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Diminuir zoom'**
+  String get safetyZoomOut;
+
+  /// No description provided for @safetyNextPage.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próxima página'**
+  String get safetyNextPage;
+
+  /// No description provided for @safetyPreviousPage.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Página anterior'**
+  String get safetyPreviousPage;
+
+  /// No description provided for @safetyDocument.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documento'**
+  String get safetyDocument;
+
+  /// No description provided for @safetyDetails.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Detalhes'**
+  String get safetyDetails;
+
+  /// No description provided for @safetyRelatedDocuments.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documentos associados'**
+  String get safetyRelatedDocuments;
+
+  /// No description provided for @safetyRelatedEpis.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPIs relacionados'**
+  String get safetyRelatedEpis;
+
+  /// No description provided for @safetyRelatedEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI relacionado'**
+  String get safetyRelatedEpi;
+
+  /// No description provided for @safetyAllEpis.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todos os EPIs'**
+  String get safetyAllEpis;
+
+  /// No description provided for @safetyAllCategories.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as categorias'**
+  String get safetyAllCategories;
+
+  /// No description provided for @safetyNoDocs.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum documento publicado para este contexto.'**
+  String get safetyNoDocs;
+
+  /// No description provided for @safetyNoRecords.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum registro publicado e autorizado neste contexto.'**
+  String get safetyNoRecords;
+
+  /// No description provided for @safetyCatalogueNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.'**
+  String get safetyCatalogueNotice;
+
+  /// No description provided for @safetyName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI'**
+  String get safetyName;
+
+  /// No description provided for @safetyManufacturer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fabricante'**
+  String get safetyManufacturer;
+
+  /// No description provided for @safetyModel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Modelo/referência'**
+  String get safetyModel;
+
+  /// No description provided for @safetyCa.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA'**
+  String get safetyCa;
+
+  /// No description provided for @safetyCaExpiry.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do CA'**
+  String get safetyCaExpiry;
+
+  /// No description provided for @safetyUsefulLife.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vida útil (meses)'**
+  String get safetyUsefulLife;
+
+  /// No description provided for @safetyProtection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Proteção'**
+  String get safetyProtection;
+
+  /// No description provided for @safetySection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seção'**
+  String get safetySection;
+
+  /// No description provided for @safetyRecommendations.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recomendações/restrições'**
+  String get safetyRecommendations;
+
+  /// No description provided for @safetyUnknown.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não informado'**
+  String get safetyUnknown;
+
+  /// No description provided for @safetySearch.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pesquisar'**
+  String get safetySearch;
+
+  /// No description provided for @safetyViewEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPI'**
+  String get safetyViewEpi;
+
+  /// No description provided for @safetyHistory.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico'**
+  String get safetyHistory;
+
+  /// No description provided for @safetyDocumentHistory.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico documental'**
+  String get safetyDocumentHistory;
+
+  /// No description provided for @safetyPublish.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicar'**
+  String get safetyPublish;
+
+  /// No description provided for @safetyPublishVersion.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicar versão'**
+  String get safetyPublishVersion;
+
+  /// No description provided for @safetyArchive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar documento'**
+  String get safetyArchive;
+
+  /// No description provided for @safetyArchiveVersions.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar documento e versões'**
+  String get safetyArchiveVersions;
+
+  /// No description provided for @safetyReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa obrigatória'**
+  String get safetyReason;
+
+  /// No description provided for @safetyNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo documento'**
+  String get safetyNew;
+
+  /// No description provided for @safetyCreateNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Criar novo documento'**
+  String get safetyCreateNew;
+
+  /// No description provided for @safetyMetadata.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Metadados da versão'**
+  String get safetyMetadata;
+
+  /// No description provided for @safetyEmptyAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum documento cadastrado.'**
+  String get safetyEmptyAdmin;
+
+  /// No description provided for @safetyPrivateNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.'**
+  String get safetyPrivateNotice;
+
+  /// No description provided for @safetyAllowAdminDownloads.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Permitir download de originais aos administradores autorizados'**
+  String get safetyAllowAdminDownloads;
+
+  /// No description provided for @safetyPreviewOnlyNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Colaboradores sempre consultam somente a pré-visualização.'**
+  String get safetyPreviewOnlyNotice;
+
+  /// No description provided for @safetyPolicyReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Alterar política de download administrativo'**
+  String get safetyPolicyReason;
+
+  /// No description provided for @safetySearchVersions.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pesquisar título ou versão'**
+  String get safetySearchVersions;
+
+  /// No description provided for @safetyChooseFile.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar arquivo'**
+  String get safetyChooseFile;
+
+  /// No description provided for @safetyFilePickerLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documentos de SST'**
+  String get safetyFilePickerLabel;
+
+  /// No description provided for @safetyUnitRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione ao menos uma unidade'**
+  String get safetyUnitRequired;
+
+  /// No description provided for @safetyAllUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as unidades da empresa'**
+  String get safetyAllUnits;
+
+  /// No description provided for @safetyRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Obrigatório'**
+  String get safetyRequired;
+
+  /// No description provided for @safetyDocumentTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Título'**
+  String get safetyDocumentTitle;
+
+  /// No description provided for @safetyVersion.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão'**
+  String get safetyVersion;
+
+  /// No description provided for @safetyEffectiveDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vigência (AAAA-MM-DD)'**
+  String get safetyEffectiveDate;
+
+  /// No description provided for @safetySectors.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Setores separados por vírgula (vazio = todos)'**
+  String get safetySectors;
+
+  /// No description provided for @safetyActivities.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Atividades/funções separadas por vírgula (vazio = todas)'**
+  String get safetyActivities;
+
+  /// No description provided for @safetyUpload.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastrar ou versionar documento'**
+  String get safetyUpload;
+
+  /// No description provided for @safetyRendering.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gerando pré-visualização segura…'**
+  String get safetyRendering;
+
+  /// No description provided for @safetyFileLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione um arquivo de até 20 MiB.'**
+  String get safetyFileLimit;
+
+  /// No description provided for @safetyVersionDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão {version} · Vigência {date}'**
+  String safetyVersionDate(String version, String date);
+
+  /// No description provided for @safetyUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade de consulta: {unit}'**
+  String safetyUnit(String unit);
+
+  /// No description provided for @safetyPreviewError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pré-visualização indisponível: {error}'**
+  String safetyPreviewError(String error);
+
+  /// No description provided for @safetyUploadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastro recusado; pré-visualização indisponível: {error}'**
+  String safetyUploadError(String error);
+
+  /// No description provided for @safetyVersionSummary.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão {version} / revisão {revision} · {state} · Vigência {date}'**
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  );
+
+  /// No description provided for @safetyActorDetails.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Responsável {actor}\n{details}'**
+  String safetyActorDetails(String actor, String details);
+
+  /// No description provided for @safetyCategoryEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Matriz de Aplicação de EPIs'**
+  String get safetyCategoryEpi;
+
+  /// No description provided for @safetyCategoryGlove.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Matriz de Seleção de Luvas'**
+  String get safetyCategoryGlove;
+
+  /// No description provided for @safetyCategoryCare.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Guias de Higienização e Conservação'**
+  String get safetyCategoryCare;
+
+  /// No description provided for @safetyCategoryUse.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Instruções de Uso dos EPIs'**
+  String get safetyCategoryUse;
+
+  /// No description provided for @safetyCategoryTechnical.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Manuais e Fichas Técnicas'**
+  String get safetyCategoryTechnical;
+
+  /// No description provided for @safetyCategoryOther.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Outros Documentos de SST'**
+  String get safetyCategoryOther;
+
+  /// No description provided for @safetyStateDraft.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Rascunho'**
+  String get safetyStateDraft;
+
+  /// No description provided for @safetyStatePublished.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicado'**
+  String get safetyStatePublished;
+
+  /// No description provided for @safetyStateSuperseded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Substituído'**
+  String get safetyStateSuperseded;
+
+  /// No description provided for @safetyStateArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado'**
+  String get safetyStateArchived;
 }
 
 class _AppLocalizationsDelegate

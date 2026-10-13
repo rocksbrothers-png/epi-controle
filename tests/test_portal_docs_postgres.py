@@ -265,6 +265,8 @@ def test_migration_idempotency_private_rls_and_immutable_history(environment,ten
         for table in ('safety_preview_pages','safety_document_audit'):
             with pytest.raises(Exception):c.execute(f'DELETE FROM {table} WHERE company_id=?',(a['company'],))
             c.rollback()
+        policies=c.execute("SELECT permissive FROM pg_policies WHERE tablename LIKE 'safety_%' AND policyname='block_direct_api_access'").fetchall()
+        assert len(policies)==5 and all(row[0]=='RESTRICTIVE' for row in policies)
         for role in ('anon','authenticated'):
             c.execute('SET LOCAL ROLE '+role)
             try:

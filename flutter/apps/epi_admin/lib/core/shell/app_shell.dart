@@ -54,7 +54,7 @@ class AppShell extends StatelessWidget {
   // Seletores de rótulo. Precisam ser funções de topo para caber num `const`.
   static String _navDashboard(AppLocalizations l) => l.navDashboard;
   static String _navEmployees(AppLocalizations l) => l.navEmployees;
-  static String _navSafetyLibrary(AppLocalizations l10n) => 'Biblioteca de Segurança';
+  static String _navSafetyLibrary(AppLocalizations l10n) => l10n.safetyTitle;
   static String _navEpis(AppLocalizations l) => l.navEpis;
   static String _navDeliveries(AppLocalizations l) => l.navDeliveries;
   static String _navReturns(AppLocalizations l) => l.navReturns;

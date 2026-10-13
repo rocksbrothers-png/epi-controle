@@ -816,5 +816,144 @@
       }
     }
   },
-  "deliveryPhysicalItemIneligible": "Item unavailable for delivery. Check physical expiry, status, reservations and balance."
+  "deliveryPhysicalItemIneligible": "Item unavailable for delivery. Check physical expiry, status, reservations and balance.",
+  "safetyTitle": "Safety Library",
+  "safetyApproved": "Approved PPE",
+  "safetyRetry": "Try again",
+  "safetyClose": "Close",
+  "safetyCancel": "Cancel",
+  "safetyConfirm": "Confirm",
+  "safetyAccess": "Continue",
+  "safetyPortalConfirm": "Confirm portal access",
+  "safetyCpfLast": "Last three CPF digits",
+  "safetyView": "View",
+  "safetyFit": "Fit page",
+  "safetyZoomIn": "Zoom in",
+  "safetyZoomOut": "Zoom out",
+  "safetyNextPage": "Next page",
+  "safetyPreviousPage": "Previous page",
+  "safetyDocument": "Document",
+  "safetyDetails": "Details",
+  "safetyRelatedDocuments": "Related documents",
+  "safetyRelatedEpis": "Related PPE",
+  "safetyRelatedEpi": "Related PPE",
+  "safetyAllEpis": "All PPE",
+  "safetyAllCategories": "All categories",
+  "safetyNoDocs": "No documents published for this context.",
+  "safetyNoRecords": "No published, authorized records in this context.",
+  "safetyCatalogueNotice": "Catalogue approval does not indicate physical availability. CA expiry is separate from batch expiry.",
+  "safetyName": "PPE",
+  "safetyManufacturer": "Manufacturer",
+  "safetyModel": "Model/reference",
+  "safetyCa": "CA",
+  "safetyCaExpiry": "CA expiry",
+  "safetyUsefulLife": "Service life (months)",
+  "safetyProtection": "Protection",
+  "safetySection": "Section",
+  "safetyRecommendations": "Recommendations/restrictions",
+  "safetyUnknown": "Not provided",
+  "safetySearch": "Search",
+  "safetyViewEpi": "View PPE",
+  "safetyHistory": "History",
+  "safetyDocumentHistory": "Document history",
+  "safetyPublish": "Publish",
+  "safetyPublishVersion": "Publish version",
+  "safetyArchive": "Archive document",
+  "safetyArchiveVersions": "Archive document and versions",
+  "safetyReason": "Required justification",
+  "safetyNew": "New document",
+  "safetyCreateNew": "Create new document",
+  "safetyMetadata": "Version details",
+  "safetyEmptyAdmin": "No documents registered.",
+  "safetyPrivateNotice": "Private originals, preserved versions and history. Management restricted to General and Registry Administrators.",
+  "safetyAllowAdminDownloads": "Allow original downloads for authorized administrators",
+  "safetyPreviewOnlyNotice": "Employees always have preview-only access.",
+  "safetyPolicyReason": "Change administrator download policy",
+  "safetySearchVersions": "Search title or version",
+  "safetyChooseFile": "Choose file",
+  "safetyFilePickerLabel": "Safety documents",
+  "safetyUnitRequired": "Select at least one unit",
+  "safetyAllUnits": "All company units",
+  "safetyRequired": "Required",
+  "safetyDocumentTitle": "Title",
+  "safetyVersion": "Version",
+  "safetyEffectiveDate": "Effective date (YYYY-MM-DD)",
+  "safetySectors": "Comma-separated sectors (empty = all)",
+  "safetyActivities": "Comma-separated activities/roles (empty = all)",
+  "safetyUpload": "Register or version document",
+  "safetyRendering": "Generating safe preview…",
+  "safetyFileLimit": "Select a file up to 20 MiB.",
+  "safetyVersionDate": "Version {version} · Effective {date}",
+  "@safetyVersionDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUnit": "Viewing unit: {unit}",
+  "@safetyUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyPreviewError": "Preview unavailable: {error}",
+  "@safetyPreviewError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUploadError": "Upload rejected; preview unavailable: {error}",
+  "@safetyUploadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyVersionSummary": "Version {version} / revision {revision} · {state} · Effective {date}",
+  "@safetyVersionSummary": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "revision": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyActorDetails": "Responsible user {actor}\n{details}",
+  "@safetyActorDetails": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyCategoryEpi": "PPE Application Matrix",
+  "safetyCategoryGlove": "Glove Selection Matrix",
+  "safetyCategoryCare": "Cleaning and Care Guides",
+  "safetyCategoryUse": "PPE Use Instructions",
+  "safetyCategoryTechnical": "Manuals and Technical Sheets",
+  "safetyCategoryOther": "Other Safety Documents",
+  "safetyStateDraft": "Draft",
+  "safetyStatePublished": "Published",
+  "safetyStateSuperseded": "Superseded",
+  "safetyStateArchived": "Archived"
 }

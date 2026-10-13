@@ -113,8 +113,8 @@ class PortalHomeScreen extends StatelessWidget {
                   tabs: [
                     Tab(text: l10n.portalDeliveries),
                     Tab(text: l10n.portalFichas),
-                    const Tab(text: 'EPIs Aprovados'),
-                    const Tab(text: 'Biblioteca de Segurança'),
+                    Tab(text: l10n.safetyApproved),
+                    Tab(text: l10n.safetyTitle),
                   ],
                 ),
               ),

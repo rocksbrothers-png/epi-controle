@@ -1,3 +1,4 @@
+import '../../core/i18n/l10n_x.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
@@ -91,18 +92,23 @@ class _LibraryViewerState extends State<LibraryViewer> {
     final pages = parts.isEmpty ? [] : (parts[_part]['pages'] as List);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.document['title'] as String? ?? 'Documento'),
+        title: Text(
+          widget.document['title'] as String? ?? context.l10n.safetyDocument,
+        ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8),
             child: Text(
-              'Versão ${widget.document['version_label']} · Vigência ${widget.document['effective_date']}',
+              context.l10n.safetyVersionDate(
+                '${widget.document['version_label']}',
+                '${widget.document['effective_date']}',
+              ),
             ),
           ),
           for (final warning in (_manifest?['warnings'] as List?) ?? [])
-            Padding(padding: const EdgeInsets.all(8), child: Text('$warning')),
+            Padding(padding: EdgeInsets.all(8), child: Text('$warning')),
           if (parts.isNotEmpty)
             Wrap(
               spacing: 8,
@@ -128,8 +134,8 @@ class _LibraryViewerState extends State<LibraryViewer> {
                   },
                 ),
                 IconButton(
-                  tooltip: 'Página anterior',
-                  icon: const Icon(Icons.chevron_left),
+                  tooltip: context.l10n.safetyPreviousPage,
+                  icon: Icon(Icons.chevron_left),
                   onPressed: _page > 0
                       ? () {
                           setState(() => _page--);
@@ -139,8 +145,8 @@ class _LibraryViewerState extends State<LibraryViewer> {
                 ),
                 Text('${_page + 1} / ${pages.length}'),
                 IconButton(
-                  tooltip: 'Próxima página',
-                  icon: const Icon(Icons.chevron_right),
+                  tooltip: context.l10n.safetyNextPage,
+                  icon: Icon(Icons.chevron_right),
                   onPressed: _page < pages.length - 1
                       ? () {
                           setState(() => _page++);
@@ -149,18 +155,18 @@ class _LibraryViewerState extends State<LibraryViewer> {
                       : null,
                 ),
                 IconButton(
-                  tooltip: 'Diminuir zoom',
-                  icon: const Icon(Icons.zoom_out),
+                  tooltip: context.l10n.safetyZoomOut,
+                  icon: Icon(Icons.zoom_out),
                   onPressed: () => _zoom(.8),
                 ),
                 IconButton(
-                  tooltip: 'Aumentar zoom',
-                  icon: const Icon(Icons.zoom_in),
+                  tooltip: context.l10n.safetyZoomIn,
+                  icon: Icon(Icons.zoom_in),
                   onPressed: () => _zoom(1.25),
                 ),
                 TextButton(
                   onPressed: () => _transform.value = Matrix4.identity(),
-                  child: const Text('Ajustar'),
+                  child: Text(context.l10n.safetyFit),
                 ),
               ],
             ),
@@ -170,18 +176,18 @@ class _LibraryViewerState extends State<LibraryViewer> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Pré-visualização indisponível: $_error'),
+                        Text(context.l10n.safetyPreviewError(_error ?? '')),
                         TextButton(
                           onPressed: _manifest == null
                               ? _loadManifest
                               : _loadPage,
-                          child: const Text('Tentar novamente'),
+                          child: Text(context.l10n.safetyRetry),
                         ),
                       ],
                     ),
                   )
                 : _bytes == null
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : InteractiveViewer(
                     transformationController: _transform,
                     minScale: .5,

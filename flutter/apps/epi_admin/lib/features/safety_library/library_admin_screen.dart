@@ -1,3 +1,5 @@
+import 'library_labels.dart';
+import '../../core/i18n/l10n_x.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:file_selector/file_selector.dart';
@@ -52,14 +54,12 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
         content: TextField(
           controller: controller,
           maxLength: 2000,
-          decoration: const InputDecoration(
-            labelText: 'Justificativa obrigatória',
-          ),
+          decoration: InputDecoration(labelText: context.l10n.safetyReason),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: Text(context.l10n.safetyCancel),
           ),
           TextButton(
             onPressed: () {
@@ -67,7 +67,7 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
                 Navigator.pop(ctx, controller.text.trim());
               }
             },
-            child: const Text('Confirmar'),
+            child: Text(context.l10n.safetyConfirm),
           ),
         ],
       ),
@@ -96,7 +96,7 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Histórico documental'),
+            title: Text(context.l10n.safetyDocumentHistory),
             content: SizedBox(
               width: 700,
               child: SingleChildScrollView(
@@ -106,7 +106,10 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
                       ListTile(
                         title: Text('${e['action']} · ${e['created_at']}'),
                         subtitle: Text(
-                          'Ator ${e['actor_user_id'] ?? e['employee_id'] ?? ''}\n${e['details']}',
+                          context.l10n.safetyActorDetails(
+                            '${e['actor_user_id'] ?? e['employee_id'] ?? ''}',
+                            '${e['details']}',
+                          ),
                         ),
                       ),
                   ],
@@ -116,7 +119,7 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Fechar'),
+                child: Text(context.l10n.safetyClose),
               ),
             ],
           ),
@@ -125,8 +128,8 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
       }
       final reason = await _reason(
         action == 'publish'
-            ? 'Publicar versão'
-            : 'Arquivar documento e versões',
+            ? context.l10n.safetyPublishVersion
+            : context.l10n.safetyArchiveVersions,
       );
       if (reason == null) return;
       await ApiClient.safetyLibrary.request(
@@ -151,8 +154,8 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
     if (metadata == null) return;
     final file = await openFile(
       acceptedTypeGroups: [
-        const XTypeGroup(
-          label: 'Documentos de SST',
+        XTypeGroup(
+          label: context.l10n.safetyFilePickerLabel,
           extensions: ['pdf', 'docx', 'xlsx', 'xls', 'png', 'jpg', 'jpeg'],
           uniformTypeIdentifiers: [
             'com.adobe.pdf',
@@ -175,13 +178,12 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
     );
     if (file == null || !mounted) return;
     if (await file.length() > 20 * 1024 * 1024) {
-      if (mounted)
-        setState(() => _error = 'Selecione um arquivo de até 20 MiB.');
+      if (mounted) setState(() => _error = context.l10n.safetyFileLimit);
       return;
     }
     final bytes = await file.readAsBytes();
     if (!mounted) return;
-    const mimes = {
+    final mimes = {
       'pdf': 'application/pdf',
       'docx':
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -215,9 +217,7 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
       await _load();
     } on Exception catch (e) {
       if (mounted) {
-        setState(
-          () => _error = 'Cadastro recusado; pré-visualização indisponível: $e',
-        );
+        setState(() => _error = context.l10n.safetyUploadError(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -229,14 +229,14 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
     if (_options == null) {
       return Center(
         child: _error == null
-            ? const CircularProgressIndicator()
+            ? CircularProgressIndicator()
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_error!),
                   TextButton(
                     onPressed: _load,
-                    child: const Text('Tentar novamente'),
+                    child: Text(context.l10n.safetyRetry),
                   ),
                 ],
               ),
@@ -250,38 +250,27 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
           (_category.isEmpty || d['category'] == _category),
     );
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       children: [
-        const Text(
-          'Biblioteca de Segurança',
+        Text(
+          context.l10n.safetyTitle,
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        const Text(
-          'Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.',
-        ),
-        if (_error != null)
-          Text(_error!, style: const TextStyle(color: Colors.red)),
+        Text(context.l10n.safetyPrivateNotice),
+        if (_error != null) Text(_error!, style: TextStyle(color: Colors.red)),
         FilledButton.icon(
           onPressed: _busy ? null : _upload,
-          icon: const Icon(Icons.upload_file),
+          icon: Icon(Icons.upload_file),
           label: Text(
-            _busy
-                ? 'Gerando pré-visualização segura…'
-                : 'Cadastrar ou versionar documento',
+            _busy ? context.l10n.safetyRendering : context.l10n.safetyUpload,
           ),
         ),
         SwitchListTile(
-          title: const Text(
-            'Permitir download de originais aos administradores autorizados',
-          ),
-          subtitle: const Text(
-            'Colaboradores sempre consultam somente a pré-visualização.',
-          ),
+          title: Text(context.l10n.safetyAllowAdminDownloads),
+          subtitle: Text(context.l10n.safetyPreviewOnlyNotice),
           value: _options!['allow_admin_original_download'] == true,
           onChanged: (allowed) async {
-            final reason = await _reason(
-              'Alterar política de download administrativo',
-            );
+            final reason = await _reason(context.l10n.safetyPolicyReason);
             if (reason == null) return;
             try {
               await ApiClient.safetyLibrary.request(
@@ -298,8 +287,8 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
           },
         ),
         TextField(
-          decoration: const InputDecoration(
-            labelText: 'Pesquisar título ou versão',
+          decoration: InputDecoration(
+            labelText: context.l10n.safetySearchVersions,
           ),
           onChanged: (v) => setState(() => _query = v.toLowerCase()),
         ),
@@ -307,19 +296,22 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
           isExpanded: true,
           value: _category,
           items: [
-            const DropdownMenuItem(
+            DropdownMenuItem(
               value: '',
-              child: Text('Todas as categorias'),
+              child: Text(context.l10n.safetyAllCategories),
             ),
             for (final e in (_options!['categories'] as Map).entries)
-              DropdownMenuItem(value: '${e.key}', child: Text('${e.value}')),
+              DropdownMenuItem(
+                value: '${e.key}',
+                child: Text(libraryCategory(context, '${e.key}')),
+              ),
           ],
           onChanged: (v) => setState(() => _category = v ?? ''),
         ),
         for (final d in versions)
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -328,27 +320,27 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    '${d['category_label']}\nVersão ${d['version_label']} / revisão ${d['revision']} · ${d['state_label']} · Vigência ${d['effective_date']}',
+                    '${libraryCategory(context, '${d['category']}')}\n${context.l10n.safetyVersionSummary('${d['version_label']}', '${d['revision']}', libraryState(context, '${d['state']}'), '${d['effective_date']}')}',
                   ),
                   Wrap(
                     children: [
                       TextButton(
                         onPressed: () => _action('preview', d),
-                        child: const Text('Visualizar'),
+                        child: Text(context.l10n.safetyView),
                       ),
                       if (d['state'] == 'draft')
                         TextButton(
                           onPressed: () => _action('publish', d),
-                          child: const Text('Publicar'),
+                          child: Text(context.l10n.safetyPublish),
                         ),
                       if (d['state'] != 'archived')
                         TextButton(
                           onPressed: () => _action('archive', d),
-                          child: const Text('Arquivar documento'),
+                          child: Text(context.l10n.safetyArchive),
                         ),
                       TextButton(
                         onPressed: () => _action('history', d),
-                        child: const Text('Histórico'),
+                        child: Text(context.l10n.safetyHistory),
                       ),
                     ],
                   ),
@@ -356,7 +348,7 @@ class _LibraryAdminScreenState extends State<LibraryAdminScreen> {
               ),
             ),
           ),
-        if (_versions!.isEmpty) const Text('Nenhum documento cadastrado.'),
+        if (_versions!.isEmpty) Text(context.l10n.safetyEmptyAdmin),
       ],
     );
   }
@@ -397,7 +389,8 @@ class _DocumentFormState extends State<_DocumentForm> {
     controller: controller,
     decoration: InputDecoration(labelText: label),
     validator: required
-        ? (v) => v == null || v.trim().isEmpty ? 'Obrigatório' : null
+        ? (v) =>
+              v == null || v.trim().isEmpty ? context.l10n.safetyRequired : null
         : null,
   );
   @override
@@ -407,7 +400,7 @@ class _DocumentFormState extends State<_DocumentForm> {
         v['document_id']: v,
     };
     return AlertDialog(
-      title: const Text('Metadados da versão'),
+      title: Text(context.l10n.safetyMetadata),
       content: SizedBox(
         width: 650,
         child: SingleChildScrollView(
@@ -418,7 +411,7 @@ class _DocumentFormState extends State<_DocumentForm> {
                 DropdownButton<int>(
                   isExpanded: true,
                   value: _documentId,
-                  hint: const Text('Novo documento'),
+                  hint: Text(context.l10n.safetyNew),
                   items: [
                     for (final e in docs.entries)
                       DropdownMenuItem(
@@ -431,11 +424,11 @@ class _DocumentFormState extends State<_DocumentForm> {
                 if (_documentId != null)
                   TextButton(
                     onPressed: () => setState(() => _documentId = null),
-                    child: const Text('Criar novo documento'),
+                    child: Text(context.l10n.safetyCreateNew),
                   ),
-                _field(_title, 'Título'),
-                _field(_version, 'Versão'),
-                _field(_date, 'Vigência (AAAA-MM-DD)'),
+                _field(_title, context.l10n.safetyDocumentTitle),
+                _field(_version, context.l10n.safetyVersion),
+                _field(_date, context.l10n.safetyEffectiveDate),
                 DropdownButton<String>(
                   isExpanded: true,
                   value: _category,
@@ -444,18 +437,18 @@ class _DocumentFormState extends State<_DocumentForm> {
                         in (widget.options['categories'] as Map).entries)
                       DropdownMenuItem(
                         value: '${e.key}',
-                        child: Text('${e.value}'),
+                        child: Text(libraryCategory(context, '${e.key}')),
                       ),
                   ],
                   onChanged: (v) => setState(() => _category = v!),
                 ),
                 SwitchListTile(
-                  title: const Text('Todas as unidades da empresa'),
+                  title: Text(context.l10n.safetyAllUnits),
                   value: _all,
                   onChanged: (v) => setState(() => _all = v),
                 ),
                 if (!_all) ...[
-                  const Text('Selecione ao menos uma unidade'),
+                  Text(context.l10n.safetyUnitRequired),
                   for (final unit in widget.options['units'] as List)
                     CheckboxListTile(
                       title: Text('${unit['name']}'),
@@ -467,7 +460,7 @@ class _DocumentFormState extends State<_DocumentForm> {
                       ),
                     ),
                 ],
-                const Text('EPIs relacionados'),
+                Text(context.l10n.safetyRelatedEpis),
                 for (final epi in widget.options['epis'] as List)
                   CheckboxListTile(
                     title: Text('${epi['name']}'),
@@ -478,14 +471,10 @@ class _DocumentFormState extends State<_DocumentForm> {
                           : _epis.remove(epi['id']),
                     ),
                   ),
-                _field(
-                  _sectors,
-                  'Setores separados por vírgula (vazio = todos)',
-                  required: false,
-                ),
+                _field(_sectors, context.l10n.safetySectors, required: false),
                 _field(
                   _activities,
-                  'Atividades/funções separadas por vírgula (vazio = todas)',
+                  context.l10n.safetyActivities,
                   required: false,
                 ),
               ],
@@ -496,7 +485,7 @@ class _DocumentFormState extends State<_DocumentForm> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
+          child: Text(context.l10n.safetyCancel),
         ),
         FilledButton(
           onPressed: () {
@@ -524,7 +513,7 @@ class _DocumentFormState extends State<_DocumentForm> {
                   .toList(),
             });
           },
-          child: const Text('Selecionar arquivo'),
+          child: Text(context.l10n.safetyChooseFile),
         ),
       ],
     );

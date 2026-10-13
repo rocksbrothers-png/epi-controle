@@ -404,4 +404,30 @@ class StockCubit extends Cubit<StockState> {
       );
     }
   }
+
+  /// EST-V3.5-R2 (F4): regulariza a validade física de uma peça já em estoque.
+  /// O backend classifica e decide (vigente → operacional; vencida →
+  /// blocked_expired; sem evidência/ inválida → recusa); a UI apenas EXIBE o
+  /// resultado. Após o sucesso, recarrega os fatos físicos (contadores,
+  /// pendentes de regularização, elegibilidade). Exceções sobem para a tela.
+  Future<RegularizationResult> regularizeValidity({
+    int stockItemId = 0,
+    required int companyId,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) async {
+    final result = await _repository.regularizeValidity(
+      actorUserId: await _actor(),
+      companyId: companyId,
+      stockItemId: stockItemId,
+      qrCode: qrCode,
+      physicalExpiryDate: physicalExpiryDate,
+      evidence: evidence,
+      justification: justification,
+    );
+    await load();
+    return result;
+  }
 }

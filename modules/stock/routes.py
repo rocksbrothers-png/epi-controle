@@ -222,10 +222,11 @@ def handle_post_stock_item_status(handler, parsed, payload, match):
 
 def handle_post_stock_item_regularize_validity(handler, parsed, payload, match):
     # EST-V3.5-R2 (F4): regulariza a validade física de uma peça JÁ em estoque.
-    # Identificação INEQUÍVOCA: exige o id da peça E o QR lido, que precisam casar.
-    # RBAC e isolamento são do BACKEND (independem da UI): permissão própria
+    # Identificação INEQUÍVOCA pela leitura do QR (o `stock_item_id` é reforço
+    # OPCIONAL da seleção e, se vier, precisa casar com o QR). RBAC e isolamento
+    # são do BACKEND (independem da UI): permissão própria
     # `stock:regularize_validity`, escopo empresa/unidade reaplicado sobre o item.
-    require_fields(payload, ['actor_user_id', 'stock_item_id', 'qr_code',
+    require_fields(payload, ['actor_user_id', 'qr_code',
                              'physical_expiry_date', 'evidence', 'justification'])
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload),
@@ -234,9 +235,9 @@ def handle_post_stock_item_regularize_validity(handler, parsed, payload, match):
         if not company_id:
             raise ValueError('Empresa é obrigatória.')
         qr_code = str(payload.get('qr_code') or '').strip()
-        stock_item_id = int(payload.get('stock_item_id') or 0)
-        if not qr_code or stock_item_id <= 0:
-            raise ValueError('Identifique a peça pelo item selecionado E pelo QR lido.')
+        stock_item_id = int(payload.get('stock_item_id') or 0)   # opcional: reforço da seleção
+        if not qr_code:
+            raise ValueError('Leitura do QR/código da peça é obrigatória (identificação inequívoca).')
         scope_unit_id = actor_operational_unit_id(connection, actor)
         if actor.get('role') in ('admin', 'user') and not scope_unit_id:
             raise PermissionError('Perfil sem unidade operacional ativa para regularizar validade.')
@@ -247,7 +248,7 @@ def handle_post_stock_item_regularize_validity(handler, parsed, payload, match):
         if not item:
             raise ValueError('Item de estoque não encontrado para a empresa/unidade informada.')
         ensure_resource_company(actor, item, 'Item de estoque')
-        if int(item['id']) != stock_item_id:
+        if stock_item_id and int(item['id']) != stock_item_id:
             raise ValueError('Seleção e QR inconsistentes: identifique a mesma peça.')
         if str(item.get('qr_code_value') or '').strip().lower() != qr_code.lower():
             raise ValueError('QR lido não confere com a peça selecionada.')

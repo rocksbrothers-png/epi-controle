@@ -117,7 +117,10 @@ def validate_office(path):
                         raise ValueError('Conteúdo ativo não permitido.')
                     if re.search(r'(?i)\bDDE(?:AUTO)?\s', element.text or ''):
                         raise ValueError('Campos DDE não são permitidos.')
-                if re.search(rb'(?i)(ddeauto|<\w*:?(?:dde|ddeLink)\b|macroEnabled|WEBSERVICE\s*\(|RTD\s*\()', xml):
+                # Parse before checking: UTF-16 and XML character references must
+                # have the same security meaning as their UTF-8 representation.
+                xml_text = ElementTree.tostring(node, encoding='unicode')
+                if re.search(r'(?i)(ddeauto|<\w*:?(?:dde|ddeLink)\b|macroEnabled|WEBSERVICE\s*\(|RTD\s*\()', xml_text):
                     raise ValueError('Conteúdo ativo não permitido.')
                 if name.endswith('.rels'):
                     for relation in list(node):
@@ -140,6 +143,22 @@ def validate_office(path):
                     output.writestr(entry.filename, replacements.get(entry.filename, archive.read(entry)))
             path.write_bytes(clean.getvalue())
     return sorted(set(warnings))
+
+
+def validate_pdf_content(pdf):
+    """Reject scripts, active actions, attachments and automatic actions."""
+    for xref in range(1, pdf.xref_length()):
+        # PDF names can escape any byte as #xx. Inspect the canonical
+        # names, including actions other than scripts (forms/media/files).
+        obj = re.sub(r'#([0-9a-fA-F]{2})', lambda m: chr(int(m[1], 16)), pdf.xref_object(xref))
+        if re.search(r'/(JavaScript|JS|Launch|EmbeddedFile|RichMedia|XFA|SubmitForm|ImportData|GoToR|GoToE|Rendition|Movie|Sound|ResetForm|Hide|SetOCGState|Trans|Thread|AA)\b', obj):
+            raise ValueError('Conteúdo ativo de PDF não permitido.')
+        kind, opening = pdf.xref_get_key(xref, 'OpenAction')
+        if kind == 'xref':
+            opening = pdf.xref_object(int(opening.split()[0])).lstrip()
+            kind = 'array' if opening.startswith('[') else 'dict'
+        if kind not in ('null', 'array'):
+            raise ValueError('Ação automática de PDF não permitida.')
 
 
 def render(root):
@@ -189,10 +208,7 @@ def render(root):
         with fitz.open(root / part['file']) as pdf:
             if pdf.needs_pass or not pdf.page_count:
                 raise ValueError('PDF cifrado ou sem páginas.')
-            for xref in range(1, pdf.xref_length()):
-                obj = pdf.xref_object(xref)
-                if re.search(r'/(JavaScript|JS|Launch|EmbeddedFile|RichMedia|XFA)\b', obj):
-                    raise ValueError('Conteúdo ativo de PDF não permitido.')
+            validate_pdf_content(pdf)
             info = {'index': index, 'name': part['name'], 'pages': []}
             for page_index, page in enumerate(pdf):
                 count += 1

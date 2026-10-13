@@ -6,16 +6,16 @@ import '../../core/api/api_client.dart';
 import 'library_viewer.dart';
 
 Map<String, String> epiLabels(BuildContext context) => <String, String>{
-  'name': context.l10n.safetyName,
-  'manufacturer': context.l10n.safetyManufacturer,
-  'model_reference': context.l10n.safetyModel,
-  'ca': context.l10n.safetyCa,
-  'ca_expiry': context.l10n.safetyCaExpiry,
-  'manufacturer_validity_months': context.l10n.safetyUsefulLife,
-  'sector': context.l10n.safetyProtection,
-  'epi_section': context.l10n.safetySection,
-  'manufacturer_recommendations': context.l10n.safetyRecommendations,
-};
+      'name': context.l10n.safetyName,
+      'manufacturer': context.l10n.safetyManufacturer,
+      'model_reference': context.l10n.safetyModel,
+      'ca': context.l10n.safetyCa,
+      'ca_expiry': context.l10n.safetyCaExpiry,
+      'manufacturer_validity_months': context.l10n.safetyUsefulLife,
+      'sector': context.l10n.safetyProtection,
+      'epi_section': context.l10n.safetySection,
+      'manufacturer_recommendations': context.l10n.safetyRecommendations,
+    };
 
 class PortalLibraryTab extends StatefulWidget {
   const PortalLibraryTab({
@@ -81,14 +81,14 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
   }
 
   void _view(Map<String, dynamic> doc) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => LibraryViewer(
-        document: doc,
-        token: widget.token,
-        cpfLast3: widget.cpfLast3,
-      ),
-    ),
-  );
+        MaterialPageRoute<void>(
+          builder: (_) => LibraryViewer(
+            document: doc,
+            token: widget.token,
+            cpfLast3: widget.cpfLast3,
+          ),
+        ),
+      );
   Future<void> _detail(Map<String, dynamic> epi) async {
     List<Map<String, dynamic>> documents = [];
     Uint8List? photo;
@@ -168,12 +168,12 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
   }
 
   Widget _filter(String label, ValueChanged<String> changed) => SizedBox(
-    width: 210,
-    child: TextField(
-      decoration: InputDecoration(labelText: label),
-      onChanged: (v) => setState(() => changed(v.toLowerCase())),
-    ),
-  );
+        width: 210,
+        child: TextField(
+          decoration: InputDecoration(labelText: label),
+          onChanged: (v) => setState(() => changed(v.toLowerCase())),
+        ),
+      );
   @override
   Widget build(BuildContext context) {
     if (_error != null) {
@@ -232,35 +232,50 @@ class _PortalLibraryTabState extends State<PortalLibraryTab> {
               _filter(context.l10n.safetyCa, (v) => _ca = v),
             ],
             if (!widget.approved) ...[
-              DropdownButton<String>(
-                value: _category,
-                items: [
-                  DropdownMenuItem(
-                    value: '',
-                    child: Text(context.l10n.safetyAllCategories),
-                  ),
-                  for (final category
-                      in _items!.map((e) => '${e['category']}').toSet())
+              SizedBox(
+                width: MediaQuery.sizeOf(context).width < 600
+                    ? MediaQuery.sizeOf(context).width - 32
+                    : 320,
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _category,
+                  items: [
                     DropdownMenuItem(
-                      value: category,
-                      child: Text(
-                        '${_items!.firstWhere((e) => e['category'] == category)['category_label']}',
+                      value: '',
+                      child: Text(context.l10n.safetyAllCategories),
+                    ),
+                    for (final category
+                        in _items!.map((e) => '${e['category']}').toSet())
+                      DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                          '${_items!.firstWhere((e) => e['category'] == category)['category_label']}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _category = v ?? ''),
+                  ],
+                  onChanged: (v) => setState(() => _category = v ?? ''),
+                ),
               ),
-              DropdownButton<int>(
-                value: _relatedEpi,
-                hint: Text(context.l10n.safetyRelatedEpi),
-                items: [
-                  for (final epi in _epis)
-                    DropdownMenuItem(
-                      value: epi['id'] as int,
-                      child: Text('${epi['name']}'),
-                    ),
-                ],
-                onChanged: (v) => setState(() => _relatedEpi = v),
+              SizedBox(
+                width: MediaQuery.sizeOf(context).width < 600
+                    ? MediaQuery.sizeOf(context).width - 32
+                    : 320,
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: _relatedEpi,
+                  hint: Text(context.l10n.safetyRelatedEpi),
+                  items: [
+                    for (final epi in _epis)
+                      DropdownMenuItem(
+                        value: epi['id'] as int,
+                        child: Text('${epi['name']}',
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => _relatedEpi = v),
+                ),
               ),
               if (_relatedEpi != null)
                 TextButton(

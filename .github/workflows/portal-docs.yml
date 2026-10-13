@@ -47,8 +47,26 @@ jobs:
           PY
       - name: Real HTTP, PostgreSQL, Office preview, RBAC and tenant attacks
         run: pytest tests/test_portal_docs_postgres.py -v --tb=short --junitxml=portal-docs.xml
-      - name: Reproduce seven red security/integration mutations in disposable copies
+      - name: Reproduce eight red security/integration mutations in disposable copies
         run: python scripts/test_portal_docs_mutations.py --dsn "$DATABASE_URL" --output portal-docs-mutations
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Real Flutter widgets against isolated PostgreSQL HTTP
+        run: |
+          python scripts/serve_portal_docs_test_fixture.py --output "$RUNNER_TEMP/portal-docs-fixture.json" > "$RUNNER_TEMP/portal-docs-server.log" 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 90); do
+            test -f "$RUNNER_TEMP/portal-docs-fixture.json" && break
+            kill -0 "$fixture_pid" || { cat "$RUNNER_TEMP/portal-docs-server.log"; exit 1; }
+            sleep 1
+          done
+          test -f "$RUNNER_TEMP/portal-docs-fixture.json"
+          cd flutter/apps/epi_admin
+          flutter pub get
+          PORTAL_DOCS_HTTP_FIXTURE="$RUNNER_TEMP/portal-docs-fixture.json" flutter test --reporter expanded test/safety_library_runtime_test.dart
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -96,14 +96,31 @@ cd flutter && dart run melos run lint && dart run melos run test
 
 Cobertura: Geral e Registro positivos; oito demais perfis negativos; Bearer obrigatório e personificação recusada; escopo entre empresas/unidades, todas as unidades sem atravessar empresas, movimento temporário, setor/atividade, vigência futura, revogação, publicação/rascunho/substituição/arquivamento, idempotência/concorrência, originais vedados ao colaborador mesmo com política habilitada, originais autorizados aos dois administradores, auditoria imutável, migração idempotente/preservação/RLS, PDF/Office/imagens reais, extensão/MIME/base64/tamanho, macros renomeadas/DDE/ZIP ativo/zip bomb/PDF ativo/EXIF/transparência. Cliente Dart/Dio também foi executado contra os HTTPs PostgreSQL dos dois produtos.
 
-Sete sabotagens em cópias privadas e bancos novos fazem a suite ficar vermelha: liberar Master; confiar na empresa do recurso em vez do contexto; remover unidade; permitir original ao colaborador; aceitar PDF ativo; remover migração 034 (upload em banco novo falha); repetir o conteúdo da primeira aba na exportação das demais. A implementação não é alterada pelo script. A remoção isolada do filtro de empresa ainda encontrou proteção da FK de auditoria; a sabotagem de IDOR reproduz confiança indevida no contexto para testar vazamento real, sem atribuir falso resultado a uma mudança apenas de status HTTP.
+Oito sabotagens em cópias privadas e bancos novos fazem a suite ficar vermelha: liberar Master; confiar na empresa do recurso em vez do contexto; remover unidade; permitir original ao colaborador; aceitar PDF ativo; remover migração 034 (upload em banco novo falha); repetir o conteúdo da primeira aba na exportação das demais; verificar fórmulas externas por bytes em vez de XML decodificado. A implementação não é alterada pelo script. A remoção isolada do filtro de empresa ainda encontrou proteção da FK de auditoria; a sabotagem de IDOR reproduz confiança indevida no contexto para testar vazamento real, sem atribuir falso resultado a uma mudança apenas de status HTTP.
 
 Arquivos fornecidos usados somente em empresas fictícias de laboratório: DOCX com cinco páginas; XLSX com abas POR/ENG, uma página por aba; XLS com uma aba e duas páginas. Inspeção visual desktop/celular, zoom, navegação, pesquisa e ação administrativa, com páginas recebidas do backend. Fixtures originais, credenciais e screenshots permanecem fora dos repositórios; não se tornaram conteúdo oficial de uma empresa.
 
 ## CI, paridade e decisão
 
-Novo workflow `Portal Docs V1` roda HTTP/PostgreSQL/Office/RBAC/ataques e as sete sabotagens. Checks existentes de backend, Flutter, CodeQL, segurança, PostgreSQL e isolamento permanecem ativos. Manifesto Flutter atualizado nos dois lados; digests anteriores do portal atualizados após comprovar igualdade dos arquivos pareados. As identidades e os contratos de backend autorizados permanecem protegidos.
+Novo workflow `Portal Docs V1` roda HTTP/PostgreSQL/Office/RBAC/ataques, oito sabotagens e seis testes de widgets Flutter reais contra o backend PostgreSQL local. As fixtures sintéticas incluem PDF, DOCX, XLSX, XLS e PNG; nenhuma fixture oficial é enviada à CI. Checks existentes de backend, Flutter, CodeQL, segurança, PostgreSQL e isolamento permanecem ativos. Manifesto Flutter atualizado nos dois lados; digests anteriores do portal atualizados após comprovar igualdade dos arquivos pareados. As identidades e os contratos de backend autorizados permanecem protegidos.
 
 Resultados por HEAD, URLs de PRs/checks, screenshots e veredito final estão no relatório de execução entregue com os PRs. Revisor deve repetir o workflow adicional, examinar a qualidade dos arquivos reais localmente e conciliar o manifesto com as PRs de regularização quando elas forem aprovadas.
 
 Próximo passo: **PORTAL-DOCS-V1-INDEPENDENT-VALIDATION**. Permanecem bloqueados merge, deploy e migrações compartilhadas. Compilação/uso em dispositivo físico Android/iOS não substituídos por screenshots do Flutter Web; revisão de produção e aprovação administrativa de documentos oficiais ainda necessárias.
+
+## Fechamento da revisão autorizada
+
+A auditoria por segundo agente reproduziu dois achados nos HEADs anteriores: ações PDF adicionais (SubmitForm/ImportData/GoToR/Rendition) e fórmula WEBSERVICE em XML UTF-16 aceitas. A correção normaliza nomes PDF escapados, recusa ações automáticas/ativas e verifica o XML depois de seu parsing seguro, incluindo character references. Dezenove casos HTTP de regressão mantêm ações de abertura/anotação, nomes escapados e fórmulas UTF-8/UTF-16. Suite documental atual: 65 testes por produto. O resultado independente final deve ser consultado no relatório e no corpo da PR para o HEAD exato; este documento não substitui essa decisão.
+
+O teste do motor Flutter reproduziu e corrigiu overflow dos filtros da biblioteca na largura de 390 px. Seis testes reais cobrem layouts desktop/Android/iOS, páginas, seleção POR/ENG com bytes distintos, zoom, catálogo/tabela/cartões, pesquisa, detalhes/documentos associados, abertura pela biblioteca e recusa cross-tenant. São execução de widgets reais com HTTP/PostgreSQL, não aparelhos Android/iOS físicos nem inicialização Firebase do aplicativo completo. O aplicativo Web completo não foi exercitado neste ambiente porque www.gstatic.com foi recusado pela política de rede; essa restrição não foi contornada.
+
+Reprodução do teste de CI (DSN local portal_docs_* explícito):
+
+```sh
+APP_ENV=test DATABASE_URL="$LOCAL_TEST_DSN" python scripts/serve_portal_docs_test_fixture.py --output /tmp/portal-docs-fixture.json
+# Em outro terminal, depois da mensagem de prontidão:
+cd flutter/apps/epi_admin
+PORTAL_DOCS_HTTP_FIXTURE=/tmp/portal-docs-fixture.json flutter test --reporter expanded test/safety_library_runtime_test.dart
+```
+
+O arquivo JSON possui credenciais de laboratório, modo 0600; não deve ser incluído em commits ou artefatos. Screenshots dos documentos fornecidos ficam privados no workspace. Sem PORTAL_DOCS_HTTP_FIXTURE a suite de widgets é explicitamente skipped, e esse resultado não conta como aceitação. A execução obrigatória do workflow fornece a fixture e executa os seis casos.

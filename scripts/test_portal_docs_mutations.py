@@ -23,8 +23,9 @@ MUTANTS = [
     ('tenant', 'modules/safety_library/service.py', "    if int(version['company_id']) != int(context['company_id']):\n        return False\n", "    context['company_id'] = version['company_id']  # mutation: trust resource tenant\n", 'test_all_units_does_not_mean_other_companies'),
     ('unit', 'modules/safety_library/service.py', "    if not int(version['all_units']) and int(context['unit_id']) not in json.loads(version['unit_ids']):\n        return False\n", '', 'test_preview_scope_publication_and_every_page_access'),
     ('original_role', 'modules/safety_library/service.py', "return actor.get('role') in ('general_admin','registry_admin') and bool(policy)", 'return bool(policy)', 'test_employee_never_original_and_backend_policy'),
-    ('active_pdf', 'modules/safety_library/render_worker.py', "if re.search(r'/(JavaScript|JS|Launch|EmbeddedFile|RichMedia|XFA)\\b', obj):", 'if False:  # mutation: accept active PDF', 'test_malicious_uploads_mime_size_and_cross_scope'),
+    ('active_pdf', 'modules/safety_library/render_worker.py', '            validate_pdf_content(pdf)\n', '            pass  # mutation: accept active PDF\n', 'test_malicious_uploads_mime_size_and_cross_scope'),
     ('migration', 'epi_backend/migrations/034_safety_library.py', None, None, 'test_direct_http_rbac[general_admin]'),
+    ('encoded_formula', 'modules/safety_library/render_worker.py', "xml_text = ElementTree.tostring(node, encoding='unicode')", "xml_text = xml.decode('latin1')", 'test_external_formula_rejected_independently_of_xml_encoding[utf-16-False]'),
     ('sheet_content', 'modules/safety_library/uno_convert.py', "prop('Selection', selected)", "prop('Selection', visible[0])", 'test_real_office_rendering_preserves_pages_sheets_merges_and_images[xlsx]'),
 ]
 

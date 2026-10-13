@@ -362,3 +362,48 @@ def test_real_office_rendering_preserves_pages_sheets_merges_and_images(environm
 
     if extension in ('xlsx','xls'):
         assert len(first_pages)==2 and first_pages[0]!=first_pages[1], 'Different worksheets must not repeat the first worksheet content'
+
+
+@pytest.mark.parametrize('action', ['SubmitForm', 'ImportData', 'GoToR', 'Rendition'])
+@pytest.mark.parametrize('escaped', [False, True])
+@pytest.mark.parametrize('placement', ['opening', 'annotation'])
+def test_active_pdf_actions_rejected_by_real_upload(environment, tenants, action, escaped, placement):
+    import pymupdf
+    a, _ = tenants
+    document = pymupdf.open()
+    document.new_page().insert_text((72, 72), 'Synthetic active-action regression')
+    name = action if not escaped else '#%02X%s' % (ord(action[0]), action[1:])
+    xref = document.get_new_xref()
+    document.update_object(xref, '<< /S /'+name+' /F (file:///not-a-real-file) /D [0 /Fit] >>')
+    if placement == 'opening':
+        document.xref_set_key(document.pdf_catalog(), 'OpenAction', str(xref)+' 0 R')
+    else:
+        annot = document.get_new_xref()
+        document.update_object(annot, '<< /Type /Annot /Subtype /Link /Rect [20 20 100 50] /A '+str(xref)+' 0 R >>')
+        document.xref_set_key(document[0].xref, 'Annots', '['+str(annot)+' 0 R]')
+    content = document.tobytes()
+    document.close()
+    status, body, _ = request(environment, 'upload', upload_data(a, content_base64=base64.b64encode(content).decode()), tenant=a)
+    assert status == 400, body
+
+
+@pytest.mark.parametrize('encoding,escape', [('utf-8', False), ('utf-16', False), ('utf-16', True)])
+def test_external_formula_rejected_independently_of_xml_encoding(environment, tenants, encoding, escape):
+    from openpyxl import Workbook
+    a, _ = tenants
+    workbook = Workbook()
+    workbook.active['A1'] = '=WEBSERVICE("http://127.0.0.1:9/not-a-real-service")'
+    content = io.BytesIO()
+    workbook.save(content)
+    output = io.BytesIO()
+    with zipfile.ZipFile(content) as source, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as target:
+        for entry in source.infolist():
+            data = source.read(entry)
+            if entry.filename == 'xl/worksheets/sheet1.xml':
+                xml = data.decode('utf-8')
+                if escape:
+                    xml = xml.replace('WEBSERVICE', '&#87;EBSERVICE')
+                data = ('<?xml version="1.0" encoding="'+encoding+'"?>'+xml).encode(encoding)
+            target.writestr(entry.filename, data)
+    status, body, _ = request(environment, 'upload', upload_data(a, filename='encoded.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', content_base64=base64.b64encode(output.getvalue()).decode()), tenant=a)
+    assert status == 400, body

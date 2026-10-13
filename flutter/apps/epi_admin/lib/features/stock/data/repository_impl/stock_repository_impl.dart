@@ -61,4 +61,24 @@ class StockRepositoryImpl implements StockRepository {
         movementType: movementType,
         quantity: quantity,
       );
+
+  @override
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) =>
+      _remoteDataSource.regularizeValidity(
+        actorUserId: actorUserId,
+        companyId: companyId,
+        stockItemId: stockItemId,
+        qrCode: qrCode,
+        physicalExpiryDate: physicalExpiryDate,
+        evidence: evidence,
+        justification: justification,
+      );
 }

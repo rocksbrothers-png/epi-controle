@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../models/company_attention_setting.dart';
 import '../models/epi.dart';
+import '../models/regularization_result.dart';
 import '../models/stock_item.dart';
 import '../models/unit_epi_stock_config.dart';
 
@@ -460,6 +461,35 @@ class StockApi {
         'label_print_format': '',
         'manufacture_date': '',
       },
+    );
+  }
+
+  /// EST-V3.5-R2 (F4): regulariza a validade física de uma peça já em estoque.
+  /// O backend exige evidência, classifica e decide (inclusive bloqueio por
+  /// vencimento); devolve o resultado para a UI apenas exibir.
+  Future<RegularizationResult> regularizeValidity({
+    required int actorUserId,
+    required int companyId,
+    int stockItemId = 0,
+    required String qrCode,
+    required String physicalExpiryDate,
+    required String evidence,
+    required String justification,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/api/stock/items/regularize-validity',
+      data: {
+        'actor_user_id': actorUserId,
+        'company_id': companyId,
+        'stock_item_id': stockItemId,
+        'qr_code': qrCode,
+        'physical_expiry_date': physicalExpiryDate,
+        'evidence': evidence,
+        'justification': justification,
+      },
+    );
+    return RegularizationResult.fromJson(
+      response.data ?? const <String, dynamic>{},
     );
   }
 }

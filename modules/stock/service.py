@@ -1330,6 +1330,159 @@ def record_received_item_physical(connection, stock_item_id, physical_expiry, ac
     )
 
 
+# ── EST-V3.5-R2 (F4): regularização da validade física de peça já em estoque ──
+# Peça com validade física DESCONHECIDA é fail-closed (inelegível para entrega e
+# reserva). A ÚNICA forma de torná-la utilizável é a regularização FORMAL: data
+# comprovada + evidência + responsável, auditada e imutável. Catálogo, CA,
+# estimativa ou preenchimento automático NUNCA liberam a peça.
+REGULARIZABLE_STATUSES = frozenset({'in_stock', 'available', 'blocked_expired'})
+
+
+def _append_stock_event(connection, *, company_id, epi_id, stock_item_id, event_type, reason_code,
+                        justification, actor_user_id, actor_name, actor_role, now,
+                        before_values, after_values, quantity=1, origin_unit_id=None):
+    """Grava uma linha no histórico append-only ``epi_stock_events`` (imutável por
+    trigger em PostgreSQL; somente-inserção no código). Nunca atualiza/apaga."""
+    import json as _json
+    connection.execute(
+        'INSERT INTO epi_stock_events (company_id, epi_id, stock_item_id, lot_id, quantity, '
+        'event_type, origin_unit_id, destination_unit_id, reason_code, justification, '
+        'actor_user_id, actor_name_snapshot, actor_role_snapshot, created_at, '
+        'before_values, after_values) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        (int(company_id), int(epi_id), int(stock_item_id), None, int(quantity),
+         str(event_type), (int(origin_unit_id) if origin_unit_id else None), None,
+         str(reason_code), str(justification), int(actor_user_id),
+         str(actor_name or ''), str(actor_role or ''), str(now),
+         _json.dumps(before_values, ensure_ascii=False, sort_keys=True),
+         _json.dumps(after_values, ensure_ascii=False, sort_keys=True)),
+    )
+
+
+def pending_regularization_count(connection, company_id, unit_id=None):
+    """Nº de peças FÍSICAS presentes com validade DESCONHECIDA (pendentes de
+    regularização), por empresa/unidade. Usa fatos físicos — nunca o catálogo.
+    Degrada para 0 onde o modelo físico não existe."""
+    from modules.stock.eligibility import classify_physical, stock_rows, validity_policy, ON_HAND_STATUSES
+    if not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return 0
+    try:
+        policy = validity_policy(connection, company_id)
+    except ValueError:
+        return 0
+    total = 0
+    for row in stock_rows(connection, company_id, unit_id):
+        if str(row.get('status') or '').lower() not in ON_HAND_STATUSES:
+            continue
+        if classify_physical(row.get('physical_expiry_date'), policy)['status'] == 'unknown':
+            total += 1
+    return total
+
+
+def regularize_item_physical_validity(connection, item, physical_expiry, evidence, justification,
+                                      actor_user_id, actor_name, actor_role, now):
+    """EST-V3.5-R2 (G02/F4): regulariza a validade FÍSICA de uma peça já em estoque.
+
+    Fail-closed e SEM catálogo: a validade física é a única autoridade; catálogo,
+    CA, estimativa ou preenchimento automático nunca liberam a peça. Exige data
+    comprovada + evidência + justificativa + responsável. Grava na peça
+    (``physical_expiry_date`` + ``expiry_source='regularization'`` + ``expiry_evidence``),
+    RECLASSIFICA o status pela política da empresa (vigente → operacional;
+    vencida → ``blocked_expired``; sem data comprovada é recusado antes daqui) e
+    registra o evento IMUTÁVEL ``expiry_regularization`` em ``epi_stock_events``
+    com os valores anterior e novo. Transacional sob lock; idempotente (reenvio do
+    MESMO valor é no-op, sem duplicar evento); NÃO apaga nem sobrescreve histórico.
+    A classificação é 100% do backend — o cliente apenas exibe o resultado.
+    """
+    from modules.stock.eligibility import classify_physical, lock_stock_scope, validity_policy
+    from modules.stock.lifecycle import physical_date
+    expiry = str(physical_expiry or '').strip()
+    evidence = str(evidence or '').strip()
+    justification = str(justification or '').strip()
+    if not expiry:
+        raise ValueError('Data de validade física comprovada é obrigatória para regularizar.')
+    try:
+        new_date = physical_date(expiry, 'Validade física')
+    except ValueError:
+        raise ValueError('Validade física inválida; informe uma data real no formato AAAA-MM-DD.')
+    if not evidence:
+        raise ValueError('Evidência documental/verificável do fabricante ou rótulo é obrigatória.')
+    if not justification:
+        raise ValueError('Justificativa da regularização é obrigatória.')
+    if not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        raise ValueError('Modelo físico de validade indisponível neste ambiente.')
+
+    lock_stock_scope(connection, item['company_id'], item['unit_id'], item['epi_id'])
+    current = connection.execute('SELECT * FROM epi_stock_items WHERE id = ?', (int(item['id']),)).fetchone()
+    if current is None:
+        raise ValueError('Item de estoque não encontrado.')
+    current = row_to_dict(current)
+    if any(int(current.get(key) or 0) != int(item[key]) for key in ('company_id', 'unit_id', 'epi_id')):
+        raise ValueError('Item fora da empresa/unidade/EPI informado.')
+    cur_status = str(current.get('status') or '').strip().lower()
+    if cur_status not in REGULARIZABLE_STATUSES:
+        raise ValueError('Regularização indisponível neste estado da peça (entregue, reservada, '
+                         'descartada, em análise/quarentena ou terminal). Estado atual: ' + (cur_status or 'desconhecido') + '.')
+    # Consistência física: validade não pode ser anterior à fabricação do lote.
+    man = str(current.get('physical_manufacture_date') or '').strip() if _has_col(
+        connection, 'epi_stock_items', 'physical_manufacture_date') else ''
+    if man:
+        try:
+            if new_date < physical_date(man):
+                raise ValueError('Validade física anterior à data de fabricação do lote; inconsistente.')
+        except ValueError as exc:
+            if 'anterior' in str(exc):
+                raise
+
+    policy = validity_policy(connection, item['company_id'])
+    verdict = classify_physical(expiry, policy)   # válida / expiring / vencida (data já validada)
+    if verdict['status'] == 'expired':
+        new_status = 'blocked_expired'
+    elif cur_status == 'blocked_expired':
+        new_status = 'in_stock'      # validade regularizada resolve o bloqueio por vencimento
+    else:
+        new_status = cur_status      # in_stock/available permanece operacional
+
+    old_expiry = str(current.get('physical_expiry_date') or '').strip()
+    old_source = str(current.get('expiry_source') or '')
+    # Idempotência: reenvio exatamente igual (mesma data/fonte/estado) não duplica evento.
+    if old_expiry == expiry and old_source == 'regularization' and cur_status == new_status:
+        return {'status': new_status, 'validity_status': verdict['status'], 'physical_expiry_date': expiry,
+                'eligible': new_status in ('in_stock', 'available'), 'blocked_expired': new_status == 'blocked_expired',
+                'idempotent': True, 'message': 'Validade já regularizada com este valor; nenhuma alteração.'}
+
+    fragments = ['physical_expiry_date = ?', "expiry_source = 'regularization'",
+                 'expiry_evidence = ?', 'status = ?', 'updated_at = ?']
+    params = [expiry, evidence, new_status, now]
+    if _has_col(connection, 'epi_stock_items', 'blocking_reason_code'):
+        if new_status == 'blocked_expired':
+            fragments += ['blocking_reason_code = ?', 'blocking_justification = ?',
+                          'blocked_by_user_id = ?', 'blocked_at = ?']
+            params += ['expired', ('Regularização: lote vencido em ' + expiry + ' (NT 146/2015). ' + justification).strip(),
+                       int(actor_user_id), now]
+        elif cur_status == 'blocked_expired':
+            fragments += ['blocking_reason_code = NULL', 'blocking_justification = NULL',
+                          'blocked_by_user_id = NULL', 'blocked_at = NULL']
+    connection.execute(
+        f'UPDATE epi_stock_items SET {", ".join(fragments)} WHERE id = ?',  # noqa: S608
+        (*params, int(item['id'])),
+    )
+    _append_stock_event(
+        connection, company_id=int(item['company_id']), epi_id=int(item['epi_id']),
+        stock_item_id=int(item['id']), event_type='expiry_regularization', reason_code='regularization',
+        justification=justification, actor_user_id=int(actor_user_id), actor_name=actor_name,
+        actor_role=actor_role, now=now, origin_unit_id=int(item['unit_id']),
+        before_values={'physical_expiry_date': old_expiry, 'expiry_source': old_source, 'status': cur_status},
+        after_values={'physical_expiry_date': expiry, 'expiry_source': 'regularization',
+                      'status': new_status, 'evidence': evidence},
+    )
+    return {'status': new_status, 'validity_status': verdict['status'], 'physical_expiry_date': expiry,
+            'eligible': new_status in ('in_stock', 'available'), 'blocked_expired': new_status == 'blocked_expired',
+            'idempotent': False,
+            'message': ('Lote regularizado e BLOQUEADO por vencimento em ' + expiry + ' (indisponível).'
+                        if new_status == 'blocked_expired'
+                        else 'Validade física regularizada; peça elegível para uso.')}
+
+
 def fetch_available_stock_items(connection, company_id, unit_id, epi_id, *, request_id=None):
     # FEFO (First Expire, First Out): prioriza a peça que vence primeiro.
     # EST-V3 (G03): ordena pela VALIDADE FÍSICA do lote (physical_expiry_date)

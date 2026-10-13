@@ -73,6 +73,12 @@ PERM_USAGE_VIEW = 'usage:view'
 
 PERM_STOCK_VIEW = 'stock:view'
 PERM_STOCK_ADJUST = 'stock:adjust'
+# EST-V3.5-R2: regularização da validade FÍSICA de peças já em estoque — capturar
+# ou corrigir a validade do lote COM evidência, auditada e imutável. Permissão
+# PRÓPRIA (não reusa stock:adjust) para concessão expressa e least-privilege;
+# concedida ao mesmo conjunto operacional (Administrador Geral e Local), fora do
+# Administrador Master (operação). A regra de segurança é sempre do backend.
+PERM_STOCK_REGULARIZE_VALIDITY = 'stock:regularize_validity'
 
 # Centro de Migração de Dados (ADR-0003) — permissão única e estreita,
 # concedida SÓ a master_admin e general_admin. Importar base legada reescreve
@@ -159,7 +165,7 @@ LEGAL_ENTITY_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({
     PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
 })
 COMMERCIAL_PERMISSIONS: frozenset[str] = frozenset({PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW})
-STOCK_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_ADJUST})
+STOCK_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_ADJUST, PERM_STOCK_REGULARIZE_VALIDITY})
 
 PURCHASE_VIEW_PERMISSIONS: frozenset[str] = frozenset({
     PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_FINANCE_VIEW,
@@ -188,7 +194,7 @@ PURCHASE_ADMIN_PERMISSIONS: frozenset[str] = frozenset({
 MASTER_ADMIN_OPERATIONAL_EXCLUSIONS: frozenset[str] = frozenset({
     PERM_EMPLOYEES_CREATE, PERM_EMPLOYEES_UPDATE, PERM_EMPLOYEES_DELETE,
     PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
-    PERM_DELIVERIES_CREATE, PERM_STOCK_ADJUST,
+    PERM_DELIVERIES_CREATE, PERM_STOCK_ADJUST, PERM_STOCK_REGULARIZE_VALIDITY,
     PERM_PURCHASE_REQUESTS_CREATE, PERM_PURCHASE_REQUESTS_UPDATE,
 })
 

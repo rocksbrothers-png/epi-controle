@@ -199,13 +199,22 @@ def change_state(connection, actor_id, document_id, version_id, action, justific
     audit(connection,actor,action,document_id=document_id,version_id=version_id if action=='publish' else None,details={'justification':justification.strip()})
 
 
+def company_today(connection, company_id):
+    row = connection.execute('SELECT timezone FROM companies WHERE id=?', (company_id,)).fetchone()
+    if not row:
+        raise PermissionError('Calendário da empresa indisponível.')
+    try:
+        return datetime.now(ZoneInfo(str(row['timezone'] or 'America/Sao_Paulo'))).date().isoformat()
+    except (ZoneInfoNotFoundError, ValueError):
+        raise PermissionError('Calendário da empresa indisponível.') from None
+
+
 def employee_can_view(connection, context, version):
     if int(version['company_id']) != int(context['company_id']):
         return False
-    row = connection.execute('SELECT timezone FROM companies WHERE id=?', (context['company_id'],)).fetchone()
     try:
-        today = datetime.now(ZoneInfo(str(row['timezone'] or 'America/Sao_Paulo'))).date().isoformat()
-    except ZoneInfoNotFoundError:
+        today = company_today(connection, context['company_id'])
+    except PermissionError:
         return False  # Invalid tenant calendar must not publish early.
     if version['state'] != 'published' or version['effective_date'] > today:
         return False
@@ -292,11 +301,10 @@ def photo(connection, context, epi_id):
     if not re.match(r'^data:image/(png|jpeg|jpg);base64,',raw) or len(raw)>8*1024**2:
         raise ValueError('Foto indisponível em formato seguro.')
     from PIL import Image, ImageOps
-    Image.MAX_IMAGE_PIXELS = 8_000_000
     with Image.open(io.BytesIO(base64.b64decode(raw.split(',',1)[1],validate=True))) as image:
-        image.load()
         if image.width*image.height>8_000_000:
             raise ValueError('Foto excede limite de pixels.')
+        image.load()
         output=io.BytesIO()
         oriented = ImageOps.exif_transpose(image)
         matte = Image.new('RGBA', oriented.size, 'white')

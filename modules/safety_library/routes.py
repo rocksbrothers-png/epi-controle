@@ -48,8 +48,7 @@ def employee_context(connection, handler, payload):
     employee = connection.execute('SELECT * FROM employees WHERE id=? AND company_id=?', (context['employee_id'],context['company_id'])).fetchone()
     if not employee or row_to_dict(employee).get('status') != 'active':
         raise PermissionError('Colaborador indisponível.')
-    from datetime import date
-    today = date.today().isoformat()
+    today = service.company_today(connection, context['company_id'])
     movement = connection.execute("SELECT target_unit_id FROM employee_unit_movements WHERE employee_id=? AND movement_type='temporary' AND start_date<=? AND COALESCE(NULLIF(end_date,''),'9999-12-31')>=? ORDER BY start_date DESC,id DESC LIMIT 1", (context['employee_id'],today,today)).fetchone()
     context['unit_id'] = movement['target_unit_id'] if movement else employee['unit_id']
     unit = connection.execute("SELECT id,name FROM units WHERE id=? AND company_id=? AND status='active'", (context['unit_id'],context['company_id'])).fetchone()

@@ -154,7 +154,7 @@ def test_preview_scope_publication_and_every_page_access(environment,tenants):
     assert request(environment,'documents',tenant=a,employee=True)[1]['items']==[]
 
 
-def test_drafts_future_scope_sector_activity_and_catalogue_not_stock(environment,tenants):
+def test_drafts_future_scope_sector_activity_and_catalogue_not_stock(environment,tenants,monkeypatch):
     a,b=tenants
     code,result,_=request(environment,'upload',upload_data(a),tenant=a);assert code==200
     assert request(environment,'documents',tenant=a,employee=True)[1]['items']==[]
@@ -167,7 +167,11 @@ def test_drafts_future_scope_sector_activity_and_catalogue_not_stock(environment
     epi=result['items'][0]
     assert epi['ca_expiry']=='2028-01-09' and epi['manufacturer_validity_months']==60
     assert 'stock' not in epi and 'epi_validity_date' not in epi and 'physical_expiry_date' not in epi
-    assert request(environment,'photo',{'epi_id':a['epis'][0]},tenant=a,employee=True)[1].startswith(b'\x89PNG')
+    from PIL import Image
+    with monkeypatch.context() as patch:
+        patch.setattr(Image,'MAX_IMAGE_PIXELS',16_000_000)
+        assert request(environment,'photo',{'epi_id':a['epis'][0]},tenant=a,employee=True)[1].startswith(b'\x89PNG')
+        assert Image.MAX_IMAGE_PIXELS==16_000_000, 'Library photo must not change process-wide image limits'
     assert request(environment,'photo',{'epi_id':b['epis'][0]},tenant=a,employee=True)[0]==403
 
 
@@ -290,6 +294,31 @@ def test_current_unit_revocation_and_denial_audit(environment,tenants):
         assert a['tokens'][0] not in row['details'] and 'cpf_last3' not in row['details']
         c.execute('UPDATE employee_portal_links SET active=0 WHERE employee_id=?',(a['employees'][0],));c.commit()
     assert request(environment,'documents',tenant=a,employee=True)[0]==403
+
+
+@pytest.mark.parametrize('tenant_timezone,hour,expected_status',[
+    ('Pacific/Kiritimati',20,403),
+    ('Etc/GMT+12',4,200),
+])
+def test_current_unit_uses_tenant_calendar_at_day_boundary(environment,tenants,monkeypatch,tenant_timezone,hour,expected_status):
+    a,_=tenants;v=published(environment,a)
+    from core.database import get_connection
+    from modules.safety_library import service
+    server_day=datetime.now().date()
+    instant=datetime.combine(server_day,datetime.min.time(),tzinfo=timezone.utc).replace(hour=hour)
+    class Clock:
+        @staticmethod
+        def now(tz=None):
+            return instant.astimezone(tz or timezone.utc)
+    monkeypatch.setattr(service,'datetime',Clock)
+    start=(server_day+timedelta(days=1) if hour==20 else server_day).isoformat()
+    with closing(get_connection()) as c:
+        c.execute('UPDATE companies SET timezone=? WHERE id=?',(tenant_timezone,a['company']))
+        c.execute("INSERT INTO employee_unit_movements(company_id,employee_id,source_unit_id,target_unit_id,movement_type,start_date,end_date,actor_user_id,actor_name,created_at) VALUES(?,?,?,?,'temporary',?,'2099-01-01',?,'Fixture Admin',?)",(a['company'],a['employees'][0],a['units'][0],a['units'][1],start,a['users']['general_admin'],instant.isoformat()))
+        c.commit()
+    code,body,_=request(environment,'manifest',{'document_id':v['document_id'],'version_id':v['id']},tenant=a,employee=True)
+    assert code==expected_status,(tenant_timezone,code,expected_status)
+    if code==200:assert body['context']['unit_id']==a['units'][0]
 
 
 @pytest.mark.parametrize('extension',['docx','xlsx','xls','png'])

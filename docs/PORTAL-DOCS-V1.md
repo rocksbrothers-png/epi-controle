@@ -60,7 +60,7 @@ Todas as respostas documentais têm `private, no-store`, `nosniff`, `Referrer-Po
 | `POST /api/safety-library/manifest, page` | Administradores podem revisar suas versões, inclusive anteriores. |
 | `GET /api/safety-library/original/{version_id}` | Original apenas para Geral/Registro, própria empresa e política habilitada. Colaborador sempre recusado. |
 
-Portal envia `token` e `cpf_last3` em JSON nas novas leituras, sem armazenamento no navegador. Contexto vem do servidor, incluindo movimento temporário vigente; `company_id`/`unit_id` enviados pelo cliente não substituem a autoridade. Não publicado, futuro, substituído ou arquivado não aparece para o colaborador.
+Portal envia `token` e `cpf_last3` em JSON nas novas leituras, sem armazenamento no navegador. Contexto vem do servidor, incluindo movimento temporário vigente calculado no mesmo fuso da empresa usado na vigência documental; `company_id`/`unit_id` enviados pelo cliente não substituem a autoridade. Não publicado, futuro, substituído ou arquivado não aparece para o colaborador.
 
 Upload exige título, categoria, versão, vigência ISO, alcance de unidades explícito, arquivo/base64, MIME coerente e chave de idempotência. Limites: original 20 MiB, corpo de upload 28 MiB, demais corpos 64 KiB, até 160 páginas/32 milhões de pixels por página/96 MiB de previews. Caminhos, extensões, conteúdo, associações e justificativas são validados no backend.
 

@@ -62,13 +62,14 @@ def convert(source):
             sheets = document.getSheets()
             visible = [sheets.getByIndex(i) for i in range(sheets.getCount()) if sheets.getByIndex(i).IsVisible]
             for index, selected in enumerate(visible):
-                selected.IsVisible = True
-                for i in range(sheets.getCount()):
-                    other = sheets.getByIndex(i)
-                    if other.Name != selected.Name:
-                        other.IsVisible = False
                 filename = f'part-{index}.pdf'
-                document.storeToURL((root / filename).as_uri(), (prop('FilterName', 'calc_pdf_Export'), prop('Overwrite', True)))
+                # Explicit selection also invalidates Calc's cached print selection.
+                # Hiding sheets alone can repeat the first sheet on later exports.
+                selection = uno.Any('[]com.sun.star.beans.PropertyValue', (prop('Selection', selected),))
+                document.storeToURL((root / filename).as_uri(), (
+                    prop('FilterName', 'calc_pdf_Export'), prop('Overwrite', True),
+                    prop('FilterData', selection),
+                ))
                 parts.append({'name': selected.Name, 'file': filename})
         else:
             document.storeToURL((root / 'part-0.pdf').as_uri(), (prop('FilterName', 'writer_pdf_Export'), prop('Overwrite', True)))

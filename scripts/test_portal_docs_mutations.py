@@ -25,6 +25,7 @@ MUTANTS = [
     ('original_role', 'modules/safety_library/service.py', "return actor.get('role') in ('general_admin','registry_admin') and bool(policy)", 'return bool(policy)', 'test_employee_never_original_and_backend_policy'),
     ('active_pdf', 'modules/safety_library/render_worker.py', "if re.search(r'/(JavaScript|JS|Launch|EmbeddedFile|RichMedia|XFA)\\b', obj):", 'if False:  # mutation: accept active PDF', 'test_malicious_uploads_mime_size_and_cross_scope'),
     ('migration', 'epi_backend/migrations/034_safety_library.py', None, None, 'test_direct_http_rbac[general_admin]'),
+    ('sheet_content', 'modules/safety_library/uno_convert.py', "prop('Selection', selected)", "prop('Selection', visible[0])", 'test_real_office_rendering_preserves_pages_sheets_merges_and_images[xlsx]'),
 ]
 
 

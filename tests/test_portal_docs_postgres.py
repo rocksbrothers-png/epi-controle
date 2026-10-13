@@ -336,21 +336,29 @@ def test_real_office_rendering_preserves_pages_sheets_merges_and_images(environm
         from openpyxl.drawing.image import Image
         workbook=Workbook();workbook.active.title='POR';workbook.create_sheet('ENG')
         for sheet in workbook:
-            sheet.merge_cells('A1:C1');sheet['A1']='Matrix heading';sheet['A2']='EPI';sheet['B2']='Activity';sheet['A3']='Gloves';sheet['B3']='Required';sheet.add_image(Image(io.BytesIO(png())),'A5');sheet.print_area='A1:D12'
+            sheet.merge_cells('A1:C1');sheet['A1']='SHEET '+sheet.title;sheet['A2']='EPI';sheet['B2']='Activity';sheet['A3']='Gloves';sheet['B3']='Required';sheet.add_image(Image(io.BytesIO(png())),'A5');sheet.print_area='A1:D12'
         workbook.save(output)
     elif extension=='xls':
         import xlwt
-        workbook=xlwt.Workbook();sheet=workbook.add_sheet('Glove matrix');sheet.write_merge(0,0,0,2,'Merged heading');sheet.write(1,0,'Gloves');sheet.write(1,1,'Mandatory');workbook.save(output)
+        workbook=xlwt.Workbook()
+        for title in ('Glove matrix','Alternate gloves'):
+            sheet=workbook.add_sheet(title);sheet.write_merge(0,0,0,2,'SHEET '+title);sheet.write(1,0,'Gloves');sheet.write(1,1,'Mandatory')
+        workbook.save(output)
     else:output.write(png())
     v=published(environment,a,filename='fixture.'+extension,mime=MIMES['.'+extension],content_base64=base64.b64encode(output.getvalue()).decode())
     code,data,_=request(environment,'manifest',{'document_id':v['document_id'],'version_id':v['id']},tenant=a,employee=True)
     assert code==200
     parts=data['preview']['parts']
-    assert [p['name'] for p in parts]==({'docx':['Documento'],'xlsx':['POR','ENG'],'xls':['Glove matrix'],'png':['Imagem']}[extension])
+    assert [p['name'] for p in parts]==({'docx':['Documento'],'xlsx':['POR','ENG'],'xls':['Glove matrix','Alternate gloves'],'png':['Imagem']}[extension])
     if extension=='docx':assert len(parts[0]['pages'])==2
+    first_pages=[]
     for part in parts:
         for page in part['pages']:
             code,body,_=request(environment,'page',{'document_id':v['document_id'],'version_id':v['id'],'part_index':part['index'],'page_index':page['index']},tenant=a,employee=True)
             assert code==200 and body.startswith(b'\x89PNG')
+            if page['index']==0:first_pages.append(body)
             from PIL import Image
             image=Image.open(io.BytesIO(body));assert image.width==page['width'] and image.height==page['height']
+
+    if extension in ('xlsx','xls'):
+        assert len(first_pages)==2 and first_pages[0]!=first_pages[1], 'Different worksheets must not repeat the first worksheet content'

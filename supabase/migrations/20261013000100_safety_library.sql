@@ -66,12 +66,15 @@ END $$;
 DROP TRIGGER IF EXISTS safety_version_guard ON safety_document_versions;
 CREATE TRIGGER safety_version_guard BEFORE UPDATE OR DELETE ON safety_document_versions
  FOR EACH ROW EXECUTE FUNCTION safety_version_immutable();
-DO $$ DECLARE tbl text; BEGIN
+DO $$ DECLARE
+ tbl text;
+ tbls text[] := ARRAY['safety_documents','safety_document_versions','safety_preview_pages','safety_document_audit','safety_document_policy'];
+BEGIN
  FOREACH tbl IN ARRAY ARRAY['safety_preview_pages','safety_document_audit'] LOOP
   EXECUTE format('DROP TRIGGER IF EXISTS safety_history_guard ON %I',tbl);
   EXECUTE format('CREATE TRIGGER safety_history_guard BEFORE UPDATE OR DELETE ON %I FOR EACH ROW EXECUTE FUNCTION safety_history_immutable()',tbl);
  END LOOP;
- FOREACH tbl IN ARRAY ARRAY['safety_documents','safety_document_versions','safety_preview_pages','safety_document_audit','safety_document_policy'] LOOP
+ FOREACH tbl IN ARRAY tbls LOOP
   EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',tbl);
   EXECUTE format('REVOKE ALL ON %I FROM PUBLIC',tbl);
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') AND EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN

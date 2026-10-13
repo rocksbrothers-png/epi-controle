@@ -65,7 +65,8 @@ def handle(handler, parsed, payload, match):
     secure_response(handler)
     administrative = parsed.path.startswith('/api/safety-library/')
     if not isinstance(payload,dict):
-        return send_json(handler,400,{'error':'Corpo JSON inválido.'})
+        send_json(handler,400,{'error':'Corpo JSON inválido.'})
+        return
     context = None
     actor_id = None
     with closing(get_connection()) as connection:
@@ -128,19 +129,22 @@ def handle(handler, parsed, payload, match):
                     if not row:
                         raise ValueError('Página indisponível.')
                     connection.commit()
-                    return send_private_bytes(handler,bytes(row['content']),'image/png')
+                    send_private_bytes(handler,bytes(row['content']),'image/png')
+                    return
             elif action == 'photo' and not administrative:
                 content = service.photo(connection,context,_id(payload,'epi_id'))
                 service.audit(connection,context,'view_epi_photo',details={'epi_id':payload['epi_id']})
                 connection.commit()
-                return send_private_bytes(handler,content,'image/png')
+                send_private_bytes(handler,content,'image/png')
+                return
             else:
                 raise PermissionError('Operação não autorizada.')
             service.audit(connection,context,'library_'+action)
             if not administrative:
                 result['context'] = {'unit_id':context['unit_id'],'unit_name':context['unit_name']}
             connection.commit()
-            return send_json(handler,200,result)
+            send_json(handler,200,result)
+            return
         except (PermissionError,ValueError) as exc:
             # Preserve CPF attempts/blocking; resolver already audited denied factors.
             if isinstance(exc,EmployeePortalAccessDenied):
@@ -149,7 +153,8 @@ def handle(handler, parsed, payload, match):
                 service.audit(connection,context,'request_denied',decision='deny',details={'path':parsed.path,'requested_document_id':payload.get('document_id'),'requested_version_id':payload.get('version_id'),'reason':exc.code if isinstance(exc,EmployeePortalAccessDenied) else type(exc).__name__})
             connection.commit()
             structured_log('warning','safety_library.denied',path=parsed.path,reason=type(exc).__name__,actor_user_id=actor_id,employee_id=(context or {}).get('employee_id'))
-            return send_json(handler,403 if isinstance(exc,PermissionError) else 400,{'error':str(exc),'preview_available':False})
+            send_json(handler,403 if isinstance(exc,PermissionError) else 400,{'error':str(exc),'preview_available':False})
+            return
 
 
 def _id(payload, key, zero=False):
@@ -167,7 +172,8 @@ def original(handler,parsed,payload,match):
             _origin(handler)
             body,mime,filename = service.download_original(connection,actor_id,int(match.group('version')))
             connection.commit()
-            return send_private_bytes(handler,body,mime,filename=filename)
+            send_private_bytes(handler,body,mime,filename=filename)
+            return
         except PermissionError:
             actor = require_actor(connection,actor_id)
             if actor.get('company_id'):

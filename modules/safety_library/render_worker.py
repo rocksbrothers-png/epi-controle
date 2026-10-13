@@ -148,6 +148,7 @@ def render(root):
     source = next(root.glob('source.*'))
     suffix = source.suffix
     parts = []
+    warnings = []
     if suffix in ('.docx', '.xlsx', '.xls'):
         warnings = validate_office(source)
         warnings.append('Pré-visualização gerada: fontes e paginação podem diferir do aplicativo Office original.')

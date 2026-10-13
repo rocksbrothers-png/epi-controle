@@ -100,20 +100,16 @@ class _PortalEntryScreenState extends State<_PortalEntryScreen>
                     children: [
                       Text(
                         l10n.portalTitle,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Text(
                         l10n.appName,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.white70),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -164,7 +160,49 @@ class _PortalEntryScreenState extends State<_PortalEntryScreen>
                           ),
                           // QR tab
                           _QrTab(
-                            onDetect: (token) => cubit.loadFromToken(token),
+                            onDetect: (token) async {
+                              final controller = TextEditingController();
+                              final digits = await showDialog<String>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text(
+                                    'Confirmar acesso ao portal',
+                                  ),
+                                  content: TextField(
+                                    controller: controller,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 3,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    decoration: const InputDecoration(
+                                      labelText: 'Três últimos dígitos do CPF',
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Cancelar'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        if (controller.text.length == 3) {
+                                          Navigator.pop(ctx, controller.text);
+                                        }
+                                      },
+                                      child: const Text('Acessar'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              controller.dispose();
+                              if (digits != null) {
+                                await cubit.loadFromToken(
+                                  token,
+                                  cpfLast3: digits,
+                                );
+                              }
+                            },
                           ),
                         ],
                       ),
@@ -335,10 +373,9 @@ class _PortalErrorScreen extends StatelessWidget {
                 const SizedBox(height: EpiSpacing.sm),
                 Text(
                   message,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: EpiColors.textMuted),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: EpiSpacing.xl2),

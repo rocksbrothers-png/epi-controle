@@ -231,8 +231,12 @@
         <div class="portal-tabs">
           <button class="menu-link active" data-portal-tab="ficha">${tr('records.title', 'Ficha de EPI')}</button>
           <button class="menu-link" data-portal-tab="solicitacao">${tr('portal.ppeRequest', 'Solicitação de EPI')}</button>
+          <button class="menu-link" data-portal-tab="aprovados">EPIs Aprovados</button>
+          <button class="menu-link" data-portal-tab="biblioteca">Biblioteca de Segurança</button>
           <button class="menu-link" data-portal-tab="avaliacao">${tr('evaluation.single', 'Avaliação')}</button>
         </div>
+        <div data-portal-pane="aprovados" style="display:none" id="portal-approved-epis"></div>
+        <div data-portal-pane="biblioteca" style="display:none" id="portal-safety-documents"></div>
         <div data-portal-pane="ficha">
           <h3>${tr('records.title', 'Ficha de EPI')}</h3>
           <div class="table-wrap users-table-wrap">
@@ -483,6 +487,7 @@
     safeOn(document.getElementById('employee-download-pdf'), 'click', () => {
       globalThis.open(`/api/employee-access/pdf?token=${encodeURIComponent(token)}&cpf_last3=${encodeURIComponent(cpfLast3)}`, '_blank');
     });
+    void globalThis.SafetyLibrary.portal(document.getElementById('portal-approved-epis'), document.getElementById('portal-safety-documents'), {token, cpfLast3});
     document.querySelectorAll('[data-portal-tab]').forEach((button) => {
       safeOn(button, 'click', () => {
         document.querySelectorAll('[data-portal-tab]').forEach((item) => item.classList.remove('active'));

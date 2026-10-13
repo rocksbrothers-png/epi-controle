@@ -52,6 +52,7 @@ VIEW_IDS = [
     "colaboradores",
     "gestao-colaborador",
     "epis",
+    "biblioteca-seguranca",
     "entregas",
     "estoque",
     "fichas",

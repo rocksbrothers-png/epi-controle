@@ -39,6 +39,7 @@
     ].filter((p) => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p))),
 
     general_admin: Object.freeze([
+      'safety_library:manage',
       'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete',
       'units:view', 'units:create', 'units:update', 'units:delete',
       'employees:view', 'employees:create', 'employees:update', 'employees:delete',
@@ -54,6 +55,7 @@
     ]),
 
     registry_admin: Object.freeze([
+      'safety_library:manage',
       'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete',
       'units:view', 'units:create', 'units:update', 'units:delete',
       'employees:view', 'employees:create', 'employees:update', 'employees:delete',
@@ -130,6 +132,7 @@
     colaboradores: 'employees:view',
     'gestao-colaborador': 'employees:update',
     epis: 'epis:view',
+    'biblioteca-seguranca': 'safety_library:manage',
     estoque: 'stock:view',
     entregas: 'deliveries:view',
     fichas: 'fichas:view',

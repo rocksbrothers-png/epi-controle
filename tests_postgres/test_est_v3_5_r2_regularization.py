@@ -46,8 +46,11 @@ def seed(conn):
     epi = c.execute('INSERT INTO epis(company_id,unit_id,name,purchase_code,ca,sector,unit_measure,'
                     'ca_expiry,epi_validity_date,manufacture_date,validity_days) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                     (company, unit, 'EPI', sfx, 'CA', 'S', 'un', '2030-01-01', FUTURE, '2020-01-01', 0)).lastrowid
+    # Ator-fixture = Administrador Local (role 'admin'): perfil AUTORIZADO a
+    # regularizar (RBAC-REGULARIZE). O serviço não reconfere RBAC (isso é do
+    # handler); usar um ator autorizado mantém a trilha de auditoria coerente.
     actor = c.execute('INSERT INTO users(username,password,full_name,role,company_id) VALUES (?,?,?,?,?)',
-                      ('ga_' + sfx, 'x', 'Geral', 'general_admin', company)).lastrowid
+                      ('la_' + sfx, 'x', 'Local', 'admin', company)).lastrowid
 
     def piece(status=None):
         from modules.stock.service import (create_stock_item, next_company_qr_sequence,
@@ -79,7 +82,7 @@ def _events(c, iid):
 def _reg(s, iid, expiry, evidence='Laudo do fabricante nº 123', justification='Captura de validade do lote'):
     from modules.stock.service import regularize_item_physical_validity
     return regularize_item_physical_validity(s['c'], s['item'](iid), expiry, evidence, justification,
-                                             s['actor'], 'Geral', 'general_admin', NOW)
+                                             s['actor'], 'Local', 'admin', NOW)
 
 
 # 1 — unknown → válida: fica operacional, elegível, com evento registrado
@@ -130,19 +133,35 @@ def test_invalid_or_inconsistent_date_rejected(seed):
     assert _events(s['c'], iid) == 0
 
 
-# 5 — RBAC: permissão própria só nos perfis operacionais; negada aos demais
+# 5 — RBAC (regra de negócio RBAC-REGULARIZE): a regularização de validade é
+# EXCLUSIVA dos perfis operacionais de unidade — Administrador Local (role
+# 'admin') e Gestor de EPI (role 'user'). O Administrador Geral NÃO a recebe por
+# hierarquia (mantém só stock:adjust); Master/Registro/Comprador/Aprovador/
+# Colaborador também não. authorize_action reaplica a negação no backend.
 def test_rbac_permission_matrix_and_denial(seed):
-    from core.permissions import PERMISSIONS, PERM_STOCK_REGULARIZE_VALIDITY as P
-    assert P in PERMISSIONS['general_admin'] and P in PERMISSIONS['admin']
-    assert P not in PERMISSIONS['buyer'] and P not in PERMISSIONS['approver']
-    assert P not in PERMISSIONS['master_admin']   # Master não executa operação
+    from core.permissions import (PERMISSIONS, PERM_STOCK_REGULARIZE_VALIDITY as P,
+                                   PERM_STOCK_ADJUST as ADJ)
+    # concedida SÓ a Administrador Local e Gestor de EPI
+    assert {r for r in PERMISSIONS if P in PERMISSIONS[r]} == {'admin', 'user'}
+    # Administrador Geral perde a regularização mas MANTÉM stock:adjust
+    assert P not in PERMISSIONS['general_admin'] and ADJ in PERMISSIONS['general_admin']
+    for role in ('master_admin', 'registry_admin', 'buyer', 'approver', 'employee'):
+        assert P not in PERMISSIONS[role], role
     from core.repository import authorize_action
     s = seed
-    buyer = s['c'].execute('INSERT INTO users(username,password,full_name,role,company_id) VALUES (?,?,?,?,?)',
-                           ('buyer_' + uuid4().hex, 'x', 'Comprador', 'buyer', s['company'])).lastrowid
-    with pytest.raises(Exception):
-        authorize_action(s['c'], buyer, P, s['company'])
-    assert authorize_action(s['c'], s['actor'], P, s['company'])['role'] == 'general_admin'
+
+    def mkuser(role):
+        return s['c'].execute(
+            'INSERT INTO users(username,password,full_name,role,company_id) VALUES (?,?,?,?,?)',
+            (role + '_' + uuid4().hex, 'x', role, role, s['company'])).lastrowid
+
+    # negação no backend: Administrador Geral, Comprador e Master são barrados
+    for role in ('general_admin', 'buyer', 'master_admin'):
+        with pytest.raises(PermissionError):
+            authorize_action(s['c'], mkuser(role), P, s['company'])
+    # autorização: Administrador Local e Gestor de EPI passam
+    assert authorize_action(s['c'], mkuser('admin'), P, s['company'])['role'] == 'admin'
+    assert authorize_action(s['c'], mkuser('user'), P, s['company'])['role'] == 'user'
 
 
 # 6 — isolamento: item de outra empresa/unidade/EPI é recusado
@@ -154,7 +173,7 @@ def test_cross_tenant_rejected(seed):
     forged['company_id'] = int(s['company']) + 100000   # empresa que não é a do item
     with pytest.raises(ValueError):
         regularize_item_physical_validity(s['c'], forged, FUTURE, 'Laudo', 'x',
-                                          s['actor'], 'Geral', 'general_admin', NOW)
+                                          s['actor'], 'Local', 'admin', NOW)
     assert _events(s['c'], iid) == 0
 
 
@@ -231,7 +250,7 @@ def test_concurrent_regularization_no_duplicate():
                         'ca_expiry,epi_validity_date,manufacture_date,validity_days) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                         (company, unit, 'EPI', sfx, 'CA', 'S', 'un', '2030-01-01', FUTURE, '2020-01-01', 0)).lastrowid
     actor = setup.execute('INSERT INTO users(username,password,full_name,role,company_id) VALUES (?,?,?,?,?)',
-                         ('ga_' + sfx, 'x', 'Geral', 'general_admin', company)).lastrowid
+                         ('la_' + sfx, 'x', 'Local', 'admin', company)).lastrowid
     seqv = next_company_qr_sequence(setup, company)
     iid = create_stock_item(setup, company, unit, epi, 'N/A', 'M', 'N/A', seqv, 'QR-' + uuid4().hex,
                             None, '', '', 'unit', '', '', actor, NOW)
@@ -245,7 +264,7 @@ def test_concurrent_regularization_no_duplicate():
         c = get_connection()
         try:
             barrier.wait(timeout=10)
-            regularize_item_physical_validity(c, item, FUTURE, 'Laudo', 'concorrência', actor, 'Geral', 'general_admin', NOW)
+            regularize_item_physical_validity(c, item, FUTURE, 'Laudo', 'concorrência', actor, 'Local', 'admin', NOW)
             c.commit()
         except Exception as exc:  # noqa: BLE001
             errors.append(exc)

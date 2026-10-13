@@ -839,6 +839,48 @@ def generate_po_number(connection, company_id):
     return f'{prefix}{last_seq + 1:04d}'
 
 
+def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evidence):
+    """EST-V3.5-R3: expande os lotes informados na conferência num plano POR PEÇA
+    — cada item do plano é ``{lot_code, validity, evidence}``. Reutiliza o modelo
+    físico por peça (``record_received_item_physical``); NUNCA inventa data
+    (catálogo/CA jamais; sem preenchimento presumido).
+
+    - Sem ``lots``: caminho LEGADO — um lote único com a validade herdada por EPI
+      (compatibilidade total com o recebimento atual).
+    - Com ``lots``: cada lote traz quantidade, identificação (``lot_code``),
+      validade e evidência próprias (R3 #4). Exceção individual = um lote de
+      quantidade 1 (R3 #6).
+    - Evidência verificável é OBRIGATÓRIA quando o lote informa validade (R3 #3).
+    - A soma das quantidades dos lotes tem de bater com a quantidade recebida
+      (integridade do estoque, R3 #11). Validade vazia → peça ``unknown`` (R3 #9).
+    """
+    quantity = int(quantity)
+    if not lots:
+        return [{'lot_code': '', 'validity': legacy_validity, 'evidence': legacy_evidence}
+                for _ in range(quantity)]
+    plan = []
+    for index, lot in enumerate(lots, start=1):
+        qty = int(str(lot.get('quantity') or '0').strip() or '0')
+        if qty <= 0:
+            raise ValueError(f'Lote {index}: quantidade precisa ser maior que zero.')
+        validity = str(lot.get('manufacturer_validity_date') or '').strip()
+        evidence = str(lot.get('evidence') or '').strip()
+        lot_code = str(lot.get('lot_code') or '').strip()
+        if validity and not evidence:
+            raise ValueError(
+                f'Evidência verificável da validade é obrigatória no lote '
+                f'{lot_code or index} (etiqueta, embalagem ou documento do fabricante).'
+            )
+        plan.extend({'lot_code': lot_code, 'validity': validity,
+                     'evidence': evidence or legacy_evidence} for _ in range(qty))
+    if len(plan) != quantity:
+        raise ValueError(
+            f'A soma das quantidades dos lotes ({len(plan)}) não confere com a '
+            f'quantidade recebida ({quantity}).'
+        )
+    return plan
+
+
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
     """Adds received EPI items to stock automatically after conferência.
 
@@ -877,6 +919,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         d = validity_by_item.get(int(it['id']))
         if d and int(it['epi_id']) not in validity_by_epi:
             validity_by_epi[int(it['epi_id'])] = d
+    # EST-V3.5-R3: flag original por item — traz `lots` quando a UI separa o
+    # recebimento em múltiplos lotes com validade/evidência próprias.
+    flags_by_item = {}
+    for flag in (received_item_flags or []):
+        fid = int(str(flag.get('id') or '').strip() or '0')
+        if fid:
+            flags_by_item[fid] = flag
     total_units = 0
     qr_labels = []
     ensure_stock_movement_size_columns(connection)
@@ -902,6 +951,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         # (epis.epi_validity_date) no recebimento — é gravada NA PEÇA, por lote
         # (record_received_item_physical, adiante). O catálogo vira só default de
         # cadastro. `manufacturer_validity` (do payload) alimenta a peça.
+        # EST-V3.5-R3: plano POR PEÇA a partir dos lotes informados (ou do lote
+        # único legado). Evidência obrigatória com validade; soma dos lotes = qtd.
+        piece_plan = _resolve_receipt_piece_plan(
+            flags_by_item.get(pri_id, {}).get('lots') or [], quantity,
+            legacy_validity=manufacturer_validity,
+            legacy_evidence=f'Conferência de requisição #{pr_id}',
+        )
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
         uniform_size = str(item.get('uniform_size') or 'N/A')
@@ -926,7 +982,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         )
         movement_id = int(movement_cursor.lastrowid)
         upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
-        for _ in range(quantity):
+        for piece in piece_plan:
             seq_value = next_company_qr_sequence(connection, company_id)
             qr_value = build_stock_item_qr(company_id, unit_id, seq_value)
             item_cursor = connection.execute(
@@ -934,19 +990,20 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 'company_id, unit_id, epi_id, glove_size, size, uniform_size, qr_sequence, qr_code_value, status, '
                 'stock_movement_id, lot_code, manufacture_date, label_measure, label_printer_name, label_print_format, '
                 'generated_by_user_id, created_at, updated_at'
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, '', '', 'unidade', '', '', ?, ?, ?)",
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_stock', ?, ?, '', 'unidade', '', '', ?, ?, ?)",
                 (
                     company_id, unit_id, epi_id, glove_size, size, uniform_size,
-                    seq_value, qr_value, movement_id,
+                    seq_value, qr_value, movement_id, piece['lot_code'],
                     actor_id, now, now
                 )
             )
             # EST-V3 (G02/G15): descola a validade do catálogo — grava a validade
             # física do lote NA PEÇA; lote já vencido não entra como disponível.
+            # EST-V3.5-R3: validade/evidência vêm do LOTE (ou do lote único legado).
             from modules.stock.service import record_received_item_physical
             record_received_item_physical(
-                connection, int(item_cursor.lastrowid), manufacturer_validity, int(actor_id), now,
-                evidence=f'Conferência de requisição #{pr_id}',
+                connection, int(item_cursor.lastrowid), piece['validity'], int(actor_id), now,
+                evidence=piece['evidence'],
             )
             qr_labels.append({
                 'qr_code_value': qr_value,
@@ -955,8 +1012,9 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 'size': size,
                 'uniform_size': uniform_size,
                 'stock_item_id': int(item_cursor.lastrowid),
+                'lot_code': piece['lot_code'],
                 'manufacture_date': '',
-                'manufacturer_validity_date': manufacturer_validity,
+                'manufacturer_validity_date': piece['validity'],
                 'unit_name': unit_name,
                 'label_measure': 'unidade',
                 'label_printer_name': '',
@@ -1634,7 +1692,18 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
     if new_status not in _PURCHASE_REQUEST_VALID_STATUSES:
         raise ValueError('Status inválido para requisição de compra.')
     pr_id = int(pr['id'])
-    old_status = str(pr['status'])
+    # EST-V3.5-R3 (idempotência + concorrência): trava a linha da requisição e lê
+    # o status ATUAL sob a trava. Assim reenvios e execuções concorrentes NÃO
+    # duplicam peças — a 2ª transição vê o status já avançado e não re-alimenta o
+    # estoque. SQLite serializa via BEGIN IMMEDIATE; Postgres via FOR UPDATE.
+    from epi_backend.db import _is_sqlite_connection
+    if _is_sqlite_connection(connection) and not connection.in_transaction:
+        connection.execute('BEGIN IMMEDIATE')
+    _lock_suffix = '' if _is_sqlite_connection(connection) else ' FOR UPDATE'
+    _locked = connection.execute(
+        'SELECT status FROM purchase_requests WHERE id = ?' + _lock_suffix, (pr_id,)
+    ).fetchone()
+    old_status = str(_locked['status'] if _locked else pr['status'])
     now = datetime.now(UTC).isoformat()
     extra = {}
     if new_status == 'sent_to_buyer':

@@ -7,13 +7,12 @@ import 'package:epi_api/epi_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final path = Platform.environment['EST35_HTTP_CONTEXT'];
+  final contextJson = Platform.environment['EST35_HTTP_CONTEXT_JSON'];
   final token = Platform.environment['EST35_HTTP_TOKEN'];
   test(
     'real application HTTP, JWT and PostgreSQL physical stock contract',
     () async {
-      final config =
-          jsonDecode(File(path!).readAsStringSync()) as Map<String, dynamic>;
+      final config = jsonDecode(contextJson!) as Map<String, dynamic>;
       final dio = Dio(
         BaseOptions(
           baseUrl: config['base_url'] as String,
@@ -101,7 +100,7 @@ void main() {
       );
       dio.close(force: true);
     },
-    skip: path == null || token == null
+    skip: contextJson == null || token == null
         ? 'Requires the isolated HTTP/PostgreSQL fixture; executed by Stock Validity Integration CI'
         : false,
   );

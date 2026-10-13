@@ -53,5 +53,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export EST35_HTTP_OUTPUT="$RUNNER_TEMP/stock-r1"
           python scripts/stock_r1_http_fixture.py

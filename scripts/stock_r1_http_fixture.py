@@ -1,7 +1,7 @@
 """Exercise actual application HTTP from Flutter with a private PostgreSQL DB.
 
-The signing key and JWT remain in process memory; the context file only holds
-non-secret identifiers. No credentials are written to logs or artifacts.
+The signing key, JWT and test context remain in process memory.
+No credentials or context are written to logs or artifacts.
 """
 import importlib.util
 import json
@@ -26,8 +26,6 @@ def main():
         raise RuntimeError('HTTP fixture requires a disposable loopback test database.')
     os.environ['JWT_SECRET'] = secrets.token_hex(32)
     os.environ['JWT_ENFORCEMENT_MODE'] = 'enforce'
-    out = Path(os.environ['EST35_HTTP_OUTPUT'])
-    out.mkdir(parents=True, exist_ok=True)
     sys.path.insert(0, str(root))
     from core.bootstrap import init_db
     from core.database import get_connection
@@ -53,9 +51,7 @@ def main():
         'valid_item': seed['items']['valid'], 'unknown_item': seed['items']['unknown'],
         'foreign_qr': foreign['items']['valid']['qr'], 'today': qa.TODAY, 'future': qa.FUTURE,
     }
-    context_path = out / 'stock-r1-http-context.json'
-    context_path.write_text(json.dumps(context))
-    client_env = dict(os.environ, EST35_HTTP_CONTEXT=str(context_path),
+    client_env = dict(os.environ, EST35_HTTP_CONTEXT_JSON=json.dumps(context),
                       EST35_HTTP_TOKEN=create_jwt_token(seed['actor']))
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()

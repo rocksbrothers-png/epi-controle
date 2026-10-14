@@ -34,6 +34,7 @@ UTC = timezone.utc
 
 
 from modules.purchases.service import (
+    ReceiptValidationError,
     actor_company_id_or_query,
     add_purchase_order_file,
     apply_purchase_request_workflow_action,
@@ -390,6 +391,11 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
                 connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip
             )
             connection.commit()
+        except ReceiptValidationError as error:
+            connection.rollback()
+            return send_json(handler, 400, {
+                'ok': False, 'error': str(error), 'validation': error.details,
+            })
         except Exception:
             connection.rollback()
             raise

@@ -993,7 +993,7 @@
   "prConfSubmit": "Register Conference",
   "prConfDone": "Conference registered.",
   "prConfEmpty": "No item eligible for conference.",
-  "prConfInvalidQuantity": "Effective received quantity is invalid or non-positive. Correct the receipt or mark the item as not received.",
+  "prConfInvalidQuantity": "Effective received quantity is invalid or non-positive. Correct the receipt before confirming.",
   "prConfNoPersistedPieces": "No pieces were actually recorded, or the response is inconsistent. Stock entry was not confirmed.",
   "prConfDoneQuantity": "{count} pieces actually recorded in stock.",
   "@prConfDoneQuantity": {
@@ -1003,5 +1003,19 @@
       }
     }
   },
-  "prConfNoStockEntry": "Conference saved without adding pieces to stock."
+  "prConfNoStockEntry": "Conference saved without adding pieces to stock.",
+  "prConfInvalidQuantityLine": "Line {line} — {item} (item #{id}): effective received quantity is invalid or non-positive. Correct the receipt before confirming.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

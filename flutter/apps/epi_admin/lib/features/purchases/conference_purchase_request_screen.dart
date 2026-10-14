@@ -82,7 +82,17 @@ class _ConferencePurchaseRequestScreenState
   }
 
   bool get _invalidReceivedQuantity =>
-      _state.values.any((st) => st.received && st.quantity <= 0);
+      _state.values.any((st) => st.quantity <= 0);
+
+  String _quantityError(AppLocalizations l10n) {
+    final index = _items.indexWhere((it) =>
+        effectiveReceiptQuantity(it['effective_receive_quantity']) == 0);
+    if (index < 0) return l10n.prConfInvalidQuantity;
+    final item = _items[index];
+    return l10n.prConfInvalidQuantityLine(index + 1,
+        '${item['epi_name'] ?? item['epi_display_name'] ?? 'EPI'}',
+        '${item['id'] ?? '?'}');
+  }
 
   static const Set<String> _eligible = {
     'included_in_request',
@@ -356,7 +366,7 @@ class _ConferencePurchaseRequestScreenState
                       decoration: InputDecoration(labelText: l10n.prConfNotes),
                     ),
                     if (_invalidReceivedQuantity)
-                      Text(l10n.prConfInvalidQuantity,
+                      Text(_quantityError(l10n),
                           style: const TextStyle(color: EpiColors.danger)),
                     if (_error != null)
                       Padding(

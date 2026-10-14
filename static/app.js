@@ -16376,10 +16376,8 @@ function openConferenciaModal(prId, items) {
     const eligibleStatuses = ['included_in_request', 'received', 'not_received', 'received_partial', 'approved', 'ordered'];
     const eligibleItems = items.filter(i => eligibleStatuses.includes(String(i.status || '')));
     const effQtyOf = (item) => {
-      const v = Math.floor(Number(item.effective_receive_quantity));
-      if (Number.isFinite(v) && v > 0) return v;
-      const q = Math.floor(Number(item.quantity_requested));
-      return (Number.isFinite(q) && q > 0) ? q : 1;
+      const v = item.effective_receive_quantity;
+      return (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) ? v : 0;
     };
     const nameById = {};
     eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || 'Item'; });
@@ -16460,7 +16458,7 @@ function openConferenciaModal(prId, items) {
       const N = effQtyRow(item.id);
       if (st.expanded && st.lots.length) {
         return { N, lots: st.lots.map(l => ({
-          quantity: Math.floor(Number(l.quantity) || 0),
+          quantity: Number.isSafeInteger(Number(l.quantity)) && Number(l.quantity) > 0 ? Number(l.quantity) : 0,
           manufacturer_validity_date: String(l.validity || '').trim(),
           evidence: String(l.evidence || '').trim(),
           lot_code: String(l.lot_code || '').trim(),
@@ -16586,7 +16584,7 @@ function openConferenciaModal(prId, items) {
       if (!st.lots.length) {
         const dv = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(String(itemId))}"]`)?.value?.trim() || '';
         const ev = overlay.querySelector(`[data-conferencia-evidence="${CSS.escape(String(itemId))}"]`)?.value?.trim() || '';
-        st.lots = [{ quantity: String(effQtyRow(itemId) || 1), validity: dv, evidence: ev, lot_code: '' }];
+        st.lots = [{ quantity: String(effQtyRow(itemId)), validity: dv, evidence: ev, lot_code: '' }];
       }
       const single = overlay.querySelector(`[data-conferencia-single="${CSS.escape(String(itemId))}"]`);
       if (single) single.style.display = 'none';
@@ -16657,6 +16655,14 @@ function openConferenciaModal(prId, items) {
       const errorEl = overlay.querySelector('#conferencia-error');
       const showError = (msg) => { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = msg; } };
       if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+      const invalidIndex = eligibleItems.findIndex(item => effQtyOf(item) <= 0);
+      if (invalidIndex >= 0) {
+        const item = eligibleItems[invalidIndex];
+        showError(tr('stock.receipt.invalidQuantityLine',
+          'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.',
+          { line: invalidIndex + 1, item: nameById[item.id], id: item.id }));
+        return;
+      }
       const built = eligibleItems.map(item => {
         const cb = overlay.querySelector(`[data-conferencia-item][value="${CSS.escape(String(item.id))}"]`);
         const received = !!(cb && cb.checked);

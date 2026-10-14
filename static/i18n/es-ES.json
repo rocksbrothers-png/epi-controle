@@ -612,7 +612,8 @@
       "addLot": "Agregar lote",
       "addException": "Excepción (1 pieza)",
       "useSingle": "Usar fecha única",
-      "evidenceCamera": "Etiqueta/embalaje del fabricante (lectura por cámara)"
+      "evidenceCamera": "Etiqueta/embalaje del fabricante (lectura por cámara)",
+      "invalidQuantityLine": "Línea {line} — {item} (artículo #{id}): cantidad efectivamente recibida inválida o no positiva. Corrija la recepción antes de confirmar."
     }
   },
   "month": {

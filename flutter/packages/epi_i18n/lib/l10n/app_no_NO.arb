@@ -966,7 +966,7 @@
   "prConfSubmit": "Registrer konferanse",
   "prConfDone": "Konferanse registrert.",
   "prConfEmpty": "Ingen vare kvalifisert for konferanse.",
-  "prConfInvalidQuantity": "Faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket eller merk varen som ikke mottatt.",
+  "prConfInvalidQuantity": "Faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.",
   "prConfNoPersistedPieces": "Ingen enheter ble registrert, eller svaret er inkonsistent. Lagerføringen ble ikke bekreftet.",
   "prConfDoneQuantity": "{count} enheter faktisk registrert på lager.",
   "@prConfDoneQuantity": {
@@ -976,5 +976,19 @@
       }
     }
   },
-  "prConfNoStockEntry": "Kontroll lagret uten at enheter er lagt til på lager."
+  "prConfNoStockEntry": "Kontroll lagret uten at enheter er lagt til på lager.",
+  "prConfInvalidQuantityLine": "Linje {line} — {item} (vare #{id}): faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

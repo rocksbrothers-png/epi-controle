@@ -612,7 +612,8 @@
       "addLot": "Add lot",
       "addException": "Exception (1 piece)",
       "useSingle": "Use single date",
-      "evidenceCamera": "Manufacturer label/packaging (read by camera)"
+      "evidenceCamera": "Manufacturer label/packaging (read by camera)",
+      "invalidQuantityLine": "Line {line} — {item} (item #{id}): effective received quantity is invalid or non-positive. Correct the receipt before confirming."
     }
   },
   "month": {

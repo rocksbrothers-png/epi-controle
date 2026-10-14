@@ -49,9 +49,9 @@ def link_po(s, received):
 def test_invalid_effective_quantity_refuses_and_rolls_back_http(quantity):
     s = _seed(qty=5)
     link_po(s, quantity)
-    with pytest.raises(ValueError, match='Quantidade efetivamente recebida'):
-        _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True,
-            'lots': [{'quantity': 5}]}])
+    h = _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True,
+        'lots': [{'quantity': 5}]}])
+    assert h.status == 400 and h.body['validation']['item_id'] == s['pri']
     assert _pieces(s['company'], s['epi']) == []
     with _fresh() as c:
         assert c.execute('SELECT status FROM purchase_requests WHERE id=?', (s['pr'],)).fetchone()['status'] == 'received'
@@ -83,8 +83,8 @@ def test_no_piece_http_response_has_no_stock_success():
 
 def test_foreign_item_http_cannot_confirm_empty_receipt():
     s, other = _seed(qty=5), _seed(qty=5)
-    with pytest.raises(ValueError, match='Nenhuma peça efetivamente registrada'):
-        _post(s['actor'], s['pr'], [{'id': other['pri'], 'received': True}])
+    h = _post(s['actor'], s['pr'], [{'id': other['pri'], 'received': True}])
+    assert h.status == 400 and h.body['validation']['code'] == 'INVALID_RECEIPT_LINE'
     assert _pieces(s['company'], s['epi']) == []
     with _fresh() as c:
         assert c.execute('SELECT status FROM purchase_requests WHERE id=?', (s['pr'],)).fetchone()['status'] == 'received'
@@ -144,3 +144,61 @@ def test_wire_http_permission_denied_cannot_add_stock(wire_server):
     status, _ = wire_post(wire_server, s)
     assert status == 403
     assert _pieces(s['company'], s['epi']) == []
+
+
+def wire_payload(base, s, lines):
+    from core.security import create_jwt_token
+    request = Request(f"{base}/api/purchase-requests/{s['pr']}/status",
+        data=json.dumps({'actor_user_id': s['actor']['id'], 'status':'checked',
+                         'received_items':lines, 'comment':'Conferência mista adversarial'}).encode(),
+        headers={'Content-Type':'application/json','Authorization':'Bearer '+create_jwt_token(s['actor'])},method='POST')
+    try:
+        response=urlopen(request,timeout=10)
+    except HTTPError as error:
+        response=error
+    with response:
+        return response.status,json.loads(response.read())
+
+
+@pytest.mark.parametrize('quantity',[0,-2])
+@pytest.mark.parametrize('received',[True,False,None])
+def test_original_mixed_attack_refuses_every_line_without_partial_persistence(wire_server,quantity,received):
+    s=_seed(qty=5)
+    link_po(s,2) # Valid line first: original attack persisted two pieces here.
+    with _fresh() as c:
+        bad=c.execute("INSERT INTO purchase_request_items (purchase_request_id,company_id,unit_id,epi_id,epi_name,quantity_requested,status,created_at,updated_at) VALUES (?,?,?,?,?,5,'received',?,?)",
+            (s['pr'],s['company'],s['unit'],s['epi'],'Item problemático','2024-01-01','2024-01-01')).lastrowid
+        c.commit()
+    link_po(dict(s,pri=bad),quantity)
+    lines=[{'id':s['pri'],'received':True}]
+    if received is not None:
+        lines.append({'id':bad,'received':received})
+    status,body=wire_payload(wire_server,s,lines)
+    assert status==400 and body['ok'] is False
+    assert body['validation']['code']=='INVALID_RECEIPT_QUANTITY'
+    assert body['validation']['line_index']==2 and body['validation']['item_id']==bad
+    assert 'Linha 2' in body['error'] and str(bad) in body['error'] and 'Item problemático' in body['error']
+    assert _pieces(s['company'],s['epi'])==[]
+    with _fresh() as c:
+        assert c.execute('SELECT status FROM purchase_requests WHERE id=?',(s['pr'],)).fetchone()['status']=='received'
+        for table in ['stock_movements','purchase_events','purchase_pendencies','unit_epi_stock']:
+            assert c.execute(f'SELECT COUNT(*) AS n FROM {table} WHERE company_id=?',(s['company'],)).fetchone()['n']==0
+
+
+@pytest.mark.parametrize('value',['invalid',None,0,-2,1.5,True])
+def test_numeric_lot_input_rejected_with_structured_line_error(wire_server,value):
+    s=_seed(qty=2)
+    status,body=wire_payload(wire_server,s,[{'id':s['pri'],'received':True,'lots':[{'quantity':value}]}])
+    assert status==400 and body['validation']['code']=='INVALID_RECEIPT_LOTS'
+    assert body['validation']['item_id']==s['pri'] and 'Linha 1' in body['error']
+    assert 'invalid literal' not in body['error']
+    assert _pieces(s['company'],s['epi'])==[]
+
+
+def test_unchecked_invalid_line_alone_is_not_a_neutral_success(wire_server):
+    s=_seed(qty=5)
+    link_po(s,0)
+    status,body=wire_payload(wire_server,s,[{'id':s['pri'],'received':False}])
+    assert status==400 and body['validation']['item_id']==s['pri']
+    with _fresh() as c:
+        assert c.execute('SELECT COUNT(*) AS n FROM purchase_events WHERE company_id=?',(s['company'],)).fetchone()['n']==0

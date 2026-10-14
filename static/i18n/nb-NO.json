@@ -612,7 +612,8 @@
       "addLot": "Legg til parti",
       "addException": "Unntak (1 enhet)",
       "useSingle": "Bruk én dato",
-      "evidenceCamera": "Produsentens etikett/emballasje (lest med kamera)"
+      "evidenceCamera": "Produsentens etikett/emballasje (lest med kamera)",
+      "invalidQuantityLine": "Linje {line} — {item} (vare #{id}): faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse."
     }
   },
   "month": {

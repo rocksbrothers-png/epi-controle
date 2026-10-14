@@ -203,9 +203,9 @@ def test_http_individual_exception_qty1():
 # 4 — validade sem evidência via HTTP é recusada; nada entra em estoque (fail-closed)
 def test_http_validity_without_evidence_rejected():
     s = _seed(qty=5)
-    with pytest.raises(ValueError):
-        _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True,
-              'lots': [{'quantity': 5, 'manufacturer_validity_date': FUTURE, 'evidence': '   '}]}])
+    h = _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True,
+          'lots': [{'quantity': 5, 'manufacturer_validity_date': FUTURE, 'evidence': '   '}]}])
+    assert h.status == 400 and h.body['validation']['code'] == 'INVALID_RECEIPT_LOTS'
     assert _pieces(s['company'], s['epi']) == []
 
 
@@ -233,11 +233,11 @@ def test_http_expired_enters_blocked():
 # 7 — integridade via HTTP: soma dos lotes != quantidade recebida → recusa, nada entra
 def test_http_lot_sum_mismatch_rejected():
     s = _seed(qty=10)
-    with pytest.raises(ValueError):
-        _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True, 'lots': [
-            {'quantity': 3, 'lot_code': 'L1', 'manufacturer_validity_date': FUTURE, 'evidence': 'x'},
-            {'quantity': 3, 'lot_code': 'L2', 'manufacturer_validity_date': FUTURE, 'evidence': 'x'},
-        ]}])
+    h = _post(s['actor'], s['pr'], [{'id': s['pri'], 'received': True, 'lots': [
+        {'quantity': 3, 'lot_code': 'L1', 'manufacturer_validity_date': FUTURE, 'evidence': 'x'},
+        {'quantity': 3, 'lot_code': 'L2', 'manufacturer_validity_date': FUTURE, 'evidence': 'x'},
+    ]}])
+    assert h.status == 400 and h.body['validation']['code'] == 'INVALID_RECEIPT_LOTS'
     assert _pieces(s['company'], s['epi']) == []
 
 

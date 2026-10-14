@@ -92,7 +92,11 @@ void main() {
       transport.quantity = quantity;
       await open(tester);
       expect(find.text('Capacete  (0)'), findsOneWidget);
-      expect(find.textContaining('Quantidade efetivamente recebida inválida'), findsOneWidget);
+      expect(find.textContaining('quantidade efetivamente recebida inválida'), findsOneWidget);
+      expect(tester.widget<EpiButton>(find.byType(EpiButton)).onPressed, isNull);
+      expect(find.textContaining('Linha 1 — Capacete (item #7)'), findsOneWidget);
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
       expect(tester.widget<EpiButton>(find.byType(EpiButton)).onPressed, isNull);
       await tester.pumpAndSettle();
       expect(transport.posts, 0);

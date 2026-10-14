@@ -1,6 +1,7 @@
 """Serviços do domínio de compras e requisições de EPI."""
 
 from datetime import datetime, timedelta, timezone
+import re
 
 from core.auth import ensure_permission, ensure_resource_company
 from core.permissions import PERM_PO_APPROVE, PERM_PURCHASE_REQUESTS_UPDATE
@@ -839,6 +840,69 @@ def generate_po_number(connection, company_id):
     return f'{prefix}{last_seq + 1:04d}'
 
 
+class ReceiptValidationError(ValueError):
+    """Structured refusal retaining a readable message for existing clients."""
+
+    def __init__(self, index, item, message, code='INVALID_RECEIPT_QUANTITY'):
+        self.details = {'code': code, 'line_index': index, 'item_id': item.get('id'),
+                        'item_name': item.get('epi_name') or 'Item', 'field': 'effective_receive_quantity'}
+        super().__init__(f"Linha {index} — {self.details['item_name']} (item #{self.details['item_id']}): {message}")
+
+
+def _positive_receipt_integer(value):
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, int):
+        return value if value > 0 else 0
+    if isinstance(value, str) and re.fullmatch(r'[0-9]+', value.strip()):
+        parsed = int(value.strip())
+        return parsed if parsed > 0 else 0
+    return 0
+
+
+def _preflight_receipt(connection, pr_id, flags):
+    """Validate the entire operation under the request lock, before any write.
+
+    Stored lines cannot be hidden by unchecking or omitting a payload row.
+    Validate all lot plans too, so a later invalid lot cannot follow a write.
+    """
+    rows = [row_to_dict(row) for row in connection.execute(
+        "SELECT * FROM purchase_request_items WHERE purchase_request_id = ? "
+        "AND status NOT IN ('closed', 'cancelled', 'rejected') ORDER BY id", (pr_id,)
+    ).fetchall()]
+    by_id = {int(row['id']): row for row in rows}
+    if not isinstance(flags, list):
+        raise ReceiptValidationError(1, {}, 'Lista de linhas inválida.', 'INVALID_RECEIPT_LINE')
+    seen = set()
+    for index, flag in enumerate(flags, 1):
+        if not isinstance(flag, dict):
+            raise ReceiptValidationError(index, {}, 'Linha inválida.', 'INVALID_RECEIPT_LINE')
+        item_id = _positive_receipt_integer(flag.get('id'))
+        if item_id not in by_id or item_id in seen:
+            raise ReceiptValidationError(index, {'id': flag.get('id')},
+                'Nenhuma peça efetivamente registrada: item ausente, duplicado ou fora da requisição.', 'INVALID_RECEIPT_LINE')
+        if not isinstance(flag.get('received', False), bool):
+            raise ReceiptValidationError(index, by_id[item_id], 'Marcação de recebimento inválida.', 'INVALID_RECEIPT_LINE')
+        seen.add(item_id)
+    flags_by_id = {int(flag['id']): flag for flag in flags}
+    for index, item in enumerate(rows, 1):
+        quantity = _effective_receive_quantity(connection, item)
+        if quantity <= 0:
+            raise ReceiptValidationError(index, item,
+                'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.')
+        flag = flags_by_id.get(int(item['id']), {})
+        if flag.get('received'):
+            lots = flag.get('lots') or []
+            if not isinstance(lots, list) or any(not isinstance(lot, dict) for lot in lots):
+                raise ReceiptValidationError(index, item, 'Lista de lotes inválida.', 'INVALID_RECEIPT_LOTS')
+            try:
+                _resolve_receipt_piece_plan(lots, quantity,
+                    legacy_validity=str(flag.get('manufacturer_validity_date') or '').strip(),
+                    legacy_evidence=f'Conferência de requisição #{pr_id}')
+            except ValueError as error:
+                raise ReceiptValidationError(index, item, str(error), 'INVALID_RECEIPT_LOTS') from error
+
+
 def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evidence):
     """EST-V3.5-R3: expande os lotes informados na conferência num plano POR PEÇA
     — cada item do plano é ``{lot_code, validity, evidence}``. Reutiliza o modelo
@@ -860,7 +924,7 @@ def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evide
                 for _ in range(quantity)]
     plan = []
     for index, lot in enumerate(lots, start=1):
-        qty = int(str(lot.get('quantity') or '0').strip() or '0')
+        qty = _positive_receipt_integer(lot.get('quantity'))
         if qty <= 0:
             raise ValueError(f'Lote {index}: quantidade precisa ser maior que zero.')
         validity = str(lot.get('manufacturer_validity_date') or '').strip()
@@ -895,11 +959,8 @@ def _effective_receive_quantity(connection, pri_row):
         (pri_id,)
     ).fetchone()
     value = po_item['quantity_received'] if po_item else pri_row.get('quantity_requested')
-    # Invalid/null PO quantities stay invalid; never fall back to the request.
-    try:
-        return int(str(value).strip()) if value is not None else 0
-    except (TypeError, ValueError, OverflowError):
-        return 0
+    # A linked PO never falls back to requested quantity.
+    return _positive_receipt_integer(value)
 
 
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
@@ -1737,6 +1798,8 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         'SELECT status FROM purchase_requests WHERE id = ?' + _lock_suffix, (pr_id,)
     ).fetchone()
     old_status = str(_locked['status'] if _locked else pr['status'])
+    if new_status == 'checked':
+        _preflight_receipt(connection, pr_id, received_items_payload)
     now = datetime.now(UTC).isoformat()
     extra = {}
     if new_status == 'sent_to_buyer':

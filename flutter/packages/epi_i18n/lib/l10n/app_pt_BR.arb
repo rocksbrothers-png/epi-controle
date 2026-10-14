@@ -996,7 +996,7 @@
   "prConfSubmit": "Registrar Conferência",
   "prConfDone": "Conferência registrada.",
   "prConfEmpty": "Nenhum item elegível para conferência.",
-  "prConfInvalidQuantity": "Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento ou marque o item como não recebido.",
+  "prConfInvalidQuantity": "Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.",
   "prConfNoPersistedPieces": "Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.",
   "prConfDoneQuantity": "{count} peças efetivamente registradas no estoque.",
   "@prConfDoneQuantity": {
@@ -1006,5 +1006,19 @@
       }
     }
   },
-  "prConfNoStockEntry": "Conferência salva sem entrada de peças no estoque."
+  "prConfNoStockEntry": "Conferência salva sem entrada de peças no estoque.",
+  "prConfInvalidQuantityLine": "Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

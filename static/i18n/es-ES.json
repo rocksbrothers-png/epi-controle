@@ -583,7 +583,27 @@
     "expiringSoon": "Próximo a vencer",
     "compliant": "Conforme",
     "blockedNeedStatus": "Seleccione el estado de bloqueo.",
-    "blockedFailed": "No se pudo bloquear el ítem."
+    "blockedFailed": "No se pudo bloquear el ítem.",
+    "pendingReg": {
+      "title": "Pendientes de regularización",
+      "hint": "Piezas en stock con validez física DESCONOCIDA — bloqueadas para entrega hasta la regularización. Informe la validez física comprobada, con evidencia verificable y justificación.",
+      "empty": "Ninguna pieza pendiente de regularización en el alcance actual.",
+      "count": "{n} pieza(s) pendiente(s)",
+      "action": "Regularizar validez",
+      "noPermission": "Sin permiso",
+      "modalHint": "La validez física comprobada es la única autoridad — catálogo, CA o estimación nunca liberan la pieza. Informe la fecha, la evidencia verificable y la justificación.",
+      "physicalDate": "Validez física comprobada",
+      "evidence": "Evidencia verificable",
+      "evidencePlaceholder": "Etiqueta / embalaje / factura / documento del fabricante",
+      "justification": "Justificación",
+      "errDate": "Informe la validez física comprobada.",
+      "errEvidence": "Informe la evidencia verificable.",
+      "errJustification": "Informe la justificación.",
+      "doneOk": "Validez regularizada: pieza liberada para entrega.",
+      "doneExpired": "Validez registrada: pieza VENCIDA, permanece bloqueada.",
+      "doneIdem": "La validez ya estaba registrada (sin cambios).",
+      "error": "Error al regularizar la validez."
+    }
   },
   "month": {
     "january": "Enero",

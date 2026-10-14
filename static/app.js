@@ -1645,7 +1645,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); },
+    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); await loadPendingRegularization(); },
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -2086,6 +2086,7 @@ globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   await loadStockEpis();
   await loadBlockedStock();
   await loadValidityOverview();
+  await loadPendingRegularization();
 };
 
 function debounce(fn, wait = 200) {
@@ -13800,6 +13801,140 @@ function bindValidityMgmtUi() {
       globalThis.openEpisFilteredByValidity(validity);
     }
   });
+  bindAppListener(document.getElementById('pending-reg-refresh'), 'click', () => { void loadPendingRegularization(); });
+  bindAppListener(document.getElementById('pending-reg-tbody'), 'click', (event) => {
+    const btn = event.target?.closest?.('.pending-reg-action');
+    if (!btn) return;
+    const row = btn.closest('tr');
+    void regularizePendingPiece({
+      qr: btn.getAttribute('data-qr') || '',
+      id: Number(btn.getAttribute('data-item-id')) || 0,
+      unitId: btn.getAttribute('data-unit-id') || '',
+      epiName: btn.getAttribute('data-epi-name') || '',
+      lot: row?.children?.[2]?.textContent?.trim() || '',
+    });
+  });
+}
+
+// ── Pendentes de regularização (EST-V3.5-R2 opção 1 — UI web) ─────────────────
+// Lista as peças com validade física DESCONHECIDA (bloqueadas até regularizar),
+// reutilizando GET /api/stock/pending-regularization (stock:view). A AÇÃO de
+// regularizar reutiliza POST /api/stock/items/regularize-validity e só aparece
+// para quem tem stock:regularize_validity (Administrador Local 'admin' / Gestor
+// de EPI 'user'): a matriz RBAC é reaplicada no backend — a UI apenas reflete.
+async function loadPendingRegularization() {
+  const tbody = document.getElementById('pending-reg-tbody');
+  if (!tbody) return;
+  const { companyId, unitId } = _blockedStockContext();
+  const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+  if (companyId) params.set('company_id', companyId);
+  if (unitId) params.set('unit_id', unitId);
+  const countEl = document.getElementById('pending-reg-count');
+  const emptyEl = document.getElementById('pending-reg-empty');
+  try {
+    const payload = await apiWithBootstrapRetry(`/api/stock/pending-regularization?${params.toString()}`);
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const canRegularize = hasPermission('stock:regularize_validity');
+    if (countEl) {
+      countEl.textContent = tr('stock.pendingReg.count', '{n} peça(s) pendente(s)')
+        .replace('{n}', String(payload.count ?? items.length));
+    }
+    tbody.innerHTML = items.map((it) => {
+      const sizeInfo = [
+        it.glove_size && it.glove_size !== 'N/A' ? `L:${it.glove_size}` : null,
+        it.size && it.size !== 'N/A' ? `T:${it.size}` : null,
+        it.uniform_size && it.uniform_size !== 'N/A' ? `U:${it.uniform_size}` : null,
+      ].filter(Boolean).join(' ');
+      const nameCell = `${esc(it.epi_name || '—')}${sizeInfo ? `<br><small style="color:var(--color-text-muted)">${esc(sizeInfo)}</small>` : ''}`;
+      const action = canRegularize
+        ? `<button type="button" class="btn ghost pending-reg-action" data-qr="${esc(it.qr_code_value || '')}" data-item-id="${esc(it.id)}" data-unit-id="${esc(it.unit_id)}" data-epi-name="${esc(it.epi_name || '')}" style="font-size:12px;padding:2px 8px;">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</button>`
+        : `<small class="hint">${esc(tr('stock.pendingReg.noPermission', 'Sem permissão'))}</small>`;
+      return `<tr>
+        <td>${nameCell}</td>
+        <td>${esc(it.unit_name || '—')}</td>
+        <td>${esc(it.lot_code || '—')}</td>
+        <td style="font-size:12px;">${esc(it.qr_code_value || '—')}</td>
+        <td>${action}</td>
+      </tr>`;
+    }).join('');
+    if (emptyEl) emptyEl.style.display = items.length ? 'none' : '';
+  } catch (error) {
+    reportNonCriticalError('[pending-reg] falha ao carregar', error);
+  }
+}
+
+function openRegularizeValidityModal(piece) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('regularize-modal');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'regularize-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
+    overlay.innerHTML = `
+      <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
+        <h3 style="margin:0 0 4px;">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.pendingReg.modalHint', 'A validade física comprovada é a única autoridade — catálogo, CA ou estimativa nunca liberam a peça. Informe a data, a evidência verificável e a justificativa.'))}</p>
+        <div style="font-size:13px;margin-bottom:10px;"><strong>${esc(piece.epiName || 'EPI')}</strong> — ${esc(tr('stock.qrCode', 'QR Code'))}: <code>${esc(piece.qr || '')}</code>${piece.lot && piece.lot !== '—' ? ` · ${esc(tr('stock.lot', 'Lote'))}: ${esc(piece.lot)}` : ''}</div>
+        <label style="display:block;margin-bottom:8px;font-size:13px;">${esc(tr('stock.pendingReg.physicalDate', 'Validade física comprovada'))}
+          <input type="date" id="reg-date" style="width:100%;margin-top:4px;">
+        </label>
+        <label style="display:block;margin-bottom:8px;font-size:13px;">${esc(tr('stock.pendingReg.evidence', 'Evidência verificável'))}
+          <input type="text" id="reg-evidence" placeholder="${esc(tr('stock.pendingReg.evidencePlaceholder', 'Etiqueta / embalagem / NF / documento do fabricante'))}" style="width:100%;margin-top:4px;">
+        </label>
+        <label style="display:block;margin-bottom:12px;font-size:13px;">${esc(tr('stock.pendingReg.justification', 'Justificativa'))}
+          <textarea id="reg-justification" rows="2" style="width:100%;margin-top:4px;"></textarea>
+        </label>
+        <div id="reg-error" style="display:none;color:var(--color-danger,#c00);font-size:13px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn ghost" id="reg-cancel">${esc(tr('cancel', 'Cancelar'))}</button>
+          <button class="btn" id="reg-confirm">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    const showError = (msg) => { const el = overlay.querySelector('#reg-error'); if (el) { el.style.display = ''; el.textContent = msg; } };
+    bindAppListener(overlay.querySelector('#reg-cancel'), 'click', () => finish(null));
+    bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
+    bindAppListener(overlay.querySelector('#reg-confirm'), 'click', () => {
+      const date = overlay.querySelector('#reg-date')?.value?.trim() || '';
+      const evidence = overlay.querySelector('#reg-evidence')?.value?.trim() || '';
+      const justification = overlay.querySelector('#reg-justification')?.value?.trim() || '';
+      if (!date) return showError(tr('stock.pendingReg.errDate', 'Informe a validade física comprovada.'));
+      if (!evidence) return showError(tr('stock.pendingReg.errEvidence', 'Informe a evidência verificável.'));
+      if (!justification) return showError(tr('stock.pendingReg.errJustification', 'Informe a justificativa.'));
+      finish({ date, evidence, justification });
+    });
+  });
+}
+
+async function regularizePendingPiece(piece) {
+  if (!hasPermission('stock:regularize_validity')) return;
+  const result = await openRegularizeValidityModal(piece);
+  if (result === null) return;
+  const { companyId } = _blockedStockContext();
+  try {
+    const body = {
+      actor_user_id: state.user?.id,
+      qr_code: piece.qr,
+      stock_item_id: piece.id || undefined,
+      physical_expiry_date: result.date,
+      evidence: result.evidence,
+      justification: result.justification,
+    };
+    if (companyId) body.company_id = companyId;
+    const res = await api('/api/stock/items/regularize-validity', { method: 'POST', body: JSON.stringify(body) });
+    if (res.idempotent) {
+      showToast(tr('stock.pendingReg.doneIdem', 'Validade já estava registrada (sem alteração).'));
+    } else if (res.validity_status === 'expired') {
+      showToast(tr('stock.pendingReg.doneExpired', 'Validade registrada: peça VENCIDA, permanece bloqueada.'), 'warning');
+    } else {
+      showToast(tr('stock.pendingReg.doneOk', 'Validade regularizada: peça liberada para entrega.'));
+    }
+    await loadPendingRegularization();
+    await loadValidityOverview();
+  } catch (error) {
+    showToast(error.message || tr('stock.pendingReg.error', 'Erro ao regularizar validade.'), 'error');
+  }
 }
 
 async function reprintStockLabelByQr() {

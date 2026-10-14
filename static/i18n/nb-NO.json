@@ -583,7 +583,27 @@
     "expiringSoon": "Utløper snart",
     "compliant": "I samsvar",
     "blockedNeedStatus": "Velg blokkeringsstatus.",
-    "blockedFailed": "Kunne ikke blokkere varen."
+    "blockedFailed": "Kunne ikke blokkere varen.",
+    "pendingReg": {
+      "title": "Venter på regularisering",
+      "hint": "Lagerenheter med UKJENT fysisk holdbarhet — sperret for utlevering til regularisering. Oppgi bevist fysisk holdbarhet, med verifiserbart bevis og begrunnelse.",
+      "empty": "Ingen enheter venter på regularisering i gjeldende omfang.",
+      "count": "{n} enhet(er) venter",
+      "action": "Regulariser holdbarhet",
+      "noPermission": "Ingen tilgang",
+      "modalHint": "Bevist fysisk holdbarhet er eneste autoritet — katalog, CA eller estimat frigjør aldri enheten. Oppgi dato, verifiserbart bevis og begrunnelse.",
+      "physicalDate": "Bevist fysisk holdbarhet",
+      "evidence": "Verifiserbart bevis",
+      "evidencePlaceholder": "Etikett / emballasje / faktura / produsentdokument",
+      "justification": "Begrunnelse",
+      "errDate": "Oppgi bevist fysisk holdbarhet.",
+      "errEvidence": "Oppgi verifiserbart bevis.",
+      "errJustification": "Oppgi begrunnelse.",
+      "doneOk": "Holdbarhet regularisert: enheten frigitt for utlevering.",
+      "doneExpired": "Holdbarhet registrert: enheten UTLØPT, forblir sperret.",
+      "doneIdem": "Holdbarheten var allerede registrert (ingen endring).",
+      "error": "Feil ved regularisering av holdbarhet."
+    }
   },
   "month": {
     "january": "Januar",

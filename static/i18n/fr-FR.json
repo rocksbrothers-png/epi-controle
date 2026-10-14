@@ -583,7 +583,27 @@
     "expiringSoon": "Bientôt expiré",
     "compliant": "Conforme",
     "blockedNeedStatus": "Sélectionnez le statut de blocage.",
-    "blockedFailed": "Impossible de bloquer l'article."
+    "blockedFailed": "Impossible de bloquer l'article.",
+    "pendingReg": {
+      "title": "En attente de régularisation",
+      "hint": "Pièces en stock avec validité physique INCONNUE — bloquées pour la remise jusqu'à la régularisation. Indiquez la validité physique prouvée, avec preuve vérifiable et justification.",
+      "empty": "Aucune pièce en attente de régularisation dans le périmètre actuel.",
+      "count": "{n} pièce(s) en attente",
+      "action": "Régulariser la validité",
+      "noPermission": "Sans permission",
+      "modalHint": "La validité physique prouvée est la seule autorité — catalogue, CA ou estimation ne libèrent jamais la pièce. Indiquez la date, la preuve vérifiable et la justification.",
+      "physicalDate": "Validité physique prouvée",
+      "evidence": "Preuve vérifiable",
+      "evidencePlaceholder": "Étiquette / emballage / facture / document du fabricant",
+      "justification": "Justification",
+      "errDate": "Indiquez la validité physique prouvée.",
+      "errEvidence": "Indiquez la preuve vérifiable.",
+      "errJustification": "Indiquez la justification.",
+      "doneOk": "Validité régularisée : pièce libérée pour la remise.",
+      "doneExpired": "Validité enregistrée : pièce EXPIRÉE, reste bloquée.",
+      "doneIdem": "La validité était déjà enregistrée (aucun changement).",
+      "error": "Erreur lors de la régularisation de la validité."
+    }
   },
   "month": {
     "january": "Janvier",

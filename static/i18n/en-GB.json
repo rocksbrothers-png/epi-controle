@@ -583,7 +583,27 @@
     "expiringSoon": "Expiring soon",
     "compliant": "Compliant",
     "blockedNeedStatus": "Select the block status.",
-    "blockedFailed": "Could not block the item."
+    "blockedFailed": "Could not block the item.",
+    "pendingReg": {
+      "title": "Pending regularisation",
+      "hint": "Stock pieces with UNKNOWN physical validity — blocked for delivery until regularised. Enter the proven physical validity, with verifiable evidence and justification.",
+      "empty": "No pieces pending regularisation in the current scope.",
+      "count": "{n} piece(s) pending",
+      "action": "Regularise validity",
+      "noPermission": "No permission",
+      "modalHint": "The proven physical validity is the only authority — catalogue, CA or estimate never release the piece. Enter the date, verifiable evidence and justification.",
+      "physicalDate": "Proven physical validity",
+      "evidence": "Verifiable evidence",
+      "evidencePlaceholder": "Label / packaging / invoice / manufacturer document",
+      "justification": "Justification",
+      "errDate": "Enter the proven physical validity.",
+      "errEvidence": "Enter the verifiable evidence.",
+      "errJustification": "Enter the justification.",
+      "doneOk": "Validity regularised: piece released for delivery.",
+      "doneExpired": "Validity recorded: piece EXPIRED, remains blocked.",
+      "doneIdem": "Validity was already recorded (no change).",
+      "error": "Error regularising validity."
+    }
   },
   "month": {
     "january": "January",

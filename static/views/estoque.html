@@ -397,6 +397,27 @@
             </div>
             <small id="validity-mgmt-empty" class="hint" data-i18n="validity.empty">Nenhum EPI em risco de validade no escopo atual.</small>
           </article>
+          <article class="card" id="pending-reg-card">
+            <h3 data-i18n="stock.pendingReg.title">Pendentes de regularização</h3>
+            <p class="hint" data-i18n="stock.pendingReg.hint">Peças em estoque com validade física DESCONHECIDA — bloqueadas para entrega até a regularização. Informe a validade física comprovada, com evidência verificável e justificativa.</p>
+            <div class="action-group" style="margin-top:8px;align-items:center;">
+              <strong id="pending-reg-count" aria-live="polite"></strong>
+              <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th scope="col" data-i18n="epi.title">EPI</th>
+                  <th scope="col" data-i18n="unit.title">Unidade</th>
+                  <th scope="col" data-i18n="stock.lot">Lote</th>
+                  <th scope="col" data-i18n="stock.qrCode">QR Code</th>
+                  <th scope="col" data-i18n="employee.actions">Ações</th>
+                </tr></thead>
+                <tbody id="pending-reg-tbody"></tbody>
+              </table>
+            </div>
+            <small id="pending-reg-empty" class="hint" data-i18n="stock.pendingReg.empty">Nenhuma peça pendente de regularização no escopo atual.</small>
+          </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
             <p class="hint" data-i18n="stock.blockedHint">Itens bloqueados não são oferecidos na entrega. Formalize a disposição (descarte, devolução ao fornecedor, análise) ou desbloqueie.</p>

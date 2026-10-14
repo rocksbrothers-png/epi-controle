@@ -258,8 +258,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeUnitLabel => 'Unidade';
 
   @override
-  String get employeeUnitLockedHint =>
-      'Unidade definida pelo seu perfil de acesso.';
+  String get employeeUnitLockedHint => 'Unidade definida pelo seu perfil de acesso.';
 
   @override
   String get employeeLegalEntityLabel => 'CNPJ';
@@ -397,8 +396,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deliverySuccess => 'Entrega registrada com sucesso';
 
   @override
-  String get deliveryOfflineQueued =>
-      'Entrega salva — será sincronizada quando houver conexão';
+  String get deliveryOfflineQueued => 'Entrega salva — será sincronizada quando houver conexão';
 
   @override
   String get deliverySignatureRequired => 'Assinatura obrigatória';
@@ -434,8 +432,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get returnSuccess => 'Devolução registrada com sucesso.';
 
   @override
-  String get returnOfflineQueued =>
-      'Devolução salva — será sincronizada quando houver conexão.';
+  String get returnOfflineQueued => 'Devolução salva — será sincronizada quando houver conexão.';
 
   @override
   String get recordsTitle => 'Fichas';
@@ -483,12 +480,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get poManufacturerValidityHint => 'Informar data';
 
   @override
-  String get poManufacturerValidityRequired =>
-      'Informe a validade do fabricante de todos os EPIs recebidos.';
+  String get poManufacturerValidityRequired => 'Informe a validade do fabricante de todos os EPIs recebidos.';
 
   @override
-  String get poOcrDateNotFound =>
-      'Não foi possível identificar a data. Tente novamente.';
+  String get poOcrDateNotFound => 'Não foi possível identificar a data. Tente novamente.';
 
   @override
   String get poOcrCameraFailed => 'Falha na leitura por câmera.';
@@ -674,8 +669,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get portalSignature => 'Confirmar assinatura';
 
   @override
-  String get portalSignatureInstruction =>
-      'Assine no espaço abaixo para confirmar o recebimento';
+  String get portalSignatureInstruction => 'Assine no espaço abaixo para confirmar o recebimento';
 
   @override
   String get portalDeliveries => 'Entregas';
@@ -771,16 +765,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeContactPdfDownloading => 'Baixando PDF...';
 
   @override
-  String get employeeContactErrorNoApp =>
-      'Nenhum app disponível para abrir este link';
+  String get employeeContactErrorNoApp => 'Nenhum app disponível para abrir este link';
 
   @override
-  String get employeeContactErrorGeneric =>
-      'Falha ao contatar colaborador. Tente novamente.';
+  String get employeeContactErrorGeneric => 'Falha ao contatar colaborador. Tente novamente.';
 
   @override
-  String get employeeContactPdfError =>
-      'Falha ao baixar o PDF. Tente novamente.';
+  String get employeeContactPdfError => 'Falha ao baixar o PDF. Tente novamente.';
 
   @override
   String get offlineBanner => 'Sem conexão — dados salvos localmente';
@@ -1017,15 +1008,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myCompanyTitle => 'Minha Empresa';
 
   @override
-  String get myCompanySubtitle =>
-      'Dados, identidade visual e domínio da sua empresa';
+  String get myCompanySubtitle => 'Dados, identidade visual e domínio da sua empresa';
 
   @override
   String get myCompanySaved => 'Configurações da empresa salvas com sucesso.';
 
   @override
-  String get myCompanyLoadError =>
-      'Não foi possível carregar os dados da empresa.';
+  String get myCompanyLoadError => 'Não foi possível carregar os dados da empresa.';
 
   @override
   String get myCompanyContractSection => 'Contrato (somente leitura)';
@@ -1145,8 +1134,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get epiArchiveBlockTitle => 'Arquivar com bloqueio de saldo';
 
   @override
-  String get epiArchiveBlockBody =>
-      'Este EPI possui saldo disponível ou vínculos vivos. Ao confirmar, o saldo disponível será movido para Estoque Bloqueado (rastreável) e o EPI será arquivado.';
+  String get epiArchiveBlockBody => 'Este EPI possui saldo disponível ou vínculos vivos. Ao confirmar, o saldo disponível será movido para Estoque Bloqueado (rastreável) e o EPI será arquivado.';
 
   @override
   String get epiArchiveBlockConfirm => 'Bloquear saldo e arquivar';
@@ -1233,8 +1221,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get handoverNotFound => 'Entrega não encontrada para este código.';
 
   @override
-  String get handoverConfirmError =>
-      'Não foi possível confirmar o recebimento.';
+  String get handoverConfirmError => 'Não foi possível confirmar o recebimento.';
 
   @override
   String get handoverEmployeeLabel => 'Colaborador';
@@ -1285,8 +1272,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get legalEntityDeactivate => 'Inativar CNPJ';
 
   @override
-  String get legalEntityDeactivateHint =>
-      'O histórico jurídico é preservado. O CNPJ deixa de ser usado em novas operações.';
+  String get legalEntityDeactivateHint => 'O histórico jurídico é preservado. O CNPJ deixa de ser usado em novas operações.';
 
   @override
   String get legalEntityShowInactive => 'Mostrar inativos';
@@ -1304,15 +1290,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get legalEntityUfLabel => 'UF';
 
   @override
-  String get legalEntitiesImportColumnsHint =>
-      'CNPJ\tRazão social\tNome fantasia\tTipo';
+  String get legalEntitiesImportColumnsHint => 'CNPJ\tRazão social\tNome fantasia\tTipo';
 
   @override
   String get legalEntitiesImport => 'Importar planilha';
 
   @override
-  String get legalEntitiesImportHint =>
-      'Copie as linhas da planilha (com a linha de cabeçalho) e cole abaixo. Aceita colunas em português ou inglês.';
+  String get legalEntitiesImportHint => 'Copie as linhas da planilha (com a linha de cabeçalho) e cole abaixo. Aceita colunas em português ou inglês.';
 
   @override
   String get legalEntitiesImportResult => 'Importação concluída';
@@ -1336,8 +1320,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get legalEntityTransferTitle => 'Transferir vínculo jurídico';
 
   @override
-  String get legalEntityTransferHint =>
-      'O CNPJ é o vínculo do contrato de trabalho e não muda em transferência de unidade. Esta alteração é auditada e exige justificativa.';
+  String get legalEntityTransferHint => 'O CNPJ é o vínculo do contrato de trabalho e não muda em transferência de unidade. Esta alteração é auditada e exige justificativa.';
 
   @override
   String get legalEntityTransferReason => 'Justificativa';
@@ -1355,8 +1338,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get unitTransferTitle => 'Transferir de unidade';
 
   @override
-  String get unitTransferHint =>
-      'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
+  String get unitTransferHint => 'Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.';
 
   @override
   String get unitTransferTarget => 'Unidade destino';
@@ -1386,8 +1368,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myCompanyStockScope => 'Consolidar saldos de estoque por';
 
   @override
-  String get myCompanyStockScopeHint =>
-      'Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.';
+  String get myCompanyStockScopeHint => 'Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.';
 
   @override
   String get myCompanyStockScopeUnit => 'Unidade';
@@ -1405,8 +1386,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get unitLegalEntityLabel => 'CNPJ responsável';
 
   @override
-  String get unitLegalEntityHint =>
-      'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
+  String get unitLegalEntityHint => 'Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.';
 
   @override
   String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
@@ -1415,8 +1395,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeSourceCompanyLabel => 'Empresa de Origem';
 
   @override
-  String get employeeSourceCompanyHint =>
-      'Nome da empresa de origem do colaborador';
+  String get employeeSourceCompanyHint => 'Nome da empresa de origem do colaborador';
 
   @override
   String get employmentTypeClt => 'CLT';
@@ -1446,8 +1425,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompaniesTitle => 'Terceirizados e Prestadores';
 
   @override
-  String get outsourcedCompaniesEmpty =>
-      'Nenhuma empresa terceirizada cadastrada.';
+  String get outsourcedCompaniesEmpty => 'Nenhuma empresa terceirizada cadastrada.';
 
   @override
   String get outsourcedCompaniesSearchHint => 'Buscar por nome ou CNPJ';
@@ -1480,8 +1458,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyKindOther => 'Outro';
 
   @override
-  String get outsourcedCompanyResponsibilityLabel =>
-      'Responsabilidade pelo Fornecimento de EPI';
+  String get outsourcedCompanyResponsibilityLabel => 'Responsabilidade pelo Fornecimento de EPI';
 
   @override
   String get outsourcedCompanyUnitLabel => 'Unidade';
@@ -1493,16 +1470,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyLinkTitle => 'Vincular empresa a esta Unidade';
 
   @override
-  String get outsourcedCompanyLinkHint =>
-      'Buscar empresa já cadastrada no tenant…';
+  String get outsourcedCompanyLinkHint => 'Buscar empresa já cadastrada no tenant…';
 
   @override
-  String get outsourcedCompanyLinkSectionLinked =>
-      'Já vinculadas a esta Unidade';
+  String get outsourcedCompanyLinkSectionLinked => 'Já vinculadas a esta Unidade';
 
   @override
-  String get outsourcedCompanyLinkSectionAvailable =>
-      'Disponíveis para vincular';
+  String get outsourcedCompanyLinkSectionAvailable => 'Disponíveis para vincular';
 
   @override
   String get outsourcedCompanyLinkLink => 'Vincular a esta Unidade';
@@ -1514,8 +1488,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyLinkDeactivate => 'Arquivar nesta Unidade';
 
   @override
-  String get outsourcedCompanyLinkDeactivateReason =>
-      'Motivo do arquivamento (opcional):';
+  String get outsourcedCompanyLinkDeactivateReason => 'Motivo do arquivamento (opcional):';
 
   @override
   String outsourcedCompanyLinkUsedByUnits(int count) {
@@ -1526,12 +1499,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyLinkOriginUnit => 'Unidade de origem';
 
   @override
-  String get outsourcedCompanyLinkEmpty =>
-      'Nenhuma empresa encontrada com esse termo.';
+  String get outsourcedCompanyLinkEmpty => 'Nenhuma empresa encontrada com esse termo.';
 
   @override
-  String get outsourcedCompanyLinkNotInformed =>
-      'Vínculo não informado para o seu perfil';
+  String get outsourcedCompanyLinkNotInformed => 'Vínculo não informado para o seu perfil';
 
   @override
   String get outsourcedCompanyStatusLabel => 'Situação';
@@ -1546,12 +1517,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyPromote => 'Promover a Cadastro Padrão';
 
   @override
-  String get outsourcedCompanyPromoteConfirmTitle =>
-      'Promover ao Cadastro Padrão?';
+  String get outsourcedCompanyPromoteConfirmTitle => 'Promover ao Cadastro Padrão?';
 
   @override
-  String get outsourcedCompanyPromoteConfirmBody =>
-      'A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.';
+  String get outsourcedCompanyPromoteConfirmBody => 'A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.';
 
   @override
   String get outsourcedCompanySimplifiedBadge => 'Simplificado';
@@ -1596,31 +1565,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedCompanyRestore => 'Desarquivar';
 
   @override
-  String get outsourcedCompanyRestoreConfirmTitle =>
-      'Desarquivar esta empresa?';
+  String get outsourcedCompanyRestoreConfirmTitle => 'Desarquivar esta empresa?';
 
   @override
-  String get outsourcedCompaniesArchivedEmpty =>
-      'Nenhuma empresa terceirizada arquivada.';
+  String get outsourcedCompaniesArchivedEmpty => 'Nenhuma empresa terceirizada arquivada.';
 
   @override
   String get outsourcedEmployeeNew => 'Novo colaborador';
 
   @override
-  String get outsourcedEmployeesEmpty =>
-      'Nenhum colaborador terceirizado/prestador cadastrado.';
+  String get outsourcedEmployeesEmpty => 'Nenhum colaborador terceirizado/prestador cadastrado.';
 
   @override
-  String get outsourcedEmployeesArchivedEmpty =>
-      'Nenhum colaborador terceirizado/prestador arquivado.';
+  String get outsourcedEmployeesArchivedEmpty => 'Nenhum colaborador terceirizado/prestador arquivado.';
 
   @override
-  String get outsourcedEmployeeCompanyLabel =>
-      'Empresa terceirizada/prestadora';
+  String get outsourcedEmployeeCompanyLabel => 'Empresa terceirizada/prestadora';
 
   @override
-  String get outsourcedEmployeeOriginRegistrationLabel =>
-      'Matrícula da empresa de origem';
+  String get outsourcedEmployeeOriginRegistrationLabel => 'Matrícula da empresa de origem';
 
   @override
   String get outsourcedEmployeeBadgeLabel => 'Crachá';
@@ -1629,12 +1592,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedEmployeeNotesLabel => 'Observações';
 
   @override
-  String get outsourcedEmployeeArchiveConfirmTitle =>
-      'Arquivar este colaborador?';
+  String get outsourcedEmployeeArchiveConfirmTitle => 'Arquivar este colaborador?';
 
   @override
-  String get outsourcedEmployeeRestoreConfirmTitle =>
-      'Desarquivar este colaborador?';
+  String get outsourcedEmployeeRestoreConfirmTitle => 'Desarquivar este colaborador?';
 
   @override
   String get employeeUnitLinkColumn => 'Vínculo local';
@@ -1649,8 +1610,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeUnitLinkDeactivate => 'Arquivar nesta Unidade';
 
   @override
-  String get employeeUnitLinkDeactivateReason =>
-      'Motivo do arquivamento (opcional):';
+  String get employeeUnitLinkDeactivateReason => 'Motivo do arquivamento (opcional):';
 
   @override
   String get employeeUnitLinkActive => 'Vinculado';
@@ -1665,8 +1625,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get employeeUnitLinksTitle => 'Vínculos por Unidade';
 
   @override
-  String get employeeUnitLinksEmpty =>
-      'Este colaborador não tem vínculo com nenhuma Unidade que você pode consultar.';
+  String get employeeUnitLinksEmpty => 'Este colaborador não tem vínculo com nenhuma Unidade que você pode consultar.';
 
   @override
   String get employeeUnitLinksError => 'Não foi possível carregar os vínculos.';
@@ -1675,8 +1634,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get outsourcedReportsError => 'Não foi possível carregar o relatório.';
 
   @override
-  String get outsourcedReportsEmpty =>
-      'Nenhuma empresa terceirizada/prestadora cadastrada.';
+  String get outsourcedReportsEmpty => 'Nenhuma empresa terceirizada/prestadora cadastrada.';
 
   @override
   String get outsourcedReportsActive => 'Ativos';
@@ -1688,19 +1646,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get moduleVisibilityTitle => 'Visibilidade por Módulo';
 
   @override
-  String get moduleVisibilityDescription =>
-      'Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.';
+  String get moduleVisibilityDescription => 'Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
 
   @override
-  String get moduleVisibilityDefaultPanelTitle =>
-      'Permissões padrão deste perfil';
+  String get moduleVisibilityDefaultPanelTitle => 'Permissões padrão deste perfil';
 
   @override
-  String get moduleVisibilityDefaultPanelHint =>
-      'Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.';
+  String get moduleVisibilityDefaultPanelHint => 'Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.';
 
   @override
   String get moduleVisibilityNoDefaultModules => 'Nenhum módulo por padrão';
@@ -1709,8 +1664,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get moduleVisibilityUnitLabel => 'Unidade';
 
   @override
-  String get moduleVisibilityUnitHint =>
-      'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".';
+  String get moduleVisibilityUnitHint => 'Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".';
 
   @override
   String get moduleVisibilityAllUnitsOption => 'Todas as unidades (padrão)';
@@ -1722,19 +1676,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockTabBlocked => 'Bloqueados';
 
   @override
-  String get stockAvailableSelectEpi =>
-      'Selecione um EPI para ver os itens disponíveis';
+  String get stockAvailableSelectEpi => 'Selecione um EPI para ver os itens disponíveis';
 
   @override
-  String get stockAvailableEmpty =>
-      'Nenhum item disponível para este EPI nesta unidade';
+  String get stockAvailableEmpty => 'Nenhum item disponível para este EPI nesta unidade';
 
   @override
   String get stockBlockedEmpty => 'Nenhum item bloqueado';
 
   @override
-  String get stockNoOperationalUnit =>
-      'Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.';
+  String get stockNoOperationalUnit => 'Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.';
 
   @override
   String get stockItemLotLabel => 'Lote';
@@ -1787,26 +1738,22 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get deliveryEmployeeWithoutUnit =>
-      'Colaborador sem Unidade operacional: não é possível registrar entrega.';
+  String get deliveryEmployeeWithoutUnit => 'Colaborador sem Unidade operacional: não é possível registrar entrega.';
 
   @override
   String get deliveryQrOtherEpi => 'O código lido pertence a outro EPI.';
 
   @override
-  String get stockUnitRequiredToMove =>
-      'Selecione uma Unidade para movimentar o estoque.';
+  String get stockUnitRequiredToMove => 'Selecione uma Unidade para movimentar o estoque.';
 
   @override
   String get stockAttentionSectionTitle => 'Estoque';
 
   @override
-  String get stockAttentionCompanyTitle =>
-      'Faixa de atenção — padrão da empresa';
+  String get stockAttentionCompanyTitle => 'Faixa de atenção — padrão da empresa';
 
   @override
-  String get stockAttentionCompanyHelp =>
-      'Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.';
+  String get stockAttentionCompanyHelp => 'Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.';
 
   @override
   String get stockAttentionPercentageLabel => 'Percentual da faixa de atenção';
@@ -1830,8 +1777,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockAttentionSaved => 'Padrão da empresa salvo.';
 
   @override
-  String get stockAttentionRestored =>
-      'Padrão da empresa removido. A empresa voltou ao padrão do sistema.';
+  String get stockAttentionRestored => 'Padrão da empresa removido. A empresa voltou ao padrão do sistema.';
 
   @override
   String stockAttentionSystemDefaultHint(int value) {
@@ -1842,26 +1788,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockConfigTitle => 'Configuração de estoque';
 
   @override
-  String get stockConfigIntro =>
-      'Defina estoque mínimo, faixa de atenção e monitoramento de alerta de um EPI em uma Unidade. Cada parâmetro é salvo separadamente.';
+  String get stockConfigIntro => 'Defina estoque mínimo, faixa de atenção e monitoramento de alerta de um EPI em uma Unidade. Cada parâmetro é salvo separadamente.';
 
   @override
   String get stockConfigUnitLabel => 'Unidade a configurar';
 
   @override
-  String get stockConfigSelectUnit =>
-      'Selecione a Unidade para configurar os parâmetros.';
+  String get stockConfigSelectUnit => 'Selecione a Unidade para configurar os parâmetros.';
 
   @override
-  String get stockConfigSelectEpi =>
-      'Selecione o EPI para ver e editar os parâmetros desta Unidade.';
+  String get stockConfigSelectEpi => 'Selecione o EPI para ver e editar os parâmetros desta Unidade.';
 
   @override
   String get stockConfigEpiLabel => 'EPI';
 
   @override
-  String get stockConfigEpisLoadError =>
-      'Não foi possível carregar os EPIs desta Unidade.';
+  String get stockConfigEpisLoadError => 'Não foi possível carregar os EPIs desta Unidade.';
 
   @override
   String get stockConfigNoEpisInUnit => 'Nenhum EPI visível nesta Unidade.';
@@ -1876,8 +1818,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockConfigUnderlyingStatus => 'Condição física';
 
   @override
-  String get stockConfigDerivedUnavailable =>
-      'Os valores calculados não puderam ser atualizados agora. Os parâmetros salvos acima estão corretos.';
+  String get stockConfigDerivedUnavailable => 'Os valores calculados não puderam ser atualizados agora. Os parâmetros salvos acima estão corretos.';
 
   @override
   String get stockConfigStatusCritical => 'Crítico';
@@ -1895,74 +1836,61 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockConfigMinimumTitle => 'Estoque mínimo';
 
   @override
-  String get stockConfigMinimumHelp =>
-      'Quantidade abaixo da qual o EPI é considerado crítico nesta Unidade. Vale só para esta Unidade.';
+  String get stockConfigMinimumHelp => 'Quantidade abaixo da qual o EPI é considerado crítico nesta Unidade. Vale só para esta Unidade.';
 
   @override
   String get stockConfigMinimumLabel => 'Estoque mínimo';
 
   @override
-  String get stockConfigMinimumNegativeError =>
-      'Informe um número inteiro maior ou igual a zero.';
+  String get stockConfigMinimumNegativeError => 'Informe um número inteiro maior ou igual a zero.';
 
   @override
-  String get stockConfigMinimumSaved =>
-      'Estoque mínimo salvo para esta Unidade.';
+  String get stockConfigMinimumSaved => 'Estoque mínimo salvo para esta Unidade.';
 
   @override
-  String get stockConfigMinimumRestored =>
-      'Estoque mínimo restaurado. A Unidade voltou a herdar o padrão da empresa.';
+  String get stockConfigMinimumRestored => 'Estoque mínimo restaurado. A Unidade voltou a herdar o padrão da empresa.';
 
   @override
   String get stockConfigAttentionTitle => 'Faixa de atenção';
 
   @override
-  String get stockConfigAttentionHelp =>
-      'Percentual acima do mínimo em que o EPI já entra em atenção nesta Unidade. Independente do estoque mínimo.';
+  String get stockConfigAttentionHelp => 'Percentual acima do mínimo em que o EPI já entra em atenção nesta Unidade. Independente do estoque mínimo.';
 
   @override
-  String get stockConfigAttentionRangeError =>
-      'O percentual deve estar entre 0 e 100.';
+  String get stockConfigAttentionRangeError => 'O percentual deve estar entre 0 e 100.';
 
   @override
-  String get stockConfigAttentionSaved =>
-      'Faixa de atenção salva para esta Unidade.';
+  String get stockConfigAttentionSaved => 'Faixa de atenção salva para esta Unidade.';
 
   @override
-  String get stockConfigAttentionRestored =>
-      'Faixa de atenção restaurada. A Unidade voltou a herdar o padrão da empresa.';
+  String get stockConfigAttentionRestored => 'Faixa de atenção restaurada. A Unidade voltou a herdar o padrão da empresa.';
 
   @override
   String get stockConfigAlertTitle => 'Monitoramento de alerta';
 
   @override
-  String get stockConfigAlertHelp =>
-      'Desligar interrompe o alerta de estoque baixo e a reposição automática deste EPI nesta Unidade. Não altera saldo, mínimo nem percentual.';
+  String get stockConfigAlertHelp => 'Desligar interrompe o alerta de estoque baixo e a reposição automática deste EPI nesta Unidade. Não altera saldo, mínimo nem percentual.';
 
   @override
   String get stockConfigAlertToggle => 'Monitorar o estoque deste EPI';
 
   @override
-  String get stockConfigAlertPending =>
-      'Alteração pendente. Clique em Salvar para aplicar.';
+  String get stockConfigAlertPending => 'Alteração pendente. Clique em Salvar para aplicar.';
 
   @override
   String get stockConfigAlertDisableTitle => 'Desabilitar o alerta?';
 
   @override
-  String get stockConfigAlertDisableBody =>
-      'Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. A condição física continuará sendo exibida.';
+  String get stockConfigAlertDisableBody => 'Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. A condição física continuará sendo exibida.';
 
   @override
   String get stockConfigAlertDisableConfirm => 'Desabilitar';
 
   @override
-  String get stockConfigAlertSaved =>
-      'Monitoramento de alerta salvo para esta Unidade.';
+  String get stockConfigAlertSaved => 'Monitoramento de alerta salvo para esta Unidade.';
 
   @override
-  String get stockConfigAlertRestored =>
-      'Monitoramento restaurado. A Unidade voltou ao padrão do sistema.';
+  String get stockConfigAlertRestored => 'Monitoramento restaurado. A Unidade voltou ao padrão do sistema.';
 
   @override
   String get stockConfigOriginUnit => 'Configurado por esta Unidade';
@@ -1985,8 +1913,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get stockAttentionLoadError =>
-      'Não foi possível carregar o padrão da empresa.';
+  String get stockAttentionLoadError => 'Não foi possível carregar o padrão da empresa.';
 
   @override
   String get unitSelectorLabel => 'Unidade';
@@ -2001,12 +1928,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get unitSelectorLoadError => 'Não foi possível carregar as Unidades.';
 
   @override
-  String get unitSelectorNoUnitsAssigned =>
-      'Você não tem Unidade atribuída. Fale com o administrador.';
+  String get unitSelectorNoUnitsAssigned => 'Você não tem Unidade atribuída. Fale com o administrador.';
 
   @override
-  String get unitSelectorCompanyHasNoUnits =>
-      'A empresa ainda não tem Unidades cadastradas.';
+  String get unitSelectorCompanyHasNoUnits => 'A empresa ainda não tem Unidades cadastradas.';
 
   @override
   String get settingsSectionCompany => 'Empresa';
@@ -2026,43 +1951,37 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get settingsSelectCompanyFirst =>
-      'Selecione uma empresa em Configurações para continuar.';
+  String get settingsSelectCompanyFirst => 'Selecione uma empresa em Configurações para continuar.';
 
   @override
   String get settingsFichaTileTitle => 'Ficha de EPI';
 
   @override
-  String get settingsFichaTileSubtitle =>
-      'Título, declaração, observações e rastreabilidade';
+  String get settingsFichaTileSubtitle => 'Título, declaração, observações e rastreabilidade';
 
   @override
   String get settingsStockTileSubtitle => 'Faixa de atenção padrão da empresa';
 
   @override
-  String get settingsModulesTileSubtitle =>
-      'Módulos visíveis por perfil e por Unidade';
+  String get settingsModulesTileSubtitle => 'Módulos visíveis por perfil e por Unidade';
 
   @override
   String get settingsArchivalTitle => 'Arquivamento e retenção';
 
   @override
-  String get settingsArchivalSubtitle =>
-      'Anos de preservação dos registros arquivados';
+  String get settingsArchivalSubtitle => 'Anos de preservação dos registros arquivados';
 
   @override
   String get settingsAppearanceTitle => 'Aparência e idioma';
 
   @override
-  String get settingsAppearanceSubtitle =>
-      'Tema da interface e idioma do aplicativo';
+  String get settingsAppearanceSubtitle => 'Tema da interface e idioma do aplicativo';
 
   @override
   String get settingsSubscriptionTileTitle => 'Minha Assinatura';
 
   @override
-  String get settingsSubscriptionTileSubtitle =>
-      'Plano, cobranças e cancelamento';
+  String get settingsSubscriptionTileSubtitle => 'Plano, cobranças e cancelamento';
 
   @override
   String get settingsInvoicesTileTitle => 'Histórico Financeiro';
@@ -2071,8 +1990,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsInvoicesTileSubtitle => 'Todas as cobranças e recibos';
 
   @override
-  String get settingsNoPermission =>
-      'Você não tem permissão para alterar esta configuração.';
+  String get settingsNoPermission => 'Você não tem permissão para alterar esta configuração.';
 
   @override
   String get stockPhysicalValidityUnknown => 'Validade física desconhecida';
@@ -2084,8 +2002,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockRegularizeValidityTitle => 'Regularizar validade física';
 
   @override
-  String get stockRegularizeValiditySubtitle =>
-      'Identifique a peça e informe a validade comprovada. A classificação é feita pelo sistema.';
+  String get stockRegularizeValiditySubtitle => 'Identifique a peça e informe a validade comprovada. A classificação é feita pelo sistema.';
 
   @override
   String get stockRegularizeQrLabel => 'QR ou código da peça';
@@ -2097,8 +2014,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockRegularizeExpirySelect => 'Selecionar data';
 
   @override
-  String get stockRegularizeEvidenceLabel =>
-      'Evidência (documento ou registro verificável)';
+  String get stockRegularizeEvidenceLabel => 'Evidência (documento ou registro verificável)';
 
   @override
   String get stockRegularizeJustificationLabel => 'Justificativa';
@@ -2107,16 +2023,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get stockRegularizeSubmit => 'Regularizar';
 
   @override
-  String get stockRegularizeIncomplete =>
-      'Preencha a peça, a validade, a evidência e a justificativa.';
+  String get stockRegularizeIncomplete => 'Preencha a peça, a validade, a evidência e a justificativa.';
 
   @override
-  String get stockRegularizeResultEligible =>
-      'Validade regularizada. A peça está apta para entrega e reserva.';
+  String get stockRegularizeResultEligible => 'Validade regularizada. A peça está apta para entrega e reserva.';
 
   @override
-  String get stockRegularizeResultBlocked =>
-      'Validade regularizada. A peça está vencida e permanece bloqueada para entrega.';
+  String get stockRegularizeResultBlocked => 'Validade regularizada. A peça está vencida e permanece bloqueada para entrega.';
 
   @override
   String get stockRegularizeResultDone => 'Validade regularizada.';
@@ -2127,18 +2040,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String stockPhysicalPieceCounts(
-    int valid,
-    int expiring,
-    int expired,
-    int unknown,
-  ) {
+  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown) {
     return 'Peças físicas: válidas $valid, próximas $expiring, vencidas $expired, desconhecidas $unknown.';
   }
 
   @override
-  String get deliveryPhysicalItemIneligible =>
-      'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
+  String get deliveryPhysicalItemIneligible => 'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.';
 
   @override
   String get safetyTitle => 'Biblioteca de Seguridad';
@@ -2210,12 +2117,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get safetyNoDocs => 'No hay documentos publicados para este contexto.';
 
   @override
-  String get safetyNoRecords =>
-      'No hay registros publicados y autorizados en este contexto.';
+  String get safetyNoRecords => 'No hay registros publicados y autorizados en este contexto.';
 
   @override
-  String get safetyCatalogueNotice =>
-      'La aprobación del catálogo no indica disponibilidad física. El vencimiento del CA es distinto al del lote.';
+  String get safetyCatalogueNotice => 'La aprobación del catálogo no indica disponibilidad física. El vencimiento del CA es distinto al del lote.';
 
   @override
   String get safetyName => 'EPP';
@@ -2287,20 +2192,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get safetyEmptyAdmin => 'No hay documentos registrados.';
 
   @override
-  String get safetyPrivateNotice =>
-      'Originales privados, versiones e historial conservados. Gestión restringida al Administrador General y al Administrador de Registro.';
+  String get safetyPrivateNotice => 'Originales privados, versiones e historial conservados. Gestión restringida al Administrador General y al Administrador de Registro.';
 
   @override
-  String get safetyAllowAdminDownloads =>
-      'Permitir descargar originales a administradores autorizados';
+  String get safetyAllowAdminDownloads => 'Permitir descargar originales a administradores autorizados';
 
   @override
-  String get safetyPreviewOnlyNotice =>
-      'Los colaboradores solo pueden consultar la vista previa.';
+  String get safetyPreviewOnlyNotice => 'Los colaboradores solo pueden consultar la vista previa.';
 
   @override
-  String get safetyPolicyReason =>
-      'Cambiar política de descarga administrativa';
+  String get safetyPolicyReason => 'Cambiar política de descarga administrativa';
 
   @override
   String get safetySearchVersions => 'Buscar título o versión';
@@ -2333,8 +2234,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get safetySectors => 'Sectores separados por comas (vacío = todos)';
 
   @override
-  String get safetyActivities =>
-      'Actividades/funciones separadas por comas (vacío = todas)';
+  String get safetyActivities => 'Actividades/funciones separadas por comas (vacío = todas)';
 
   @override
   String get safetyUpload => 'Registrar o versionar documento';
@@ -2366,12 +2266,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String safetyVersionSummary(
-    String version,
-    String revision,
-    String state,
-    String date,
-  ) {
+  String safetyVersionSummary(String version, String revision, String state, String date) {
     return 'Versión $version / revisión $revision · $state · Vigencia $date';
   }
 
@@ -2409,104 +2304,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get safetyStateArchived => 'Archivado';
-
-  @override
-  String get prConfTitle => 'Conferência de Recebimento';
-
-  @override
-  String get prConfIntro =>
-      'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.';
-
-  @override
-  String get prConfReceivedYes => 'Recebido';
-
-  @override
-  String get prConfReceivedNo => 'Não recebido';
-
-  @override
-  String get prConfEvidence => 'Evidência verificável';
-
-  @override
-  String get prConfEvidenceHint => 'Etiqueta / NF / foto';
-
-  @override
-  String get prConfEvidenceRequired =>
-      'Evidência verificável é obrigatória quando há validade.';
-
-  @override
-  String get prConfSplitLots => 'Separar em lotes';
-
-  @override
-  String get prConfSingleDate => 'Usar data única';
-
-  @override
-  String get prConfAddLot => 'Adicionar lote';
-
-  @override
-  String get prConfAddException => 'Exceção (1 peça)';
-
-  @override
-  String get prConfLotQty => 'Qtd';
-
-  @override
-  String get prConfLotCode => 'Identificação';
-
-  @override
-  String get prConfRemoveLot => 'Remover lote';
-
-  @override
-  String get prConfPreview => 'Prévia — validade física por peça';
-
-  @override
-  String get prConfBlocked => 'SEM validade → BLOQUEADAS';
-
-  @override
-  String get prConfExpired => 'vencida';
-
-  @override
-  String get prConfPiece => 'peça(s)';
-
-  @override
-  String get prConfSumMismatch =>
-      'A soma das quantidades dos lotes não confere com a quantidade recebida.';
-
-  @override
-  String get prConfLotQtyPositive =>
-      'Cada lote precisa de quantidade maior que zero.';
-
-  @override
-  String get prConfNotes => 'Observações sobre itens não recebidos';
-
-  @override
-  String get prConfNotesRequired =>
-      'Informe as observações sobre os itens não recebidos.';
-
-  @override
-  String get prConfSubmit => 'Registrar Conferência';
-
-  @override
-  String get prConfDone => 'Conferência registrada.';
-
-  @override
-  String get prConfEmpty => 'Nenhum item elegível para conferência.';
-
-  @override
-  String get prConfInvalidQuantity =>
-      'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
-
-  @override
-  String get prConfNoPersistedPieces =>
-      'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.';
-
-  @override
-  String prConfDoneQuantity(int count) {
-    return '$count peças efetivamente registradas no estoque.';
-  }
-
-  @override
-  String get prConfNoStockEntry =>
-      'Conferência salva sem entrada de peças no estoque.';
-
   @override
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
@@ -2515,7 +2312,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
 class AppLocalizationsEsEs extends AppLocalizationsEs {
-  AppLocalizationsEsEs() : super('es_ES');
+  AppLocalizationsEsEs(): super('es_ES');
 
   @override
   String get appName => 'Control de EPP';
@@ -2767,8 +2564,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get employeeUnitLabel => 'Unidad';
 
   @override
-  String get employeeUnitLockedHint =>
-      'Unidad definida por su perfil de acceso.';
+  String get employeeUnitLockedHint => 'Unidad definida por su perfil de acceso.';
 
   @override
   String get employeeLegalEntityLabel => 'CNPJ';
@@ -2906,8 +2702,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get deliverySuccess => 'Entrega registrada exitosamente';
 
   @override
-  String get deliveryOfflineQueued =>
-      'Entrega guardada — se sincronizará al conectarse';
+  String get deliveryOfflineQueued => 'Entrega guardada — se sincronizará al conectarse';
 
   @override
   String get deliverySignatureRequired => 'Firma obligatoria';
@@ -2943,8 +2738,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get returnSuccess => 'Devolución registrada con éxito.';
 
   @override
-  String get returnOfflineQueued =>
-      'Devolución guardada — se sincronizará cuando haya conexión.';
+  String get returnOfflineQueued => 'Devolución guardada — se sincronizará cuando haya conexión.';
 
   @override
   String get recordsTitle => 'Fichas';
@@ -2992,12 +2786,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get poManufacturerValidityHint => 'Indicar fecha';
 
   @override
-  String get poManufacturerValidityRequired =>
-      'Indique la validez del fabricante de todos los EPI recibidos.';
+  String get poManufacturerValidityRequired => 'Indique la validez del fabricante de todos los EPI recibidos.';
 
   @override
-  String get poOcrDateNotFound =>
-      'No se pudo identificar la fecha. Inténtelo de nuevo.';
+  String get poOcrDateNotFound => 'No se pudo identificar la fecha. Inténtelo de nuevo.';
 
   @override
   String get poOcrCameraFailed => 'Error en la lectura por cámara.';
@@ -3183,8 +2975,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get portalSignature => 'Confirmar firma';
 
   @override
-  String get portalSignatureInstruction =>
-      'Firme en el espacio de abajo para confirmar la recepción';
+  String get portalSignatureInstruction => 'Firme en el espacio de abajo para confirmar la recepción';
 
   @override
   String get portalDeliveries => 'Entregas';
@@ -3280,16 +3071,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get employeeContactPdfDownloading => 'Descargando PDF...';
 
   @override
-  String get employeeContactErrorNoApp =>
-      'No hay app disponible para abrir este enlace';
+  String get employeeContactErrorNoApp => 'No hay app disponible para abrir este enlace';
 
   @override
-  String get employeeContactErrorGeneric =>
-      'Error al contactar al colaborador. Inténtalo de nuevo.';
+  String get employeeContactErrorGeneric => 'Error al contactar al colaborador. Inténtalo de nuevo.';
 
   @override
-  String get employeeContactPdfError =>
-      'Error al descargar el PDF. Inténtalo de nuevo.';
+  String get employeeContactPdfError => 'Error al descargar el PDF. Inténtalo de nuevo.';
 
   @override
   String get offlineBanner => 'Sin conexión — datos guardados localmente';
@@ -3526,16 +3314,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get myCompanyTitle => 'Mi Empresa';
 
   @override
-  String get myCompanySubtitle =>
-      'Datos, identidad visual y dominio de su empresa';
+  String get myCompanySubtitle => 'Datos, identidad visual y dominio de su empresa';
 
   @override
-  String get myCompanySaved =>
-      'Configuración de la empresa guardada correctamente.';
+  String get myCompanySaved => 'Configuración de la empresa guardada correctamente.';
 
   @override
-  String get myCompanyLoadError =>
-      'No se pudieron cargar los datos de la empresa.';
+  String get myCompanyLoadError => 'No se pudieron cargar los datos de la empresa.';
 
   @override
   String get myCompanyContractSection => 'Contrato (solo lectura)';
@@ -3655,8 +3440,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get epiArchiveBlockTitle => 'Archivar con bloqueo de stock';
 
   @override
-  String get epiArchiveBlockBody =>
-      'Este EPP tiene stock disponible o vínculos activos. Al confirmar, el stock disponible se mueve a Stock Bloqueado (rastreable) y el EPP se archiva.';
+  String get epiArchiveBlockBody => 'Este EPP tiene stock disponible o vínculos activos. Al confirmar, el stock disponible se mueve a Stock Bloqueado (rastreable) y el EPP se archiva.';
 
   @override
   String get epiArchiveBlockConfirm => 'Bloquear stock y archivar';
@@ -3719,8 +3503,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get handoverTitle => 'Conferencia de entrega';
 
   @override
-  String get handoverPrompt =>
-      'Escanee el QR de la entrega o ingrese el código.';
+  String get handoverPrompt => 'Escanee el QR de la entrega o ingrese el código.';
 
   @override
   String get handoverCodeLabel => 'Código de entrega';
@@ -3795,8 +3578,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get legalEntityDeactivate => 'Desactivar CNPJ';
 
   @override
-  String get legalEntityDeactivateHint =>
-      'El historial jurídico se conserva. El CNPJ deja de usarse en nuevas operaciones.';
+  String get legalEntityDeactivateHint => 'El historial jurídico se conserva. El CNPJ deja de usarse en nuevas operaciones.';
 
   @override
   String get legalEntityShowInactive => 'Mostrar inactivos';
@@ -3814,15 +3596,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get legalEntityUfLabel => 'Estado';
 
   @override
-  String get legalEntitiesImportColumnsHint =>
-      'CNPJ\tRazón social\tNombre comercial\tTipo';
+  String get legalEntitiesImportColumnsHint => 'CNPJ\tRazón social\tNombre comercial\tTipo';
 
   @override
   String get legalEntitiesImport => 'Importar hoja de cálculo';
 
   @override
-  String get legalEntitiesImportHint =>
-      'Copie las filas de la hoja (incluida la de encabezado) y péguelas abajo. Acepta columnas en portugués o inglés.';
+  String get legalEntitiesImportHint => 'Copie las filas de la hoja (incluida la de encabezado) y péguelas abajo. Acepta columnas en portugués o inglés.';
 
   @override
   String get legalEntitiesImportResult => 'Importación finalizada';
@@ -3846,8 +3626,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get legalEntityTransferTitle => 'Transferir vínculo jurídico';
 
   @override
-  String get legalEntityTransferHint =>
-      'El CNPJ es el vínculo del contrato laboral y no cambia al transferir de unidad. Este cambio se audita y exige justificación.';
+  String get legalEntityTransferHint => 'El CNPJ es el vínculo del contrato laboral y no cambia al transferir de unidad. Este cambio se audita y exige justificación.';
 
   @override
   String get legalEntityTransferReason => 'Justificación';
@@ -3865,8 +3644,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get unitTransferTitle => 'Transferir de unidad';
 
   @override
-  String get unitTransferHint =>
-      'Movimiento de unidad operativa — temporal o definitivo. Genera un registro auditable y no cambia el CNPJ del colaborador.';
+  String get unitTransferHint => 'Movimiento de unidad operativa — temporal o definitivo. Genera un registro auditable y no cambia el CNPJ del colaborador.';
 
   @override
   String get unitTransferTarget => 'Unidad destino';
@@ -3896,8 +3674,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get myCompanyStockScope => 'Consolidar saldos de stock por';
 
   @override
-  String get myCompanyStockScopeHint =>
-      'Esta configuración solo cambia la vista consolidada de los saldos. Entradas, reservas, salidas, entregas y demás movimientos siguen vinculados al stock de cada unidad.';
+  String get myCompanyStockScopeHint => 'Esta configuración solo cambia la vista consolidada de los saldos. Entradas, reservas, salidas, entregas y demás movimientos siguen vinculados al stock de cada unidad.';
 
   @override
   String get myCompanyStockScopeUnit => 'Unidad';
@@ -3915,8 +3692,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get unitLegalEntityLabel => 'CNPJ responsable';
 
   @override
-  String get unitLegalEntityHint =>
-      'Persona jurídica responsable de las operaciones y del stock de esta unidad.';
+  String get unitLegalEntityHint => 'Persona jurídica responsable de las operaciones y del stock de esta unidad.';
 
   @override
   String get employeeEmploymentTypeLabel => 'Tipo de Vínculo';
@@ -3925,8 +3701,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get employeeSourceCompanyLabel => 'Empresa de Origen';
 
   @override
-  String get employeeSourceCompanyHint =>
-      'Nombre de la empresa de origen del colaborador';
+  String get employeeSourceCompanyHint => 'Nombre de la empresa de origen del colaborador';
 
   @override
   String get employmentTypeClt => 'CLT';
@@ -3956,8 +3731,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompaniesTitle => 'Tercerizados y Prestadores';
 
   @override
-  String get outsourcedCompaniesEmpty =>
-      'Ninguna empresa tercerizada registrada.';
+  String get outsourcedCompaniesEmpty => 'Ninguna empresa tercerizada registrada.';
 
   @override
   String get outsourcedCompaniesSearchHint => 'Buscar por nombre o CNPJ';
@@ -3975,8 +3749,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyCnpjLabel => 'CNPJ';
 
   @override
-  String get outsourcedCompanyCnpjHint =>
-      'Opcional en el Registro Simplificado';
+  String get outsourcedCompanyCnpjHint => 'Opcional en el Registro Simplificado';
 
   @override
   String get outsourcedCompanyKindLabel => 'Tipo de Empresa';
@@ -3991,8 +3764,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyKindOther => 'Otro';
 
   @override
-  String get outsourcedCompanyResponsibilityLabel =>
-      'Responsabilidad por el Suministro de EPP';
+  String get outsourcedCompanyResponsibilityLabel => 'Responsabilidad por el Suministro de EPP';
 
   @override
   String get outsourcedCompanyUnitLabel => 'Unidad';
@@ -4004,16 +3776,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyLinkTitle => 'Vincular empresa a esta Unidad';
 
   @override
-  String get outsourcedCompanyLinkHint =>
-      'Buscar empresa ya registrada en el tenant…';
+  String get outsourcedCompanyLinkHint => 'Buscar empresa ya registrada en el tenant…';
 
   @override
-  String get outsourcedCompanyLinkSectionLinked =>
-      'Ya vinculadas a esta Unidad';
+  String get outsourcedCompanyLinkSectionLinked => 'Ya vinculadas a esta Unidad';
 
   @override
-  String get outsourcedCompanyLinkSectionAvailable =>
-      'Disponibles para vincular';
+  String get outsourcedCompanyLinkSectionAvailable => 'Disponibles para vincular';
 
   @override
   String get outsourcedCompanyLinkLink => 'Vincular a esta Unidad';
@@ -4025,8 +3794,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyLinkDeactivate => 'Archivar en esta Unidad';
 
   @override
-  String get outsourcedCompanyLinkDeactivateReason =>
-      'Motivo del archivado (opcional):';
+  String get outsourcedCompanyLinkDeactivateReason => 'Motivo del archivado (opcional):';
 
   @override
   String outsourcedCompanyLinkUsedByUnits(int count) {
@@ -4037,12 +3805,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyLinkOriginUnit => 'Unidad de origen';
 
   @override
-  String get outsourcedCompanyLinkEmpty =>
-      'No se encontró ninguna empresa con ese término.';
+  String get outsourcedCompanyLinkEmpty => 'No se encontró ninguna empresa con ese término.';
 
   @override
-  String get outsourcedCompanyLinkNotInformed =>
-      'Vínculo no informado para su perfil';
+  String get outsourcedCompanyLinkNotInformed => 'Vínculo no informado para su perfil';
 
   @override
   String get outsourcedCompanyStatusLabel => 'Situación';
@@ -4057,12 +3823,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyPromote => 'Promover a Registro Estándar';
 
   @override
-  String get outsourcedCompanyPromoteConfirmTitle =>
-      '¿Promover a Registro Estándar?';
+  String get outsourcedCompanyPromoteConfirmTitle => '¿Promover a Registro Estándar?';
 
   @override
-  String get outsourcedCompanyPromoteConfirmBody =>
-      'La empresa pasará a ser tratada como Registro Estándar. Se requiere un CNPJ.';
+  String get outsourcedCompanyPromoteConfirmBody => 'La empresa pasará a ser tratada como Registro Estándar. Se requiere un CNPJ.';
 
   @override
   String get outsourcedCompanySimplifiedBadge => 'Simplificado';
@@ -4110,27 +3874,22 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedCompanyRestoreConfirmTitle => '¿Restaurar esta empresa?';
 
   @override
-  String get outsourcedCompaniesArchivedEmpty =>
-      'No hay empresas subcontratadas archivadas.';
+  String get outsourcedCompaniesArchivedEmpty => 'No hay empresas subcontratadas archivadas.';
 
   @override
   String get outsourcedEmployeeNew => 'Nuevo colaborador';
 
   @override
-  String get outsourcedEmployeesEmpty =>
-      'No hay colaboradores subcontratados/prestadores registrados.';
+  String get outsourcedEmployeesEmpty => 'No hay colaboradores subcontratados/prestadores registrados.';
 
   @override
-  String get outsourcedEmployeesArchivedEmpty =>
-      'No hay colaboradores subcontratados/prestadores archivados.';
+  String get outsourcedEmployeesArchivedEmpty => 'No hay colaboradores subcontratados/prestadores archivados.';
 
   @override
-  String get outsourcedEmployeeCompanyLabel =>
-      'Empresa subcontratada/prestadora';
+  String get outsourcedEmployeeCompanyLabel => 'Empresa subcontratada/prestadora';
 
   @override
-  String get outsourcedEmployeeOriginRegistrationLabel =>
-      'Matrícula de la empresa de origen';
+  String get outsourcedEmployeeOriginRegistrationLabel => 'Matrícula de la empresa de origen';
 
   @override
   String get outsourcedEmployeeBadgeLabel => 'Credencial';
@@ -4139,12 +3898,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedEmployeeNotesLabel => 'Observaciones';
 
   @override
-  String get outsourcedEmployeeArchiveConfirmTitle =>
-      '¿Archivar este colaborador?';
+  String get outsourcedEmployeeArchiveConfirmTitle => '¿Archivar este colaborador?';
 
   @override
-  String get outsourcedEmployeeRestoreConfirmTitle =>
-      '¿Restaurar este colaborador?';
+  String get outsourcedEmployeeRestoreConfirmTitle => '¿Restaurar este colaborador?';
 
   @override
   String get employeeUnitLinkColumn => 'Vínculo local';
@@ -4159,8 +3916,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get employeeUnitLinkDeactivate => 'Archivar en esta Unidad';
 
   @override
-  String get employeeUnitLinkDeactivateReason =>
-      'Motivo del archivado (opcional):';
+  String get employeeUnitLinkDeactivateReason => 'Motivo del archivado (opcional):';
 
   @override
   String get employeeUnitLinkActive => 'Vinculado';
@@ -4175,8 +3931,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get employeeUnitLinksTitle => 'Vínculos por Unidad';
 
   @override
-  String get employeeUnitLinksEmpty =>
-      'Este colaborador no tiene vínculo con ninguna Unidad que usted pueda consultar.';
+  String get employeeUnitLinksEmpty => 'Este colaborador no tiene vínculo con ninguna Unidad que usted pueda consultar.';
 
   @override
   String get employeeUnitLinksError => 'No se pudieron cargar los vínculos.';
@@ -4185,8 +3940,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get outsourcedReportsError => 'No fue posible cargar el informe.';
 
   @override
-  String get outsourcedReportsEmpty =>
-      'No hay empresas subcontratadas/prestadoras registradas.';
+  String get outsourcedReportsEmpty => 'No hay empresas subcontratadas/prestadoras registradas.';
 
   @override
   String get outsourcedReportsActive => 'Activos';
@@ -4198,19 +3952,16 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get moduleVisibilityTitle => 'Visibilidad de Módulos';
 
   @override
-  String get moduleVisibilityDescription =>
-      'Permisos predeterminados: cada perfil tiene permisos predeterminados definidos por el sistema. Personalizaciones: el Administrador General puede personalizar la visualización y el uso de los módulos por perfil y por unidad, sin alterar la estructura predeterminada del sistema.';
+  String get moduleVisibilityDescription => 'Permisos predeterminados: cada perfil tiene permisos predeterminados definidos por el sistema. Personalizaciones: el Administrador General puede personalizar la visualización y el uso de los módulos por perfil y por unidad, sin alterar la estructura predeterminada del sistema.';
 
   @override
   String get moduleVisibilityRoleLabel => 'Perfil';
 
   @override
-  String get moduleVisibilityDefaultPanelTitle =>
-      'Permisos predeterminados de este perfil';
+  String get moduleVisibilityDefaultPanelTitle => 'Permisos predeterminados de este perfil';
 
   @override
-  String get moduleVisibilityDefaultPanelHint =>
-      'Estos permisos representan el comportamiento predeterminado del sistema. Las configuraciones siguientes solo permiten personalizaciones realizadas por el Administrador General.';
+  String get moduleVisibilityDefaultPanelHint => 'Estos permisos representan el comportamiento predeterminado del sistema. Las configuraciones siguientes solo permiten personalizaciones realizadas por el Administrador General.';
 
   @override
   String get moduleVisibilityNoDefaultModules => 'Ningún módulo por defecto';
@@ -4219,12 +3970,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get moduleVisibilityUnitLabel => 'Unidad';
 
   @override
-  String get moduleVisibilityUnitHint =>
-      'Un módulo no marcado específicamente para esta Unidad hereda el valor de \"Todas las unidades\".';
+  String get moduleVisibilityUnitHint => 'Un módulo no marcado específicamente para esta Unidad hereda el valor de \"Todas las unidades\".';
 
   @override
-  String get moduleVisibilityAllUnitsOption =>
-      'Todas las unidades (predeterminado)';
+  String get moduleVisibilityAllUnitsOption => 'Todas las unidades (predeterminado)';
 
   @override
   String get stockTabAvailable => 'Disponibles';
@@ -4233,19 +3982,16 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockTabBlocked => 'Bloqueados';
 
   @override
-  String get stockAvailableSelectEpi =>
-      'Seleccione un EPI para ver los artículos disponibles';
+  String get stockAvailableSelectEpi => 'Seleccione un EPI para ver los artículos disponibles';
 
   @override
-  String get stockAvailableEmpty =>
-      'No hay artículos disponibles para este EPI en esta unidad';
+  String get stockAvailableEmpty => 'No hay artículos disponibles para este EPI en esta unidad';
 
   @override
   String get stockBlockedEmpty => 'No hay artículos bloqueados';
 
   @override
-  String get stockNoOperationalUnit =>
-      'Su perfil no tiene una unidad operativa activa. Contacte al administrador para obtener acceso al inventario.';
+  String get stockNoOperationalUnit => 'Su perfil no tiene una unidad operativa activa. Contacte al administrador para obtener acceso al inventario.';
 
   @override
   String get stockItemLotLabel => 'Lote';
@@ -4298,30 +4044,25 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String get deliveryEmployeeWithoutUnit =>
-      'Colaborador sin Unidad operativa: no se puede registrar la entrega.';
+  String get deliveryEmployeeWithoutUnit => 'Colaborador sin Unidad operativa: no se puede registrar la entrega.';
 
   @override
   String get deliveryQrOtherEpi => 'El código leído pertenece a otro EPP.';
 
   @override
-  String get stockUnitRequiredToMove =>
-      'Seleccione una Unidad para mover el stock.';
+  String get stockUnitRequiredToMove => 'Seleccione una Unidad para mover el stock.';
 
   @override
   String get stockAttentionSectionTitle => 'Existencias';
 
   @override
-  String get stockAttentionCompanyTitle =>
-      'Franja de atención — valor por defecto de la empresa';
+  String get stockAttentionCompanyTitle => 'Franja de atención — valor por defecto de la empresa';
 
   @override
-  String get stockAttentionCompanyHelp =>
-      'Se aplica a las Unidades que no han definido su propio porcentaje. No modifica ninguna Unidad ya configurada.';
+  String get stockAttentionCompanyHelp => 'Se aplica a las Unidades que no han definido su propio porcentaje. No modifica ninguna Unidad ya configurada.';
 
   @override
-  String get stockAttentionPercentageLabel =>
-      'Porcentaje de la franja de atención';
+  String get stockAttentionPercentageLabel => 'Porcentaje de la franja de atención';
 
   @override
   String get stockAttentionOriginLabel => 'Origen';
@@ -4342,8 +4083,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockAttentionSaved => 'Valor por defecto de la empresa guardado.';
 
   @override
-  String get stockAttentionRestored =>
-      'Valor de la empresa eliminado. La empresa vuelve al valor del sistema.';
+  String get stockAttentionRestored => 'Valor de la empresa eliminado. La empresa vuelve al valor del sistema.';
 
   @override
   String stockAttentionSystemDefaultHint(int value) {
@@ -4354,26 +4094,22 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockConfigTitle => 'Configuración de existencias';
 
   @override
-  String get stockConfigIntro =>
-      'Define las existencias mínimas, la franja de atención y el monitoreo de alerta de un EPI en una Unidad. Cada parámetro se guarda por separado.';
+  String get stockConfigIntro => 'Define las existencias mínimas, la franja de atención y el monitoreo de alerta de un EPI en una Unidad. Cada parámetro se guarda por separado.';
 
   @override
   String get stockConfigUnitLabel => 'Unidad a configurar';
 
   @override
-  String get stockConfigSelectUnit =>
-      'Selecciona la Unidad para configurar sus parámetros.';
+  String get stockConfigSelectUnit => 'Selecciona la Unidad para configurar sus parámetros.';
 
   @override
-  String get stockConfigSelectEpi =>
-      'Selecciona el EPI para ver y editar los parámetros de esta Unidad.';
+  String get stockConfigSelectEpi => 'Selecciona el EPI para ver y editar los parámetros de esta Unidad.';
 
   @override
   String get stockConfigEpiLabel => 'EPI';
 
   @override
-  String get stockConfigEpisLoadError =>
-      'No se pudo cargar la lista de EPI de esta Unidad.';
+  String get stockConfigEpisLoadError => 'No se pudo cargar la lista de EPI de esta Unidad.';
 
   @override
   String get stockConfigNoEpisInUnit => 'Ningún EPI es visible en esta Unidad.';
@@ -4388,8 +4124,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockConfigUnderlyingStatus => 'Condición física';
 
   @override
-  String get stockConfigDerivedUnavailable =>
-      'Los valores calculados no se pudieron actualizar ahora. Los parámetros guardados arriba son correctos.';
+  String get stockConfigDerivedUnavailable => 'Los valores calculados no se pudieron actualizar ahora. Los parámetros guardados arriba son correctos.';
 
   @override
   String get stockConfigStatusCritical => 'Crítico';
@@ -4407,74 +4142,61 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockConfigMinimumTitle => 'Existencias mínimas';
 
   @override
-  String get stockConfigMinimumHelp =>
-      'Cantidad por debajo de la cual el EPI se considera crítico en esta Unidad. Solo vale para esta Unidad.';
+  String get stockConfigMinimumHelp => 'Cantidad por debajo de la cual el EPI se considera crítico en esta Unidad. Solo vale para esta Unidad.';
 
   @override
   String get stockConfigMinimumLabel => 'Existencias mínimas';
 
   @override
-  String get stockConfigMinimumNegativeError =>
-      'Introduce un número entero igual o mayor que cero.';
+  String get stockConfigMinimumNegativeError => 'Introduce un número entero igual o mayor que cero.';
 
   @override
-  String get stockConfigMinimumSaved =>
-      'Existencias mínimas guardadas para esta Unidad.';
+  String get stockConfigMinimumSaved => 'Existencias mínimas guardadas para esta Unidad.';
 
   @override
-  String get stockConfigMinimumRestored =>
-      'Existencias mínimas restauradas. La Unidad vuelve a heredar el valor de la empresa.';
+  String get stockConfigMinimumRestored => 'Existencias mínimas restauradas. La Unidad vuelve a heredar el valor de la empresa.';
 
   @override
   String get stockConfigAttentionTitle => 'Franja de atención';
 
   @override
-  String get stockConfigAttentionHelp =>
-      'Porcentaje por encima del mínimo en el que el EPI ya entra en atención en esta Unidad. Independiente de las existencias mínimas.';
+  String get stockConfigAttentionHelp => 'Porcentaje por encima del mínimo en el que el EPI ya entra en atención en esta Unidad. Independiente de las existencias mínimas.';
 
   @override
-  String get stockConfigAttentionRangeError =>
-      'El porcentaje debe estar entre 0 y 100.';
+  String get stockConfigAttentionRangeError => 'El porcentaje debe estar entre 0 y 100.';
 
   @override
-  String get stockConfigAttentionSaved =>
-      'Franja de atención guardada para esta Unidad.';
+  String get stockConfigAttentionSaved => 'Franja de atención guardada para esta Unidad.';
 
   @override
-  String get stockConfigAttentionRestored =>
-      'Franja de atención restaurada. La Unidad vuelve a heredar el valor de la empresa.';
+  String get stockConfigAttentionRestored => 'Franja de atención restaurada. La Unidad vuelve a heredar el valor de la empresa.';
 
   @override
   String get stockConfigAlertTitle => 'Monitoreo de alerta';
 
   @override
-  String get stockConfigAlertHelp =>
-      'Desactivarlo detiene la alerta de existencias bajas y la reposición automática de este EPI en esta Unidad. No cambia el saldo, el mínimo ni el porcentaje.';
+  String get stockConfigAlertHelp => 'Desactivarlo detiene la alerta de existencias bajas y la reposición automática de este EPI en esta Unidad. No cambia el saldo, el mínimo ni el porcentaje.';
 
   @override
   String get stockConfigAlertToggle => 'Monitorear las existencias de este EPI';
 
   @override
-  String get stockConfigAlertPending =>
-      'Cambio pendiente. Pulsa Guardar para aplicarlo.';
+  String get stockConfigAlertPending => 'Cambio pendiente. Pulsa Guardar para aplicarlo.';
 
   @override
   String get stockConfigAlertDisableTitle => '¿Desactivar la alerta?';
 
   @override
-  String get stockConfigAlertDisableBody =>
-      'Este EPI dejará de generar alertas de existencias bajas y reposición automática en esta Unidad. La condición física seguirá mostrándose.';
+  String get stockConfigAlertDisableBody => 'Este EPI dejará de generar alertas de existencias bajas y reposición automática en esta Unidad. La condición física seguirá mostrándose.';
 
   @override
   String get stockConfigAlertDisableConfirm => 'Desactivar';
 
   @override
-  String get stockConfigAlertSaved =>
-      'Monitoreo de alerta guardado para esta Unidad.';
+  String get stockConfigAlertSaved => 'Monitoreo de alerta guardado para esta Unidad.';
 
   @override
-  String get stockConfigAlertRestored =>
-      'Monitoreo restaurado. La Unidad vuelve al valor del sistema.';
+  String get stockConfigAlertRestored => 'Monitoreo restaurado. La Unidad vuelve al valor del sistema.';
 
   @override
   String get stockConfigOriginUnit => 'Configurado por esta Unidad';
@@ -4497,8 +4219,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String get stockAttentionLoadError =>
-      'No se ha podido cargar el valor por defecto de la empresa.';
+  String get stockAttentionLoadError => 'No se ha podido cargar el valor por defecto de la empresa.';
 
   @override
   String get unitSelectorLabel => 'Unidad';
@@ -4513,12 +4234,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get unitSelectorLoadError => 'No se han podido cargar las Unidades.';
 
   @override
-  String get unitSelectorNoUnitsAssigned =>
-      'No tiene ninguna Unidad asignada. Hable con el administrador.';
+  String get unitSelectorNoUnitsAssigned => 'No tiene ninguna Unidad asignada. Hable con el administrador.';
 
   @override
-  String get unitSelectorCompanyHasNoUnits =>
-      'La empresa aún no tiene Unidades registradas.';
+  String get unitSelectorCompanyHasNoUnits => 'La empresa aún no tiene Unidades registradas.';
 
   @override
   String get settingsSectionCompany => 'Empresa';
@@ -4538,37 +4257,31 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String get settingsSelectCompanyFirst =>
-      'Seleccione una empresa en Configuración para continuar.';
+  String get settingsSelectCompanyFirst => 'Seleccione una empresa en Configuración para continuar.';
 
   @override
   String get settingsFichaTileTitle => 'Ficha de EPP';
 
   @override
-  String get settingsFichaTileSubtitle =>
-      'Título, declaración, observaciones y trazabilidad';
+  String get settingsFichaTileSubtitle => 'Título, declaración, observaciones y trazabilidad';
 
   @override
-  String get settingsStockTileSubtitle =>
-      'Franja de atención predeterminada de la empresa';
+  String get settingsStockTileSubtitle => 'Franja de atención predeterminada de la empresa';
 
   @override
-  String get settingsModulesTileSubtitle =>
-      'Módulos visibles por perfil y por Unidad';
+  String get settingsModulesTileSubtitle => 'Módulos visibles por perfil y por Unidad';
 
   @override
   String get settingsArchivalTitle => 'Archivado y retención';
 
   @override
-  String get settingsArchivalSubtitle =>
-      'Años de conservación de los registros archivados';
+  String get settingsArchivalSubtitle => 'Años de conservación de los registros archivados';
 
   @override
   String get settingsAppearanceTitle => 'Apariencia e idioma';
 
   @override
-  String get settingsAppearanceSubtitle =>
-      'Tema de la interfaz e idioma de la aplicación';
+  String get settingsAppearanceSubtitle => 'Tema de la interfaz e idioma de la aplicación';
 
   @override
   String get settingsSubscriptionTileTitle => 'Mi suscripción';
@@ -4583,8 +4296,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get settingsInvoicesTileSubtitle => 'Todos los cobros y recibos';
 
   @override
-  String get settingsNoPermission =>
-      'No tiene permiso para modificar esta configuración.';
+  String get settingsNoPermission => 'No tiene permiso para modificar esta configuración.';
 
   @override
   String get stockPhysicalValidityUnknown => 'Caducidad física desconocida';
@@ -4596,8 +4308,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockRegularizeValidityTitle => 'Regularizar validez física';
 
   @override
-  String get stockRegularizeValiditySubtitle =>
-      'Identifique la pieza e indique la validez comprobada. La clasificación la realiza el sistema.';
+  String get stockRegularizeValiditySubtitle => 'Identifique la pieza e indique la validez comprobada. La clasificación la realiza el sistema.';
 
   @override
   String get stockRegularizeQrLabel => 'QR o código de la pieza';
@@ -4609,8 +4320,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockRegularizeExpirySelect => 'Seleccionar fecha';
 
   @override
-  String get stockRegularizeEvidenceLabel =>
-      'Evidencia (documento o registro verificable)';
+  String get stockRegularizeEvidenceLabel => 'Evidencia (documento o registro verificable)';
 
   @override
   String get stockRegularizeJustificationLabel => 'Justificación';
@@ -4619,16 +4329,13 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get stockRegularizeSubmit => 'Regularizar';
 
   @override
-  String get stockRegularizeIncomplete =>
-      'Complete la pieza, la validez, la evidencia y la justificación.';
+  String get stockRegularizeIncomplete => 'Complete la pieza, la validez, la evidencia y la justificación.';
 
   @override
-  String get stockRegularizeResultEligible =>
-      'Validez regularizada. La pieza está habilitada para entrega y reserva.';
+  String get stockRegularizeResultEligible => 'Validez regularizada. La pieza está habilitada para entrega y reserva.';
 
   @override
-  String get stockRegularizeResultBlocked =>
-      'Validez regularizada. La pieza está vencida y permanece bloqueada para entrega.';
+  String get stockRegularizeResultBlocked => 'Validez regularizada. La pieza está vencida y permanece bloqueada para entrega.';
 
   @override
   String get stockRegularizeResultDone => 'Validez regularizada.';
@@ -4639,18 +4346,12 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String stockPhysicalPieceCounts(
-    int valid,
-    int expiring,
-    int expired,
-    int unknown,
-  ) {
+  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown) {
     return 'Unidades físicas: válidas $valid, próximas $expiring, caducadas $expired, desconocidas $unknown.';
   }
 
   @override
-  String get deliveryPhysicalItemIneligible =>
-      'Unidad no disponible para entrega. Revise caducidad física, estado, reservas y saldo.';
+  String get deliveryPhysicalItemIneligible => 'Unidad no disponible para entrega. Revise caducidad física, estado, reservas y saldo.';
 
   @override
   String get safetyTitle => 'Biblioteca de Seguridad';
@@ -4722,12 +4423,10 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get safetyNoDocs => 'No hay documentos publicados para este contexto.';
 
   @override
-  String get safetyNoRecords =>
-      'No hay registros publicados y autorizados en este contexto.';
+  String get safetyNoRecords => 'No hay registros publicados y autorizados en este contexto.';
 
   @override
-  String get safetyCatalogueNotice =>
-      'La aprobación del catálogo no indica disponibilidad física. El vencimiento del CA es distinto al del lote.';
+  String get safetyCatalogueNotice => 'La aprobación del catálogo no indica disponibilidad física. El vencimiento del CA es distinto al del lote.';
 
   @override
   String get safetyName => 'EPP';
@@ -4799,20 +4498,16 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get safetyEmptyAdmin => 'No hay documentos registrados.';
 
   @override
-  String get safetyPrivateNotice =>
-      'Originales privados, versiones e historial conservados. Gestión restringida al Administrador General y al Administrador de Registro.';
+  String get safetyPrivateNotice => 'Originales privados, versiones e historial conservados. Gestión restringida al Administrador General y al Administrador de Registro.';
 
   @override
-  String get safetyAllowAdminDownloads =>
-      'Permitir descargar originales a administradores autorizados';
+  String get safetyAllowAdminDownloads => 'Permitir descargar originales a administradores autorizados';
 
   @override
-  String get safetyPreviewOnlyNotice =>
-      'Los colaboradores solo pueden consultar la vista previa.';
+  String get safetyPreviewOnlyNotice => 'Los colaboradores solo pueden consultar la vista previa.';
 
   @override
-  String get safetyPolicyReason =>
-      'Cambiar política de descarga administrativa';
+  String get safetyPolicyReason => 'Cambiar política de descarga administrativa';
 
   @override
   String get safetySearchVersions => 'Buscar título o versión';
@@ -4845,8 +4540,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   String get safetySectors => 'Sectores separados por comas (vacío = todos)';
 
   @override
-  String get safetyActivities =>
-      'Actividades/funciones separadas por comas (vacío = todas)';
+  String get safetyActivities => 'Actividades/funciones separadas por comas (vacío = todas)';
 
   @override
   String get safetyUpload => 'Registrar o versionar documento';
@@ -4878,12 +4572,7 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
   }
 
   @override
-  String safetyVersionSummary(
-    String version,
-    String revision,
-    String state,
-    String date,
-  ) {
+  String safetyVersionSummary(String version, String revision, String state, String date) {
     return 'Versión $version / revisión $revision · $state · Vigencia $date';
   }
 
@@ -4921,106 +4610,8 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get safetyStateArchived => 'Archivado';
-
-  @override
-  String get prConfTitle => 'Conferencia de Recepción';
-
-  @override
-  String get prConfIntro =>
-      'Marque cada ítem según la recepción real. Informe la validez física del fabricante y la evidencia verificable; use \"Separar en lotes\" para validades diferentes o excepciones individuales. Las piezas sin validez comprobada entran BLOQUEADAS.';
-
-  @override
-  String get prConfReceivedYes => 'Recibido';
-
-  @override
-  String get prConfReceivedNo => 'No recibido';
-
-  @override
-  String get prConfEvidence => 'Evidencia verificable';
-
-  @override
-  String get prConfEvidenceHint => 'Etiqueta / factura / foto';
-
-  @override
-  String get prConfEvidenceRequired =>
-      'La evidencia verificable es obligatoria cuando hay validez.';
-
-  @override
-  String get prConfSplitLots => 'Separar en lotes';
-
-  @override
-  String get prConfSingleDate => 'Usar fecha única';
-
-  @override
-  String get prConfAddLot => 'Agregar lote';
-
-  @override
-  String get prConfAddException => 'Excepción (1 pieza)';
-
-  @override
-  String get prConfLotQty => 'Cant.';
-
-  @override
-  String get prConfLotCode => 'Identificación';
-
-  @override
-  String get prConfRemoveLot => 'Quitar lote';
-
-  @override
-  String get prConfPreview => 'Vista previa — validez física por pieza';
-
-  @override
-  String get prConfBlocked => 'SIN validez → BLOQUEADAS';
-
-  @override
-  String get prConfExpired => 'vencida';
-
-  @override
-  String get prConfPiece => 'pieza(s)';
-
-  @override
-  String get prConfSumMismatch =>
-      'La suma de las cantidades de los lotes no coincide con la cantidad recibida.';
-
-  @override
-  String get prConfLotQtyPositive =>
-      'Cada lote necesita una cantidad mayor que cero.';
-
-  @override
-  String get prConfNotes => 'Observaciones sobre ítems no recibidos';
-
-  @override
-  String get prConfNotesRequired =>
-      'Informe las observaciones sobre los ítems no recibidos.';
-
-  @override
-  String get prConfSubmit => 'Registrar Conferencia';
-
-  @override
-  String get prConfDone => 'Conferencia registrada.';
-
-  @override
-  String get prConfEmpty => 'Ningún ítem elegible para conferencia.';
-
-  @override
-  String get prConfInvalidQuantity =>
-      'La cantidad efectivamente recibida es inválida o no positiva. Corrija la recepción antes de confirmar.';
-
-  @override
-  String get prConfNoPersistedPieces =>
-      'No se registraron piezas o la respuesta es inconsistente. No se confirmó la entrada al inventario.';
-
-  @override
-  String prConfDoneQuantity(int count) {
-    return '$count piezas efectivamente registradas en el inventario.';
-  }
-
-  @override
-  String get prConfNoStockEntry =>
-      'Conferencia guardada sin entrada de piezas al inventario.';
-
   @override
   String prConfInvalidQuantityLine(int line, String item, String id) {
-    return 'Línea $line — $item (artículo #$id): cantidad efectivamente recibida inválida o no positiva. Corrija la recepción antes de confirmar.';
+    return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
 }

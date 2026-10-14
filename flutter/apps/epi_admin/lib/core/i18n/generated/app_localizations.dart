@@ -64,8 +64,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -73,8 +72,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -86,13 +84,12 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +102,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR'),
+    Locale('pt', 'BR')
   ];
 
   /// Nome da aplicação
@@ -4114,12 +4111,7 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.'**
-  String stockPhysicalPieceCounts(
-    int valid,
-    int expiring,
-    int expired,
-    int unknown,
-  );
+  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown);
 
   /// No description provided for @deliveryPhysicalItemIneligible.
   ///
@@ -4551,12 +4543,7 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Versão {version} / revisão {revision} · {state} · Vigência {date}'**
-  String safetyVersionSummary(
-    String version,
-    String revision,
-    String state,
-    String date,
-  );
+  String safetyVersionSummary(String version, String revision, String state, String date);
 
   /// No description provided for @safetyActorDetails.
   ///
@@ -4623,181 +4610,6 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Arquivado'**
   String get safetyStateArchived;
-
-  /// No description provided for @prConfTitle.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Conferência de Recebimento'**
-  String get prConfTitle;
-
-  /// No description provided for @prConfIntro.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.'**
-  String get prConfIntro;
-
-  /// No description provided for @prConfReceivedYes.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Recebido'**
-  String get prConfReceivedYes;
-
-  /// No description provided for @prConfReceivedNo.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Não recebido'**
-  String get prConfReceivedNo;
-
-  /// No description provided for @prConfEvidence.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Evidência verificável'**
-  String get prConfEvidence;
-
-  /// No description provided for @prConfEvidenceHint.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Etiqueta / NF / foto'**
-  String get prConfEvidenceHint;
-
-  /// No description provided for @prConfEvidenceRequired.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Evidência verificável é obrigatória quando há validade.'**
-  String get prConfEvidenceRequired;
-
-  /// No description provided for @prConfSplitLots.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Separar em lotes'**
-  String get prConfSplitLots;
-
-  /// No description provided for @prConfSingleDate.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Usar data única'**
-  String get prConfSingleDate;
-
-  /// No description provided for @prConfAddLot.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Adicionar lote'**
-  String get prConfAddLot;
-
-  /// No description provided for @prConfAddException.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Exceção (1 peça)'**
-  String get prConfAddException;
-
-  /// No description provided for @prConfLotQty.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Qtd'**
-  String get prConfLotQty;
-
-  /// No description provided for @prConfLotCode.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Identificação'**
-  String get prConfLotCode;
-
-  /// No description provided for @prConfRemoveLot.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Remover lote'**
-  String get prConfRemoveLot;
-
-  /// No description provided for @prConfPreview.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Prévia — validade física por peça'**
-  String get prConfPreview;
-
-  /// No description provided for @prConfBlocked.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'SEM validade → BLOQUEADAS'**
-  String get prConfBlocked;
-
-  /// No description provided for @prConfExpired.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'vencida'**
-  String get prConfExpired;
-
-  /// No description provided for @prConfPiece.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'peça(s)'**
-  String get prConfPiece;
-
-  /// No description provided for @prConfSumMismatch.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'A soma das quantidades dos lotes não confere com a quantidade recebida.'**
-  String get prConfSumMismatch;
-
-  /// No description provided for @prConfLotQtyPositive.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Cada lote precisa de quantidade maior que zero.'**
-  String get prConfLotQtyPositive;
-
-  /// No description provided for @prConfNotes.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Observações sobre itens não recebidos'**
-  String get prConfNotes;
-
-  /// No description provided for @prConfNotesRequired.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Informe as observações sobre os itens não recebidos.'**
-  String get prConfNotesRequired;
-
-  /// No description provided for @prConfSubmit.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Registrar Conferência'**
-  String get prConfSubmit;
-
-  /// No description provided for @prConfDone.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Conferência registrada.'**
-  String get prConfDone;
-
-  /// No description provided for @prConfEmpty.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Nenhum item elegível para conferência.'**
-  String get prConfEmpty;
-
-  /// No description provided for @prConfInvalidQuantity.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
-  String get prConfInvalidQuantity;
-
-  /// No description provided for @prConfNoPersistedPieces.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.'**
-  String get prConfNoPersistedPieces;
-
-  /// No description provided for @prConfDoneQuantity.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'{count} peças efetivamente registradas no estoque.'**
-  String prConfDoneQuantity(int count);
-
-  /// No description provided for @prConfNoStockEntry.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Conferência salva sem entrada de peças no estoque.'**
-  String get prConfNoStockEntry;
-
   /// No description provided for @prConfInvalidQuantityLine.
   ///
   /// In pt_BR, this message translates to:
@@ -4805,8 +4617,7 @@ abstract class AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id);
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -4815,96 +4626,61 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
+
   // Lookup logic when language+country codes are specified.
   switch (locale.languageCode) {
-    case 'en':
-      {
-        switch (locale.countryCode) {
-          case 'US':
-            return app_localizations_en.loadLibrary().then(
-              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
-            );
-        }
-        break;
-      }
-    case 'es':
-      {
-        switch (locale.countryCode) {
-          case 'ES':
-            return app_localizations_es.loadLibrary().then(
-              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
-            );
-        }
-        break;
-      }
-    case 'fr':
-      {
-        switch (locale.countryCode) {
-          case 'FR':
-            return app_localizations_fr.loadLibrary().then(
-              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
-            );
-        }
-        break;
-      }
-    case 'no':
-      {
-        switch (locale.countryCode) {
-          case 'NO':
-            return app_localizations_no.loadLibrary().then(
-              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
-            );
-        }
-        break;
-      }
-    case 'pt':
-      {
-        switch (locale.countryCode) {
-          case 'BR':
-            return app_localizations_pt.loadLibrary().then(
-              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
-            );
-        }
-        break;
-      }
+    case 'en': {
+  switch (locale.countryCode) {
+    case 'US': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEnUs());
+   }
+  break;
+   }
+    case 'es': {
+  switch (locale.countryCode) {
+    case 'ES': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEsEs());
+   }
+  break;
+   }
+    case 'fr': {
+  switch (locale.countryCode) {
+    case 'FR': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
+   }
+  break;
+   }
+    case 'no': {
+  switch (locale.countryCode) {
+    case 'NO': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNoNo());
+   }
+  break;
+   }
+    case 'pt': {
+  switch (locale.countryCode) {
+    case 'BR': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
+   }
+  break;
+   }
   }
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return app_localizations_en.loadLibrary().then(
-        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
-      );
-    case 'es':
-      return app_localizations_es.loadLibrary().then(
-        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
-      );
-    case 'fr':
-      return app_localizations_fr.loadLibrary().then(
-        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
-      );
-    case 'no':
-      return app_localizations_no.loadLibrary().then(
-        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
-      );
-    case 'pt':
-      return app_localizations_pt.loadLibrary().then(
-        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
-      );
+    case 'en': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEn());
+    case 'es': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEs());
+    case 'fr': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
+    case 'no': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNo());
+    case 'pt': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

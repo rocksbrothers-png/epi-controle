@@ -40,6 +40,7 @@ abstract final class Routes {
   static const units       = '/units';
   static const legalEntities = '/legal-entities';
   static const outsourcedCompanies = '/outsourced-companies';
+  static const safetyLibrary = '/safety-library';
   static const portal      = '/portal';
   static const qr          = '/qr';
   static const feedback     = '/feedback';
@@ -54,6 +55,7 @@ abstract final class Routes {
     employeeDetail,
     epiDetail,
     epis,
+    safetyLibrary,
     stock,
     stockConfig,
     deliveries,

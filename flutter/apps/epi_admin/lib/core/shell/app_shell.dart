@@ -28,6 +28,7 @@ class AppShell extends StatelessWidget {
   static const _destinations = <(String, IconData, IconData, String, String Function(AppLocalizations))>[
     (Routes.dashboard,  Icons.dashboard_outlined,          Icons.dashboard_rounded,          'dashboard:view',        _navDashboard),
     (Routes.employees,  Icons.people_outline_rounded,      Icons.people_rounded,             'employees:view',        _navEmployees),
+    (Routes.safetyLibrary, Icons.library_books_outlined, Icons.library_books, 'safety_library:manage', _navSafetyLibrary),
     (Routes.epis,       Icons.shield_outlined,             Icons.shield_rounded,             'epis:view',             _navEpis),
     (Routes.deliveries, Icons.local_shipping_outlined,     Icons.local_shipping_rounded,     'deliveries:view',       _navDeliveries),
     (Routes.returns,    Icons.assignment_return_outlined,  Icons.assignment_return_rounded,  'deliveries:view',       _navReturns),
@@ -53,6 +54,7 @@ class AppShell extends StatelessWidget {
   // Seletores de rótulo. Precisam ser funções de topo para caber num `const`.
   static String _navDashboard(AppLocalizations l) => l.navDashboard;
   static String _navEmployees(AppLocalizations l) => l.navEmployees;
+  static String _navSafetyLibrary(AppLocalizations l10n) => l10n.safetyTitle;
   static String _navEpis(AppLocalizations l) => l.navEpis;
   static String _navDeliveries(AppLocalizations l) => l.navDeliveries;
   static String _navReturns(AppLocalizations l) => l.navReturns;

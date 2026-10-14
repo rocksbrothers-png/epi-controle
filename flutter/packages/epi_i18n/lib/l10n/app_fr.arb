@@ -1,5 +1,144 @@
 {
   "@@locale": "fr",
   "@@last_modified": "2026-06-02",
-  "@@comment": "Alias pour fr_FR — utiliser app_fr_FR.arb pour les traductions complètes"
+  "@@comment": "Alias pour fr_FR — utiliser app_fr_FR.arb pour les traductions complètes",
+  "safetyTitle": "Bibliothèque de sécurité",
+  "safetyApproved": "EPI approuvés",
+  "safetyRetry": "Réessayer",
+  "safetyClose": "Fermer",
+  "safetyCancel": "Annuler",
+  "safetyConfirm": "Confirmer",
+  "safetyAccess": "Accéder",
+  "safetyPortalConfirm": "Confirmer l’accès au portail",
+  "safetyCpfLast": "Trois derniers chiffres du CPF",
+  "safetyView": "Consulter",
+  "safetyFit": "Ajuster",
+  "safetyZoomIn": "Agrandir",
+  "safetyZoomOut": "Réduire",
+  "safetyNextPage": "Page suivante",
+  "safetyPreviousPage": "Page précédente",
+  "safetyDocument": "Document",
+  "safetyDetails": "Détails",
+  "safetyRelatedDocuments": "Documents associés",
+  "safetyRelatedEpis": "EPI associés",
+  "safetyRelatedEpi": "EPI associé",
+  "safetyAllEpis": "Tous les EPI",
+  "safetyAllCategories": "Toutes les catégories",
+  "safetyNoDocs": "Aucun document publié pour ce contexte.",
+  "safetyNoRecords": "Aucun enregistrement publié et autorisé dans ce contexte.",
+  "safetyCatalogueNotice": "L’approbation du catalogue ne garantit pas la disponibilité physique. La validité du CA est distincte de celle du lot.",
+  "safetyName": "EPI",
+  "safetyManufacturer": "Fabricant",
+  "safetyModel": "Modèle/référence",
+  "safetyCa": "CA",
+  "safetyCaExpiry": "Validité du CA",
+  "safetyUsefulLife": "Durée de vie (mois)",
+  "safetyProtection": "Protection",
+  "safetySection": "Section",
+  "safetyRecommendations": "Recommandations/restrictions",
+  "safetyUnknown": "Non renseigné",
+  "safetySearch": "Rechercher",
+  "safetyViewEpi": "Voir l’EPI",
+  "safetyHistory": "Historique",
+  "safetyDocumentHistory": "Historique du document",
+  "safetyPublish": "Publier",
+  "safetyPublishVersion": "Publier la version",
+  "safetyArchive": "Archiver le document",
+  "safetyArchiveVersions": "Archiver le document et ses versions",
+  "safetyReason": "Justification obligatoire",
+  "safetyNew": "Nouveau document",
+  "safetyCreateNew": "Créer un document",
+  "safetyMetadata": "Informations de version",
+  "safetyEmptyAdmin": "Aucun document enregistré.",
+  "safetyPrivateNotice": "Originaux privés, versions et historique conservés. Gestion réservée aux administrateurs général et de registre.",
+  "safetyAllowAdminDownloads": "Autoriser le téléchargement des originaux aux administrateurs habilités",
+  "safetyPreviewOnlyNotice": "Les collaborateurs accèdent uniquement à l’aperçu.",
+  "safetyPolicyReason": "Modifier la politique de téléchargement administratif",
+  "safetySearchVersions": "Rechercher un titre ou une version",
+  "safetyChooseFile": "Choisir un fichier",
+  "safetyFilePickerLabel": "Documents de sécurité",
+  "safetyUnitRequired": "Sélectionnez au moins une unité",
+  "safetyAllUnits": "Toutes les unités de l’entreprise",
+  "safetyRequired": "Obligatoire",
+  "safetyDocumentTitle": "Titre",
+  "safetyVersion": "Version",
+  "safetyEffectiveDate": "Entrée en vigueur (AAAA-MM-JJ)",
+  "safetySectors": "Secteurs séparés par des virgules (vide = tous)",
+  "safetyActivities": "Activités/fonctions séparées par des virgules (vide = toutes)",
+  "safetyUpload": "Enregistrer ou versionner un document",
+  "safetyRendering": "Création de l’aperçu sécurisé…",
+  "safetyFileLimit": "Sélectionnez un fichier de 20 Mio maximum.",
+  "safetyVersionDate": "Version {version} · Entrée en vigueur {date}",
+  "@safetyVersionDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUnit": "Unité de consultation : {unit}",
+  "@safetyUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyPreviewError": "Aperçu indisponible : {error}",
+  "@safetyPreviewError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUploadError": "Enregistrement refusé ; aperçu indisponible : {error}",
+  "@safetyUploadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyVersionSummary": "Version {version} / révision {revision} · {state} · Entrée en vigueur {date}",
+  "@safetyVersionSummary": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "revision": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyActorDetails": "Responsable {actor}\n{details}",
+  "@safetyActorDetails": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyCategoryEpi": "Matrice d’application des EPI",
+  "safetyCategoryGlove": "Matrice de sélection des gants",
+  "safetyCategoryCare": "Guides de nettoyage et d’entretien",
+  "safetyCategoryUse": "Instructions d’utilisation des EPI",
+  "safetyCategoryTechnical": "Manuels et fiches techniques",
+  "safetyCategoryOther": "Autres documents de sécurité",
+  "safetyStateDraft": "Brouillon",
+  "safetyStatePublished": "Publié",
+  "safetyStateSuperseded": "Remplacé",
+  "safetyStateArchived": "Archivé"
 }

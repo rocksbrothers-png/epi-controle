@@ -1,0 +1,76 @@
+name: Portal Docs V1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-preview-security:
+    name: Portal docs PostgreSQL, preview and adversarial access
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: epi
+          POSTGRES_PASSWORD: epi
+          POSTGRES_DB: portal_docs_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://epi:epi@127.0.0.1:5432/portal_docs_ci
+      PORTAL_DOCS_TEST_DSN: postgresql://epi:epi@127.0.0.1:5432/portal_docs_ci
+      APP_ENV: test
+      JWT_SECRET: isolated-github-actions-fixture-not-a-production-secret
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Native offline preview tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc python3-uno libseccomp2 fonts-crosextra-carlito libgl1
+      - name: Python dependencies and platform RLS roles
+        run: |
+          pip install -r requirements.txt pytest python-docx==1.2.0 xlwt==1.3.0
+          python - <<'PY'
+          import os, psycopg2
+          connection = psycopg2.connect(os.environ['DATABASE_URL'])
+          connection.autocommit = True
+          with connection.cursor() as cursor:
+              cursor.execute('CREATE ROLE anon NOLOGIN')
+              cursor.execute('CREATE ROLE authenticated NOLOGIN')
+          connection.close()
+          PY
+      - name: Real HTTP, PostgreSQL, Office preview, RBAC and tenant attacks
+        run: pytest tests/test_portal_docs_postgres.py -v --tb=short --junitxml=portal-docs.xml
+      - name: Reproduce eight red security/integration mutations in disposable copies
+        run: python scripts/test_portal_docs_mutations.py --dsn "$DATABASE_URL" --output portal-docs-mutations
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Real Flutter widgets against isolated PostgreSQL HTTP
+        run: |
+          python scripts/serve_portal_docs_test_fixture.py --output "$RUNNER_TEMP/portal-docs-fixture.json" > "$RUNNER_TEMP/portal-docs-server.log" 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 90); do
+            test -f "$RUNNER_TEMP/portal-docs-fixture.json" && break
+            kill -0 "$fixture_pid" || { cat "$RUNNER_TEMP/portal-docs-server.log"; exit 1; }
+            sleep 1
+          done
+          test -f "$RUNNER_TEMP/portal-docs-fixture.json"
+          cd flutter/apps/epi_admin
+          flutter pub get
+          PORTAL_DOCS_HTTP_FIXTURE="$RUNNER_TEMP/portal-docs-fixture.json" flutter test --reporter expanded test/safety_library_runtime_test.dart
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: portal-docs-tests
+          path: |
+            portal-docs.xml
+            portal-docs-mutations

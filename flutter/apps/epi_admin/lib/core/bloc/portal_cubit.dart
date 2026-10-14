@@ -21,6 +21,7 @@ class PortalState extends Equatable {
 
   final PortalStatus status;
   final String? token;
+
   final PortalAccess? access;
   final String? error;
   final bool isSaving;
@@ -37,19 +38,24 @@ class PortalState extends Equatable {
     bool? isSaving,
     bool? signSuccess,
     bool clearError = false,
-  }) =>
-      PortalState(
-        status: status ?? this.status,
-        token: token ?? this.token,
-        access: access ?? this.access,
-        error: clearError ? null : (error ?? this.error),
-        isSaving: isSaving ?? this.isSaving,
-        signSuccess: signSuccess ?? this.signSuccess,
-      );
+  }) => PortalState(
+    status: status ?? this.status,
+    token: token ?? this.token,
+    access: access ?? this.access,
+    error: clearError ? null : (error ?? this.error),
+    isSaving: isSaving ?? this.isSaving,
+    signSuccess: signSuccess ?? this.signSuccess,
+  );
 
   @override
-  List<Object?> get props =>
-      [status, token, access, error, isSaving, signSuccess];
+  List<Object?> get props => [
+    status,
+    token,
+    access,
+    error,
+    isSaving,
+    signSuccess,
+  ];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
@@ -57,38 +63,45 @@ class PortalState extends Equatable {
 class PortalCubit extends Cubit<PortalState> {
   PortalCubit() : super(const PortalState());
 
+  // Second factor exists only in memory; excluded from state/logging/storage.
+  String _cpfLast3 = '';
+  String get cpfLast3 => _cpfLast3;
+
   Future<void> lookupByCpf(String cpf) async {
-    if (cpf.trim().isEmpty) return;
+    final digits = cpf.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length != 11) return;
+    _cpfLast3 = digits.substring(8);
     emit(state._copyWith(status: PortalStatus.loading, clearError: true));
     try {
       final token = await ApiClient.portal.lookupEmployee(cpf: cpf.trim());
       await _loadAccess(token);
     } on Exception catch (e) {
-      emit(state._copyWith(
-        status: PortalStatus.error,
-        error: e.toString(),
-      ));
+      emit(state._copyWith(status: PortalStatus.error, error: e.toString()));
     }
   }
 
-  Future<void> loadFromToken(String token) async {
+  Future<void> loadFromToken(String token, {required String cpfLast3}) async {
+    if (!RegExp(r'^\d{3}$').hasMatch(cpfLast3)) return;
+    _cpfLast3 = cpfLast3;
     emit(state._copyWith(status: PortalStatus.loading, clearError: true));
     await _loadAccess(token);
   }
 
   Future<void> _loadAccess(String token) async {
     try {
-      final access = await ApiClient.portal.getAccess(token: token);
-      emit(state._copyWith(
-        status: PortalStatus.loaded,
+      final access = await ApiClient.portal.getAccess(
         token: token,
-        access: access,
-      ));
+        cpfLast3: _cpfLast3,
+      );
+      emit(
+        state._copyWith(
+          status: PortalStatus.loaded,
+          token: token,
+          access: access,
+        ),
+      );
     } on Exception catch (e) {
-      emit(state._copyWith(
-        status: PortalStatus.error,
-        error: e.toString(),
-      ));
+      emit(state._copyWith(status: PortalStatus.error, error: e.toString()));
     }
   }
 
@@ -99,6 +112,7 @@ class PortalCubit extends Cubit<PortalState> {
     try {
       await ApiClient.portal.signDelivery(
         token: token,
+        cpfLast3: _cpfLast3,
         deliveryId: deliveryId,
         signatureData: signatureData,
       );
@@ -116,6 +130,7 @@ class PortalCubit extends Cubit<PortalState> {
     try {
       await ApiClient.portal.signBatch(
         token: token,
+        cpfLast3: _cpfLast3,
         deliveryIds: deliveryIds,
         signatureData: signatureData,
       );
@@ -128,5 +143,8 @@ class PortalCubit extends Cubit<PortalState> {
 
   void clearSignSuccess() => emit(state._copyWith(signSuccess: false));
 
-  void reset() => emit(const PortalState());
+  void reset() {
+    _cpfLast3 = '';
+    emit(const PortalState());
+  }
 }

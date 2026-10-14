@@ -385,10 +385,14 @@ def handle_post_purchase_request_status(handler, parsed, payload, match):
         postponed_until = str(payload.get('postponed_until') or '').strip()
         received_items_payload = payload.get('received_items') or []
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
-        result = update_purchase_request_status(
-            connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip
-        )
-        connection.commit()
+        try:
+            result = update_purchase_request_status(
+                connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip
+            )
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
         return send_json(handler, 200, {
             'ok': True,
             'stock_entries': result['stock_entries'],

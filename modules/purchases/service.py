@@ -894,9 +894,12 @@ def _effective_receive_quantity(connection, pri_row):
         'WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
         (pri_id,)
     ).fetchone()
-    if po_item:
-        return int(po_item.get('quantity_received') or 0)
-    return int(pri_row.get('quantity_requested') or 0)
+    value = po_item['quantity_received'] if po_item else pri_row.get('quantity_requested')
+    # Invalid/null PO quantities stay invalid; never fall back to the request.
+    try:
+        return int(str(value).strip()) if value is not None else 0
+    except (TypeError, ValueError, OverflowError):
+        return 0
 
 
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
@@ -946,6 +949,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
             flags_by_item[fid] = flag
     total_units = 0
     qr_labels = []
+    movement_ids = []
     ensure_stock_movement_size_columns(connection)
     for item in pr_items:
         epi_id = int(item['epi_id'])
@@ -954,7 +958,10 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         pri_id = int(item['id'])
         quantity = _effective_receive_quantity(connection, item)
         if quantity <= 0:
-            continue
+            raise ValueError(
+                'Quantidade efetivamente recebida inválida ou não positiva. '
+                'Corrija o recebimento antes de confirmar a conferência.'
+            )
         manufacturer_validity = str(
             validity_by_item.get(pri_id) or validity_by_epi.get(epi_id) or ''
         ).strip()
@@ -992,6 +999,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
             )
         )
         movement_id = int(movement_cursor.lastrowid)
+        movement_ids.append(movement_id)
         upsert_unit_stock(connection, company_id, unit_id, epi_id, new_stock)
         for piece in piece_plan:
             seq_value = next_company_qr_sequence(connection, company_id)
@@ -1040,6 +1048,14 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 "WHERE id = ? AND status NOT IN ('entregue', 'cancelado', 'rejeitado')",
                 (now, int(epi_req_id))
             )
+    if received_ids:
+        placeholders = ','.join('?' for _ in movement_ids)
+        persisted = connection.execute(
+            f'SELECT COUNT(*) AS n FROM epi_stock_items '
+            f'WHERE stock_movement_id IN ({placeholders})', tuple(movement_ids)
+        ).fetchone()['n'] if movement_ids else 0
+        if not persisted or persisted != total_units or persisted != len(qr_labels):
+            raise ValueError('Nenhuma peça efetivamente registrada ou recebimento inconsistente. Conferência não confirmada.')
     return total_units, qr_labels
 
 

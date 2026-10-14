@@ -992,5 +992,16 @@
   "prConfNotesRequired": "Enter the notes about items not received.",
   "prConfSubmit": "Register Conference",
   "prConfDone": "Conference registered.",
-  "prConfEmpty": "No item eligible for conference."
+  "prConfEmpty": "No item eligible for conference.",
+  "prConfInvalidQuantity": "Effective received quantity is invalid or non-positive. Correct the receipt or mark the item as not received.",
+  "prConfNoPersistedPieces": "No pieces were actually recorded, or the response is inconsistent. Stock entry was not confirmed.",
+  "prConfDoneQuantity": "{count} pieces actually recorded in stock.",
+  "@prConfDoneQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prConfNoStockEntry": "Conference saved without adding pieces to stock."
 }

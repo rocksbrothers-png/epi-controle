@@ -1,4 +1,9 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
+import 'receipt_contract.dart';
 
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +72,17 @@ class _ConferencePurchaseRequestScreenState
   bool _submitting = false;
   String? _error;
   int _lotKeySeq = 0;
+  int? _companyId;
+  int? _unitId;
+
+  bool get _canConfer {
+    final auth = context.read<AuthCubit>().state;
+    return auth is AuthAuthenticated &&
+        canConferReceipt(auth.sessionContext, companyId: _companyId, unitId: _unitId);
+  }
+
+  bool get _invalidReceivedQuantity =>
+      _state.values.any((st) => st.received && st.quantity <= 0);
 
   static const Set<String> _eligible = {
     'included_in_request',
@@ -91,23 +107,20 @@ class _ConferencePurchaseRequestScreenState
 
   int _nextLotKey() => ++_lotKeySeq;
 
-  int _effQty(Map<String, dynamic> it) {
-    final v = (it['effective_receive_quantity'] as num?)?.toInt() ?? 0;
-    if (v > 0) return v;
-    final q = (it['quantity_requested'] as num?)?.toInt() ?? 0;
-    return q > 0 ? q : 1;
-  }
-
   Future<void> _load() async {
     try {
       final detail = await ApiClient.purchases.getPurchaseRequest(widget.prId);
+      if (!mounted) return;
+      final pr = (detail['item'] as Map?) ?? const {};
+      _companyId = pr['company_id'] as int?;
+      _unitId = pr['unit_id'] as int?;
       final items = ((detail['items'] as List?) ?? const [])
           .map((e) => (e as Map).cast<String, dynamic>())
           .where((it) => _eligible.contains('${it['status'] ?? ''}'))
           .toList();
       for (final it in items) {
         final id = (it['id'] as num?)?.toInt() ?? 0;
-        final st = _ItemState(quantity: _effQty(it));
+        final st = _ItemState(quantity: effectiveReceiptQuantity(it['effective_receive_quantity']));
         st.received = '${it['status'] ?? ''}' != 'not_received';
         _state[id] = st;
       }
@@ -134,6 +147,7 @@ class _ConferencePurchaseRequestScreenState
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
+    if (!mounted) return null;
     return picked == null ? null : _iso(picked);
   }
 
@@ -146,19 +160,22 @@ class _ConferencePurchaseRequestScreenState
         maxWidth: 1600,
         imageQuality: 85,
       );
-      if (shot == null) return null;
+      if (!mounted || shot == null) return null;
       final bytes = await shot.readAsBytes();
+      if (!mounted) return null;
       final dataUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
       final detected = await ApiClient.stock.detectDateFromImage(
         actorUserId: ApiClient.actorUserId,
         imageData: dataUrl,
       );
+      if (!mounted) return null;
       if (detected.isEmpty) {
         messenger.showSnackBar(SnackBar(content: Text(l10n.poOcrDateNotFound)));
         return null;
       }
       return detected;
     } on Exception {
+      if (!mounted) return null;
       messenger.showSnackBar(SnackBar(content: Text(l10n.poOcrCameraFailed)));
       return null;
     }
@@ -216,11 +233,15 @@ class _ConferencePurchaseRequestScreenState
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    if (_submitting || !_canConfer) return;
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     setState(() => _error = null);
+    if (_invalidReceivedQuantity) {
+      setState(() => _error = l10n.prConfInvalidQuantity);
+      return;
+    }
 
     final receivedItems = <Map<String, dynamic>>[];
     var hasNotReceived = false;
@@ -264,15 +285,39 @@ class _ConferencePurchaseRequestScreenState
 
     setState(() => _submitting = true);
     try {
-      await ApiClient.purchases.checkPurchaseRequestReceipt(widget.prId, {
+      final result = await ApiClient.purchases.checkPurchaseRequestReceipt(widget.prId, {
         'actor_user_id': ApiClient.actorUserId,
         'status': 'checked',
         'received_items': receivedItems,
         'comment': _notes.text.trim(),
       });
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text(l10n.prConfDone)));
+      if (!receivedItems.any((it) => it['received'] == true) &&
+          result['ok'] == true && result['stock_entries'] == 0 &&
+          result['qr_labels'] is List && (result['qr_labels'] as List).isEmpty) {
+        messenger.showSnackBar(SnackBar(content: Text(l10n.prConfNoStockEntry)));
+        navigator.pop(true);
+        return;
+      }
+      final count = persistedReceiptCount(result);
+      if (count == null) {
+        setState(() {
+          _submitting = false;
+          _error = l10n.prConfNoPersistedPieces;
+        });
+        return;
+      }
+      messenger.showSnackBar(SnackBar(content: Text(l10n.prConfDoneQuantity(count))));
       navigator.pop(true);
+    } on DioException catch (error) {
+      if (!mounted) return;
+      final body = error.response?.data;
+      final message = body is Map ? body['error'] : null;
+      setState(() {
+        _submitting = false;
+        _error = message is String && message.trim().isNotEmpty
+            ? message : l10n.errorGeneric;
+      });
     } on Exception {
       if (!mounted) return;
       setState(() {
@@ -285,6 +330,7 @@ class _ConferencePurchaseRequestScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    context.watch<AuthCubit>();
     return Scaffold(
       appBar: AppBar(title: Text(l10n.prConfTitle)),
       body: _loading
@@ -309,6 +355,9 @@ class _ConferencePurchaseRequestScreenState
                       maxLines: 2,
                       decoration: InputDecoration(labelText: l10n.prConfNotes),
                     ),
+                    if (_invalidReceivedQuantity)
+                      Text(l10n.prConfInvalidQuantity,
+                          style: const TextStyle(color: EpiColors.danger)),
                     if (_error != null)
                       Padding(
                         padding: const EdgeInsets.only(top: EpiSpacing.sm),
@@ -318,7 +367,8 @@ class _ConferencePurchaseRequestScreenState
                     const SizedBox(height: EpiSpacing.xl),
                     EpiButton(
                       label: l10n.prConfSubmit,
-                      onPressed: _submitting ? null : _submit,
+                      onPressed: _submitting || !_canConfer || _invalidReceivedQuantity
+                          ? null : _submit,
                     ),
                   ],
                 ),
@@ -369,7 +419,7 @@ class _ConferencePurchaseRequestScreenState
               child: InkWell(
                 onTap: () async {
                   final d = await _pickDate(st.validity);
-                  if (d != null) setState(() => st.validity = d);
+                  if (mounted && d != null) setState(() => st.validity = d);
                 },
                 child: InputDecorator(
                   decoration: InputDecoration(
@@ -387,7 +437,7 @@ class _ConferencePurchaseRequestScreenState
               tooltip: l10n.poPickDate,
               onPressed: () async {
                 final d = await _pickDate(st.validity);
-                if (d != null) setState(() => st.validity = d);
+                if (mounted && d != null) setState(() => st.validity = d);
               },
             ),
             IconButton(
@@ -395,7 +445,7 @@ class _ConferencePurchaseRequestScreenState
               tooltip: l10n.poReadDateCamera,
               onPressed: () async {
                 final d = await _ocrDate();
-                if (d != null) {
+                if (mounted && d != null) {
                   setState(() {
                     st.validity = d;
                     if (st.evidence.isEmpty) st.evidence = l10n.poReadDateCamera;
@@ -485,7 +535,7 @@ class _ConferencePurchaseRequestScreenState
                 child: InkWell(
                   onTap: () async {
                     final d = await _pickDate(lot.validity);
-                    if (d != null) setState(() => lot.validity = d);
+                    if (mounted && d != null) setState(() => lot.validity = d);
                   },
                   child: InputDecorator(
                     decoration: InputDecoration(
@@ -506,7 +556,7 @@ class _ConferencePurchaseRequestScreenState
                 tooltip: l10n.poReadDateCamera,
                 onPressed: () async {
                   final d = await _ocrDate();
-                  if (d != null) {
+                  if (mounted && d != null) {
                     setState(() {
                       lot.validity = d;
                       if (lot.evidence.isEmpty) {

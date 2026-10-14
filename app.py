@@ -454,6 +454,7 @@ from modules.reports.routes import register_routes as _reg_reports
 from modules.feedback.routes import register_routes as _reg_feedback
 from modules.commercial.routes import register_routes as _reg_commercial
 from modules.purchases.routes import register_routes as _reg_purchases
+from modules.safety_library.routes import register_routes as _reg_safety_library
 from modules.portal.routes import register_routes as _reg_portal
 from modules.ficha.routes import register_routes as _reg_ficha
 from modules.stock.routes import register_routes as _reg_stock
@@ -478,6 +479,7 @@ _reg_feedback(router)
 _reg_commercial(router)
 _reg_purchases(router)
 _reg_portal(router)
+_reg_safety_library(router)
 _reg_ficha(router)
 _reg_stock(router)
 _reg_employees(router)
@@ -679,6 +681,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
     def _apply_default_response_headers(self):
         parsed = urlparse(self.path)
         path = parsed.path or ''
+        library_response = path.startswith(('/api/safety-library/', '/api/employee-library/'))
         request_origin = str(self.headers.get('Origin', '')).strip()
         configured_origins = [
             item.strip()
@@ -705,9 +708,9 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
         # Security headers
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'SAMEORIGIN')
+        self.send_header('X-Frame-Options', 'DENY' if library_response else 'SAMEORIGIN')
         self.send_header('X-XSS-Protection', '1; mode=block')
-        self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
+        self.send_header('Referrer-Policy', 'no-referrer' if library_response else 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
         csp_report_only = '; '.join(
             f"{name} {' '.join(values)}"
@@ -730,7 +733,10 @@ class EpiHandler(SimpleHTTPRequestHandler):
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
-        cache_control = resolve_cache_control(path)
+        if library_response:
+            self.send_header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'")
+            self.send_header('Cross-Origin-Resource-Policy', 'same-origin')
+        cache_control = 'private, no-store' if library_response else resolve_cache_control(path)
         if cache_control:
             self.send_header('Cache-Control', cache_control)
             if is_no_store(cache_control):
@@ -986,6 +992,16 @@ class EpiHandler(SimpleHTTPRequestHandler):
             return self._handle_csp_report()
         if parsed.path.startswith('/api/') and not self._require_bootstrap_ready(parsed.path):
             return
+
+        if parsed.path.startswith(('/api/safety-library/', '/api/employee-library/')):
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+            except ValueError:
+                return bad_request(self, 'Content-Length inválido.')
+            limit = 28 * 1024 * 1024 if parsed.path == '/api/safety-library/upload' else 64 * 1024
+            if length < 0 or length > limit or self.headers.get('Transfer-Encoding'):
+                self.close_connection = True
+                return send_json(self, 413, {'error': 'Corpo da requisição excede o limite permitido.'})
 
         try:
             payload = parse_json(self)

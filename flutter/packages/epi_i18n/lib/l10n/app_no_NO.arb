@@ -801,5 +801,144 @@
       }
     }
   },
-  "deliveryPhysicalItemIneligible": "Enheten kan ikke utleveres. Kontroller fysisk utløpsdato, status, reservasjoner og beholdning."
+  "deliveryPhysicalItemIneligible": "Enheten kan ikke utleveres. Kontroller fysisk utløpsdato, status, reservasjoner og beholdning.",
+  "safetyTitle": "Sikkerhetsbibliotek",
+  "safetyApproved": "Godkjent verneutstyr",
+  "safetyRetry": "Prøv igjen",
+  "safetyClose": "Lukk",
+  "safetyCancel": "Avbryt",
+  "safetyConfirm": "Bekreft",
+  "safetyAccess": "Fortsett",
+  "safetyPortalConfirm": "Bekreft portaltilgang",
+  "safetyCpfLast": "Tre siste CPF-sifre",
+  "safetyView": "Vis",
+  "safetyFit": "Tilpass",
+  "safetyZoomIn": "Zoom inn",
+  "safetyZoomOut": "Zoom ut",
+  "safetyNextPage": "Neste side",
+  "safetyPreviousPage": "Forrige side",
+  "safetyDocument": "Dokument",
+  "safetyDetails": "Detaljer",
+  "safetyRelatedDocuments": "Tilknyttede dokumenter",
+  "safetyRelatedEpis": "Tilknyttet verneutstyr",
+  "safetyRelatedEpi": "Tilknyttet verneutstyr",
+  "safetyAllEpis": "Alt verneutstyr",
+  "safetyAllCategories": "Alle kategorier",
+  "safetyNoDocs": "Ingen publiserte dokumenter for denne konteksten.",
+  "safetyNoRecords": "Ingen publiserte, autoriserte oppføringer i denne konteksten.",
+  "safetyCatalogueNotice": "Kataloggodkjenning angir ikke fysisk tilgjengelighet. CA-utløp er separat fra partiutløp.",
+  "safetyName": "Verneutstyr",
+  "safetyManufacturer": "Produsent",
+  "safetyModel": "Modell/referanse",
+  "safetyCa": "CA",
+  "safetyCaExpiry": "CA-utløp",
+  "safetyUsefulLife": "Levetid (måneder)",
+  "safetyProtection": "Beskyttelse",
+  "safetySection": "Seksjon",
+  "safetyRecommendations": "Anbefalinger/begrensninger",
+  "safetyUnknown": "Ikke oppgitt",
+  "safetySearch": "Søk",
+  "safetyViewEpi": "Vis verneutstyr",
+  "safetyHistory": "Historikk",
+  "safetyDocumentHistory": "Dokumenthistorikk",
+  "safetyPublish": "Publiser",
+  "safetyPublishVersion": "Publiser versjon",
+  "safetyArchive": "Arkiver dokument",
+  "safetyArchiveVersions": "Arkiver dokument og versjoner",
+  "safetyReason": "Begrunnelse kreves",
+  "safetyNew": "Nytt dokument",
+  "safetyCreateNew": "Opprett nytt dokument",
+  "safetyMetadata": "Versjonsinformasjon",
+  "safetyEmptyAdmin": "Ingen registrerte dokumenter.",
+  "safetyPrivateNotice": "Private originaler, bevarte versjoner og historikk. Administrasjon begrenset til generell administrator og registeradministrator.",
+  "safetyAllowAdminDownloads": "Tillat originalnedlasting for autoriserte administratorer",
+  "safetyPreviewOnlyNotice": "Ansatte har alltid kun forhåndsvisning.",
+  "safetyPolicyReason": "Endre administrativ nedlastingspolicy",
+  "safetySearchVersions": "Søk i tittel eller versjon",
+  "safetyChooseFile": "Velg fil",
+  "safetyFilePickerLabel": "Sikkerhetsdokumenter",
+  "safetyUnitRequired": "Velg minst én enhet",
+  "safetyAllUnits": "Alle bedriftsenheter",
+  "safetyRequired": "Påkrevd",
+  "safetyDocumentTitle": "Tittel",
+  "safetyVersion": "Versjon",
+  "safetyEffectiveDate": "Gyldig fra (ÅÅÅÅ-MM-DD)",
+  "safetySectors": "Kommaseparerte avdelinger (tomt = alle)",
+  "safetyActivities": "Kommaseparerte aktiviteter/stillinger (tomt = alle)",
+  "safetyUpload": "Registrer dokument eller versjon",
+  "safetyRendering": "Genererer trygg forhåndsvisning…",
+  "safetyFileLimit": "Velg en fil på opptil 20 MiB.",
+  "safetyVersionDate": "Versjon {version} · Gyldig fra {date}",
+  "@safetyVersionDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUnit": "Visningsenhet: {unit}",
+  "@safetyUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyPreviewError": "Forhåndsvisning utilgjengelig: {error}",
+  "@safetyPreviewError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUploadError": "Opplasting avvist; forhåndsvisning utilgjengelig: {error}",
+  "@safetyUploadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyVersionSummary": "Versjon {version} / revisjon {revision} · {state} · Gyldig fra {date}",
+  "@safetyVersionSummary": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "revision": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyActorDetails": "Ansvarlig {actor}\n{details}",
+  "@safetyActorDetails": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyCategoryEpi": "Bruksmatrise for verneutstyr",
+  "safetyCategoryGlove": "Hanskematrise",
+  "safetyCategoryCare": "Veiledninger for rengjøring og vedlikehold",
+  "safetyCategoryUse": "Bruksanvisninger for verneutstyr",
+  "safetyCategoryTechnical": "Håndbøker og tekniske datablad",
+  "safetyCategoryOther": "Andre sikkerhetsdokumenter",
+  "safetyStateDraft": "Utkast",
+  "safetyStatePublished": "Publisert",
+  "safetyStateSuperseded": "Erstattet",
+  "safetyStateArchived": "Arkivert"
 }

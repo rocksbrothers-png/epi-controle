@@ -1,3 +1,4 @@
+import '../safety_library/portal_library_tab.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +28,7 @@ class PortalHomeScreen extends StatelessWidget {
         context.read<PortalCubit>().clearSignSuccess();
       },
       child: DefaultTabController(
-        length: 2,
+        length: 4,
         child: Scaffold(
           body: NestedScrollView(
             headerSliverBuilder: (ctx, innerScrolled) => [
@@ -90,9 +91,7 @@ class PortalHomeScreen extends StatelessWidget {
                                       if (access.unitName.isNotEmpty)
                                         access.unitName,
                                     ].join(' · '),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(color: Colors.white70),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -107,12 +106,15 @@ class PortalHomeScreen extends StatelessWidget {
                   ),
                 ),
                 bottom: TabBar(
+                  isScrollable: true,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white60,
                   indicatorColor: Colors.white,
                   tabs: [
                     Tab(text: l10n.portalDeliveries),
                     Tab(text: l10n.portalFichas),
+                    Tab(text: l10n.safetyApproved),
+                    Tab(text: l10n.safetyTitle),
                   ],
                 ),
               ),
@@ -121,6 +123,15 @@ class PortalHomeScreen extends StatelessWidget {
               children: [
                 _DeliveriesTab(deliveries: access.deliveries),
                 _FichasTab(fichas: access.fichas),
+                PortalLibraryTab(
+                  token: context.read<PortalCubit>().state.token!,
+                  cpfLast3: context.read<PortalCubit>().cpfLast3,
+                  approved: true,
+                ),
+                PortalLibraryTab(
+                  token: context.read<PortalCubit>().state.token!,
+                  cpfLast3: context.read<PortalCubit>().cpfLast3,
+                ),
               ],
             ),
           ),
@@ -171,10 +182,8 @@ class _SignAllBar extends StatelessWidget {
           value: cubit,
           child: PortalSignScreen(
             title: AppLocalizations.of(context).portalSignAll,
-            onSign: (sig) => cubit.signBatch(
-              deliveries.map((d) => d.id).toList(),
-              sig,
-            ),
+            onSign: (sig) =>
+                cubit.signBatch(deliveries.map((d) => d.id).toList(), sig),
           ),
         ),
       ),
@@ -232,9 +241,7 @@ class _DeliveryTile extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(
-          delivery.signed
-              ? Icons.check_circle_rounded
-              : Icons.pending_rounded,
+          delivery.signed ? Icons.check_circle_rounded : Icons.pending_rounded,
           color: delivery.signed ? EpiColors.success : EpiColors.warning,
           size: 22,
         ),
@@ -247,18 +254,16 @@ class _DeliveryTile extends StatelessWidget {
       ),
       subtitle: Text(
         '${l10n.portalQty}: ${delivery.quantity}  •  ${delivery.deliveryDate}',
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: EpiColors.textMuted),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
       ),
       trailing: delivery.signed
           ? Text(
               l10n.portalSigned,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: EpiColors.success),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: EpiColors.success),
             )
           : TextButton(
               onPressed: () => _openSign(context, cubit, delivery),
@@ -339,9 +344,9 @@ class _FichaTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   ficha.periodLabel,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Container(
@@ -357,9 +362,9 @@ class _FichaTile extends StatelessWidget {
                 child: Text(
                   ficha.isFullySigned ? l10n.portalSigned : l10n.portalUnsigned,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -378,10 +383,9 @@ class _FichaTile extends StatelessWidget {
             children: [
               Text(
                 '${ficha.signedItems}/${ficha.totalItems} ${l10n.portalDeliveries.toLowerCase()}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: EpiColors.textMuted),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
               ),
               if (ficha.hasUnsigned)
                 TextButton(
@@ -406,8 +410,7 @@ class _FichaTile extends StatelessWidget {
           value: cubit,
           child: PortalSignScreen(
             title: ficha.periodLabel,
-            onSign: (sig) =>
-                cubit.signBatch(ficha.deliveryIds, sig),
+            onSign: (sig) => cubit.signBatch(ficha.deliveryIds, sig),
           ),
         ),
       ),

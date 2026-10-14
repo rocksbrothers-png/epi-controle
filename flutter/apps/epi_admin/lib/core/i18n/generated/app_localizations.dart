@@ -64,8 +64,7 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -73,8 +72,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -86,13 +84,12 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +102,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR'),
+    Locale('pt', 'BR')
   ];
 
   /// Nome da aplicação
@@ -4032,6 +4029,78 @@ abstract class AppLocalizations {
   /// **'Sem estoque físico'**
   String get stockNoPhysicalStock;
 
+  /// No description provided for @stockRegularizeValidityTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Regularizar validade física'**
+  String get stockRegularizeValidityTitle;
+
+  /// No description provided for @stockRegularizeValiditySubtitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identifique a peça e informe a validade comprovada. A classificação é feita pelo sistema.'**
+  String get stockRegularizeValiditySubtitle;
+
+  /// No description provided for @stockRegularizeQrLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'QR ou código da peça'**
+  String get stockRegularizeQrLabel;
+
+  /// No description provided for @stockRegularizeExpiryLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade física comprovada'**
+  String get stockRegularizeExpiryLabel;
+
+  /// No description provided for @stockRegularizeExpirySelect.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar data'**
+  String get stockRegularizeExpirySelect;
+
+  /// No description provided for @stockRegularizeEvidenceLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Evidência (documento ou registro verificável)'**
+  String get stockRegularizeEvidenceLabel;
+
+  /// No description provided for @stockRegularizeJustificationLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa'**
+  String get stockRegularizeJustificationLabel;
+
+  /// No description provided for @stockRegularizeSubmit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Regularizar'**
+  String get stockRegularizeSubmit;
+
+  /// No description provided for @stockRegularizeIncomplete.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha a peça, a validade, a evidência e a justificativa.'**
+  String get stockRegularizeIncomplete;
+
+  /// No description provided for @stockRegularizeResultEligible.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada. A peça está apta para entrega e reserva.'**
+  String get stockRegularizeResultEligible;
+
+  /// No description provided for @stockRegularizeResultBlocked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada. A peça está vencida e permanece bloqueada para entrega.'**
+  String get stockRegularizeResultBlocked;
+
+  /// No description provided for @stockRegularizeResultDone.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade regularizada.'**
+  String get stockRegularizeResultDone;
+
   /// Filter counts distinct PPE types; piece counts are provided separately by the backend.
   ///
   /// In pt_BR, this message translates to:
@@ -4042,22 +4111,508 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.'**
-  String stockPhysicalPieceCounts(
-    int valid,
-    int expiring,
-    int expired,
-    int unknown,
-  );
+  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown);
 
   /// No description provided for @deliveryPhysicalItemIneligible.
   ///
   /// In pt_BR, this message translates to:
   /// **'Item indisponível para entrega. Verifique validade física, status, reservas e saldo.'**
   String get deliveryPhysicalItemIneligible;
+
+  /// No description provided for @safetyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Biblioteca de Segurança'**
+  String get safetyTitle;
+
+  /// No description provided for @safetyApproved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPIs Aprovados'**
+  String get safetyApproved;
+
+  /// No description provided for @safetyRetry.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tentar novamente'**
+  String get safetyRetry;
+
+  /// No description provided for @safetyClose.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fechar'**
+  String get safetyClose;
+
+  /// No description provided for @safetyCancel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelar'**
+  String get safetyCancel;
+
+  /// No description provided for @safetyConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar'**
+  String get safetyConfirm;
+
+  /// No description provided for @safetyAccess.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Acessar'**
+  String get safetyAccess;
+
+  /// No description provided for @safetyPortalConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar acesso ao portal'**
+  String get safetyPortalConfirm;
+
+  /// No description provided for @safetyCpfLast.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Três últimos dígitos do CPF'**
+  String get safetyCpfLast;
+
+  /// No description provided for @safetyView.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Visualizar'**
+  String get safetyView;
+
+  /// No description provided for @safetyFit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ajustar'**
+  String get safetyFit;
+
+  /// No description provided for @safetyZoomIn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aumentar zoom'**
+  String get safetyZoomIn;
+
+  /// No description provided for @safetyZoomOut.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Diminuir zoom'**
+  String get safetyZoomOut;
+
+  /// No description provided for @safetyNextPage.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próxima página'**
+  String get safetyNextPage;
+
+  /// No description provided for @safetyPreviousPage.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Página anterior'**
+  String get safetyPreviousPage;
+
+  /// No description provided for @safetyDocument.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documento'**
+  String get safetyDocument;
+
+  /// No description provided for @safetyDetails.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Detalhes'**
+  String get safetyDetails;
+
+  /// No description provided for @safetyRelatedDocuments.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documentos associados'**
+  String get safetyRelatedDocuments;
+
+  /// No description provided for @safetyRelatedEpis.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPIs relacionados'**
+  String get safetyRelatedEpis;
+
+  /// No description provided for @safetyRelatedEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI relacionado'**
+  String get safetyRelatedEpi;
+
+  /// No description provided for @safetyAllEpis.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todos os EPIs'**
+  String get safetyAllEpis;
+
+  /// No description provided for @safetyAllCategories.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as categorias'**
+  String get safetyAllCategories;
+
+  /// No description provided for @safetyNoDocs.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum documento publicado para este contexto.'**
+  String get safetyNoDocs;
+
+  /// No description provided for @safetyNoRecords.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum registro publicado e autorizado neste contexto.'**
+  String get safetyNoRecords;
+
+  /// No description provided for @safetyCatalogueNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovação cadastral; não indica disponibilidade física. Validade do CA não é validade de lote.'**
+  String get safetyCatalogueNotice;
+
+  /// No description provided for @safetyName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'EPI'**
+  String get safetyName;
+
+  /// No description provided for @safetyManufacturer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fabricante'**
+  String get safetyManufacturer;
+
+  /// No description provided for @safetyModel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Modelo/referência'**
+  String get safetyModel;
+
+  /// No description provided for @safetyCa.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA'**
+  String get safetyCa;
+
+  /// No description provided for @safetyCaExpiry.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do CA'**
+  String get safetyCaExpiry;
+
+  /// No description provided for @safetyUsefulLife.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vida útil (meses)'**
+  String get safetyUsefulLife;
+
+  /// No description provided for @safetyProtection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Proteção'**
+  String get safetyProtection;
+
+  /// No description provided for @safetySection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seção'**
+  String get safetySection;
+
+  /// No description provided for @safetyRecommendations.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recomendações/restrições'**
+  String get safetyRecommendations;
+
+  /// No description provided for @safetyUnknown.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não informado'**
+  String get safetyUnknown;
+
+  /// No description provided for @safetySearch.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pesquisar'**
+  String get safetySearch;
+
+  /// No description provided for @safetyViewEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPI'**
+  String get safetyViewEpi;
+
+  /// No description provided for @safetyHistory.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico'**
+  String get safetyHistory;
+
+  /// No description provided for @safetyDocumentHistory.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Histórico documental'**
+  String get safetyDocumentHistory;
+
+  /// No description provided for @safetyPublish.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicar'**
+  String get safetyPublish;
+
+  /// No description provided for @safetyPublishVersion.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicar versão'**
+  String get safetyPublishVersion;
+
+  /// No description provided for @safetyArchive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar documento'**
+  String get safetyArchive;
+
+  /// No description provided for @safetyArchiveVersions.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar documento e versões'**
+  String get safetyArchiveVersions;
+
+  /// No description provided for @safetyReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Justificativa obrigatória'**
+  String get safetyReason;
+
+  /// No description provided for @safetyNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo documento'**
+  String get safetyNew;
+
+  /// No description provided for @safetyCreateNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Criar novo documento'**
+  String get safetyCreateNew;
+
+  /// No description provided for @safetyMetadata.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Metadados da versão'**
+  String get safetyMetadata;
+
+  /// No description provided for @safetyEmptyAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum documento cadastrado.'**
+  String get safetyEmptyAdmin;
+
+  /// No description provided for @safetyPrivateNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Originais privados; versões e histórico preservados. Gestão restrita ao Administrador Geral e ao Administrador de Registro.'**
+  String get safetyPrivateNotice;
+
+  /// No description provided for @safetyAllowAdminDownloads.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Permitir download de originais aos administradores autorizados'**
+  String get safetyAllowAdminDownloads;
+
+  /// No description provided for @safetyPreviewOnlyNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Colaboradores sempre consultam somente a pré-visualização.'**
+  String get safetyPreviewOnlyNotice;
+
+  /// No description provided for @safetyPolicyReason.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Alterar política de download administrativo'**
+  String get safetyPolicyReason;
+
+  /// No description provided for @safetySearchVersions.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pesquisar título ou versão'**
+  String get safetySearchVersions;
+
+  /// No description provided for @safetyChooseFile.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecionar arquivo'**
+  String get safetyChooseFile;
+
+  /// No description provided for @safetyFilePickerLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Documentos de SST'**
+  String get safetyFilePickerLabel;
+
+  /// No description provided for @safetyUnitRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione ao menos uma unidade'**
+  String get safetyUnitRequired;
+
+  /// No description provided for @safetyAllUnits.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Todas as unidades da empresa'**
+  String get safetyAllUnits;
+
+  /// No description provided for @safetyRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Obrigatório'**
+  String get safetyRequired;
+
+  /// No description provided for @safetyDocumentTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Título'**
+  String get safetyDocumentTitle;
+
+  /// No description provided for @safetyVersion.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão'**
+  String get safetyVersion;
+
+  /// No description provided for @safetyEffectiveDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Vigência (AAAA-MM-DD)'**
+  String get safetyEffectiveDate;
+
+  /// No description provided for @safetySectors.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Setores separados por vírgula (vazio = todos)'**
+  String get safetySectors;
+
+  /// No description provided for @safetyActivities.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Atividades/funções separadas por vírgula (vazio = todas)'**
+  String get safetyActivities;
+
+  /// No description provided for @safetyUpload.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastrar ou versionar documento'**
+  String get safetyUpload;
+
+  /// No description provided for @safetyRendering.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gerando pré-visualização segura…'**
+  String get safetyRendering;
+
+  /// No description provided for @safetyFileLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Selecione um arquivo de até 20 MiB.'**
+  String get safetyFileLimit;
+
+  /// No description provided for @safetyVersionDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão {version} · Vigência {date}'**
+  String safetyVersionDate(String version, String date);
+
+  /// No description provided for @safetyUnit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unidade de consulta: {unit}'**
+  String safetyUnit(String unit);
+
+  /// No description provided for @safetyPreviewError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pré-visualização indisponível: {error}'**
+  String safetyPreviewError(String error);
+
+  /// No description provided for @safetyUploadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastro recusado; pré-visualização indisponível: {error}'**
+  String safetyUploadError(String error);
+
+  /// No description provided for @safetyVersionSummary.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Versão {version} / revisão {revision} · {state} · Vigência {date}'**
+  String safetyVersionSummary(String version, String revision, String state, String date);
+
+  /// No description provided for @safetyActorDetails.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Responsável {actor}\n{details}'**
+  String safetyActorDetails(String actor, String details);
+
+  /// No description provided for @safetyCategoryEpi.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Matriz de Aplicação de EPIs'**
+  String get safetyCategoryEpi;
+
+  /// No description provided for @safetyCategoryGlove.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Matriz de Seleção de Luvas'**
+  String get safetyCategoryGlove;
+
+  /// No description provided for @safetyCategoryCare.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Guias de Higienização e Conservação'**
+  String get safetyCategoryCare;
+
+  /// No description provided for @safetyCategoryUse.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Instruções de Uso dos EPIs'**
+  String get safetyCategoryUse;
+
+  /// No description provided for @safetyCategoryTechnical.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Manuais e Fichas Técnicas'**
+  String get safetyCategoryTechnical;
+
+  /// No description provided for @safetyCategoryOther.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Outros Documentos de SST'**
+  String get safetyCategoryOther;
+
+  /// No description provided for @safetyStateDraft.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Rascunho'**
+  String get safetyStateDraft;
+
+  /// No description provided for @safetyStatePublished.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Publicado'**
+  String get safetyStatePublished;
+
+  /// No description provided for @safetyStateSuperseded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Substituído'**
+  String get safetyStateSuperseded;
+
+  /// No description provided for @safetyStateArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado'**
+  String get safetyStateArchived;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -4066,96 +4621,61 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
+
   // Lookup logic when language+country codes are specified.
   switch (locale.languageCode) {
-    case 'en':
-      {
-        switch (locale.countryCode) {
-          case 'US':
-            return app_localizations_en.loadLibrary().then(
-              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
-            );
-        }
-        break;
-      }
-    case 'es':
-      {
-        switch (locale.countryCode) {
-          case 'ES':
-            return app_localizations_es.loadLibrary().then(
-              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
-            );
-        }
-        break;
-      }
-    case 'fr':
-      {
-        switch (locale.countryCode) {
-          case 'FR':
-            return app_localizations_fr.loadLibrary().then(
-              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
-            );
-        }
-        break;
-      }
-    case 'no':
-      {
-        switch (locale.countryCode) {
-          case 'NO':
-            return app_localizations_no.loadLibrary().then(
-              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
-            );
-        }
-        break;
-      }
-    case 'pt':
-      {
-        switch (locale.countryCode) {
-          case 'BR':
-            return app_localizations_pt.loadLibrary().then(
-              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
-            );
-        }
-        break;
-      }
+    case 'en': {
+  switch (locale.countryCode) {
+    case 'US': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEnUs());
+   }
+  break;
+   }
+    case 'es': {
+  switch (locale.countryCode) {
+    case 'ES': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEsEs());
+   }
+  break;
+   }
+    case 'fr': {
+  switch (locale.countryCode) {
+    case 'FR': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
+   }
+  break;
+   }
+    case 'no': {
+  switch (locale.countryCode) {
+    case 'NO': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNoNo());
+   }
+  break;
+   }
+    case 'pt': {
+  switch (locale.countryCode) {
+    case 'BR': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
+   }
+  break;
+   }
   }
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return app_localizations_en.loadLibrary().then(
-        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
-      );
-    case 'es':
-      return app_localizations_es.loadLibrary().then(
-        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
-      );
-    case 'fr':
-      return app_localizations_fr.loadLibrary().then(
-        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
-      );
-    case 'no':
-      return app_localizations_no.loadLibrary().then(
-        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
-      );
-    case 'pt':
-      return app_localizations_pt.loadLibrary().then(
-        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
-      );
+    case 'en': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEn());
+    case 'es': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEs());
+    case 'fr': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
+    case 'no': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNo());
+    case 'pt': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

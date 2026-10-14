@@ -19,6 +19,7 @@ ciclo de import.
 
 from contextlib import contextmanager as _contextmanager
 
+from modules.safety_library.schema import ensure_safety_library
 from core import schema
 from core.database import get_connection as _get_connection
 from core.security import hash_password as _hash_password
@@ -351,6 +352,7 @@ def init_db():
             # unit_epi_stock) e de ensure_procurement_supplier_tables
             # (authorized_suppliers), tabelas que o modelo referencia.
             schema.ensure_stock_lifecycle_model,
+            ensure_safety_library,
             _ensure_commercial_settings,
             _ensure_commercial_tables,
             _ensure_payment_tables,

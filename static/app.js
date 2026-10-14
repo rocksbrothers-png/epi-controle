@@ -51,8 +51,8 @@ const MASTER_ADMIN_OPERATIONAL_EXCLUSIONS = ['employees:create', 'employees:upda
 const DATA_MIGRATION_PERM = 'data_migration:manage';
 const ROLE_PERMISSIONS = {
   master_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'companies:create', 'companies:update', 'companies:license', 'commercial:view', 'usage:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', 'companies:support', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'ppe_test:view', DATA_MIGRATION_PERM].filter(p => !MASTER_ADMIN_OPERATIONAL_EXCLUSIONS.includes(p)),
-  general_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', DATA_MIGRATION_PERM, ...PPE_TEST_ALL_PERMS],
-  registry_admin: ['dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_orders:view', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
+  general_admin: ['safety_library:manage', 'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'deliveries:create', 'fichas:view', 'reports:view', 'alerts:view', 'companies:view', 'stock:view', 'stock:adjust', 'settings:view', 'settings:update', ...PURCHASE_PERMS, SUPPLIERS_MANAGE_PERM, 'unit_links:manage', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'epi_evaluation:accept_suggestion', 'company_settings:view', 'company_settings:update', DATA_MIGRATION_PERM, ...PPE_TEST_ALL_PERMS],
+  registry_admin: ['safety_library:manage', 'dashboard:view', 'users:view', 'users:create', 'users:update', 'users:delete', 'units:view', 'units:create', 'units:update', 'units:delete', 'employees:view', 'employees:create', 'employees:update', 'employees:transfer', 'employees:delete', 'employees:create_simplified', 'employees:update_simplified', 'epis:view', 'epis:create', 'epis:update', 'epis:delete', 'deliveries:view', 'fichas:view', 'reports:view', 'alerts:view', 'stock:view', 'settings:view', 'settings:update', 'purchase_requests:view', 'purchase_orders:view', 'finance:view', 'epi_feedback:view', 'epi_feedback:triage', 'epi_feedback:manager_eval', 'epi_evaluation:view', 'epi_evaluation:decide', 'ppe_test:view', 'ppe_test:suggest', 'ppe_test:triage', 'ppe_test:manage', 'ppe_test:evaluate', 'ppe_test:tech_review'],
   // Sem employees:update: edição de cadastro e reativação são atribuição do
   // Administrador de Registro. O Administrador Local transfere colaboradores
   // entre unidades via employees:transfer. Tem, porém,
@@ -95,6 +95,7 @@ const VIEW_PERMISSIONS = {
   // movimentação, não a de update genérico.
   'gestao-colaborador': 'employees:transfer',
   epis: 'epis:view',
+  'biblioteca-seguranca': 'safety_library:manage',
   estoque: 'stock:view',
   entregas: 'deliveries:view',
   fichas: 'fichas:view',
@@ -3731,6 +3732,9 @@ function showView(view, options = {}) {
   }
   if (view === 'colaboradores' && typeof loadArchivedRecords === 'function') {
     void loadArchivedRecords('employee');
+  }
+  if (view === 'biblioteca-seguranca') {
+    void globalThis.SafetyLibrary.admin(document.getElementById('safety-library-admin'));
   }
   if (view === 'epis' && typeof loadArchivedRecords === 'function') {
     void loadArchivedRecords('epi');

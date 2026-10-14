@@ -349,7 +349,7 @@ void main() {
         'deliveries': <dynamic>[],
         'fichas': <dynamic>[],
       }));
-      final access = await api.getAccess(token: 't');
+      final access = await api.getAccess(token: 't', cpfLast3: '123');
       expect(access.employeeName, 'Lucia');
       expect(access.unitName, 'Base Norte');
     });

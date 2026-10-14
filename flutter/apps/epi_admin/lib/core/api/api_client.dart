@@ -32,6 +32,7 @@ class ApiClient {
   static late final DevolutionsApi devolutions;
   static late final FichasApi fichas;
   static late final PortalApi portal;
+  static late final SafetyLibraryApi safetyLibrary;
   static late final PurchasesApi purchases;
   static late final ReportsApi reports;
   static late final SettingsApi settings;
@@ -96,6 +97,7 @@ class ApiClient {
     devolutions = DevolutionsApi(dio);
     fichas = FichasApi(dio);
     portal = PortalApi(dio);
+    safetyLibrary = SafetyLibraryApi(dio);
     purchases = PurchasesApi(dio);
     reports = ReportsApi(dio);
     settings = SettingsApi(dio);

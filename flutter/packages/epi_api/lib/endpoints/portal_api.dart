@@ -15,16 +15,17 @@ class PortalApi {
     return res.data?['token'] as String? ?? '';
   }
 
-  Future<PortalAccess> getAccess({required String token}) async {
+  Future<PortalAccess> getAccess({required String token, required String cpfLast3}) async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/api/employee-access',
-      queryParameters: {'token': token},
+      queryParameters: {'token': token, 'cpf_last3': cpfLast3},
     );
     return PortalAccess.fromJson(res.data ?? {});
   }
 
   Future<void> signDelivery({
     required String token,
+    required String cpfLast3,
     required int deliveryId,
     required String signatureData,
   }) async {
@@ -32,6 +33,7 @@ class PortalApi {
       '/api/employee-sign',
       data: {
         'token': token,
+        'cpf_last3': cpfLast3,
         'delivery_id': deliveryId,
         'signature_data': signatureData,
       },
@@ -40,6 +42,7 @@ class PortalApi {
 
   Future<void> signBatch({
     required String token,
+    required String cpfLast3,
     required List<int> deliveryIds,
     required String signatureData,
   }) async {
@@ -47,6 +50,7 @@ class PortalApi {
       '/api/employee-sign-batch',
       data: {
         'token': token,
+        'cpf_last3': cpfLast3,
         'delivery_ids': deliveryIds,
         'signature_data': signatureData,
       },
@@ -55,6 +59,7 @@ class PortalApi {
 
   Future<void> sendFeedback({
     required String token,
+    required String cpfLast3,
     required int deliveryId,
     required String comment,
     int rating = 5,
@@ -63,6 +68,7 @@ class PortalApi {
       '/api/employee-feedback',
       data: {
         'token': token,
+        'cpf_last3': cpfLast3,
         'delivery_id': deliveryId,
         'comment': comment,
         'rating': rating,

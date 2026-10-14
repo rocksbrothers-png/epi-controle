@@ -16510,13 +16510,29 @@ function openConferenciaModal(prId, items) {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
     const eligibleStatuses = ['included_in_request', 'received', 'not_received', 'received_partial', 'approved', 'ordered'];
     const eligibleItems = items.filter(i => eligibleStatuses.includes(String(i.status || '')));
+    const effQtyOf = (item) => {
+      const v = item.effective_receive_quantity;
+      return (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) ? v : 0;
+    };
+    const nameById = {};
+    eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || 'Item'; });
+    // EST-V3.5-R3: estado dos lotes por item. Modo "único" (padrão): uma data +
+    // uma evidência valem para TODAS as N peças do item (um lote só — R3 #2).
+    // Modo "lotes": separa qtd/validade/evidência/identificação por lote (R3 #4);
+    // exceção individual = lote de 1 peça (R3 #6). Reutiliza o backend de lotes
+    // (R3 #12): nunca cria um segundo mecanismo de estoque.
+    const lotState = {};
+    eligibleItems.forEach(item => { lotState[item.id] = { expanded: false, lots: [] }; });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fmtDate = (d) => { if (!d) return ''; const p = String(d).split('-'); return (p.length === 3) ? `${p[2]}/${p[1]}/${p[0]}` : String(d); };
     const itemsHtml = eligibleItems.map(item => {
       const alreadyNotReceived = item.status === 'not_received';
+      const qty = effQtyOf(item);
       const sizeInfo = [item.glove_size && item.glove_size !== 'N/A' ? `L:${item.glove_size}` : null, item.size && item.size !== 'N/A' ? `T:${item.size}` : null].filter(Boolean).join(' ') || '—';
-      return `<tr data-conferencia-row="${esc(item.id)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
+      return `<tr data-conferencia-row="${esc(item.id)}" data-eff-qty="${esc(qty)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
         <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
         <td style="padding:6px 8px;">${esc(item.employee_name || '—')}</td>
-        <td style="padding:6px 8px;text-align:center;">${esc(item.quantity_requested || 1)}</td>
+        <td style="padding:6px 8px;text-align:center;">${esc(qty)}</td>
         <td style="padding:6px 8px;text-align:center;font-size:12px;">${esc(sizeInfo)}</td>
         <td style="padding:6px 8px;text-align:center;">
           <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;">
@@ -16524,18 +16540,25 @@ function openConferenciaModal(prId, items) {
             <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? 'Não Recebido' : 'Recebido'}</span>
           </label>
         </td>
-        <td style="padding:6px 8px;text-align:center;">
-          <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
-            <input type="date" data-conferencia-validity="${esc(item.id)}" data-epi="${esc(item.epi_id)}" style="font-size:12px;padding:2px 4px;" title="Validade do fabricante do EPI">
-            <label class="btn ghost" style="padding:2px 6px;cursor:pointer;font-size:13px;line-height:1;" title="Ler data por câmera (OCR)">📷<input type="file" accept="image/*" capture="environment" data-conferencia-ocr="${esc(item.id)}" style="display:none;"></label>
+        <td style="padding:6px 8px;text-align:center;vertical-align:top;">
+          <div data-conferencia-single="${esc(item.id)}">
+            <div style="display:flex;gap:4px;align-items:center;justify-content:center;">
+              <input type="date" data-conferencia-validity="${esc(item.id)}" data-epi="${esc(item.epi_id)}" style="font-size:12px;padding:2px 4px;" title="${esc(tr('stock.receipt.validityTitle', 'Validade física do fabricante — aplicada a todas as peças deste item'))}">
+              <label class="btn ghost" style="padding:2px 6px;cursor:pointer;font-size:13px;line-height:1;" title="${esc(tr('stock.receipt.ocrTitle', 'Ler data por câmera (OCR)'))}">📷<input type="file" accept="image/*" capture="environment" data-conferencia-ocr="${esc(item.id)}" style="display:none;"></label>
+            </div>
+            <input type="text" data-conferencia-evidence="${esc(item.id)}" placeholder="${esc(tr('stock.receipt.evidencePlaceholder', 'Evidência: etiqueta / NF / foto'))}" style="margin-top:4px;width:170px;max-width:100%;font-size:12px;padding:2px 4px;" title="${esc(tr('stock.receipt.evidenceTitle', 'Evidência verificável da validade física (obrigatória quando há validade)'))}">
           </div>
+          <button type="button" class="btn ghost" data-conferencia-split-toggle="${esc(item.id)}" style="margin-top:4px;font-size:11px;padding:1px 6px;">${esc(tr('stock.receipt.splitInto', 'Separar em lotes'))}</button>
         </td>
+      </tr>
+      <tr data-conferencia-lots-row="${esc(item.id)}" style="display:none;background:var(--color-surface-alt,#fafafa);">
+        <td colspan="6" style="padding:8px 12px;" data-conferencia-lots-cell="${esc(item.id)}"></td>
       </tr>`;
     }).join('');
     overlay.innerHTML = `
-      <div class="card" style="max-width:860px;width:min(860px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
+      <div class="card" style="max-width:920px;width:min(920px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
         <h3 style="margin:0 0 4px;">Conferência de Recebimento — Requisição #${esc(String(prId))}</h3>
-        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">Marque cada item conforme o recebimento real. Itens <strong>desmarcados</strong> serão registrados como <strong>Não Recebido</strong> para acompanhamento com o fornecedor. Informe a <strong>validade do fabricante</strong> de cada EPI antes de enviar ao estoque (use 📷 para ler por câmera). A primeira data de um mesmo EPI é aplicada automaticamente aos demais itens daquele EPI.</p>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.receipt.intro', 'Marque cada item conforme o recebimento real. Itens desmarcados são registrados como Não Recebido para cobrança ao fornecedor. Informe a validade física do fabricante (uma data para todas as peças do item) e a evidência verificável (etiqueta/embalagem/NF; use 📷 para ler por câmera). Use "Separar em lotes" quando houver validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS (desconhecida) e devem ser regularizadas depois em Validade e Bloqueios.'))}</p>
         <div style="margin-bottom:10px;overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="border-bottom:2px solid var(--color-border);">
@@ -16544,12 +16567,13 @@ function openConferenciaModal(prId, items) {
               <th scope="col" style="text-align:center;padding:6px 8px;">Qtd</th>
               <th scope="col" style="text-align:center;padding:6px 8px;">Tamanho</th>
               <th scope="col" style="text-align:center;padding:6px 8px;">Recebido?</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Validade Fabricante</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;">${esc(tr('stock.receipt.physicalValidity', 'Validade física + evidência'))}</th>
             </tr></thead>
             <tbody>${itemsHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
           </table>
         </div>
-        <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
+        <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:8px;font-size:13px;border:1px solid var(--color-border);"></div>
+        <div id="conferencia-preview" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
         <label style="display:block;margin-bottom:14px;font-size:13px;">
           Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)">(será usada como base para reclamação ao fornecedor)</span>
           <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor."></textarea>
@@ -16561,6 +16585,24 @@ function openConferenciaModal(prId, items) {
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    const effQtyRow = (itemId) => Number(overlay.querySelector(`[data-conferencia-row="${CSS.escape(String(itemId))}"]`)?.getAttribute('data-eff-qty') || 0);
+    // Lotes efetivos de um item: no modo "lotes", o estado; no modo "único",
+    // um lote sintetizado de N peças com a data/evidência digitadas.
+    const collectLotsForItem = (item) => {
+      const st = lotState[item.id];
+      const N = effQtyRow(item.id);
+      if (st.expanded && st.lots.length) {
+        return { N, lots: st.lots.map(l => ({
+          quantity: Number.isSafeInteger(Number(l.quantity)) && Number(l.quantity) > 0 ? Number(l.quantity) : 0,
+          manufacturer_validity_date: String(l.validity || '').trim(),
+          evidence: String(l.evidence || '').trim(),
+          lot_code: String(l.lot_code || '').trim(),
+        })) };
+      }
+      const dv = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(String(item.id))}"]`)?.value?.trim() || '';
+      const ev = overlay.querySelector(`[data-conferencia-evidence="${CSS.escape(String(item.id))}"]`)?.value?.trim() || '';
+      return { N, lots: [{ quantity: N, manufacturer_validity_date: dv, evidence: ev, lot_code: '' }] };
+    };
     const updateSummary = () => {
       const checkboxes = Array.from(overlay.querySelectorAll('[data-conferencia-item]'));
       const total = checkboxes.length;
@@ -16581,10 +16623,135 @@ function openConferenciaModal(prId, items) {
         if (row) row.style.background = cb.checked ? '' : 'var(--color-danger-bg,#fff0f0)';
       });
     };
-    overlay.querySelectorAll('[data-conferencia-item]').forEach(cb => bindAppListener(cb, 'change', updateSummary));
-    updateSummary();
-    // Validade do fabricante por lote: ao informar a data de um EPI, aplica
-    // automaticamente aos demais itens do mesmo EPI que ainda estão vazios.
+    // Prévia global (R3 #5): por item recebido, quantas peças recebem qual data,
+    // e quantas entram BLOQUEADAS por validade física não comprovada (R3 #9).
+    const renderGlobalPreview = () => {
+      const prev = overlay.querySelector('#conferencia-preview');
+      if (!prev) return;
+      const rows = [];
+      let blocked = 0;
+      eligibleItems.forEach(item => {
+        const cb = overlay.querySelector(`[data-conferencia-item][value="${CSS.escape(String(item.id))}"]`);
+        if (!(cb && cb.checked)) return;
+        const { N, lots } = collectLotsForItem(item);
+        const parts = lots.map(l => {
+          const q = l.quantity > 0 ? l.quantity : 0;
+          if (!l.manufacturer_validity_date) { blocked += q; return `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${tr('stock.receipt.blocked', 'BLOQUEADAS')}`; }
+          const past = l.manufacturer_validity_date < todayStr;
+          return `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${fmtDate(l.manufacturer_validity_date)}${past ? ' ⚠ ' + tr('stock.receipt.expired', 'vencida') : ''}`;
+        });
+        rows.push(`<div><strong>${esc(item.epi_name || 'Item')}</strong> (${N}): ${esc(parts.join('; '))}</div>`);
+      });
+      if (!rows.length) { prev.innerHTML = `<span style="color:var(--color-text-muted)">${esc(tr('stock.receipt.previewEmpty', 'Marque itens como recebidos para ver a prévia da validade física por peça.'))}</span>`; return; }
+      const warn = blocked > 0 ? `<div style="color:var(--color-danger,#c00);margin-top:4px;">⚠ ${blocked} ${esc(tr('stock.receipt.blockedPieces', 'peça(s) entrarão BLOQUEADAS (validade não comprovada) — regularize depois em Validade e Bloqueios'))}</div>` : '';
+      prev.innerHTML = `<div style="font-weight:600;margin-bottom:2px;">${esc(tr('stock.receipt.previewHead', 'Prévia — validade física por peça'))}</div>${rows.join('')}${warn}`;
+    };
+    const refresh = () => { updateSummary(); renderGlobalPreview(); };
+    const renderLotPreview = (itemId) => {
+      const st = lotState[itemId];
+      const prev = overlay.querySelector(`[data-lot-preview="${CSS.escape(String(itemId))}"]`);
+      if (!prev) return;
+      const N = effQtyRow(itemId);
+      let sum = 0;
+      const lines = st.lots.map(lot => {
+        const q = Math.floor(Number(lot.quantity) || 0);
+        if (q > 0) sum += q;
+        const dateTxt = lot.validity ? fmtDate(lot.validity) : '';
+        let color, msg;
+        if (!dateTxt) { color = 'var(--color-danger,#c00)'; msg = `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${tr('stock.receipt.willBlockUnknown', 'SEM validade → BLOQUEADAS (desconhecida)')}`; }
+        else { const past = lot.validity < todayStr; color = past ? 'var(--color-danger,#c00)' : 'var(--color-success,green)'; msg = `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${dateTxt}${past ? ' ⚠ ' + tr('stock.receipt.expired', 'vencida') : ''}`; }
+        if (lot.validity && !String(lot.evidence || '').trim()) { color = 'var(--color-danger,#c00)'; msg += ` — ${tr('stock.receipt.evidenceRequired', 'evidência obrigatória')}`; }
+        return `<div style="color:${color};">• ${esc(msg)}</div>`;
+      });
+      const sumOk = sum === N;
+      lines.push(`<div style="margin-top:4px;color:${sumOk ? 'var(--color-text-muted)' : 'var(--color-danger,#c00)'};">${esc(tr('stock.receipt.sum', 'Soma dos lotes'))}: <strong>${sum}</strong> / ${N}${sumOk ? '' : ` — ${esc(tr('stock.receipt.sumMismatch', 'ajuste para bater com a quantidade recebida'))}`}</div>`);
+      prev.innerHTML = lines.join('');
+    };
+    const renderLotsCell = (itemId) => {
+      const st = lotState[itemId];
+      const cell = overlay.querySelector(`[data-conferencia-lots-cell="${CSS.escape(String(itemId))}"]`);
+      if (!cell) return;
+      const cols = '64px 140px 1fr 120px 28px';
+      const lotsHtml = st.lots.map((lot, idx) => `
+        <div style="display:grid;grid-template-columns:${cols};gap:6px;align-items:center;margin-bottom:4px;">
+          <input type="number" min="1" step="1" value="${esc(lot.quantity)}" data-lot-field="quantity" data-lot-idx="${esc(idx)}" style="font-size:12px;padding:2px 4px;" aria-label="${esc(tr('stock.receipt.qty', 'Qtd'))}">
+          <input type="date" value="${esc(lot.validity)}" data-lot-field="validity" data-lot-idx="${esc(idx)}" style="font-size:12px;padding:2px 4px;" aria-label="${esc(tr('stock.receipt.validity', 'Validade física'))}">
+          <input type="text" value="${esc(lot.evidence)}" data-lot-field="evidence" data-lot-idx="${esc(idx)}" placeholder="${esc(tr('stock.receipt.evidencePlaceholder', 'Evidência: etiqueta / NF / foto'))}" style="font-size:12px;padding:2px 4px;" aria-label="${esc(tr('stock.receipt.evidence', 'Evidência'))}">
+          <input type="text" value="${esc(lot.lot_code)}" data-lot-field="lot_code" data-lot-idx="${esc(idx)}" placeholder="${esc(tr('stock.receipt.lotCode', 'Identificação'))}" style="font-size:12px;padding:2px 4px;" aria-label="${esc(tr('stock.receipt.lotCode', 'Identificação'))}">
+          <button type="button" class="btn ghost" data-lot-remove="${esc(idx)}" title="${esc(tr('stock.receipt.removeLot', 'Remover lote'))}" style="padding:1px 5px;font-size:12px;">✕</button>
+        </div>`).join('');
+      cell.innerHTML = `
+        <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:6px;">${esc(tr('stock.receipt.lotsHint', 'Cada lote: quantidade, validade física, evidência verificável (obrigatória quando há validade) e identificação. Exceção individual = lote de 1 peça. A soma das quantidades deve bater com a quantidade recebida.'))}</div>
+        <div style="display:grid;grid-template-columns:${cols};gap:6px;font-size:11px;color:var(--color-text-muted);margin-bottom:2px;">
+          <span>${esc(tr('stock.receipt.qty', 'Qtd'))}</span><span>${esc(tr('stock.receipt.validity', 'Validade física'))}</span><span>${esc(tr('stock.receipt.evidence', 'Evidência'))}</span><span>${esc(tr('stock.receipt.lotCode', 'Identificação'))}</span><span></span>
+        </div>
+        ${lotsHtml || `<div style="font-size:12px;color:var(--color-text-muted);margin-bottom:4px;">${esc(tr('stock.receipt.noLots', 'Nenhum lote — adicione ao menos um.'))}</div>`}
+        <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+          <button type="button" class="btn ghost" data-lot-add style="font-size:11px;padding:1px 7px;">+ ${esc(tr('stock.receipt.addLot', 'Adicionar lote'))}</button>
+          <button type="button" class="btn ghost" data-lot-add-exception style="font-size:11px;padding:1px 7px;">+ ${esc(tr('stock.receipt.addException', 'Exceção (1 peça)'))}</button>
+          <button type="button" class="btn ghost" data-conferencia-split-close style="font-size:11px;padding:1px 7px;margin-left:auto;">${esc(tr('stock.receipt.useSingle', 'Usar data única'))}</button>
+        </div>
+        <div data-lot-preview="${esc(itemId)}" style="margin-top:6px;font-size:12px;"></div>`;
+      cell.querySelectorAll('[data-lot-field]').forEach(inp => bindAppListener(inp, 'input', () => {
+        const idx = Number(inp.getAttribute('data-lot-idx'));
+        const field = inp.getAttribute('data-lot-field');
+        if (!st.lots[idx]) return;
+        st.lots[idx][field] = inp.value;
+        renderLotPreview(itemId);
+        renderGlobalPreview();
+      }));
+      cell.querySelectorAll('[data-lot-remove]').forEach(btn => bindAppListener(btn, 'click', () => {
+        st.lots.splice(Number(btn.getAttribute('data-lot-remove')), 1);
+        renderLotsCell(itemId);
+        renderGlobalPreview();
+      }));
+      const addBtn = cell.querySelector('[data-lot-add]');
+      if (addBtn) bindAppListener(addBtn, 'click', () => { st.lots.push({ quantity: '', validity: '', evidence: '', lot_code: '' }); renderLotsCell(itemId); renderGlobalPreview(); });
+      const addExc = cell.querySelector('[data-lot-add-exception]');
+      if (addExc) bindAppListener(addExc, 'click', () => { st.lots.push({ quantity: '1', validity: '', evidence: '', lot_code: '' }); renderLotsCell(itemId); renderGlobalPreview(); });
+      const closeBtn = cell.querySelector('[data-conferencia-split-close]');
+      if (closeBtn) bindAppListener(closeBtn, 'click', () => collapseSplit(itemId));
+      renderLotPreview(itemId);
+    };
+    const expandSplit = (itemId) => {
+      const st = lotState[itemId];
+      st.expanded = true;
+      if (!st.lots.length) {
+        const dv = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(String(itemId))}"]`)?.value?.trim() || '';
+        const ev = overlay.querySelector(`[data-conferencia-evidence="${CSS.escape(String(itemId))}"]`)?.value?.trim() || '';
+        st.lots = [{ quantity: String(effQtyRow(itemId)), validity: dv, evidence: ev, lot_code: '' }];
+      }
+      const single = overlay.querySelector(`[data-conferencia-single="${CSS.escape(String(itemId))}"]`);
+      if (single) single.style.display = 'none';
+      const toggle = overlay.querySelector(`[data-conferencia-split-toggle="${CSS.escape(String(itemId))}"]`);
+      if (toggle) toggle.style.display = 'none';
+      const lotsRow = overlay.querySelector(`[data-conferencia-lots-row="${CSS.escape(String(itemId))}"]`);
+      if (lotsRow) lotsRow.style.display = '';
+      renderLotsCell(itemId);
+      renderGlobalPreview();
+    };
+    const collapseSplit = (itemId) => {
+      const st = lotState[itemId];
+      st.expanded = false;
+      const first = st.lots[0];
+      if (first) {
+        const dv = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(String(itemId))}"]`);
+        const ev = overlay.querySelector(`[data-conferencia-evidence="${CSS.escape(String(itemId))}"]`);
+        if (dv && !dv.value) dv.value = first.validity || '';
+        if (ev && !ev.value) ev.value = first.evidence || '';
+      }
+      const single = overlay.querySelector(`[data-conferencia-single="${CSS.escape(String(itemId))}"]`);
+      if (single) single.style.display = '';
+      const toggle = overlay.querySelector(`[data-conferencia-split-toggle="${CSS.escape(String(itemId))}"]`);
+      if (toggle) toggle.style.display = '';
+      const lotsRow = overlay.querySelector(`[data-conferencia-lots-row="${CSS.escape(String(itemId))}"]`);
+      if (lotsRow) lotsRow.style.display = 'none';
+      renderGlobalPreview();
+    };
+    overlay.querySelectorAll('[data-conferencia-split-toggle]').forEach(btn => bindAppListener(btn, 'click', () => expandSplit(btn.getAttribute('data-conferencia-split-toggle'))));
+    overlay.querySelectorAll('[data-conferencia-item]').forEach(cb => bindAppListener(cb, 'change', refresh));
+    overlay.querySelectorAll('[data-conferencia-evidence]').forEach(el => bindAppListener(el, 'input', renderGlobalPreview));
+    // Propagação da data única entre itens do mesmo EPI (mantida do fluxo atual).
     const propagateValidityByEpi = (sourceInput) => {
       const epiId = sourceInput.getAttribute('data-epi');
       const value = sourceInput.value;
@@ -16594,7 +16761,7 @@ function openConferenciaModal(prId, items) {
       });
     };
     overlay.querySelectorAll('[data-conferencia-validity]').forEach((el) => {
-      bindAppListener(el, 'change', () => propagateValidityByEpi(el));
+      bindAppListener(el, 'change', () => { propagateValidityByEpi(el); renderGlobalPreview(); });
     });
     overlay.querySelectorAll('[data-conferencia-ocr]').forEach((fileInput) => {
       bindAppListener(fileInput, 'change', async (event) => {
@@ -16606,36 +16773,65 @@ function openConferenciaModal(prId, items) {
         if (detected) {
           dateField.value = detected;
           propagateValidityByEpi(dateField);
+          // A foto da etiqueta/embalagem É a evidência verificável (R3 #3): nota
+          // verdadeira e editável; não presume a data (lida da imagem real).
+          const evField = overlay.querySelector(`[data-conferencia-evidence="${CSS.escape(itemId)}"]`);
+          if (evField && !evField.value.trim()) evField.value = tr('stock.receipt.evidenceCamera', 'Etiqueta/embalagem do fabricante (leitura por câmera)');
+          renderGlobalPreview();
         }
         event.target.value = '';
       });
     });
+    refresh();
     const finish = (value) => { overlay.remove(); resolve(value); };
     bindAppListener(overlay.querySelector('#conferencia-cancel'), 'click', () => finish(null));
     bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
     bindAppListener(overlay.querySelector('#conferencia-confirm'), 'click', () => {
       const errorEl = overlay.querySelector('#conferencia-error');
       const showError = (msg) => { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = msg; } };
-      const received_items = Array.from(overlay.querySelectorAll('[data-conferencia-item]')).map(cb => {
-        const dateField = overlay.querySelector(`[data-conferencia-validity="${CSS.escape(cb.value)}"]`);
-        return {
-          id: Number(cb.value),
-          received: cb.checked,
-          manufacturer_validity_date: dateField?.value?.trim() || '',
-        };
+      if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+      const invalidIndex = eligibleItems.findIndex(item => effQtyOf(item) <= 0);
+      if (invalidIndex >= 0) {
+        const item = eligibleItems[invalidIndex];
+        showError(tr('stock.receipt.invalidQuantityLine',
+          'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.',
+          { line: invalidIndex + 1, item: nameById[item.id], id: item.id }));
+        return;
+      }
+      const built = eligibleItems.map(item => {
+        const cb = overlay.querySelector(`[data-conferencia-item][value="${CSS.escape(String(item.id))}"]`);
+        const received = !!(cb && cb.checked);
+        const { N, lots } = collectLotsForItem(item);
+        const singleDate = lotState[item.id].expanded ? '' : (lots[0]?.manufacturer_validity_date || '');
+        return { id: Number(item.id), received, manufacturer_validity_date: singleDate, lots, _N: N };
       });
       const comment = overlay.querySelector('#conferencia-notes')?.value?.trim() || '';
-      const notReceived = received_items.filter(i => !i.received);
+      const notReceived = built.filter(i => !i.received);
       if (notReceived.length > 0 && !comment) {
         showError('Informe as observações sobre os itens não recebidos.');
         return;
       }
-      // Nenhum item pode entrar em estoque sem a validade do fabricante (NT 146/2015).
-      const missingValidity = received_items.filter(i => i.received && !i.manufacturer_validity_date);
-      if (missingValidity.length > 0) {
-        showError('Informe a validade do fabricante de todos os EPIs recebidos antes de enviar ao estoque.');
-        return;
+      // EST-V3.5-R3: integridade dos lotes dos itens recebidos (espelha o backend
+      // _resolve_receipt_piece_plan). Validade vazia é permitida (peça unknown/
+      // bloqueada, R3 #9); evidência é obrigatória quando há validade (R3 #3).
+      for (const it of built.filter(i => i.received)) {
+        if (it.lots.some(l => !(Number(l.quantity) > 0))) {
+          showError(`${nameById[it.id] || 'Item'}: cada lote precisa de quantidade maior que zero.`);
+          return;
+        }
+        const sum = it.lots.reduce((s, l) => s + (Number(l.quantity) > 0 ? Math.floor(Number(l.quantity)) : 0), 0);
+        if (sum !== it._N) {
+          showError(`${nameById[it.id] || 'Item'}: a soma das quantidades dos lotes (${sum}) não confere com a quantidade recebida (${it._N}).`);
+          return;
+        }
+        for (const l of it.lots) {
+          if (l.manufacturer_validity_date && !l.evidence) {
+            showError(`${nameById[it.id] || 'Item'}: evidência verificável é obrigatória quando o lote informa validade física.`);
+            return;
+          }
+        }
       }
+      const received_items = built.map(({ _N, ...rest }) => rest);
       finish({ received_items, comment });
     });
   });

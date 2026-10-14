@@ -940,5 +940,55 @@
   "safetyStateDraft": "Borrador",
   "safetyStatePublished": "Publicado",
   "safetyStateSuperseded": "Sustituido",
-  "safetyStateArchived": "Archivado"
+  "safetyStateArchived": "Archivado",
+  "prConfTitle": "Conferencia de Recepción",
+  "prConfIntro": "Marque cada ítem según la recepción real. Informe la validez física del fabricante y la evidencia verificable; use \"Separar en lotes\" para validades diferentes o excepciones individuales. Las piezas sin validez comprobada entran BLOQUEADAS.",
+  "prConfReceivedYes": "Recibido",
+  "prConfReceivedNo": "No recibido",
+  "prConfEvidence": "Evidencia verificable",
+  "prConfEvidenceHint": "Etiqueta / factura / foto",
+  "prConfEvidenceRequired": "La evidencia verificable es obligatoria cuando hay validez.",
+  "prConfSplitLots": "Separar en lotes",
+  "prConfSingleDate": "Usar fecha única",
+  "prConfAddLot": "Agregar lote",
+  "prConfAddException": "Excepción (1 pieza)",
+  "prConfLotQty": "Cant.",
+  "prConfLotCode": "Identificación",
+  "prConfRemoveLot": "Quitar lote",
+  "prConfPreview": "Vista previa — validez física por pieza",
+  "prConfBlocked": "SIN validez → BLOQUEADAS",
+  "prConfExpired": "vencida",
+  "prConfPiece": "pieza(s)",
+  "prConfSumMismatch": "La suma de las cantidades de los lotes no coincide con la cantidad recibida.",
+  "prConfLotQtyPositive": "Cada lote necesita una cantidad mayor que cero.",
+  "prConfNotes": "Observaciones sobre ítems no recibidos",
+  "prConfNotesRequired": "Informe las observaciones sobre los ítems no recibidos.",
+  "prConfSubmit": "Registrar Conferencia",
+  "prConfDone": "Conferencia registrada.",
+  "prConfEmpty": "Ningún ítem elegible para conferencia.",
+  "prConfInvalidQuantity": "La cantidad efectivamente recibida es inválida o no positiva. Corrija la recepción antes de confirmar.",
+  "prConfNoPersistedPieces": "No se registraron piezas o la respuesta es inconsistente. No se confirmó la entrada al inventario.",
+  "prConfDoneQuantity": "{count} piezas efectivamente registradas en el inventario.",
+  "@prConfDoneQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prConfNoStockEntry": "Conferencia guardada sin entrada de piezas al inventario.",
+  "prConfInvalidQuantityLine": "Línea {line} — {item} (artículo #{id}): cantidad efectivamente recibida inválida o no positiva. Corrija la recepción antes de confirmar.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

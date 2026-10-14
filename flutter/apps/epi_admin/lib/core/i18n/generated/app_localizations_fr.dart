@@ -2304,6 +2304,136 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get safetyStateArchived => 'Archivé';
+  @override
+  String prConfInvalidQuantityLine(int line, String item, String id) {
+    return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
+  }
+  @override
+  String get prConfTitle => 'Conferência de Recebimento';
+
+
+  @override
+  String get prConfIntro =>
+      'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.';
+
+
+  @override
+  String get prConfReceivedYes => 'Recebido';
+
+
+  @override
+  String get prConfReceivedNo => 'Não recebido';
+
+
+  @override
+  String get prConfEvidence => 'Evidência verificável';
+
+
+  @override
+  String get prConfEvidenceHint => 'Etiqueta / NF / foto';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'Evidência verificável é obrigatória quando há validade.';
+
+
+  @override
+  String get prConfSplitLots => 'Separar em lotes';
+
+
+  @override
+  String get prConfSingleDate => 'Usar data única';
+
+
+  @override
+  String get prConfAddLot => 'Adicionar lote';
+
+
+  @override
+  String get prConfAddException => 'Exceção (1 peça)';
+
+
+  @override
+  String get prConfLotQty => 'Qtd';
+
+
+  @override
+  String get prConfLotCode => 'Identificação';
+
+
+  @override
+  String get prConfRemoveLot => 'Remover lote';
+
+
+  @override
+  String get prConfPreview => 'Prévia — validade física por peça';
+
+
+  @override
+  String get prConfBlocked => 'SEM validade → BLOQUEADAS';
+
+
+  @override
+  String get prConfExpired => 'vencida';
+
+
+  @override
+  String get prConfPiece => 'peça(s)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'A soma das quantidades dos lotes não confere com a quantidade recebida.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Cada lote precisa de quantidade maior que zero.';
+
+
+  @override
+  String get prConfNotes => 'Observações sobre itens não recebidos';
+
+
+  @override
+  String get prConfNotesRequired =>
+      'Informe as observações sobre os itens não recebidos.';
+
+
+  @override
+  String get prConfSubmit => 'Registrar Conferência';
+
+
+  @override
+  String get prConfDone => 'Conferência registrada.';
+
+
+  @override
+  String get prConfEmpty => 'Nenhum item elegível para conferência.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count peças efetivamente registradas no estoque.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Conferência salva sem entrada de peças no estoque.';
+
+
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -4606,4 +4736,134 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get safetyStateArchived => 'Archivé';
+  @override
+  String prConfInvalidQuantityLine(int line, String item, String id) {
+    return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
+  }
+  @override
+  String get prConfTitle => 'Conférence de Réception';
+
+
+  @override
+  String get prConfIntro =>
+      'Cochez chaque article selon la réception réelle. Indiquez la validité physique du fabricant et la preuve vérifiable ; utilisez « Séparer en lots » pour des validités différentes ou des exceptions individuelles. Les pièces sans validité prouvée entrent BLOQUÉES.';
+
+
+  @override
+  String get prConfReceivedYes => 'Reçu';
+
+
+  @override
+  String get prConfReceivedNo => 'Non reçu';
+
+
+  @override
+  String get prConfEvidence => 'Preuve vérifiable';
+
+
+  @override
+  String get prConfEvidenceHint => 'Étiquette / facture / photo';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'La preuve vérifiable est obligatoire lorsqu\'une validité est saisie.';
+
+
+  @override
+  String get prConfSplitLots => 'Séparer en lots';
+
+
+  @override
+  String get prConfSingleDate => 'Utiliser une date unique';
+
+
+  @override
+  String get prConfAddLot => 'Ajouter un lot';
+
+
+  @override
+  String get prConfAddException => 'Exception (1 pièce)';
+
+
+  @override
+  String get prConfLotQty => 'Qté';
+
+
+  @override
+  String get prConfLotCode => 'Identification';
+
+
+  @override
+  String get prConfRemoveLot => 'Retirer le lot';
+
+
+  @override
+  String get prConfPreview => 'Aperçu — validité physique par pièce';
+
+
+  @override
+  String get prConfBlocked => 'SANS validité → BLOQUÉES';
+
+
+  @override
+  String get prConfExpired => 'expirée';
+
+
+  @override
+  String get prConfPiece => 'pièce(s)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'La somme des quantités des lots ne correspond pas à la quantité reçue.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Chaque lot doit avoir une quantité supérieure à zéro.';
+
+
+  @override
+  String get prConfNotes => 'Observations sur les articles non reçus';
+
+
+  @override
+  String get prConfNotesRequired =>
+      'Indiquez les observations sur les articles non reçus.';
+
+
+  @override
+  String get prConfSubmit => 'Enregistrer la Conférence';
+
+
+  @override
+  String get prConfDone => 'Conférence enregistrée.';
+
+
+  @override
+  String get prConfEmpty => 'Aucun article éligible à la conférence.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'La quantité effectivement reçue est invalide ou non positive. Corrigez la réception avant de confirmer.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'Aucune pièce enregistrée ou réponse incohérente. L’entrée en stock n’a pas été confirmée.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count pièces effectivement enregistrées en stock.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Vérification enregistrée sans entrée de pièces en stock.';
+
+
 }

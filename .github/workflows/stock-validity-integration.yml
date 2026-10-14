@@ -51,6 +51,9 @@ jobs:
           flutter pub get
           dart run melos run gen:l10n
           dart run melos run gen
+      - name: Validate R3 receipt HTTP contract and adversarial quantities
+        run: |
+          python -m pytest -q tests_postgres/test_est_v3_5_r3_lot_receipt.py tests_postgres/test_est_v3_5_r3_lot_receipt_http.py tests_postgres/test_est_v3_5_r3_effective_receipt_http.py
       - name: Exercise real HTTP and PostgreSQL from Flutter
         shell: bash
         run: |

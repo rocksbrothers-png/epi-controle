@@ -312,7 +312,7 @@ def handle_get_stock_pending_regularization(handler, parsed, payload, match):
             connection, actor, query.get('unit_id', [''])[0],
             denial_message='Perfil sem unidade operacional ativa para consultar estoque.',
         )
-        items = pending_regularization_items(connection, company_scope_id, unit_filter)
+        items = pending_regularization_items(connection, company_scope_id, unit_filter.unit_id)
         return send_json(handler, 200, {'items': items, 'count': len(items)})
 
 

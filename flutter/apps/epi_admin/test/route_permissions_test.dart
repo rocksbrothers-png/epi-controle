@@ -13,6 +13,7 @@ void main() {
       const expected = <String, String>{
         Routes.employees: 'employees:view',
         Routes.epis: 'epis:view',
+        Routes.safetyLibrary: 'safety_library:manage',
         Routes.deliveries: 'deliveries:view',
         Routes.handover: 'deliveries:view',
         Routes.returns: 'deliveries:view',
@@ -126,6 +127,7 @@ void main() {
           Routes.dashboard,
           Routes.employees,
           Routes.epis,
+          Routes.safetyLibrary,
           Routes.deliveries,
           Routes.handover,
           Routes.returns,

@@ -359,3 +359,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     # uma a mais seria privilégio que ninguém pediu.
     CERTIFICATION_READONLY_ROLE: frozenset({PERM_UNITS_VIEW, PERM_STOCK_VIEW}),
 }
+
+# PORTAL-DOCS-V1: deliberately excludes Master and all other profiles.
+for _library_role in ('general_admin', 'registry_admin'):
+    PERMISSIONS[_library_role] = PERMISSIONS[_library_role] | frozenset({'safety_library:manage'})

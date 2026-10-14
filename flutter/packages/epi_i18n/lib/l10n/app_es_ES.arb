@@ -801,5 +801,144 @@
       }
     }
   },
-  "deliveryPhysicalItemIneligible": "Unidad no disponible para entrega. Revise caducidad física, estado, reservas y saldo."
+  "deliveryPhysicalItemIneligible": "Unidad no disponible para entrega. Revise caducidad física, estado, reservas y saldo.",
+  "safetyTitle": "Biblioteca de Seguridad",
+  "safetyApproved": "EPP Aprobados",
+  "safetyRetry": "Intentar de nuevo",
+  "safetyClose": "Cerrar",
+  "safetyCancel": "Cancelar",
+  "safetyConfirm": "Confirmar",
+  "safetyAccess": "Acceder",
+  "safetyPortalConfirm": "Confirmar acceso al portal",
+  "safetyCpfLast": "Tres últimos dígitos del CPF",
+  "safetyView": "Visualizar",
+  "safetyFit": "Ajustar",
+  "safetyZoomIn": "Ampliar",
+  "safetyZoomOut": "Reducir",
+  "safetyNextPage": "Página siguiente",
+  "safetyPreviousPage": "Página anterior",
+  "safetyDocument": "Documento",
+  "safetyDetails": "Detalles",
+  "safetyRelatedDocuments": "Documentos asociados",
+  "safetyRelatedEpis": "EPP relacionados",
+  "safetyRelatedEpi": "EPP relacionado",
+  "safetyAllEpis": "Todos los EPP",
+  "safetyAllCategories": "Todas las categorías",
+  "safetyNoDocs": "No hay documentos publicados para este contexto.",
+  "safetyNoRecords": "No hay registros publicados y autorizados en este contexto.",
+  "safetyCatalogueNotice": "La aprobación del catálogo no indica disponibilidad física. El vencimiento del CA es distinto al del lote.",
+  "safetyName": "EPP",
+  "safetyManufacturer": "Fabricante",
+  "safetyModel": "Modelo/referencia",
+  "safetyCa": "CA",
+  "safetyCaExpiry": "Vencimiento del CA",
+  "safetyUsefulLife": "Vida útil (meses)",
+  "safetyProtection": "Protección",
+  "safetySection": "Sección",
+  "safetyRecommendations": "Recomendaciones/restricciones",
+  "safetyUnknown": "No informado",
+  "safetySearch": "Buscar",
+  "safetyViewEpi": "Ver EPP",
+  "safetyHistory": "Historial",
+  "safetyDocumentHistory": "Historial documental",
+  "safetyPublish": "Publicar",
+  "safetyPublishVersion": "Publicar versión",
+  "safetyArchive": "Archivar documento",
+  "safetyArchiveVersions": "Archivar documento y versiones",
+  "safetyReason": "Justificación obligatoria",
+  "safetyNew": "Nuevo documento",
+  "safetyCreateNew": "Crear nuevo documento",
+  "safetyMetadata": "Datos de la versión",
+  "safetyEmptyAdmin": "No hay documentos registrados.",
+  "safetyPrivateNotice": "Originales privados, versiones e historial conservados. Gestión restringida al Administrador General y al Administrador de Registro.",
+  "safetyAllowAdminDownloads": "Permitir descargar originales a administradores autorizados",
+  "safetyPreviewOnlyNotice": "Los colaboradores solo pueden consultar la vista previa.",
+  "safetyPolicyReason": "Cambiar política de descarga administrativa",
+  "safetySearchVersions": "Buscar título o versión",
+  "safetyChooseFile": "Seleccionar archivo",
+  "safetyFilePickerLabel": "Documentos de SST",
+  "safetyUnitRequired": "Seleccione al menos una unidad",
+  "safetyAllUnits": "Todas las unidades de la empresa",
+  "safetyRequired": "Obligatorio",
+  "safetyDocumentTitle": "Título",
+  "safetyVersion": "Versión",
+  "safetyEffectiveDate": "Vigencia (AAAA-MM-DD)",
+  "safetySectors": "Sectores separados por comas (vacío = todos)",
+  "safetyActivities": "Actividades/funciones separadas por comas (vacío = todas)",
+  "safetyUpload": "Registrar o versionar documento",
+  "safetyRendering": "Generando vista previa segura…",
+  "safetyFileLimit": "Seleccione un archivo de hasta 20 MiB.",
+  "safetyVersionDate": "Versión {version} · Vigencia {date}",
+  "@safetyVersionDate": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUnit": "Unidad de consulta: {unit}",
+  "@safetyUnit": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyPreviewError": "Vista previa no disponible: {error}",
+  "@safetyPreviewError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyUploadError": "Registro rechazado; vista previa no disponible: {error}",
+  "@safetyUploadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyVersionSummary": "Versión {version} / revisión {revision} · {state} · Vigencia {date}",
+  "@safetyVersionSummary": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "revision": {
+        "type": "String"
+      },
+      "state": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyActorDetails": "Responsable {actor}\n{details}",
+  "@safetyActorDetails": {
+    "placeholders": {
+      "actor": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "safetyCategoryEpi": "Matriz de Aplicación de EPP",
+  "safetyCategoryGlove": "Matriz de Selección de Guantes",
+  "safetyCategoryCare": "Guías de Higiene y Conservación",
+  "safetyCategoryUse": "Instrucciones de Uso de EPP",
+  "safetyCategoryTechnical": "Manuales y Fichas Técnicas",
+  "safetyCategoryOther": "Otros Documentos de SST",
+  "safetyStateDraft": "Borrador",
+  "safetyStatePublished": "Publicado",
+  "safetyStateSuperseded": "Sustituido",
+  "safetyStateArchived": "Archivado"
 }

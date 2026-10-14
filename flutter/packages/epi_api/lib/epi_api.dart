@@ -5,6 +5,7 @@ export 'endpoints/companies_api.dart';
 export 'endpoints/legal_entities_api.dart';
 export 'endpoints/outsourced_companies_api.dart';
 export 'endpoints/portal_api.dart';
+export 'endpoints/safety_library_api.dart';
 export 'endpoints/dashboard_api.dart';
 export 'endpoints/deliveries_api.dart';
 export 'endpoints/devolutions_api.dart';

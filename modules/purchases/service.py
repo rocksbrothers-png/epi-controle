@@ -881,6 +881,24 @@ def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evide
     return plan
 
 
+def _effective_receive_quantity(connection, pri_row):
+    """EST-V3.5-R3: quantidade efetiva que entra em estoque para um item da
+    requisição — a recebida na PO vinculada (``quantity_received``) quando há
+    PO; senão a quantidade solicitada. Fonte ÚNICA desse número: usada tanto
+    no lançamento em estoque quanto na PRÉVIA de lotes da conferência, para que
+    a tela e a verificação de integridade (soma dos lotes = qtd) nunca divirjam.
+    """
+    pri_id = int(pri_row['id'])
+    po_item = connection.execute(
+        'SELECT quantity_received FROM purchase_order_items '
+        'WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
+        (pri_id,)
+    ).fetchone()
+    if po_item:
+        return int(po_item.get('quantity_received') or 0)
+    return int(pri_row.get('quantity_requested') or 0)
+
+
 def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, actor_id, actor_name, now):
     """Adds received EPI items to stock automatically after conferência.
 
@@ -934,14 +952,7 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         unit_id = int(item['unit_id'])
         company_id = int(item['company_id'])
         pri_id = int(item['id'])
-        po_item = connection.execute(
-            'SELECT * FROM purchase_order_items WHERE purchase_request_item_id = ? ORDER BY id DESC LIMIT 1',
-            (pri_id,)
-        ).fetchone()
-        if po_item:
-            quantity = int(po_item.get('quantity_received') or 0)
-        else:
-            quantity = int(item.get('quantity_requested') or 0)
+        quantity = _effective_receive_quantity(connection, item)
         if quantity <= 0:
             continue
         manufacturer_validity = str(
@@ -1274,7 +1285,13 @@ def get_purchase_request_detail(connection, pr_id):
         'SELECT * FROM purchase_events WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC, id DESC',
         ('purchase_request', pr_id),
     ).fetchall()
-    return row_to_dict(pr), [row_to_dict(i) for i in items], [row_to_dict(e) for e in events]
+    item_dicts = [row_to_dict(i) for i in items]
+    # EST-V3.5-R3: expõe a quantidade efetiva de recebimento por item (mesma
+    # fonte do lançamento em estoque) para a conferência montar a prévia de
+    # lotes e validar a soma sem divergir do backend.
+    for d in item_dicts:
+        d['effective_receive_quantity'] = _effective_receive_quantity(connection, d)
+    return row_to_dict(pr), item_dicts, [row_to_dict(e) for e in events]
 
 
 def fetch_purchase_orders(connection, company_id, scope_unit_id, purchase_scope_units, status_filter=None):

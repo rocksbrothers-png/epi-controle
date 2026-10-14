@@ -855,7 +855,10 @@ def _positive_receipt_integer(value):
     if isinstance(value, int):
         return value if value > 0 else 0
     if isinstance(value, str) and re.fullmatch(r'[0-9]+', value.strip()):
-        parsed = int(value.strip())
+        try:
+            parsed = int(value.strip())
+        except (ValueError, OverflowError):
+            return 0
         return parsed if parsed > 0 else 0
     return 0
 

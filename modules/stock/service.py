@@ -1378,6 +1378,39 @@ def pending_regularization_count(connection, company_id, unit_id=None):
     return total
 
 
+def pending_regularization_items(connection, company_id, unit_id=None):
+    """Peças FÍSICAS on-hand com validade DESCONHECIDA (pendentes de regularização),
+    enriquecidas para a UI (QR, EPI, tamanho, unidade, lote). MESMO predicado de
+    pending_regularization_count — fatos físicos, nunca catálogo. Vazio onde o
+    modelo físico não existe."""
+    from modules.stock.eligibility import classify_physical, stock_rows, validity_policy, ON_HAND_STATUSES
+    if not _has_col(connection, 'epi_stock_items', 'physical_expiry_date'):
+        return []
+    try:
+        policy = validity_policy(connection, company_id)
+    except ValueError:
+        return []
+    ids = []
+    for row in stock_rows(connection, company_id, unit_id):
+        if str(row.get('status') or '').lower() not in ON_HAND_STATUSES:
+            continue
+        if classify_physical(row.get('physical_expiry_date'), policy)['status'] == 'unknown':
+            ids.append(int(row['id']))
+    if not ids:
+        return []
+    placeholders = ','.join('?' for _ in ids)
+    rows = connection.execute(
+        'SELECT esi.id, esi.qr_code_value, esi.epi_id, esi.unit_id, esi.glove_size, esi.size, '
+        'esi.uniform_size, esi.lot_code, epis.name AS epi_name, epis.purchase_code, '
+        'epis.unit_measure, units.name AS unit_name '
+        'FROM epi_stock_items esi JOIN epis ON epis.id = esi.epi_id JOIN units ON units.id = esi.unit_id '
+        f'WHERE esi.id IN ({placeholders}) '  # noqa: S608 — ids inteiros derivados internamente
+        'ORDER BY epis.name ASC, esi.id ASC',
+        tuple(ids),
+    ).fetchall()
+    return [row_to_dict(r) for r in rows]
+
+
 def regularize_item_physical_validity(connection, item, physical_expiry, evidence, justification,
                                       actor_user_id, actor_name, actor_role, now):
     """EST-V3.5-R2 (G02/F4): regulariza a validade FÍSICA de uma peça já em estoque.

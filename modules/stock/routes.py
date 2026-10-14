@@ -46,6 +46,7 @@ from modules.stock.service import (
     parse_int_flexible,
     parse_stock_qr_lookup_value,
     pending_regularization_count,
+    pending_regularization_items,
     regularize_item_physical_validity,
     resolve_item_size,
     resolve_minimum_stock,
@@ -289,6 +290,30 @@ def handle_get_stock_validity_overview(handler, parsed, payload, match):
             overview['pending_regularization'] = pending_regularization_count(
                 connection, company_scope_id, unit_filter)
         return send_json(handler, 200, overview)
+
+
+def handle_get_stock_pending_regularization(handler, parsed, payload, match):
+    # EST-V3.5-R2 (web): LISTA das peças pendentes de regularização (validade
+    # física DESCONHECIDA) para a UI exibir e agir. Somente leitura (stock:view);
+    # a AÇÃO de regularizar continua exigindo stock:regularize_validity, reaplicada
+    # no handler dedicado. Mesmo escopo empresa/unidade das demais consultas.
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_filter = actor['company_id'] if actor['role'] != 'master_admin' else query.get('company_id', [''])[0]
+        company_scope_id = int(company_filter or 0)
+        if not company_scope_id:
+            raise ValueError('Empresa é obrigatória para listar pendências de regularização.')
+        # resolve_unit_scope é o ponto ÚNICO de resolução de Unidade: descarta o
+        # unit_id do cliente para perfil travado (admin/user) e, para perfil
+        # livre, valida que a Unidade pedida existe e pertence ao tenant do ator
+        # (ValueError → 400) — isolamento garantido na origem, não por filtro.
+        unit_filter = resolve_unit_scope(
+            connection, actor, query.get('unit_id', [''])[0],
+            denial_message='Perfil sem unidade operacional ativa para consultar estoque.',
+        )
+        items = pending_regularization_items(connection, company_scope_id, unit_filter.unit_id)
+        return send_json(handler, 200, {'items': items, 'count': len(items)})
 
 
 def handle_get_stock_compliance(handler, parsed, payload, match):
@@ -1088,6 +1113,7 @@ def register_routes(router):
     router.register('GET',  '/api/stock/available-items',        handle_get_stock_available_items)
     router.register('GET',  '/api/stock/blocked-items',          handle_get_stock_blocked_items)
     router.register('GET',  '/api/stock/validity-overview',      handle_get_stock_validity_overview)
+    router.register('GET',  '/api/stock/pending-regularization', handle_get_stock_pending_regularization)
     router.register('GET',  '/api/stock/compliance',             handle_get_stock_compliance)
     router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
     router.register('POST', '/api/stock/items/regularize-validity', handle_post_stock_item_regularize_validity)

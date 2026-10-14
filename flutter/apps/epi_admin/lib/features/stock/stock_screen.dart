@@ -33,10 +33,11 @@ bool podeConfigurarEstoquePorUnidade(BuildContext context) {
 
 /// Quem pode regularizar a validade física de peças já em estoque (EST-V3.5-R2).
 ///
-/// `stock:regularize_validity` — permissão DEDICADA, conferida a Administrador
-/// Geral e Administrador Local e negada ao Administrador Master (perde-a em
-/// `MASTER_ADMIN_OPERATIONAL_EXCLUSIONS`) e ao Administrador de Registro (nunca
-/// recebeu `STOCK_MANAGEMENT_PERMISSIONS`). O botão da ação só aparece com ela;
+/// `stock:regularize_validity` — permissão DEDICADA, conferida EXCLUSIVAMENTE a
+/// Administrador Local (role 'admin') e Gestor de EPI (role 'user'), os perfis
+/// operacionais de unidade. NEGADA ao Administrador Geral (que mantém só
+/// `stock:adjust`), ao Administrador Master (`MASTER_ADMIN_OPERATIONAL_EXCLUSIONS`)
+/// e ao Administrador de Registro. O botão da ação só aparece com ela;
 /// o backend reconfere permissão e isolamento antes de gravar — a tela nunca é
 /// a autoridade.
 bool podeRegularizarValidade(BuildContext context) {

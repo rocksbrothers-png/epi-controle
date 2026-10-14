@@ -75,9 +75,14 @@ PERM_STOCK_VIEW = 'stock:view'
 PERM_STOCK_ADJUST = 'stock:adjust'
 # EST-V3.5-R2: regularização da validade FÍSICA de peças já em estoque — capturar
 # ou corrigir a validade do lote COM evidência, auditada e imutável. Permissão
-# PRÓPRIA (não reusa stock:adjust) para concessão expressa e least-privilege;
-# concedida ao mesmo conjunto operacional (Administrador Geral e Local), fora do
-# Administrador Master (operação). A regra de segurança é sempre do backend.
+# PRÓPRIA (não reusa stock:adjust) para concessão expressa e least-privilege.
+# RBAC-REGULARIZE (regra de negócio): concedida EXCLUSIVAMENTE aos perfis
+# operacionais de unidade que recebem e manipulam a peça — Administrador Local
+# (role 'admin') e Gestor de EPI (role 'user'). O Administrador Geral
+# (role 'general_admin') NÃO a recebe por posição hierárquica — mantém apenas
+# stock:adjust; o Administrador Master (role 'master_admin') nunca executa
+# operação (MASTER_ADMIN_OPERATIONAL_EXCLUSIONS). A regra de segurança é sempre
+# do backend (permissão + escopo empresa/unidade reaplicados no handler).
 PERM_STOCK_REGULARIZE_VALIDITY = 'stock:regularize_validity'
 
 # Centro de Migração de Dados (ADR-0003) — permissão única e estreita,
@@ -165,7 +170,14 @@ LEGAL_ENTITY_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({
     PERM_EMPLOYEES_LEGAL_ENTITY_TRANSFER,
 })
 COMMERCIAL_PERMISSIONS: frozenset[str] = frozenset({PERM_COMMERCIAL_VIEW, PERM_USAGE_VIEW})
-STOCK_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_ADJUST, PERM_STOCK_REGULARIZE_VALIDITY})
+# stock:adjust — correção de saldo/contagem; tier de gestão amplo (Administrador
+# Geral e Local, Gestor de EPI; o Administrador Master é excluído da operação).
+STOCK_MANAGEMENT_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_ADJUST})
+# stock:regularize_validity — ver RBAC-REGULARIZE acima: concedida À PARTE do
+# bundle de gestão, EXCLUSIVAMENTE a Administrador Local (role 'admin') e Gestor
+# de EPI (role 'user'), justamente para que o Administrador Geral mantenha
+# stock:adjust SEM poder regularizar a validade física.
+STOCK_REGULARIZE_PERMISSIONS: frozenset[str] = frozenset({PERM_STOCK_REGULARIZE_VALIDITY})
 
 PURCHASE_VIEW_PERMISSIONS: frozenset[str] = frozenset({
     PERM_PURCHASE_REQUESTS_VIEW, PERM_PO_VIEW, PERM_FINANCE_VIEW,
@@ -298,7 +310,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             # isso é uma permissão própria, não PERM_EMPLOYEES_CREATE/UPDATE).
             PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
         })
-        | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
+        | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | STOCK_REGULARIZE_PERMISSIONS | PURCHASE_ADMIN_PERMISSIONS
         | frozenset({
             PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_CREATE, PERM_EPI_EVALUATION_VIEW,
             PERM_PPE_TEST_VIEW, PERM_PPE_TEST_SUGGEST,
@@ -332,7 +344,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             # comentário equivalente no papel 'admin' acima.
             PERM_EMPLOYEES_CREATE_SIMPLIFIED, PERM_EMPLOYEES_UPDATE_SIMPLIFIED,
         })
-        | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS
+        | DELIVERY_WRITE_PERMISSIONS | STOCK_MANAGEMENT_PERMISSIONS | STOCK_REGULARIZE_PERMISSIONS
         | frozenset({
             PERM_EPI_FEEDBACK_VIEW, PERM_EPI_FEEDBACK_TRIAGE, PERM_EPI_FEEDBACK_CREATE,
             PERM_EPI_FEEDBACK_HSEQ_REVIEW, PERM_EPI_FEEDBACK_MANAGER_EVAL, PERM_EPI_EVALUATION_VIEW,

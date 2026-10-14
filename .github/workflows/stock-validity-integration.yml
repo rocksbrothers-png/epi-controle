@@ -2,10 +2,10 @@ name: Stock Validity Integration
 
 on:
   pull_request:
-    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', '.github/workflows/stock-validity-integration.yml']
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', '.github/workflows/stock-validity-integration.yml']
   push:
     branches: ['claude/**']
-    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', '.github/workflows/stock-validity-integration.yml']
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', '.github/workflows/stock-validity-integration.yml']
 
 jobs:
   physical-stock-http:
@@ -43,12 +43,17 @@ jobs:
         run: |
           pip install -r requirements.txt pytest
           psql -h 127.0.0.1 -U epi -d stock_r1_integration -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;'
+      - name: Pending regularization HTTP scope regression
+        run: python -m pytest -q tests_postgres/test_est_v3_5_pending_regularization_http.py
       - name: Prepare Flutter
         working-directory: flutter
         run: |
           flutter pub get
           dart run melos run gen:l10n
           dart run melos run gen
+      - name: Validate R3 receipt HTTP contract and adversarial quantities
+        run: |
+          python -m pytest -q tests_postgres/test_est_v3_5_r3_lot_receipt.py tests_postgres/test_est_v3_5_r3_lot_receipt_http.py tests_postgres/test_est_v3_5_r3_effective_receipt_http.py
       - name: Exercise real HTTP and PostgreSQL from Flutter
         shell: bash
         run: |

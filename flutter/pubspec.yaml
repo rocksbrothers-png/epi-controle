@@ -16,6 +16,20 @@ workspace:
 dev_dependencies:
   melos: ^8.2.2
 
+# Pin temporário de toolchain (2026-10-14): o pacote `build` 4.1.0 foi publicado
+# hoje e adiciona BuildStep.librarySourceSink (experimental) à interface pública.
+# O build_runner 2.16.2 (constraint `build: ^4.0.9`) ainda não
+# implementa esse membro, então `dart run build_runner build` falha ao compilar o
+# próprio build_runner: "BuildStepImpl is missing implementations for ... -
+# BuildStep.librarySourceSink". Em pub workspace o override só é respeitado na raiz
+# do workspace e vale para todos os pacotes (epi_api, epi_admin). Fixamos `build`
+# na série 4.0.x e build_runner em 2.16.2; atualizar a dupla de forma
+# coordenada antes de remover os overrides.
+dependency_overrides:
+  build: '>=4.0.9 <4.1.0'
+  # 2.17.0 requires LibrarySourceSink from build 4.1; keep this pair compatible.
+  build_runner: '2.16.2'
+
 melos:
   repository: https://github.com/rocksbrothers-png/epi-controle
 

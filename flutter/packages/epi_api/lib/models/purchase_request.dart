@@ -7,6 +7,7 @@ class PurchaseRequest {
     required this.unitName,
     required this.createdAt,
     required this.items,
+    this.companyId,
     this.notes,
     this.updatedAt,
   });
@@ -15,6 +16,7 @@ class PurchaseRequest {
   final String title;
   final String status;
   final int unitId;
+  final int? companyId;
   final String unitName;
   final String createdAt;
   final List<PurchaseRequestItem> items;
@@ -29,6 +31,7 @@ class PurchaseRequest {
         title: json['title'] as String? ?? '',
         status: json['status'] as String? ?? 'draft',
         unitId: (json['unit_id'] ?? 0) as int,
+        companyId: json['company_id'] as int?,
         unitName: json['unit_name'] as String? ?? '',
         createdAt: json['created_at'] as String? ?? '',
         updatedAt: json['updated_at'] as String?,

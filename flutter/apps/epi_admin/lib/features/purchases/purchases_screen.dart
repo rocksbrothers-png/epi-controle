@@ -8,7 +8,11 @@ import '../../core/bloc/purchases_cubit.dart';
 import 'new_purchase_screen.dart';
 import 'purchase_orders_screen.dart';
 import 'quotes_screen.dart';
+import 'conference_purchase_request_screen.dart';
 import 'suppliers_screen.dart';
+import 'receipt_contract.dart';
+import '../../core/bloc/auth_cubit.dart';
+import '../../core/bloc/auth_state.dart';
 
 class PurchasesScreen extends StatelessWidget {
   const PurchasesScreen({super.key});
@@ -298,6 +302,30 @@ class _PurchaseTile extends StatelessWidget {
                   ),
             ),
           ),
+          // EST-V3.5-R3: conferência de recebimento por lote para requisições
+          // em 'received'. Reutiliza o backend POST /status com received_items[].lots.
+          if (request.status == 'received' &&
+              context.watch<AuthCubit>().state is AuthAuthenticated &&
+              canConferReceipt(
+                (context.read<AuthCubit>().state as AuthAuthenticated).sessionContext,
+                companyId: request.companyId, unitId: request.unitId,
+              )) ...[
+            const SizedBox(width: EpiSpacing.xs),
+            IconButton(
+              icon: const Icon(Icons.fact_check_outlined),
+              tooltip: l10n.prConfTitle,
+              onPressed: () async {
+                final cubit = context.read<PurchasesCubit>();
+                final done = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute<bool>(
+                    builder: (_) =>
+                        ConferencePurchaseRequestScreen(prId: request.id),
+                  ),
+                );
+                if (done == true) await cubit.load();
+              },
+            ),
+          ],
         ],
       ),
       ),

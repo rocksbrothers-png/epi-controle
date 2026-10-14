@@ -37,6 +37,26 @@ class PurchasesApi {
     return (res.data?['id'] ?? 0) as int;
   }
 
+  /// Detalhe da requisição (item + itens + eventos) — usado pela conferência de
+  /// recebimento no app (EST-V3.5-R3). Reutiliza o endpoint do web.
+  Future<Map<String, dynamic>> getPurchaseRequest(int id) async {
+    final res =
+        await _dio.get<Map<String, dynamic>>('/api/purchase-requests/$id');
+    return res.data ?? {};
+  }
+
+  /// Conferência de recebimento (status -> checked) com `received_items` por
+  /// lote (EST-V3.5-R3). Reutiliza POST /api/purchase-requests/{id}/status: o
+  /// backend materializa a validade física POR PEÇA a partir dos lotes.
+  Future<Map<String, dynamic>> checkPurchaseRequestReceipt(
+      int id, Map<String, dynamic> body) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/purchase-requests/$id/status',
+      data: body,
+    );
+    return res.data ?? {};
+  }
+
   Future<List<PurchaseDemand>> getPurchaseDemands() async {
     final res = await _dio.get<Map<String, dynamic>>('/api/purchase-demands');
     final items = (res.data?['items'] as List?) ?? [];

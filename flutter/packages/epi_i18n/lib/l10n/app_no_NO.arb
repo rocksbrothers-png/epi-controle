@@ -940,5 +940,55 @@
   "safetyStateDraft": "Utkast",
   "safetyStatePublished": "Publisert",
   "safetyStateSuperseded": "Erstattet",
-  "safetyStateArchived": "Arkivert"
+  "safetyStateArchived": "Arkivert",
+  "prConfTitle": "Mottakskonferanse",
+  "prConfIntro": "Kryss av hver vare etter faktisk mottak. Oppgi produsentens fysiske holdbarhet og verifiserbart bevis; bruk «Del i partier» for ulike holdbarheter eller individuelle unntak. Enheter uten bevist holdbarhet blir SPERRET.",
+  "prConfReceivedYes": "Mottatt",
+  "prConfReceivedNo": "Ikke mottatt",
+  "prConfEvidence": "Verifiserbart bevis",
+  "prConfEvidenceHint": "Etikett / faktura / foto",
+  "prConfEvidenceRequired": "Verifiserbart bevis er påkrevd når holdbarhet er satt.",
+  "prConfSplitLots": "Del i partier",
+  "prConfSingleDate": "Bruk én dato",
+  "prConfAddLot": "Legg til parti",
+  "prConfAddException": "Unntak (1 enhet)",
+  "prConfLotQty": "Ant.",
+  "prConfLotCode": "Identifikasjon",
+  "prConfRemoveLot": "Fjern parti",
+  "prConfPreview": "Forhåndsvisning — fysisk holdbarhet per enhet",
+  "prConfBlocked": "UTEN holdbarhet → SPERRET",
+  "prConfExpired": "utløpt",
+  "prConfPiece": "enhet(er)",
+  "prConfSumMismatch": "Summen av partimengdene stemmer ikke med mottatt antall.",
+  "prConfLotQtyPositive": "Hvert parti trenger en mengde større enn null.",
+  "prConfNotes": "Merknader om varer som ikke er mottatt",
+  "prConfNotesRequired": "Oppgi merknader om varer som ikke er mottatt.",
+  "prConfSubmit": "Registrer konferanse",
+  "prConfDone": "Konferanse registrert.",
+  "prConfEmpty": "Ingen vare kvalifisert for konferanse.",
+  "prConfInvalidQuantity": "Faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.",
+  "prConfNoPersistedPieces": "Ingen enheter ble registrert, eller svaret er inkonsistent. Lagerføringen ble ikke bekreftet.",
+  "prConfDoneQuantity": "{count} enheter faktisk registrert på lager.",
+  "@prConfDoneQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prConfNoStockEntry": "Kontroll lagret uten at enheter er lagt til på lager.",
+  "prConfInvalidQuantityLine": "Linje {line} — {item} (vare #{id}): faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  }
 }

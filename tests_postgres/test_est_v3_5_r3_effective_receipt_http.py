@@ -185,7 +185,7 @@ def test_original_mixed_attack_refuses_every_line_without_partial_persistence(wi
             assert c.execute(f'SELECT COUNT(*) AS n FROM {table} WHERE company_id=?',(s['company'],)).fetchone()['n']==0
 
 
-@pytest.mark.parametrize('value',['invalid',None,0,-2,1.5,True])
+@pytest.mark.parametrize('value',['invalid',None,0,-2,1.5,True,'9' * 5000])
 def test_numeric_lot_input_rejected_with_structured_line_error(wire_server,value):
     s=_seed(qty=2)
     status,body=wire_payload(wire_server,s,[{'id':s['pri'],'received':True,'lots':[{'quantity':value}]}])
@@ -200,5 +200,15 @@ def test_unchecked_invalid_line_alone_is_not_a_neutral_success(wire_server):
     link_po(s,0)
     status,body=wire_payload(wire_server,s,[{'id':s['pri'],'received':False}])
     assert status==400 and body['validation']['item_id']==s['pri']
+    with _fresh() as c:
+        assert c.execute('SELECT COUNT(*) AS n FROM purchase_events WHERE company_id=?',(s['company'],)).fetchone()['n']==0
+
+
+def test_oversized_numeric_identifier_is_structured_4xx_not_500(wire_server):
+    s=_seed(qty=2)
+    status,body=wire_payload(wire_server,s,[{'id':'9' * 5000,'received':True}])
+    assert status==400 and body['validation']['code']=='INVALID_RECEIPT_LINE'
+    assert 'Linha 1' in body['error']
+    assert _pieces(s['company'],s['epi'])==[]
     with _fresh() as c:
         assert c.execute('SELECT COUNT(*) AS n FROM purchase_events WHERE company_id=?',(s['company'],)).fetchone()['n']==0

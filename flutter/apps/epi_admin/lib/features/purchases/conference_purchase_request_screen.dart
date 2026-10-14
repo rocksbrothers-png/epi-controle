@@ -32,14 +32,18 @@ class _Lot {
     this.quantity = '',
     this.validity = '',
     this.evidence = '',
-    this.lotCode = '',
   });
 
   final int key;
   String quantity;
   String validity;
   String evidence;
-  String lotCode;
+  // Nunca passado no construtor (preenchido só via onChanged do campo de
+  // identificação do lote). Inicializado inline para não declarar um parâmetro
+  // opcional sem uso — o analyzer 3.47+ emite `unused_element_parameter`
+  // (warning) quando um parâmetro opcional de elemento privado nunca recebe
+  // valor em nenhuma chamada.
+  String lotCode = '';
 }
 
 class _ItemState {

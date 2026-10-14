@@ -4615,6 +4615,151 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
   String prConfInvalidQuantityLine(int line, String item, String id);
+  /// No description provided for @prConfTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conferência de Recebimento'**
+  String get prConfTitle;
+  /// No description provided for @prConfIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.'**
+  String get prConfIntro;
+  /// No description provided for @prConfReceivedYes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recebido'**
+  String get prConfReceivedYes;
+  /// No description provided for @prConfReceivedNo.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não recebido'**
+  String get prConfReceivedNo;
+  /// No description provided for @prConfEvidence.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Evidência verificável'**
+  String get prConfEvidence;
+  /// No description provided for @prConfEvidenceHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Etiqueta / NF / foto'**
+  String get prConfEvidenceHint;
+  /// No description provided for @prConfEvidenceRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Evidência verificável é obrigatória quando há validade.'**
+  String get prConfEvidenceRequired;
+  /// No description provided for @prConfSplitLots.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Separar em lotes'**
+  String get prConfSplitLots;
+  /// No description provided for @prConfSingleDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Usar data única'**
+  String get prConfSingleDate;
+  /// No description provided for @prConfAddLot.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Adicionar lote'**
+  String get prConfAddLot;
+  /// No description provided for @prConfAddException.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Exceção (1 peça)'**
+  String get prConfAddException;
+  /// No description provided for @prConfLotQty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Qtd'**
+  String get prConfLotQty;
+  /// No description provided for @prConfLotCode.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identificação'**
+  String get prConfLotCode;
+  /// No description provided for @prConfRemoveLot.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Remover lote'**
+  String get prConfRemoveLot;
+  /// No description provided for @prConfPreview.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Prévia — validade física por peça'**
+  String get prConfPreview;
+  /// No description provided for @prConfBlocked.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'SEM validade → BLOQUEADAS'**
+  String get prConfBlocked;
+  /// No description provided for @prConfExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'vencida'**
+  String get prConfExpired;
+  /// No description provided for @prConfPiece.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'peça(s)'**
+  String get prConfPiece;
+  /// No description provided for @prConfSumMismatch.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A soma das quantidades dos lotes não confere com a quantidade recebida.'**
+  String get prConfSumMismatch;
+  /// No description provided for @prConfLotQtyPositive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cada lote precisa de quantidade maior que zero.'**
+  String get prConfLotQtyPositive;
+  /// No description provided for @prConfNotes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Observações sobre itens não recebidos'**
+  String get prConfNotes;
+  /// No description provided for @prConfNotesRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe as observações sobre os itens não recebidos.'**
+  String get prConfNotesRequired;
+  /// No description provided for @prConfSubmit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Registrar Conferência'**
+  String get prConfSubmit;
+  /// No description provided for @prConfDone.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conferência registrada.'**
+  String get prConfDone;
+  /// No description provided for @prConfEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum item elegível para conferência.'**
+  String get prConfEmpty;
+  /// No description provided for @prConfInvalidQuantity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
+  String get prConfInvalidQuantity;
+  /// No description provided for @prConfNoPersistedPieces.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.'**
+  String get prConfNoPersistedPieces;
+  /// No description provided for @prConfDoneQuantity.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count} peças efetivamente registradas no estoque.'**
+  String prConfDoneQuantity(int count);
+  /// No description provided for @prConfNoStockEntry.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conferência salva sem entrada de peças no estoque.'**
+  String get prConfNoStockEntry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -2308,6 +2308,132 @@ class AppLocalizationsNo extends AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+  @override
+  String get prConfTitle => 'Conferência de Recebimento';
+
+
+  @override
+  String get prConfIntro =>
+      'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.';
+
+
+  @override
+  String get prConfReceivedYes => 'Recebido';
+
+
+  @override
+  String get prConfReceivedNo => 'Não recebido';
+
+
+  @override
+  String get prConfEvidence => 'Evidência verificável';
+
+
+  @override
+  String get prConfEvidenceHint => 'Etiqueta / NF / foto';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'Evidência verificável é obrigatória quando há validade.';
+
+
+  @override
+  String get prConfSplitLots => 'Separar em lotes';
+
+
+  @override
+  String get prConfSingleDate => 'Usar data única';
+
+
+  @override
+  String get prConfAddLot => 'Adicionar lote';
+
+
+  @override
+  String get prConfAddException => 'Exceção (1 peça)';
+
+
+  @override
+  String get prConfLotQty => 'Qtd';
+
+
+  @override
+  String get prConfLotCode => 'Identificação';
+
+
+  @override
+  String get prConfRemoveLot => 'Remover lote';
+
+
+  @override
+  String get prConfPreview => 'Prévia — validade física por peça';
+
+
+  @override
+  String get prConfBlocked => 'SEM validade → BLOQUEADAS';
+
+
+  @override
+  String get prConfExpired => 'vencida';
+
+
+  @override
+  String get prConfPiece => 'peça(s)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'A soma das quantidades dos lotes não confere com a quantidade recebida.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Cada lote precisa de quantidade maior que zero.';
+
+
+  @override
+  String get prConfNotes => 'Observações sobre itens não recebidos';
+
+
+  @override
+  String get prConfNotesRequired =>
+      'Informe as observações sobre os itens não recebidos.';
+
+
+  @override
+  String get prConfSubmit => 'Registrar Conferência';
+
+
+  @override
+  String get prConfDone => 'Conferência registrada.';
+
+
+  @override
+  String get prConfEmpty => 'Nenhum item elegível para conferência.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count peças efetivamente registradas no estoque.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Conferência salva sem entrada de peças no estoque.';
+
+
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -4614,4 +4740,130 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+  @override
+  String get prConfTitle => 'Mottakskonferanse';
+
+
+  @override
+  String get prConfIntro =>
+      'Kryss av hver vare etter faktisk mottak. Oppgi produsentens fysiske holdbarhet og verifiserbart bevis; bruk «Del i partier» for ulike holdbarheter eller individuelle unntak. Enheter uten bevist holdbarhet blir SPERRET.';
+
+
+  @override
+  String get prConfReceivedYes => 'Mottatt';
+
+
+  @override
+  String get prConfReceivedNo => 'Ikke mottatt';
+
+
+  @override
+  String get prConfEvidence => 'Verifiserbart bevis';
+
+
+  @override
+  String get prConfEvidenceHint => 'Etikett / faktura / foto';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'Verifiserbart bevis er påkrevd når holdbarhet er satt.';
+
+
+  @override
+  String get prConfSplitLots => 'Del i partier';
+
+
+  @override
+  String get prConfSingleDate => 'Bruk én dato';
+
+
+  @override
+  String get prConfAddLot => 'Legg til parti';
+
+
+  @override
+  String get prConfAddException => 'Unntak (1 enhet)';
+
+
+  @override
+  String get prConfLotQty => 'Ant.';
+
+
+  @override
+  String get prConfLotCode => 'Identifikasjon';
+
+
+  @override
+  String get prConfRemoveLot => 'Fjern parti';
+
+
+  @override
+  String get prConfPreview => 'Forhåndsvisning — fysisk holdbarhet per enhet';
+
+
+  @override
+  String get prConfBlocked => 'UTEN holdbarhet → SPERRET';
+
+
+  @override
+  String get prConfExpired => 'utløpt';
+
+
+  @override
+  String get prConfPiece => 'enhet(er)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'Summen av partimengdene stemmer ikke med mottatt antall.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Hvert parti trenger en mengde større enn null.';
+
+
+  @override
+  String get prConfNotes => 'Merknader om varer som ikke er mottatt';
+
+
+  @override
+  String get prConfNotesRequired =>
+      'Oppgi merknader om varer som ikke er mottatt.';
+
+
+  @override
+  String get prConfSubmit => 'Registrer konferanse';
+
+
+  @override
+  String get prConfDone => 'Konferanse registrert.';
+
+
+  @override
+  String get prConfEmpty => 'Ingen vare kvalifisert for konferanse.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'Faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'Ingen enheter ble registrert, eller svaret er inkonsistent. Lagerføringen ble ikke bekreftet.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count enheter faktisk registrert på lager.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Kontroll lagret uten at enheter er lagt til på lager.';
+
+
 }

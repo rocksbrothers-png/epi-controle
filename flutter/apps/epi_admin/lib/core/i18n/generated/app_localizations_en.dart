@@ -2308,6 +2308,132 @@ class AppLocalizationsEn extends AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+  @override
+  String get prConfTitle => 'Conferência de Recebimento';
+
+
+  @override
+  String get prConfIntro =>
+      'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.';
+
+
+  @override
+  String get prConfReceivedYes => 'Recebido';
+
+
+  @override
+  String get prConfReceivedNo => 'Não recebido';
+
+
+  @override
+  String get prConfEvidence => 'Evidência verificável';
+
+
+  @override
+  String get prConfEvidenceHint => 'Etiqueta / NF / foto';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'Evidência verificável é obrigatória quando há validade.';
+
+
+  @override
+  String get prConfSplitLots => 'Separar em lotes';
+
+
+  @override
+  String get prConfSingleDate => 'Usar data única';
+
+
+  @override
+  String get prConfAddLot => 'Adicionar lote';
+
+
+  @override
+  String get prConfAddException => 'Exceção (1 peça)';
+
+
+  @override
+  String get prConfLotQty => 'Qtd';
+
+
+  @override
+  String get prConfLotCode => 'Identificação';
+
+
+  @override
+  String get prConfRemoveLot => 'Remover lote';
+
+
+  @override
+  String get prConfPreview => 'Prévia — validade física por peça';
+
+
+  @override
+  String get prConfBlocked => 'SEM validade → BLOQUEADAS';
+
+
+  @override
+  String get prConfExpired => 'vencida';
+
+
+  @override
+  String get prConfPiece => 'peça(s)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'A soma das quantidades dos lotes não confere com a quantidade recebida.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Cada lote precisa de quantidade maior que zero.';
+
+
+  @override
+  String get prConfNotes => 'Observações sobre itens não recebidos';
+
+
+  @override
+  String get prConfNotesRequired =>
+      'Informe as observações sobre os itens não recebidos.';
+
+
+  @override
+  String get prConfSubmit => 'Registrar Conferência';
+
+
+  @override
+  String get prConfDone => 'Conferência registrada.';
+
+
+  @override
+  String get prConfEmpty => 'Nenhum item elegível para conferência.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count peças efetivamente registradas no estoque.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Conferência salva sem entrada de peças no estoque.';
+
+
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -4614,4 +4740,129 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+  @override
+  String get prConfTitle => 'Receipt Conference';
+
+
+  @override
+  String get prConfIntro =>
+      'Tick each item as actually received. Enter the manufacturer physical validity and verifiable evidence; use \"Split into lots\" for different validities or individual exceptions. Pieces without proven validity enter BLOCKED.';
+
+
+  @override
+  String get prConfReceivedYes => 'Received';
+
+
+  @override
+  String get prConfReceivedNo => 'Not received';
+
+
+  @override
+  String get prConfEvidence => 'Verifiable evidence';
+
+
+  @override
+  String get prConfEvidenceHint => 'Label / invoice / photo';
+
+
+  @override
+  String get prConfEvidenceRequired =>
+      'Verifiable evidence is required when a validity is set.';
+
+
+  @override
+  String get prConfSplitLots => 'Split into lots';
+
+
+  @override
+  String get prConfSingleDate => 'Use single date';
+
+
+  @override
+  String get prConfAddLot => 'Add lot';
+
+
+  @override
+  String get prConfAddException => 'Exception (1 piece)';
+
+
+  @override
+  String get prConfLotQty => 'Qty';
+
+
+  @override
+  String get prConfLotCode => 'Identification';
+
+
+  @override
+  String get prConfRemoveLot => 'Remove lot';
+
+
+  @override
+  String get prConfPreview => 'Preview — physical validity per piece';
+
+
+  @override
+  String get prConfBlocked => 'NO validity → BLOCKED';
+
+
+  @override
+  String get prConfExpired => 'expired';
+
+
+  @override
+  String get prConfPiece => 'piece(s)';
+
+
+  @override
+  String get prConfSumMismatch =>
+      'The sum of lot quantities does not match the received quantity.';
+
+
+  @override
+  String get prConfLotQtyPositive =>
+      'Each lot needs a quantity greater than zero.';
+
+
+  @override
+  String get prConfNotes => 'Notes about items not received';
+
+
+  @override
+  String get prConfNotesRequired => 'Enter the notes about items not received.';
+
+
+  @override
+  String get prConfSubmit => 'Register Conference';
+
+
+  @override
+  String get prConfDone => 'Conference registered.';
+
+
+  @override
+  String get prConfEmpty => 'No item eligible for conference.';
+
+
+  @override
+  String get prConfInvalidQuantity =>
+      'Effective received quantity is invalid or non-positive. Correct the receipt before confirming.';
+
+
+  @override
+  String get prConfNoPersistedPieces =>
+      'No pieces were actually recorded, or the response is inconsistent. Stock entry was not confirmed.';
+
+
+  @override
+  String prConfDoneQuantity(int count) {
+    return '$count pieces actually recorded in stock.';
+  }
+
+
+  @override
+  String get prConfNoStockEntry =>
+      'Conference saved without adding pieces to stock.';
+
+
 }

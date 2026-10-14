@@ -81,19 +81,20 @@ def _enforce_jwt(monkeypatch):
     # pool de core.database NÃO faz rollback no putconn, então zeramos o pool
     # ao fim de cada teste (connections recriadas sob demanda, sem herdar
     # transação abortada).
-    import core.database as cdb
-    pool = getattr(cdb, '_CONNECTION_POOL', None)
-    if pool:
+    import core.database as _cdb
+    pool = getattr(_cdb, '_CONNECTION_POOL', None)
+    if pool is not None:
         try:
             pool.closeall()
         except Exception:
+            # Pool já encerrado ou sem conexões abertas — descarte best-effort.
             pass
-        cdb._CONNECTION_POOL = None
+        _cdb._CONNECTION_POOL = None
 
 
 def _conn():
-    from core.database import get_connection
-    return get_connection()
+    import core.database as _cdb
+    return _cdb.get_connection()
 
 
 @contextmanager

@@ -1596,7 +1596,7 @@
     "entityFieldsHint": "Required: {required}. Plus {optional} optional fields.",
     "sourceLabel": "Source type",
     "dropzone": "Drag the file here or click to choose",
-    "fileHint": "Formats accepted in this phase: XLSX, XLS, CSV, TSV, ODS, JSON, XML and TXT. 25 MB limit per file.",
+    "fileHint": "Formats accepted in this phase: XLSX, CSV, ODS, JSON, XML and TXT. 25 MB limit per file.",
     "fileError": "The chosen file could not be read.",
     "sheetLabel": "Sheet (tab)",
     "detEncoding": "Encoding",
@@ -1668,7 +1668,11 @@
       "completed": "Completed",
       "failed": "Failed",
       "running": "Running",
-      "reverted": "Reverted"
+      "reverted": "Reverted",
+      "completed_with_rejections": "Completed with rejections",
+      "awaiting_homologation": "Completed — awaiting acceptance",
+      "homologated": "Accepted",
+      "pending": "Awaiting validation"
     },
     "mapStrategy": {
       "exact": "Exact",
@@ -1685,7 +1689,26 @@
       "missing_required": "Required field empty",
       "invalid_value": "Invalid value",
       "no_natural_key": "No key to identify the record"
-    }
+    },
+    "finalHint": "Result reconciled with persisted records.",
+    "pvCreated": "Created",
+    "pvUpdated": "Updated",
+    "pvSkipped": "Skipped",
+    "sampleHint": "Normalized sample: up to 10 records. Classification: up to 100 rows; complete CSV report available.",
+    "classification": {
+      "new": "New",
+      "existing": "Existing",
+      "duplicate": "Duplicate",
+      "invalid": "Invalid"
+    },
+    "action": {
+      "insert": "Insert",
+      "update": "Update",
+      "skip": "Skip",
+      "reject": "Reject"
+    },
+    "failedResult": "Import #{job} failed: no records written; {failed} rejected.",
+    "partialResult": "Import #{job} completed with rejections: {inserted} created, {updated} updated, {skipped} skipped, {failed} rejected."
   },
   "stock.statusColumn": "Status",
   "stock.statusNormal": "Normal",

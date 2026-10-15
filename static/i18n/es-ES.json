@@ -1596,7 +1596,7 @@
     "entityFieldsHint": "Obligatorios: {required}. Y {optional} campos opcionales más.",
     "sourceLabel": "Tipo de origen",
     "dropzone": "Arrastra el archivo aquí o haz clic para elegir",
-    "fileHint": "Formatos aceptados en esta fase: XLSX, XLS, CSV, TSV, ODS, JSON, XML y TXT. Límite de 25 MB por archivo.",
+    "fileHint": "Formatos aceptados en esta fase: XLSX, CSV, ODS, JSON, XML y TXT. Límite de 25 MB por archivo.",
     "fileError": "No se pudo leer el archivo elegido.",
     "sheetLabel": "Hoja (pestaña)",
     "detEncoding": "Codificación",
@@ -1668,7 +1668,11 @@
       "completed": "Completada",
       "failed": "Con error",
       "running": "En curso",
-      "reverted": "Revertida"
+      "reverted": "Revertida",
+      "completed_with_rejections": "Completada con rechazos",
+      "awaiting_homologation": "Completada — pendiente de homologación",
+      "homologated": "Homologada",
+      "pending": "Pendiente de validación"
     },
     "mapStrategy": {
       "exact": "Exacto",
@@ -1685,7 +1689,26 @@
       "missing_required": "Campo obligatorio vacío",
       "invalid_value": "Valor no válido",
       "no_natural_key": "Sin clave para identificar el registro"
-    }
+    },
+    "finalHint": "Resultado conciliado con los registros persistidos.",
+    "pvCreated": "Creados",
+    "pvUpdated": "Actualizados",
+    "pvSkipped": "Ignorados",
+    "sampleHint": "Muestra normalizada: hasta 10 registros. Clasificación: hasta 100 filas; informe CSV completo disponible.",
+    "classification": {
+      "new": "Nuevo",
+      "existing": "Existente",
+      "duplicate": "Duplicado",
+      "invalid": "Inválido"
+    },
+    "action": {
+      "insert": "Insertar",
+      "update": "Actualizar",
+      "skip": "Ignorar",
+      "reject": "Rechazar"
+    },
+    "failedResult": "Importación #{job} fallida: ningún registro guardado; {failed} rechazados.",
+    "partialResult": "Importación #{job} con rechazos: {inserted} creados, {updated} actualizados, {skipped} omitidos, {failed} rechazados."
   },
   "stock.statusColumn": "Situación",
   "stock.statusNormal": "Normal",

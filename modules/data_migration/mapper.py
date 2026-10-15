@@ -150,6 +150,8 @@ def normalize_manual_mapping(descriptor: EntityDescriptor, raw_mapping: dict, co
     do catálogo, é o que impede um payload hostil de direcionar a escrita
     para uma coluna arbitrária (ADR-0003 §7).
     """
+    if not isinstance(raw_mapping, dict):
+        raise ValueError('Mapeamento deve ser um objeto de colunas e destinos.')
     valid_fields = set(descriptor.field_names())
     valid_columns = set(columns)
     mapping: dict[str, str] = {}

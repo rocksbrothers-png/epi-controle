@@ -402,7 +402,9 @@ def test_preview_detects_duplicates_inside_the_file():
 
 
 def test_preview_separates_inserts_from_updates_against_the_base():
-    records = [{'name': 'A', 'cpf': VALID_CPF_A}, {'name': 'B', 'cpf': VALID_CPF_B}]
+    records = [dict(name=name, cpf=cpf, employee_id_code=registration, unit_id=7,
+                    role_name='Audit', admission_date='2023-01-01')
+               for name, cpf, registration in [('A', VALID_CPF_A, 'A-1'), ('B', VALID_CPF_B, 'B-1')]]
     preview = build_preview(
         get_entity('colaboradores'), records, existing_keys={f'cpf:{"".join(c for c in VALID_CPF_A if c.isdigit())}'},
     )
@@ -687,11 +689,17 @@ def test_one_bad_row_does_not_abort_the_whole_job():
     assert result['totals']['failed'] == 1
     assert result['totals']['inserted'] == 2
     # O job chegou ao status final apesar do erro.
-    assert service.get_job(conn, result['job_id'], cid)['status'] == 'completed'
+    assert service.get_job(conn, result['job_id'], cid)['status'] == 'completed_with_rejections'
+    assert result['totals']['processed'] == 3
     # O diagnóstico da linha ruim foi gravado.
     errors = [r for r in service.fetch_job_records(conn, result['job_id'], cid) if r['action'] == 'error']
     assert len(errors) == 1
-    assert 'falha proposital' in (errors[0]['error_message'] or '')
+    assert errors[0]['error_message'] == 'Registro rejeitado pelo banco. Revise identidade, referências e regras de domínio.'
+    diagnostics = [d for d in result['preview']['diagnostics'] if d.get('code') == 'database_row_rejected']
+    assert len(diagnostics) == 1
+    assert diagnostics[0]['row'] == errors[0]['row_number']
+    assert diagnostics[0]['severity'] == 'error'
+    assert 'falha proposital' not in errors[0]['error_message']
     # As linhas boas estão commitadas.
     assert conn.execute(
         'SELECT COUNT(*) AS n FROM employees WHERE company_id = ?', (cid,),
@@ -714,7 +722,10 @@ def test_connection_stays_usable_for_an_unrelated_query_after_a_row_failure():
     assert result['totals']['failed'] == 1
     # Consulta seguinte, sem relação com a importação, continua funcionando.
     assert conn.execute('SELECT COUNT(*) AS n FROM companies').fetchone()['n'] >= 1
-    assert service.fetch_jobs(conn, cid)[0]['status'] == 'completed'
+    assert service.fetch_jobs(conn, cid)[0]['status'] == 'failed'
+    assert result['applied'] is False
+    assert result['totals']['processed'] == 1
+    assert conn.execute('SELECT COUNT(*) AS n FROM employees WHERE company_id = ?', (cid,)).fetchone()['n'] == 0
 
 
 # ── Resolução de referências: casos exigidos na revisão de produção ─────────
@@ -894,9 +905,9 @@ def test_a_file_without_usable_columns_is_refused_with_a_clear_message():
         read_source('csv', b'')
 
 
-def test_a_row_with_fewer_columns_than_the_header_does_not_crash_the_import():
-    """CSV malformado é comum em export legado: a linha curta vira erro de
-    linha, não exceção do job."""
+def test_a_row_with_fewer_columns_than_the_header_is_rejected_without_writes():
+    """Ragged CSV fails closed with physical source location and safe diagnostics."""
+    from modules.data_migration.sources import SourceError
     conn = _conn()
     cid = _seed_company(conn)
     csv = (
@@ -904,12 +915,17 @@ def test_a_row_with_fewer_columns_than_the_header_does_not_crash_the_import():
         f'Maria Silva;{VALID_CPF_A};Base Macaé;MX-A;Operador;2023-01-02\n'
         'Linha Curta\n'
     )
-    result = _run(conn, cid, strategy='dry_run', raw=_csv(csv),
-                  mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
-                  'Matrícula': 'employee_id_code', 'Função': 'role_name',
-                  'Admissão': 'admission_date'})
-    assert result['preview']['total_rows'] == 2
-    assert result['preview']['blocking'] is True
+    with pytest.raises(SourceError) as caught:
+        _run(conn, cid, strategy='dry_run', raw=_csv(csv),
+             mapping={'Funcionário': 'name', 'CPF': 'cpf', 'Unidade': 'unit_id',
+                      'Matrícula': 'employee_id_code', 'Função': 'role_name',
+                      'Admissão': 'admission_date'})
+    assert caught.value.diagnostics[0]['source_row'] == 3
+    assert caught.value.diagnostics[0]['severity'] == 'error'
+    assert caught.value.diagnostics[0]['message']
+    for table in ('employees', 'migration_jobs', 'migration_job_records', 'migration_field_mappings'):
+        assert conn.execute(f'SELECT COUNT(*) AS n FROM {table}').fetchone()['n'] == 0, table
+    assert conn.execute('SELECT 1 AS n').fetchone()['n'] == 1
 
 
 # ── Pureza do dry-run e idempotência do rollback ───────────────────────────

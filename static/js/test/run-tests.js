@@ -1841,6 +1841,23 @@ test('data-migration: APPLY_STRATEGIES não oferece dry_run como escolha', () =>
   eq(_DM().APPLY_STRATEGIES.length, 5);
 });
 
+test('data-migration phase2: estados, export completo e proteção CSV', () => {
+  eq(_DM().jobState({status:'completed'}), 'awaiting_homologation');
+  eq(_DM().jobState({status:'completed', homologated_at:'2026-01-01'}), 'homologated');
+  eq(_DM().jobState({status:'completed', homologated_at:'2026-01-01', reverted_at:'2026-01-02'}), 'reverted');
+  eq(_DM().jobState({status:'completed_with_rejections'}), 'completed_with_rejections');
+  assert(_DM().canRevert({status:'completed_with_rejections'}), 'parcial reversível');
+  const diagnostics = Array.from({length:501}, (_,i) => ({code:'invalid', row:i+1, source_line:i+2, field:'=campo', message:'erro', severity:'error'}));
+  eq(_DM().groupDiagnostics(diagnostics)[0].rows.length,501);
+  const csv = _DM().diagnosticCsv(diagnostics);
+  eq(csv.split('\n').length, 502);
+  assert(csv.includes("'="), 'fórmula neutralizada');
+  const planned = _DM().planCsv({row_classifications:[{row:1, source_line:2, classification:'invalid', action:'reject'}], diagnostics:diagnostics.slice(0,1)});
+  assert(planned.includes('reject') && planned.includes('erro'), 'linha e diagnóstico presentes');
+  const report = _DM().recordCsv([{row_number:1, source_line:2, action:'insert', target_id:35}]);
+  assert(report.includes('insert') && report.includes('35'), 'relatório inclui resultado real');
+});
+
 // ── #271-B4: configuração por Unidade + EPI no Web Legado ─────────────────
 //
 // Estes testes EXECUTAM `views/estoque-config.js`. Até a B4 o módulo era

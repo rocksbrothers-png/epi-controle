@@ -1596,7 +1596,7 @@
     "entityFieldsHint": "Obrigatórios: {required}. Mais {optional} campos opcionais.",
     "sourceLabel": "Tipo de origem",
     "dropzone": "Arraste o arquivo aqui ou clique para escolher",
-    "fileHint": "Formatos aceitos nesta fase: XLSX, XLS, CSV, TSV, ODS, JSON, XML e TXT. Limite de 25 MB por arquivo.",
+    "fileHint": "Formatos aceitos nesta fase: XLSX, CSV, ODS, JSON, XML e TXT. Limite de 25 MB por arquivo.",
     "fileError": "Não foi possível ler o arquivo escolhido.",
     "sheetLabel": "Planilha (aba)",
     "detEncoding": "Codificação",
@@ -1668,7 +1668,11 @@
       "completed": "Concluída",
       "failed": "Com falha",
       "running": "Em andamento",
-      "reverted": "Revertida"
+      "reverted": "Revertida",
+      "completed_with_rejections": "Concluída com rejeições",
+      "awaiting_homologation": "Concluída — aguardando homologação",
+      "homologated": "Homologada",
+      "pending": "Aguardando validação"
     },
     "mapStrategy": {
       "exact": "Exato",
@@ -1685,7 +1689,26 @@
       "missing_required": "Campo obrigatório vazio",
       "invalid_value": "Valor inválido",
       "no_natural_key": "Sem chave para identificar o registro"
-    }
+    },
+    "finalHint": "Resultado conciliado com os registros persistidos.",
+    "pvCreated": "Criadas",
+    "pvUpdated": "Atualizadas",
+    "pvSkipped": "Ignoradas",
+    "sampleHint": "Amostra normalizada: até 10 registros. Classificação: até 100 linhas; relatório CSV completo disponível.",
+    "classification": {
+      "new": "Novo",
+      "existing": "Existente",
+      "duplicate": "Duplicado",
+      "invalid": "Inválido"
+    },
+    "action": {
+      "insert": "Inserir",
+      "update": "Atualizar",
+      "skip": "Ignorar",
+      "reject": "Rejeitar"
+    },
+    "failedResult": "Importação #{job} falhou: nenhum registro gravado; {failed} rejeitados.",
+    "partialResult": "Importação #{job} concluída com rejeições: {inserted} criados, {updated} atualizados, {skipped} ignorados, {failed} rejeitados."
   },
   "stock.statusColumn": "Situação",
   "stock.statusNormal": "Normal",

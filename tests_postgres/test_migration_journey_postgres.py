@@ -437,12 +437,18 @@ def test_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
         assert result['totals']['inserted'] == 2
         # O job chegou ao status final apesar do erro de banco.
         from modules.data_migration.service import fetch_job_records, get_job
-        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed_with_rejections'
         # O diagnóstico da linha ruim foi gravado.
         errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
                   if r['action'] == 'error']
         assert len(errors) == 1
-        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert errors[0]['error_message'] == 'Registro rejeitado pelo banco. Revise identidade, referências e regras de domínio.'
+        diagnostics = [d for d in result['preview']['diagnostics'] if d.get('code') == 'database_row_rejected']
+        assert len(diagnostics) == 1
+        assert diagnostics[0]['row'] == errors[0]['row_number']
+        assert diagnostics[0]['severity'] == 'error'
+        assert 'falha proposital' not in errors[0]['error_message']
+        assert result['totals']['processed'] == 3
         # As linhas boas foram commitadas.
         assert _scalar(connection, 'SELECT name FROM employees WHERE cpf = %s AND company_id = %s',
                        (FRESH_CPF_A, tenant['company_id'])) == 'Novo Um'
@@ -673,11 +679,17 @@ def test_unidades_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant
         assert result['totals']['failed'] == 1
         assert result['totals']['inserted'] == 2
         from modules.data_migration.service import fetch_job_records, get_job
-        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed_with_rejections'
         errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
                   if r['action'] == 'error']
         assert len(errors) == 1
-        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert errors[0]['error_message'] == 'Registro rejeitado pelo banco. Revise identidade, referências e regras de domínio.'
+        diagnostics = [d for d in result['preview']['diagnostics'] if d.get('code') == 'database_row_rejected']
+        assert len(diagnostics) == 1
+        assert diagnostics[0]['row'] == errors[0]['row_number']
+        assert diagnostics[0]['severity'] == 'error'
+        assert 'falha proposital' not in errors[0]['error_message']
+        assert result['totals']['processed'] == 3
         assert _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s AND name = %s',
                        (tenant['company_id'], 'Terminal Guanabara')) == 1
         assert _scalar(connection, 'SELECT COUNT(*) FROM units WHERE company_id = %s AND name = %s',
@@ -810,11 +822,17 @@ def test_epis_one_invalid_row_fails_alone_while_the_valid_ones_commit(tenant):
         assert result['totals']['failed'] == 1
         assert result['totals']['inserted'] == 2
         from modules.data_migration.service import fetch_job_records, get_job
-        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed'
+        assert get_job(connection, result['job_id'], tenant['company_id'])['status'] == 'completed_with_rejections'
         errors = [r for r in fetch_job_records(connection, result['job_id'], tenant['company_id'])
                   if r['action'] == 'error']
         assert len(errors) == 1
-        assert 'falha proposital' in (errors[0]['error_message'] or '')
+        assert errors[0]['error_message'] == 'Registro rejeitado pelo banco. Revise identidade, referências e regras de domínio.'
+        diagnostics = [d for d in result['preview']['diagnostics'] if d.get('code') == 'database_row_rejected']
+        assert len(diagnostics) == 1
+        assert diagnostics[0]['row'] == errors[0]['row_number']
+        assert diagnostics[0]['severity'] == 'error'
+        assert 'falha proposital' not in errors[0]['error_message']
+        assert result['totals']['processed'] == 3
         assert _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s AND purchase_code = %s',
                        (tenant['company_id'], 'BT-4001')) == 1
         assert _scalar(connection, 'SELECT COUNT(*) FROM epis WHERE company_id = %s AND purchase_code = %s',

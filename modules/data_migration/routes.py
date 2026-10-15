@@ -14,7 +14,9 @@ execução em background) troca isso por streaming.
 from __future__ import annotations
 
 import base64
+import json
 from contextlib import closing
+from functools import wraps
 from urllib.parse import parse_qs
 
 from core.database import get_connection
@@ -22,8 +24,10 @@ from core.permissions import PERM_DATA_MIGRATION_MANAGE
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
-from modules.data_migration.catalog import list_entities
+from modules.data_migration.catalog import get_entity, list_entities
+from modules.data_migration.mapper import normalize_manual_mapping
 from modules.data_migration.service import (
+    MigrationValidationError,
     analyze_source,
     fetch_job_records,
     fetch_jobs,
@@ -33,7 +37,7 @@ from modules.data_migration.service import (
     revert_job,
     run_migration,
 )
-from modules.data_migration.sources import list_sources
+from modules.data_migration.sources import SourceError, list_sources
 from modules.settings.service import ensure_module_enabled_for_unit
 
 
@@ -82,6 +86,18 @@ def handle_get_migration_catalog(handler, parsed, payload, match):
 
 # ── Etapas 3 e 4: leitura automática + mapeamento sugerido ──────────────────
 
+def _validation_response(function):
+    @wraps(function)
+    def handle(handler, parsed, payload, match):
+        try:
+            return function(handler, parsed, payload, match)
+        except (MigrationValidationError, SourceError) as exc:
+            return send_json(handler, 400, {'error': str(exc), 'diagnostics': exc.diagnostics,
+                                          'preview': getattr(exc, 'preview', None)})
+    return handle
+
+
+@_validation_response
 def handle_post_migration_analyze(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'entity', 'source_kind'])
     with closing(get_connection()) as connection:
@@ -97,6 +113,11 @@ def handle_post_migration_analyze(handler, parsed, payload, match):
             connection, int(actor['company_id']), analysis['entity'], analysis['signature'],
         )
         if saved:
+            try:
+                saved = normalize_manual_mapping(get_entity(analysis['entity']), saved, analysis['columns'])
+            except ValueError:
+                saved = {}
+        if saved:
             analysis['mapping'] = saved
             analysis['mapping_source'] = 'saved'
         else:
@@ -106,11 +127,29 @@ def handle_post_migration_analyze(handler, parsed, payload, match):
 
 # ── Preview (dry-run) e execução ────────────────────────────────────────────
 
+@_validation_response
 def handle_post_migration_run(handler, parsed, payload, match):
     require_fields(payload, ['actor_user_id', 'entity', 'source_kind', 'mapping'])
     with closing(get_connection()) as connection:
         actor = _authorize(connection, handler, parsed, payload)
         raw = _decode_content(payload)
+        def audit(connection, result):
+            from modules.companies.service import register_company_audit
+            totals = result['totals']
+            register_company_audit(
+                connection, int(actor['company_id']), actor, 'data_migration_executed' if result.get('applied') else 'data_migration_failed',
+                f'Importação de {payload["entity"]}: {totals["inserted"]} inseridos, '
+                f'{totals["updated"]} atualizados, {totals["skipped"]} ignorados, '
+                f'{totals["failed"]} com erro.',
+                {
+                    'job_id': result['job_id'],
+                    'entity': str(payload['entity']),
+                    'source_kind': str(payload['source_kind']),
+                    'strategy': result['strategy'],
+                    'totals': totals,
+                },
+            )
+
         result = run_migration(
             connection,
             company_id=int(actor['company_id']),
@@ -123,24 +162,10 @@ def handle_post_migration_run(handler, parsed, payload, match):
             source_name=str(payload.get('source_name') or ''),
             actor_ip=_client_ip(handler),
             sheet=payload.get('sheet') or None,
+            preview_strategy=str(payload.get('preview_strategy') or 'upsert'),
+            preview_token=payload.get('preview_token'),
+            audit_callback=audit,
         )
-        if result.get('applied'):
-            from modules.companies.service import register_company_audit
-            totals = result['totals']
-            register_company_audit(
-                connection, int(actor['company_id']), actor, 'data_migration_executed',
-                f'Importação de {payload["entity"]}: {totals["inserted"]} inseridos, '
-                f'{totals["updated"]} atualizados, {totals["skipped"]} ignorados, '
-                f'{totals["failed"]} com erro.',
-                {
-                    'job_id': result['job_id'],
-                    'entity': str(payload['entity']),
-                    'source_kind': str(payload['source_kind']),
-                    'strategy': result['strategy'],
-                    'totals': totals,
-                },
-            )
-            connection.commit()
         return send_json(handler, 200, result)
 
 
@@ -166,10 +191,26 @@ def handle_get_migration_job(handler, parsed, payload, match):
         job = get_job(connection, job_id, int(actor['company_id']))
         if not job:
             return send_json(handler, 404, {'error': 'Importação não encontrada.'})
-        return send_json(handler, 200, {
-            'job': job,
-            'records': fetch_job_records(connection, job_id, int(actor['company_id'])),
-        })
+        query = parse_qs(parsed.query)
+        try:
+            offset = max(0, int(query.get('offset', ['0'])[0]))
+            limit = max(1, min(500, int(query.get('limit', ['500'])[0])))
+        except ValueError:
+            return send_json(handler, 400, {'error': 'Paginação inválida.'})
+        records = fetch_job_records(connection, job_id, int(actor['company_id']), limit=limit, offset=offset)
+        # Do not expose legacy stored SQL exceptions or private rollback snapshots.
+        job['error_message'] = 'A importação falhou. Consulte o relatório por registro.' if job.get('error_message') else ''
+        try:
+            stored = json.loads(job.get('diagnostics_json') or '[]')
+        except (TypeError, ValueError):
+            stored = []
+        job['diagnostics_json'] = json.dumps([{
+            'row': d.get('row', d.get('row_number', 0)), 'code': 'historical_diagnostic',
+            'message': 'Diagnóstico histórico: consulte o relatório por registro.',
+            'severity': d.get('severity', d.get('level', 'warning')),
+        } for d in stored if isinstance(d, dict)]) if isinstance(stored, list) else '[]'
+        return send_json(handler, 200, {'job': job, 'records': records,
+            'next_offset': offset + limit if len(records) == limit else None})
 
 
 def handle_post_migration_revert(handler, parsed, payload, match):

@@ -17,11 +17,28 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
 
+from epi_backend import db as db_module
 from epi_backend.db import row_to_dict, table_columns
 from modules.data_migration.catalog import get_entity, require_enabled_entity
-from modules.data_migration.mapper import apply_mapping, normalize_manual_mapping, suggest_mapping
-from modules.data_migration.preview import build_preview, natural_key_of
-from modules.data_migration.rollback import RollbackConflict, evidence, lock_suffix, preflight, read_row
+from modules.data_migration.mapper import (
+    apply_mapping,
+    normalize_manual_mapping,
+    suggest_mapping,
+)
+from modules.data_migration.planning import (
+    add_identity,
+    identify,
+    identity_fields,
+    make_plan,
+    plan_token,
+)
+from modules.data_migration.rollback import (
+    RollbackConflict,
+    evidence,
+    lock_suffix,
+    preflight,
+    read_row,
+)
 from modules.data_migration.sources import read_source, source_hash
 
 UTC = timezone.utc
@@ -102,7 +119,7 @@ def _origin_stamp(connection, descriptor, job_id: int, source_kind: str) -> dict
     return {name: value for name, value in stamp.items() if name in available}
 
 
-def _migration_idempotency_key(row_number: int, payload: dict) -> str:
+def _migration_idempotency_key(row_number: int, payload: dict, source_fingerprint='') -> str:
     """Chave determinística que impede reimportação duplicar histórico.
 
     ``deliveries`` não tem UNIQUE de negócio — e não deveria ter: duas luvas
@@ -128,8 +145,10 @@ def _migration_idempotency_key(row_number: int, payload: dict) -> str:
         str(payload.get(name) or '')
         for name in ('employee_id', 'epi_id', 'delivery_date', 'quantity')
     )
-    digest = hashlib.sha256(f'{parts}|{int(row_number)}'.encode()).hexdigest()
-    return f'mig:{digest[:40]}'
+    if source_fingerprint:
+        parts = json.dumps({k:v for k,v in payload.items() if not k.startswith('__')}, sort_keys=True, default=str)
+    digest = hashlib.sha256(f'{source_fingerprint}|{parts}|{int(row_number)}'.encode()).hexdigest() if source_fingerprint else hashlib.sha256(f'{parts}|{int(row_number)}'.encode()).hexdigest()
+    return f'{"mig2" if source_fingerprint else "mig"}:{digest[:40]}'
 
 
 # ── Etapas 3 e 4 do assistente: leitura + mapeamento ────────────────────────
@@ -200,32 +219,28 @@ def save_mapping(connection, company_id: int, entity: str, signature: str, mappi
 
 # ── Identidade dos registros já existentes no tenant ────────────────────────
 
-def _existing_index(connection, descriptor, company_id: int) -> dict[str, dict]:
-    """Mapa ``chave natural -> linha atual`` do tenant.
-
-    Carregado uma vez por job: fazer um SELECT por linha importada seria
-    O(n) idas ao banco e inviabilizaria arquivos grandes.
-    """
-    keys = [key for key in descriptor.natural_keys if key in set(table_columns(connection, descriptor.target_table))]
+def _existing_index(connection, descriptor, company_id: int, *, lock=False):
+    keys = identity_fields(descriptor)
     if not keys:
         return {}
     columns = ', '.join(['id', *keys])
+    version = '' if db_module._is_sqlite_connection(connection) else ', xmin::text AS __xmin, ctid::text AS __ctid'
+    suffix = ' FOR UPDATE' if lock and not db_module._is_sqlite_connection(connection) else ''
     rows = connection.execute(
-        f'SELECT {columns} FROM {descriptor.target_table} WHERE company_id = %s',  # noqa: S608 - allowlist do catálogo
+        f'SELECT {columns}{version} FROM {descriptor.target_table} WHERE company_id = %s ORDER BY id{suffix}',  # noqa: S608
         (int(company_id),),
     ).fetchall()
-    index: dict[str, dict] = {}
-    for row in rows:
-        record = row_to_dict(row)
-        key = natural_key_of(descriptor, record)
-        if key:
-            index[key] = record
+    index = {}
+    for raw in rows:
+        record = row_to_dict(raw)
+        record['__version__'] = [record.pop('__xmin', ''), record.pop('__ctid', '')]
+        add_identity(index, descriptor, record)
     return index
 
 
 # ── Job ─────────────────────────────────────────────────────────────────────
 
-def _reference_index(connection, table: str, name_column: str, company_id: int) -> dict[str, list[int]]:
+def _reference_index(connection, table: str, name_column: str, company_id: int, *, lock=False) -> dict[str, list[int]]:
     """Mapa ``nome normalizado -> [ids]`` da tabela, **dentro do tenant**.
 
     Devolve lista, não id único, para que ambiguidade (duas unidades com o
@@ -236,7 +251,8 @@ def _reference_index(connection, table: str, name_column: str, company_id: int) 
     resolva para a unidade de outro.
     """
     rows = connection.execute(
-        f'SELECT id, {name_column} FROM {table} WHERE company_id = %s',  # noqa: S608 - allowlist do catálogo
+        f'SELECT id, {name_column} FROM {table} WHERE company_id = %s ORDER BY id'
+        + (' FOR SHARE' if lock and not db_module._is_sqlite_connection(connection) else ''),  # noqa: S608 - allowlist do catálogo
         (int(company_id),),
     ).fetchall()
     index: dict[str, list[int]] = {}
@@ -268,7 +284,7 @@ def normalize_reference(value: object) -> str:
     return text
 
 
-def resolve_references(connection, descriptor, company_id: int, records: list[dict]) -> list[dict]:
+def resolve_references(connection, descriptor, company_id: int, records: list[dict], *, lock=False) -> list[dict]:
     """Converte nome → id nos campos com ``resolves_to``.
 
     O arquivo legado traz "Produção", não o id interno. Regras:
@@ -284,7 +300,7 @@ def resolve_references(connection, descriptor, company_id: int, records: list[di
     if not resolvable:
         return records
     indexes = {
-        spec.name: _reference_index(connection, spec.resolves_to[0], spec.resolves_to[1], company_id)
+        spec.name: _reference_index(connection, spec.resolves_to[0], spec.resolves_to[1], company_id, lock=lock)
         for spec in resolvable
     }
     known_ids = {
@@ -301,7 +317,11 @@ def resolve_references(connection, descriptor, company_id: int, records: list[di
                 continue
             if raw.isdigit() and spec.accepts_internal_id:
                 # Id explícito só vale dentro do tenant (isolamento multi-tenant).
-                if int(raw) in known_ids[spec.name]:
+                named = indexes[spec.name].get(normalize_reference(raw), [])
+                if named and set(named) != {int(raw)}:
+                    updated[spec.name] = ''
+                    unresolved[spec.name] = {'value': raw, 'reason': 'ambiguous', 'matches': len(set(named) | {int(raw)})}
+                elif int(raw) in known_ids[spec.name]:
                     updated[spec.name] = int(raw)
                 else:
                     updated[spec.name] = ''
@@ -351,6 +371,10 @@ def apply_domain_rules(descriptor, records: list[dict]) -> list[dict]:
     processed = []
     for record in records:
         try:
+            if descriptor.key == 'unidades' and not str(record.get('unit_type') or '').strip():
+                error = ValueError('Tipo de unidade é obrigatório; nenhum tipo foi presumido.')
+                error.field = 'unit_type'
+                raise error
             updated = normalizer(record)
             updated.pop('__domain_error__', None)
         except ValueError as exc:
@@ -415,8 +439,10 @@ def _finish_job(connection, job_id: int, *, status: str, totals: dict, preview: 
 
 
 def _record(connection, *, job_id, company_id, row_number, action, table, target_id,
-            before, after, error='') -> None:
+            before, after, error='', source_line=None) -> None:
     """Uma linha por registro tocado. É o insumo do rollback (ADR-0003 §2.4)."""
+    if source_line is not None:
+        after = {**(after or {}), "__source_line__": int(source_line)}
     connection.execute(
         'INSERT INTO migration_job_records '
         '(job_id, company_id, row_number, action, target_table, target_id, before_json, after_json, '
@@ -431,8 +457,86 @@ def _record(connection, *, job_id, company_id, row_number, action, table, target
     )
 
 
+class MigrationValidationError(ValueError):
+    def __init__(self, message, preview):
+        super().__init__(message)
+        self.preview = preview
+        self.diagnostics = preview.get('diagnostics', [])
+
+
+def _history_duplicates(connection, descriptor, company_id, records, raw_hash):
+    if not descriptor.computed_columns:
+        return
+    rows = connection.execute(
+        'SELECT idempotency_key, migration_job_id FROM deliveries WHERE company_id = %s',
+        (int(company_id),),
+    ).fetchall()
+    hashes = {row_to_dict(r)['id']: row_to_dict(r)['source_hash'] for r in connection.execute(
+        'SELECT id, source_hash FROM migration_jobs WHERE company_id = %s', (int(company_id),),
+    ).fetchall()}
+    known = {row_to_dict(r)['idempotency_key']: hashes.get(row_to_dict(r).get('migration_job_id')) for r in rows}
+    for number, record in enumerate(records, 1):
+        payload = {k:v for k,v in record.items() if not k.startswith('__') and str(v or '').strip()}
+        key = _migration_idempotency_key(number, payload, raw_hash)
+        legacy = _migration_idempotency_key(number, payload)
+        record['__idempotency_key__'] = key
+        record['__already_imported__'] = key in known or (legacy in known and known[legacy] == raw_hash)
+
+
+def _prepare(connection, descriptor, company_id, source_kind, raw, mapping, sheet, strategy, *, lock=False):
+    dataset = read_source(source_kind, raw, sheet=sheet)
+    try:
+        normalized_mapping = normalize_manual_mapping(descriptor, mapping, dataset.columns)
+    except ValueError as exc:
+        missing = [f for f in descriptor.required_fields() if f not in (mapping or {}).values()] if isinstance(mapping, dict) else []
+        preview = {'total_rows': len(dataset.rows), 'valid_rows': 0, 'invalid_rows': len(dataset.rows),
+                   'will_insert': 0, 'will_update': 0, 'will_skip': 0, 'will_reject': len(dataset.rows),
+                   'requires_mapping': len(dataset.rows), 'blocking': True, 'diagnostics': [{
+                   'code': 'mapping_required', 'row': 0, 'field': ','.join(missing), 'entity': descriptor.key,
+                   'severity': 'error', 'level': 'error', 'message': str(exc)}]}
+        raise MigrationValidationError('Revise o mapeamento e os campos obrigatórios.', preview) from exc
+    records = apply_mapping(normalized_mapping, dataset.rows)
+    for number, record in enumerate(records):
+        record['__source_line__'] = dataset.source_lines[number]
+        record['__mapped_fields__'] = list(normalized_mapping.values())
+    records = resolve_references(connection, descriptor, company_id, records, lock=lock)
+    records = apply_domain_rules(descriptor, records)
+    existing = _existing_index(connection, descriptor, company_id, lock=lock)
+    raw_hash = source_hash(raw)
+    _history_duplicates(connection, descriptor, company_id, records, raw_hash)
+    preview = make_plan(descriptor, records, existing, strategy)
+    for diagnostic in preview['diagnostics']:
+        row = diagnostic.get('row', 0)
+        if row:
+            diagnostic['source_line'] = dataset.source_lines[row - 1]
+    preview['diagnostics'].extend({**d, 'entity': descriptor.key} for d in dataset.diagnostics)
+    for column in dataset.columns:
+        if column not in normalized_mapping:
+            preview['diagnostics'].append({'code': 'unmapped_column', 'row': 0, 'field': column,
+                'entity': descriptor.key, 'level': 'warning', 'severity': 'warning',
+                'message': 'Coluna não importada pelo mapeamento confirmado.'})
+    preview.update(detected=dataset.detected, signature=dataset.signature(), requires_mapping=0)
+    preview['preview_token'] = plan_token(company_id, descriptor.key, raw_hash, normalized_mapping, strategy, records, preview)
+    return dataset, normalized_mapping, records, existing, preview
+
+
+def _recover_transaction(function):
+    @wraps(function)
+    def execute(connection, *args, **kwargs):
+        try:
+            return function(connection, *args, **kwargs)
+        except Exception:
+            # Covers failures acquiring locks, creating the job and discovering
+            # writable columns as well as the writer's structural-error path.
+            connection.rollback()
+            raise
+    return execute
+
+
+@_recover_transaction
 def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, strategy,
-                  actor, source_name='', actor_ip='', sheet=None, persist_mapping=True) -> dict:
+                  actor, source_name='', actor_ip='', sheet=None, persist_mapping=True,
+                  preview_strategy='upsert', preview_token=None, audit_callback=None) -> dict:
     """Executa uma importação de ponta a ponta.
 
     ``strategy='dry_run'`` percorre o pipeline inteiro e devolve o preview
@@ -445,31 +549,30 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     # Entidade de roadmap nunca chega ao writer, mesmo se a UI deixar passar.
     descriptor = get_entity(entity) if strategy == 'dry_run' else require_enabled_entity(entity)
 
-    dataset = read_source(source_kind, raw, sheet=sheet)
-    normalized_mapping = normalize_manual_mapping(descriptor, mapping, dataset.columns)
-    records = apply_mapping(normalized_mapping, dataset.rows)
-    # Nome → id ANTES do preview: assim "Unidade inexistente" aparece como
-    # obrigatório ausente na simulação, não como erro de banco na gravação.
-    records = resolve_references(connection, descriptor, company_id, records)
-    # Regras de vínculo iguais às do cadastro manual (ADR-0003 §12.2): CPF
-    # normalizado para dígitos, empresa de origem exigida/limpa conforme o
-    # vínculo. Sem isto a importação gravaria CPF formatado e o upsert nunca
-    # reconheceria quem foi cadastrado à mão.
-    records = apply_domain_rules(descriptor, records)
-
-    existing = _existing_index(connection, descriptor, company_id)
-    preview = build_preview(descriptor, records, existing_keys=existing.keys())
-    preview['detected'] = dataset.detected
-    preview['signature'] = dataset.signature()
-
+    apply_strategy = preview_strategy if strategy == 'dry_run' else strategy
+    if apply_strategy not in STRATEGIES or apply_strategy == 'dry_run':
+        raise ValueError('Estratégia da prévia inválida.')
+    if strategy != 'dry_run' and not db_module._is_sqlite_connection(connection):
+        # Serialize migration writes per tenant, without a new queue or schema.
+        connection.execute('SELECT id FROM companies WHERE id = %s FOR UPDATE', (int(company_id),)).fetchone()
+    try:
+        dataset, normalized_mapping, records, existing, preview = _prepare(
+            connection, descriptor, company_id, source_kind, raw, mapping, sheet, apply_strategy,
+            lock=strategy != 'dry_run')
+    except Exception:
+        connection.rollback()
+        raise
     if strategy == 'dry_run':
         return {'job_id': None, 'strategy': strategy, 'applied': False, 'preview': preview}
-
     if preview['blocking']:
-        raise ValueError(
-            'A importação foi bloqueada porque existem erros no arquivo. '
-            'Revise o preview, corrija as linhas apontadas e envie novamente.'
-        )
+        connection.rollback()
+        raise MigrationValidationError('A importação foi bloqueada porque existem erros no arquivo. Revise a prévia.', preview)
+    if preview_token is not None and preview_token != preview['preview_token']:
+        connection.rollback()
+        raise MigrationValidationError('A prévia mudou. Simule novamente e confira o resultado antes de confirmar.',
+            {**preview, 'blocking': True, 'diagnostics': [*preview['diagnostics'], {
+                'code': 'preview_stale', 'row': 0, 'field': '', 'entity': descriptor.key,
+                'severity': 'error', 'level': 'error', 'message': 'Dados, mapeamento ou estratégia mudaram desde a prévia.'}]})
 
     job_id = create_job(
         connection, company_id=company_id, entity=descriptor.key, source_kind=source_kind,
@@ -493,6 +596,7 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     try:
         for index, record in enumerate(records, start=1):
             outcome = None
+            classification = preview['row_classifications'][index - 1]
             try:
                 # TODA a gravação da linha — snapshot, INSERT/UPDATE e o
                 # próprio registro de auditoria — acontece dentro do mesmo
@@ -505,20 +609,35 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
                         strategy=strategy, writable=writable, defaults=defaults,
                         existing=existing, stamp=stamp,
                     )
-            except Exception as exc:  # linha ruim não derruba o job inteiro
+            except Exception:  # linha ruim não derruba o job inteiro
                 # Aqui a transação já voltou ao ponto anterior à linha, então
                 # gravar o diagnóstico é seguro.
                 totals['failed'] += 1
+                totals['processed'] += 1
+                diagnostic = {'code': 'database_row_rejected', 'row': index,
+                    'source_line': record.get('__source_line__', index), 'field': '',
+                    'entity': descriptor.key, 'severity': 'error', 'level': 'error',
+                    'message': 'Registro rejeitado pelo banco. Revise identidade, referências e regras de domínio.'}
+                preview['diagnostics'].append(diagnostic)
+                classification.update(action='reject', classification='invalid', reason='database_row_rejected')
                 _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                         action='error', table=descriptor.target_table, target_id=None,
-                        before=None, after=None, error=str(exc)[:500])
+                        before=None, after=None, error=json.dumps(diagnostic, ensure_ascii=False))
                 continue
             totals['processed'] += 1
             totals[outcome] += 1
+            classification['action'] = {'inserted': 'insert', 'updated': 'update', 'skipped': 'skip'}[outcome]
 
         if persist_mapping:
             save_mapping(connection, company_id, descriptor.key, dataset.signature(), normalized_mapping)
-        _finish_job(connection, job_id, status='completed', totals=totals, preview=preview)
+        _reconcile_job(connection, job_id, company_id, totals, descriptor)
+        status = ('completed_with_rejections' if totals['failed'] and totals['inserted'] + totals['updated'] + totals['skipped'] else
+                  'failed' if totals['failed'] else 'completed')
+        preview['actual_totals'] = dict(totals)
+        preview['execution_status'] = status
+        _finish_job(connection, job_id, status=status, totals=totals, preview=preview)
+        if audit_callback:
+            audit_callback(connection, {'job_id': job_id, 'strategy': strategy, 'applied': status != 'failed', 'status': status, 'totals': totals})
         connection.commit()
     except Exception as exc:
         # Falha estrutural (não de linha): a transação pode estar abortada, e
@@ -529,12 +648,22 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
         _record_failed_job(
             connection, company_id=company_id, entity=descriptor.key, source_kind=source_kind,
             source_name=source_name, hash_value=source_hash(raw), strategy=strategy,
-            actor=actor, actor_ip=actor_ip, totals=totals, error=str(exc)[:500],
+            actor=actor, actor_ip=actor_ip, totals=totals, error='Falha transacional; nenhuma alteração desta tentativa foi confirmada.',
         )
         connection.commit()
-        raise
+        raise ValueError('Falha transacional; nenhuma alteração desta tentativa foi confirmada.') from exc
 
-    return {'job_id': job_id, 'strategy': strategy, 'applied': True, 'totals': totals, 'preview': preview}
+    return {'job_id': job_id, 'strategy': strategy, 'applied': status != 'failed', 'status': status,
+            'totals': totals, 'preview': preview, 'revalidated': True,
+            'preview_matches_result': all(totals[name] == preview[key] for name, key in
+                [('inserted', 'will_insert'), ('updated', 'will_update'), ('skipped', 'will_skip'), ('failed', 'will_reject')])}
+
+
+def _persisted_evidence(connection, descriptor, company_id, target_id, payload, before=None):
+    actual = read_row(connection, descriptor.target_table, company_id, target_id)
+    if actual is None or any(str(actual['row'].get(name)) != str(value) for name,value in payload.items()):
+        raise ValueError('Valores persistidos divergem da origem normalizada.')
+    return evidence(payload, actual, before)
 
 
 def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
@@ -543,20 +672,16 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
 
     Roda inteira dentro do SAVEPOINT aberto por quem chama.
     """
-    key = natural_key_of(descriptor, record)
-    # Entidade SEM chave natural (issue #211): `natural_key_of` devolve string
-    # vazia para toda linha, e sem esta guarda todas colidiriam entre si — a
-    # primeira entrega entrava e as demais eram tratadas como "já existente".
-    # Sem chave natural não existe registro correspondente por definição: cada
-    # linha é um fato novo, e a proteção contra reimportação é a
-    # `idempotency_key` computada logo abaixo.
-    current = existing.get(key) if key else None
+    current, conflict = identify(existing, descriptor, record)
+    if conflict:
+        raise ValueError('Identidade mudou durante a execução.')
     payload = {
         name: value for name, value in record.items()
-        if name in writable and str(value or '').strip()
+        if name in writable and (str(value or '').strip() or
+            (strategy == 'overwrite' and name in record.get('__mapped_fields__', ())))
     }
     if not payload:
-        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+        _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                 action='skip', table=descriptor.target_table, target_id=None,
                 before=None, after=None, error='Nenhum campo gravável.')
         return 'skipped'
@@ -568,37 +693,35 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
     # importado. `skipped` é a resposta correta e é o que ele precisa ler.
     if 'idempotency_key' in getattr(descriptor, 'computed_columns', ()) \
             and 'idempotency_key' in writable:
-        computed_key = _migration_idempotency_key(index, payload)
+        computed_key = record.get('__idempotency_key__') or _migration_idempotency_key(index, payload)
         duplicate = connection.execute(
             f'SELECT id FROM {descriptor.target_table} '  # noqa: S608 - allowlist do catálogo
             'WHERE company_id = %s AND idempotency_key = %s LIMIT 1',
             (int(company_id), computed_key),
         ).fetchone()
-        if duplicate:
-            _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+        if duplicate or record.get('__already_imported__'):
+            _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                     action='skip', table=descriptor.target_table,
-                    target_id=int(row_to_dict(duplicate)['id']), before=None, after=None,
+                    target_id=int(row_to_dict(duplicate)['id']) if duplicate else None, before=None, after=None,
                     error='Linha já importada anteriormente (reimportação do mesmo arquivo).')
             return 'skipped'
         payload['idempotency_key'] = computed_key
 
     if current is None:
         if strategy == 'update_only':
-            _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+            _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                     action='skip', table=descriptor.target_table, target_id=None,
                     before=None, after=None, error='Registro inexistente (update_only).')
             return 'skipped'
         new_id = _insert(connection, descriptor, company_id, defaults, payload, stamp=stamp)
-        if key:
-            existing[key] = {'id': new_id, **payload}
-        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+        _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                 action='insert', table=descriptor.target_table, target_id=new_id,
-                before=None, after=evidence(payload, read_row(
-                    connection, descriptor.target_table, company_id, new_id)))
+                before=None, after=_persisted_evidence(connection, descriptor, company_id, new_id, payload))
+        add_identity(existing, descriptor, {'id': new_id, **payload})
         return 'inserted'
 
     if strategy in ('insert_only', 'skip_duplicates'):
-        _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+        _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                 action='skip', table=descriptor.target_table,
                 target_id=int(current['id']), before=None, after=None,
                 error=f'Registro já existente ({strategy}).')
@@ -608,12 +731,41 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
     if prior is None:
         raise ValueError('Registro alterado ou removido durante a importação.')
     before = {name: value for name, value in prior['row'].items() if name in writable}
+    if identify({key: [prior['row']] for key in existing if any(r['id'] == int(current['id']) for r in existing[key])}, descriptor, record)[1]:
+        raise ValueError('Identidade mudou durante a execução.')
     _update(connection, descriptor, int(current['id']), company_id, payload)
-    _record(connection, job_id=job_id, company_id=company_id, row_number=index,
+    _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
             action='update', table=descriptor.target_table,
             target_id=int(current['id']), before=before,
-            after=evidence(payload, read_row(connection, descriptor.target_table, company_id, int(current['id'])), prior))
+            after=_persisted_evidence(connection, descriptor, company_id, int(current['id']), payload, prior))
+    add_identity(existing, descriptor, {**current, **payload})
     return 'updated'
+
+
+def _reconcile_job(connection, job_id, company_id, totals, descriptor):
+    if not db_module._is_sqlite_connection(connection):
+        connection.execute('SET CONSTRAINTS ALL IMMEDIATE')
+    rows = connection.execute('SELECT action, target_table, target_id, after_json FROM migration_job_records '
+        'WHERE job_id = %s AND company_id = %s ORDER BY id', (int(job_id), int(company_id))).fetchall()
+    counts = {'insert': 0, 'update': 0, 'skip': 0, 'error': 0}
+    latest = {}
+    for raw in rows:
+        r = row_to_dict(raw)
+        if r['action'] not in counts:
+            raise ValueError('Auditoria de execução incompatível.')
+        counts[r['action']] += 1
+        if r['action'] in ('insert', 'update'):
+            if r['target_table'] != descriptor.target_table:
+                raise ValueError('Alvo da auditoria incompatível.')
+            latest[int(r['target_id'])] = json.loads(r['after_json'])['__rollback_v1__']
+    if any(counts[a] != totals[b] for a,b in [('insert','inserted'),('update','updated'),('skip','skipped'),('error','failed')]) or sum(counts.values()) != totals['total']:
+        raise ValueError('Contagens não conciliadas.')
+    for target_id, proof in latest.items():
+        actual = read_row(connection, descriptor.target_table, company_id, target_id)
+        if actual is None or actual['row'] != proof['row'] or actual['version'] != proof['version']:
+            raise ValueError('Estado persistido não conciliado.')
+    if totals['processed'] != totals['total']:
+        raise ValueError('Processamento não conciliado.')
 
 
 def _record_failed_job(connection, *, company_id, entity, source_kind, source_name,
@@ -777,7 +929,7 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
     # motivo real de uma segunda tentativa.
     if job.get('reverted_at'):
         raise ValueError('Esta importação já foi revertida.')
-    if job.get('status') != 'completed':
+    if job.get('status') not in ('completed', 'completed_with_rejections'):
         raise ValueError('Só é possível reverter uma importação concluída.')
 
     descriptor = get_entity(job['entity'])
@@ -869,7 +1021,7 @@ def fetch_jobs(connection, company_id: int, *, entity: str = '', limit: int = 50
         params.append(str(entity))
     rows = connection.execute(
         'SELECT id, entity, source_kind, source_name, strategy, status, total_rows, '
-        'inserted_rows, updated_rows, skipped_rows, failed_rows, actor_name, '
+        'processed_rows, inserted_rows, updated_rows, skipped_rows, failed_rows, actor_name, '
         'started_at, finished_at, reverted_at, homologated_at, created_at '
         f'FROM migration_jobs WHERE {" AND ".join(clauses)} '  # noqa: S608 - cláusulas fixas
         'ORDER BY id DESC LIMIT %s',
@@ -878,11 +1030,34 @@ def fetch_jobs(connection, company_id: int, *, entity: str = '', limit: int = 50
     return [row_to_dict(row) for row in rows]
 
 
-def fetch_job_records(connection, job_id: int, company_id: int, *, limit: int = 500) -> list[dict]:
+def fetch_job_records(connection, job_id: int, company_id: int, *, limit: int = 500, offset: int = 0) -> list[dict]:
     rows = connection.execute(
-        'SELECT row_number, action, target_table, target_id, error_message '
+        'SELECT row_number, action, target_table, target_id, error_message, after_json '
         'FROM migration_job_records WHERE job_id = %s AND company_id = %s '
-        'ORDER BY row_number LIMIT %s',
-        (int(job_id), int(company_id), int(limit)),
+        'ORDER BY row_number, id LIMIT %s OFFSET %s',
+        (int(job_id), int(company_id), max(1, min(int(limit), 500)), max(0, int(offset))),
     ).fetchall()
-    return [row_to_dict(row) for row in rows]
+    result = []
+    for raw in rows:
+        record = row_to_dict(raw)
+        try:
+            after = json.loads(record.pop('after_json') or '{}')
+            source_line = after.get('__source_line__')
+        except (ValueError, TypeError, AttributeError):
+            source_line = None
+        diagnostic = None
+        if record['action'] == 'error':
+            try:
+                candidate = json.loads(record['error_message'])
+                if isinstance(candidate, dict) and candidate.get('code') == 'database_row_rejected':
+                    diagnostic = candidate
+            except (TypeError, ValueError):
+                pass
+            # Legacy technical exceptions must never be rendered/exported.
+            diagnostic = diagnostic or {'code': 'database_row_rejected', 'row': record['row_number'],
+                'field': '', 'severity': 'error', 'message': 'Registro rejeitado pelo banco.'}
+            record['error_message'] = diagnostic['message']
+        record['source_line'] = source_line or (diagnostic or {}).get('source_line')
+        record['diagnostic'] = diagnostic
+        result.append(record)
+    return result

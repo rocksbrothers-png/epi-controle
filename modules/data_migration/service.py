@@ -15,11 +15,13 @@ from __future__ import annotations
 import json
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from functools import wraps
 
 from epi_backend.db import row_to_dict, table_columns
 from modules.data_migration.catalog import get_entity, require_enabled_entity
 from modules.data_migration.mapper import apply_mapping, normalize_manual_mapping, suggest_mapping
 from modules.data_migration.preview import build_preview, natural_key_of
+from modules.data_migration.rollback import RollbackConflict, evidence, lock_suffix, preflight, read_row
 from modules.data_migration.sources import read_source, source_hash
 
 UTC = timezone.utc
@@ -354,6 +356,8 @@ def apply_domain_rules(descriptor, records: list[dict]) -> list[dict]:
         except ValueError as exc:
             updated = dict(record)
             updated['__domain_error__'] = str(exc)
+            if getattr(exc, 'field', ''):
+                updated['__domain_field__'] = exc.field
         processed.append(updated)
     return processed
 
@@ -589,7 +593,8 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
             existing[key] = {'id': new_id, **payload}
         _record(connection, job_id=job_id, company_id=company_id, row_number=index,
                 action='insert', table=descriptor.target_table, target_id=new_id,
-                before=None, after=payload)
+                before=None, after=evidence(payload, read_row(
+                    connection, descriptor.target_table, company_id, new_id)))
         return 'inserted'
 
     if strategy in ('insert_only', 'skip_duplicates'):
@@ -599,11 +604,15 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
                 error=f'Registro já existente ({strategy}).')
         return 'skipped'
 
-    before = _snapshot(connection, descriptor, int(current['id']), writable)
+    prior = read_row(connection, descriptor.target_table, company_id, int(current['id']), lock=True)
+    if prior is None:
+        raise ValueError('Registro alterado ou removido durante a importação.')
+    before = {name: value for name, value in prior['row'].items() if name in writable}
     _update(connection, descriptor, int(current['id']), company_id, payload)
     _record(connection, job_id=job_id, company_id=company_id, row_number=index,
             action='update', table=descriptor.target_table,
-            target_id=int(current['id']), before=before, after=payload)
+            target_id=int(current['id']), before=before,
+            after=evidence(payload, read_row(connection, descriptor.target_table, company_id, int(current['id'])), prior))
     return 'updated'
 
 
@@ -672,6 +681,37 @@ def _update(connection, descriptor, target_id: int, company_id: int, payload: di
 
 # ── Rollback (ADR-0003 §2.4) ────────────────────────────────────────────────
 
+def _atomic_job_decision(function):
+    """Mutation and optional route audit commit together; failed attempts rollback."""
+    @wraps(function)
+    def execute(connection, job_id, company_id, actor, *, audit_callback=None):
+        try:
+            result = function(connection, job_id, company_id, actor)
+            if audit_callback is not None:
+                audit_callback(connection, result)
+            connection.commit()
+            return result
+        except Exception as exc:
+            connection.rollback()
+            if isinstance(exc, RollbackConflict):
+                # Existing per-job audit stores refusal, never overwrites original evidence.
+                # The rejected mutation has already been completely rolled back.
+                try:
+                    _record(connection, job_id=job_id, company_id=company_id, row_number=exc.row,
+                            action='rollback_conflict', table='', target_id=exc.target_id,
+                            before=None, after=None, error=json.dumps({
+                                'code': 'rollback_conflict', 'reason': exc.reason,
+                                'actor_user_id': int(actor.get('id') or 0),
+                            }, ensure_ascii=False))
+                    connection.commit()
+                except Exception:
+                    connection.rollback()
+                    raise
+            raise
+    return execute
+
+
+@_atomic_job_decision
 def homologate_job(connection, job_id: int, company_id: int, actor) -> dict:
     """Homologa a importação — o cliente conferiu e aceitou o resultado.
 
@@ -689,7 +729,7 @@ def homologate_job(connection, job_id: int, company_id: int, actor) -> dict:
     voltar o job ao estado apagável reabriria exatamente a porta que a
     homologação fecha, e transformaria a trava numa formalidade.
     """
-    job = get_job(connection, job_id, company_id)
+    job = get_job(connection, job_id, company_id, for_update=True)
     if not job:
         raise ValueError('Importação não encontrada.')
     # "já revertida" ANTES do status, pela mesma razão de `revert_job`: depois
@@ -707,10 +747,10 @@ def homologate_job(connection, job_id: int, company_id: int, actor) -> dict:
         'WHERE id = %s AND company_id = %s',
         (_now(), int(actor.get('id') or 0), int(job_id), int(company_id)),
     )
-    connection.commit()
     return {'job_id': int(job_id), 'homologated': True}
 
 
+@_atomic_job_decision
 def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
     """Desfaz uma importação.
 
@@ -729,7 +769,7 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
     homologado por falta de suporte a rollback lógico seria escolher o pior
     resultado justamente onde o dado é mais sensível.
     """
-    job = get_job(connection, job_id, company_id)
+    job = get_job(connection, job_id, company_id, for_update=True)
     if not job:
         raise ValueError('Importação não encontrada.')
     # "já revertida" é checado ANTES do status: depois da primeira reversão o
@@ -758,73 +798,64 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
             'pendentes antes de reverter.'
         )
 
-    rows = connection.execute(
-        'SELECT id, row_number, action, target_table, target_id, before_json '
+    rows = [row_to_dict(row) for row in connection.execute(
+        'SELECT id, row_number, action, target_table, target_id, before_json, after_json '
         'FROM migration_job_records WHERE job_id = %s AND company_id = %s ORDER BY id DESC',
         (int(job_id), int(company_id)),
-    ).fetchall()
-
-    reverted = {'deleted': 0, 'restored': 0, 'skipped': 0, 'marked': 0}
-
-    for raw_row in rows:
-        record = row_to_dict(raw_row)
-        action = str(record.get('action') or '')
-        target_id = record.get('target_id')
-        if not target_id or action not in ('insert', 'update'):
-            reverted['skipped'] += 1
-            continue
-        # target_table vem do catálogo (gravado a partir do descritor), nunca
-        # de entrada do usuário — mas revalidamos contra o descritor por
-        # segurança em profundidade.
-        if str(record.get('target_table') or '') != descriptor.target_table:
-            reverted['skipped'] += 1
-            continue
-        if action == 'insert':
+    ).fetchall()]
+    if (sum(row['action'] == 'insert' for row in rows) != int(job['inserted_rows'])
+            or sum(row['action'] == 'update' for row in rows) != int(job['updated_rows'])):
+        raise RollbackConflict('auditoria incompleta para conciliar a reversão')
+    plan = preflight(connection, descriptor, int(company_id), rows)
+    reverted = {'deleted': 0, 'restored': 0, 'skipped': len(rows) - len(plan), 'marked': 0}
+    for record in plan:
+        target_id = int(record['target_id'])
+        if record['action'] == 'insert':
             if homologated:
-                # Reversão LÓGICA: a linha some das leituras operacionais e
-                # continua existindo para a auditoria. `reversal_column` vem do
-                # catálogo, nunca do payload.
-                connection.execute(
-                    f'UPDATE {descriptor.target_table} SET {reversal_column} = %s '  # noqa: S608 - allowlist do catálogo
-                    'WHERE id = %s AND company_id = %s',
-                    (_now(), int(target_id), int(company_id)),
+                marked_at = _now()
+                cursor = connection.execute(
+                    f'UPDATE {descriptor.target_table} SET {reversal_column} = %s '
+                    'WHERE id = %s AND company_id = %s',  # noqa: S608 - catalogue only
+                    (marked_at, target_id, int(company_id)),
                 )
-                reverted['marked'] += 1
+                outcome = 'marked'
             else:
-                connection.execute(
-                    f'DELETE FROM {descriptor.target_table} WHERE id = %s AND company_id = %s',  # noqa: S608 - allowlist do catálogo
-                    (int(target_id), int(company_id)),
+                cursor = connection.execute(
+                    f'DELETE FROM {descriptor.target_table} WHERE id = %s AND company_id = %s',  # noqa: S608
+                    (target_id, int(company_id)),
                 )
-                reverted['deleted'] += 1
+                outcome = 'deleted'
         else:
-            try:
-                before = json.loads(record.get('before_json') or '{}')
-            except (TypeError, ValueError):
-                before = {}
-            before.pop('id', None)
-            if not before:
-                reverted['skipped'] += 1
-                continue
+            before = record['before']
             assignments = ', '.join(f'{name} = %s' for name in sorted(before))
-            connection.execute(
-                f'UPDATE {descriptor.target_table} SET {assignments} WHERE id = %s AND company_id = %s',  # noqa: S608 - allowlist do catálogo
-                (*[before[name] for name in sorted(before)], int(target_id), int(company_id)),
+            cursor = connection.execute(
+                f'UPDATE {descriptor.target_table} SET {assignments} WHERE id = %s AND company_id = %s',  # noqa: S608
+                (*[before[name] for name in sorted(before)], target_id, int(company_id)),
             )
-            reverted['restored'] += 1
+            outcome = 'restored'
+        if cursor.rowcount != 1:
+            raise RollbackConflict('gravação da reversão não conciliada', target_id=target_id)
+        persisted = read_row(connection, descriptor.target_table, company_id, target_id)
+        expected = record['expected_before']
+        if outcome == 'marked':
+            expected = {**record['expected_after'], reversal_column: marked_at}
+        if (persisted['row'] if persisted else None) != expected:
+            raise RollbackConflict('estado persistido da reversão não conciliado', target_id=target_id)
+        reverted[outcome] += 1
 
     connection.execute(
-        'UPDATE migration_jobs SET status = %s, reverted_at = %s, reverted_by = %s WHERE id = %s',
-        ('reverted', _now(), int(actor.get('id') or 0), int(job_id)),
+        'UPDATE migration_jobs SET status = %s, reverted_at = %s, reverted_by = %s WHERE id = %s AND company_id = %s',
+        ('reverted', _now(), int(actor.get('id') or 0), int(job_id), int(company_id)),
     )
-    connection.commit()
     return {'job_id': int(job_id), **reverted}
 
 
 # ── Consulta ────────────────────────────────────────────────────────────────
 
-def get_job(connection, job_id: int, company_id: int) -> dict | None:
+def get_job(connection, job_id: int, company_id: int, *, for_update=False) -> dict | None:
     row = connection.execute(
-        'SELECT * FROM migration_jobs WHERE id = %s AND company_id = %s LIMIT 1',
+        'SELECT * FROM migration_jobs WHERE id = %s AND company_id = %s LIMIT 1'
+        + (lock_suffix(connection) if for_update else ''),
         (int(job_id), int(company_id)),
     ).fetchone()
     return row_to_dict(row) if row else None

@@ -486,11 +486,31 @@ def test_reverting_the_import_removes_only_what_it_created(tenant):
     )
     connection.commit()
 
-    result = revert_job(connection, pytest.imported_job_id,
+    # The earlier upsert changed an imported employee. P0 must preserve that
+    # later decision, even though the old journey expected a blind deletion.
+    before_count = _scalar(connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s',
+                           (tenant['company_id'],))
+    _expect_blocked('alterado após a importação', revert_job, connection,
+                    pytest.imported_job_id, tenant['company_id'], tenant['actor'])
+    assert _scalar(connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s',
+                   (tenant['company_id'],)) == before_count
+    assert _scalar(connection, 'SELECT role_name FROM employees WHERE company_id = %s AND cpf = %s',
+                   (tenant['company_id'], STORED_CPF_A)) == 'Soldadora Sênior'
+
+    # Still prove surgical physical rollback, on a fresh, unmodified import.
+    cpf = f'{int(_RUN_TAG, 16) % 10**9:09d}'
+    for length in (9, 10):
+        digit = (sum(int(cpf[i]) * (length + 1 - i) for i in range(length)) * 10) % 11
+        cpf += str(0 if digit == 10 else digit)
+    clean_csv = ('Employee Name;Registration;CPF;Department;Job Title;Hire Date\n'
+                 f'Reversível;ROLLBACK-{_RUN_TAG};{cpf};Produção;Audit;2020-01-01\n')
+    clean_job = _run(tenant, strategy='insert_only', raw=clean_csv.encode('utf-8'))
+    assert clean_job['totals']['inserted'] == 1
+    pytest.rollback_clean_job_id = clean_job['job_id']
+    result = revert_job(connection, pytest.rollback_clean_job_id,
                         tenant['company_id'], tenant['actor'])
-    # A rota (handle_post_migration_revert) é quem faz o commit depois de
-    # registrar a auditoria; aqui reproduzimos essa fronteira.
-    connection.commit()
+    assert _scalar(connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s AND cpf = %s',
+                   (tenant['company_id'], cpf)) == 0
     assert result['deleted'] + result['restored'] > 0
 
     # O registro alheio à importação continua lá.
@@ -507,7 +527,7 @@ def test_a_second_revert_is_refused(tenant):
     before = _scalar(connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s',
                      (tenant['company_id'],))
     _expect_blocked('já foi revertida', revert_job, connection,
-                    pytest.imported_job_id, tenant['company_id'], tenant['actor'])
+                    pytest.rollback_clean_job_id, tenant['company_id'], tenant['actor'])
     assert _scalar(connection, 'SELECT COUNT(*) FROM employees WHERE company_id = %s',
                    (tenant['company_id'],)) == before
 

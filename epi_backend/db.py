@@ -439,3 +439,39 @@ def column_exists(connection, table, column) -> bool:
         if conhecidas is not None and column_name in conhecidas:
             return True
     return column_name in table_columns(connection, table_name)
+
+
+def migration_incoming_foreign_keys(connection, table: str) -> list[dict]:
+    """Strict metadata for rollback safety; never convert lookup failures to []."""
+    if _is_sqlite_connection(connection):
+        references = []
+        tables = connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+        for entry in tables:
+            source = row_to_dict(entry)['name']
+            quoted = '"' + source.replace('"', '""') + '"'
+            groups = {}
+            for raw in connection.execute(f'PRAGMA foreign_key_list({quoted})').fetchall():
+                fk = row_to_dict(raw)
+                if fk['table'] == table:
+                    group = groups.setdefault(fk['id'], {'schema': '', 'table': source,
+                                                         'source_columns': [], 'target_columns': []})
+                    group['source_columns'].append(fk['from'])
+                    group['target_columns'].append(fk['to'] or 'id')
+            references.extend(groups.values())
+        return references
+    rows = connection.execute(
+        "SELECT ns.nspname AS schema, rel.relname AS table, "
+        "array_agg(src.attname ORDER BY keys.ord) AS source_columns, "
+        "array_agg(dst.attname ORDER BY keys.ord) AS target_columns "
+        "FROM pg_catalog.pg_constraint con "
+        "JOIN pg_catalog.pg_class rel ON rel.oid = con.conrelid "
+        "JOIN pg_catalog.pg_namespace ns ON ns.oid = rel.relnamespace "
+        "CROSS JOIN LATERAL unnest(con.conkey, con.confkey) WITH ORDINALITY "
+        "AS keys(srcnum, dstnum, ord) "
+        "JOIN pg_catalog.pg_attribute src ON src.attrelid = con.conrelid AND src.attnum = keys.srcnum "
+        "JOIN pg_catalog.pg_attribute dst ON dst.attrelid = con.confrelid AND dst.attnum = keys.dstnum "
+        "WHERE con.contype = 'f' AND con.confrelid = CAST(%s AS regclass) "
+        "GROUP BY con.oid, ns.nspname, rel.relname ORDER BY ns.nspname, rel.relname, con.oid",
+        (table,),
+    ).fetchall()
+    return [row_to_dict(row) for row in rows]

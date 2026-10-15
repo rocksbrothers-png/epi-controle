@@ -16,8 +16,11 @@ import hashlib
 import io
 import json
 import re
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from decimal import Decimal
+
+from defusedxml import ElementTree as ET
 
 # Limites de segurança (ADR-0003 §7). Um arquivo maior que isso é recusado
 # antes de qualquer parsing — não adianta validar depois de já ter alocado.
@@ -95,6 +98,7 @@ class SourceDataset:
     rows: list[dict]
     diagnostics: list[dict] = field(default_factory=list)
     detected: dict = field(default_factory=dict)
+    source_lines: list[int] = field(default_factory=list)
 
     @property
     def total_rows(self) -> int:
@@ -172,125 +176,218 @@ def infer_column_types(rows: list[dict], columns: list[str]) -> dict[str, str]:
     return types
 
 
-def _finalize(columns: list[str], rows: list[dict], detected: dict) -> SourceDataset:
-    columns = [str(column).strip() for column in columns if str(column).strip()]
-    if not columns:
-        raise ValueError('Não foi possível identificar as colunas do arquivo.')
+class SourceError(ValueError):
+    """Compatible ValueError with safe, machine-readable source diagnostics."""
+    def __init__(self, message, *, row=1, field='', code='invalid_source'):
+        super().__init__(f'{message} (linha {row}).')
+        self.diagnostics = [{'code': code, 'row': row, 'source_row': row, 'source_line': row,
+                             'field': field, 'message': str(self), 'severity': 'error',
+                             'level': 'error', 'entity': ''}]
+
+
+def _headers(values, *, row=1):
+    columns = [str(v if v is not None else '').strip() for v in values]
+    if not columns or any(not name for name in columns):
+        raise SourceError('Cabeçalho vazio ou ausente', row=row, code='invalid_header')
+    normalized = [_normalize_header(name) for name in columns]
+    if len(set(normalized)) != len(normalized):
+        raise SourceError('Cabeçalhos duplicados ou equivalentes', row=row, code='duplicate_header')
+    return columns
+
+
+def _finalize(columns, rows, detected, *, diagnostics=None, source_lines=None):
+    columns = _headers(columns)
+    if not rows:
+        raise SourceError('Arquivo vazio: nenhum registro de dados')
     if len(rows) > MAX_SOURCE_ROWS:
-        raise ValueError(
-            f'Arquivo com {len(rows)} registros excede o limite de {MAX_SOURCE_ROWS} por importação.'
-        )
-    detected = dict(detected)
-    detected.update({
-        'total_rows': len(rows),
-        'column_count': len(columns),
-        'column_types': infer_column_types(rows, columns),
-        'requires_background': len(rows) >= BACKGROUND_THRESHOLD_ROWS,
-    })
-    diagnostics = []
+        raise SourceError(f'Arquivo excede o limite de {MAX_SOURCE_ROWS} registros')
+    detected = {**detected, 'total_rows': len(rows), 'column_count': len(columns),
+                'column_types': infer_column_types(rows, columns),
+                'requires_background': len(rows) >= BACKGROUND_THRESHOLD_ROWS}
+    diagnostics = list(diagnostics or [])
     if detected['requires_background']:
-        diagnostics.append({
-            'level': 'warning',
-            'code': 'requires_background',
-            'message': (
-                f'{len(rows)} registros: acima de {BACKGROUND_THRESHOLD_ROWS} a importação '
-                'deve rodar em segundo plano (disponível na fase 4).'
-            ),
-        })
-    return SourceDataset(columns=columns, rows=rows, diagnostics=diagnostics, detected=detected)
+        diagnostics.append({'level': 'warning', 'severity': 'warning', 'row': 0, 'field': '',
+                            'code': 'requires_background', 'message': 'Volume exige executor assíncrono; consulte os limites operacionais.'})
+    return SourceDataset(columns=columns, rows=rows, diagnostics=diagnostics, detected=detected,
+                         source_lines=source_lines or list(range(1, len(rows) + 1)))
 
 
-def _read_delimited(raw: bytes, *, kind: str) -> SourceDataset:
+def _read_delimited(raw, *, kind):
     encoding = detect_encoding(raw)
-    text = raw.decode(encoding, errors='replace')
+    text = raw.decode(encoding)
     delimiter = detect_delimiter(text)
-    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
-    columns = [str(name).strip() for name in (reader.fieldnames or [])]
-    rows = [{key: row.get(key) for key in columns} for row in reader]
-    return _finalize(columns, rows, {'encoding': encoding, 'delimiter': delimiter, 'kind': kind})
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter, strict=True)
+    rows, lines, diagnostics = [], [], []
+    try:
+        columns = _headers(next(reader, []))
+        next_line = reader.line_num + 1
+        for values in reader:
+            line = next_line
+            next_line = reader.line_num + 1
+            if not values:
+                diagnostics.append({'code': 'blank_source_line', 'row': line, 'source_line': line,
+                                    'field': '', 'level': 'warning', 'severity': 'warning',
+                                    'message': 'Linha vazia sem valores não importada.'})
+                continue
+            if len(values) != len(columns):
+                raise SourceError('Quantidade de colunas incompatível com o cabeçalho', row=line,
+                                  code='column_count_mismatch')
+            rows.append(dict(zip(columns, values)))
+            lines.append(line)
+            if len(rows) > MAX_SOURCE_ROWS:
+                raise SourceError(f'Limite de {MAX_SOURCE_ROWS} registros excedido', row=line)
+    except csv.Error as exc:
+        raise SourceError('CSV inválido ou corrompido', row=max(reader.line_num, 1)) from exc
+    return _finalize(columns, rows, {'encoding': encoding, 'delimiter': delimiter, 'kind': kind},
+                     diagnostics=diagnostics, source_lines=lines)
 
 
-def _read_spreadsheet(raw: bytes, *, kind: str, sheet: str | None = None) -> SourceDataset:
+def _cell(value):
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return '' if value is None else str(value)
+
+
+def _read_spreadsheet(raw, *, kind, sheet=None):
     try:
-        import pandas as pd
-    except ImportError as exc:  # pragma: no cover - dependência já é do projeto
-        raise ValueError('Leitura de planilha indisponível: pandas não instalado.') from exc
-    engine = 'odf' if kind == 'ods' else 'openpyxl'
-    try:
-        book = pd.read_excel(io.BytesIO(raw), sheet_name=None, engine=engine, dtype=str)
+        if kind == 'xlsx':
+            import openpyxl
+            book = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=False)
+            sheet_names = book.sheetnames
+            if sheet and sheet not in sheet_names:
+                raise SourceError('Aba solicitada não existe', field='sheet')
+            chosen = sheet or sheet_names[0]
+            iterator = book[chosen].iter_rows()
+            header = next(iterator, ())
+            values = [c.value for c in header]
+            while values and values[-1] is None:
+                values.pop()
+            columns = _headers(values)
+            rows, lines = [], []
+            for number, cells in enumerate(iterator, 2):
+                values = [c.value for c in cells]
+                if not any(v is not None for v in values):
+                    continue
+                if any(getattr(c, 'data_type', '') in ('f', 'e') for c in cells):
+                    raise SourceError('Fórmula ou erro de planilha exige exportação de valores', row=number)
+                if any(v is not None for v in values[len(columns):]):
+                    raise SourceError('Valor sem cabeçalho na planilha', row=number)
+                values = values[:len(columns)] + [None] * max(0, len(columns) - len(values))
+                rows.append(dict(zip(columns, map(_cell, values))))
+                lines.append(number)
+                if len(rows) > MAX_SOURCE_ROWS:
+                    raise SourceError(f'Limite de {MAX_SOURCE_ROWS} registros excedido', row=number)
+            book.close()
+        else:
+            import pandas as pd
+            with pd.ExcelFile(io.BytesIO(raw), engine='odf') as book:
+                sheet_names = book.sheet_names
+                if sheet and sheet not in sheet_names:
+                    raise SourceError('Aba solicitada não existe', field='sheet')
+                chosen = sheet or sheet_names[0]
+                frame = book.parse(chosen, header=None, dtype=str, keep_default_na=False)
+                if frame.empty:
+                    raise SourceError('Planilha vazia')
+                columns = _headers(frame.iloc[0].tolist())
+                rows = [dict(zip(columns, values)) for values in frame.iloc[1:].values.tolist()]
+                lines = list(range(2, len(rows) + 2))
+    except SourceError:
+        raise
     except Exception as exc:
-        raise ValueError(f'Não foi possível ler a planilha: {exc}') from exc
-    if not book:
-        raise ValueError('A planilha não possui nenhuma aba legível.')
-    sheet_names = list(book.keys())
-    chosen = sheet if sheet in book else sheet_names[0]
-    frame = book[chosen].fillna('')
-    columns = [str(column).strip() for column in frame.columns]
-    rows = frame.to_dict(orient='records')
-    rows = [{str(key).strip(): value for key, value in row.items()} for row in rows]
-    return _finalize(columns, rows, {'kind': kind, 'sheet': chosen, 'sheets': sheet_names})
+        raise SourceError('Não foi possível ler a planilha; verifique formato e integridade') from exc
+    warnings = []
+    if len(sheet_names) > 1:
+        warnings.append({'code': 'selected_sheet_only', 'row': 0, 'field': 'sheet',
+                         'level': 'warning', 'severity': 'warning',
+                         'message': 'Somente a aba selecionada será importada; confira as demais abas.'})
+    return _finalize(columns, rows, {'kind': kind, 'sheet': chosen, 'sheets': sheet_names},
+                     diagnostics=warnings, source_lines=lines)
 
 
-def _read_json(raw: bytes) -> SourceDataset:
+class _JSONObject(list):
+    pass
+
+
+def _read_json(raw):
     encoding = detect_encoding(raw)
     try:
-        payload = json.loads(raw.decode(encoding, errors='replace'))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f'JSON inválido: {exc}') from exc
-    if isinstance(payload, dict):
-        # Export de API costuma vir embrulhado: {"data": [...]} / {"items": [...]}.
-        for key in ('data', 'items', 'records', 'rows', 'results'):
-            if isinstance(payload.get(key), list):
-                payload = payload[key]
-                break
+        payload = json.loads(raw.decode(encoding), object_pairs_hook=_JSONObject, parse_float=Decimal,
+                             parse_constant=lambda value: (_ for _ in ()).throw(ValueError('nonfinite')))
+    except (ValueError, UnicodeError) as exc:
+        raise SourceError('JSON inválido') from exc
+    warnings = []
+    if isinstance(payload, _JSONObject):
+        names = _headers([key for key, value in payload])
+        wrappers = [(key, value) for key, value in payload if key in ('data', 'items', 'records', 'rows', 'results')
+                    and isinstance(value, list) and not isinstance(value, _JSONObject)]
+        if wrappers:
+            if len(wrappers) != 1:
+                raise SourceError('JSON com múltiplas listas de registros é ambíguo')
+            wrapper, content = wrappers[0]
+            for name in names:
+                if name != wrapper:
+                    warnings.append({'code': 'unmapped_envelope_field', 'row': 0, 'field': name,
+                                     'level': 'warning', 'severity': 'warning',
+                                     'message': 'Campo do envelope JSON não faz parte dos registros importados.'})
+            payload = content
         else:
             payload = [payload]
     if not isinstance(payload, list):
-        raise ValueError('JSON precisa conter uma lista de registros.')
-    rows = [row for row in payload if isinstance(row, dict)]
-    columns: list[str] = []
-    for row in rows:
-        for key in row:
-            if key not in columns:
-                columns.append(str(key))
-    return _finalize(columns, rows, {'encoding': encoding, 'kind': 'json'})
+        raise SourceError('JSON precisa conter uma lista de registros')
+    columns, rows = [], []
+    for number, item in enumerate(payload, 1):
+        if not isinstance(item, _JSONObject):
+            raise SourceError('JSON contém registro que não é objeto', row=number)
+        names = _headers([key for key, value in item], row=number)
+        row = {}
+        for name, (_, value) in zip(names, item):
+            if isinstance(value, (list, dict)):
+                raise SourceError('Campo JSON aninhado não é suportado', row=number, field=name)
+            row[name] = value
+            if name not in columns:
+                columns.append(name)
+        rows.append(row)
+    return _finalize(columns, rows, {'kind': 'json', 'encoding': encoding}, diagnostics=warnings)
 
 
-def _read_xml(raw: bytes) -> SourceDataset:
+def _read_xml(raw):
     try:
         root = ET.fromstring(raw)
-    except ET.ParseError as exc:
-        raise ValueError(f'XML inválido: {exc}') from exc
-    records = list(root)
-    rows: list[dict] = []
-    columns: list[str] = []
-    for record in records:
-        row: dict = {}
-        # Atributo e elemento-filho são tratados igual: export de ERP usa os
-        # dois formatos de forma intercambiável.
-        row.update({str(key): value for key, value in record.attrib.items()})
+    except Exception as exc:
+        raise SourceError('XML inválido') from exc
+    if (root.text or '').strip():
+        raise SourceError('Texto XML fora dos registros não é suportado')
+    rows, columns = [], []
+    for number, record in enumerate(root, 1):
+        if (record.text or '').strip() or (record.tail or '').strip():
+            raise SourceError('Texto XML fora de campo não é suportado', row=number)
+        pairs = list(record.attrib.items())
         for child in record:
-            row[str(child.tag)] = (child.text or '').strip()
-        if not row:
-            continue
+            if list(child) or child.attrib or (child.tail or '').strip():
+                raise SourceError('Campo XML aninhado ou misto não é suportado', row=number, field=str(child.tag))
+            pairs.append((str(child.tag), (child.text or '').strip()))
+        names = _headers([key for key, value in pairs], row=number)
+        row = {name: value for name, (_, value) in zip(names, pairs)}
         rows.append(row)
-        for key in row:
-            if key not in columns:
-                columns.append(key)
-    return _finalize(columns, rows, {'kind': 'xml', 'root': root.tag})
+        for name in names:
+            if name not in columns:
+                columns.append(name)
+    warnings = [{'code': 'unmapped_envelope_field', 'row': 0, 'field': key, 'severity': 'warning',
+                 'level': 'warning', 'message': 'Atributo da raiz XML não faz parte dos registros.'} for key in root.attrib]
+    return _finalize(columns, rows, {'kind': 'xml', 'root': root.tag}, diagnostics=warnings)
 
 
 def read_source(kind: str, raw: bytes, *, sheet: str | None = None) -> SourceDataset:
     """Ponto único de entrada de qualquer fonte de arquivo."""
     kind = str(kind or '').strip().lower()
     if not isinstance(raw, (bytes, bytearray)):
-        raise ValueError('Conteúdo do arquivo ausente.')
+        raise SourceError('Conteúdo do arquivo ausente.')
     if len(raw) > MAX_SOURCE_BYTES:
-        raise ValueError(
+        raise SourceError(
             f'Arquivo de {len(raw)} bytes excede o limite de {MAX_SOURCE_BYTES} bytes.'
         )
     if not raw:
-        raise ValueError('Arquivo vazio.')
+        raise SourceError('Arquivo vazio.')
     if kind in ROADMAP_SOURCE_KINDS:
         raise ValueError(
             f'A origem "{kind}" ainda não está disponível '

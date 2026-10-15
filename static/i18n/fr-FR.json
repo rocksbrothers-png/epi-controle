@@ -1596,7 +1596,7 @@
     "entityFieldsHint": "Obligatoires : {required}. Et {optional} champs facultatifs.",
     "sourceLabel": "Type de source",
     "dropzone": "Glissez le fichier ici ou cliquez pour choisir",
-    "fileHint": "Formats acceptés à cette étape : XLSX, XLS, CSV, TSV, ODS, JSON, XML et TXT. Limite de 25 Mo par fichier.",
+    "fileHint": "Formats acceptés à cette étape : XLSX, CSV, ODS, JSON, XML et TXT. Limite de 25 Mo par fichier.",
     "fileError": "Le fichier choisi n’a pas pu être lu.",
     "sheetLabel": "Feuille (onglet)",
     "detEncoding": "Encodage",
@@ -1668,7 +1668,11 @@
       "completed": "Terminé",
       "failed": "En échec",
       "running": "En cours",
-      "reverted": "Annulé"
+      "reverted": "Annulé",
+      "completed_with_rejections": "Terminée avec rejets",
+      "awaiting_homologation": "Terminée — en attente de validation",
+      "homologated": "Homologuée",
+      "pending": "En attente de validation"
     },
     "mapStrategy": {
       "exact": "Exact",
@@ -1685,7 +1689,26 @@
       "missing_required": "Champ obligatoire vide",
       "invalid_value": "Valeur invalide",
       "no_natural_key": "Aucune clé pour identifier l’enregistrement"
-    }
+    },
+    "finalHint": "Résultat rapproché des enregistrements persistés.",
+    "pvCreated": "Créés",
+    "pvUpdated": "Mis à jour",
+    "pvSkipped": "Ignorés",
+    "sampleHint": "Échantillon normalisé : 10 enregistrements maximum. Classification : 100 lignes maximum ; rapport CSV complet disponible.",
+    "classification": {
+      "new": "Nouveau",
+      "existing": "Existant",
+      "duplicate": "Doublon",
+      "invalid": "Invalide"
+    },
+    "action": {
+      "insert": "Insérer",
+      "update": "Actualiser",
+      "skip": "Ignorer",
+      "reject": "Rejeter"
+    },
+    "failedResult": "Import #{job} échoué : aucun enregistrement écrit ; {failed} rejetés.",
+    "partialResult": "Import #{job} terminé avec rejets : {inserted} créés, {updated} actualisés, {skipped} ignorés, {failed} rejetés."
   },
   "stock.statusColumn": "Situation",
   "stock.statusNormal": "Normal",

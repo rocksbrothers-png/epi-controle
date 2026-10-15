@@ -157,7 +157,7 @@
    */
   function canRevert(job) {
     if (!job) return false;
-    return String(job.status || '') === 'completed' && !job.reverted_at;
+    return ['completed', 'completed_with_rejections'].includes(String(job.status || '')) && !job.reverted_at;
   }
 
   /**
@@ -181,13 +181,54 @@
   function groupDiagnostics(diagnostics) {
     const grouped = new Map();
     (Array.isArray(diagnostics) ? diagnostics : []).forEach((item) => {
-      const kind = String((item && item.kind) || 'outro');
+      const kind = String((item && (item.code || item.kind)) || 'outro');
       if (!grouped.has(kind)) grouped.set(kind, { kind, count: 0, rows: [] });
       const bucket = grouped.get(kind);
       bucket.count += 1;
-      if (bucket.rows.length < 20 && item && item.row_number) bucket.rows.push(item.row_number);
+      if (item && (item.source_line || item.row || item.row_number)) bucket.rows.push(item.source_line || item.row || item.row_number);
     });
     return Array.from(grouped.values()).sort((a, b) => b.count - a.count);
+  }
+
+  function jobState(job) {
+    if (job?.reverted_at || job?.status === 'reverted') return 'reverted';
+    if (job?.homologated_at) return 'homologated';
+    if (job?.status === 'completed') return 'awaiting_homologation';
+    return String(job?.status || 'pending');
+  }
+
+  function csvCell(value) {
+    let text = String(value ?? '');
+    if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
+  function diagnosticCsv(diagnostics) {
+    return [['linha', 'linha_origem', 'campo', 'codigo', 'mensagem', 'severidade']]
+      .concat((diagnostics || []).map((d) => [d.row || d.row_number || '', d.source_line || '',
+        d.field || '', d.code || d.kind || '', d.message || '', d.severity || d.level || '']))
+      .map((row) => row.map(csvCell).join(';')).join('\n');
+  }
+
+  function planCsv(preview) {
+    const diagnostics = preview.diagnostics || [];
+    const byRow = new Map();
+    diagnostics.forEach((d) => { const key = Number(d.row); if (!byRow.has(key)) byRow.set(key, []); byRow.get(key).push(d); });
+    return [['linha', 'linha_origem', 'classificacao', 'acao', 'codigo', 'campo', 'mensagem']]
+      .concat((preview.row_classifications || []).map((r) => {
+        const issues = byRow.get(Number(r.row)) || [];
+        return [r.row, r.source_line, r.classification, r.action,
+          issues.map((d) => d.code).join(' | '), issues.map((d) => d.field).join(' | '),
+          issues.map((d) => d.message).join(' | ')];
+      }), diagnostics.filter((d) => !d.row).map((d) => ['', d.source_line || '', '', '', d.code, d.field, d.message]))
+      .map((row) => row.map(csvCell).join(';')).join('\n');
+  }
+
+  function recordCsv(records) {
+    return [['linha', 'linha_origem', 'acao', 'destino', 'codigo', 'campo', 'mensagem']]
+      .concat((records || []).map((r) => [r.row_number, r.source_line || '', r.action,
+        r.target_id || '', r.diagnostic?.code || '', r.diagnostic?.field || '', r.error_message || '']))
+      .map((row) => row.map(csvCell).join(';')).join('\n');
   }
 
   globalThis.__EPI_DATA_MIGRATION_VIEW__ = Object.freeze({
@@ -205,5 +246,9 @@
     canRevert,
     jobCounters,
     groupDiagnostics,
+    jobState,
+    diagnosticCsv,
+    recordCsv,
+    planCsv,
   });
 })();

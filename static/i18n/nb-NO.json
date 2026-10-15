@@ -1596,7 +1596,7 @@
     "entityFieldsHint": "Obligatoriske: {required}. Pluss {optional} valgfrie felter.",
     "sourceLabel": "Kildetype",
     "dropzone": "Dra filen hit eller klikk for å velge",
-    "fileHint": "Formater som godtas i denne fasen: XLSX, XLS, CSV, TSV, ODS, JSON, XML og TXT. Grense på 25 MB per fil.",
+    "fileHint": "Formater som godtas i denne fasen: XLSX, CSV, ODS, JSON, XML og TXT. Grense på 25 MB per fil.",
     "fileError": "Den valgte filen kunne ikke leses.",
     "sheetLabel": "Ark (fane)",
     "detEncoding": "Tegnsett",
@@ -1668,7 +1668,11 @@
       "completed": "Fullført",
       "failed": "Mislyktes",
       "running": "Pågår",
-      "reverted": "Angret"
+      "reverted": "Angret",
+      "completed_with_rejections": "Fullført med avvisninger",
+      "awaiting_homologation": "Fullført — venter på godkjenning",
+      "homologated": "Godkjent",
+      "pending": "Venter på validering"
     },
     "mapStrategy": {
       "exact": "Nøyaktig",
@@ -1685,7 +1689,26 @@
       "missing_required": "Obligatorisk felt tomt",
       "invalid_value": "Ugyldig verdi",
       "no_natural_key": "Ingen nøkkel til å identifisere posten"
-    }
+    },
+    "finalHint": "Resultatet er avstemt mot lagrede poster.",
+    "pvCreated": "Opprettet",
+    "pvUpdated": "Oppdatert",
+    "pvSkipped": "Hoppet over",
+    "sampleHint": "Normalisert utvalg: opptil 10 poster. Klassifisering: opptil 100 rader; full CSV-rapport tilgjengelig.",
+    "classification": {
+      "new": "Ny",
+      "existing": "Eksisterende",
+      "duplicate": "Duplikat",
+      "invalid": "Ugyldig"
+    },
+    "action": {
+      "insert": "Sett inn",
+      "update": "Oppdater",
+      "skip": "Hopp over",
+      "reject": "Avvis"
+    },
+    "failedResult": "Import #{job} mislyktes: ingen poster lagret; {failed} avvist.",
+    "partialResult": "Import #{job} fullført med avvisninger: {inserted} opprettet, {updated} oppdatert, {skipped} hoppet over, {failed} avvist."
   },
   "stock.statusColumn": "Situasjon",
   "stock.statusNormal": "Normal",

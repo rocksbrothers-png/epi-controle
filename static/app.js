@@ -10087,11 +10087,14 @@ function renderDataMigrationCatalog() {
     const badge = card.enabled
       ? `<span class="badge badge-status-active">${escapeHtml(tr('dataMigration.cardReady', 'Disponível'))}</span>`
       : `<span class="badge badge-role-user">${escapeHtml(tr('dataMigration.cardSoon', 'Em breve'))}</span>`;
+    const original = draft.entities.find((e) => e.key === card.key);
+    const blocked = original?.blocked_reason || '';
     const fields = tr('dataMigration.cardFields', '{n} campos').replace('{n}', String(card.fieldCount));
     return `<button type="button" class="migracao-card${card.enabled ? '' : ' is-disabled'}"`
       + ` data-migracao-card="${escapeHtml(card.key)}"${card.enabled ? '' : ' disabled'}>`
       + `<strong>${escapeHtml(card.label)}</strong>${badge}`
-      + `<small class="muted">${escapeHtml(fields)}</small></button>`;
+      + `<small class="muted">${escapeHtml(fields)}</small>`
+      + (blocked ? `<small class="muted">${escapeHtml(blocked)}</small>` : '') + '</button>';
   }).join('') || `<p class="muted">${escapeHtml(tr('dataMigration.catalogEmpty', 'Nenhuma entidade encontrada.'))}</p>`;
 }
 
@@ -10266,13 +10269,17 @@ function renderDataMigrationPreview() {
   const preview = draft.preview;
   if (refs.migracaoPreviewCard) refs.migracaoPreviewCard.hidden = !preview;
   if (!preview) return;
+  const actual = preview.actual_totals;
+  const hint = refs.migracaoPreviewCard?.querySelector('[data-i18n="dataMigration.previewHint"]');
+  if (hint) hint.textContent = actual ? tr('dataMigration.finalHint', 'Resultado conciliado com os registros persistidos.') : tr('dataMigration.previewHint', 'Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.');
   if (refs.migracaoPreviewCounters) {
     const counters = [
       ['dataMigration.pvTotal', 'Linhas lidas', preview.total_rows],
-      ['dataMigration.pvValid', 'Válidas', preview.valid_rows],
-      ['dataMigration.pvInvalid', 'Com problema', preview.invalid_rows],
-      ['dataMigration.pvInsert', 'Serão criadas', preview.will_insert],
-      ['dataMigration.pvUpdate', 'Serão atualizadas', preview.will_update],
+      ['dataMigration.pvValid', 'Válidas', (actual ? actual.total - actual.failed : preview.valid_rows)],
+      ['dataMigration.pvInvalid', 'Com problema', (actual ? actual.failed : preview.invalid_rows)],
+      [actual ? 'dataMigration.pvCreated' : 'dataMigration.pvInsert', actual ? 'Criadas' : 'Serão criadas', actual ? actual.inserted : preview.will_insert],
+      [actual ? 'dataMigration.pvUpdated' : 'dataMigration.pvUpdate', actual ? 'Atualizadas' : 'Serão atualizadas', actual ? actual.updated : preview.will_update],
+      ['dataMigration.pvSkipped', 'Ignoradas', actual ? actual.skipped : preview.will_skip],
     ];
     refs.migracaoPreviewCounters.innerHTML = counters.map(([key, fallback, value]) => (
       `<div class="migracao-counter"><strong>${escapeHtml(String(value ?? 0))}</strong>`
@@ -10280,7 +10287,7 @@ function renderDataMigrationPreview() {
     )).join('');
   }
   if (refs.migracaoPreviewDiagnostics) {
-    const grouped = helpers.groupDiagnostics ? helpers.groupDiagnostics(preview.diagnostics) : [];
+    const grouped = (preview.diagnostics || []).slice(0, 100).map((d) => ({ kind: `${d.field ? d.field + ': ' : ''}${d.message || d.code || d.kind || ''}`, count: 1, rows: [d.source_line || d.row || d.row_number || ''] }));
     refs.migracaoPreviewDiagnostics.innerHTML = grouped.map((bucket) => (
       `<tr><td>${escapeHtml(tr(`dataMigration.diag.${bucket.kind}`, bucket.kind))}</td>`
       + `<td>${bucket.count}</td><td>${escapeHtml(bucket.rows.join(', '))}</td></tr>`
@@ -10289,7 +10296,19 @@ function renderDataMigrationPreview() {
       message: tr('dataMigration.diagEmpty', 'Nenhum problema encontrado.'),
     });
   }
-  if (refs.migracaoApply) refs.migracaoApply.disabled = Boolean(preview.blocking) || draft.busy;
+  let sample = document.getElementById('migracao-normalized-sample');
+  if (!sample && refs.migracaoPreviewCard) {
+    sample = document.createElement('div'); sample.id = 'migracao-normalized-sample';
+    refs.migracaoPreviewCard.appendChild(sample);
+  }
+  if (sample) {
+    const rows = preview.sample || [];
+    const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+    sample.innerHTML = '<p>' + escapeHtml(tr('dataMigration.sampleHint', 'Amostra normalizada: até 10 registros. Classificação: até 100 linhas; relatório CSV completo disponível.')) + '</p><div class="table-wrap"><table><thead><tr>' + columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('')
+      + '</tr></thead><tbody>' + rows.map((r) => '<tr>' + columns.map((c) => `<td>${escapeHtml(String(r[c] ?? ''))}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>'
+      + '<div class="table-wrap"><table><tbody>' + (preview.row_classifications || []).slice(0, 100).map((r) => '<tr><td>' + escapeHtml(String(r.source_line)) + '</td><td>' + escapeHtml(tr(`dataMigration.classification.${r.classification}`, r.classification)) + '</td><td>' + escapeHtml(tr(`dataMigration.action.${r.action}`, r.action)) + '</td></tr>').join('') + '</tbody></table></div>';
+  }
+  if (refs.migracaoApply) refs.migracaoApply.disabled = Boolean(preview.blocking) || draft.busy || Boolean(actual);
 }
 
 async function analyzeDataMigrationSource() {
@@ -10345,23 +10364,27 @@ async function runDataMigration(strategy) {
         content_base64: draft.fileBase64,
         mapping: draft.mapping,
         strategy,
+        preview_strategy: refs.migracaoStrategy?.value || 'upsert',
+        preview_token: strategy === 'dry_run' ? undefined : draft.preview?.preview_token,
       }),
     });
     draft.preview = result.preview || null;
-    if (result.applied) {
+    if (result.job_id) {
       const totals = result.totals || {};
       showToast(tr(
-        'dataMigration.applied',
+        result.status === 'failed' ? 'dataMigration.failedResult' : (totals.failed ? 'dataMigration.partialResult' : 'dataMigration.applied'),
         'Importação #{job} concluída: {inserted} criados, {updated} atualizados, {skipped} ignorados, {failed} com erro.',
       ).replace('{job}', String(result.job_id))
         .replace('{inserted}', String(totals.inserted ?? 0))
         .replace('{updated}', String(totals.updated ?? 0))
         .replace('{skipped}', String(totals.skipped ?? 0))
-        .replace('{failed}', String(totals.failed ?? 0)), 'success');
+        .replace('{failed}', String(totals.failed ?? 0)),
+      result.status === 'failed' ? 'error' : (totals.failed ? 'warning' : 'success'));
       await loadDataMigrationJobs();
       focusViewTab('migracao', 'historico');
     }
   } catch (error) {
+    if (error?.payload?.preview) draft.preview = error.payload.preview;
     showToast(migracaoErrorMessage(error), 'error');
   } finally {
     draft.busy = false;
@@ -10404,11 +10427,11 @@ function renderDataMigrationJobs() {
       + `<td>${escapeHtml(String(job.entity || ''))}</td>`
       + `<td>${escapeHtml(String(job.source_name || job.source_kind || ''))}</td>`
       + `<td>${escapeHtml(tr(`dataMigration.strategy.${job.strategy}`, String(job.strategy || '')))}</td>`
-      + `<td>${escapeHtml(tr(`dataMigration.status.${job.status}`, String(job.status || '')))}</td>`
+      + `<td>${escapeHtml(tr(`dataMigration.status.${helpers.jobState ? helpers.jobState(job) : job.status}`, String(job.status || '')))}</td>`
       + `<td>${escapeHtml(summary)}</td>`
       + `<td>${escapeHtml(String(job.actor_name || ''))}</td>`
       + `<td>${escapeHtml(formatDateTime(job.finished_at || job.created_at))}</td>`
-      + `<td>${action}</td></tr>`;
+      + `<td>${action}<button type="button" class="ghost" data-migracao-report="${escapeHtml(String(job.id))}">${escapeHtml(tr('dataMigration.downloadReport', 'Baixar relatório (CSV)'))}</button></td></tr>`;
   }).join('') || globalThis.dsTableState({
     colspan: 9,
     message: tr('dataMigration.historyEmpty', 'Nenhuma importação realizada ainda.'),
@@ -10437,27 +10460,35 @@ function migracaoErrorMessage(error) {
   return raw || tr('dataMigration.genericError', 'Não foi possível concluir a operação de migração.');
 }
 
+function saveDataMigrationCsv(csv, name) {
+  const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = name;
+  document.body.appendChild(link); link.click(); link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function downloadDataMigrationReport() {
   const draft = migracaoState();
   const helpers = dataMigrationHelpers();
-  const preview = draft.preview;
-  if (!preview) return;
-  const grouped = helpers.groupDiagnostics ? helpers.groupDiagnostics(preview.diagnostics) : [];
-  const header = ['problema', 'ocorrencias', 'linhas'];
-  const lines = [header.join(';')].concat(grouped.map((bucket) => [
-    tr(`dataMigration.diag.${bucket.kind}`, bucket.kind),
-    String(bucket.count),
-    bucket.rows.join(' '),
-  ].join(';')));
-  const blob = new Blob([`﻿${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `migracao-${draft.entity || 'preview'}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  if (!draft.preview) return;
+  const csv = helpers.planCsv ? helpers.planCsv(draft.preview) : '';
+  saveDataMigrationCsv(csv, `migracao-${draft.entity || 'preview'}.csv`);
+}
+
+async function downloadDataMigrationJobReport(jobId) {
+  try {
+    const records = [];
+    let offset = 0;
+    do {
+      const page = await api(`/api/data-migration/jobs/${encodeURIComponent(jobId)}?${actorQuery()}&offset=${offset}&limit=500`);
+      records.push(...(page.records || []));
+      offset = page.next_offset;
+    } while (offset !== null && offset !== undefined);
+    const helpers = dataMigrationHelpers();
+    saveDataMigrationCsv(helpers.recordCsv(records), `migracao-${jobId}.csv`);
+  } catch (error) { showToast(migracaoErrorMessage(error), 'error'); }
 }
 
 function readDataMigrationFile(file) {
@@ -10468,6 +10499,8 @@ function readDataMigrationFile(file) {
     const result = String(reader.result || '');
     draft.fileBase64 = result.includes(',') ? result.slice(result.indexOf(',') + 1) : result;
     draft.fileName = file.name || '';
+    draft.preview = null;
+    renderDataMigrationPreview();
     if (refs.migracaoFileName) refs.migracaoFileName.textContent = draft.fileName;
     renderDataMigrationSteps();
   };
@@ -10569,13 +10602,17 @@ function bindDataMigrationEvents() {
   bindAppListener(refs.migracaoRestart, 'click', resetDataMigrationWizard);
   bindAppListener(refs.migracaoPreview, 'click', () => void runDataMigration('dry_run'));
   bindAppListener(refs.migracaoApply, 'click', () => void runDataMigration(refs.migracaoStrategy?.value || 'upsert'));
-  bindAppListener(refs.migracaoStrategy, 'change', syncDataMigrationStrategyHint);
+  bindAppListener(refs.migracaoStrategy, 'change', () => {
+    draft.preview = null; syncDataMigrationStrategyHint(); renderDataMigrationPreview();
+  });
   bindAppListener(refs.migracaoDownloadReport, 'click', downloadDataMigrationReport);
 
   bindAppListener(refs.migracaoMappingTable, 'change', (event) => {
     const select = event.target.closest('[data-migracao-map]');
     if (!select) return;
     const column = select.dataset.migracaoMap;
+    draft.preview = null;
+    renderDataMigrationPreview();
     if (select.value) draft.mapping[column] = select.value;
     else delete draft.mapping[column];
     // Redesenha porque um destino escolhido some das opções das demais
@@ -10585,6 +10622,8 @@ function bindDataMigrationEvents() {
   });
 
   bindAppListener(refs.migracaoJobsTable, 'click', (event) => {
+    const report = event.target.closest('[data-migracao-report]');
+    if (report) { void downloadDataMigrationJobReport(report.dataset.migracaoReport); return; }
     const button = event.target.closest('[data-migracao-revert]');
     if (!button) return;
     void revertDataMigrationJob(button.dataset.migracaoRevert);

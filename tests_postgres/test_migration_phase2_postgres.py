@@ -54,7 +54,7 @@ def test_identical_employee_keys_are_scoped_to_tenant(ctx):
     other = get_connection()
     try:
         token = uuid.uuid4().int % 10**12
-        cid = scalar(other, "INSERT INTO companies(name,cnpj,logo_type) VALUES(%s,%s,'') RETURNING id", ('Phase2 other', _valid_cnpj_from(f'{token:012d}')))
+        cid = scalar(other, "INSERT INTO companies(name,cnpj,logo_type) VALUES(%s,%s,'') RETURNING id", ('Phase2 other '+str(token), _valid_cnpj_from(f'{token:012d}')))
         other.commit()
         alternate = dict(conn=other, company_id=cid, actor=dict(id=0, full_name='Synthetic', company_id=cid))
         run(alternate)

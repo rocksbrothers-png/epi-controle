@@ -205,7 +205,7 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
                     'level': 'error',
                     'code': f'invalid_{spec.validator}',
                     'field': spec.name,
-                    'message': f'{label} em {spec.label}: {str(value)[:60]!r}.',
+                    'message': f'{label} em {spec.label}.',
                 })
                 invalid_values += 1
                 row_ok = False
@@ -231,7 +231,7 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
             no_identity += 1
             row_ok = False
         else:
-            if key in seen_keys:
+            if key and key in seen_keys:
                 diagnostics.append({
                     'row': index,
                     'level': 'warning',
@@ -240,7 +240,7 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
                     'message': f'Registro duplicado no arquivo (também na linha {seen_keys[key]}).',
                 })
                 duplicate_in_file += 1
-            else:
+            elif key:
                 seen_keys[key] = index
             if key in existing_keys:
                 diagnostics.append({
@@ -264,7 +264,8 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
         'valid_rows': valid_rows,
         'invalid_rows': len(records) - valid_rows,
         'will_insert': sum(
-            1 for key in seen_keys if key not in existing_keys
+            1 for key, row in seen_keys.items() if key not in existing_keys
+            and not any(d['row'] == row and d['level'] == 'error' for d in diagnostics)
         ),
         'will_update': duplicate_in_base,
         'counters': {

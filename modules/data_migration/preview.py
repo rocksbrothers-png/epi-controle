@@ -171,7 +171,9 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
                 'row': index,
                 'level': 'error',
                 'code': 'domain_rule',
-                'field': '',
+                'field': record.get('__domain_field__', ''),
+                'entity': descriptor.key,
+                'severity': 'error',
                 'message': str(domain_error),
             })
             domain_rejected += 1
@@ -252,6 +254,10 @@ def build_preview(descriptor: EntityDescriptor, records: list[dict], *, existing
 
         if row_ok:
             valid_rows += 1
+
+    for diagnostic in diagnostics:
+        diagnostic.setdefault('entity', descriptor.key)
+        diagnostic.setdefault('severity', diagnostic['level'])
 
     return {
         'total_rows': len(records),

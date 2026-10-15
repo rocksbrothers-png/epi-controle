@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from epi_backend.db import row_to_dict
 from modules.deliveries.evidence import (
@@ -113,15 +114,18 @@ def normalize_delivery_history_fields(payload: dict) -> dict:
                 f"({normalized['returned_date']} < {normalized['delivery_date']})."
             )
 
-    raw_quantity = str(normalized.get('quantity') or '').strip()
+    raw_quantity = str(normalized.get('quantity') if normalized.get('quantity') is not None else '').strip()
     if raw_quantity:
         try:
-            quantity = int(float(raw_quantity.replace(',', '.')))
-        except ValueError as exc:
-            raise ValueError(f'Quantidade inválida: "{normalized.get("quantity")}".') from exc
-        if quantity < 1:
-            raise ValueError('Quantidade da entrega precisa ser pelo menos 1.')
-        normalized['quantity'] = quantity
+            numeric = Decimal(raw_quantity.replace(',', '.'))
+            if (not numeric.is_finite() or numeric < 1 or numeric > 2147483647
+                    or numeric != numeric.to_integral_value()):
+                raise InvalidOperation
+            normalized['quantity'] = int(numeric)
+        except (InvalidOperation, ValueError, OverflowError) as exc:
+            error = ValueError('Quantidade deve ser um inteiro entre 1 e 2147483647, sem arredondamento.')
+            error.field = 'quantity'
+            raise error from exc
 
     normalized['signature_name'] = ' '.join(
         str(normalized.get('signature_name') or '').split()

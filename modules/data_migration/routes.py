@@ -177,16 +177,17 @@ def handle_post_migration_revert(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = _authorize(connection, handler, parsed, payload)
         job_id = int(match.group(1))
-        result = revert_job(connection, job_id, int(actor['company_id']), actor)
         from modules.companies.service import register_company_audit
-        register_company_audit(
-            connection, int(actor['company_id']), actor, 'data_migration_reverted',
-            f'Importação #{job_id} revertida: {result["deleted"]} removidos, '
-            f'{result["marked"]} marcados como revertidos, '
-            f'{result["restored"]} restaurados.',
-            {'job_id': job_id, **result},
-        )
-        connection.commit()
+
+        def audit(connection, result):
+            register_company_audit(
+                connection, int(actor['company_id']), actor, 'data_migration_reverted',
+                f'Importação #{job_id} revertida: {result["deleted"]} removidos, '
+                f'{result["marked"]} marcados como revertidos, {result["restored"]} restaurados.',
+                {'job_id': job_id, **result},
+            )
+
+        result = revert_job(connection, job_id, int(actor['company_id']), actor, audit_callback=audit)
         return send_json(handler, 200, result)
 
 
@@ -201,15 +202,16 @@ def handle_post_migration_homologate(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = _authorize(connection, handler, parsed, payload)
         job_id = int(match.group(1))
-        result = homologate_job(connection, job_id, int(actor['company_id']), actor)
         from modules.companies.service import register_company_audit
-        register_company_audit(
-            connection, int(actor['company_id']), actor, 'data_migration_homologated',
-            f'Importação #{job_id} homologada. A partir de agora a reversão '
-            'preserva os registros (rollback lógico).',
-            {'job_id': job_id, **result},
-        )
-        connection.commit()
+
+        def audit(connection, result):
+            register_company_audit(
+                connection, int(actor['company_id']), actor, 'data_migration_homologated',
+                f'Importação #{job_id} homologada. A reversão passa a preservar os registros.',
+                {'job_id': job_id, **result},
+            )
+
+        result = homologate_job(connection, job_id, int(actor['company_id']), actor, audit_callback=audit)
         return send_json(handler, 200, result)
 
 

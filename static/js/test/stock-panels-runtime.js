@@ -43,7 +43,7 @@ function harness({ spa = false, transport = async () => payload(), stockFails = 
   const context = {
     console, URLSearchParams, Map, Date,
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
-    document: { getElementById: node, querySelector: (s) => s === '.view.active' ? { id: 'dashboard-view' } : null, dispatchEvent() {} },
+    document: { querySelectorAll: () => [], getElementById: node, querySelector: (s) => s === '.view.active' ? { id: 'dashboard-view' } : null, dispatchEvent() {} },
     refs: { viewNodes: [], menuLinks: [] }, state: { user: { id: 999, company_id: 2 } },
     VIEW_PERMISSIONS: {}, VIEW_PERMISSION_ALTERNATIVES: {}, VIEW_EYEBROW: {}, SPA_NAV_SUPPORTED_VIEWS: ['estoque'],
     defaultView: () => 'dashboard', canAccessView: () => true, hasPermission: () => true,
@@ -67,7 +67,7 @@ function harness({ spa = false, transport = async () => payload(), stockFails = 
   const names = ['_blockedStockContext', '_stockPanelLoadMessage', '_startStockPanelLoad', '_stockPanelLoadError',
     '_renderBlockedStatusOptions', 'loadBlockedStock', 'bindBlockedStockUi', '_validityDaysLabel', '_renderValidityKpis',
     '_renderValidityBreakdown', 'loadValidityOverview', 'bindValidityMgmtUi', 'loadPendingRegularization',
-    'resolveRefreshHandlers', 'runSpaPartialNavigation', 'showView'];
+    'groupPendingRegularizationItems', 'pendingRegularizationGroupLabel', 'updatePendingRegularizationSelection', 'applyPendingRegularizationFilter', 'selectPendingRegularizationRows', 'regularizeSelectedStockLot', 'resolveRefreshHandlers', 'runSpaPartialNavigation', 'showView'];
   const hook = source.match(/^globalThis\.__EPI_REFRESH_ESTOQUE_LISTA__ = async \(\) => \{[\s\S]*?^};/m);
   if (!hook) throw new Error('Atualização do estoque ausente');
   // Inclui os próprios callbacks de troca de escopo, sem chamar o restante

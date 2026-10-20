@@ -16,13 +16,14 @@ function harness() {
   const node = (id) => {
     if (!nodes.has(id)) nodes.set(id, { id, value: '', innerHTML: '', textContent: '', style: {},
       listeners: {}, dataset: {}, remove() {},
+      querySelectorAll: () => [{checked:true,dataset:{index:'0'}}],
       querySelector: (selector) => node(selector.slice(1)) });
     return nodes.get(id);
   };
   const context = {
     console, URLSearchParams, Map, Array,
     crypto: { randomUUID: () => '12345678901234567890123456789012' },
-    document: { getElementById: node, querySelectorAll: () => selected,
+    document: { getElementById: node, querySelectorAll: (selector) => selector.includes('group-select') ? [] : selected,
       createElement: () => node('overlay'), body: { appendChild() {} } },
     state: { user: { id: 1 } },
     bindAppListener: (target, event, callback) => { target.listeners[event] = callback; },
@@ -37,7 +38,7 @@ function harness() {
   };
   vm.createContext(context);
   const names = ['readStockEvidenceFile', 'openRegularizeValidityModal', 'regularizePendingPiece',
-    'regularizeSelectedStockLot', 'reconcileStockLot', 'loadStockLotEvidence', '_startStockPanelLoad', '_stockPanelLoadMessage', '_stockPanelLoadError'];
+    'regularizeSelectedStockLot', 'pendingRegularizationProof', 'reviewPendingRegularizationLots', 'updatePendingRegularizationSelection', 'groupPendingRegularizationItems', 'pendingRegularizationGroupLabel', 'applyPendingRegularizationFilter', 'selectPendingRegularizationRows', 'reconcileStockLot', 'loadStockLotEvidence', '_startStockPanelLoad', '_stockPanelLoadMessage', '_stockPanelLoadError'];
   vm.runInContext(names.map(functionSource).join('\n'), context);
   return {
     node, sent, toasts, modalCalls, context,
@@ -153,4 +154,155 @@ module.exports = ({ testAsync, assert, eq }) => {
     await h.run('reconcileStockLot()');
     eq(h.sent.length, 0); eq(h.node('stock-lot-reconcile').disabled, false);
   });
+  testAsync('Lotes: agrupamento preserva lote real, recebimento e peças sem identidade', async () => {
+    const h = harness();
+    const rows = h.run(`groupPendingRegularizationItems([
+      {id:1,epi_id:10,unit_id:5,lot_id:7,stock_movement_id:1},
+      {id:2,epi_id:10,unit_id:5,lot_id:7,stock_movement_id:2},
+      {id:3,epi_id:10,unit_id:5,stock_movement_id:3,lot_code:'A'},
+      {id:4,epi_id:10,unit_id:5,stock_movement_id:4,lot_code:'A'},
+      {id:5,epi_id:10,unit_id:5},{id:6,epi_id:10,unit_id:5},
+      {id:7,epi_id:11,unit_id:5,lot_id:7}])`);
+    eq(rows.length, 5); eq(rows[0].items.length, 2); eq(rows[3].items.length, 2); assert(rows[3].unidentified);
+  });
+
+  const selections = [
+    { id:'1', qr:'QR-1', epi:'10', unit:'5', group:'A', name:'Luva', lot:'A' },
+    { id:'2', qr:'QR-2', epi:'11', unit:'5', group:'B', name:'Capacete', lot:'B' }
+  ];
+  const proof = (piece) => ({ lot:piece.lot, date:piece.lot === 'A' ? '2027-01-01' : '2028-02-02',
+    evidence:'Etiqueta ' + piece.lot, justification:'Conferência ' + piece.lot, source:'label',
+    file:{filename:piece.lot + '.png', content_base64:'QUJD'} });
+
+  testAsync('Lotes: um único envio preserva datas, arquivos, justificativas e QRs separados', async () => {
+    const h=harness(); h.selected(selections);
+    h.context.openRegularizeValidityModal = async (piece) => {
+      eq(h.sent.length,0); eq(piece.queueTotal,2); return proof(piece);
+    };
+    h.context.reviewPendingRegularizationLots = async (lots) => { eq(h.sent.length,0); eq(lots.length,2); return true; };
+    await h.run('regularizeSelectedStockLot()');
+    eq(h.sent.length,1); const lots=h.sent[0].body.lots;
+    eq(lots.length,2); eq(lots[0].physical_expiry_date,'2027-01-01'); eq(lots[1].physical_expiry_date,'2028-02-02');
+    eq(lots[0].evidence_file.filename,'A.png'); eq(lots[1].evidence_file.filename,'B.png');
+    eq(lots[0].items[0].qr_code,'QR-1'); eq(lots[1].justification,'Conferência B');
+    eq(h.context.regularizeSelectedStockLot.busy,false);
+  });
+
+  for (const cancel of ['proof','review']) testAsync('Lotes: cancelar ' + cancel + ' não envia nenhum lote', async () => {
+    const h=harness(); h.selected(selections);
+    h.context.openRegularizeValidityModal = async (piece) => cancel === 'proof' && piece.queueIndex === 2 ? null : proof(piece);
+    h.context.reviewPendingRegularizationLots = async () => false;
+    await h.run('regularizeSelectedStockLot()'); eq(h.sent.length,0);
+    eq(h.context.regularizeSelectedStockLot.busy,false);
+  });
+
+  testAsync('Lotes: clique no grupo regulariza o grupo inteiro mesmo sem checkboxes marcadas', async () => {
+    const h=harness(); h.captureModal();
+    h.context.groupNodes=selections.slice(0,1).map((dataset)=>({dataset}));
+    await h.run('regularizeSelectedStockLot(groupNodes)');
+    eq(h.modalCalls.length,1); eq(h.modalCalls[0].items[0].stock_item_id,1);
+  });
+
+  testAsync('Lotes: selecionar exibidos preserva seleção oculta; limpar remove ambas', async () => {
+    const h=harness();
+    const rows=selections.map((dataset,i)=>({dataset,checked:false,closest:()=>({hidden:i===1})}));
+    h.context.document.querySelectorAll=(selector)=>selector.includes('group-select') ? [] : rows;
+    await h.run('selectPendingRegularizationRows(true)'); eq(rows[0].checked,true); eq(rows[1].checked,false);
+    rows[1].checked=true;
+    await h.run('selectPendingRegularizationRows(false)'); assert(rows.every((row)=>!row.checked));
+  });
+
+  testAsync('Lotes: seleção parcial marca cabeçalho indeterminado e conta grupos', async () => {
+    const h=harness(); const rows=selections.map((dataset,i)=>({dataset:{...dataset,group:'A'},checked:i===0}));
+    const header={dataset:{group:'A'}};
+    h.context.document.querySelectorAll=(selector)=>selector.includes('group-select') ? [header] : rows;
+    await h.run('updatePendingRegularizationSelection()'); eq(header.indeterminate,true); eq(header.checked,false);
+    assert(h.node('pending-reg-selection-count').textContent.includes('1 peça(s) em 1'));
+    rows[1].checked=true; await h.run('updatePendingRegularizationSelection()'); eq(header.indeterminate,false); eq(header.checked,true);
+  });
+
+  testAsync('Lotes: mudança de escopo e erro no envio restauram seleção sem falso sucesso', async () => {
+    for(const changeScope of [true,false]) {
+      const h=harness(); h.selected(selections);
+      h.context.openRegularizeValidityModal=async(piece)=>proof(piece);
+      h.context.reviewPendingRegularizationLots=async()=>{
+        if(changeScope) h.context._blockedStockContext=()=>({companyId:'3',unitId:'6'});
+        return true;
+      };
+      h.context.api=async()=>{throw new Error('Envio recusado');};
+      await h.run('regularizeSelectedStockLot()');
+      eq(h.toasts.length,1); eq(h.toasts[0][1],'error'); eq(h.context.regularizeSelectedStockLot.busy,false);
+    }
+  });
+
+  testAsync('Lotes: duplo clique durante conferência não abre outro fluxo', async () => {
+    const h=harness(); h.selected(selections); let release, calls=0;
+    h.context.openRegularizeValidityModal=()=>{calls++;return new Promise((resolve)=>{release=resolve;});};
+    const pending=h.run('regularizeSelectedStockLot()');
+    await h.run('regularizeSelectedStockLot()'); eq(calls,1); release(null); await pending;
+    eq(h.sent.length,0);
+  });
+
+  testAsync('Lotes: revisão final mostra dados de cada lote e exige confirmação própria', async () => {
+    const h=harness();
+    h.context.reviewLots=selections.map((row)=>({piece:{epiName:row.name,items:[{qr_code:row.qr}]},proof:proof(row)}));
+    const pending=h.run('reviewPendingRegularizationLots(reviewLots)');
+    const html=h.node('overlay').innerHTML;
+    assert(html.includes('2027-01-01')); assert(html.includes('2028-02-02'));
+    assert(html.includes('A.png')); assert(html.includes('B.png'));
+    assert(html.includes('Conferência B')); assert(html.includes('2 lotes / 2 peças'));
+    h.node('reg-review-confirm').listeners.click(); eq(await pending,true);
+    const cancelled=h.run('reviewPendingRegularizationLots(reviewLots)');
+    h.node('reg-review-cancel').listeners.click(); eq(await cancelled,false);
+  });
+
+  testAsync('Lotes: limites de peças/grupos e unidade diferente impedem os formulários', async () => {
+    for(const rows of [Array.from({length:501},(_,i)=>({...selections[0],id:String(i)})),
+        Array.from({length:11},(_,i)=>({...selections[0],group:String(i),id:String(i)})),
+        [selections[0],{...selections[1],unit:'6'}]]) {
+      const h=harness(); h.captureModal(); h.selected(rows);
+      await h.run('regularizeSelectedStockLot()'); eq(h.modalCalls.length,0); eq(h.toasts.length,1);
+    }
+  });
+
+  testAsync('Lotes: separar QRs de um recebimento prepara duas provas em um único envio', async () => {
+    const h=harness(); h.selected([selections[0],{...selections[0],id:'2',qr:'QR-2'}]);
+    let count=0;
+    h.context.openRegularizeValidityModal=async(piece)=>{
+      count++; eq(h.sent.length,0);
+      return {...proof({...piece,lot:count===1?'A':'B'}),items:[piece.items[0]]};
+    };
+    h.context.reviewPendingRegularizationLots=async(lots)=>{eq(lots.length,2);return true;};
+    await h.run('regularizeSelectedStockLot()');
+    eq(h.sent.length,1); const lots=h.sent[0].body.lots;
+    eq(lots[0].items.length,1); eq(lots[0].items[0].qr_code,'QR-1');
+    eq(lots[1].items.length,1); eq(lots[1].items[0].qr_code,'QR-2');
+    eq(lots[0].lot_code,'A'); eq(lots[1].lot_code,'B');
+  });
+
+  testAsync('Lotes: filtro oculta grupos sem apagar sua seleção', async () => {
+    const h=harness(); const rows=selections.map((row)=>({dataset:{pendingGroup:row.group},hidden:false}));
+    const checks=selections.map((dataset)=>({dataset,checked:true}));
+    h.context.document.querySelectorAll=(selector)=>selector.includes('tr[') ? rows : selector.includes('group-select') ? [] : checks;
+    h.node('pending-reg-filter').value='A'; await h.run('applyPendingRegularizationFilter()');
+    eq(rows[0].hidden,false); eq(rows[1].hidden,true); assert(checks.every((node)=>node.checked));
+    assert(h.node('pending-reg-selection-count').textContent.includes('2 peça(s) em 2'));
+    h.node('pending-reg-filter').value=''; await h.run('applyPendingRegularizationFilter()');
+    assert(rows.every((row)=>!row.hidden));
+  });
+
+  testAsync('Lotes: formulário permite separar QRs e exige ao menos uma peça na comprovação', async () => {
+    const h=harness();
+    const checks=[{checked:false,dataset:{index:'0'}},{checked:false,dataset:{index:'1'}}];
+    h.node('overlay').querySelectorAll=()=>checks;
+    const pending=h.run("openRegularizeValidityModal({epiName:'Luva',items:[{stock_item_id:1,qr_code:'Q1'},{stock_item_id:2,qr_code:'Q2'}]})");
+    const confirm=h.node('reg-confirm').listeners.click;
+    await confirm(); assert(h.node('reg-error').textContent.includes('ao menos uma'));
+    checks[1].checked=true;
+    for (const [id,value] of [['reg-lot','L2'],['reg-date','2028-01-01'],['reg-evidence','Etiqueta L2'],['reg-justification','Conferência'],['reg-source','label']]) h.node(id).value=value;
+    h.node('reg-physical-confirm').checked=true; h.node('reg-file').files=[file];
+    await confirm(); const result=await pending;
+    eq(result.items.length,1); eq(result.items[0].stock_item_id,2); eq(result.items[0].qr_code,'Q2');
+  });
+
 };

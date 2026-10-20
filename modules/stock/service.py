@@ -1401,7 +1401,8 @@ def pending_regularization_items(connection, company_id, unit_id=None):
     placeholders = ','.join('?' for _ in ids)
     rows = connection.execute(
         'SELECT esi.id, esi.qr_code_value, esi.epi_id, esi.unit_id, esi.glove_size, esi.size, '
-        'esi.uniform_size, esi.lot_code, epis.name AS epi_name, epis.purchase_code, '
+        'esi.uniform_size, esi.lot_code, esi.lot_id, esi.stock_movement_id, '
+        'CAST(esi.created_at AS TEXT) AS received_at, epis.name AS epi_name, epis.purchase_code, '
         'epis.unit_measure, units.name AS unit_name '
         'FROM epi_stock_items esi JOIN epis ON epis.id = esi.epi_id JOIN units ON units.id = esi.unit_id '
         f'WHERE esi.id IN ({placeholders}) '  # noqa: S608 — ids inteiros derivados internamente

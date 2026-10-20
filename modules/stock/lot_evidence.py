@@ -94,8 +94,8 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
     selections = payload.get('items')
     if payload.get('physical_lot_confirmed') is not True:
         raise ValueError('Confirme a conferência física das peças e do lote informado.')
-    if not isinstance(selections, list) or not 1 <= len(selections) <= 100:
-        raise ValueError('Selecione entre 1 e 100 peças do mesmo lote físico.')
+    if not isinstance(selections, list) or not 1 <= len(selections) <= 500:
+        raise ValueError('Selecione entre 1 e 500 peças do mesmo lote físico.')
     file = validate_evidence_file(payload.get('evidence_file'), required=True)
     justification = str(payload.get('justification') or '').strip()
     if not justification:

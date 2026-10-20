@@ -422,8 +422,15 @@
             <div class="action-group" style="margin-top:8px;align-items:center;">
               <strong id="pending-reg-count" aria-live="polite"></strong>
               <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
-              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.lotProof.selected">Comprovar lote das peças selecionadas</button>
+              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.pendingBulk.selected">Regularizar lotes selecionados</button>
             </div>
+            <div class="action-group" style="margin:12px 0;align-items:center;flex-wrap:wrap;">
+              <label><span data-i18n="stock.pendingBulk.filter">Lote / grupo de recebimento</span><select id="pending-reg-filter"><option value="" data-i18n="stock.pendingBulk.all">Todos os lotes e grupos</option></select></label>
+              <button id="pending-reg-select-visible" type="button" class="ghost" data-i18n="stock.pendingBulk.selectVisible">Selecionar todos exibidos</button>
+              <button id="pending-reg-clear" type="button" class="ghost" data-i18n="stock.pendingBulk.clear">Limpar seleção</button>
+              <strong id="pending-reg-selection-count" aria-live="polite"></strong>
+            </div>
+            <p class="hint" data-i18n="stock.pendingBulk.hint">Marque o lote inteiro ou peças individuais. Grupos sem lote informado são separados pelo recebimento e precisam de identificação física. Cada lote terá sua própria validade e comprovação antes de um único envio.</p>
             <div class="table-wrap">
               <table>
                 <thead><tr>

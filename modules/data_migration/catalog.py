@@ -96,6 +96,16 @@ class EntityDescriptor:
     # forma determinística para que reimportar o mesmo arquivo colida no índice
     # único em vez de duplicar o histórico.
     computed_columns: tuple[str, ...] = ()
+    # Escrita por SERVIÇO de domínio (late-ref "módulo:função"), para a linha que
+    # não é um INSERT/UPDATE cru de uma tabela só: estoque grava movimento +
+    # saldo; fornecedores grava empresa + vínculo. Vazio = writer genérico
+    # (_insert/_update). O writer grava a linha de `target_table` (que a
+    # reconciliação verifica) E o efeito secundário, e devolve
+    # {'outcome': 'inserted'|'updated'|'skipped', 'target_id': int}.
+    writer: str = ''
+    # Desfaz os efeitos SECUNDÁRIOS do writer no rollback físico (os movimentos
+    # do job; o vínculo criado). O rollback genérico cuida de `target_table`.
+    reverser: str = ''
     # Motivo de a entidade estar DESABILITADA POR DECISÃO, e não por estar na
     # fila. São coisas diferentes e a UI precisa dizer qual é: "ainda não
     # chegou a vez" convida a esperar; "não se faz por importação" convida a

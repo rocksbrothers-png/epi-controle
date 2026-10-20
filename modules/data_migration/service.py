@@ -358,6 +358,31 @@ def _load_normalizer(descriptor):
     return getattr(import_module(module_name), function_name)
 
 
+def _load_writer(descriptor):
+    """Writer de domínio do descritor (late-ref "módulo:função").
+
+    None = writer genérico (`_insert`/`_update`). Mesmo import tardio do
+    normalizador: o motor não depende em tempo de import de cada módulo de
+    domínio.
+    """
+    reference = getattr(descriptor, 'writer', '')
+    if not reference:
+        return None
+    module_name, _, function_name = reference.partition(':')
+    from importlib import import_module
+    return getattr(import_module(module_name), function_name)
+
+
+def _load_reverser(descriptor):
+    """Reverser dos efeitos secundários do writer (late-ref), ou None."""
+    reference = getattr(descriptor, 'reverser', '')
+    if not reference:
+        return None
+    module_name, _, function_name = reference.partition(':')
+    from importlib import import_module
+    return getattr(import_module(module_name), function_name)
+
+
 def apply_domain_rules(descriptor, records: list[dict]) -> list[dict]:
     """Passa cada linha pelas MESMAS regras do cadastro manual.
 
@@ -607,7 +632,7 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
                     outcome = _apply_row(
                         connection, descriptor, company_id, job_id, index, record,
                         strategy=strategy, writable=writable, defaults=defaults,
-                        existing=existing, stamp=stamp,
+                        existing=existing, stamp=stamp, actor=actor,
                     )
             except Exception:  # linha ruim não derruba o job inteiro
                 # Aqui a transação já voltou ao ponto anterior à linha, então
@@ -667,11 +692,12 @@ def _persisted_evidence(connection, descriptor, company_id, target_id, payload, 
 
 
 def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
-               strategy, writable, defaults, existing, stamp=None) -> str:
+               strategy, writable, defaults, existing, stamp=None, actor=None) -> str:
     """Grava UMA linha e devolve o contador que ela alimenta.
 
     Roda inteira dentro do SAVEPOINT aberto por quem chama.
     """
+    writer = _load_writer(descriptor)
     current, conflict = identify(existing, descriptor, record)
     if conflict:
         raise ValueError('Identidade mudou durante a execução.')
@@ -713,7 +739,18 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
                     action='skip', table=descriptor.target_table, target_id=None,
                     before=None, after=None, error='Registro inexistente (update_only).')
             return 'skipped'
-        new_id = _insert(connection, descriptor, company_id, defaults, payload, stamp=stamp)
+        if writer is not None:
+            outcome = writer(connection, descriptor=descriptor, company_id=company_id, job_id=job_id,
+                             action='insert', record=record, payload=payload, current=None,
+                             defaults=defaults, stamp=stamp, actor=actor or {})
+            if outcome.get('outcome') == 'skipped':
+                _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
+                        action='skip', table=descriptor.target_table, target_id=outcome.get('target_id'),
+                        before=None, after=None, error=str(outcome.get('reason') or 'Sem alteração.'))
+                return 'skipped'
+            new_id = int(outcome['target_id'])
+        else:
+            new_id = _insert(connection, descriptor, company_id, defaults, payload, stamp=stamp)
         _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                 action='insert', table=descriptor.target_table, target_id=new_id,
                 before=None, after=_persisted_evidence(connection, descriptor, company_id, new_id, payload))
@@ -733,7 +770,17 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
     before = {name: value for name, value in prior['row'].items() if name in writable}
     if identify({key: [prior['row']] for key in existing if any(r['id'] == int(current['id']) for r in existing[key])}, descriptor, record)[1]:
         raise ValueError('Identidade mudou durante a execução.')
-    _update(connection, descriptor, int(current['id']), company_id, payload)
+    if writer is not None:
+        outcome = writer(connection, descriptor=descriptor, company_id=company_id, job_id=job_id,
+                         action='update', record=record, payload=payload, current=current,
+                         defaults=defaults, stamp=stamp, actor=actor or {})
+        if outcome.get('outcome') == 'skipped':
+            _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
+                    action='skip', table=descriptor.target_table, target_id=int(current['id']),
+                    before=None, after=None, error=str(outcome.get('reason') or 'Sem alteração.'))
+            return 'skipped'
+    else:
+        _update(connection, descriptor, int(current['id']), company_id, payload)
     _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
             action='update', table=descriptor.target_table,
             target_id=int(current['id']), before=before,
@@ -959,6 +1006,15 @@ def revert_job(connection, job_id: int, company_id: int, actor) -> dict:
             or sum(row['action'] == 'update' for row in rows) != int(job['updated_rows'])):
         raise RollbackConflict('auditoria incompleta para conciliar a reversão')
     plan = preflight(connection, descriptor, int(company_id), rows)
+    # Efeitos secundários do writer (movimentos de estoque; vínculos de
+    # terceirizada) são desfeitos ANTES das linhas de `target_table`: o vínculo
+    # tem FK para a empresa, então apagar a empresa primeiro falharia. Só no
+    # rollback físico — o lógico (pós-homologação) já é recusado acima para
+    # entidades sem `reversal_column`, que é o caso de estoque e fornecedores.
+    if not homologated:
+        reverser = _load_reverser(descriptor)
+        if reverser is not None:
+            reverser(connection, descriptor=descriptor, company_id=int(company_id), job_id=int(job_id))
     reverted = {'deleted': 0, 'restored': 0, 'skipped': len(rows) - len(plan), 'marked': 0}
     for record in plan:
         target_id = int(record['target_id'])

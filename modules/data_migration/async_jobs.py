@@ -116,18 +116,10 @@ def install_schema(connection):
         'CREATE INDEX IF NOT EXISTS idx_mig_async_claim ON migration_async_jobs (status, id)')
     connection.execute(
         'CREATE INDEX IF NOT EXISTS idx_mig_async_company ON migration_async_jobs (company_id, id)')
-    # RLS: tabela backend-only (payload cifrado, dados multi-tenant). Nega acesso
-    # direto via PostgREST a anon/authenticated com a mesma policy RESTRICTIVE das
-    # demais tabelas (028/029/#309); também versionada em supabase/migrations/*.sql.
-    # O backend conecta como owner/service role e não é afetado.
-    connection.execute('ALTER TABLE migration_async_jobs ENABLE ROW LEVEL SECURITY')
-    has_policy = connection.execute(
-        "SELECT 1 FROM pg_policies WHERE schemaname='public' "
-        "AND tablename='migration_async_jobs' AND policyname='block_direct_api_access'").fetchone()
-    if not has_policy:
-        connection.execute(
-            'CREATE POLICY block_direct_api_access ON migration_async_jobs '
-            'AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)')
+    # A RLS (ENABLE + policy block_direct_api_access) NÃO fica aqui: DDL de RLS
+    # mora exclusivamente em migration versionada (#309 — tests/test_309_rls_versionada.py
+    # proíbe RLS em modules/core/app). É aplicada pela migração 035, que executa
+    # supabase/migrations/20261016000000_migration_async_jobs.sql.
 
 
 def _authorize(connection, actor):

@@ -2,8 +2,8 @@
 
 NT 146/2015 — ao dar entrada dos EPIs no estoque, o administrador local informa a
 validade do fabricante antes de enviar ao estoque, para que nenhum item fique
-"aberto" sem data. A captura é por lote: a primeira data de um mesmo EPI vale
-para todas as demais unidades daquele EPI.
+"aberto" sem data comprovada. Cada linha/lote precisa de sua própria
+comprovação; a identidade do EPI não comprova um lote físico compartilhado.
 """
 
 import sqlite3
@@ -112,7 +112,8 @@ def test_manufacturer_validity_saved_on_piece_not_catalog():
     pr = {'id': 1, 'company_id': 1, 'status': 'received'}
     result = update_purchase_request_status(
         conn, _actor(), pr, 'checked', '', '',
-        [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30'}], '1.2.3.4'
+        [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30',
+          'evidence': 'Etiqueta do fabricante'}], '1.2.3.4'
     )
     assert result['stock_entries'] == 2
     # catálogo NÃO é mais escrito no recebimento
@@ -125,8 +126,8 @@ def test_manufacturer_validity_saved_on_piece_not_catalog():
     assert all(l['manufacturer_validity_date'] == '2027-09-30' for l in result['qr_labels'])
 
 
-def test_first_date_of_same_epi_applies_to_all_items():
-    """Por lote: informada a data em um item, vale para os demais do mesmo EPI."""
+def test_same_epi_does_not_share_physical_expiry_between_lines():
+    """Somente a linha com data e evidência comprovadas ganha validade física."""
     from core.schema import ensure_stock_lifecycle_model
     from modules.purchases.service import update_purchase_request_status
     conn = _conn()
@@ -151,18 +152,18 @@ def test_first_date_of_same_epi_applies_to_all_items():
     result = update_purchase_request_status(
         conn, _actor(), pr, 'checked', '', '',
         [
-            {'id': 1, 'received': True, 'manufacturer_validity_date': '2028-01-15'},
+            {'id': 1, 'received': True, 'manufacturer_validity_date': '2028-01-15',
+             'evidence': 'Etiqueta da primeira linha'},
             {'id': 2, 'received': True},
         ], ''
     )
     assert result['stock_entries'] == 2
-    # catálogo NÃO escrito; validade por lote nas PEÇAS (herdada por lote)
+    # Catálogo intacto; a segunda linha permanece desconhecida.
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
     assert epi['epi_validity_date'] == ''
-    rows = conn.execute('SELECT physical_expiry_date FROM epi_stock_items WHERE epi_id = 100').fetchall()
-    assert len(rows) == 2 and all(r['physical_expiry_date'] == '2028-01-15' for r in rows)
-    # ambas as etiquetas (dos dois itens) herdam a mesma data
-    assert all(l['manufacturer_validity_date'] == '2028-01-15' for l in result['qr_labels'])
+    rows = conn.execute('SELECT physical_expiry_date FROM epi_stock_items WHERE epi_id = 100 ORDER BY id').fetchall()
+    assert [r['physical_expiry_date'] for r in rows] == ['2028-01-15', None]
+    assert [label['manufacturer_validity_date'] for label in result['qr_labels']] == ['2028-01-15', '']
 
 
 # ── caminho da PO (recebimento) ───────────────────────────────────────────────
@@ -242,7 +243,8 @@ def test_est_v3_received_items_carry_physical_expiry():
     pr = {'id': 1, 'company_id': 1, 'status': 'received'}
     update_purchase_request_status(
         conn, _actor(), pr, 'checked', '', '',
-        [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30'}], ''
+        [{'id': 1, 'received': True, 'manufacturer_validity_date': '2027-09-30',
+          'evidence': 'Etiqueta do fabricante'}], ''
     )
     rows = conn.execute(
         "SELECT physical_expiry_date, expiry_source, status FROM epi_stock_items WHERE epi_id = 100"
@@ -276,7 +278,8 @@ def test_est_v3_expired_lot_at_receipt_enters_blocked_not_available():
     pr = {'id': 1, 'company_id': 1, 'status': 'received'}
     update_purchase_request_status(
         conn, _actor(), pr, 'checked', '', '',
-        [{'id': 1, 'received': True, 'manufacturer_validity_date': past}], ''
+        [{'id': 1, 'received': True, 'manufacturer_validity_date': past,
+          'evidence': 'Etiqueta vencida do fabricante'}], ''
     )
     r = conn.execute(
         "SELECT status, physical_expiry_date, blocking_reason_code FROM epi_stock_items WHERE epi_id = 100"

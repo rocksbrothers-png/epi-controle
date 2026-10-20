@@ -83,6 +83,7 @@ def main(argv=None):
         try:
             signal.signal(sig, _graceful)
         except Exception:
+            # Sinal indisponível no ambiente (ex.: thread secundária): segue sem handler.
             pass
 
     started = time.monotonic()

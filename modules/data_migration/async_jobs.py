@@ -24,7 +24,6 @@ _ADVISORY_NS = 790317
 
 _CLAIMABLE = ('claimed', 'running', 'recovering')
 _TERMINAL = ('completed', 'completed_with_rejections', 'failed', 'cancelled')
-_STATUSES = ('queued',) + _CLAIMABLE + _TERMINAL
 
 
 def _now():
@@ -117,6 +116,18 @@ def install_schema(connection):
         'CREATE INDEX IF NOT EXISTS idx_mig_async_claim ON migration_async_jobs (status, id)')
     connection.execute(
         'CREATE INDEX IF NOT EXISTS idx_mig_async_company ON migration_async_jobs (company_id, id)')
+    # RLS: tabela backend-only (payload cifrado, dados multi-tenant). Nega acesso
+    # direto via PostgREST a anon/authenticated com a mesma policy RESTRICTIVE das
+    # demais tabelas (028/029/#309); também versionada em supabase/migrations/*.sql.
+    # O backend conecta como owner/service role e não é afetado.
+    connection.execute('ALTER TABLE migration_async_jobs ENABLE ROW LEVEL SECURITY')
+    has_policy = connection.execute(
+        "SELECT 1 FROM pg_policies WHERE schemaname='public' "
+        "AND tablename='migration_async_jobs' AND policyname='block_direct_api_access'").fetchone()
+    if not has_policy:
+        connection.execute(
+            'CREATE POLICY block_direct_api_access ON migration_async_jobs '
+            'AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false)')
 
 
 def _authorize(connection, actor):
@@ -228,7 +239,7 @@ def request_cancel(connection, job_id, actor):
     if status == 'cancelled':
         connection.commit()
         return _public(row)
-    if status in ('completed', 'completed_with_rejections', 'failed'):
+    if status in _TERMINAL:  # 'cancelled' já tratado acima; demais terminais não cancelam
         connection.rollback()
         raise ValueError('Job em estado terminal não pode ser cancelado.')
     now = _now()
@@ -394,6 +405,7 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
                 try:
                     connection.rollback()
                 except Exception:
+                    # Conexão já inutilizável; o advisory de sessão cai no close().
                     pass
         connection.close()
 

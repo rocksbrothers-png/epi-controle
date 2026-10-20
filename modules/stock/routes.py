@@ -66,6 +66,7 @@ from modules.stock.service import (
     set_unit_epi_minimum_stock,
     upsert_unit_stock,
 )
+from modules.stock.manual_receipt import record_manual_lot_piece, validate_manual_lot
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.rate_limit import get_client_ip
 from core.schema import ensure_stock_movement_size_columns
@@ -802,6 +803,12 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         manufacture_date = str(payload.get('manufacture_date') or '').strip()
         if not manufacture_date:
             raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
+        lot = validate_manual_lot(connection, payload)
+        if lot['physical_expiry_date'] is not None:
+            # A permissão de ajuste de saldo não concede captura de validade.
+            authorize_action(connection, actor['id'], 'stock:regularize_validity', int(payload['company_id']))
+        from modules.stock.eligibility import lock_stock_scope
+        lock_stock_scope(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
         stock_row = get_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']))
         previous_stock = int((stock_row or {}).get('quantity') or 0)
         delta = quantity if movement_type == 'in' else -quantity
@@ -854,6 +861,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     generated_by_user_id=int(actor['id']),
                     now=now,
                 )
+                record_manual_lot_piece(connection, stock_item_id, lot, actor, now)
                 qr_labels.append({
                     'qr_code_value': qr_value,
                     'epi_name': epi['name'],
@@ -861,6 +869,9 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     'size': size,
                     'uniform_size': uniform_size,
                     'stock_item_id': stock_item_id,
+                    'lot_code': lot['lot_code'],
+                    'physical_expiry_date': lot['physical_expiry_date'],
+                    'expiry_source': lot['expiry_source'],
                     'manufacture_date': manufacture_date,
                     'unit_name': unit['name'],
                     'label_measure': label_measure,

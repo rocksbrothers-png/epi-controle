@@ -586,6 +586,19 @@
     "compliant": "I samsvar",
     "blockedNeedStatus": "Velg blokkeringsstatus.",
     "blockedFailed": "Kunne ikke blokkere varen.",
+    "receiptValidity": {
+      "title": "Fysisk utløpsdato for mottatt parti",
+      "hint": "Registrer ett mottak per parti med partiets emballasje/etikett eller produsentdokument. Datoen i PVU-katalogen eller CA dokumenterer ikke dette partiets utløpsdato.",
+      "source": "Kilde for dokumentert utløpsdato",
+      "choose": "Velg dokumentasjon...",
+      "label": "Partiets emballasje / etikett",
+      "document": "Produsentdokument for partiet",
+      "unknown": "Utløpsdato ennå ikke dokumentert",
+      "noPermission": "Din rolle kan registrere mottak uten dokumentasjon; en autorisert operativ rolle må registrere dokumentert utløpsdato senere.",
+      "pending": "Enhetene vil avvente dokumentasjon og være utilgjengelige for utlevering.",
+      "sameLot": "Datoen og dokumentasjonen registreres for alle enheter i dette partiet. Registrer ulike partier separat.",
+      "required": "Oppgi parti, fysisk utløpsdato og verifiserbar dokumentasjon."
+    },
     "pendingReg": {
       "title": "Venter på regularisering",
       "hint": "Lagerenheter med UKJENT fysisk holdbarhet — sperret for utlevering til regularisering. Oppgi bevist fysisk holdbarhet, med verifiserbart bevis og begrunnelse.",

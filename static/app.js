@@ -10777,6 +10777,7 @@ function syncStockOptions() {
   scheduleStockMovementSearchLoad();
   renderStockEpiSearchResults();
   setupStockLabelCustomFields();
+  syncManualReceiptValidityFields();
 }
 
 function syncStockSizeDefaults() {
@@ -13581,6 +13582,49 @@ async function readManufacturerValidityFromImage(file) {
   }
 }
 
+function syncManualReceiptValidityFields() {
+  const source = document.getElementById('stock-receipt-source');
+  if (!source) return;
+  const canCapture = hasPermission('stock:regularize_validity');
+  if (!canCapture) source.value = 'unknown';
+  else if (source.disabled) source.value = '';
+  source.disabled = !canCapture;
+  const known = canCapture && ['label', 'manufacturer_document'].includes(source.value);
+  const proof = document.getElementById('stock-receipt-proof');
+  if (proof) proof.hidden = !known;
+  for (const id of ['stock-receipt-expiry', 'stock-receipt-evidence']) {
+    const field = document.getElementById(id);
+    if (!field) continue;
+    field.disabled = !known;
+    field.required = known;
+    if (!known) field.value = '';
+  }
+  const lot = document.getElementById('stock-receipt-lot');
+  if (lot) lot.required = known;
+  const hint = document.getElementById('stock-receipt-validity-hint');
+  if (hint) hint.textContent = !canCapture
+    ? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.')
+    : source.value === 'unknown'
+      ? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.')
+      : tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.');
+}
+
+function manualReceiptValidityValues(values) {
+  const source = hasPermission('stock:regularize_validity') ? String(values.expiry_source || '') : 'unknown';
+  if (!['label', 'manufacturer_document', 'unknown'].includes(source)) {
+    throw new Error(tr('stock.receiptValidity.choose', 'Selecione a comprovação...'));
+  }
+  const known = source !== 'unknown';
+  const lot = String(values.lot_code || '').trim();
+  const expiry = known ? String(values.physical_expiry_date || '').trim() : '';
+  const evidence = known ? String(values.expiry_evidence || '').trim() : '';
+  if (known && (!lot || !expiry || !evidence)) {
+    throw new Error(tr('stock.receiptValidity.required', 'Informe lote, validade física e evidência verificável.'));
+  }
+  return { lot_code: lot, physical_validity_unknown: !known,
+    physical_expiry_date: expiry, expiry_source: known ? source : '', expiry_evidence: evidence };
+}
+
 async function handleStockMovementSubmit(event) {
   event.preventDefault();
   if (!requirePermission('stock:adjust')) return;
@@ -13609,6 +13653,7 @@ async function handleStockMovementSubmit(event) {
     values.uniform_size = resolvedSize.uniform_size;
     values.manufacture_date = String(values.manufacture_date || '').trim();
     if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
+    Object.assign(values, manualReceiptValidityValues(values));
     const printerCustomValue = String(document.getElementById('stock-label-printer-custom')?.value || '').trim();
     const formatCustomValue = String(document.getElementById('stock-label-format-custom')?.value || '').trim();
     if (values.label_printer_name === '__outro__') {
@@ -13632,6 +13677,7 @@ async function handleStockMovementSubmit(event) {
     if (printerCustomField) printerCustomField.value = '';
     if (formatCustomField) formatCustomField.value = '';
     setupStockLabelCustomFields();
+    syncManualReceiptValidityFields();
     resetStockManufactureCaptureState();
     await loadBootstrap();
   } catch (error) {
@@ -15115,6 +15161,8 @@ async function init() {
   bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
   bindAppListener(document.getElementById('stock-form'), 'submit', handleStockMovementSubmit);
+  bindAppListener(document.getElementById('stock-receipt-source'), 'change', syncManualReceiptValidityFields);
+  syncManualReceiptValidityFields();
   bindAppListener(document.getElementById('stock-manufacture-camera'), 'change', handleStockManufactureCameraCapture);
   bindAppListener(document.getElementById('stock-manufacture-date'), 'input', () => {
     const dateField = document.getElementById('stock-manufacture-date');

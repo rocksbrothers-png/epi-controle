@@ -1,4 +1,4 @@
-# EST-V3.5 — inicialização dos painéis de estoque
+# EST-V3.5 — painéis de estoque e validade comprovada no recebimento manual
 
 Na navegação clássica, entrar em Estoque não executava o hook que vinculava
 os botões e consultava Gestão de Validade, Pendentes de regularização e
@@ -30,6 +30,36 @@ de regularização existente, informando validade física comprovada, evidência
 verificável e justificativa. A correção não preenche datas históricas, não gera
 peças ausentes e não altera permissões nem critérios de liberação do backend.
 
+## Entrada manual por lote
+
+A entrada manual agora solicita uma escolha explícita: comprovação por
+embalagem/etiqueta (`label`), documento do fabricante (`manufacturer_document`)
+ou validade ainda desconhecida. Cada entrada representa um lote; para lotes
+diferentes devem ser feitas entradas separadas. Com comprovação, são exigidos
+`lot_code`, `physical_expiry_date`, `expiry_source` e `expiry_evidence`.
+`manufacture_date` continua separado da data de vencimento. Datas inválidas,
+validade anterior à fabricação e comprovação parcial/conflitante são recusadas
+antes de criar movimento, saldo ou QR.
+
+Capturar validade física exige a permissão existente
+`stock:regularize_validity`, além de `stock:adjust` e do escopo operacional de
+unidade. Administrador Local e Gestor de EPI podem capturá-la; o Administrador
+Geral continua podendo registrar entrada sem comprovação, mas não conceder
+validade. A autorização é reaplicada no backend, inclusive via API direta.
+
+A validade e sua evidência são gravadas em cada peça recém-criada, junto do
+lote e fabricação física, sem alterar nem consultar a validade do catálogo/CA
+para autorizar a peça. Recebimento comprovado gera evento `receipt` com ator,
+escopo e snapshot da comprovação na mesma transação. Lote já vencido entra como
+`blocked_expired`; um lote válido torna-se candidato físico, sujeito ao saldo
+livre e demais regras do backend. A trava de escopo compartilhada protege o
+saldo durante recebimentos concorrentes.
+
+Clientes legados sem os novos campos continuam registrando peças com validade
+desconhecida e inelegíveis. Na web, a opção desconhecida mostra que as peças
+ficarão pendentes de regularização. Esse recebimento não regulariza peças
+antigas nem recria QRs para saldos sem lastro físico.
+
 ## Verificação
 
 `node static/js/test/run-tests.js` inclui 18 cenários novos que executam as
@@ -39,6 +69,10 @@ três botões, falha isolada da listagem, carregamento/erro/recuperação, troca
 empresa/unidade e descarte de respostas/erros atrasados.
 
 Também executar `python scripts/build_index.py check` e `pytest tests/`.
+`tests_postgres/test_stock_manual_receipt_validity_http.py` exercita HTTP/JWT
+real, PostgreSQL, os dois perfis e fontes autorizadas, lotes com datas próprias,
+desconhecidos, vencidos, evidência/data inválida, perfis negados, escopo e rollback
+integral quando a auditoria falha. A suíte está incluída na CI física dedicada.
 Os hashes de paridade F4/F5-B são recalculados para a alteração idêntica de
 `app.js` e do runner; as asserções e listas de arquivos permanecem iguais.
 

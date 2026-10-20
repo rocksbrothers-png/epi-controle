@@ -586,6 +586,19 @@
     "compliant": "Compliant",
     "blockedNeedStatus": "Select the block status.",
     "blockedFailed": "Could not block the item.",
+    "receiptValidity": {
+      "title": "Physical expiry of the received batch",
+      "hint": "Record one receipt per batch, using its packaging/label or the manufacturer's document. The PPE catalogue or CA expiry does not prove this batch's expiry.",
+      "source": "Expiry evidence source",
+      "choose": "Select the evidence source...",
+      "label": "Batch packaging / label",
+      "document": "Manufacturer's document for the batch",
+      "unknown": "Expiry not yet verified",
+      "noPermission": "Your role can record an unverified receipt; an authorised operational role must regularise its expiry.",
+      "pending": "Items will await regularisation and remain unavailable for delivery.",
+      "sameLot": "The date and evidence will be recorded for every item in this batch. Record different batches separately.",
+      "required": "Enter the batch, physical expiry and verifiable evidence."
+    },
     "pendingReg": {
       "title": "Pending regularisation",
       "hint": "Stock pieces with UNKNOWN physical validity — blocked for delivery until regularised. Enter the proven physical validity, with verifiable evidence and justification.",

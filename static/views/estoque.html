@@ -161,6 +161,24 @@
             <label><span data-i18n="stock.movement">movimentação</span><select name="movement_type"><option value="in" data-i18n="stock.epiEntry">Entrada de EPI</option></select></label>
             <label><span data-i18n="delivery.quantity">Quantidade</span><input name="quantity" type="number" min="1" value="1" required></label>
             <label><span data-i18n="stock.manufacturingDate">Data de fabricação (recebimento)</span><input name="manufacture_date" id="stock-manufacture-date" type="date" required></label>
+            <fieldset>
+              <legend data-i18n="stock.receiptValidity.title">Validade física do lote recebido</legend>
+              <p class="hint" data-i18n="stock.receiptValidity.hint">Registre uma entrada por lote, usando a embalagem/etiqueta ou documento do fabricante. A validade do cadastro do EPI ou do CA não comprova a validade deste lote.</p>
+              <label><span data-i18n="stock.lot">Lote</span><input name="lot_code" id="stock-receipt-lot" type="text"></label>
+              <label><span data-i18n="stock.receiptValidity.source">Comprovação da validade</span>
+                <select name="expiry_source" id="stock-receipt-source" required>
+                  <option value="" data-i18n="stock.receiptValidity.choose">Selecione a comprovação...</option>
+                  <option value="label" data-i18n="stock.receiptValidity.label">Embalagem / etiqueta do lote</option>
+                  <option value="manufacturer_document" data-i18n="stock.receiptValidity.document">Documento do fabricante para o lote</option>
+                  <option value="unknown" data-i18n="stock.receiptValidity.unknown">Validade ainda não comprovada</option>
+                </select>
+              </label>
+              <div id="stock-receipt-proof" hidden>
+                <label><span data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</span><input name="physical_expiry_date" id="stock-receipt-expiry" type="date" disabled></label>
+                <label><span data-i18n="stock.pendingReg.evidence">Evidência verificável</span><textarea name="expiry_evidence" id="stock-receipt-evidence" rows="2" disabled></textarea></label>
+              </div>
+              <p id="stock-receipt-validity-hint" class="hint" aria-live="polite"></p>
+            </fieldset>
             <label><span data-i18n="stock.captureDateCamera">Capturar data por câmera</span>
               <input id="stock-manufacture-camera" type="file" accept="image/*" capture="environment">
             </label>

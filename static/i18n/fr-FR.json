@@ -586,6 +586,19 @@
     "compliant": "Conforme",
     "blockedNeedStatus": "Sélectionnez le statut de blocage.",
     "blockedFailed": "Impossible de bloquer l'article.",
+    "receiptValidity": {
+      "title": "Validité physique du lot reçu",
+      "hint": "Enregistrez une réception par lot, à partir de son emballage/étiquette ou du document du fabricant. La date du catalogue EPI ou du CA ne prouve pas la validité de ce lot.",
+      "source": "Source de preuve de validité",
+      "choose": "Sélectionnez la preuve...",
+      "label": "Emballage / étiquette du lot",
+      "document": "Document du fabricant pour le lot",
+      "unknown": "Validité pas encore vérifiée",
+      "noPermission": "Votre profil peut enregistrer une réception sans preuve ; un profil opérationnel autorisé devra régulariser la validité.",
+      "pending": "Les pièces resteront en attente de régularisation et indisponibles pour la remise.",
+      "sameLot": "La date et la preuve seront enregistrées pour chaque pièce de ce lot. Enregistrez les lots différents séparément.",
+      "required": "Indiquez le lot, la validité physique et une preuve vérifiable."
+    },
     "pendingReg": {
       "title": "En attente de régularisation",
       "hint": "Pièces en stock avec validité physique INCONNUE — bloquées pour la remise jusqu'à la régularisation. Indiquez la validité physique prouvée, avec preuve vérifiable et justification.",

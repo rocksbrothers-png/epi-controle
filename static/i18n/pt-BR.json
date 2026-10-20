@@ -586,6 +586,19 @@
     "compliant": "Conforme",
     "blockedNeedStatus": "Selecione o status de bloqueio.",
     "blockedFailed": "Não foi possível bloquear o item.",
+    "receiptValidity": {
+      "title": "Validade física do lote recebido",
+      "hint": "Registre uma entrada por lote, usando a embalagem/etiqueta ou documento do fabricante. A validade do cadastro do EPI ou do CA não comprova a validade deste lote.",
+      "source": "Comprovação da validade",
+      "choose": "Selecione a comprovação...",
+      "label": "Embalagem / etiqueta do lote",
+      "document": "Documento do fabricante para o lote",
+      "unknown": "Validade ainda não comprovada",
+      "noPermission": "Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.",
+      "pending": "As peças entrarão pendentes de regularização e indisponíveis para entrega.",
+      "sameLot": "A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.",
+      "required": "Informe lote, validade física e evidência verificável."
+    },
     "pendingReg": {
       "title": "Pendentes de regularização",
       "hint": "Peças em estoque com validade física DESCONHECIDA — bloqueadas para entrega até a regularização. Informe a validade física comprovada, com evidência verificável e justificativa.",

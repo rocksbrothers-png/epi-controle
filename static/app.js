@@ -1646,7 +1646,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); await loadPendingRegularization(); },
+    refresh: () => globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(),
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -2084,10 +2084,11 @@ globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
 globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   bindBlockedStockUi();
   bindValidityMgmtUi();
-  await loadStockEpis();
-  await loadBlockedStock();
-  await loadValidityOverview();
-  await loadPendingRegularization();
+  // Cada painel consulta seu próprio recurso: uma falha na lista de EPIs não
+  // pode impedir a consulta das pendências, bloqueios ou indicadores.
+  await Promise.all([
+    loadStockEpis(), loadBlockedStock(), loadValidityOverview(), loadPendingRegularization(), loadStockLotEvidence()
+  ]);
 };
 
 function debounce(fn, wait = 200) {
@@ -3727,6 +3728,13 @@ function showView(view, options = {}) {
   }
   if (partial && SPA_NAV_SUPPORTED_VIEWS.includes(view)) {
     void runSpaPartialNavigation(view);
+  }
+  if (view === 'estoque' && (!partial || !isSpaNavigationEnabled())) {
+    // O estoque também funciona sem os recursos opcionais de navegação SPA.
+    void Promise.resolve(globalThis.__EPI_REFRESH_ESTOQUE_LISTA__?.()).catch((error) => {
+      reportNonCriticalError('[stock] falha ao atualizar a tela', error);
+      showToast(tr('stock.panelLoadError', 'Não foi possível carregar os dados. Clique em Atualizar para tentar novamente.'), 'error');
+    });
   }
   if (view === 'unidades' && typeof loadArchivedUnits === 'function') {
     void loadArchivedUnits();
@@ -10769,6 +10777,7 @@ function syncStockOptions() {
   scheduleStockMovementSearchLoad();
   renderStockEpiSearchResults();
   setupStockLabelCustomFields();
+  syncManualReceiptValidityFields();
 }
 
 function syncStockSizeDefaults() {
@@ -13573,6 +13582,51 @@ async function readManufacturerValidityFromImage(file) {
   }
 }
 
+function syncManualReceiptValidityFields() {
+  const source = document.getElementById('stock-receipt-source');
+  if (!source) return;
+  const canCapture = hasPermission('stock:regularize_validity');
+  const reconcile = document.getElementById('stock-lot-reconcile');
+  if (reconcile) reconcile.hidden = !canCapture;
+  if (!canCapture) source.value = 'unknown';
+  else if (source.disabled) source.value = '';
+  source.disabled = !canCapture;
+  const known = canCapture && ['label', 'manufacturer_document'].includes(source.value);
+  const proof = document.getElementById('stock-receipt-proof');
+  if (proof) proof.hidden = !known;
+  for (const id of ['stock-receipt-expiry', 'stock-receipt-evidence', 'stock-receipt-file']) {
+    const field = document.getElementById(id);
+    if (!field) continue;
+    field.disabled = !known;
+    field.required = known;
+    if (!known) field.value = '';
+  }
+  const lot = document.getElementById('stock-receipt-lot');
+  if (lot) lot.required = known;
+  const hint = document.getElementById('stock-receipt-validity-hint');
+  if (hint) hint.textContent = !canCapture
+    ? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.')
+    : source.value === 'unknown'
+      ? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.')
+      : tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.');
+}
+
+function manualReceiptValidityValues(values) {
+  const source = hasPermission('stock:regularize_validity') ? String(values.expiry_source || '') : 'unknown';
+  if (!['label', 'manufacturer_document', 'unknown'].includes(source)) {
+    throw new Error(tr('stock.receiptValidity.choose', 'Selecione a comprovação...'));
+  }
+  const known = source !== 'unknown';
+  const lot = String(values.lot_code || '').trim();
+  const expiry = known ? String(values.physical_expiry_date || '').trim() : '';
+  const evidence = known ? String(values.expiry_evidence || '').trim() : '';
+  if (known && (!lot || !expiry || !evidence)) {
+    throw new Error(tr('stock.receiptValidity.required', 'Informe lote, validade física e evidência verificável.'));
+  }
+  return { lot_code: lot, physical_validity_unknown: !known,
+    physical_expiry_date: expiry, expiry_source: known ? source : '', expiry_evidence: evidence };
+}
+
 async function handleStockMovementSubmit(event) {
   event.preventDefault();
   if (!requirePermission('stock:adjust')) return;
@@ -13601,6 +13655,10 @@ async function handleStockMovementSubmit(event) {
     values.uniform_size = resolvedSize.uniform_size;
     values.manufacture_date = String(values.manufacture_date || '').trim();
     if (!values.manufacture_date) throw new Error('Data de fabricação ação obrigatória no recebimento do estoque.');
+    Object.assign(values, manualReceiptValidityValues(values));
+    if (!values.physical_validity_unknown) {
+      values.evidence_file = await readStockEvidenceFile(document.getElementById('stock-receipt-file'));
+    }
     const printerCustomValue = String(document.getElementById('stock-label-printer-custom')?.value || '').trim();
     const formatCustomValue = String(document.getElementById('stock-label-format-custom')?.value || '').trim();
     if (values.label_printer_name === '__outro__') {
@@ -13624,6 +13682,7 @@ async function handleStockMovementSubmit(event) {
     if (printerCustomField) printerCustomField.value = '';
     if (formatCustomField) formatCustomField.value = '';
     setupStockLabelCustomFields();
+    syncManualReceiptValidityFields();
     resetStockManufactureCaptureState();
     await loadBootstrap();
   } catch (error) {
@@ -13636,6 +13695,32 @@ async function handleStockMovementSubmit(event) {
 
 // ── Estoque Bloqueado (Fase 4b/HSE) ──────────────────────────────────────────
 let _blockedStockStatuses = null;
+const _stockPanelRequests = new Map();
+
+function _stockPanelLoadMessage(statusId, message, isError = false) {
+  const status = document.getElementById(statusId);
+  if (!status) return;
+  status.textContent = message;
+  status.style.color = isError ? 'var(--color-danger)' : '';
+}
+
+function _startStockPanelLoad(key, statusId, emptyId, contentIds) {
+  const requestId = (_stockPanelRequests.get(key) || 0) + 1;
+  _stockPanelRequests.set(key, requestId);
+  for (const id of contentIds) {
+    const element = document.getElementById(id);
+    if (element) element.innerHTML = '';
+  }
+  const empty = document.getElementById(emptyId);
+  if (empty) empty.style.display = 'none';
+  _stockPanelLoadMessage(statusId, tr('stock.loading', 'Carregando...'));
+  // Uma resposta antiga não deve substituir os dados de outra empresa/unidade.
+  return () => _stockPanelRequests.get(key) === requestId;
+}
+
+function _stockPanelLoadError(statusId) {
+  _stockPanelLoadMessage(statusId, tr('stock.panelLoadError', 'Não foi possível carregar os dados. Clique em Atualizar para tentar novamente.'), true);
+}
 
 function _blockedStockContext() {
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
@@ -13653,6 +13738,7 @@ function _renderBlockedStatusOptions(select, selected) {
 async function loadBlockedStock() {
   const tbody = document.getElementById('blocked-stock-tbody');
   if (!tbody) return;
+  const isCurrent = _startStockPanelLoad('blocked', 'blocked-stock-load-status', 'blocked-stock-empty', ['blocked-stock-tbody']);
   const { companyId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
@@ -13660,9 +13746,11 @@ async function loadBlockedStock() {
   if (unitId) params.set('unit_id', unitId);
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/blocked-items?${params.toString()}`);
+    if (!isCurrent()) return;
     _blockedStockStatuses = payload.statuses || _blockedStockStatuses;
     _renderBlockedStatusOptions(document.getElementById('blocked-stock-status'));
     const items = Array.isArray(payload.items) ? payload.items : [];
+    _stockPanelLoadMessage('blocked-stock-load-status', tr('stock.panelCount', '{n} item(ns).').replace('{n}', String(items.length)));
     const empty = document.getElementById('blocked-stock-empty');
     if (empty) empty.style.display = items.length ? 'none' : '';
     tbody.innerHTML = items.map((item) => {
@@ -13683,6 +13771,8 @@ async function loadBlockedStock() {
       </tr>`;
     }).join('');
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('blocked-stock-load-status');
     reportNonCriticalError('[blocked-stock] falha ao carregar', error);
   }
 }
@@ -13808,12 +13898,16 @@ function _renderValidityBreakdown(tbodyId, entries) {
 async function loadValidityOverview() {
   const host = document.getElementById('validity-mgmt-kpis');
   if (!host) return;
+  const isCurrent = _startStockPanelLoad('validity', 'validity-mgmt-value', 'validity-mgmt-empty', [
+    'validity-mgmt-kpis', 'validity-by-manufacturer', 'validity-by-unit', 'validity-by-lot'
+  ]);
   const { companyId, unitId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
   if (unitId) params.set('unit_id', unitId);
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/validity-overview?${params.toString()}`);
+    if (!isCurrent()) return;
     const summary = payload.summary || {};
     _renderValidityKpis(summary);
     _renderValidityBreakdown('validity-by-manufacturer', payload.by_manufacturer);
@@ -13828,6 +13922,8 @@ async function loadValidityOverview() {
     const empty = document.getElementById('validity-mgmt-empty');
     if (empty) empty.style.display = Number(summary.at_risk_total || 0) ? 'none' : '';
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('validity-mgmt-value');
     reportNonCriticalError('[validity-mgmt] falha ao carregar', error);
   }
 }
@@ -13845,6 +13941,13 @@ function bindValidityMgmtUi() {
     }
   });
   bindAppListener(document.getElementById('pending-reg-refresh'), 'click', () => { void loadPendingRegularization(); });
+  bindAppListener(document.getElementById('pending-reg-lot'), 'click', () => { void regularizeSelectedStockLot(); });
+  bindAppListener(document.getElementById('stock-lot-refresh'), 'click', () => { void loadStockLotEvidence(); });
+  bindAppListener(document.getElementById('stock-lot-reconcile'), 'click', () => { void reconcileStockLot(); });
+  bindAppListener(document.getElementById('stock-lot-tbody'), 'click', (event) => {
+    const button = event.target?.closest?.('[data-lot-evidence]');
+    if (button) void downloadStockLotEvidence(Number(button.dataset.lotEvidence));
+  });
   bindAppListener(document.getElementById('pending-reg-tbody'), 'click', (event) => {
     const btn = event.target?.closest?.('.pending-reg-action');
     if (!btn) return;
@@ -13854,7 +13957,7 @@ function bindValidityMgmtUi() {
       id: Number(btn.getAttribute('data-item-id')) || 0,
       unitId: btn.getAttribute('data-unit-id') || '',
       epiName: btn.getAttribute('data-epi-name') || '',
-      lot: row?.children?.[2]?.textContent?.trim() || '',
+      lot: row?.querySelector('.pending-reg-select')?.dataset.lot || '',
     });
   });
 }
@@ -13868,6 +13971,7 @@ function bindValidityMgmtUi() {
 async function loadPendingRegularization() {
   const tbody = document.getElementById('pending-reg-tbody');
   if (!tbody) return;
+  const isCurrent = _startStockPanelLoad('pending', 'pending-reg-count', 'pending-reg-empty', ['pending-reg-tbody']);
   const { companyId, unitId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
@@ -13876,8 +13980,11 @@ async function loadPendingRegularization() {
   const emptyEl = document.getElementById('pending-reg-empty');
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/pending-regularization?${params.toString()}`);
+    if (!isCurrent()) return;
     const items = Array.isArray(payload.items) ? payload.items : [];
     const canRegularize = hasPermission('stock:regularize_validity');
+    const lotButton = document.getElementById('pending-reg-lot');
+    if (lotButton) lotButton.hidden = !canRegularize;
     if (countEl) {
       countEl.textContent = tr('stock.pendingReg.count', '{n} peça(s) pendente(s)')
         .replace('{n}', String(payload.count ?? items.length));
@@ -13893,6 +14000,7 @@ async function loadPendingRegularization() {
         ? `<button type="button" class="btn ghost pending-reg-action" data-qr="${esc(it.qr_code_value || '')}" data-item-id="${esc(it.id)}" data-unit-id="${esc(it.unit_id)}" data-epi-name="${esc(it.epi_name || '')}" style="font-size:12px;padding:2px 8px;">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</button>`
         : `<small class="hint">${esc(tr('stock.pendingReg.noPermission', 'Sem permissão'))}</small>`;
       return `<tr>
+        <td><input type="checkbox" class="pending-reg-select" ${canRegularize ? '' : 'disabled'} aria-label="${esc(tr('stock.lotProof.select', 'Selecionar peças'))}" data-id="${esc(it.id)}" data-qr="${esc(it.qr_code_value || '')}" data-unit="${esc(it.unit_id)}" data-epi="${esc(it.epi_id)}" data-name="${esc(it.epi_name || '')}" data-lot="${esc(it.lot_code || '')}"></td>
         <td>${nameCell}</td>
         <td>${esc(it.unit_name || '—')}</td>
         <td>${esc(it.lot_code || '—')}</td>
@@ -13902,7 +14010,116 @@ async function loadPendingRegularization() {
     }).join('');
     if (emptyEl) emptyEl.style.display = items.length ? 'none' : '';
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('pending-reg-count');
     reportNonCriticalError('[pending-reg] falha ao carregar', error);
+  }
+}
+
+async function readStockEvidenceFile(input) {
+  const file = input?.files?.[0];
+  if (!file) throw new Error(tr('stock.lotProof.needFile', 'Anexe foto da embalagem/etiqueta ou documento do fabricante.'));
+  const mime = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : /\.png$/i.test(file.name) ? 'image/png' : /\.jpe?g$/i.test(file.name) ? 'image/jpeg' : '');
+  if (!['application/pdf', 'image/png', 'image/jpeg'].includes(mime) || !file.size || file.size > 3 * 1024 * 1024) {
+    throw new Error(tr('stock.lotProof.invalidFile', 'Envie PDF, PNG ou JPEG com até 3 MiB.'));
+  }
+  const data = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+    reader.onerror = () => reject(new Error(tr('stock.lotProof.invalidFile', 'Não foi possível ler o anexo.')));
+    reader.readAsDataURL(file);
+  });
+  return { filename: file.name, mime, content_base64: data };
+}
+
+async function regularizeSelectedStockLot() {
+  if (!hasPermission('stock:regularize_validity')) return;
+  const selected = Array.from(document.querySelectorAll('#pending-reg-tbody .pending-reg-select:checked'));
+  if (!selected.length || selected.length > 100) {
+    showToast(tr('stock.lotProof.needSelection', 'Selecione de 1 a 100 peças do mesmo lote físico.'), 'warning');
+    return;
+  }
+  const first = selected[0].dataset;
+  if (selected.some((node) => node.dataset.epi !== first.epi || node.dataset.unit !== first.unit)) {
+    showToast(tr('stock.lotProof.sameScope', 'Selecione peças do mesmo EPI e unidade; confira o lote real.'), 'error');
+    return;
+  }
+  await regularizePendingPiece({ id: Number(first.id), qr: first.qr, unitId: first.unit,
+    epiName: first.name, lot: first.lot,
+    items: selected.map((node) => ({ stock_item_id: Number(node.dataset.id), qr_code: node.dataset.qr })) });
+}
+
+async function loadStockLotEvidence() {
+  const tbody = document.getElementById('stock-lot-tbody');
+  if (!tbody) return;
+  const isCurrent = _startStockPanelLoad('lots', 'stock-lot-status', 'stock-lot-empty', ['stock-lot-tbody']);
+  const { companyId, unitId } = _blockedStockContext();
+  const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
+  if (companyId) params.set('company_id', companyId);
+  if (unitId) params.set('unit_id', unitId);
+  try {
+    const payload = await apiWithBootstrapRetry(`/api/stock/lots/evidence?${params.toString()}`);
+    if (!isCurrent()) return;
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    _stockPanelLoadMessage('stock-lot-status', tr('stock.panelCount', '{n} item(ns).').replace('{n}', String(items.length)));
+    tbody.innerHTML = items.map((lot) => `<tr><td>${esc(lot.lot_code)}</td><td>${esc(lot.epi_name)}</td><td>${esc(lot.unit_name)}</td><td>${esc(lot.physical_expiry_date)}</td><td>${esc(lot.received_quantity)}</td><td>${esc(lot.actor_name)}</td><td>${esc(String(lot.expiry_evidence || '').split(' | SHA-256:')[0])}${lot.has_file ? `<br><button type="button" class="ghost" data-lot-evidence="${esc(lot.id)}">${esc(tr('stock.lotProof.download', 'Baixar comprovação'))}</button>` : `<br><small>${esc(tr('stock.lotProof.noFile', 'Referência registrada sem anexo.'))}</small>`}</td></tr>`).join('');
+    const empty = document.getElementById('stock-lot-empty');
+    if (empty) empty.style.display = items.length ? 'none' : '';
+  } catch (error) {
+    if (isCurrent()) _stockPanelLoadError('stock-lot-status');
+  }
+}
+
+async function downloadStockLotEvidence(lotId) {
+  try {
+    const { companyId, unitId } = _blockedStockContext();
+    const params = new URLSearchParams({ actor_user_id: String(state.user?.id || ''), lot_id: String(lotId) });
+    if (companyId) params.set('company_id', companyId);
+    if (unitId) params.set('unit_id', unitId);
+    const payload = await api(`/api/stock/lots/evidence?${params.toString()}`);
+    const file = payload.file;
+    const bytes = Uint8Array.from(atob(file.content_base64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = file.filename;
+    document.body.appendChild(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    showToast(error.message || tr('stock.panelLoadError', 'Não foi possível carregar os dados.'), 'error');
+  }
+}
+
+async function reconcileStockLot() {
+  if (!hasPermission('stock:regularize_validity') || !hasPermission('stock:adjust')) return;
+  const button = document.getElementById('stock-lot-reconcile');
+  if (button?.disabled) return;
+  const { companyId, unitId } = _blockedStockContext();
+  const epiId = Number(document.getElementById('stock-epi')?.value || 0);
+  if (!companyId || !unitId || !epiId) {
+    showToast(tr('stock.lotProof.context', 'Selecione empresa, unidade e EPI no estoque antes de conciliar.'), 'warning');
+    return;
+  }
+  if (button) button.disabled = true;
+  try {
+    const epi = (state.stockEpis || []).find((item) => Number(item.id) === epiId);
+    const proof = await openRegularizeValidityModal({ reconcile: true, epiName: epi?.name || 'EPI', unitId });
+    if (!proof) return;
+    const body = { actor_user_id: state.user.id, company_id: Number(companyId), unit_id: Number(unitId),
+      epi_id: epiId, quantity: proof.quantity, size: proof.size, manufacture_date: proof.manufacture,
+      lot_code: proof.lot, physical_expiry_date: proof.date, expiry_source: proof.source,
+      evidence: proof.evidence, evidence_file: proof.file, justification: proof.justification,
+      physical_lot_confirmed: true, idempotency_key: crypto.randomUUID() };
+    const response = await api('/api/stock/lots/reconcile', { method: 'POST', body: JSON.stringify(body) });
+    if (response.qr_labels?.length) {
+      state.stockGeneratedLabels = response.qr_labels;
+      printStockLabels(response.qr_labels, 1);
+    }
+    showToast(tr('stock.lotProof.reconciled', 'Peças conciliadas com o saldo existente; QRs registrados sem duplicar o saldo.'));
+    await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__();
+  } catch (error) {
+    showToast(error.message || tr('stock.panelLoadError', 'Não foi possível carregar os dados.'), 'error');
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -13915,12 +14132,16 @@ function openRegularizeValidityModal(piece) {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;';
     overlay.innerHTML = `
       <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
-        <h3 style="margin:0 0 4px;">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</h3>
+        <h3 style="margin:0 0 4px;">${esc(piece.reconcile ? tr('stock.lotProof.reconcile', 'Conciliar peças contadas sem QR') : tr('stock.pendingReg.action', 'Regularizar validade'))}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.pendingReg.modalHint', 'A validade física comprovada é a única autoridade — catálogo, CA ou estimativa nunca liberam a peça. Informe a data, a evidência verificável e a justificativa.'))}</p>
-        <div style="font-size:13px;margin-bottom:10px;"><strong>${esc(piece.epiName || 'EPI')}</strong> — ${esc(tr('stock.qrCode', 'QR Code'))}: <code>${esc(piece.qr || '')}</code>${piece.lot && piece.lot !== '—' ? ` · ${esc(tr('stock.lot', 'Lote'))}: ${esc(piece.lot)}` : ''}</div>
+        <div style="font-size:13px;margin-bottom:10px;"><strong>${esc(piece.epiName || 'EPI')}</strong>${piece.reconcile ? '' : ` — ${esc(tr('stock.qrCode', 'QR Code'))}: <code>${esc(piece.qr || '')}</code>`}${piece.lot && piece.lot !== '—' ? ` · ${esc(tr('stock.lot', 'Lote'))}: ${esc(piece.lot)}` : ''}</div>
+        ${piece.reconcile ? `<p class="hint">${esc(tr('stock.lotProof.countHint', 'Conte somente peças reais deste lote ainda sem QR. A conciliação mantém o saldo existente. Faça entradas separadas por tamanho.'))}</p><label>${esc(tr('stock.lotProof.count', 'Quantidade fisicamente contada'))}<input id="reg-quantity" type="number" min="1" max="100"></label><label>${esc(tr('stock.lotProof.size', 'Tamanho fisicamente conferido'))}<input id="reg-size" type="text" maxlength="32"></label><label>${esc(tr('stock.manufacturingDate', 'Data de fabricação (recebimento)'))}<input id="reg-manufacture" type="date"></label>` : `<p class="hint">${esc(tr('stock.lotProof.selectionCount', '{n} peça(s) explicitamente selecionada(s).').replace('{n}', String(piece.items?.length || 1)))}</p><details><summary>${esc(tr('stock.lotProof.review', 'Conferir QRs selecionados'))}</summary><ul>${(piece.items || [{ qr_code: piece.qr }]).map((item) => `<li>${esc(item.qr_code)}</li>`).join('')}</ul></details>`}
+        <label>${esc(tr('stock.lot', 'Lote'))}<input type="text" id="reg-lot" value="${esc(piece.lot && piece.lot !== '—' ? piece.lot : '')}"></label>
+        <label>${esc(tr('stock.receiptValidity.source', 'Comprovação da validade'))}<select id="reg-source"><option value="label">${esc(tr('stock.receiptValidity.label', 'Embalagem / etiqueta do lote'))}</option><option value="manufacturer_document">${esc(tr('stock.receiptValidity.document', 'Documento do fabricante para o lote'))}</option></select></label>
         <label style="display:block;margin-bottom:8px;font-size:13px;">${esc(tr('stock.pendingReg.physicalDate', 'Validade física comprovada'))}
           <input type="date" id="reg-date" style="width:100%;margin-top:4px;">
         </label>
+        <label>${esc(tr('stock.lotProof.file', 'Foto da embalagem/etiqueta ou documento do fabricante (PDF, PNG ou JPEG, até 3 MiB)'))}<input type="file" id="reg-file" accept="application/pdf,image/png,image/jpeg"></label>
         <label style="display:block;margin-bottom:8px;font-size:13px;">${esc(tr('stock.pendingReg.evidence', 'Evidência verificável'))}
           <input type="text" id="reg-evidence" placeholder="${esc(tr('stock.pendingReg.evidencePlaceholder', 'Etiqueta / embalagem / NF / documento do fabricante'))}" style="width:100%;margin-top:4px;">
         </label>
@@ -13928,6 +14149,7 @@ function openRegularizeValidityModal(piece) {
           <textarea id="reg-justification" rows="2" style="width:100%;margin-top:4px;"></textarea>
         </label>
         <div id="reg-error" style="display:none;color:var(--color-danger,#c00);font-size:13px;margin-bottom:8px;"></div>
+        <label><input type="checkbox" id="reg-physical-confirm"> ${esc(piece.reconcile ? tr('stock.lotProof.countConfirm', 'Contei fisicamente as peças sem QR e confirmo o lote e a comprovação anexada.') : tr('stock.lotProof.confirm', 'Conferi fisicamente os QRs e confirmo que estas peças pertencem ao lote informado e à comprovação anexada.'))}</label>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button class="btn ghost" id="reg-cancel">${esc(tr('cancel', 'Cancelar'))}</button>
           <button class="btn" id="reg-confirm">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</button>
@@ -13938,14 +14160,35 @@ function openRegularizeValidityModal(piece) {
     const showError = (msg) => { const el = overlay.querySelector('#reg-error'); if (el) { el.style.display = ''; el.textContent = msg; } };
     bindAppListener(overlay.querySelector('#reg-cancel'), 'click', () => finish(null));
     bindAppListener(overlay, 'click', (e) => { if (e.target === overlay) finish(null); });
-    bindAppListener(overlay.querySelector('#reg-confirm'), 'click', () => {
+    bindAppListener(overlay.querySelector('#reg-confirm'), 'click', async () => {
+      const button = overlay.querySelector('#reg-confirm');
+      if (button.disabled) return;
       const date = overlay.querySelector('#reg-date')?.value?.trim() || '';
       const evidence = overlay.querySelector('#reg-evidence')?.value?.trim() || '';
       const justification = overlay.querySelector('#reg-justification')?.value?.trim() || '';
       if (!date) return showError(tr('stock.pendingReg.errDate', 'Informe a validade física comprovada.'));
       if (!evidence) return showError(tr('stock.pendingReg.errEvidence', 'Informe a evidência verificável.'));
       if (!justification) return showError(tr('stock.pendingReg.errJustification', 'Informe a justificativa.'));
-      finish({ date, evidence, justification });
+      const lot = overlay.querySelector('#reg-lot')?.value?.trim() || '';
+      const source = overlay.querySelector('#reg-source')?.value || '';
+      if (!lot) return showError(tr('stock.lotProof.needLot', 'Identifique o lote real conferido.'));
+      if (!overlay.querySelector('#reg-physical-confirm')?.checked) {
+        return showError(tr('stock.lotProof.confirm', 'Confirme a conferência física das peças e do lote.'));
+      }
+      const quantity = Number(overlay.querySelector('#reg-quantity')?.value || 0);
+      const size = overlay.querySelector('#reg-size')?.value?.trim() || '';
+      const manufacture = overlay.querySelector('#reg-manufacture')?.value || '';
+      if (piece.reconcile && (!Number.isInteger(quantity) || quantity < 1 || quantity > 100 || !size)) {
+        return showError(tr('stock.lotProof.countRequired', 'Informe de 1 a 100 peças fisicamente contadas e seu tamanho.'));
+      }
+      button.disabled = true;
+      try {
+        const file = await readStockEvidenceFile(overlay.querySelector('#reg-file'));
+        finish({ date, evidence, justification, lot, source, file, quantity, size, manufacture });
+      } catch (error) {
+        showError(error.message);
+        button.disabled = false;
+      }
     });
   });
 }
@@ -13958,23 +14201,29 @@ async function regularizePendingPiece(piece) {
   try {
     const body = {
       actor_user_id: state.user?.id,
-      qr_code: piece.qr,
-      stock_item_id: piece.id || undefined,
+      items: piece.items || [{ qr_code: piece.qr, stock_item_id: piece.id }],
+      unit_id: piece.unitId || undefined,
+      lot_code: result.lot,
+      expiry_source: result.source,
+      evidence_file: result.file,
+      physical_lot_confirmed: true,
       physical_expiry_date: result.date,
       evidence: result.evidence,
       justification: result.justification,
     };
     if (companyId) body.company_id = companyId;
-    const res = await api('/api/stock/items/regularize-validity', { method: 'POST', body: JSON.stringify(body) });
+    const res = await api('/api/stock/lots/regularize-validity', { method: 'POST', body: JSON.stringify(body) });
     if (res.idempotent) {
       showToast(tr('stock.pendingReg.doneIdem', 'Validade já estava registrada (sem alteração).'));
-    } else if (res.validity_status === 'expired') {
+    } else if (res.items?.some((item) => item.validity_status === 'expired')) {
       showToast(tr('stock.pendingReg.doneExpired', 'Validade registrada: peça VENCIDA, permanece bloqueada.'), 'warning');
     } else {
       showToast(tr('stock.pendingReg.doneOk', 'Validade regularizada: peça liberada para entrega.'));
     }
     await loadPendingRegularization();
     await loadValidityOverview();
+    await loadBlockedStock();
+    await loadStockLotEvidence();
   } catch (error) {
     showToast(error.message || tr('stock.pendingReg.error', 'Erro ao regularizar validade.'), 'error');
   }
@@ -15066,6 +15315,8 @@ async function init() {
   bindAppListener(document.getElementById('epi-form'), 'submit', (event) => saveSimpleForm(event, '/api/epis', 'epis:create'));
   bindAppListener(document.getElementById('delivery-form'), 'submit', (event) => saveSimpleForm(event, '/api/deliveries', 'deliveries:create'));
   bindAppListener(document.getElementById('stock-form'), 'submit', handleStockMovementSubmit);
+  bindAppListener(document.getElementById('stock-receipt-source'), 'change', syncManualReceiptValidityFields);
+  syncManualReceiptValidityFields();
   bindAppListener(document.getElementById('stock-manufacture-camera'), 'change', handleStockManufactureCameraCapture);
   bindAppListener(document.getElementById('stock-manufacture-date'), 'input', () => {
     const dateField = document.getElementById('stock-manufacture-date');
@@ -15123,8 +15374,8 @@ async function init() {
     refreshDeliveryContext();
     void loadAvailableQrsForSelectedEpi();
   });
-  bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(); scheduleStockMovementSearchLoad(); });
   bindAppListener(document.getElementById('stock-epi'), 'change', () => {
     syncStockSizeDefaults();
     syncSelectedEpiMinimumStockField();
@@ -15724,7 +15975,7 @@ async function init() {
     if (filtro && state.stockConfigUnitId !== null && state.stockConfigUnitId !== undefined) {
       filtro.value = String(state.stockConfigUnitId);
     }
-    loadStockEpis().then(syncSelectedEpiMinimumStockField).catch(() => {});
+    globalThis.__EPI_REFRESH_ESTOQUE_LISTA__().then(syncSelectedEpiMinimumStockField).catch(() => {});
   });
 
   bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {

@@ -77,6 +77,10 @@ def _writable_columns(connection, descriptor) -> set[str]:
         set(descriptor.field_names())
         | set(descriptor.derived_columns)
         | set(descriptor.computed_columns)
+        # `service_columns` são gravadas pelo writer de domínio (não pela
+        # planilha): entram aqui para que o snapshot `before` as capture e o
+        # rollback as restaure junto da linha-alvo.
+        | set(getattr(descriptor, 'service_columns', ()))
     )
     return {name for name in declared if name in available}
 

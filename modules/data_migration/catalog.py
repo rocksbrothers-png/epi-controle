@@ -106,6 +106,17 @@ class EntityDescriptor:
     # Desfaz os efeitos SECUNDÁRIOS do writer no rollback físico (os movimentos
     # do job; o vínculo criado). O rollback genérico cuida de `target_table`.
     reverser: str = ''
+    # `natural_keys` como chave COMPOSTA (todas juntas identificam a linha), não
+    # como identificadores alternativos (cada uma sozinha, estilo CPF/matrícula).
+    # Estoque: `(unit_id, epi_id)` — nenhuma é única sozinha, e tratá-las como
+    # alternativas daria falso "ambíguo" sempre que a unidade tem vários EPIs.
+    composite_natural_key: bool = False
+    # Colunas NOT NULL que o WRITER/serviço de domínio preenche — nunca vêm da
+    # planilha nem são default de catálogo. Entram em `writable` (para o snapshot
+    # e a restauração no rollback) e contam como cobertas no contrato de schema,
+    # mas nunca em payload/mapeamento. Ex.: `unit_epi_stock.updated_at`, que
+    # `upsert_unit_stock` preenche.
+    service_columns: tuple[str, ...] = ()
     # Motivo de a entidade estar DESABILITADA POR DECISÃO, e não por estar na
     # fila. São coisas diferentes e a UI precisa dizer qual é: "ainda não
     # chegou a vez" convida a esperar; "não se faz por importação" convida a
@@ -427,6 +438,52 @@ _HISTORICO_ENTREGAS = EntityDescriptor(
 )
 
 
+# ── Estoque: saldo inicial como MOVIMENTO de ajuste (Fase 4) ─────────────────
+#
+# Importar estoque é lançar o SALDO INICIAL vindo do sistema legado. O catálogo
+# exige "como MOVIMENTO de ajuste, nunca como saldo": o writer grava o PAR
+# `stock_movements` (razão) + `unit_epi_stock` (saldo) — nunca saldo sem
+# movimento que o explique. Sem peças QR nem lotes: estoque legado não tem
+# rastreio por peça nem validade física, e o saldo migrado entra no fluxo já
+# existente de regularização de validade (EST-V3.5-R2) — não se inventa QR,
+# lote ou validade que o sistema de origem não tinha.
+#
+# `target_table` é o SALDO (a linha reconciliável: identidade composta por
+# unidade+EPI, idempotente por SET). O movimento é efeito secundário do writer,
+# desfeito pelo reverser. Reversão pós-homologação é RECUSADA (sem
+# `reversal_column`): o saldo já pode ter sido consumido por entregas.
+_ESTOQUE = EntityDescriptor(
+    key='estoque',
+    label='Estoque',
+    target_table='unit_epi_stock',
+    natural_keys=('unit_id', 'epi_id'),
+    composite_natural_key=True,
+    enabled=True,
+    phase='4',
+    normalizer='modules.stock.service:normalize_stock_migration_fields',
+    writer='modules.stock.service:migration_stock_writer',
+    reverser='modules.stock.service:migration_stock_reverser',
+    service_columns=('updated_at',),
+    fields=(
+        FieldSpec('unit_id', 'Unidade', required=True, resolves_to=('units', 'name'),
+                  aliases=('unidade', 'filial', 'base', 'site', 'local', 'departamento',
+                           'unit', 'almoxarifado', 'deposito', 'depósito', 'estoque local')),
+        FieldSpec('epi_id', 'EPI', required=True, resolves_to=('epis', 'name'),
+                  aliases=('epi', 'ppe', 'equipamento', 'item', 'produto', 'material',
+                           'descricao', 'descrição', 'equipment', 'descricao do epi')),
+        FieldSpec('quantity', 'Quantidade em estoque', required=True, validator='int',
+                  aliases=('quantidade', 'qtd', 'qtde', 'saldo', 'estoque', 'quantity',
+                           'qty', 'stock', 'balance', 'saldo atual', 'quantidade em estoque')),
+        # `unit_epi_stock` não tem coluna de observação: `notes` não é gravável
+        # no saldo (sai de _writable_columns), mas o writer o lê do registro para
+        # a observação do movimento de ajuste.
+        FieldSpec('notes', 'Observações',
+                  aliases=('observacao', 'observação', 'observacoes', 'obs', 'notes',
+                           'comentario', 'comentário')),
+    ),
+)
+
+
 # ── Entidades modeladas, writer na fila (ADR-0003 §9) ───────────────────────
 #
 # O catálogo declarava 20 entidades. A auditoria da issue #172 verificou cada
@@ -459,9 +516,6 @@ def _roadmap(key: str, label: str, table: str, phase: str, *, blocked: str = '')
 
 
 _ROADMAP_ENTITIES = (
-    # Importável, mas como MOVIMENTO de ajuste — nunca como saldo, que é
-    # derivado de `stock_movements`.
-    _roadmap('estoque', 'Estoque', 'unit_epi_stock', '4'),
     # Baixo valor e sem UNIQUE de negócio: reavaliar antes de habilitar.
     _roadmap('solicitacoes', 'Solicitações', 'epi_requests', '4'),
     # Bloqueada POR DECISÃO, não por fila: `password` é hash e `role` livre é
@@ -485,7 +539,7 @@ ENTITIES: dict[str, EntityDescriptor] = {
     descriptor.key: descriptor
     for descriptor in (
         _COLABORADORES, _UNIDADES, _EPIS, _FORNECEDORES,
-        _HISTORICO_ENTREGAS,
+        _HISTORICO_ENTREGAS, _ESTOQUE,
         *_ROADMAP_ENTITIES,
     )
 }

@@ -96,7 +96,12 @@ def test_every_column_postgres_requires_is_covered_by_the_catalog(entity_key):
     descriptor = get_entity(entity_key)
     required = _required_without_default(descriptor.target_table)
     declared = {name for name, _ in descriptor.column_defaults}
-    uncovered = required - set(descriptor.required_fields()) - declared - {'company_id'}
+    # `derived_columns` (preenchidas pelo normalizador, ex. cnpj_normalized) e
+    # `service_columns` (preenchidas pelo writer de domínio, ex.
+    # unit_epi_stock.updated_at) também cobrem a coluna NOT NULL: são gravadas,
+    # só não vêm de um campo mapeado nem de um default de catálogo.
+    populated = set(descriptor.derived_columns) | set(getattr(descriptor, 'service_columns', ()))
+    uncovered = required - set(descriptor.required_fields()) - declared - populated - {'company_id'}
     assert not uncovered, (
         f'{entity_key}: {sorted(uncovered)} são NOT NULL sem default no PostgreSQL e '
         f'não estão nem como campo obrigatório nem em column_defaults. A importação '

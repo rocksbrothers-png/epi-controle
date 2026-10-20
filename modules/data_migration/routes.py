@@ -38,6 +38,7 @@ from modules.data_migration.service import (
     run_migration,
 )
 from modules.data_migration.sources import SourceError, list_sources
+from modules.data_migration import async_jobs
 from modules.settings.service import ensure_module_enabled_for_unit
 
 
@@ -256,6 +257,72 @@ def handle_post_migration_homologate(handler, parsed, payload, match):
         return send_json(handler, 200, result)
 
 
+# ── Fase 3: fila assíncrona (jobs persistentes + worker) ────────────────────
+
+def _async_response(function):
+    @wraps(function)
+    def handle(handler, parsed, payload, match):
+        try:
+            return function(handler, parsed, payload, match)
+        except LookupError as exc:
+            return send_json(handler, 404, {'error': str(exc)})
+        except (MigrationValidationError, SourceError, ValueError, PermissionError):
+            raise  # mapeados pelo app (400/403), sem vazar detalhe interno
+        except Exception:
+            # HOLE-1: a superfície assíncrona nunca devolve a exceção crua do
+            # banco (lock/timeout etc.); mensagem genérica no lugar do str(exc).
+            return send_json(handler, 500, {'error': 'Falha ao processar o job de migração.'})
+    return handle
+
+
+@_async_response
+def handle_post_migration_async_submit(handler, parsed, payload, match):
+    """Enfileira um job durável (o cliente já obteve o preview_token via /run)."""
+    require_fields(payload, ['actor_user_id', 'entity', 'source_kind', 'mapping', 'request_key', 'preview_token'])
+    with closing(get_connection()) as connection:
+        actor = _authorize(connection, handler, parsed, payload)
+        raw = _decode_content(payload)
+        job = async_jobs.submit(
+            connection, actor=actor, entity=str(payload['entity']),
+            source_kind=str(payload['source_kind']), raw=raw,
+            mapping=payload.get('mapping') or {},
+            strategy=str(payload.get('strategy') or 'insert_only'),
+            request_key=str(payload['request_key']),
+            source_name=str(payload.get('source_name') or ''),
+            preview_token=str(payload['preview_token']),
+            sheet=payload.get('sheet') or None,
+        )
+        return send_json(handler, 200, {'job': job})
+
+
+@_async_response
+def handle_get_migration_async_jobs(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = _authorize(connection, handler, parsed)
+        query = parse_qs(parsed.query)
+        try:
+            limit = min(int(query.get('limit', ['50'])[0] or 50), 200)
+            offset = max(0, int(query.get('offset', ['0'])[0] or 0))
+        except ValueError:
+            return send_json(handler, 400, {'error': 'Paginação inválida.'})
+        return send_json(handler, 200, {'jobs': async_jobs.list_jobs(connection, actor, limit=limit, offset=offset)})
+
+
+@_async_response
+def handle_get_migration_async_job(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = _authorize(connection, handler, parsed)
+        return send_json(handler, 200, {'job': async_jobs.get(connection, int(match.group(1)), actor)})
+
+
+@_async_response
+def handle_post_migration_async_cancel(handler, parsed, payload, match):
+    require_fields(payload, ['actor_user_id'])
+    with closing(get_connection()) as connection:
+        actor = _authorize(connection, handler, parsed, payload)
+        return send_json(handler, 200, {'job': async_jobs.request_cancel(connection, int(match.group(1)), actor)})
+
+
 def register_routes(router):
     router.register('GET',  '/api/data-migration/catalog',                 handle_get_migration_catalog)
     router.register('GET',  '/api/data-migration/jobs',                    handle_get_migration_jobs)
@@ -264,3 +331,7 @@ def register_routes(router):
     router.register('POST', '/api/data-migration/run',                     handle_post_migration_run)
     router.register('POST', r'^/api/data-migration/jobs/(\d+)/revert$',    handle_post_migration_revert, regex=True)
     router.register('POST', r'^/api/data-migration/jobs/(\d+)/homologate$', handle_post_migration_homologate, regex=True)
+    router.register('POST', '/api/data-migration/async/submit',            handle_post_migration_async_submit)
+    router.register('GET',  '/api/data-migration/async/jobs',              handle_get_migration_async_jobs)
+    router.register('GET',  r'^/api/data-migration/async/jobs/(\d+)$',     handle_get_migration_async_job, regex=True)
+    router.register('POST', r'^/api/data-migration/async/jobs/(\d+)/cancel$', handle_post_migration_async_cancel, regex=True)

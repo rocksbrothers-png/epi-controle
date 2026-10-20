@@ -407,10 +407,14 @@ def fetch_outsourced_company_unit_links(connection, outsourced_company_id):
     return [row_to_dict(row) for row in rows]
 
 
-def create_outsourced_company_unit_link(connection, outsourced_company_id, company_id, unit_id, actor_user_id):
+def create_outsourced_company_unit_link(connection, outsourced_company_id, company_id, unit_id, actor_user_id, commit=True):
     """Ação "Vincular à minha unidade" — idempotente: vincular de novo uma
     empresa já vinculada só devolve o vínculo existente, sem duplicar linha
-    nem reativar um vínculo que a própria Unidade desativou de propósito."""
+    nem reativar um vínculo que a própria Unidade desativou de propósito.
+
+    ``commit=False`` deixa a gravação na transação de quem chama — é o que o
+    writer de migração precisa, para não quebrar o SAVEPOINT por linha do motor
+    nem o commit único do job (o cadastro manual segue com ``commit=True``)."""
     existing = fetch_outsourced_company_unit_link(connection, outsourced_company_id, unit_id)
     if existing:
         return int(existing['id'])
@@ -425,8 +429,51 @@ def create_outsourced_company_unit_link(connection, outsourced_company_id, compa
             int(actor_user_id) if actor_user_id else None, now_iso, now_iso,
         ),
     )
-    connection.commit()
+    if commit:
+        connection.commit()
     return int(cursor.lastrowid)
+
+
+# ── Centro de Migração de Dados — importação de Fornecedores (Fase 4) ────────
+#
+# A empresa é gravada pelo motor GENÉRICO (todas as colunas além de legal_name
+# têm default de servidor, iguais ao que o cadastro manual produz). O que o
+# motor não faz sozinho é o VÍNCULO por Unidade — e é a ausência dele que o
+# bloqueio original evitava: empresa sem vínculo e sem unit_id é lida por
+# is_outsourced_company_available_to_unit como disponível a TODAS as Unidades.
+
+def migration_outsourced_link(connection, *, descriptor, company_id, job_id, action,
+                              target_id, record, payload, actor):
+    """post_write do catálogo: cria o vínculo por Unidade da empresa importada.
+
+    Só para empresa NOVA (``action == 'insert'``): empresa já existente no
+    tenant já tem seus próprios vínculos deliberados, e criar um aqui obrigaria
+    a distinguir, no rollback, vínculo criado pelo job de vínculo pré-existente.
+    Então a importação não mexe nos vínculos de empresa que já existia (o
+    operador vincula pela tela de Terceirizados). `unit_id` vem resolvido no
+    payload (campo obrigatório) — nenhuma empresa nova entra sem Unidade."""
+    if action != 'insert':
+        return
+    unit_id = int(payload['unit_id'])
+    create_outsourced_company_unit_link(
+        connection, int(target_id), int(company_id), unit_id,
+        int(actor.get('id') or 0) or None, commit=False,
+    )
+
+
+def migration_outsourced_reverser(connection, *, descriptor, company_id, job_id):
+    """Rollback físico: apaga os vínculos das empresas INSERIDAS por este job.
+
+    O rollback genérico apaga as empresas (target_table); o vínculo tem FK para
+    a empresa, então é apagado ANTES (o reverser roda antes do loop genérico).
+    Só empresas inseridas pelo job entram — todas as suas linhas de vínculo
+    foram criadas por ele, então apagá-las nunca remove vínculo de terceiro."""
+    connection.execute(
+        'DELETE FROM outsourced_company_unit_links WHERE company_id = ? AND outsourced_company_id IN '
+        '(SELECT target_id FROM migration_job_records WHERE job_id = ? AND company_id = ? '
+        "AND action = 'insert' AND target_table = 'outsourced_companies')",
+        (int(company_id), int(job_id), int(company_id)),
+    )
 
 
 def set_outsourced_company_unit_link_status(connection, link_id, company_id, status, actor_user_id, reason=''):

@@ -103,9 +103,15 @@ class EntityDescriptor:
     # reconciliação verifica) E o efeito secundário, e devolve
     # {'outcome': 'inserted'|'updated'|'skipped', 'target_id': int}.
     writer: str = ''
-    # Desfaz os efeitos SECUNDÁRIOS do writer no rollback físico (os movimentos
-    # do job; o vínculo criado). O rollback genérico cuida de `target_table`.
+    # Desfaz os efeitos SECUNDÁRIOS do writer/post_write no rollback físico (os
+    # movimentos do job; o vínculo criado). O rollback genérico cuida de
+    # `target_table`.
     reverser: str = ''
+    # Efeito SECUNDÁRIO gravado APÓS a escrita genérica de `target_table`:
+    # fornecedores cria o vínculo por Unidade depois de inserir a empresa.
+    # Diferente do `writer` (que SUBSTITUI a escrita da linha-alvo); aqui a
+    # linha-alvo é escrita pelo motor e o hook só adiciona.
+    post_write: str = ''
     # `natural_keys` como chave COMPOSTA (todas juntas identificam a linha), não
     # como identificadores alternativos (cada uma sozinha, estilo CPF/matrícula).
     # Estoque: `(unit_id, epi_id)` — nenhuma é única sozinha, e tratá-las como
@@ -277,58 +283,28 @@ _EPIS = EntityDescriptor(
     ),
 )
 
-# DESABILITADA por decisão de produto: cadastro de empresa terceirizada não
-# se faz por importação.
+# HABILITADA na Fase 4 COM vínculo obrigatório por Unidade.
 #
-# O motivo não é campo faltando — é ALARGAMENTO SILENCIOSO DE ESCOPO. O
-# importador grava `legal_name`, `trade_name`, `cnpj` e `company_kind`, e mais
-# nada. Não grava `unit_id` e não tem como criar linha em
-# `outsourced_company_unit_links`, que é uma tabela diferente da tabela-alvo e
-# está fora do alcance do motor (um `EntityDescriptor` escreve em UMA tabela).
+# O risco que a mantinha bloqueada: um `EntityDescriptor` escreve UMA tabela, e
+# o vínculo (`outsourced_company_unit_links`) é outra. Sem vínculo E sem
+# `unit_id`, `is_outsourced_company_available_to_unit` lê a empresa importada
+# como "empresa do tenant" e a torna disponível para TODAS as Unidades, sem
+# ninguém ter escolhido — o oposto do modelo de vínculo deliberado do
+# ADR-0002 §13.6.
 #
-# A consequência está em `is_outsourced_company_available_to_unit`
-# (modules/outsourced_companies/service.py):
-#
-#     link = fetch_outsourced_company_unit_link(...)
-#     if link is not None:
-#         return link['local_status'] != 'inactive'
-#     return entity.get('unit_id') is None        # <- a linha importada cai aqui
-#
-# Sem vínculo e sem `unit_id`, a empresa importada é lida como "empresa do
-# tenant" e fica disponível para TODAS as Unidades, permanentemente, sem
-# ninguém ter escolhido vínculo nenhum. É o oposto exato do modelo do
-# ADR-0002 §13.6: cada Unidade povoa deliberadamente os seus vínculos, e
-# vincular a empresa a uma Unidade nova não herda nada automaticamente.
-#
-# Confirmado contra produção antes de desabilitar: as 4 empresas reais têm
-# `unit_id` preenchido E vínculo explícito — nenhuma tem o formato que a
-# importação produziria. E `registration_status` cairia no DEFAULT
-# `pending_completion`: cadastro pela metade, que depois precisa ser
-# completado à mão de qualquer forma.
-#
-# Nenhum job de migração jamais rodou em produção quando esta entidade foi
-# desabilitada, então nada em uso foi afetado.
-#
-# O descritor fica AQUI, inteiro, em vez de virar um `_roadmap(...)` de
-# `fields=()`: o mapeamento e o normalizador são análise correta e cara, e
-# apagá-los faria a próxima pessoa refazer o trabalho para chegar à mesma
-# conclusão. Reabilitar exigiria o motor saber escrever a tabela de vínculo —
-# decisão de arquitetura, não de migração.
+# A habilitação fecha o buraco POR CONSTRUÇÃO: `unit_id` é campo OBRIGATÓRIO
+# (resolvido por nome), gravado em `outsourced_companies.unit_id`, e um
+# `post_write` cria o vínculo da Unidade escolhida para toda empresa NOVA —
+# nenhuma empresa entra sem Unidade. A empresa em si é gravada pelo motor
+# genérico (todas as colunas além de `legal_name` têm default de servidor,
+# iguais ao cadastro manual — provado em test_migration_contract_postgres.py).
 _FORNECEDORES = EntityDescriptor(
     key='fornecedores',
     label='Fornecedores',
     target_table='outsourced_companies',
     natural_keys=('cnpj', 'legal_name'),
-    enabled=False,
-    phase='bloqueada',
-    blocked_reason=(
-        'o cadastro de empresa terceirizada não se faz por planilha. A '
-        'importação não consegue criar o vínculo por Unidade '
-        '(`outsourced_company_unit_links`), e sem ele a empresa ficaria '
-        'disponível para todas as Unidades sem ninguém ter escolhido. '
-        'Cadastre pela tela de Empresas Terceirizadas, na Unidade que vai '
-        'usá-la.'
-    ),
+    enabled=True,
+    phase='4',
     # Mesmas regras do cadastro manual: CNPJ canônico (formatado em `cnpj`,
     # só dígitos em `cnpj_normalized`) e os vocabulários controlados de
     # `company_kind` / `epi_responsibility` / `registration_mode` /
@@ -338,7 +314,17 @@ _FORNECEDORES = EntityDescriptor(
     # `cnpj_normalized` não vem da planilha: o normalizador a deriva de `cnpj`.
     # É ela que sustenta o índice único parcial de deduplicação.
     derived_columns=('cnpj_normalized',),
+    # Vínculo por Unidade: `post_write` cria a linha em
+    # outsourced_company_unit_links após a empresa; `reverser` a desfaz.
+    post_write='modules.outsourced_companies.service:migration_outsourced_link',
+    reverser='modules.outsourced_companies.service:migration_outsourced_reverser',
     fields=(
+        # Unidade de destino, POR LINHA — o que fecha o buraco do escopo.
+        # Gravada em outsourced_companies.unit_id e usada pelo post_write para
+        # o vínculo. Obrigatória: nenhuma empresa importada sem Unidade.
+        FieldSpec('unit_id', 'Unidade', required=True, resolves_to=('units', 'name'),
+                  aliases=('unidade', 'filial', 'base', 'site', 'local', 'departamento',
+                           'unit', 'lotacao', 'lotação')),
         FieldSpec('legal_name', 'Razão social', required=True,
                   aliases=('razao social', 'razão social', 'fornecedor', 'empresa', 'supplier',
                            'vendor', 'company', 'legal name', 'nome')),

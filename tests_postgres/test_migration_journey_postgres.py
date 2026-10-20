@@ -880,47 +880,48 @@ MAPPING_FORNECEDORES = {
 }
 
 
-def test_fornecedores_legacy_export_is_still_read_and_mapped_even_though_blocked(tenant):
-    """A LEITURA e o MAPEAMENTO continuam funcionando — só a gravação está
-    bloqueada. Vale manter: se `fornecedores` for reabilitada um dia com o
-    vínculo por Unidade resolvido, o assistente já reconhece o export legado
-    (TAB como separador, latin-1, CNPJ ausente na terceira linha).
+def test_fornecedores_legacy_export_is_still_read_and_mapped(tenant):
+    """A LEITURA e o MAPEAMENTO do export legado seguem funcionando (TAB como
+    separador, latin-1, CNPJ ausente na terceira linha). Agora que
+    `fornecedores` está habilitada COM vínculo por Unidade (Fase 4), o export
+    sem coluna de Unidade acusa `unit_id` como obrigatório faltante — que é o
+    que impede, mais adiante, empresa importada sem Unidade.
     """
     from modules.data_migration.service import analyze_source
     analysis = analyze_source('csv', LEGACY_TSV_FORNECEDORES.encode('latin-1'), 'fornecedores')
     assert analysis['detected']['delimiter'] == '\t'
     assert analysis['detected']['total_rows'] == 3
-    assert analysis['mapping'] == MAPPING_FORNECEDORES
-    assert analysis['missing_required'] == []
+    # As 4 colunas do export seguem reconhecidas...
+    for source_col, field in MAPPING_FORNECEDORES.items():
+        assert analysis['mapping'].get(source_col) == field
+    # ...e a Unidade (obrigatória) aparece como faltante, porque o export não a traz.
+    assert 'unit_id' in analysis['missing_required']
 
 
-def test_fornecedores_import_is_refused_and_writes_nothing(tenant):
-    """Empresa terceirizada não se cadastra por planilha (decisão de produto).
+def test_fornecedores_without_a_unit_is_refused_and_writes_nothing(tenant):
+    """A empresa terceirizada NÃO entra sem Unidade escolhida.
 
-    O motivo não é campo faltando: o motor escreve em UMA tabela, e o vínculo
-    por Unidade vive em `outsourced_company_unit_links`. Sem ele — e sem
-    `unit_id`, que a importação também não grava —
-    `is_outsourced_company_available_to_unit` leria a linha importada como
-    "empresa do tenant" e a deixaria disponível para TODAS as Unidades, sem
-    ninguém ter escolhido.
-
-    Este teste prova contra banco REAL que a recusa acontece ANTES de qualquer
-    escrita: a contagem de `outsourced_companies` não se move.
+    `fornecedores` foi reabilitada na Fase 4 com `unit_id` OBRIGATÓRIO e um
+    `post_write` que cria o vínculo por Unidade. O export legado não traz coluna
+    de Unidade, então a importação é recusada ANTES de qualquer escrita — a
+    contagem de `outsourced_companies` não se move. É exatamente o que impede a
+    empresa importada de ficar disponível a TODAS as Unidades (ADR-0002 §13.6).
     """
     connection = _conn()
     before = _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
                      (tenant['company_id'],))
-    with pytest.raises(ValueError, match='não está disponível'):
+    with pytest.raises(ValueError):
         _run(tenant, entity='fornecedores', strategy='insert_only',
              raw=LEGACY_TSV_FORNECEDORES.encode('latin-1'), mapping=MAPPING_FORNECEDORES)
     assert _scalar(connection, 'SELECT COUNT(*) FROM outsourced_companies WHERE company_id = %s',
                    (tenant['company_id'],)) == before
 
 
-def test_no_migration_job_is_even_created_for_a_blocked_entity(tenant):
-    """A recusa precisa vir antes de `create_job`. Um job registrado para uma
-    importação que nunca aconteceu poluiria o histórico do cliente e daria a
-    impressão de que a operação chegou a ser tentada de verdade."""
+def test_no_migration_job_is_created_for_a_refused_import(tenant):
+    """A recusa (aqui: Unidade obrigatória não mapeada) precisa vir antes de
+    `create_job`. Um job registrado para uma importação que nunca aconteceu
+    poluiria o histórico do cliente e daria a impressão de que a operação
+    chegou a ser tentada de verdade."""
     connection = _conn()
     before = _scalar(connection, "SELECT COUNT(*) FROM migration_jobs WHERE company_id = %s AND entity = 'fornecedores'",
                      (tenant['company_id'],))

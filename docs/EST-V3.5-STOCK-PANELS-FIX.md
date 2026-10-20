@@ -1,5 +1,8 @@
 # EST-V3.5 — painéis de estoque e validade comprovada no recebimento manual
 
+O fluxo completo com anexos, seleção de peças e conciliação de saldo sem QR está
+documentado em [EST-V3.5-LOT-EVIDENCE.md](EST-V3.5-LOT-EVIDENCE.md).
+
 Na navegação clássica, entrar em Estoque não executava o hook que vinculava
 os botões e consultava Gestão de Validade, Pendentes de regularização e
 Estoque bloqueado. Os painéis exibiam o texto estático de lista vazia e os

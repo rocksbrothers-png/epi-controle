@@ -176,6 +176,7 @@
               <div id="stock-receipt-proof" hidden>
                 <label><span data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</span><input name="physical_expiry_date" id="stock-receipt-expiry" type="date" disabled></label>
                 <label><span data-i18n="stock.pendingReg.evidence">Evidência verificável</span><textarea name="expiry_evidence" id="stock-receipt-evidence" rows="2" disabled></textarea></label>
+                <label><span data-i18n="stock.lotProof.file">Foto da embalagem/etiqueta ou documento do fabricante (PDF, PNG ou JPEG, até 3 MiB)</span><input id="stock-receipt-file" type="file" accept="application/pdf,image/png,image/jpeg" disabled></label>
               </div>
               <p id="stock-receipt-validity-hint" class="hint" aria-live="polite"></p>
             </fieldset>
@@ -421,10 +422,12 @@
             <div class="action-group" style="margin-top:8px;align-items:center;">
               <strong id="pending-reg-count" aria-live="polite"></strong>
               <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
+              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.lotProof.selected">Comprovar lote das peças selecionadas</button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead><tr>
+                  <th scope="col" data-i18n="stock.lotProof.select">Selecionar peças</th>
                   <th scope="col" data-i18n="epi.title">EPI</th>
                   <th scope="col" data-i18n="unit.title">Unidade</th>
                   <th scope="col" data-i18n="stock.lot">Lote</th>
@@ -435,6 +438,18 @@
               </table>
             </div>
             <small id="pending-reg-empty" class="hint" style="display:none;" data-i18n="stock.pendingReg.empty">Nenhuma peça pendente de regularização no escopo atual.</small>
+          </article>
+          <article class="card" id="stock-lot-evidence-card">
+            <h3 data-i18n="stock.lotProof.title">Lotes físicos e comprovações</h3>
+            <p class="hint" data-i18n="stock.lotProof.hint">Confira as peças pelo QR e selecione apenas as que pertencem ao mesmo lote real. O anexo e a conferência ficam vinculados ao lote e ao histórico das peças.</p>
+            <button id="stock-lot-refresh" type="button" class="ghost" data-i18n="stock.refresh">Atualizar</button>
+            <button id="stock-lot-reconcile" type="button" class="ghost" hidden data-i18n="stock.lotProof.reconcile">Conciliar peças contadas sem QR</button>
+            <p id="stock-lot-status" class="hint" aria-live="polite"></p>
+            <div class="table-wrap"><table>
+              <thead><tr><th scope="col" data-i18n="stock.lot">Lote</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</th><th scope="col" data-i18n="delivery.quantity">Quantidade</th><th scope="col" data-i18n="stock.lotProof.actor">Responsável</th><th scope="col" data-i18n="stock.pendingReg.evidence">Evidência verificável</th></tr></thead>
+              <tbody id="stock-lot-tbody"></tbody>
+            </table></div>
+            <small id="stock-lot-empty" class="hint" style="display:none;" data-i18n="stock.lotProof.empty">Nenhum lote físico comprovado neste escopo.</small>
           </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>

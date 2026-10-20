@@ -22,7 +22,9 @@ function harness() {
   node('stock-company').value = '2';
   node('stock-unit').value = '5';
   node('stock-epi').value = '1';
+  node('stock-receipt-file').files = [{ name: 'etiqueta.png', type: 'image/png', size: 68 }];
   const context = {
+    FileReader: class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } },
     document: { getElementById: node },
     state: { user: { id: 10, company_id: 2, operational_unit_id: 5 },
       epis: [{ id: 1, epi_validity_date: '2099-12-31', ca_expiry: '2099-12-31' }] },
@@ -34,7 +36,7 @@ function harness() {
     setupStockLabelCustomFields() {}, resetStockManufactureCaptureState() {}, loadBootstrap: async () => {}
   };
   vm.createContext(context);
-  vm.runInContext(['syncManualReceiptValidityFields', 'manualReceiptValidityValues', 'handleStockMovementSubmit']
+  vm.runInContext(['readStockEvidenceFile', 'syncManualReceiptValidityFields', 'manualReceiptValidityValues', 'handleStockMovementSubmit']
     .map(functionSource).join('\n'), context);
   return {
     node, sent, alerts, run: (code) => vm.runInContext(code, context),

@@ -51,6 +51,7 @@ function harness({ spa = false, transport = async () => payload(), stockFails = 
     updateBootstrapDegradedUi() {}, trackInteractiveViewHistory() {}, trackNavBackHistory() {}, stopDeliveryQrCamera: async () => {},
     reportNonCriticalError() {}, setSpaNavigationLoading() {}, showToast() {},
     loadStockEpis: async () => { if (stockFails) throw new Error('Lista indisponível'); },
+    loadStockLotEvidence: async () => {},
     syncStockOptions() {}, scheduleStockMovementSearchLoad() {},
     bindAppListener: (target, event, callback) => target?.addEventListener(event, callback),
     tr: (_key, fallback) => fallback, esc: (value) => String(value ?? ''), formatCurrency: (value) => String(value),

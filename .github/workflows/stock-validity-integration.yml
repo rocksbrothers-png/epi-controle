@@ -2,10 +2,10 @@ name: Stock Validity Integration
 
 on:
   pull_request:
-    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', 'tests_postgres/test_est_v3_5_postmerge_receipt.py', 'tests_postgres/test_stock_manual_receipt_validity_http.py', '.github/workflows/stock-validity-integration.yml']
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', 'tests_postgres/test_est_v3_5_postmerge_receipt.py', 'tests_postgres/test_stock_manual_receipt_validity_http.py', 'tests_postgres/test_stock_lot_evidence_http.py', '.github/workflows/stock-validity-integration.yml']
   push:
     branches: ['claude/**']
-    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', 'tests_postgres/test_est_v3_5_postmerge_receipt.py', 'tests_postgres/test_stock_manual_receipt_validity_http.py', '.github/workflows/stock-validity-integration.yml']
+    paths: ['modules/**', 'core/**', 'epi_backend/**', 'flutter/**', 'scripts/stock_r1_http_fixture.py', 'tests_postgres/test_est_v3_5_pending_regularization_http.py', 'tests_postgres/test_est_v3_5_postmerge_receipt.py', 'tests_postgres/test_stock_manual_receipt_validity_http.py', 'tests_postgres/test_stock_lot_evidence_http.py', '.github/workflows/stock-validity-integration.yml']
 
 jobs:
   physical-stock-http:
@@ -58,6 +58,8 @@ jobs:
         run: python -m pytest -q tests_postgres/test_est_v3_5_postmerge_receipt.py
       - name: Validate manual batch receipt and physical expiry evidence
         run: python -m pytest -q tests_postgres/test_stock_manual_receipt_validity_http.py
+      - name: Validate physical lot evidence, files and access scope
+        run: python -m pytest -q tests_postgres/test_stock_lot_evidence_http.py
       - name: Exercise real HTTP and PostgreSQL from Flutter
         shell: bash
         run: |

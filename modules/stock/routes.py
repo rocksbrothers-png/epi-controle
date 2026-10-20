@@ -67,6 +67,10 @@ from modules.stock.service import (
     upsert_unit_stock,
 )
 from modules.stock.manual_receipt import record_manual_lot_piece, validate_manual_lot
+from modules.stock.lot_evidence import (
+    create_physical_lot, link_piece_to_lot, lot_evidence_file, lot_evidence_list,
+    proof_reference, reconcile_untracked_lot, regularize_selected_lot, save_lot_file, validate_evidence_file,
+)
 from core.permissions import PERM_SETTINGS_UPDATE, PERM_SETTINGS_VIEW
 from core.rate_limit import get_client_ip
 from core.schema import ensure_stock_movement_size_columns
@@ -270,6 +274,51 @@ def handle_post_stock_item_regularize_validity(handler, parsed, payload, match):
             validity_status=result['validity_status'], idempotent=bool(result['idempotent']),
         )
         return send_json(handler, 200, {'ok': True, **result})
+
+
+def handle_post_stock_lot_regularize(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload),
+                                 'stock:regularize_validity')
+        unit_id = actor_operational_unit_id(connection, actor)
+        if not unit_id:
+            raise PermissionError('Perfil sem unidade operacional ativa para comprovar lote.')
+        if payload.get('unit_id') and int(payload['unit_id']) != int(unit_id):
+            raise PermissionError('Lote fora da unidade operacional ativa.')
+        if payload.get('company_id') and int(payload['company_id']) != int(actor['company_id']):
+            raise PermissionError('Lote fora da empresa autorizada.')
+        result = regularize_selected_lot(connection, actor, int(unit_id), payload)
+        connection.commit()
+        return send_json(handler, 200, result)
+
+
+def handle_get_stock_lot_evidence(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed), 'stock:view')
+        query = parse_qs(parsed.query)
+        company_id = int(actor['company_id'] if actor['role'] != 'master_admin'
+                         else query.get('company_id', ['0'])[0])
+        if not company_id:
+            raise ValueError('Selecione a empresa para consultar os lotes.')
+        unit_id = resolve_unit_scope(connection, actor, query.get('unit_id', [None])[0]).unit_id
+        lot_id = int(query.get('lot_id', ['0'])[0])
+        if lot_id:
+            return send_json(handler, 200, {'file': lot_evidence_file(connection, company_id, unit_id, lot_id)})
+        return send_json(handler, 200, {'items': lot_evidence_list(connection, company_id, unit_id)})
+
+
+def handle_post_stock_lot_reconcile(handler, parsed, payload, match):
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload),
+                                 'stock:regularize_validity')
+        authorize_action(connection, actor['id'], 'stock:adjust', actor['company_id'])
+        unit_id = actor_operational_unit_id(connection, actor)
+        if (not unit_id or int(payload.get('unit_id') or 0) != int(unit_id)
+                or int(payload.get('company_id') or 0) != int(actor['company_id'])):
+            raise PermissionError('Concilie somente a empresa e unidade operacional autorizadas.')
+        result = reconcile_untracked_lot(connection, actor, int(unit_id), payload)
+        connection.commit()
+        return send_json(handler, 200, result)
 
 
 def handle_get_stock_validity_overview(handler, parsed, payload, match):
@@ -804,6 +853,10 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         if not manufacture_date:
             raise ValueError('Data de fabricação é obrigatória para entrada de estoque.')
         lot = validate_manual_lot(connection, payload)
+        evidence_file = validate_evidence_file(payload.get('evidence_file'))
+        if evidence_file and lot['physical_expiry_date'] is None:
+            raise ValueError('Anexo de comprovação exige validade física e lote identificados.')
+        lot['expiry_evidence'] = proof_reference(lot['expiry_evidence'], evidence_file) if lot['physical_expiry_date'] else None
         if lot['physical_expiry_date'] is not None:
             # A permissão de ajuste de saldo não concede captura de validade.
             authorize_action(connection, actor['id'], 'stock:regularize_validity', int(payload['company_id']))
@@ -837,6 +890,11 @@ def handle_post_stock_movements(handler, parsed, payload, match):
         )
         upsert_unit_stock(connection, int(payload['company_id']), int(payload['unit_id']), int(payload['epi_id']), new_stock)
         qr_labels = []
+        physical_lot_id = None
+        if lot['physical_expiry_date'] is not None:
+            physical_lot_id = create_physical_lot(connection, actor, int(payload['unit_id']),
+                                                  int(payload['epi_id']), lot, quantity,
+                                                  datetime.now(UTC).isoformat())
         if movement_type == 'in':
             now = datetime.now(UTC).isoformat()
             for _ in range(quantity):
@@ -862,6 +920,11 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     now=now,
                 )
                 record_manual_lot_piece(connection, stock_item_id, lot, actor, now)
+                if physical_lot_id:
+                    link_piece_to_lot(connection, stock_item_id, physical_lot_id, lot['lot_code'])
+                    if not qr_labels:
+                        save_lot_file(connection, actor, physical_lot_id, stock_item_id, evidence_file,
+                                      'Comprovação na entrada manual do lote', now)
                 qr_labels.append({
                     'qr_code_value': qr_value,
                     'epi_name': epi['name'],
@@ -870,6 +933,7 @@ def handle_post_stock_movements(handler, parsed, payload, match):
                     'uniform_size': uniform_size,
                     'stock_item_id': stock_item_id,
                     'lot_code': lot['lot_code'],
+                    'lot_id': physical_lot_id,
                     'physical_expiry_date': lot['physical_expiry_date'],
                     'expiry_source': lot['expiry_source'],
                     'manufacture_date': manufacture_date,
@@ -1128,6 +1192,9 @@ def register_routes(router):
     router.register('GET',  '/api/stock/compliance',             handle_get_stock_compliance)
     router.register('POST', '/api/stock/items/status',           handle_post_stock_item_status)
     router.register('POST', '/api/stock/items/regularize-validity', handle_post_stock_item_regularize_validity)
+    router.register('POST', '/api/stock/lots/regularize-validity', handle_post_stock_lot_regularize)
+    router.register('POST', '/api/stock/lots/reconcile', handle_post_stock_lot_reconcile)
+    router.register('GET',  '/api/stock/lots/evidence', handle_get_stock_lot_evidence)
     router.register('GET',  '/api/stock/movements/report',       handle_get_stock_movements_report)
     router.register('POST', '/api/stock/minimum',                handle_post_stock_minimum)
     router.register('POST', '/api/stock/attention-percentage',   handle_post_stock_attention_percentage)

@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=bf8c8f566c2d">
+  <link rel="stylesheet" href="/styles.css?v=a708b796e2d6">
   <!-- Bootstrap de tema (P2-2, reescrito na frente de Isolamento PR C).
        Antes lia `epi-theme` do `localStorage`: aparência de escopo DEVICE,
        aplicada ANTES de qualquer autenticação. Num computador compartilhado
@@ -17,7 +17,7 @@
        e que só é escrita DEPOIS da autenticação, carimbada com o principal.
        Por construção não há o que aplicar antes de saber de quem é. -->
   <script>try{var p=JSON.parse(sessionStorage.getItem('epi-prefs-sessao')||'null');if(p&&p.tema==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
-<link rel="stylesheet" href="/styles/safety-library.css?v=bf8c8f566c2d">
+<link rel="stylesheet" href="/styles/safety-library.css?v=a708b796e2d6">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -1785,6 +1785,7 @@
               <div id="stock-receipt-proof" hidden>
                 <label><span data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</span><input name="physical_expiry_date" id="stock-receipt-expiry" type="date" disabled></label>
                 <label><span data-i18n="stock.pendingReg.evidence">Evidência verificável</span><textarea name="expiry_evidence" id="stock-receipt-evidence" rows="2" disabled></textarea></label>
+                <label><span data-i18n="stock.lotProof.file">Foto da embalagem/etiqueta ou documento do fabricante (PDF, PNG ou JPEG, até 3 MiB)</span><input id="stock-receipt-file" type="file" accept="application/pdf,image/png,image/jpeg" disabled></label>
               </div>
               <p id="stock-receipt-validity-hint" class="hint" aria-live="polite"></p>
             </fieldset>
@@ -2030,10 +2031,12 @@
             <div class="action-group" style="margin-top:8px;align-items:center;">
               <strong id="pending-reg-count" aria-live="polite"></strong>
               <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
+              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.lotProof.selected">Comprovar lote das peças selecionadas</button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead><tr>
+                  <th scope="col" data-i18n="stock.lotProof.select">Selecionar peças</th>
                   <th scope="col" data-i18n="epi.title">EPI</th>
                   <th scope="col" data-i18n="unit.title">Unidade</th>
                   <th scope="col" data-i18n="stock.lot">Lote</th>
@@ -2044,6 +2047,18 @@
               </table>
             </div>
             <small id="pending-reg-empty" class="hint" style="display:none;" data-i18n="stock.pendingReg.empty">Nenhuma peça pendente de regularização no escopo atual.</small>
+          </article>
+          <article class="card" id="stock-lot-evidence-card">
+            <h3 data-i18n="stock.lotProof.title">Lotes físicos e comprovações</h3>
+            <p class="hint" data-i18n="stock.lotProof.hint">Confira as peças pelo QR e selecione apenas as que pertencem ao mesmo lote real. O anexo e a conferência ficam vinculados ao lote e ao histórico das peças.</p>
+            <button id="stock-lot-refresh" type="button" class="ghost" data-i18n="stock.refresh">Atualizar</button>
+            <button id="stock-lot-reconcile" type="button" class="ghost" hidden data-i18n="stock.lotProof.reconcile">Conciliar peças contadas sem QR</button>
+            <p id="stock-lot-status" class="hint" aria-live="polite"></p>
+            <div class="table-wrap"><table>
+              <thead><tr><th scope="col" data-i18n="stock.lot">Lote</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</th><th scope="col" data-i18n="delivery.quantity">Quantidade</th><th scope="col" data-i18n="stock.lotProof.actor">Responsável</th><th scope="col" data-i18n="stock.pendingReg.evidence">Evidência verificável</th></tr></thead>
+              <tbody id="stock-lot-tbody"></tbody>
+            </table></div>
+            <small id="stock-lot-empty" class="hint" style="display:none;" data-i18n="stock.lotProof.empty">Nenhum lote físico comprovado neste escopo.</small>
           </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
@@ -3926,54 +3941,54 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=bf8c8f566c2d"></script>
-  <script defer src="/i18n-helper.js?v=bf8c8f566c2d"></script>
-  <script defer src="/tenant-init.js?v=bf8c8f566c2d"></script>
+  <script defer src="/i18n.js?v=a708b796e2d6"></script>
+  <script defer src="/i18n-helper.js?v=a708b796e2d6"></script>
+  <script defer src="/tenant-init.js?v=a708b796e2d6"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/core/permissions.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/core/feature-flags.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/core/config.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/utils/storage.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/utils/debug.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/utils/dom.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/utils/perf.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/modules/auth.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/modules/api-client.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/modules/router.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/ui-helpers.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/view-helpers.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/dashboard.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/epis.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/estoque.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/estoque-config.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/safety-library.js?v=bf8c8f566c2d"></script>
-<script defer src="/js/views/employee-portal.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/data-migration-view.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/purchases.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/procurement.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/feedback.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/devolution.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/fichas.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/feedback-detail.js?v=bf8c8f566c2d"></script>
-  <script defer src="/js/views/profile.js?v=bf8c8f566c2d"></script>
-  <script defer src="/colab-list.js?v=bf8c8f566c2d"></script>
-  <script defer src="/gestao-colab.js?v=bf8c8f566c2d"></script>
-  <script defer src="/estoque.js?v=bf8c8f566c2d"></script>
-  <script defer src="/ux-global.js?v=bf8c8f566c2d"></script>
-  <script defer src="/app.js?v=bf8c8f566c2d"></script>
-  <script defer src="/share-modal.js?v=bf8c8f566c2d"></script>
-  <script defer src="/entrega-epi.js?v=bf8c8f566c2d"></script>
-  <script defer src="/navigation.js?v=bf8c8f566c2d"></script>
-  <script defer src="/navigation-controls.js?v=bf8c8f566c2d"></script>
-  <script defer src="/error-monitor.js?v=bf8c8f566c2d"></script>
-  <script defer src="/ux-analytics.js?v=bf8c8f566c2d"></script>
+  <script defer src="/js/core/constants.js?v=a708b796e2d6"></script>
+  <script defer src="/js/core/permissions.js?v=a708b796e2d6"></script>
+  <script defer src="/js/core/feature-flags.js?v=a708b796e2d6"></script>
+  <script defer src="/js/core/config.js?v=a708b796e2d6"></script>
+  <script defer src="/js/utils/storage.js?v=a708b796e2d6"></script>
+  <script defer src="/js/utils/debug.js?v=a708b796e2d6"></script>
+  <script defer src="/js/utils/dom.js?v=a708b796e2d6"></script>
+  <script defer src="/js/utils/perf.js?v=a708b796e2d6"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=a708b796e2d6"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=a708b796e2d6"></script>
+  <script defer src="/js/modules/auth.js?v=a708b796e2d6"></script>
+  <script defer src="/js/modules/api-client.js?v=a708b796e2d6"></script>
+  <script defer src="/js/modules/router.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/ui-helpers.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/view-helpers.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/dashboard.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/epis.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/estoque.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/estoque-config.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/safety-library.js?v=a708b796e2d6"></script>
+<script defer src="/js/views/employee-portal.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/data-migration-view.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/purchases.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/procurement.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/feedback.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/devolution.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/fichas.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/feedback-detail.js?v=a708b796e2d6"></script>
+  <script defer src="/js/views/profile.js?v=a708b796e2d6"></script>
+  <script defer src="/colab-list.js?v=a708b796e2d6"></script>
+  <script defer src="/gestao-colab.js?v=a708b796e2d6"></script>
+  <script defer src="/estoque.js?v=a708b796e2d6"></script>
+  <script defer src="/ux-global.js?v=a708b796e2d6"></script>
+  <script defer src="/app.js?v=a708b796e2d6"></script>
+  <script defer src="/share-modal.js?v=a708b796e2d6"></script>
+  <script defer src="/entrega-epi.js?v=a708b796e2d6"></script>
+  <script defer src="/navigation.js?v=a708b796e2d6"></script>
+  <script defer src="/navigation-controls.js?v=a708b796e2d6"></script>
+  <script defer src="/error-monitor.js?v=a708b796e2d6"></script>
+  <script defer src="/ux-analytics.js?v=a708b796e2d6"></script>
 </body>
 </html>

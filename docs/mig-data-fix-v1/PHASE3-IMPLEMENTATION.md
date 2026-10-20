@@ -77,6 +77,23 @@ a fase de hardening de recuperação; a UI é a Fase 4. Processamento permanece
 síncrono por arquivo (sem progresso/retomada parcial); cargas muito grandes ainda
 podem gerar espera — benchmark e checkpoints são trabalho futuro declarado.
 
+A auditoria adversarial independente (2026-10-20, heads bb45d8c5/8ef702c) aprovou
+a fatia **sem P0/P1** (8 invariantes confirmadas, testes não-maquiados, paridade
+byte-idêntica, CI substantivo) e registrou três resíduos **fail-closed** de
+recuperação a crash — todos liveness, nunca escrita indevida — para a fatia de
+hardening de recuperação:
+- **P2-A:** crash entre o commit do negócio e o UPDATE do controle → na retomada
+  o `preview_token` recalculado dá `preview_stale` e o job vira `failed` (falha
+  honesta, sem dupla escrita).
+- **P2-B:** se `pg_advisory_unlock` falhar numa conexão ainda viva, o retorno ao
+  pool preserva o advisory de sessão e o job fica preso em `running`; correção
+  completa exige descartar o backend do pool (`core/database.py`).
+- **P2-C:** `cancel_requested` + worker morto → job preso em `running` (o `claim`
+  não reclama job com cancelamento pendente).
+
+Nota (fora desta fatia): `core/database.py` faz `?`→`%s` sem escapar `%` literal;
+inócuo aqui, pois o módulo usa apenas binds `%s`.
+
 ## Governança
 
 Byte-idêntico Corporate × SaaS. MERGE = NÃO · DEPLOY = NÃO · MIGRAÇÕES EM

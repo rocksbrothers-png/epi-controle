@@ -394,10 +394,15 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
                 connection.execute('SELECT pg_advisory_unlock(%s, %s)', (_ADVISORY_NS, int(job_id)))
                 connection.commit()
             except Exception:
+                # Resíduo P2-B (fail-closed, só liveness): se o unlock falhar numa
+                # conexão ainda VIVA, o close() abaixo a devolve ao pool (putconn)
+                # sem derrubar o advisory de sessão, e o job pode ficar preso em
+                # 'running' — nunca escrita indevida. A correção completa (descartar
+                # o backend do pool) fica na fatia de hardening de recuperação; um
+                # backend morto já é descartado pelo pool, liberando o lock.
                 try:
                     connection.rollback()
                 except Exception:
-                    # Conexão já inutilizável; o advisory de sessão cai no close().
                     pass
         connection.close()
 

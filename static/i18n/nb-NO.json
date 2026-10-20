@@ -570,6 +570,8 @@
     "blockedUnitHint": "Bruker firma/enhet valgt over på denne skjermen.",
     "blockItem": "Blokker vare",
     "refresh": "Oppdater",
+    "panelLoadError": "Kunne ikke laste inn data. Klikk på Oppdater for å prøve igjen.",
+    "panelCount": "{n} element(er).",
     "lot": "Parti",
     "status": "Status",
     "blockedEmpty": "Ingen blokkerte varer.",

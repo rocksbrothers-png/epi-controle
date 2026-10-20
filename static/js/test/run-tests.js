@@ -7642,6 +7642,8 @@ test('RECOV R-3: a resposta do pedido de instruções vem do servidor', () => {
 
 
 
+require('./stock-panels-runtime')({ testAsync, assert, eq });
+
 (async () => {
   for (const t of asyncTests) {
     try {

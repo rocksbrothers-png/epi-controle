@@ -570,6 +570,8 @@
     "blockedUnitHint": "Uses the company/unit selected above on this screen.",
     "blockItem": "Block item",
     "refresh": "Refresh",
+    "panelLoadError": "Unable to load data. Click Refresh to try again.",
+    "panelCount": "{n} item(s).",
     "lot": "Lot",
     "status": "Status",
     "blockedEmpty": "No blocked items.",

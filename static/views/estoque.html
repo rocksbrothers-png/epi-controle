@@ -395,7 +395,7 @@
                 </table>
               </div>
             </div>
-            <small id="validity-mgmt-empty" class="hint" data-i18n="validity.empty">Nenhum EPI em risco de validade no escopo atual.</small>
+            <small id="validity-mgmt-empty" class="hint" style="display:none;" data-i18n="validity.empty">Nenhum EPI em risco de validade no escopo atual.</small>
           </article>
           <article class="card" id="pending-reg-card">
             <h3 data-i18n="stock.pendingReg.title">Pendentes de regularização</h3>
@@ -416,7 +416,7 @@
                 <tbody id="pending-reg-tbody"></tbody>
               </table>
             </div>
-            <small id="pending-reg-empty" class="hint" data-i18n="stock.pendingReg.empty">Nenhuma peça pendente de regularização no escopo atual.</small>
+            <small id="pending-reg-empty" class="hint" style="display:none;" data-i18n="stock.pendingReg.empty">Nenhuma peça pendente de regularização no escopo atual.</small>
           </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
@@ -431,6 +431,7 @@
               <button id="blocked-stock-block-btn" class="ghost" type="button" data-i18n="stock.blockItem">Bloquear item</button>
               <button id="blocked-stock-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
             </div>
+            <p id="blocked-stock-load-status" class="hint" aria-live="polite"></p>
             <small id="blocked-stock-feedback" class="hint" aria-live="polite"></small>
             <div class="table-wrap">
               <table>
@@ -445,7 +446,7 @@
                 <tbody id="blocked-stock-tbody"></tbody>
               </table>
             </div>
-            <small id="blocked-stock-empty" class="hint" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
+            <small id="blocked-stock-empty" class="hint" style="display:none;" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="alertas">

@@ -1646,7 +1646,7 @@ const INTERACTIVE_TOOLS_MODULES = Object.freeze({
     tableSelector: '#stock-epis-table',
     filterSelector: '[data-estoque-filters]',
     syncFilters: () => loadStockEpis(),
-    refresh: async () => { bindBlockedStockUi(); bindValidityMgmtUi(); await loadStockEpis(); await loadBlockedStock(); await loadValidityOverview(); await loadPendingRegularization(); },
+    refresh: () => globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(),
     clearFilters: () => {
       if (refs.stockFilterProtection) refs.stockFilterProtection.value = '';
       if (refs.stockFilterName) refs.stockFilterName.value = '';
@@ -2084,10 +2084,11 @@ globalThis.__EPI_REFRESH_GESTAO_COLAB__ = () => {
 globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   bindBlockedStockUi();
   bindValidityMgmtUi();
-  await loadStockEpis();
-  await loadBlockedStock();
-  await loadValidityOverview();
-  await loadPendingRegularization();
+  // Cada painel consulta seu próprio recurso: uma falha na lista de EPIs não
+  // pode impedir a consulta das pendências, bloqueios ou indicadores.
+  await Promise.all([
+    loadStockEpis(), loadBlockedStock(), loadValidityOverview(), loadPendingRegularization()
+  ]);
 };
 
 function debounce(fn, wait = 200) {
@@ -3727,6 +3728,13 @@ function showView(view, options = {}) {
   }
   if (partial && SPA_NAV_SUPPORTED_VIEWS.includes(view)) {
     void runSpaPartialNavigation(view);
+  }
+  if (view === 'estoque' && (!partial || !isSpaNavigationEnabled())) {
+    // O estoque também funciona sem os recursos opcionais de navegação SPA.
+    void Promise.resolve(globalThis.__EPI_REFRESH_ESTOQUE_LISTA__?.()).catch((error) => {
+      reportNonCriticalError('[stock] falha ao atualizar a tela', error);
+      showToast(tr('stock.panelLoadError', 'Não foi possível carregar os dados. Clique em Atualizar para tentar novamente.'), 'error');
+    });
   }
   if (view === 'unidades' && typeof loadArchivedUnits === 'function') {
     void loadArchivedUnits();
@@ -13636,6 +13644,32 @@ async function handleStockMovementSubmit(event) {
 
 // ── Estoque Bloqueado (Fase 4b/HSE) ──────────────────────────────────────────
 let _blockedStockStatuses = null;
+const _stockPanelRequests = new Map();
+
+function _stockPanelLoadMessage(statusId, message, isError = false) {
+  const status = document.getElementById(statusId);
+  if (!status) return;
+  status.textContent = message;
+  status.style.color = isError ? 'var(--color-danger)' : '';
+}
+
+function _startStockPanelLoad(key, statusId, emptyId, contentIds) {
+  const requestId = (_stockPanelRequests.get(key) || 0) + 1;
+  _stockPanelRequests.set(key, requestId);
+  for (const id of contentIds) {
+    const element = document.getElementById(id);
+    if (element) element.innerHTML = '';
+  }
+  const empty = document.getElementById(emptyId);
+  if (empty) empty.style.display = 'none';
+  _stockPanelLoadMessage(statusId, tr('stock.loading', 'Carregando...'));
+  // Uma resposta antiga não deve substituir os dados de outra empresa/unidade.
+  return () => _stockPanelRequests.get(key) === requestId;
+}
+
+function _stockPanelLoadError(statusId) {
+  _stockPanelLoadMessage(statusId, tr('stock.panelLoadError', 'Não foi possível carregar os dados. Clique em Atualizar para tentar novamente.'), true);
+}
 
 function _blockedStockContext() {
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
@@ -13653,6 +13687,7 @@ function _renderBlockedStatusOptions(select, selected) {
 async function loadBlockedStock() {
   const tbody = document.getElementById('blocked-stock-tbody');
   if (!tbody) return;
+  const isCurrent = _startStockPanelLoad('blocked', 'blocked-stock-load-status', 'blocked-stock-empty', ['blocked-stock-tbody']);
   const { companyId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
@@ -13660,9 +13695,11 @@ async function loadBlockedStock() {
   if (unitId) params.set('unit_id', unitId);
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/blocked-items?${params.toString()}`);
+    if (!isCurrent()) return;
     _blockedStockStatuses = payload.statuses || _blockedStockStatuses;
     _renderBlockedStatusOptions(document.getElementById('blocked-stock-status'));
     const items = Array.isArray(payload.items) ? payload.items : [];
+    _stockPanelLoadMessage('blocked-stock-load-status', tr('stock.panelCount', '{n} item(ns).').replace('{n}', String(items.length)));
     const empty = document.getElementById('blocked-stock-empty');
     if (empty) empty.style.display = items.length ? 'none' : '';
     tbody.innerHTML = items.map((item) => {
@@ -13683,6 +13720,8 @@ async function loadBlockedStock() {
       </tr>`;
     }).join('');
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('blocked-stock-load-status');
     reportNonCriticalError('[blocked-stock] falha ao carregar', error);
   }
 }
@@ -13808,12 +13847,16 @@ function _renderValidityBreakdown(tbodyId, entries) {
 async function loadValidityOverview() {
   const host = document.getElementById('validity-mgmt-kpis');
   if (!host) return;
+  const isCurrent = _startStockPanelLoad('validity', 'validity-mgmt-value', 'validity-mgmt-empty', [
+    'validity-mgmt-kpis', 'validity-by-manufacturer', 'validity-by-unit', 'validity-by-lot'
+  ]);
   const { companyId, unitId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
   if (unitId) params.set('unit_id', unitId);
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/validity-overview?${params.toString()}`);
+    if (!isCurrent()) return;
     const summary = payload.summary || {};
     _renderValidityKpis(summary);
     _renderValidityBreakdown('validity-by-manufacturer', payload.by_manufacturer);
@@ -13828,6 +13871,8 @@ async function loadValidityOverview() {
     const empty = document.getElementById('validity-mgmt-empty');
     if (empty) empty.style.display = Number(summary.at_risk_total || 0) ? 'none' : '';
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('validity-mgmt-value');
     reportNonCriticalError('[validity-mgmt] falha ao carregar', error);
   }
 }
@@ -13868,6 +13913,7 @@ function bindValidityMgmtUi() {
 async function loadPendingRegularization() {
   const tbody = document.getElementById('pending-reg-tbody');
   if (!tbody) return;
+  const isCurrent = _startStockPanelLoad('pending', 'pending-reg-count', 'pending-reg-empty', ['pending-reg-tbody']);
   const { companyId, unitId } = _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
@@ -13876,6 +13922,7 @@ async function loadPendingRegularization() {
   const emptyEl = document.getElementById('pending-reg-empty');
   try {
     const payload = await apiWithBootstrapRetry(`/api/stock/pending-regularization?${params.toString()}`);
+    if (!isCurrent()) return;
     const items = Array.isArray(payload.items) ? payload.items : [];
     const canRegularize = hasPermission('stock:regularize_validity');
     if (countEl) {
@@ -13902,6 +13949,8 @@ async function loadPendingRegularization() {
     }).join('');
     if (emptyEl) emptyEl.style.display = items.length ? 'none' : '';
   } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('pending-reg-count');
     reportNonCriticalError('[pending-reg] falha ao carregar', error);
   }
 }
@@ -15123,8 +15172,8 @@ async function init() {
     refreshDeliveryContext();
     void loadAvailableQrsForSelectedEpi();
   });
-  bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
-  bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await loadStockEpis(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-company'), 'change', async () => { syncStockOptions(); await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(); scheduleStockMovementSearchLoad(); });
+  bindAppListener(document.getElementById('stock-unit'), 'change', async () => { syncStockOptions(); await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(); scheduleStockMovementSearchLoad(); });
   bindAppListener(document.getElementById('stock-epi'), 'change', () => {
     syncStockSizeDefaults();
     syncSelectedEpiMinimumStockField();
@@ -15724,7 +15773,7 @@ async function init() {
     if (filtro && state.stockConfigUnitId !== null && state.stockConfigUnitId !== undefined) {
       filtro.value = String(state.stockConfigUnitId);
     }
-    loadStockEpis().then(syncSelectedEpiMinimumStockField).catch(() => {});
+    globalThis.__EPI_REFRESH_ESTOQUE_LISTA__().then(syncSelectedEpiMinimumStockField).catch(() => {});
   });
 
   bindAppListener(document.getElementById('stock-minimum-selected-edit'), 'click', () => {

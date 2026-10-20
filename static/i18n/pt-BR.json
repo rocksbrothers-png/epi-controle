@@ -570,6 +570,8 @@
     "blockedUnitHint": "Usa a empresa/unidade selecionadas acima nesta tela.",
     "blockItem": "Bloquear item",
     "refresh": "Atualizar",
+    "panelLoadError": "Não foi possível carregar os dados. Clique em Atualizar para tentar novamente.",
+    "panelCount": "{n} item(ns).",
     "lot": "Lote",
     "status": "Status",
     "blockedEmpty": "Nenhum item bloqueado.",

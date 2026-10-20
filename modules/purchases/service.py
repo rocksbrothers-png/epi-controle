@@ -901,7 +901,7 @@ def _preflight_receipt(connection, pr_id, flags):
             try:
                 _resolve_receipt_piece_plan(lots, quantity,
                     legacy_validity=str(flag.get('manufacturer_validity_date') or '').strip(),
-                    legacy_evidence=f'Conferência de requisição #{pr_id}')
+                    legacy_evidence=str(flag.get('evidence') or '').strip())
             except ValueError as error:
                 raise ReceiptValidationError(index, item, str(error), 'INVALID_RECEIPT_LOTS') from error
 
@@ -912,8 +912,8 @@ def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evide
     físico por peça (``record_received_item_physical``); NUNCA inventa data
     (catálogo/CA jamais; sem preenchimento presumido).
 
-    - Sem ``lots``: caminho LEGADO — um lote único com a validade herdada por EPI
-      (compatibilidade total com o recebimento atual).
+    - Sem ``lots``: um lote único com a validade e evidência da própria linha.
+      O formato legado não compartilha comprovação entre linhas do mesmo EPI.
     - Com ``lots``: cada lote traz quantidade, identificação (``lot_code``),
       validade e evidência próprias (R3 #4). Exceção individual = um lote de
       quantidade 1 (R3 #6).
@@ -923,6 +923,9 @@ def _resolve_receipt_piece_plan(lots, quantity, *, legacy_validity, legacy_evide
     """
     quantity = int(quantity)
     if not lots:
+        if legacy_validity and not legacy_evidence:
+            raise ValueError('Evidência verificável da validade é obrigatória nesta linha '
+                             '(etiqueta, embalagem ou documento do fabricante).')
         return [{'lot_code': '', 'validity': legacy_validity, 'evidence': legacy_evidence}
                 for _ in range(quantity)]
     plan = []
@@ -989,21 +992,13 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         f'SELECT * FROM purchase_request_items WHERE purchase_request_id = ? AND id IN ({placeholders})',
         (pr_id, *received_ids)
     ).fetchall()]
-    # Datas de validade do fabricante informadas na conferência (NT 146/2015):
-    # nenhum item deve entrar em estoque sem essa data. A captura é por lote — a
-    # primeira data lida de um mesmo EPI serve para todas as demais unidades
-    # daquele EPI (fallback abaixo), mesmo que a UI envie em apenas um item.
-    validity_by_item = {}
-    for flag in (received_item_flags or []):
-        fid = int(str(flag.get('id') or '').strip() or '0')
-        fdate = str(flag.get('manufacturer_validity_date') or '').strip()
-        if fid and fdate:
-            validity_by_item[fid] = fdate
-    validity_by_epi = {}
-    for it in pr_items:
-        d = validity_by_item.get(int(it['id']))
-        if d and int(it['epi_id']) not in validity_by_epi:
-            validity_by_epi[int(it['epi_id'])] = d
+    # A trava da PR não protege saldo compartilhado por PRs diferentes.
+    # Trave todos os escopos antes de ler/gravar saldo, na mesma ordem global
+    # (EPI, unidade) usada pelas operações físicas. Também cobre saldo ausente.
+    from modules.stock.eligibility import lock_stock_scope
+    scopes = {(int(it['company_id']), int(it['epi_id']), int(it['unit_id'])) for it in pr_items}
+    for company_id, epi_id, unit_id in sorted(scopes):
+        lock_stock_scope(connection, company_id, unit_id, epi_id)
     # EST-V3.5-R3: flag original por item — traz `lots` quando a UI separa o
     # recebimento em múltiplos lotes com validade/evidência próprias.
     flags_by_item = {}
@@ -1026,9 +1021,8 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
                 'Quantidade efetivamente recebida inválida ou não positiva. '
                 'Corrija o recebimento antes de confirmar a conferência.'
             )
-        manufacturer_validity = str(
-            validity_by_item.get(pri_id) or validity_by_epi.get(epi_id) or ''
-        ).strip()
+        flag = flags_by_item.get(pri_id, {})
+        manufacturer_validity = str(flag.get('manufacturer_validity_date') or '').strip()
         # EST-V3.5 (G02): a validade do fabricante NÃO é mais escrita no catálogo
         # (epis.epi_validity_date) no recebimento — é gravada NA PEÇA, por lote
         # (record_received_item_physical, adiante). O catálogo vira só default de
@@ -1036,9 +1030,9 @@ def _auto_add_received_items_to_stock(connection, pr_id, received_item_flags, ac
         # EST-V3.5-R3: plano POR PEÇA a partir dos lotes informados (ou do lote
         # único legado). Evidência obrigatória com validade; soma dos lotes = qtd.
         piece_plan = _resolve_receipt_piece_plan(
-            flags_by_item.get(pri_id, {}).get('lots') or [], quantity,
+            flag.get('lots') or [], quantity,
             legacy_validity=manufacturer_validity,
-            legacy_evidence=f'Conferência de requisição #{pr_id}',
+            legacy_evidence=str(flag.get('evidence') or '').strip(),
         )
         glove_size = str(item.get('glove_size') or 'N/A')
         size = str(item.get('size') or 'N/A')
@@ -1778,6 +1772,31 @@ _PURCHASE_REQUEST_VALID_STATUSES = {
 }
 
 
+def _validate_receipt_transition(connection, pr_id, old_status, new_status):
+    """A mudança de status não apaga a materialização física já persistida.
+
+    Chamado sob a trava da PR, antes de qualquer escrita. A origem do movimento
+    permanece como prova mesmo se alguém tiver revertido o status anteriormente.
+    """
+    if new_status not in ('received', 'checked'):
+        return
+    if new_status == 'checked' and old_status not in ('received', 'checked'):
+        raise ValueError('Conferência exige uma requisição recebida.')
+    if new_status == 'received' and old_status in ('checked', 'closed'):
+        raise ValueError('Recebimento já conferido ou encerrado; não pode ser reaberto por status.')
+    # checked -> checked continua sendo o reenvio idempotente existente.
+    if new_status == 'checked' and old_status == 'checked':
+        return
+    recorded = connection.execute(
+        'SELECT sm.id FROM stock_movements sm '
+        'JOIN purchase_request_items pri ON pri.id = sm.source_id '
+        "WHERE sm.source_type = 'purchase_request' AND sm.company_id = pri.company_id "
+        'AND pri.purchase_request_id = ? LIMIT 1', (pr_id,)
+    ).fetchone()
+    if recorded:
+        raise ValueError('Recebimento já lançado no estoque; a mudança de status não permite novo lançamento.')
+
+
 def update_purchase_request_status(connection, actor, pr, new_status, comment, postponed_until, received_items_payload, ip_address):
     """Updates PR status with optional item-level logic.
 
@@ -1801,6 +1820,7 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
         'SELECT status FROM purchase_requests WHERE id = ?' + _lock_suffix, (pr_id,)
     ).fetchone()
     old_status = str(_locked['status'] if _locked else pr['status'])
+    _validate_receipt_transition(connection, pr_id, old_status, new_status)
     if new_status == 'checked':
         _preflight_receipt(connection, pr_id, received_items_payload)
     now = datetime.now(UTC).isoformat()

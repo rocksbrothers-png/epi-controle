@@ -97,7 +97,9 @@ def _conn():
         CREATE TABLE unit_epi_stock (
             id INTEGER PRIMARY KEY, company_id INTEGER, unit_id INTEGER, epi_id INTEGER, quantity INTEGER DEFAULT 0
         );
-        CREATE TABLE stock_movements (id INTEGER PRIMARY KEY);
+        CREATE TABLE stock_movements (
+            id INTEGER PRIMARY KEY, company_id INTEGER, source_type TEXT, source_id INTEGER
+        );
         CREATE TABLE epi_stock_items (id INTEGER PRIMARY KEY);
         CREATE TABLE users (
             id INTEGER PRIMARY KEY, company_id INTEGER, username TEXT, role TEXT,

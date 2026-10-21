@@ -83,7 +83,8 @@ def save_lot_file(connection, actor, lot_id, item_id, file, justification, now, 
          actor.get('full_name', ''), actor.get('role', ''), now, json.dumps(before or {}),
          json.dumps({'evidence_file': file, 'lot_code': lot['lot_code'],
                      'expiry_source': lot['expiry_source'],
-                     'physical_expiry_date': str(lot['physical_expiry_date']),
+                     'physical_expiry_date': str(lot['physical_expiry_date'] or ''),
+                     'manufacture_date': str(lot.get('manufacture_date') or ''),
                      'evidence': lot['expiry_evidence']}, ensure_ascii=False)),
     )
 
@@ -169,7 +170,7 @@ def lot_evidence_list(connection, company_id, unit_id=None):
         clause = ' AND l.receipt_unit_id=?'
         params.append(unit_id)
     rows = connection.execute(
-        'SELECT l.id,l.lot_code,l.epi_id,l.receipt_unit_id,l.physical_expiry_date,l.expiry_source,'
+        'SELECT l.id,l.lot_code,l.epi_id,l.receipt_unit_id,l.manufacture_date,l.physical_expiry_date,l.expiry_source,'
         'l.expiry_evidence,l.received_quantity,l.received_at,e.name AS epi_name,u.name AS unit_name,'
         "COALESCE((SELECT v.actor_name_snapshot FROM epi_stock_events v WHERE v.company_id=l.company_id "
         "AND v.lot_id=l.id AND v.reason_code='lot_evidence' ORDER BY v.id LIMIT 1),a.full_name) AS actor_name,"
@@ -178,7 +179,8 @@ def lot_evidence_list(connection, company_id, unit_id=None):
         'JOIN users a ON a.id=l.received_by_user_id WHERE l.company_id=?' + clause +
         ' ORDER BY l.id DESC LIMIT 200', tuple(params),
     ).fetchall()
-    return [{**row_to_dict(r), 'physical_expiry_date': str(r['physical_expiry_date'] or ''),
+    return [{**row_to_dict(r), 'manufacture_date': str(r['manufacture_date'] or ''),
+             'physical_expiry_date': str(r['physical_expiry_date'] or ''),
              'received_at': str(r['received_at'] or '')} for r in rows]
 
 

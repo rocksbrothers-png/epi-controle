@@ -200,11 +200,11 @@ def _po_conn():
     return conn
 
 
-def test_po_receive_persists_manufacturer_validity_with_batch_fallback():
+def test_po_receive_keeps_validity_on_its_own_line():
     from modules.purchases.service import receive_purchase_order
     conn = _po_conn()
     po = {'id': 1, 'company_id': 1, 'status': 'approved'}
-    # data informada só no item 1; item 2 (mesmo EPI) herda por lote.
+    # O mesmo EPI pode ter outro lote: item 2 permanece sem validade comprovada.
     result = receive_purchase_order(
         conn, _actor(), po, 'received',
         [
@@ -218,7 +218,7 @@ def test_po_receive_persists_manufacturer_validity_with_batch_fallback():
     epi = conn.execute('SELECT epi_validity_date FROM epis WHERE id = 100').fetchone()
     assert epi['epi_validity_date'] == ''
     items = conn.execute('SELECT manufacturer_validity_date FROM purchase_order_items ORDER BY id').fetchall()
-    assert [i['manufacturer_validity_date'] for i in items] == ['2029-04-30', '2029-04-30']
+    assert [i['manufacturer_validity_date'] for i in items] == ['2029-04-30', '']
 
 
 # ── EST-V3 (G02/G15): validade física POR PEÇA no recebimento ─────────────────

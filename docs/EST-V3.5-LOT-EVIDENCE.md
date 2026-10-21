@@ -49,6 +49,10 @@ Na entrada manual de novo estoque, a comprovação anexada também fica vinculad
 ao lote e às peças recém-recebidas. Esse fluxo aumenta estoque pelo recebimento
 normal; não deve ser usado para individualizar um saldo antigo sem QR.
 
+Na conferência de Compras (requisição ou PO), **Foto / comprovar lote** captura
+fabricação, validade e anexo uma vez e já vincula as peças recebidas ao lote.
+Veja [captura na conferência](EST-V3.5-PURCHASE-LOT-CAPTURE.md).
+
 ## Contratos e armazenamento
 
 - `POST /api/stock/lots/regularize-validity`: recebe `items[]` com IDs e QRs

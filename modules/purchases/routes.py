@@ -85,6 +85,26 @@ from modules.purchases.service import (
 )
 
 
+def handle_post_purchase_lot_label_ocr(handler, parsed, payload, match):
+    from epi_backend.lot_label_ocr import detect_lot_label_dates
+    from modules.stock.lot_evidence import validate_evidence_file
+
+    with closing(get_connection()) as connection:
+        actor_id = resolve_actor_user_id(handler, parsed, payload)
+        try:
+            authorize_action(connection, actor_id, PERM_PURCHASE_REQUESTS_UPDATE)
+        except PermissionError:
+            authorize_action(connection, actor_id, PERM_PO_RECEIVE)
+        file = validate_evidence_file(payload.get('evidence_file'), required=True)
+        if file['mime'] not in ('image/png', 'image/jpeg'):
+            raise ValueError('Para ler datas, fotografe a etiqueta em PNG ou JPEG.')
+        try:
+            result = detect_lot_label_dates('data:' + file['mime'] + ';base64,' + file['content_base64'])
+        except RuntimeError:
+            return send_json(handler, 503, {'error': 'OCR indisponível; informe e confira as datas manualmente.'})
+        return send_json(handler, 200, result)
+
+
 # ── GET ───────────────────────────────────────────────────────────────────────
 
 def handle_get_purchase_scope(handler, parsed, payload, match):
@@ -750,6 +770,7 @@ def register_routes(router):
     router.register('GET', '/api/authorized-suppliers',                           handle_get_authorized_suppliers)
     router.register('GET', r'^/api/authorized-suppliers/(\d+)/purchase-orders$',  handle_get_supplier_pos, regex=True)
     router.register('GET', '/api/company-purchase-config',                         handle_get_company_purchase_config)
+    router.register('POST', '/api/purchases/lot-label-ocr', handle_post_purchase_lot_label_ocr)
     router.register('POST', '/api/company-purchase-config',                        handle_post_company_purchase_config)
     router.register('POST', '/api/purchase-functions',                             handle_post_purchase_functions)
     router.register('GET', '/api/user-unit-links',                                 handle_get_user_unit_links)

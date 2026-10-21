@@ -286,9 +286,16 @@ def test_r0_7_a_10_os_quatro_limitadores_protegem_de_verdade():
             teto = limitador._max
             origem = RL.get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}'))
             limitador.reset(origem)
-            permitidos = sum(limitador.is_allowed(origem) for _ in range(teto + 5))
-            assert permitidos == teto, f'{nome}: {permitidos} passaram, teto {teto}'
-            # e o cabeçalho forjado não devolve fôlego a quem já estourou
-            forjado = RL.get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}', xff='1.2.3.4'))
-            assert not limitador.is_allowed(forjado), (
-                f'{nome}: cabeçalho forjado devolveu bucket novo')
+            try:
+                permitidos = sum(limitador.is_allowed(origem) for _ in range(teto + 5))
+                assert permitidos == teto, f'{nome}: {permitidos} passaram, teto {teto}'
+                # e o cabeçalho forjado não devolve fôlego a quem já estourou
+                forjado = RL.get_client_ip(_Handler(peer=f'198.51.100.{hash(nome) % 200}', xff='1.2.3.4'))
+                assert not limitador.is_allowed(forjado), (
+                    f'{nome}: cabeçalho forjado devolveu bucket novo')
+            finally:
+                # Este gate esgota o singleton real. Não deixe a próxima
+                # bateria de recuperação herdar o bloqueio de uma origem
+                # que depende do PYTHONHASHSEED do processo.
+                limitador.reset(origem)
+            assert limitador.remaining(origem) == teto

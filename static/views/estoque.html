@@ -422,8 +422,15 @@
             <div class="action-group" style="margin-top:8px;align-items:center;">
               <strong id="pending-reg-count" aria-live="polite"></strong>
               <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
-              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.lotProof.selected">Comprovar lote das peças selecionadas</button>
+              <button id="pending-reg-lot" class="ghost" type="button" data-i18n="stock.pendingBulk.selected">Regularizar lotes selecionados</button>
             </div>
+            <div class="action-group" style="margin:12px 0;align-items:center;flex-wrap:wrap;">
+              <label><span data-i18n="stock.pendingBulk.filter">Lote / grupo de recebimento</span><select id="pending-reg-filter"><option value="" data-i18n="stock.pendingBulk.all">Todos os lotes e grupos</option></select></label>
+              <button id="pending-reg-select-visible" type="button" class="ghost" data-i18n="stock.pendingBulk.selectVisible">Selecionar todos exibidos</button>
+              <button id="pending-reg-clear" type="button" class="ghost" data-i18n="stock.pendingBulk.clear">Limpar seleção</button>
+              <strong id="pending-reg-selection-count" aria-live="polite"></strong>
+            </div>
+            <p class="hint" data-i18n="stock.pendingBulk.hint">Marque o lote inteiro ou peças individuais. Grupos sem lote informado são separados pelo recebimento e precisam de identificação física. Cada lote terá sua própria validade e comprovação antes de um único envio.</p>
             <div class="table-wrap">
               <table>
                 <thead><tr>
@@ -446,7 +453,7 @@
             <button id="stock-lot-reconcile" type="button" class="ghost" hidden data-i18n="stock.lotProof.reconcile">Conciliar peças contadas sem QR</button>
             <p id="stock-lot-status" class="hint" aria-live="polite"></p>
             <div class="table-wrap"><table>
-              <thead><tr><th scope="col" data-i18n="stock.lot">Lote</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</th><th scope="col" data-i18n="delivery.quantity">Quantidade</th><th scope="col" data-i18n="stock.lotProof.actor">Responsável</th><th scope="col" data-i18n="stock.pendingReg.evidence">Evidência verificável</th></tr></thead>
+              <thead><tr><th scope="col" data-i18n="stock.lot">Lote</th><th scope="col" data-i18n="epi.title">EPI</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="stock.receiptCapture.manufacture">Fabricação</th><th scope="col" data-i18n="stock.pendingReg.physicalDate">Validade física comprovada</th><th scope="col" data-i18n="delivery.quantity">Quantidade</th><th scope="col" data-i18n="stock.lotProof.actor">Responsável</th><th scope="col" data-i18n="stock.pendingReg.evidence">Evidência verificável</th></tr></thead>
               <tbody id="stock-lot-tbody"></tbody>
             </table></div>
             <small id="stock-lot-empty" class="hint" style="display:none;" data-i18n="stock.lotProof.empty">Nenhum lote físico comprovado neste escopo.</small>

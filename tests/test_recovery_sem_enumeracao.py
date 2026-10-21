@@ -329,6 +329,7 @@ def test_b_todas_as_falhas_pagam_o_mesmo_trabalho():
         'B3 com token': _contando_bcrypt(lambda: _redefinir(_Conn(True, token_hash=hash_password(TOKEN_BOM)))),
     }
     tamanhos = {n: len(c) for n, c in custos.items()}
+    assert all(tamanhos.values()), 'A comparação deve alcançar o bcrypt, sem ser interceptada por 429.'
     assert len(set(tamanhos.values())) == 1, (
         f'as falhas custam trabalho diferente e se separam por tempo: {tamanhos}')
 

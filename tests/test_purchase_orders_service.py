@@ -31,6 +31,8 @@ def _conn():
         CREATE TABLE companies (id INTEGER PRIMARY KEY, name TEXT, active INTEGER DEFAULT 1);
         CREATE TABLE units (id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT,
             unit_type TEXT DEFAULT 'base', city TEXT DEFAULT '', notes TEXT DEFAULT '');
+        CREATE TABLE epis (id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT);
+        INSERT INTO epis VALUES (100, 1, 'Luva');
         CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT);
         CREATE TABLE purchase_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, unit_id INTEGER,

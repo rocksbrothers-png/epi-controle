@@ -10,13 +10,31 @@ como autoridade de validade.
 Em **Estoque → Validade e Bloqueios**:
 
 1. Peças que já têm QR: marque em **Pendentes de regularização** somente os
-   QRs fisicamente conferidos do mesmo EPI/unidade/lote. Use **Comprovar lote
-   das peças selecionadas**; a ação individual também usa esse mecanismo.
+   QRs fisicamente conferidos. O cabeçalho seleciona todas as peças do lote;
+   também é possível filtrar um lote/grupo, selecionar todos os exibidos,
+   limpar a seleção ou marcar peças individualmente. Use **Regularizar lotes
+   selecionados**; **Regularizar este lote/grupo** e a ação individual de cada
+   linha continuam disponíveis.
+   O agrupamento usa o ID do lote e EPI/unidade; sem lote, separa por
+   recebimento e mostra seu identificador/data. Sem ambos, mostra um grupo de
+   triagem do EPI/unidade, identificado como sem vínculo. Esses agrupamentos
+   não provam que as peças pertencem ao mesmo lote físico.
+   Em **Conferir / separar QRs por lote**, marque apenas os QRs do lote físico
+   comprovado. Os demais abrem outro formulário, no mesmo envio, para receber
+   seus próprios dados. Isso permite separar vários lotes reais de um único
+   recebimento ou de peças antigas sem vínculo. Seleções ocultas pelo filtro continuam no
+   envio e aparecem no contador e na revisão.
 2. Informe o lote real, origem (embalagem/etiqueta ou documento do fabricante),
    validade física, referência da comprovação, justificativa e foto/documento.
    Confira a lista de QRs e confirme a conferência física. Não selecione peças
    apenas porque compartilham EPI ou nome de lote.
-3. O painel **Lotes físicos e comprovações** lista os registros e oferece
+3. Vários lotes podem ser enviados juntos na mesma unidade, incluindo EPIs
+   diferentes. Informe dados e anexo separados para cada lote/grupo. Os
+   formulários apenas preparam a comprovação; a revisão final mostra lote,
+   EPI, quantidade, data, origem, arquivo, referência e justificativa de cada
+   um. Cancelar qualquer etapa não grava nenhum lote. Um envio aceita até
+   10 lotes/grupos, 500 peças no total e 12 MiB de anexos (3 MiB por lote).
+4. O painel **Lotes físicos e comprovações** lista os registros e oferece
    download autenticado do anexo. Peças não selecionadas continuam pendentes.
 
 Para saldo já registrado sem peças/QR: selecione empresa, unidade e EPI no
@@ -31,11 +49,22 @@ Na entrada manual de novo estoque, a comprovação anexada também fica vinculad
 ao lote e às peças recém-recebidas. Esse fluxo aumenta estoque pelo recebimento
 normal; não deve ser usado para individualizar um saldo antigo sem QR.
 
+Na conferência de Compras (requisição ou PO), **Foto / comprovar lote** captura
+fabricação, validade e anexo uma vez e já vincula as peças recebidas ao lote.
+Veja [captura na conferência](EST-V3.5-PURCHASE-LOT-CAPTURE.md).
+
 ## Contratos e armazenamento
 
 - `POST /api/stock/lots/regularize-validity`: recebe `items[]` com IDs e QRs
   explícitos, `lot_code`, `physical_expiry_date`, `expiry_source`, `evidence`,
-  `justification`, `evidence_file` e `physical_lot_confirmed=true`.
+  `justification`, `evidence_file` e `physical_lot_confirmed=true` (1–500 peças).
+  Alternativamente recebe `{company_id,unit_id,lots:[{items,lot_code,
+  physical_expiry_date,expiry_source,evidence,justification,evidence_file,
+  physical_lot_confirmed}]}`. Cada objeto tem seus próprios dados; não existe
+  comprovação compartilhada implicitamente. A resposta inclui `lots[]`,
+  `count` total e `idempotent`. O contrato anterior de um lote permanece.
+  A API rejeita a mesma peça em dois lotes e escopos distintos, trava os EPIs
+  em ordem e só confirma a transação depois de validar todos os lotes.
 - `POST /api/stock/lots/reconcile`: recebe quantidade e tamanho efetivamente
   contados, empresa/unidade/EPI, os campos da comprovação acima e
   `idempotency_key` única. O backend trava o escopo compartilhado, usa
@@ -81,9 +110,14 @@ saldo sem peças, peças já existentes/bloqueadas, limites do delta, QRs sem
 incrementar saldo, reenvio e falha de auditoria.
 
 `static/js/test/stock-lot-evidence-runtime.js` executa funções reais da interface
-em VM: seleção, modal, comprovação/arquivo obrigatórios, requisição com todos os
+em VM: seleção, agrupamento, modal, comprovação/arquivo obrigatórios, requisição com todos os
 QRs, consulta/erro, conciliação e cancelamento. Esses testes não substituem a
 validação no navegador do ambiente publicado.
+
+`tests_postgres/test_stock_bulk_regularization_http.py` cobre vários lotes
+com datas/origens/arquivos próprios, falha no segundo lote com rollback do
+primeiro e dos anexos, QR/escopo/perfil inválidos, limites, lote maior que 100
+peças, bloqueio de vencidos e reenvios concorrentes em ordem oposta de EPIs.
 
 Rollback: reverter os commits e republicar os assets. Os registros de prova já
 gravados devem ser preservados como histórico; não apagar arquivos/eventos.

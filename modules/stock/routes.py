@@ -67,6 +67,7 @@ from modules.stock.service import (
     upsert_unit_stock,
 )
 from modules.stock.manual_receipt import record_manual_lot_piece, validate_manual_lot
+from modules.stock.bulk_regularization import regularize_multiple_lots
 from modules.stock.lot_evidence import (
     create_physical_lot, link_piece_to_lot, lot_evidence_file, lot_evidence_list,
     proof_reference, reconcile_untracked_lot, regularize_selected_lot, save_lot_file, validate_evidence_file,
@@ -287,7 +288,10 @@ def handle_post_stock_lot_regularize(handler, parsed, payload, match):
             raise PermissionError('Lote fora da unidade operacional ativa.')
         if payload.get('company_id') and int(payload['company_id']) != int(actor['company_id']):
             raise PermissionError('Lote fora da empresa autorizada.')
-        result = regularize_selected_lot(connection, actor, int(unit_id), payload)
+        if 'lots' in payload:
+            result = regularize_multiple_lots(connection, actor, int(unit_id), payload)
+        else:
+            result = regularize_selected_lot(connection, actor, int(unit_id), payload)
         connection.commit()
         return send_json(handler, 200, result)
 

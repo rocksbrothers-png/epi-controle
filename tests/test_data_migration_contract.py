@@ -332,7 +332,7 @@ def test_the_normalizer_always_returns_the_keys_its_callers_read():
 # é de produto e o motivo é sutil (o alargamento de escopo abaixo), a razão
 # precisa estar travada em teste, não só num comentário.
 
-BLOCKED_BY_DECISION = ('fornecedores', 'usuarios', 'empresas')
+BLOCKED_BY_DECISION = ('usuarios', 'empresas')
 
 
 @pytest.mark.parametrize('entity_key', BLOCKED_BY_DECISION)
@@ -368,23 +368,28 @@ def test_a_blocked_entity_explains_itself_instead_of_promising_a_future_phase(en
         assert descriptor.blocked_reason in str(exc)
 
 
-def test_fornecedores_is_blocked_because_the_import_cannot_create_the_unit_link():
-    """O motivo concreto, travado para não se perder.
+def test_fornecedores_is_enabled_with_a_mandatory_unit_link():
+    """Reabilitada na Fase 4 com o buraco de escopo fechado POR CONSTRUÇÃO.
 
-    Um `EntityDescriptor` escreve em UMA tabela. `outsourced_company_unit_links`
-    é outra, e está fora do alcance do motor — então a empresa importada
-    nasceria sem vínculo E sem `unit_id`, e
-    `is_outsourced_company_available_to_unit` lê exatamente essa combinação
-    como "empresa do tenant, disponível para TODAS as Unidades".
-
-    Uma planilha alargaria o escopo de uso em todas as Unidades sem ninguém ter
-    escolhido — o oposto do modelo de vínculo deliberado do ADR-0002 §13.6.
+    O bloqueio original existia porque a empresa importada nasceria sem vínculo
+    E sem `unit_id`, e `is_outsourced_company_available_to_unit` lê essa
+    combinação como "empresa do tenant, disponível para TODAS as Unidades"
+    (ADR-0002 §13.6). A habilitação fecha isso: `unit_id` é campo OBRIGATÓRIO
+    resolvido por nome (gravado em outsourced_companies.unit_id) e um
+    `post_write` cria o vínculo da Unidade escolhida para toda empresa nova.
+    Se alguém remover qualquer uma dessas duas peças, o buraco volta — e este
+    teste falha antes disso.
     """
     descriptor = get_entity('fornecedores')
+    assert descriptor.enabled is True
     assert descriptor.target_table == 'outsourced_companies'
-    assert 'unit_id' not in descriptor.field_names(), (
-        'Se `unit_id` virar campo importável, esta análise muda — mas o '
-        'vínculo por Unidade continua sendo outra tabela.'
+    assert not descriptor.blocked_reason, 'entidade habilitada não deve ter blocked_reason.'
+    unit = descriptor.spec_for('unit_id')
+    assert unit is not None and unit.required and unit.resolves_to == ('units', 'name'), (
+        '`unit_id` precisa ser campo OBRIGATÓRIO resolvido por nome — é o que '
+        'impede empresa importada sem Unidade.'
     )
-    assert 'outsourced_company_unit_links' not in descriptor.target_table
-    assert 'vínculo por Unidade' in descriptor.blocked_reason
+    assert descriptor.post_write.endswith(':migration_outsourced_link'), (
+        'sem o post_write, a empresa entra sem o vínculo por Unidade.'
+    )
+    assert descriptor.reverser.endswith(':migration_outsourced_reverser')

@@ -1997,6 +1997,84 @@ def create_stock_movement(connection, company_id, unit_id, epi_id, movement_type
     return int(cursor.lastrowid)
 
 
+# ── Centro de Migração de Dados — importação de estoque (Fase 4) ─────────────
+#
+# O motor genérico de migração (modules/data_migration) escreve UMA tabela via
+# INSERT cru. Estoque não cabe nisso: um saldo só é legítimo com o movimento que
+# o explique. Estas três funções são o `normalizer`/`writer`/`reverser` que o
+# descritor `estoque` do catálogo referencia por late-ref.
+
+def normalize_stock_migration_fields(record):
+    """Regras de domínio da importação de estoque (Centro de Migração, Fase 4).
+
+    Canoniza a quantidade para inteiro — o writer grava int e o motor compara o
+    valor persistido com este — e recusa quantidade negativa (saldo de estoque
+    nunca é negativo). Não toca `unit_id`/`epi_id` (resolvidos por nome antes).
+    `notes` é opcional e vira a observação do movimento de ajuste.
+    """
+    updated = dict(record)
+    raw = str(updated.get('quantity') or '').strip()
+    if raw:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError) as exc:
+            error = ValueError('Quantidade em estoque inválida: informe um número inteiro.')
+            error.field = 'quantity'
+            raise error from exc
+        if value < 0:
+            error = ValueError('Quantidade em estoque não pode ser negativa.')
+            error.field = 'quantity'
+            raise error
+        updated['quantity'] = str(value)
+    return updated
+
+
+def migration_stock_writer(connection, *, descriptor, company_id, job_id, action,
+                           record, payload, current, defaults, stamp, actor):
+    """Writer de estoque do Centro de Migração: grava o saldo inicial como PAR
+    movimento (`stock_movements`) + saldo (`unit_epi_stock`) — nunca saldo sem
+    movimento.
+
+    Semântica SET (saldo declarado, não delta acumulado): o saldo é ajustado
+    PARA a quantidade importada. Reimportar o mesmo valor → delta 0 → 'skipped',
+    o que torna a importação idempotente sem coluna nem índice novo. O movimento
+    carrega `source_type='migration'` e `source_id=job_id` para o reverser
+    localizá-lo no rollback. Sem peças QR nem lotes (estoque legado não os tem).
+    """
+    unit_id = int(payload['unit_id'])
+    epi_id = int(payload['epi_id'])
+    new_qty = int(payload['quantity'])
+    existing = get_unit_stock(connection, int(company_id), unit_id, epi_id)
+    previous = int((existing or {}).get('quantity') or 0)
+    delta = new_qty - previous
+    if existing is not None and delta == 0:
+        return {'outcome': 'skipped', 'target_id': int(existing['id']),
+                'reason': 'Saldo já igual ao importado (reimportação).'}
+    create_stock_movement(
+        connection, company_id=int(company_id), unit_id=unit_id, epi_id=epi_id,
+        movement_type=('in' if delta > 0 else 'out'), quantity=abs(delta),
+        previous_stock=previous, new_stock=new_qty,
+        source_type='migration', source_id=int(job_id),
+        notes=str(record.get('notes') or 'Saldo inicial importado (migração de dados).'),
+        actor_user_id=int(actor.get('id') or 0), actor_name=str(actor.get('full_name') or ''),
+        created_at=datetime.now(UTC).isoformat(),
+        glove_size='N/A', size='N/A', uniform_size='N/A',
+    )
+    upsert_unit_stock(connection, int(company_id), unit_id, epi_id, new_qty)
+    row = get_unit_stock(connection, int(company_id), unit_id, epi_id)
+    return {'outcome': ('inserted' if existing is None else 'updated'), 'target_id': int(row['id'])}
+
+
+def migration_stock_reverser(connection, *, descriptor, company_id, job_id):
+    """Desfaz os efeitos secundários do writer de estoque: apaga os movimentos
+    de migração do job. O saldo (`unit_epi_stock`) é restaurado/apagado pelo
+    rollback genérico a partir do before_json. Só no rollback físico."""
+    connection.execute(
+        'DELETE FROM stock_movements WHERE company_id = ? AND source_type = ? AND source_id = ?',
+        (int(company_id), 'migration', int(job_id)),
+    )
+
+
 def create_stock_item(connection, company_id, unit_id, epi_id, glove_size, size, uniform_size,
                       seq_value, qr_value, movement_id, lot_code, manufacture_date,
                       label_measure, label_printer_name, label_print_format,

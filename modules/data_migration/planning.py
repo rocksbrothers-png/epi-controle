@@ -21,7 +21,22 @@ def identity_key(field, value):
     return f'{field}:{value}' if value else ''
 
 
+def _composite_key(descriptor, record):
+    """Chave ÚNICA combinando todas as `natural_keys` — para o caso em que elas
+    formam uma chave COMPOSTA (estoque: unidade+EPI), não identificadores
+    alternativos. Vazia se faltar qualquer componente."""
+    parts = [identity_key(field, record.get(field)) for field in identity_fields(descriptor)]
+    return '&'.join(parts) if all(parts) else ''
+
+
 def add_identity(index, descriptor, record):
+    if getattr(descriptor, 'composite_natural_key', False):
+        key = _composite_key(descriptor, record)
+        if key:
+            rows = index.setdefault(key, [])
+            rows[:] = [r for r in rows if r['id'] != record['id']]
+            rows.append(record)
+        return
     for field in identity_fields(descriptor):
         key = identity_key(field, record.get(field))
         if key:
@@ -31,6 +46,17 @@ def add_identity(index, descriptor, record):
 
 
 def identify(index, descriptor, record):
+    if getattr(descriptor, 'composite_natural_key', False):
+        key = _composite_key(descriptor, record)
+        if not key:
+            # Falta um componente da chave composta: tratado como novo. Os
+            # campos obrigatórios da chave são exigidos pelo preview antes de
+            # qualquer gravação.
+            return None, ''
+        matches = index.get(key, [])
+        if len(matches) > 1:
+            return None, 'Os identificadores correspondem a registros distintos ou ambíguos.'
+        return next(iter(matches), None), ''
     candidates = {}
     for field in identity_fields(descriptor):
         for candidate in index.get(identity_key(field, record.get(field)), []):

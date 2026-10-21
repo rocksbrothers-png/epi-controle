@@ -121,7 +121,8 @@ def preflight(connection, descriptor, company_id: int, records: list[dict]) -> l
         connection.execute("SELECT set_config('row_security', %s, true)", (security,))
     seen = set()
     plan = []
-    allowed = set(descriptor.field_names()) | set(descriptor.derived_columns) | set(descriptor.computed_columns)
+    allowed = (set(descriptor.field_names()) | set(descriptor.derived_columns)
+               | set(descriptor.computed_columns) | set(getattr(descriptor, 'service_columns', ())))
     for record in affected:  # audit order is descending; simulate earlier states in memory.
         target_id = int(record['target_id'])
         after = _decode(record['after_json'], record, 'snapshot posterior')

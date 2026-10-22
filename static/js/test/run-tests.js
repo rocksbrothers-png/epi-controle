@@ -7646,6 +7646,7 @@ require('./stock-panels-runtime')({ testAsync, assert, eq });
 require('./stock-manual-receipt-runtime')({ test, testAsync, assert, eq });
 require('./stock-lot-evidence-runtime')({ testAsync, assert, eq });
 require('./purchase-lot-capture-runtime')({ testAsync, assert, eq });
+require('./stock-physical-runtime')({ testAsync, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

@@ -1185,6 +1185,8 @@ def handle_get_stock_epis(handler, parsed, payload, match):
 # ── Registro ──────────────────────────────────────────────────────────────────
 
 def register_routes(router):
+    from modules.stock.physical_routes import register_physical_routes
+    register_physical_routes(router)
     router.register('GET',  '/api/ocr/runtime-status',           handle_get_ocr_runtime_status)
     router.register('GET',  '/api/stock/epis',                   handle_get_stock_epis)
     router.register('GET',  '/api/stock/low',                    handle_get_stock_low)

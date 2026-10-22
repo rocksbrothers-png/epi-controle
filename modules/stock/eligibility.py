@@ -142,7 +142,7 @@ def physical_summary_map(connection, company_id=None, unit_id=None):
         validity = classify_physical(row.get('physical_expiry_date'), policy)
         summary['physical_pieces'] += 1
         summary[validity['status']] += 1
-        if status not in AVAILABLE_STATUSES:
+        if status not in AVAILABLE_STATUSES or validity['status'] == 'expired':
             summary['blocked_pieces'] += 1
         if eligible_piece(row, policy):
             summary['eligible_pieces'] += 1

@@ -17,9 +17,10 @@ function harness() {
     if (!nodes.has(id)) nodes.set(id, { id, value: '', innerHTML: '', textContent: '', style: {},
       listeners: {}, dataset: {}, remove() {},
       querySelectorAll: () => [{checked:true,dataset:{index:'0'}}],
-      querySelector: (selector) => node(selector.slice(1)) });
+      querySelector: (selector) => selector.startsWith('.reg-piece-size') ? node('reg-test-size') : node(selector.slice(1)) });
     return nodes.get(id);
   };
+  node('reg-test-size').value = 'M';
   const context = {
     console, URLSearchParams, Map, Array,
     crypto: { randomUUID: () => '12345678901234567890123456789012' },
@@ -77,6 +78,7 @@ module.exports = ({ testAsync, assert, eq }) => {
     const h = harness();
     const promise = h.run("openRegularizeValidityModal({ id: 1, qr: 'QR-1', epiName: 'Luva' })");
     h.node('reg-date').value = '2027-01-01';
+    h.node('reg-manufacture').value = '2025-01-21';
     h.node('reg-evidence').value = 'Etiqueta';
     h.node('reg-justification').value = 'Conferência';
     h.node('reg-source').value = 'label';
@@ -90,7 +92,7 @@ module.exports = ({ testAsync, assert, eq }) => {
     await confirm();
     const result = await promise;
     eq(result.lot, 'A'); eq(result.file.filename, 'etiqueta.png');
-    eq(result.source, 'label');
+    eq(result.source, 'label'); eq(result.manufacture, '2025-01-21');
   });
 
   testAsync('Lote físico: leitura do arquivo rejeita formato, tamanho e falha de leitura', async () => {

@@ -5,13 +5,15 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from test_est_v3_5_postmerge_receipt import server as server  # noqa: PLC0414
-from test_est_v3_5_r3_lot_receipt_http import (
-    _enforce_jwt as _enforce_jwt,  # noqa: PLC0414
-)
+from test_est_v3_5_postmerge_receipt import server as _server_fixture
+from test_est_v3_5_r3_lot_receipt_http import _enforce_jwt as _jwt_fixture
 from test_est_v3_5_r3_lot_receipt_http import _fresh
 from test_stock_lot_evidence_http import call, prove, unknown
 from test_stock_manual_receipt_validity_http import FUTURE, available, post, seed
+
+# Fixtures reutilizadas explicitamente; o pytest as descobre pelos nomes locais.
+server = _server_fixture
+_enforce_jwt = _jwt_fixture
 
 pytestmark = pytest.mark.skipif(not os.environ.get('DATABASE_URL', '').startswith('postgres'), reason='Requires isolated PostgreSQL.')
 
@@ -140,6 +142,9 @@ def test_expiry_day_itself_remains_available(server):
 def test_metadata_correction_alone_never_releases_unknown_validity(server):
     s = unknown(server)
     selected = s['items'][0]
+    with _fresh() as c:
+        c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL,size='N/A' WHERE id=?", (selected['stock_item_id'],))
+        c.commit()
     body = {'stock_item_id': selected['stock_item_id'], 'qr_code': selected['qr_code'],
             'manufacture_date': '2025-01-21', 'size': '58', 'evidence': 'Etiqueta conferida',
             'justification': 'Conferência por QR', 'physical_confirmed': True}
@@ -181,6 +186,8 @@ def test_scope_terminal_and_unblock_guards(server):
 def test_regularization_propagates_manufacture_and_preserves_distinct_sizes(server):
     s = unknown(server)
     with _fresh() as c:
+        c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL WHERE id IN (?,?)",
+                  (s['items'][0]['stock_item_id'], s['items'][1]['stock_item_id']))
         c.execute("UPDATE epi_stock_items SET size='G',glove_size='N/A' WHERE id=?", (s['items'][1]['stock_item_id'],))
         c.commit()
     status, response = prove(server, s, manufacture_date='2025-01-21')
@@ -197,7 +204,7 @@ def test_regularization_propagates_manufacture_and_preserves_distinct_sizes(serv
 def test_missing_size_can_be_confirmed_per_qr_in_batch(server):
     s = unknown(server)
     with _fresh() as c:
-        c.execute("UPDATE epi_stock_items SET size='N/A',glove_size='N/A',uniform_size='N/A' WHERE id=?", (s['items'][0]['stock_item_id'],))
+        c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL,size='N/A',glove_size='N/A',uniform_size='N/A' WHERE id IN (?,?)", (s['items'][0]['stock_item_id'], s['items'][1]['stock_item_id']))
         c.commit()
     selected = [{**s['items'][0], 'size': '58'}, {**s['items'][1], 'size': '60'}]
     status, result = prove(server, s, manufacture_date='2025-01-21', items=selected)
@@ -220,6 +227,10 @@ def test_size_confirmation_preserves_glove_and_uniform_categories(server):
 
 def test_legacy_lot_date_and_exact_movement_size_are_recovered_without_catalog_inference(server):
     s = unknown(server)
+    with _fresh() as c:
+        c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL WHERE id IN (?,?)",
+                  (s['items'][0]['stock_item_id'], s['items'][1]['stock_item_id']))
+        c.commit()
     assert prove(server, s, manufacture_date='2025-01-21')[0] == 200
     with _fresh() as c:
         c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL,size='N/A' WHERE id=?", (s['items'][0]['stock_item_id'],))

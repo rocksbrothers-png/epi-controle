@@ -42,8 +42,9 @@ def handle_get_physical_records(handler, parsed, payload, match):
         company, unit = _scope(connection, actor, query)
         if parsed.path.endswith('/dispositions'):
             items = disposition_history(connection, company, unit)
-            return send_json(handler, 200, {'items': items, 'actions': ACTIONS})
-        return send_json(handler, 200, {'items': incomplete_items(connection, company, unit)})
+            send_json(handler, 200, {'items': items, 'actions': ACTIONS})
+            return
+        send_json(handler, 200, {'items': incomplete_items(connection, company, unit)})
 
 
 def handle_post_physical_item(handler, parsed, payload, match):
@@ -64,7 +65,7 @@ def handle_post_physical_item(handler, parsed, payload, match):
         else:
             result = correct_item_metadata(connection, actor, item, payload)
         connection.commit()
-        return send_json(handler, 200, result)
+        send_json(handler, 200, result)
 
 
 def register_physical_routes(router):

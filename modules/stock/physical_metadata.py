@@ -7,11 +7,46 @@ from modules.stock.eligibility import (
     lock_stock_scope,
     validity_policy,
 )
+from modules.stock.events import append_stock_event as _append_stock_event
 from modules.stock.lifecycle import physical_date
+from modules.stock.sizes import normalize_item_size_value, resolve_item_size
+
+
+def validate_manufacture_fill(current, manufacture):
+    """Conferência completa lacunas; não substitui uma data válida já registrada."""
+    if not manufacture:
+        return
+    target = physical_date(manufacture, 'Fabricação física')
+    for key in ('physical_manufacture_date', 'manufacture_date'):
+        try:
+            known = physical_date(current.get(key), 'Fabricação física existente')
+        except ValueError:
+            known = None
+        if known and known != target:
+            raise ValueError('Fabricação já informada difere da conferência; nenhum dado válido foi sobrescrito.')
+
+
+def confirmed_size_fill(current, supplied):
+    """Preserva categorias omitidas e impede trocar um tamanho conhecido."""
+    fields = ('glove_size', 'size', 'uniform_size')
+    known = resolve_item_size(*(current.get(key) for key in fields))
+    proposed = resolve_item_size(*(supplied.get(key) for key in fields))
+    if (known['selected_size'] and proposed['selected_size']
+            and known['selected_size'] != proposed['selected_size']):
+        raise ValueError('Tamanho já informado difere da conferência; nenhum dado válido foi sobrescrito.')
+    merged = {}
+    for key in fields:
+        old = normalize_item_size_value(current.get(key))
+        new = normalize_item_size_value(supplied.get(key))
+        if old and new and old != new:
+            raise ValueError('Categoria de tamanho já informada difere da conferência.')
+        merged[key] = str(current[key]) if old else new or 'N/A'
+    if not normalize_item_size_value(merged['size']):
+        merged['size'] = resolve_item_size(*(merged[key] for key in fields))['size']
+    return merged
 
 
 def physical_metadata(connection, item):
-    from modules.stock.service import resolve_item_size
     data = dict(item)
     manufacture = data.get('physical_manufacture_date')
     if not manufacture and data.get('lot_id') and table_exists(connection, 'epi_stock_lots'):
@@ -58,7 +93,6 @@ def incomplete_items(connection, company_id, unit_id=None):
 
 
 def correct_item_metadata(connection, actor, item, payload):
-    from modules.stock.service import _append_stock_event, resolve_item_size
     if payload.get('physical_confirmed') is not True:
         raise ValueError('Confirme a conferência física da peça identificada pelo QR.')
     evidence = str(payload.get('evidence') or '').strip()
@@ -71,8 +105,8 @@ def correct_item_metadata(connection, actor, item, payload):
     policy = validity_policy(connection, item['company_id'])
     if manufacture.isoformat() > policy['as_of_date']:
         raise ValueError('Fabricação física não pode estar no futuro.')
-    sizes = resolve_item_size(payload.get('glove_size'), payload.get('size'), payload.get('uniform_size'))
-    if not sizes['selected_size']:
+    submitted_sizes = resolve_item_size(payload.get('glove_size'), payload.get('size'), payload.get('uniform_size'))
+    if not submitted_sizes['selected_size']:
         raise ValueError('Informe o tamanho fisicamente conferido desta peça.')
     lock_stock_scope(connection, item['company_id'], item['unit_id'], item['epi_id'])
     current = row_to_dict(connection.execute('SELECT * FROM epi_stock_items WHERE id=?', (item['id'],)).fetchone())
@@ -80,6 +114,8 @@ def correct_item_metadata(connection, actor, item, payload):
         raise PermissionError('Peça fora da empresa/unidade autorizada.')
     if current['status'] not in ON_HAND_STATUSES or current['status'] == 'reserved':
         raise ValueError('Peça terminal, entregue ou reservada não pode ser corrigida neste fluxo.')
+    validate_manufacture_fill(current, manufacture)
+    sizes = confirmed_size_fill(current, payload)
     expiry = physical_date(current.get('physical_expiry_date'))
     if expiry and manufacture > expiry:
         raise ValueError('Fabricação física posterior à validade comprovada.')

@@ -9,6 +9,14 @@ from typing import NamedTuple
 
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.db import row_to_dict
+from modules.stock import sizes as _size_helpers
+from modules.stock.events import append_stock_event as _append_stock_event
+
+# Exportações legadas preservadas sem dependência de retorno para este módulo.
+normalize_item_size_value = _size_helpers.normalize_item_size_value
+resolve_item_size = _size_helpers.resolve_item_size
+resolve_effective_size_fields = _size_helpers.resolve_effective_size_fields
+apply_effective_size_fields = _size_helpers.apply_effective_size_fields
 
 UTC = timezone.utc
 
@@ -1096,56 +1104,12 @@ def build_low_stock(
     return {'items': items}
 
 
-def normalize_item_size_value(value):
-    normalized = str(value or '').strip()
-    if not normalized:
-        return ''
-    lowered = normalized.lower()
-    if lowered in {'n/a', 'na', 'selecione', 'selecione o tamanho', 'null', 'undefined'}:
-        return ''
-    return normalized
 
 
-def resolve_item_size(glove_size, size, uniform_size):
-    normalized_glove = normalize_item_size_value(glove_size)
-    normalized_size = normalize_item_size_value(size)
-    normalized_uniform = normalize_item_size_value(uniform_size)
-    selected_size = normalized_glove or normalized_size or normalized_uniform or ''
-    return {
-        'selected_size': selected_size,
-        'glove_size': normalized_glove or 'N/A',
-        'size': selected_size or 'N/A',
-        'uniform_size': normalized_uniform or 'N/A',
-    }
 
 
-def resolve_effective_size_fields(primary, fallback=None, *, fallback_prefix=''):
-    primary = primary or {}
-    fallback = fallback or {}
-    primary_glove = normalize_item_size_value(primary.get('glove_size'))
-    primary_size = normalize_item_size_value(primary.get('size'))
-    primary_uniform = normalize_item_size_value(primary.get('uniform_size'))
-    fallback_glove = normalize_item_size_value(fallback.get(f'{fallback_prefix}glove_size'))
-    fallback_size = normalize_item_size_value(fallback.get(f'{fallback_prefix}size'))
-    fallback_uniform = normalize_item_size_value(fallback.get(f'{fallback_prefix}uniform_size'))
-    selected_size = (
-        primary_glove or primary_size or primary_uniform
-        or fallback_glove or fallback_size or fallback_uniform or ''
-    )
-    return {
-        'selected_size': selected_size,
-        'glove_size': primary_glove or fallback_glove or 'N/A',
-        'size': primary_size or fallback_size or selected_size or 'N/A',
-        'uniform_size': primary_uniform or fallback_uniform or 'N/A',
-    }
 
 
-def apply_effective_size_fields(target, primary, fallback=None, *, fallback_prefix=''):
-    effective_size = resolve_effective_size_fields(primary, fallback, fallback_prefix=fallback_prefix)
-    target['glove_size'] = effective_size['glove_size']
-    target['size'] = effective_size['size']
-    target['uniform_size'] = effective_size['uniform_size']
-    return target
 
 
 def sync_epi_scope_stock_unit(connection, company_id, epi_id, previous_unit_id, new_unit_id):
@@ -1338,24 +1302,6 @@ def record_received_item_physical(connection, stock_item_id, physical_expiry, ac
 REGULARIZABLE_STATUSES = frozenset({'in_stock', 'available', 'blocked_expired'})
 
 
-def _append_stock_event(connection, *, company_id, epi_id, stock_item_id, event_type, reason_code,
-                        justification, actor_user_id, actor_name, actor_role, now,
-                        before_values, after_values, quantity=1, origin_unit_id=None):
-    """Grava uma linha no histórico append-only ``epi_stock_events`` (imutável por
-    trigger em PostgreSQL; somente-inserção no código). Nunca atualiza/apaga."""
-    import json as _json
-    connection.execute(
-        'INSERT INTO epi_stock_events (company_id, epi_id, stock_item_id, lot_id, quantity, '
-        'event_type, origin_unit_id, destination_unit_id, reason_code, justification, '
-        'actor_user_id, actor_name_snapshot, actor_role_snapshot, created_at, '
-        'before_values, after_values) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        (int(company_id), int(epi_id), int(stock_item_id), None, int(quantity),
-         str(event_type), (int(origin_unit_id) if origin_unit_id else None), None,
-         str(reason_code), str(justification), int(actor_user_id),
-         str(actor_name or ''), str(actor_role or ''), str(now),
-         _json.dumps(before_values, ensure_ascii=False, sort_keys=True),
-         _json.dumps(after_values, ensure_ascii=False, sort_keys=True)),
-    )
 
 
 def pending_regularization_count(connection, company_id, unit_id=None):

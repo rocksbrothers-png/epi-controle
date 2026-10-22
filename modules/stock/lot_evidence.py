@@ -90,7 +90,7 @@ def save_lot_file(connection, actor, lot_id, item_id, file, justification, now, 
 
 
 def regularize_selected_lot(connection, actor, unit_id, payload):
-    from modules.stock.service import normalize_item_size_value, regularize_item_physical_validity, resolve_item_size
+    from modules.stock.service import regularize_item_physical_validity, resolve_item_size
 
     selections = payload.get('items')
     if payload.get('physical_lot_confirmed') is not True:
@@ -133,13 +133,12 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
             raise ValueError('Peça identificada com outro lote; confira a seleção física.')
         if item['status'] not in ('in_stock', 'available', 'blocked_expired'):
             raise ValueError('Peça fora dos estados permitidos para regularização.')
+        from modules.stock.physical_metadata import confirmed_size_fill, validate_manufacture_fill
+        validate_manufacture_fill(item, lot.get('physical_manufacture_date'))
         if 'size' in selection:
-            sizes = resolve_item_size(
-                selection.get('glove_size', selection['size'] if normalize_item_size_value(item.get('glove_size')) else 'N/A'),
-                selection.get('size'),
-                selection.get('uniform_size', selection['size'] if normalize_item_size_value(item.get('uniform_size')) else 'N/A'),
-            )
-            if not sizes['selected_size']:
+            sizes = confirmed_size_fill(item, selection)
+            resolved = resolve_item_size(sizes['glove_size'], sizes['size'], sizes['uniform_size'])
+            if not resolved['selected_size']:
                 raise ValueError('Informe o tamanho fisicamente conferido para cada QR selecionado.')
             item['_confirmed_size'] = sizes
         items.append(item)

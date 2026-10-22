@@ -195,6 +195,18 @@ Cada um no mesmo padrão (api/state/view/events/controller).
 - **Ordem de carga dos `<script>`:** manter `core` → `modules` → `views` → `app.js` (bootstrap)
   no `_scripts.html`; `app.js` por último.
 
+## Etapa A/B UBX (2026-10-22) — auditoria, guarda e primeira extração Business
+
+Detalhes, números e ordem de extração em [`UBX_APPJS_AUDITORIA.md`](UBX_APPJS_AUDITORIA.md).
+
+- Camadas UBX dentro do layout existente: `static/js/modules/<domínio>/{ui,business,integrations}/`
+  (mapeiam `view/events`, `state/controller` e `api` da Fase 2 acima).
+- Extraído: `modules/purchases/business/purchase-import-matching.js` (conciliação da importação de
+  cotação). Removidas do `app.js` as cópias idênticas de `utils/debug.js`.
+- Guarda `static/js/test/app-js-boundary.js`: o `app.js` não ganha declarações nem endpoints; o
+  baseline é catraca. Funcionalidade nova vai para o módulo do domínio.
+- Não cria cliente HTTP novo — o gate abaixo continua valendo antes de extrair `integrations/`.
+
 ## Próximo passo
 Executar o **gate de unificação dos adaptadores HTTP locais das views**, com contrato e teste de
 compatibilidade sobre `static/js/modules/api-client.js`. Somente depois iniciar a **Fase 2**

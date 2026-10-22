@@ -403,6 +403,37 @@
     safeOn(document.getElementById('aprovacoes-export-btn'), 'click', () => globalThis.exportAprovacoesCsv?.());
   }
 
+  // ── Importação de cotação: dependências obrigatórias ──────────────────────
+  //
+  // As regras de conciliação/normalização (modules/purchases/business) e o
+  // parser do arquivo (app.js) eram chamados com `?.` e fallback (`?? 0`,
+  // `|| []`): se um script não carregasse, a prévia mostrava R$ 0,00 e
+  // quantidade 1 sem nenhum aviso. Agora a ausência vira erro explícito,
+  // exibido no feedback do painel, e nada é enviado ao backend.
+
+  function requireQuoteImportFn(name) {
+    const fn = globalThis[name];
+    if (typeof fn !== 'function') {
+      throw new Error(`Importação de cotação indisponível (${name} não carregou). Recarregue a página.`);
+    }
+    return fn;
+  }
+
+  // Itens da requisição aberta. `_currentPrDetail` vive no app.js e chega
+  // aqui pela ponte de acessores de globalThis; sem ele a conciliação
+  // recebia lista vazia e nenhuma linha era associada.
+  function quoteImportPrItems(pr) {
+    const detail = globalThis._currentPrDetail;
+    if (!detail || String(detail.item?.id ?? '') !== String(pr.id)) {
+      throw new Error('Detalhe da requisição indisponível. Reabra a requisição e importe novamente.');
+    }
+    return (detail.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
+  }
+
+  function showQuoteImportError(feedback, error) {
+    if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || String(error); }
+  }
+
   // ── initPoCsvImport ─────────────────────────────────────────────────────────
 
   function initPoCsvImport(pr) {
@@ -423,10 +454,10 @@
       if (!file) { if (feedback) {feedback.textContent = 'Selecione um arquivo CSV ou XLSX.';} return; }
       try {
         if (feedback) { feedback.textContent = 'Lendo arquivo...'; feedback.style.color = ''; }
-        const result = await globalThis._parsePoImportFile?.(file) || [];
+        const result = await requireQuoteImportFn('_parsePoImportFile')(file) || [];
         if (!result.length) { if (feedback) {feedback.textContent = 'Nenhuma linha válida encontrada no arquivo.';} return; }
+        _renderPoCsvPreview(result);
         globalThis._poCsvParsed = result;
-        globalThis._renderPoCsvPreview?.(result);
         if (preview) {preview.style.display = '';}
         if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
       } catch (error) {
@@ -444,14 +475,17 @@
     if (savePricesBtn) {savePricesBtn.onclick = async () => {
       const poCsvParsed = globalThis._poCsvParsed || [];
       if (!poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
-      const currentPrDetail = globalThis._currentPrDetail;
-      const prItems = (currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
-      const matchedRows = globalThis._matchPurchaseImportRows?.(poCsvParsed, prItems) || [];
-      const priceUpdates = poCsvParsed.map((row, idx) => {
-        const matched = matchedRows[idx];
-        if (!matched) {return null;}
-        return { item_id: matched.id, unit_price: globalThis._parsePurchaseMoney?.(row.valor_unitario) ?? 0, quantity: globalThis._parsePurchaseQuantity?.(row.qtd, matched.quantity_requested || 1) ?? 1 };
-      }).filter(Boolean);
+      let priceUpdates;
+      try {
+        const matchedRows = requireQuoteImportFn('_matchPurchaseImportRows')(poCsvParsed, quoteImportPrItems(pr));
+        const parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
+        const parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
+        priceUpdates = poCsvParsed.map((row, idx) => {
+          const matched = matchedRows[idx];
+          if (!matched) {return null;}
+          return { item_id: matched.id, unit_price: parseMoney(row.valor_unitario), quantity: parseQuantity(row.qtd, matched.quantity_requested || 1) };
+        }).filter(Boolean);
+      } catch (error) { showQuoteImportError(feedback, error); return; }
       if (!priceUpdates.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um item da requisição. Verifique os CAs ou nomes.'; } return; }
       const state2 = getState();
       try {
@@ -472,9 +506,14 @@
       const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
       const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
       if (!supplier) { if (feedback) {feedback.textContent = 'Informe o fornecedor principal.';} return; }
-      const currentPrDetail = globalThis._currentPrDetail;
-      const prItems = (currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
-      const matchedRows = globalThis._matchPurchaseImportRows?.(poCsvParsed, prItems) || [];
+      let matchedRows;
+      let parseMoney;
+      let parseQuantity;
+      try {
+        matchedRows = requireQuoteImportFn('_matchPurchaseImportRows')(poCsvParsed, quoteImportPrItems(pr));
+        parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
+        parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
+      } catch (error) { showQuoteImportError(feedback, error); return; }
       const poItems = poCsvParsed.map((row, idx) => {
         const matched = matchedRows[idx];
         return {
@@ -487,8 +526,8 @@
           glove_size: row.tamanho_luva || matched?.glove_size || 'N/A',
           size: row.tamanho || matched?.size || 'N/A',
           uniform_size: row.tamanho_uniforme || matched?.uniform_size || 'N/A',
-          quantity: globalThis._parsePurchaseQuantity?.(row.qtd, matched?.quantity_requested || 1) ?? 1,
-          unit_price: globalThis._parsePurchaseMoney?.(row.valor_unitario) ?? 0,
+          quantity: parseQuantity(row.qtd, matched?.quantity_requested || 1),
+          unit_price: parseMoney(row.valor_unitario),
           origin: matched?.origin || 'employee_request',
           employee_id: matched?.employee_id || null,
           employee_name: matched?.employee_name || '',
@@ -552,10 +591,12 @@
     const tbody = document.getElementById('req-po-csv-preview-tbody');
     const totalEl = document.getElementById('req-po-csv-total');
     if (!tbody) {return;}
+    const parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
+    const parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
     let grandTotal = 0;
     tbody.innerHTML = rows.map(r => {
-      const qty = globalThis._parsePurchaseQuantity?.(r.qtd) ?? 1;
-      const price = globalThis._parsePurchaseMoney?.(r.valor_unitario) ?? 0;
+      const qty = parseQuantity(r.qtd);
+      const price = parseMoney(r.valor_unitario);
       const total = qty * price;
       grandTotal += total;
       return `<tr>

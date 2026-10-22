@@ -20226,6 +20226,9 @@ function _matchPurchaseImportRows(rows, prItems) {
   ['_manualRequestItems', () => _manualRequestItems, (value) => { _manualRequestItems = Array.isArray(value) ? value : []; }],
   ['_aprovacoesList', () => _aprovacoesList, (value) => { _aprovacoesList = Array.isArray(value) ? value : []; }],
   ['_selectedAprovacoes', () => _selectedAprovacoes, (value) => { _selectedAprovacoes = value instanceof Set ? value : new Set(value || []); }],
+  // Lido por views/purchases.js (importação de cotação). Sem esta ponte o
+  // `let` de bloco ficava invisível e a conciliação recebia lista vazia.
+  ['_currentPrDetail', () => _currentPrDetail, (value) => { _currentPrDetail = value ?? null; }],
 ].forEach(([name, get, set]) => {
   if (!Object.getOwnPropertyDescriptor(globalThis, name)?.get) {
     Object.defineProperty(globalThis, name, { configurable: true, get, set });

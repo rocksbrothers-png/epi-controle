@@ -68,3 +68,61 @@ def test_concurrent_conflicting_gap_fills_have_one_winner(server):
         replies = list(pool.map(lambda size: correct(server, s, item, size=size, manufacture_date='2025-01-21'), ['P', 'G']))
     assert sorted(status for status, _ in replies) == [200, 400], replies
     assert _pieces(s['company'], s['epi'])[0]['size'] in ('P', 'G')
+
+
+@pytest.mark.parametrize('source', ['legacy', 'linked_lot'])
+@pytest.mark.parametrize('route', ['lot', 'individual'])
+def test_expiry_cannot_precede_recoverable_manufacture(server, source, route):
+    from datetime import datetime, timezone
+
+    from test_est_v3_5_r3_lot_receipt_http import _fresh
+    from test_stock_lot_evidence_http import counts
+
+    from modules.stock.lot_evidence import create_physical_lot, link_piece_to_lot
+    s = unknown(server, qty=1)
+    item = _pieces(s['company'], s['epi'])[0]
+    with _fresh() as c:
+        c.execute("UPDATE epi_stock_items SET physical_manufacture_date=NULL,manufacture_date=? WHERE id=?",
+                  ('2025-01-01' if source == 'legacy' else '', item['id']))
+        if source == 'linked_lot':
+            lot = create_physical_lot(c, s['actor'], s['unit'], s['epi'], {
+                'lot_code': 'LOTE-REAL', 'physical_manufacture_date': '2025-01-01',
+                'physical_expiry_date': None, 'expiry_source': 'unknown', 'expiry_evidence': None,
+            }, 1, datetime.now(timezone.utc).isoformat())
+            link_piece_to_lot(c, item['id'], lot, 'LOTE-REAL')
+        c.commit()
+    before = _pieces(s['company'], s['epi']), counts(s)
+    if route == 'lot':
+        status, response = prove(server, s, manufacture_date='', physical_expiry_date='2020-01-01')
+    else:
+        status, response = call(server, s, '/api/stock/items/regularize-validity', {
+            'actor_user_id': s['actor']['id'], 'qr_code': item['qr_code_value'],
+            'stock_item_id': item['id'], 'physical_expiry_date': '2020-01-01',
+            'evidence': 'Etiqueta física', 'justification': 'Conferência individual',
+        })
+    assert status == 400, response
+    assert 'anterior' in str(response), response
+    assert (_pieces(s['company'], s['epi']), counts(s)) == before
+
+
+def test_batch_cannot_replace_manufacture_known_only_by_linked_lot(server):
+    from datetime import datetime, timezone
+
+    from test_est_v3_5_r3_lot_receipt_http import _fresh
+    from test_stock_lot_evidence_http import counts
+
+    from modules.stock.lot_evidence import create_physical_lot, link_piece_to_lot
+    s = unknown(server, qty=1)
+    item = _pieces(s['company'], s['epi'])[0]
+    with _fresh() as c:
+        c.execute("UPDATE epi_stock_items SET manufacture_date='',physical_manufacture_date=NULL WHERE id=?", (item['id'],))
+        lot = create_physical_lot(c, s['actor'], s['unit'], s['epi'], {
+            'lot_code': 'LOTE-REAL', 'physical_manufacture_date': '2020-01-01',
+            'physical_expiry_date': None, 'expiry_source': 'unknown', 'expiry_evidence': None,
+        }, 1, datetime.now(timezone.utc).isoformat())
+        link_piece_to_lot(c, item['id'], lot, 'LOTE-REAL')
+        c.commit()
+    before = _pieces(s['company'], s['epi']), counts(s)
+    status, response = prove(server, s, manufacture_date='2021-01-01')
+    assert status == 400, response
+    assert (_pieces(s['company'], s['epi']), counts(s)) == before

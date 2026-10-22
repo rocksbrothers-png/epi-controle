@@ -12,18 +12,27 @@ from modules.stock.lifecycle import physical_date
 from modules.stock.sizes import normalize_item_size_value, resolve_item_size
 
 
-def validate_manufacture_fill(current, manufacture):
-    """Conferência completa lacunas; não substitui uma data válida já registrada."""
-    if not manufacture:
-        return
+def validate_manufacture_fill(current, manufacture, *, connection=None, expiry=None):
+    """Preserva fabricação comprovada da peça/lote e a ordem das datas físicas."""
     target = physical_date(manufacture, 'Fabricação física')
-    for key in ('physical_manufacture_date', 'manufacture_date'):
+    limit = physical_date(expiry, 'Validade física')
+    values = [current.get(key) for key in ('physical_manufacture_date', 'manufacture_date')]
+    if connection is not None and current.get('lot_id') and table_exists(connection, 'epi_stock_lots'):
+        lot = connection.execute('SELECT manufacture_date FROM epi_stock_lots WHERE id=? AND company_id=? AND epi_id=?',
+                                 (current['lot_id'], current['company_id'], current['epi_id'])).fetchone()
+        if lot:
+            values.append(lot['manufacture_date'])
+    for value in values:
         try:
-            known = physical_date(current.get(key), 'Fabricação física existente')
+            known = physical_date(value, 'Fabricação física existente')
         except ValueError:
             known = None
-        if known and known != target:
+        if known and target and known != target:
             raise ValueError('Fabricação já informada difere da conferência; nenhum dado válido foi sobrescrito.')
+        if known and limit and known > limit:
+            raise ValueError('Validade física anterior à data de fabricação da peça/lote; inconsistente.')
+    if target and limit and target > limit:
+        raise ValueError('Fabricação física posterior à validade comprovada.')
 
 
 def confirmed_size_fill(current, supplied):
@@ -114,16 +123,8 @@ def correct_item_metadata(connection, actor, item, payload):
         raise PermissionError('Peça fora da empresa/unidade autorizada.')
     if current['status'] not in ON_HAND_STATUSES or current['status'] == 'reserved':
         raise ValueError('Peça terminal, entregue ou reservada não pode ser corrigida neste fluxo.')
-    validate_manufacture_fill(current, manufacture)
+    validate_manufacture_fill(current, manufacture, connection=connection, expiry=current.get('physical_expiry_date'))
     sizes = confirmed_size_fill(current, payload)
-    expiry = physical_date(current.get('physical_expiry_date'))
-    if expiry and manufacture > expiry:
-        raise ValueError('Fabricação física posterior à validade comprovada.')
-    if current.get('lot_id'):
-        lot = connection.execute('SELECT manufacture_date FROM epi_stock_lots WHERE id=? AND company_id=? AND epi_id=?',
-                                 (current['lot_id'], item['company_id'], item['epi_id'])).fetchone()
-        if lot and lot['manufacture_date'] and str(lot['manufacture_date']) != manufacture.isoformat():
-            raise ValueError('Fabricação difere do lote comprovado; confira o QR e a etiqueta do lote.')
     after = {k: sizes[k] for k in ('glove_size', 'size', 'uniform_size')}
     after.update(manufacture_date=manufacture.isoformat(), physical_manufacture_date=manufacture.isoformat())
     before = {key: str(current.get(key) or '') for key in after}

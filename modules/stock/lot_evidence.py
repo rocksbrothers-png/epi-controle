@@ -134,7 +134,8 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
         if item['status'] not in ('in_stock', 'available', 'blocked_expired'):
             raise ValueError('Peça fora dos estados permitidos para regularização.')
         from modules.stock.physical_metadata import confirmed_size_fill, validate_manufacture_fill
-        validate_manufacture_fill(item, lot.get('physical_manufacture_date'))
+        validate_manufacture_fill(item, lot.get('physical_manufacture_date'),
+                                  connection=connection, expiry=lot['physical_expiry_date'])
         if 'size' in selection:
             sizes = confirmed_size_fill(item, selection)
             resolved = resolve_item_size(sizes['glove_size'], sizes['size'], sizes['uniform_size'])

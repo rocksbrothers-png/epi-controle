@@ -1403,15 +1403,8 @@ def regularize_item_physical_validity(connection, item, physical_expiry, evidenc
         raise ValueError('Regularização indisponível neste estado da peça (entregue, reservada, '
                          'descartada, em análise/quarentena ou terminal). Estado atual: ' + (cur_status or 'desconhecido') + '.')
     # Consistência física: validade não pode ser anterior à fabricação do lote.
-    man = str(current.get('physical_manufacture_date') or '').strip() if _has_col(
-        connection, 'epi_stock_items', 'physical_manufacture_date') else ''
-    if man:
-        try:
-            if new_date < physical_date(man):
-                raise ValueError('Validade física anterior à data de fabricação do lote; inconsistente.')
-        except ValueError as exc:
-            if 'anterior' in str(exc):
-                raise
+    from modules.stock.physical_metadata import validate_manufacture_fill
+    validate_manufacture_fill(current, None, connection=connection, expiry=new_date)
 
     policy = validity_policy(connection, item['company_id'])
     verdict = classify_physical(expiry, policy)   # válida / expiring / vencida (data já validada)

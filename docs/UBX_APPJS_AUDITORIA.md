@@ -181,3 +181,9 @@ o que o PR de estoque adiciona ao monólito: `loadStockPhysicalRecords`, `openSt
   (ou um humano decide explicitamente aceitá-las no baseline daquele PR).
 
 Nenhuma alteração foi feita nas branches de estoque.
+
+**Decisão aplicada (2026-10-22):** o estoque entrou primeiro (epi-controle#1043 e
+epi-controle-app#416 integrados em `main`). A branch UBX incorporou `main` por merge (sem rebase)
+e o baseline da guarda passou a incluir as quatro entradas acima, que já estavam em `main` quando a
+guarda foi introduzida. Daqui em diante a catraca vale para elas também: extraí-las para
+`modules/stock/` é a próxima oportunidade natural; adicionar outras ao `app.js` reprova.

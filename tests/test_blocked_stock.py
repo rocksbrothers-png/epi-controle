@@ -96,6 +96,19 @@ def test_status_labels_cover_requested_dispositions():
     assert {'Vencido', 'Aguardando descarte', 'Aguardando devolução ao fornecedor', 'Em análise', 'Reprovado'} <= labels
 
 
+def test_expired_available_piece_is_automatically_listed_without_read_mutation():
+    conn = _conn()
+    conn.execute("UPDATE epi_stock_items SET physical_expiry_date='2000-01-01' WHERE id=10")
+    assert fetch_available_stock_items(conn, 1, 2, 7) == []
+    blocked = fetch_blocked_stock_items(conn, 1, 2)
+    assert len(blocked) == 1
+    assert blocked[0]['status'] == 'blocked_expired'
+    assert blocked[0]['stored_status'] == 'in_stock'
+    assert blocked[0]['automatic_block'] and not blocked[0]['can_unblock']
+    assert _item(conn)['status'] == 'in_stock'
+    assert fetch_blocked_stock_items(conn, 2) == []
+
+
 def test_lookup_by_qr_company_wide_when_unit_omitted():
     """Bloqueio à prova de erro: com unit_id<=0, localiza o item pelo QR em toda
     a empresa (a unidade é derivada do próprio item). Com unit específico, filtra.

@@ -90,7 +90,7 @@ def save_lot_file(connection, actor, lot_id, item_id, file, justification, now, 
 
 
 def regularize_selected_lot(connection, actor, unit_id, payload):
-    from modules.stock.service import regularize_item_physical_validity
+    from modules.stock.service import regularize_item_physical_validity, resolve_item_size
 
     selections = payload.get('items')
     if payload.get('physical_lot_confirmed') is not True:
@@ -105,6 +105,9 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
     if lot['physical_expiry_date'] is None:
         raise ValueError('Informe a validade física comprovada do lote.')
     lot['expiry_evidence'] = proof_reference(lot['expiry_evidence'], file)
+    from modules.stock.eligibility import validity_policy
+    if lot.get('physical_manufacture_date') and lot['physical_manufacture_date'] > validity_policy(connection, actor['company_id'])['as_of_date']:
+        raise ValueError('Fabricação física não pode estar no futuro.')
     ids = []
     for selection in selections:
         if not isinstance(selection, dict) or type(selection.get('stock_item_id')) is not int:
@@ -130,6 +133,15 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
             raise ValueError('Peça identificada com outro lote; confira a seleção física.')
         if item['status'] not in ('in_stock', 'available', 'blocked_expired'):
             raise ValueError('Peça fora dos estados permitidos para regularização.')
+        from modules.stock.physical_metadata import confirmed_size_fill, validate_manufacture_fill
+        validate_manufacture_fill(item, lot.get('physical_manufacture_date'),
+                                  connection=connection, expiry=lot['physical_expiry_date'])
+        if 'size' in selection:
+            sizes = confirmed_size_fill(item, selection)
+            resolved = resolve_item_size(sizes['glove_size'], sizes['size'], sizes['uniform_size'])
+            if not resolved['selected_size']:
+                raise ValueError('Informe o tamanho fisicamente conferido para cada QR selecionado.')
+            item['_confirmed_size'] = sizes
         items.append(item)
     # Reenvio idêntico não duplica lote/anexo nem eventos. Outra data ou prova
     # em peça já regularizada exige o fluxo individual de correção auditada.
@@ -139,7 +151,9 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
                                      (items[0].get('lot_id') or 0,)).fetchone()
         if len(known) == len(items) and len({i.get('lot_id') for i in items}) == 1 and all(
                 str(i['physical_expiry_date']) == lot['physical_expiry_date']
-                and i.get('expiry_evidence') == lot['expiry_evidence'] and i.get('lot_id') for i in items
+                and i.get('expiry_evidence') == lot['expiry_evidence'] and i.get('lot_id')
+                and (not lot.get('physical_manufacture_date') or str(i.get('physical_manufacture_date') or '') == lot['physical_manufacture_date'])
+                and (not i.get('_confirmed_size') or all(i.get(k) == i['_confirmed_size'][k] for k in ('glove_size', 'size', 'uniform_size'))) for i in items
                 ) and old_lot and old_lot['expiry_source'] == lot['expiry_source']:
             return {'ok': True, 'lot_id': items[0]['lot_id'], 'count': len(items), 'idempotent': True}
         raise ValueError('Selecione apenas peças com validade desconhecida para comprovar um novo lote.')
@@ -150,6 +164,13 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
                                  source='regularization')
     results = []
     for item in items:
+        if lot.get('physical_manufacture_date'):
+            connection.execute('UPDATE epi_stock_items SET manufacture_date=?,physical_manufacture_date=? WHERE id=?',
+                               (lot['physical_manufacture_date'], lot['physical_manufacture_date'], item['id']))
+        if item.get('_confirmed_size'):
+            size = item['_confirmed_size']
+            connection.execute('UPDATE epi_stock_items SET glove_size=?,size=?,uniform_size=? WHERE id=?',
+                               (size['glove_size'], size['size'], size['uniform_size'], item['id']))
         result = regularize_item_physical_validity(
             connection, item, lot['physical_expiry_date'], lot['expiry_evidence'], justification,
             actor['id'], actor.get('full_name', ''), actor.get('role', ''), now,
@@ -158,7 +179,7 @@ def regularize_selected_lot(connection, actor, unit_id, payload):
         results.append({'id': item['id'], **result})
     save_lot_file(connection, actor, lot_id, items[0]['id'], file, justification, now,
                   before={'items': [{k: str(i.get(k) or '') for k in
-                          ('id', 'qr_code_value', 'lot_code', 'lot_id', 'physical_expiry_date', 'status')}
+                          ('id', 'qr_code_value', 'lot_code', 'lot_id', 'manufacture_date', 'physical_manufacture_date', 'glove_size', 'size', 'uniform_size', 'physical_expiry_date', 'status')}
                           for i in items]})
     return {'ok': True, 'lot_id': lot_id, 'count': len(items), 'items': results, 'idempotent': False}
 

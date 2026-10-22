@@ -14,7 +14,7 @@ OPERATIONAL_STATES = (
     'in_stock', 'available', 'reserved', 'delivering', 'delivered', 'blocked',
     'blocked_expired', 'blocked_discard', 'blocked_return', 'blocked_analysis',
     'blocked_rejected', 'blocked_archived', 'maintenance', 'hygiene',
-    'quarantine', 'returned_base', 'discard_pending', 'discarded', 'supplier_returned',
+    'quarantine', 'returned_base', 'discard_pending', 'discarded', 'supplier_returned', 'donated',
 )
 BLOCK_REASONS = {
     'expired': 'EPI vencido',
@@ -26,15 +26,15 @@ BLOCK_REASONS = {
     'recall': 'Recolhimento',
     'other': 'Outros',
 }
-DISPOSITIONS = ('return_base', 'quarantine', 'supplier_return', 'discard')
+DISPOSITIONS = ('return_base', 'quarantine', 'supplier_return', 'discard', 'donation')
 EXPIRY_SOURCES = ('unknown', 'label', 'manufacturer_document', 'regularization')
 EVENT_TYPES = (
     'receipt', 'block', 'unblock', 'transfer', 'delivery', 'return',
     'return_base', 'quarantine', 'discard', 'supplier_return',
     'expiry_regularization', 'reserve', 'reservation_release', 'reconcile',
-    'disposition_requested', 'disposition_rejected',
+    'disposition_requested', 'disposition_rejected', 'donation',
 )
-TERMINAL_STATUSES = frozenset({'discarded', 'supplier_returned'})
+TERMINAL_STATUSES = frozenset({'discarded', 'supplier_returned', 'donated'})
 
 
 def physical_date(value, label='Data física'):

@@ -24,6 +24,7 @@ QUOTE_COLUMN_ALIASES = {
     'epi': ['epi', 'nome_epi', 'descricao', 'item'],
     'ca': ['ca', 'certificado', 'ca_numero'],
     'fabricante': ['fabricante', 'manufacturer', 'marca'],
+    'modelo': ['modelo', 'model', 'modelo_referencia', 'referencia_modelo', 'model_reference'],
     'fornecedor': ['fornecedor', 'supplier', 'empresa_fornecedora'],
     'colaborador': ['colaborador', 'employee', 'employee_name', 'funcionario', 'nome_colaborador'],
     'setor': ['setor', 'employee_sector', 'sector'],
@@ -276,7 +277,10 @@ def parse_purchase_quote_file(file_bytes, filename):
             continue
 
         try:
-            quantity = parse_quantity(get_value('qtd'))
+            # Quantidade ausente/ilegível fica em branco na linha: quem associa
+            # usa a quantidade do item, em vez de um "1" que o arquivo não diz.
+            stated_quantity = parse_quantity(get_value('qtd'), default=None)
+            quantity = stated_quantity or 1
             unit_price = parse_money_decimal(get_value('valor_unitario'))
             parsed_total = parse_money_decimal(get_value('total')) if get_value('total') else (unit_price * quantity).quantize(MONEY_CENTS, rounding=ROUND_HALF_UP)
             row = {
@@ -287,6 +291,7 @@ def parse_purchase_quote_file(file_bytes, filename):
                 'epi': raw_epi,
                 'ca': raw_ca,
                 'fabricante': get_value('fabricante'),
+                'modelo': get_value('modelo'),
                 'fornecedor': get_value('fornecedor'),
                 'colaborador': get_value('colaborador'),
                 'setor': get_value('setor'),
@@ -294,7 +299,7 @@ def parse_purchase_quote_file(file_bytes, filename):
                 'tamanho': get_value('tamanho'),
                 'tamanho_luva': get_value('tamanho_luva'),
                 'tamanho_uniforme': get_value('tamanho_uniforme'),
-                'qtd': str(quantity),
+                'qtd': str(stated_quantity) if stated_quantity else '',
                 'valor_unitario': f'{unit_price:.2f}',
                 'total': f'{parsed_total:.2f}',
                 'status_item': get_value('status_item'),

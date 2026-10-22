@@ -403,32 +403,198 @@
     safeOn(document.getElementById('aprovacoes-export-btn'), 'click', () => globalThis.exportAprovacoesCsv?.());
   }
 
+  // ── Importação de cotação: dependências obrigatórias ──────────────────────
+  //
+  // As regras de conciliação/normalização (modules/purchases/business) e o
+  // parser do arquivo (app.js) eram chamados com `?.` e fallback (`?? 0`,
+  // `|| []`): se um script não carregasse, a prévia mostrava R$ 0,00 e
+  // quantidade 1 sem nenhum aviso. Agora a ausência vira erro explícito,
+  // exibido no feedback do painel, e nada é enviado ao backend.
+
+  function requireQuoteImportFn(name) {
+    const fn = globalThis[name];
+    if (typeof fn !== 'function') {
+      throw new Error(`Importação de cotação indisponível (${name} não carregou). Recarregue a página.`);
+    }
+    return fn;
+  }
+
+  // Itens da requisição aberta. `_currentPrDetail` vive no app.js e chega
+  // aqui pela ponte de acessores de globalThis; sem ele a conciliação
+  // recebia lista vazia e nenhuma linha era associada.
+  function quoteImportPrItems(pr) {
+    const detail = globalThis._currentPrDetail;
+    if (!detail || String(detail.item?.id ?? '') !== String(pr.id)) {
+      throw new Error('Detalhe da requisição indisponível. Reabra a requisição e importe novamente.');
+    }
+    return (detail.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
+  }
+
+  function showQuoteImportError(feedback, error) {
+    if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || String(error); }
+  }
+
+  // ── Associação confirmada (decisão de 2026-10-22: opção C + bloqueio A) ──
+  //
+  // A prévia mostra, por linha do arquivo, os itens candidatos da requisição
+  // com o que coincide e o que diverge (regras em
+  // modules/purchases/business). Nenhum item é escolhido em silêncio: a
+  // sugestão aparece marcada e só existe quando é única e forte; CA ausente
+  // exige escolha manual; CA divergente fica bloqueado. Antes de gravar, um
+  // resumo mostra cada associação com preço e quantidade e exige confirmação
+  // explícita. O backend revalida tudo.
+
+  const quoteImport = { pr: null, rows: [], evaluation: [], decisions: [], pending: null };
+
+  function quoteCandidateLabel(candidate, suggested) {
+    const item = candidate.item || {};
+    const sizes = [item.glove_size, item.size, item.uniform_size].filter((v) => v && v !== 'N/A').join('/');
+    const parts = [`#${candidate.itemId}`, item.epi_name || item.epi_display_name || '', `CA ${item.ca || item.epi_ca || '—'}`];
+    if (item.manufacturer) { parts.push(item.manufacturer); }
+    if (sizes) { parts.push(sizes); }
+    if (candidate.blocked) { return `⛔ ${parts.join(' · ')} — ${candidate.blockReason}`; }
+    if (candidate.contradicted) { return `${parts.join(' · ')} — diverge do arquivo`; }
+    if (!candidate.eligible) { return `${parts.join(' · ')} — identificação insuficiente`; }
+    return `${parts.join(' · ')}${suggested ? ' — sugerido' : ''}`;
+  }
+
+  function quoteRowView(rowEval, decision, parseMoney, parseQuantity) {
+    const candidate = rowEval.candidates.find((c) => String(c.itemId) === String(decision)) || null;
+    const ignored = decision === 'ignore';
+    const qty = parseQuantity(rowEval.row.qtd, candidate?.item?.quantity_requested || 1);
+    const price = parseMoney(rowEval.row.valor_unitario);
+    return { candidate, ignored, qty, price, total: qty * price };
+  }
+
+  function renderQuoteMapping() {
+    _renderPoCsvPreview(quoteImport.rows, quoteImport.evaluation, quoteImport.decisions);
+  }
+
+  function setQuoteImportDecision(rowIndex, value) {
+    if (rowIndex < 0 || rowIndex >= quoteImport.decisions.length) { return; }
+    quoteImport.decisions[rowIndex] = value === undefined || value === null ? '' : String(value);
+    quoteImport.pending = null;
+    const confirmBox = document.getElementById('req-po-csv-confirm');
+    if (confirmBox) { confirmBox.style.display = 'none'; }
+    renderQuoteMapping();
+  }
+
+  // Monta a operação a confirmar: só linhas com item escolhido entram.
+  function buildQuoteImportOperation(kind) {
+    const validate = requireQuoteImportFn('validatePurchaseImportDecisions');
+    const parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
+    const parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
+    const errors = validate(quoteImport.evaluation, quoteImport.decisions);
+    if (errors.length) { throw new Error(errors.join(' ')); }
+    const lines = quoteImport.evaluation.map((rowEval) => ({ rowEval, ...quoteRowView(rowEval, quoteImport.decisions[rowEval.rowIndex], parseMoney, parseQuantity) }));
+    const associated = lines.filter((l) => !l.ignored && l.candidate);
+    if (!associated.length) { throw new Error('Nenhuma linha foi associada a um item da requisição.'); }
+    return { kind, associated, ignored: lines.filter((l) => l.ignored).length };
+  }
+
+  function quoteAssociationPayload(line) {
+    const row = line.rowEval.row;
+    const item = line.candidate.item;
+    // Campos exatamente como o servidor os devolveu no parse: a assinatura
+    // (quote_sig) só confere se nada foi alterado no caminho.
+    return {
+      confirmed: true,
+      expected_updated_at: item.updated_at || '',
+      quote_line: row.line ?? '',
+      quote_item_id: row.item_id ?? '',
+      quote_epi: row.epi ?? '',
+      quote_ca: row.ca ?? '',
+      quote_manufacturer: row.fabricante ?? '',
+      quote_model: row.modelo ?? '',
+      quote_supplier: row.fornecedor ?? '',
+      quote_size: row.tamanho ?? '',
+      quote_glove_size: row.tamanho_luva ?? '',
+      quote_uniform_size: row.tamanho_uniforme ?? '',
+      quote_qty: row.qtd ?? '',
+      quote_unit_price: row.valor_unitario ?? '',
+      quote_issued_at: row.quote_issued_at ?? '',
+      quote_sig: row.quote_sig ?? ''
+    };
+  }
+
+  function renderQuoteConfirmation(operation) {
+    const box = document.getElementById('req-po-csv-confirm');
+    const body = document.getElementById('req-po-csv-confirm-body');
+    const check = document.getElementById('req-po-csv-confirm-check');
+    const confirmBtn = document.getElementById('req-po-csv-confirm-btn');
+    if (!box || !body) { throw new Error('Confirmação indisponível. Recarregue a página.'); }
+    let grand = 0;
+    const rowsHtml = operation.associated.map((l) => {
+      grand += l.total;
+      const row = l.rowEval.row;
+      const item = l.candidate.item;
+      const warn = l.candidate.divergences.length ? `<div style="color:var(--color-warning);">⚠ ${esc(l.candidate.divergences.join('; '))}</div>` : '';
+      return `<tr>
+      <td>${l.rowEval.rowIndex + 1}</td>
+      <td>${esc(row.epi || '—')}<br><small>CA ${esc(row.ca || 'ausente')}</small></td>
+      <td><strong>#${esc(l.candidate.itemId)}</strong> ${esc(item.epi_name || item.epi_display_name || '')}<br><small>CA ${esc(item.ca || item.epi_ca || '—')} · coincide: ${esc(l.candidate.matches.join(', '))}</small>${warn}</td>
+      <td>${l.qty}</td><td>${fmtBrl(l.price)}</td><td>${fmtBrl(l.total)}</td>
+    </tr>`;
+    }).join('');
+    const action = operation.kind === 'po' ? 'Criar a PO com' : 'Gravar preço em';
+    body.innerHTML = `<p style="margin:0 0 6px;">${action} <strong>${operation.associated.length}</strong> item(ns). Linhas não importadas: ${operation.ignored}.</p>
+    <table style="font-size:12px;"><thead><tr><th scope="col">Linha</th><th scope="col">No arquivo</th><th scope="col">Item da requisição</th><th scope="col">Qtd</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th></tr></thead>
+    <tbody>${rowsHtml}</tbody></table>
+    <div style="margin-top:6px;font-weight:600;">Total confirmado: ${fmtBrl(grand)}</div>`;
+    if (check) { check.checked = false; }
+    if (confirmBtn) { confirmBtn.textContent = operation.kind === 'po' ? 'Confirmar e criar PO' : 'Confirmar e salvar preços'; }
+    box.style.display = '';
+  }
+
   // ── initPoCsvImport ─────────────────────────────────────────────────────────
 
   function initPoCsvImport(pr) {
     globalThis._poCsvParsed = [];
+    quoteImport.pr = pr;
+    quoteImport.rows = [];
+    quoteImport.evaluation = [];
+    quoteImport.decisions = [];
+    quoteImport.pending = null;
     const preview = document.getElementById('req-po-csv-preview');
     const feedback = document.getElementById('req-po-csv-feedback');
     const fileInput = document.getElementById('req-po-csv-file');
+    const confirmBox = document.getElementById('req-po-csv-confirm');
+    const mapping = document.getElementById('req-po-csv-preview-tbody');
     if (preview) {preview.style.display = 'none';}
+    if (confirmBox) {confirmBox.style.display = 'none';}
     if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
     if (fileInput) {fileInput.value = '';}
 
     const previewBtn = document.getElementById('req-po-csv-preview-btn');
     const cancelBtn = document.getElementById('req-po-csv-cancel-btn');
     const submitBtn = document.getElementById('req-po-csv-submit-btn');
+    const savePricesBtn = document.getElementById('req-po-save-prices-btn');
+    const confirmBtn = document.getElementById('req-po-csv-confirm-btn');
+    const confirmCancelBtn = document.getElementById('req-po-csv-confirm-cancel-btn');
+
+    if (mapping) {mapping.onchange = (event) => {
+      const target = event?.target;
+      if (!target || target.dataset?.quoteRow === undefined) { return; }
+      setQuoteImportDecision(Number(target.dataset.quoteRow), target.value);
+    };}
 
     if (previewBtn) {previewBtn.onclick = async () => {
       const file = document.getElementById('req-po-csv-file')?.files?.[0];
       if (!file) { if (feedback) {feedback.textContent = 'Selecione um arquivo CSV ou XLSX.';} return; }
       try {
         if (feedback) { feedback.textContent = 'Lendo arquivo...'; feedback.style.color = ''; }
-        const result = await globalThis._parsePoImportFile?.(file) || [];
+        const result = await requireQuoteImportFn('_parsePoImportFile')(file) || [];
         if (!result.length) { if (feedback) {feedback.textContent = 'Nenhuma linha válida encontrada no arquivo.';} return; }
+        const evaluation = requireQuoteImportFn('evaluatePurchaseImportCandidates')(result, quoteImportPrItems(pr));
+        quoteImport.rows = result;
+        quoteImport.evaluation = evaluation;
+        quoteImport.decisions = evaluation.map((r) => (r.suggestedItemId != null ? String(r.suggestedItemId) : ''));
+        quoteImport.pending = null;
+        renderQuoteMapping();
         globalThis._poCsvParsed = result;
-        globalThis._renderPoCsvPreview?.(result);
+        if (confirmBox) {confirmBox.style.display = 'none';}
         if (preview) {preview.style.display = '';}
-        if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
+        if (feedback) { feedback.textContent = 'Confira a associação de cada linha antes de salvar.'; feedback.style.color = ''; }
       } catch (error) {
         if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || 'Erro ao ler arquivo de cotação.'; }
       }
@@ -436,90 +602,117 @@
 
     if (cancelBtn) {cancelBtn.onclick = () => {
       if (preview) {preview.style.display = 'none';}
+      if (confirmBox) {confirmBox.style.display = 'none';}
       if (feedback) { feedback.textContent = ''; feedback.style.color = ''; }
       globalThis._poCsvParsed = [];
+      quoteImport.rows = [];
+      quoteImport.evaluation = [];
+      quoteImport.decisions = [];
+      quoteImport.pending = null;
     };}
 
-    const savePricesBtn = document.getElementById('req-po-save-prices-btn');
-    if (savePricesBtn) {savePricesBtn.onclick = async () => {
-      const poCsvParsed = globalThis._poCsvParsed || [];
-      if (!poCsvParsed.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Visualize o CSV antes de salvar.'; } return; }
-      const currentPrDetail = globalThis._currentPrDetail;
-      const prItems = (currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
-      const matchedRows = globalThis._matchPurchaseImportRows?.(poCsvParsed, prItems) || [];
-      const priceUpdates = poCsvParsed.map((row, idx) => {
-        const matched = matchedRows[idx];
-        if (!matched) {return null;}
-        return { item_id: matched.id, unit_price: globalThis._parsePurchaseMoney?.(row.valor_unitario) ?? 0, quantity: globalThis._parsePurchaseQuantity?.(row.qtd, matched.quantity_requested || 1) ?? 1 };
-      }).filter(Boolean);
-      if (!priceUpdates.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um item da requisição. Verifique os CAs ou nomes.'; } return; }
-      const state2 = getState();
+    const prepare = (kind) => {
+      if (!quoteImport.rows.length) { showQuoteImportError(feedback, new Error('Visualize o arquivo antes de continuar.')); return; }
       try {
-        if (feedback) { feedback.textContent = 'Salvando preços...'; feedback.style.color = ''; }
-        await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, items: priceUpdates }) });
-        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = `Preços salvos (${priceUpdates.length} item(s)). Status atualizado.`; }
-        globalThis._poCsvParsed = [];
-        await globalThis.openPrDetail?.(pr.id);
-        globalThis.loadPurchaseRequests?.();
-      } catch(err) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao salvar preços.'; }
+        quoteImportPrItems(pr);
+        if (kind === 'po' && !document.getElementById('req-po-csv-supplier')?.value?.trim()) {
+          throw new Error('Informe o fornecedor principal.');
+        }
+        const operation = buildQuoteImportOperation(kind);
+        renderQuoteConfirmation(operation);
+        quoteImport.pending = operation;
+        if (feedback) { feedback.style.color = ''; feedback.textContent = 'Revise o resumo e confirme.'; }
+      } catch (error) { quoteImport.pending = null; showQuoteImportError(feedback, error); }
+    };
+    if (savePricesBtn) {savePricesBtn.onclick = () => prepare('save');}
+    if (submitBtn) {submitBtn.onclick = () => prepare('po');}
+
+    if (confirmCancelBtn) {confirmCancelBtn.onclick = () => {
+      quoteImport.pending = null;
+      if (confirmBox) {confirmBox.style.display = 'none';}
+      if (feedback) { feedback.style.color = ''; feedback.textContent = 'Nada foi gravado. Revise as associações.'; }
+    };}
+
+    if (confirmBtn) {confirmBtn.onclick = async () => {
+      const operation = quoteImport.pending;
+      if (!operation) { showQuoteImportError(feedback, new Error('Nada a confirmar. Revise as associações.')); return; }
+      if (!document.getElementById('req-po-csv-confirm-check')?.checked) {
+        showQuoteImportError(feedback, new Error('Marque a conferência das associações, preços e quantidades antes de confirmar.'));
+        return;
       }
-    };}
-
-    if (submitBtn) {submitBtn.onclick = async () => {
-      const poCsvParsed = globalThis._poCsvParsed || [];
-      if (!poCsvParsed.length) { if (feedback) {feedback.textContent = 'Nenhum dado para importar.';} return; }
-      const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
-      const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
-      if (!supplier) { if (feedback) {feedback.textContent = 'Informe o fornecedor principal.';} return; }
-      const currentPrDetail = globalThis._currentPrDetail;
-      const prItems = (currentPrDetail?.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
-      const matchedRows = globalThis._matchPurchaseImportRows?.(poCsvParsed, prItems) || [];
-      const poItems = poCsvParsed.map((row, idx) => {
-        const matched = matchedRows[idx];
-        return {
-          purchase_request_item_id: matched?.id || null,
-          epi_id: matched?.epi_id || null,
-          epi_name: row.epi || matched?.epi_name || matched?.epi_display_name || '',
-          ca: row.ca || matched?.ca || matched?.epi_ca || '',
-          manufacturer: row.fabricante || matched?.manufacturer || '',
-          supplier: row.fornecedor || supplier,
-          glove_size: row.tamanho_luva || matched?.glove_size || 'N/A',
-          size: row.tamanho || matched?.size || 'N/A',
-          uniform_size: row.tamanho_uniforme || matched?.uniform_size || 'N/A',
-          quantity: globalThis._parsePurchaseQuantity?.(row.qtd, matched?.quantity_requested || 1) ?? 1,
-          unit_price: globalThis._parsePurchaseMoney?.(row.valor_unitario) ?? 0,
-          origin: matched?.origin || 'employee_request',
-          employee_id: matched?.employee_id || null,
-          employee_name: matched?.employee_name || '',
-          employee_sector: matched?.employee_sector || '',
-          employee_role: matched?.employee_role || '',
-          epi_request_id: matched?.epi_request_id || null,
-        };
-      });
-      const validItems = poItems.filter(i => i.epi_id);
-      const skipped = poItems.length - validItems.length;
-      if (!validItems.length) { if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = 'Nenhum item do CSV foi associado a um EPI cadastrado. Verifique os nomes ou CAs.'; } return; }
-      if (skipped > 0 && !confirm(`${skipped} item(s) não foram associados a EPIs cadastrados e serão ignorados. Continuar com ${validItems.length} item(s)?`)) {return;}
+      let fresh;
+      try {
+        quoteImportPrItems(pr);
+        fresh = buildQuoteImportOperation(operation.kind);
+      } catch (error) { quoteImport.pending = null; showQuoteImportError(feedback, error); return; }
+      quoteImport.pending = null;
+      if (confirmBtn) {confirmBtn.disabled = true;}
       const state2 = getState();
       try {
-        if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
-        await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
-          actor_user_id: state2.user?.id,
-          unit_id: pr.unit_id,
-          po_number: poNumber || '',
-          supplier,
-          notes: `Importado via CSV da Requisição #${pr.id}`,
-          purchase_request_id: pr.id,
-          items: validItems,
-        }) });
-        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'PO criada com sucesso!'; }
-        if (preview) {preview.style.display = 'none';}
-        globalThis._poCsvParsed = [];
-        await globalThis.openPrDetail?.(pr.id);
-        globalThis.loadPurchaseOrders?.();
+        if (fresh.kind === 'save') {
+          if (feedback) { feedback.textContent = 'Salvando preços...'; feedback.style.color = ''; }
+          const items = fresh.associated.map((l) => ({ item_id: l.candidate.itemId, unit_price: l.price, quantity: l.qty, ...quoteAssociationPayload(l) }));
+          const response = await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, items }) });
+          const affected = new Set((response?.affected_item_ids || []).map(String));
+          const skipped = items.filter((i) => !affected.has(String(i.item_id))).map((i) => `#${i.item_id}`);
+          globalThis._poCsvParsed = [];
+          await globalThis.openPrDetail?.(pr.id);
+          globalThis.loadPurchaseRequests?.();
+          // A reabertura reinicia o painel; a confirmação vem depois dela.
+          if (feedback) {
+            feedback.style.color = skipped.length ? 'var(--color-warning)' : 'var(--color-success)';
+            feedback.textContent = `Preços salvos em ${items.length - skipped.length} item(s) confirmados. Status atualizado.`
+              + (skipped.length ? ` Não alterados (já aprovados): ${skipped.join(', ')}.` : '');
+          }
+        } else {
+          if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
+          const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
+          const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
+          const items = fresh.associated.map((l) => {
+            const row = l.rowEval.row;
+            const matched = l.candidate.item;
+            return {
+              purchase_request_item_id: l.candidate.itemId,
+              epi_id: matched.epi_id || null,
+              epi_name: row.epi || matched.epi_name || matched.epi_display_name || '',
+              ca: row.ca || matched.ca || matched.epi_ca || '',
+              manufacturer: row.fabricante || matched.manufacturer || '',
+              supplier: row.fornecedor || supplier,
+              glove_size: row.tamanho_luva || matched.glove_size || 'N/A',
+              size: row.tamanho || matched.size || 'N/A',
+              uniform_size: row.tamanho_uniforme || matched.uniform_size || 'N/A',
+              quantity: l.qty,
+              unit_price: l.price,
+              origin: matched.origin || 'employee_request',
+              employee_id: matched.employee_id || null,
+              employee_name: matched.employee_name || '',
+              employee_sector: matched.employee_sector || '',
+              employee_role: matched.employee_role || '',
+              epi_request_id: matched.epi_request_id || null,
+              ...quoteAssociationPayload(l)
+            };
+          });
+          await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
+            actor_user_id: state2.user?.id,
+            unit_id: pr.unit_id,
+            po_number: poNumber || '',
+            supplier,
+            notes: `Importado via CSV da Requisição #${pr.id}`,
+            purchase_request_id: pr.id,
+            source: 'quote_import',
+            items,
+          }) });
+          if (preview) {preview.style.display = 'none';}
+          globalThis._poCsvParsed = [];
+          await globalThis.openPrDetail?.(pr.id);
+          globalThis.loadPurchaseOrders?.();
+          if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = `PO criada com ${items.length} item(s) confirmados.`; }
+        }
+        if (confirmBox) {confirmBox.style.display = 'none';}
       } catch(err) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao criar PO.'; }
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao gravar a cotação.'; }
+      } finally {
+        if (confirmBtn) {confirmBtn.disabled = false;}
       }
     };}
   }
@@ -548,23 +741,44 @@
 
   // ── _renderPoCsvPreview ─────────────────────────────────────────────────────
 
-  function _renderPoCsvPreview(rows) {
+  function _renderPoCsvPreview(rows, evaluation, decisions) {
     const tbody = document.getElementById('req-po-csv-preview-tbody');
     const totalEl = document.getElementById('req-po-csv-total');
     if (!tbody) {return;}
+    const parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
+    const parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
+    const evals = evaluation || [];
     let grandTotal = 0;
-    tbody.innerHTML = rows.map(r => {
-      const qty = globalThis._parsePurchaseQuantity?.(r.qtd) ?? 1;
-      const price = globalThis._parsePurchaseMoney?.(r.valor_unitario) ?? 0;
-      const total = qty * price;
-      grandTotal += total;
-      return `<tr>
-      <td>${esc(r.epi || '—')}</td><td>${esc(r.ca || '—')}</td><td>${esc(r.fabricante || '—')}</td>
+    tbody.innerHTML = rows.map((r, idx) => {
+      const rowEval = evals[idx] || { rowIndex: idx, row: r, candidates: [], notes: [], suggestedItemId: null };
+      const decision = decisions?.[idx] ?? '';
+      const view = quoteRowView(rowEval, decision, parseMoney, parseQuantity);
+      if (!view.ignored) { grandTotal += view.total; }
+      const options = [`<option value=""${decision === '' ? ' selected' : ''}>— escolha o item —</option>`]
+        .concat(rowEval.candidates.map((c) => {
+          const selectable = c.eligible && !c.blocked;
+          const selected = String(c.itemId) === String(decision) ? ' selected' : '';
+          return `<option value="${esc(c.itemId)}"${selected}${selectable ? '' : ' disabled'}>${esc(quoteCandidateLabel(c, String(c.itemId) === String(rowEval.suggestedItemId)))}</option>`;
+        }))
+        .concat([`<option value="ignore"${decision === 'ignore' ? ' selected' : ''}>Não importar esta linha</option>`])
+        .join('');
+      const notes = [];
+      if (view.candidate) {
+        if (view.candidate.matches.length) { notes.push(`<div style="color:var(--color-success);">✔ coincide: ${esc(view.candidate.matches.join(', '))}</div>`); }
+        if (view.candidate.divergences.length) { notes.push(`<div style="color:var(--color-warning);">⚠ ${esc(view.candidate.divergences.join('; '))}</div>`); }
+        if (String(view.candidate.itemId) === String(rowEval.suggestedItemId)) { notes.push('<div>Sugestão automática: confirme se é este o item.</div>'); }
+      }
+      rowEval.notes.forEach((n) => notes.push(`<div style="color:var(--color-warning);">${esc(n)}</div>`));
+      const blocked = rowEval.candidates.filter((c) => c.blocked);
+      if (blocked.length) { notes.push(`<div style="color:var(--color-danger);">⛔ ${esc(blocked.map((c) => `#${c.itemId}: ${c.blockReason}`).join('; '))}</div>`); }
+      return `<tr${view.ignored ? ' style="opacity:.55;"' : ''}>
+      <td>${esc(r.epi || '—')}</td><td>${esc(r.ca || '—')}</td><td>${esc(r.fabricante || '—')}${r.modelo ? `<br><small>${esc(r.modelo)}</small>` : ''}</td>
       <td>${esc(r.fornecedor || '—')}</td><td>${esc([r.tamanho_luva ? `L:${r.tamanho_luva}`:null, r.tamanho ? `T:${r.tamanho}`:null, r.tamanho_uniforme ? `U:${r.tamanho_uniforme}`:null].filter(Boolean).join(' ') || '—')}</td>
-      <td>${qty}</td><td>${fmtBrl(price)}</td><td>${fmtBrl(total)}</td>
+      <td>${view.qty}</td><td>${fmtBrl(view.price)}</td><td>${fmtBrl(view.total)}</td>
+      <td style="min-width:260px;"><select data-quote-row="${idx}" aria-label="Item da requisição para a linha ${idx + 1}">${options}</select><div style="font-size:11px;margin-top:2px;">${notes.join('')}</div></td>
     </tr>`;
     }).join('');
-    if (totalEl) {totalEl.textContent = `Total geral: ${fmtBrl(grandTotal)}`;}
+    if (totalEl) {totalEl.textContent = `Total das linhas a importar: ${fmtBrl(grandTotal)}`;}
   }
 
   // ── initPurchaseModule ──────────────────────────────────────────────────────
@@ -965,6 +1179,7 @@
   globalThis._getBuyerApproverEmployees = _getBuyerApproverEmployees;
   globalThis.initAprovacoes = initAprovacoes;
   globalThis.initPoCsvImport = initPoCsvImport;
+  globalThis.setQuoteImportDecision = setQuoteImportDecision;
   globalThis._parsePoCsv = _parsePoCsv;
   globalThis._renderPoCsvPreview = _renderPoCsvPreview;
   globalThis.initPurchaseModule = initPurchaseModule;
@@ -977,6 +1192,7 @@
     _getBuyerApproverEmployees,
     initAprovacoes,
     initPoCsvImport,
+    setQuoteImportDecision,
     _parsePoCsv,
     _renderPoCsvPreview,
     initPurchaseModule,

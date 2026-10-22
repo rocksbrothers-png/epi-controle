@@ -204,7 +204,7 @@
             <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
             <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV/XLSX)</h4>
-              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX.</p>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, modelo, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX. Cada linha precisa ser associada e confirmada a um item da requisição: CA divergente bloqueia a associação e linha sem CA exige escolha manual.</p>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <input type="file" id="req-po-csv-file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="flex:1;min-width:200px;">
                 <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
@@ -212,7 +212,7 @@
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
                 <div style="overflow-x:auto;">
                   <table id="req-po-csv-preview-table" style="font-size:12px;">
-                    <thead><tr><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit. (R$)</th><th scope="col">Total</th></tr></thead>
+                    <thead><tr><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit. (R$)</th><th scope="col">Total</th><th scope="col">Item da requisição (confirmar)</th></tr></thead>
                     <tbody id="req-po-csv-preview-tbody"></tbody>
                   </table>
                 </div>
@@ -229,6 +229,17 @@
                   <button class="btn" id="req-po-save-prices-btn" title="Salva os preços na requisição sem gerar PO. Status muda para Cotada.">Salvar Preços na Requisição</button>
                   <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do arquivo</button>
                   <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
+                </div>
+                <div id="req-po-csv-confirm" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);" role="region" aria-label="Confirmação das associações da cotação">
+                  <h5 style="margin:0 0 6px;">Confirme as associações antes de gravar</h5>
+                  <div id="req-po-csv-confirm-body" style="overflow-x:auto;"></div>
+                  <label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;">
+                    <input type="checkbox" id="req-po-csv-confirm-check"> Conferi cada associação, preço e quantidade.
+                  </label>
+                  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    <button class="btn" id="req-po-csv-confirm-btn">Confirmar e salvar</button>
+                    <button class="btn ghost" id="req-po-csv-confirm-cancel-btn">Voltar e revisar</button>
+                  </div>
                 </div>
               </div>
               <div id="req-po-csv-feedback" style="font-size:13px;margin-top:6px;"></div>

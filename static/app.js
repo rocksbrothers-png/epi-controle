@@ -377,24 +377,9 @@ const PHASE3_FLAG_MATRIX = Object.freeze([
   }
 ]);
 
-function isDebugModeEnabled() {
-  return globalThis.__EPI_DEBUG__ === true;
-}
-
-function debugLog(context, payload) {
-  if (!isDebugModeEnabled()) return;
-  if (payload === undefined) {
-    console.debug(`[debug] ${context}`);
-    return;
-  }
-  console.debug(`[debug] ${context}`, payload);
-}
-
-function reportNonCriticalError(context, error) {
-  if (!error) return;
-  if (!isDebugModeEnabled()) return;
-  console.debug(`[non-critical] ${context}`, error);
-}
+// isDebugModeEnabled, debugLog e reportNonCriticalError vêm de
+// static/js/utils/debug.js (carregado antes deste arquivo). As cópias que
+// existiam aqui eram idênticas e apenas sobrescreviam o global do módulo.
 
 const EPI_PERF_RUNTIME = {
   debugEnabled: false,
@@ -450,15 +435,7 @@ function renderPerfHud() {
   }
 }
 
-function ensureModuleBound(moduleKey) {
-  const key = `__EPI_${String(moduleKey || 'MODULE').toUpperCase().replace(/[^A-Z0-9]+/g, '_')}_BOUND__`;
-  if (globalThis[key]) {
-    debugLog(`[perf] duplicate bind blocked: ${moduleKey}`);
-    return false;
-  }
-  globalThis[key] = true;
-  return true;
-}
+// ensureModuleBound: static/js/utils/debug.js (cópia idêntica removida).
 
 function markRenderStart() {
   return globalThis.performance && typeof globalThis.performance.now === 'function'
@@ -18646,44 +18623,10 @@ function _readFileAsBase64(file) {
   });
 }
 
-function _normalizeCa(ca) {
-  return String(ca || '').trim().replace(/[-\s]+$/, '').replace(/^[-\s]+/, '').toLowerCase();
-}
-
-function _parsePurchaseMoney(value) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return Math.round(value * 100) / 100;
-  }
-  let text = String(value ?? '').trim();
-  if (!text) return 0;
-  text = text.replace(/\u00a0/g, ' ')
-    .replace(/r\$/gi, '')
-    .replace(/\s+/g, '')
-    .replace(/[^0-9,.\-]/g, '');
-  if (!text || ['-', ',', '.', '-,', '-.'].includes(text)) return 0;
-  const negative = text.startsWith('-');
-  text = text.replace(/-/g, '');
-  const commaIndex = text.lastIndexOf(',');
-  const dotIndex = text.lastIndexOf('.');
-  let normalized = '';
-  if (commaIndex >= 0 || dotIndex >= 0) {
-    const decimalSep = commaIndex > dotIndex ? ',' : '.';
-    const parts = text.split(decimalSep);
-    const fractional = parts.pop() || '0';
-    const integer = parts.join('').replace(/[,.]/g, '') || '0';
-    normalized = `${negative ? '-' : ''}${integer}.${fractional}`;
-  } else {
-    normalized = `${negative ? '-' : ''}${text.replace(/[,.]/g, '')}`;
-  }
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
-}
-
-function _parsePurchaseQuantity(value, fallback = 1) {
-  const parsed = Number(String(value ?? '').replace(/\u00a0/g, '').replace(',', '.').replace(/[^0-9.\-]/g, ''));
-  const quantity = Math.round(parsed);
-  return Number.isFinite(quantity) && quantity > 0 ? quantity : fallback;
-}
+// Conciliação da importação de cotação (_normalizeCa, _parsePurchaseMoney,
+// _parsePurchaseQuantity, _normalizePurchase*, _scorePurchaseImportMatch,
+// _matchPurchaseImportRows): camada Business de Compras em
+// static/js/modules/purchases/business/purchase-import-matching.js.
 
 async function _parsePoImportFile(file) {
   const contentBase64 = await _readFileAsBase64(file);
@@ -18698,76 +18641,6 @@ async function _parsePoImportFile(file) {
   return response.items || [];
 }
 
-
-function _normalizePurchaseText(value) {
-  return String(value || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ');
-}
-
-function _normalizePurchaseSize(value) {
-  const text = _normalizePurchaseText(value);
-  return (!text || text === 'n/a' || text === 'na') ? '' : text;
-}
-
-function _normalizePurchaseOrigin(value) {
-  const text = _normalizePurchaseText(value);
-  if (text.includes('colaborador') || text.includes('employee')) return 'employee_request';
-  if (text.includes('estoque') || text.includes('stock')) return 'stock_minimum';
-  return text;
-}
-
-function _scorePurchaseImportMatch(row, item) {
-  let score = 0;
-  const rowCa = _normalizeCa(row.ca);
-  const rowEpi = _normalizePurchaseText(row.epi);
-  const rowEmployee = _normalizePurchaseText(row.colaborador);
-  const rowUnit = _normalizePurchaseText(row.unidade);
-  const rowSupplier = _normalizePurchaseText(row.fornecedor);
-  const rowOrigin = _normalizePurchaseOrigin(row.origem);
-  const rowSize = _normalizePurchaseSize(row.tamanho);
-  const rowGlove = _normalizePurchaseSize(row.tamanho_luva);
-  const rowUniform = _normalizePurchaseSize(row.tamanho_uniforme);
-  if (rowCa && _normalizeCa(item.ca || item.epi_ca) === rowCa) score += 4;
-  if (rowEpi && _normalizePurchaseText(item.epi_name || item.epi_display_name) === rowEpi) score += 3;
-  if (rowEmployee && _normalizePurchaseText(item.employee_name) === rowEmployee) score += 3;
-  if (rowUnit && _normalizePurchaseText(item.unit_name) === rowUnit) score += 2;
-  if (rowSupplier && _normalizePurchaseText(item.supplier) === rowSupplier) score += 1;
-  if (rowOrigin && _normalizePurchaseOrigin(item.origin) === rowOrigin) score += 1;
-  if (rowSize && _normalizePurchaseSize(item.size) === rowSize) score += 2;
-  if (rowGlove && _normalizePurchaseSize(item.glove_size) === rowGlove) score += 2;
-  if (rowUniform && _normalizePurchaseSize(item.uniform_size) === rowUniform) score += 2;
-  return score;
-}
-
-function _matchPurchaseImportRows(rows, prItems) {
-  const used = new Set();
-  return rows.map((row) => {
-    const itemId = String(row.item_id || '').trim();
-    if (itemId) {
-      const exactIndex = prItems.findIndex((item, idx) => !used.has(idx) && String(item.id || item.purchase_request_item_id || '') === itemId);
-      if (exactIndex >= 0) {
-        used.add(exactIndex);
-        return prItems[exactIndex];
-      }
-    }
-    let bestIndex = -1;
-    let bestScore = 0;
-    prItems.forEach((item, idx) => {
-      if (used.has(idx)) return;
-      const score = _scorePurchaseImportMatch(row, item);
-      if (score > bestScore) {
-        bestScore = score;
-        bestIndex = idx;
-      }
-    });
-    if (bestIndex >= 0 && bestScore > 0) {
-      used.add(bestIndex);
-      return prItems[bestIndex];
-    }
-    return null;
-  });
-}
 
 // ── EPI Feedback Manager (Avaliações e Sugestões) ────────────────────────────
 

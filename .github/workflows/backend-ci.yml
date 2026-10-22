@@ -145,6 +145,14 @@ jobs:
       - name: Run JS unit tests
         run: node static/js/test/run-tests.js
 
+      # Guarda UBX: o static/app.js só perde responsabilidades. Reprova nova
+      # declaração de nível superior, novo endpoint HTTP, função extraída que
+      # volta ao monólito e violação de camada em modules/<domínio>/. Roda
+      # aqui (e não só no pytest) porque um PR que toca apenas static/ não
+      # dispara o job `test`.
+      - name: UBX app.js boundary guard
+        run: node static/js/test/app-js-boundary.js
+
   lint:
     name: Lint (ruff)
     needs: changes

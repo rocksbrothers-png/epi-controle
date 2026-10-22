@@ -65,7 +65,9 @@ function loadModule(relPath) {
   'views/outsourced-companies-view.js',
   'views/outsourced-employees-view.js',
   'views/dashboard-scope.js',
-  'views/data-migration-view.js'
+  'views/data-migration-view.js',
+  // Refatoração UBX: camada Business de Compras extraída do app.js.
+  'modules/purchases/business/purchase-import-matching.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7638,6 +7640,73 @@ test('RECOV R-3: a resposta do pedido de instruções vem do servidor', () => {
   const js = _read('js/views/profile.js');
   assert(/alert\(resposta\?\.message/.test(js),
     'o cliente parou de exibir a mensagem que o servidor mandou');
+});
+
+
+// ── UBX: modules/purchases/business/purchase-import-matching ───────────────
+// Testes de CARACTERIZAÇÃO: os valores esperados foram obtidos executando as
+// funções originais do app.js (antes da extração). Eles congelam o
+// comportamento atual — inclusive as peculiaridades (ex.: '1.000' vira 1,
+// porque o último separador é tratado como decimal). Mudar qualquer um destes
+// valores é mudança de regra de negócio, fora do escopo da refatoração.
+test('UBX compras: módulo publica o contrato global consumido por views/purchases.js', () => {
+  for (const name of ['_normalizeCa', '_parsePurchaseMoney', '_parsePurchaseQuantity', '_normalizePurchaseText',
+    '_normalizePurchaseSize', '_normalizePurchaseOrigin', '_scorePurchaseImportMatch', '_matchPurchaseImportRows']) {
+    eq(typeof globalThis[name], 'function', name);
+    eq(globalThis.__EPI_PURCHASES_BUSINESS__[name], globalThis[name], `${name} no namespace`);
+  }
+  assert(Object.isFrozen(globalThis.__EPI_PURCHASES_BUSINESS__), 'namespace congelado');
+});
+test('UBX compras: _parsePurchaseMoney aceita formatos BR e US', () => {
+  eq(globalThis._parsePurchaseMoney('R$ 1.234,56'), 1234.56);
+  eq(globalThis._parsePurchaseMoney('1,234.56'), 1234.56);
+  eq(globalThis._parsePurchaseMoney('12,5'), 12.5);
+  eq(globalThis._parsePurchaseMoney('-3.456'), -3.46);
+  eq(globalThis._parsePurchaseMoney(10.005), 10.01);
+  eq(globalThis._parsePurchaseMoney('1.000'), 1);
+});
+test('UBX compras: _parsePurchaseMoney devolve 0 para entrada inválida', () => {
+  eq(globalThis._parsePurchaseMoney('abc'), 0);
+  eq(globalThis._parsePurchaseMoney(null), 0);
+  eq(globalThis._parsePurchaseMoney(''), 0);
+  eq(globalThis._parsePurchaseMoney('-'), 0);
+});
+test('UBX compras: _parsePurchaseQuantity arredonda e usa fallback', () => {
+  eq(globalThis._parsePurchaseQuantity('2,6'), 3);
+  eq(globalThis._parsePurchaseQuantity('0'), 1);
+  eq(globalThis._parsePurchaseQuantity('', 5), 5);
+  eq(globalThis._parsePurchaseQuantity('x'), 1);
+});
+test('UBX compras: normalizações de texto, CA, tamanho e origem', () => {
+  eq(globalThis._normalizeCa(' -CA 123- '), 'ca 123');
+  eq(globalThis._normalizePurchaseText('  Luva   Nitrílica '), 'luva nitrilica');
+  eq(globalThis._normalizePurchaseSize('N/A'), '');
+  eq(globalThis._normalizePurchaseSize(' M '), 'm');
+  eq(globalThis._normalizePurchaseOrigin('Pedido do Colaborador'), 'employee_request');
+  eq(globalThis._normalizePurchaseOrigin('Estoque mínimo'), 'stock_minimum');
+  eq(globalThis._normalizePurchaseOrigin('Outro'), 'outro');
+});
+test('UBX compras: _scorePurchaseImportMatch pondera CA, EPI e tamanhos', () => {
+  const row = { ca: 'CA 1', epi: 'Luva', colaborador: 'João', unidade: 'Matriz', fornecedor: 'ACME', origem: 'Colaborador', tamanho: 'M', tamanho_luva: '', tamanho_uniforme: 'N/A' };
+  const item = { epi_ca: 'ca 1', epi_display_name: 'luva', employee_name: 'joão', unit_name: 'matriz', supplier: 'acme', origin: 'employee_request', size: 'm' };
+  eq(globalThis._scorePurchaseImportMatch(row, item), 4 + 3 + 3 + 2 + 1 + 1 + 2);
+  eq(globalThis._scorePurchaseImportMatch({}, item), 0);
+});
+test('UBX compras: _matchPurchaseImportRows prioriza item_id e não reutiliza itens', () => {
+  const items = [
+    { id: 10, epi_name: 'Luva', size: 'M' },
+    { id: 11, epi_name: 'Luva', size: 'G' },
+    { purchase_request_item_id: 12, epi_name: 'Bota' }
+  ];
+  const rows = [
+    { item_id: ' 11 ', epi: 'Luva' },
+    { epi: 'Luva', tamanho: 'M' },
+    { epi: 'Luva', tamanho: 'G' },
+    { item_id: '12' },
+    { epi: 'Inexistente' }
+  ];
+  const matched = globalThis._matchPurchaseImportRows(rows, items).map((m) => (m ? items.indexOf(m) : null));
+  eq(JSON.stringify(matched), JSON.stringify([1, 0, null, 2, null]));
 });
 
 

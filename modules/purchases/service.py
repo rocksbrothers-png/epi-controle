@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 import re
+import unicodedata
 
 from core.auth import ensure_permission, ensure_resource_company
 from core.permissions import PERM_PO_APPROVE, PERM_PURCHASE_REQUESTS_UPDATE
@@ -1380,6 +1381,18 @@ def get_purchase_request_detail(connection, pr_id):
     # lotes e validar a soma sem divergir do backend.
     for d in item_dicts:
         d['effective_receive_quantity'] = _effective_receive_quantity(connection, d)
+    # Identificação do produto para conferir a cotação: fabricante e modelo do
+    # EPI cadastrado. Lidos do registro inteiro para não depender de colunas
+    # opcionais do schema.
+    epi_cache = {}
+    for d in item_dicts:
+        epi_id = d.get('epi_id')
+        if epi_id not in epi_cache:
+            row = connection.execute('SELECT * FROM epis WHERE id = ?', (epi_id,)).fetchone() if epi_id else None
+            epi_cache[epi_id] = row_to_dict(row) if row else {}
+        epi = epi_cache[epi_id]
+        d['epi_manufacturer'] = epi.get('manufacturer') or ''
+        d['epi_model_reference'] = epi.get('model_reference') or ''
     return row_to_dict(pr), item_dicts, [row_to_dict(e) for e in events]
 
 
@@ -1720,9 +1733,150 @@ _PRICES_LOCKED_PR_STATUSES = {
 }
 
 
+# ── Associação confirmada de linhas de cotação (decisão de 2026-10-22) ─────
+#
+# A importação de cotação só grava preço em item que o operador confirmou
+# explicitamente. O cliente propõe e mostra as divergências; aqui a
+# associação é revalidada contra o banco, sem confiar no cliente:
+#   - confirmação explícita por item (`confirmed is True`);
+#   - item pertence à requisição e à empresa dela (integridade/tenant);
+#   - o EPI do item pertence à mesma empresa;
+#   - versão do item igual à vista pelo operador (`expected_updated_at`);
+#   - CA presente nos dois lados e divergente bloqueia;
+#   - exige identidade do produto (CA, descrição, modelo ou id do item);
+#     fornecedor/origem/colaborador nunca bastam;
+#   - um item não recebe duas linhas.
+
+_QUOTE_IDENTITY_TOKEN_MIN = 2
+
+
+def _normalize_ca_number(value):
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    digits = re.sub(r'\D+', '', text)
+    if digits:
+        return digits.lstrip('0') or '0'
+    return _normalize_identity_text(text)
+
+
+def _normalize_identity_text(value):
+    text = unicodedata.normalize('NFD', str(value or '').strip().lower())
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    return ' '.join(text.split())
+
+
+def _identity_text_relation(left, right):
+    a, b = _normalize_identity_text(left), _normalize_identity_text(right)
+    if not a or not b:
+        return 'missing'
+    if a == b:
+        return 'equal'
+    ta = [t for t in a.split(' ') if len(t) >= _QUOTE_IDENTITY_TOKEN_MIN]
+    tb = [t for t in b.split(' ') if len(t) >= _QUOTE_IDENTITY_TOKEN_MIN]
+    if not ta or not tb:
+        return 'different'
+    if all(t in tb for t in ta) or all(t in ta for t in tb):
+        return 'partial'
+    return 'different'
+
+
+def validate_quote_associations(connection, pr, associations):
+    """Revalida as associações linha de cotação → item confirmadas pelo operador.
+
+    Levanta ``ValueError``/``PermissionError`` antes de qualquer escrita.
+    Devolve uma lista de dicionários com o item atual, o EPI e as evidências.
+    """
+    pr_id = int(pr['id'])
+    company_id = int(pr['company_id'])
+    validated = []
+    seen = set()
+    for index, raw in enumerate(associations or [], start=1):
+        raw = raw or {}
+        line = raw.get('quote_line') or index
+        label = f'Linha {line} da cotação'
+        if raw.get('confirmed') is not True:
+            raise ValueError(f'{label}: associação não confirmada pelo operador.')
+        try:
+            item_id = int(raw.get('item_id') or 0)
+        except (TypeError, ValueError):
+            item_id = 0
+        if item_id <= 0:
+            raise ValueError(f'{label}: item da requisição não informado.')
+        if item_id in seen:
+            raise ValueError(f'{label}: o item #{item_id} foi associado a mais de uma linha.')
+        seen.add(item_id)
+        item = connection.execute(
+            'SELECT * FROM purchase_request_items WHERE id = ? AND purchase_request_id = ?',
+            (item_id, pr_id),
+        ).fetchone()
+        if not item:
+            raise ValueError(f'{label}: o item #{item_id} não pertence a esta requisição.')
+        item = row_to_dict(item)
+        if int(item.get('company_id') or 0) != company_id:
+            raise PermissionError(f'{label}: item #{item_id} fora da empresa da requisição.')
+        epi_row = connection.execute('SELECT * FROM epis WHERE id = ?', (int(item['epi_id']),)).fetchone() if item.get('epi_id') else None
+        epi = row_to_dict(epi_row) if epi_row else {}
+        if epi and epi.get('company_id') not in (None, '') and int(epi['company_id']) != company_id:
+            raise PermissionError(f'{label}: EPI do item #{item_id} fora da empresa da requisição.')
+        expected = raw.get('expected_updated_at')
+        if expected is None or str(expected) != str(item.get('updated_at') or ''):
+            raise ValueError(
+                f'{label}: o item #{item_id} foi alterado por outra operação depois da conferência. '
+                'Reabra a requisição e confirme novamente.'
+            )
+        matches = []
+        quote_ca = _normalize_ca_number(raw.get('quote_ca'))
+        item_cas = {c for c in (_normalize_ca_number(item.get('ca')), _normalize_ca_number(epi.get('ca'))) if c}
+        if quote_ca and item_cas:
+            if quote_ca not in item_cas:
+                raise ValueError(
+                    f'{label}: CA divergente (arquivo {raw.get("quote_ca")}, item #{item_id} '
+                    f'{item.get("ca") or epi.get("ca")}). A associação foi bloqueada.'
+                )
+            matches.append('CA')
+        quote_item_id = str(raw.get('quote_item_id') or '').strip()
+        if quote_item_id:
+            if quote_item_id != str(item_id):
+                raise ValueError(f'{label}: o arquivo identifica o item #{quote_item_id}, não o #{item_id}.')
+            matches.append('id do item')
+        if _identity_text_relation(raw.get('quote_epi'), item.get('epi_name') or epi.get('name')) in ('equal', 'partial'):
+            matches.append('descrição')
+        if _identity_text_relation(raw.get('quote_model'), epi.get('model_reference')) == 'equal':
+            matches.append('modelo')
+        if not matches:
+            raise ValueError(
+                f'{label}: sem identificação do produto (CA, descrição, modelo ou id do item). '
+                'Fornecedor ou origem não bastam para associar.'
+            )
+        validated.append({'raw': raw, 'item': item, 'epi': epi, 'matches': matches, 'line': line})
+    if not validated:
+        raise ValueError('Nenhuma associação confirmada foi informada.')
+    return validated
+
+
+def _record_quote_association(connection, actor, pr, entry, unit_price, quantity, ip_address, target):
+    raw, item = entry['raw'], entry['item']
+    comment = (
+        f'{target}: linha {entry["line"]} da cotação (EPI "{raw.get("quote_epi") or ""}", '
+        f'CA {raw.get("quote_ca") or "ausente"}, fabricante "{raw.get("quote_manufacturer") or ""}", '
+        f'modelo "{raw.get("quote_model") or ""}") → item #{item["id"]} '
+        f'("{item.get("epi_name") or ""}", CA {item.get("ca") or "-"}); '
+        f'R$ {float(unit_price):.2f} × {int(quantity)}; evidências: {", ".join(entry["matches"])}.'
+    )
+    _record_purchase_event(
+        connection, int(pr['company_id']), 'purchase_request', int(pr['id']), 'quote_association_confirmed',
+        str(pr['status']), str(pr['status']), comment,
+        int(actor['id']), actor.get('full_name') or '', ip_address,
+        actor.get('role') or '', 'operator_confirmed', 'buyer',
+    )
+
+
 def save_purchase_request_prices(connection, actor, pr, price_updates, ip_address):
     """Salva preços/quantidades cotados nos itens da requisição, sem gerar PO.
 
+    Cada item precisa vir de uma associação confirmada pelo operador, que é
+    revalidada aqui (``validate_quote_associations``) antes de qualquer escrita.
     Move a requisição para 'quoted' (Cotada). Preserva a regra R1: itens já
     aprovados/pedidos/recebidos/fechados não são alterados. Retorna
     (itens_afetados, novo_status).
@@ -1730,40 +1884,43 @@ def save_purchase_request_prices(connection, actor, pr, price_updates, ip_addres
     pr_id = int(pr['id'])
     if str(pr['status']) in _PRICES_LOCKED_PR_STATUSES:
         raise ValueError('Requisição já avançou além da cotação; não é possível salvar preços.')
+    validated = validate_quote_associations(connection, pr, price_updates)
     now = datetime.now(UTC).isoformat()
     locked = ', '.join(f"'{s}'" for s in _PRICES_LOCKED_ITEM_STATUSES)
-    affected = []
-    for raw in price_updates or []:
-        item_id = int(raw.get('item_id') or 0)
-        if item_id <= 0:
-            continue
+    planned = []
+    for entry in validated:
+        raw, current = entry['raw'], entry['item']
+        if str(current['status']) in _PRICES_LOCKED_ITEM_STATUSES:
+            continue  # R1: item aprovado é imutável
         unit_price = float(raw.get('unit_price') or 0)
         if unit_price < 0:
             raise ValueError('Preço unitário inválido.')
-        current = connection.execute(
-            'SELECT id, quantity_requested, status FROM purchase_request_items '
-            'WHERE id = ? AND purchase_request_id = ?',
-            (item_id, pr_id)
-        ).fetchone()
-        if not current:
-            continue
-        if str(current['status']) in _PRICES_LOCKED_ITEM_STATUSES:
-            continue  # R1: item aprovado é imutável
         if raw.get('quantity') is not None and str(raw.get('quantity')).strip() != '':
             quantity = int(raw.get('quantity'))
             if quantity <= 0:
                 raise ValueError('Quantidade inválida.')
         else:
             quantity = int(current['quantity_requested'] or 1)
-        total_price = round(unit_price * quantity, 2)
-        connection.execute(
-            'UPDATE purchase_request_items SET unit_price = ?, total_price = ?, quantity_requested = ?, '
-            f"updated_at = ? WHERE id = ? AND purchase_request_id = ? AND status NOT IN ({locked})",
-            (unit_price, total_price, quantity, now, item_id, pr_id)
-        )
-        affected.append(item_id)
-    if not affected:
+        planned.append((entry, unit_price, quantity))
+    if not planned:
         raise ValueError('Nenhum item elegível para atualização de preços.')
+    affected = []
+    for entry, unit_price, quantity in planned:
+        current = entry['item']
+        cursor = connection.execute(
+            'UPDATE purchase_request_items SET unit_price = ?, total_price = ?, quantity_requested = ?, '
+            f"updated_at = ? WHERE id = ? AND purchase_request_id = ? AND status NOT IN ({locked}) "
+            'AND updated_at = ?',
+            (unit_price, round(unit_price * quantity, 2), quantity, now, int(current['id']), pr_id,
+             current.get('updated_at') or ''),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError(
+                f'O item #{current["id"]} foi alterado por outra operação durante o salvamento. '
+                'Reabra a requisição e confirme novamente.'
+            )
+        _record_quote_association(connection, actor, pr, entry, unit_price, quantity, ip_address, 'Preço salvo')
+        affected.append(int(current['id']))
     new_status = 'quoted'
     connection.execute(
         'UPDATE purchase_requests SET status = ?, updated_at = ? WHERE id = ?',
@@ -1772,7 +1929,7 @@ def save_purchase_request_prices(connection, actor, pr, price_updates, ip_addres
     _record_purchase_event(
         connection, int(pr['company_id']), 'purchase_request', pr_id, 'prices_saved',
         str(pr['status']), new_status,
-        f'Preços salvos em {len(affected)} item(ns) via importação de cotação.',
+        f'Preços salvos em {len(affected)} item(ns) via importação de cotação com associação confirmada.',
         int(actor['id']), actor['full_name'], ip_address,
         actor.get('role') or '', '', 'buyer',
     )
@@ -2126,12 +2283,26 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
 
     company_id = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(unit['company_id'])
     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else 0
+    quote_entries = []
     if pr_id:
         pr = get_purchase_request_by_id(connection, pr_id)
         if not pr:
             raise ValueError('Requisição vinculada não encontrada.')
         ensure_resource_company(actor, pr, 'Requisição')
         approved_purchase_request_items_for_po(connection, pr_id, items)
+    if str(payload.get('source') or '') == 'quote_import':
+        # PO gerada do arquivo de cotação: cada item precisa de associação
+        # confirmada pelo operador, revalidada como no salvamento de preços.
+        if not pr_id:
+            raise ValueError('PO importada de cotação precisa da requisição vinculada.')
+        quote_entries = validate_quote_associations(connection, pr, [
+            {**raw, 'item_id': raw.get('purchase_request_item_id')} for raw in items
+        ])
+        for entry in quote_entries:
+            if int(entry['raw'].get('epi_id') or 0) != int(entry['item'].get('epi_id') or 0):
+                raise ValueError(
+                    f'Linha {entry["line"]} da cotação: o EPI enviado não é o EPI do item #{entry["item"]["id"]}.'
+                )
 
     now = datetime.now(UTC).isoformat()
     po_number = str(payload.get('po_number') or '').strip() or generate_po_number(connection, company_id)
@@ -2214,6 +2385,12 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         connection.execute(
             'UPDATE purchase_requests SET linked_po_id = ?, linked_po_number = ?, status = ?, updated_at = ? WHERE id = ?',
             (po_id, po_number, 'po_generated', now, pr_id)
+        )
+    for entry in quote_entries:
+        _record_quote_association(
+            connection, actor, pr, entry, float(entry['raw'].get('unit_price') or 0),
+            int(entry['raw'].get('quantity') or entry['raw'].get('quantity_requested') or 1),
+            ip_address, f'PO {po_number}',
         )
 
     _record_purchase_event(

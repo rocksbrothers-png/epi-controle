@@ -42,6 +42,7 @@ def test_parse_purchase_quote_csv_with_pandas_sep_detection(tmp_path, monkeypatc
         'epi': 'Luva',
         'ca': '39733',
         'fabricante': 'DANNY',
+        'modelo': '',
         'fornecedor': 'DANNY',
         'colaborador': '',
         'setor': '',

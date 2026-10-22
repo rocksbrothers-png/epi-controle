@@ -1,76 +1,89 @@
 'use strict';
-// Importação de cotação (Compras): executa o views/purchases.js REAL num
-// contexto isolado, com DOM mínimo, e verifica o que chega ao backend.
-// Cobre os dois defeitos corrigidos: `_currentPrDetail` invisível (nenhuma
-// linha associada) e fallback silencioso quando as regras não carregam
-// (prévia com R$ 0,00 e quantidade 1 sem aviso).
+// Importação de cotação (Compras): executa o views/purchases.js REAL e o
+// módulo de regras REAL num contexto isolado, com DOM mínimo, e verifica o
+// que chega ao backend.
+//
+// Decisão de 2026-10-22 (opção C + bloqueio A): nenhuma linha é associada
+// em silêncio; CA divergente bloqueia; CA ausente exige escolha manual;
+// fornecedor nunca basta; a sugestão só existe quando é única; antes de
+// gravar, um resumo exige confirmação explícita; o payload leva a versão do
+// item vista pelo operador (alteração concorrente é rejeitada no backend).
+// Também cobre os defeitos anteriores: `_currentPrDetail` invisível e
+// fallback silencioso (R$ 0,00) quando as regras não carregam.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const JS_ROOT = path.resolve(__dirname, '..');
 const read = (rel) => fs.readFileSync(path.join(JS_ROOT, rel), 'utf8');
 const appSource = fs.readFileSync(path.resolve(JS_ROOT, '..', 'app.js'), 'utf8');
-
-// Regras de conciliação: do módulo UBX quando ele existir; senão, das
-// declarações originais do app.js (o teste vale antes e depois da extração).
 const BUSINESS_MODULE = 'modules/purchases/business/purchase-import-matching.js';
-const BUSINESS_FNS = ['_normalizeCa', '_parsePurchaseMoney', '_parsePurchaseQuantity', '_normalizePurchaseText',
-  '_normalizePurchaseSize', '_normalizePurchaseOrigin', '_scorePurchaseImportMatch', '_matchPurchaseImportRows'];
-function businessSource() {
-  if (fs.existsSync(path.join(JS_ROOT, BUSINESS_MODULE))) { return read(BUSINESS_MODULE); }
-  return BUSINESS_FNS.map((name) => {
-    const start = new RegExp('^function ' + name + '\\(', 'm').exec(appSource);
-    if (!start) { throw new Error('função ausente no app.js: ' + name); }
-    const end = appSource.slice(start.index).search(/^}/m);
-    return appSource.slice(start.index, start.index + end + 1);
-  }).join('\n') + '\n' + BUSINESS_FNS.map((n) => `globalThis.${n} = ${n};`).join('\n');
-}
 
+const STAMP = '2026-10-22T10:00:00+00:00';
 const PR = { id: 999, status: 'sent_to_buyer', unit_id: 1 };
-const DETAIL = {
-  item: PR,
-  items: [
-    { id: 501, epi_id: 11, epi_name: 'Luva Nitrílica', ca: '12345', glove_size: 'M', quantity_requested: 10, origin: 'stock_minimum' },
-    { id: 502, epi_id: 12, epi_name: 'Óculos de Proteção', ca: '67890', quantity_requested: 4, employee_name: 'João Silva', origin: 'employee_request' },
-    { id: 503, epi_id: 13, epi_name: 'Bota de Segurança', ca: '11111', size: '42', quantity_requested: 2, origin: 'stock_minimum' }
-  ]
-};
+const ITEMS = [
+  { id: 501, epi_id: 11, epi_name: 'Luva Nitrílica', ca: '12345', manufacturer: 'Danny', glove_size: 'M', quantity_requested: 10, supplier: 'ACME', origin: 'stock_minimum', updated_at: STAMP },
+  { id: 502, epi_id: 12, epi_name: 'Óculos de Proteção', ca: '67890', manufacturer: '3M', quantity_requested: 4, supplier: 'ACME', employee_name: 'João Silva', origin: 'employee_request', updated_at: STAMP },
+  { id: 503, epi_id: 13, epi_name: 'Bota de Segurança', ca: '', manufacturer: 'Marluvas', size: '42', quantity_requested: 2, supplier: 'ACME', origin: 'stock_minimum', updated_at: STAMP }
+];
+const DETAIL = { item: PR, items: ITEMS };
+// Linha 1: CA e descrição coincidem → sugestão única.
+// Linha 2: CA e descrição coincidem → sugestão única (quantidade 3,6 → 4).
+// Linha 3: sem CA dos dois lados → escolha manual obrigatória.
+// Linha 4: outro produto do mesmo fornecedor (CA divergente) → sem candidato.
 const PARSED = [
-  { epi: 'Luva nitrilica', ca: 'CA 12345', tamanho_luva: 'M', qtd: '10', valor_unitario: 'R$ 1.234,56' },
-  { epi: 'Oculos de protecao', colaborador: 'joão silva', qtd: '3,6', valor_unitario: '12.5' },
-  { item_id: '503', epi: 'Bota', tamanho: '42', qtd: '', valor_unitario: '89,90' },
-  { epi: 'Capacete inexistente', ca: '99999', qtd: '1', valor_unitario: '50,00' }
+  { line: 2, epi: 'Luva nitrilica', ca: 'CA 12345', fabricante: 'Danny', tamanho_luva: 'M', qtd: '10', valor_unitario: 'R$ 1.234,56', fornecedor: 'ACME' },
+  { line: 3, epi: 'Oculos de protecao', ca: '67890', qtd: '3,6', valor_unitario: '12.5', fornecedor: 'ACME' },
+  { line: 4, epi: 'Bota de segurança', ca: '', tamanho: '42', qtd: '', valor_unitario: '89,90', fornecedor: 'ACME' },
+  { line: 5, epi: 'Capacete Classe B', ca: '99999', qtd: '1', valor_unitario: '50,00', fornecedor: 'ACME', origem: 'Colaborador' }
 ];
 
-function harness({ withBusiness = true, withParser = true, detail = DETAIL } = {}) {
+function harness({ withBusiness = true, withParser = true, detail = DETAIL, parsed = PARSED, apiError = null } = {}) {
   const nodes = new Map();
   const node = (id) => {
-    if (!nodes.has(id)) { nodes.set(id, { id, value: '', style: {}, textContent: '', innerHTML: '', files: [{ name: 'cotacao.csv' }] }); }
+    if (!nodes.has(id)) { nodes.set(id, { id, value: '', checked: false, disabled: false, style: {}, textContent: '', innerHTML: '', files: [{ name: 'cotacao.csv' }] }); }
     return nodes.get(id);
   };
   const sent = [];
-  const dialogs = [];
   const context = {
     console, Promise, Set, Map, Array, Object, String, Number, JSON, Math, Error,
     document: { getElementById: node, querySelector: () => null, querySelectorAll: () => [] },
-    confirm: (msg) => { dialogs.push(msg); return true; },
-    escapeHtml: (v) => String(v ?? ''),
+    confirm: () => { throw new Error('window.confirm não deve ser usado na importação de cotação'); },
+    escapeHtml: (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`),
     __EPI_APP_STATE__: { user: { id: 7 } },
-    api: async (url, options) => { sent.push({ url, body: JSON.parse(options.body) }); return { ok: true }; },
+    api: async (url, options) => {
+      sent.push({ url, body: JSON.parse(options.body) });
+      if (apiError) { throw new Error(apiError); }
+      return { ok: true };
+    },
     openPrDetail: async () => {}, loadPurchaseRequests: () => {}, loadPurchaseOrders: () => {}
   };
   context.globalThis = context;
   vm.createContext(context);
-  if (withParser) { context._parsePoImportFile = async () => PARSED.map((r) => ({ ...r })); }
+  if (withParser) { context._parsePoImportFile = async () => parsed.map((r) => ({ ...r })); }
   if (detail) { context._currentPrDetail = detail; }
-  if (withBusiness) { vm.runInContext(businessSource(), context); }
+  if (withBusiness) { vm.runInContext(read(BUSINESS_MODULE), context); }
   vm.runInContext(read('views/purchases.js'), context);
   context.initPoCsvImport(PR);
-  return {
-    context, sent, dialogs, node,
+  const h = {
+    context, sent, node,
     preview: () => node('req-po-csv-preview-btn').onclick(),
+    choose: (row, value) => context.setQuoteImportDecision(row, value),
     savePrices: () => node('req-po-save-prices-btn').onclick(),
     submitPo: () => { node('req-po-csv-supplier').value = 'ACME'; return node('req-po-csv-submit-btn').onclick(); },
-    feedback: () => node('req-po-csv-feedback').textContent
+    tick: (checked = true) => { node('req-po-csv-confirm-check').checked = checked; },
+    confirm: () => node('req-po-csv-confirm-btn').onclick(),
+    back: () => node('req-po-csv-confirm-cancel-btn').onclick(),
+    feedback: () => node('req-po-csv-feedback').textContent,
+    mapping: () => node('req-po-csv-preview-tbody').innerHTML,
+    summary: () => node('req-po-csv-confirm-body').innerHTML,
+    confirmVisible: () => node('req-po-csv-confirm').style.display === ''
   };
+  return h;
+}
+
+// Seleção usual do operador: aceita as sugestões, escolhe a bota e não importa o capacete.
+async function previewAndDecide(h) {
+  await h.preview();
+  h.choose(2, '503');
+  h.choose(3, 'ignore');
 }
 
 module.exports = ({ test, testAsync, assert, eq }) => {
@@ -79,74 +92,199 @@ module.exports = ({ test, testAsync, assert, eq }) => {
     assert(bridge.includes("['_currentPrDetail', () => _currentPrDetail,"), 'ponte sem _currentPrDetail');
   });
 
-  testAsync('Cotação: prévia mostra quantidades, preços e total', async () => {
+  test('Cotação (regras): fornecedor coincidente com item incorreto não gera candidato', () => {
     const h = harness();
-    await h.preview();
-    eq(h.feedback(), '');
-    const html = h.node('req-po-csv-preview-tbody').innerHTML;
-    assert(html.includes('<td>10</td>') && html.includes('<td>4</td>'), 'quantidades na prévia');
-    eq(h.context._poCsvParsed.length, 4);
-    assert(h.node('req-po-csv-total').textContent.startsWith('Total geral:'), 'total geral');
+    const [row] = h.context.evaluatePurchaseImportCandidates([PARSED[3]], ITEMS);
+    eq(row.candidates.length, 0);
+    eq(row.suggestedItemId, null);
   });
 
-  testAsync('Cotação: salvar preços envia itens associados com preço/quantidade normalizados', async () => {
+  test('Cotação (regras): CA divergente bloqueia mesmo com descrição igual', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([{ epi: 'Luva Nitrílica', ca: '99999', fabricante: 'Danny' }], ITEMS);
+    eq(row.candidates.length, 1);
+    eq(row.candidates[0].itemId, 501);
+    eq(row.candidates[0].blocked, true);
+    eq(row.candidates[0].eligible, false);
+    eq(row.suggestedItemId, null);
+    const errors = h.context.validatePurchaseImportDecisions([row], ['501']);
+    assert(errors[0].includes('CA divergente'), errors.join(' '));
+  });
+
+  test('Cotação (regras): CA ausente nunca gera sugestão automática', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([PARSED[2]], ITEMS);
+    eq(row.caMissing, true);
+    eq(row.suggestedItemId, null);
+    assert(row.candidates.some((c) => c.itemId === 503 && c.eligible), 'bota deve ser candidata manual');
+  });
+
+  test('Cotação (regras): CA coincidente sozinho não identifica o produto', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([{ epi: 'Produto genérico', ca: '12345' }], ITEMS);
+    eq(row.suggestedItemId, null);
+    assert(row.candidates[0].divergences.some((d) => d.includes('descrição diferente')), 'divergência de descrição');
+  });
+
+  test('Cotação (regras): múltiplos candidatos não são escolhidos sozinhos', () => {
+    const h = harness();
+    const twins = ITEMS.concat([{ ...ITEMS[0], id: 504, glove_size: 'M' }]);
+    const [row] = h.context.evaluatePurchaseImportCandidates([PARSED[0]], twins);
+    eq(row.suggestedItemId, null);
+    eq(row.candidates.filter((c) => c.eligible).length, 2);
+    assert(row.notes.some((n) => n.includes('Mais de um item')), row.notes.join(' '));
+    const [a, b] = h.context.evaluatePurchaseImportCandidates([PARSED[0], PARSED[0]], ITEMS);
+    eq(a.suggestedItemId, null);
+    eq(b.suggestedItemId, null);
+  });
+
+  testAsync('Cotação: prévia lista candidatos, sugestões marcadas e divergências', async () => {
+    const h = harness();
+    await h.preview();
+    const html = h.mapping();
+    assert(html.includes('data-quote-row="0"') && html.includes('data-quote-row="3"'), 'um seletor por linha');
+    assert(html.includes('<option value="501" selected>'), 'sugestão única pré-marcada e visível');
+    assert(html.includes('— sugerido'), 'sugestão rotulada');
+    assert(html.includes('<option value="" selected>— escolha o item —</option>'), 'linhas sem sugestão começam vazias');
+    assert(html.includes('CA ausente: escolha e confirme o item manualmente.'), 'aviso de CA ausente');
+    assert(html.includes('Nenhum item da requisição corresponde a esta linha.'), 'linha sem candidato');
+    assert(!h.confirmVisible(), 'resumo só aparece ao pedir para salvar');
+    eq(h.sent.length, 0);
+  });
+
+  testAsync('Cotação: linha pendente impede seguir; nada é enviado', async () => {
     const h = harness();
     await h.preview();
     await h.savePrices();
-    eq(h.sent.length, 1);
-    eq(h.sent[0].url, '/api/purchase-requests/999/save-prices');
-    eq(JSON.stringify(h.sent[0].body.items), JSON.stringify([
-      { item_id: 501, unit_price: 1234.56, quantity: 10 },
-      { item_id: 502, unit_price: 12.5, quantity: 4 },
-      { item_id: 503, unit_price: 89.9, quantity: 2 }
-    ]));
+    eq(h.sent.length, 0);
+    assert(!h.confirmVisible(), 'sem resumo com linha pendente');
+    assert(h.feedback().includes('Linha 3: escolha o item'), h.feedback());
   });
 
-  testAsync('Cotação: criar PO envia só itens com EPI e confirma os ignorados', async () => {
+  testAsync('Cotação: salvar exige resumo + conferência marcada e envia só itens confirmados', async () => {
     const h = harness();
-    await h.preview();
+    await previewAndDecide(h);
+    await h.savePrices();
+    assert(h.confirmVisible(), 'resumo visível');
+    const summary = h.summary();
+    assert(summary.includes('#501') && summary.includes('#502') && summary.includes('#503'), 'resumo com as associações');
+    assert(summary.includes('Linhas não importadas: 1'), 'linha ignorada informada');
+    assert(summary.includes('<td>10</td>') && summary.includes('<td>4</td>') && summary.includes('<td>2</td>'), 'quantidades no resumo');
+    eq(h.sent.length, 0);
+    await h.confirm();
+    eq(h.sent.length, 0);
+    assert(h.feedback().includes('Marque a conferência'), h.feedback());
+    h.tick();
+    await h.confirm();
+    eq(h.sent.length, 1);
+    eq(h.sent[0].url, '/api/purchase-requests/999/save-prices');
+    eq(JSON.stringify(h.sent[0].body.items.map((i) => [i.item_id, i.unit_price, i.quantity, i.confirmed, i.expected_updated_at])),
+      JSON.stringify([[501, 1234.56, 10, true, STAMP], [502, 12.5, 4, true, STAMP], [503, 89.9, 2, true, STAMP]]));
+    eq(h.sent[0].body.items[2].quote_ca, '');
+    eq(h.sent[0].body.items[0].quote_line, 2);
+    assert(h.feedback().includes('3 item(s) confirmados'), h.feedback());
+  });
+
+  testAsync('Cotação: cancelar no resumo não grava nada', async () => {
+    const h = harness();
+    await previewAndDecide(h);
+    await h.savePrices();
+    h.tick();
+    h.back();
+    assert(!h.confirmVisible(), 'resumo fechado');
+    await h.confirm();
+    eq(h.sent.length, 0);
+    assert(h.feedback().includes('Nada a confirmar'), h.feedback());
+  });
+
+  testAsync('Cotação: mudar uma escolha invalida o resumo pendente', async () => {
+    const h = harness();
+    await previewAndDecide(h);
+    await h.savePrices();
+    h.tick();
+    h.choose(0, 'ignore');
+    await h.confirm();
+    eq(h.sent.length, 0);
+  });
+
+  testAsync('Cotação: item bloqueado ou repetido não pode ser escolhido', async () => {
+    const h = harness();
+    await previewAndDecide(h);
+    h.choose(3, '501');
+    await h.savePrices();
+    assert(h.feedback().includes('Linha 4: o item escolhido não é candidato'), h.feedback());
+    eq(h.sent.length, 0);
+  });
+
+  test('Cotação (regras): o mesmo item não recebe duas linhas', () => {
+    const h = harness();
+    const rows = h.context.evaluatePurchaseImportCandidates([PARSED[0], { ...PARSED[0], line: 9 }], ITEMS);
+    const errors = h.context.validatePurchaseImportDecisions(rows, ['501', '501']);
+    assert(errors.some((e) => e.includes('o item #501 já foi escolhido na linha 1')), errors.join(' '));
+  });
+
+  testAsync('Cotação: criar PO envia só associações confirmadas, com source=quote_import', async () => {
+    const h = harness();
+    await previewAndDecide(h);
     await h.submitPo();
-    eq(h.dialogs.length, 1);
+    h.tick();
+    await h.confirm();
     eq(h.sent.length, 1);
     eq(h.sent[0].url, '/api/purchase-orders');
-    eq(JSON.stringify(h.sent[0].body.items.map((i) => [i.purchase_request_item_id, i.epi_id, i.quantity, i.unit_price])),
-      JSON.stringify([[501, 11, 10, 1234.56], [502, 12, 4, 12.5], [503, 13, 2, 89.9]]));
+    eq(h.sent[0].body.source, 'quote_import');
+    eq(JSON.stringify(h.sent[0].body.items.map((i) => [i.purchase_request_item_id, i.epi_id, i.quantity, i.unit_price, i.confirmed])),
+      JSON.stringify([[501, 11, 10, 1234.56, true], [502, 12, 4, 12.5, true], [503, 13, 2, 89.9, true]]));
+  });
+
+  testAsync('Cotação: alteração concorrente rejeitada pelo backend aparece ao operador', async () => {
+    const h = harness({ apiError: 'Linha 2 da cotação: o item #501 foi alterado por outra operação depois da conferência.' });
+    await previewAndDecide(h);
+    await h.savePrices();
+    h.tick();
+    await h.confirm();
+    eq(h.sent.length, 1);
+    assert(h.feedback().includes('alterado por outra operação'), h.feedback());
+    eq(h.node('req-po-csv-confirm-btn').disabled, false);
+  });
+
+  testAsync('Cotação: detalhe trocado entre a prévia e a confirmação bloqueia o envio', async () => {
+    const h = harness();
+    await previewAndDecide(h);
+    await h.savePrices();
+    h.tick();
+    h.context._currentPrDetail = { ...DETAIL, item: { ...PR, id: 1000 } };
+    await h.confirm();
+    eq(h.sent.length, 0);
+    assert(h.feedback().includes('Detalhe da requisição indisponível'), h.feedback());
   });
 
   testAsync('Cotação: sem detalhe da requisição, falha explícita e nada é enviado', async () => {
     const h = harness({ detail: null });
     await h.preview();
+    assert(h.feedback().includes('Detalhe da requisição indisponível'), h.feedback());
     await h.savePrices();
     eq(h.sent.length, 0);
-    assert(h.feedback().includes('Detalhe da requisição indisponível'), h.feedback());
-    await h.submitPo();
-    eq(h.sent.length, 0);
-    assert(h.feedback().includes('Detalhe da requisição indisponível'), h.feedback());
-  });
-
-  testAsync('Cotação: detalhe de OUTRA requisição não é usado para associar itens', async () => {
-    const h = harness({ detail: { ...DETAIL, item: { ...PR, id: 1000 } } });
-    await h.preview();
-    await h.savePrices();
-    eq(h.sent.length, 0);
-    assert(h.feedback().includes('Detalhe da requisição indisponível'), h.feedback());
   });
 
   testAsync('Cotação: regras de negócio ausentes não viram R$ 0,00 silencioso', async () => {
     const h = harness({ withBusiness: false });
     await h.preview();
-    assert(h.feedback().includes('Importação de cotação indisponível (_parsePurchaseQuantity'), h.feedback());
-    eq(h.node('req-po-csv-preview-tbody').innerHTML, '');
+    assert(h.feedback().includes('Importação de cotação indisponível (evaluatePurchaseImportCandidates'), h.feedback());
+    eq(h.mapping(), '');
     eq(h.context._poCsvParsed.length, 0);
-    h.context._poCsvParsed = PARSED;
     await h.savePrices();
     eq(h.sent.length, 0);
-    assert(h.feedback().includes('Importação de cotação indisponível'), h.feedback());
   });
 
   testAsync('Cotação: parser ausente vira erro, não "nenhuma linha válida"', async () => {
     const h = harness({ withParser: false });
     await h.preview();
     assert(h.feedback().includes('Importação de cotação indisponível (_parsePoImportFile'), h.feedback());
+  });
+
+  testAsync('Cotação: valores do arquivo são escapados na prévia', async () => {
+    const h = harness({ parsed: [{ epi: '<img src=x onerror=alert(1)>', ca: '12345', qtd: '1', valor_unitario: '1' }] });
+    await h.preview();
+    assert(!h.mapping().includes('<img'), 'HTML do arquivo não pode ser injetado');
   });
 };

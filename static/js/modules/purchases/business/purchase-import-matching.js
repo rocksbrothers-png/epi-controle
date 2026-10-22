@@ -126,6 +126,180 @@
     });
   }
 
+  // ── Associação confirmada (opção C + bloqueio A, decisão de 2026-10-22) ──
+  //
+  // `_matchPurchaseImportRows` (acima) escolhe sozinho o item de maior
+  // pontuação e aceita pontuação vinda só de fornecedor/origem. Ele permanece
+  // pelo contrato global, mas a importação de cotação usa a avaliação abaixo,
+  // que NÃO associa nada por conta própria:
+  //   1. fornecedor, origem, colaborador e unidade são contexto, nunca
+  //      identidade — sozinhos não tornam um item candidato;
+  //   2. CA presente nos dois lados e divergente BLOQUEIA o item;
+  //   3. CA ausente: sem sugestão automática, a escolha é manual;
+  //   4. CA coincidente não basta para sugerir: precisa também de descrição,
+  //      modelo ou id do item coincidente, e de nenhuma divergência;
+  //   5. todos os candidatos relevantes são devolvidos, com divergências;
+  //   6. só existe sugestão quando ela é única (inclusive entre linhas).
+  // A decisão final é sempre do operador, e o backend revalida.
+
+  function _normalizeCaNumber(value) {
+    const text = String(value ?? '').trim();
+    if (!text) { return ''; }
+    const digits = text.replace(/\D+/g, '');
+    return digits ? digits.replace(/^0+(?=\d)/, '') : _normalizePurchaseText(text);
+  }
+
+  function _purchaseItemCas(item) {
+    return [...new Set([item.ca, item.epi_ca].map(_normalizeCaNumber).filter(Boolean))];
+  }
+
+  function _purchaseTextRelation(a, b) {
+    const left = _normalizePurchaseText(a);
+    const right = _normalizePurchaseText(b);
+    if (!left || !right) { return 'missing'; }
+    if (left === right) { return 'equal'; }
+    const leftTokens = left.split(' ').filter((t) => t.length > 1);
+    const rightTokens = right.split(' ').filter((t) => t.length > 1);
+    if (!leftTokens.length || !rightTokens.length) { return 'different'; }
+    const contains = (outer, inner) => inner.every((t) => outer.includes(t));
+    return contains(rightTokens, leftTokens) || contains(leftTokens, rightTokens) ? 'partial' : 'different';
+  }
+
+  function _evaluatePurchaseImportCandidate(row, item) {
+    const matches = [];
+    const divergences = [];
+    let blocked = false;
+    let blockReason = '';
+
+    const rowItemId = String(row.item_id ?? '').trim();
+    const itemId = String(item.id ?? item.purchase_request_item_id ?? '');
+    if (rowItemId) {
+      if (rowItemId === itemId) { matches.push('id do item'); } else { divergences.push(`id do item no arquivo (${rowItemId}) é de outro item`); }
+    }
+
+    const rowCa = _normalizeCaNumber(row.ca);
+    const itemCas = _purchaseItemCas(item);
+    if (rowCa && itemCas.length) {
+      if (itemCas.includes(rowCa)) {
+        matches.push('CA');
+      } else {
+        blocked = true;
+        blockReason = `CA divergente (arquivo ${row.ca}, item ${item.ca || item.epi_ca})`;
+        divergences.push(blockReason);
+      }
+    } else if (!rowCa) {
+      divergences.push('CA ausente no arquivo');
+    } else {
+      divergences.push('CA ausente no item da requisição');
+    }
+
+    const description = _purchaseTextRelation(row.epi, item.epi_name || item.epi_display_name);
+    if (description === 'equal' || description === 'partial') {
+      matches.push(description === 'equal' ? 'descrição' : 'descrição (parcial)');
+    } else if (description === 'different') {
+      divergences.push(`descrição diferente (arquivo "${row.epi}", item "${item.epi_name || item.epi_display_name}")`);
+    }
+
+    const manufacturer = _purchaseTextRelation(row.fabricante, item.manufacturer || item.epi_manufacturer);
+    if (manufacturer === 'equal' || manufacturer === 'partial') {
+      matches.push('fabricante');
+    } else if (manufacturer === 'different') {
+      divergences.push(`fabricante diferente (arquivo "${row.fabricante}", item "${item.manufacturer || item.epi_manufacturer}")`);
+    }
+
+    const model = _purchaseTextRelation(row.modelo, item.epi_model_reference || item.model_reference);
+    if (model === 'equal') {
+      matches.push('modelo');
+    } else if (model === 'partial' || model === 'different') {
+      divergences.push(`modelo diferente (arquivo "${row.modelo}", item "${item.epi_model_reference || item.model_reference}")`);
+    }
+
+    [['tamanho', 'size', 'tamanho'], ['tamanho_luva', 'glove_size', 'tamanho de luva'], ['tamanho_uniforme', 'uniform_size', 'tamanho de uniforme']]
+      .forEach(([rowKey, itemKey, label]) => {
+        const rowSize = _normalizePurchaseSize(row[rowKey]);
+        const itemSize = _normalizePurchaseSize(item[itemKey]);
+        if (rowSize && itemSize) {
+          if (rowSize === itemSize) { matches.push(label); } else { divergences.push(`${label} diferente (arquivo ${row[rowKey]}, item ${item[itemKey]})`); }
+        }
+      });
+
+    // Identidade do produto: nunca fornecedor/origem/colaborador/unidade.
+    const identity = matches.some((m) => ['id do item', 'CA', 'descrição', 'descrição (parcial)', 'modelo'].includes(m));
+    // Bloqueados só aparecem se se parecem com a linha (descrição, modelo,
+    // fabricante): a divergência de CA é destacada onde há risco de confusão.
+    const relevant = identity || matches.includes('fabricante');
+    const strong = !blocked && rowCa && matches.includes('CA')
+      && matches.some((m) => ['descrição', 'modelo', 'id do item'].includes(m))
+      && divergences.length === 0;
+    return {
+      itemId: item.id ?? item.purchase_request_item_id,
+      item,
+      eligible: !blocked && identity,
+      blocked,
+      blockReason,
+      relevant,
+      strong: Boolean(strong),
+      matches,
+      divergences
+    };
+  }
+
+  function evaluatePurchaseImportCandidates(rows, prItems) {
+    const items = Array.isArray(prItems) ? prItems : [];
+    const evaluated = (Array.isArray(rows) ? rows : []).map((row, rowIndex) => {
+      const all = items.map((item) => _evaluatePurchaseImportCandidate(row, item));
+      const candidates = all.filter((c) => c.relevant);
+      const strong = candidates.filter((c) => c.strong);
+      const caMissing = !_normalizeCaNumber(row.ca);
+      const notes = [];
+      if (caMissing) { notes.push('CA ausente: escolha e confirme o item manualmente.'); }
+      if (!candidates.some((c) => c.eligible)) { notes.push('Nenhum item da requisição corresponde a esta linha.'); }
+      if (strong.length > 1) { notes.push('Mais de um item corresponde a esta linha: escolha manualmente.'); }
+      return {
+        rowIndex,
+        row,
+        candidates,
+        caMissing,
+        suggestedItemId: !caMissing && strong.length === 1 ? strong[0].itemId : null,
+        notes
+      };
+    });
+    // A mesma sugestão para duas linhas é ambígua: nenhuma das duas é sugerida.
+    const counts = new Map();
+    evaluated.forEach((r) => { if (r.suggestedItemId != null) { counts.set(String(r.suggestedItemId), (counts.get(String(r.suggestedItemId)) || 0) + 1); } });
+    evaluated.forEach((r) => {
+      if (r.suggestedItemId != null && counts.get(String(r.suggestedItemId)) > 1) {
+        r.suggestedItemId = null;
+        r.notes.push('Outra linha também corresponde a este item: escolha manualmente.');
+      }
+    });
+    return evaluated;
+  }
+
+  // Valida as escolhas do operador antes de enviar. `decisions` é um array
+  // alinhado às linhas: id do item escolhido, 'ignore' ou vazio (pendente).
+  function validatePurchaseImportDecisions(evaluation, decisions) {
+    const errors = [];
+    const chosen = new Map();
+    (evaluation || []).forEach((r) => {
+      const decision = decisions?.[r.rowIndex];
+      const label = `Linha ${r.rowIndex + 1}`;
+      if (decision === undefined || decision === null || decision === '') {
+        errors.push(`${label}: escolha o item da requisição ou marque "não importar".`);
+        return;
+      }
+      if (decision === 'ignore') { return; }
+      const candidate = r.candidates.find((c) => String(c.itemId) === String(decision));
+      if (!candidate) { errors.push(`${label}: o item escolhido não é candidato desta linha.`); return; }
+      if (candidate.blocked) { errors.push(`${label}: ${candidate.blockReason}.`); return; }
+      if (!candidate.eligible) { errors.push(`${label}: o item escolhido não tem identificação do produto (CA, descrição, modelo ou id).`); return; }
+      const key = String(decision);
+      if (chosen.has(key)) { errors.push(`${label}: o item #${key} já foi escolhido na linha ${chosen.get(key) + 1}.`); return; }
+      chosen.set(key, r.rowIndex);
+    });
+    return errors;
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
   // Os nomes globais são o contrato legado consumido por views/purchases.js
   // (`globalThis._matchPurchaseImportRows?.(...)` etc.) e antes vinham das
@@ -140,7 +314,10 @@
     _normalizePurchaseSize,
     _normalizePurchaseOrigin,
     _scorePurchaseImportMatch,
-    _matchPurchaseImportRows
+    _matchPurchaseImportRows,
+    _normalizeCaNumber,
+    evaluatePurchaseImportCandidates,
+    validatePurchaseImportDecisions
   };
 
   for (const [name, fn] of Object.entries(purchaseImportExports)) {

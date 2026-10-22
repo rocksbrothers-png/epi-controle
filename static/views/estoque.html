@@ -460,7 +460,7 @@
           </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
-            <p class="hint" data-i18n="stock.blockedHint">Itens bloqueados não são oferecidos na entrega. Formalize a disposição (descarte, devolução ao fornecedor, análise) ou desbloqueie.</p>
+            <p class="hint" data-i18n="stock.blockedHint">Peças vencidas são bloqueadas automaticamente pela validade física. A unidade indica o destinatário para doação, devolução ou descarte e confirma o envio para baixar o estoque.</p>
             <div class="qr-inline">
               <input id="blocked-stock-qr" type="text" placeholder="Bipe/digite o QR do item" data-i18n-placeholder="stock.blockedQrPlaceholder">
               <select id="blocked-stock-status" aria-label="Status de bloqueio"></select>
@@ -487,6 +487,18 @@
               </table>
             </div>
             <small id="blocked-stock-empty" class="hint" style="display:none;" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
+            <h4 data-i18n="stock.physical.history">Destinações registradas</h4>
+            <p class="hint" data-i18n="stock.physical.historyHint">Saídas confirmadas pela unidade, com destinatário e referência de envio. As peças e o histórico são preservados.</p>
+            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.physical.action">Destinação</th><th data-i18n="stock.physical.recipient">Destinatário sugerido pela unidade</th><th data-i18n="stock.physical.shipment_reference">Comprovante / referência de envio</th><th data-i18n="stock.physical.actor">Responsável / data</th></tr></thead><tbody id="stock-disposition-tbody"></tbody></table></div>
+
+          </article>
+          <article class="card" id="stock-physical-metadata-card">
+            <h3 data-i18n="stock.physical.incomplete">Conferência de fabricação e tamanho</h3>
+            <p class="hint" data-i18n="stock.physical.incompleteHint">Confira pelo QR as peças com dados incompletos. Fabricação vem da etiqueta/documento do lote e tamanho da própria peça; dados do catálogo não substituem a conferência.</p>
+            <button type="button" class="ghost" id="stock-physical-refresh" data-i18n="stock.refresh">Atualizar</button>
+            <p id="stock-physical-status" class="hint" aria-live="polite"></p>
+            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.lot">Lote</th><th data-i18n="stock.physical.manufacture_date">Fabricação comprovada do lote</th><th data-i18n="stock.lotProof.size">Tamanho fisicamente conferido</th><th data-i18n="employee.actions">Ações</th></tr></thead><tbody id="stock-physical-tbody"></tbody></table></div>
+            <small id="stock-physical-empty" class="hint" style="display:none;" data-i18n="stock.physical.complete">Nenhuma peça com fabricação ou tamanho pendente neste escopo.</small>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="alertas">

@@ -1544,7 +1544,9 @@ def fetch_available_stock_items(connection, company_id, unit_id, epi_id, *, requ
             'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
             'esi.glove_size, esi.size, esi.uniform_size, esi.manufacture_date, '
             + phys_select +
-            'epis.epi_validity_date '
+            ''.join('esi.' + field + ', ' if _has_col(connection, 'epi_stock_items', field) else 'NULL AS ' + field + ', '
+                    for field in ('physical_manufacture_date', 'lot_id', 'stock_movement_id')) +
+            'esi.company_id, esi.unit_id, epis.epi_validity_date '
             'FROM epi_stock_items esi '
             'JOIN epis ON epis.id = esi.epi_id '
             'WHERE esi.company_id = ? AND esi.unit_id = ? AND esi.epi_id = ? '
@@ -1564,6 +1566,8 @@ def fetch_available_stock_items(connection, company_id, unit_id, epi_id, *, requ
         item = row_to_dict(raw)
         if not eligible_piece(item, policy):
             continue
+        from modules.stock.physical_metadata import physical_metadata
+        item = physical_metadata(connection, item)
         item['physical_expiry_date'] = str(item['physical_expiry_date'])
         item.update(physical_validity_status=classify_physical(item['physical_expiry_date'], policy)['status'],
                     eligible_for_delivery=True, validity_policy=policy)
@@ -1631,23 +1635,38 @@ UNBLOCK_STATUS = 'in_stock'
 def fetch_blocked_stock_items(connection, company_id, unit_id=None):
     physical = ('CAST(esi.physical_expiry_date AS TEXT)'
                 if _has_col(connection, 'epi_stock_items', 'physical_expiry_date') else 'NULL')
+    from modules.stock.eligibility import ON_HAND_STATUSES, classify_physical, validity_policy
+    from modules.stock.physical_metadata import physical_metadata
     sql = (
-        'SELECT esi.id, esi.qr_code_value, esi.epi_id, epis.name AS epi_name, esi.status, '
-        'esi.glove_size, esi.size, esi.uniform_size, esi.lot_code, esi.manufacture_date, '
-        'epis.epi_validity_date, epis.unit_measure, units.name AS unit_name, esi.unit_id, esi.updated_at, '
+        'SELECT esi.*, epis.name AS epi_name, epis.unit_measure, units.name AS unit_name, '
         f'{physical} AS physical_expiry_date '
-        'FROM epi_stock_items esi '
-        'JOIN epis ON epis.id = esi.epi_id '
-        'JOIN units ON units.id = esi.unit_id '
-        'WHERE esi.company_id = ? AND LOWER(COALESCE(esi.status, \'\')) IN (%s) '
-        % ','.join(['?'] * len(BLOCKED_STOCK_STATUSES))
+        'FROM epi_stock_items esi JOIN epis ON epis.id=esi.epi_id JOIN units ON units.id=esi.unit_id '
+        "WHERE esi.company_id=? AND LOWER(COALESCE(esi.status, '')) IN (%s) "
+        % ','.join(['?'] * len(ON_HAND_STATUSES))
     )
-    params = [int(company_id)] + list(BLOCKED_STOCK_STATUSES.keys())
+    params = [int(company_id), *sorted(ON_HAND_STATUSES)]
     if unit_id:
-        sql += 'AND esi.unit_id = ? '
+        sql += 'AND esi.unit_id=? '
         params.append(int(unit_id))
-    sql += 'ORDER BY esi.manufacture_date ASC, esi.id ASC'
-    return connection.execute(sql, tuple(params)).fetchall()
+    rows = connection.execute(sql + 'ORDER BY esi.id', tuple(params)).fetchall()
+    if not rows:
+        return []
+    policy = validity_policy(connection, company_id)
+    result = []
+    for raw in rows:
+        item = row_to_dict(raw)
+        expired = classify_physical(item.get('physical_expiry_date'), policy)['status'] == 'expired'
+        stored = str(item['status']).lower()
+        if stored in BLOCKED_STOCK_STATUSES or stored in ('blocked', 'quarantine', 'discard_pending') or expired:
+            item = physical_metadata(connection, item)
+            item['stored_status'] = stored
+            item['automatic_block'] = expired
+            item['can_unblock'] = not expired
+            item['can_dispose'] = stored not in ('reserved', 'delivering')
+            if expired and stored in ('in_stock', 'available', 'reserved'):
+                item['status'] = 'blocked_expired'
+            result.append(item)
+    return result
 
 
 def set_stock_item_status(connection, item, new_status, reason, actor_user_id, actor_name, now):

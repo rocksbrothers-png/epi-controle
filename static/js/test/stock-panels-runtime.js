@@ -65,7 +65,7 @@ function harness({ spa = false, transport = async () => payload(), stockFails = 
     return expression[0];
   });
   const names = ['_blockedStockContext', '_stockPanelLoadMessage', '_startStockPanelLoad', '_stockPanelLoadError',
-    '_renderBlockedStatusOptions', 'loadBlockedStock', 'bindBlockedStockUi', '_validityDaysLabel', '_renderValidityKpis',
+    '_renderBlockedStatusOptions', 'loadBlockedStock', 'loadStockPhysicalRecords', 'bindBlockedStockUi', '_validityDaysLabel', '_renderValidityKpis',
     '_renderValidityBreakdown', 'loadValidityOverview', 'bindValidityMgmtUi', 'loadPendingRegularization',
     'groupPendingRegularizationItems', 'pendingRegularizationGroupLabel', 'updatePendingRegularizationSelection', 'applyPendingRegularizationFilter', 'selectPendingRegularizationRows', 'regularizeSelectedStockLot', 'resolveRefreshHandlers', 'runSpaPartialNavigation', 'showView'];
   const hook = source.match(/^globalThis\.__EPI_REFRESH_ESTOQUE_LISTA__ = async \(\) => \{[\s\S]*?^};/m);
@@ -93,7 +93,7 @@ module.exports = ({ testAsync, assert, eq }) => {
       const h = harness(options);
       h.run("showView('estoque', " + showOptions + ')');
       await tick();
-      eq(h.requests.length, 3);
+      eq(h.requests.length, 5);
       for (const panel of panels) {
         assert(h.node(panel.content).innerHTML.includes('<'), 'Painel não renderizado: ' + panel.name);
         eq(h.node(panel.button).listeners.click.length, 1);
@@ -109,7 +109,7 @@ module.exports = ({ testAsync, assert, eq }) => {
     const h = harness({ stockFails: true });
     h.run("showView('estoque')");
     await tick();
-    eq(h.requests.length, 3);
+    eq(h.requests.length, 5);
     assert(h.node('pending-reg-tbody').innerHTML.includes('Luva de teste'));
   });
 
@@ -120,7 +120,7 @@ module.exports = ({ testAsync, assert, eq }) => {
       h.run("showView('estoque')"); await tick();
       label = 'Segunda consulta';
       await h.fire(panel.button);
-      eq(h.requests.length, 4);
+      eq(h.requests.length, panel.loader === 'loadBlockedStock' ? 8 : 6);
       if (panel.loader !== 'loadValidityOverview') assert(h.node(panel.content).innerHTML.includes(label));
       else assert(h.node('validity-by-manufacturer').innerHTML.includes(label));
     });
@@ -169,7 +169,7 @@ module.exports = ({ testAsync, assert, eq }) => {
       const h = harness();
       h.node(id).value = '7';
       await h.fire(id, 'change');
-      eq(h.requests.length, 3);
+      eq(h.requests.length, 5);
       const param = id === 'stock-company' ? 'company_id=7' : 'unit_id=7';
       assert(h.requests.every((url) => url.includes(param)));
     });

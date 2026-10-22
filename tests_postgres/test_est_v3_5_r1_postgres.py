@@ -359,7 +359,8 @@ def test_mixed_indicators_preserve_all_physical_categories(connection):
     summary = physical_summary_map(connection, s['company'], s['unit'])[s['epi']]
     assert summary['physical_pieces'] == 4 and summary['eligible_pieces'] == 1
     assert summary['expired'] == 1 and summary['unknown'] == 1
-    assert summary['blocked_pieces'] == 1
+    # Inclui o vencido automaticamente e o bloqueio administrativo.
+    assert summary['blocked_pieces'] == 2
     assert summary['count_unit'] == 'physical_pieces'
 
 

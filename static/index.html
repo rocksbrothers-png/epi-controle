@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=ec3c27a7d49b">
+  <link rel="stylesheet" href="/styles.css?v=b2cc08544ea9">
   <!-- Bootstrap de tema (P2-2, reescrito na frente de Isolamento PR C).
        Antes lia `epi-theme` do `localStorage`: aparência de escopo DEVICE,
        aplicada ANTES de qualquer autenticação. Num computador compartilhado
@@ -17,7 +17,7 @@
        e que só é escrita DEPOIS da autenticação, carimbada com o principal.
        Por construção não há o que aplicar antes de saber de quem é. -->
   <script>try{var p=JSON.parse(sessionStorage.getItem('epi-prefs-sessao')||'null');if(p&&p.tema==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
-<link rel="stylesheet" href="/styles/safety-library.css?v=ec3c27a7d49b">
+<link rel="stylesheet" href="/styles/safety-library.css?v=b2cc08544ea9">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -2069,7 +2069,7 @@
           </article>
           <article class="card" id="blocked-stock-card">
             <h3 data-i18n="stock.blockedTitle">Estoque bloqueado</h3>
-            <p class="hint" data-i18n="stock.blockedHint">Itens bloqueados não são oferecidos na entrega. Formalize a disposição (descarte, devolução ao fornecedor, análise) ou desbloqueie.</p>
+            <p class="hint" data-i18n="stock.blockedHint">Peças vencidas são bloqueadas automaticamente pela validade física. A unidade indica o destinatário para doação, devolução ou descarte e confirma o envio para baixar o estoque.</p>
             <div class="qr-inline">
               <input id="blocked-stock-qr" type="text" placeholder="Bipe/digite o QR do item" data-i18n-placeholder="stock.blockedQrPlaceholder">
               <select id="blocked-stock-status" aria-label="Status de bloqueio"></select>
@@ -2096,6 +2096,18 @@
               </table>
             </div>
             <small id="blocked-stock-empty" class="hint" style="display:none;" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
+            <h4 data-i18n="stock.physical.history">Destinações registradas</h4>
+            <p class="hint" data-i18n="stock.physical.historyHint">Saídas confirmadas pela unidade, com destinatário e referência de envio. As peças e o histórico são preservados.</p>
+            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.physical.action">Destinação</th><th data-i18n="stock.physical.recipient">Destinatário sugerido pela unidade</th><th data-i18n="stock.physical.shipment_reference">Comprovante / referência de envio</th><th data-i18n="stock.physical.actor">Responsável / data</th></tr></thead><tbody id="stock-disposition-tbody"></tbody></table></div>
+
+          </article>
+          <article class="card" id="stock-physical-metadata-card">
+            <h3 data-i18n="stock.physical.incomplete">Conferência de fabricação e tamanho</h3>
+            <p class="hint" data-i18n="stock.physical.incompleteHint">Confira pelo QR as peças com dados incompletos. Fabricação vem da etiqueta/documento do lote e tamanho da própria peça; dados do catálogo não substituem a conferência.</p>
+            <button type="button" class="ghost" id="stock-physical-refresh" data-i18n="stock.refresh">Atualizar</button>
+            <p id="stock-physical-status" class="hint" aria-live="polite"></p>
+            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.lot">Lote</th><th data-i18n="stock.physical.manufacture_date">Fabricação comprovada do lote</th><th data-i18n="stock.lotProof.size">Tamanho fisicamente conferido</th><th data-i18n="employee.actions">Ações</th></tr></thead><tbody id="stock-physical-tbody"></tbody></table></div>
+            <small id="stock-physical-empty" class="hint" style="display:none;" data-i18n="stock.physical.complete">Nenhuma peça com fabricação ou tamanho pendente neste escopo.</small>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="alertas">
@@ -3948,54 +3960,55 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=ec3c27a7d49b"></script>
-  <script defer src="/i18n-helper.js?v=ec3c27a7d49b"></script>
-  <script defer src="/tenant-init.js?v=ec3c27a7d49b"></script>
+  <script defer src="/i18n.js?v=b2cc08544ea9"></script>
+  <script defer src="/i18n-helper.js?v=b2cc08544ea9"></script>
+  <script defer src="/tenant-init.js?v=b2cc08544ea9"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/core/permissions.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/core/feature-flags.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/core/config.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/utils/storage.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/utils/debug.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/utils/dom.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/utils/perf.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/modules/auth.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/modules/api-client.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/modules/router.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/ui-helpers.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/view-helpers.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/dashboard.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/epis.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/estoque.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/estoque-config.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/safety-library.js?v=ec3c27a7d49b"></script>
-<script defer src="/js/views/employee-portal.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/data-migration-view.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/purchases.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/procurement.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/feedback.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/devolution.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/fichas.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/feedback-detail.js?v=ec3c27a7d49b"></script>
-  <script defer src="/js/views/profile.js?v=ec3c27a7d49b"></script>
-  <script defer src="/colab-list.js?v=ec3c27a7d49b"></script>
-  <script defer src="/gestao-colab.js?v=ec3c27a7d49b"></script>
-  <script defer src="/estoque.js?v=ec3c27a7d49b"></script>
-  <script defer src="/ux-global.js?v=ec3c27a7d49b"></script>
-  <script defer src="/app.js?v=ec3c27a7d49b"></script>
-  <script defer src="/share-modal.js?v=ec3c27a7d49b"></script>
-  <script defer src="/entrega-epi.js?v=ec3c27a7d49b"></script>
-  <script defer src="/navigation.js?v=ec3c27a7d49b"></script>
-  <script defer src="/navigation-controls.js?v=ec3c27a7d49b"></script>
-  <script defer src="/error-monitor.js?v=ec3c27a7d49b"></script>
-  <script defer src="/ux-analytics.js?v=ec3c27a7d49b"></script>
+  <script defer src="/js/core/constants.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/core/permissions.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/core/feature-flags.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/core/config.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/utils/storage.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/utils/debug.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/utils/dom.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/utils/perf.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/modules/auth.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/modules/api-client.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/modules/router.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/ui-helpers.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/view-helpers.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/dashboard.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/epis.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/estoque.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/stock-physical.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/estoque-config.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/safety-library.js?v=b2cc08544ea9"></script>
+<script defer src="/js/views/employee-portal.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/data-migration-view.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/purchases.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/procurement.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/feedback.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/devolution.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/fichas.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/feedback-detail.js?v=b2cc08544ea9"></script>
+  <script defer src="/js/views/profile.js?v=b2cc08544ea9"></script>
+  <script defer src="/colab-list.js?v=b2cc08544ea9"></script>
+  <script defer src="/gestao-colab.js?v=b2cc08544ea9"></script>
+  <script defer src="/estoque.js?v=b2cc08544ea9"></script>
+  <script defer src="/ux-global.js?v=b2cc08544ea9"></script>
+  <script defer src="/app.js?v=b2cc08544ea9"></script>
+  <script defer src="/share-modal.js?v=b2cc08544ea9"></script>
+  <script defer src="/entrega-epi.js?v=b2cc08544ea9"></script>
+  <script defer src="/navigation.js?v=b2cc08544ea9"></script>
+  <script defer src="/navigation-controls.js?v=b2cc08544ea9"></script>
+  <script defer src="/error-monitor.js?v=b2cc08544ea9"></script>
+  <script defer src="/ux-analytics.js?v=b2cc08544ea9"></script>
 </body>
 </html>

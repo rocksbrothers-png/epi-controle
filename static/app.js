@@ -2087,7 +2087,7 @@ globalThis.__EPI_REFRESH_ESTOQUE_LISTA__ = async () => {
   // Cada painel consulta seu próprio recurso: uma falha na lista de EPIs não
   // pode impedir a consulta das pendências, bloqueios ou indicadores.
   await Promise.all([
-    loadStockEpis(), loadBlockedStock(), loadValidityOverview(), loadPendingRegularization(), loadStockLotEvidence()
+    loadStockEpis(), loadBlockedStock(), loadValidityOverview(), loadPendingRegularization(), loadStockLotEvidence(), loadStockPhysicalRecords()
   ]);
 };
 
@@ -8851,7 +8851,7 @@ async function loadAvailableQrsForSelectedEpi() {
     }
     // FEFO: os itens já chegam ordenados por validade mais próxima. O primeiro
     // com data de fabricação é o recomendado (vence primeiro) e recebe destaque.
-    const fefoIndex = items.findIndex((item) => String(item.manufacture_date || '').trim());
+    const fefoIndex = items.findIndex((item) => String(item.physical_expiry_date || '').trim());
     target.innerHTML = `<option value="">${tr('delivery.selectPhysicalQr', 'Selecione o QR físico correto')}</option>` + items.map((item, index) => {
       const mfg = String(item.manufacture_date || '').trim();
       const fefoTag = index === fefoIndex ? `★ ${tr('delivery.fefoFirst', 'vence primeiro')} — ` : '';
@@ -13713,6 +13713,7 @@ async function loadBlockedStock() {
     _blockedStockStatuses = payload.statuses || _blockedStockStatuses;
     _renderBlockedStatusOptions(document.getElementById('blocked-stock-status'));
     const items = Array.isArray(payload.items) ? payload.items : [];
+    globalThis.__EPI_BLOCKED_STOCK_ITEMS__ = new Map(items.map((item) => [String(item.id), item]));
     _stockPanelLoadMessage('blocked-stock-load-status', tr('stock.panelCount', '{n} item(ns).').replace('{n}', String(items.length)));
     const empty = document.getElementById('blocked-stock-empty');
     if (empty) empty.style.display = items.length ? 'none' : '';
@@ -13721,15 +13722,16 @@ async function loadBlockedStock() {
       const opts = Object.entries(_blockedStockStatuses || {})
         .map(([code, l]) => `<option value="${esc(code)}"${code === item.status ? ' selected' : ''}>${esc(l)}</option>`).join('');
       return `<tr>
-        <td>${esc(item.epi_name || '')}</td>
+        <td>${esc(item.epi_name || '')}<br><small>${esc(item.qr_code_value || '')} · ${esc(item.size || '—')}</small></td>
         <td>${esc(item.unit_name || '')}</td>
         <td>${esc(item.lot_code || '-')}</td>
-        <td>${esc(item.manufacture_date || '-')}</td>
+        <td>${esc(item.manufacture_date || '-')}<br><small>${esc(item.physical_expiry_date || '—')}</small></td>
         <td><span class="badge badge-danger">${esc(label)}</span></td>
         <td>
           <select class="blocked-row-status" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${opts}</select>
           <button type="button" class="ghost blocked-row-apply" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${tr('stock.applyStatus', 'Aplicar')}</button>
-          <button type="button" class="ghost blocked-row-unblock" data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${tr('stock.unblock', 'Desbloquear')}</button>
+          <button type="button" class="ghost blocked-row-unblock" ${item.can_unblock === false ? 'disabled' : ''} data-item-id="${esc(String(item.id))}" data-unit-id="${esc(String(item.unit_id))}">${tr('stock.unblock', 'Desbloquear')}</button>
+          ${hasPermission('stock:adjust') && item.can_dispose !== false ? `<button type="button" class="ghost blocked-row-dispose" data-item-id="${esc(String(item.id))}">${esc(tr('stock.physical.dispose', 'Destinar peça bloqueada'))}</button>` : ''}
         </td>
       </tr>`;
     }).join('');
@@ -13754,6 +13756,48 @@ async function _postStockItemStatus({ stockItemId, qrCode, unitId, newStatus, re
       reason: reason || '',
     }),
   });
+}
+
+function openStockPhysicalDialog(item, kind) {
+  globalThis.__EPI_STOCK_PHYSICAL__?.dialog({ item, kind, context: _blockedStockContext(),
+    currentContext: _blockedStockContext, api,
+    refresh: async () => { await globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(); } });
+}
+
+async function loadStockPhysicalRecords() {
+  const tbody = document.getElementById('stock-physical-tbody');
+  const historyBody = document.getElementById('stock-disposition-tbody');
+  if (!tbody || !historyBody) return;
+  const isCurrent = _startStockPanelLoad('physical', 'stock-physical-status', 'stock-physical-empty',
+    ['stock-physical-tbody', 'stock-disposition-tbody']);
+  const context = _blockedStockContext();
+  const params = new URLSearchParams();
+  if (context.companyId) params.set('company_id', context.companyId);
+  if (context.unitId) params.set('unit_id', context.unitId);
+  try {
+    const [pending, history] = await Promise.all([
+      apiWithBootstrapRetry(`/api/stock/incomplete-items?${params}`),
+      apiWithBootstrapRetry(`/api/stock/dispositions?${params}`),
+    ]);
+    if (!isCurrent()) return;
+    const items = pending.items || [];
+    globalThis.__EPI_INCOMPLETE_STOCK_ITEMS__ = new Map(items.map((item) => [String(item.id), item]));
+    _stockPanelLoadMessage('stock-physical-status', tr('stock.panelCount', '{n} item(ns).').replace('{n}', String(items.length)));
+    document.getElementById('stock-physical-empty').style.display = items.length ? 'none' : '';
+    tbody.innerHTML = items.map((item) => `<tr>
+      <td>${esc(item.epi_name)}<br><small>${esc(item.qr_code_value)}</small></td><td>${esc(item.unit_name)}</td>
+      <td>${esc(item.lot_code || '—')}</td><td>${esc(item.manufacture_date || '—')}</td><td>${esc(item.size || '—')}</td>
+      <td>${hasPermission('stock:regularize_validity') ? `<button class="ghost" type="button" data-stock-physical-id="${esc(String(item.id))}">${esc(tr('stock.physical.correct', 'Conferir fabricação e tamanho'))}</button>` : ''}</td></tr>`).join('');
+    historyBody.innerHTML = (history.items || []).map((item) => `<tr>
+      <td>${esc(item.epi_name)}<br><small>${esc(item.qr_code_value)}</small></td><td>${esc(item.unit_name)}</td>
+      <td>${esc(tr(`stock.physical.${item.action}`, history.actions?.[item.action] || item.action))}</td>
+      <td>${esc(item.recipient)}<br><small>${esc(item.recipient_reference)}</small></td>
+      <td>${esc(item.shipment_reference)}</td><td>${esc(item.actor_name_snapshot)}<br><small>${esc(item.created_at)}</small></td></tr>`).join('');
+  } catch (error) {
+    if (!isCurrent()) return;
+    _stockPanelLoadError('stock-physical-status');
+    reportNonCriticalError('[stock-physical] falha ao carregar', error);
+  }
 }
 
 function _setBlockFeedback(feedback, message, kind) {
@@ -13793,9 +13837,21 @@ async function blockStockItem() {
 function bindBlockedStockUi() {
   if (globalThis.__EPI_BLOCKED_STOCK_BOUND__) return;
   globalThis.__EPI_BLOCKED_STOCK_BOUND__ = true;
+  bindAppListener(document.getElementById('stock-physical-refresh'), 'click', () => { void loadStockPhysicalRecords(); });
+  bindAppListener(document.getElementById('stock-physical-tbody'), 'click', (event) => {
+    const button = event.target?.closest?.('[data-stock-physical-id]');
+    const item = globalThis.__EPI_INCOMPLETE_STOCK_ITEMS__?.get(button?.dataset.stockPhysicalId);
+    if (item) openStockPhysicalDialog(item, 'metadata');
+  });
   bindAppListener(document.getElementById('blocked-stock-block-btn'), 'click', () => { void blockStockItem(); });
-  bindAppListener(document.getElementById('blocked-stock-refresh'), 'click', () => { void loadBlockedStock(); });
+  bindAppListener(document.getElementById('blocked-stock-refresh'), 'click', () => { void loadBlockedStock(); void loadStockPhysicalRecords(); });
   bindAppListener(document.getElementById('blocked-stock-tbody'), 'click', (event) => {
+    const dispose = event.target?.closest?.('.blocked-row-dispose');
+    if (dispose) {
+      const item = globalThis.__EPI_BLOCKED_STOCK_ITEMS__?.get(dispose.dataset.itemId);
+      if (item) openStockPhysicalDialog(item, 'disposition');
+      return;
+    }
     const btn = event.target?.closest?.('.blocked-row-apply, .blocked-row-unblock');
     if (!btn) return;
     const itemId = btn.getAttribute('data-item-id');
@@ -13939,6 +13995,7 @@ function bindValidityMgmtUi() {
       unitId: btn.getAttribute('data-unit-id') || '',
       epiName: btn.getAttribute('data-epi-name') || '',
       lot: row?.querySelector('.pending-reg-select')?.dataset.lot || '',
+      items: [{ stock_item_id: Number(btn.getAttribute('data-item-id')), qr_code: btn.getAttribute('data-qr') || '', size: row?.querySelector('.pending-reg-select')?.dataset.size || '', glove_size: row?.querySelector('.pending-reg-select')?.dataset.glove || '', uniform_size: row?.querySelector('.pending-reg-select')?.dataset.uniform || '' }],
     });
   });
 }
@@ -14042,7 +14099,7 @@ async function loadPendingRegularization() {
         ? `<button type="button" class="btn ghost pending-reg-action" data-qr="${esc(it.qr_code_value || '')}" data-item-id="${esc(it.id)}" data-unit-id="${esc(it.unit_id)}" data-epi-name="${esc(it.epi_name || '')}" style="font-size:12px;padding:2px 8px;">${esc(tr('stock.pendingReg.action', 'Regularizar validade'))}</button>`
         : `<small class="hint">${esc(tr('stock.pendingReg.noPermission', 'Sem permissão'))}</small>`;
       return `<tr data-pending-group="${esc(groupKey)}">
-        <td><input type="checkbox" class="pending-reg-select" style="width:auto;min-width:0;" ${canRegularize ? '' : 'disabled'} aria-label="${esc(tr('stock.lotProof.select', 'Selecionar peças'))}" data-group="${esc(groupKey)}" data-id="${esc(it.id)}" data-qr="${esc(it.qr_code_value || '')}" data-unit="${esc(it.unit_id)}" data-epi="${esc(it.epi_id)}" data-name="${esc(it.epi_name || '')}" data-lot="${esc(it.lot_code || '')}"></td>
+        <td><input type="checkbox" class="pending-reg-select" style="width:auto;min-width:0;" ${canRegularize ? '' : 'disabled'} aria-label="${esc(tr('stock.lotProof.select', 'Selecionar peças'))}" data-group="${esc(groupKey)}" data-id="${esc(it.id)}" data-qr="${esc(it.qr_code_value || '')}" data-unit="${esc(it.unit_id)}" data-epi="${esc(it.epi_id)}" data-name="${esc(it.epi_name || '')}" data-lot="${esc(it.lot_code || '')}" data-size="${esc(it.size || '')}" data-glove="${esc(it.glove_size || '')}" data-uniform="${esc(it.uniform_size || '')}"></td>
         <td>${nameCell}</td>
         <td>${esc(it.unit_name || '—')}</td>
         <td>${esc(it.lot_code || '—')}</td>
@@ -14079,7 +14136,7 @@ async function readStockEvidenceFile(input) {
 
 function pendingRegularizationProof(piece, proof) {
   return { items: piece.items, lot_code: proof.lot, physical_expiry_date: proof.date,
-    expiry_source: proof.source, evidence: proof.evidence, evidence_file: proof.file,
+    manufacture_date: proof.manufacture || '', expiry_source: proof.source, evidence: proof.evidence, evidence_file: proof.file,
     justification: proof.justification, physical_lot_confirmed: true };
 }
 
@@ -14091,7 +14148,7 @@ function reviewPendingRegularizationLots(lots) {
     overlay.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="reg-review-title" style="max-width:640px;width:96vw;padding:24px;max-height:92vh;overflow:auto;">
       <h3 id="reg-review-title">${esc(tr('stock.pendingBulk.review', 'Revisar lotes antes de enviar'))}</h3>
       <p>${esc(tr('stock.pendingBulk.atomic', 'Confira os dados de cada lote. Todos serão enviados juntos; se algum for recusado, nenhum será alterado.'))}</p>
-      <ul>${lots.map(({ piece, proof }) => `<li><strong>${esc(proof.lot)}</strong> · ${esc(piece.epiName)} · ${esc(String(piece.items.length))} ${esc(tr('stock.pendingBulk.pieces', 'peça(s)'))}<br>${esc(proof.date)} · ${esc(proof.source === 'label' ? tr('stock.receiptValidity.label', 'Embalagem / etiqueta do lote') : tr('stock.receiptValidity.document', 'Documento do fabricante para o lote'))}<br>${esc(proof.file.filename)}<br>${esc(proof.evidence)}<br>${esc(proof.justification)}</li>`).join('')}</ul>
+      <ul>${lots.map(({ piece, proof }) => `<li><strong>${esc(proof.lot)}</strong> · ${esc(piece.epiName)} · ${esc(String(piece.items.length))} ${esc(tr('stock.pendingBulk.pieces', 'peça(s)'))}<br>${esc(proof.date)}${proof.manufacture ? ` · ${esc(tr('stock.physical.manufacture_date', 'Fabricação comprovada do lote'))}: ${esc(proof.manufacture)}` : ''} · ${esc(proof.source === 'label' ? tr('stock.receiptValidity.label', 'Embalagem / etiqueta do lote') : tr('stock.receiptValidity.document', 'Documento do fabricante para o lote'))}<br>${esc(proof.file.filename)}<br>${esc(proof.evidence)}<br>${esc(proof.justification)}</li>`).join('')}</ul>
       <div class="action-group"><button id="reg-review-cancel" type="button" class="ghost">${esc(tr('cancel', 'Cancelar'))}</button><button id="reg-review-confirm" type="button">${esc(tr('stock.pendingBulk.submit', 'Regularizar {n} lotes / {pieces} peças').replace('{n}', String(lots.length)).replace('{pieces}', String(lots.reduce((n, lot) => n + lot.piece.items.length, 0))))}</button></div>
     </div>`;
     const finish = (value) => { overlay.remove(); resolve(value); };
@@ -14127,7 +14184,7 @@ async function regularizeSelectedStockLot(nodes) {
   const context = _blockedStockContext();
   const pieces = Array.from(groups.values()).map((rows) => ({ id: Number(rows[0].id), qr: rows[0].qr,
     unitId: rows[0].unit, epiName: rows[0].name, lot: rows[0].lot,
-    items: rows.map((row) => ({ stock_item_id: Number(row.id), qr_code: row.qr })) }));
+    items: rows.map((row) => ({ stock_item_id: Number(row.id), qr_code: row.qr, size: row.size || '', glove_size: row.glove || '', uniform_size: row.uniform || '' })) }));
   regularizeSelectedStockLot.busy = true;
   updatePendingRegularizationSelection();
   try {
@@ -14258,7 +14315,8 @@ function openRegularizeValidityModal(piece) {
         ${piece.queueTotal ? `<p class="hint">${esc(tr('stock.pendingBulk.progress', 'Lote/grupo {n} de {total}. Os dados serão enviados após a revisão final.').replace('{n}', String(piece.queueIndex)).replace('{total}', String(piece.queueTotal)))}</p>` : ''}
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.pendingReg.modalHint', 'A validade física comprovada é a única autoridade — catálogo, CA ou estimativa nunca liberam a peça. Informe a data, a evidência verificável e a justificativa.'))}</p>
         <div style="font-size:13px;margin-bottom:10px;"><strong>${esc(piece.epiName || 'EPI')}</strong>${piece.reconcile ? '' : ` — ${esc(tr('stock.qrCode', 'QR Code'))}: <code>${esc(piece.qr || '')}</code>`}${piece.lot && piece.lot !== '—' ? ` · ${esc(tr('stock.lot', 'Lote'))}: ${esc(piece.lot)}` : ''}</div>
-        ${piece.reconcile ? `<p class="hint">${esc(tr('stock.lotProof.countHint', 'Conte somente peças reais deste lote ainda sem QR. A conciliação mantém o saldo existente. Faça entradas separadas por tamanho.'))}</p><label>${esc(tr('stock.lotProof.count', 'Quantidade fisicamente contada'))}<input id="reg-quantity" type="number" min="1" max="100"></label><label>${esc(tr('stock.lotProof.size', 'Tamanho fisicamente conferido'))}<input id="reg-size" type="text" maxlength="32"></label><label>${esc(tr('stock.manufacturingDate', 'Data de fabricação (recebimento)'))}<input id="reg-manufacture" type="date"></label>` : `<p class="hint">${esc(tr('stock.lotProof.selectionCount', '{n} peça(s) explicitamente selecionada(s).').replace('{n}', String(piece.items?.length || 1)))}</p><details><summary>${esc(tr('stock.lotProof.review', 'Conferir / separar QRs por lote'))}</summary><p>${esc(tr('stock.pendingBulk.splitHint', 'Marque somente os QRs que pertencem a este lote físico. Os demais serão solicitados em outra comprovação no mesmo envio.'))}</p><ul>${selectableItems.map((item, index) => `<li><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="reg-piece-select" data-index="${index}" checked style="width:auto;min-width:0;">${esc(item.qr_code)}</label></li>`).join('')}</ul></details>`}
+        ${piece.reconcile ? `<p class="hint">${esc(tr('stock.lotProof.countHint', 'Conte somente peças reais deste lote ainda sem QR. A conciliação mantém o saldo existente. Faça entradas separadas por tamanho.'))}</p><label>${esc(tr('stock.lotProof.count', 'Quantidade fisicamente contada'))}<input id="reg-quantity" type="number" min="1" max="100"></label><label>${esc(tr('stock.lotProof.size', 'Tamanho fisicamente conferido'))}<input id="reg-size" type="text" maxlength="32"></label><label>${esc(tr('stock.manufacturingDate', 'Data de fabricação (recebimento)'))}<input id="reg-manufacture" type="date"></label>` : `<p class="hint">${esc(tr('stock.lotProof.selectionCount', '{n} peça(s) explicitamente selecionada(s).').replace('{n}', String(piece.items?.length || 1)))}</p><details><summary>${esc(tr('stock.lotProof.review', 'Conferir / separar QRs por lote'))}</summary><p>${esc(tr('stock.pendingBulk.splitHint', 'Marque somente os QRs que pertencem a este lote físico. Os demais serão solicitados em outra comprovação no mesmo envio.'))}</p><ul>${selectableItems.map((item, index) => `<li><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="reg-piece-select" data-index="${index}" checked style="width:auto;min-width:0;">${esc(item.qr_code)}</label><label>${esc(tr('stock.lotProof.size', 'Tamanho fisicamente conferido'))}<input class="reg-piece-size" data-index="${index}" value="${esc(item.size && item.size !== 'N/A' ? item.size : '')}" maxlength="32"></label></li>`).join('')}</ul></details>`}
+        ${!piece.reconcile ? `<label>${esc(tr('stock.physical.manufacture_date', 'Fabricação comprovada do lote'))}<input id="reg-manufacture" type="date"></label>` : ''}
         <label>${esc(tr('stock.lot', 'Lote'))}<input type="text" id="reg-lot" value="${esc(piece.lot && piece.lot !== '—' ? piece.lot : '')}"></label>
         <label>${esc(tr('stock.receiptValidity.source', 'Comprovação da validade'))}<select id="reg-source"><option value="label">${esc(tr('stock.receiptValidity.label', 'Embalagem / etiqueta do lote'))}</option><option value="manufacturer_document">${esc(tr('stock.receiptValidity.document', 'Documento do fabricante para o lote'))}</option></select></label>
         <label style="display:block;margin-bottom:8px;font-size:13px;">${esc(tr('stock.pendingReg.physicalDate', 'Validade física comprovada'))}
@@ -14306,6 +14364,17 @@ function openRegularizeValidityModal(piece) {
       if (piece.reconcile && (!Number.isInteger(quantity) || quantity < 1 || quantity > 100 || !size)) {
         return showError(tr('stock.lotProof.countRequired', 'Informe de 1 a 100 peças fisicamente contadas e seu tamanho.'));
       }
+      for (const item of items) {
+        const index = selectableItems.findIndex((candidate) => candidate.stock_item_id === item.stock_item_id);
+        const entered = overlay.querySelector(`.reg-piece-size[data-index="${index}"]`);
+        if (entered) {
+          const value = entered.value.trim();
+          if (!value || value === 'N/A') return showError(tr('stock.physical.needSize', 'Confira o tamanho de cada QR selecionado.'));
+          item.size = value;
+          if (item.glove_size && item.glove_size !== 'N/A') item.glove_size = value;
+          if (item.uniform_size && item.uniform_size !== 'N/A') item.uniform_size = value;
+        }
+      }
       button.disabled = true;
       try {
         const file = await readStockEvidenceFile(overlay.querySelector('#reg-file'));
@@ -14329,6 +14398,7 @@ async function regularizePendingPiece(piece) {
       items: result.items || piece.items || [{ qr_code: piece.qr, stock_item_id: piece.id }],
       unit_id: piece.unitId || undefined,
       lot_code: result.lot,
+      manufacture_date: result.manufacture || '',
       expiry_source: result.source,
       evidence_file: result.file,
       physical_lot_confirmed: true,

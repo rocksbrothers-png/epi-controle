@@ -31,6 +31,7 @@ def _run(root: Path, *args: str) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         cwd=root,
+        check=False,
     )
 
 

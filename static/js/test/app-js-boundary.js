@@ -52,6 +52,10 @@ const LAYER_RULES = {
   ]
 };
 
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function stripComments(code) {
   return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
 }
@@ -119,7 +123,7 @@ function check({ update = false } = {}) {
       if (declarations.has(name)) {
         errors.push(`${name} foi extraído para static/${modulePath} e voltou a ser declarado no app.js.`);
       }
-      if (!new RegExp(`function\\s+${name.replace(/\$/g, '\\$')}\\s*\\(`).test(moduleCode)) {
+      if (!new RegExp(`function\\s+${escapeRegExp(name)}\\s*\\(`).test(moduleCode)) {
         errors.push(`${name} não é definido em static/${modulePath}.`);
       }
     }

@@ -12,10 +12,17 @@ basta, item da própria requisição/empresa e versão do item inalterada.
 """
 
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from modules.purchases.service import save_purchase_request_prices, validate_quote_associations
+from modules.purchases.service import (
+    _quote_row_signature,
+    quote_row_from_association,
+    save_purchase_request_prices,
+    sign_quote_rows,
+    validate_quote_associations,
+)
 
 ACTOR = {'id': 7, 'full_name': 'Comprador', 'role': 'buyer', 'company_id': 1}
 STAMP = '2026-10-22T10:00:00+00:00'
@@ -77,7 +84,15 @@ def _pr(conn, pr_id=100):
     return dict(row)
 
 
-def _assoc(item_id, unit_price=5.0, **overrides):
+def _sign(payload, actor=ACTOR, issued_at=None):
+    """Assina como o parse do servidor faria com a linha do arquivo."""
+    issued = issued_at or datetime.now(timezone.utc).isoformat()
+    payload['quote_issued_at'] = issued
+    payload['quote_sig'] = _quote_row_signature(actor, quote_row_from_association(payload), issued)
+    return payload
+
+
+def _assoc(item_id, unit_price=5.0, *, sign=True, actor=ACTOR, issued_at=None, **overrides):
     """Associação confirmada pelo operador, como a interface envia."""
     defaults = {
         1000: {'quote_epi': 'Luva nitrilica', 'quote_ca': 'CA 12.345', 'quote_manufacturer': 'Danny'},
@@ -89,8 +104,12 @@ def _assoc(item_id, unit_price=5.0, **overrides):
         'item_id': item_id, 'unit_price': unit_price, 'confirmed': True,
         'expected_updated_at': STAMP, 'quote_line': 1, **defaults,
     }
+    if isinstance(unit_price, (int, float)) and unit_price >= 0:
+        payload['quote_unit_price'] = f'{unit_price:.2f}'
+    if 'quantity' in overrides:
+        payload['quote_qty'] = str(overrides['quantity'])
     payload.update(overrides)
-    return payload
+    return _sign(payload, actor, issued_at) if sign else payload
 
 
 def _price(conn, item_id):
@@ -150,7 +169,7 @@ def test_save_prices_requires_eligible_item():
 def test_save_prices_rejects_invalid_values():
     conn = _conn()
     with pytest.raises(ValueError, match='Preço'):
-        save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, -1)], ip_address='')
+        save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, -1, quote_unit_price='5.00')], ip_address='')
     with pytest.raises(ValueError, match='Quantidade'):
         save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, 5.0, quantity=0)], ip_address='')
 
@@ -179,7 +198,7 @@ def test_divergent_ca_blocks_association():
 def test_supplier_alone_never_associates():
     conn = _conn()
     # mesma situação do achado P2: linha de outro produto, só o fornecedor coincide
-    with pytest.raises(ValueError, match='sem identificação do produto'):
+    with pytest.raises(ValueError, match='contradiz o item #1000'):
         save_purchase_request_prices(
             conn, ACTOR, _pr(conn),
             [_assoc(1000, quote_epi='Capacete Classe B', quote_ca='', quote_supplier='ACME', origin='Colaborador')],
@@ -191,7 +210,7 @@ def test_supplier_alone_never_associates():
 def test_missing_ca_requires_other_product_identification():
     conn = _conn()
     # CA ausente nos dois lados e descrição de outro produto: rejeita
-    with pytest.raises(ValueError, match='sem identificação do produto'):
+    with pytest.raises(ValueError, match='contradiz o item #1002'):
         save_purchase_request_prices(
             conn, ACTOR, _pr(conn), [_assoc(1002, quote_epi='Protetor auricular', quote_ca='')], ip_address=''
         )
@@ -250,8 +269,8 @@ def test_stale_confirmation_is_rejected_after_concurrent_change():
 def test_concurrent_write_between_validation_and_update_is_rejected(monkeypatch):
     conn = _conn()
 
-    def validate_then_race(connection, pr, associations):
-        validated = validate_quote_associations(connection, pr, associations)
+    def validate_then_race(connection, pr, associations, actor):
+        validated = validate_quote_associations(connection, pr, associations, actor)
         connection.execute("UPDATE purchase_request_items SET updated_at = 'race' WHERE id = 1000")
         return validated
 
@@ -280,5 +299,109 @@ def test_confirmed_association_is_audited_with_operator_identity():
 
 def test_validate_quote_associations_reports_evidence():
     conn = _conn()
-    [entry] = validate_quote_associations(conn, _pr(conn), [_assoc(1000, quote_model='DA-500')])
-    assert entry['matches'] == ['CA', 'descrição', 'modelo']
+    [entry] = validate_quote_associations(conn, _pr(conn), [_assoc(1000, quote_model='DA-500')], ACTOR)
+    assert entry['matches'] == ['CA', 'descrição', 'fabricante', 'modelo']
+
+
+# ── endurecimento após a auditoria independente ─────────────────────────────
+
+
+def _rejects(conn, association, message, exc=ValueError):
+    with pytest.raises(exc, match=message):
+        save_purchase_request_prices(conn, ACTOR, _pr(conn), [association], ip_address='')
+    assert _price(conn, int(association['item_id'])) == 0
+
+
+def test_parse_signature_round_trip_matches_what_the_interface_sends():
+    conn = _conn()
+    row = {'line': 2, 'item_id': '', 'epi': 'Luva nitrilica', 'ca': 'CA 12345', 'fabricante': 'Danny',
+           'modelo': 'DA-500', 'fornecedor': 'ACME', 'tamanho': '', 'tamanho_luva': '', 'tamanho_uniforme': '',
+           'qtd': '10', 'valor_unitario': '1234.56'}
+    [signed] = sign_quote_rows(ACTOR, [dict(row)])
+    association = {
+        'item_id': 1000, 'unit_price': 1234.56, 'quantity': 10, 'confirmed': True, 'expected_updated_at': STAMP,
+        'quote_line': signed['line'], 'quote_item_id': signed['item_id'], 'quote_epi': signed['epi'],
+        'quote_ca': signed['ca'], 'quote_manufacturer': signed['fabricante'], 'quote_model': signed['modelo'],
+        'quote_supplier': signed['fornecedor'], 'quote_size': signed['tamanho'],
+        'quote_glove_size': signed['tamanho_luva'], 'quote_uniform_size': signed['tamanho_uniforme'],
+        'quote_qty': signed['qtd'], 'quote_unit_price': signed['valor_unitario'],
+        'quote_sig': signed['quote_sig'], 'quote_issued_at': signed['quote_issued_at'],
+    }
+    affected, _ = save_purchase_request_prices(conn, ACTOR, _pr(conn), [association], ip_address='')
+    assert affected == [1000] and _price(conn, 1000) == 1234.56
+
+
+def test_fields_changed_after_parse_are_rejected():
+    conn = _conn()
+    tampered = _assoc(1000, 12.5)
+    tampered['quote_ca'] = ''  # tenta escapar do bloqueio de CA omitindo o CA do arquivo
+    _rejects(conn, tampered, 'não conferem com o arquivo')
+    tampered = _assoc(1000, 12.5)
+    tampered['quote_item_id'] = '1000'  # tenta "provar" identidade com um id inventado
+    _rejects(conn, tampered, 'não conferem com o arquivo')
+
+
+def test_unsigned_expired_or_foreign_rows_are_rejected():
+    conn = _conn()
+    _rejects(conn, _assoc(1000, sign=False), 'sem a assinatura')
+    old = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
+    _rejects(conn, _assoc(1000, issued_at=old), 'mais de 24 horas')
+    other = {'id': 99, 'full_name': 'Outro', 'role': 'buyer', 'company_id': 1}
+    _rejects(conn, _assoc(1000, actor=other), 'não conferem com o arquivo')
+
+
+def test_price_and_quantity_must_be_the_ones_in_the_file():
+    conn = _conn()
+    _rejects(conn, _assoc(1000, 99.0, quote_unit_price='12.50'), 'preço confirmado difere')
+    _rejects(conn, _assoc(1000, 12.5, quantity=8, quote_qty='3'), 'quantidade confirmada difere')
+
+
+@pytest.mark.parametrize('bad', ['inf', 'nan', '-inf'])
+def test_non_finite_price_is_rejected(bad):
+    conn = _conn()
+    _rejects(conn, _assoc(1000, bad, quote_unit_price=bad), 'inválido')
+
+
+def test_partial_description_without_ca_is_not_identification():
+    conn = _conn()
+    # "Luva" serviria para qualquer luva: sem CA, descrição parcial não basta
+    _rejects(conn, _assoc(1000, quote_epi='Luva', quote_ca='', quote_manufacturer=''), 'sem identificação inequívoca')
+
+
+def test_manufacturer_divergence_without_ca_is_rejected():
+    conn = _conn()
+    _rejects(conn, _assoc(1000, quote_epi='Luva Nitrílica', quote_ca='', quote_manufacturer='Vonder'),
+             'fabricante diferente')
+
+
+def test_matching_ca_with_contradicting_description_is_rejected():
+    conn = _conn()
+    _rejects(conn, _assoc(1000, quote_epi='Capacete classe B', quote_ca='12345', quote_manufacturer='MSA'),
+             'contradiz o item #1000')
+
+
+def test_ca_without_digits_counts_as_missing():
+    conn = _conn()
+    for placeholder in ('N/A', '-', 'ISENTO'):
+        [entry] = validate_quote_associations(conn, _pr(conn), [_assoc(1000, quote_ca=placeholder)], ACTOR)
+        assert 'CA' not in entry['matches']
+        assert 'descrição' in entry['matches']
+
+
+def test_current_catalogue_ca_prevails_over_item_snapshot():
+    conn = _conn()
+    conn.execute("UPDATE epis SET ca = '55555' WHERE id = 5")  # CA renovado no cadastro
+    _rejects(conn, _assoc(1000, quote_ca='12345'), 'CA divergente')
+
+
+def test_request_status_changed_concurrently_is_rejected(monkeypatch):
+    conn = _conn()
+
+    def validate_then_cancel(connection, pr, associations, actor):
+        validated = validate_quote_associations(connection, pr, associations, actor)
+        connection.execute("UPDATE purchase_requests SET status = 'cancelled' WHERE id = 100")
+        return validated
+
+    monkeypatch.setattr('modules.purchases.service.validate_quote_associations', validate_then_cancel)
+    with pytest.raises(ValueError, match='mudou de situação'):
+        save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, 9.0)], ip_address='')

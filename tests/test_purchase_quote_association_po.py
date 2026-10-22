@@ -6,9 +6,16 @@ salvamento de preços — além de o EPI enviado ser o EPI do item da requisiç�
 PO criada por outros caminhos (ex.: Flutter) não muda.
 """
 
+from datetime import datetime, timezone
+
 import pytest
 
-from modules.purchases.service import create_purchase_order
+from modules.purchases.service import (
+    _quote_row_signature,
+    create_purchase_order,
+    generate_po_number,
+    quote_row_from_association,
+)
 from tests.test_purchase_orders_service import ADMIN, _conn as _base_conn
 
 STAMP = '2026-10-22T10:00:00+00:00'
@@ -19,6 +26,7 @@ def _conn():
     for ddl in (
         "ALTER TABLE epis ADD COLUMN ca TEXT DEFAULT ''",
         "ALTER TABLE epis ADD COLUMN model_reference TEXT DEFAULT ''",
+        "ALTER TABLE epis ADD COLUMN manufacturer TEXT DEFAULT ''",
         "ALTER TABLE purchase_request_items ADD COLUMN epi_name TEXT DEFAULT ''",
         "ALTER TABLE purchase_request_items ADD COLUMN ca TEXT DEFAULT ''",
         "ALTER TABLE purchase_request_items ADD COLUMN quantity_requested INTEGER DEFAULT 1",
@@ -38,13 +46,17 @@ def _conn():
     return conn
 
 
-def _item(**overrides):
+def _item(sign=True, **overrides):
     item = {
         'purchase_request_item_id': 7, 'epi_id': 100, 'epi_name': 'Luva', 'ca': '12345',
         'quantity': 3, 'unit_price': 10.0, 'confirmed': True, 'expected_updated_at': STAMP,
-        'quote_line': 1, 'quote_epi': 'Luva', 'quote_ca': '12345', 'quote_manufacturer': 'Danny',
+        'quote_line': 1, 'quote_epi': 'Luva', 'quote_ca': '12345', 'quote_manufacturer': '',
+        'quote_qty': '3', 'quote_unit_price': '10.00',
     }
     item.update(overrides)
+    if sign:
+        item['quote_issued_at'] = datetime.now(timezone.utc).isoformat()
+        item['quote_sig'] = _quote_row_signature(ADMIN, quote_row_from_association(item), item['quote_issued_at'])
     return item
 
 
@@ -61,7 +73,7 @@ def test_quote_import_po_with_confirmed_associations_is_created_and_audited():
     conn = _conn()
     res = create_purchase_order(conn, ADMIN, _payload(_item(), _item(
         purchase_request_item_id=8, epi_id=101, epi_name='Capacete', ca='67890', quantity=2, unit_price=55.0,
-        quote_line=2, quote_epi='Capacete', quote_ca='67890',
+        quote_line=2, quote_epi='Capacete', quote_ca='67890', quote_qty='2', quote_unit_price='55.00',
     )), '10.0.0.1')
     assert res['status'] == 'waiting_admin_review'
     events = conn.execute(
@@ -76,7 +88,8 @@ def test_quote_import_po_with_confirmed_associations_is_created_and_audited():
 @pytest.mark.parametrize('overrides, message', [
     ({'confirmed': False}, 'não confirmada'),
     ({'quote_ca': '99999'}, 'CA divergente'),
-    ({'quote_ca': '', 'quote_epi': 'Protetor auricular'}, 'sem identificação do produto'),
+    ({'quote_ca': '', 'quote_epi': 'Protetor auricular'}, 'contradiz o item #7'),
+    ({'unit_price': 99.0}, 'preço confirmado difere'),
     ({'expected_updated_at': 'antigo'}, 'alterado por outra operação'),
     ({'epi_id': 101}, 'não é o EPI do item'),
 ])
@@ -103,3 +116,44 @@ def test_po_outside_quote_import_keeps_previous_contract():
     assert conn.execute(
         "SELECT COUNT(*) FROM purchase_events WHERE action = 'quote_association_confirmed'"
     ).fetchone()[0] == 0
+
+
+def test_quote_import_po_requires_signed_rows():
+    conn = _conn()
+    with pytest.raises(ValueError, match='sem a assinatura'):
+        create_purchase_order(conn, ADMIN, _payload(_item(sign=False)), '')
+    tampered = _item()
+    tampered['quote_ca'] = ''
+    with pytest.raises(ValueError, match='não conferem com o arquivo'):
+        create_purchase_order(conn, ADMIN, _payload(tampered), '')
+    assert _po_count(conn) == 0
+
+
+def test_quote_import_po_stores_catalogue_identity_not_file_text():
+    conn = _conn()
+    hostile = '<img src=x onerror=alert(1)>'
+    create_purchase_order(conn, ADMIN, _payload(_item(epi_name=hostile, ca=hostile, manufacturer=hostile)), '')
+    row = conn.execute('SELECT epi_name, ca, manufacturer FROM purchase_order_items').fetchone()
+    assert row['epi_name'] == 'Luva' and row['ca'] == '12345'
+    assert hostile not in (row['manufacturer'] or '')
+
+
+def test_quote_import_cannot_generate_a_second_po_for_the_request():
+    conn = _conn()
+    create_purchase_order(conn, ADMIN, _payload(_item()), '')
+    with pytest.raises(ValueError, match='já tem PO vinculada'):
+        create_purchase_order(conn, ADMIN, _payload(_item()), '')
+    assert _po_count(conn) == 1
+
+
+def test_quote_import_po_rejects_concurrent_link(monkeypatch):
+    conn = _conn()
+
+    def number_while_another_po_links(connection, company_id):
+        # outra criação concorrente vinculou uma PO entre a validação e a escrita
+        connection.execute('UPDATE purchase_requests SET linked_po_id = 999 WHERE id = 5')
+        return generate_po_number(connection, company_id)
+
+    monkeypatch.setattr('modules.purchases.service.generate_po_number', number_while_another_po_links)
+    with pytest.raises(ValueError, match='Outra PO foi vinculada'):
+        create_purchase_order(conn, ADMIN, _payload(_item()), '')

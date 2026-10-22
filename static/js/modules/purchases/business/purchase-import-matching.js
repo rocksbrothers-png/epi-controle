@@ -142,15 +142,16 @@
   //   6. só existe sugestão quando ela é única (inclusive entre linhas).
   // A decisão final é sempre do operador, e o backend revalida.
 
+  // CA comparável: só dígitos, sem zeros à esquerda. Sem dígitos ("N/A",
+  // "ISENTO", "-") conta como ausente. Mesma regra do backend.
   function _normalizeCaNumber(value) {
-    const text = String(value ?? '').trim();
-    if (!text) { return ''; }
-    const digits = text.replace(/\D+/g, '');
-    return digits ? digits.replace(/^0+(?=\d)/, '') : _normalizePurchaseText(text);
+    const digits = String(value ?? '').replace(/\D+/g, '');
+    return /[1-9]/.test(digits) ? digits.replace(/^0+/, '') : '';
   }
 
-  function _purchaseItemCas(item) {
-    return [...new Set([item.ca, item.epi_ca].map(_normalizeCaNumber).filter(Boolean))];
+  // O CA do cadastro atual do EPI prevalece sobre o registrado no item.
+  function _purchaseItemCa(item) {
+    return _normalizeCaNumber(item.epi_ca) || _normalizeCaNumber(item.ca);
   }
 
   function _purchaseTextRelation(a, b) {
@@ -168,23 +169,30 @@
   function _evaluatePurchaseImportCandidate(row, item) {
     const matches = [];
     const divergences = [];
+    const contradictions = [];
     let blocked = false;
     let blockReason = '';
 
     const rowItemId = String(row.item_id ?? '').trim();
     const itemId = String(item.id ?? item.purchase_request_item_id ?? '');
     if (rowItemId) {
-      if (rowItemId === itemId) { matches.push('id do item'); } else { divergences.push(`id do item no arquivo (${rowItemId}) é de outro item`); }
+      if (rowItemId === itemId) {
+        matches.push('id do item');
+      } else {
+        const message = `id do item no arquivo (${rowItemId}) é de outro item`;
+        divergences.push(message);
+        contradictions.push(message);
+      }
     }
 
     const rowCa = _normalizeCaNumber(row.ca);
-    const itemCas = _purchaseItemCas(item);
-    if (rowCa && itemCas.length) {
-      if (itemCas.includes(rowCa)) {
+    const itemCa = _purchaseItemCa(item);
+    if (rowCa && itemCa) {
+      if (rowCa === itemCa) {
         matches.push('CA');
       } else {
         blocked = true;
-        blockReason = `CA divergente (arquivo ${row.ca}, item ${item.ca || item.epi_ca})`;
+        blockReason = `CA divergente (arquivo ${row.ca}, item ${item.epi_ca || item.ca})`;
         divergences.push(blockReason);
       }
     } else if (!rowCa) {
@@ -193,25 +201,36 @@
       divergences.push('CA ausente no item da requisição');
     }
 
-    const description = _purchaseTextRelation(row.epi, item.epi_name || item.epi_display_name);
-    if (description === 'equal' || description === 'partial') {
-      matches.push(description === 'equal' ? 'descrição' : 'descrição (parcial)');
+    const itemName = item.epi_name || item.epi_display_name;
+    const description = _purchaseTextRelation(row.epi, itemName);
+    if (description === 'equal') {
+      matches.push('descrição');
+    } else if (description === 'partial') {
+      divergences.push(`descrição só parcialmente igual (arquivo "${row.epi}", item "${itemName}")`);
     } else if (description === 'different') {
-      divergences.push(`descrição diferente (arquivo "${row.epi}", item "${item.epi_name || item.epi_display_name}")`);
+      const message = `descrição diferente (arquivo "${row.epi}", item "${itemName}")`;
+      divergences.push(message);
+      contradictions.push(message);
     }
 
-    const manufacturer = _purchaseTextRelation(row.fabricante, item.manufacturer || item.epi_manufacturer);
+    const itemManufacturer = item.manufacturer || item.epi_manufacturer;
+    const manufacturer = _purchaseTextRelation(row.fabricante, itemManufacturer);
     if (manufacturer === 'equal' || manufacturer === 'partial') {
       matches.push('fabricante');
     } else if (manufacturer === 'different') {
-      divergences.push(`fabricante diferente (arquivo "${row.fabricante}", item "${item.manufacturer || item.epi_manufacturer}")`);
+      const message = `fabricante diferente (arquivo "${row.fabricante}", item "${itemManufacturer}")`;
+      divergences.push(message);
+      contradictions.push(message);
     }
 
-    const model = _purchaseTextRelation(row.modelo, item.epi_model_reference || item.model_reference);
+    const itemModel = item.epi_model_reference || item.model_reference;
+    const model = _purchaseTextRelation(row.modelo, itemModel);
     if (model === 'equal') {
       matches.push('modelo');
     } else if (model === 'partial' || model === 'different') {
-      divergences.push(`modelo diferente (arquivo "${row.modelo}", item "${item.epi_model_reference || item.model_reference}")`);
+      const message = `modelo diferente (arquivo "${row.modelo}", item "${itemModel}")`;
+      divergences.push(message);
+      contradictions.push(message);
     }
 
     [['tamanho', 'size', 'tamanho'], ['tamanho_luva', 'glove_size', 'tamanho de luva'], ['tamanho_uniforme', 'uniform_size', 'tamanho de uniforme']]
@@ -219,25 +238,33 @@
         const rowSize = _normalizePurchaseSize(row[rowKey]);
         const itemSize = _normalizePurchaseSize(item[itemKey]);
         if (rowSize && itemSize) {
-          if (rowSize === itemSize) { matches.push(label); } else { divergences.push(`${label} diferente (arquivo ${row[rowKey]}, item ${item[itemKey]})`); }
+          if (rowSize === itemSize) {
+            matches.push(label);
+          } else {
+            const message = `${label} diferente (arquivo ${row[rowKey]}, item ${item[itemKey]})`;
+            divergences.push(message);
+            contradictions.push(message);
+          }
         }
       });
 
-    // Identidade do produto: nunca fornecedor/origem/colaborador/unidade.
-    const identity = matches.some((m) => ['id do item', 'CA', 'descrição', 'descrição (parcial)', 'modelo'].includes(m));
-    // Bloqueados só aparecem se se parecem com a linha (descrição, modelo,
-    // fabricante): a divergência de CA é destacada onde há risco de confusão.
-    const relevant = identity || matches.includes('fabricante');
-    const strong = !blocked && rowCa && matches.includes('CA')
+    // Identidade do produto: CA, id do item, ou — sem CA — descrição/modelo
+    // IGUAIS. Descrição parcial, fabricante, fornecedor, origem e colaborador
+    // nunca bastam. Qualquer contradição torna o item inelegível.
+    const identified = matches.some((m) => ['id do item', 'CA', 'descrição', 'modelo'].includes(m));
+    const resembles = identified || description === 'partial' || matches.includes('fabricante');
+    const eligible = !blocked && identified && contradictions.length === 0;
+    const strong = eligible && matches.includes('CA')
       && matches.some((m) => ['descrição', 'modelo', 'id do item'].includes(m))
       && divergences.length === 0;
     return {
       itemId: item.id ?? item.purchase_request_item_id,
       item,
-      eligible: !blocked && identity,
+      eligible,
       blocked,
       blockReason,
-      relevant,
+      contradicted: contradictions.length > 0,
+      relevant: resembles,
       strong: Boolean(strong),
       matches,
       divergences
@@ -292,7 +319,12 @@
       const candidate = r.candidates.find((c) => String(c.itemId) === String(decision));
       if (!candidate) { errors.push(`${label}: o item escolhido não é candidato desta linha.`); return; }
       if (candidate.blocked) { errors.push(`${label}: ${candidate.blockReason}.`); return; }
-      if (!candidate.eligible) { errors.push(`${label}: o item escolhido não tem identificação do produto (CA, descrição, modelo ou id).`); return; }
+      if (!candidate.eligible) {
+        errors.push(candidate.contradicted
+          ? `${label}: a linha contradiz o item #${candidate.itemId} (${candidate.divergences.join('; ')}).`
+          : `${label}: o item escolhido não tem identificação inequívoca (CA, descrição ou modelo iguais, ou id do item).`);
+        return;
+      }
       const key = String(decision);
       if (chosen.has(key)) { errors.push(`${label}: o item #${key} já foi escolhido na linha ${chosen.get(key) + 1}.`); return; }
       chosen.set(key, r.rowIndex);

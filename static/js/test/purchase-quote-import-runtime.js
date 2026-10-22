@@ -33,9 +33,9 @@ const PARSED = [
   { line: 3, epi: 'Oculos de protecao', ca: '67890', qtd: '3,6', valor_unitario: '12.5', fornecedor: 'ACME' },
   { line: 4, epi: 'Bota de segurança', ca: '', tamanho: '42', qtd: '', valor_unitario: '89,90', fornecedor: 'ACME' },
   { line: 5, epi: 'Capacete Classe B', ca: '99999', qtd: '1', valor_unitario: '50,00', fornecedor: 'ACME', origem: 'Colaborador' }
-];
+].map((row) => ({ ...row, quote_sig: `sig-${row.line}`, quote_issued_at: '2026-10-22T12:00:00+00:00' }));
 
-function harness({ withBusiness = true, withParser = true, detail = DETAIL, parsed = PARSED, apiError = null } = {}) {
+function harness({ withBusiness = true, withParser = true, detail = DETAIL, parsed = PARSED, apiError = null, skipIds = null } = {}) {
   const nodes = new Map();
   const node = (id) => {
     if (!nodes.has(id)) { nodes.set(id, { id, value: '', checked: false, disabled: false, style: {}, textContent: '', innerHTML: '', files: [{ name: 'cotacao.csv' }] }); }
@@ -49,9 +49,11 @@ function harness({ withBusiness = true, withParser = true, detail = DETAIL, pars
     escapeHtml: (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`),
     __EPI_APP_STATE__: { user: { id: 7 } },
     api: async (url, options) => {
-      sent.push({ url, body: JSON.parse(options.body) });
+      const body = JSON.parse(options.body);
+      sent.push({ url, body });
       if (apiError) { throw new Error(apiError); }
-      return { ok: true };
+      const skip = new Set((skipIds || []).map(String));
+      return { ok: true, affected_item_ids: (body.items || []).map((i) => i.item_id).filter((id) => !skip.has(String(id))) };
     },
     openPrDetail: async () => {}, loadPurchaseRequests: () => {}, loadPurchaseOrders: () => {}
   };
@@ -182,6 +184,10 @@ module.exports = ({ test, testAsync, assert, eq }) => {
       JSON.stringify([[501, 1234.56, 10, true, STAMP], [502, 12.5, 4, true, STAMP], [503, 89.9, 2, true, STAMP]]));
     eq(h.sent[0].body.items[2].quote_ca, '');
     eq(h.sent[0].body.items[0].quote_line, 2);
+    // campos do parse vão intactos, com a assinatura do servidor
+    const first = h.sent[0].body.items[0];
+    eq(JSON.stringify([first.quote_sig, first.quote_issued_at, first.quote_qty, first.quote_unit_price, first.quote_glove_size]),
+      JSON.stringify(['sig-2', '2026-10-22T12:00:00+00:00', '10', 'R$ 1.234,56', 'M']));
     assert(h.feedback().includes('3 item(s) confirmados'), h.feedback());
   });
 
@@ -286,5 +292,59 @@ module.exports = ({ test, testAsync, assert, eq }) => {
     const h = harness({ parsed: [{ epi: '<img src=x onerror=alert(1)>', ca: '12345', qtd: '1', valor_unitario: '1' }] });
     await h.preview();
     assert(!h.mapping().includes('<img'), 'HTML do arquivo não pode ser injetado');
+  });
+
+  test('Cotação (regras): CA sem dígitos conta como ausente', () => {
+    const h = harness();
+    for (const placeholder of ['N/A', 'ISENTO', '-']) {
+      const [row] = h.context.evaluatePurchaseImportCandidates([{ ...PARSED[0], ca: placeholder }], ITEMS);
+      eq(row.caMissing, true);
+      eq(row.suggestedItemId, null);
+      assert(!row.candidates.some((c) => c.blocked), `${placeholder} não pode bloquear como CA divergente`);
+    }
+  });
+
+  test('Cotação (regras): CA do cadastro atual prevalece sobre o do item', () => {
+    const h = harness();
+    const renewed = [{ ...ITEMS[0], epi_ca: '55555' }];
+    const [row] = h.context.evaluatePurchaseImportCandidates([PARSED[0]], renewed);
+    eq(row.candidates[0].blocked, true);
+  });
+
+  test('Cotação (regras): descrição parcial sem CA não identifica o produto', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([{ epi: 'Luva', ca: '', qtd: '1', valor_unitario: '1' }], ITEMS);
+    const luva = row.candidates.find((c) => c.itemId === 501);
+    assert(luva, 'luva aparece como candidata parecida');
+    eq(luva.eligible, false);
+    assert(h.context.validatePurchaseImportDecisions([row], ['501'])[0].includes('identificação inequívoca'), 'escolha recusada');
+  });
+
+  test('Cotação (regras): fabricante ou tamanho divergente torna o item inelegível', () => {
+    const h = harness();
+    const [byMaker] = h.context.evaluatePurchaseImportCandidates([{ epi: 'Luva Nitrílica', ca: '', fabricante: 'Vonder' }], ITEMS);
+    eq(byMaker.candidates.find((c) => c.itemId === 501).eligible, false);
+    const [bySize] = h.context.evaluatePurchaseImportCandidates([{ ...PARSED[0], tamanho_luva: 'G' }], ITEMS);
+    const luva = bySize.candidates.find((c) => c.itemId === 501);
+    eq(luva.eligible, false);
+    assert(h.context.validatePurchaseImportDecisions([bySize], ['501'])[0].includes('contradiz o item #501'), 'escolha recusada');
+  });
+
+  test('Cotação (regras): CA igual com descrição contraditória não é elegível', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([{ epi: 'Capacete classe B', ca: '12345', fabricante: 'MSA' }], ITEMS);
+    const luva = row.candidates.find((c) => c.itemId === 501);
+    eq(luva.eligible, false);
+    eq(row.suggestedItemId, null);
+  });
+
+  testAsync('Cotação: item confirmado mas já aprovado é informado ao operador', async () => {
+    const h = harness({ skipIds: [502] });
+    await previewAndDecide(h);
+    await h.savePrices();
+    h.tick();
+    await h.confirm();
+    assert(h.feedback().includes('Preços salvos em 2 item(s)'), h.feedback());
+    assert(h.feedback().includes('Não alterados (já aprovados): #502'), h.feedback());
   });
 };

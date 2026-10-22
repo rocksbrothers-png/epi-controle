@@ -453,7 +453,8 @@
     if (item.manufacturer) { parts.push(item.manufacturer); }
     if (sizes) { parts.push(sizes); }
     if (candidate.blocked) { return `⛔ ${parts.join(' · ')} — ${candidate.blockReason}`; }
-    if (!candidate.eligible) { return `${parts.join(' · ')} — sem identificação do produto`; }
+    if (candidate.contradicted) { return `${parts.join(' · ')} — diverge do arquivo`; }
+    if (!candidate.eligible) { return `${parts.join(' · ')} — identificação insuficiente`; }
     return `${parts.join(' · ')}${suggested ? ' — sugerido' : ''}`;
   }
 
@@ -494,16 +495,25 @@
   function quoteAssociationPayload(line) {
     const row = line.rowEval.row;
     const item = line.candidate.item;
+    // Campos exatamente como o servidor os devolveu no parse: a assinatura
+    // (quote_sig) só confere se nada foi alterado no caminho.
     return {
       confirmed: true,
       expected_updated_at: item.updated_at || '',
-      quote_line: row.line || line.rowEval.rowIndex + 1,
-      quote_item_id: row.item_id || '',
-      quote_epi: row.epi || '',
-      quote_ca: row.ca || '',
-      quote_manufacturer: row.fabricante || '',
-      quote_model: row.modelo || '',
-      quote_supplier: row.fornecedor || ''
+      quote_line: row.line ?? '',
+      quote_item_id: row.item_id ?? '',
+      quote_epi: row.epi ?? '',
+      quote_ca: row.ca ?? '',
+      quote_manufacturer: row.fabricante ?? '',
+      quote_model: row.modelo ?? '',
+      quote_supplier: row.fornecedor ?? '',
+      quote_size: row.tamanho ?? '',
+      quote_glove_size: row.tamanho_luva ?? '',
+      quote_uniform_size: row.tamanho_uniforme ?? '',
+      quote_qty: row.qtd ?? '',
+      quote_unit_price: row.valor_unitario ?? '',
+      quote_issued_at: row.quote_issued_at ?? '',
+      quote_sig: row.quote_sig ?? ''
     };
   }
 
@@ -642,12 +652,18 @@
         if (fresh.kind === 'save') {
           if (feedback) { feedback.textContent = 'Salvando preços...'; feedback.style.color = ''; }
           const items = fresh.associated.map((l) => ({ item_id: l.candidate.itemId, unit_price: l.price, quantity: l.qty, ...quoteAssociationPayload(l) }));
-          await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, items }) });
+          const response = await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, items }) });
+          const affected = new Set((response?.affected_item_ids || []).map(String));
+          const skipped = items.filter((i) => !affected.has(String(i.item_id))).map((i) => `#${i.item_id}`);
           globalThis._poCsvParsed = [];
           await globalThis.openPrDetail?.(pr.id);
           globalThis.loadPurchaseRequests?.();
           // A reabertura reinicia o painel; a confirmação vem depois dela.
-          if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = `Preços salvos (${items.length} item(s) confirmados). Status atualizado.`; }
+          if (feedback) {
+            feedback.style.color = skipped.length ? 'var(--color-warning)' : 'var(--color-success)';
+            feedback.textContent = `Preços salvos em ${items.length - skipped.length} item(s) confirmados. Status atualizado.`
+              + (skipped.length ? ` Não alterados (já aprovados): ${skipped.join(', ')}.` : '');
+          }
         } else {
           if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
           const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();

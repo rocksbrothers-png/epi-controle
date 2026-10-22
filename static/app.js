@@ -16626,13 +16626,13 @@ async function loadPurchaseOrders() {
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _purchaseOrders.map(po => `<tr>
       <td>${po.id}</td>
-      <td>${po.po_number || '—'}</td>
-      <td>${po.supplier || '—'}</td>
-      <td>${po.unit_name || '—'}</td>
+      <td>${esc(po.po_number || '—')}</td>
+      <td>${esc(po.supplier || '—')}</td>
+      <td>${esc(po.unit_name || '—')}</td>
       <td>${purchaseStatusBadge(po.status)}</td>
       <td>${fmtBrl(po.total_value)}</td>
       <td>${po.items_count || 0}</td>
-      <td style="font-size:12px;">${po.created_by_name || '—'}</td>
+      <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
       <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" onclick="openPoSupplierActionsModal(${po.id})">Fornecedor</button></td>
     </tr>`).join('');
@@ -17437,14 +17437,14 @@ async function openPoDetail(poId) {
     if (titleEl) titleEl.textContent = `PO #${po.id}${po.po_number ? ' — ' + po.po_number : ''}`;
     const infoEl = document.getElementById('compras-po-detail-info');
     if (infoEl) infoEl.innerHTML = `
-      <div><strong>Fornecedor</strong><br>${po.supplier || '—'}</div>
+      <div><strong>Fornecedor</strong><br>${esc(po.supplier || '—')}</div>
       <div><strong>Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? `Até ${po.postponed_until}` : '')}</div>
       <div><strong>Total</strong><br>${fmtBrl(po.total_value)}</div>
-      <div><strong>Nº PO</strong><br>${po.po_number || `PO-${po.id}`}</div>
-      <div><strong>Unidade</strong><br>${po.unit_name || '—'}</div>
-      <div><strong>Previsão Entrega</strong><br>${po.expected_delivery_date || '—'}</div>
-      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${po.approved_by_name} em ${(po.approved_at || '').slice(0,10)}` : '—'}</div>
-      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${po.approval_comment}</div>` : ''}
+      <div><strong>Nº PO</strong><br>${esc(po.po_number || `PO-${po.id}`)}</div>
+      <div><strong>Unidade</strong><br>${esc(po.unit_name || '—')}</div>
+      <div><strong>Previsão Entrega</strong><br>${esc(po.expected_delivery_date || '—')}</div>
+      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${esc(po.approved_by_name)} em ${esc((po.approved_at || '').slice(0,10))}` : '—'}</div>
+      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${esc(po.approval_comment)}</div>` : ''}
     `;
     // P1-5 — stepper do ciclo de recebimento da PO.
     const stepperEl = document.getElementById('compras-po-stepper');
@@ -17461,20 +17461,20 @@ async function openPoDetail(poId) {
     // Show suggestions to buyer when PO was returned
     const infoEl2 = document.getElementById('compras-po-detail-info');
     if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
-      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${po.buyer_suggestions}</div>`);
+      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${esc(po.buyer_suggestions)}</div>`);
     }
     const tbody = document.getElementById('compras-po-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => `<tr>
-      <td>${i.epi_name || '—'}</td>
-      <td>${i.ca || '—'}</td>
-      <td>${i.manufacturer || '—'}</td>
-      <td>${i.supplier || '—'}</td>
-      <td style="font-size:12px;">${[i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—'}</td>
-      <td>${i.quantity}</td>
+      <td>${esc(i.epi_name || '—')}</td>
+      <td>${esc(i.ca || '—')}</td>
+      <td>${esc(i.manufacturer || '—')}</td>
+      <td>${esc(i.supplier || '—')}</td>
+      <td style="font-size:12px;">${esc([i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—')}</td>
+      <td>${esc(i.quantity)}</td>
       <td>${fmtBrl(i.unit_price)}</td>
       <td>${fmtBrl(i.total_price)}</td>
       <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
-      <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
+      <td>${esc(ITEM_STATUS_LABELS[i.status] || i.status)}</td>
     </tr>`).join('');
     const eventsEl = document.getElementById('compras-po-events');
     if (eventsEl) {

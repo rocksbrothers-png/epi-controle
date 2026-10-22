@@ -146,3 +146,38 @@ reprova: declaração de nível superior nova no `app.js`; endpoint `/api/` novo
 extraída que volta ao `app.js`; módulo extraído não carregado antes do `app.js`; `business` usando
 DOM/HTTP/storage/estado global; `integrations` usando DOM. O baseline
 (`static/js/test/app-js-baseline.json`) é uma catraca: só diminui (`--update` remove, nunca adiciona).
+
+## 8. Registro formal: defeitos preexistentes encontrados na validação (2026-10-22)
+
+Teste funcional da importação de cotação (Compras → Requisição → importar arquivo) no Chromium,
+com backend real e só os endpoints da requisição/cotação interceptados, **idêntico em `main` e na
+UBX-V1** (5 cenários: fluxo real, parse HTTP 500, arquivo sem linhas, salvar HTTP 400, detalhe
+exposto). A refatoração não altera o comportamento; o comportamento de `main` é que tem defeitos:
+
+| Sev. | Defeito (preexistente em `main`) | Evidência | Tratamento |
+|---|---|---|---|
+| P1 | `views/purchases.js` lê `globalThis._currentPrDetail`, mas no `app.js` é `let` de bloco fora da ponte de acessores: a conciliação recebe lista vazia e "Salvar Preços"/"Criar PO a partir do arquivo" respondem sempre "Nenhum item do CSV foi associado" | navegador: nenhum payload enviado; com o detalhe exposto, 3 itens associados | PR separado `claude/compras-importacao-cotacao-falhas-silenciosas` (epi-controle#1045 / epi-controle-app#418) |
+| P2 | Chamadas `globalThis._parsePurchase*?.(…) ?? 0` / `_matchPurchaseImportRows?.(…) \|\| []`: se o script das regras não carregar, a prévia mostra R$ 0,00 e quantidade 1 sem aviso | navegador com o módulo bloqueado | mesmo PR separado: erro explícito no painel, nada enviado |
+| P3 | A prévia calcula a quantidade sem o fallback da quantidade requisitada (linha sem `qtd` mostra 1; o salvamento usa a requisitada) | navegador: prévia 1, payload 2 | apenas registrado — regra de exibição, decisão de produto |
+
+Os PRs UBX-V1 não foram ampliados para corrigir esses itens.
+
+## 9. Coordenação com os PRs de estoque (epi-controle#1043 / epi-controle-app#416)
+
+Arquivos compartilhados: `static/app.js`, `static/index.html`, `static/views/_scripts.html`,
+`static/js/test/run-tests.js` e os dígitos F4/F5b. Mesclagem simulada (worktree descartável, sem
+tocar a branch de estoque): `app.js`, `_scripts.html` e `run-tests.js` mesclam sem conflito; os
+conflitos são só em artefatos gerados (`index.html` → `build_index.py build`; dígitos → recálculo
+pelo próprio teste). Com os dois integrados, 468 testes JS passam, mas **a guarda UBX reprova**
+o que o PR de estoque adiciona ao monólito: `loadStockPhysicalRecords`, `openStockPhysicalDialog`,
+`/api/stock/dispositions` e `/api/stock/incomplete-items`.
+
+É exatamente o que a guarda existe para sinalizar; a decisão de ordem é humana:
+
+- **Estoque primeiro:** a branch UBX incorpora `main` e regenera o baseline — as quatro entradas
+  passam a fazer parte do estado inicial congelado (o baseline registra `main` no momento em que a
+  guarda entra).
+- **UBX primeiro:** o PR de estoque move as duas funções para `static/js/modules/stock/{ui,integrations}/`
+  (ou um humano decide explicitamente aceitá-las no baseline daquele PR).
+
+Nenhuma alteração foi feita nas branches de estoque.

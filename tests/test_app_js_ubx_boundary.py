@@ -147,3 +147,26 @@ def test_catraca_extracao_exige_atualizar_baseline_e_update_so_remove(sandbox: P
     assert "_readFileAsBase64" not in after["declarations"]
     assert set(after["declarations"]) <= set(before["declarations"])
     assert set(after["endpoints"]) <= set(before["endpoints"])
+
+
+def test_sabotagem_classe_nova_no_app_js_reprova(sandbox: Path):
+    _append_to_app_js(sandbox, "class NovoServicoNoMonolito {}")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "NovoServicoNoMonolito" in result.stderr
+
+
+def test_sabotagem_endpoint_com_aspas_duplas_reprova(sandbox: Path):
+    _append_to_app_js(sandbox, 'globalThis.__y = () => api("/api/aspas-duplas-no-monolito");')
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "/api/aspas-duplas-no-monolito" in result.stderr
+
+
+def test_sabotagem_subpasta_de_business_herda_a_regra(sandbox: Path):
+    nested = sandbox / "static/js/modules/purchases/business/import/helpers.js"
+    nested.parent.mkdir(parents=True, exist_ok=True)
+    nested.write_text("'use strict';\ndocument.body.innerHTML = '';\n", encoding="utf-8")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "business/import/helpers.js" in result.stderr

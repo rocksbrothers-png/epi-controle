@@ -35,8 +35,8 @@ const BASELINE = path.join(__dirname, 'app-js-baseline.json');
 // Toda declaração de nível superior do app.js começa na coluna 0 (o arquivo
 // inteiro vive dentro de um único bloco `if` sem indentação). A contagem por
 // este padrão bate com a da AST (scripts/audit_app_js.js).
-const DECL_RE = /^(?:async\s+)?(?:function\*?|const|let|var)\s+([A-Za-z_$][\w$]*)/gm;
-const ENDPOINT_RE = /['`](\/api\/[^'`?$\s]*)/g;
+const DECL_RE = /^(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm;
+const ENDPOINT_RE = /['"`](\/api\/[^'"`?$\s]*)/g;
 
 const LAYER_RULES = {
   business: [
@@ -112,6 +112,9 @@ function check({ update = false } = {}) {
   const scriptsHtml = fs.readFileSync(SCRIPTS_HTML, 'utf-8');
   const scriptOrder = [...scriptsHtml.matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
   const appIndex = scriptOrder.indexOf('/app.js');
+  if (appIndex < 0) {
+    errors.push('/app.js não encontrado em static/views/_scripts.html — a ordem de carga não pode ser verificada.');
+  }
   for (const [modulePath, names] of Object.entries(baseline.extracted)) {
     const full = path.join(ROOT, 'static', modulePath);
     if (!fs.existsSync(full)) {
@@ -130,14 +133,15 @@ function check({ update = false } = {}) {
     const idx = scriptOrder.indexOf(`/${modulePath}`);
     if (idx < 0) {
       errors.push(`static/${modulePath} não é carregado em static/views/_scripts.html.`);
-    } else if (appIndex >= 0 && idx > appIndex) {
+    } else if (idx > appIndex) {
       errors.push(`static/${modulePath} precisa carregar antes de /app.js.`);
     }
   }
 
   for (const file of walkFiles(MODULES_DIR)) {
     const rel = path.relative(MODULES_DIR, file).split(path.sep);
-    const layer = rel.length >= 3 ? rel[rel.length - 2] : null;
+    // modules/<domínio>/<camada>/... — subpastas herdam a regra da camada.
+    const layer = rel.length >= 3 ? rel[1] : null;
     const rules = LAYER_RULES[layer];
     if (!rules) { continue; }
     const body = stripComments(fs.readFileSync(file, 'utf-8'));

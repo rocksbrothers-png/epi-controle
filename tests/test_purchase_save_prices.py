@@ -248,18 +248,16 @@ def test_stale_confirmation_is_rejected_after_concurrent_change():
 
 
 def test_concurrent_write_between_validation_and_update_is_rejected(monkeypatch):
-    import modules.purchases.service as service
     conn = _conn()
-    original = service.validate_quote_associations
 
     def validate_then_race(connection, pr, associations):
-        validated = original(connection, pr, associations)
+        validated = validate_quote_associations(connection, pr, associations)
         connection.execute("UPDATE purchase_request_items SET updated_at = 'race' WHERE id = 1000")
         return validated
 
-    monkeypatch.setattr(service, 'validate_quote_associations', validate_then_race)
+    monkeypatch.setattr('modules.purchases.service.validate_quote_associations', validate_then_race)
     with pytest.raises(ValueError, match='durante o salvamento'):
-        service.save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, 50.0)], ip_address='')
+        save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, 50.0)], ip_address='')
 
 
 def test_confirmed_association_is_audited_with_operator_identity():

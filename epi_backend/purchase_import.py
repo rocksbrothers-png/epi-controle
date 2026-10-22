@@ -277,7 +277,10 @@ def parse_purchase_quote_file(file_bytes, filename):
             continue
 
         try:
-            quantity = parse_quantity(get_value('qtd'))
+            # Quantidade ausente/ilegível fica em branco na linha: quem associa
+            # usa a quantidade do item, em vez de um "1" que o arquivo não diz.
+            stated_quantity = parse_quantity(get_value('qtd'), default=None)
+            quantity = stated_quantity or 1
             unit_price = parse_money_decimal(get_value('valor_unitario'))
             parsed_total = parse_money_decimal(get_value('total')) if get_value('total') else (unit_price * quantity).quantize(MONEY_CENTS, rounding=ROUND_HALF_UP)
             row = {
@@ -296,7 +299,7 @@ def parse_purchase_quote_file(file_bytes, filename):
                 'tamanho': get_value('tamanho'),
                 'tamanho_luva': get_value('tamanho_luva'),
                 'tamanho_uniforme': get_value('tamanho_uniforme'),
-                'qtd': str(quantity),
+                'qtd': str(stated_quantity) if stated_quantity else '',
                 'valor_unitario': f'{unit_price:.2f}',
                 'total': f'{parsed_total:.2f}',
                 'status_item': get_value('status_item'),

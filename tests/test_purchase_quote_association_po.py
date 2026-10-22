@@ -157,3 +157,21 @@ def test_quote_import_po_rejects_concurrent_link(monkeypatch):
     monkeypatch.setattr('modules.purchases.service.generate_po_number', number_while_another_po_links)
     with pytest.raises(ValueError, match='Outra PO foi vinculada'):
         create_purchase_order(conn, ADMIN, _payload(_item()), '')
+
+
+def test_quote_import_po_stores_validated_quantity_and_price_not_client_fields():
+    conn = _conn()
+    # quantidade omitida + quantity_requested forjado: a PO usa o que foi validado
+    item = _item(quantity_requested=999, unit_price=10.004)
+    item.pop('quantity')
+    create_purchase_order(conn, ADMIN, _payload(item), '')
+    row = conn.execute('SELECT quantity, unit_price, total_price FROM purchase_order_items').fetchone()
+    assert (row['quantity'], row['unit_price'], row['total_price']) == (3, 10.0, 30.0)
+
+
+@pytest.mark.parametrize('bad', [float('inf'), '2.5'])
+def test_quote_import_po_rejects_non_integral_quantity(bad):
+    conn = _conn()
+    with pytest.raises(ValueError, match='Quantidade inválida'):
+        create_purchase_order(conn, ADMIN, _payload(_item(quantity=bad)), '')
+    assert _po_count(conn) == 0

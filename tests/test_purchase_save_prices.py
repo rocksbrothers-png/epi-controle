@@ -405,3 +405,17 @@ def test_request_status_changed_concurrently_is_rejected(monkeypatch):
     monkeypatch.setattr('modules.purchases.service.validate_quote_associations', validate_then_cancel)
     with pytest.raises(ValueError, match='mudou de situação'):
         save_purchase_request_prices(conn, ACTOR, _pr(conn), [_assoc(1000, 9.0)], ip_address='')
+
+
+@pytest.mark.parametrize('quote_epi', ['', 'Luva', 'Produto genérico'])
+def test_matching_ca_alone_is_not_identification(quote_epi):
+    conn = _conn()
+    # Regra 4: o CA coincidente confirma, mas não identifica o produto sozinho
+    expected = 'contradiz o item' if quote_epi == 'Produto genérico' else 'sem identificação inequívoca'
+    _rejects(conn, _assoc(1000, quote_epi=quote_epi, quote_ca='12345', quote_manufacturer=''), expected)
+
+
+@pytest.mark.parametrize('bad', ['Infinity', '2.5', '0', '-3', 'abc'])
+def test_invalid_quantity_is_a_validation_error(bad):
+    conn = _conn()
+    _rejects(conn, _assoc(1000, quantity=bad), 'Quantidade inválida|quantidade inválida no arquivo')

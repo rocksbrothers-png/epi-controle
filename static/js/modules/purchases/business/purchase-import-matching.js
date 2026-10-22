@@ -248,11 +248,12 @@
         }
       });
 
-    // Identidade do produto: CA, id do item, ou — sem CA — descrição/modelo
-    // IGUAIS. Descrição parcial, fabricante, fornecedor, origem e colaborador
-    // nunca bastam. Qualquer contradição torna o item inelegível.
-    const identified = matches.some((m) => ['id do item', 'CA', 'descrição', 'modelo'].includes(m));
-    const resembles = identified || description === 'partial' || matches.includes('fabricante');
+    // Identidade do produto: id do item, ou descrição/modelo IGUAIS. O CA
+    // coincidente confirma, mas não identifica sozinho. Descrição parcial,
+    // fabricante, fornecedor, origem e colaborador nunca bastam. Qualquer
+    // contradição torna o item inelegível.
+    const identified = matches.some((m) => ['id do item', 'descrição', 'modelo'].includes(m));
+    const resembles = identified || matches.includes('CA') || description === 'partial' || matches.includes('fabricante');
     const eligible = !blocked && identified && contradictions.length === 0;
     const strong = eligible && matches.includes('CA')
       && matches.some((m) => ['descrição', 'modelo', 'id do item'].includes(m))

@@ -128,6 +128,15 @@ module.exports = ({ test, testAsync, assert, eq }) => {
     assert(row.candidates[0].divergences.some((d) => d.includes('descrição diferente')), 'divergência de descrição');
   });
 
+  test('Cotação (regras): CA igual sem descrição ou modelo aparece, mas não é elegível', () => {
+    const h = harness();
+    const [row] = h.context.evaluatePurchaseImportCandidates([{ epi: '', ca: '12345' }], ITEMS);
+    const luva = row.candidates.find((c) => c.itemId === 501);
+    assert(luva, 'candidato com CA igual continua visível');
+    eq(luva.eligible, false);
+    eq(row.suggestedItemId, null);
+  });
+
   test('Cotação (regras): múltiplos candidatos não são escolhidos sozinhos', () => {
     const h = harness();
     const twins = ITEMS.concat([{ ...ITEMS[0], id: 504, glove_size: 'M' }]);

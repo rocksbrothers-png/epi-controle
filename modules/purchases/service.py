@@ -1873,6 +1873,16 @@ def _finite_money(value, message):
     return round(number, 2)
 
 
+def _positive_quantity(value, message):
+    try:
+        number = float(str(value).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        raise ValueError(message) from None
+    if not math.isfinite(number) or number <= 0 or number != int(number):
+        raise ValueError(message)
+    return int(number)
+
+
 def _quote_price_and_quantity(entry, raw, current_quantity):
     """Preço e quantidade confirmados precisam ser os do arquivo assinado."""
     row, label = entry['row'], entry['label']
@@ -1881,13 +1891,11 @@ def _quote_price_and_quantity(entry, raw, current_quantity):
     if abs(unit_price - signed_price) > 0.005:
         raise ValueError(f'{label}: o preço confirmado difere do arquivo (R$ {signed_price:.2f}).')
     if raw.get('quantity') is not None and str(raw.get('quantity')).strip() != '':
-        quantity = int(raw.get('quantity'))
-        if quantity <= 0:
-            raise ValueError('Quantidade inválida.')
+        quantity = _positive_quantity(raw.get('quantity'), 'Quantidade inválida.')
     else:
-        quantity = int(current_quantity or 1)
+        quantity = _positive_quantity(current_quantity or 1, 'Quantidade inválida.')
     signed_qty = str(row.get('qtd') or '').strip()
-    if signed_qty and int(float(signed_qty)) != quantity:
+    if signed_qty and _positive_quantity(signed_qty, f'{label}: quantidade inválida no arquivo.') != quantity:
         raise ValueError(f'{label}: a quantidade confirmada difere do arquivo ({signed_qty}).')
     return unit_price, quantity
 
@@ -1988,11 +1996,12 @@ def validate_quote_associations(connection, pr, associations, actor):
                 f'{label}: a linha contradiz o item #{item_id} ({", ".join(contradictions)}). '
                 'Associação recusada.'
             )
-        identified = 'CA' in matches or 'id do item' in matches or 'descrição' in matches or 'modelo' in matches
+        # O CA coincidente confirma, mas não identifica sozinho (regra 4).
+        identified = 'id do item' in matches or 'descrição' in matches or 'modelo' in matches
         if not identified:
             raise ValueError(
-                f'{label}: sem identificação inequívoca do produto (CA, descrição ou modelo iguais, ou id do item). '
-                'Descrição parcial, fabricante, fornecedor ou origem não bastam para associar.'
+                f'{label}: sem identificação inequívoca do produto (descrição ou modelo iguais, ou id do item). '
+                'CA sozinho, descrição parcial, fabricante, fornecedor ou origem não bastam para associar.'
             )
         validated.append({'raw': raw, 'row': row, 'item': item, 'epi': epi, 'matches': matches, 'label': label,
                           'line': row.get('line') or index})
@@ -2445,20 +2454,31 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         quote_entries = validate_quote_associations(connection, pr, [
             {**raw, 'item_id': raw.get('purchase_request_item_id')} for raw in items
         ], actor)
-        catalog_by_item = {}
+        validated_by_item = {}
         for entry in quote_entries:
-            if int(entry['raw'].get('epi_id') or 0) != int(entry['item'].get('epi_id') or 0):
-                raise ValueError(f'{entry["label"]}: o EPI enviado não é o EPI do item #{entry["item"]["id"]}.')
-            unit_price, quantity = _quote_price_and_quantity(entry, entry['raw'], entry['item'].get('quantity_requested'))
+            item = entry['item']
+            if int(entry['raw'].get('epi_id') or 0) != int(item.get('epi_id') or 0):
+                raise ValueError(f'{entry["label"]}: o EPI enviado não é o EPI do item #{item["id"]}.')
+            unit_price, quantity = _quote_price_and_quantity(entry, entry['raw'], item.get('quantity_requested'))
             entry['raw']['unit_price'], entry['raw']['quantity'] = unit_price, quantity
-            # A PO guarda a identificação do catálogo, não o texto do arquivo.
-            catalog_by_item[int(entry['item']['id'])] = {
-                'epi_name': entry['epi'].get('name') or entry['item'].get('epi_name') or '',
-                'ca': entry['epi'].get('ca') or entry['item'].get('ca') or '',
-                'manufacturer': entry['epi'].get('manufacturer') or entry['item'].get('manufacturer') or '',
+            # A PO grava exatamente o que foi validado: preço e quantidade da
+            # linha assinada, identificação do catálogo e dados do item da
+            # requisição — nunca o texto do arquivo ou campos soltos do cliente.
+            values = {
+                'unit_price': unit_price,
+                'quantity': quantity,
+                'quantity_requested': quantity,
+                'epi_name': entry['epi'].get('name') or item.get('epi_name') or '',
+                'ca': entry['epi'].get('ca') or item.get('ca') or '',
+                'manufacturer': entry['epi'].get('manufacturer') or item.get('manufacturer') or '',
             }
+            for key in ('size', 'glove_size', 'uniform_size', 'unit_measure', 'origin',
+                        'employee_name', 'employee_sector', 'employee_role'):
+                if key in item:
+                    values[key] = item.get(key) or ''
+            validated_by_item[int(item['id'])] = values
         items = [
-            {**raw, **catalog_by_item.get(int(raw.get('purchase_request_item_id') or 0), {})} for raw in items
+            {**raw, **validated_by_item[int(raw.get('purchase_request_item_id') or 0)]} for raw in items
         ]
 
     now = datetime.now(UTC).isoformat()

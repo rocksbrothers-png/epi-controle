@@ -32,7 +32,20 @@ enviou.
 
 Além das regras acima: requisição obrigatória; requisição que já tem PO vinculada é recusada; o
 vínculo é gravado com `WHERE linked_po_id IS NULL` (duas criações simultâneas não geram duas POs);
-nome, CA e fabricante gravados na PO vêm do catálogo, não do texto do arquivo.
+nome, CA e fabricante gravados na PO vêm do catálogo, não do texto do arquivo; preço e quantidade
+são os validados contra a linha assinada; tamanhos, unidade de medida, origem e colaborador vêm do
+item da requisição.
+
+Quantidade ausente ou ilegível no arquivo fica em branco na linha (não vira "1"): a associação
+usa a quantidade do item da requisição.
+
+### Limites conhecidos (fora do escopo desta decisão)
+
+- PO criada por outros caminhos (sem `source: "quote_import"`, ex.: Flutter) não passa por estas
+  regras nem pela proteção de vínculo duplo — mantém o contrato anterior.
+- A assinatura vincula empresa, usuário e horário, não a requisição: a mesma linha pode ser
+  apresentada a outra requisição da empresa em 24 h, onde as regras de identidade valem de novo.
+  A assinatura impede alteração no navegador; não valida o conteúdo que o próprio operador enviou.
 
 O arquivo de cotação aceita a coluna opcional **modelo** (`modelo`, `model`, `modelo_referencia`,
 `referencia_modelo`, `model_reference`), comparada com `epis.model_reference`.

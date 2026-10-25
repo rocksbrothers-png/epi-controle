@@ -41,13 +41,13 @@ def sandbox(tmp_path: Path) -> Path:
         "static/app.js",
         "static/views/_scripts.html",
         str(GUARD),
-        str(BASELINE),
-        "static/js/utils/debug.js",
     ):
         dst = tmp_path / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dst)
-    shutil.copytree(ROOT / "static/js/modules", tmp_path / "static/js/modules")
+    # UBX-V2: as regras de camada UI e de dependência entre scripts leem
+    # static/js inteiro (views, modules, utils, core).
+    shutil.copytree(ROOT / "static/js", tmp_path / "static/js", dirs_exist_ok=True)
     return tmp_path
 
 
@@ -170,3 +170,71 @@ def test_sabotagem_subpasta_de_business_herda_a_regra(sandbox: Path):
     result = _run(sandbox)
     assert result.returncode == 1
     assert "business/import/helpers.js" in result.stderr
+
+
+# ── UBX-V2 ──────────────────────────────────────────────────────────────────
+
+
+def _append(root: Path, rel: str, code: str) -> None:
+    target = root / rel
+    target.write_text(target.read_text(encoding="utf-8") + "\n" + code + "\n", encoding="utf-8")
+
+
+def test_sabotagem_endpoint_novo_na_camada_ui_reprova(sandbox: Path):
+    _append(sandbox, "static/js/views/purchases.js", "globalThis.__x = () => api('/api/endpoint-novo-na-view');")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "camada UI) ganhou endpoints HTTP: /api/endpoint-novo-na-view" in result.stderr
+
+
+def test_sabotagem_dependencia_circular_entre_scripts_reprova(sandbox: Path):
+    # dashboard.js já lê __EPI_DASHBOARD_SCOPE__; o caminho inverso fecha o ciclo.
+    _append(sandbox, "static/js/views/dashboard-scope.js", "globalThis.__x = () => globalThis.__EPI_DASHBOARD__;")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "dependência circular entre scripts" in result.stderr
+    assert "js/views/dashboard-scope.js ↔ js/views/dashboard.js" in result.stderr
+
+
+def test_sabotagem_business_dependendo_da_camada_ui_reprova(sandbox: Path):
+    _append(sandbox, "static/js/modules/shared/business/value-format.js", "const ui = __EPI_PURCHASES__;")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "não pode depender da camada UI: lê __EPI_PURCHASES__" in result.stderr
+
+
+def test_sabotagem_business_lendo_global_reprova(sandbox: Path):
+    _append(sandbox, "static/js/modules/shared/business/value-format.js", "const t = globalThis.tr;")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "leitura de global" in result.stderr
+
+
+def test_business_pode_publicar_o_proprio_contrato(sandbox: Path):
+    _append(sandbox, "static/js/modules/shared/business/value-format.js", "globalThis.__contratoNovo = 1;")
+    result = _run(sandbox)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_sabotagem_modulo_gigante_reprova(sandbox: Path):
+    _append(sandbox, "static/js/modules/shared/business/value-format.js", "\n".join("// linha" for _ in range(600)))
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "novo monólito" in result.stderr
+
+
+def test_catraca_ui_update_so_remove_endpoint(sandbox: Path):
+    view = sandbox / "static/js/views/fichas.js"
+    text = view.read_text(encoding="utf-8")
+    assert "/api/ficha-epi-audit" in text
+    view.write_text(text.replace("/api/ficha-epi-audit", "/api-removido"), encoding="utf-8")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "baseline desatualizado" in result.stderr
+
+    assert _run(sandbox, "--update").returncode == 0
+    baseline = json.loads((sandbox / BASELINE).read_text(encoding="utf-8"))
+    assert "js/views/fichas.js" not in baseline["uiEndpoints"]
+    # devolver o endpoint depois do --update volta a reprovar: o modo update nunca adiciona
+    view.write_text(text, encoding="utf-8")
+    assert _run(sandbox).returncode == 1

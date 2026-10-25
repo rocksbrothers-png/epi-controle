@@ -26,3 +26,13 @@ Esta auditoria não alterou implementação, branches ou bancos compartilhados. 
 A base já possui jornadas PostgreSQL de unidades, colaboradores, EPIs; suites específicas de histórico, fornecedores e estoque; testes P0 de rollback com snapshots completos, ABA e referências posteriores; testes de identidade, números sem truncamento, formatos e segurança assíncrona. Os cenários de efeitos secundários de fornecedor, conciliação física de estoque e interrupção após commit de negócio não estão cobertos pelos testes existentes.
 
 Este é um relatório preliminar. Não constitui auditoria dos HEADs finais nem aprovação da implementação corrigida.
+
+
+## Correção após investigação adicional
+
+Existe um fluxo separado de conciliação física, `reconcile_untracked_lot`, que cria
+peças e lotes a partir de saldo agregado mediante contagem/evidência explícitas.
+A ausência de peças após importar não implica impossibilidade de completar a
+operação. A regressão final exercita essa conciliação e comprova diferença zero.
+O suporte ausente é transportar os metadados físicos no arquivo do Centro.
+Esta nota substitui qualquer conclusão preliminar mais ampla sobre regularização.

@@ -50,7 +50,7 @@ inclui o requisito de completude da solicitação, não apenas o sucesso do endp
 | EPIs | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 | Fornecedores | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 | Histórico de Entregas | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
-| Estoque | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | FALHOU |
+| Estoque | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 
 ### SaaS
 
@@ -61,18 +61,26 @@ inclui o requisito de completude da solicitação, não apenas o sucesso do endp
 | EPIs | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 | Fornecedores | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 | Histórico de Entregas | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
-| Estoque | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | FALHOU |
+| Estoque | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU | PASSOU |
 
 Rollback: PASSOU refere-se à reversão física antes de homologar. Após homologar,
 a reversão lógica de Histórico de Entregas PASSOU; reversão das outras cinco
 entidades é NÃO SUPORTADO e sua recusa explícita foi testada. Nenhuma linha
 homologada é apagada para contornar essa restrição.
 
-Estoque: Upload até PostgreSQL PASSOU **somente para saldo agregado auditado por
-movimento**. Lotes, fabricação e validade física na migração são NÃO SUPORTADO.
-A prova independente demonstrou saldo físico 100, peças rastreadas 0, elegível 0,
-livre 0 e diferença de conciliação 100. Logo, o requisito de estoque utilizável
-com rastreabilidade física FALHOU; não há aprovação de funcionamento completo.
+Estoque: a importação do catálogo grava **saldo agregado auditado por movimento**.
+A etapa adicional existente de conciliação física exige contagem explícita, lote,
+fabricação, validade, tamanho e evidência. Ela foi exercitada com 37 peças: saldo
+físico = rastreado = elegível = livre = 37; diferença de conciliação = 0.
+Depois da conciliação, a homologação PASSOU e a tentativa de rollback foi
+recusada preservando saldo, movimento, lote, peças e eventos. Antes da conciliação,
+o mesmo saldo agregado permanece indisponível para entrega. Não há sucesso físico
+implícito na mensagem de importação.
+
+Importar metadados físicos diretamente do arquivo de migração é NÃO SUPORTADO
+pelo descritor atual. Arquivos que trazem esses dados são recusados; eles não são
+silenciosamente descartados nem convertidos em validade/lotes inventados. O
+PASSOU da matriz exige a etapa de conciliação física explícita acima.
 
 ## Defeitos corrigidos e provas
 
@@ -103,6 +111,12 @@ com rastreabilidade física FALHOU; não há aprovação de funcionamento comple
    mapeamento. Escopo com peças já rastreadas é bloqueado sob o lock de estoque
    compartilhado com as operações de domínio, preservando lote, datas e saldo.
 
+9. A auditoria independente reproduziu importação → conciliação física → rollback
+   apagando o saldo sem tocar sua versão, deixando peças sem respaldo. O reverser
+   de estoque agora compartilha o lock do domínio e recusa peças/lotes/reservas ou
+   movimentos posteriores antes de apagar efeitos do job. A regressão usa a
+   operação real `reconcile_untracked_lot` e prova preservação de todos os efeitos.
+
 As regressões existentes das Fases 1–3 cobrem identidade CPF/matrícula/CA,
 referências entre tenants, IDOR/RBAC, valores malformados, inteiros sem truncamento,
 duplicatas, upsert, overwrite, concorrência, snapshots ABA, dependências FK,
@@ -125,19 +139,21 @@ Os bancos dedicados foram `mig_data_e2e_corporate`, `mig_data_e2e_saas`,
 A auditoria aplicou todas as 36 migrations. Nenhum banco compartilhado ou
 serviço remoto de dados foi usado. Não há alteração de schema nesta entrega.
 
-## Limitação bloqueante e correção proposta
+## Ressalva operacional e capacidade não suportada
 
-O catálogo de quatro campos de Estoque não representa lote, fabricação, validade
-física ou evidência. O writer existente produz movimento + saldo, mas não cria
-`epi_stock_items`, `epi_stock_lots` ou eventos do ciclo físico. O saldo importado
-não passa automaticamente a ser elegível para entrega. A regularização de peças
-não resolve a ausência de peças criadas. O aviso da prévia informa essa dependência.
+O descritor de quatro campos de Estoque importa movimento + saldo. O fluxo
+existente de conciliação física (`/api/stock/lots/reconcile`) individualiza esse
+saldo mediante contagem e evidência, cria lotes/peças/eventos e permite chegar a
+saldo elegível conciliado. Essa etapa é necessária antes de tratar o estoque como
+utilizável; o aviso da prévia foi ajustado para explicitar a dependência.
 
-Completar esse requisito exige contrato explícito de importação física com
-proveniência da validade, associação de lotes/peças, eventos de recebimento,
-conciliação entre razão, itens, reservas e saldo, e rollback desses efeitos.
-Não se fabricaram datas, lotes ou evidências para simular completude. Até essa
-capacidade ser implementada e comprovada, **Estoque não recebe veredito completo**.
+O arquivo do Centro não transporta lote, fabricação ou validade física. Preservar
+esses metadados diretamente de exports legados exige ampliar o contrato de
+importação física com proveniência de validade e mapeamento para lotes/peças.
+Essa capacidade é NÃO SUPORTADO nesta entrega. O bloqueio explícito evita perda de
+metadados e a modificação de estoque previamente rastreado. A aprovação com
+ressalvas se limita ao contrato operacional comprovado e não promete importação
+automática desses dados físicos.
 
 Não foram executados formatos de banco/API/ERP ou binários: NÃO SUPORTADO pelo
 contrato atual. O navegador auditado é o web legado; jornada Flutter é
@@ -148,10 +164,13 @@ de progresso por linha na interface síncrona.
 
 ## Veredito
 
-**TECHNICAL VERDICT: REPROVADO** para a exigência de seis categorias integralmente
-operacionais com rastreabilidade física de estoque. A limpeza do catálogo e as
-correções de integridade têm evidência positiva, mas não eliminam esse bloqueador.
+**TECHNICAL VERDICT: APROVADO COM RESSALVAS** para os seis contratos declarados,
+incluindo conciliação física explícita de estoque. Importação automática de
+metadados físicos em arquivo permanece NÃO SUPORTADO.
 
-**READY FOR HUMAN MERGE DECISION: NO** para aprovar o escopo completo solicitado.
-A entrega permanece em PRs draft; nenhuma execução de merge, deploy, force-push,
+**READY FOR HUMAN MERGE DECISION:** o estado definitivo, após CI e auditoria dos
+HEADs finais, consta na entrega e nas descrições dos PRs. A decisão humana deve
+considerar a ressalva de estoque acima; não há autorização de merge/deploy.
+
+Os PRs permanecem draft. Nenhuma execução de merge, deploy, force-push,
 exclusão de dados existentes ou mudança de proteção de branch foi realizada.

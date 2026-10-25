@@ -2025,9 +2025,43 @@ def migration_stock_writer(connection, *, descriptor, company_id, job_id, action
 
 
 def migration_stock_reverser(connection, *, descriptor, company_id, job_id):
-    """Desfaz os efeitos secundários do writer de estoque: apaga os movimentos
-    de migração do job. O saldo (`unit_epi_stock`) é restaurado/apagado pelo
-    rollback genérico a partir do before_json. Só no rollback físico."""
+    """Recusa efeitos posteriores antes de desfazer o movimento da migração.
+
+    A conciliação física pode criar lote/peças sem alterar o saldo agregado ou
+    sua versão. Só comparar unit_epi_stock não protege essa operação posterior.
+    O lock compartilhado com conciliação, reserva e entrega fecha essa corrida.
+    """
+    from epi_backend.db import table_exists
+    from modules.data_migration.rollback import RollbackConflict
+    from modules.stock.eligibility import lock_stock_scope
+
+    scopes = connection.execute(
+        'SELECT DISTINCT s.unit_id, s.epi_id FROM unit_epi_stock s '
+        'JOIN migration_job_records r ON r.target_id=s.id AND r.company_id=s.company_id '
+        'WHERE r.job_id=? AND r.company_id=? AND r.target_table=? '
+        "AND r.action IN ('insert','update') ORDER BY s.epi_id, s.unit_id",
+        (int(job_id), int(company_id), 'unit_epi_stock'),
+    ).fetchall()
+    for raw_scope in scopes:
+        scope = row_to_dict(raw_scope)
+        unit_id, epi_id = int(scope['unit_id']), int(scope['epi_id'])
+        lock_stock_scope(connection, company_id, unit_id, epi_id)
+        for table, unit_column in (
+            ('epi_stock_items', 'unit_id'), ('epi_stock_lots', 'receipt_unit_id'),
+            ('stock_reservations', 'unit_id'),
+        ):
+            if table_exists(connection, table) and connection.execute(
+                f'SELECT 1 FROM {table} WHERE company_id=? AND {unit_column}=? AND epi_id=? LIMIT 1',  # noqa: S608
+                (int(company_id), unit_id, epi_id),
+            ).fetchone():
+                raise RollbackConflict('estoque possui conciliação física ou reservas posteriores')
+        if connection.execute(
+            'SELECT 1 FROM stock_movements WHERE company_id=? AND unit_id=? AND epi_id=? '
+            'AND id > (SELECT MIN(id) FROM stock_movements WHERE company_id=? AND source_type=? AND source_id=?) '
+            'AND NOT (source_type=? AND source_id=?) LIMIT 1',
+            (int(company_id), unit_id, epi_id, int(company_id), 'migration', int(job_id), 'migration', int(job_id)),
+        ).fetchone():
+            raise RollbackConflict('estoque possui movimentos posteriores à importação')
     connection.execute(
         'DELETE FROM stock_movements WHERE company_id = ? AND source_type = ? AND source_id = ?',
         (int(company_id), 'migration', int(job_id)),

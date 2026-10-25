@@ -386,3 +386,41 @@ def test_stock_import_preserves_existing_tracked_lot_and_physical_dates(api_ctx)
     after = row_to_dict(ctx['conn'].execute('SELECT * FROM epi_stock_items WHERE id=%s', (item,)).fetchone())
     assert after == before
     assert count(ctx, 'epi_stock_lots') == 1 and count(ctx, 'stock_movements') == 0
+
+
+def test_later_physical_reconciliation_keeps_balance_lot_items_and_events_on_rollback(api_ctx):
+    from modules.data_migration.rollback import read_row
+    from modules.data_migration.service import homologate_job, revert_job
+    from modules.stock.lot_evidence import reconcile_untracked_lot
+    from modules.stock.reservations import unit_balance
+
+    ctx = api_ctx
+    history(ctx, strategy='dry_run')
+    job = run(ctx, 'estoque', [row_for('estoque')])
+    cid = ctx['company_id']
+    unit = scalar(ctx['conn'], 'SELECT id FROM units WHERE company_id=%s', (cid,))
+    epi = scalar(ctx['conn'], 'SELECT id FROM epis WHERE company_id=%s', (cid,))
+    stock_id = scalar(ctx['conn'], 'SELECT id FROM unit_epi_stock WHERE company_id=%s', (cid,))
+    snapshot = read_row(ctx['conn'], 'unit_epi_stock', cid, stock_id)
+    result = reconcile_untracked_lot(ctx['conn'], ctx['actor'], unit, {
+        'idempotency_key': 'e2e_reconcile_' + uuid.uuid4().hex, 'quantity': 37, 'epi_id': epi,
+        'physical_lot_confirmed': True, 'lot_code': 'LATER-COUNTED-LOT', 'manufacture_date': '2025-01-01',
+        'physical_expiry_date': '2030-01-01', 'expiry_source': 'label', 'evidence': 'Synthetic package label',
+        'justification': 'Synthetic physically counted stock after import', 'size': 'M',
+        'evidence_file': {'filename': 'synthetic.png', 'mime': 'image/png',
+            'content_base64': base64.b64encode(b'\x89PNG\r\n\x1a\nsynthetic-evidence').decode()},
+    })
+    ctx['conn'].commit()
+    assert result['count'] == 37
+    assert read_row(ctx['conn'], 'unit_epi_stock', cid, stock_id) == snapshot
+    balance = unit_balance(ctx['conn'], cid, unit, epi)
+    assert balance['physical'] == balance['tracked_physical'] == balance['eligible'] == balance['free'] == 37
+    assert balance['reconciliation_delta'] == 0
+    event_count = count(ctx, 'epi_stock_events')
+    with pytest.raises(ValueError, match='Reversão recusada'):
+        revert_job(ctx['conn'], job['job_id'], cid, ctx['actor'])
+    assert unit_balance(ctx['conn'], cid, unit, epi) == balance
+    assert count(ctx, 'epi_stock_lots') == 1 and count(ctx, 'epi_stock_items') == 37
+    assert count(ctx, 'epi_stock_events') == event_count and count(ctx, 'stock_movements') == 1
+    homologate_job(ctx['conn'], job['job_id'], cid, ctx['actor'])
+    assert scalar(ctx['conn'], 'SELECT homologated_by FROM migration_jobs WHERE id=%s', (job['job_id'],)) == ctx['actor']['id']

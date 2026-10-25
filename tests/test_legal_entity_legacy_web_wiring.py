@@ -58,9 +58,12 @@ def test_report_filter_has_legal_entity_select():
 
 def test_report_payload_sends_legal_entity_id():
     """O backend já filtra por `legal_entity_id`; o legado precisa enviá-lo."""
-    app_js = _read('static', 'app.js')
-    assert "normalizeOptionalInt('legal_entity_id'" in app_js
-    assert "#report-legal-entity" in app_js
+    # UBX-V3 (Etapa 4): a leitura do formulário mora em reports-view.js (UI) e a
+    # validação numérica em report-filters.js (negócio).
+    view_js = _read('static', 'js', 'modules', 'reports', 'ui', 'reports-view.js')
+    business_js = _read('static', 'js', 'modules', 'reports', 'business', 'report-filters.js')
+    assert "legal_entity_id: reportForm?.querySelector('#report-legal-entity')?.value" in view_js
+    assert "['legal_entity_id', 'int']" in business_js
 
 
 # ── cadastro de unidade ──────────────────────────────────────────────────────

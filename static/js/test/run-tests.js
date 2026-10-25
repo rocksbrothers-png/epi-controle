@@ -74,7 +74,11 @@ function loadModule(relPath) {
   // UBX-V3: identificação de elementos e campos de formulário.
   'modules/shared/ui/form-field-identity.js',
   // UBX-V3: rótulos de domínio traduzidos com tr.
-  'modules/shared/ui/domain-labels.js'
+  'modules/shared/ui/domain-labels.js',
+  // UBX-V3: Relatórios (business → integrations → ui).
+  'modules/reports/business/report-filters.js',
+  'modules/reports/integrations/reports-api.js',
+  'modules/reports/ui/reports-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7740,6 +7744,7 @@ require('./shared-value-format-runtime')({ test, assert, eq });
 require('./shared-form-field-identity-runtime')({ test, assert, eq });
 require('./shared-domain-labels-runtime')({ test, assert, eq });
 require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
+require('./reports-view-runtime')({ testAsync, test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

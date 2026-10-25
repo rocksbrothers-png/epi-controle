@@ -181,7 +181,9 @@ def test_optional_bootstrap_sections_are_permission_guarded_and_403_is_skipped()
 
 def test_reports_are_not_loaded_or_alerted_when_permission_is_missing_or_forbidden():
     source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
-    render_reports_section = source[source.index("async function renderReports"):source.index("async function loadArchiveReports")]
+    # UBX-V3 (Etapa 4): renderReports mora em modules/reports/ui/reports-view.js.
+    reports_view = (_repo_root() / "static" / "js" / "modules" / "reports" / "ui" / "reports-view.js").read_text(encoding="utf-8")
+    render_reports_section = reports_view[reports_view.index("async function renderReports"):reports_view.index("function retentionStatusBadge")]
     render_all_section = source[source.index("function renderAll"):source.index("function init")]
 
     assert "recordOptionalBootstrapSectionSkipped('reports', 'missing_permission'" in render_reports_section

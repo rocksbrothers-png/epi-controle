@@ -332,40 +332,14 @@ def test_the_normalizer_always_returns_the_keys_its_callers_read():
 # é de produto e o motivo é sutil (o alargamento de escopo abaixo), a razão
 # precisa estar travada em teste, não só num comentário.
 
-BLOCKED_BY_DECISION = ('usuarios', 'empresas')
-
-
-@pytest.mark.parametrize('entity_key', BLOCKED_BY_DECISION)
-def test_entities_blocked_by_decision_never_reach_the_writer(entity_key):
-    from modules.data_migration.catalog import require_enabled_entity
-    descriptor = get_entity(entity_key)
-    assert descriptor.enabled is False, (
-        f'{entity_key} foi reabilitada. Se a decisão de produto mudou, '
-        f'atualize este teste junto — mas leia antes o motivo em '
-        f'`descriptor.blocked_reason`.'
-    )
-    with pytest.raises(ValueError, match='não está disponível'):
-        require_enabled_entity(entity_key)
-
-
-@pytest.mark.parametrize('entity_key', BLOCKED_BY_DECISION)
-def test_a_blocked_entity_explains_itself_instead_of_promising_a_future_phase(entity_key):
-    """"Prevista para a fase 4" sobre uma decisão de produto faz o usuário
-    esperar por algo que ninguém pretende entregar. O bloqueio por decisão
-    precisa dizer o que fazer no lugar."""
-    from modules.data_migration.catalog import require_enabled_entity
-    descriptor = get_entity(entity_key)
-    assert descriptor.blocked_reason, (
-        f'{entity_key} está desabilitada sem `blocked_reason` — a UI só '
-        f'consegue dizer "em breve", que é falso.'
-    )
-    try:
-        require_enabled_entity(entity_key)
-    except ValueError as exc:
-        assert 'prevista para a fase' not in str(exc), (
-            f'{entity_key} promete uma fase futura para uma decisão de produto.'
-        )
-        assert descriptor.blocked_reason in str(exc)
+@pytest.mark.parametrize('entity_key', ['usuarios', 'empresas', 'solicitacoes'])
+def test_excluded_entity_has_no_descriptor_or_future_phase(entity_key):
+    from modules.data_migration.catalog import list_entities, require_enabled_entity
+    assert entity_key not in {item['key'] for item in list_entities()}
+    for lookup in (get_entity, require_enabled_entity):
+        with pytest.raises(ValueError, match='excluída') as exc:
+            lookup(entity_key)
+        assert 'prevista para a fase' not in str(exc.value)
 
 
 def test_fornecedores_is_enabled_with_a_mandatory_unit_link():

@@ -136,13 +136,12 @@
     return WIZARD_STEPS[index - 1];
   }
 
-  /**
-   * Cards do painel. Entidades de roadmap continuam visíveis — o pedido pede
-   * os 20 cards — mas marcadas, porque `require_enabled_entity()` as recusa
-   * no servidor antes do writer.
-   */
+  /** Cartões operacionais; respostas antigas não reintroduzem categorias excluídas. */
   function dashboardCards(entities) {
-    return (Array.isArray(entities) ? entities : []).map((entity) => ({
+    const excluded = new Set(['empresas', 'usuarios', 'solicitacoes']);
+    return (Array.isArray(entities) ? entities : [])
+      .filter((entity) => entity && !excluded.has(entity.key))
+      .map((entity) => ({
       key: entity && entity.key ? entity.key : '',
       label: entity && entity.label ? entity.label : '',
       enabled: Boolean(entity && entity.enabled),

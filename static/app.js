@@ -10050,7 +10050,8 @@ async function loadDataMigrationCatalog() {
   const draft = migracaoState();
   try {
     const data = await api(`/api/data-migration/catalog?${actorQuery()}`);
-    draft.entities = data.entities || [];
+    const excluded = new Set(['empresas', 'usuarios', 'solicitacoes']);
+    draft.entities = (data.entities || []).filter((entity) => !excluded.has(entity.key));
     draft.sources = data.sources || [];
   } catch (error) {
     draft.entities = [];
@@ -10335,8 +10336,10 @@ async function analyzeDataMigrationSource() {
 
 async function runDataMigration(strategy) {
   const draft = migracaoState();
+  if (draft.busy || (strategy !== 'dry_run' && (!draft.preview || draft.preview.blocking || draft.preview.actual_totals))) return;
   draft.busy = true;
   renderDataMigrationSteps();
+  renderDataMigrationPreview();
   try {
     const result = await api('/api/data-migration/run', {
       method: 'POST',
@@ -10402,6 +10405,9 @@ function renderDataMigrationJobs() {
       .replace('{updated}', String(counters.updated ?? 0))
       .replace('{failed}', String(counters.failed ?? 0));
     const revertible = helpers.canRevert ? helpers.canRevert(job) : false;
+    const homologation = job.status === 'completed' && !job.homologated_at && !job.reverted_at
+      ? `<button type="button" class="primary" data-migracao-homologate="${escapeHtml(String(job.id))}">${escapeHtml(tr('dataMigration.homologate', 'Homologar'))}</button>`
+      : '';
     const action = revertible
       ? `<button type="button" class="ghost" data-migracao-revert="${escapeHtml(String(job.id))}">`
         + `${escapeHtml(tr('dataMigration.revert', 'Reverter Importação'))}</button>`
@@ -10416,28 +10422,34 @@ function renderDataMigrationJobs() {
       + `<td>${escapeHtml(summary)}</td>`
       + `<td>${escapeHtml(String(job.actor_name || ''))}</td>`
       + `<td>${escapeHtml(formatDateTime(job.finished_at || job.created_at))}</td>`
-      + `<td>${action}<button type="button" class="ghost" data-migracao-report="${escapeHtml(String(job.id))}">${escapeHtml(tr('dataMigration.downloadReport', 'Baixar relatório (CSV)'))}</button></td></tr>`;
+      + `<td>${homologation}${action}<button type="button" class="ghost" data-migracao-report="${escapeHtml(String(job.id))}">${escapeHtml(tr('dataMigration.downloadReport', 'Baixar relatório (CSV)'))}</button></td></tr>`;
   }).join('') || globalThis.dsTableState({
     colspan: 9,
     message: tr('dataMigration.historyEmpty', 'Nenhuma importação realizada ainda.'),
   });
 }
 
-async function revertDataMigrationJob(jobId) {
-  if (!confirm(tr('dataMigration.revertConfirm', 'Reverter esta importação? Os registros criados serão removidos e os atualizados voltarão ao valor anterior.'))) return;
+async function revertDataMigrationJob(jobId, operation = 'revert') {
+  const draft = migracaoState();
+  if (draft.busy || !['revert', 'homologate'].includes(operation)) return;
+  const homologate = operation === 'homologate';
+  const message = homologate
+    ? tr('dataMigration.homologateConfirm', 'Confirma que conferiu os registros e o relatório? Após homologar, a reversão física será bloqueada.')
+    : tr('dataMigration.revertConfirm', 'Reverter esta importação? Alterações posteriores serão preservadas; conflitos impedem a reversão.');
+  if (!confirm(message)) return;
+  draft.busy = true;
   try {
-    const result = await api(`/api/data-migration/jobs/${encodeURIComponent(jobId)}/revert`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user?.id }),
-    });
-    showToast(tr(
-      'dataMigration.reverted',
-      'Importação revertida: {deleted} removidos, {restored} restaurados.',
-    ).replace('{deleted}', String(result.deleted ?? 0)).replace('{restored}', String(result.restored ?? 0)), 'success');
+    const result = await globalThis.__EPI_MIGRATION_DECISIONS__.decide(api, jobId, operation, state.user?.id);
+    showToast(homologate
+      ? tr('dataMigration.homologated', 'Importação homologada.')
+      : tr('dataMigration.reverted', 'Importação revertida: {deleted} removidos, {restored} restaurados.')
+        .replace('{deleted}', String(result.deleted ?? 0)).replace('{restored}', String(result.restored ?? 0)), 'success');
   } catch (error) {
     showToast(migracaoErrorMessage(error), 'error');
+  } finally {
+    draft.busy = false;
+    await loadDataMigrationJobs();
   }
-  await loadDataMigrationJobs();
 }
 
 function migracaoErrorMessage(error) {
@@ -10609,6 +10621,8 @@ function bindDataMigrationEvents() {
   bindAppListener(refs.migracaoJobsTable, 'click', (event) => {
     const report = event.target.closest('[data-migracao-report]');
     if (report) { void downloadDataMigrationJobReport(report.dataset.migracaoReport); return; }
+    const homologate = event.target.closest('[data-migracao-homologate]');
+    if (homologate) { void revertDataMigrationJob(homologate.dataset.migracaoHomologate, 'homologate'); return; }
     const button = event.target.closest('[data-migracao-revert]');
     if (!button) return;
     void revertDataMigrationJob(button.dataset.migracaoRevert);

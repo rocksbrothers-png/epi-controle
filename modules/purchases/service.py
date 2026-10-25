@@ -29,6 +29,7 @@ from epi_backend.purchase_order_workflow import (
     assert_receive_allowed,
     assert_resubmit_allowed,
     assert_review_allowed,
+    po_status_label,
     resolve_approval_outcome,
 )
 from core.permissions import PERM_FINANCE_VIEW
@@ -2423,6 +2424,31 @@ def _resolve_order_legal_entity(connection, company_id, payload):
     return int(requested)
 
 
+# Estados da máquina de PO (epi_backend/purchase_order_workflow.py) que
+# encerram a PO sem entrega: só eles liberam reemissão para a mesma requisição.
+# PO concluída (received/checked/closed) não libera reemissão automática.
+_PO_REISSUE_ALLOWED_STATUSES = ('rejected', 'cancelled')
+
+
+def _previous_po_for_reissue(connection, pr):
+    """PO hoje vinculada à requisição; recusa se ela ainda não foi reprovada ou cancelada."""
+    linked_id = int(pr.get('linked_po_id') or 0)
+    if not linked_id:
+        return None
+    row = connection.execute(
+        'SELECT id, po_number, status FROM purchase_orders WHERE id = ?', (linked_id,)
+    ).fetchone()
+    previous = row_to_dict(row) if row else None
+    if not previous or str(previous.get('status') or '').strip().lower() not in _PO_REISSUE_ALLOWED_STATUSES:
+        number = (previous or {}).get('po_number') or pr.get('linked_po_number') or f'#{linked_id}'
+        status = po_status_label((previous or {}).get('status')) if previous else 'não encontrada'
+        raise ValueError(
+            f'Esta requisição já tem a PO {number} vinculada ({status}). '
+            'Só é possível emitir outra PO depois que ela for reprovada ou cancelada.'
+        )
+    return previous
+
+
 def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_id_fn=None):
     unit_id = int(payload.get('unit_id') or 0)
     if not unit_id:
@@ -2438,6 +2464,7 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
     company_id = int(actor['company_id']) if actor.get('role') != 'master_admin' else int(unit['company_id'])
     pr_id = int(payload['purchase_request_id']) if payload.get('purchase_request_id') else 0
     quote_entries = []
+    previous_po = None
     if pr_id:
         pr = get_purchase_request_by_id(connection, pr_id)
         if not pr:
@@ -2480,6 +2507,8 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         items = [
             {**raw, **validated_by_item[int(raw.get('purchase_request_item_id') or 0)]} for raw in items
         ]
+    elif pr_id:
+        previous_po = _previous_po_for_reissue(connection, pr)
 
     now = datetime.now(UTC).isoformat()
     po_number = str(payload.get('po_number') or '').strip() or generate_po_number(connection, company_id)
@@ -2568,10 +2597,24 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         if cursor.rowcount != 1:
             raise ValueError('Outra PO foi vinculada a esta requisição durante a criação. Nada foi gravado.')
     elif pr_id:
-        connection.execute(
-            'UPDATE purchase_requests SET linked_po_id = ?, linked_po_number = ?, status = ?, updated_at = ? WHERE id = ?',
-            (po_id, po_number, 'po_generated', now, pr_id)
+        # Uma PO ativa por requisição: troca o vínculo só se ele ainda é o lido
+        # acima (nenhum ou a PO reprovada/cancelada), mesmo com envios concorrentes.
+        cursor = connection.execute(
+            'UPDATE purchase_requests SET linked_po_id = ?, linked_po_number = ?, status = ?, updated_at = ? '
+            'WHERE id = ? AND COALESCE(linked_po_id, 0) = ?',
+            (po_id, po_number, 'po_generated', now, pr_id, int(previous_po['id']) if previous_po else 0)
         )
+        if cursor.rowcount != 1:
+            raise ValueError('Outra PO foi vinculada a esta requisição durante a criação. Nada foi gravado.')
+        if previous_po:
+            # A PO anterior continua gravada; o evento registra a troca do vínculo.
+            _record_purchase_event(
+                connection, company_id, 'purchase_request', pr_id, 'po_reissued',
+                str(pr.get('status') or ''), 'po_generated',
+                f'PO {previous_po["po_number"]} (id {previous_po["id"]}, {previous_po["status"]}) '
+                f'substituída pela PO {po_number} (id {po_id}).',
+                int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+            )
     for entry in quote_entries:
         _record_quote_association(
             connection, actor, pr, entry, float(entry['raw'].get('unit_price') or 0),

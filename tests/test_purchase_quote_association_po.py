@@ -3,7 +3,8 @@
 Com ``source = 'quote_import'``, cada item da PO precisa de associação
 confirmada pelo operador e revalidada no backend — a mesma regra do
 salvamento de preços — além de o EPI enviado ser o EPI do item da requisição.
-PO criada por outros caminhos (ex.: Flutter) não muda.
+PO criada por outros caminhos (ex.: Flutter) não exige associação, mas segue a
+regra de uma PO ativa por requisição (testes no fim do arquivo).
 """
 
 from datetime import datetime, timezone
@@ -175,3 +176,87 @@ def test_quote_import_po_rejects_non_integral_quantity(bad):
     with pytest.raises(ValueError, match='Quantidade inválida'):
         create_purchase_order(conn, ADMIN, _payload(_item(quantity=bad)), '')
     assert _po_count(conn) == 0
+
+
+# --- PO sem ``source`` (ex.: Flutter): uma PO ativa por requisição ----------
+# Decisão de 2026-10-25: reemissão só depois que a PO vinculada for reprovada
+# ou cancelada; PO concluída não libera outra.
+
+def _plain_payload():
+    item = {'purchase_request_item_id': 7, 'epi_id': 100, 'epi_name': 'Luva', 'quantity': 3, 'unit_price': 10.0}
+    return {'unit_id': 10, 'purchase_request_id': 5, 'items': [item]}
+
+
+def _linked(conn):
+    row = conn.execute('SELECT linked_po_id, linked_po_number FROM purchase_requests WHERE id = 5').fetchone()
+    return row['linked_po_id'], row['linked_po_number']
+
+
+@pytest.mark.parametrize('status', [
+    'waiting_admin_review', 'quoted', 'pending_approval', 'postponed', 'approved', 'partially_approved',
+    'received_partial', 'received', 'checked', 'closed',
+])
+def test_plain_po_refuses_second_po_while_linked_po_is_not_rejected_or_cancelled(status):
+    conn = _conn()
+    first = create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    conn.execute('UPDATE purchase_orders SET status = ? WHERE id = ?', (status, first['id']))
+    with pytest.raises(ValueError, match=f'já tem a PO {first["po_number"]} vinculada'):
+        create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    assert _po_count(conn) == 1
+    assert _linked(conn) == (first['id'], first['po_number'])
+
+
+@pytest.mark.parametrize('status', ['rejected', 'cancelled'])
+def test_plain_po_reissue_after_rejected_or_cancelled_keeps_history(status):
+    conn = _conn()
+    first = create_purchase_order(conn, ADMIN, _plain_payload(), '10.0.0.1')
+    conn.execute('UPDATE purchase_orders SET status = ? WHERE id = ?', (status, first['id']))
+    second = create_purchase_order(conn, ADMIN, _plain_payload(), '10.0.0.1')
+    assert _linked(conn) == (second['id'], second['po_number'])
+    old = conn.execute('SELECT status, purchase_request_id FROM purchase_orders WHERE id = ?', (first['id'],)).fetchone()
+    assert (old['status'], old['purchase_request_id']) == (status, 5)
+    event = conn.execute(
+        "SELECT * FROM purchase_events WHERE action = 'po_reissued' AND entity_type = 'purchase_request'"
+    ).fetchone()
+    assert event['entity_id'] == 5 and event['actor_user_id'] == ADMIN['id']
+    assert first['po_number'] in event['comment'] and second['po_number'] in event['comment']
+    assert status in event['comment']
+
+
+def test_plain_po_refuses_link_to_missing_po():
+    conn = _conn()
+    conn.execute("UPDATE purchase_requests SET linked_po_id = 999, linked_po_number = 'PO-X' WHERE id = 5")
+    with pytest.raises(ValueError, match='PO-X vinculada'):
+        create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    assert _po_count(conn) == 0
+
+
+def test_plain_po_rejects_concurrent_link(monkeypatch):
+    conn = _conn()
+
+    def number_while_another_po_links(connection, company_id):
+        # outra criação concorrente vinculou uma PO entre a validação e a escrita
+        connection.execute('UPDATE purchase_requests SET linked_po_id = 999 WHERE id = 5')
+        return generate_po_number(connection, company_id)
+
+    monkeypatch.setattr('modules.purchases.service.generate_po_number', number_while_another_po_links)
+    with pytest.raises(ValueError, match='Outra PO foi vinculada'):
+        create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    assert _linked(conn)[0] == 999
+
+
+def test_plain_po_concurrent_reissues_link_only_one(monkeypatch):
+    conn = _conn()
+    first = create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    conn.execute("UPDATE purchase_orders SET status = 'rejected' WHERE id = ?", (first['id'],))
+
+    def number_while_another_reissue_links(connection, company_id):
+        # a reemissão concorrente já trocou o vínculo da PO reprovada pela dela
+        connection.execute('UPDATE purchase_requests SET linked_po_id = 998 WHERE id = 5')
+        return generate_po_number(connection, company_id)
+
+    monkeypatch.setattr('modules.purchases.service.generate_po_number', number_while_another_reissue_links)
+    with pytest.raises(ValueError, match='Outra PO foi vinculada'):
+        create_purchase_order(conn, ADMIN, _plain_payload(), '')
+    assert _linked(conn)[0] == 998
+    assert conn.execute("SELECT COUNT(*) FROM purchase_events WHERE action = 'po_reissued'").fetchone()[0] == 0

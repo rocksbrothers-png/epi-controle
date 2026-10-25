@@ -65,6 +65,9 @@ def identify(index, descriptor, record):
         return None, 'Os identificadores correspondem a registros distintos ou ambíguos.'
     current = next(iter(candidates.values()), None)
     if current:
+        if (descriptor.key == 'fornecedores' and str(record.get('unit_id') or '')
+                != str(current.get('unit_id') or '')):
+            return None, 'Unidade do fornecedor existente diverge; gerencie os vínculos no cadastro de fornecedores.'
         for field in identity_fields(descriptor):
             supplied = identity_key(field, record.get(field))
             stored = identity_key(field, current.get(field))
@@ -97,6 +100,9 @@ def make_plan(descriptor, records, existing, strategy):
         known = current is not None or record.get('__already_imported__', False)
         action = 'reject' if number in invalid else (
             'skip' if record.get('__already_imported__') else action_for(strategy, current))
+        if (action == 'update' and descriptor.key == 'estoque'
+                and str(current.get('quantity')) == str(record.get('quantity'))):
+            action = 'skip'  # O writer não cria movimento quando o saldo já é igual.
         classifications.append({'row': number, 'source_line': record.get('__source_line__', number),
             'classification': 'invalid' if action == 'reject' else ('duplicate' if duplicate else ('existing' if known else 'new')),
             'action': action, 'target_id': current['id'] if current and current['id'] > 0 else None,

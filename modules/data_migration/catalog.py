@@ -10,10 +10,8 @@ SEMPRE deste catálogo, nunca do arquivo importado. É a allowlist que torna
 injeção de SQL estruturalmente impossível no caminho de importação, mesmo
 com um arquivo hostil.
 
-``enabled=False`` marca entidade já modelada mas cujo writer ainda não foi
-validado (roadmap do ADR-0003 §9). Ela aparece na UI como "em breve" — a
-alternativa (expor importador não validado para dado trabalhista) seria
-pior.
+O catálogo operacional contém somente as seis entidades importáveis.
+Entidades excluídas são recusadas explicitamente antes de ler o arquivo.
 """
 
 from __future__ import annotations
@@ -470,55 +468,9 @@ _ESTOQUE = EntityDescriptor(
 )
 
 
-# ── Entidades modeladas, writer na fila (ADR-0003 §9) ───────────────────────
-#
-# O catálogo declarava 20 entidades. A auditoria da issue #172 verificou cada
-# uma contra o schema PostgreSQL real e encontrou o seguinte:
-#
-#   • 10 apontavam para tabelas que NÃO EXISTEM — `delivery_signatures`,
-#     `employee_positions`, `epi_categories`, `cost_centers`,
-#     `epi_certificates`, `documents`, `manufacturers`, `employee_photos`,
-#     `employee_roles`, `user_permissions`. Eram cartões de painel sem modelo
-#     por trás.
-#   • Vários desses dados JÁ SÃO IMPORTADOS hoje, como coluna de outra
-#     entidade: função/cargo em `employees.role_name`, fabricante em
-#     `epis.manufacturer`, CA em `epis.ca`, categoria e centro de custo como
-#     texto, assinatura nas colunas `signature_*` da própria entrega.
-#   • `demandas` (`stock_replenishment_needs`) é DERIVADA: o motor de estoque
-#     mínimo a recalcula a partir do estoque atual. Importar produziria
-#     números que o próprio motor contradiz no primeiro recálculo.
-#
-# Transformar qualquer um desses conceitos em tabela é decisão de produto e
-# arquitetura, não trabalho de migração — e nenhum schema será criado só para
-# manter a contagem de 20 no painel. O objetivo é suportar corretamente as
-# entidades com modelo de domínio real e valor de migração.
-#
-# Sobram aqui as que têm tabela e ainda não têm writer. Cada uma segue
-# bloqueada por um motivo próprio, registrado em #172.
-
-def _roadmap(key: str, label: str, table: str, phase: str, *, blocked: str = '') -> EntityDescriptor:
-    return EntityDescriptor(key=key, label=label, target_table=table, fields=(),
-                            phase=phase, blocked_reason=blocked)
-
-
-_ROADMAP_ENTITIES = (
-    # Baixo valor e sem UNIQUE de negócio: reavaliar antes de habilitar.
-    _roadmap('solicitacoes', 'Solicitações', 'epi_requests', '4'),
-    # Bloqueada POR DECISÃO, não por fila: `password` é hash e `role` livre é
-    # escalada de privilégio. Depende de definir senha temporária obrigatória
-    # e lista fechada de roles — decisão de produto e segurança.
-    _roadmap('usuarios', 'Usuários', 'users', 'bloqueada', blocked=(
-        'importar usuário é criar acesso ao sistema. A senha é hash e o perfil '
-        'livre é escalada de privilégio. Depende de definir senha temporária '
-        'obrigatória e lista fechada de perfis.'
-    )),
-    # Bloqueada POR DECISÃO: importar empresa equivale a CRIAR TENANT, operação
-    # de Admin Master. `name` e `cnpj` são UNIQUE globais.
-    _roadmap('empresas', 'Empresas', 'companies', 'bloqueada', blocked=(
-        'importar empresa equivale a criar um novo cliente no sistema — '
-        'operação do Administrador Master, não de migração de dados.'
-    )),
-)
+# Estas chaves nunca foram importadores habilitados. Mantê-las numa denylist
+# preserva uma recusa explícita sem voltar a oferecê-las em cartões/filtros.
+EXCLUDED_ENTITIES = frozenset({'empresas', 'usuarios', 'solicitacoes'})
 
 
 ENTITIES: dict[str, EntityDescriptor] = {
@@ -526,13 +478,15 @@ ENTITIES: dict[str, EntityDescriptor] = {
     for descriptor in (
         _COLABORADORES, _UNIDADES, _EPIS, _FORNECEDORES,
         _HISTORICO_ENTREGAS, _ESTOQUE,
-        *_ROADMAP_ENTITIES,
     )
 }
 
 
 def get_entity(key: str) -> EntityDescriptor:
-    descriptor = ENTITIES.get(str(key or '').strip())
+    normalized = str(key or '').strip()
+    if normalized in EXCLUDED_ENTITIES:
+        raise ValueError(f'Entidade excluída do Centro de Migração: {normalized}. Importação não permitida.')
+    descriptor = ENTITIES.get(normalized)
     if descriptor is None:
         raise ValueError(f'Entidade de migração desconhecida: {key!r}.')
     return descriptor
@@ -562,14 +516,7 @@ def require_enabled_entity(key: str) -> EntityDescriptor:
 
 
 def list_entities() -> list[dict]:
-    """Catálogo para o dashboard: um cartão por entidade com modelo real.
-
-    ``blocked_reason`` vai junto para a UI poder dizer ao usuário *por que* uma
-    entidade não pode ser importada, em vez de só desabilitar o cartão. Sem
-    isso, "Fornecedores — em breve" faz a pessoa esperar por algo que ninguém
-    pretende entregar, quando a resposta útil é "cadastre pela tela de Empresas
-    Terceirizadas".
-    """
+    """As seis entidades do catálogo operacional, com seus campos reais."""
     return [
         {
             'key': descriptor.key,

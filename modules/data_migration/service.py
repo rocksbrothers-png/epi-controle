@@ -164,7 +164,7 @@ def analyze_source(kind: str, raw: bytes, entity: str, *, sheet: str | None = No
     assistente numa única chamada — o usuário sobe o arquivo e já vê as
     colunas reconhecidas.
     """
-    descriptor = get_entity(entity)
+    descriptor = require_enabled_entity(entity)
     dataset = read_source(kind, raw, sheet=sheet)
     suggestion = suggest_mapping(descriptor, dataset.columns)
     return {
@@ -227,7 +227,8 @@ def _existing_index(connection, descriptor, company_id: int, *, lock=False):
     keys = identity_fields(descriptor)
     if not keys:
         return {}
-    columns = ', '.join(['id', *keys])
+    extra = ['unit_id'] if descriptor.key == 'fornecedores' else (['quantity'] if descriptor.key == 'estoque' else [])
+    columns = ', '.join(['id', *keys, *extra])
     version = '' if db_module._is_sqlite_connection(connection) else ', xmin::text AS __xmin, ctid::text AS __ctid'
     suffix = ' FOR UPDATE' if lock and not db_module._is_sqlite_connection(connection) else ''
     rows = connection.execute(
@@ -541,10 +542,56 @@ def _prepare(connection, descriptor, company_id, source_kind, raw, mapping, shee
         record['__mapped_fields__'] = list(normalized_mapping.values())
     records = resolve_references(connection, descriptor, company_id, records, lock=lock)
     records = apply_domain_rules(descriptor, records)
+    if descriptor.key == 'estoque':
+        if lock:
+            from modules.stock.eligibility import lock_stock_scope
+            scopes = {(int(r['epi_id']), int(r['unit_id'])) for r in records
+                      if str(r.get('epi_id', '')).isdigit() and str(r.get('unit_id', '')).isdigit()}
+            for epi_id, unit_id in sorted(scopes):
+                lock_stock_scope(connection, company_id, unit_id, epi_id)
+        tracked_scopes = set()
+        if db_module.table_exists(connection, 'epi_stock_items'):
+            tracked_scopes = {(int(r['unit_id']), int(r['epi_id'])) for r in (
+                row_to_dict(row) for row in connection.execute(
+                    'SELECT DISTINCT unit_id, epi_id FROM epi_stock_items WHERE company_id = %s',
+                    (int(company_id),),
+                ).fetchall())}
+        # O contrato agregado não pode descartar rastreabilidade física em
+        # silêncio, mesmo se o mapeamento manual tentar ignorar a coluna.
+        physical_fields = {
+            'lote', 'lot', 'lot code', 'lot number', 'lot id', 'stock lot id', 'codigo lote', 'codigo do lote',
+            'fabricacao', 'data fabricacao', 'data de fabricacao', 'manufacture date',
+            'manufactured at', 'validade', 'validade fisica', 'data de validade',
+            'expiry date', 'expiration date', 'expires at', 'physical expiry', 'physical expiry date',
+            'physical validity unknown', 'expiry source', 'expiry evidence', 'traceability status',
+        }
+        for source, record in zip(dataset.rows, records):
+            unsupported = [column for column, value in source.items()
+                if normalize_reference(column).replace('_', ' ') in physical_fields
+                and str(value if value is not None else '').strip()]
+            if unsupported:
+                record['__domain_field__'] = ','.join(unsupported)
+                record['__domain_error__'] = (
+                    'Lotes, fabricação e validade física não são suportados pelo contrato de saldo agregado. '
+                    'Use um fluxo com rastreabilidade física antes de importar este arquivo.'
+                )
+            elif (record.get('unit_id'), record.get('epi_id')) in tracked_scopes:
+                record['__domain_field__'] = 'quantity'
+                record['__domain_error__'] = (
+                    'Este estoque já possui peças rastreadas. Use ajustes por lote para preservar '
+                    'fabricação, validade física, reservas e quantidades existentes.'
+                )
     existing = _existing_index(connection, descriptor, company_id, lock=lock)
     raw_hash = source_hash(raw)
     _history_duplicates(connection, descriptor, company_id, records, raw_hash)
     preview = make_plan(descriptor, records, existing, strategy)
+    if descriptor.key == 'estoque':
+        preview['diagnostics'].append({
+            'code': 'aggregate_stock_only', 'row': 0, 'field': '', 'entity': 'estoque',
+            'level': 'warning', 'severity': 'warning',
+            'message': 'Importa somente saldo agregado por movimento de ajuste. Não cria lotes ou peças com '
+                       'validade física. Este saldo não se torna elegível para entrega sem conciliação física.',
+        })
     for diagnostic in preview['diagnostics']:
         row = diagnostic.get('row', 0)
         if row:
@@ -586,8 +633,8 @@ def run_migration(connection, *, company_id, entity, source_kind, raw, mapping, 
     if strategy not in STRATEGIES:
         raise ValueError(f'Estratégia de importação inválida: {strategy!r}.')
 
-    # Entidade de roadmap nunca chega ao writer, mesmo se a UI deixar passar.
-    descriptor = get_entity(entity) if strategy == 'dry_run' else require_enabled_entity(entity)
+    # O mesmo gate vale para análise, prévia e aplicação.
+    descriptor = require_enabled_entity(entity)
 
     apply_strategy = preview_strategy if strategy == 'dry_run' else strategy
     if apply_strategy not in STRATEGIES or apply_strategy == 'dry_run':
@@ -767,12 +814,16 @@ def _apply_row(connection, descriptor, company_id, job_id, index, record, *,
             new_id = int(outcome['target_id'])
         else:
             new_id = _insert(connection, descriptor, company_id, defaults, payload, stamp=stamp)
+        secondary = None
         if post_write is not None:
-            post_write(connection, descriptor=descriptor, company_id=company_id, job_id=job_id,
-                       action='insert', target_id=new_id, record=record, payload=payload, actor=actor or {})
+            secondary = post_write(connection, descriptor=descriptor, company_id=company_id, job_id=job_id,
+                                   action='insert', target_id=new_id, record=record, payload=payload, actor=actor or {})
+        after = _persisted_evidence(connection, descriptor, company_id, new_id, payload)
+        if secondary:
+            after['__secondary_v1__'] = secondary
         _record(connection, source_line=record.get('__source_line__', index), job_id=job_id, company_id=company_id, row_number=index,
                 action='insert', table=descriptor.target_table, target_id=new_id,
-                before=None, after=_persisted_evidence(connection, descriptor, company_id, new_id, payload))
+                before=None, after=after)
         add_identity(existing, descriptor, {'id': new_id, **payload})
         return 'inserted'
 

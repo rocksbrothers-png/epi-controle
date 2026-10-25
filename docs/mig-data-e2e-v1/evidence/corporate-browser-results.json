@@ -1,0 +1,72 @@
+{
+  "product": "corporate",
+  "results": [
+    {
+      "entity": "colaboradores",
+      "job_id": 4,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    },
+    {
+      "entity": "unidades",
+      "job_id": 5,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    },
+    {
+      "entity": "epis",
+      "job_id": 6,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    },
+    {
+      "entity": "fornecedores",
+      "job_id": 7,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    },
+    {
+      "entity": "historico_entregas",
+      "job_id": 8,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    },
+    {
+      "entity": "estoque",
+      "job_id": 9,
+      "upload": "PASSOU",
+      "mapping": "PASSOU",
+      "preview": "PASSOU",
+      "importation": "PASSOU",
+      "postgres": "PASSOU",
+      "homologation": "PASSOU",
+      "refresh": "PASSOU"
+    }
+  ],
+  "page_errors": []
+}

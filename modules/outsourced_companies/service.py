@@ -455,25 +455,60 @@ def migration_outsourced_link(connection, *, descriptor, company_id, job_id, act
     if action != 'insert':
         return
     unit_id = int(payload['unit_id'])
-    create_outsourced_company_unit_link(
+    link_id = create_outsourced_company_unit_link(
         connection, int(target_id), int(company_id), unit_id,
         int(actor.get('id') or 0) or None, commit=False,
     )
+    from modules.data_migration.rollback import read_row
+    return {'unit_links': [read_row(connection, 'outsourced_company_unit_links', company_id, link_id)]}
 
 
 def migration_outsourced_reverser(connection, *, descriptor, company_id, job_id):
-    """Rollback físico: apaga os vínculos das empresas INSERIDAS por este job.
+    """Remove somente vínculos comprovadamente criados e ainda intactos.
 
-    O rollback genérico apaga as empresas (target_table); o vínculo tem FK para
-    a empresa, então é apagado ANTES (o reverser roda antes do loop genérico).
-    Só empresas inseridas pelo job entram — todas as suas linhas de vínculo
-    foram criadas por ele, então apagá-las nunca remove vínculo de terceiro."""
-    connection.execute(
-        'DELETE FROM outsourced_company_unit_links WHERE company_id = ? AND outsourced_company_id IN '
-        '(SELECT target_id FROM migration_job_records WHERE job_id = ? AND company_id = ? '
-        "AND action = 'insert' AND target_table = 'outsourced_companies')",
-        (int(company_id), int(job_id), int(company_id)),
-    )
+    Trava pais antes dos filhos: um vínculo posterior ou editado impede a
+    reversão inteira. Jobs antigos sem snapshot secundário falham fechados.
+    """
+    import json
+
+    from modules.data_migration.rollback import RollbackConflict, read_row
+
+    records = connection.execute(
+        'SELECT target_id, after_json FROM migration_job_records '
+        'WHERE job_id = ? AND company_id = ? '
+        "AND action = 'insert' AND target_table = 'outsourced_companies' ORDER BY target_id",
+        (int(job_id), int(company_id)),
+    ).fetchall()
+    plan = []
+    for raw_record in records:
+        record = row_to_dict(raw_record)
+        target_id = int(record['target_id'])
+        if read_row(connection, 'outsourced_companies', company_id, target_id, lock=True) is None:
+            raise RollbackConflict('fornecedor ausente')
+        try:
+            expected = json.loads(record['after_json'])['__secondary_v1__']['unit_links']
+            expected_ids = [int(item['row']['id']) for item in expected]
+        except (TypeError, ValueError, KeyError) as exc:
+            raise RollbackConflict('vínculos de job legado sem snapshot verificável') from exc
+        links = connection.execute(
+            'SELECT id FROM outsourced_company_unit_links '
+            'WHERE outsourced_company_id = ? ORDER BY id', (target_id,),
+        ).fetchall()
+        actual_ids = [int(row_to_dict(link)['id']) for link in links]
+        if not expected_ids or sorted(expected_ids) != actual_ids:
+            raise RollbackConflict('vínculos do fornecedor foram alterados após a importação')
+        for snapshot in expected:
+            link_id = int(snapshot['row']['id'])
+            actual = read_row(connection, 'outsourced_company_unit_links', company_id, link_id, lock=True)
+            if actual != snapshot:
+                raise RollbackConflict('vínculo do fornecedor foi alterado após a importação')
+            plan.append((link_id, target_id))
+    for link_id, target_id in plan:
+        connection.execute(
+            'DELETE FROM outsourced_company_unit_links '
+            'WHERE id = ? AND company_id = ? AND outsourced_company_id = ?',
+            (link_id, int(company_id), target_id),
+        )
 
 
 def set_outsourced_company_unit_link_status(connection, link_id, company_id, status, actor_user_id, reason=''):
@@ -792,7 +827,11 @@ def get_outsourced_company_lifecycle(connection, entity_id):
 
 def fetch_archived_outsourced_companies(connection, actor):
     """Empresas terceirizadas arquivadas do tenant, com dados de retenção (para a UI)."""
-    from core.archival import STATUS_ARCHIVED, STATUS_PENDING_DELETION, retention_days_remaining
+    from core.archival import (
+        STATUS_ARCHIVED,
+        STATUS_PENDING_DELETION,
+        retention_days_remaining,
+    )
     sql = (
         'SELECT outsourced_companies.id, outsourced_companies.company_id, '
         'outsourced_companies.unit_id, '

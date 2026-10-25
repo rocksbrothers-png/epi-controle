@@ -8,12 +8,13 @@ import base64
 import os
 
 import pytest
+from test_est_v3_5_postmerge_receipt import server as _server_fixture
 from test_est_v3_5_r3_lot_receipt_http import _fresh
 from test_stock_lot_evidence_http import call
-from test_stock_lot_evidence_http import (
-    server as server,  # noqa: PLC0414 - fixture pytest exportada
-)
 from test_stock_manual_receipt_validity_http import seed
+
+# Fixture reutilizada explicitamente; o pytest a descobre pelo nome local.
+server = _server_fixture
 
 pytestmark = pytest.mark.skipif(not os.environ.get('DATABASE_URL', '').startswith('postgres'), reason='Requires isolated PostgreSQL.')
 

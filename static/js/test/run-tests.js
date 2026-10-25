@@ -7725,6 +7725,7 @@ test('UBX compras: _matchPurchaseImportRows prioriza item_id e não reutiliza it
 
 
 require('./data-migration-runtime')({ test, testAsync, assert, eq });
+require('./alert-validity-navigation-runtime')({ test, assert, eq });
 require('./stock-panels-runtime')({ testAsync, assert, eq });
 require('./stock-manual-receipt-runtime')({ test, testAsync, assert, eq });
 require('./stock-lot-evidence-runtime')({ testAsync, assert, eq });

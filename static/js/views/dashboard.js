@@ -532,6 +532,9 @@
   // Mapeia a categoria do alerta para uma ação navegável (tela + filtro).
   function _alertAction(alert) {
     const name = String(alert?.epi_name || '').trim();
+    if (alert?.category === 'physical_unknown' && userHasPermission('stock:view')) {
+      return { label: tr('dashboard.alertRegularizeValidity', 'Regularizar Validade'), view: 'estoque', pending: true };
+    }
     if (!name) { return null; }
     if (alert.category === 'ca') {
       return { label: tr('dashboard.alertViewEpis', 'Ver EPIs'), view: 'epis', input: 'epis-filter-search', value: name };
@@ -548,6 +551,13 @@
     container.addEventListener('click', (event) => {
       const btn = event.target?.closest?.('.alert-action[data-view]');
       if (!btn) { return; }
+      if (btn.hasAttribute('data-pending-validity')) {
+        globalThis.__EPI_PENDING_VALIDITY_NAVIGATION__?.open({
+          company_id: btn.getAttribute('data-company-id'), unit_id: btn.getAttribute('data-unit-id'),
+          epi_id: btn.getAttribute('data-epi-id'), epi_name: btn.getAttribute('data-epi-name'),
+        });
+        return;
+      }
       _openViewFiltered(btn.getAttribute('data-view'), btn.getAttribute('data-input'), btn.getAttribute('data-value') || '');
     });
   }
@@ -559,8 +569,11 @@
     const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
     refs.alertsList.innerHTML = items.map((item) => {
       const action = _alertAction(item);
+      const pending = action?.pending
+        ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(action.label + (item.epi_name ? ': ' + item.epi_name : ''))}"`
+        : '';
       const btn = action
-        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value)}">${action.label}</button>`
+        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${action.label}</button>`
         : '';
       return `<div class="alert-item ${item.type}"><div class="alert-item-body"><strong>${item.title}</strong><div>${item.description}</div></div>${btn}</div>`;
     }).join('')

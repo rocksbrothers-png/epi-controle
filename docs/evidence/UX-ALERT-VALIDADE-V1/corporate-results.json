@@ -1,0 +1,74 @@
+[
+  {
+    "role": "general_admin",
+    "width": 1617,
+    "spa": false,
+    "pieces": 8,
+    "lots": 4,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  },
+  {
+    "role": "general_admin",
+    "width": 390,
+    "spa": true,
+    "pieces": 8,
+    "lots": 4,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "width": 1617,
+    "spa": false,
+    "pieces": 4,
+    "lots": 2,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "width": 390,
+    "spa": true,
+    "pieces": 4,
+    "lots": 2,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  },
+  {
+    "role": "user",
+    "width": 1617,
+    "spa": false,
+    "pieces": 4,
+    "lots": 2,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  },
+  {
+    "role": "user",
+    "width": 390,
+    "spa": true,
+    "pieces": 4,
+    "lots": 2,
+    "exact_epi": true,
+    "scope": "PASS",
+    "writes": 0,
+    "keyboard": "PASS",
+    "errors": []
+  }
+]

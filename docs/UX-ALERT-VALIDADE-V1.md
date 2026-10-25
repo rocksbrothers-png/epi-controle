@@ -24,8 +24,12 @@ O PR separado UI-FIX-BIBLIOTECA-ICON-V1 toca `_sidebar.html`; este toca `_script
 - 156 testes Python selecionados por produto: arquitetura UBX, paridade F4/F5B, regularização em massa e evidência de lote via HTTP/JWT/PostgreSQL real. Incluem negativas de autorização e isolamento já implementadas.
 - Build/check do index, `git diff --check` e lint dos arquivos novos aprovados.
 - Playwright/Chromium com backend HTTP/JWT e PostgreSQL local isolado: seis combinações por produto (general_admin/admin/user × desktop 1617×1000/mobile 390×844; SPA desabilitada/habilitada). General Admin consulta oito peças em quatro lotes de duas unidades; admin/user consultam quatro peças em dois lotes da unidade operacional. EPI de mesmo nome e outra empresa excluídos. Unidade inicial vazia não oculta pendências agregadas. Lote com validade conhecida excluído.
-- Estilos computados comparados com Ver Estoque; Enter, foco, aba real, limpeza do filtro e visibilidade de ações por perfil aprovados. Sem erros JavaScript e sem requisições de escrita após o clique. Snapshots completos de peças, lotes, eventos, movimentações e saldos idênticos antes/depois de cada navegação.
+- Estilos computados comparados com Ver Estoque; Enter, foco, aba real, limpeza do filtro e visibilidade de ações por perfil aprovados. O foco foi medido abaixo do cabeçalho fixo (incluindo elementFromPoint), com posição horizontal preservada e CTA dentro do viewport. Sem erros JavaScript e sem requisições de escrita após o clique. Snapshots completos de peças, lotes, eventos, movimentações e saldos idênticos antes/depois de cada navegação.
 - Auditoria independente executa o módulo e o loader reais com respostas fora de ordem e tenta atravessar escopos; relatório final e hashes registrados no PR após congelamento.
+
+A auditoria identificou e corrigiu a rolagem inicial que podia encobrir o título focado atrás do cabeçalho fixo no celular. As capturas mobile são do viewport, sem reposicionamento automático de screenshot de elemento.
+
+Limitação preexistente: a tabela de estoque pode exceder o viewport de 390px (largura intrínseca 1039px na consulta padrão dos mesmos dados sintéticos). O fluxo novo não aumenta essa largura (1022px para consulta agregada; 1039px para perfil operacional). O botão de entrada cabe no viewport; não foi alterado o CSS de tabelas nesta correção.
 
 ## Arquivos funcionais e de teste
 

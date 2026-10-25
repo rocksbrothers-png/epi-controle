@@ -95,7 +95,10 @@
     document.querySelector('[data-vtabs="estoque"] [data-vtab="validade"]')?.click();
     const heading = document.getElementById('pending-reg-title');
     heading?.focus({ preventScroll: true });
-    document.getElementById('pending-reg-card')?.scrollIntoView({ block: 'start' });
+    // O título focado deve ficar visível abaixo do cabeçalho sticky.
+    const horizontalPosition = globalThis.scrollX || 0;
+    heading?.scrollIntoView({ block: 'center', inline: 'nearest' });
+    globalThis.scrollTo?.({ left: horizontalPosition, top: globalThis.scrollY });
     void ports.refresh?.();
     return true;
   }

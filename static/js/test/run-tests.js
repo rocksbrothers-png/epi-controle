@@ -37,6 +37,7 @@ function loadModule(relPath) {
 }
 
 [
+  'modules/data-migration/integrations/job-decisions.js',
   'core/constants.js',
   'core/permissions.js',
   'core/feature-flags.js',
@@ -1793,6 +1794,16 @@ test('data-migration: nextStep/previousStep respeitam as pontas', () => {
   eq(_DM().nextStep('mapeamento'), 'mapeamento');
   eq(_DM().previousStep('origem'), 'entidade');
   eq(_DM().previousStep('entidade'), 'entidade');
+});
+
+test('data-migration: stale catalog cannot reintroduce excluded cards', () => {
+  const cards = _DM().dashboardCards([
+    { key: 'unidades', enabled: true, fields: [{}, {}, {}, {}] },
+    ...['empresas', 'usuarios', 'solicitacoes'].map((key) => ({ key, enabled: true, fields: [] }))
+  ]);
+  eq(cards.length, 1);
+  eq(cards[0].key, 'unidades');
+  eq(cards[0].fieldCount, 4);
 });
 
 test('data-migration: dashboardCards preserva entidades de roadmap marcadas', () => {
@@ -7711,6 +7722,7 @@ test('UBX compras: _matchPurchaseImportRows prioriza item_id e não reutiliza it
 
 
 
+require('./data-migration-runtime')({ test, testAsync, assert, eq });
 require('./stock-panels-runtime')({ testAsync, assert, eq });
 require('./stock-manual-receipt-runtime')({ test, testAsync, assert, eq });
 require('./stock-lot-evidence-runtime')({ testAsync, assert, eq });

@@ -143,6 +143,11 @@ def submit(connection, *, actor, entity, source_kind, raw, mapping, strategy, re
 
     authorized, company_id = _authorize(connection, actor)
     ensure_module_enabled_for_unit(connection, authorized, 'migracao', None)
+    from modules.data_migration.catalog import require_enabled_entity
+    require_enabled_entity(entity)
+    from modules.data_migration.service import STRATEGIES
+    if strategy not in STRATEGIES or strategy == 'dry_run':
+        raise ValueError('Estratégia assíncrona deve aplicar uma importação, não uma prévia.')
 
     raw_bytes = raw if isinstance(raw, (bytes, bytearray)) else str(raw).encode()
     input_hash = hashlib.sha256(raw_bytes).hexdigest()
@@ -361,13 +366,36 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
         from modules.data_migration.service import run_migration
         mapping = json.loads(job.get('mapping_json') or '{}')
         strategy = job['strategy']
+        def finalize_in_transaction(conn, result):
+            # A fila, a auditoria e os dados de negócio compartilham o COMMIT.
+            # Uma interrupção após esse commit já encontra o job terminal;
+            # antes dele, a tentativa pode ser retomada sem dados parciais.
+            totals = result.get('totals') or {}
+            cursor = conn.execute(
+                'UPDATE migration_async_jobs SET status=%s, result_job_id=%s, total_rows=%s, '
+                'processed_rows=%s, inserted_rows=%s, updated_rows=%s, skipped_rows=%s, failed_rows=%s, '
+                "updated_at=%s WHERE id=%s AND company_id=%s AND owner=%s AND attempt=%s AND status='running'",
+                (result['status'], result.get('job_id'), int(totals.get('total', 0)),
+                 int(totals.get('processed', 0)), int(totals.get('inserted', 0)),
+                 int(totals.get('updated', 0)), int(totals.get('skipped', 0)),
+                 int(totals.get('failed', 0)), _now(), int(job_id), company_id, str(owner), int(attempt)))
+            if cursor.rowcount != 1:
+                raise PermissionError('Fence alterado; transação de migração recusada.')
+            from modules.companies.service import register_company_audit
+            register_company_audit(conn, company_id, authorized, 'data_migration_executed'
+                if result.get('applied') else 'data_migration_failed',
+                f'Importação assíncrona #{job_id} conciliada.',
+                {'job_id': result['job_id'], 'async_job_id': int(job_id),
+                 'entity': job['entity'], 'totals': totals})
+
         try:
             result = run_migration(
                 connection, company_id=company_id, entity=job['entity'],
                 source_kind=job['source_kind'], raw=raw, mapping=mapping, strategy=strategy,
                 actor=authorized, source_name=job.get('source_name') or '',
                 sheet=job.get('sheet'), preview_strategy=strategy,
-                preview_token=job.get('preview_token') or None)
+                preview_token=job.get('preview_token') or None,
+                audit_callback=finalize_in_transaction)
         except Exception:
             # run_migration já fez rollback (decorator). Sanitiza (HOLE-1): o
             # erro cru do banco não vaza; o job fica failed sem escrita.
@@ -375,18 +403,7 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
             return _finalize_failed(connection, job_id, owner, attempt,
                                     'Falha transacional na migração; nada aplicado desta tentativa.')
 
-        # run_migration confirmou negócio + job legado. Finaliza o controle por CAS.
-        totals = result.get('totals') or {}
-        status = result.get('status') or ('completed' if result.get('applied') else 'failed')
-        connection.execute(
-            'UPDATE migration_async_jobs SET status=%s, result_job_id=%s, total_rows=%s, '
-            'processed_rows=%s, inserted_rows=%s, updated_rows=%s, skipped_rows=%s, failed_rows=%s, '
-            "updated_at=%s WHERE id=%s AND owner=%s AND attempt=%s AND status='running'",
-            (status, result.get('job_id'), int(totals.get('total', 0)), int(totals.get('processed', 0)),
-             int(totals.get('inserted', 0)), int(totals.get('updated', 0)), int(totals.get('skipped', 0)),
-             int(totals.get('failed', 0)), _now(), int(job_id), str(owner), int(attempt)))
-        connection.commit()
-        return {'id': int(job_id), 'status': status, 'result_job_id': result.get('job_id')}
+        return {'id': int(job_id), 'status': result['status'], 'result_job_id': result.get('job_id')}
     finally:
         if locked:
             try:

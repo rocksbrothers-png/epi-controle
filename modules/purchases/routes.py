@@ -75,6 +75,7 @@ from modules.purchases.service import (
     require_purchase_function_admin,
     review_purchase_request_items,
     save_purchase_request_prices,
+    sign_quote_rows,
     update_epi_request_status,
     update_feedback_status,
     update_purchase_request_status,
@@ -744,7 +745,7 @@ def handle_get_user_unit_links(handler, parsed, payload, match):
 
 def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
-        authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_UPLOAD)
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_UPLOAD)
     filename = str(payload.get('filename') or 'cotacao.csv').strip() or 'cotacao.csv'
     raw_base64 = str(payload.get('content_base64') or '').strip()
     if not raw_base64:
@@ -759,6 +760,9 @@ def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
     if len(file_bytes) > max_bytes:
         raise ValueError('Arquivo de cotação excede o limite de 5 MB.')
     items = parse_purchase_quote_file(file_bytes, filename)
+    # Cada linha sai assinada: a associação confirmada depois só é aceita se
+    # os dados conferirem com o que o servidor extraiu do arquivo.
+    sign_quote_rows(actor, items)
     return send_json(handler, 200, {'ok': True, 'items': items})
 
 

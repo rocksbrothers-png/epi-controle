@@ -7,7 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=459cefe04d09">
+  <link rel="stylesheet" href="/styles.css?v=bc5e8bf4b58c">
   <!-- Bootstrap de tema (P2-2, reescrito na frente de Isolamento PR C).
        Antes lia `epi-theme` do `localStorage`: aparência de escopo DEVICE,
        aplicada ANTES de qualquer autenticação. Num computador compartilhado
@@ -17,7 +17,7 @@
        e que só é escrita DEPOIS da autenticação, carimbada com o principal.
        Por construção não há o que aplicar antes de saber de quem é. -->
   <script>try{var p=JSON.parse(sessionStorage.getItem('epi-prefs-sessao')||'null');if(p&&p.tema==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
-<link rel="stylesheet" href="/styles/safety-library.css?v=459cefe04d09">
+<link rel="stylesheet" href="/styles/safety-library.css?v=bc5e8bf4b58c">
 </head>
 <body>
   <section id="login-screen" class="screen active">
@@ -2757,7 +2757,7 @@
             <!-- Importação de PO via CSV (visível apenas para comprador quando PR está sent_to_buyer) -->
             <div id="req-po-csv-import-panel" style="display:none;padding:12px;background:var(--color-bg-alt);border-radius:6px;margin-bottom:12px;">
               <h4 style="margin:0 0 6px;">Importar PO do Sistema Interno (CSV/XLSX)</h4>
-              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX.</p>
+              <p style="margin:0 0 8px;font-size:13px;color:var(--color-text-muted);">Faça upload do CSV ou XLSX gerado no sistema interno com as colunas: <strong>epi, ca, fabricante, modelo, fornecedor, tamanho, qtd, valor_unitario</strong>. São aceitos CSV separado por vírgula/ponto-e-vírgula e Excel XLSX. Cada linha precisa ser associada e confirmada a um item da requisição: CA divergente bloqueia a associação e linha sem CA exige escolha manual.</p>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                 <input type="file" id="req-po-csv-file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="flex:1;min-width:200px;">
                 <button class="btn" id="req-po-csv-preview-btn">Visualizar</button>
@@ -2765,7 +2765,7 @@
               <div id="req-po-csv-preview" style="display:none;margin-top:10px;">
                 <div style="overflow-x:auto;">
                   <table id="req-po-csv-preview-table" style="font-size:12px;">
-                    <thead><tr><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit. (R$)</th><th scope="col">Total</th></tr></thead>
+                    <thead><tr><th scope="col">EPI</th><th scope="col" data-i18n="epi.caShort">CA</th><th scope="col">Fabricante</th><th scope="col">Fornecedor</th><th scope="col">Tamanho</th><th scope="col">Qtd</th><th scope="col">Vlr Unit. (R$)</th><th scope="col">Total</th><th scope="col">Item da requisição (confirmar)</th></tr></thead>
                     <tbody id="req-po-csv-preview-tbody"></tbody>
                   </table>
                 </div>
@@ -2782,6 +2782,17 @@
                   <button class="btn" id="req-po-save-prices-btn" title="Salva os preços na requisição sem gerar PO. Status muda para Cotada.">Salvar Preços na Requisição</button>
                   <button class="btn ghost" id="req-po-csv-submit-btn">Criar PO a partir do arquivo</button>
                   <button class="btn ghost" id="req-po-csv-cancel-btn">Cancelar</button>
+                </div>
+                <div id="req-po-csv-confirm" style="display:none;margin-top:10px;padding:10px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);" role="region" aria-label="Confirmação das associações da cotação">
+                  <h5 style="margin:0 0 6px;">Confirme as associações antes de gravar</h5>
+                  <div id="req-po-csv-confirm-body" style="overflow-x:auto;"></div>
+                  <label style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;">
+                    <input type="checkbox" id="req-po-csv-confirm-check"> Conferi cada associação, preço e quantidade.
+                  </label>
+                  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    <button class="btn" id="req-po-csv-confirm-btn">Confirmar e salvar</button>
+                    <button class="btn ghost" id="req-po-csv-confirm-cancel-btn">Voltar e revisar</button>
+                  </div>
                 </div>
               </div>
               <div id="req-po-csv-feedback" style="font-size:13px;margin-top:6px;"></div>
@@ -3960,57 +3971,57 @@
     </div>
   </div>
   <script defer src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
-  <script defer src="/i18n.js?v=459cefe04d09"></script>
-  <script defer src="/i18n-helper.js?v=459cefe04d09"></script>
-  <script defer src="/tenant-init.js?v=459cefe04d09"></script>
+  <script defer src="/i18n.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/i18n-helper.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/tenant-init.js?v=bc5e8bf4b58c"></script>
   <!-- Módulos core/utils (refatoração JS) — carregados antes dos demais scripts -->
-  <script defer src="/js/core/constants.js?v=459cefe04d09"></script>
-  <script defer src="/js/core/permissions.js?v=459cefe04d09"></script>
-  <script defer src="/js/core/feature-flags.js?v=459cefe04d09"></script>
-  <script defer src="/js/core/config.js?v=459cefe04d09"></script>
-  <script defer src="/js/utils/storage.js?v=459cefe04d09"></script>
-  <script defer src="/js/utils/debug.js?v=459cefe04d09"></script>
-  <script defer src="/js/utils/dom.js?v=459cefe04d09"></script>
-  <script defer src="/js/utils/perf.js?v=459cefe04d09"></script>
-  <script defer src="/js/modules/feature-flags-rt.js?v=459cefe04d09"></script>
-  <script defer src="/js/modules/permissions-rt.js?v=459cefe04d09"></script>
-  <script defer src="/js/modules/auth.js?v=459cefe04d09"></script>
-  <script defer src="/js/modules/api-client.js?v=459cefe04d09"></script>
-  <script defer src="/js/modules/router.js?v=459cefe04d09"></script>
+  <script defer src="/js/core/constants.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/core/permissions.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/core/feature-flags.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/core/config.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/utils/storage.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/utils/debug.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/utils/dom.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/utils/perf.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/modules/feature-flags-rt.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/modules/permissions-rt.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/modules/auth.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/modules/api-client.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/modules/router.js?v=bc5e8bf4b58c"></script>
   <!-- Módulos de domínio UBX (modules/<domínio>/{ui,business,integrations}) — antes das views e do app.js -->
-  <script defer src="/js/modules/purchases/business/purchase-import-matching.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/ui-helpers.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/view-helpers.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/dashboard-scope.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/dashboard.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/epis.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/estoque.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/stock-physical.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/estoque-config.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/safety-library.js?v=459cefe04d09"></script>
-<script defer src="/js/views/employee-portal.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/legal-entity-fields.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/legal-entities-view.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/outsourced-companies-view.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/outsourced-employees-view.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/data-migration-view.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/purchases.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/procurement.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/feedback.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/devolution.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/fichas.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/feedback-detail.js?v=459cefe04d09"></script>
-  <script defer src="/js/views/profile.js?v=459cefe04d09"></script>
-  <script defer src="/colab-list.js?v=459cefe04d09"></script>
-  <script defer src="/gestao-colab.js?v=459cefe04d09"></script>
-  <script defer src="/estoque.js?v=459cefe04d09"></script>
-  <script defer src="/ux-global.js?v=459cefe04d09"></script>
-  <script defer src="/app.js?v=459cefe04d09"></script>
-  <script defer src="/share-modal.js?v=459cefe04d09"></script>
-  <script defer src="/entrega-epi.js?v=459cefe04d09"></script>
-  <script defer src="/navigation.js?v=459cefe04d09"></script>
-  <script defer src="/navigation-controls.js?v=459cefe04d09"></script>
-  <script defer src="/error-monitor.js?v=459cefe04d09"></script>
-  <script defer src="/ux-analytics.js?v=459cefe04d09"></script>
+  <script defer src="/js/modules/purchases/business/purchase-import-matching.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/ui-helpers.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/view-helpers.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/dashboard-scope.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/dashboard.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/epis.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/estoque.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/stock-physical.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/estoque-config.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/safety-library.js?v=bc5e8bf4b58c"></script>
+<script defer src="/js/views/employee-portal.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/legal-entity-fields.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/legal-entities-view.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/outsourced-companies-view.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/outsourced-employees-view.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/data-migration-view.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/purchases.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/procurement.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/feedback.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/devolution.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/fichas.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/feedback-detail.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/js/views/profile.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/colab-list.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/gestao-colab.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/estoque.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/ux-global.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/app.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/share-modal.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/entrega-epi.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/navigation.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/navigation-controls.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/error-monitor.js?v=bc5e8bf4b58c"></script>
+  <script defer src="/ux-analytics.js?v=bc5e8bf4b58c"></script>
 </body>
 </html>

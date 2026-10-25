@@ -42,6 +42,7 @@ def test_parse_purchase_quote_csv_with_pandas_sep_detection(tmp_path, monkeypatc
         'epi': 'Luva',
         'ca': '39733',
         'fabricante': 'DANNY',
+        'modelo': '',
         'fornecedor': 'DANNY',
         'colaborador': '',
         'setor': '',
@@ -163,3 +164,13 @@ def test_parse_purchase_quote_skips_only_invalid_or_blank_rows_without_dropping_
     assert [row['colaborador'] for row in rows] == ['Ana', 'Bruno']
     assert [row['tamanho'] for row in rows] == ['P', 'M']
     assert len(rows) == 2
+
+
+def test_parse_purchase_quote_leaves_missing_quantity_blank(tmp_path, monkeypatch):
+    # Sem quantidade no arquivo, a linha não inventa "1": quem associa usa a do item
+    _redirect_import_debug(monkeypatch, tmp_path)
+    pytest.importorskip('pandas')
+    csv = 'epi,ca,qtd,valor_unitario\nLuva,39733,,89.90\nBota,11111,abc,10.00\n'
+    rows = parse_purchase_quote_file(csv.encode('utf-8'), 'sem_qtd.csv')
+    assert [r['qtd'] for r in rows] == ['', '']
+    assert rows[0]['total'] == '89.90'

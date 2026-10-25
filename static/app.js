@@ -2785,65 +2785,14 @@ function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
-function renderEpiPhotoPreview(photoValue) {
-  const preview = document.getElementById('epi-photo-preview');
-  if (!preview) return;
-  if (!photoValue) {
-    preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
-    return;
-  }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
-}
-
-async function handleEpiPhotoUpload(event) {
-  const hiddenField = document.getElementById('epi-photo-data');
-  const file = event.target.files?.[0];
-  if (!hiddenField) return;
-  if (!file) {
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-    return;
-  }
-  if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem válido para o EPI.');
-    event.target.value = '';
-    return;
-  }
-  try {
-    hiddenField.value = await fileToJpegDataUrl(file, 960);
-    renderEpiPhotoPreview(hiddenField.value);
-  } catch (error) {
-    alert(error.message || 'Não foi possí­vel processar a foto do EPI.');
-    event.target.value = '';
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-  }
-}
+// renderEpiPhotoPreview, handleEpiPhotoUpload, openEpiPhotoPicker, configureEpiPhotoInputCapture,
+// canUseEpiAllUnitsScope, syncEpiUnitOptions, applyEpiJoinventureRules, startEditEpi, setEpiPhotoData,
+// prepareEpiFormValues, resetEpiForm e buildEpiRow (cadastro de EPI) vivem em
+// static/js/modules/epis/{ui,business}/; fileToDataUrl e fileToJpegDataUrl em
+// static/js/modules/shared/ui/file-data-url.js (UBX-V3, Etapa 5).
 
 function isMobileUserAgent() {
   return /android|iphone|ipad|ipod|mobile|tablet/i.test(String(navigator.userAgent || ''));
-}
-
-function openEpiPhotoPicker({ preferCamera = false } = {}) {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  if (preferCamera && isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
-  input.click();
-}
-
-function configureEpiPhotoInputCapture() {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  input.setAttribute('accept', 'image/*');
-  if (isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
 }
 
 function getCompanyFormField(name) {
@@ -2904,15 +2853,6 @@ async function handlePlatformLogoUpload(event) {
   }
 }
 
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.readAsDataURL(file);
-  });
-}
-
 async function handlePlatformLoginLogoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) {
@@ -2933,30 +2873,6 @@ async function handlePlatformLoginLogoUpload(event) {
     alert(error.message);
     event.target.value = '';
   }
-}
-
-async function fileToJpegDataUrl(file, maxWidth = 720) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possí­vel ler o arquivo do logotipo.'));
-    reader.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possí­vel processar o logotipo enviado.'));
-      image.onload = () => {
-        const scale = Math.min(1, maxWidth / (image.width || maxWidth));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext('2d');
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      image.src = typeof reader.result === 'string' ? reader.result : '';
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 function renderPlatformBrand() {
@@ -2995,10 +2911,6 @@ function renderPlatformBrand() {
 
 function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
-}
-
-function canUseEpiAllUnitsScope() {
-  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
 }
 
 function hasConfigurationAccess() {
@@ -6672,15 +6584,6 @@ function buildEmployeeOpsRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
 }
 
-function buildEpiRow(item, canManageEpiRecords) {
-  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-archive="${item.id}">${tr('epi.archive', 'Arquivar')}</button></div>` : '-';
-  const scopeLabel = item.scope_label
-    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
-      ? tr('epi.allUnits', 'Todas as Unidades')
-      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
-  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${epiProtectionLabel(item.sector)}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${epiMeasureLabel(item.unit_measure)}</td><td>${actions}</td></tr>`;
-}
-
 function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
@@ -7582,45 +7485,6 @@ function selectStockEpiFromSearch(epiId) {
   renderStockEpiSearchResults();
 }
 
-function syncEpiUnitOptions() {
-  const companyField = document.getElementById('epi-company');
-  const unitField = document.getElementById('epi-unit');
-  if (!companyField || !unitField) return;
-  const operationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  if (operationalProfile && state.user?.company_id) {
-    companyField.value = String(state.user.company_id);
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = false;
-  }
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const previous = String(unitField.value || '');
-  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  const allowAllUnitsScope = canUseEpiAllUnitsScope();
-  if (operationalProfile) {
-    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
-    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
-    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
-    unitField.disabled = true;
-  } else {
-    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">${tr('epi.allUnits', 'Todas as Unidades')}</option>` : '';
-    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
-    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
-      unitField.value = EPI_ALL_UNITS_VALUE;
-    } else if (previous && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else if (units.length) {
-      unitField.value = String(units[0].id);
-    } else {
-      unitField.value = '';
-    }
-    unitField.disabled = false;
-  }
-  applyEpiJoinventureRules();
-}
-
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
   const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
@@ -7665,23 +7529,6 @@ function parseActiveJoinventureToken(value) {
   if (!raw.includes('@@')) return { name: raw, unit_id: null };
   const [name, unitId] = raw.split('@@');
   return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
-}
-
-function applyEpiJoinventureRules() {
-  const unitField = document.getElementById('epi-unit');
-  const activeSelect = document.getElementById('epi-joinventure-active');
-  const hint = document.getElementById('epi-unit-rule-hint');
-  if (!unitField || !activeSelect) return;
-  const selected = parseActiveJoinventureToken(activeSelect.value);
-  if (selected.name && selected.unit_id) {
-    unitField.value = String(selected.unit_id);
-    unitField.disabled = true;
-    if (hint) hint.textContent = tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.').replace('{name}', selected.name);
-  } else {
-    unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.');
-  }
 }
 
 function formatActiveJoinventureOption(entry) {
@@ -7849,43 +7696,6 @@ function startEditEmployee(employeeId) {
   syncEmpresaOrigemVisibility();
   setFormSubmitLabel('employee-form', 'Atualizar colaborador');
   showView('colaboradores');
-}
-
-function startEditEpi(epiId) {
-  const item = state.epis.find((epi) => String(epi.id) === String(epiId));
-  const form = document.getElementById('epi-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  syncEpiUnitOptions();
-  form.elements.unit_id.value = item.unit_id || '';
-  form.elements.name.value = item.name || '';
-  form.elements.purchase_code.value = item.purchase_code || '';
-  form.elements.ca.value = item.ca || '';
-  form.elements.sector.value = item.sector || '';
-  form.elements.epi_section.value = item.epi_section || '';
-  form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
-  form.elements.manufacturer.value = item.manufacturer || '';
-  form.elements.supplier_company.value = item.supplier_company || '';
-  form.elements.unit_measure.value = item.unit_measure || 'unidade';
-  form.elements.ca_expiry.value = item.ca_expiry || '';
-  form.elements.epi_validity_date.value = item.epi_validity_date || '';
-  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
-  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
-  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
-  form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
-  form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
-  form.elements.epi_photo_data.value = item.epi_photo_data || '';
-  if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
-  renderEpiPhotoPreview(form.elements.epi_photo_data.value);
-  document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
-  renderJoinventureList();
-  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
-  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Atualizar EPI');
-  showView('epis');
 }
 
 // ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
@@ -10308,14 +10118,6 @@ function syncReportLegalEntityOptions() {
 // syncReportOptions vive em static/js/modules/reports/ui/reports-view.js
 // (UBX-V3, Etapa 4), com o restante de Relatórios.
 
-function formatEpiOptionLabel(item) {
-  const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-  const manufacturer = item.manufacturer || '';
-  const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
-  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
-}
-
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
   const unitField = document.getElementById('stock-unit');
@@ -12572,69 +12374,12 @@ async function saveUser(event) {
   }
 }
 
-function normalizeEpiSizes(values) {
-  values.glove_size = String(values.glove_size || 'N/A');
-  values.size = String(values.size || 'N/A');
-  values.uniform_size = String(values.uniform_size || 'N/A');
-}
-
 function setEpiValidity(values) {
   const months = parseMonthsValue(values.manufacturer_validity_months);
   values.manufacturer_validity_months = months;
   values.validity_years = 0;
   values.validity_months = months;
   values.validity_days = months * 30;
-}
-
-async function setEpiPhotoData(values, editingId) {
-  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-  if (photoFile) {
-    values.epi_photo_data = await fileToDataUrl(photoFile);
-  } else if (editingId) {
-    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-    values.epi_photo_data = currentEpi?.epi_photo_data || '';
-  }
-}
-
-async function prepareEpiFormValues(values, editingId, event) {
-  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-    values.unit_id = parsedActiveJoinventure.unit_id;
-  }
-  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-    values.unit_id = '';
-  }
-  values.active_joinventure = parsedActiveJoinventure.name || '';
-  values.stock = 0;
-  
-  normalizeEpiSizes(values);
-  setEpiValidity(values);
-  
-  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-  
-  if (!values.epi_photo_data && editingId) {
-    await setEpiPhotoData(values, editingId);
-  }
-  return values;
-}
-
-function resetEpiForm(form) {
-  if (form.elements.id) form.elements.id.value = '';
-  const hidden = document.getElementById('epi-joinventures');
-  if (hidden) hidden.value = '[]';
-  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
-  const photoFile = document.getElementById('epi-photo-file');
-  if (photoFile) photoFile.value = '';
-  renderEpiPhotoPreview('');
-  renderJoinventureList();
-  if (form.elements.unit_id) {
-    form.elements.unit_id.value = canUseEpiAllUnitsScope()
-      ? EPI_ALL_UNITS_VALUE
-      : (form.elements.unit_id.options[0]?.value || '');
-  }
-  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar EPI');
 }
 
 async function saveSimpleForm(event, path, permission) {

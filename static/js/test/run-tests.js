@@ -78,7 +78,11 @@ function loadModule(relPath) {
   // UBX-V3: Relatórios (business → integrations → ui).
   'modules/reports/business/report-filters.js',
   'modules/reports/integrations/reports-api.js',
-  'modules/reports/ui/reports-view.js'
+  'modules/reports/ui/reports-view.js',
+  // UBX-V3: cadastro de EPI e leitura de arquivo.
+  'modules/shared/ui/file-data-url.js',
+  'modules/epis/business/epi-form-values.js',
+  'modules/epis/ui/epi-registration.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7745,6 +7749,7 @@ require('./shared-form-field-identity-runtime')({ test, assert, eq });
 require('./shared-domain-labels-runtime')({ test, assert, eq });
 require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
 require('./reports-view-runtime')({ testAsync, test, assert, eq });
+require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

@@ -2,7 +2,8 @@
 // UBX-V2 — caracterização de modules/shared/business/value-format.js.
 //
 // As tabelas abaixo foram GERADAS executando as funções ORIGINAIS do app.js
-// (main 1bd22272, fatiadas por nome) antes da extração, em TZ=UTC e
+// (main 1bd22272, fatiadas por nome) antes da extração; `undefined` é
+// preservado como { $undefined: true } e caracteres não ASCII como \u, em TZ=UTC e
 // TZ=America/Sao_Paulo (resultados idênticos). Elas fixam o comportamento
 // atual — inclusive peculiaridades (parseMonthsValue(6.9) === 69,
 // formatCurrency('abc') === 'R$ NaN', addDaysFromBaseDate com dias não
@@ -17,25 +18,28 @@ const NAMES = ['formatCurrency', 'fmtBrl', 'parseMonthsValue', 'parsePositiveInt
 
 const EXPECTED = {
   formatCurrency: [
-    [[0], 'R$ 0,00'],
-    [[null], 'R$ 0,00'],
-    [[null], 'R$ 0,00'],
-    [[''], 'R$ 0,00'],
-    [[1234.5], 'R$ 1.234,50'],
-    [['1234.5'], 'R$ 1.234,50'],
-    [[-0.005], '-R$ 0,01'],
-    [['abc'], 'R$ NaN'],
-    [[1e+21], 'R$ 1.000.000.000.000.000.000.000,00']
+    [[0], 'R$\u00a00,00'],
+    [[null], 'R$\u00a00,00'],
+    [[{ $undefined: true }], 'R$\u00a00,00'],
+    [[''], 'R$\u00a00,00'],
+    [[1234.5], 'R$\u00a01.234,50'],
+    [['1234.5'], 'R$\u00a01.234,50'],
+    [[-0.005], '-R$\u00a00,01'],
+    [['abc'], 'R$\u00a0NaN'],
+    [[1e+21], 'R$\u00a01.000.000.000.000.000.000.000,00']
   ],
   fmtBrl: [
-    [[0], 'R$ 0,00'],
-    [[null], 'R$ 0,00'],
-    [[1234.5], 'R$ 1.234,50'],
-    [['10'], 'R$ 10,00'],
-    [[-3.456], '-R$ 3,46'],
-    [['x'], 'R$ NaN']
+    [[0], 'R$\u00a00,00'],
+    [[null], 'R$\u00a00,00'],
+    [[{ $undefined: true }], 'R$\u00a00,00'],
+    [[1234.5], 'R$\u00a01.234,50'],
+    [['10'], 'R$\u00a010,00'],
+    [[-3.456], '-R$\u00a03,46'],
+    [['x'], 'R$\u00a0NaN']
   ],
   parseMonthsValue: [
+    [[0], 0],
+    [[false], 0],
     [[''], 0],
     [[null], 0],
     [['12'], 12],
@@ -45,11 +49,13 @@ const EXPECTED = {
     [['1-2'], 1],
     [['abc'], 0],
     [[6.9], 69],
-    [['１２'], 0]
+    [['\uff11\uff12'], 0]
   ],
   parsePositiveInteger: [
+    [[0], 0],
+    [[false], 0],
     [[''], 0],
-    [[null], 0],
+    [[{ $undefined: true }], 0],
     [['7'], 7],
     [[' 42 '], 42],
     [['3.9'], 3],
@@ -60,15 +66,22 @@ const EXPECTED = {
     [[5], 5]
   ],
   digitsOnly: [
+    [[0], ''],
+    [[false], ''],
     [[''], ''],
     [[null], ''],
+    [[{ $undefined: true }], ''],
     [['12.345.678/0001-90'], '12345678000190'],
     [['(11) 98765-4321'], '11987654321'],
     [[12345], '12345'],
     [['abc'], ''],
-    [['١٢'], '']
+    [['\u0661\u0662'], '']
   ],
   formatCnpj: [
+    [[0], ''],
+    [[false], ''],
+    [[{ $undefined: true }], ''],
+    [['123'], '123'],
     [['12345678000190'], '12.345.678/0001-90'],
     [['12.345.678/0001-90'], '12.345.678/0001-90'],
     [['1234567800019'], '1234567800019'],
@@ -78,23 +91,31 @@ const EXPECTED = {
     [[12345678000190], '12.345.678/0001-90']
   ],
   formatCNPJ: [
+    [[0], '\u2014'],
+    [[false], '\u2014'],
+    [[{ $undefined: true }], '\u2014'],
+    [['123'], '123'],
     [['12345678000190'], '12.345.678/0001-90'],
     [['12.345.678/0001-90'], '12.345.678/0001-90'],
     [['1234567800019'], '1234567800019'],
-    [[''], '—'],
-    [[null], '—'],
+    [[''], '\u2014'],
+    [[null], '\u2014'],
     [['abc'], 'abc'],
     [[12345678000190], '12.345.678/0001-90']
   ],
   normalizeSearchText: [
-    [['  Ação ÚNICA  '], 'acao unica'],
+    [[0], ''],
+    [[false], ''],
+    [['  A\u00e7\u00e3o \u00daNICA  '], 'acao unica'],
     [[null], ''],
-    [['Bota de Segurança'], 'bota de seguranca'],
-    [['ÇÃÕ'], 'cao'],
-    [['İ'], 'i'],
+    [['Bota de Seguran\u00e7a'], 'bota de seguranca'],
+    [['\u00c7\u00c3\u00d5'], 'cao'],
+    [['\u0130'], 'i'],
     [[42], '42']
   ],
   parseCsvList: [
+    [[0], []],
+    [[false], []],
     [[''], []],
     [[null], []],
     [['a, b ,,c'], ['a', 'b', 'c']],
@@ -109,15 +130,19 @@ const EXPECTED = {
     [['1e2,Infinity,NaN'], [100]]
   ],
   parseOptionalJson: [
+    [[{ $undefined: true }, { $undefined: true }], { $undefined: true }],
     [['', 'FB'], 'FB'],
     [['  ', null], null],
-    [['{"a":1}', null], {'a': 1}],
+    [['{"a":1}', null], { a: 1 }],
     [['[1,2]', null], [1, 2]],
     [['null', 'FB'], null],
     [[null, 'FB'], 'FB'],
-    [['{ruim', null], {'throws': 'Error', 'message': 'JSON inválido na configuração avançada: '}]
+    [['{ruim', null], { throws: 'Error', message: 'JSON inv\u00e1lido na configura\u00e7\u00e3o avan\u00e7ada: ' }]
   ],
   normalizeHexColor: [
+    [[0, 'F'], 'F'],
+    [[false, 'F'], 'F'],
+    [[{ $undefined: true }, { $undefined: true }], { $undefined: true }],
     [['#ABCDEF', 'F'], '#ABCDEF'],
     [['#abc', 'F'], '#aabbcc'],
     [['  #fff  ', 'F'], '#ffffff'],
@@ -137,7 +162,7 @@ const EXPECTED = {
     [['2026-13-01', 1], ''],
     [['22/10/2026', 1], ''],
     [['', 1], ''],
-    [['2026-10-22', 'x'], {'throws': 'RangeError', 'message': 'Invalid time value'}]
+    [['2026-10-22', 'x'], { throws: 'RangeError', message: 'Invalid time value' }]
   ]
 };
 
@@ -147,6 +172,10 @@ function load(context = {}) {
   vm.runInContext(fs.readFileSync(path.join(JS_ROOT, MODULE), 'utf8'), ctx);
   return ctx;
 }
+
+// As tabelas são JSON: `undefined` vem codificado como { $undefined: true }.
+const decode = (v) => (v && typeof v === 'object' && v.$undefined === true ? undefined : v);
+const show = (v) => (v === undefined ? 'undefined' : JSON.stringify(v));
 
 function outcome(fn, args) {
   try { return fn(...args); } catch (error) { return { throws: error.constructor.name, message: error.message }; }
@@ -176,15 +205,17 @@ module.exports = function ({ test, assert, eq }) {
       // leste de UTC o dia desloca (defeito preexistente). As tabelas valem
       // para UTC e fusos a oeste (Brasil); a leste só os casos sem data são fixos.
       const eastOfUtc = new Date().getTimezoneOffset() < 0;
-      for (const [args, expected] of rows) {
+      for (const [rawArgs, rawExpected] of rows) {
+        const args = rawArgs.map(decode);
+        const expected = decode(rawExpected);
         const actual = outcome(ctx[name], args);
         if (name === 'addDaysFromBaseDate' && eastOfUtc && typeof expected === 'string' && expected) { continue; }
         if (expected && expected.throws) {
-          eq(actual && actual.throws, expected.throws, `${name}(${JSON.stringify(args)}) lança`);
+          eq(actual && actual.throws, expected.throws, `${name}(${args.map(show).join(', ')}) lança`);
           assert(String(actual.message).startsWith(expected.message), `${name}: mensagem ${actual.message}`);
           continue;
         }
-        eq(JSON.stringify(actual), JSON.stringify(expected), `${name}(${JSON.stringify(args)})`);
+        eq(show(actual), show(expected), `${name}(${args.map(show).join(', ')})`);
       }
     });
   }

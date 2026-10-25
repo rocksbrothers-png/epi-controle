@@ -1,5 +1,5 @@
 {
-  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair. Nunca adicione itens à mão.",
+  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair; o modo update nunca adiciona. declarations/endpoints vêm da UBX-V1; uiEndpoints e knownCycles foram semeados uma única vez na UBX-V2 a partir do próprio scan da guarda (scanUiEndpoints/findCycles). Nunca adicione itens à mão.",
   "extracted": {
     "js/modules/purchases/business/purchase-import-matching.js": [
       "_normalizeCa",
@@ -1097,7 +1097,8 @@
   ],
   "uiEndpoints": {
     "js/views/dashboard.js": [
-      "/api/stock/compliance"
+      "/api/stock/compliance",
+      "/api/stock/compliance{}"
     ],
     "js/views/devolution.js": [
       "/api/devolutions",
@@ -1123,7 +1124,8 @@
     ],
     "js/views/feedback-detail.js": [
       "/api/feedbacks",
-      "/api/feedbacks/"
+      "/api/feedbacks/",
+      "/api/feedbacks/{}"
     ],
     "js/views/feedback.js": [
       "/api/feedbacks/admin-decision",
@@ -1138,31 +1140,58 @@
     "js/views/procurement.js": [
       "/api/authorized-suppliers",
       "/api/authorized-suppliers/",
+      "/api/authorized-suppliers/{}/catalog-sync",
+      "/api/authorized-suppliers/{}/integration",
+      "/api/authorized-suppliers/{}/integration/test",
+      "/api/authorized-suppliers/{}/products",
       "/api/purchase-orders",
       "/api/purchase-orders/",
+      "/api/purchase-orders/{}/confirmation",
+      "/api/purchase-orders/{}/tracking",
+      "/api/purchase-orders/{}/{}",
       "/api/purchase-requests",
       "/api/purchase-requests/",
+      "/api/purchase-requests/{}/quotes",
       "/api/quotes/",
+      "/api/quotes/{}/answer",
+      "/api/quotes/{}/fetch-api",
+      "/api/quotes/{}/portal-link",
+      "/api/quotes/{}/select",
+      "/api/quotes/{}/send",
       "/api/supplier-connectors",
-      "/api/supplier-products/"
+      "/api/supplier-products/",
+      "/api/supplier-products/{}"
     ],
     "js/views/profile.js": [
       "/api/auth/request-email-recovery",
       "/api/change-password",
       "/api/recover-password",
-      "/api/users/"
+      "/api/users/",
+      "/api/users/{}/email",
+      "/api/users/{}/recovery-token"
     ],
     "js/views/purchases.js": [
       "/api/authorized-suppliers",
       "/api/purchase-orders",
       "/api/purchase-requests",
-      "/api/purchase-requests/"
+      "/api/purchase-requests/",
+      "/api/purchase-requests/{}/review-items",
+      "/api/purchase-requests/{}/save-prices"
     ],
     "js/views/safety-library.js": [
-      "/api/"
+      "/api/",
+      "/api/{}-library/{}"
     ],
     "js/views/stock-physical.js": [
-      "/api/stock/items/"
+      "/api/stock/items/",
+      "/api/stock/items/{}"
+    ],
+    "i18n.js": [
+      "/api/i18n/",
+      "/api/i18n/{}"
+    ],
+    "tenant-init.js": [
+      "/api/tenant/resolve"
     ]
   },
   "knownCycles": []

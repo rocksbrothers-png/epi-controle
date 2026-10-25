@@ -9,13 +9,14 @@
 //
 // Sem DOM, sem HTTP, sem storage, sem estado global: toda entrada vem por
 // parâmetro. Os corpos são os das funções originais do app.js (só chaves
-// acrescentadas para o lint; equivalência provada por teste diferencial) —
+// acrescentadas para o lint, escapes \u mantidos; equivalência provada por teste diferencial) —
 // inclusive as duplicatas e peculiaridades registradas abaixo. Qualquer
 // mudança de resultado é mudança de comportamento, não de estrutura.
 //
 // Peculiaridades preservadas de propósito (docs/UBX_APPJS_AUDITORIA.md §10):
-//  - formatCnpj e formatCNPJ NÃO são equivalentes: para entrada inválida a
-//    primeira devolve '' e a segunda '—'.
+//  - formatCnpj e formatCNPJ NÃO são equivalentes: com 14 dígitos ambas
+//    formatam; sem isso ambas devolvem a entrada como veio, exceto entrada
+//    vazia/nula, em que formatCnpj devolve '' e formatCNPJ devolve '—'.
 //  - formatCurrency e fmtBrl são idênticas; ambas continuam publicadas
 //    porque são contratos distintos (fmtBrl é lido por views/purchases.js e
 //    views/procurement.js via globalThis).
@@ -70,7 +71,7 @@
   function normalizeSearchText(value) {
     return String(value || '')
       .normalize('NFD')
-      .replaceAll(/[̀-ͯ]/g, '')
+      .replaceAll(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim();
   }

@@ -213,7 +213,7 @@ entre Corporate e SaaS.
 | Novas globais, listeners ou mudanças de inicialização | Nenhuma nova declaração; o listener de migração ganhou o caso `data-migracao-homologate` dentro de `bindDataMigrationEvents` (já existente) |
 | HTTP fora da camada de integração | Melhorou: revert/homologação da migração passou a usar `modules/data-migration/integrations/job-decisions.js` (`__EPI_MIGRATION_DECISIONS__`) |
 | Regra de negócio na UI | Migração: filtro de entidades excluídas (`empresas`, `usuarios`, `solicitacoes`) no `app.js` — espelho visual de regra que o backend já aplica (#1048). Compras: `esc()` na lista/detalhe de PO e `_parsePoImportFile(file, purchaseRequestId)` (#1045/#1049). Nada movido nesta fase: são fluxos críticos recém-alterados |
-| Ciclos / ordem de carga | Mesmos 5 ciclos de funções da §1; módulos UBX carregam antes das views e do `app.js` |
+| Ciclos / ordem de carga | Mesmos 5 ciclos de funções da §1; módulos UBX carregam antes das views e do `app.js`. Scripts locais no `index.html`: 48 (§1) → 49 com o módulo da UBX-V2 |
 | Duplicação nova | Nenhuma |
 
 ### 10.3 Matriz de extração (estado em `main` 1bd22272)
@@ -240,12 +240,13 @@ Risco: **B** baixo (puro, sem DOM/HTTP/estado), **M** médio (DOM ou `state`, se
 
 ### 10.4 Mapa de dependências entre scripts (namespaces)
 
-Dependências declaradas por namespace `__EPI_*__` (publicado com `globalThis.__EPI_X__ = …`):
-apenas `views/dashboard.js → views/dashboard-scope.js` e `views/dashboard.js → views/legal-entity-fields.js`.
-Os demais acoplamentos passam por **funções globais** (Annex B) e por três registros compartilhados
-por desenho (`__EPI_FRONTEND_HELPERS__`, `__EPI_APP_STATE__`, `__EPI_REFS__`). Consequência: a regra de
-ciclos da guarda cobre o contrato por namespace — por isso todo módulo UBX publica um namespace
-congelado além dos nomes legados.
+Dependências declaradas por namespace `__EPI_*__` (publicado com `globalThis.`/`window.`/`self.__EPI_X__ = …`,
+em `static/js/**` e nos scripts de nível superior `static/*.js`): **14 arestas, nenhum ciclo** — por
+exemplo `views/dashboard.js → views/dashboard-scope.js` e `views/dashboard.js → views/legal-entity-fields.js`.
+Os demais acoplamentos passam por **funções globais** (Annex B), invisíveis a esta análise, e por três
+registros compartilhados por desenho (`__EPI_FRONTEND_HELPERS__`, `__EPI_APP_STATE__`, `__EPI_REFS__`).
+Consequência: a regra de ciclos da guarda cobre o contrato por namespace — por isso todo módulo UBX
+publica um namespace congelado além dos nomes legados.
 
 ### 10.5 Primeira extração da UBX-V2
 
@@ -260,14 +261,17 @@ Prova de equivalência:
   350.000 comparações por fuso em 5 fusos (São Paulo, Noronha, UTC, Tóquio, Kiritimati), 0 divergências;
   a sabotagem de um caractere é detectada;
 - caracterização no repositório (`static/js/test/shared-value-format-runtime.js`): tabelas geradas
-  a partir das funções originais, relógio fixo para `daysUntil`, ordem de carga e ausência no `app.js`;
+  a partir das funções originais (com `undefined`, `0` e `false` preservados), relógio fixo para
+  `daysUntil`, ordem de carga e ausência no `app.js`;
 - navegador real (backend + PostgreSQL descartável, `main` × branch): valores das 14 funções no
   Chromium, 14 views do master admin, CNPJ de fornecedor, lista/detalhe de PO, detalhe de requisição
   e seletor de fornecedor **idênticos**, mesmos erros de console (400 de seções opcionais e htmx
   bloqueado pelo proxy do sandbox).
 
 Peculiaridades preservadas (mudar qualquer uma é decisão de negócio):
-- `formatCnpj` (fallback `''`) × `formatCNPJ` (fallback `'—'`) não são equivalentes; `formatCurrency` e `fmtBrl` são.
+- `formatCnpj` × `formatCNPJ` não são equivalentes: com 14 dígitos ambas formatam; sem isso ambas devolvem
+  a entrada como veio (`'123'` → `'123'`), exceto entrada vazia/nula — `''` × `'—'`. `formatCurrency` e
+  `fmtBrl` são equivalentes.
 - `parseMonthsValue(6.9) === 69` (o ponto é descartado); `formatCurrency('abc') === 'R$ NaN'`.
 - **Defeito preexistente:** `addDaysFromBaseDate` usa meia-noite local e `toISOString()` (UTC): em
   fusos a leste de UTC devolve o dia anterior (`'2026-10-22' + 1` → `'2026-10-22'` em Tóquio). Não
@@ -275,11 +279,22 @@ Peculiaridades preservadas (mudar qualquer uma é decisão de negócio):
 
 ### 10.6 Guarda ampliada
 
-Além das regras da §7: (6) catraca de endpoints na camada UI (`static/js/views/*.js`, semente: 44
-endpoints em 12 arquivos); (7) nenhum ciclo novo entre scripts e `business/`/`integrations/` sem
-dependência de namespace da camada UI; `business/` não lê globais (entrada por parâmetro);
-(8) nenhum arquivo em `modules/` acima de 500 linhas (contra um novo monólito em `shared/`).
-Cada regra tem teste de sabotagem em `tests/test_app_js_ubx_boundary.py`.
+Além das regras da §7:
+
+- (6) catraca de endpoints na camada UI — `static/js/views/`, `modules/<domínio>/ui/` e os scripts de
+  UI de nível superior `static/*.js`; template literals contam com a sub-rota (`${id}` → `{}`) e o
+  prefixo solto `'/api'` usado para concatenar também é registrado (semente: 69 entradas em 14 arquivos);
+- (7) nenhum ciclo novo entre scripts; `business/`/`integrations/` sem dependência de namespace da UI;
+  `business/` não lê globais — nem por `globalThis`/`window`/`self` (`.`, `?.`, `[...]`) nem os globais
+  do `app.js` usados soltos (`state.`, `refs.`, `tr(`, `hasPermission(`, …) — e não usa HTTP alternativo
+  (`XMLHttpRequest`, `sendBeacon`, `EventSource`, `WebSocket`);
+- (8) nenhum arquivo em `modules/` acima de 500 linhas (contra um novo monólito em `shared/`).
+
+Cada regra tem teste de sabotagem em `tests/test_app_js_ubx_boundary.py`, inclusive os desvios
+apontados pela auditoria independente. **Limite honesto:** a guarda é análise por padrões, não um
+analisador de fluxo. Ela barra regressões descuidadas e os idiomas conhecidos; um endpoint montado
+em várias variáveis sob um prefixo já registrado no mesmo arquivo, ou uma dependência por função
+global (Annex B), ainda passam. A revisão humana continua necessária.
 
 ### 10.7 Pendente para a UBX-V3 (não iniciada)
 

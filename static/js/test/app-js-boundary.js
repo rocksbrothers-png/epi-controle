@@ -18,8 +18,11 @@
  *  5. Regras de camada: arquivos em modules/<domínio>/business/ não tocam
  *     DOM, HTTP, storage nem o estado global do app, e não leem globais
  *     (entrada só por parâmetro); integrations/ não toca DOM.
- *  6. (UBX-V2) Catraca de endpoints na camada UI: static/js/views/*.js não
- *     ganha endpoint `/api/` novo — integração nova vai para integrations/.
+ *  6. (UBX-V2) Catraca de endpoints na camada UI (static/js/views/,
+ *     modules/<domínio>/ui/ e scripts de UI em static/*.js): nenhum endpoint
+ *     `/api/` novo — integração nova vai para integrations/. Template literals
+ *     contam com a sub-rota (`${id}` vira `{}`) e o prefixo solto '/api' usado
+ *     para concatenar também é registrado.
  *  7. (UBX-V2) Dependências entre scripts, pelos namespaces `__EPI_*__` que
  *     cada um publica e consome: nenhum ciclo novo; business/ e
  *     integrations/ não dependem de namespaces publicados pela camada UI.
@@ -38,7 +41,8 @@ const APP_JS = path.join(ROOT, 'static', 'app.js');
 const SCRIPTS_HTML = path.join(ROOT, 'static', 'views', '_scripts.html');
 const MODULES_DIR = path.join(ROOT, 'static', 'js', 'modules');
 const BASELINE = path.join(__dirname, 'app-js-baseline.json');
-const JS_DIR = path.join(ROOT, 'static', 'js');
+const STATIC_DIR = path.join(ROOT, 'static');
+const JS_DIR = path.join(STATIC_DIR, 'js');
 const VIEWS_DIR = path.join(JS_DIR, 'views');
 const MAX_MODULE_LINES = 500;
 // Registros compartilhados por desenho (pontes do app, escritos por vários
@@ -46,24 +50,33 @@ const MAX_MODULE_LINES = 500;
 const SHARED_REGISTRIES = new Set(['__EPI_FRONTEND_HELPERS__', '__EPI_APP_STATE__', '__EPI_REFS__']);
 const FLAG_RE = /_(?:LOADED|BOUND|ACTIVE)__$/;
 const NAMESPACE_RE = /__EPI_[A-Z0-9_]+__/g;
-const PUBLISH_RE = /globalThis\s*\.\s*(__EPI_[A-Z0-9_]+__)\s*=(?!=)/g;
+const PUBLISH_RE = /\b(?:globalThis|window|self)\s*\.\s*(__EPI_[A-Z0-9_]+__)\s*=(?!=)/g;
 
 // Toda declaração de nível superior do app.js começa na coluna 0 (o arquivo
 // inteiro vive dentro de um único bloco `if` sem indentação). A contagem por
 // este padrão bate com a da AST (scripts/audit_app_js.js).
 const DECL_RE = /^(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm;
 const ENDPOINT_RE = /['"`](\/api\/[^'"`?$\s]*)/g;
+// Camada UI: template literal com a sub-rota (`/api/x/${id}/y` → /api/x/{}/y)
+// e o prefixo solto ('/api' ou '/api/' sozinho, usado para concatenar).
+const UI_TEMPLATE_RE = /`(\/api\/(?:[^`$?\s]|\$\{[^}]*\})*)/g;
+const UI_PREFIX_RE = /['"`](\/api\/?)['"`]/g;
+// Globais do app.js (Annex B / var) que uma regra de negócio não pode ler.
+const APP_GLOBALS_RE = /(?<![\w$.])(?:(?:state|refs)\s*(?:\.|\[|\?\.)|(?:tr|hasPermission|requirePermission|showToast|escapeHtml|esc|actorQuery)\s*\()/;
 
 const LAYER_RULES = {
   business: [
     [/\bdocument\s*\./, 'DOM (document.*)'],
     [/\.innerHTML\b/, 'DOM (innerHTML)'],
     [/\b(?:fetch|api|apiFetch|apiOptional|apiWithBootstrapRetry)\s*\(/, 'HTTP'],
+    [/\b(?:XMLHttpRequest|EventSource|WebSocket)\b|\.sendBeacon\s*\(/, 'HTTP'],
     [/\b(?:localStorage|sessionStorage)\b/, 'storage'],
     [/__EPI_APP_STATE__/, 'estado global do app'],
     // Leitura de global (exceto a própria flag de carga). Publicar o contrato
     // (`globalThis.x = ...` / `globalThis[name] = fn`) continua permitido.
-    [/\bglobalThis\s*\.\s*(?!__EPI_MODULE_[A-Z0-9_]+_LOADED__\b)[A-Za-z_$][\w$]*\b(?!\s*=(?!=))/, 'leitura de global (use parâmetros)']
+    [/\b(?:globalThis|window|self)\s*\.\s*(?!__EPI_MODULE_[A-Z0-9_]+_LOADED__\b)[A-Za-z_$][\w$]*\b(?!\s*=(?!=))/, 'leitura de global (use parâmetros)'],
+    [/\b(?:globalThis|window|self)\s*(?:\?\.\s*[\w$]+|\??\.?\s*\[[^\]]*\])(?!\s*=(?!=))/, 'leitura de global (use parâmetros)'],
+    [APP_GLOBALS_RE, 'global do app.js (receba por parâmetro)']
   ],
   integrations: [
     [/\bdocument\s*\./, 'DOM (document.*)'],
@@ -103,11 +116,28 @@ function endpointsOf(code) {
   return out;
 }
 
+function uiEndpointsOf(code) {
+  const out = endpointsOf(code);
+  for (const m of code.matchAll(UI_TEMPLATE_RE)) { out.add(m[1].replace(/\$\{[^}]*\}/g, '{}')); }
+  for (const m of code.matchAll(UI_PREFIX_RE)) { out.add(`${m[1]} (prefixo concatenado)`); }
+  return out;
+}
+
+// Arquivos da camada UI: views/, modules/<domínio>/ui/ e os scripts de UI de
+// nível superior em static/*.js (exceto o app.js, que tem regra própria).
+function uiFiles() {
+  const topLevel = fs.readdirSync(STATIC_DIR, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.js') && e.name !== 'app.js')
+    .map((e) => path.join(STATIC_DIR, e.name));
+  const moduleUi = walkFiles(MODULES_DIR).filter((f) => path.relative(MODULES_DIR, f).split(path.sep)[1] === 'ui');
+  return [...walkFiles(VIEWS_DIR), ...moduleUi, ...topLevel];
+}
+
 function scanUiEndpoints() {
   const result = {};
-  for (const file of walkFiles(VIEWS_DIR)) {
-    const found = endpointsOf(stripComments(fs.readFileSync(file, 'utf-8')));
-    if (found.size) { result[path.relative(path.join(ROOT, 'static'), file).split(path.sep).join('/')] = [...found].sort(); }
+  for (const file of uiFiles()) {
+    const found = uiEndpointsOf(stripComments(fs.readFileSync(file, 'utf-8')));
+    if (found.size) { result[path.relative(STATIC_DIR, file).split(path.sep).join('/')] = [...found].sort(); }
   }
   return result;
 }
@@ -115,7 +145,9 @@ function scanUiEndpoints() {
 // Grafo arquivo → arquivo: A depende de B quando A lê um namespace que B
 // publica (`globalThis.__EPI_X__ = ...`).
 function namespaceGraph() {
-  const files = walkFiles(JS_DIR).filter((f) => !f.includes(`${path.sep}test${path.sep}`));
+  const topLevel = fs.readdirSync(STATIC_DIR, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.js')).map((e) => path.join(STATIC_DIR, e.name));
+  const files = [...walkFiles(JS_DIR).filter((f) => !f.includes(`${path.sep}test${path.sep}`)), ...topLevel];
   const rel = (f) => path.relative(path.join(ROOT, 'static'), f).split(path.sep).join('/');
   const bodies = new Map(files.map((f) => [rel(f), stripComments(fs.readFileSync(f, 'utf-8'))]));
   const publisher = new Map();
@@ -160,7 +192,7 @@ function findCycles(edges) {
 
 function layerOf(relFromStatic) {
   const parts = relFromStatic.split('/');
-  if (parts[1] === 'views') { return 'ui'; }
+  if (parts.length === 1 || parts[1] === 'views') { return 'ui'; }
   if (parts[1] === 'modules' && parts.length >= 5) { return parts[3]; }
   return null;
 }
@@ -273,7 +305,7 @@ function check({ update = false } = {}) {
 
   // 8. Tamanho máximo dos módulos.
   for (const file of walkFiles(MODULES_DIR)) {
-    const lines = fs.readFileSync(file, 'utf-8').split('\n').length;
+    const lines = fs.readFileSync(file, 'utf-8').trimEnd().split('\n').length;
     if (lines > MAX_MODULE_LINES) {
       errors.push(`static/js/modules/${path.relative(MODULES_DIR, file).split(path.sep).join('/')} tem ${lines} linhas `
         + `(máximo ${MAX_MODULE_LINES}): divida por responsabilidade em vez de criar um novo monólito.`);
@@ -314,4 +346,4 @@ if (require.main === module) {
     + `camada UI: ${stats.uiEndpoints} endpoints; ciclos entre scripts: ${stats.cycles}.`);
 }
 
-module.exports = { check, scanAppJs, namespaceGraph, findCycles };
+module.exports = { check, scanAppJs, scanUiEndpoints, namespaceGraph, findCycles };

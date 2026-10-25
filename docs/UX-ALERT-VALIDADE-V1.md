@@ -20,7 +20,7 @@ O PR separado UI-FIX-BIBLIOTECA-ICON-V1 toca `_sidebar.html`; este toca `_script
 
 ## Validação
 
-- 523 testes JavaScript por produto, incluindo seis cenários novos de navegação, escopo, autorização e ciclo de vida do filtro (sete execuções contando ambos perfis operacionais).
+- 523 testes JavaScript por produto, incluindo seis cenários novos de navegação, escopo, autorização e ciclo de vida do filtro.
 - 156 testes Python selecionados por produto: arquitetura UBX, paridade F4/F5B, regularização em massa e evidência de lote via HTTP/JWT/PostgreSQL real. Incluem negativas de autorização e isolamento já implementadas.
 - Build/check do index, `git diff --check` e lint dos arquivos novos aprovados.
 - Playwright/Chromium com backend HTTP/JWT e PostgreSQL local isolado: seis combinações por produto (general_admin/admin/user × desktop 1617×1000/mobile 390×844; SPA desabilitada/habilitada). General Admin consulta oito peças em quatro lotes de duas unidades; admin/user consultam quatro peças em dois lotes da unidade operacional. EPI de mesmo nome e outra empresa excluídos. Unidade inicial vazia não oculta pendências agregadas. Lote com validade conhecida excluído.

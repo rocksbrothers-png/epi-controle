@@ -746,6 +746,18 @@ def handle_get_user_unit_links(handler, parsed, payload, match):
 def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PO_UPLOAD)
+        # A cotação é lida dentro de uma requisição: as linhas saem assinadas
+        # para ela, e só quem pode agir nela recebe a assinatura.
+        try:
+            pr_id = int(payload.get('purchase_request_id') or 0)
+        except (TypeError, ValueError):
+            pr_id = 0
+        if pr_id <= 0:
+            raise ValueError('Requisição da cotação não informada. Abra a importação a partir da requisição.')
+        pr = get_purchase_request_by_id(connection, pr_id)
+        if not pr:
+            raise ValueError('Requisição não encontrada.')
+        ensure_purchase_request_action_scope(connection, actor, pr, actor_operational_unit_id=actor_operational_unit_id)
     filename = str(payload.get('filename') or 'cotacao.csv').strip() or 'cotacao.csv'
     raw_base64 = str(payload.get('content_base64') or '').strip()
     if not raw_base64:
@@ -762,7 +774,7 @@ def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
     items = parse_purchase_quote_file(file_bytes, filename)
     # Cada linha sai assinada: a associação confirmada depois só é aceita se
     # os dados conferirem com o que o servidor extraiu do arquivo.
-    sign_quote_rows(actor, items)
+    sign_quote_rows(actor, items, pr_id)
     return send_json(handler, 200, {'ok': True, 'items': items})
 
 

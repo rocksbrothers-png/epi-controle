@@ -1,5 +1,5 @@
 {
-  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair. Nunca adicione itens à mão.",
+  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair; o modo update nunca adiciona. declarations/endpoints vêm da UBX-V1; uiEndpoints e knownCycles foram semeados uma única vez na UBX-V2 a partir do próprio scan da guarda (scanUiEndpoints/findCycles). Nunca adicione itens à mão.",
   "extracted": {
     "js/modules/purchases/business/purchase-import-matching.js": [
       "_normalizeCa",
@@ -16,6 +16,22 @@
       "debugLog",
       "reportNonCriticalError",
       "ensureModuleBound"
+    ],
+    "js/modules/shared/business/value-format.js": [
+      "formatCurrency",
+      "fmtBrl",
+      "parseMonthsValue",
+      "parsePositiveInteger",
+      "digitsOnly",
+      "formatCnpj",
+      "formatCNPJ",
+      "normalizeSearchText",
+      "parseCsvList",
+      "parseCsvNumberList",
+      "parseOptionalJson",
+      "normalizeHexColor",
+      "daysUntil",
+      "addDaysFromBaseDate"
     ]
   },
   "declarations": [
@@ -174,7 +190,6 @@
     "activateViewTab",
     "activeJoinventureToken",
     "actorQuery",
-    "addDaysFromBaseDate",
     "addEditButtons",
     "addEmployeeButtons",
     "addJoinventure",
@@ -312,7 +327,6 @@
     "currentJoinventures",
     "dashboardInteractiveEmptyMessage",
     "dataMigrationHelpers",
-    "daysUntil",
     "deactivateLegalEntity",
     "debounce",
     "deepClone",
@@ -323,7 +337,6 @@
     "deliveryEpiMatchesSearch",
     "describeFieldNode",
     "desmarcarCaixas",
-    "digitsOnly",
     "domainStatusLabel",
     "downloadCommercialContractPdf",
     "downloadDataMigrationJobReport",
@@ -373,22 +386,18 @@
     "finishDeliveryQrCameraSession",
     "flashUpdatedSurface",
     "flushPendingStorageWrites",
-    "fmtBrl",
     "focusRegistrationTab",
     "focusViewTab",
     "formValues",
     "formatActiveJoinventureOption",
     "formatArchivedRecordRow",
     "formatArchivedUnitRow",
-    "formatCNPJ",
-    "formatCnpj",
     "formatCommercialAuditDetails",
     "formatCommercialDetails",
     "formatCommercialFiltersLabel",
     "formatCompanyAvailabilityText",
     "formatCompanyCurrency",
     "formatCompanyRow",
-    "formatCurrency",
     "formatEpiOptionLabel",
     "formatLegalEntityRow",
     "formatOutsourcedCompanyAvailableRow",
@@ -541,11 +550,9 @@
     "navigateBack",
     "navigateToView",
     "normalizeEpiSizes",
-    "normalizeHexColor",
     "normalizeInvalidDomIds",
     "normalizePermissionList",
     "normalizeRole",
-    "normalizeSearchText",
     "normalizeSessionEmployeeId",
     "novoDiscriminadorDeEscopo",
     "onPoItemEpiChange",
@@ -580,12 +587,7 @@
     "outsourcedEmployeesList",
     "outsourcedEmployeesViewHelpers",
     "parseActiveJoinventureToken",
-    "parseCsvList",
-    "parseCsvNumberList",
     "parseFeatureFlagValue",
-    "parseMonthsValue",
-    "parseOptionalJson",
-    "parsePositiveInteger",
     "passoDeReset",
     "pendingRegularizationGroupLabel",
     "pendingRegularizationProof",
@@ -1092,5 +1094,105 @@
     "/api/user-unit-links",
     "/api/users",
     "/api/users/"
-  ]
+  ],
+  "uiEndpoints": {
+    "js/views/dashboard.js": [
+      "/api/stock/compliance",
+      "/api/stock/compliance{}"
+    ],
+    "js/views/devolution.js": [
+      "/api/devolutions",
+      "/api/devolutions/open-deliveries"
+    ],
+    "js/views/employee-portal.js": [
+      "/api/employee-access",
+      "/api/employee-access/pdf",
+      "/api/employee-close-period",
+      "/api/employee-feedback",
+      "/api/employee-sign-batch",
+      "/api/requests"
+    ],
+    "js/views/estoque-config.js": [
+      "/api/stock/alert-enabled",
+      "/api/stock/alert-enabled/restore-default",
+      "/api/stock/attention-percentage",
+      "/api/stock/attention-percentage/restore-default",
+      "/api/stock/epis",
+      "/api/stock/minimum",
+      "/api/stock/minimum/restore-default",
+      "/api/units/selectable"
+    ],
+    "js/views/feedback-detail.js": [
+      "/api/feedbacks",
+      "/api/feedbacks/",
+      "/api/feedbacks/{}"
+    ],
+    "js/views/feedback.js": [
+      "/api/feedbacks/admin-decision",
+      "/api/feedbacks/close",
+      "/api/feedbacks/forward-admin",
+      "/api/feedbacks/hseq-review",
+      "/api/feedbacks/triage"
+    ],
+    "js/views/fichas.js": [
+      "/api/ficha-epi-audit"
+    ],
+    "js/views/procurement.js": [
+      "/api/authorized-suppliers",
+      "/api/authorized-suppliers/",
+      "/api/authorized-suppliers/{}/catalog-sync",
+      "/api/authorized-suppliers/{}/integration",
+      "/api/authorized-suppliers/{}/integration/test",
+      "/api/authorized-suppliers/{}/products",
+      "/api/purchase-orders",
+      "/api/purchase-orders/",
+      "/api/purchase-orders/{}/confirmation",
+      "/api/purchase-orders/{}/tracking",
+      "/api/purchase-orders/{}/{}",
+      "/api/purchase-requests",
+      "/api/purchase-requests/",
+      "/api/purchase-requests/{}/quotes",
+      "/api/quotes/",
+      "/api/quotes/{}/answer",
+      "/api/quotes/{}/fetch-api",
+      "/api/quotes/{}/portal-link",
+      "/api/quotes/{}/select",
+      "/api/quotes/{}/send",
+      "/api/supplier-connectors",
+      "/api/supplier-products/",
+      "/api/supplier-products/{}"
+    ],
+    "js/views/profile.js": [
+      "/api/auth/request-email-recovery",
+      "/api/change-password",
+      "/api/recover-password",
+      "/api/users/",
+      "/api/users/{}/email",
+      "/api/users/{}/recovery-token"
+    ],
+    "js/views/purchases.js": [
+      "/api/authorized-suppliers",
+      "/api/purchase-orders",
+      "/api/purchase-requests",
+      "/api/purchase-requests/",
+      "/api/purchase-requests/{}/review-items",
+      "/api/purchase-requests/{}/save-prices"
+    ],
+    "js/views/safety-library.js": [
+      "/api/",
+      "/api/{}-library/{}"
+    ],
+    "js/views/stock-physical.js": [
+      "/api/stock/items/",
+      "/api/stock/items/{}"
+    ],
+    "i18n.js": [
+      "/api/i18n/",
+      "/api/i18n/{}"
+    ],
+    "tenant-init.js": [
+      "/api/tenant/resolve"
+    ]
+  },
+  "knownCycles": []
 }

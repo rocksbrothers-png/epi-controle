@@ -187,3 +187,116 @@ epi-controle-app#416 integrados em `main`). A branch UBX incorporou `main` por m
 e o baseline da guarda passou a incluir as quatro entradas acima, que já estavam em `main` quando a
 guarda foi introduzida. Daqui em diante a catraca vale para elas também: extraí-las para
 `modules/stock/` é a próxima oportunidade natural; adicionar outras ao `app.js` reprova.
+
+## 10. UBX-V2 (2026-10-25) — auditoria de integração e primeira extração
+
+### 10.1 Base auditada
+
+| Repositório | `main` auditada |
+|---|---|
+| Corporate (`rocksbrothers-png/epi-controle`) | `1bd22272d0ffae66e861a7a633dd334d46162453` |
+| SaaS (`rocksbrothers-png/epi-controle-app`) | `d3e92dda185631b1c070b7ab0b7e70e8be8f2d8c` |
+
+Integrados nas duas `main` (confirmado pelo histórico): estoque bloqueado/destinação (#1043/#416),
+UBX-V1 (#1044/#417), associação de cotações (#1045/#418), integridade de PO (#1046/#419),
+CI Flutter/Melos (#1047/#420), migração de seis categorias e rollback com estoque reconciliado
+(#1048/#421, Fases 3–4 do Centro de Migração) e rastreabilidade de linhas assinadas (#1049/#422).
+Nenhum PR aberto em nenhum dos dois repositórios no início da UBX-V2. `static/app.js` byte-idêntico
+entre Corporate e SaaS.
+
+### 10.2 O que as correções integradas fizeram com o `app.js`
+
+| Verificação | Resultado |
+|---|---|
+| Linhas | 20.193 (fim da UBX-V1) → **20.281** (+88), só por mudanças dentro de funções existentes |
+| Declarações de nível superior / endpoints | **950 / 121 — sem crescimento** (a guarda segurou) |
+| Novas globais, listeners ou mudanças de inicialização | Nenhuma nova declaração; o listener de migração ganhou o caso `data-migracao-homologate` dentro de `bindDataMigrationEvents` (já existente) |
+| HTTP fora da camada de integração | Melhorou: revert/homologação da migração passou a usar `modules/data-migration/integrations/job-decisions.js` (`__EPI_MIGRATION_DECISIONS__`) |
+| Regra de negócio na UI | Migração: filtro de entidades excluídas (`empresas`, `usuarios`, `solicitacoes`) no `app.js` — espelho visual de regra que o backend já aplica (#1048). Compras: `esc()` na lista/detalhe de PO e `_parsePoImportFile(file, purchaseRequestId)` (#1045/#1049). Nada movido nesta fase: são fluxos críticos recém-alterados |
+| Ciclos / ordem de carga | Mesmos 5 ciclos de funções da §1; módulos UBX carregam antes das views e do `app.js`. Scripts locais no `index.html`: 48 (§1) → 49 com o módulo da UBX-V2 |
+| Duplicação nova | Nenhuma |
+
+### 10.3 Matriz de extração (estado em `main` 1bd22272)
+
+Risco: **B** baixo (puro, sem DOM/HTTP/estado), **M** médio (DOM ou `state`, sem ciclo), **A** alto
+(ciclo, HTTP + DOM + RBAC, ou fluxo crítico recém-alterado).
+
+| Ordem | Domínio / conjunto | No `app.js` hoje | Linhas | Dependências | Risco | Testes existentes | Testes necessários |
+|---:|---|---|---:|---|:---:|---|---|
+| **1 (feito)** | Formatação/leitura de valores (`shared/business/value-format.js`) | 14 funções puras | 81 | nenhuma (só entre si) | B | indiretos (stock-panels mocka `formatCurrency`) | caracterização + diferencial (feitos) |
+| 2 | Helpers de id/atributo de DOM (`toSafeId`, `isValidDomId`, `getElementIdAttribute`, `describeFieldNode`, `resolveFormFieldAutocomplete`) | 5 | ≈60 | DOM por parâmetro | B | nenhum | caracterização com nós falsos |
+| 3 | Rótulos puros de domínio que só usam `tr` (`employmentTypeLabel`, `allocationTypeLabel`, `contractStatusLabel`, `retentionStatusBadge`, `domainStatusLabel`, `pendingRegularizationGroupLabel`) | 6 | ≈45 | `tr` (global `var`, injetável) | B | parciais | tabela de rótulos por chave |
+| 4 | Gate HTTP: wrappers `api` locais das 6 views → `api-client.js` | 6 views | — | `api-client`, `state` | M | `run-tests.js` (api-client) | contrato por view (URL, método, corpo) |
+| 5 | Relatórios (`syncReportOptions`, `renderReports`, `loadPendingReportRequests`, …) | 16 | 300 | `state`, `refs`, `api`, RBAC | M | estruturais | runtime da view + RBAC |
+| 6 | EPIs (formulário/validade/QR) | 34 | 517 | `state`, `refs`, `api` | M | estruturais | runtime + navegador |
+| 7 | Usuários | 17 | 233 | RBAC, `api` | M | estruturais | runtime + RBAC |
+| 8 | Colaboradores/terceirizados | 62 | 935 | RBAC, view helpers | M | parity tests | runtime + navegador |
+| 9 | Empresas/unidades/CNPJ/comercial | 131 | 1.474 | RBAC, escopo de tenant | A | parciais | tenant + navegador |
+| 10 | Entregas/QR | 66 | 1.285 | ciclo de 3, câmera | A | estruturais | navegador (QR) |
+| 11 | Compras restante (ciclo de workflow de PR) | 49 | 791 | ciclo de 5, recém-alterado | A | runtime de cotação/lote | estabilizar antes |
+| 12 | Estoque (regularização, lotes) | 89 | 1.793 | ciclo de 4, recém-alterado | A | 5 runtimes | estabilizar antes |
+| 13 | Migração de dados | 26 | 583 | Fases 3–4 em homologação | A | runtime de decisões | estabilizar antes |
+| 14 | Navegação/bootstrap/`init`/`refs`, fallback RBAC | 72 + 48 + 25 | ≈2.750 | ciclo de 13, fan-out 226 | A | bootstrap resilience | por último |
+
+### 10.4 Mapa de dependências entre scripts (namespaces)
+
+Dependências declaradas por namespace `__EPI_*__` (publicado com `globalThis.`/`window.`/`self.__EPI_X__ = …`,
+em `static/js/**` e nos scripts de nível superior `static/*.js`): **14 arestas, nenhum ciclo** — por
+exemplo `views/dashboard.js → views/dashboard-scope.js` e `views/dashboard.js → views/legal-entity-fields.js`.
+Os demais acoplamentos passam por **funções globais** (Annex B), invisíveis a esta análise, e por três
+registros compartilhados por desenho (`__EPI_FRONTEND_HELPERS__`, `__EPI_APP_STATE__`, `__EPI_REFS__`).
+Consequência: a regra de ciclos da guarda cobre o contrato por namespace — por isso todo módulo UBX
+publica um namespace congelado além dos nomes legados.
+
+### 10.5 Primeira extração da UBX-V2
+
+`static/js/modules/shared/business/value-format.js` — `formatCurrency`, `fmtBrl`, `digitsOnly`,
+`formatCnpj`, `formatCNPJ`, `parseMonthsValue`, `parsePositiveInteger`, `parseCsvList`,
+`parseCsvNumberList`, `parseOptionalJson`, `normalizeSearchText`, `normalizeHexColor`, `daysUntil`,
+`addDaysFromBaseDate` + namespace `__EPI_SHARED_VALUE_FORMAT__`. Carregado antes das views e do
+`app.js`. `app.js`: **20.281 → 20.200 linhas**, **950 → 936 declarações**.
+
+Prova de equivalência:
+- diferencial fora do repositório (originais fatiadas do `app.js` de `main` × módulo):
+  350.000 comparações por fuso em 5 fusos (São Paulo, Noronha, UTC, Tóquio, Kiritimati), 0 divergências;
+  a sabotagem de um caractere é detectada;
+- caracterização no repositório (`static/js/test/shared-value-format-runtime.js`): tabelas geradas
+  a partir das funções originais (com `undefined`, `0` e `false` preservados), relógio fixo para
+  `daysUntil`, ordem de carga e ausência no `app.js`;
+- navegador real (backend + PostgreSQL descartável, `main` × branch): valores das 14 funções no
+  Chromium, 14 views do master admin, CNPJ de fornecedor, lista/detalhe de PO, detalhe de requisição
+  e seletor de fornecedor **idênticos**, mesmos erros de console (400 de seções opcionais e htmx
+  bloqueado pelo proxy do sandbox).
+
+Peculiaridades preservadas (mudar qualquer uma é decisão de negócio):
+- `formatCnpj` × `formatCNPJ` não são equivalentes: com 14 dígitos ambas formatam; sem isso ambas devolvem
+  a entrada como veio (`'123'` → `'123'`), exceto entrada vazia/nula — `''` × `'—'`. `formatCurrency` e
+  `fmtBrl` são equivalentes.
+- `parseMonthsValue(6.9) === 69` (o ponto é descartado); `formatCurrency('abc') === 'R$ NaN'`.
+- **Defeito preexistente:** `addDaysFromBaseDate` usa meia-noite local e `toISOString()` (UTC): em
+  fusos a leste de UTC devolve o dia anterior (`'2026-10-22' + 1` → `'2026-10-22'` em Tóquio). Não
+  afeta o Brasil. Com dias não numéricos lança `RangeError`. Registrado, não corrigido.
+
+### 10.6 Guarda ampliada
+
+Além das regras da §7:
+
+- (6) catraca de endpoints na camada UI — `static/js/views/`, `modules/<domínio>/ui/` e os scripts de
+  UI de nível superior `static/*.js`; template literals contam com a sub-rota (`${id}` → `{}`) e o
+  prefixo solto `'/api'` usado para concatenar também é registrado (semente: 69 entradas em 14 arquivos);
+- (7) nenhum ciclo novo entre scripts; `business/`/`integrations/` sem dependência de namespace da UI;
+  `business/` não lê globais — nem por `globalThis`/`window`/`self` (`.`, `?.`, `[...]`) nem os globais
+  do `app.js` usados soltos (`state.`, `refs.`, `tr(`, `hasPermission(`, …) — e não usa HTTP alternativo
+  (`XMLHttpRequest`, `sendBeacon`, `EventSource`, `WebSocket`);
+- (8) nenhum arquivo em `modules/` acima de 500 linhas (contra um novo monólito em `shared/`).
+
+Cada regra tem teste de sabotagem em `tests/test_app_js_ubx_boundary.py`, inclusive os desvios
+apontados pela auditoria independente. **Limite honesto:** a guarda é análise por padrões, não um
+analisador de fluxo. Ela barra regressões descuidadas e os idiomas conhecidos; um endpoint montado
+em várias variáveis sob um prefixo já registrado no mesmo arquivo, ou uma dependência por função
+global (Annex B), ainda passam. A revisão humana continua necessária.
+
+### 10.7 Pendente para a UBX-V3 (não iniciada)
+
+Itens 2–4 da matriz (helpers de DOM, rótulos com `tr`, gate HTTP das views); depois Relatórios,
+EPIs e Usuários. Compras, Estoque e Migração só depois de estabilizados; bootstrap por último.

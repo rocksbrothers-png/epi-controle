@@ -1808,10 +1808,11 @@ def _quote_signing_key():
     return hmac.new(JWT_SECRET.encode('utf-8'), b'epi-quote-row-v1', hashlib.sha256).digest()
 
 
-def _quote_row_signature(actor, row, issued_at):
+def _quote_row_signature(actor, row, issued_at, purchase_request_id):
     payload = {
         'company': str(actor.get('company_id') or ''),
         'user': str(actor.get('id') or ''),
+        'purchase_request': str(int(purchase_request_id or 0)),
         'issued_at': str(issued_at),
         'row': {field: str(row.get(field) if row.get(field) is not None else '') for field in _QUOTE_SIGNED_FIELDS},
     }
@@ -1819,12 +1820,18 @@ def _quote_row_signature(actor, row, issued_at):
     return hmac.new(_quote_signing_key(), message, hashlib.sha256).hexdigest()
 
 
-def sign_quote_rows(actor, rows, *, now=None):
-    """Assina cada linha do arquivo de cotação devolvida pelo parse."""
+def sign_quote_rows(actor, rows, purchase_request_id, *, now=None):
+    """Assina cada linha do arquivo de cotação para a requisição em que foi visualizada.
+
+    A assinatura cobre empresa, usuário, requisição, horário e os campos da
+    linha: a mesma linha não é aceita em outra requisição.
+    """
+    if int(purchase_request_id or 0) <= 0:
+        raise ValueError('Requisição da cotação não informada.')
     issued_at = (now or datetime.now(UTC)).isoformat()
     for row in rows or []:
         row['quote_issued_at'] = issued_at
-        row['quote_sig'] = _quote_row_signature(actor, row, issued_at)
+        row['quote_sig'] = _quote_row_signature(actor, row, issued_at, purchase_request_id)
     return rows
 
 
@@ -1846,15 +1853,17 @@ def quote_row_from_association(raw):
     }
 
 
-def _signed_quote_row(actor, raw, label):
-    """Linha do arquivo como o servidor a processou, ou erro se não confere."""
+def _signed_quote_row(actor, raw, label, purchase_request_id):
+    """Linha do arquivo como o servidor a processou para esta requisição, ou erro se não confere."""
     row = quote_row_from_association(raw)
     issued_at = str(raw.get('quote_issued_at') or '')
     signature = str(raw.get('quote_sig') or '')
     if not signature or not issued_at:
         raise ValueError(f'{label}: linha sem a assinatura do arquivo processado. Visualize o arquivo novamente.')
-    if not hmac.compare_digest(signature, _quote_row_signature(actor, row, issued_at)):
-        raise ValueError(f'{label}: os dados não conferem com o arquivo processado pelo servidor.')
+    if not hmac.compare_digest(signature, _quote_row_signature(actor, row, issued_at, purchase_request_id)):
+        raise ValueError(
+            f'{label}: os dados não conferem com o arquivo processado pelo servidor para esta requisição.'
+        )
     try:
         issued = datetime.fromisoformat(issued_at)
     except ValueError as exc:
@@ -1917,7 +1926,7 @@ def validate_quote_associations(connection, pr, associations, actor):
         label = f'Linha {raw.get("quote_line") or index} da cotação'
         if raw.get('confirmed') is not True:
             raise ValueError(f'{label}: associação não confirmada pelo operador.')
-        row = _signed_quote_row(actor, raw, label)
+        row = _signed_quote_row(actor, raw, label, pr_id)
         line_key = (str(row.get('line') or ''), str(raw.get('quote_issued_at') or ''))
         if line_key in seen_lines:
             raise ValueError(f'{label}: a mesma linha do arquivo foi enviada mais de uma vez.')
@@ -2005,7 +2014,8 @@ def validate_quote_associations(connection, pr, associations, actor):
                 'CA sozinho, descrição parcial, fabricante, fornecedor ou origem não bastam para associar.'
             )
         validated.append({'raw': raw, 'row': row, 'item': item, 'epi': epi, 'matches': matches, 'label': label,
-                          'line': row.get('line') or index})
+                          'line': row.get('line') or index, 'issued_at': str(raw.get('quote_issued_at') or ''),
+                          'signature': str(raw.get('quote_sig') or '')})
     if not validated:
         raise ValueError('Nenhuma associação confirmada foi informada.')
     return validated
@@ -2021,9 +2031,12 @@ def _record_quote_association(connection, actor, pr, entry, unit_price, quantity
     comment = (
         f'{_audit_text(target)}: linha {_audit_text(entry["line"])} da cotação (EPI "{_audit_text(row.get("epi"))}", '
         f'CA {_audit_text(row.get("ca")) or "ausente"}, fabricante "{_audit_text(row.get("fabricante"))}", '
-        f'modelo "{_audit_text(row.get("modelo"))}") → item #{item["id"]} '
+        f'modelo "{_audit_text(row.get("modelo"))}", fornecedor "{_audit_text(row.get("fornecedor"))}") '
+        f'→ item #{item["id"]} '
         f'("{_audit_text(item.get("epi_name"))}", CA {_audit_text(item.get("ca")) or "-"}); '
-        f'R$ {float(unit_price):.2f} × {int(quantity)}; evidências: {", ".join(entry["matches"])}.'
+        f'R$ {float(unit_price):.2f} × {int(quantity)}; evidências: {", ".join(entry["matches"])}; '
+        f'arquivo processado em {_audit_text(entry.get("issued_at"))}, '
+        f'assinatura {_audit_text(entry.get("signature"))[:16]}.'
     )
     _record_purchase_event(
         connection, int(pr['company_id']), 'purchase_request', int(pr['id']), 'quote_association_confirmed',
@@ -2470,6 +2483,10 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         if not pr:
             raise ValueError('Requisição vinculada não encontrada.')
         ensure_resource_company(actor, pr, 'Requisição')
+        # A PO nasce na Unidade da requisição: o escopo validado na rota é o da
+        # Unidade do payload, e o recebimento credita o estoque dela.
+        if int(pr.get('unit_id') or 0) != unit_id:
+            raise ValueError('A requisição vinculada pertence a outra unidade; crie a PO na unidade da requisição.')
         approved_purchase_request_items_for_po(connection, pr_id, items)
     if str(payload.get('source') or '') == 'quote_import':
         # PO gerada do arquivo de cotação: cada item precisa de associação
@@ -2498,6 +2515,7 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
                 'epi_name': entry['epi'].get('name') or item.get('epi_name') or '',
                 'ca': entry['epi'].get('ca') or item.get('ca') or '',
                 'manufacturer': entry['epi'].get('manufacturer') or item.get('manufacturer') or '',
+                'supplier': str(entry['row'].get('fornecedor') or '').strip() or str(payload.get('supplier') or '').strip(),
             }
             for key in ('size', 'glove_size', 'uniform_size', 'unit_measure', 'origin',
                         'employee_name', 'employee_sector', 'employee_role'):
@@ -2619,7 +2637,7 @@ def create_purchase_order(connection, actor, payload, ip_address, *, get_epi_by_
         _record_quote_association(
             connection, actor, pr, entry, float(entry['raw'].get('unit_price') or 0),
             int(entry['raw'].get('quantity') or entry['raw'].get('quantity_requested') or 1),
-            ip_address, f'PO {po_number}',
+            ip_address, f'PO {po_number} (id {po_id})',
         )
 
     _record_purchase_event(

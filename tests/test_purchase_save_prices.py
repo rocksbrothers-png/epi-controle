@@ -84,11 +84,11 @@ def _pr(conn, pr_id=100):
     return dict(row)
 
 
-def _sign(payload, actor=ACTOR, issued_at=None):
-    """Assina como o parse do servidor faria com a linha do arquivo."""
+def _sign(payload, actor=ACTOR, issued_at=None, pr_id=100):
+    """Assina como o parse do servidor faria com a linha do arquivo, para a requisição visualizada."""
     issued = issued_at or datetime.now(timezone.utc).isoformat()
     payload['quote_issued_at'] = issued
-    payload['quote_sig'] = _quote_row_signature(actor, quote_row_from_association(payload), issued)
+    payload['quote_sig'] = _quote_row_signature(actor, quote_row_from_association(payload), issued, pr_id)
     return payload
 
 
@@ -317,7 +317,7 @@ def test_parse_signature_round_trip_matches_what_the_interface_sends():
     row = {'line': 2, 'item_id': '', 'epi': 'Luva nitrilica', 'ca': 'CA 12345', 'fabricante': 'Danny',
            'modelo': 'DA-500', 'fornecedor': 'ACME', 'tamanho': '', 'tamanho_luva': '', 'tamanho_uniforme': '',
            'qtd': '10', 'valor_unitario': '1234.56'}
-    [signed] = sign_quote_rows(ACTOR, [dict(row)])
+    [signed] = sign_quote_rows(ACTOR, [dict(row)], 100)
     association = {
         'item_id': 1000, 'unit_price': 1234.56, 'quantity': 10, 'confirmed': True, 'expected_updated_at': STAMP,
         'quote_line': signed['line'], 'quote_item_id': signed['item_id'], 'quote_epi': signed['epi'],

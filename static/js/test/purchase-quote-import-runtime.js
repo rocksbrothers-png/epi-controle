@@ -59,13 +59,14 @@ function harness({ withBusiness = true, withParser = true, detail = DETAIL, pars
   };
   context.globalThis = context;
   vm.createContext(context);
-  if (withParser) { context._parsePoImportFile = async () => parsed.map((r) => ({ ...r })); }
+  const parseCalls = [];
+  if (withParser) { context._parsePoImportFile = async (...args) => { parseCalls.push(args); return parsed.map((r) => ({ ...r })); }; }
   if (detail) { context._currentPrDetail = detail; }
   if (withBusiness) { vm.runInContext(read(BUSINESS_MODULE), context); }
   vm.runInContext(read('views/purchases.js'), context);
   context.initPoCsvImport(PR);
   const h = {
-    context, sent, node,
+    context, sent, node, parseCalls,
     preview: () => node('req-po-csv-preview-btn').onclick(),
     choose: (row, value) => context.setQuoteImportDecision(row, value),
     savePrices: () => node('req-po-save-prices-btn').onclick(),
@@ -89,6 +90,15 @@ async function previewAndDecide(h) {
 }
 
 module.exports = ({ test, testAsync, assert, eq }) => {
+  testAsync('Cotação: o parse é pedido para a requisição aberta (assinatura amarrada a ela)', async () => {
+    const h = harness();
+    await h.preview();
+    eq(h.parseCalls.length, 1);
+    eq(h.parseCalls[0][1], PR.id);
+    const appParse = appSource.slice(appSource.indexOf('async function _parsePoImportFile'), appSource.indexOf('// ── EPI Feedback Manager'));
+    assert(appParse.includes('purchase_request_id: purchaseRequestId'), 'parse sem purchase_request_id');
+  });
+
   test('Cotação: app.js publica _currentPrDetail na ponte de acessores de globalThis', () => {
     const bridge = appSource.slice(appSource.indexOf("['_purchaseDemands'"), appSource.indexOf('].forEach(([name, get, set])'));
     assert(bridge.includes("['_currentPrDetail', () => _currentPrDetail,"), 'ponte sem _currentPrDetail');

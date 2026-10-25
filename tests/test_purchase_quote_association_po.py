@@ -57,7 +57,7 @@ def _item(sign=True, **overrides):
     item.update(overrides)
     if sign:
         item['quote_issued_at'] = datetime.now(timezone.utc).isoformat()
-        item['quote_sig'] = _quote_row_signature(ADMIN, quote_row_from_association(item), item['quote_issued_at'])
+        item['quote_sig'] = _quote_row_signature(ADMIN, quote_row_from_association(item), item['quote_issued_at'], 5)
     return item
 
 

@@ -583,7 +583,7 @@
       if (!file) { if (feedback) {feedback.textContent = 'Selecione um arquivo CSV ou XLSX.';} return; }
       try {
         if (feedback) { feedback.textContent = 'Lendo arquivo...'; feedback.style.color = ''; }
-        const result = await requireQuoteImportFn('_parsePoImportFile')(file) || [];
+        const result = await requireQuoteImportFn('_parsePoImportFile')(file, pr.id) || [];
         if (!result.length) { if (feedback) {feedback.textContent = 'Nenhuma linha válida encontrada no arquivo.';} return; }
         const evaluation = requireQuoteImportFn('evaluatePurchaseImportCandidates')(result, quoteImportPrItems(pr));
         quoteImport.rows = result;

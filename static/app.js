@@ -18628,12 +18628,13 @@ function _readFileAsBase64(file) {
 // _matchPurchaseImportRows): camada Business de Compras em
 // static/js/modules/purchases/business/purchase-import-matching.js.
 
-async function _parsePoImportFile(file) {
+async function _parsePoImportFile(file, purchaseRequestId) {
   const contentBase64 = await _readFileAsBase64(file);
   const response = await api('/api/purchase-quote-file/parse', {
     method: 'POST',
     body: JSON.stringify({
       actor_user_id: state.user?.id,
+      purchase_request_id: purchaseRequestId,
       filename: file.name || 'cotacao.csv',
       content_base64: contentBase64,
     })

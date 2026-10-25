@@ -70,7 +70,9 @@ function loadModule(relPath) {
   // Refatoração UBX: camada Business de Compras extraída do app.js.
   'modules/purchases/business/purchase-import-matching.js',
   // UBX-V2: formatação e leitura de valores compartilhadas.
-  'modules/shared/business/value-format.js'
+  'modules/shared/business/value-format.js',
+  // UBX-V3: identificação de elementos e campos de formulário.
+  'modules/shared/ui/form-field-identity.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7733,6 +7735,7 @@ require('./purchase-lot-capture-runtime')({ testAsync, assert, eq });
 require('./stock-physical-runtime')({ testAsync, assert, eq });
 require('./purchase-quote-import-runtime')({ test, testAsync, assert, eq });
 require('./shared-value-format-runtime')({ test, assert, eq });
+require('./shared-form-field-identity-runtime')({ test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

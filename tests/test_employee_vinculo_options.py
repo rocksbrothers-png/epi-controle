@@ -70,9 +70,10 @@ def test_new_vinculo_options_are_in_the_report_filter():
 # ── rótulo exibido nas tabelas ────────────────────────────────────────────────
 
 def test_employment_type_label_maps_the_new_values():
-    app_js = _read('static', 'app.js')
+    # UBX-V3: o rótulo saiu do app.js para o módulo de rótulos de domínio.
+    labels_js = _read('static', 'js', 'modules', 'shared', 'ui', 'domain-labels.js')
     fn_match = re.search(
-        r'function employmentTypeLabel\(value\) \{(.*?)\n\}', app_js, re.S
+        r'function employmentTypeLabel\(value\) \{(.*?)\n\s*\}', labels_js, re.S
     )
     assert fn_match, 'employmentTypeLabel não encontrada'
     body = fn_match.group(1)

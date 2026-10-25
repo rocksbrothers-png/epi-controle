@@ -2532,12 +2532,10 @@ function actorQuery() {
   return `actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
 }
 
-function unitTypeLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return tr('unit.typeVessel', 'Embarcação');
-  if (normalized === 'plataforma') return tr('unit.typePlatform', 'Plataforma');
-  return tr('unit.typeBase', 'Base');
-}
+// unitTypeLabel, formatCompanyAvailabilityText, employmentTypeLabel,
+// allocationTypeLabel, outsourcedEmployeeLinkLabel, epiProtectionLabel e
+// epiMeasureLabel (rótulos traduzidos com tr) vivem em
+// static/js/modules/shared/ui/domain-labels.js (UBX-V3, Etapa 2).
 
 function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
@@ -5075,12 +5073,6 @@ function formatCompanyCurrency(value) {
   return formatCurrency(value || 0);
 }
 
-function formatCompanyAvailabilityText(company) {
-  return Number(company.limit_reached) === 1
-    ? tr('company.limitReached', 'Limite atingido')
-    : tr('company.availableSlotsText', '{count} vaga(s) disponíveis').replace('{count}', company.available_slots || 0);
-}
-
 function renderCompanyDetails(companyId = null) {
   if (!refs.companyDetails) return;
   const visibleCompanies = filterByUserCompany(state.companies);
@@ -6658,22 +6650,6 @@ function applyFichaEmployeeFilters(items) {
   });
 }
 
-function employmentTypeLabel(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'clt') return tr('employee.vincClt', 'CLT');
-  if (normalized === 'terceirizado') return tr('employee.vincOutsourced', 'Terceirizado');
-  if (normalized === 'temporário' || normalized === 'temporario') return tr('employee.vincTemporary', 'Temporário');
-  if (normalized === 'prestador de serviço' || normalized === 'prestador de servico') return tr('employee.vincServiceProvider', 'Prestador de Serviço');
-  if (normalized === 'menor aprendiz') return tr('employee.vincApprentice', 'Menor Aprendiz');
-  if (normalized === 'praticante') return tr('employee.vincTrainee', 'Praticante');
-  if (normalized === 'estagiário' || normalized === 'estagiario') return tr('employee.vincIntern', 'Estagiário');
-  return value || 'CLT';
-}
-
-function allocationTypeLabel(value) {
-  return value === 'temporary' ? tr('employee.allocationTemporary', 'Temporário') : tr('employee.allocationPrimary', 'Principal');
-}
-
 // "É mão de obra contratada?" — a mesma pergunta que `outsourcedEmployeesList`
 // faz, com a mesma fonte: o módulo de regras, e o fallback só se ele não
 // carregou. Existe porque `buildEmployeeRow`/`buildEmployeeOpsRow` decidiam por
@@ -6707,29 +6683,6 @@ function buildEmployeeOpsRow(item) {
   const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
   const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
-}
-
-function epiProtectionLabel(value) {
-  const labels = {
-    'Proteção-Membros Superiores': tr('epi.protectionUpperLimbs', 'Proteção-Membros Superiores'),
-    'Proteção-Membros Inferiores': tr('epi.protectionLowerLimbs', 'Proteção-Membros Inferiores'),
-    'Proteção-Auditiva': tr('epi.protectionHearing', 'Proteção-Auditiva'),
-    'Proteção-Olhos e Face': tr('epi.protectionEyesFace', 'Proteção-Olhos e Face'),
-    'Proteção-Respiratória': tr('epi.protectionRespiratory', 'Proteção-Respiratória'),
-    'Proteção-Mãos e Braços': tr('epi.protectionHandsArms', 'Proteção-Mãos e Braços'),
-    'Proteção-Cabeça': tr('epi.protectionHead', 'Proteção-Cabeça'),
-    'Proteção-Combate a Incêndio': tr('epi.protectionFirefighting', 'Proteção-Combate a Incêndio'),
-    'Proteção-Contra Queda': tr('epi.protectionFallProtection', 'Proteção-Contra Queda'),
-    'Proteção-Eletricidade': tr('epi.protectionElectricity', 'Proteção-Eletricidade')
-  };
-  return labels[value] || value || '-';
-}
-
-function epiMeasureLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'unidade') return tr('epi.measureUnit', 'Unidade');
-  if (normalized === 'par') return tr('epi.measurePair', 'Par');
-  return value || '-';
 }
 
 function buildEpiRow(item, canManageEpiRecords) {
@@ -9537,12 +9490,6 @@ function renderOutsourcedEmployees() {
 // nada. Os quatro estados vêm de `local_unit_link_status` (ADR-0002 §13):
 // `null`/ausente = não se aplica; 'none' = aplicável e inexistente nesta
 // Unidade; 'active' = vinculado; 'inactive' = arquivado nesta Unidade.
-function outsourcedEmployeeLinkLabel(status) {
-  if (!status) return '-';
-  if (status === 'active') return tr('employee.unitLinkActive', 'Vinculado');
-  if (status === 'inactive') return tr('employee.unitLinkArchived', 'Arquivado nesta Unidade');
-  return tr('employee.unitLinkAbsent', 'Não vinculado');
-}
 
 // Vincular/ativar/desativar o colaborador NESTA Unidade (ADR-0002 §13, PR B).
 // Não arquiva a pessoa (isso é ARCHIVAL_ENTITIES.outsourcedEmployee) e não

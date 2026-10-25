@@ -170,6 +170,7 @@
     "caExpired": "Utløpte CA",
     "caExpiring": "CA nær utløp",
     "negativeEvaluations": "Negative vurderinger",
+    "alertRegularizeValidity": "Registrer gyldighet",
     "alertViewStock": "Vis lager",
     "alertViewEpis": "Vis PVU",
     "productExpired": "PVU med utløpt holdbarhet",
@@ -679,6 +680,10 @@
       "selected": "Regulariser valgte partier"
     },
     "pendingReg": {
+      "alertContext": "Ventende fra varselet: {epi} · {company} · {unit}",
+      "allEpis": "Alt verneutstyr",
+      "clearAlertFilter": "Fjern varselfilter",
+
       "title": "Venter på regularisering",
       "hint": "Lagerenheter med UKJENT fysisk holdbarhet — sperret for utlevering til regularisering. Oppgi bevist fysisk holdbarhet, med verifiserbart bevis og begrunnelse.",
       "empty": "Ingen enheter venter på regularisering i gjeldende omfang.",

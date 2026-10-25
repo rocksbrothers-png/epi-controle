@@ -417,8 +417,12 @@
             <small id="validity-mgmt-empty" class="hint" style="display:none;" data-i18n="validity.empty">Nenhum EPI em risco de validade no escopo atual.</small>
           </article>
           <article class="card" id="pending-reg-card">
-            <h3 data-i18n="stock.pendingReg.title">Pendentes de regularização</h3>
+            <h3 id="pending-reg-title" tabindex="-1" data-i18n="stock.pendingReg.title">Pendentes de regularização</h3>
             <p class="hint" data-i18n="stock.pendingReg.hint">Peças em estoque com validade física DESCONHECIDA — bloqueadas para entrega até a regularização. Informe a validade física comprovada, com evidência verificável e justificativa.</p>
+            <div id="pending-reg-alert-context" hidden>
+              <p id="pending-reg-alert-label" class="hint" role="status" aria-live="polite"></p>
+              <button id="pending-reg-alert-clear" class="ghost" type="button" data-i18n="stock.pendingReg.clearAlertFilter">Limpar filtro do alerta</button>
+            </div>
             <div class="action-group" style="margin-top:8px;align-items:center;">
               <strong id="pending-reg-count" aria-live="polite"></strong>
               <button id="pending-reg-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>

@@ -170,6 +170,7 @@
     "caExpired": "Expired CA",
     "caExpiring": "CA nearing expiry",
     "negativeEvaluations": "Negative evaluations",
+    "alertRegularizeValidity": "Regularise Validity",
     "alertViewStock": "View stock",
     "alertViewEpis": "View PPE",
     "productExpired": "PPE past manufacturer validity",
@@ -679,6 +680,10 @@
       "selected": "Regularize selected batches"
     },
     "pendingReg": {
+      "alertContext": "Alert pending items: {epi} · {company} · {unit}",
+      "allEpis": "All PPE",
+      "clearAlertFilter": "Clear alert filter",
+
       "title": "Pending regularisation",
       "hint": "Stock pieces with UNKNOWN physical validity — blocked for delivery until regularised. Enter the proven physical validity, with verifiable evidence and justification.",
       "empty": "No pieces pending regularisation in the current scope.",

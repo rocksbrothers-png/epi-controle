@@ -2197,6 +2197,10 @@ const state = {
   fichaFinalizeClickBound: false
 };
 globalThis.__EPI_APP_STATE__ = state;
+globalThis.__EPI_PENDING_VALIDITY_NAVIGATION__?.configure({
+  getState: () => state, hasPermission, syncOptions: syncStockOptions, translate: tr,
+  refresh: () => globalThis.__EPI_REFRESH_ESTOQUE_LISTA__(),
+});
 
 const qrScannerState = {
   active: false,
@@ -14024,15 +14028,16 @@ async function loadPendingRegularization() {
   if (!tbody) return;
   const isCurrent = _startStockPanelLoad('pending', 'pending-reg-count', 'pending-reg-empty', ['pending-reg-tbody']);
   updatePendingRegularizationSelection();
-  const { companyId, unitId } = _blockedStockContext();
+  const { companyId, unitId } = globalThis.__EPI_PENDING_VALIDITY_NAVIGATION__?.requestContext(_blockedStockContext()) || _blockedStockContext();
   const params = new URLSearchParams({ actor_user_id: String(state.user?.id || '') });
   if (companyId) params.set('company_id', companyId);
   if (unitId) params.set('unit_id', unitId);
   const countEl = document.getElementById('pending-reg-count');
   const emptyEl = document.getElementById('pending-reg-empty');
   try {
-    const payload = await apiWithBootstrapRetry(`/api/stock/pending-regularization?${params.toString()}`);
+    let payload = await apiWithBootstrapRetry(`/api/stock/pending-regularization?${params.toString()}`);
     if (!isCurrent()) return;
+    payload = globalThis.__EPI_PENDING_VALIDITY_NAVIGATION__?.filterResponse(payload) || payload;
     const items = Array.isArray(payload.items) ? payload.items : [];
     const canRegularize = hasPermission('stock:regularize_validity');
     const lotButton = document.getElementById('pending-reg-lot');

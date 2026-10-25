@@ -170,6 +170,7 @@
     "caExpired": "CA expirés",
     "caExpiring": "CA proches de l'expiration",
     "negativeEvaluations": "Évaluations négatives",
+    "alertRegularizeValidity": "Régulariser la validité",
     "alertViewStock": "Voir le stock",
     "alertViewEpis": "Voir les EPI",
     "productExpired": "EPI à validité dépassée",
@@ -679,6 +680,10 @@
       "selected": "Régulariser les lots sélectionnés"
     },
     "pendingReg": {
+      "alertContext": "Éléments de l’alerte : {epi} · {company} · {unit}",
+      "allEpis": "Tous les EPI",
+      "clearAlertFilter": "Effacer le filtre de l’alerte",
+
       "title": "En attente de régularisation",
       "hint": "Pièces en stock avec validité physique INCONNUE — bloquées pour la remise jusqu'à la régularisation. Indiquez la validité physique prouvée, avec preuve vérifiable et justification.",
       "empty": "Aucune pièce en attente de régularisation dans le périmètre actuel.",

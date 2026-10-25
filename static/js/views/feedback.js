@@ -38,15 +38,10 @@
 
   function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
 
+  // Cliente HTTP único: modules/api-client.js (carregado antes das views) publica
+  // `api`; o fallback de fetch cru que existia aqui era código redundante.
   async function api(path, opts) {
-    if (typeof globalThis.api === 'function') { return globalThis.api(path, opts); }
-    const res = await fetch(path, opts);
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`;
-      try { const j = await res.json(); msg = j.error || j.message || msg; } catch (_) { /* ignore */ }
-      throw new Error(msg);
-    }
-    return res.json();
+    return globalThis.api(path, opts);
   }
 
   function showToast(msg, type) {

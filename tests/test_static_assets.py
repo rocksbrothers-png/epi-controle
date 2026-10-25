@@ -355,9 +355,9 @@ def test_async_functions_consumed_by_view_modules_are_exposed_on_globalthis():
 
     # São async functions (não ganham Annex B hoisting) e são consumidas por
     # static/js/views/*.js via globalThis.<fn>(). Devem estar expostas.
+    # api/apiOptional moram em static/js/modules/api-client.js desde a UBX-V3
+    # (Etapa 3) — conferidos em test_http_layer_delegates_to_canonical_api_client.
     required_global_async = [
-        "api",
-        "apiOptional",
         "loadBootstrap",
         "loadAuthorizedSuppliers",
         "loadPurchaseDemands",
@@ -384,11 +384,18 @@ def test_http_layer_delegates_to_canonical_api_client():
     apiWithBootstrapRetry delegam ao módulo canônico static/js/modules/api-client.js
     (apiFetch/apiFetchOptional/apiFetchWithRetry), fonte única de verdade."""
     app_js = _app_js()
+    client_js = (_repo_root() / "static" / "js" / "modules" / "api-client.js").read_text(encoding="utf-8")
 
-    # app.js delega aos canônicos expostos por api-client.js
-    assert "return globalThis.apiFetch(path, options);" in app_js
-    assert "return globalThis.apiFetchOptional(path, options);" in app_js
-    assert "return globalThis.apiFetchWithRetry(path, options, config);" in app_js
+    # UBX-V3 (Etapa 3): os delegadores saíram do app.js para o próprio módulo
+    # canônico, com o mesmo corpo, e são publicados em globalThis por ele.
+    assert "return globalThis.apiFetch(path, options);" in client_js
+    assert "return globalThis.apiFetchOptional(path, options);" in client_js
+    assert "return globalThis.apiFetchWithRetry(path, options, config);" in client_js
+    assert "const legacyAppExports = { api, apiOptional, apiWithBootstrapRetry };" in client_js
+    for name in ("api", "apiOptional", "apiWithBootstrapRetry"):
+        assert not re.search(rf"^(?:async\s+)?function {name}\(", app_js, flags=re.MULTILINE), (
+            f"{name} voltou a ser declarado no app.js"
+        )
 
     # Não reintroduzir a lógica duplicada em app.js (deve viver só no módulo).
     assert "const { contentType, payload } = await parseApiPayload(response);" not in app_js

@@ -2301,24 +2301,11 @@ function buildEmployeeAccessLink(token) {
   if (!normalizedToken) return '';
   return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
-// ── Camada HTTP: fonte única em static/js/modules/api-client.js (Fase 1 UBX) ──
+// ── Camada HTTP: fonte única em static/js/modules/api-client.js ───────────────
 // api-client.js é carregado ANTES de app.js (ver _scripts.html) e expõe em
-// globalThis: apiFetch / apiFetchOptional / apiFetchWithRetry, além dos helpers
-// (requestApiResponse, parseApiPayload, ensureExpectedApiResponse,
-// throwIfApiRequestFailed, createApiError, waitMs). Estas funções eram cópias
-// idênticas dessa lógica; agora delegam para a única fonte de verdade, evitando
-// divergência entre as duas implementações.
-async function api(path, options = {}) {
-  return globalThis.apiFetch(path, options);
-}
-
-async function apiOptional(path, options = {}) {
-  return globalThis.apiFetchOptional(path, options);
-}
-
-async function apiWithBootstrapRetry(path, options = {}, config = {}) {
-  return globalThis.apiFetchWithRetry(path, options, config);
-}
+// globalThis apiFetch / apiFetchOptional / apiFetchWithRetry e, desde a UBX-V3
+// (Etapa 3), também os delegadores api / apiOptional / apiWithBootstrapRetry
+// que moravam aqui — o app.js e as views continuam chamando os mesmos nomes.
 
 function normalizeRole(role) {
   if (!role) return '';
@@ -19788,8 +19775,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   }
 });
 
+// api/apiOptional saíram desta lista na UBX-V3 (Etapa 3): moram em
+// modules/api-client.js, que já os publica em globalThis antes do app.js.
 Object.assign(globalThis, {
-  api, apiOptional, loadBootstrap,
+  loadBootstrap,
   loadAuthorizedSuppliers, loadPurchaseDemands, loadPurchaseRequests,
   loadPurchaseOrders, loadAprovacoesSolicitacoes, loadFornecedoresPurchaseFunctions,
   importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,

@@ -1,5 +1,5 @@
 {
-  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair; o modo update nunca adiciona. declarations/endpoints vêm da UBX-V1; uiEndpoints e knownCycles foram semeados uma única vez na UBX-V2 a partir do próprio scan da guarda (scanUiEndpoints/findCycles). Nunca adicione itens à mão.",
+  "_comment": "Baseline da guarda UBX (static/js/test/app-js-boundary.js). Só diminui: rode --update após extrair; o modo update nunca adiciona. declarations/endpoints vêm da UBX-V1; uiEndpoints e knownCycles foram semeados uma única vez na UBX-V2, e uiRawFetch na UBX-V3, a partir do próprio scan da guarda (scanUiEndpoints/findCycles). Nunca adicione itens à mão.",
   "extracted": {
     "js/modules/purchases/business/purchase-import-matching.js": [
       "_normalizeCa",
@@ -54,6 +54,11 @@
       "outsourcedEmployeeLinkLabel",
       "epiProtectionLabel",
       "epiMeasureLabel"
+    ],
+    "js/modules/api-client.js": [
+      "api",
+      "apiOptional",
+      "apiWithBootstrapRetry"
     ]
   },
   "declarations": [
@@ -223,9 +228,6 @@
     "adotarPreferenciasDoServidor",
     "advanceOnboardingStep",
     "analyzeDataMigrationSource",
-    "api",
-    "apiOptional",
-    "apiWithBootstrapRetry",
     "aplicarPreferenciasNaTela",
     "aposentarPreferenciasLegadas",
     "applyArchivedUnitsFilters",
@@ -1198,5 +1200,11 @@
       "/api/tenant/resolve"
     ]
   },
-  "knownCycles": []
+  "knownCycles": [],
+  "uiRawFetch": {
+    "js/views/procurement.js": 1,
+    "js/views/safety-library.js": 1,
+    "i18n.js": 1,
+    "tenant-init.js": 1
+  }
 }

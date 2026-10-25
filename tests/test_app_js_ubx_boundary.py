@@ -330,3 +330,49 @@ def test_catraca_ui_update_so_remove_endpoint(sandbox: Path):
     # devolver o endpoint depois do --update volta a reprovar: o modo update nunca adiciona
     view.write_text(text, encoding="utf-8")
     assert _run(sandbox).returncode == 1
+
+
+# ── UBX-V3 ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "globalThis.__x = () => fetch('/x');",
+        "globalThis.__x = () => window.fetch('/x');",
+        "globalThis.__x = () => globalThis.fetch('/x');",
+    ],
+)
+def test_sabotagem_fetch_cru_novo_na_camada_ui_reprova(sandbox: Path, code: str):
+    _append(sandbox, "static/js/views/profile.js", code)
+    result = _run(sandbox)
+    assert result.returncode == 1, code
+    assert "profile.js (camada UI) ganhou fetch cru (0 → 1)" in result.stderr
+
+
+def test_metodo_fetch_de_outro_objeto_nao_conta_como_fetch_cru(sandbox: Path):
+    _append(sandbox, "static/js/views/profile.js", "globalThis.__x = (client) => client.fetch('/x');")
+    result = _run(sandbox)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_sabotagem_delegador_http_volta_ao_app_js_reprova(sandbox: Path):
+    _append_to_app_js(sandbox, "async function api(path, options = {}) { return globalThis.apiFetch(path, options); }")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "api foi extraído para static/js/modules/api-client.js e voltou a ser declarado no app.js" in result.stderr
+
+
+def test_catraca_fetch_cru_update_so_diminui(sandbox: Path):
+    view = sandbox / "static/js/views/procurement.js"
+    text = view.read_text(encoding="utf-8")
+    assert "fetch(path, opts)" in text
+    view.write_text(text.replace("fetch(path, opts)", "globalThis.api(path, opts)"), encoding="utf-8")
+    result = _run(sandbox)
+    assert result.returncode == 1
+    assert "js/views/procurement.js:fetch 1→0" in result.stderr
+    assert _run(sandbox, "--update").returncode == 0
+    baseline = json.loads((sandbox / BASELINE).read_text(encoding="utf-8"))
+    assert "js/views/procurement.js" not in baseline["uiRawFetch"]
+    view.write_text(text, encoding="utf-8")
+    assert _run(sandbox).returncode == 1

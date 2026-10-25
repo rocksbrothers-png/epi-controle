@@ -7739,6 +7739,7 @@ require('./purchase-quote-import-runtime')({ test, testAsync, assert, eq });
 require('./shared-value-format-runtime')({ test, assert, eq });
 require('./shared-form-field-identity-runtime')({ test, assert, eq });
 require('./shared-domain-labels-runtime')({ test, assert, eq });
+require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

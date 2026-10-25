@@ -3035,9 +3035,11 @@ function sanitizeLoginUrlParams() {
   }
 }
 
-function formatCurrency(value) {
-  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
+// formatCurrency, fmtBrl, digitsOnly, formatCnpj, formatCNPJ, parseMonthsValue,
+// parsePositiveInteger, parseCsvList, parseCsvNumberList, parseOptionalJson,
+// normalizeSearchText, normalizeHexColor, daysUntil e addDaysFromBaseDate
+// (formatação e leitura de valores) vivem em
+// static/js/modules/shared/business/value-format.js (UBX-V2).
 
 function cloneCommercialSettings(settings = DEFAULT_COMMERCIAL_SETTINGS) {
   return deepClone(settings);
@@ -3068,12 +3070,6 @@ function planHintText(planKey, addendumEnabled = false) {
 
 function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
-}
-
-function parseMonthsValue(rawValue) {
-  const digits = String(rawValue ?? '').replaceAll(/[^\d-]/g, '').trim();
-  const parsed = Number.parseInt(digits || '0', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function renderEpiPhotoPreview(photoValue) {
@@ -3153,16 +3149,6 @@ function readCompanyFieldValue(name, fallback = '', options = {}) {
   return field ? field.value ?? fallback : fallback;
 }
 
-
-function digitsOnly(value) {
-  return String(value || '').replaceAll(/\D/g, '');
-}
-
-function formatCnpj(value) {
-  const digits = digitsOnly(value);
-  if (digits.length !== 14) return value || '';
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-}
 
 function companyLogoSrc(logoValue) {
   return String(logoValue || '').startsWith('data:image/') ? logoValue : DEFAULT_COMPANY_LOGO;
@@ -5425,14 +5411,6 @@ function filteredCommercialLogs() {
     if (state.commercialFilters.date_to && day > state.commercialFilters.date_to) return false;
     return true;
   });
-}
-
-function daysUntil(dateValue) {
-  if (!dateValue) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(`${dateValue}T00:00:00`);
-  return Math.round((target - today) / 86400000);
 }
 
 function fillCommercialSettingsForm() {
@@ -12745,14 +12723,6 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
   void loadOpenDeliveriesForCurrentPair().finally(() => syncDeliveryDevolutionOptions());
 }
 
-function normalizeSearchText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replaceAll(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
 function filteredLinkedEmployees() {
   const companyId = refs.userForm?.elements.company_id?.value || state.user?.company_id || '';
   const searchValue = normalizeSearchText(refs.userLinkedEmployeeSearch?.value || '');
@@ -14507,13 +14477,6 @@ function canConfigureMyCompany() {
   return Boolean(state.user) && hasPermission('company_settings:update');
 }
 
-function normalizeHexColor(value, fallback) {
-  const v = String(value || '').trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
-  if (/^#[0-9a-fA-F]{3}$/.test(v)) return '#' + v.slice(1).split('').map((c) => c + c).join('');
-  return fallback;
-}
-
 function myCompanyThemeMode(company) {
   try { return JSON.parse(company?.theme_json || '{}').mode || 'auto'; } catch { return 'auto'; }
 }
@@ -15157,27 +15120,6 @@ function renderConfigurationFramework() {
     `).join('') || '<tr><td colspan=\"5\">Sem escopos de relatório configurados.</td></tr>';
   }
   if (refs.configReportScopesJson) refs.configReportScopesJson.value = JSON.stringify(reportScopes, null, 2);
-}
-
-function parseCsvList(value) {
-  return String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function parseCsvNumberList(value) {
-  return parseCsvList(value).map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0);
-}
-
-function parseOptionalJson(rawValue, fallbackValue) {
-  const trimmed = String(rawValue || '').trim();
-  if (!trimmed) return fallbackValue;
-  try {
-    return JSON.parse(trimmed);
-  } catch (error) {
-    throw new Error('JSON inválido na configuração avançada: ' + error.message);
-  }
 }
 
 async function saveConfigurationFramework(event) {
@@ -16361,19 +16303,6 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
 
 // === FIM AUTO-SUGESTAO DATA PROXIMA TROCA v2 ===
 
-function parsePositiveInteger(value) {
-  const parsed = Number.parseInt(String(value ?? '').trim(), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function addDaysFromBaseDate(baseDateIso, days) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(baseDateIso || ''))) return '';
-  const baseDate = new Date(`${baseDateIso}T00:00:00`);
-  if (Number.isNaN(baseDate.getTime())) return '';
-  baseDate.setDate(baseDate.getDate() + Number(days));
-  return baseDate.toISOString().slice(0, 10);
-}
-
 function resolveDeliveryReplacementDays(epi) {
   if (!epi) return 0;
   const defaultDays = parsePositiveInteger(epi.default_replacement_days);
@@ -16470,10 +16399,6 @@ let _purchaseOrders = [];
 let _currentPrDetail = null;
 let _currentPoDetail = null;
 let _poItems = [];
-
-function fmtBrl(v) {
-  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
 
 function purchaseStatusBadge(status, extra = '') {
   const colors = { approved: 'green', closed: 'green', received: 'green', received_partial: 'orange', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
@@ -17680,12 +17605,6 @@ async function loadAuthorizedSuppliers() {
   } catch(e) {
     if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: 'Não foi possível carregar os fornecedores.' });
   }
-}
-
-function formatCNPJ(raw) {
-  const d = String(raw || '').replace(/\D/g, '');
-  if (d.length !== 14) return raw || '—';
-  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
 }
 
 function openEditSupplierModal(id) {

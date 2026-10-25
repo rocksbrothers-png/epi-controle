@@ -45,12 +45,22 @@ jobs:
           psql -h 127.0.0.1 -U epi -d stock_r1_integration -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;'
       - name: Pending regularization HTTP scope regression
         run: python -m pytest -q tests_postgres/test_est_v3_5_pending_regularization_http.py
+      # Os scripts do workspace (flutter/pubspec.yaml) chamam `melos exec` pelo
+      # shell: o executável precisa estar no PATH. Antes ele só existia por vir
+      # no cache do pub restaurado pelo flutter-action; com cache novo, sumia.
+      # Versão fixa = a que o workspace resolve hoje para `melos: ^8.2.2`.
+      - name: Install Melos
+        run: |
+          dart pub global activate melos 8.9.0
+          echo "${PUB_CACHE:-$HOME/.pub-cache}/bin" >> "$GITHUB_PATH"
       - name: Prepare Flutter
         working-directory: flutter
         run: |
           flutter pub get
-          dart run melos run gen:l10n
-          dart run melos run gen
+          command -v melos
+          melos --version
+          melos run gen:l10n
+          melos run gen
       - name: Validate R3 receipt HTTP contract and adversarial quantities
         run: |
           python -m pytest -q tests_postgres/test_est_v3_5_r3_lot_receipt.py tests_postgres/test_est_v3_5_r3_lot_receipt_http.py tests_postgres/test_est_v3_5_r3_effective_receipt_http.py

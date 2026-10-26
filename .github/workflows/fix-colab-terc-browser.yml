@@ -1,0 +1,29 @@
+name: Colaboradores and outsourced browser regression
+on:
+  pull_request:
+    paths:
+      - 'static/**'
+      - 'scripts/browser/fix_colab_terc.py'
+      - '.github/workflows/fix-colab-terc-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    name: Chromium functional regression (five locales)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: pip install playwright==1.58.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python scripts/browser/fix_colab_terc.py --output browser-evidence
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fix-colab-terc-browser-${{ github.sha }}
+          path: browser-evidence/
+          retention-days: 14

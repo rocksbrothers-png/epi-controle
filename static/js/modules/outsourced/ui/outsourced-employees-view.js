@@ -1,7 +1,7 @@
 'use strict';
 /* global tr, hasPermission, requirePermission, actorQuery, escapeHtml, unitTypeLabel,
    isOperationalProfile, filterByUserCompany, setFormSubmitLabel, showView, activateViewTab,
-   outsourcedEmployeeLinkLabel, outsourcedCompaniesViewHelpers, loadEmployees --
+   outsourcedEmployeeLinkLabel, outsourcedCompaniesViewHelpers, loadBootstrap --
    globais do app.js, de shared/ui e de views/*, resolvidos na chamada (ver abaixo) */
 
 // UI: Terceirizados e Prestadores — colaboradores (Refatoração UBX-V4, Etapa B2 —
@@ -14,10 +14,6 @@
 // app.js (depende de archiveEntityRecord, async de bloco).
 // isContractedVinculoJs (usado pela UI de Colaboradores) mora aqui com o
 // fallback da lista de vínculos contratados.
-// Defeito preexistente preservado: toggleEmployeeUnitLink chama
-// loadEmployees(), que não existe em lugar nenhum — depois do POST o catch
-// mostra "loadEmployees is not defined" e a lista não re-renderiza
-// (docs/UBX_APPJS_AUDITORIA.md §12).
 (function () {
   if (globalThis.__EPI_MODULE_OUTSOURCED_EMPLOYEES_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_OUTSOURCED_EMPLOYEES_UI_LOADED__ = true;
@@ -164,7 +160,7 @@
     // Os três caminhos literais (link/activate/deactivate) estão na integração.
     try {
       await outsourcedApi().setEmployeeUnitLink(entityId, action, state.user.id, reason);
-      await loadEmployees();
+      await loadBootstrap({ preserveView: true });
       renderOutsourcedEmployees();
     } catch (error) {
       alert(error.message);

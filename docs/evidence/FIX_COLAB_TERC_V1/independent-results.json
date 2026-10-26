@@ -1,0 +1,236 @@
+[
+  {
+    "project": "epi-controle",
+    "results": [
+      {
+        "name": "failed_save_keeps_identity_and_values",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Retry QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ]
+      },
+      {
+        "name": "preserved_view_rechecks_revoked_access",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "master_foreign_company",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "stored_option_labels_inert",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "reset_then_create_uses_post",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Edited QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Next creation QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          }
+        ]
+      },
+      {
+        "name": "same_module_edit_preserves_filters",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      }
+    ]
+  },
+  {
+    "project": "epi-controle-app",
+    "results": [
+      {
+        "name": "failed_save_keeps_identity_and_values",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Retry QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ]
+      },
+      {
+        "name": "preserved_view_rechecks_revoked_access",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "master_foreign_company",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "stored_option_labels_inert",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      },
+      {
+        "name": "reset_then_create_uses_post",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Edited QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Next creation QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          }
+        ]
+      },
+      {
+        "name": "same_module_edit_preserves_filters",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "mutations": []
+      }
+    ]
+  }
+]

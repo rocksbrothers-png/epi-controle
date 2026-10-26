@@ -5720,7 +5720,8 @@ async function waitForBackendReady({ maxWaitMs = 90000, pollMs = 2000 } = {}) {
   }
 }
 
-async function loadBootstrap() {
+async function loadBootstrap(options = null) {
+  const preserveView = options?.preserveView === true;
   try {
     updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
     // Evita a tempestade de 503 no cold-start: espera o backend sinalizar
@@ -5861,7 +5862,7 @@ async function loadBootstrap() {
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
-    renderAll();
+    renderAll({ preserveView });
     updatePhase3ContextStatus('dashboard', 'success', 'Dados sincronizados');
   } catch (error) {
     updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
@@ -7561,7 +7562,8 @@ async function archiveEntityRecord(kind, recordId) {
     } else {
       showToast(tr('epi.archivedOk', 'Registro arquivado.'), 'success');
     }
-    await loadBootstrap();
+    await loadBootstrap({ preserveView: kind === 'outsourcedCompany' });
+    if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
     await loadArchivedRecords(kind);
     // Atualiza imediatamente as telas de estoque (itens recém-bloqueados aparecem em Estoque Bloqueado)
     if (kind === 'epi') { globalThis.loadBlockedStock?.(); }
@@ -7651,7 +7653,8 @@ async function restoreArchivedRecord(kind, recordId) {
   if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
   try {
     await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap();
+    await loadBootstrap({ preserveView: kind === 'outsourcedCompany' });
+    if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
     await loadArchivedRecords(kind);
   } catch (error) {
     alert(error.message);
@@ -10827,7 +10830,11 @@ function clearUserEmployeeFields(unitField) {
   if (unitField) unitField.value = '';
 }
 
-function renderAll() {
+function renderAll(options = null) {
+  const preserveView = options?.preserveView === true;
+  // Mutation refreshes keep the current module; initial/session loads retain
+  // their default navigation. showView still enforces the current RBAC gates.
+  const activeView = preserveView ? viewAtivaNoDom() : '';
   refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
   applySpaNavigationVisibility();
   applyPhase3UiVisibility();
@@ -10886,8 +10893,8 @@ function renderAll() {
     }
   }
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
-  const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
-  showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
+  const nextView = activeView || (preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView());
+  showView(nextView, { partial: !preserveView && isSpaNavigationEnabled(), historyMode: !preserveView && isSpaNavigationEnabled() ? 'replace' : null });
 
 }
 
@@ -11095,9 +11102,11 @@ function setEpiValidity(values) {
 
 async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
+  // name="id" shadows HTMLFormElement.id in real browsers.
+  const formId = event.target.getAttribute('id');
   if (!requirePermission(permission)) return;
   if (event.target.dataset.submitting === '1') return;
-  if (event.target.id === 'delivery-form') {
+  if (formId === 'delivery-form') {
     document.dispatchEvent(new CustomEvent('epi:delivery-submit-start'));
   }
   event.target.dataset.submitting = '1';
@@ -11108,19 +11117,19 @@ async function saveSimpleForm(event, path, permission) {
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
     
-    if (event.target.id === 'epi-form') {
+    if (formId === 'epi-form') {
       await prepareEpiFormValues(values, editingId, event);
     }
     // Reenvio depois do aviso de possível duplicata por nome (ADR-0002
     // §12 item 15 do pedido) — handleOutsourcedCompanyDuplicateError arma
     // esta flag e resubmete o formulário; consumo único, nunca herda para
     // o próximo cadastro.
-    if (event.target.id === 'outsourced-company-form') {
+    if (formId === 'outsourced-company-form') {
       if (event.target.dataset.confirmDuplicate === '1') values.confirm_duplicate = true;
       delete event.target.dataset.confirmDuplicate;
     }
     let deliveryHandledInBatch = false;
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       const companyField = document.getElementById('delivery-company');
       const unitField = document.getElementById('delivery-unit-filter');
       const epiField = document.getElementById('delivery-epi');
@@ -11204,7 +11213,7 @@ async function saveSimpleForm(event, path, permission) {
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
     let requestPath = editingId ? `${path}/${editingId}` : path;
-    if (event.target.id === 'delivery-form' && refs.deliveryIsDevolution?.checked) {
+    if (formId === 'delivery-form' && refs.deliveryIsDevolution?.checked) {
       requestPath = '/api/devolutions';
       delete values.company_id;
       delete values.unit_id;
@@ -11224,34 +11233,34 @@ async function saveSimpleForm(event, path, permission) {
       payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     }
     
-    if (event.target.id === 'employee-form' && payload?.employee_access_link) {
+    if (formId === 'employee-form' && payload?.employee_access_link) {
       await handleEmployeeFormSuccess(payload.employee_access_link);
     }
     
     event.target.reset();
     handleFormReset(event.target);
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-success'));
     }
     
-    await loadBootstrap();
+    await loadBootstrap({ preserveView: ['employee-form', 'outsourced-company-form', 'outsourced-employee-form'].includes(formId) });
     // Terceirizados e Prestadores não vem no bootstrap (módulo opt-in) —
     // recarrega a lista à parte, mesma lógica de loadOutsourcedCompanies().
-    if (event.target.id === 'outsourced-company-form') {
+    if (formId === 'outsourced-company-form') {
       await loadOutsourcedCompanies();
     }
     // Cadastro de Colaboradores simplificado: deriva de state.employees, que
     // loadBootstrap() acima já atualizou — só falta re-renderizar a tabela
     // (o reset do modo de edição já roda em handleFormReset, como no
     // outsourced-company-form).
-    if (event.target.id === 'outsourced-employee-form') {
+    if (formId === 'outsourced-employee-form') {
       renderOutsourcedEmployees();
     }
   } catch (error) {
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
     }
-    if (event.target.id === 'outsourced-company-form' && await handleOutsourcedCompanyDuplicateError(error, event.target)) {
+    if (formId === 'outsourced-company-form' && await handleOutsourcedCompanyDuplicateError(error, event.target)) {
       return;
     }
     alert(error.message);
@@ -11262,32 +11271,37 @@ async function saveSimpleForm(event, path, permission) {
 }
 
 function handleFormReset(form) {
-  if (form.id === 'epi-form') {
+  const formId = form.getAttribute('id');
+  // Native reset preserves hidden input values (including the edit identity).
+  if (['employee-form', 'outsourced-company-form', 'outsourced-employee-form'].includes(formId)) {
+    form.elements.id.value = '';
+  }
+  if (formId === 'epi-form') {
     resetEpiForm(form);
-  } else if (form.id === 'legal-entity-form') {
+  } else if (formId === 'legal-entity-form') {
     setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
     if (form.elements.active) form.elements.active.value = '1';
     setLegalEntityFormMode('create');
     syncLegalEntityCompanyField();
-  } else if (form.id === 'outsourced-company-form') {
+  } else if (formId === 'outsourced-company-form') {
     setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
     setOutsourcedCompanyFormMode('create');
     syncOutsourcedCompanyUnitOptions();
     applyOutsourcedCompanyCorporateLock(null);
-  } else if (form.id === 'outsourced-employee-form') {
+  } else if (formId === 'outsourced-employee-form') {
     setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
     setOutsourcedEmployeeFormMode('create');
     syncOutsourcedEmployeeUnitOptions();
-  } else if (form.id === 'unit-form') {
+  } else if (formId === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
-  } else if (form.id === 'employee-form') {
+  } else if (formId === 'employee-form') {
     setFormSubmitLabel('employee-form', 'Salvar colaborador');
     // Volta ao modo de admissão: o CNPJ é escolhível de novo.
     setEmployeeLegalEntityLock('', false);
     const tipoVinculoEl = document.getElementById('employee-tipo-vinculo');
     if (tipoVinculoEl) tipoVinculoEl.value = 'CLT';
     syncEmpresaOrigemVisibility();
-  } else if (form.id === 'delivery-form') {
+  } else if (formId === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.dataset.autoSuggested = '1';

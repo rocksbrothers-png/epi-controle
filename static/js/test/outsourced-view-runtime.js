@@ -91,6 +91,7 @@ function makeEnv() {
       hasPermission: (p) => (Array.isArray(p) ? p.some((x) => env.perms.has(x)) : env.perms.has(p)),
       requirePermission: (p) => { log.push(['requirePermission', p]); return env.allowed; },
       actorQuery: () => 'actor_user_id=9',
+      loadBootstrap: async (options) => log.push(['bootstrap', options]),
       reportNonCriticalError: (m, e) => log.push(['nonCritical', m, e.message]),
       escapeHtml: (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
       formatDate: (v) => `D(${v})`,
@@ -353,6 +354,12 @@ function runAppSlices(ctx, appSource, names) {
   return ctx;
 }
 
+// FIX-COLAB-TERC-V1 replaces only the three frozen success-path defects.
+for (const key of ['vinculoUnidadeLink', 'vinculoUnidadeAtivar', 'vinculoUnidadeArquivar']) {
+  EXPECTED[key].refs = EXPECTED.renderColab.refs;
+  EXPECTED[key].log = EXPECTED[key].log.slice(0, -1).concat([['bootstrap', { preserveView: true }]], EXPECTED.renderColab.log);
+}
+
 module.exports = function ({ testAsync, test, assert, eq }) {
   testAsync('UBX-V4 Terceirizados: os módulos reproduzem as funções originais', async () => {
     const actual = await scenario(loadModules);
@@ -368,7 +375,7 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     for (const ns of ['__EPI_OUTSOURCED_API__', '__EPI_OUTSOURCED_COMPANIES_UI__', '__EPI_OUTSOURCED_REQUESTS_UI__', '__EPI_OUTSOURCED_EMPLOYEES_UI__']) {
       assert(Object.isFrozen(ctx[ns]), `${ns} congelado`);
     }
-    assert(!('loadEmployees' in ctx), 'loadEmployees continua inexistente (defeito preexistente registrado, não corrigido aqui)');
+    assert(!('loadEmployees' in ctx), 'nenhum loader fictício reintroduzido');
     const scripts = fs.readFileSync(path.resolve(JS_ROOT, '..', 'views', '_scripts.html'), 'utf8');
     const order = [...scripts.matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
     const idx = MODULES.map((m) => order.indexOf(`/js/${m}`));

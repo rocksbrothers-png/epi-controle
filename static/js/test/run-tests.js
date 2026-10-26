@@ -2357,7 +2357,7 @@ function criarNoF5B(tag, attrs = {}) {
       }
     },
     setAttribute(k, v) { no._attrs[k] = String(v); },
-    getAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k) ? no._attrs[k] : null; },
+    getAttribute(k) { if (k === 'id') {return no.id || null;} return Object.prototype.hasOwnProperty.call(no._attrs, k) ? no._attrs[k] : null; },
     hasAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k); },
     removeAttribute(k) { delete no._attrs[k]; },
     appendChild(filho) { filho.parent = no; no.children.push(filho); return filho; },
@@ -7765,6 +7765,7 @@ require('./reports-view-runtime')({ testAsync, test, assert, eq });
 require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 require('./users-view-runtime')({ testAsync, test, assert, eq });
 require('./shared-dialogs-runtime')({ testAsync, test, assert, eq });
+require('./fix-colab-terc-runtime')({ testAsync, test, assert, eq });
 require('./employees-view-runtime')({ testAsync, test, assert, eq });
 require('./outsourced-view-runtime')({ testAsync, test, assert, eq });
 require('./access-rules-runtime')({ test, assert, eq });

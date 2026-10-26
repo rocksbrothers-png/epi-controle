@@ -1,7 +1,7 @@
 'use strict';
 /* global tr, populateSearchSelect, unitsForSearchByCompany, renderTables, openAndPrintPopup, qrCodeImageUrl,
    filterByUserCompany, allocationTypeLabel, employmentTypeLabel, isContractedVinculoJs, unitTypeLabel,
-   legalEntitiesForCompany, legalEntityHelpers, legalEntityOptionsHtml, setFormSubmitLabel, showView --
+   legalEntitiesForCompany, legalEntityHelpers, legalEntityOptionsHtml, setFormSubmitLabel, showView, focusRegistrationTab, hasPermission, canAccessView --
    globais do app.js e de shared/ui, resolvidos na chamada (ver abaixo) */
 
 // UI: Colaboradores (Refatoração UBX-V4, Etapa B1 — extraído de static/app.js).
@@ -156,17 +156,37 @@
 
   function startEditEmployee(employeeId) {
     const state = globalThis.__EPI_APP_STATE__;
-    const item = state.employees.find((employee) => String(employee.id) === String(employeeId));
+    if (!hasPermission('employees:update') || !canAccessView('colaboradores')) {return;}
+    const item = filterByUserCompany(state.employees).find((employee) => String(employee.id) === String(employeeId));
     const form = document.getElementById('employee-form');
     if (!item || !form) {return;}
-    form.elements.id.value = item.id;
-    form.elements.company_id.value = item.company_id;
+    // Enter before hydrating: the F5-B entry reset must never erase an edit.
+    // No partial refresh is needed for the record already in bootstrap state.
+    showView('colaboradores', { partial: false });
+    form.elements.id.value = '';
+    // Existing archived/legacy values may be absent from create-time options.
+    // Use only the scoped record already returned by the backend; textContent
+    // keeps stored labels inert. Never turn an existing select value into ''.
+    const setExistingValue = (field, value, label) => {
+      const wanted = String(value || '');
+      field.value = wanted;
+      if (wanted && String(field.value) !== wanted) {
+        const option = document.createElement('option');
+        option.value = wanted;
+        option.textContent = label || wanted;
+        field.appendChild(option);
+        field.value = wanted;
+      }
+    };
+    setExistingValue(form.elements.company_id, item.company_id, item.company_name);
     syncEmployeeUnitOptions();
-    form.elements.unit_id.value = item.unit_id || '';
+    setExistingValue(form.elements.unit_id, item.unit_id, item.unit_name);
     // CNPJ é o vínculo jurídico do contrato: imutável na edição comum. Mostramos
     // o valor atual, mas desabilitado — alterar exige o processo administrativo
     // auditado de transferência, e o backend ignora este campo no update.
     setEmployeeLegalEntityLock(item.legal_entity_id || '', true);
+    const legalEntityField = document.getElementById('employee-legal-entity');
+    if (legalEntityField) {setExistingValue(legalEntityField, item.legal_entity_id, item.legal_entity_cnpj);}
     form.elements.employee_id_code.value = item.employee_id_code || '';
     form.elements.cpf.value = item.cpf || '';
     form.elements.name.value = item.name || '';
@@ -175,13 +195,15 @@
     form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
     form.elements.sector.value = item.sector || '';
     form.elements.role_name.value = item.role_name || '';
-    form.elements.schedule_type.value = item.schedule_type || '14x14';
+    setExistingValue(form.elements.schedule_type, item.schedule_type || '14x14');
     form.elements.admission_date.value = item.admission_date || '';
-    form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
+    setExistingValue(form.elements.tipo_vinculo, item.tipo_vinculo || 'CLT');
     form.elements.empresa_origem.value = item.empresa_origem || '';
     syncEmpresaOrigemVisibility();
+    // Arm the update only after every existing value has been hydrated.
+    form.elements.id.value = item.id;
     setFormSubmitLabel('employee-form', 'Atualizar colaborador');
-    showView('colaboradores');
+    focusRegistrationTab('colaboradores');
   }
 
   function syncEmployeeUnitOptions() {
@@ -205,7 +227,7 @@
     const wrapper = document.getElementById('employee-legal-entity-field');
     if (!field || !wrapper) {return;}
     const companyId = document.getElementById('employee-company')?.value || state.user?.company_id || '';
-    const entities = legalEntitiesForCompany(companyId);
+    const entities = legalEntitiesForCompany(companyId, { activeOnly: !field.disabled });
     const previous = field.value;
     const required = legalEntityHelpers().employeeLegalEntityRequired;
     const mandatory = required ? required(entities) : entities.length > 1;
@@ -223,9 +245,9 @@
   function setEmployeeLegalEntityLock(legalEntityId, locked) {
     const field = document.getElementById('employee-legal-entity');
     if (!field) {return;}
+    field.disabled = Boolean(locked);
     syncEmployeeLegalEntityOptions();
     if (legalEntityId) {field.value = String(legalEntityId);}
-    field.disabled = Boolean(locked);
     if (locked) {field.required = false;}
   }
 

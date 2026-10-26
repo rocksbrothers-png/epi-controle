@@ -1,0 +1,2250 @@
+{
+  "bases": {
+    "corporate": "aa35a81d2541c4d2e7cd358eb058436558d10ef8",
+    "saas": "4927b145aecd30ebc3f763479579a18cd776e4c5"
+  },
+  "network": "Synthetic APIs only; external requests blocked; no application server or database",
+  "before": {
+    "corporate": [
+      {
+        "locale": "pt-BR",
+        "scenario": "links",
+        "status": "failed",
+        "error": "list stale after deactivation",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "loadEmployees is not defined"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 1
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_save",
+        "status": "failed",
+        "error": "Locator expected to contain text 'Nova QA'\nActual value: Terceira QA-TerceirizadaContratanteSimplificado-EditarPromover a Cadastro Padrão \nCall log:\n  - Expect \"to_contain_text\" with timeout 3000ms\n  - waiting for locator(\"#outsourced-companies-table\")\n    9 × locator resolved to <tbody id=\"outsourced-companies-table\">…</tbody>\n      - unexpected value \"Terceira QA-TerceirizadaContratanteSimplificado-EditarPromover a Cadastro Padrão\"\n\nAria snapshot:\n- navigation \"Menu principal\":\n  - img \"Logotipo de Sua Empresa\"\n  - text: EPI Control\n  - strong: Sua Empresa\n  - text: QA Admin\n  - strong: Administrador de Registro\n  - text: Acesso geral\n  - navigation \"Navegação do sistema\":\n    - paragraph: Visão geral\n    - button \"Dashboard\"\n    - paragraph: Cadastros\n    - button \"Usuários\"\n    - button \"Unidades\"\n    - button \"Cadastro de Colaborador\"\n    - button \"Terceirizados e Prestadores\"\n    - button \"Biblioteca de Segurança\"\n    - button \"Cadastro de EPI\"\n    - paragraph: Operação\n    - button \"Controle de Estoque\"\n    - button \"Entrega de EPI\"\n    - button \"Ficha de EPI\"\n    - button \"Compras\"\n    - paragraph: Análise\n    - button \"Relatórios\"\n    - button \"Avaliações e Sugestões\"\n  - button \"Sair do sistema\": Sair\n- main:\n  - button \"Recolher menu\": ☰\n  - text: Visão Geral\n  - heading \"Dashboard\" [level=2]\n  - 'button \"Voltar: Terceirizados e Prestadores\"': ←\n  - navigation \"Breadcrumb hierárquico\":\n    - button \"Dashboard\"\n    - button \"Terceirizados e Prestadores\"\n    - text: Dashboard\n  - text: Acesso geral\n  - button \"Alternar tema claro/escuro\": 🌙\n  - button \"Abrir configuração\": ⚙️\n  - text: segunda-feira, 26 de outubro de 2026\n  - heading \"Dashboard\" [level=2]\n  - paragraph: Visão consolidada de indicadores, alertas e pendências operacionais.\n  - article:\n    - text: CNPJ\n    - combobox \"CNPJ\":\n      - option \"Todos\" [selected]\n      - option \"Empresa QA - 11222333000181\"\n    - text: Unidade\n    - combobox \"Unidade\":\n      - option \"Todos\" [selected]\n      - option \"Unidade QA\"\n    - text: SETOR\n    - combobox \"SETOR\":\n      - option \"Todos\" [selected]\n      - option \"Operacao\"\n  - article:\n    - heading \"Entregas por Unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - heading \"Estoque baixo por unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - searchbox \"Busca rápida no dashboard (alertas e últimas entregas)\"\n    - button \"Atualizar agora\"\n    - paragraph: \"Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.\"\n  - heading \"Indicadores operacionais\" [level=4]\n  - button \"Colaboradores ativos 2\":\n    - text: Colaboradores ativos\n    - strong: \"2\"\n  - button \"Entregas 0\":\n    - text: Entregas\n    - strong: \"0\"\n  - button \"Estoque crítico 0\":\n    - text: Estoque crítico\n    - strong: \"0\"\n  - button \"Entregas devolvidas 0\":\n    - text: Entregas devolvidas\n    - strong: \"0\"\n  - heading \"Indicadores de segurança\" [level=4]\n  - button \"EPIs com validade vencida …\":\n    - text: EPIs com validade vencida\n    - strong: …\n  - button \"EPIs próximos do vencimento …\":\n    - text: EPIs próximos do vencimento\n    - strong: …\n  - button \"CA vencidos …\":\n    - text: CA vencidos\n    - strong: …\n  - button \"CA próximos do vencimento …\":\n    - text: CA próximos do vencimento\n    - strong: …\n  - button \"Bloqueio administrativo …\":\n    - text: Bloqueio administrativo\n    - strong: …\n  - button \"Sem data de fabricação …\":\n    - text: Sem data de fabricação\n    - strong: …\n  - button \"Sem lote …\":\n    - text: Sem lote\n    - strong: …\n  - button \"Alertas 0\":\n    - text: Alertas\n    - strong: \"0\"\n  - button \"Avaliações negativas 0\":\n    - text: Avaliações negativas\n    - strong: \"0\"\n  - heading \"Indicadores gerenciais\" [level=4]\n  - button \"Empresas 1\":\n    - text: Empresas\n    - strong: \"1\"\n  - button \"Unidades 1\":\n    - text: Unidades\n    - strong: \"1\"\n  - button \"EPIs 0\":\n    - text: EPIs\n    - strong: \"0\"\n  - button \"Avaliações e Sugestões 0\":\n    - text: Avaliações e Sugestões\n    - strong: \"0\"\n  - button \"↳ Reclamações / Elogios 0 / 0\":\n    - text: ↳ Reclamações / Elogios\n    - strong: 0 / 0\n  - article:\n    - heading \"Alertas\" [level=3]\n    - text: Sem alertas para o filtro atual.\n  - article:\n    - heading \"Últimas entregas\" [level=3]\n    - text: Sem entregas para o filtro atual.\n  - article:\n    - heading \"EPI Aprovados\" [level=3]\n    - searchbox \"Buscar por Nome do EPI\"\n    - searchbox \"Buscar por Proteção\"\n    - searchbox \"Buscar por CA\"\n    - searchbox \"Buscar por Fabricante\"\n    - searchbox \"Buscar por Seção\"\n    - table:\n      - rowgroup:\n        - row \"EPI Fabricante Modelo/Referência C.A Validade C.A Vida Útil (meses) Proteção Seção Foto Recomendação/Restrição\":\n          - columnheader \"EPI\"\n          - columnheader \"Fabricante\"\n          - columnheader \"Modelo/Referência\"\n          - columnheader \"C.A\"\n          - columnheader \"Validade C.A\"\n          - columnheader \"Vida Útil (meses)\"\n          - columnheader \"Proteção\"\n          - columnheader \"Seção\"\n          - columnheader \"Foto\"\n          - columnheader \"Recomendação/Restrição\"\n      - rowgroup:\n        - row \"Sem EPIs aprovados para os filtros informados.\":\n          - cell \"Sem EPIs aprovados para os filtros informados.\"\n- 'button \"Idioma: English - England\"': GB",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 2
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_archive",
+        "status": "failed",
+        "error": "Locator expected to contain text 'Terceira QA'\nActual value: ∅Nenhuma empresa terceirizada cadastrada. \nCall log:\n  - Expect \"to_contain_text\" with timeout 3000ms\n  - waiting for locator(\"#outsourced-companies-table\")\n    9 × locator resolved to <tbody id=\"outsourced-companies-table\">…</tbody>\n      - unexpected value \"∅Nenhuma empresa terceirizada cadastrada.\"\n\nAria snapshot:\n- navigation \"Menu principal\":\n  - img \"Logotipo de Sua Empresa\"\n  - text: EPI Control\n  - strong: Sua Empresa\n  - text: QA Admin\n  - strong: Administrador de Registro\n  - text: Acesso geral\n  - navigation \"Navegação do sistema\":\n    - paragraph: Visão geral\n    - button \"Dashboard\"\n    - paragraph: Cadastros\n    - button \"Usuários\"\n    - button \"Unidades\"\n    - button \"Cadastro de Colaborador\"\n    - button \"Terceirizados e Prestadores\"\n    - button \"Biblioteca de Segurança\"\n    - button \"Cadastro de EPI\"\n    - paragraph: Operação\n    - button \"Controle de Estoque\"\n    - button \"Entrega de EPI\"\n    - button \"Ficha de EPI\"\n    - button \"Compras\"\n    - paragraph: Análise\n    - button \"Relatórios\"\n    - button \"Avaliações e Sugestões\"\n  - button \"Sair do sistema\": Sair\n- main:\n  - button \"Recolher menu\": ☰\n  - text: Visão Geral\n  - heading \"Dashboard\" [level=2]\n  - 'button \"Voltar: Terceirizados e Prestadores\"': ←\n  - navigation \"Breadcrumb hierárquico\":\n    - button \"Dashboard\"\n    - button \"Terceirizados e Prestadores\"\n    - text: Dashboard\n  - text: Acesso geral\n  - button \"Alternar tema claro/escuro\": 🌙\n  - button \"Abrir configuração\": ⚙️\n  - text: segunda-feira, 26 de outubro de 2026\n  - heading \"Dashboard\" [level=2]\n  - paragraph: Visão consolidada de indicadores, alertas e pendências operacionais.\n  - article:\n    - text: CNPJ\n    - combobox \"CNPJ\":\n      - option \"Todos\" [selected]\n      - option \"Empresa QA - 11222333000181\"\n    - text: Unidade\n    - combobox \"Unidade\":\n      - option \"Todos\"\n      - option \"Unidade QA\" [selected]\n    - text: SETOR\n    - combobox \"SETOR\":\n      - option \"Todos\" [selected]\n      - option \"Operacao\"\n    - button \"Limpar filtros\"\n  - article:\n    - heading \"Entregas por Unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - heading \"Estoque baixo por unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - searchbox \"Busca rápida no dashboard (alertas e últimas entregas)\"\n    - button \"Atualizar agora\"\n    - paragraph: \"Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.\"\n  - heading \"Indicadores operacionais\" [level=4]\n  - button \"Colaboradores ativos 2\":\n    - text: Colaboradores ativos\n    - strong: \"2\"\n  - button \"Entregas 0\":\n    - text: Entregas\n    - strong: \"0\"\n  - button \"Estoque crítico 0\":\n    - text: Estoque crítico\n    - strong: \"0\"\n  - button \"Entregas devolvidas 0\":\n    - text: Entregas devolvidas\n    - strong: \"0\"\n  - heading \"Indicadores de segurança\" [level=4]\n  - button \"EPIs com validade vencida …\":\n    - text: EPIs com validade vencida\n    - strong: …\n  - button \"EPIs próximos do vencimento …\":\n    - text: EPIs próximos do vencimento\n    - strong: …\n  - button \"CA vencidos …\":\n    - text: CA vencidos\n    - strong: …\n  - button \"CA próximos do vencimento …\":\n    - text: CA próximos do vencimento\n    - strong: …\n  - button \"Bloqueio administrativo …\":\n    - text: Bloqueio administrativo\n    - strong: …\n  - button \"Sem data de fabricação …\":\n    - text: Sem data de fabricação\n    - strong: …\n  - button \"Sem lote …\":\n    - text: Sem lote\n    - strong: …\n  - button \"Alertas 0\":\n    - text: Alertas\n    - strong: \"0\"\n  - button \"Avaliações negativas 0\":\n    - text: Avaliações negativas\n    - strong: \"0\"\n  - heading \"Indicadores gerenciais\" [level=4]\n  - button \"Empresas 1\":\n    - text: Empresas\n    - strong: \"1\"\n  - button \"Unidades 1\":\n    - text: Unidades\n    - strong: \"1\"\n  - button \"EPIs 0\":\n    - text: EPIs\n    - strong: \"0\"\n  - button \"Avaliações e Sugestões 0\":\n    - text: Avaliações e Sugestões\n    - strong: \"0\"\n  - button \"↳ Reclamações / Elogios 0 / 0\":\n    - text: ↳ Reclamações / Elogios\n    - strong: 0 / 0\n  - article:\n    - heading \"Alertas\" [level=3]\n    - text: Sem alertas para o filtro atual.\n  - article:\n    - heading \"Últimas entregas\" [level=3]\n    - text: Sem entregas para o filtro atual.\n  - article:\n    - heading \"EPI Aprovados\" [level=3]\n    - searchbox \"Buscar por Nome do EPI\"\n    - searchbox \"Buscar por Proteção\"\n    - searchbox \"Buscar por CA\"\n    - searchbox \"Buscar por Fabricante\"\n    - searchbox \"Buscar por Seção\"\n    - table:\n      - rowgroup:\n        - row \"EPI Fabricante Modelo/Referência C.A Validade C.A Vida Útil (meses) Proteção Seção Foto Recomendação/Restrição\":\n          - columnheader \"EPI\"\n          - columnheader \"Fabricante\"\n          - columnheader \"Modelo/Referência\"\n          - columnheader \"C.A\"\n          - columnheader \"Validade C.A\"\n          - columnheader \"Vida Útil (meses)\"\n          - columnheader \"Proteção\"\n          - columnheader \"Seção\"\n          - columnheader \"Foto\"\n          - columnheader \"Recomendação/Restrição\"\n      - rowgroup:\n        - row \"Sem EPIs aprovados para os filtros informados.\":\n          - cell \"Sem EPIs aprovados para os filtros informados.\"\n- 'button \"Idioma: English - England\"': GB",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 4
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "editor",
+        "status": "failed",
+        "error": "Locator expected to have Value 'QA-31'\nActual value:  \nCall log:\n  - Expect \"to_have_value\" with timeout 5000ms\n  - waiting for locator(\"#employee-form\").locator(\"[name=\\\"employee_id_code\\\"]\")\n    14 × locator resolved to <input type=\"text\" required=\"\" autocomplete=\"off\" name=\"employee_id_code\"/>\n       - unexpected value \"\"\n\nAria snapshot:\n- textbox \"ID do colaborador\"",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 1,
+        "company_list_reads": 0
+      }
+    ],
+    "saas": [
+      {
+        "locale": "pt-BR",
+        "scenario": "links",
+        "status": "failed",
+        "error": "list stale after deactivation",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "loadEmployees is not defined"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 1
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_save",
+        "status": "failed",
+        "error": "Locator expected to contain text 'Nova QA'\nActual value: Terceira QA-TerceirizadaContratanteSimplificado-EditarPromover a Cadastro Padrão \nCall log:\n  - Expect \"to_contain_text\" with timeout 3000ms\n  - waiting for locator(\"#outsourced-companies-table\")\n    10 × locator resolved to <tbody id=\"outsourced-companies-table\">…</tbody>\n       - unexpected value \"Terceira QA-TerceirizadaContratanteSimplificado-EditarPromover a Cadastro Padrão\"\n\nAria snapshot:\n- navigation \"Menu principal\":\n  - img \"Logotipo de Sua Empresa\"\n  - text: EPI Control\n  - strong: Sua Empresa\n  - text: QA Admin\n  - strong: Administrador de Registro\n  - text: Acesso geral\n  - navigation \"Navegação do sistema\":\n    - paragraph: Visão geral\n    - button \"Dashboard\"\n    - paragraph: Cadastros\n    - button \"Usuários\"\n    - button \"Unidades\"\n    - button \"Cadastro de Colaborador\"\n    - button \"Terceirizados e Prestadores\"\n    - button \"Biblioteca de Segurança\"\n    - button \"Cadastro de EPI\"\n    - paragraph: Operação\n    - button \"Controle de Estoque\"\n    - button \"Entrega de EPI\"\n    - button \"Ficha de EPI\"\n    - button \"Compras\"\n    - paragraph: Análise\n    - button \"Relatórios\"\n    - button \"Avaliações e Sugestões\"\n  - button \"Sair do sistema\": Sair\n- main:\n  - button \"Recolher menu\": ☰\n  - text: Visão Geral\n  - heading \"Dashboard\" [level=2]\n  - 'button \"Voltar: Terceirizados e Prestadores\"': ←\n  - navigation \"Breadcrumb hierárquico\":\n    - button \"Dashboard\"\n    - button \"Terceirizados e Prestadores\"\n    - text: Dashboard\n  - text: Acesso geral\n  - button \"Alternar tema claro/escuro\": 🌙\n  - button \"Abrir configuração\": ⚙️\n  - text: segunda-feira, 26 de outubro de 2026\n  - heading \"Dashboard\" [level=2]\n  - paragraph: Visão consolidada de indicadores, alertas e pendências operacionais.\n  - article:\n    - text: CNPJ\n    - combobox \"CNPJ\":\n      - option \"Todos\" [selected]\n      - option \"Empresa QA - 11222333000181\"\n    - text: Unidade\n    - combobox \"Unidade\":\n      - option \"Todos\" [selected]\n      - option \"Unidade QA\"\n    - text: SETOR\n    - combobox \"SETOR\":\n      - option \"Todos\" [selected]\n      - option \"Operacao\"\n  - article:\n    - heading \"Entregas por Unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - heading \"Estoque baixo por unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - searchbox \"Busca rápida no dashboard (alertas e últimas entregas)\"\n    - button \"Atualizar agora\"\n    - paragraph: \"Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.\"\n  - heading \"Indicadores operacionais\" [level=4]\n  - button \"Colaboradores ativos 2\":\n    - text: Colaboradores ativos\n    - strong: \"2\"\n  - button \"Entregas 0\":\n    - text: Entregas\n    - strong: \"0\"\n  - button \"Estoque crítico 0\":\n    - text: Estoque crítico\n    - strong: \"0\"\n  - button \"Entregas devolvidas 0\":\n    - text: Entregas devolvidas\n    - strong: \"0\"\n  - heading \"Indicadores de segurança\" [level=4]\n  - button \"EPIs com validade vencida …\":\n    - text: EPIs com validade vencida\n    - strong: …\n  - button \"EPIs próximos do vencimento …\":\n    - text: EPIs próximos do vencimento\n    - strong: …\n  - button \"CA vencidos …\":\n    - text: CA vencidos\n    - strong: …\n  - button \"CA próximos do vencimento …\":\n    - text: CA próximos do vencimento\n    - strong: …\n  - button \"Bloqueio administrativo …\":\n    - text: Bloqueio administrativo\n    - strong: …\n  - button \"Sem data de fabricação …\":\n    - text: Sem data de fabricação\n    - strong: …\n  - button \"Sem lote …\":\n    - text: Sem lote\n    - strong: …\n  - button \"Alertas 0\":\n    - text: Alertas\n    - strong: \"0\"\n  - button \"Avaliações negativas 0\":\n    - text: Avaliações negativas\n    - strong: \"0\"\n  - heading \"Indicadores gerenciais\" [level=4]\n  - button \"Empresas 1\":\n    - text: Empresas\n    - strong: \"1\"\n  - button \"Unidades 1\":\n    - text: Unidades\n    - strong: \"1\"\n  - button \"EPIs 0\":\n    - text: EPIs\n    - strong: \"0\"\n  - button \"Avaliações e Sugestões 0\":\n    - text: Avaliações e Sugestões\n    - strong: \"0\"\n  - button \"↳ Reclamações / Elogios 0 / 0\":\n    - text: ↳ Reclamações / Elogios\n    - strong: 0 / 0\n  - article:\n    - heading \"Alertas\" [level=3]\n    - text: Sem alertas para o filtro atual.\n  - article:\n    - heading \"Últimas entregas\" [level=3]\n    - text: Sem entregas para o filtro atual.\n  - article:\n    - heading \"EPI Aprovados\" [level=3]\n    - searchbox \"Buscar por Nome do EPI\"\n    - searchbox \"Buscar por Proteção\"\n    - searchbox \"Buscar por CA\"\n    - searchbox \"Buscar por Fabricante\"\n    - searchbox \"Buscar por Seção\"\n    - table:\n      - rowgroup:\n        - row \"EPI Fabricante Modelo/Referência C.A Validade C.A Vida Útil (meses) Proteção Seção Foto Recomendação/Restrição\":\n          - columnheader \"EPI\"\n          - columnheader \"Fabricante\"\n          - columnheader \"Modelo/Referência\"\n          - columnheader \"C.A\"\n          - columnheader \"Validade C.A\"\n          - columnheader \"Vida Útil (meses)\"\n          - columnheader \"Proteção\"\n          - columnheader \"Seção\"\n          - columnheader \"Foto\"\n          - columnheader \"Recomendação/Restrição\"\n      - rowgroup:\n        - row \"Sem EPIs aprovados para os filtros informados.\":\n          - cell \"Sem EPIs aprovados para os filtros informados.\"\n- 'button \"Idioma: English - England\"': GB",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 2
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_archive",
+        "status": "failed",
+        "error": "Locator expected to contain text 'Terceira QA'\nActual value: ∅Nenhuma empresa terceirizada cadastrada. \nCall log:\n  - Expect \"to_contain_text\" with timeout 3000ms\n  - waiting for locator(\"#outsourced-companies-table\")\n    9 × locator resolved to <tbody id=\"outsourced-companies-table\">…</tbody>\n      - unexpected value \"∅Nenhuma empresa terceirizada cadastrada.\"\n\nAria snapshot:\n- navigation \"Menu principal\":\n  - img \"Logotipo de Sua Empresa\"\n  - text: EPI Control\n  - strong: Sua Empresa\n  - text: QA Admin\n  - strong: Administrador de Registro\n  - text: Acesso geral\n  - navigation \"Navegação do sistema\":\n    - paragraph: Visão geral\n    - button \"Dashboard\"\n    - paragraph: Cadastros\n    - button \"Usuários\"\n    - button \"Unidades\"\n    - button \"Cadastro de Colaborador\"\n    - button \"Terceirizados e Prestadores\"\n    - button \"Biblioteca de Segurança\"\n    - button \"Cadastro de EPI\"\n    - paragraph: Operação\n    - button \"Controle de Estoque\"\n    - button \"Entrega de EPI\"\n    - button \"Ficha de EPI\"\n    - button \"Compras\"\n    - paragraph: Análise\n    - button \"Relatórios\"\n    - button \"Avaliações e Sugestões\"\n  - button \"Sair do sistema\": Sair\n- main:\n  - button \"Recolher menu\": ☰\n  - text: Visão Geral\n  - heading \"Dashboard\" [level=2]\n  - 'button \"Voltar: Terceirizados e Prestadores\"': ←\n  - navigation \"Breadcrumb hierárquico\":\n    - button \"Dashboard\"\n    - button \"Terceirizados e Prestadores\"\n    - text: Dashboard\n  - text: Acesso geral\n  - button \"Alternar tema claro/escuro\": 🌙\n  - button \"Abrir configuração\": ⚙️\n  - text: segunda-feira, 26 de outubro de 2026\n  - heading \"Dashboard\" [level=2]\n  - paragraph: Visão consolidada de indicadores, alertas e pendências operacionais.\n  - article:\n    - text: CNPJ\n    - combobox \"CNPJ\":\n      - option \"Todos\" [selected]\n      - option \"Empresa QA - 11222333000181\"\n    - text: Unidade\n    - combobox \"Unidade\":\n      - option \"Todos\"\n      - option \"Unidade QA\" [selected]\n    - text: SETOR\n    - combobox \"SETOR\":\n      - option \"Todos\" [selected]\n      - option \"Operacao\"\n    - button \"Limpar filtros\"\n  - article:\n    - heading \"Entregas por Unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - heading \"Estoque baixo por unidade\" [level=3]\n    - text: Sem dados para o filtro atual.\n  - article:\n    - searchbox \"Busca rápida no dashboard (alertas e últimas entregas)\"\n    - button \"Atualizar agora\"\n    - paragraph: \"Dica: use a busca rápida para filtrar alertas e últimas entregas por colaborador, EPI, empresa ou texto do alerta.\"\n  - heading \"Indicadores operacionais\" [level=4]\n  - button \"Colaboradores ativos 2\":\n    - text: Colaboradores ativos\n    - strong: \"2\"\n  - button \"Entregas 0\":\n    - text: Entregas\n    - strong: \"0\"\n  - button \"Estoque crítico 0\":\n    - text: Estoque crítico\n    - strong: \"0\"\n  - button \"Entregas devolvidas 0\":\n    - text: Entregas devolvidas\n    - strong: \"0\"\n  - heading \"Indicadores de segurança\" [level=4]\n  - button \"EPIs com validade vencida …\":\n    - text: EPIs com validade vencida\n    - strong: …\n  - button \"EPIs próximos do vencimento …\":\n    - text: EPIs próximos do vencimento\n    - strong: …\n  - button \"CA vencidos …\":\n    - text: CA vencidos\n    - strong: …\n  - button \"CA próximos do vencimento …\":\n    - text: CA próximos do vencimento\n    - strong: …\n  - button \"Bloqueio administrativo …\":\n    - text: Bloqueio administrativo\n    - strong: …\n  - button \"Sem data de fabricação …\":\n    - text: Sem data de fabricação\n    - strong: …\n  - button \"Sem lote …\":\n    - text: Sem lote\n    - strong: …\n  - button \"Alertas 0\":\n    - text: Alertas\n    - strong: \"0\"\n  - button \"Avaliações negativas 0\":\n    - text: Avaliações negativas\n    - strong: \"0\"\n  - heading \"Indicadores gerenciais\" [level=4]\n  - button \"Empresas 1\":\n    - text: Empresas\n    - strong: \"1\"\n  - button \"Unidades 1\":\n    - text: Unidades\n    - strong: \"1\"\n  - button \"EPIs 0\":\n    - text: EPIs\n    - strong: \"0\"\n  - button \"Avaliações e Sugestões 0\":\n    - text: Avaliações e Sugestões\n    - strong: \"0\"\n  - button \"↳ Reclamações / Elogios 0 / 0\":\n    - text: ↳ Reclamações / Elogios\n    - strong: 0 / 0\n  - article:\n    - heading \"Alertas\" [level=3]\n    - text: Sem alertas para o filtro atual.\n  - article:\n    - heading \"Últimas entregas\" [level=3]\n    - text: Sem entregas para o filtro atual.\n  - article:\n    - heading \"EPI Aprovados\" [level=3]\n    - searchbox \"Buscar por Nome do EPI\"\n    - searchbox \"Buscar por Proteção\"\n    - searchbox \"Buscar por CA\"\n    - searchbox \"Buscar por Fabricante\"\n    - searchbox \"Buscar por Seção\"\n    - table:\n      - rowgroup:\n        - row \"EPI Fabricante Modelo/Referência C.A Validade C.A Vida Útil (meses) Proteção Seção Foto Recomendação/Restrição\":\n          - columnheader \"EPI\"\n          - columnheader \"Fabricante\"\n          - columnheader \"Modelo/Referência\"\n          - columnheader \"C.A\"\n          - columnheader \"Validade C.A\"\n          - columnheader \"Vida Útil (meses)\"\n          - columnheader \"Proteção\"\n          - columnheader \"Seção\"\n          - columnheader \"Foto\"\n          - columnheader \"Recomendação/Restrição\"\n      - rowgroup:\n        - row \"Sem EPIs aprovados para os filtros informados.\":\n          - cell \"Sem EPIs aprovados para os filtros informados.\"\n- 'button \"Idioma: English - England\"': GB",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 4
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "editor",
+        "status": "failed",
+        "error": "Locator expected to have Value 'QA-31'\nActual value:  \nCall log:\n  - Expect \"to_have_value\" with timeout 5000ms\n  - waiting for locator(\"#employee-form\").locator(\"[name=\\\"employee_id_code\\\"]\")\n    14 × locator resolved to <input type=\"text\" required=\"\" autocomplete=\"off\" name=\"employee_id_code\"/>\n       - unexpected value \"\"\n\nAria snapshot:\n- textbox \"ID do colaborador\"",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 1,
+        "company_list_reads": 0
+      }
+    ]
+  },
+  "after": {
+    "corporate": [
+      {
+        "locale": "pt-BR",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Reason for archiving (optional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Reason for archiving (optional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Archiving reason (optional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          },
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          },
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      }
+    ],
+    "saas": [
+      {
+        "locale": "pt-BR",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo do arquivamento (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "pt-BR",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Reason for archiving (optional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Reason for archiving (optional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Archiving reason (optional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "en-GB",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          },
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motivo del archivado (opcional):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "es-ES",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          },
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Motif de l'archivage (facultatif) :"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "fr-FR",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "links",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          },
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          },
+          {
+            "type": "alert",
+            "message": "QA forbidden"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/employees/32/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 3
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "company_save",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies",
+            "query": "",
+            "body": {
+              "legal_name": "Nova QA",
+              "trade_name": "",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "epi_responsibility": "Conforme Contrato",
+              "unit_id": "",
+              "actor_user_id": 7
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/outsourced-companies/11",
+            "query": "",
+            "body": {
+              "legal_name": "Alterada QA",
+              "trade_name": "QA",
+              "cnpj": "",
+              "company_kind": "outsourced",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 3,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "company_archive",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "prompt",
+            "message": "Årsak til arkivering (valgfritt):"
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/deactivate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": "QA motivo"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/unit-link/activate",
+            "query": "",
+            "body": {
+              "actor_user_id": 7,
+              "reason": ""
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/api/outsourced-companies/11/restore",
+            "query": "",
+            "body": {
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 4,
+        "company_list_reads": 6
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "editor",
+        "status": "passed",
+        "dialogs": [],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [
+          {
+            "method": "PUT",
+            "path": "/api/employees/31",
+            "query": "",
+            "body": {
+              "company_id": "901",
+              "unit_id": "5",
+              "employee_id_code": "QA-31",
+              "cpf": "52998224725",
+              "name": "Ana Alterada QA",
+              "email": "ana@example.test",
+              "whatsapp": "5511999999999",
+              "preferred_contact_channel": "email",
+              "sector": "Operacao",
+              "role_name": "Tecnica",
+              "schedule_type": "28x28",
+              "admission_date": "2024-01-02",
+              "tipo_vinculo": "CLT",
+              "empresa_origem": "",
+              "actor_user_id": 7
+            }
+          }
+        ],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      },
+      {
+        "locale": "nb-NO",
+        "scenario": "access_and_legacy",
+        "status": "passed",
+        "dialogs": [
+          {
+            "type": "alert",
+            "message": "Você não tem permissão para realizar esta ação."
+          }
+        ],
+        "page_errors": [
+          "Cannot read properties of undefined (reading 'length')",
+          "Cannot read properties of undefined (reading 'length')"
+        ],
+        "domain_mutations": [],
+        "bootstrap_reads": 2,
+        "company_list_reads": 0
+      }
+    ]
+  },
+  "functional_sha256": {
+    "static/app.js": "ef325a1d4abe7e4aaba41ff608854df708e854deb8b8ac4e58fdac215e7ff564",
+    "static/js/modules/employees/ui/employees-view.js": "eb94b4a186e2c29e40cb17f8d47c93dbb02ae471702026ae813cfc9d119044e2",
+    "static/js/modules/outsourced/ui/outsourced-employees-view.js": "6377b841af81a8a9b74a06251ab3b76bc8d84062ccaf12130f4a5b8f331f1548"
+  }
+}

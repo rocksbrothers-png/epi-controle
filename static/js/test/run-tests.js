@@ -86,7 +86,10 @@ function loadModule(relPath) {
   'modules/users/business/user-form.js',
   'modules/users/integrations/users-api.js',
   'modules/users/ui/users-view.js',
-  'modules/shared/ui/dialogs.js'
+  'modules/shared/ui/dialogs.js',
+  'modules/employees/business/employee-rules.js',
+  'modules/employees/integrations/employees-api.js',
+  'modules/employees/ui/employees-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7756,6 +7759,7 @@ require('./reports-view-runtime')({ testAsync, test, assert, eq });
 require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 require('./users-view-runtime')({ testAsync, test, assert, eq });
 require('./shared-dialogs-runtime')({ testAsync, test, assert, eq });
+require('./employees-view-runtime')({ testAsync, test, assert, eq });
 require('./extracted-globals-ownership-runtime')({ test, assert });
 
 (async () => {

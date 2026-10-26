@@ -2296,11 +2296,9 @@ function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=${normalized}`;
 }
 
-function buildEmployeeAccessLink(token) {
-  const normalizedToken = String(token || '').trim();
-  if (!normalizedToken) return '';
-  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
-}
+// buildEmployeeAccessLink e o restante da UI de Colaboradores (filtros, linhas, seleção em lote,
+// edição, CNPJ, link/QR de acesso) vivem em static/js/modules/employees/ (UBX-V4, Etapa B1).
+
 // ── Camada HTTP: fonte única em static/js/modules/api-client.js ───────────────
 // api-client.js é carregado ANTES de app.js (ver _scripts.html) e expõe em
 // globalThis apiFetch / apiFetchOptional / apiFetchWithRetry e, desde a UBX-V3
@@ -4715,26 +4713,6 @@ function syncUnitsSearchFilters() {
   renderTables();
 }
 
-function syncEmployeesSearchFilters(source = 'employees') {
-  const isOps = source === 'ops';
-  const filters = isOps ? state.employeesOpsFilters : state.employeesFilters;
-  const companyField = isOps ? refs.employeesOpsFilterCompany : refs.employeesFilterCompany;
-  const unitField = isOps ? refs.employeesOpsFilterUnit : refs.employeesFilterUnit;
-  const searchField = isOps ? refs.employeesOpsFilterSearch : refs.employeesFilterSearch;
-  const sectorField = isOps ? refs.employeesOpsFilterSector : refs.employeesFilterSector;
-  const roleField = isOps ? refs.employeesOpsFilterRole : refs.employeesFilterRole;
-  filters.company_id = String(companyField?.value || '').trim();
-  filters.unit_id = String(unitField?.value || '').trim();
-  filters.search = String(searchField?.value || '').trim().toLowerCase();
-  filters.sector = String(sectorField?.value || '').trim().toLowerCase();
-  filters.role_name = String(roleField?.value || '').trim().toLowerCase();
-  if (isOps) populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
-  else populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
-  filters.unit_id = String(unitField?.value || '').trim();
-  if (!isOps && state.pagination) state.pagination.employees = 1; // volta à 1ª página ao filtrar
-  renderTables();
-}
-
 function syncEpisSearchFilters() {
   state.episFilters.company_id = String(refs.episFilterCompany?.value || '').trim();
   state.episFilters.unit_id = String(refs.episFilterUnit?.value || '').trim();
@@ -6031,35 +6009,6 @@ function canGenerateRecoveryToken(target) {
   return false;
 }
 
-function addEmployeeButtons(actions, target) {
-  if (target.role === 'employee' && target.employee_access_token) {
-    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">${tr('user.externalQr', 'QR Acesso Externo')}</button>`);
-  }
-}
-
-function printEmployeeAccessQr(userId) {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
-}
-
-async function printEmployeePortalLink(employeeId) {
-  try {
-    const payload = await api('/api/employee-portal-link', {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
-    });
-    const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
 function askTemporaryPassword(defaultValue = '') {
   const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
   if (password === null) return null;
@@ -6200,32 +6149,12 @@ function dashboardInteractiveEmptyMessage(message) {
   return `<div class="dashboard-chart-empty">${message}</div>`;
 }
 
-function matchesEmployeeSearchText(item, searchValue) {
-  const search = String(searchValue || '').trim().toLowerCase();
-  if (!search) return true;
-  const haystack = `${item.name || ''} ${item.employee_id_code || ''} ${item.id || ''}`.toLowerCase();
-  return haystack.includes(search);
-}
-
 function applyUnitsFilters(items) {
   return items.filter((item) => {
     if (state.unitsFilters.company_id && String(item.company_id) !== String(state.unitsFilters.company_id)) return false;
     if (state.unitsFilters.type && String(item.unit_type) !== String(state.unitsFilters.type)) return false;
     if (state.unitsFilters.name && !String(item.name || '').toLowerCase().includes(state.unitsFilters.name)) return false;
     if (state.unitsFilters.city && !String(item.city || '').toLowerCase().includes(state.unitsFilters.city)) return false;
-    return true;
-  });
-}
-
-function applyEmployeesFilters(items, source = 'employees') {
-  const filters = source === 'ops' ? state.employeesOpsFilters : state.employeesFilters;
-  return items.filter((item) => {
-    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
-    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
-    if (filters.unit_id && employeeUnitId !== String(filters.unit_id)) return false;
-    if (!matchesEmployeeSearchText(item, filters.search)) return false;
-    if (filters.sector && !String(item.sector || '').toLowerCase().includes(filters.sector)) return false;
-    if (filters.role_name && !String(item.role_name || '').toLowerCase().includes(filters.role_name)) return false;
     return true;
   });
 }
@@ -6372,26 +6301,6 @@ function isContractedVinculoJs(tipoVinculo) {
   return contracted.includes(String(tipoVinculo || '').trim());
 }
 
-function buildEmployeeRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
-  const allocation = allocationTypeLabel(item.unit_allocation_type);
-  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
-  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
-  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
-  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
-  return `<tr>${checkCell}<td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
-}
-
-function buildEmployeeOpsRow(item) {
-  const allocation = allocationTypeLabel(item.unit_allocation_type);
-  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
-  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
-}
-
 function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
@@ -6407,50 +6316,9 @@ function formatUnitTableRow(item, canManageUnitRecords) {
 const DELIVERIES_PER_PAGE = 20;
 const EMPLOYEES_PER_PAGE = 20;
 const EPIS_PER_PAGE = 20;
-// Seleção em lote da listagem de Colaboradores (componente reutilizável do DS).
-const employeesBulk = globalThis.dsCreateBulkSelection ? globalThis.dsCreateBulkSelection() : null;
-
-function currentEmployeesBulkScope() {
-  // Base atual (empresa + filtros) — a seleção e o "selecionar todos da página"
-  // operam sobre o que está visível, respeitando os filtros ativos.
-  return applyEmployeesFilters(filterByUserCompany(state.employees), 'employees');
-}
-
-function exportSelectedEmployeesCsv() {
-  if (!employeesBulk || employeesBulk.count() === 0) return;
-  const ids = new Set(employeesBulk.ids().map(String));
-  const rows = currentEmployeesBulkScope().filter((e) => ids.has(String(e.id)));
-  if (!rows.length) return;
-  const header = ['Empresa', 'ID', 'Nome', 'CPF', 'E-mail', 'WhatsApp', 'Setor', 'Função', 'Tipo de Vínculo', 'Unidade'];
-  const lines = rows.map((e) => [
-    e.company_name, e.employee_id_code, e.name, e.cpf, e.email, e.whatsapp,
-    e.sector, e.role_name, employmentTypeLabel(e.tipo_vinculo || 'CLT'),
-    e.current_unit_name || e.unit_name,
-  ]);
-  const csv = [header, ...lines]
-    .map((row) => row.map((v) => `"${String(v == null ? '' : v).replaceAll('"', '""')}"`).join(';'))
-    .join('\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'colaboradores-selecionados.csv';
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-function renderEmployeesBulkUi(pageIds) {
-  if (!employeesBulk || !refs.employeesBulkBar) return;
-  refs.employeesBulkBar.innerHTML = globalThis.dsBulkBar(
-    employeesBulk.count(),
-    [{ id: 'export', label: tr('bulk.exportCsv', 'Exportar CSV'), variant: 'btn-primary' }],
-    { labelPlural: tr('bulk.selectedPlural', 'selecionados'), labelSingular: tr('bulk.selectedSingular', 'selecionado'), clearLabel: tr('bulk.clear', 'Limpar seleção') }
-  );
-  if (refs.employeesSelectAll) {
-    const st = employeesBulk.pageState(pageIds);
-    refs.employeesSelectAll.checked = st === 'all';
-    refs.employeesSelectAll.indeterminate = st === 'some';
-  }
-}
+// Seleção em lote da listagem de Colaboradores: a instância é criada em
+// modules/employees/ui/employees-view.js (UBX-V4) e lida aqui pelo namespace.
+const employeesBulk = globalThis.__EPI_EMPLOYEES_VIEW__ ? globalThis.__EPI_EMPLOYEES_VIEW__.employeesBulk : null;
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
@@ -7444,17 +7312,7 @@ function startEditUnit(unitId) {
   focusRegistrationTab('unidades');
 }
 
-// Único ponto que decide a visibilidade de "Empresa de Origem": chamado no
-// setup inicial, no 'change' do select, na edição e no reset do formulário —
-// nunca `row.hidden = ...` duplicado nesses lugares, para não divergir.
-// Vínculos de mão de obra própria — espelha OWN_WORKFORCE_VINCULOS do backend
-// (modules/employees/service.py). Para eles a empresa é a própria empregadora
-// e responsável pelo EPI, então "Empresa de Origem" não se aplica.
-//
-// Era `tv === 'CLT'`: com Menor Aprendiz, Praticante e Estagiário no seletor,
-// o campo aparecia para os três e o backend recusava o cadastro pedindo uma
-// empresa de origem que não existe.
-const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário'];
+// syncEmpresaOrigemVisibility, isOwnWorkforceVinculo e OWN_WORKFORCE_VINCULOS: modules/employees/ (UBX-V4).
 
 // Os vínculos de mão de obra CONTRATADA (Terceirizado, Prestador de Serviço,
 // Temporário) existem exclusivamente no módulo Terceirizados e Prestadores: o
@@ -7466,45 +7324,6 @@ const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiá
 // Não há constante aqui de propósito: nada no front consome a lista — o
 // formulário simplesmente não tem as opções. Declará-la "para espelhar o
 // backend" era código morto, e foi o que o CodeQL apontou.
-
-function isOwnWorkforceVinculo(value) {
-  return OWN_WORKFORCE_VINCULOS.includes(String(value || 'CLT').trim());
-}
-
-function syncEmpresaOrigemVisibility() {
-  const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
-  const row = document.getElementById('employee-empresa-origem-row');
-  if (row) row.hidden = isOwnWorkforceVinculo(tv);
-}
-
-function startEditEmployee(employeeId) {
-  const item = state.employees.find((employee) => String(employee.id) === String(employeeId));
-  const form = document.getElementById('employee-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  syncEmployeeUnitOptions();
-  form.elements.unit_id.value = item.unit_id || '';
-  // CNPJ é o vínculo jurídico do contrato: imutável na edição comum. Mostramos
-  // o valor atual, mas desabilitado — alterar exige o processo administrativo
-  // auditado de transferência, e o backend ignora este campo no update.
-  setEmployeeLegalEntityLock(item.legal_entity_id || '', true);
-  form.elements.employee_id_code.value = item.employee_id_code || '';
-  form.elements.cpf.value = item.cpf || '';
-  form.elements.name.value = item.name || '';
-  form.elements.email.value = item.email || '';
-  form.elements.whatsapp.value = item.whatsapp || '';
-  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
-  form.elements.sector.value = item.sector || '';
-  form.elements.role_name.value = item.role_name || '';
-  form.elements.schedule_type.value = item.schedule_type || '14x14';
-  form.elements.admission_date.value = item.admission_date || '';
-  form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
-  form.elements.empresa_origem.value = item.empresa_origem || '';
-  syncEmpresaOrigemVisibility();
-  setFormSubmitLabel('employee-form', 'Atualizar colaborador');
-  showView('colaboradores');
-}
 
 // ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
 
@@ -8264,20 +8083,6 @@ function selectDeliveryEpiFromSearch(epiId) {
   renderDeliveryEpiSearchResults();
 }
 
-function syncEmployeeUnitOptions() {
-  const companyField = document.getElementById('employee-company');
-  const unitField = document.getElementById('employee-unit');
-  if (!companyField || !unitField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
-    unitField.value = String(units[0].id);
-  }
-  // O CNPJ acompanha a empresa selecionada, então é resincronizado junto.
-  syncEmployeeLegalEntityOptions();
-}
-
 // ── Multi-CNPJ: seletores de vínculo jurídico ────────────────────────────────
 
 // Regras puras vivem em js/views/legal-entity-fields.js (testadas no harness);
@@ -8310,39 +8115,12 @@ function legalEntityOptionsHtml(entities) {
 // exigir escolha seria ruído. Com mais de um, o backend recusa o cadastro sem
 // o campo — por isso a obrigatoriedade aqui espelha a regra do servidor em vez
 // de inventar uma própria.
-function syncEmployeeLegalEntityOptions() {
-  const field = document.getElementById('employee-legal-entity');
-  const wrapper = document.getElementById('employee-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('employee-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId);
-  const previous = field.value;
-  const required = legalEntityHelpers().employeeLegalEntityRequired;
-  const mandatory = required ? required(entities) : entities.length > 1;
-  wrapper.hidden = entities.length === 0;
-  field.required = mandatory;
-  const placeholder = mandatory
-    ? `<option value="">${tr('legalEntity.select', 'Selecione o CNPJ')}</option>`
-    : `<option value="">${tr('legalEntity.auto', 'Automático (CNPJ único)')}</option>`;
-  field.innerHTML = placeholder + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
 
 // Trava (ou destrava) o seletor de CNPJ do colaborador.
 //
 // Na edição o campo fica visível e desabilitado: o operador precisa VER a qual
 // CNPJ o colaborador pertence, mas não pode trocar por aqui. Campo desabilitado
 // não é serializado no submit, o que também impede o envio acidental do valor.
-function setEmployeeLegalEntityLock(legalEntityId, locked) {
-  const field = document.getElementById('employee-legal-entity');
-  if (!field) return;
-  syncEmployeeLegalEntityOptions();
-  if (legalEntityId) field.value = String(legalEntityId);
-  field.disabled = Boolean(locked);
-  if (locked) field.required = false;
-}
 
 // ── Tela de CNPJs (web legado) ───────────────────────────────────────────────
 
@@ -12295,15 +12073,6 @@ async function saveSimpleForm(event, path, permission) {
     event.target.dataset.submitting = '0';
     if (submitButton) submitButton.disabled = false;
   }
-}
-
-async function handleEmployeeFormSuccess(accessLink) {
-  try {
-    await navigator.clipboard?.writeText(accessLink);
-  } catch (error) {
-    console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
-  }
-  alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${accessLink}`);
 }
 
 function handleFormReset(form) {

@@ -321,9 +321,10 @@ def test_employee_legal_entity_is_locked_on_edit():
     O operador precisa ver a qual CNPJ o colaborador pertence; trocar exige o
     processo administrativo auditado.
     """
-    app_js = _read('static', 'app.js')
-    assert 'setEmployeeLegalEntityLock' in app_js
-    assert re.search(r'setEmployeeLegalEntityLock\(item\.legal_entity_id \|\| \'\', true\)', app_js)
+    # UBX-V4: edição e trava do CNPJ saíram do app.js para o módulo de UI de Colaboradores.
+    view_js = _read('static', 'js', 'modules', 'employees', 'ui', 'employees-view.js')
+    assert 'function setEmployeeLegalEntityLock' in view_js
+    assert re.search(r'setEmployeeLegalEntityLock\(item\.legal_entity_id \|\| \'\', true\)', view_js)
 
 
 def test_bootstrap_legal_entities_land_in_state():

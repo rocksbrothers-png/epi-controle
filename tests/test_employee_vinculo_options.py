@@ -103,9 +103,10 @@ def test_empresa_origem_visibility_has_no_per_option_special_case():
     original: a decisão sai de uma LISTA, nunca de comparações encadeadas por
     opção.
     """
-    app_js = _read('static', 'app.js')
+    # UBX-V4: a função saiu do app.js para o módulo de UI de Colaboradores.
+    view_js = _read('static', 'js', 'modules', 'employees', 'ui', 'employees-view.js')
     fn_match = re.search(
-        r'function syncEmpresaOrigemVisibility\(\) \{(.*?)\n\}', app_js, re.S
+        r'function syncEmpresaOrigemVisibility\(\) \{(.*?)\n\s*\}', view_js, re.S
     )
     assert fn_match, 'syncEmpresaOrigemVisibility não encontrada'
     body = fn_match.group(1)
@@ -124,12 +125,14 @@ def test_frontend_and_backend_agree_on_who_is_own_workforce():
     o backend a descarta (o operador digita e o dado some).
     """
     from modules.employees.service import OWN_WORKFORCE_VINCULOS
-    app_js = _read('static', 'app.js')
-    match = re.search(r'const OWN_WORKFORCE_VINCULOS = \[(.*?)\];', app_js, re.S)
-    assert match, 'OWN_WORKFORCE_VINCULOS não encontrada em app.js'
+    # UBX-V4: a lista saiu do app.js para o módulo de negócio de Colaboradores.
+    rules_js = _read('static', 'js', 'modules', 'employees', 'business', 'employee-rules.js')
+    match = re.search(r'const OWN_WORKFORCE_VINCULOS = \[(.*?)\];', rules_js, re.S)
+    assert match, 'OWN_WORKFORCE_VINCULOS não encontrada em employee-rules.js'
+    assert 'const OWN_WORKFORCE_VINCULOS' not in _read('static', 'app.js'), 'cópia voltou ao app.js'
     frontend = tuple(re.findall(r"'([^']+)'", match.group(1)))
     assert frontend == tuple(OWN_WORKFORCE_VINCULOS), (
-        f'app.js={frontend} vs backend={tuple(OWN_WORKFORCE_VINCULOS)}'
+        f'employee-rules.js={frontend} vs backend={tuple(OWN_WORKFORCE_VINCULOS)}'
     )
 
 
@@ -175,7 +178,9 @@ def test_empresa_origem_visibility_has_a_single_source_of_truth():
     exatamente essa duplicação que causou o campo ficar visível com CLT
     selecionado (o estado divergia entre os pontos que o escreviam).
     """
-    app_js = _read('static', 'app.js')
+    # UBX-V4: a função e a edição foram para o módulo de UI de Colaboradores;
+    # init() e handleFormReset seguem no app.js — a regra vale para os dois juntos.
+    app_js = _read('static', 'app.js') + _read('static', 'js', 'modules', 'employees', 'ui', 'employees-view.js')
     # Só a própria função pode buscar o elemento — as chamadoras delegam a ela.
     lookups = re.findall(r"getElementById\('employee-empresa-origem-row'\)", app_js)
     assert len(lookups) == 1, lookups

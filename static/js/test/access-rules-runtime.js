@@ -66,7 +66,8 @@ function loadCurrent(state, appSource) {
   const lines = appSource.split('\n');
   const consts = CONST_NAMES.map((n) => sliceTopLevel(lines, `const ${n} = `));
   vm.runInContext(`{ const state = globalThis.__EPI_APP_STATE__;\n${consts.join('\n')}\n${sliceTopLevel(lines, 'function canAccessView(')}\n`
-    + 'globalThis.canAccessView = canAccessView; }', ctx);
+    + `${sliceTopLevel(lines, 'function hasConfigurationAccess(')}\n`
+    + 'globalThis.canAccessView = canAccessView; globalThis.hasConfigurationAccess = hasConfigurationAccess; }', ctx);
   return ctx;
 }
 
@@ -127,6 +128,7 @@ function decisions(loader, appSource, permsAppSource) {
             for (const rule of TARGET_RULES) { out.push([key, rule, `${t.role}:${t.company_id}:${t.id}`, ctx[rule](t)]); }
           }
           for (const rule of AREA_RULES) { out.push([key, rule, '', ctx[rule]()]); }
+          out.push([key, 'hasConfigurationAccess', '', ctx.hasConfigurationAccess()]);
         }
         for (const v of viewList) { out.push([key, 'canAccessView', v, ctx.canAccessView(v)]); }
       }

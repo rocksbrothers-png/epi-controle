@@ -13,7 +13,7 @@
 // ../integrations/employees-api.js. Estado e refs: os MESMOS objetos do
 // app.js, lidos na chamada. Permissões: os botões de ação dependem do
 // `canManageRecords` que o app.js passa (fallback visual; quem autoriza é o
-// backend). isContractedVinculoJs continua no app.js (fica com Terceirizados).
+// backend). isContractedVinculoJs mora em ../../outsourced/ui/outsourced-employees-view.js.
 //
 // employeesBulk: a seleção em lote é criada AQUI, no carregamento — este
 // script carrega depois de views/ui-helpers.js (dsCreateBulkSelection) e antes

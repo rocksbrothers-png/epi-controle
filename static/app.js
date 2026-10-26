@@ -2912,7 +2912,9 @@ function isOperationalProfile() {
 }
 
 function hasConfigurationAccess() {
-  return CONFIGURATION_ADMIN_ROLES.includes(state.user?.role) && hasPermission('settings:view');
+  // Fonte única: a mesma regra pura que canAccessView('configuracao') usa
+  // (modules/auth/business/access-rules.js, UBX-V4).
+  return globalThis.__EPI_ACCESS_RULES__.hasConfigurationAccess(globalThis.__EPI_ACCESS_CONTEXT__.current(), CONFIGURATION_ADMIN_ROLES);
 }
 
 function hasHardeningAccess() {

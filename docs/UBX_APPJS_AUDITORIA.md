@@ -483,10 +483,12 @@ agosto e estão paradas — nenhum trabalho de i18n paralelo a coordenar. Nenhum
 | B2 — Terceirizados e Prestadores | `outsourced/{integrations/outsourced-api, ui/outsourced-companies-view, ui/outsourced-company-requests-view, ui/outsourced-employees-view}.js` | 18.185 | 814 / 112 |
 | C — regras `can*` | `auth/{business/access-rules, ui/access-context}.js`; `canAccessView` vira adaptador | **18.106** | **798 / 112** |
 
-Total: **−1.121 linhas** (−5,8%), **−80 declarações**, **−5 endpoints**; 13 módulos novos (1.669 linhas, maior
+Total: **−1.121 linhas** (−5,8%), **−80 declarações**, **−5 endpoints**; 10 módulos novos (1.669 linhas, maior
 com 443). Ficaram no `app.js`, de propósito: `archiveOutsourcedEmployee` (depende de `archiveEntityRecord`,
 `async` de bloco), `canAccessView` (adaptador: os mapas `VIEW_*` são usados também por `showView`/menus),
 `canViewConfiguration` e `canManageStockConfig` (só delegam), `hasPermission` (central; não alterado).
+`hasConfigurationAccess` virou adaptador da mesma regra pura usada por `canAccessView('configuracao')` —
+fonte única (achado da auditoria; coberto pela matriz RBAC).
 
 ### 12.3 Validação
 
@@ -526,7 +528,10 @@ Desacoplou de verdade: as regras de acesso da interface viraram negócio puro te
 `integrations/`; a seleção em lote tem um dono (o módulo) e o `app.js` a lê pelo namespace. Continua
 acoplado (dito com honestidade): as UIs extraídas ainda chamam funções globais do `app.js`
 (`hasPermission`, `requirePermission`, `showView`, `setFormSubmitLabel`, …) e o `app.js` chama as delas —
-ciclo por função global, invisível ao grafo de namespaces (§11.4). O grafo de namespaces segue sem ciclos.
+ciclo por função global, invisível ao grafo de namespaces (§11.4). O grafo de namespaces segue sem ciclos,
+mas também há dependências mútuas por função global ENTRE módulos: a UI de empresas terceirizadas chama a
+de colaboradores terceirizados (`syncOutsourcedEmployeeCompanySelect`, `renderOutsourcedEmployees`) e
+vice-versa (`outsourcedCompaniesViewHelpers`), e a UI de Colaboradores chama `isContractedVinculoJs`.
 
 ### 12.5 Achados (registrados; nenhum corrigido — mudar é decisão de negócio)
 
@@ -544,11 +549,34 @@ ciclo por função global, invisível ao grafo de namespaces (§11.4). O grafo d
    a triar — pode ser o reset de navegação de `showView` (F5-B) atuando depois da edição.
 6. Continuam valendo os achados da §11.6.
 
-### 12.6 Próximos candidatos (UBX-V5, não iniciada — requer autorização)
+### 12.6 Auditoria independente (adversarial)
+
+Agente separado, só leitura, sobre `61593f2a`. **Nenhum P0/P1.** Conferido: o resto do `app.js` igual token a
+token (834 × 834 instruções; só `canAccessView` e a linha de `employeesBulk` mudam); nenhum identificador
+solto; nenhuma leitura de nome de bloco do `app.js` nos módulos; sem colisão de nomes; ordem de carga do lote;
+RBAC equivalente — fixture fiel ao original e fuzz diferencial próprio de 680.000 chamadas (usuário nulo,
+permissão como string com espaços, visibilidade não booleana, views `constructor`/`__proto__`/`''`), 0
+diferenças; contratos HTTP idênticos (inclusive o que fica dentro/fora do `try`); diálogos equivalentes;
+tabelas de caracterização regeneradas das originais com 0 diferenças; baseline da guarda só encolheu;
+métricas da §12.4 reproduzidas. P2/P3 tratados: regra de configuração unificada (acima); dependências
+mútuas entre módulos registradas (§12.4); contagem de módulos e comentário de `employees-view.js` corrigidos.
+Registrados como risco residual:
+
+- os módulos chamam `hasPermission` solto, que só é a versão do `app.js` porque ela sobrescreve (Annex B) o
+  `globalThis.hasPermission(roleOrPermsList, permission)` de `modules/permissions-rt.js`; se a do `app.js`
+  virar `const`/`async` ou carregar antes, os gates de Terceirizados passam a negar tudo (falha fechada,
+  nunca amplia);
+- `canAccessView`/`hasConfigurationAccess` dependem de `modules/auth/*` sem fallback: se um desses scripts não
+  carregar, a navegação nega tudo (falha fechada);
+- os digestos de paridade F4/F5-B foram re-baselinados: o SaaS recebeu exatamente os mesmos commits
+  (epi-controle-app#433), com os mesmos digestos;
+- os testes estruturais Python de Terceirizados leem `app.js` + módulos juntos; quem barra uma cópia voltando
+  ao `app.js` são os testes JS e a guarda (`extracted`).
+
+### 12.7 Próximos candidatos (UBX-V5, não iniciada — requer autorização)
 
 1. Corrigir/decidir os achados 1, 4 e 5 acima (são comportamento, fora de refatoração pura);
 2. `archiveEntityRecord`/arquivamento genérico (`ARCHIVAL_ENTITIES`) → módulo próprio (destrava
    `archiveOutsourcedEmployee`);
 3. Empresas/Unidades/CNPJ (risco alto: escopo de tenant), com o mesmo teste de matriz por empresa;
 4. mapas `VIEW_*` + `showView`/menus (navegação) — último bloco antes do bootstrap.
-

@@ -246,7 +246,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get employeeCodeLabel => 'Matrícula';
 
   @override
-  String get employeeCpfLabel => 'CPF';
+  String get employeeCpfLabel => 'CPF brésilien';
 
   @override
   String get employeeSectorLabel => 'Setor';
@@ -287,7 +287,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get episNew => 'Novo EPI';
 
   @override
-  String get episSearchHint => 'Buscar por nome, CA ou código';
+  String get episSearchHint => 'Rechercher par nom, CA brésilien ou code';
 
   @override
   String get epiNameLabel => 'Nome do EPI';
@@ -296,7 +296,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get epiCodeLabel => 'Código de compra';
 
   @override
-  String get epiCaLabel => 'CA';
+  String get epiCaLabel => 'CA — certificat d’approbation brésilien';
 
   @override
   String get epiSectorLabel => 'Setor';
@@ -323,7 +323,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get epiManufacturerValidityLabel => 'Validade (meses)';
 
   @override
-  String get epiCaExpiryLabel => 'Vencimento CA';
+  String get epiCaExpiryLabel => 'Expiration du CA brésilien';
 
   @override
   String get epiValidityDaysLabel => 'Validade (dias)';
@@ -2678,7 +2678,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get employeeCodeLabel => 'Matricule';
 
   @override
-  String get employeeCpfLabel => 'CPF';
+  String get employeeCpfLabel => 'CPF brésilien';
 
   @override
   String get employeeSectorLabel => 'Département';
@@ -2719,7 +2719,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get episNew => 'Nouvel EPI';
 
   @override
-  String get episSearchHint => 'Rechercher par nom, marquage CE ou code';
+  String get episSearchHint => 'Rechercher par nom, CA brésilien ou code';
 
   @override
   String get epiNameLabel => 'Nom de l\'EPI';
@@ -2728,7 +2728,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get epiCodeLabel => 'Code d\'achat';
 
   @override
-  String get epiCaLabel => 'N° CE';
+  String get epiCaLabel => 'CA — certificat d’approbation brésilien';
 
   @override
   String get epiSectorLabel => 'Secteur';
@@ -2755,7 +2755,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get epiManufacturerValidityLabel => 'Validité (mois)';
 
   @override
-  String get epiCaExpiryLabel => 'Expiration marquage CE';
+  String get epiCaExpiryLabel => 'Expiration du CA brésilien';
 
   @override
   String get epiValidityDaysLabel => 'Validité (jours)';

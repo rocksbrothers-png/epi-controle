@@ -1,0 +1,20 @@
+{
+  "phase": "A",
+  "baseline": {
+    "corporate": "3e6fe8c5",
+    "saas": "b25147b"
+  },
+  "web_locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+  ],
+  "source": "pt-BR",
+  "baseline_keys_per_locale": 1751,
+  "html_candidates": 1019,
+  "new_html_source_texts": 599,
+  "js_literal_and_template_records": 14655,
+  "limits": "Candidates require semantic classification; key presence is not functional coverage. Tabs listed as ALL_DISCOVERED are not proof of navigation."
+}

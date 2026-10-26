@@ -140,5 +140,9 @@
   "safetyStateDraft": "Draft",
   "safetyStatePublished": "Published",
   "safetyStateSuperseded": "Superseded",
-  "safetyStateArchived": "Archived"
+  "safetyStateArchived": "Archived",
+  "employeeCpfLabel": "Brazilian CPF",
+  "episSearchHint": "Search by name, Brazilian CA or code",
+  "epiCaLabel": "CA — Brazilian Approval Certificate",
+  "epiCaExpiryLabel": "Brazilian CA expiry"
 }

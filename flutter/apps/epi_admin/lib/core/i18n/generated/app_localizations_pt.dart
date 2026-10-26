@@ -287,7 +287,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get episNew => 'Novo EPI';
 
   @override
-  String get episSearchHint => 'Buscar por nome, CA ou código';
+  String get episSearchHint => 'Buscar por nome, CA brasileiro ou código';
 
   @override
   String get epiNameLabel => 'Nome do EPI';
@@ -296,7 +296,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get epiCodeLabel => 'Código de compra';
 
   @override
-  String get epiCaLabel => 'CA';
+  String get epiCaLabel => 'CA — Certificado de Aprovação';
 
   @override
   String get epiSectorLabel => 'Setor';
@@ -323,7 +323,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get epiManufacturerValidityLabel => 'Validade (meses)';
 
   @override
-  String get epiCaExpiryLabel => 'Vencimento CA';
+  String get epiCaExpiryLabel => 'Validade do CA';
 
   @override
   String get epiValidityDaysLabel => 'Validade (dias)';
@@ -2719,7 +2719,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get episNew => 'Novo EPI';
 
   @override
-  String get episSearchHint => 'Buscar por nome, CA ou código';
+  String get episSearchHint => 'Buscar por nome, CA brasileiro ou código';
 
   @override
   String get epiNameLabel => 'Nome do EPI';
@@ -2728,7 +2728,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get epiCodeLabel => 'Código de compra';
 
   @override
-  String get epiCaLabel => 'CA';
+  String get epiCaLabel => 'CA — Certificado de Aprovação';
 
   @override
   String get epiSectorLabel => 'Setor';
@@ -2755,7 +2755,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get epiManufacturerValidityLabel => 'Validade (meses)';
 
   @override
-  String get epiCaExpiryLabel => 'Vencimento CA';
+  String get epiCaExpiryLabel => 'Validade do CA';
 
   @override
   String get epiValidityDaysLabel => 'Validade (dias)';

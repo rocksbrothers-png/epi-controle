@@ -5,14 +5,14 @@
             <p class="page-desc" data-i18n="pagehead.users">Cadastro e gestão de acessos por empresa e perfil, com vínculo a colaboradores.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="usuarios" aria-label="Usuários">
+        <nav class="view-tabs" data-vtabs="usuarios" aria-label="Usuários" data-i18n-aria-label="nav.users">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
         </nav>
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="user-form" class="card form-stack user-form-card" autocomplete="off">
             <div class="section-intro">
-              <span class="eyebrow">Acesso</span>
+              <span class="eyebrow" data-i18n="ui.usuarios.acesso_2ed7ce">Acesso</span>
               <h3 data-i18n="user.create">Cadastro de Usuário</h3>
               <p class="hint" data-i18n="user.createHint">Crie acessos por empresa e perfil com a regra de permissão aplicada.</p>
             </div>
@@ -46,7 +46,7 @@
           <article class="card users-card">
             <div class="users-panel-head">
               <div>
-                <span class="eyebrow">Operação</span>
+                <span class="eyebrow" data-i18n="nav.groupOperation">Operação</span>
                 <h3 data-i18n="user.title">Usuários</h3>
                 <p class="hint" data-i18n="user.panelHint">Acompanhe perfis, status e ações permitidas por empresa.</p>
               </div>
@@ -71,7 +71,7 @@
               <div id="purchase-functions-no-users-warning" data-i18n="purchase.functionsNoUsersWarning" style="display:none;padding:8px 12px;background:var(--warning-soft);border-left:3px solid var(--warning);border-radius:4px;font-size:13px;margin-bottom:12px;color:var(--warning);">⚠ Nenhum usuário com perfil Comprador ou Aprovador encontrado. Cadastre o usuário com o perfil correto antes de vincular.</div>
               <div class="unit-link-toolbar">
                 <label><span data-i18n="purchase.functionsSearchUser">Buscar usuário</span><input id="purchase-function-employee-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUserPlaceholder" placeholder="Nome, ID, usuário ou perfil"></label>
-                <label><span data-i18n="purchase.functionsUserLabel">Usuário (Comprador/Aprovador)</span><select id="purchase-function-employee"><option value="">Selecione...</option></select></label>
+                <label><span data-i18n="purchase.functionsUserLabel">Usuário (Comprador/Aprovador)</span><select id="purchase-function-employee"><option value="" data-i18n="purchase.functionsSelectPlaceholder">Selecione...</option></select></label>
                 <label><span data-i18n="purchase.functionsTypeLabel">Tipo</span><select id="purchase-function-type"><option value="buyer" data-i18n="role.buyer">Comprador</option><option value="approver" data-i18n="role.approver">Aprovador</option></select></label>
                 <button class="btn" id="purchase-functions-save" type="button" data-i18n="purchase.functionsSave">Salvar vínculos</button>
                 <button class="btn ghost" id="purchase-functions-refresh" type="button" data-i18n="purchase.functionsRefresh">Atualizar</button>
@@ -82,7 +82,7 @@
                 <div class="unit-link-picker__head">
                   <label><span data-i18n="purchase.functionsSearchUnit">Buscar unidade</span><input id="purchase-function-unit-search" type="search" autocomplete="off" data-i18n-placeholder="purchase.functionsSearchUnitPlaceholder" placeholder="Nome, tipo ou cidade"></label>
                   <div class="unit-link-picker__actions">
-                    <span id="purchase-function-selected-count" class="status-chip">0 selecionadas</span>
+                    <span id="purchase-function-selected-count" class="status-chip" data-i18n="ui.usuarios.0_selecionadas_01a4b5">0 selecionadas</span>
                     <button class="ghost" id="purchase-functions-select-visible" type="button" data-i18n="purchase.functionsSelectVisible">Selecionar visíveis</button>
                     <button class="ghost" id="purchase-functions-clear-selection" type="button" data-i18n="purchase.functionsClearSelection">Limpar</button>
                   </div>

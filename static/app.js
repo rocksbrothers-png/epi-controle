@@ -22,12 +22,12 @@ const ROLE_LABELS = {
 
 var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLegacyTranslator === 'function')
   ? globalThis.EpiI18nHelper.resolveLegacyTranslator()
-  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
+  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback, vars) {
     try {
-      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
-      return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
+      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key, vars) : null;
+      return (v && v !== key) ? v : String(fallback !== undefined ? fallback : key).replace(/\{(\w+)\}/g, (match, name) => vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
     } catch (_e) {
-      return fallback !== undefined ? fallback : key;
+      return String(fallback !== undefined ? fallback : key).replace(/\{(\w+)\}/g, (match, name) => vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
     }
   });
 if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
@@ -4676,6 +4676,7 @@ function aposentarPreferenciasLegadas() {
 // `i18n.js`, que precisa do dono para resolver e persistir o idioma.
 globalThis.__EPI_PREFS__ = Object.freeze({
   ler: preferenciasDoPrincipal,
+  identidade: prefsPrincipalCorrente,
   definir: definirPreferencias,
   adotarDoServidor: adotarPreferenciasDoServidor,
   aposentarLegado: aposentarPreferenciasLegadas,
@@ -4906,8 +4907,12 @@ function _applySettings({ theme, lang, density }) {
     tema: theme === 'dark' ? 'dark' : 'light',
     densidade: density === 'compact' ? 'compact' : 'normal',
   };
-  if (lang) parcial.idioma = lang;
   definirPreferencias(parcial);
+  // O motor só confirma a preferência de idioma quando o dicionário correto
+  // está disponível; tema/densidade continuam sob o mesmo dono.
+  if (lang && typeof globalThis.EpiI18n?.setLang === 'function') {
+    void globalThis.EpiI18n.setLang(lang);
+  }
 }
 
 function openSettingsDrawer() {
@@ -5348,7 +5353,7 @@ function companyUsageText(company) {
 }
 
 function formatCompanyCurrency(value) {
-  return formatCurrency(value || 0);
+  return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
 }
 
 function formatCompanyAvailabilityText(company) {
@@ -5436,9 +5441,9 @@ function refreshCommercialPreview(company = null) {
   const userLimit = Number(refs.commercialForm.elements.user_limit.value || currentCompany?.user_limit || 0);
   const planName = refs.commercialForm.elements.plan_name.value || currentCompany?.plan_name || 'start';
   const addendumEnabled = refs.commercialForm.elements.addendum_enabled.checked;
-  refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice);
-  refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice);
-  refs.commercialForm.elements.projected_monthly_value.value = formatCurrency(userLimit * unitPrice);
+  refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice, globalThis.EpiI18n?.lang);
+  refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice, globalThis.EpiI18n?.lang);
+  refs.commercialForm.elements.projected_monthly_value.value = formatCurrency(userLimit * unitPrice, globalThis.EpiI18n?.lang);
   if (refs.commercialPlanHint) refs.commercialPlanHint.textContent = planHintText(planName, addendumEnabled);
 }
 
@@ -5620,8 +5625,8 @@ function commercialAlertTone(item) {
 
 function renderCommercialSummaryCard(item) {
   const usage = `${item.user_count}/${item.user_limit}`;
-  const monthly = formatCurrency(item.monthly_value || 0);
-  const projected = formatCurrency(item.projected_monthly_value || 0);
+  const monthly = formatCurrency(item.monthly_value || 0, globalThis.EpiI18n?.lang);
+  const projected = formatCurrency(item.projected_monthly_value || 0, globalThis.EpiI18n?.lang);
   const risk = commercialRiskMeta(item);
   return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${tr('commercial.usersCount', '{count} Usuários').replace('{count}', usage)}</span><span>${monthly} ${tr('commercial.currentLabel', 'atual')} | ${projected} ${tr('commercial.projectedLabel', 'projetado')}</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
@@ -13875,7 +13880,7 @@ function _renderValidityBreakdown(tbodyId, entries) {
     <td>${esc(e.label || '—')}</td>
     <td>${esc(String(e.count || 0))}</td>
     <td>${esc(_validityDaysLabel(e.days_remaining))}</td>
-    <td>${esc(formatCurrency(e.value || 0))}</td>
+    <td>${esc(formatCurrency(e.value || 0, globalThis.EpiI18n?.lang))}</td>
   </tr>`).join('');
 }
 
@@ -13900,7 +13905,7 @@ async function loadValidityOverview() {
     const valueEl = document.getElementById('validity-mgmt-value');
     if (valueEl) {
       valueEl.textContent = tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).')
-        .replace('{v}', formatCurrency(summary.value_at_risk || 0))
+        .replace('{v}', formatCurrency(summary.value_at_risk || 0, globalThis.EpiI18n?.lang))
         .replace('{n}', String(summary.at_risk_total || 0));
     }
     const empty = document.getElementById('validity-mgmt-empty');
@@ -16351,30 +16356,30 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 // ── Módulo de Compras (Fase 2) ───────────────────────────────────────────────
 
 const PURCHASE_STATUS_LABELS = {
-  draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
-  pending_approval: 'Cotação Enviada ao Aprovador', partially_approved: 'Aprov. Parcial',
-  waiting_buyer_correction: 'Aguardando Correção do Comprador', buyer_resubmitted: 'Reenviada pelo Comprador',
-  waiting_requester_correction: 'Aguardando Correção do Requisitante', requester_resubmitted: 'Reenviada pelo Requisitante',
-  approved: 'Aprovada', rejected: 'Reprovada', postponed: 'Prorrogada',
-  returned_to_buyer: 'Retornado ao Comprador',
-  po_generated: 'PO Gerada', received_partial: 'Recebida Parcialmente', received: 'Recebida Totalmente', not_received: 'Item Não Recebido', pending_receipt: 'Pendente de Recebimento', checked: 'Conferida',
-  closed: 'Fechada', cancelled: 'Cancelada'
+  get draft() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, get open() { return (tr('ui.compras.aberta_262ff7', 'Aberta', {})); }, get sent_to_buyer() { return (tr('ui.app.c_comprador_f09eb8', 'C/ Comprador', {})); }, get quoted() { return (tr('ui.compras.cotada_8912bb', 'Cotada', {})); },
+  get pending_approval() { return (tr('ui.compras.cotacao_enviada_ao_aprovador_fcb0ad', 'Cotação Enviada ao Aprovador', {})); }, get partially_approved() { return (tr('ui.app.aprov_parcial_252007', 'Aprov. Parcial', {})); },
+  get waiting_buyer_correction() { return (tr('ui.compras.aguardando_correcao_do_comprador_47cb4a', 'Aguardando Correção do Comprador', {})); }, get buyer_resubmitted() { return (tr('ui.compras.reenviada_pelo_comprador_f5a7ee', 'Reenviada pelo Comprador', {})); },
+  get waiting_requester_correction() { return (tr('ui.compras.aguardando_correcao_do_requisitante_e61838', 'Aguardando Correção do Requisitante', {})); }, get requester_resubmitted() { return (tr('ui.app.reenviada_pelo_requisitante_129ae0', 'Reenviada pelo Requisitante', {})); },
+  get approved() { return (tr('purchase.poStatus.approved', 'Aprovada', {})); }, get rejected() { return (tr('purchase.poStatus.rejected', 'Reprovada', {})); }, get postponed() { return (tr('purchase.poStatus.postponed', 'Prorrogada', {})); },
+  get returned_to_buyer() { return (tr('ui.app.retornado_ao_comprador_4ae6e5', 'Retornado ao Comprador', {})); },
+  get po_generated() { return (tr('ui.compras.po_gerada_1e0e23', 'PO Gerada', {})); }, get received_partial() { return (tr('purchase.poStatus.received_partial', 'Recebida Parcialmente', {})); }, get received() { return (tr('ui.app.recebida_totalmente_b8cfb4', 'Recebida Totalmente', {})); }, get not_received() { return (tr('ui.app.item_nao_recebido_abb764', 'Item Não Recebido', {})); }, get pending_receipt() { return (tr('ui.app.pendente_de_recebimento_7e1806', 'Pendente de Recebimento', {})); }, get checked() { return (tr('purchase.poStatus.checked', 'Conferida', {})); },
+  get closed() { return (tr('purchase.poStatus.closed', 'Fechada', {})); }, get cancelled() { return (tr('ui.compras.cancelada_3d15e6', 'Cancelada', {})); }
 };
 const ITEM_STATUS_LABELS = {
-  open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
-  quoted: 'Cotado', pending_approval: 'Aguard. Aprov.', approved: 'Aprovado',
-  partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
-  received_partial: 'Recebido Parcial', not_received: 'Não Recebido', received: 'Recebido', checked: 'Conferido', closed: 'Fechado',
-  waiting_quote: 'Aguardando Cotação', waiting_admin_review: 'Em Compra'
+  get open() { return (tr('ui.app.aberto_84276c', 'Aberto', {})); }, get included_in_request() { return (tr('portal.statusInRequest', 'Em Requisição', {})); }, get sent_to_buyer() { return (tr('ui.app.c_comprador_f09eb8', 'C/ Comprador', {})); },
+  get quoted() { return (tr('ui.app.cotado_8f67a8', 'Cotado', {})); }, get pending_approval() { return (tr('ui.app.aguard_aprov_f0259c', 'Aguard. Aprov.', {})); }, get approved() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+  get partially_approved() { return (tr('ui.app.aprov_parcial_252007', 'Aprov. Parcial', {})); }, get rejected() { return (tr('purchase.status.rejected', 'Rejeitado', {})); }, get ordered() { return (tr('ui.app.pedido_9e9ea5', 'Pedido', {})); },
+  get received_partial() { return (tr('ui.app.recebido_parcial_c28671', 'Recebido Parcial', {})); }, get not_received() { return (tr('purchase.poStatus.not_received', 'Não Recebido', {})); }, get received() { return (tr('portal.statusReceived', 'Recebido', {})); }, get checked() { return (tr('ui.app.conferido_113f18', 'Conferido', {})); }, get closed() { return (tr('portal.periodClosed', 'Fechado', {})); },
+  get waiting_quote() { return (tr('ui.app.aguardando_cotacao_c58378', 'Aguardando Cotação', {})); }, get waiting_admin_review() { return (tr('purchase.poStatus.waiting_admin_review', 'Em Compra', {})); }
 };
 const PURCHASE_APPROVAL_REJECTION_REASONS = ['Item não necessário', 'Valor acima do esperado', 'Quantidade incorreta', 'Fornecedor inadequado', 'EPI incompatível', 'Fora do escopo da solicitação', 'Outro'];
 
 // P1-5 — etapas canônicas do recebimento da PO e mapeamento a partir do status.
 const PO_STEPPER_STEPS = [
-  { label: 'Pedido' },
-  { label: 'Recebido' },
-  { label: 'Conferido' },
-  { label: 'Fechado' }
+  { get label() { return (tr('purchase.poStep.ordered', 'Pedido', {})); } },
+  { get label() { return (tr('portal.statusReceived', 'Recebido', {})); } },
+  { get label() { return (tr('ui.app.conferido_113f18', 'Conferido', {})); } },
+  { get label() { return (tr('portal.periodClosed', 'Fechado', {})); } }
 ];
 const PO_STEP_INDEX = {
   open: 0, sent_to_buyer: 0, quoted: 0, waiting_quote: 0, waiting_admin_review: 0,
@@ -16419,7 +16424,7 @@ function _initDemandsCompanyFilter() {
   filter.style.display = '';
   const companies = state.companies || [];
   const current = filter.value;
-  filter.innerHTML = '<option value="">Todas as empresas</option>' +
+  filter.innerHTML = "<option value=\"\" data-i18n=\"ui.compras.todas_as_empresas_fe2a9c\">Todas as empresas</option>" +
     companies.map(c => `<option value="${c.id}"${String(c.id) === current ? ' selected' : ''}>${c.name} - ${c.cnpj}</option>`).join('');
 }
 
@@ -16447,7 +16452,7 @@ async function loadPurchaseDemands() {
     if (empty) empty.style.display = 'none';
     const showCompanyCol = state.user?.role === 'master_admin' && !document.getElementById('compras-demands-company-filter')?.value;
     tbody.innerHTML = _purchaseDemands.map((d, i) => {
-      const originLabel = d.demand_type === 'employee_request' ? '<span style="color:var(--color-primary)">Colaborador</span>' : '<span style="color:var(--color-warning)">Estoque Mínimo</span>';
+      const originLabel = d.demand_type === 'employee_request' ? "<span style=\"color:var(--color-primary)\" data-i18n=\"handover.collaborator\">Colaborador</span>" : "<span style=\"color:var(--color-warning)\" data-i18n=\"stock.minimumBalance\">Estoque M\u00ednimo</span>";
       const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${d.company_name}</small>` : '';
       const who = d.demand_type === 'employee_request'
         ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
@@ -16459,8 +16464,8 @@ async function loadPurchaseDemands() {
         // Estoque mínimo: mostra TODOS os tamanhos cadastrados com atual/mínimo/sugestão.
         if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
           const parts = d.size_demands.map(s => {
-            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || 'Único';
-            return `${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`;
+            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || (tr('ui.app.unico_295aff', 'Único', {}));
+            return (tr('ui.app.p0_atual_p1_min_p2_p3_cfd4de', '{p0} (atual {p1}/mín {p2} → +{p3})', {p0:(sp),p1:(s.current_stock),p2:(s.minimum_stock),p3:(s.suggested_quantity)}));
           }).join('<br>');
           if (parts) return parts;
         }
@@ -16472,7 +16477,7 @@ async function loadPurchaseDemands() {
           if (parts) return parts;
         }
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
-        return flatSize || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
+        return flatSize || (d.demand_type === 'low_stock' ? (tr('ui.app.sem_rastreio_por_tamanho_c49bfd', 'Sem rastreio por tamanho', {})) : '—');
       })();
       const qty = d.demand_type === 'employee_request'
         ? (d.quantity || 1)
@@ -16480,7 +16485,7 @@ async function loadPurchaseDemands() {
             ? d.size_demands.reduce((s, x) => s + Number(x.suggested_quantity || 0), 0) || (d.quantity_requested || 1)
             : (d.quantity_requested || 1));
       const statusBadge = d.demand_type === 'low_stock'
-        ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'
+        ? "<span style=\"color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;\" data-i18n=\"alert.lowStock\">Estoque Baixo</span>"
         : epiRequestStatusBadge(d.status || 'solicitado');
       return `<tr>
         <td><input type="checkbox" class="demand-check" data-demand-index="${i}"></td>
@@ -16501,8 +16506,8 @@ async function loadPurchaseDemands() {
     if (empty) {
       empty.style.display = '';
       empty.textContent = isTemporaryBootstrapUnavailable(e)
-        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
-        : 'Erro ao carregar demandas.';
+        ? ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{}) ?? globalThis.trEpi?.("ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{})) ?? "Sistema inicializando \u2014 clique em Atualizar para tentar novamente.")
+        : ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_demandas_3b3de4","Erro ao carregar demandas.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_demandas_3b3de4","Erro ao carregar demandas.",{})) ?? "Erro ao carregar demandas.");
     }
   }
 }
@@ -16530,9 +16535,9 @@ async function loadPurchaseRequests() {
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _purchaseRequests.map(pr => {
-      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? `Até: ${pr.postponed_until}` : '';
+      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? (tr('ui.app.ate_p0_ce0eec', 'Até: {p0}', {p0:(pr.postponed_until)})) : '';
       const poInfo = pr.linked_po_number && ['approved','partially_approved','postponed'].includes(pr.status)
-        ? `<br><small style="color:var(--color-text-muted);">PO: ${pr.linked_po_number}</small>` : '';
+        ? `<br><small style="color:var(--color-text-muted);">${(globalThis.EpiI18n?.bindText?.("ui.app.po_p0_835d85",{p0:(pr.linked_po_number)},"PO: {p0}") ?? `PO: ${pr.linked_po_number}`)}</small>` : '';
       return `<tr>
         <td>${pr.id}</td>
         <td>${pr.title || '—'}${poInfo}</td>
@@ -16541,11 +16546,11 @@ async function loadPurchaseRequests() {
         <td>${pr.items_count || 0}</td>
         <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
         <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
-        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
+        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}" data-i18n="ui.app.ver_20ab38">Ver</button></td>
       </tr>`;
     }).join('');
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar requisições.'; }
+    if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.procurement.erro_ao_carregar_requisicoes_ec390a","Erro ao carregar requisi\u00e7\u00f5es.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_carregar_requisicoes_ec390a","Erro ao carregar requisi\u00e7\u00f5es.",{})) ?? "Erro ao carregar requisi\u00e7\u00f5es."); }
   }
 }
 
@@ -16574,14 +16579,14 @@ async function loadPurchaseOrders() {
       <td>${esc(po.supplier || '—')}</td>
       <td>${esc(po.unit_name || '—')}</td>
       <td>${purchaseStatusBadge(po.status)}</td>
-      <td>${fmtBrl(po.total_value)}</td>
+      <td>${fmtBrl(po.total_value, globalThis.EpiI18n?.lang)}</td>
       <td>${po.items_count || 0}</td>
       <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
-      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" onclick="openPoSupplierActionsModal(${po.id})">Fornecedor</button></td>
+      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}" data-i18n="ui.app.ver_20ab38">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" onclick="openPoSupplierActionsModal(${po.id})" data-i18n="epi.supplierShort">Fornecedor</button></td>
     </tr>`).join('');
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar POs.'; }
+    if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{})) ?? "Erro ao carregar POs."); }
   }
 }
 
@@ -16592,7 +16597,7 @@ async function openPrDetail(prId) {
     const pr = _currentPrDetail.item;
     const items = _currentPrDetail.items || [];
     const titleEl = document.getElementById('compras-req-detail-title');
-    if (titleEl) titleEl.textContent = `Requisição #${pr.id} — ${pr.title || ''}`;
+    if (titleEl) titleEl.textContent = ((globalThis.EpiI18n?.textFor?.(titleEl,"ui.app.requisicao_p0_p1_681826","Requisi\u00e7\u00e3o #{p0} \u2014 {p1}",{p0:(pr.id),p1:(pr.title || '')}) ?? globalThis.trEpi?.("ui.app.requisicao_p0_p1_681826","Requisi\u00e7\u00e3o #{p0} \u2014 {p1}",{p0:(pr.id),p1:(pr.title || '')})) ?? `Requisição #${pr.id} — ${pr.title || ''}`);
     const detailEl = document.getElementById('compras-req-detail');
     if (detailEl) detailEl.style.display = '';
     const tbody = document.getElementById('compras-req-detail-tbody');
@@ -16604,18 +16609,18 @@ async function openPrDetail(prId) {
         <td>${i.manufacturer || '—'}</td>
         <td>${i.supplier || '—'}</td>
         <td>${i.employee_name || '—'}</td>
-        <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+        <td>${i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('ui.app.estoque_min_8776c1', 'Estoque Mín.', {}))}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
         <td>${i.quantity_requested || 1}</td>
-        <td style="white-space:nowrap;">${i.unit_price ? fmtBrl(i.unit_price) : '—'}</td>
-        <td style="white-space:nowrap;font-weight:${i.total_price ? '600' : '400'};">${i.total_price ? fmtBrl(i.total_price) : '—'}</td>
+        <td style="white-space:nowrap;">${i.unit_price ? fmtBrl(i.unit_price, globalThis.EpiI18n?.lang) : '—'}</td>
+        <td style="white-space:nowrap;font-weight:${i.total_price ? '600' : '400'};">${i.total_price ? fmtBrl(i.total_price, globalThis.EpiI18n?.lang) : '—'}</td>
         <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
       </tr>`;
     }).join('');
     const grandTotal = items.filter(i => i.status !== 'rejected').reduce((s, i) => s + Number(i.total_price || 0), 0);
     const totalEl = document.getElementById('compras-req-detail-total');
     const tfootEl = document.getElementById('compras-req-detail-tfoot');
-    if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';
+    if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal, globalThis.EpiI18n?.lang) : '—';
     if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
     renderPurchaseRequestEvents(_currentPrDetail.events || []);
@@ -16623,7 +16628,7 @@ async function openPrDetail(prId) {
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
-    alert('Erro ao carregar requisição.');
+    alert((tr('ui.app.erro_ao_carregar_requisicao_b3de26', 'Erro ao carregar requisição.', {})));
   }
 }
 
@@ -16644,10 +16649,10 @@ function renderPurchaseRequestEvents(events) {
   eventsEl.innerHTML = (events || []).length ? events.map(e => {
     const fromTo = e.status_from ? ` <em>${esc(PURCHASE_STATUS_LABELS[e.status_from] || e.status_from)} → ${esc(PURCHASE_STATUS_LABELS[e.status_to] || e.status_to)}</em>` : '';
     const role = e.actor_role ? ` <small>(${esc(roleLabel(e.actor_role))})</small>` : '';
-    const destination = e.destination ? ` <small>Destino: ${esc(e.destination)}</small>` : '';
-    const reason = e.reason ? ` <small>Motivo: ${esc(e.reason)}</small>` : '';
-    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || 'Sistema')}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
-  }).join('') : '<em>Sem histórico.</em>';
+    const destination = e.destination ? ` <small>${(globalThis.EpiI18n?.bindText?.("ui.app.destino_p0_0064b0",{p0:(e.destination)},"Destino: {p0}") ?? `Destino: ${esc(e.destination)}`)}</small>` : '';
+    const reason = e.reason ? ` <small>${(globalThis.EpiI18n?.bindText?.("ui.app.motivo_p0_3cc86d",{p0:(e.reason)},"Motivo: {p0}") ?? `Motivo: ${esc(e.reason)}`)}</small>` : '';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || (tr('dashboard.groupSystem', 'Sistema', {})))}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
+  }).join('') : "<em data-i18n=\"ui.app.sem_historico_1de259\">Sem hist\u00f3rico.</em>";
 }
 
 function renderPrStatusActions(pr) {
@@ -16670,56 +16675,56 @@ function renderPrStatusActions(pr) {
     actions.push(config);
   };
   if (pr.status === 'open') {
-    if (canQuote || canUpdate) addAction({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
+    if (canQuote || canUpdate) addAction({ action: 'send_to_buyer', to: 'sent_to_buyer', label: (tr('ui.app.enviar_ao_comprador_d997a1', 'Enviar ao Comprador', {})), legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
     if (canQuote) {
-      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
+      addAction({ action: 'mark_quoted', to: 'quoted', label: (tr('ui.app.marcar_como_cotada_a4faf1', 'Marcar como Cotada', {})), legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_antes_de_enviar_a_cotacao_ao_aprovador_ebf26a', 'Solicite ajustes antes de enviar a cotação ao aprovador.', {})) });
     }
   } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
     if (canQuote) {
-      addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
+      addAction({ action: 'send_to_approver', to: 'pending_approval', label: (tr('ui.app.enviar_ao_aprovador_97a355', 'Enviar ao Aprovador', {})), legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_do_requisitante_antes_de_concluir_a_cotacao_a2e132', 'Solicite ajustes do requisitante antes de concluir a cotação.', {})) });
     }
   } else if (pr.status === 'waiting_buyer_correction') {
     if (canQuote) {
-      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
+      addAction({ action: 'mark_quoted', to: 'quoted', label: (tr('ui.app.marcar_como_cotada_a4faf1', 'Marcar como Cotada', {})), legacy: true });
+      addAction({ action: 'buyer_resubmit', label: (tr('ui.app.reenviar_ao_aprovador_ce7261', 'Reenviar ao Aprovador', {})) });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_do_requisitante_antes_de_reenviar_a_cotacao_f15342', 'Solicite ajustes do requisitante antes de reenviar a cotação.', {})) });
     }
   } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
     if (canApprove) {
-      addAction({ action: 'approve', label: '✔ Aprovar' });
-      addAction({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
-      addAction({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
-      addAction({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
+      addAction({ action: 'approve', label: (tr('ui.app.aprovar_de153e', '✔ Aprovar', {})) });
+      addAction({ action: 'return_to_buyer', label: (tr('ui.app.solicitar_revisao_da_cotacao_ea53d1', 'Solicitar revisão da cotação', {})), ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: (tr('ui.app.devolve_para_o_comprador_corrigir_valores_fornecedor_ou_itens_da_cotacao_7c42b7', 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.', {})) });
+      addAction({ action: 'return_to_requester', label: (tr('ui.app.solicitar_revisao_da_requisicao_71d031', 'Solicitar revisão da requisição', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.devolve_para_o_requisitante_administrador_local_corrigir_demanda_quantidade_4058b1', 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.', {})) });
+      addAction({ action: 'reject', label: (tr('ui.app.reprovar_47ddb2', '✕ Reprovar', {})), ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: (tr('ui.app.reprova_a_cotacao_requisicao_e_encerra_o_fluxo_276ccd', 'Reprova a cotação/requisição e encerra o fluxo.', {})) });
     }
   } else if (pr.status === 'waiting_requester_correction') {
-    if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
+    if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: (tr('ui.app.reenviar_requisicao_corrigida_89946c', 'Reenviar Requisição Corrigida', {})), description: (tr('ui.app.apos_corrigir_itens_quantidades_ou_justificativas_o_fluxo_retorna_automatic_ecc198', 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.', {})) });
     
   } else if (pr.status === 'approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO' });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: (tr('ui.compras.gerar_po_dd513b', 'Gerar PO', {})) });
 
   } else if (pr.status === 'partially_approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO (Itens Aprovados)' });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: (tr('ui.app.gerar_po_itens_aprovados_8e163a', 'Gerar PO (Itens Aprovados)', {})) });
 
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
-      addAction({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
-      addAction({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
+      addAction({ action: 'received', to: 'received', label: (tr('ui.app.marcar_recebida_994268', 'Marcar Recebida', {})), legacy: true });
+      addAction({ action: 'closed', to: 'closed', label: (tr('close', 'Fechar', {})), ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    addAction({ action: 'conferir_recebimento', label: 'Conferir Recebimento' });
+    addAction({ action: 'conferir_recebimento', label: (tr('ui.app.conferir_recebimento_c17f0d', 'Conferir Recebimento', {})) });
   } else if (pr.status === 'checked' && isAdmin) {
-    addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
+    addAction({ action: 'closed', to: 'closed', label: (tr('ui.app.fechar_requisicao_971ccc', 'Fechar Requisição', {})), legacy: true });
   }
   if (['checked', 'closed'].includes(pr.status) && canPrintPurchaseQrLabels()) {
-    addAction({ action: 'print_qr_labels', label: '🏷️ Imprimir QR Codes', ghost: true });
+    addAction({ action: 'print_qr_labels', label: (tr('ui.app.imprimir_qr_codes_67f136', '🏷️ Imprimir QR Codes', {})), ghost: true });
   }
   const canCancelAsRequester = canUpdate && ['open', 'waiting_requester_correction'].includes(pr.status);
   const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
   if (canCancelAsRequester || canCancelAsBuyer) {
-    addAction({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
+    addAction({ action: 'cancel', to: 'cancelled', label: (tr('stock.physical.cancel', 'Cancelar', {})), ghost: true, legacy: true });
   }
   actions.forEach(t => {
     const btn = document.createElement('button');
@@ -16747,7 +16752,7 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
         method: 'POST',
         body: JSON.stringify({ actor_user_id: state.user?.id, status: 'po_generated', comment: '' })
       });
-      showToast('Requisição enviada para geração de PO.');
+      showToast((tr('ui.app.requisicao_enviada_para_geracao_de_po_812456', 'Requisição enviada para geração de PO.', {})));
       await openPrDetail(prId);
       loadPurchaseRequests();
       const poReqId = document.getElementById('po-request-id');
@@ -16758,13 +16763,13 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
       const form = document.getElementById('compras-new-po-form');
       if (form) { form.style.display = ''; setTimeout(() => form.scrollIntoView({ behavior: 'smooth' }), 200); }
     } catch(e) {
-      showToast(e.message || 'Erro ao gerar PO.', 'error');
+      showToast(e.message || (tr('ui.app.erro_ao_gerar_po_07a453', 'Erro ao gerar PO.', {})), 'error');
     }
     return;
   }
   const modalResult = await openPurchaseWorkflowModal({
     title: actionConfig.label,
-    description: actionConfig.description || `Confirmar ação para a requisição #${prId}.`,
+    description: actionConfig.description || (tr('ui.app.confirmar_acao_para_a_requisicao_p0_12ace1', 'Confirmar ação para a requisição #{p0}.', {p0:(prId)})),
     reasonGroup: actionConfig.reasonGroup,
     requiresReason: actionConfig.requiresReason,
     requiresComment: actionConfig.requiresComment,
@@ -16783,7 +16788,7 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao executar ação da requisição.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_executar_acao_da_requisicao_2b4aa8', 'Erro ao executar ação da requisição.', {})), 'error');
   }
 }
 
@@ -16807,7 +16812,7 @@ async function executePrConferenciaAction(prId, prItems) {
     const pendencies = Array.isArray(res.pendencies) ? res.pendencies : [];
     if (pendencies.length) {
       const totalShort = pendencies.reduce((s, p) => s + Number(p.quantity_short || 0), 0);
-      showToast(`Recebimento parcial: ${pendencies.length} pendência(s) (${totalShort} item(ns) em falta) registrada(s) e o comprador foi alertado.`, 'warning');
+      showToast((tr('ui.app.recebimento_parcial_p0_pendencia_s_p1_item_ns_em_falta_registrada_s_e_o_com_3f5c8c', 'Recebimento parcial: {p0} pendência(s) ({p1} item(ns) em falta) registrada(s) e o comprador foi alertado.', {p0:(pendencies.length),p1:(totalShort)})), 'warning');
     }
     const qrLabels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
     if (qrLabels.length) {
@@ -16819,7 +16824,7 @@ async function executePrConferenciaAction(prId, prItems) {
     }
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao registrar conferência.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_registrar_conferencia_67cc7b', 'Erro ao registrar conferência.', {})), 'error');
   }
 }
 
@@ -16837,12 +16842,12 @@ async function openPurchaseQrPrintFromDetail(prId) {
       labels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
       purchaseQrLabelsByPr[prId] = labels;
     } catch(e) {
-      showToast(e.message || 'Erro ao carregar etiquetas QR.', 'error');
+      showToast(e.message || (tr('ui.app.erro_ao_carregar_etiquetas_qr_3f6f66', 'Erro ao carregar etiquetas QR.', {})), 'error');
       return;
     }
   }
   if (!labels.length) {
-    showToast('Nenhuma etiqueta QR gerada para esta requisição.', 'error');
+    showToast((tr('ui.app.nenhuma_etiqueta_qr_gerada_para_esta_requisicao_99624b', 'Nenhuma etiqueta QR gerada para esta requisição.', {})), 'error');
     return;
   }
   openPurchaseQrPrintModal(prId, labels);
@@ -16869,26 +16874,26 @@ function openPurchaseQrPrintModal(prId, qrLabels) {
   }).join('');
   overlay.innerHTML = `
     <div class="modal" style="background:var(--color-surface,#fff);border-radius:8px;max-width:720px;width:92%;max-height:88vh;overflow:auto;padding:18px;">
-      <h3 style="margin:0 0 8px;">Imprimir QR Codes — Requisição #${esc(prId)}</h3>
-      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
+      <h3 style="margin:0 0 8px;">${(globalThis.EpiI18n?.bindText?.("ui.app.imprimir_qr_codes_requisicao_p0_c16372",{p0:(prId)},"Imprimir QR Codes \u2014 Requisi\u00e7\u00e3o #{p0}") ?? `Imprimir QR Codes — Requisição #${esc(prId)}`)}</h3>
+      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;" data-i18n="ui.app.selecione_as_etiquetas_dos_epis_recebidos_para_imprimir_ou_reimprimir_f07b74">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;">Selecionar todos</button>
-        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;">Limpar seleção</button>
+        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;" data-i18n="ui.compras.selecionar_todos_2a8ff8">Selecionar todos</button>
+        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;" data-i18n="bulk.clear">Limpar seleção</button>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--color-border);">
         <thead><tr style="background:var(--color-surface-alt,#f5f5f5);">
           <th scope="col" style="padding:4px 8px;text-align:left;"></th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">EPI</th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">Tamanho</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="epi.tableName">EPI</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="delivery.size">Tamanho</th>
           <th scope="col" style="padding:4px 8px;text-align:left;">QR</th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">Reimpr.</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="ui.app.reimpr_0ebb01">Reimpr.</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-        <button class="btn ghost" id="pr-qr-cancel">Fechar</button>
-        <button class="btn ghost" id="pr-qr-print-selected">Imprimir Selecionados</button>
-        <button class="btn" id="pr-qr-print-all">Imprimir Todos</button>
+        <button class="btn ghost" id="pr-qr-cancel" data-i18n="close">Fechar</button>
+        <button class="btn ghost" id="pr-qr-print-selected" data-i18n="ui.app.imprimir_selecionados_4ddaa1">Imprimir Selecionados</button>
+        <button class="btn" id="pr-qr-print-all" data-i18n="ui.app.imprimir_todos_5edeff">Imprimir Todos</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -16902,7 +16907,7 @@ function openPurchaseQrPrintModal(prId, qrLabels) {
   bindAppListener(overlay.querySelector('#pr-qr-print-all'), 'click', () => printStockLabels(labels, 1));
   bindAppListener(overlay.querySelector('#pr-qr-print-selected'), 'click', () => {
     const sel = selectedLabels();
-    if (!sel.length) return alert('Selecione ao menos uma etiqueta para imprimir.');
+    if (!sel.length) return alert((tr('ui.app.selecione_ao_menos_uma_etiqueta_para_imprimir_d7f77e', 'Selecione ao menos uma etiqueta para imprimir.', {})));
     printStockLabels(sel, 1);
   });
 }
@@ -16954,23 +16959,23 @@ function openReceiptLotCaptureModal(initial = {}, quantity = 1, epiName = '') {
     const text = (key, fallback) => esc(tr('stock.receiptCapture.' + key, fallback));
     let attachment = initial.evidence_file || null, closed = false, fileVersion = 0, processing = false;
     overlay.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="receipt-capture-title" style="max-width:620px;width:96vw;max-height:92vh;overflow:auto;padding:24px;">
-      <h3 id="receipt-capture-title">${text('title', 'Conferir lote, fabricação e validade')}</h3>
-      <p><strong>${esc(epiName)}</strong> · ${esc(quantity)} ${text('pieces', 'peça(s)')}</p>
-      <p class="hint">${text('hint', 'Fotografe a etiqueta ou anexe documento do fabricante deste lote. Revise fabricação e validade separadamente. A foto e as datas acompanharão as peças no estoque; uma data de fabricação não comprova validade.')}</p>
-      <label>${text('photo', 'Fotografar etiqueta (PNG ou JPEG, até 3 MiB)')}<input id="receipt-capture-file" type="file" accept="image/png,image/jpeg" capture="environment"></label>
-      <label>${text('file', 'Foto / documento do lote (PDF, PNG ou JPEG, até 3 MiB)')}<input id="receipt-capture-document" type="file" accept="application/pdf,image/png,image/jpeg"></label>
-      <img id="receipt-capture-preview" alt="${text('preview', 'Foto da comprovação deste lote')}" hidden style="max-width:100%;max-height:260px;object-fit:contain;">
+      <h3 id="receipt-capture-title">${text('title', (tr('stock.receiptCapture.title', 'Conferir lote, fabricação e validade', {})))}</h3>
+      <p><strong>${esc(epiName)}</strong> · ${esc(quantity)} ${text('pieces', (tr('stock.receipt.piece', 'peça(s)', {})))}</p>
+      <p class="hint">${text('hint', (tr('stock.receiptCapture.hint', 'Fotografe a etiqueta ou anexe documento do fabricante deste lote. Revise fabricação e validade separadamente. A foto e as datas acompanharão as peças no estoque; uma data de fabricação não comprova validade.', {})))}</p>
+      <label>${text('photo', (tr('stock.receiptCapture.photo', 'Fotografar etiqueta (PNG ou JPEG, até 3 MiB)', {})))}<input id="receipt-capture-file" type="file" accept="image/png,image/jpeg" capture="environment"></label>
+      <label>${text('file', (tr('stock.receiptCapture.file', 'Foto / documento do lote (PDF, PNG ou JPEG, até 3 MiB)', {})))}<input id="receipt-capture-document" type="file" accept="application/pdf,image/png,image/jpeg"></label>
+      <img id="receipt-capture-preview" alt="${text('preview', (tr('stock.receiptCapture.preview', 'Foto da comprovação deste lote', {})))}" hidden style="max-width:100%;max-height:260px;object-fit:contain;">
       <p id="receipt-capture-status" role="status">${esc(attachment?.filename || '')}</p>
       <div id="receipt-capture-candidates"></div>
-      <label>${text('lot', 'Lote real')}<input id="receipt-capture-lot" value="${esc(initial.lot_code || '')}"></label>
-      <label>${text('manufacture', 'Fabricação')}<input id="receipt-capture-manufacture" type="date" value="${esc(initial.manufacture_date || '')}"></label>
-      <label>${text('expiry', 'Validade física')}<input id="receipt-capture-expiry" type="date" value="${esc(initial.manufacturer_validity_date || '')}"></label>
-      <p class="hint">${text('missingExpiry', 'Se a validade não estiver comprovada, deixe-a vazia. Fabricação e foto serão preservadas, mas as peças continuarão bloqueadas por validade desconhecida.')}</p>
-      <label>${text('source', 'Origem da comprovação')}<select id="receipt-capture-source"><option value="label">${text('label', 'Embalagem / etiqueta')}</option><option value="manufacturer_document">${text('document', 'Documento do fabricante')}</option></select></label>
-      <label>${text('evidence', 'Referência verificável')}<input id="receipt-capture-evidence" value="${esc(initial.evidence || '')}"></label>
-      <label style="display:flex;gap:8px;align-items:center;"><input id="receipt-capture-physical" type="checkbox" style="width:auto;min-width:0;">${text('confirm', 'Conferi o lote e as datas na foto/documento. Confirmei que estas peças pertencem a este lote.')}</label>
+      <label>${text('lot', (tr('stock.receiptCapture.lot', 'Lote real', {})))}<input id="receipt-capture-lot" value="${esc(initial.lot_code || '')}"></label>
+      <label>${text('manufacture', (tr('stock.receiptCapture.manufacture', 'Fabricação', {})))}<input id="receipt-capture-manufacture" type="date" value="${esc(initial.manufacture_date || '')}"></label>
+      <label>${text('expiry', (tr('stock.receipt.validity', 'Validade física', {})))}<input id="receipt-capture-expiry" type="date" value="${esc(initial.manufacturer_validity_date || '')}"></label>
+      <p class="hint">${text('missingExpiry', (tr('stock.receiptCapture.missingExpiry', 'Se a validade não estiver comprovada, deixe-a vazia. Fabricação e foto serão preservadas, mas as peças continuarão bloqueadas por validade desconhecida.', {})))}</p>
+      <label>${text('source', (tr('stock.receiptCapture.source', 'Origem da comprovação', {})))}<select id="receipt-capture-source"><option value="label">${text('label', (tr('stock.receiptCapture.label', 'Embalagem / etiqueta', {})))}</option><option value="manufacturer_document">${text('document', (tr('stock.receiptCapture.document', 'Documento do fabricante', {})))}</option></select></label>
+      <label>${text('evidence', (tr('stock.receiptCapture.evidence', 'Referência verificável', {})))}<input id="receipt-capture-evidence" value="${esc(initial.evidence || '')}"></label>
+      <label style="display:flex;gap:8px;align-items:center;"><input id="receipt-capture-physical" type="checkbox" style="width:auto;min-width:0;">${text('confirm', (tr('stock.receiptCapture.confirm', 'Conferi o lote e as datas na foto/documento. Confirmei que estas peças pertencem a este lote.', {})))}</label>
       <p id="receipt-capture-error" role="alert"></p>
-      <div class="action-group"><button id="receipt-capture-cancel" type="button" class="ghost">${esc(tr('cancel', 'Cancelar'))}</button><button id="receipt-capture-save" type="button">${text('save', 'Usar dados deste lote')}</button></div>
+      <div class="action-group"><button id="receipt-capture-cancel" type="button" class="ghost">${esc(tr('cancel', 'Cancelar'))}</button><button id="receipt-capture-save" type="button">${text('save', (tr('stock.receiptCapture.save', 'Usar dados deste lote', {})))}</button></div>
     </div>`;
     document.body.appendChild(overlay);
     overlay.querySelector('#receipt-capture-source').value = initial.expiry_source || 'label';
@@ -17038,7 +17043,7 @@ function openConferenciaModal(prId, items, options = {}) {
       return (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) ? v : 0;
     };
     const nameById = {};
-    eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || 'Item'; });
+    eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})); });
     // EST-V3.5-R3: estado dos lotes por item. Modo "único" (padrão): uma data +
     // uma evidência valem para TODAS as N peças do item (um lote só — R3 #2).
     // Modo "lotes": separa qtd/validade/evidência/identificação por lote (R3 #4);
@@ -17053,14 +17058,14 @@ function openConferenciaModal(prId, items, options = {}) {
       const qty = effQtyOf(item);
       const sizeInfo = [item.glove_size && item.glove_size !== 'N/A' ? `L:${item.glove_size}` : null, item.size && item.size !== 'N/A' ? `T:${item.size}` : null].filter(Boolean).join(' ') || '—';
       return `<tr data-conferencia-row="${esc(item.id)}" data-eff-qty="${esc(qty)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
-        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
+        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
         <td style="padding:6px 8px;">${esc(item.employee_name || '—')}</td>
         <td style="padding:6px 8px;text-align:center;">${esc(qty)}</td>
         <td style="padding:6px 8px;text-align:center;font-size:12px;">${esc(sizeInfo)}</td>
         <td style="padding:6px 8px;text-align:center;">
           <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;">
             <input type="checkbox" value="${esc(item.id)}" data-conferencia-item ${alreadyNotReceived ? '' : 'checked'} ${options.po ? 'disabled' : ''}>
-            <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? 'Não Recebido' : 'Recebido'}</span>
+            <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? (tr('purchase.poStatus.not_received', 'Não Recebido', {})) : (tr('portal.statusReceived', 'Recebido', {}))}</span>
           </label>
         </td>
         <td style="padding:6px 8px;text-align:center;vertical-align:top;">
@@ -17080,31 +17085,31 @@ function openConferenciaModal(prId, items, options = {}) {
     }).join('');
     overlay.innerHTML = `
       <div class="card" style="max-width:920px;width:min(920px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
-        <h3 style="margin:0 0 4px;">${esc(options.po ? tr('stock.receiptCapture.poConference', 'Conferência de recebimento — PO') : 'Conferência de Recebimento — Requisição')} #${esc(String(prId))}</h3>
+        <h3 style="margin:0 0 4px;">${esc(options.po ? tr('stock.receiptCapture.poConference', 'Conferência de recebimento — PO') : (tr('ui.app.conferencia_de_recebimento_requisicao_b6e8d6', 'Conferência de Recebimento — Requisição', {})))} #${esc(String(prId))}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.receipt.intro', 'Marque cada item conforme o recebimento real. Itens desmarcados são registrados como Não Recebido para cobrança ao fornecedor. Informe a validade física do fabricante (uma data para todas as peças do item) e a evidência verificável (etiqueta/embalagem/NF; use 📷 para ler por câmera). Use "Separar em lotes" quando houver validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS (desconhecida) e devem ser regularizadas depois em Validade e Bloqueios.'))}</p>
         <div style="margin-bottom:10px;overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="border-bottom:2px solid var(--color-border);">
-              <th scope="col" style="text-align:left;padding:6px 8px;">EPI</th>
-              <th scope="col" style="text-align:left;padding:6px 8px;">Colaborador</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Qtd</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Tamanho</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Recebido?</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;" data-i18n="epi.tableName">EPI</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;" data-i18n="handover.collaborator">Colaborador</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="stock.receipt.qty">Qtd</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="delivery.size">Tamanho</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="ui.app.recebido_8dc1b0">Recebido?</th>
               <th scope="col" style="text-align:center;padding:6px 8px;">${esc(tr('stock.receipt.physicalValidity', 'Validade física + evidência'))}</th>
             </tr></thead>
-            <tbody>${itemsHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
+            <tbody>${itemsHtml || "<tr><td colspan=\"6\" style=\"text-align:center;padding:12px;color:var(--color-text-muted)\" data-i18n=\"ui.app.nenhum_item_elegivel_para_conferencia_d7b932\">Nenhum item eleg\u00edvel para confer\u00eancia.</td></tr>"}</tbody>
           </table>
         </div>
         <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:8px;font-size:13px;border:1px solid var(--color-border);"></div>
         <div id="conferencia-preview" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
-        <label style="display:block;margin-bottom:14px;font-size:13px;">
-          Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)">(será usada como base para reclamação ao fornecedor)</span>
-          <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor."></textarea>
+        <label style="display:block;margin-bottom:14px;font-size:13px;" data-i18n="ui.app.observacoes_sobre_itens_nao_recebidos_87fbed">
+          Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)" data-i18n="ui.app.sera_usada_como_base_para_reclamacao_ao_fornecedor_8e4a4e">(será usada como base para reclamação ao fornecedor)</span>
+          <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor." data-i18n-placeholder="ui.app.descreva_os_epis_que_nao_foram_entregues_ou_com_quantidade_divergente_essas_af2107"></textarea>
         </label>
         <div id="conferencia-error" style="display:none;color:var(--color-danger,#c00);font-size:13px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn ghost" id="conferencia-cancel">Cancelar</button>
-          <button class="btn" id="conferencia-confirm">Registrar Conferência</button>
+          <button class="btn ghost" id="conferencia-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
+          <button class="btn" id="conferencia-confirm" data-i18n="ui.app.registrar_conferencia_b420c7">Registrar Conferência</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -17135,14 +17140,14 @@ function openConferenciaModal(prId, items, options = {}) {
       const summaryEl = overlay.querySelector('#conferencia-summary');
       if (summaryEl) {
         if (notReceivedCount > 0) {
-          summaryEl.innerHTML = `<strong>${receivedCount}/${total}</strong> itens recebidos &nbsp;|&nbsp; <span style="color:var(--color-danger,#c00);">⚠ <strong>${notReceivedCount}</strong> item(ns) <strong>não recebido(s)</strong> — registrar para cobrança ao fornecedor</span>`;
+          summaryEl.innerHTML = `<strong>${receivedCount}/${total}</strong> itens recebidos &nbsp;|&nbsp; <span style="color:var(--color-danger,#c00);">⚠ <strong>${notReceivedCount}</strong> <span data-i18n="ui.app.item_ns_01e5c1">item(ns)</span> <strong data-i18n="ui.app.nao_recebido_s_b13a3d">não recebido(s)</strong> <span data-i18n="ui.app.registrar_para_cobranca_ao_fornecedor_091933">— registrar para cobrança ao fornecedor</span></span>`;
         } else {
-          summaryEl.innerHTML = `<span style="color:var(--color-success,green);">✓ Todos os <strong>${total}</strong> itens foram recebidos</span>`;
+          summaryEl.innerHTML = `<span style="color:var(--color-success,green);"><span data-i18n="ui.app.todos_os_d16df8">✓ Todos os</span> <strong>${total}</strong> <span data-i18n="ui.app.itens_foram_recebidos_1c35e4">itens foram recebidos</span></span>`;
         }
       }
       checkboxes.forEach(cb => {
         const labelEl = overlay.querySelector(`[data-conferencia-label="${CSS.escape(cb.value)}"]`);
-        if (labelEl) labelEl.textContent = cb.checked ? 'Recebido' : 'Não Recebido';
+        if (labelEl) labelEl.textContent = cb.checked ? ((globalThis.EpiI18n?.textFor?.(labelEl,"portal.statusReceived","Recebido",{}) ?? globalThis.trEpi?.("portal.statusReceived","Recebido",{})) ?? "Recebido") : ((globalThis.EpiI18n?.textFor?.(labelEl,"purchase.poStatus.not_received","N\u00e3o Recebido",{}) ?? globalThis.trEpi?.("purchase.poStatus.not_received","N\u00e3o Recebido",{})) ?? "N\u00e3o Recebido");
         const row = cb.closest('[data-conferencia-row]');
         if (row) row.style.background = cb.checked ? '' : 'var(--color-danger-bg,#fff0f0)';
       });
@@ -17164,7 +17169,7 @@ function openConferenciaModal(prId, items, options = {}) {
           const past = l.manufacturer_validity_date < todayStr;
           return `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${fmtDate(l.manufacturer_validity_date)}${past ? ' ⚠ ' + tr('stock.receipt.expired', 'vencida') : ''}`;
         });
-        rows.push(`<div><strong>${esc(item.epi_name || 'Item')}</strong> (${N}): ${esc(parts.join('; '))}</div>`);
+        rows.push(`<div><strong>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))}</strong> (${N}): ${esc(parts.join('; '))}</div>`);
       });
       if (!rows.length) { prev.innerHTML = `<span style="color:var(--color-text-muted)">${esc(tr('stock.receipt.previewEmpty', 'Marque itens como recebidos para ver a prévia da validade física por peça.'))}</span>`; return; }
       const warn = blocked > 0 ? `<div style="color:var(--color-danger,#c00);margin-top:4px;">⚠ ${blocked} ${esc(tr('stock.receipt.blockedPieces', 'peça(s) entrarão BLOQUEADAS (validade não comprovada) — regularize depois em Validade e Bloqueios'))}</div>` : '';
@@ -17320,7 +17325,7 @@ function openConferenciaModal(prId, items, options = {}) {
       const comment = overlay.querySelector('#conferencia-notes')?.value?.trim() || '';
       const notReceived = built.filter(i => !i.received);
       if (notReceived.length > 0 && !comment) {
-        showError('Informe as observações sobre os itens não recebidos.');
+        showError((tr('ui.app.informe_as_observacoes_sobre_os_itens_nao_recebidos_e8707c', 'Informe as observações sobre os itens não recebidos.', {})));
         return;
       }
       // EST-V3.5-R3: integridade dos lotes dos itens recebidos (espelha o backend
@@ -17328,17 +17333,17 @@ function openConferenciaModal(prId, items, options = {}) {
       // bloqueada, R3 #9); evidência é obrigatória quando há validade (R3 #3).
       for (const it of built.filter(i => i.received)) {
         if (it.lots.some(l => !(Number(l.quantity) > 0))) {
-          showError(`${nameById[it.id] || 'Item'}: cada lote precisa de quantidade maior que zero.`);
+          showError(`${nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {}))}: cada lote precisa de quantidade maior que zero.`);
           return;
         }
         const sum = it.lots.reduce((s, l) => s + (Number(l.quantity) > 0 ? Math.floor(Number(l.quantity)) : 0), 0);
         if (sum !== it._N) {
-          showError(`${nameById[it.id] || 'Item'}: a soma das quantidades dos lotes (${sum}) não confere com a quantidade recebida (${it._N}).`);
+          showError((tr('ui.app.p0_a_soma_das_quantidades_dos_lotes_p1_nao_confere_com_a_quantidade_recebid_c4e389', '{p0}: a soma das quantidades dos lotes ({p1}) não confere com a quantidade recebida ({p2}).', {p0:(nameById[it.id] || (globalThis.trEpi?.("ui.purchases.item_652bcc","Item",{}) ?? "Item")),p1:(sum),p2:(it._N)})));
           return;
         }
         for (const l of it.lots) {
           if (l.manufacturer_validity_date && !l.evidence) {
-            showError(`${nameById[it.id] || 'Item'}: evidência verificável é obrigatória quando o lote informa validade física.`);
+            showError((tr('ui.app.p0_evidencia_verificavel_e_obrigatoria_quando_o_lote_informa_validade_fisic_16392d', '{p0}: evidência verificável é obrigatória quando o lote informa validade física.', {p0:(nameById[it.id] || (globalThis.trEpi?.("ui.purchases.item_652bcc","Item",{}) ?? "Item"))})));
             return;
           }
         }
@@ -17353,7 +17358,7 @@ async function updatePrStatus(prId, status) {
   let comment = '';
   let postponedUntil = '';
   if (status === 'postponed') {
-    const modalResult = await openPurchaseWorkflowModal({ title: 'Prorrogar requisição', description: 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', requiresComment: false });
+    const modalResult = await openPurchaseWorkflowModal({ title: (tr('ui.app.prorrogar_requisicao_364045', 'Prorrogar requisição', {})), description: (tr('ui.app.informe_a_justificativa_e_use_o_fluxo_de_po_quando_houver_data_formal_de_pr_f377a5', 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', {})), requiresComment: false });
     if (modalResult === null) return;
     comment = modalResult.comment || '';
   }
@@ -17366,7 +17371,7 @@ async function updatePrStatus(prId, status) {
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao alterar status.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_alterar_status_3cd50c', 'Erro ao alterar status.', {})), 'error');
   }
 }
 
@@ -17381,14 +17386,14 @@ async function openPoDetail(poId) {
     if (titleEl) titleEl.textContent = `PO #${po.id}${po.po_number ? ' — ' + po.po_number : ''}`;
     const infoEl = document.getElementById('compras-po-detail-info');
     if (infoEl) infoEl.innerHTML = `
-      <div><strong>Fornecedor</strong><br>${esc(po.supplier || '—')}</div>
-      <div><strong>Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? `Até ${po.postponed_until}` : '')}</div>
-      <div><strong>Total</strong><br>${fmtBrl(po.total_value)}</div>
-      <div><strong>Nº PO</strong><br>${esc(po.po_number || `PO-${po.id}`)}</div>
-      <div><strong>Unidade</strong><br>${esc(po.unit_name || '—')}</div>
-      <div><strong>Previsão Entrega</strong><br>${esc(po.expected_delivery_date || '—')}</div>
-      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${esc(po.approved_by_name)} em ${esc((po.approved_at || '').slice(0,10))}` : '—'}</div>
-      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${esc(po.approval_comment)}</div>` : ''}
+      <div><strong data-i18n="epi.supplierShort">Fornecedor</strong><br>${esc(po.supplier || '—')}</div>
+      <div><strong data-i18n="user.status">Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? (tr('ui.app.ate_p0_d642b7', 'Até {p0}', {p0:(po.postponed_until)})) : '')}</div>
+      <div><strong data-i18n="evaluation.total">Total</strong><br>${fmtBrl(po.total_value, globalThis.EpiI18n?.lang)}</div>
+      <div><strong data-i18n="ui.compras.no_po_6d72da">Nº PO</strong><br>${esc(po.po_number || `PO-${po.id}`)}</div>
+      <div><strong data-i18n="moduleVisibility.unitLabel">Unidade</strong><br>${esc(po.unit_name || '—')}</div>
+      <div><strong data-i18n="ui.app.previsao_entrega_14a174">Previsão Entrega</strong><br>${esc(po.expected_delivery_date || '—')}</div>
+      <div><strong data-i18n="ui.app.aprovacao_d9eada">Aprovação</strong><br>${po.approved_by_name ? `${esc(po.approved_by_name)} em ${esc((po.approved_at || '').slice(0,10))}` : '—'}</div>
+      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong data-i18n="evaluation.comment">Comentário</strong><br>${esc(po.approval_comment)}</div>` : ''}
     `;
     // P1-5 — stepper do ciclo de recebimento da PO.
     const stepperEl = document.getElementById('compras-po-stepper');
@@ -17405,7 +17410,7 @@ async function openPoDetail(poId) {
     // Show suggestions to buyer when PO was returned
     const infoEl2 = document.getElementById('compras-po-detail-info');
     if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
-      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${esc(po.buyer_suggestions)}</div>`);
+      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong data-i18n="ui.app.sugestoes_do_admin_2f8128">Sugestões do Admin:</strong> ${esc(po.buyer_suggestions)}</div>`);
     }
     const tbody = document.getElementById('compras-po-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => `<tr>
@@ -17415,9 +17420,9 @@ async function openPoDetail(poId) {
       <td>${esc(i.supplier || '—')}</td>
       <td style="font-size:12px;">${esc([i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—')}</td>
       <td>${esc(i.quantity)}</td>
-      <td>${fmtBrl(i.unit_price)}</td>
-      <td>${fmtBrl(i.total_price)}</td>
-      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+      <td>${fmtBrl(i.unit_price, globalThis.EpiI18n?.lang)}</td>
+      <td>${fmtBrl(i.total_price, globalThis.EpiI18n?.lang)}</td>
+      <td>${i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('ui.app.estoque_min_8776c1', 'Estoque Mín.', {}))}</td>
       <td>${esc(ITEM_STATUS_LABELS[i.status] || i.status)}</td>
     </tr>`).join('');
     const eventsEl = document.getElementById('compras-po-events');
@@ -17430,12 +17435,12 @@ async function openPoDetail(poId) {
       }));
       eventsEl.innerHTML = events.length
         ? globalThis.dsTimeline(timelineItems)
-        : '<em>Sem histórico.</em>';
+        : "<em data-i18n=\"ui.app.sem_historico_1de259\">Sem hist\u00f3rico.</em>";
     }
     const detailEl = document.getElementById('compras-po-detail');
     if (detailEl) { detailEl.style.display = ''; detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } catch(e) {
-    alert('Erro ao carregar PO.');
+    alert((tr('ui.app.erro_ao_carregar_po_ce909e', 'Erro ao carregar PO.', {})));
   }
 }
 
@@ -17444,7 +17449,7 @@ function renderRequesterReviewTools(pr, items) {
   if (!container || pr.status !== 'waiting_requester_correction' || !hasPermission('purchase_requests:update')) return;
   const editBtn = document.createElement('button');
   editBtn.className = 'btn ghost';
-  editBtn.textContent = 'Editar Itens/Justificativa';
+  editBtn.textContent = ((globalThis.EpiI18n?.textFor?.(editBtn,"ui.app.editar_itens_justificativa_4b3110","Editar Itens/Justificativa",{}) ?? globalThis.trEpi?.("ui.app.editar_itens_justificativa_4b3110","Editar Itens/Justificativa",{})) ?? "Editar Itens/Justificativa");
   bindAppListener(editBtn, 'click', () => openRequesterReviewModal(pr, items));
   container.appendChild(editBtn);
 }
@@ -17456,10 +17461,10 @@ async function submitPoApprovalWithItems() {
     epi_display_name: i.epi_name,
     quantity_requested: i.quantity,
   }));
-  if (!poItems.length) { alert('Esta PO não possui itens para aprovação.'); return; }
+  if (!poItems.length) { alert((tr('ui.app.esta_po_nao_possui_itens_para_aprovacao_94f030', 'Esta PO não possui itens para aprovação.', {}))); return; }
   const modalResult = await openPurchaseWorkflowModal({
-    title: 'Aprovar PO — Seleção de Itens',
-    description: 'Marque os itens aprovados. Itens desmarcados requerem motivo de reprovação.',
+    title: (tr('ui.app.aprovar_po_selecao_de_itens_0ac1fb', 'Aprovar PO — Seleção de Itens', {})),
+    description: (tr('ui.app.marque_os_itens_aprovados_itens_desmarcados_requerem_motivo_de_reprovacao_a56439', 'Marque os itens aprovados. Itens desmarcados requerem motivo de reprovação.', {})),
     showApprovalItems: true,
     items: poItems,
   });
@@ -17469,7 +17474,7 @@ async function submitPoApprovalWithItems() {
   const approvedCount = decisions.filter(d => d.approved).length;
   const decision = approvedCount === decisions.length ? 'approved' : approvedCount > 0 ? 'partially_approved' : 'rejected';
   if (decision === 'rejected' && !comment) {
-    alert('Comentário obrigatório para rejeição total.');
+    alert((tr('ui.app.comentario_obrigatorio_para_rejeicao_total_ddf6e0', 'Comentário obrigatório para rejeição total.', {})));
     return;
   }
   try {
@@ -17480,7 +17485,7 @@ async function submitPoApprovalWithItems() {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na aprovação.');
+    alert(e.message || (tr('ui.app.erro_na_aprovacao_b1e556', 'Erro na aprovação.', {})));
   }
 }
 
@@ -17489,11 +17494,11 @@ async function submitPoApproval(decision) {
   const comment = document.getElementById('po-approval-comment')?.value?.trim() || '';
   const postponedUntil = document.getElementById('po-postponed-until')?.value?.trim() || '';
   if (decision === 'rejected' && !comment) {
-    alert('Comentário obrigatório para rejeição.');
+    alert((tr('ui.app.comentario_obrigatorio_para_rejeicao_d76352', 'Comentário obrigatório para rejeição.', {})));
     return;
   }
   if (decision === 'postponed' && !postponedUntil) {
-    alert('Data de prorrogação obrigatória.');
+    alert((tr('ui.app.data_de_prorrogacao_obrigatoria_7a8ad7', 'Data de prorrogação obrigatória.', {})));
     return;
   }
   try {
@@ -17504,7 +17509,7 @@ async function submitPoApproval(decision) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na aprovação.');
+    alert(e.message || (tr('ui.app.erro_na_aprovacao_b1e556', 'Erro na aprovação.', {})));
   }
 }
 
@@ -17521,7 +17526,7 @@ async function submitPoReceive(action) {
       return item.quantity_received < Number(source?.quantity || 1);
     });
     const notes = document.getElementById('po-receive-notes')?.value?.trim() || '';
-    if (partial && !notes) { alert('Observação obrigatória em recebimento parcial.'); return; }
+    if (partial && !notes) { alert((tr('ui.app.observacao_obrigatoria_em_recebimento_parcial_765d0d', 'Observação obrigatória em recebimento parcial.', {}))); return; }
     payload = { ...payload, action: partial ? 'received_partial' : 'received', items, notes };
   }
   if (action === 'checked') {
@@ -17538,14 +17543,14 @@ async function submitPoReceive(action) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro ao registrar recebimento.');
+    alert(e.message || (tr('ui.app.erro_ao_registrar_recebimento_e3a5a6', 'Erro ao registrar recebimento.', {})));
   }
 }
 
 function renderPoReceiveItems(items) {
   const container = document.getElementById('po-receive-items');
   if (!container) return;
-  container.innerHTML = (items || []).map((item) => `<div data-po-receive-item="${esc(item.id)}" style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:6px;"><span>${esc(item.epi_name || 'Item')} <small>pedido: ${esc(item.quantity || 1)}</small></span><input type="number" min="0" max="${esc(item.quantity || 1)}" value="${esc(item.quantity_received || item.quantity || 1)}" data-po-receive-qty></div>`).join('');
+  container.innerHTML = (items || []).map((item) => `<div data-po-receive-item="${esc(item.id)}" style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:6px;"><span>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))} <small>${(globalThis.EpiI18n?.bindText?.("ui.app.pedido_p2_10392f",{p2:(item.quantity || 1)},"pedido: {p2}") ?? `pedido: ${esc(item.quantity || 1)}`)}</small></span><input type="number" min="0" max="${esc(item.quantity || 1)}" value="${esc(item.quantity_received || item.quantity || 1)}" data-po-receive-qty></div>`).join('');
 }
 
 
@@ -17553,7 +17558,7 @@ async function submitPoAdminReview(reviewDecision) {
   if (!_currentPoDetail) return;
   const comment = document.getElementById('po-review-comment')?.value?.trim() || '';
   if (reviewDecision === 'returned_with_suggestions' && !comment) {
-    alert('Informe as sugestões para devolver ao comprador.');
+    alert((tr('ui.app.informe_as_sugestoes_para_devolver_ao_comprador_67e7b6', 'Informe as sugestões para devolver ao comprador.', {})));
     return;
   }
   try {
@@ -17564,7 +17569,7 @@ async function submitPoAdminReview(reviewDecision) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na revisão.');
+    alert(e.message || (tr('ui.app.erro_na_revisao_df2edb', 'Erro na revisão.', {})));
   }
 }
 
@@ -17582,20 +17587,20 @@ async function loadAuthorizedSuppliers() {
     tbody.innerHTML = _authorizedSuppliers.length
       ? _authorizedSuppliers.map(s => {
           const statusBadge = s.active
-            ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;">Ativo</span>`
-            : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;">Suspenso</span>`;
+            ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;" data-i18n="outsourcedCompany.linkActive">Ativo</span>`
+            : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;" data-i18n="ui.comercial.suspenso_2d605a">Suspenso</span>`;
           const editBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openEditSupplierModal(${s.id})">Editar</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openEditSupplierModal(${s.id})" data-i18n="company.editAction">Editar</button>`
             : '';
           const toggleBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" onclick="toggleSupplierActive(${s.id}, '${esc(s.name)}', ${s.active ? 1 : 0})">${s.active ? 'Suspender' : 'Reativar'}</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" onclick="toggleSupplierActive(${s.id}, '${esc(s.name)}', ${s.active ? 1 : 0})">${s.active ? (tr('ui.app.suspender_72f47d', 'Suspender', {})) : (tr('ui.app.reativar_86e02d', 'Reativar', {}))}</button>`
             : '';
           const posBtn = canViewPOs
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierPOsModal(${s.id})">Ver POs</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierPOsModal(${s.id})" data-i18n="ui.app.ver_pos_e3d80b">Ver POs</button>`
             : '';
-          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierCatalogModal(${s.id}, '${esc(s.name)}')">Catálogo</button>`;
+          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierCatalogModal(${s.id}, '${esc(s.name)}')" data-i18n="ui.app.catalogo_dc7aba">Catálogo</button>`;
           const integrationBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierIntegrationModal(${s.id}, '${esc(s.name)}')">Integração</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierIntegrationModal(${s.id}, '${esc(s.name)}')" data-i18n="ui.app.integracao_9143a8">Integração</button>`
             : '';
           return `<tr style="${s.active ? '' : 'opacity:.6;'}">
             <td>${esc(s.name) || '—'}</td>
@@ -17606,9 +17611,9 @@ async function loadAuthorizedSuppliers() {
             <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn} ${catalogBtn} ${integrationBtn}</td>
           </tr>`;
         }).join('')
-      : globalThis.dsTableState({ colspan: 6, message: 'Nenhum fornecedor autorizado cadastrado.' });
+      : globalThis.dsTableState({ colspan: 6, message: (tr('ui.app.nenhum_fornecedor_autorizado_cadastrado_36290d', 'Nenhum fornecedor autorizado cadastrado.', {})) });
   } catch(e) {
-    if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: 'Não foi possível carregar os fornecedores.' });
+    if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: (tr('ui.app.nao_foi_possivel_carregar_os_fornecedores_fd5640', 'Não foi possível carregar os fornecedores.', {})) });
   }
 }
 
@@ -17629,7 +17634,7 @@ async function saveEditSupplier() {
   const feedback = document.getElementById('edit-supplier-feedback');
   const id = parseInt(document.getElementById('edit-supplier-id')?.value || '0', 10);
   const name = document.getElementById('edit-supplier-name')?.value?.trim();
-  if (!name) { if (feedback) feedback.textContent = 'Nome é obrigatório.'; return; }
+  if (!name) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.purchases.nome_e_obrigatorio_a4329a","Nome \u00e9 obrigat\u00f3rio.",{}) ?? globalThis.trEpi?.("ui.purchases.nome_e_obrigatorio_a4329a","Nome \u00e9 obrigat\u00f3rio.",{})) ?? "Nome \u00e9 obrigat\u00f3rio."); return; }
   try {
     if (feedback) feedback.textContent = '';
     await api(`/api/authorized-suppliers/${id}`, {
@@ -17646,13 +17651,13 @@ async function saveEditSupplier() {
     if (modal) modal.style.display = 'none';
     loadAuthorizedSuppliers();
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro ao salvar.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{})) ?? "Erro ao salvar.");
   }
 }
 
 window.toggleSupplierActive = async function toggleSupplierActive(id, name, currentActive) {
   const action = currentActive ? 'suspender' : 'reativar';
-  if (!(await confirmDestructive({ title: 'Fornecedor', message: `Deseja ${action} o fornecedor "${name}"?`, confirmLabel: 'Confirmar', variant: 'warning' }))) return;
+  if (!(await confirmDestructive({ title: (tr('epi.supplierShort', 'Fornecedor', {})), message: `Deseja ${action} o fornecedor "${name}"?`, confirmLabel: 'Confirmar', variant: 'warning' }))) return;
   try {
     const res = await api(`/api/authorized-suppliers/${id}/toggle`, {
       method: 'POST',
@@ -17660,7 +17665,7 @@ window.toggleSupplierActive = async function toggleSupplierActive(id, name, curr
     });
     loadAuthorizedSuppliers();
   } catch(e) {
-    alert(e.message || 'Erro ao alterar status do fornecedor.');
+    alert(e.message || (tr('ui.app.erro_ao_alterar_status_do_fornecedor_f5d81f', 'Erro ao alterar status do fornecedor.', {})));
   }
 }
 
@@ -17692,7 +17697,7 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
     const items = res.items || [];
     if (title) title.textContent = `POs — ${sup.name || ''}`;
     const totalValue = items.reduce((acc, p) => acc + (p.total_value || 0), 0);
-    if (summary) summary.textContent = `${items.length} pedido(s) · Total geral: ${formatCurrency(totalValue)}`;
+    if (summary) summary.textContent = ((globalThis.EpiI18n?.textFor?.(summary,"ui.app.p0_pedido_s_total_geral_p1_da7e89","{p0} pedido(s) \u00b7 Total geral: {p1}",{p0:(items.length),p1:(formatCurrency(totalValue, globalThis.EpiI18n?.lang))}) ?? globalThis.trEpi?.("ui.app.p0_pedido_s_total_geral_p1_da7e89","{p0} pedido(s) \u00b7 Total geral: {p1}",{p0:(items.length),p1:(formatCurrency(totalValue, globalThis.EpiI18n?.lang))})) ?? `${items.length} pedido(s) · Total geral: ${formatCurrency(totalValue, globalThis.EpiI18n?.lang)}`);
     if (!items.length) {
       if (tbody) tbody.innerHTML = '';
       if (empty) empty.style.display = '';
@@ -17706,14 +17711,14 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
         <td style="font-size:12px;">${esc(po.unit_name || '—')}</td>
         <td style="font-size:12px;">${statusLabel}</td>
         <td style="font-size:12px;text-align:center;">${po.items_count ?? '—'}</td>
-        <td style="font-size:12px;text-align:right;">${formatCurrency(po.total_value || 0)}</td>
+        <td style="font-size:12px;text-align:right;">${formatCurrency(po.total_value || 0, globalThis.EpiI18n?.lang)}</td>
         <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
         <td style="font-size:12px;">${esc(po.approved_by_name || '—')}</td>
         <td style="font-size:12px;">${(po.created_at || '').slice(0,10) || '—'}</td>
       </tr>`;
     }).join('');
   } catch(e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:var(--color-danger)">Erro: ${esc(e.message)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:var(--color-danger)">${(globalThis.EpiI18n?.bindText?.("ui.app.erro_p0_83a174",{p0:(e.message)},"Erro: {p0}") ?? `Erro: ${esc(e.message)}`)}</td></tr>`;
   }
 }
 
@@ -17724,26 +17729,26 @@ function checkSupplierAuthorized(cnpj) {
   if (!clean) { statusEl.textContent = ''; return; }
   const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
   if (found) {
-    statusEl.innerHTML = `<span style="color:var(--color-success,green)">✓ Fornecedor autorizado: ${found.name}</span>`;
+    statusEl.innerHTML = `<span style="color:var(--color-success,green)">${(globalThis.EpiI18n?.bindText?.("ui.app.fornecedor_autorizado_p0_2a74cd",{p0:(found.name)},"\u2713 Fornecedor autorizado: {p0}") ?? `✓ Fornecedor autorizado: ${found.name}`)}</span>`;
   } else {
     const supplierName = document.querySelector('[name="supplier"]')?.value?.trim() || '';
     const mailtoHref = buildSupplierInclusionMailto(supplierName, cnpj);
-    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;">Solicitar Inclusão</a>`;
+    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)" data-i18n="ui.app.fornecedor_nao_encontrado_na_lista_autorizada_049c1d">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;" data-i18n="ui.app.solicitar_inclusao_34c7ba">Solicitar Inclusão</a>`;
   }
 }
 
 // ── Item 3: Mailto para solicitar inclusão de fornecedor ──────────────────
 function buildSupplierInclusionMailto(supplierName, cnpj) {
-  const subject = encodeURIComponent(`Solicitação de Inclusão de Fornecedor: ${supplierName || 'Novo Fornecedor'} — CNPJ: ${cnpj}`);
-  const requester = state.user?.full_name || 'Comprador';
+  const subject = encodeURIComponent((tr('ui.app.solicitacao_de_inclusao_de_fornecedor_p0_cnpj_p1_77eb3d', 'Solicitação de Inclusão de Fornecedor: {p0} — CNPJ: {p1}', {p0:(supplierName || (globalThis.trEpi?.("ui.compras.novo_fornecedor_7b78e3","Novo Fornecedor",{}) ?? "Novo Fornecedor")),p1:(cnpj)})));
+  const requester = state.user?.full_name || (tr('role.buyer', 'Comprador', {}));
   const company = state.user?.company_name || '';
   const body = encodeURIComponent(
     `Prezado(a) time Financeiro,\n\n` +
-    `Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n` +
+    (tr('ui.app.solicito_a_inclusao_do_seguinte_fornecedor_na_lista_de_fornecedores_autoriz_cd0035', 'Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n', {})) +
     `Nome: ${supplierName || '(preencher)'}\n` +
     `CNPJ: ${cnpj}\n\n` +
     `Solicitante: ${requester}${company ? ` — ${company}` : ''}\n\n` +
-    `Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n` +
+    (tr('ui.app.por_favor_confirme_a_autorizacao_para_que_possamos_prosseguir_com_a_cotacao_d31377', 'Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n', {})) +
     `Atenciosamente,\n${requester}`
   );
   return `mailto:?subject=${subject}&body=${body}`;
@@ -17755,7 +17760,7 @@ async function _loadSheetJS() {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
     s.onload = () => resolve(window.XLSX);
-    s.onerror = () => reject(new Error('Não foi possível carregar suporte a XLS. Verifique sua conexão.'));
+    s.onerror = () => reject(new Error((tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}))));
     document.head.appendChild(s);
   });
 }
@@ -17764,7 +17769,7 @@ function _parseSuppliersRows(rawRows) {
   return rawRows
     .map(r => {
       const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
-      const name = k('nome') || k('name') || k('Name') || k('Nome') || '';
+      const name = k('nome') || k('name') || k('Name') || k((tr('signature.name', 'Nome', {}))) || '';
       if (!name) return null;
       return {
         name,
@@ -17778,13 +17783,13 @@ function _parseSuppliersRows(rawRows) {
 async function importSuppliersCSV() {
   const fileInput = document.getElementById('compras-suppliers-csv');
   const feedback = document.getElementById('compras-suppliers-csv-feedback');
-  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo.'; return; }
+  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.selecione_um_arquivo_7c988d","Selecione um arquivo.",{}) ?? globalThis.trEpi?.("ui.app.selecione_um_arquivo_7c988d","Selecione um arquivo.",{})) ?? "Selecione um arquivo."); return; }
   const file = fileInput.files[0];
   const ext = file.name.split('.').pop().toLowerCase();
   let rows = [];
   try {
     if (ext === 'xls' || ext === 'xlsx') {
-      if (feedback) feedback.textContent = 'Carregando suporte XLS…';
+      if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{}) ?? globalThis.trEpi?.("ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{})) ?? "Carregando suporte XLS\u2026");
       const XLSX = await _loadSheetJS();
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
@@ -17795,7 +17800,7 @@ async function importSuppliersCSV() {
       const raw = await file.text();
       const text = raw.replace(/^﻿/, '');
       const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      if (lines.length < 2) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.arquivo_vazio_ou_sem_dados_31036a","Arquivo vazio ou sem dados.",{}) ?? globalThis.trEpi?.("ui.app.arquivo_vazio_ou_sem_dados_31036a","Arquivo vazio ou sem dados.",{})) ?? "Arquivo vazio ou sem dados."); return; }
       const sep = lines[0].includes(';') ? ';' : ',';
       const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
       const objRows = lines.slice(1).map(line => {
@@ -17807,17 +17812,17 @@ async function importSuppliersCSV() {
       rows = _parseSuppliersRows(objRows);
     }
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro ao ler o arquivo.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{})) ?? "Erro ao ler o arquivo.");
     return;
   }
-  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada. Verifique se o arquivo tem coluna "nome".'; return; }
+  if (!rows.length) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.nenhuma_linha_valida_encontrada_verifique_se_o_arquivo_tem_coluna_nome_c9801b","Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\".",{}) ?? globalThis.trEpi?.("ui.app.nenhuma_linha_valida_encontrada_verifique_se_o_arquivo_tem_coluna_nome_c9801b","Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\".",{})) ?? "Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\"."); return; }
   try {
     const res = await api('/api/authorized-suppliers/upload', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, rows }) });
     const d = res || {};
     if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
     loadAuthorizedSuppliers();
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro na importação.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.erro_na_importacao_0220a1","Erro na importa\u00e7\u00e3o.",{}) ?? globalThis.trEpi?.("ui.app.erro_na_importacao_0220a1","Erro na importa\u00e7\u00e3o.",{})) ?? "Erro na importa\u00e7\u00e3o.");
   }
 }
 
@@ -17833,7 +17838,7 @@ async function submitPoResubmit() {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro ao reenviar PO.');
+    alert(e.message || (tr('ui.app.erro_ao_reenviar_po_a99c44', 'Erro ao reenviar PO.', {})));
   }
 }
 
@@ -17885,8 +17890,8 @@ function renderPurchaseFunctionControls() {
       searchHint.hidden = !query || !allEligible.length;
       const resultKey = selectedOutsideFilter ? 'purchase.functionsSearchResultSelected' : 'purchase.functionsSearchResult';
       const resultFallback = selectedOutsideFilter
-        ? `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s); seleção atual mantida fora do filtro`
-        : `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)`;
+        ? (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_selecao_atual_mantida_fora_do_filtro_eaf16c', '{p0} de {p1} usuário(s) encontrado(s); seleção atual mantida fora do filtro', {p0:(filteredEligible.length),p1:(allEligible.length)}))
+        : (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_1c30c2', '{p0} de {p1} usuário(s) encontrado(s)', {p0:(filteredEligible.length),p1:(allEligible.length)}));
       searchHint.textContent = tr(resultKey, resultFallback).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
     }
     employeeSel.innerHTML = allEligible.length
@@ -17988,7 +17993,7 @@ function renderPurchaseFunctionUnitChecks() {
   renderPurchaseFunctionSelectedUnits(allUnits);
   wrap.innerHTML = units.map((unit) => {
     const checked = _purchaseFunctionSelectedUnitIds.has(String(unit.id)) ? 'checked' : '';
-    return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || 'Unidade')}</small></span></label>`;
+    return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || (tr('moduleVisibility.unitLabel', 'Unidade', {})))}</small></span></label>`;
   }).join('') || `<em style="color:var(--color-muted)">${tr('purchase.functionsNoUnitFound', 'Nenhuma unidade encontrada para a busca.')}</em>`;
 }
 
@@ -18021,7 +18026,7 @@ function renderPurchaseFunctionsList() {
       <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
       ${userBadge}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}" aria-label="Remover vínculo">✕</button></span>`).join('')}
+        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}" aria-label="Remover vínculo" data-i18n-aria-label="ui.app.remover_vinculo_8ef426">✕</button></span>`).join('')}
       </div>
     </div>
   `}).join('');
@@ -18038,7 +18043,7 @@ async function loadPurchaseFunctions() {
     renderPurchaseFunctionControls();
   } catch (error) {
     const list = document.getElementById('purchase-functions-list');
-    if (list) list.innerHTML = '<em>Erro ao carregar funções de compras.</em>';
+    if (list) list.innerHTML = "<em data-i18n=\"ui.app.erro_ao_carregar_funcoes_de_compras_29d110\">Erro ao carregar fun\u00e7\u00f5es de compras.</em>";
   }
 }
 
@@ -18049,26 +18054,26 @@ async function savePurchaseFunctionLinks() {
   const currentLinks = _purchaseFunctionsCache.filter((item) => String(item.employee_id) === String(employeeId || '') && String(item.role_type) === String(roleType));
   const selectedUnitSet = new Set(unitIds.map((id) => String(id)));
   const linksToRemove = currentLinks.filter((link) => !selectedUnitSet.has(String(link.unit_id)));
-  if (!employeeId) { alert('Selecione o colaborador.'); return; }
-  if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
-  if (!unitIds.length && linksToRemove.length && !(await confirmDestructive({ title: 'Desvincular unidades', message: 'Desvincular este usuário de todas as unidades selecionadas anteriormente?', confirmLabel: 'Desvincular', variant: 'warning' }))) return;
+  if (!employeeId) { alert((tr('ui.app.selecione_o_colaborador_cf9a47', 'Selecione o colaborador.', {}))); return; }
+  if (!unitIds.length && !currentLinks.length) { alert((tr('ui.app.selecione_ao_menos_uma_unidade_208cc5', 'Selecione ao menos uma unidade.', {}))); return; }
+  if (!unitIds.length && linksToRemove.length && !(await confirmDestructive({ title: (tr('ui.app.desvincular_unidades_3390a6', 'Desvincular unidades', {})), message: (tr('ui.app.desvincular_este_usuario_de_todas_as_unidades_selecionadas_anteriormente_353955', 'Desvincular este usuário de todas as unidades selecionadas anteriormente?', {})), confirmLabel: 'Desvincular', variant: 'warning' }))) return;
   try {
     await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
     await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
     await loadPurchaseFunctions();
-    showToast('Vínculos de unidade atualizados com sucesso.');
+    showToast((tr('ui.app.vinculos_de_unidade_atualizados_com_sucesso_9b4b5f', 'Vínculos de unidade atualizados com sucesso.', {})));
   } catch (error) {
-    alert(error.message || 'Erro ao salvar vínculos de unidade.');
+    alert(error.message || (tr('ui.app.erro_ao_salvar_vinculos_de_unidade_a6bc1b', 'Erro ao salvar vínculos de unidade.', {})));
   }
 }
 
 async function removePurchaseFunctionLink(linkId) {
-  if (!(await confirmDestructive({ title: 'Remover vínculo', message: 'Remover este vínculo de compras?', confirmLabel: 'Remover', variant: 'danger' }))) return;
+  if (!(await confirmDestructive({ title: (tr('ui.app.remover_vinculo_8ef426', 'Remover vínculo', {})), message: (tr('ui.app.remover_este_vinculo_de_compras_130d86', 'Remover este vínculo de compras?', {})), confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
     await api(`/api/purchase-functions/${linkId}?${actorQuery()}`, { method: 'DELETE' });
     await loadPurchaseFunctions();
   } catch (error) {
-    alert(error.message || 'Erro ao remover vínculo de compras.');
+    alert(error.message || (tr('ui.app.erro_ao_remover_vinculo_de_compras_712a19', 'Erro ao remover vínculo de compras.', {})));
   }
 }
 
@@ -18078,7 +18083,7 @@ let _unitLinksCache = [];
 function _renderPurchaseFunctionLinksReadOnly(items, container) {
   if (!container) return;
   if (!items.length) {
-    container.innerHTML = '<em style="color:var(--color-muted)">Nenhum comprador ou aprovador vinculado a unidades.</em>';
+    container.innerHTML = "<em style=\"color:var(--color-muted)\" data-i18n=\"ui.app.nenhum_comprador_ou_aprovador_vinculado_a_unidades_3be471\">Nenhum comprador ou aprovador vinculado a unidades.</em>";
     return;
   }
   const byUser = {};
@@ -18101,7 +18106,7 @@ function _renderPurchaseFunctionLinksReadOnly(items, container) {
 async function loadFornecedoresPurchaseFunctions() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
-  listEl.innerHTML = '<em style="color:var(--color-muted)">Carregando...</em>';
+  listEl.innerHTML = "<em style=\"color:var(--color-muted)\" data-i18n=\"stock.loading\">Carregando...</em>";
   try {
     const res = await api(`/api/purchase-functions?${actorQuery()}`);
     const allLinks = res.items || [];
@@ -18112,7 +18117,7 @@ async function loadFornecedoresPurchaseFunctions() {
     }
     _renderPurchaseFunctionLinksReadOnly(allLinks, listEl);
   } catch(e) {
-    listEl.innerHTML = '<em style="color:var(--color-danger)">Erro ao carregar vínculos.</em>';
+    listEl.innerHTML = "<em style=\"color:var(--color-danger)\" data-i18n=\"ui.app.erro_ao_carregar_vinculos_434303\">Erro ao carregar v\u00ednculos.</em>";
   }
 }
 
@@ -18139,9 +18144,9 @@ async function loadComprasPurchaseConfig() {
     if (saveBtn) saveBtn.onclick = async () => {
       try {
         await api('/api/company-purchase-config', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, company_id: companyId, require_admin_review: checkbox?.checked || false }) });
-        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'Configuração salva!'; setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
+        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.configuracao_salva_6b3eef","Configura\u00e7\u00e3o salva!",{}) ?? globalThis.trEpi?.("ui.app.configuracao_salva_6b3eef","Configura\u00e7\u00e3o salva!",{})) ?? "Configura\u00e7\u00e3o salva!"); setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
       } catch(e) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || 'Erro ao salvar.'; }
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{})) ?? "Erro ao salvar."); }
       }
     };
   } catch(e) {
@@ -18172,11 +18177,11 @@ function _getPoUnitEpis(unitId) {
 function buildPoItemRow(index, epi) {
   const unitId = document.getElementById('po-unit')?.value || '';
   const epis = _getPoUnitEpis(unitId);
-  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+  const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
     epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2.5fr 0.6fr 1fr 0.9fr 0.9fr 1fr 1.1fr 32px;gap:5px;margin-bottom:8px;align-items:end;">
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">EPI</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="epi.tableName">EPI</span>
       <select data-poi-epi="${index}">
         ${epiOpts}
       </select>
@@ -18184,30 +18189,30 @@ function buildPoItemRow(index, epi) {
       <input type="hidden" value="${epi?.epi_name||''}" data-poi-name="${index}">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Qtd</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="stock.receipt.qty">Qtd</span>
       <input type="number" min="1" value="${epi?.quantity||1}" data-poi-qty="${index}" style="width:56px;">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Vlr Unit (R$)</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.vlr_unit_r_b7d702">Vlr Unit (R$)</span>
       <input type="number" step="0.01" min="0" value="${epi?.unit_price||''}" data-poi-price="${index}" placeholder="0,00">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Luva</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="stock.gloveShort">Luva</span>
       <select data-poi-glove="${index}">${_sizeGloveOpts(epi?.glove_size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Calçado</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.calcado_3382fc">Calçado</span>
       <select data-poi-size="${index}">${_sizeOpts(epi?.size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Uniforme</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.uniforme_0d70ef">Uniforme</span>
       <select data-poi-uniform="${index}">${_sizeUniformOpts(epi?.uniform_size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Fabricante</span>
-      <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto">
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="epi.manufacturer">Fabricante</span>
+      <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto" data-i18n-placeholder="ui.app.auto_028624">
     </div>
-    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}" aria-label="Remover item">✕</button>
+    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}" aria-label="Remover item" data-i18n-aria-label="ui.app.remover_item_57474c">✕</button>
   </div>`;
 }
 
@@ -18228,7 +18233,7 @@ function refreshPoItemEpiSelects() {
   const hint = document.getElementById('po-items-unit-hint');
   if (hint) hint.style.display = unitId ? 'none' : '';
   const epis = _getPoUnitEpis(unitId);
-  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+  const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
     epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
   document.querySelectorAll('[data-poi-epi]').forEach(sel => {
     const idx = sel.dataset.poiEpi;
@@ -18242,7 +18247,7 @@ function populatePoSupplierSelect() {
   const sel = document.getElementById('po-supplier-select');
   if (!sel) return;
   const active = (_authorizedSuppliers || []).filter(s => s.active);
-  sel.innerHTML = '<option value="">Selecione o fornecedor...</option>' +
+  sel.innerHTML = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_fornecedor_6bdd9d\">Selecione o fornecedor...</option>" +
     active.map(s => `<option value="${esc(s.name)}" data-cnpj="${s.cnpj||''}">${esc(s.name)}${s.cnpj ? ` — ${formatCNPJ(s.cnpj)}` : ''}</option>`).join('');
   const currentVal = sel.value;
   if (currentVal) sel.value = currentVal;
@@ -18270,7 +18275,7 @@ function updatePoTotal() {
   const items = collectPoItems();
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const el = document.getElementById('po-total-display');
-  if (el) el.textContent = items.length ? `Total: ${fmtBrl(total)}` : '';
+  if (el) el.textContent = items.length ? ((globalThis.EpiI18n?.textFor?.(el,"ui.app.total_p0_31f5e8","Total: {p0}",{p0:(fmtBrl(total, globalThis.EpiI18n?.lang))}) ?? globalThis.trEpi?.("ui.app.total_p0_31f5e8","Total: {p0}",{p0:(fmtBrl(total, globalThis.EpiI18n?.lang))})) ?? `Total: ${fmtBrl(total, globalThis.EpiI18n?.lang)}`) : '';
 }
 
 function populatePurchaseUnitSelects() {
@@ -18289,7 +18294,7 @@ function populatePurchaseUnitSelects() {
     const sel = document.getElementById(id);
     if (!sel) return;
     const prev = sel.value;
-    sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    sel.innerHTML = "<option value=\"\" data-i18n=\"purchase.functionsSelectPlaceholder\">Selecione...</option>" + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
     if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
       sel.value = operationalUnitId;
     } else if (filtered.length === 1) {
@@ -18315,9 +18320,9 @@ async function _populatePurchaseRequestEpiSelect() {
   // pelo endpoint /api/stock/epis — o mesmo usado na Entrega de EPI. Antes este
   // select mostrava todos os EPIs da empresa, ignorando o escopo da unidade.
   const unitId = String(document.getElementById('purchase-request-unit')?.value || '').trim();
-  const placeholder = '<option value="">Selecione o EPI...</option>';
+  const placeholder = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>";
   if (!unitId) {
-    sel.innerHTML = '<option value="">Selecione a unidade primeiro...</option>';
+    sel.innerHTML = "<option value=\"\" data-i18n=\"ui.app.selecione_a_unidade_primeiro_df34ab\">Selecione a unidade primeiro...</option>";
     return;
   }
   const prev = sel.value;
@@ -18339,21 +18344,21 @@ function _renderManualRequestItems() {
   const preview = document.getElementById('purchase-request-items-preview');
   if (!preview) return;
   if (!_manualRequestItems.length) {
-    preview.innerHTML = '<p style="color:var(--color-text-muted);margin:4px 0;">Nenhum item adicionado.</p>';
+    preview.innerHTML = "<p style=\"color:var(--color-text-muted);margin:4px 0;\" data-i18n=\"ui.app.nenhum_item_adicionado_d3a7d6\">Nenhum item adicionado.</p>";
     return;
   }
   const rows = _manualRequestItems.map((item, i) => {
     const epi = (state.epis || []).find(e => String(e.id) === String(item.epi_id));
     const name = epi ? `${esc(epi.name)}${epi.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
-    const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
+    const origin = item.origin === 'employee_request' ? (tr('handover.request', 'Solicitação', {})) : item.origin === 'stock_minimum' ? (tr('ui.app.estoque_minimo_422370', 'Estoque mínimo', {})) : (tr('dataMigration.mapStrategy.manual', 'Manual', {}));
     const sizeInfo = [
       item.glove_size && item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : '',
     ].filter(Boolean).join(' ') || '—';
-    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item">✕</button></td></tr>`;
+    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item" data-i18n-aria-label="ui.app.remover_item_57474c">✕</button></td></tr>`;
   }).join('');
-  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th scope="col" style="text-align:left;padding:2px 4px;">EPI</th><th scope="col" style="padding:2px 4px;">Qtd</th><th scope="col" style="padding:2px 4px;">Tamanho</th><th scope="col" style="padding:2px 4px;">Origem</th><th scope="col"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th scope="col" style="text-align:left;padding:2px 4px;" data-i18n="epi.tableName">EPI</th><th scope="col" style="padding:2px 4px;" data-i18n="stock.receipt.qty">Qtd</th><th scope="col" style="padding:2px 4px;" data-i18n="delivery.size">Tamanho</th><th scope="col" style="padding:2px 4px;" data-i18n="dataMigration.jobSource">Origem</th><th scope="col"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function _syncManualRequestItemsJson() {
@@ -18401,14 +18406,14 @@ async function loadAprovacoesSolicitacoes() {
     _syncAprovacoesBtnVisibility();
     if (!_aprovacoesList.length) {
       if (table) table.style.display = 'none';
-      if (empty) { empty.style.display = ''; empty.textContent = 'Nenhuma solicitação pendente de aprovação.'; }
+      if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.compras.nenhuma_solicitacao_pendente_de_aprovacao_f70f67","Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o.",{}) ?? globalThis.trEpi?.("ui.compras.nenhuma_solicitacao_pendente_de_aprovacao_f70f67","Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o.",{})) ?? "Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o."); }
       return;
     }
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _aprovacoesList.map((r, i) => {
       const sizeInfo = [r.glove_size !== 'N/A' ? `Luva:${r.glove_size}` : '', r.size !== 'N/A' ? `Tam:${r.size}` : '', r.uniform_size !== 'N/A' ? `Unif:${r.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
-      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">Até: ${formatDate(r.postponed_until)}</small>` : '';
+      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">${(globalThis.EpiI18n?.bindText?.("ui.app.ate_p0_ce0eec",{p0:(formatDate(r.postponed_until))},"At\u00e9: {p0}") ?? `Até: ${formatDate(r.postponed_until)}`)}</small>` : '';
       return `<tr>
         <td><input type="checkbox" class="aprovacao-check" data-idx="${i}"></td>
         <td>${esc(r.employee_name || '—')}<br><small>${esc(r.employee_id_code || '')}</small></td>
@@ -18433,8 +18438,8 @@ async function loadAprovacoesSolicitacoes() {
     if (empty) {
       empty.style.display = '';
       empty.textContent = isTemporaryBootstrapUnavailable(e)
-        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
-        : 'Erro ao carregar solicitações.';
+        ? ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{}) ?? globalThis.trEpi?.("ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{})) ?? "Sistema inicializando \u2014 clique em Atualizar para tentar novamente.")
+        : ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_solicitacoes_cdb40e","Erro ao carregar solicita\u00e7\u00f5es.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_solicitacoes_cdb40e","Erro ao carregar solicita\u00e7\u00f5es.",{})) ?? "Erro ao carregar solicita\u00e7\u00f5es.");
     }
   }
 }
@@ -18450,11 +18455,11 @@ function _syncAprovacoesBtnVisibility() {
 async function _executarAprovacaoEmLote(updates) {
   try {
     await api('/api/requests/bulk-status', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates }) });
-    showToast('Solicitações atualizadas com sucesso!');
+    showToast((tr('ui.app.solicitacoes_atualizadas_com_sucesso_f904aa', 'Solicitações atualizadas com sucesso!', {})));
     _selectedAprovacoes.clear();
     await loadAprovacoesSolicitacoes();
   } catch(e) {
-    alert(e.message || 'Erro ao atualizar solicitações.');
+    alert(e.message || (tr('ui.app.erro_ao_atualizar_solicitacoes_5dd6e1', 'Erro ao atualizar solicitações.', {})));
   }
 }
 
@@ -18464,7 +18469,7 @@ function _buildBulkUpdates(status, extra = {}) {
 
 function exportAprovacoesCsv() {
   const rows = _aprovacoesList;
-  if (!rows.length) { alert('Nenhuma solicitação para exportar.'); return; }
+  if (!rows.length) { alert((tr('ui.app.nenhuma_solicitacao_para_exportar_e649d9', 'Nenhuma solicitação para exportar.', {}))); return; }
   const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', tr('epi.caShort', 'CA'), 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
   const lines = rows.map(r => [
     r.id, r.employee_name, r.employee_id_code, r.employee_sector, r.unit_name, r.epi_name, r.ca,
@@ -18512,7 +18517,7 @@ function exportPrCsv(pr, items) {
     i.id || i.purchase_request_item_id || '', pr.id || '', pr.unit_name || '',
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
     i.employee_name, i.employee_sector,
-    i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
+    i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('stock.minimumBalance', 'Estoque Mínimo', {})),
     i.glove_size !== 'N/A' ? i.glove_size : '',
     i.size !== 'N/A' ? i.size : '',
     i.uniform_size !== 'N/A' ? i.uniform_size : '',
@@ -18532,17 +18537,17 @@ function exportPrCsv(pr, items) {
 }
 
 function emailPrToComprador(pr, items) {
-  const subject = encodeURIComponent(`Requisição de Compra de EPI #${pr.id} — ${pr.title || ''}`);
+  const subject = encodeURIComponent((tr('ui.app.requisicao_de_compra_de_epi_p0_p1_9abce0', 'Requisição de Compra de EPI #{p0} — {p1}', {p0:(pr.id),p1:(pr.title || '')})));
   const unit = pr.unit_name || '—';
   const date = (pr.created_at || '').slice(0, 10);
   const itemLines = items.map((i, idx) => {
     const sizeInfo = [i.glove_size !== 'N/A' ? `Luva:${i.glove_size}`:null, i.size !== 'N/A'?`Tam:${i.size}`:null, i.uniform_size !== 'N/A'?`Unif:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
-    return `${idx+1}. ${i.epi_name || i.epi_display_name} | ${tr('epi.caShort', 'CA')}: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
+    return (tr('ui.app.p0_p1_p2_p3_p4_qtd_p5_colaborador_p6_f5b396', '{p0}. {p1} | {p2}: {p3} | {p4} | Qtd: {p5} | Colaborador: {p6}', {p0:(idx+1),p1:(i.epi_name || i.epi_display_name),p2:(tr('epi.caShort', 'CA')),p3:(i.ca || '—'),p4:(sizeInfo),p5:(i.quantity_requested || 1),p6:(i.employee_name || '—')}));
   }).join('\n');
   const body = encodeURIComponent(
-    `Olá,\n\nSegue a Requisição de Compra de EPI #${pr.id}.\n` +
+    (tr('ui.app.ola_segue_a_requisicao_de_compra_de_epi_p0_5649ce', 'Olá,\n\nSegue a Requisição de Compra de EPI #{p0}.\n', {p0:(pr.id)})) +
     `Unidade: ${unit}\nData: ${date}\n\nItens:\n${itemLines}\n\n` +
-    `Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n${state.user?.full_name || state.user?.username || 'Administrador'}`
+    (tr('ui.app.por_favor_crie_a_po_no_sistema_interno_e_faca_o_upload_dos_valores_no_siste_7b045e', 'Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n{p0}', {p0:(state.user?.full_name || state.user?.username || (globalThis.trEpi?.("ui.app.administrador_d45845","Administrador",{}) ?? "Administrador"))}))
   );
   window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
 }
@@ -18556,7 +18561,7 @@ function _readFileAsBase64(file) {
       const result = String(reader.result || '');
       resolve(result.includes(',') ? result.split(',', 2)[1] : result);
     };
-    reader.onerror = () => reject(reader.error || new Error('Erro ao ler arquivo.'));
+    reader.onerror = () => reject(reader.error || new Error((tr('ui.app.erro_ao_ler_arquivo_0c41fa', 'Erro ao ler arquivo.', {}))));
     reader.readAsDataURL(file);
   });
 }

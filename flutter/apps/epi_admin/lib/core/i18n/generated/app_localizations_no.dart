@@ -246,7 +246,7 @@ class AppLocalizationsNo extends AppLocalizations {
   String get employeeCodeLabel => 'Matrícula';
 
   @override
-  String get employeeCpfLabel => 'CPF';
+  String get employeeCpfLabel => 'Brasiliansk CPF';
 
   @override
   String get employeeSectorLabel => 'Setor';
@@ -287,7 +287,7 @@ class AppLocalizationsNo extends AppLocalizations {
   String get episNew => 'Novo EPI';
 
   @override
-  String get episSearchHint => 'Buscar por nome, CA ou código';
+  String get episSearchHint => 'Søk etter navn, brasiliansk CA eller kode';
 
   @override
   String get epiNameLabel => 'Nome do EPI';
@@ -296,7 +296,7 @@ class AppLocalizationsNo extends AppLocalizations {
   String get epiCodeLabel => 'Código de compra';
 
   @override
-  String get epiCaLabel => 'CA';
+  String get epiCaLabel => 'CA — brasiliansk godkjenningssertifikat';
 
   @override
   String get epiSectorLabel => 'Setor';
@@ -323,7 +323,7 @@ class AppLocalizationsNo extends AppLocalizations {
   String get epiManufacturerValidityLabel => 'Validade (meses)';
 
   @override
-  String get epiCaExpiryLabel => 'Vencimento CA';
+  String get epiCaExpiryLabel => 'Utløp for brasiliansk CA';
 
   @override
   String get epiValidityDaysLabel => 'Validade (dias)';
@@ -2678,7 +2678,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get employeeCodeLabel => 'Ansatt-ID';
 
   @override
-  String get employeeCpfLabel => 'CPF';
+  String get employeeCpfLabel => 'Brasiliansk CPF';
 
   @override
   String get employeeSectorLabel => 'Avdeling';
@@ -2719,7 +2719,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get episNew => 'Nytt PVU';
 
   @override
-  String get episSearchHint => 'Søk etter navn, CE-merking eller kode';
+  String get episSearchHint => 'Søk etter navn, brasiliansk CA eller kode';
 
   @override
   String get epiNameLabel => 'PVU-navn';
@@ -2728,7 +2728,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get epiCodeLabel => 'Innkjøpskode';
 
   @override
-  String get epiCaLabel => 'CE-nr.';
+  String get epiCaLabel => 'CA — brasiliansk godkjenningssertifikat';
 
   @override
   String get epiSectorLabel => 'Sektor';
@@ -2755,7 +2755,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get epiManufacturerValidityLabel => 'Gyldighet (måneder)';
 
   @override
-  String get epiCaExpiryLabel => 'CE-merking utløper';
+  String get epiCaExpiryLabel => 'Utløp for brasiliansk CA';
 
   @override
   String get epiValidityDaysLabel => 'Gyldighet (dager)';

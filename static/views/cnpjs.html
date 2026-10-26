@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="legalEntity.pageDesc">Cadastre e mantenha os CNPJs da empresa: matriz, filiais, subsidiárias, SPEs e sócias de Joint Venture.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="cnpjs" aria-label="CNPJs">
+        <nav class="view-tabs" data-vtabs="cnpjs" aria-label="CNPJs" data-i18n-aria-label="nav.legalEntities">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
         </nav>
@@ -69,7 +69,7 @@
           <article class="card"><h3 data-i18n="legalEntity.pageTitle">CNPJs</h3>
             <p class="muted" data-i18n="legalEntity.inactiveHint">A inativação preserva todo o histórico jurídico e fiscal do CNPJ; ela apenas impede o uso em novas operações.</p>
             <div class="form-grid">
-              <label><span data-i18n="legalEntity.filterSearch">Buscar</span><input id="legal-entities-filter-search" type="search" placeholder="CNPJ, razão social ou nome fantasia"></label>
+              <label><span data-i18n="legalEntity.filterSearch">Buscar</span><input id="legal-entities-filter-search" type="search" placeholder="CNPJ, razão social ou nome fantasia" data-i18n-placeholder="ui.cnpjs.cnpj_razao_social_ou_nome_fantasia_3e69e4"></label>
               <label><span data-i18n="legalEntity.filterType">Tipo</span><select id="legal-entities-filter-type"><option value="" data-i18n="unit.filterAll">Todos</option>
                 <option value="matriz" data-i18n="legalEntity.typeHeadquarters">Matriz</option>
                 <option value="filial" data-i18n="legalEntity.typeBranch">Filial</option>

@@ -140,5 +140,9 @@
   "safetyStateDraft": "Brouillon",
   "safetyStatePublished": "Publié",
   "safetyStateSuperseded": "Remplacé",
-  "safetyStateArchived": "Archivé"
+  "safetyStateArchived": "Archivé",
+  "employeeCpfLabel": "CPF brésilien",
+  "episSearchHint": "Rechercher par nom, CA brésilien ou code",
+  "epiCaLabel": "CA — certificat d’approbation brésilien",
+  "epiCaExpiryLabel": "Expiration du CA brésilien"
 }

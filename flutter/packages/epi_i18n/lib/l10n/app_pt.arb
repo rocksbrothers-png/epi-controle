@@ -140,5 +140,9 @@
   "safetyStateDraft": "Rascunho",
   "safetyStatePublished": "Publicado",
   "safetyStateSuperseded": "Substituído",
-  "safetyStateArchived": "Arquivado"
+  "safetyStateArchived": "Arquivado",
+  "employeeCpfLabel": "CPF",
+  "episSearchHint": "Buscar por nome, CA brasileiro ou código",
+  "epiCaLabel": "CA — Certificado de Aprovação",
+  "epiCaExpiryLabel": "Validade do CA"
 }

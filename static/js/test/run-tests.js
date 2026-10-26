@@ -7181,6 +7181,11 @@ function montarDocumentoPreferencias(local, opcoes) {
         servidor.escritas += 1;
         return respostaJson({ ok: true, data: { ui_preferences: servidor.gravar(idDoPrincipal, corpo) } });
       }
+      if (caminho.startsWith('/api/i18n/')) {
+        const locale = decodeURIComponent(caminho.split('/').pop());
+        const translations = JSON.parse(fs.readFileSync(path.join(raizStatic, 'i18n', locale + '.json'), 'utf-8'));
+        return respostaJson({ ok: true, locale, fallback: false, translations });
+      }
       return respostaJson({ items: [] });
     },
     alert() {}, scrollTo() {}, matchMedia: () => ({ matches: false, addEventListener() {} })

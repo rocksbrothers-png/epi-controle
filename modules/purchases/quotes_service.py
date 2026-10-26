@@ -14,7 +14,7 @@ Regras preservadas (docs/PLANO_TECNICO_MODULO_COMPRAS.md §1):
 from datetime import datetime, timezone
 
 from core.auth import ensure_resource_company
-from core.pdf import build_pdf_document, pdf_safe_text
+from core.pdf import build_pdf_document
 from epi_backend.db import row_to_dict
 
 from modules.purchases.service import (
@@ -534,13 +534,13 @@ def select_quote(connection, actor, quote_id, ip_address=''):
 
 def _pdf_lines(title, subtitle, rows):
     lines = [
-        {'text': pdf_safe_text(title), 'bold': True, 'size': 14, 'x': 50, 'y': 780},
-        {'text': pdf_safe_text(subtitle), 'x': 50, 'y': 758},
+        {'text': title, 'bold': True, 'size': 14, 'x': 50, 'y': 780},
+        {'text': subtitle, 'x': 50, 'y': 758},
         {'text': ' ', 'x': 50, 'y': 744},
     ]
     y = 726
     for row in rows:
-        lines.append({'text': pdf_safe_text(row), 'x': 50, 'y': y, 'size': 10})
+        lines.append({'text': row, 'x': 50, 'y': y, 'size': 10})
         y -= 16
         if y < 60:
             break

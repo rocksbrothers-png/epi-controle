@@ -140,5 +140,9 @@
   "safetyStateDraft": "Utkast",
   "safetyStatePublished": "Publisert",
   "safetyStateSuperseded": "Erstattet",
-  "safetyStateArchived": "Arkivert"
+  "safetyStateArchived": "Arkivert",
+  "employeeCpfLabel": "Brasiliansk CPF",
+  "episSearchHint": "Søk etter navn, brasiliansk CA eller kode",
+  "epiCaLabel": "CA — brasiliansk godkjenningssertifikat",
+  "epiCaExpiryLabel": "Utløp for brasiliansk CA"
 }

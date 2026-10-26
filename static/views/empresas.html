@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="pagehead.companies">Provisionamento e gerenciamento das empresas (tenants) da plataforma.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="empresas" aria-label="Empresas">
+        <nav class="view-tabs" data-vtabs="empresas" aria-label="Empresas" data-i18n-aria-label="nav.companies">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
         </nav>
@@ -15,7 +15,7 @@
             <div class="section-intro">
               <span class="eyebrow" data-i18n="nav.companies">Empresas</span>
               <h3 data-i18n="company.createEdit">Cadastro e edição</h3>
-              <p class="hint">Estrutura inicial da tenant: nome, razão social, CNPJ, status e Administrador Geral. A identidade visual (logotipo, tema, cores e domínio) é configurada pelo Administrador Geral da própria empresa em Configurações &gt; Minha Empresa.</p>
+              <p class="hint" data-i18n="ui.empresas.estrutura_inicial_da_tenant_nome_razao_social_cnpj_status_e_administrador_g_a854c1">Estrutura inicial da tenant: nome, razão social, CNPJ, status e Administrador Geral. A identidade visual (logotipo, tema, cores e domínio) é configurada pelo Administrador Geral da própria empresa em Configurações &gt; <span data-i18n="ui.empresas.minha_empresa_4bfbec">Minha Empresa.</span></p>
             </div>
             <input type="hidden" name="id">
             <fieldset class="form-fieldset">
@@ -25,17 +25,17 @@
               <label><span data-i18n="company.cnpj">CNPJ</span><input name="cnpj" type="text" autocomplete="off" required></label>
             </fieldset>
             <fieldset class="form-fieldset">
-              <legend>Administrador Geral (Owner)</legend>
-              <label><span>E-mail do Administrador Geral</span><input name="general_admin_email" type="email" autocomplete="off" placeholder="owner@empresa.com.br"></label>
-              <label><span>Nome do Administrador Geral</span><input name="general_admin_name" type="text" autocomplete="off" placeholder="Opcional"></label>
-              <p class="hint">Informado apenas na criação: o Administrador Geral (Owner) recebe o convite de primeiro acesso e conclui a configuração da empresa no assistente de implantação.</p>
+              <legend data-i18n="ui.empresas.administrador_geral_owner_fc30ca">Administrador Geral (Owner)</legend>
+              <label><span data-i18n="ui.empresas.e_mail_do_administrador_geral_276197">E-mail do Administrador Geral</span><input name="general_admin_email" type="email" autocomplete="off" placeholder="owner@empresa.com.br"></label>
+              <label><span data-i18n="ui.empresas.nome_do_administrador_geral_f0acad">Nome do Administrador Geral</span><input name="general_admin_name" type="text" autocomplete="off" placeholder="Opcional" data-i18n-placeholder="optional"></label>
+              <p class="hint" data-i18n="ui.empresas.informado_apenas_na_criacao_o_administrador_geral_owner_recebe_o_convite_de_ff3d27">Informado apenas na criação: o Administrador Geral (Owner) recebe o convite de primeiro acesso e conclui a configuração da empresa no assistente de implantação.</p>
             </fieldset>
             <fieldset class="form-fieldset">
               <legend data-i18n="settings.title">Configuração</legend>
               <label><span data-i18n="company.statusLabel">Status da empresa</span>
                 <select name="active">
-                  <option value="1" data-i18n-value="company.active">Ativa</option>
-                  <option value="0" data-i18n-value="company.inactive">Inativa</option>
+                  <option value="1" data-i18n-value="company.active" data-i18n="company.active">Ativa</option>
+                  <option value="0" data-i18n-value="company.inactive" data-i18n="company.inactive">Inativa</option>
                 </select>
               </label>
             </fieldset>

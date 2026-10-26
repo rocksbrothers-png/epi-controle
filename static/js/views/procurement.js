@@ -25,7 +25,7 @@
     const opts = { headers: { 'Content-Type': 'application/json', ...(globalThis.authHeaders?.() || {}) }, ...options };
     return fetch(path, opts).then(async (res) => {
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {throw new Error(data?.error?.message || data?.error || `Erro ${res.status}`);}
+      if (!res.ok) {throw new Error(data?.error?.message || data?.error || (globalThis.trEpi?.('ui.procurement.erro_p0_6b5d33','Erro {p0}',{p0:(res.status)}) ?? `Erro ${res.status}`));}
       return data;
     });
   }
@@ -35,7 +35,7 @@
   }
 
   function fmtBrl(v) {
-    return (globalThis.fmtBrl ?? ((x) => `R$ ${Number(x || 0).toFixed(2)}`))(v);
+    return (globalThis.fmtBrl ?? ((x, locale) => new Intl.NumberFormat(locale, {style:'currency', currency:'BRL'}).format(Number(x || 0))))(v, globalThis.EpiI18n?.lang || 'pt-BR');
   }
 
   function toast(message, type) {
@@ -55,10 +55,10 @@
   }
 
   const QUOTE_STATUS_LABELS = {
-    draft: 'Rascunho', sent: 'Enviada', answered: 'Respondida',
-    selected: 'Vencedora', discarded: 'Descartada', expired: 'Expirada', declined: 'Recusada',
+    get ['draft']() { return (globalThis.trEpi?.('purchase.poStatus.draft','Rascunho',{}) ?? 'Rascunho'); }, get ['sent']() { return (globalThis.trEpi?.('portal.statusSent','Enviada',{}) ?? 'Enviada'); }, get ['answered']() { return (globalThis.trEpi?.('ui.procurement.respondida_0c7dac','Respondida',{}) ?? 'Respondida'); },
+    get ['selected']() { return (globalThis.trEpi?.('ui.procurement.vencedora_364619','Vencedora',{}) ?? 'Vencedora'); }, get ['discarded']() { return (globalThis.trEpi?.('ui.procurement.descartada_ba5a36','Descartada',{}) ?? 'Descartada'); }, get ['expired']() { return (globalThis.trEpi?.('license.expired','Expirada',{}) ?? 'Expirada'); }, get ['declined']() { return (globalThis.trEpi?.('ui.procurement.recusada_e42aa2','Recusada',{}) ?? 'Recusada'); },
   };
-  const CHANNEL_LABELS = { email: 'E-mail', portal: 'Portal', api: 'API', manual: 'Manual' };
+  const CHANNEL_LABELS = { email: 'E-mail', get ['portal']() { return (globalThis.trEpi?.('nav.portal','Portal',{}) ?? 'Portal'); }, api: 'API', get ['manual']() { return (globalThis.trEpi?.('dataMigration.mapStrategy.manual','Manual',{}) ?? 'Manual'); } };
 
   let _quotesPrId = 0;
   let _quotesCache = [];
@@ -72,7 +72,7 @@
       const res = await api(`/api/purchase-requests?actor_user_id=${getState().user?.id}`);
       const requests = (res.items || []).filter((r) => !['closed', 'cancelled', 'rejected'].includes(String(r.status || '')));
       const current = _quotesPrId || parseInt(select.value || '0', 10);
-      select.innerHTML = '<option value="">Selecione a requisição…</option>' + requests
+      select.innerHTML = '<option value="" data-i18n="ui.procurement.selecione_a_requisicao_6f457f">Selecione a requisi\u00e7\u00e3o\u2026</option>' + requests
         .map((r) => `<option value="${r.id}" ${r.id === current ? 'selected' : ''}>#${r.id} — ${esc(r.title || '')} (${esc(r.unit_name || '')})</option>`)
         .join('');
       if (current && requests.some((r) => r.id === current)) {
@@ -83,7 +83,7 @@
         renderQuotes([], {});
       }
     } catch (err) {
-      toast(err.message || 'Erro ao carregar requisições.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_requisicoes_ec390a','Erro ao carregar requisi\u00e7\u00f5es.',{}) ?? 'Erro ao carregar requisi\u00e7\u00f5es.'), 'error');
     }
   }
 
@@ -96,7 +96,7 @@
       _quotesCache = res.items || [];
       renderQuotes(_quotesCache, res.comparison || {});
     } catch (err) {
-      toast(err.message || 'Erro ao carregar cotações.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_cotacoes_a31470','Erro ao carregar cota\u00e7\u00f5es.',{}) ?? 'Erro ao carregar cota\u00e7\u00f5es.'), 'error');
     }
   }
 
@@ -109,7 +109,7 @@
     const canManage = hasPermission('quotes:manage');
     if (!quotes.length) {
       tbody.innerHTML = '';
-      if (emptyEl) { emptyEl.style.display = ''; emptyEl.textContent = _quotesPrId ? 'Nenhuma cotação para esta requisição.' : 'Selecione uma requisição para ver as cotações.'; }
+      if (emptyEl) { emptyEl.style.display = ''; emptyEl.textContent = _quotesPrId ? ((globalThis.EpiI18n?.textFor?.(emptyEl,'ui.procurement.nenhuma_cotacao_para_esta_requisicao_d40027','Nenhuma cota\u00e7\u00e3o para esta requisi\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.nenhuma_cotacao_para_esta_requisicao_d40027','Nenhuma cota\u00e7\u00e3o para esta requisi\u00e7\u00e3o.',{})) ?? 'Nenhuma cota\u00e7\u00e3o para esta requisi\u00e7\u00e3o.') : ((globalThis.EpiI18n?.textFor?.(emptyEl,'ui.compras.selecione_uma_requisicao_para_ver_as_cotacoes_5fbe6c','Selecione uma requisi\u00e7\u00e3o para ver as cota\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.compras.selecione_uma_requisicao_para_ver_as_cotacoes_5fbe6c','Selecione uma requisi\u00e7\u00e3o para ver as cota\u00e7\u00f5es.',{})) ?? 'Selecione uma requisi\u00e7\u00e3o para ver as cota\u00e7\u00f5es.'); }
       renderComparison({});
       return;
     }
@@ -118,15 +118,15 @@
       const isOpen = q.status === 'draft' || q.status === 'sent';
       const actions = [];
       if (canManage && isOpen) {
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'email')">✉ E-mail</button>`);
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'portal')">🔗 Portal</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'email')" data-i18n="ui.procurement.e_mail_1cc537">✉ E-mail</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'portal')" data-i18n="ui.procurement.portal_8a0f71">🔗 Portal</button>`);
         if (String(q.supplier_integration_level || '') === 'api') {
-          actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'api')">⚡ Cotar via API</button>`);
+          actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'api')" data-i18n="ui.procurement.cotar_via_api_f65c25">⚡ Cotar via API</button>`);
         }
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openAnswerQuoteModal(${q.id})">Registrar resposta</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openAnswerQuoteModal(${q.id})" data-i18n="ui.procurement.registrar_resposta_100366">Registrar resposta</button>`);
       }
       if (canManage && q.status === 'answered') {
-        actions.push(`<button class="btn" style="font-size:12px;padding:3px 8px;" onclick="selectQuoteWinner(${q.id})">★ Selecionar vencedora</button>`);
+        actions.push(`<button class="btn" style="font-size:12px;padding:3px 8px;" onclick="selectQuoteWinner(${q.id})" data-i18n="ui.procurement.selecionar_vencedora_ba6811">★ Selecionar vencedora</button>`);
       }
       return `<tr>
         <td>#${q.id}</td>
@@ -158,12 +158,12 @@
     const itemsHtml = items.map((item) => {
       const offers = (item.offers || []).map((o) => {
         const badges = [
-          o.best_price ? '<span style="color:var(--color-success,green);font-weight:600;font-size:11px;">Melhor preço</span>' : '',
-          o.best_lead_time ? '<span style="color:var(--color-info,#06c);font-weight:600;font-size:11px;">Melhor prazo</span>' : '',
+          o.best_price ? '<span style="color:var(--color-success,green);font-weight:600;font-size:11px;" data-i18n="ui.procurement.melhor_preco_f90e4f">Melhor pre\u00e7o</span>' : '',
+          o.best_lead_time ? '<span style="color:var(--color-info,#06c);font-weight:600;font-size:11px;" data-i18n="ui.procurement.melhor_prazo_da32c9">Melhor prazo</span>' : '',
         ].filter(Boolean).join(' ');
         return `<tr>
           <td style="padding-left:24px;">${esc(o.supplier_name || '')}</td>
-          <td>${o.declined ? 'Recusado' : fmtBrl(o.unit_price)}</td>
+          <td>${o.declined ? (globalThis.trEpi?.('portal.statusRefused','Recusado',{}) ?? 'Recusado') : fmtBrl(o.unit_price)}</td>
           <td>${o.declined ? '—' : `${o.lead_time_days || 0} dias`}</td>
           <td>${badges || '—'}</td>
         </tr>`;
@@ -171,52 +171,52 @@
       return `<tr style="background:var(--color-bg-alt);"><td colspan="4" style="font-weight:600;">${esc(item.epi_name || '')} (x${item.quantity_requested || 0})</td></tr>${offers}`;
     }).join('');
     container.innerHTML = `
-      <h4 style="margin:16px 0 8px;">Comparação por fornecedor</h4>
+      <h4 style="margin:16px 0 8px;" data-i18n="ui.procurement.comparacao_por_fornecedor_aaed37">Comparação por fornecedor</h4>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th scope="col">Fornecedor</th><th scope="col">Status</th><th scope="col">Itens</th><th scope="col">Frete</th><th scope="col">Total</th><th scope="col">Pagamento</th></tr></thead>
+        <thead><tr><th scope="col" data-i18n="epi.supplierShort">Fornecedor</th><th scope="col" data-i18n="user.status">Status</th><th scope="col" data-i18n="validity.count">Itens</th><th scope="col" data-i18n="ui.compras.frete_7ae391">Frete</th><th scope="col" data-i18n="evaluation.total">Total</th><th scope="col" data-i18n="ui.procurement.pagamento_de58da">Pagamento</th></tr></thead>
         <tbody>${totalsHtml}</tbody>
       </table></div>
-      <h4 style="margin:16px 0 8px;">Comparação por item</h4>
+      <h4 style="margin:16px 0 8px;" data-i18n="ui.procurement.comparacao_por_item_607b24">Comparação por item</h4>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th scope="col">Fornecedor</th><th scope="col">Preço unit.</th><th scope="col">Prazo</th><th scope="col"></th></tr></thead>
+        <thead><tr><th scope="col" data-i18n="epi.supplierShort">Fornecedor</th><th scope="col" data-i18n="ui.procurement.preco_unit_8b1e4c">Preço unit.</th><th scope="col" data-i18n="ui.procurement.prazo_f36758">Prazo</th><th scope="col"></th></tr></thead>
         <tbody>${itemsHtml}</tbody>
       </table></div>`;
   }
 
   async function openCreateRfqModal() {
-    if (!_quotesPrId) { toast('Selecione uma requisição primeiro.', 'error'); return; }
+    if (!_quotesPrId) { toast((globalThis.trEpi?.('ui.procurement.selecione_uma_requisicao_primeiro_f464a4','Selecione uma requisi\u00e7\u00e3o primeiro.',{}) ?? 'Selecione uma requisi\u00e7\u00e3o primeiro.'), 'error'); return; }
     let suppliers = [];
     try {
       const res = await api('/api/authorized-suppliers');
       suppliers = (res.items || []).filter((s) => s.active);
     } catch (err) {
-      toast(err.message || 'Erro ao carregar fornecedores.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_fornecedores_db079f','Erro ao carregar fornecedores.',{}) ?? 'Erro ao carregar fornecedores.'), 'error');
       return;
     }
-    if (!suppliers.length) { toast('Cadastre fornecedores ativos antes de cotar.', 'error'); return; }
+    if (!suppliers.length) { toast((globalThis.trEpi?.('ui.procurement.cadastre_fornecedores_ativos_antes_de_cotar_3daa28','Cadastre fornecedores ativos antes de cotar.',{}) ?? 'Cadastre fornecedores ativos antes de cotar.'), 'error'); return; }
     const overlay = openOverlay(`
-      <h3 style="margin:0 0 12px;">Nova cotação — Requisição #${_quotesPrId}</h3>
-      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;">Selecione os fornecedores que receberão a solicitação de cotação.</p>
+      <h3 style="margin:0 0 12px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.nova_cotacao_requisicao_p0_91ec0c',{p0:(_quotesPrId)},'Nova cota\u00e7\u00e3o \u2014 Requisi\u00e7\u00e3o #{p0}') ?? `Nova cotação — Requisição #${_quotesPrId}`)}</h3>
+      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;" data-i18n="ui.procurement.selecione_os_fornecedores_que_receberao_a_solicitacao_de_cotacao_c52d56">Selecione os fornecedores que receberão a solicitação de cotação.</p>
       <div style="max-height:260px;overflow:auto;border:1px solid var(--color-border);border-radius:6px;padding:8px;margin-bottom:12px;">
         ${suppliers.map((s) => `<label style="display:block;margin:4px 0;"><input type="checkbox" value="${s.id}" data-rfq-supplier> ${esc(s.name)} <span style="color:var(--color-text-muted);font-size:12px;">(${esc(CHANNEL_LABELS[s.integration_level] || s.integration_level || 'E-mail')})</span></label>`).join('')}
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn" data-rfq-create>Criar cotações</button>
-        <button class="btn ghost" data-rfq-cancel>Cancelar</button>
+        <button class="btn" data-rfq-create data-i18n="ui.procurement.criar_cotacoes_ebb4e8">Criar cotações</button>
+        <button class="btn ghost" data-rfq-cancel data-i18n="stock.physical.cancel">Cancelar</button>
       </div>
       <div data-rfq-feedback style="font-size:13px;margin-top:8px;color:var(--color-danger,#c00);"></div>`);
     overlay.querySelector('[data-rfq-cancel]').addEventListener('click', () => overlay.remove());
     overlay.querySelector('[data-rfq-create]').addEventListener('click', async () => {
       const ids = [...overlay.querySelectorAll('[data-rfq-supplier]:checked')].map((el) => parseInt(el.value, 10));
       const feedback = overlay.querySelector('[data-rfq-feedback]');
-      if (!ids.length) { feedback.textContent = 'Selecione ao menos um fornecedor.'; return; }
+      if (!ids.length) { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.selecione_ao_menos_um_fornecedor_d9c838','Selecione ao menos um fornecedor.',{}) ?? globalThis.trEpi?.('ui.procurement.selecione_ao_menos_um_fornecedor_d9c838','Selecione ao menos um fornecedor.',{})) ?? 'Selecione ao menos um fornecedor.'); return; }
       try {
         await api(`/api/purchase-requests/${_quotesPrId}/quotes`, { method: 'POST', body: withActor({ supplier_ids: ids }) });
         overlay.remove();
-        toast('Cotações criadas.', 'success');
+        toast((globalThis.trEpi?.('ui.procurement.cotacoes_criadas_a39c5b','Cota\u00e7\u00f5es criadas.',{}) ?? 'Cota\u00e7\u00f5es criadas.'), 'success');
         loadQuotesForSelectedPr();
       } catch (err) {
-        feedback.textContent = err.message || 'Erro ao criar cotações.';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{})) ?? 'Erro ao criar cota\u00e7\u00f5es.');
       }
     });
   }
@@ -229,10 +229,10 @@
     };
     try {
       await api(paths[channel], { method: 'POST', body: withActor({}) });
-      toast(channel === 'api' ? 'Cotação respondida via API.' : 'Enviado ao fornecedor.', 'success');
+      toast(channel === 'api' ? (globalThis.trEpi?.('ui.procurement.cotacao_respondida_via_api_b267f4','Cota\u00e7\u00e3o respondida via API.',{}) ?? 'Cota\u00e7\u00e3o respondida via API.') : (globalThis.trEpi?.('ui.procurement.enviado_ao_fornecedor_16f6bc','Enviado ao fornecedor.',{}) ?? 'Enviado ao fornecedor.'), 'success');
       loadQuotesForSelectedPr();
     } catch (err) {
-      toast(err.message || 'Erro ao enviar cotação.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_enviar_cotacao_58155a','Erro ao enviar cota\u00e7\u00e3o.',{}) ?? 'Erro ao enviar cota\u00e7\u00e3o.'), 'error');
     }
   }
 
@@ -241,9 +241,9 @@
     if (!quote) {return;}
     const items = quote.items || [];
     const overlay = openOverlay(`
-      <h3 style="margin:0 0 12px;">Registrar resposta — ${esc(quote.supplier_name || '')}</h3>
+      <h3 style="margin:0 0 12px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.registrar_resposta_p0_de9c0b',{p0:(quote.supplier_name || '')},'Registrar resposta \u2014 {p0}') ?? `Registrar resposta — ${esc(quote.supplier_name || '')}`)}</h3>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th scope="col">Item</th><th scope="col">Qtd</th><th scope="col">Preço unit. (R$)</th><th scope="col">Prazo (dias)</th><th scope="col">Recusar</th></tr></thead>
+        <thead><tr><th scope="col" data-i18n="ui.purchases.item_652bcc">Item</th><th scope="col" data-i18n="stock.receipt.qty">Qtd</th><th scope="col" data-i18n="ui.procurement.preco_unit_r_6a0fde">Preço unit. (R$)</th><th scope="col" data-i18n="ui.procurement.prazo_dias_2b5f20">Prazo (dias)</th><th scope="col" data-i18n="ui.procurement.recusar_ce4328">Recusar</th></tr></thead>
         <tbody>
           ${items.map((i, idx) => `<tr>
             <td>${esc(i.epi_name || '')}</td>
@@ -255,12 +255,12 @@
         </tbody>
       </table></div>
       <div class="form-grid" style="margin:12px 0;">
-        <label>Frete (R$)<input type="number" min="0" step="0.01" data-answer-freight value="${Number(quote.freight_value) || ''}"></label>
-        <label>Condições de pagamento<input type="text" data-answer-payment value="${esc(quote.payment_terms || '')}"></label>
+        <label data-i18n="ui.procurement.frete_r_4da93f">Frete (R$)<input type="number" min="0" step="0.01" data-answer-freight value="${Number(quote.freight_value) || ''}"></label>
+        <label data-i18n="ui.procurement.condicoes_de_pagamento_aaf010">Condições de pagamento<input type="text" data-answer-payment value="${esc(quote.payment_terms || '')}"></label>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn" data-answer-save>Salvar resposta</button>
-        <button class="btn ghost" data-answer-cancel>Cancelar</button>
+        <button class="btn" data-answer-save data-i18n="ui.procurement.salvar_resposta_e4f3b2">Salvar resposta</button>
+        <button class="btn ghost" data-answer-cancel data-i18n="stock.physical.cancel">Cancelar</button>
       </div>
       <div data-answer-feedback style="font-size:13px;margin-top:8px;color:var(--color-danger,#c00);"></div>`, { width: '760px' });
     overlay.querySelector('[data-answer-cancel]').addEventListener('click', () => overlay.remove());
@@ -278,27 +278,27 @@
       try {
         await api(`/api/quotes/${quoteId}/answer`, { method: 'POST', body: withActor(body) });
         overlay.remove();
-        toast('Resposta registrada.', 'success');
+        toast((globalThis.trEpi?.('ui.procurement.resposta_registrada_038f54','Resposta registrada.',{}) ?? 'Resposta registrada.'), 'success');
         loadQuotesForSelectedPr();
       } catch (err) {
-        overlay.querySelector('[data-answer-feedback]').textContent = err.message || 'Erro ao salvar.';
+        overlay.querySelector('[data-answer-feedback]').textContent = err.message || ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-answer-feedback]'),'ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{})) ?? 'Erro ao salvar.');
       }
     });
   }
 
   async function selectQuoteWinner(quoteId) {
-    if (!confirm('Selecionar esta cotação como vencedora? As demais cotações abertas serão descartadas.')) {return;}
+    if (!confirm((globalThis.trEpi?.('ui.procurement.selecionar_esta_cotacao_como_vencedora_as_demais_cotacoes_abertas_serao_des_d88c99','Selecionar esta cota\u00e7\u00e3o como vencedora? As demais cota\u00e7\u00f5es abertas ser\u00e3o descartadas.',{}) ?? 'Selecionar esta cota\u00e7\u00e3o como vencedora? As demais cota\u00e7\u00f5es abertas ser\u00e3o descartadas.'))) {return;}
     try {
       const res = await api(`/api/quotes/${quoteId}/select`, { method: 'POST', body: withActor({}) });
       const draft = res.po_draft || {};
       loadQuotesForSelectedPr();
-      if (draft.items?.length && confirm(`Gerar a PO pré-preenchida (${draft.items.length} itens, fornecedor ${draft.supplier || '—'})? Ela seguirá o fluxo normal de aprovação.`)) {
+      if (draft.items?.length && confirm((globalThis.trEpi?.('ui.procurement.gerar_a_po_pre_preenchida_p0_itens_fornecedor_p1_ela_seguira_o_fluxo_normal_53eb17','Gerar a PO pr\u00e9-preenchida ({p0} itens, fornecedor {p1})? Ela seguir\u00e1 o fluxo normal de aprova\u00e7\u00e3o.',{p0:(draft.items.length),p1:(draft.supplier || '—')}) ?? `Gerar a PO pré-preenchida (${draft.items.length} itens, fornecedor ${draft.supplier || '—'})? Ela seguirá o fluxo normal de aprovação.`))) {
         const created = await api('/api/purchase-orders', { method: 'POST', body: withActor(draft) });
-        toast(`PO #${created.id || ''} criada a partir da cotação.`, 'success');
+        toast((globalThis.trEpi?.('ui.procurement.po_p0_criada_a_partir_da_cotacao_ce3fab','PO #{p0} criada a partir da cota\u00e7\u00e3o.',{p0:(created.id || '')}) ?? `PO #${created.id || ''} criada a partir da cotação.`), 'success');
         globalThis.loadPurchaseOrders?.();
       }
     } catch (err) {
-      toast(err.message || 'Erro ao selecionar a cotação.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_selecionar_a_cotacao_4f0281','Erro ao selecionar a cota\u00e7\u00e3o.',{}) ?? 'Erro ao selecionar a cota\u00e7\u00e3o.'), 'error');
     }
   }
 
@@ -308,20 +308,20 @@
     const canManage = hasPermission('suppliers:manage');
     const overlay = openOverlay(`
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-        <h3 style="margin:0;flex:1;">Catálogo — ${esc(supplierName || '')}</h3>
-        ${canManage ? '<button class="btn ghost" data-catalog-sync style="font-size:12px;">⟳ Sincronizar via API</button>' : ''}
-        <button class="btn ghost" data-catalog-close>Fechar</button>
+        <h3 style="margin:0;flex:1;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.catalogo_p0_be6287',{p0:(supplierName || '')},'Cat\u00e1logo \u2014 {p0}') ?? `Catálogo — ${esc(supplierName || '')}`)}</h3>
+        ${canManage ? '<button class="btn ghost" data-catalog-sync style="font-size:12px;" data-i18n="ui.procurement.sincronizar_via_api_2efc32">\u27f3 Sincronizar via API</button>' : ''}
+        <button class="btn ghost" data-catalog-close data-i18n="close">Fechar</button>
       </div>
       ${canManage ? `<div class="form-grid" style="margin-bottom:10px;">
         <label>SKU<input type="text" data-catalog-sku></label>
-        <label>Descrição<input type="text" data-catalog-description></label>
+        <label data-i18n="ui.procurement.descricao_46332f">Descrição<input type="text" data-catalog-description></label>
         <label>CA<input type="text" data-catalog-ca></label>
-        <label>Último preço (R$)<input type="number" min="0" step="0.01" data-catalog-price></label>
-        <label>Prazo (dias)<input type="number" min="0" step="1" data-catalog-lead></label>
-        <label style="align-self:end;"><button class="btn" data-catalog-save>Salvar produto</button></label>
+        <label data-i18n="ui.procurement.ultimo_preco_r_5a9fb7">Último preço (R$)<input type="number" min="0" step="0.01" data-catalog-price></label>
+        <label data-i18n="ui.procurement.prazo_dias_2b5f20">Prazo (dias)<input type="number" min="0" step="1" data-catalog-lead></label>
+        <label style="align-self:end;"><button class="btn" data-catalog-save data-i18n="ui.procurement.salvar_produto_d0aeee">Salvar produto</button></label>
       </div>` : ''}
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th scope="col">SKU</th><th scope="col">Descrição</th><th scope="col">CA</th><th scope="col">Últ. preço</th><th scope="col">Prazo</th><th scope="col"></th></tr></thead>
+        <thead><tr><th scope="col">SKU</th><th scope="col" data-i18n="ui.procurement.descricao_46332f">Descrição</th><th scope="col">CA</th><th scope="col" data-i18n="ui.procurement.ult_preco_553bfd">Últ. preço</th><th scope="col" data-i18n="ui.procurement.prazo_f36758">Prazo</th><th scope="col"></th></tr></thead>
         <tbody data-catalog-tbody></tbody>
       </table></div>
       <div data-catalog-feedback style="font-size:13px;margin-top:8px;"></div>`, { width: '820px' });
@@ -338,14 +338,14 @@
             <td>${esc(p.ca || '—')}</td>
             <td>${p.last_price ? fmtBrl(p.last_price) : '—'}</td>
             <td>${p.lead_time_days || '—'}</td>
-            <td>${canManage ? `<button class="btn ghost" style="font-size:12px;padding:2px 8px;" data-catalog-remove="${p.id}">Desativar</button>` : ''}</td>
-          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);">Nenhum produto no catálogo.</td></tr>';
+            <td>${canManage ? `<button class="btn ghost" style="font-size:12px;padding:2px 8px;" data-catalog-remove="${p.id}" data-i18n="ui.procurement.desativar_67afbe">Desativar</button>` : ''}</td>
+          </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);" data-i18n="ui.procurement.nenhum_produto_no_catalogo_e3de92">Nenhum produto no cat\u00e1logo.</td></tr>';
         tbody.querySelectorAll('[data-catalog-remove]').forEach((btn) => btn.addEventListener('click', async () => {
           await api(`/api/supplier-products/${btn.getAttribute('data-catalog-remove')}?actor_user_id=${getState().user?.id}`, { method: 'DELETE' });
           refresh();
         }));
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--color-danger,#c00);">${esc(err.message || 'Erro ao carregar catálogo.')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--color-danger,#c00);">${esc(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_catalogo_00941e','Erro ao carregar cat\u00e1logo.',{}) ?? 'Erro ao carregar cat\u00e1logo.'))}</td></tr>`;
       }
     }
 
@@ -365,17 +365,17 @@
         feedback.textContent = '';
         refresh();
       } catch (err) {
-        feedback.textContent = err.message || 'Erro ao salvar produto.';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{})) ?? 'Erro ao salvar produto.');
       }
     });
     overlay.querySelector('[data-catalog-sync]')?.addEventListener('click', async () => {
       const feedback = overlay.querySelector('[data-catalog-feedback]');
       try {
         const res = await api(`/api/authorized-suppliers/${supplierId}/catalog-sync`, { method: 'POST', body: withActor({}) });
-        feedback.textContent = `Catálogo sincronizado: ${res.imported} produtos importados da loja.`;
+        feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.catalogo_sincronizado_p0_produtos_importados_da_loja_3f7094','Cat\u00e1logo sincronizado: {p0} produtos importados da loja.',{p0:(res.imported)}) ?? globalThis.trEpi?.('ui.procurement.catalogo_sincronizado_p0_produtos_importados_da_loja_3f7094','Cat\u00e1logo sincronizado: {p0} produtos importados da loja.',{p0:(res.imported)})) ?? `Catálogo sincronizado: ${res.imported} produtos importados da loja.`);
         refresh();
       } catch (err) {
-        feedback.textContent = err.message || 'Erro ao sincronizar (o fornecedor tem integração de API ativa?).';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{})) ?? 'Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).');
       }
     });
     refresh();
@@ -395,19 +395,19 @@
       integration = res.item || null;
     } catch { /* 404 = sem integração ainda */ }
     const overlay = openOverlay(`
-      <h3 style="margin:0 0 12px;">Integração de API — ${esc(supplierName || '')}</h3>
-      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;">Nível 3: o sistema cota e envia pedidos direto na loja. As credenciais são gravadas cifradas.</p>
+      <h3 style="margin:0 0 12px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.integracao_de_api_p0_f7aa27',{p0:(supplierName || '')},'Integra\u00e7\u00e3o de API \u2014 {p0}') ?? `Integração de API — ${esc(supplierName || '')}`)}</h3>
+      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;" data-i18n="ui.procurement.nivel_3_o_sistema_cota_e_envia_pedidos_direto_na_loja_as_credenciais_sao_gr_380ade">Nível 3: o sistema cota e envia pedidos direto na loja. As credenciais são gravadas cifradas.</p>
       <div class="form-grid" style="margin-bottom:10px;">
-        <label>Conector<select data-integration-key>${connectors.map((c) => `<option value="${esc(c.key)}" ${integration?.connector_key === c.key ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>
-        <label>Ativa<select data-integration-active><option value="1" ${integration?.active ? 'selected' : ''}>Sim</option><option value="0" ${integration && !integration.active ? 'selected' : ''}>Não</option></select></label>
+        <label data-i18n="ui.procurement.conector_db5b06">Conector<select data-integration-key>${connectors.map((c) => `<option value="${esc(c.key)}" ${integration?.connector_key === c.key ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>
+        <label data-i18n="license.active">Ativa<select data-integration-active><option value="1" ${integration?.active ? 'selected' : ''} data-i18n="common.yes">Sim</option><option value="0" ${integration && !integration.active ? 'selected' : ''} data-i18n="common.no">Não</option></select></label>
       </div>
-      <label style="display:block;margin-bottom:10px;">Configuração (JSON${integration?.has_config ? ' — já existe; deixe em branco para manter' : ''})
+      <label style="display:block;margin-bottom:10px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.configuracao_json_p4_e56e03',{p4:(integration?.has_config ? (globalThis.trEpi?.('ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b',' \u2014 j\u00e1 existe; deixe em branco para manter',{}) ?? ' \u2014 j\u00e1 existe; deixe em branco para manter') : '')},'Configura\u00e7\u00e3o (JSON{p4})',integration?.has_config ? {p4:'ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b'} : {}) ?? `Configuração (JSON${integration?.has_config ? (globalThis.trEpi?.('ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b',' \u2014 j\u00e1 existe; deixe em branco para manter',{}) ?? ' \u2014 j\u00e1 existe; deixe em branco para manter') : ''})`)}
         <textarea data-integration-config rows="5" style="width:100%;font-family:monospace;font-size:12px;" placeholder='{"base_url": "https://api.loja.com.br", "api_key": "..."}'></textarea>
       </label>
       <div style="display:flex;gap:8px;">
-        <button class="btn" data-integration-save>Salvar</button>
-        <button class="btn ghost" data-integration-test>Testar conexão</button>
-        <button class="btn ghost" data-integration-cancel>Fechar</button>
+        <button class="btn" data-integration-save data-i18n="commercial.save">Salvar</button>
+        <button class="btn ghost" data-integration-test data-i18n="ui.procurement.testar_conexao_e5f454">Testar conexão</button>
+        <button class="btn ghost" data-integration-cancel data-i18n="close">Fechar</button>
       </div>
       <div data-integration-feedback style="font-size:13px;margin-top:8px;"></div>`);
     const feedback = overlay.querySelector('[data-integration-feedback]');
@@ -416,7 +416,7 @@
       const rawConfig = overlay.querySelector('[data-integration-config]').value.trim();
       let config;
       if (rawConfig) {
-        try { config = JSON.parse(rawConfig); } catch { feedback.textContent = 'Configuração não é um JSON válido.'; return; }
+        try { config = JSON.parse(rawConfig); } catch { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.configuracao_nao_e_um_json_valido_d6850b','Configura\u00e7\u00e3o n\u00e3o \u00e9 um JSON v\u00e1lido.',{}) ?? globalThis.trEpi?.('ui.procurement.configuracao_nao_e_um_json_valido_d6850b','Configura\u00e7\u00e3o n\u00e3o \u00e9 um JSON v\u00e1lido.',{})) ?? 'Configura\u00e7\u00e3o n\u00e3o \u00e9 um JSON v\u00e1lido.'); return; }
       }
       try {
         await api(`/api/authorized-suppliers/${supplierId}/integration`, {
@@ -427,18 +427,18 @@
             ...(config !== undefined ? { config } : {}),
           }),
         });
-        feedback.textContent = 'Integração salva.';
+        feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.integracao_salva_f8e88a','Integra\u00e7\u00e3o salva.',{}) ?? globalThis.trEpi?.('ui.procurement.integracao_salva_f8e88a','Integra\u00e7\u00e3o salva.',{})) ?? 'Integra\u00e7\u00e3o salva.');
         globalThis.loadAuthorizedSuppliers?.();
       } catch (err) {
-        feedback.textContent = err.message || 'Erro ao salvar integração.';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{})) ?? 'Erro ao salvar integra\u00e7\u00e3o.');
       }
     });
     overlay.querySelector('[data-integration-test]').addEventListener('click', async () => {
       try {
         const res = await api(`/api/authorized-suppliers/${supplierId}/integration/test`, { method: 'POST', body: withActor({}) });
-        feedback.textContent = `Conexão OK (${res.connector_key}).`;
+        feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.conexao_ok_p0_c8552e','Conex\u00e3o OK ({p0}).',{p0:(res.connector_key)}) ?? globalThis.trEpi?.('ui.procurement.conexao_ok_p0_c8552e','Conex\u00e3o OK ({p0}).',{p0:(res.connector_key)})) ?? `Conexão OK (${res.connector_key}).`);
       } catch (err) {
-        feedback.textContent = err.message || 'Teste falhou.';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.teste_falhou_a64e41','Teste falhou.',{}) ?? globalThis.trEpi?.('ui.procurement.teste_falhou_a64e41','Teste falhou.',{})) ?? 'Teste falhou.');
       }
     });
   }
@@ -451,7 +451,7 @@
       const res = await api(`/api/purchase-orders/${poId}/tracking?actor_user_id=${getState().user?.id}`);
       tracking = res.item || {};
     } catch (err) {
-      toast(err.message || 'Erro ao carregar acompanhamento.', 'error');
+      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_acompanhamento_2142fc','Erro ao carregar acompanhamento.',{}) ?? 'Erro ao carregar acompanhamento.'), 'error');
       return;
     }
     const canSend = hasPermission('purchase_orders:create');
@@ -461,26 +461,26 @@
         <td>${esc(c.status || '')}</td>
         <td>${esc(c.source || '')}</td>
         <td style="font-size:12px;">${[c.delivery_forecast, c.carrier, c.tracking_code, c.comment].filter(Boolean).map(esc).join(' — ') || '—'}</td>
-      </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--color-text-muted);">Sem registros de acompanhamento.</td></tr>';
+      </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--color-text-muted);" data-i18n="ui.procurement.sem_registros_de_acompanhamento_273b54">Sem registros de acompanhamento.</td></tr>';
     const overlay = openOverlay(`
-      <h3 style="margin:0 0 6px;">Fornecedor e entrega — PO #${poId}</h3>
+      <h3 style="margin:0 0 6px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.fornecedor_e_entrega_po_p0_54889c',{p0:(poId)},'Fornecedor e entrega \u2014 PO #{p0}') ?? `Fornecedor e entrega — PO #${poId}`)}</h3>
       <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">
-        Envio: ${tracking.sent_channel ? `${esc(CHANNEL_LABELS[tracking.sent_channel] || tracking.sent_channel)} em ${(tracking.sent_to_supplier_at || '').slice(0, 10)}` : 'ainda não enviada'}
+        <span data-i18n="ui.procurement.envio_182b19">Envio:</span> ${tracking.sent_channel ? `${esc(CHANNEL_LABELS[tracking.sent_channel] || tracking.sent_channel)} em ${(tracking.sent_to_supplier_at || '').slice(0, 10)}` : (globalThis.trEpi?.('ui.procurement.ainda_nao_enviada_485986','ainda n\u00e3o enviada',{}) ?? 'ainda n\u00e3o enviada')}
         ${tracking.supplier_confirmation_status ? ` · Confirmação: <strong>${esc(tracking.supplier_confirmation_status)}</strong>` : ''}
       </p>
       ${canSend ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <button class="btn" data-po-send="send">✉ Enviar por e-mail</button>
-        <button class="btn ghost" data-po-send="portal-link">🔗 Enviar link do portal</button>
-        <button class="btn ghost" data-po-send="send-api">⚡ Enviar via API</button>
-        <button class="btn ghost" data-po-send="refresh-status">⟳ Atualizar status (API)</button>
-        <button class="btn ghost" data-po-confirm>Registrar confirmação manual</button>
+        <button class="btn" data-po-send="send" data-i18n="ui.procurement.enviar_por_e_mail_ad24a6">✉ Enviar por e-mail</button>
+        <button class="btn ghost" data-po-send="portal-link" data-i18n="ui.procurement.enviar_link_do_portal_43fff2">🔗 Enviar link do portal</button>
+        <button class="btn ghost" data-po-send="send-api" data-i18n="ui.procurement.enviar_via_api_aca832">⚡ Enviar via API</button>
+        <button class="btn ghost" data-po-send="refresh-status" data-i18n="ui.procurement.atualizar_status_api_769b8a">⟳ Atualizar status (API)</button>
+        <button class="btn ghost" data-po-confirm data-i18n="ui.procurement.registrar_confirmacao_manual_e6e72c">Registrar confirmação manual</button>
       </div>` : ''}
-      <h4 style="margin:8px 0;">Linha do tempo</h4>
+      <h4 style="margin:8px 0;" data-i18n="ui.procurement.linha_do_tempo_2bbefc">Linha do tempo</h4>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th scope="col">Data</th><th scope="col">Status</th><th scope="col">Origem</th><th scope="col">Detalhes</th></tr></thead>
+        <thead><tr><th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th><th scope="col" data-i18n="user.status">Status</th><th scope="col" data-i18n="dataMigration.jobSource">Origem</th><th scope="col" data-i18n="tabs.details">Detalhes</th></tr></thead>
         <tbody>${historyHtml}</tbody>
       </table></div>
-      <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn ghost" data-po-close>Fechar</button></div>
+      <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn ghost" data-po-close data-i18n="close">Fechar</button></div>
       <div data-po-feedback style="font-size:13px;margin-top:8px;"></div>`, { width: '760px' });
     const feedback = overlay.querySelector('[data-po-feedback]');
     overlay.querySelector('[data-po-close]').addEventListener('click', () => overlay.remove());
@@ -488,10 +488,10 @@
       try {
         await api(`/api/purchase-orders/${poId}/${btn.getAttribute('data-po-send')}`, { method: 'POST', body: withActor({}) });
         overlay.remove();
-        toast('Ação executada.', 'success');
+        toast((globalThis.trEpi?.('ui.procurement.acao_executada_789459','A\u00e7\u00e3o executada.',{}) ?? 'A\u00e7\u00e3o executada.'), 'success');
         openPoSupplierActionsModal(poId);
       } catch (err) {
-        feedback.textContent = err.message || 'Erro ao executar a ação.';
+        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{})) ?? 'Erro ao executar a a\u00e7\u00e3o.');
       }
     }));
     overlay.querySelector('[data-po-confirm]')?.addEventListener('click', () => {
@@ -502,21 +502,21 @@
 
   function openPoConfirmationModal(poId) {
     const overlay = openOverlay(`
-      <h3 style="margin:0 0 12px;">Registrar confirmação — PO #${poId}</h3>
+      <h3 style="margin:0 0 12px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.registrar_confirmacao_po_p0_55110a',{p0:(poId)},'Registrar confirma\u00e7\u00e3o \u2014 PO #{p0}') ?? `Registrar confirmação — PO #${poId}`)}</h3>
       <div class="form-grid" style="margin-bottom:10px;">
-        <label>Retorno do fornecedor<select data-confirm-status>
-          <option value="confirmed">Pedido confirmado</option>
-          <option value="delivery_update">Atualização de entrega</option>
-          <option value="rejected">Pedido recusado</option>
+        <label data-i18n="ui.procurement.retorno_do_fornecedor_17993b">Retorno do fornecedor<select data-confirm-status>
+          <option value="confirmed" data-i18n="ui.procurement.pedido_confirmado_7ef09b">Pedido confirmado</option>
+          <option value="delivery_update" data-i18n="ui.procurement.atualizacao_de_entrega_aa0722">Atualização de entrega</option>
+          <option value="rejected" data-i18n="ui.procurement.pedido_recusado_5aa140">Pedido recusado</option>
         </select></label>
-        <label>Previsão de entrega<input type="date" data-confirm-forecast></label>
-        <label>Transportadora<input type="text" data-confirm-carrier></label>
-        <label>Código de rastreio<input type="text" data-confirm-tracking></label>
+        <label data-i18n="ui.procurement.previsao_de_entrega_2b8745">Previsão de entrega<input type="date" data-confirm-forecast></label>
+        <label data-i18n="ui.procurement.transportadora_efbe6a">Transportadora<input type="text" data-confirm-carrier></label>
+        <label data-i18n="ui.procurement.codigo_de_rastreio_265785">Código de rastreio<input type="text" data-confirm-tracking></label>
       </div>
-      <label style="display:block;margin-bottom:10px;">Comentário<input type="text" data-confirm-comment></label>
+      <label style="display:block;margin-bottom:10px;" data-i18n="evaluation.comment">Comentário<input type="text" data-confirm-comment></label>
       <div style="display:flex;gap:8px;">
-        <button class="btn" data-confirm-save>Registrar</button>
-        <button class="btn ghost" data-confirm-cancel>Cancelar</button>
+        <button class="btn" data-confirm-save data-i18n="deliveryTabs.register">Registrar</button>
+        <button class="btn ghost" data-confirm-cancel data-i18n="stock.physical.cancel">Cancelar</button>
       </div>
       <div data-confirm-feedback style="font-size:13px;margin-top:8px;color:var(--color-danger,#c00);"></div>`);
     overlay.querySelector('[data-confirm-cancel]').addEventListener('click', () => overlay.remove());
@@ -533,10 +533,10 @@
           }),
         });
         overlay.remove();
-        toast('Confirmação registrada.', 'success');
+        toast((globalThis.trEpi?.('ui.procurement.confirmacao_registrada_0036b0','Confirma\u00e7\u00e3o registrada.',{}) ?? 'Confirma\u00e7\u00e3o registrada.'), 'success');
         openPoSupplierActionsModal(poId);
       } catch (err) {
-        overlay.querySelector('[data-confirm-feedback]').textContent = err.message || 'Erro ao registrar.';
+        overlay.querySelector('[data-confirm-feedback]').textContent = err.message || ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-confirm-feedback]'),'ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{})) ?? 'Erro ao registrar.');
       }
     });
   }

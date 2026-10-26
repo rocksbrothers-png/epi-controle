@@ -64,15 +64,13 @@ def test_dashboard_translation_values_are_localized_beyond_portuguese():
         assert len(identical) <= 6, f"{locale} has too many untranslated dashboard labels: {identical}"
 
 
-def test_european_locales_use_ce_for_approval_certificate_labels():
-    for locale in ["en-GB", "es-ES", "fr-FR", "nb-NO"]:
+def test_ca_labels_preserve_brazilian_approval_certificate_identity():
+    for locale in LOCALES:
         translations = _translations(locale)
-        assert translations["dashboard"]["tableCa"] == "CE"
-        assert "CE" in translations["dashboard"]["approvedSearchCa"]
-        assert "CE" in translations["dashboard"]["tableCaExpiry"]
-        assert translations["epi"]["caShort"] == "CE"
-        assert "CE" in translations["epi"]["ca"]
-        assert "CE" in translations["epi"]["caExpiry"]
-        assert "CE" in translations["epi"]["caNumberHint"]
-        assert "CE" in translations["epi"]["withoutBrazilCa"]
-        assert "CA" not in translations["epi"]["withoutBrazilCa"]
+        assert translations["dashboard"]["tableCa"] == "CA"
+        assert translations["epi"]["caShort"] == "CA"
+        labels = [translations["dashboard"][key] for key in
+                  ("approvedSearchCa", "tableCaExpiry")]
+        labels += [translations["epi"][key] for key in
+                   ("ca", "caExpiry", "caNumberHint", "withoutBrazilCa")]
+        assert all("CA" in label and "CE" not in label for label in labels)

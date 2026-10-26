@@ -20,6 +20,7 @@
 //  - formatCurrency e fmtBrl são idênticas; ambas continuam publicadas
 //    porque são contratos distintos (fmtBrl é lido por views/purchases.js e
 //    views/procurement.js via globalThis).
+//    O locale opcional vem da UI; o padrão legado e a moeda BRL são preservados.
 //  - addDaysFromBaseDate e daysUntil usam o horário LOCAL do navegador;
 //    addDaysFromBaseDate converte com toISOString (UTC), o que pode deslocar
 //    um dia em fusos a leste de UTC. Defeito preexistente, não corrigido aqui.
@@ -29,12 +30,12 @@
 
   // ── Números e moeda ───────────────────────────────────────────────────────
 
-  function formatCurrency(value) {
-    return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  function formatCurrency(value, locale = 'pt-BR') {
+    return Number(value || 0).toLocaleString(locale, { style: 'currency', currency: 'BRL' });
   }
 
-  function fmtBrl(v) {
-    return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  function fmtBrl(v, locale = 'pt-BR') {
+    return Number(v || 0).toLocaleString(locale, { style: 'currency', currency: 'BRL' });
   }
 
   function parseMonthsValue(rawValue) {

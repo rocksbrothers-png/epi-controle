@@ -28,6 +28,9 @@
  *     integrations/ não dependem de namespaces publicados pela camada UI.
  *  8. (UBX-V2) Contra um novo monólito: nenhum arquivo em modules/ passa de
  *     MAX_MODULE_LINES linhas.
+ *  9. (UBX-V3) Catraca de `fetch(` cru na camada UI: a contagem por arquivo
+ *     só diminui — chamada de rede nova passa pelo cliente único
+ *     (modules/api-client.js), nunca por um fetch próprio da view.
  *
  * Sem dependências: usa só a stdlib do Node.
  * Uso: node static/js/test/app-js-boundary.js [--update]
@@ -61,6 +64,7 @@ const ENDPOINT_RE = /['"`](\/api\/[^'"`?$\s]*)/g;
 // e o prefixo solto ('/api' ou '/api/' sozinho, usado para concatenar).
 const UI_TEMPLATE_RE = /`(\/api\/(?:[^`$?\s]|\$\{[^}]*\})*)/g;
 const UI_PREFIX_RE = /['"`](\/api\/?)['"`]/g;
+const UI_RAW_FETCH_RE = /(?<![\w$.])(?:(?:globalThis|window|self)\s*\.\s*)?fetch\s*\(/g;
 // Globais do app.js (Annex B / var) que uma regra de negócio não pode ler.
 const APP_GLOBALS_RE = /(?<![\w$.])(?:(?:state|refs)\s*(?:\.|\[|\?\.)|(?:tr|hasPermission|requirePermission|showToast|escapeHtml|esc|actorQuery)\s*\()/;
 
@@ -131,6 +135,15 @@ function uiFiles() {
     .map((e) => path.join(STATIC_DIR, e.name));
   const moduleUi = walkFiles(MODULES_DIR).filter((f) => path.relative(MODULES_DIR, f).split(path.sep)[1] === 'ui');
   return [...walkFiles(VIEWS_DIR), ...moduleUi, ...topLevel];
+}
+
+function scanUiRawFetch() {
+  const result = {};
+  for (const file of uiFiles()) {
+    const count = (stripComments(fs.readFileSync(file, 'utf-8')).match(UI_RAW_FETCH_RE) || []).length;
+    if (count) { result[path.relative(STATIC_DIR, file).split(path.sep).join('/')] = count; }
+  }
+  return result;
 }
 
 function scanUiEndpoints() {
@@ -285,6 +298,19 @@ function check({ update = false } = {}) {
   const goneUi = Object.entries(baseUi).flatMap(([file, list]) => list
     .filter((e) => !(uiEndpoints[file] || []).includes(e)).map((e) => `${file}:${e}`));
 
+  // 9. Catraca de fetch cru na camada UI.
+  const uiRawFetch = scanUiRawFetch();
+  const baseFetch = baseline.uiRawFetch || {};
+  for (const [file, count] of Object.entries(uiRawFetch)) {
+    const allowed = baseFetch[file] || 0;
+    if (count > allowed) {
+      errors.push(`static/${file} (camada UI) ganhou fetch cru (${allowed} → ${count}). `
+        + 'Use o cliente único: globalThis.api / apiFetch (static/js/modules/api-client.js).');
+    }
+  }
+  const lowerFetch = Object.entries(baseFetch).filter(([file, count]) => (uiRawFetch[file] || 0) < count)
+    .map(([file, count]) => `${file}:fetch ${count}→${uiRawFetch[file] || 0}`);
+
   // 7. Dependências entre scripts.
   const edges = namespaceGraph();
   const cycles = findCycles(edges);
@@ -317,9 +343,11 @@ function check({ update = false } = {}) {
       .map(([file, list]) => [file, list.filter((e) => (uiEndpoints[file] || []).includes(e))])
       .filter(([, list]) => list.length));
     baseline.knownCycles = [...knownCycles].filter((c) => cycles.includes(c));
+    baseline.uiRawFetch = Object.fromEntries(Object.entries(baseFetch)
+      .map(([file, count]) => [file, Math.min(count, uiRawFetch[file] || 0)]).filter(([, count]) => count > 0));
     fs.writeFileSync(BASELINE, JSON.stringify(baseline, null, 2) + '\n');
-  } else if (goneUi.length || goneCycles.length) {
-    errors.push(`baseline desatualizado (catraca): saíram ${[...goneUi, ...goneCycles].join(', ')}. `
+  } else if (goneUi.length || goneCycles.length || lowerFetch.length) {
+    errors.push(`baseline desatualizado (catraca): saíram ${[...goneUi, ...goneCycles, ...lowerFetch].join(', ')}. `
       + 'Rode: node static/js/test/app-js-boundary.js --update');
   }
 
@@ -329,7 +357,8 @@ function check({ update = false } = {}) {
       declarations: declarations.size,
       endpoints: endpoints.size,
       uiEndpoints: Object.values(uiEndpoints).reduce((n, list) => n + list.length, 0),
-      cycles: cycles.length
+      cycles: cycles.length,
+      uiRawFetch: Object.values(uiRawFetch).reduce((n, c) => n + c, 0)
     }
   };
 }
@@ -343,7 +372,7 @@ if (require.main === module) {
     process.exit(1);
   }
   console.log(`Guarda UBX do app.js OK — ${stats.declarations} declarações, ${stats.endpoints} endpoints (sem crescimento); `
-    + `camada UI: ${stats.uiEndpoints} endpoints; ciclos entre scripts: ${stats.cycles}.`);
+    + `camada UI: ${stats.uiEndpoints} endpoints, ${stats.uiRawFetch} fetch cru; ciclos entre scripts: ${stats.cycles}.`);
 }
 
-module.exports = { check, scanAppJs, scanUiEndpoints, namespaceGraph, findCycles };
+module.exports = { check, scanAppJs, scanUiEndpoints, scanUiRawFetch, namespaceGraph, findCycles };

@@ -296,7 +296,164 @@ analisador de fluxo. Ela barra regressões descuidadas e os idiomas conhecidos; 
 em várias variáveis sob um prefixo já registrado no mesmo arquivo, ou uma dependência por função
 global (Annex B), ainda passam. A revisão humana continua necessária.
 
-### 10.7 Pendente para a UBX-V3 (não iniciada)
+### 10.7 Pendente para a UBX-V3 (executada na §11)
 
 Itens 2–4 da matriz (helpers de DOM, rótulos com `tr`, gate HTTP das views); depois Relatórios,
 EPIs e Usuários. Compras, Estoque e Migração só depois de estabilizados; bootstrap por último.
+
+## 11. UBX-V3 (2026-10-26) — seis extrações incrementais
+
+### 11.1 Base e preparação
+
+| Repositório | `main` de partida |
+|---|---|
+| Corporate (`rocksbrothers-png/epi-controle`) | `8c63ea005cbf732a7bf4fea42dafa389273c4c9f` → rebase sobre `3e6fe8c592c4c738c6bc1b55d8bba2969c52d4b8` |
+| SaaS (`rocksbrothers-png/epi-controle-app`) | `102064e9e8b550c5187445a936da33ab2268529f` → rebase sobre `b25147b3a28bca41d6479daf95d7cfeed1b54664` |
+
+Durante a UBX-V3 entraram nas duas `main` dois PRs do Codex: ícone da Biblioteca de Segurança
+(epi-controle#1051 / epi-controle-app#424) e navegação do alerta de validade física para os lotes
+pendentes (epi-controle#1052 / epi-controle-app#425, `modules/stock/ui/pending-validity-navigation.js`
+e dois ajustes em `loadPendingRegularization`). Os commits da UBX-V3 foram rebaseados sobre elas sem
+conflito de código — só `index.html` e os digestos F4/F5-B foram regerados pelas ferramentas do repo,
+commit a commit —, e foi conferido que o diff da UBX-V3 e o diff do Codex ficaram idênticos (fora
+deslocamento de linhas). Nenhuma função tocada pelo Codex saiu do `app.js`.
+
+UBX-V1, associação de cotações e UBX-V2 (epi-controle#1050 / epi-controle-app#423) integrados nas
+duas `main`. Nenhum PR aberto no início; nenhuma branch recente fora de `main` alterava o `app.js` (os dois PRs do Codex abaixo entraram depois e foram integrados por rebase).
+`static/app.js` byte-idêntico entre os dois repositórios (20.200 linhas em 8c63ea00; 20.205 após os PRs do Codex). As correções recentes de
+Estoque, Compras, Migração e Biblioteca de Segurança não foram tocadas (`views/procurement.js`,
+`views/safety-library.js`, `views/stock-*.js` e os módulos de migração ficaram fora do diff).
+
+### 11.2 Método (igual em todas as etapas)
+
+1. Funções originais fatiadas por nome do `app.js` **congelado no commit da etapa anterior**;
+2. o MESMO roteiro roda sobre as originais (gera as tabelas esperadas) e sobre os módulos, em `vm`
+   com DOM falso e espiões — saída, DOM, chamadas (com argumentos e ordem), requisições e erros;
+3. sabotagem conferida em cada etapa (uma mudança de ordem, chave, texto ou corpo faz o teste falhar);
+4. navegador real: backend + PostgreSQL descartável, `main` × etapa, master admin e admin de empresa
+   (pt-BR e en-GB real via `EpiI18n.setLang`) — ids/autocomplete de campos, textos das views,
+   requisições (método, caminho, query, `Authorization`, `Content-Type`) e erros de console, mais
+   um fluxo de interação por domínio. **0 diferenças em todas as etapas.**
+
+### 11.3 Etapas
+
+| Etapa | Módulos | Saiu do `app.js` | `app.js` (linhas) | Declarações / endpoints |
+|---|---|---|---:|---:|
+| início (`3e6fe8c5`) | — | — | 20.205 | 936 / 121 |
+| 1 — helpers de DOM | `shared/ui/form-field-identity.js` | `isViewActive`, `resolveFormFieldAutocomplete`, `describeFieldNode`, `getElementIdAttribute`, `isValidDomId`, `toSafeId`, `setElementIdAttribute`, `normalizeInvalidDomIds`, `ensureFormFieldAttributes`, `auditFormFieldIssues`, `setupFormFieldHardening` | 19.929 | 925 / 121 |
+| 2 — rótulos com `tr` | `shared/ui/domain-labels.js` | `unitTypeLabel`, `formatCompanyAvailabilityText`, `employmentTypeLabel`, `allocationTypeLabel`, `outsourcedEmployeeLinkLabel`, `epiProtectionLabel`, `epiMeasureLabel` | 19.876 | 918 / 121 |
+| 3 — HTTP das views | `api`, `apiOptional`, `apiWithBootstrapRetry` → `modules/api-client.js`; `api` local de 5 views delega a `globalThis.api` | os 3 delegadores | 19.865 | 915 / 121 |
+| 4 — Relatórios | `reports/{business/report-filters, integrations/reports-api, ui/reports-view}.js` | filtros, render, arquivo de fichas, exportação PDF | 19.675 | 908 / 118 |
+| 5 — EPIs | `shared/ui/file-data-url.js`, `epis/{business/epi-form-values, ui/epi-registration}.js` | foto, escopo de unidades, JV, edição, preparo dos valores, reset, linha | 19.420 | 892 / 118 |
+| 6 — Usuários | `users/{business/user-form, integrations/users-api, ui/users-view}.js` | filtros, resumo, feedback, acesso de empresa, botões por linha, edição, reset, mudança de acesso | **19.227** | **878 / 117** |
+
+Total: **−978 linhas** (−4,8%), **−58 declarações**, **−4 endpoints** no `app.js`; 11 módulos novos
+(1.477 linhas, maior com 332). Testes de caracterização: `shared-form-field-identity-runtime.js`,
+`shared-domain-labels-runtime.js`, `api-client-legacy-runtime.js`, `reports-view-runtime.js`,
+`epis-registration-runtime.js`, `users-view-runtime.js` (523 → 570 testes JS sobre a `main` atual).
+
+Etapa 6, fronteiras: `saveUser` e `deleteUser` ficam no `app.js` como orquestradores finos — o
+primeiro chama `__EPI_USERS_BUSINESS__.prepareUserFormValues` (mesmas validações, ordem e mensagens)
+passando o `ROLE_LABELS` **do app.js**, e ambos enviam pela integração. As regras `can*` (fallback
+visual de RBAC) continuam no `app.js` e decidem os botões como antes; a autorização efetiva segue no
+backend, sem nenhuma mudança.
+
+### 11.4 Acoplamento — caiu ou só mudou de lugar?
+
+Medido no `app.js` (`3e6fe8c5` → branch; os PRs do Codex não alteram estas contagens):
+
+| Medida | Antes | Depois |
+|---|---:|---:|
+| chamadas `api(`/`apiOptional(`/`apiWithBootstrapRetry(` | 171 | 163 |
+| `state.` | 992 | 922 |
+| `refs.` | 1.064 | 1.026 |
+| `document.` | 1.251 | 1.214 |
+| `innerHTML` | 244 | 226 |
+| `tr(` | 640 | 569 |
+| `fetch(` cru nas views/UI (guarda, regra 9) | 9 | 4 |
+
+O que **realmente** desacoplou:
+- HTTP de Relatórios e Usuários saiu da UI para `integrations/` (sem DOM, pela guarda); as 5 views
+  deixaram de ter `fetch` próprio e passam pelo cliente único;
+- regras de cliente (filtros de relatório, valores do EPI, validação do usuário, corpo do PUT de
+  acesso) estão em `business/` puro — sem DOM, HTTP, storage nem leitura de globais (guarda);
+- cada módulo publica namespace congelado; o grafo de namespaces segue **sem ciclo**.
+
+O que **só mudou de lugar** (dito com honestidade): as UIs extraídas ainda leem `state`/`refs` do
+`app.js` (os mesmos objetos, por `__EPI_APP_STATE__`/`__EPI_REFS__`) e chamam funções globais dele
+— 11 em `reports-view.js`, 19 em `epi-registration.js`, 17 em `users-view.js` (declaradas no
+cabeçalho `/* global */` de cada módulo), cerca de 47 chamadas. No sentido inverso, o `app.js` faz
+cerca de 84 chamadas soltas aos nomes movidos. Ou seja: `app.js` ↔ `reports-view`/`epi-registration`/
+`users-view` são **ciclos reais por função global** (Annex B), que o grafo de namespaces ("0 ciclos")
+não enxerga. Efeito colateral: as chamadas internas do `app.js` a esses nomes (e às 163 de `api(`)
+passaram de ligação de bloco para busca em `globalThis` na hora da chamada — um script que
+reatribuísse um deles interceptaria o próprio `app.js`. Para fixar isso, o teste
+`extracted-globals-ownership-runtime.js` falha se qualquer arquivo de `static/` fora do módulo dono
+publicar um nome extraído (exceção registrada: os três de `utils/dom.js`, achado 1, com a ordem de
+carga verificada). Reduzi-lo exige mover `confirmDestructive`, as regras `can*` e o
+bootstrap/`renderTables` — itens de risco alto da matriz (§10.3).
+
+### 11.5 Guarda
+
+Regra 9 nova: catraca de `fetch` cru na camada UI (`uiRawFetch`, semente 9 → 4 após a Etapa 3).
+`--update` só remove. Sabotagem em `tests/test_app_js_ubx_boundary.py`. Os limites da §10.6 continuam,
+e a auditoria independente mostrou os desta regra: não conta `fetch?.(…)`, `globalThis['fetch'](…)`,
+`fetch.call(…)`, `(0, fetch)(…)`, alias (`const f = fetch`), `XMLHttpRequest`/`sendBeacon` na UI,
+um `fetch` na mesma linha depois de uma string com `//`, nem arquivos fora de `views/`,
+`modules/*/ui` e `static/*.js`. Ela barra o idioma comum; a revisão humana segue necessária.
+
+### 11.6 Achados registrados (nenhum corrigido — mudar é decisão de negócio)
+
+1. `getElementIdAttribute` diverge entre `js/utils/dom.js` (lê `node.id`) e o `app.js` (lê o
+   atributo). O módulo da Etapa 1 carrega **depois** de `utils/dom.js` e mantém a versão do `app.js`,
+   que era a vigente em tempo de execução.
+2. `user-email` recebe `autocomplete="username"` (regra preexistente de `resolveFormFieldAutocomplete`).
+3. `api-client`: headers passados pelo chamador **substituem** os montados — quem passa `headers`
+   perde `Authorization`/`Content-Type`. Hoje só o portal do colaborador passa `{ headers: {} }`.
+   Fixado em teste; corrigir muda comportamento.
+4. `views/procurement.js` tem `fetch` próprio e **não** desembrulha `{ ok, data }`: unificar mudaria o
+   contrato da tela. Proposta para decisão separada. `views/safety-library.js` mantém um `fetch` de
+   contingência (Biblioteca de Segurança, fora do escopo).
+5. `ROLE_LABELS` do `app.js` ≠ o de `core/constants.js` (este tem `certification_readonly`). A
+   validação "Perfil inválido." do salvar usa o do `app.js`; a UI usa o de `core` só para os 8 rótulos
+   do filtro, iguais nos dois. Ambos fixados em teste.
+6. `confirmDestructive` é `async function` de bloco (não global) — por isso `deleteUser` ficou no
+   `app.js`. Movê-lo para `shared/ui` é o próximo passo natural.
+7. Validação da Etapa 6 no navegador: o salvar de usuário mostra "Campo obrigatório: employee_id_code"
+   para perfis que não exigem colaborador — comportamento idêntico em `main` (validação HTML/genérica
+   preexistente), registrado para triagem.
+8. Continuam valendo: `addDaysFromBaseDate` em fusos a leste de UTC (§10.5) e os limites da guarda.
+9. Fallback removido das views (Etapa 3): em `main`, o `api` local de `fichas`/`profile`/`purchases`/
+   `employee-portal` caía num `fetch` **sem JWT** se `globalThis.api` ainda não existisse; agora vai
+   sempre ao cliente autenticado (carregado antes). Caso-limite: se `api-client.js` não carregar, essas
+   quatro lançam `TypeError` síncrono em vez de devolver promessa rejeitada. No SaaS, o
+   `views/feedback-detail.js` tinha o mesmo wrapper com fallback — removido na Etapa 3 do SaaS
+   (passa a chamar `globalThis.apiFetch`, como no Corporate; `api` só delegava a `apiFetch`), e o
+   arquivo ficou byte-idêntico ao do Corporate.
+10. CodeQL no PR (código movido aparece como novo): **corrigido**, sem efeito em valor legítimo —
+    `renderEpiPhotoPreview` passou a escapar a foto no atributo `src` (XSS armazenado se
+    `epi_photo_data` tivesse aspas; data URL base64 sai idêntica, teste em
+    `epis-registration-runtime.js`), e o par `nearestFormId`/`formId` sobrescrito de
+    `describeFieldNode` foi removido (valia o segundo; mesma ordem de chaves e mesmo objeto).
+
+### 11.8 Auditoria independente (adversarial)
+
+Feita por um agente separado, só leitura, sobre a série completa. **Nenhum P0/P1.** Conferido: as
+58 funções removidas casadas por AST com as versões dos módulos (53 idênticas; 5 mudadas de propósito
+— `collectReportFilters`, `renderReports`, `loadArchiveReports`, `exportReportPdf`, `updateUserAccess`
+— revisadas à mão: ordem e mensagens de validação, URLs, query, ordem das chaves do JSON, escopo do
+`try` e caminhos de 403 iguais); o resto do `app.js` idêntico fora `saveUser`, `deleteUser` e a lista
+do `Object.assign`; resolução de cada nome antes de bloco; nomes que viraram globais sem colisão;
+tabelas de caracterização reproduzidas a partir das originais (0 divergências); literais e U+00AD;
+baseline só encolheu; Estoque, Compras, Migração e Biblioteca intocados. Os P2/P3 apontados
+(base defasada, digestos de paridade, limites da regra 9, ligação por `globalThis`, fallback das
+views, ciclo por função global) foram tratados acima: rebase, mesmos commits no SaaS, registro dos
+limites, teste de dono único e a correção da §11.4.
+
+### 11.7 Próximos módulos recomendados
+
+1. `confirmDestructive` + diálogos → `shared/ui` (destrava `deleteUser` e outras remoções);
+2. Colaboradores/terceirizados (item 8 da §10.3), com a mesma caracterização;
+3. regras `can*` → `modules/auth/business` (puras, por parâmetro), sem tocar o backend;
+4. Empresas/Unidades/CNPJ (risco alto: escopo de tenant) só com teste de isolamento por empresa;
+5. Compras, Estoque e Migração só depois de estabilizados; bootstrap/`init`/navegação por último.

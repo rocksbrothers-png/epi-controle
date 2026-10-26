@@ -33,6 +33,9 @@ OUTSOURCED = dict(EMPLOYEE, id=32, name='Tito QA', tipo_vinculo='Terceirizado',
 COMPANY = dict(id=11, company_id=901, legal_name='Terceira QA', trade_name='QA',
                company_kind='outsourced', registration_mode='simplified',
                epi_responsibility='Contratante', origin_unit_id=5)
+# Registro arquivado com retenção cumprida: habilita "Excluir definitivamente".
+ARCHIVED = dict(retention_days_remaining=0, legal_hold=0, status='archived', archived_at='2020-01-01',
+                archive_reason='QA motivo', archived_by_name='QA Admin', company_name='Empresa QA')
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -46,6 +49,7 @@ class Fixture:
         self.actor, self.permissions = copy.deepcopy(ACTOR), PERMISSIONS[:]
         self.actor['ui_preferences'] = dict(idioma=locale)
         self.employees, self.companies, self.archived = [copy.deepcopy(EMPLOYEE), copy.deepcopy(OUTSOURCED)], [copy.deepcopy(COMPANY)], []
+        self.archived_employees = []
         self.calls, self.dialogs, self.errors, self.external = [], [], [], []
         self.fail_mutation = False
         page.on('dialog', self.dialog)
@@ -95,6 +99,19 @@ class Fixture:
             data = dict(outsourced_companies=self.archived)
         elif re.fullmatch('/api/outsourced-companies/\\d+', path) and request.method == 'PUT':
             self.companies[0].update(body)
+        elif re.fullmatch(r'/api/employees/\d+/(archive|restore|purge-confirm)', path):
+            record_id, operation = int(path.split('/')[3]), path.rsplit('/', 1)[1]
+            source = self.employees if operation == 'archive' else self.archived_employees
+            record = next(item for item in source if item['id'] == record_id)
+            source.remove(record)
+            if operation == 'archive':
+                self.archived_employees.append(dict(record, **ARCHIVED))
+            elif operation == 'restore':
+                self.employees.append(record)
+        elif re.fullmatch(r'/api/outsourced-companies/\d+/purge-confirm', path):
+            self.archived = [item for item in self.archived if item['id'] != int(path.split('/')[3])]
+        elif path.endswith(('/purge-request', '/purge-cancel')):
+            data = dict(records={})
         elif path.endswith('/archive') and '/outsourced-companies/' in path:
             self.archived += self.companies[:1]
             self.companies = self.companies[1:]
@@ -108,7 +125,7 @@ class Fixture:
         elif path == '/api/employees/31' and request.method == 'PUT':
             self.employees[0].update(body)
         elif path == '/api/employees/archived':
-            data = dict(employees=[])
+            data = dict(employees=self.archived_employees)
         elif path == '/api/outsourced-companies/employees-summary':
             data = dict(items=[])
         route.fulfill(json=data)
@@ -201,6 +218,76 @@ def company_archive(f):
     expect(f.page.locator('#outsourced-companies-table')).to_contain_text('Terceira QA', timeout=3000)
 
 
+def active_view(f):
+    return f.page.locator('.view.active').get_attribute('id')
+
+
+def employee_archival(f):
+    # Arquivar/desarquivar terceirizado (cadastro global) e colaborador CLT:
+    # listas atualizadas sem sair da tela.
+    f.view('terceirizados')
+    f.page.wait_for_function('__EPI_APP_STATE__.outsourcedCompanies.length===1')
+    f.tab('terceirizados', 'colaboradores')
+    f.page.locator('[data-outsourced-employee-archive="32"]').click()
+    f.page.locator('.ds-confirm-ok').click()
+    f.page.wait_for_function('(__EPI_APP_STATE__.archivedOutsourcedEmployees||[]).some(e=>e.id===32)')
+    expect(f.page.locator('#outsourced-employees-table')).not_to_contain_text('Tito QA')
+    expect(f.page.locator('#archived-outsourced-employees-table')).to_contain_text('Tito QA')
+    assert active_view(f) == 'terceirizados-view', 'archive navigated away'
+    f.tab('terceirizados', 'arquivados-colaboradores')
+    f.page.locator('[data-archived-restore="outsourcedEmployee:32"]').click()
+    f.page.locator('.ds-confirm-ok').click()
+    f.page.wait_for_function('__EPI_APP_STATE__.employees.some(e=>e.id===32)')
+    expect(f.page.locator('#archived-outsourced-employees-table')).not_to_contain_text('Tito QA')
+    expect(f.page.locator('#outsourced-employees-table')).to_contain_text('Tito QA')
+    assert active_view(f) == 'terceirizados-view', 'restore navigated away'
+    f.view('colaboradores')
+    f.page.locator('[data-employee-archive="31"]').first.dispatch_event('click')
+    f.page.locator('.ds-confirm-ok').click()
+    f.page.wait_for_function('!__EPI_APP_STATE__.employees.some(e=>e.id===31)')
+    assert active_view(f) == 'colaboradores-view', 'employee archive navigated away'
+
+
+def purge(f):
+    # Exclusão definitiva (retenção cumprida) de empresa e colaborador terceirizados.
+    f.companies, f.archived = [], [dict(COMPANY, **ARCHIVED)]
+    f.archived_employees = [dict(f.employees.pop(1), **ARCHIVED)]
+    f.page.evaluate('async()=>{await loadBootstrap()}')
+    f.view('terceirizados')
+    for kind, record_id, tab in [('outsourcedCompany', 11, 'arquivados-empresas'), ('outsourcedEmployee', 32, 'arquivados-colaboradores')]:
+        f.tab('terceirizados', tab)
+        button = f.page.locator(f'[data-archived-purge="{kind}:{record_id}"]')
+        button.click()
+        f.page.locator('.ds-confirm-ok').click()
+        expect(button).to_have_count(0)
+        assert any(c['path'].endswith(f'/{record_id}/purge-confirm') for c in f.calls), kind + ' purge not confirmed'
+        assert active_view(f) == 'terceirizados-view', kind + ' purge navigated away'
+
+
+def editor_click(f):
+    # Clique real em Editar na Lista; trocar de aba não apaga o rascunho; o PUT
+    # leva os valores existentes, nunca campos vazios.
+    f.view('colaboradores')
+    f.tab('colaboradores', 'lista')
+    f.page.locator('[data-employee-edit="31"]').first.click()
+    form = f.page.locator('#employee-form')
+    expect(form).to_be_visible()
+    assert form.locator('[name="id"]').input_value() == '31', 'edit not armed'
+    f.tab('colaboradores', 'lista')
+    f.tab('colaboradores', 'cadastro')
+    for key in ['name', 'cpf', 'employee_id_code', 'sector']:
+        expect(form.locator('[name="' + key + '"]')).to_have_value(str(EMPLOYEE[key]))
+    form.locator('[name="sector"]').fill('Manutencao QA')
+    form.locator('button[type="submit"]').click()
+    f.page.wait_for_function('document.getElementById("employee-form").dataset.submitting!=="1"')
+    request = f.mutations()[-1]
+    assert request['method'] == 'PUT' and request['path'] == '/api/employees/31'
+    for key in ['name', 'cpf', 'employee_id_code', 'email', 'whatsapp', 'role_name', 'schedule_type', 'admission_date']:
+        assert request['body'][key] == EMPLOYEE[key], key + ' lost on update'
+    assert request['body']['sector'] == 'Manutencao QA'
+    assert active_view(f) == 'colaboradores-view', 'save navigated away'
+
+
 def editor(f):
     # Cross-module programmatic entry exercises the F5-B reset after Edit.
     f.view('dashboard')
@@ -277,7 +364,8 @@ def main():
             options['executable_path'] = os.environ['CHROMIUM_EXECUTABLE']
         browser = playwright.chromium.launch(**options)
         for locale in args.locales:
-            for scenario in [links, company_save, company_archive, editor, access_and_legacy]:
+            for scenario in [links, company_save, company_archive, employee_archival, purge, editor, editor_click,
+                             access_and_legacy]:
                 context = browser.new_context(viewport=dict(width=1440, height=1000), service_workers='block', locale=locale)
                 page = context.new_page()
                 page.set_default_timeout(4000)

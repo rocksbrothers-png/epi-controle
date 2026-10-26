@@ -226,6 +226,14 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §11](UBX_APPJS_AUDITORIA.md#11-ubx-v3-202
 - O gate de unificação HTTP foi cumprido para as 5 views com `api` local; `procurement.js` fica
   para decisão separada (não desembrulha `{ ok, data }`).
 
+## UBX-V4 (2026-10-26) — diálogos, Colaboradores/Terceirizados e regras `can*`
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §12](UBX_APPJS_AUDITORIA.md#12-ubx-v4-2026-10-26--diálogos-colaboradoresterceirizados-e-regras-can).
+
+- `app.js` 19.227 → 18.106 linhas; 878 → 798 declarações; 117 → 112 endpoints.
+- Regras de acesso da interface como negócio puro (`modules/auth/business/access-rules.js`), com
+  23.320 decisões comparadas antes × depois (0 divergências). O backend continua sendo quem autoriza.
+
 ## Próximo passo
-Mover `confirmDestructive`/diálogos para `shared/ui` e extrair Colaboradores/terceirizados, depois as
-regras `can*` como negócio puro. Compras, Estoque e Migração só depois de estabilizados.
+Decidir os achados de comportamento da §12.5 (fora de refatoração pura); depois arquivamento genérico,
+Empresas/Unidades/CNPJ e, por último, navegação/bootstrap.

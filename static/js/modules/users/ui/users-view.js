@@ -1,7 +1,8 @@
 'use strict';
 /* global tr, USER_COMPANY_REQUIRED_ROLES, filterByUserCompany, populateLinkedEmployeeOptions, syncUserEmployeeLink,
    canManageUser, canDeleteUser, canPromoteToAdmin, canPromoteToGeneralAdmin, canDemoteAdmin, canDemoteGeneralAdmin,
-   canGenerateRecoveryToken, canToggleActive, addEmployeeButtons, populateRoleOptions, loadBootstrap, renderTables --
+   canGenerateRecoveryToken, canToggleActive, addEmployeeButtons, populateRoleOptions, loadBootstrap, renderTables,
+   confirmDestructive, actorQuery --
    globais do app.js e de core/constants.js, resolvidos na chamada (ver abaixo) */
 
 // UI: Usuários — gestão (Refatoração UBX-V3, Etapa 6 — extraído de static/app.js).
@@ -18,7 +19,7 @@
 // ROLE_LABELS só é usado como texto padrão dos 8 perfis do filtro, iguais nos
 // dois (o de core/constants.js tem também certification_readonly — por isso a
 // validação do saveUser, que fica no app.js, segue usando o ROLE_LABELS dele).
-// updateUserAccess era `async function` de bloco no app.js; agora é global.
+// updateUserAccess (e, desde a UBX-V4, deleteUser) eram `async function` de bloco no app.js; agora são globais.
 (function () {
   if (globalThis.__EPI_MODULE_USERS_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_USERS_UI_LOADED__ = true;
@@ -205,6 +206,21 @@
     }
   }
 
+  // Saiu do app.js na UBX-V4 (Etapa A), quando confirmDestructive virou global.
+  async function deleteUser(userId) {
+    const state = globalThis.__EPI_APP_STATE__;
+    if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) {return;}
+    try {
+      await usersApi().deleteUser(userId, actorQuery());
+      if (String(state.editingUserId || '') === String(userId)) {resetUserForm();}
+      setUserFormFeedback('Usuário removido com sucesso.');
+      await loadBootstrap();
+    } catch (error) {
+      setUserFormFeedback(error.message, true);
+      alert(error.message);
+    }
+  }
+
   function resetUserForm() {
     const state = globalThis.__EPI_APP_STATE__;
     const refs = globalThis.__EPI_REFS__;
@@ -242,6 +258,7 @@
     addManagementButtons,
     startEditUser,
     updateUserAccess,
+    deleteUser,
     resetUserForm,
     syncUserFilters
   };

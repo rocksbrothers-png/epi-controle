@@ -31,6 +31,34 @@ def _read(*parts):
 
 # ── correção de escopo: permissão/módulo alternativos (ADR-0002 §10.3) ──────
 
+def _app_and_outsourced_modules_js():
+    """`app.js` + os módulos de Terceirizados (UBX-V4, Etapa B2).
+
+    A UI, os endpoints e o fallback de vínculos contratados saíram do app.js
+    para static/js/modules/outsourced/ — as asserções continuam as mesmas,
+    sobre o código que hoje os contém.
+    """
+    import glob
+    import os as _os
+    root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    parts = [_read('static', 'app.js')]
+    for path in sorted(glob.glob(_os.path.join(root, 'static', 'js', 'modules', 'outsourced', '**', '*.js'), recursive=True)):
+        with open(path, encoding='utf-8') as handle:
+            parts.append(handle.read())
+    return '\n'.join(parts)
+
+def _function_source(src, marker):
+    """Trecho de `src` da função que começa em `marker` até a chave que a fecha
+    na MESMA indentação da sua linha ("\n}\n" no app.js, "\n  }\n" nos módulos
+    UBX-V4)."""
+    start = src.index(marker)
+    line_start = src.rfind('\n', 0, start) + 1
+    indent = src[line_start:start].replace('async ', '')
+    end = src.index('\n' + indent + '}\n', start)
+    return src[start:end + len(indent) + 2]
+
+
+
 def test_role_permissions_grant_create_simplified_to_admin_and_user():
     """admin (Administrador Local) e user (Gestor de EPI) nunca têm
     employees:create/update — só a versão simplificada (ADR-0002 §10.2).
@@ -181,9 +209,8 @@ def test_archival_bindings_cover_new_kinds():
 # da lista ativa tinha ficado de fora.
 
 def test_archive_button_accepts_the_update_simplified_alternative():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('function formatOutsourcedEmployeeRow('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'function formatOutsourcedEmployeeRow(')
     assert "hasPermission('employees:delete') || permissions.canUpdate" in fn
 
 
@@ -206,14 +233,14 @@ def test_employee_form_submit_posts_to_outsourced_simplified_endpoint():
 
 
 def test_employees_summary_loaded_from_report_endpoint():
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert '/api/outsourced-companies/employees-summary' in app_js
 
 
 def test_employees_list_is_derived_client_side_not_from_new_route():
     """Sem rota de listagem própria — deriva de state.employees (já
     carregado pelo bootstrap), mesma estratégia do app Flutter."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'function outsourcedEmployeesList()' in app_js
     fn = app_js[app_js.index('function outsourcedEmployeesList()'):app_js.index('function outsourcedEmployeesList()') + 600]
     assert 'state.employees' in fn
@@ -279,9 +306,8 @@ def test_unit_field_hint_exists_in_fragment_and_generated_index():
 
 
 def test_sync_outsourced_employee_unit_options_locks_the_field_for_operational_profiles():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('function syncOutsourcedEmployeeUnitOptions('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'function syncOutsourcedEmployeeUnitOptions(')
     assert 'isOperationalProfile()' in fn
     assert 'operational_unit_id' in fn
     assert 'unitField.disabled = lockByOperationalProfile' in fn

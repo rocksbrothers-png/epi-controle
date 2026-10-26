@@ -22,6 +22,34 @@ def _read(*parts):
 
 # ── navegação e module_visibility ───────────────────────────────────────────
 
+def _app_and_outsourced_modules_js():
+    """`app.js` + os módulos de Terceirizados (UBX-V4, Etapa B2).
+
+    A UI, os endpoints e o fallback de vínculos contratados saíram do app.js
+    para static/js/modules/outsourced/ — as asserções continuam as mesmas,
+    sobre o código que hoje os contém.
+    """
+    import glob
+    import os as _os
+    root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    parts = [_read('static', 'app.js')]
+    for path in sorted(glob.glob(_os.path.join(root, 'static', 'js', 'modules', 'outsourced', '**', '*.js'), recursive=True)):
+        with open(path, encoding='utf-8') as handle:
+            parts.append(handle.read())
+    return '\n'.join(parts)
+
+def _function_source(src, marker):
+    """Trecho de `src` da função que começa em `marker` até a chave que a fecha
+    na MESMA indentação da sua linha ("\n}\n" no app.js, "\n  }\n" nos módulos
+    UBX-V4)."""
+    start = src.index(marker)
+    line_start = src.rfind('\n', 0, start) + 1
+    indent = src[line_start:start].replace('async ', '')
+    end = src.index('\n' + indent + '}\n', start)
+    return src[start:end + len(indent) + 2]
+
+
+
 def test_nav_button_exists_in_generated_index_and_sidebar_fragment():
     for path in (('static', 'index.html'), ('static', 'views', '_sidebar.html')):
         html = _read(*path)
@@ -114,14 +142,14 @@ def test_form_submit_posts_to_outsourced_companies_endpoint():
 
 
 def test_promote_calls_promote_endpoint():
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert "/api/outsourced-companies/${entityId}/promote" in app_js
 
 
 def test_list_is_loaded_on_demand_not_from_bootstrap():
     """Módulo opt-in: ao contrário de state.legalEntities, a lista não pode
     vir de loadBootstrap() (rodaria pra todo usuário, módulo ligado ou não)."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'async function loadOutsourcedCompanies()' in app_js
     bootstrap_section = app_js[app_js.index('async function loadBootstrap()'):app_js.index('async function loadBootstrap()') + 4000]
     assert 'state.outsourcedCompanies' not in bootstrap_section
@@ -161,9 +189,8 @@ def test_all_locales_have_the_same_outsourced_company_keys():
 # loadOutsourcedEmployeesSummary já usava corretamente.
 
 def test_load_outsourced_companies_gate_matches_backend_view_permission():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('async function loadOutsourcedCompanies()'):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'async function loadOutsourcedCompanies()')
     assert "hasPermission('employees:view')" in fn
     assert "hasPermission('employees:create')" not in fn
 
@@ -179,9 +206,8 @@ def test_load_outsourced_companies_gate_matches_backend_view_permission():
 # estes perfis), mas a UI deixava escolher uma opção sem nenhum efeito real.
 
 def test_sync_outsourced_company_unit_options_function_exists_and_locks_the_field():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('function syncOutsourcedCompanyUnitOptions('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'function syncOutsourcedCompanyUnitOptions(')
     assert 'isOperationalProfile()' in fn
     assert 'operational_unit_id' in fn
     assert 'unitField.disabled = true' in fn
@@ -195,12 +221,10 @@ def test_sync_outsourced_company_unit_options_wired_into_bind_dependent_selects(
 
 
 def test_sync_outsourced_company_unit_options_wired_into_form_reset_paths():
-    app_js = _read('static', 'app.js')
-    reset_fn = app_js[app_js.index('function resetOutsourcedCompanyForm()'):]
-    reset_fn = reset_fn[:reset_fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    reset_fn = _function_source(app_js, 'function resetOutsourcedCompanyForm()')
     assert 'syncOutsourcedCompanyUnitOptions();' in reset_fn
-    edit_fn = app_js[app_js.index('function startEditOutsourcedCompany('):]
-    edit_fn = edit_fn[:edit_fn.index('\n}\n') + 2]
+    edit_fn = _function_source(app_js, 'function startEditOutsourcedCompany(')
     assert 'syncOutsourcedCompanyUnitOptions();' in edit_fn
     handle_reset = app_js[app_js.index('function handleFormReset('):]
     handle_reset = handle_reset[:handle_reset.index("form.id === 'outsourced-employee-form'")]

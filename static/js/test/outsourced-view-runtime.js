@@ -334,7 +334,8 @@ const EXPECTED = {
 
 function loadModules(env) {
   const ctx = contextFor(env);
-  for (const rel of MODULES) { vm.runInContext(fs.readFileSync(path.join(JS_ROOT, rel), 'utf8'), ctx); }
+  // FIX-NAV-REFRESH-V1: coalesceLoad (shared/ui) é carregado antes, como em _scripts.html.
+  for (const rel of ['modules/shared/ui/mutation-flow.js', ...MODULES]) { vm.runInContext(fs.readFileSync(path.join(JS_ROOT, rel), 'utf8'), ctx); }
   return ctx;
 }
 

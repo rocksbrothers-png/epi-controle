@@ -1875,5 +1875,8 @@
   "stock.physical.needSize": "Vérifiez la taille de chaque QR sélectionné.",
   "stock.physical.contextChanged": "L’entreprise/unité a changé. Fermez puis rouvrez la vérification.",
   "stock.physical.failed": "Impossible d’enregistrer cette action.",
-  "stock.blockedHint": "Les pièces périmées sont automatiquement bloquées par leur validité physique. L’unité indique le destinataire du don, retour ou élimination et confirme l’envoi avant la déduction du stock."
+  "stock.blockedHint": "Les pièces périmées sont automatiquement bloquées par leur validité physique. L’unité indique le destinataire du don, retour ou élimination et confirme l’envoi avant la déduction du stock.",
+  "mutation": {
+    "refreshFailed": "L’opération a été enregistrée, mais l’écran n’a pas pu être actualisé. Rechargez la page pour voir les données à jour."
+  }
 }

@@ -1875,5 +1875,8 @@
   "stock.physical.needSize": "Confira o tamanho de cada QR selecionado.",
   "stock.physical.contextChanged": "A empresa/unidade mudou. Feche e abra novamente a conferência.",
   "stock.physical.failed": "Não foi possível registrar a ação.",
-  "stock.blockedHint": "Peças vencidas são bloqueadas automaticamente pela validade física. A unidade indica o destinatário para doação, devolução ou descarte e confirma o envio para baixar o estoque."
+  "stock.blockedHint": "Peças vencidas são bloqueadas automaticamente pela validade física. A unidade indica o destinatário para doação, devolução ou descarte e confirma o envio para baixar o estoque.",
+  "mutation": {
+    "refreshFailed": "A operação foi registrada, mas não foi possível atualizar a tela. Recarregue a página para ver os dados atualizados."
+  }
 }

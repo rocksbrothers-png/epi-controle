@@ -87,6 +87,7 @@ function loadModule(relPath) {
   'modules/users/integrations/users-api.js',
   'modules/users/ui/users-view.js',
   'modules/shared/ui/dialogs.js',
+  'modules/shared/ui/mutation-flow.js',
   'modules/auth/business/access-rules.js',
   'modules/auth/ui/access-context.js',
   'modules/employees/business/employee-rules.js',
@@ -7766,6 +7767,7 @@ require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 require('./users-view-runtime')({ testAsync, test, assert, eq });
 require('./shared-dialogs-runtime')({ testAsync, test, assert, eq });
 require('./fix-colab-terc-runtime')({ testAsync, test, assert, eq });
+require('./fix-nav-refresh-runtime')({ testAsync, test, assert, eq });
 require('./employees-view-runtime')({ testAsync, test, assert, eq });
 require('./outsourced-view-runtime')({ testAsync, test, assert, eq });
 require('./access-rules-runtime')({ test, assert, eq });

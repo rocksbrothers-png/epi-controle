@@ -1,7 +1,7 @@
 'use strict';
 /* global tr, hasPermission, requirePermission, actorQuery, escapeHtml, formatDate, unitTypeLabel,
    isOperationalProfile, filterByUserCompany, setFormSubmitLabel, showView, focusRegistrationTab,
-   syncOutsourcedEmployeeCompanySelect, renderOutsourcedEmployees --
+   syncOutsourcedEmployeeCompanySelect, renderOutsourcedEmployees, coalesceLoad --
    globais do app.js, de shared/ui e de views/*, resolvidos na chamada (ver abaixo) */
 
 // UI: Terceirizados e Prestadores — empresas (Refatoração UBX-V4, Etapa B2 —
@@ -49,21 +49,24 @@
     // seletor de empresa do Cadastro de Colaboradores (syncOutsourcedEmployeeCompanySelect,
     // chamado por renderOutsourcedCompanies logo abaixo) recebiam dados.
     if (!hasPermission('employees:view')) {return;}
-    try {
-      const data = await outsourcedApi().listOutsourcedCompanies(actorQuery());
-      state.outsourcedCompanies = data.outsourced_companies || data.items || [];
-      // Empresas do tenant ainda não vinculadas à própria Unidade (ADR-0002
-      // §12 — compartilhamento por tenant): campos públicos só, mascarados no
-      // backend (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
-      // nunca contrato/nota/colaborador de outra Unidade. Vazio para quem não
-      // é escopado por Unidade (já vê tudo em outsourcedCompanies).
-      state.outsourcedCompaniesAvailable = data.available_outsourced_companies || [];
-    } catch (error) {
-      state.outsourcedCompanies = [];
-      state.outsourcedCompaniesAvailable = [];
-      reportNonCriticalError('[terceirizados] falha ao carregar empresas terceirizadas', error);
-    }
-    renderOutsourcedCompanies();
+    // FIX-NAV-REFRESH-V1: pedida pela tela e pela operação na mesma atualização → uma requisição.
+    return coalesceLoad('outsourced-companies', async () => {
+      try {
+        const data = await outsourcedApi().listOutsourcedCompanies(actorQuery());
+        state.outsourcedCompanies = data.outsourced_companies || data.items || [];
+        // Empresas do tenant ainda não vinculadas à própria Unidade (ADR-0002
+        // §12 — compartilhamento por tenant): campos públicos só, mascarados no
+        // backend (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
+        // nunca contrato/nota/colaborador de outra Unidade. Vazio para quem não
+        // é escopado por Unidade (já vê tudo em outsourcedCompanies).
+        state.outsourcedCompaniesAvailable = data.available_outsourced_companies || [];
+      } catch (error) {
+        state.outsourcedCompanies = [];
+        state.outsourcedCompaniesAvailable = [];
+        reportNonCriticalError('[terceirizados] falha ao carregar empresas terceirizadas', error);
+      }
+      renderOutsourcedCompanies();
+    });
   }
 
   function renderOutsourcedCompanies() {

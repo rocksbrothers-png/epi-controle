@@ -1875,5 +1875,8 @@
   "stock.physical.needSize": "Kontroller størrelsen for hver valgt QR.",
   "stock.physical.contextChanged": "Bedrift/enhet er endret. Lukk og åpne kontrollen på nytt.",
   "stock.physical.failed": "Handlingen kunne ikke registreres.",
-  "stock.blockedHint": "Utløpte artikler sperres automatisk etter fysisk utløpsdato. Enheten angir mottaker for donasjon, retur eller kassering og bekrefter sending før lageret reduseres."
+  "stock.blockedHint": "Utløpte artikler sperres automatisk etter fysisk utløpsdato. Enheten angir mottaker for donasjon, retur eller kassering og bekrefter sending før lageret reduseres.",
+  "mutation": {
+    "refreshFailed": "Handlingen ble lagret, men skjermen kunne ikke oppdateres. Last inn siden på nytt for å se oppdaterte data."
+  }
 }

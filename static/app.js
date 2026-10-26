@@ -2923,21 +2923,8 @@ function canViewConfiguration() {
   return hasConfigurationAccess();
 }
 
-function canManageUsers() {
-  return hasPermission('users:update') || hasPermission('users:create') || hasPermission('users:delete');
-}
-
-function canManageEpi() {
-  return hasPermission('epis:create') || hasPermission('epis:update') || hasPermission('epis:delete');
-}
-
-function canViewReports() {
-  return hasPermission('reports:view');
-}
-
-function canAccessCommercialArea() {
-  return state.user?.role === 'master_admin' && hasPermission('commercial:view');
-}
+// canManageUsers, canManageEpi, canViewReports e canAccessCommercialArea: regras puras em
+// static/js/modules/auth/business/access-rules.js, publicadas por .../auth/ui/access-context.js (UBX-V4, Etapa C).
 
 function splitUserName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -3163,51 +3150,16 @@ function bindSpaNavigationHistory() {
 // centraliza a regra para que a navegação programática (cards do dashboard,
 // deep-links) não abra uma view proibida para o papel.
 function canAccessView(view) {
-  const permission = VIEW_PERMISSIONS[view];
-  if (permission && !hasPermission(permission)) {
-    // ADR-0002 §10 (correção de escopo): Terceirizados e Prestadores abre
-    // com employees:create (aba Empresas) OU employees:create_simplified
-    // (aba Cadastro de Colaboradores) — sem isso, admin/user (que só têm a
-    // segunda) nunca alcançavam a tela mesmo com o módulo ligado.
-    const altPermission = VIEW_PERMISSION_ALTERNATIVES[view];
-    if (!altPermission || !hasPermission(altPermission)) return false;
-  }
-  const role = state.user?.role;
-  // Views de cadastro estrutural: apenas administradores estruturais.
-  if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)
-      && !['master_admin', 'general_admin', 'registry_admin'].includes(role)) {
-    return false;
-  }
-  // Gestão de colaborador (movimentação entre unidades): administradores +
-  // perfis operacionais (Local/Gestor) — fora do escopo de module_visibility
-  // (não é um dos módulos configuráveis), mantém a restrição fixa.
-  if (view === 'gestao-colaborador'
-      && !['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(role)) {
-    return false;
-  }
-  // Estoque/Entregas/Fichas de EPI: a restrição fixa de papel foi
-  // substituída pela visibilidade por módulo (configurável pelo
-  // Administrador Geral) logo abaixo — o padrão do sistema já nega estas
-  // três para Comprador/Aprovador (MODULE_REQUIRED_PERMISSIONS/
-  // _STRUCTURALLY_HIDDEN_BY_DEFAULT em rule_engine.py), mas agora pode ser
-  // liberado por configuração, o que um `return false` fixo aqui impediria.
-  if (view === 'configuracao') return hasConfigurationAccess();
-  // Visibilidade estrutural por módulo (configuração do Administrador
-  // Geral): módulo ausente do mapa é tratado como visível — só restringe
-  // quando o backend explicitamente desliga o módulo para o papel. Nunca
-  // amplia o que a permissão técnica acima já negou.
-  const module = VIEW_MODULE[view];
-  if (module && state.moduleVisibility && Object.prototype.hasOwnProperty.call(state.moduleVisibility, module)) {
-    if (Boolean(state.moduleVisibility[module])) return true;
-    // Mesma correção acima, agora para o módulo: terceirizados OU
-    // terceirizados_colaboradores libera a view.
-    const altModule = VIEW_MODULE_ALTERNATIVES[view];
-    if (altModule && Object.prototype.hasOwnProperty.call(state.moduleVisibility, altModule)) {
-      return Boolean(state.moduleVisibility[altModule]);
-    }
-    return false;
-  }
-  return true;
+  // Regra pura em modules/auth/business/access-rules.js (UBX-V4, Etapa C); os
+  // mapas de view/módulo continuam aqui (usados também por showView/menus).
+  return globalThis.__EPI_ACCESS_RULES__.canAccessView(globalThis.__EPI_ACCESS_CONTEXT__.current(), view, {
+    viewPermissions: VIEW_PERMISSIONS,
+    viewPermissionAlternatives: VIEW_PERMISSION_ALTERNATIVES,
+    viewModule: VIEW_MODULE,
+    viewModuleAlternatives: VIEW_MODULE_ALTERNATIVES,
+    configurationAdminRoles: CONFIGURATION_ADMIN_ROLES,
+    moduleVisibility: state.moduleVisibility
+  });
 }
 globalThis.canAccessView = canAccessView;
 
@@ -5981,33 +5933,8 @@ function bindDependentSelects() {
   populateStockProtectionFilter();
 }
 
-function sameCompany(target) {
-  return String(target.company_id || '') === String(state.user?.company_id || '');
-}
-
-function canManageUser(target) {
-  if (!hasPermission('users:update')) return false;
-  if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
-  if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
-  if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
-  return false;
-}
-function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-function canPromoteToAdmin(target) { return ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
-function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
-function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
-function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
-function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-
-function canGenerateRecoveryToken(target) {
-  if (state.user?.role === 'master_admin') {
-    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
-  }
-  if (state.user?.role === 'general_admin') {
-    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
-  }
-  return false;
-}
+// sameCompany e as regras can* de gestão de usuários (canManageUser, canDeleteUser, canPromote*,
+// canDemote*, canToggleActive, canGenerateRecoveryToken): modules/auth/ (UBX-V4, Etapa C).
 
 function askTemporaryPassword(defaultValue = '') {
   const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
@@ -12456,9 +12383,7 @@ const MY_COMPANY_IMAGE_TYPES = {
 };
 const MY_COMPANY_COLOR_DEFAULTS = { primary_color: '#1565C0', secondary_color: '#42A5F5', accent_color: '#FF6F00' };
 
-function canConfigureMyCompany() {
-  return Boolean(state.user) && hasPermission('company_settings:update');
-}
+// canConfigureMyCompany: modules/auth/ (UBX-V4, Etapa C).
 
 function myCompanyThemeMode(company) {
   try { return JSON.parse(company?.theme_json || '{}').mode || 'auto'; } catch { return 'auto'; }
@@ -14803,9 +14728,7 @@ async function executePrConferenciaAction(prId, prItems) {
 
 const purchaseQrLabelsByPr = {};
 
-function canPrintPurchaseQrLabels() {
-  return hasPermission('purchase_requests:update') || hasPermission('stock:adjust') || hasPermission('stock:view');
-}
+// canPrintPurchaseQrLabels: modules/auth/ (UBX-V4, Etapa C).
 
 async function openPurchaseQrPrintFromDetail(prId) {
   let labels = purchaseQrLabelsByPr[prId];
@@ -15821,9 +15744,7 @@ const _purchaseFunctionSelectedUnitIds = new Set();
 let _purchaseFunctionUnitSearch = '';
 let _purchaseFunctionEmployeeSearch = '';
 
-function canManagePurchaseFunctions() {
-  return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
-}
+// canManagePurchaseFunctions: modules/auth/ (UBX-V4, Etapa C).
 
 function _getBuyerApproverUserEntry(employeeId) {
   return (state.users || []).find(u => String(u.linked_employee_id) === String(employeeId) && ['buyer','approver'].includes(u.role));

@@ -304,8 +304,12 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     for (const name of UI) {
       assert(!new RegExp(`^(?:async\\s+)?function\\s+${name}\\(`, 'm').test(app), `${name} voltou ao app.js`);
     }
-    for (const name of [...APP_KEPT, ...CAN]) {
+    for (const name of APP_KEPT) {
       assert(new RegExp(`^(?:async\\s+)?function\\s+${name}\\(`, 'm').test(app), `${name} segue no app.js`);
+    }
+    // UBX-V4 (Etapa C): as regras can* saíram do app.js para modules/auth/.
+    for (const name of CAN) {
+      assert(!new RegExp(`^(?:async\\s+)?function\\s+${name}\\(`, 'm').test(app), `${name} voltou ao app.js`);
     }
     // ROLE_LABELS: a UI usa o de core/constants.js só como rótulo dos 8 perfis do
     // filtro; a validação do saveUser segue com a tabela do app.js.

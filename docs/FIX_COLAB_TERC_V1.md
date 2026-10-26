@@ -53,6 +53,24 @@ O workflow `Colaboradores and outsourced browser regression` executa Chromium no
 
 Subagente separado, somente leitura, autorizado pelo responsável. Revisou os dois diffs, arquitetura, isolamento e contratos; executou suas próprias provas Chromium (12/12), suíte JS (587) e guarda UBX (798 declarações, 112 endpoints, zero ciclos). Veredito: **aprovado, sem P0/P1/P2 pendentes atribuíveis à mudança**, condicionado aos resultados finais de CI/HEADs.
 
+## Complemento (Claude) — arquivamento sem perder a tela
+
+Revisão do que já estava integrado (Corporate #1062, SaaS #436), sem reimplementar: os três defeitos originais seguem corrigidos. Restava uma lacuna do mesmo defeito no fluxo genérico de arquivamento (`ARCHIVAL_ENTITIES`), reproduzida em Chromium nas bases `bc94d951` (Corporate) e `38d9446` (SaaS):
+
+| Fluxo | Antes | Depois |
+|---|---|---|
+| Arquivar/desarquivar colaborador terceirizado (cadastro global) | Listas atualizavam, mas `loadBootstrap()` sem `preserveView` levava o usuário ao Dashboard | Permanece em Terceirizados e Prestadores com as listas ativas e arquivadas atualizadas |
+| Arquivar/desarquivar colaborador CLT | Mesma navegação para o Dashboard | Permanece em Colaboradores |
+| Excluir definitivamente empresa ou colaborador terceirizado | `purgeArchivedRecord` recarregava sem `preserveView` → Dashboard | Permanece na aba de arquivados, já sem o registro |
+
+Correção: flag declarativa `preserveView: true` nas entradas `employee`, `outsourcedCompany` e `outsourcedEmployee` de `ARCHIVAL_ENTITIES`, lida por `archiveEntityRecord`, `restoreArchivedRecord` e `purgeArchivedRecord` (substitui o teste fixo `kind === 'outsourcedCompany'`). Nenhuma função ou endereço novo no monólito (guarda: 798 declarações, 112 endpoints). EPI e Unidades mantêm a navegação anterior — fora do escopo de Colaboradores/Terceirizados; o mesmo padrão existe lá e fica registrado para decisão.
+
+Regressões:
+
+- `static/js/test/fix-colab-terc-runtime.js`: 12 casos sobre a configuração **real** de `ARCHIVAL_ENTITIES` (arquivar/desarquivar/excluir × 4 kinds); contra a base, 7 falham (exatamente as lacunas).
+- `scripts/browser/fix_colab_terc.py`: cenários `employee_archival`, `purge` e `editor_click` (clique real em Editar na Lista, troca de aba, PUT sem campos vazios). 8 cenários × 5 idiomas = 40/40; contra a base, `employee_archival` e `purge` falham em todos os idiomas.
+- Defeito 3 conferido por clique real: na base anterior à FIX (`aa35a81d`) salvar a edição levava ao Dashboard; na `main` atual passa.
+
 ## Limites operacionais
 
 Sem merge, deploy, alteração de dados reais, bancos compartilhados ou proteção de branches. PostgreSQL dos workflows de CI é descartável no runner. Rollback: reverter o commit da correção; nenhuma migração/dado exige reversão. HEADs finais e links/resultados de CI constam dos PRs draft e da entrega.

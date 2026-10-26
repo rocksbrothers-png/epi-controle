@@ -7402,6 +7402,9 @@ const ARCHIVAL_ENTITIES = {
     responseKey: 'employees',
     deletePermission: 'employees:delete',
     updatePermission: 'employees:update',
+    // FIX-COLAB-TERC-V1: arquivar/desarquivar/excluir definitivamente atualiza
+    // as listas sem tirar o usuário da tela (loadBootstrap({preserveView})).
+    preserveView: true,
     purgeLabels: {
       deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
       feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
@@ -7454,6 +7457,7 @@ const ARCHIVAL_ENTITIES = {
     i18nPrefix: 'outsourcedCompany',
     labelFallback: 'Empresa terceirizada',
     responseKey: 'outsourced_companies',
+    preserveView: true,
     deletePermission: 'employees:update employees:update_simplified',
     updatePermission: 'employees:update employees:update_simplified',
     identityKind: 'outsourcedCompanyLike',
@@ -7489,6 +7493,7 @@ const ARCHIVAL_ENTITIES = {
     updatePermission: 'employees:update employees:update_simplified',
     identityKind: 'employee',
     archivedQueryExtra: '&outsourced_only=1',
+    preserveView: true,
     purgeLabels: {
       deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
       feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
@@ -7562,7 +7567,7 @@ async function archiveEntityRecord(kind, recordId) {
     } else {
       showToast(tr('epi.archivedOk', 'Registro arquivado.'), 'success');
     }
-    await loadBootstrap({ preserveView: kind === 'outsourcedCompany' });
+    await loadBootstrap({ preserveView: cfg.preserveView === true });
     if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
     await loadArchivedRecords(kind);
     // Atualiza imediatamente as telas de estoque (itens recém-bloqueados aparecem em Estoque Bloqueado)
@@ -7653,7 +7658,7 @@ async function restoreArchivedRecord(kind, recordId) {
   if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
   try {
     await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap({ preserveView: kind === 'outsourcedCompany' });
+    await loadBootstrap({ preserveView: cfg.preserveView === true });
     if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
     await loadArchivedRecords(kind);
   } catch (error) {
@@ -7699,7 +7704,7 @@ async function purgeArchivedRecord(kind, recordId) {
       body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
     });
     alert(tr('unit.purgeDone', 'Registro excluído definitivamente. A operação foi gravada na auditoria.'));
-    await loadBootstrap();
+    await loadBootstrap({ preserveView: cfg.preserveView === true });
     await loadArchivedRecords(kind);
   } catch (error) {
     alert(error.message);

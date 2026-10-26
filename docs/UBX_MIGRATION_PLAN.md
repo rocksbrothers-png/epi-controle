@@ -216,7 +216,16 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §10](UBX_APPJS_AUDITORIA.md#10-ubx-v2-202
 - Guarda: catraca de endpoints na camada UI, ciclos entre scripts, `business` sem dependência da UI
   nem leitura de globais, limite de 500 linhas por módulo.
 
+## UBX-V3 (2026-10-26) — seis extrações incrementais
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §11](UBX_APPJS_AUDITORIA.md#11-ubx-v3-2026-10-26--seis-extrações-incrementais).
+
+- Etapas: helpers de DOM, rótulos com `tr`, HTTP das views pelo cliente único, Relatórios, EPIs e
+  Usuários — cada uma com caracterização gerada das funções originais e comparação no navegador.
+- `app.js` 20.205 → 19.227 linhas (base `3e6fe8c5`); 936 → 878 declarações; 121 → 117 endpoints; `fetch` cru na UI 9 → 4.
+- O gate de unificação HTTP foi cumprido para as 5 views com `api` local; `procurement.js` fica
+  para decisão separada (não desembrulha `{ ok, data }`).
+
 ## Próximo passo
-Executar o **gate de unificação dos adaptadores HTTP locais das views**, com contrato e teste de
-compatibilidade sobre `static/js/modules/api-client.js`. Somente depois iniciar a **Fase 2**
-(Compras), sem criar um segundo cliente HTTP.
+Mover `confirmDestructive`/diálogos para `shared/ui` e extrair Colaboradores/terceirizados, depois as
+regras `can*` como negócio puro. Compras, Estoque e Migração só depois de estabilizados.

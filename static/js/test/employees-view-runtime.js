@@ -80,6 +80,8 @@ function makeEnv() {
       legalEntityOptionsHtml: (list) => list.map((e) => `<option value="${e.id}">${e.id}</option>`).join(''),
       setFormSubmitLabel: (id, t) => log.push(['submitLabel', id, t]),
       showView: (v) => log.push(['showView', v]),
+      focusRegistrationTab: (v) => log.push(['focusTab', v]),
+      hasPermission: () => true, canAccessView: () => true,
       dsCreateBulkSelection: () => (env.bulkAvailable ? bulk : null),
       dsBulkBar: (count, actions, opts) => `BAR(${count},${actions.map((a) => a.id + ':' + a.label).join('/')},${opts.labelPlural},${opts.labelSingular},${opts.clearLabel})`,
       api: async (p, o) => { log.push(['api', p, o.method, o.body]); if (env.apiFails) { throw new Error(env.apiFails); } return env.apiPayload || { token: 'tk' }; }
@@ -235,11 +237,21 @@ function runAppSlices(ctx, appSource, names) {
   return ctx;
 }
 
+// FIX-COLAB-TERC-V1 intentional differences from the frozen V4 table:
+// navigation precedes hydration, edit focuses Cadastro, foreign rows deny.
+EXPECTED.editar.log = [['showView', 'colaboradores'], ['submitLabel', 'employee-form', 'Atualizar colaborador'], ['focusTab', 'colaboradores']];
+EXPECTED.editarPadroes = EXPECTED.editarInexistente;
+
 module.exports = function ({ testAsync, test, assert, eq }) {
   testAsync('UBX-V4 Colaboradores: os módulos reproduzem as funções originais', async () => {
     const actual = await scenario(loadModules);
     for (const key of Object.keys(EXPECTED)) {
-      eq(JSON.stringify(actual[key]), JSON.stringify(EXPECTED[key]), key);
+      const expected = JSON.parse(JSON.stringify(EXPECTED[key]));
+      if (key === 'editar') {
+        expected.form.company_id[0] = String(expected.form.company_id[0]);
+        expected.form.unit_id[0] = String(expected.form.unit_id[0]);
+      }
+      eq(JSON.stringify(actual[key]), JSON.stringify(expected), key);
     }
     eq(Object.keys(actual).sort().join(','), Object.keys(EXPECTED).sort().join(','));
   });

@@ -151,7 +151,7 @@ def test_list_is_loaded_on_demand_not_from_bootstrap():
     vir de loadBootstrap() (rodaria pra todo usuário, módulo ligado ou não)."""
     app_js = _app_and_outsourced_modules_js()
     assert 'async function loadOutsourcedCompanies()' in app_js
-    bootstrap_section = app_js[app_js.index('async function loadBootstrap()'):app_js.index('async function loadBootstrap()') + 4000]
+    bootstrap_section = app_js[app_js.index('async function loadBootstrap('):app_js.index('async function loadBootstrap(') + 4000]
     assert 'state.outsourcedCompanies' not in bootstrap_section
     assert "view === 'terceirizados' && typeof loadOutsourcedCompanies === 'function'" in app_js
 
@@ -227,7 +227,7 @@ def test_sync_outsourced_company_unit_options_wired_into_form_reset_paths():
     edit_fn = _function_source(app_js, 'function startEditOutsourcedCompany(')
     assert 'syncOutsourcedCompanyUnitOptions();' in edit_fn
     handle_reset = app_js[app_js.index('function handleFormReset('):]
-    handle_reset = handle_reset[:handle_reset.index("form.id === 'outsourced-employee-form'")]
+    handle_reset = handle_reset[:handle_reset.index("formId === 'outsourced-employee-form'")]
     assert 'syncOutsourcedCompanyUnitOptions();' in handle_reset
 
 

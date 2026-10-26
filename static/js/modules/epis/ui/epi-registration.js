@@ -22,6 +22,18 @@
   if (globalThis.__EPI_MODULE_EPIS_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_EPIS_UI_LOADED__ = true;
 
+  // Mesmo escape de views/view-helpers.js (escapeHtml). A foto é uma data URL
+  // (base64 não tem & < > " '), então o valor legítimo sai igual; um
+  // epi_photo_data salvo com aspas deixa de injetar HTML no atributo src.
+  function escapeAttribute(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function renderEpiPhotoPreview(photoValue) {
     const preview = document.getElementById('epi-photo-preview');
     if (!preview) {return;}
@@ -29,7 +41,7 @@
       preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
       return;
     }
-    preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
+    preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${escapeAttribute(photoValue)}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
   }
 
   async function handleEpiPhotoUpload(event) {

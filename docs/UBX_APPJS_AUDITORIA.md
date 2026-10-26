@@ -430,6 +430,11 @@ um `fetch` na mesma linha depois de uma string com `//`, nem arquivos fora de `v
    `views/feedback-detail.js` tinha o mesmo wrapper com fallback — removido na Etapa 3 do SaaS
    (passa a chamar `globalThis.apiFetch`, como no Corporate; `api` só delegava a `apiFetch`), e o
    arquivo ficou byte-idêntico ao do Corporate.
+10. CodeQL no PR (código movido aparece como novo): **corrigido**, sem efeito em valor legítimo —
+    `renderEpiPhotoPreview` passou a escapar a foto no atributo `src` (XSS armazenado se
+    `epi_photo_data` tivesse aspas; data URL base64 sai idêntica, teste em
+    `epis-registration-runtime.js`), e o par `nearestFormId`/`formId` sobrescrito de
+    `describeFieldNode` foi removido (valia o segundo; mesma ordem de chaves e mesmo objeto).
 
 ### 11.8 Auditoria independente (adversarial)
 

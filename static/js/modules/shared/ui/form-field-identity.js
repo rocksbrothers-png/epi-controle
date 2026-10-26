@@ -63,12 +63,10 @@
       name: String(node.getAttribute('name') || ''),
       type: String(node.getAttribute('type') || ''),
       placeholder: String(node.getAttribute('placeholder') || ''),
-      nearestFormId: getElementIdAttribute(nearestForm),
-      formId: getElementIdAttribute(nearestForm),
-      // Chaves repetidas preexistentes no app.js: vale este segundo par.
-      // eslint-disable-next-line no-dupe-keys
+      // O app.js declarava nearestFormId/formId duas vezes; valia o segundo par
+      // (abaixo). O primeiro par (getElementIdAttribute, sem efeito colateral)
+      // era sobrescrito e foi removido — mesmo objeto resultante.
       nearestFormId: String((nearestForm && nearestForm.id) || ''),
-      // eslint-disable-next-line no-dupe-keys
       formId: String((nearestForm && nearestForm.id) || ''),
       outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
       selector

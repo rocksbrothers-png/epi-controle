@@ -199,6 +199,17 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     eq(Object.keys(actual).sort().join(','), Object.keys(EXPECTED).sort().join(','));
   });
 
+  test('UBX-V3 EPIs: a foto entra escapada no src (alerta CodeQL; data URL legítima sai igual)', () => {
+    const env = makeEnv();
+    const ctx = loadModules(env);
+    const dataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRg+abc=';
+    ctx.renderEpiPhotoPreview(dataUrl);
+    assert(env.nodes['epi-photo-preview'].innerHTML.includes(`src="${dataUrl}"`), 'data URL inalterada');
+    ctx.renderEpiPhotoPreview('x" onerror="alert(1)');
+    const html = env.nodes['epi-photo-preview'].innerHTML;
+    assert(html.includes('src="x&quot; onerror=&quot;alert(1)"') && !html.includes('" onerror="'), 'aspas escapadas');
+  });
+
   test('UBX-V3 EPIs: nomes globais, namespaces, camadas e ordem de carga', () => {
     const ctx = loadModules(makeEnv(), { realFileHelpers: true });
     for (const name of [...UI, ...BUSINESS, 'fileToDataUrl', 'fileToJpegDataUrl']) { eq(typeof ctx[name], 'function', name); }

@@ -70,7 +70,22 @@ function loadModule(relPath) {
   // Refatoração UBX: camada Business de Compras extraída do app.js.
   'modules/purchases/business/purchase-import-matching.js',
   // UBX-V2: formatação e leitura de valores compartilhadas.
-  'modules/shared/business/value-format.js'
+  'modules/shared/business/value-format.js',
+  // UBX-V3: identificação de elementos e campos de formulário.
+  'modules/shared/ui/form-field-identity.js',
+  // UBX-V3: rótulos de domínio traduzidos com tr.
+  'modules/shared/ui/domain-labels.js',
+  // UBX-V3: Relatórios (business → integrations → ui).
+  'modules/reports/business/report-filters.js',
+  'modules/reports/integrations/reports-api.js',
+  'modules/reports/ui/reports-view.js',
+  // UBX-V3: cadastro de EPI e leitura de arquivo.
+  'modules/shared/ui/file-data-url.js',
+  'modules/epis/business/epi-form-values.js',
+  'modules/epis/ui/epi-registration.js',
+  'modules/users/business/user-form.js',
+  'modules/users/integrations/users-api.js',
+  'modules/users/ui/users-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7733,6 +7748,13 @@ require('./purchase-lot-capture-runtime')({ testAsync, assert, eq });
 require('./stock-physical-runtime')({ testAsync, assert, eq });
 require('./purchase-quote-import-runtime')({ test, testAsync, assert, eq });
 require('./shared-value-format-runtime')({ test, assert, eq });
+require('./shared-form-field-identity-runtime')({ test, assert, eq });
+require('./shared-domain-labels-runtime')({ test, assert, eq });
+require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
+require('./reports-view-runtime')({ testAsync, test, assert, eq });
+require('./epis-registration-runtime')({ testAsync, test, assert, eq });
+require('./users-view-runtime')({ testAsync, test, assert, eq });
+require('./extracted-globals-ownership-runtime')({ test, assert });
 
 (async () => {
   for (const t of asyncTests) {

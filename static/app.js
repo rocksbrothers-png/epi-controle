@@ -567,287 +567,11 @@ function safeOn(target, eventName, handler, options) {
   }
 }
 
-function isViewActive(viewSelector) {
-  if (!viewSelector) return false;
-  const viewElement = document.querySelector(viewSelector);
-  if (!viewElement) return false;
-  return viewElement.classList.contains('active');
-}
-
-function resolveFormFieldAutocomplete(field) {
-  if (!field || typeof field.getAttribute !== 'function') return null;
-  const tag = String(field.tagName || '').toLowerCase();
-  if (tag === 'select' || tag === 'textarea') return 'off';
-  const type = String(field.getAttribute('type') || 'text').toLowerCase();
-  if (['hidden', 'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'range', 'color'].includes(type)) return null;
-  if (type === 'password') {
-    const marker = String(field.id || field.name || '').toLowerCase();
-    if (marker.includes('new') || marker.includes('confirm') || marker.includes('recovery')) return 'new-password';
-    return 'current-password';
-  }
-  const marker = String((field.id || '') + ' ' + (field.name || '')).toLowerCase();
-  if (marker.includes('user') || marker.includes('login')) return 'username';
-  if (marker.includes('email')) return 'email';
-  if (marker.includes('phone') || marker.includes('whatsapp') || marker.includes('tel')) return 'tel';
-  if (marker === 'name' || marker.endsWith(' name') || marker.includes('-name') || marker.includes('_name')) return 'name';
-  if (type === 'search' || type === 'date' || type === 'number') return 'off';
-  return 'off';
-}
-
-
-function describeFieldNode(node) {
-  if (!node || !(node instanceof HTMLElement)) return null;
-  const nearestForm = node.closest('form');
-  const id = getElementIdAttribute(node);
-  const classSuffix = String(node.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
-  const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
-  return {
-    id,
-    rawDomIdProperty: String(node.id || ''),
-    tagName: String(node.tagName || '').toLowerCase(),
-    name: String(node.getAttribute('name') || ''),
-    type: String(node.getAttribute('type') || ''),
-    placeholder: String(node.getAttribute('placeholder') || ''),
-    nearestFormId: getElementIdAttribute(nearestForm),
-    formId: getElementIdAttribute(nearestForm),
-    nearestFormId: String((nearestForm && nearestForm.id) || ''),
-    formId: String((nearestForm && nearestForm.id) || ''),
-    outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
-    selector
-  };
-}
-
-function getElementIdAttribute(node) {
-  if (!node || typeof node.getAttribute !== 'function') return '';
-  return String(node.getAttribute('id') || '').trim();
-}
-
-function isValidDomId(value) {
-  if (typeof value !== 'string') return false;
-  const normalized = value.trim();
-  if (!normalized) return false;
-  if (normalized.includes('[object')) return false;
-  if (/[<>"']/.test(normalized)) return false;
-  if (/^(undefined|null|nan)$/i.test(normalized)) return false;
-  return true;
-}
-
-function toSafeId(value, fallback) {
-  const raw = typeof value === 'string' ? value : '';
-  const base = raw.trim() || String(fallback || 'form');
-  const sanitized = String(base)
-    .replace(/[^a-zA-Z0-9_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase();
-  return sanitized || String(fallback || 'form');
-}
-
-function setElementIdAttribute(node, value, contextLabel = 'unknown') {
-  if (!node || typeof node.setAttribute !== 'function') return false;
-  if (value instanceof HTMLElement) {
-    console.warn('[forms] tentativa de usar elemento como ID ignorada', { contextLabel });
-    return false;
-  }
-  if (typeof value !== 'string') {
-    console.warn('[forms] id inválido ignorado', { contextLabel });
-    return false;
-  }
-  const normalized = String(value || '').trim();
-  if (!isValidDomId(normalized)) return false;
-  node.setAttribute('id', normalized);
-  return true;
-}
-
-function normalizeInvalidDomIds(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return [];
-  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
-  const allNodes = Array.from(document.querySelectorAll('[id]'));
-  const idCounts = new Map();
-  allNodes.forEach((node) => {
-    const id = getElementIdAttribute(node);
-    if (!id) return;
-    idCounts.set(id, (idCounts.get(id) || 0) + 1);
-  });
-  const toNormalize = allNodes.filter((node) => {
-    const id = getElementIdAttribute(node);
-    return Boolean(id) && (isObjectLikeId(id) || (idCounts.get(id) || 0) > 1);
-  });
-  const updates = [];
-  toNormalize.forEach((node, index) => {
-    const previousId = getElementIdAttribute(node);
-    if (!previousId) return;
-    const tagName = String(node.tagName || 'node').toLowerCase();
-    const nearestForm = node.closest('form');
-    const basePrefix = nearestForm ? `${nearestForm.id || 'epi-form'}-${tagName}` : `epi-${tagName}`;
-    let candidateId = `${basePrefix}-normalized-${index + 1}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
-    let seq = 1;
-    while (candidateId && document.getElementById(candidateId) && document.getElementById(candidateId) !== node) {
-      seq += 1;
-      candidateId = `${basePrefix}-normalized-${index + 1}-${seq}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
-    }
-    if (!candidateId) return;
-    setElementIdAttribute(node, candidateId, 'normalizeInvalidDomIds');
-    Array.from(document.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
-      label.setAttribute('for', candidateId);
-    });
-    updates.push({ previousId, newId: candidateId, node: describeFieldNode(node) });
-  });
-  return updates;
-}
-
-function ensureFormFieldAttributes(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return;
-  if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
-
-  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
-  const hasDuplicateId = (value, exceptNode = null) => {
-    const normalized = String(value || '').trim();
-    if (!normalized) return false;
-    const nodes = Array.from(document.querySelectorAll(`[id="${CSS.escape(normalized)}"]`));
-    if (!exceptNode) return nodes.length > 1;
-    return nodes.some((node) => node !== exceptNode);
-  };
-  const buildSafeFieldId = (baseId) => {
-    let candidateId = String(baseId || '').trim() || `epi-field-${Date.now()}`;
-    while (document.getElementById(candidateId)) {
-      globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
-      candidateId = `${String(baseId || 'epi-field').trim() || 'epi-field'}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
-    }
-    return candidateId;
-  };
-  const buildStableFieldId = (formId, field, fieldIndex) => {
-    const safeFormId = isValidDomId(formId) ? formId : `form-${fieldIndex + 1}`;
-    const rawName = String(field?.getAttribute?.('name') || getElementIdAttribute(field) || field?.getAttribute?.('type') || 'field');
-    const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
-    return buildSafeFieldId(`${String(safeFormId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
-  };
-
-  const forms = Array.from(root.querySelectorAll('form'));
-  if (root instanceof HTMLFormElement) forms.unshift(root);
-
-  forms.forEach((form, formIndex) => {
-    const currentFormId = getElementIdAttribute(form);
-    let formId = currentFormId;
-
-    if (!isValidDomId(formId) || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
-      const fallback = `form-${formIndex + 1}`;
-      const safeId = toSafeId(form.getAttribute('name'), fallback);
-      formId = buildSafeFieldId(safeId);
-      setElementIdAttribute(form, formId, 'ensureFormFieldAttributes:form');
-    }
-
-    const fields = Array.from(form.querySelectorAll('input, select, textarea'));
-    fields.forEach((field, fieldIndex) => {
-      const hasId = field.hasAttribute('id');
-      const hasName = field.hasAttribute('name');
-      const currentFieldId = getElementIdAttribute(field);
-      const shouldNormalizeInvalidId = hasId && (!isValidDomId(currentFieldId) || isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
-
-      if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
-        const previousId = currentFieldId;
-        const fallback = `${formId || 'form'}-${field.getAttribute('name') || field.getAttribute('type') || 'field'}-${fieldIndex + 1}`;
-        let candidateId = toSafeId(currentFieldId, fallback);
-        if (!isValidDomId(candidateId) || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
-          candidateId = buildStableFieldId(formId, field, fieldIndex);
-        }
-        setElementIdAttribute(field, candidateId, 'ensureFormFieldAttributes:field');
-        if (previousId && previousId !== candidateId) {
-          Array.from(form.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
-            if (!label.control || label.control === field) label.setAttribute('for', candidateId);
-          });
-        }
-      }
-
-      if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
-        const autocompleteValue = resolveFormFieldAutocomplete(field);
-        if (autocompleteValue) field.setAttribute('autocomplete', autocompleteValue);
-      }
-    });
-  });
-}
-
-function auditFormFieldIssues(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return { missingIdOrName: 0, missingAutocomplete: 0, duplicateIds: [], brokenLabels: [] };
-  const scope = root.querySelectorAll ? root : document;
-  const fields = Array.from(scope.querySelectorAll('form input, form select, form textarea'));
-  const missingIdOrName = fields.filter((field) => !field.id && !field.name).length;
-  const missingAutocomplete = fields.filter((field) => {
-    if (!field.id && !field.name) return false;
-    if (field.hasAttribute('autocomplete')) return false;
-    return Boolean(resolveFormFieldAutocomplete(field));
-  }).length;
-
-  const idMap = new Map();
-  Array.from(document.querySelectorAll('[id]')).forEach((node) => {
-    const id = getElementIdAttribute(node);
-    if (!id) return;
-    if (!idMap.has(id)) {
-      idMap.set(id, { count: 0, nodes: [] });
-    }
-    const entry = idMap.get(id);
-    entry.count += 1;
-    const tag = String(node.tagName || 'node').toLowerCase();
-    const marker = node.className ? `${tag}#${id}.${String(node.className).trim().replace(/\s+/g, '.')}` : `${tag}#${id}`;
-    if (entry.nodes.length < 4) entry.nodes.push(marker);
-  });
-  const duplicateIds = Array.from(idMap.entries())
-    .filter(([, entry]) => entry.count > 1)
-    .map(([id, entry]) => ({ id, count: entry.count, nodes: entry.nodes }));
-
-  const brokenLabels = Array.from(document.querySelectorAll('label[for]')).filter((label) => {
-    const targetId = String(label.getAttribute('for') || '').trim();
-    if (!targetId) return false;
-    return !document.getElementById(targetId);
-  }).map((label) => label.getAttribute('for'));
-
-  return { missingIdOrName, missingAutocomplete, duplicateIds, brokenLabels };
-}
-
-function setupFormFieldHardening() {
-  if (globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__) return;
-  globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__ = true;
-
-  ensureFormFieldAttributes(document);
-  const normalizedIdsOnBoot = normalizeInvalidDomIds(document);
-  ensureFormFieldAttributes(document);
-  if (normalizedIdsOnBoot.length && globalThis.__EPI_DEBUG_FORMS__) console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
-  const observer = new MutationObserver((records) => {
-    records.forEach((record) => {
-      record.addedNodes.forEach((node) => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.matches('form, input, select, textarea')) {
-          ensureFormFieldAttributes(node.closest('form') || node);
-          normalizeInvalidDomIds(node.closest('form') || document);
-          return;
-        }
-        if (node.querySelector) {
-          ensureFormFieldAttributes(node);
-          normalizeInvalidDomIds(node);
-        }
-      });
-    });
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-  globalThis.__EPI_FORM_FIELD_HARDENING_OBSERVER__ = observer;
-
-  const audit = auditFormFieldIssues(document);
-  globalThis.__EPI_FORM_FIELD_AUDIT__ = audit;
-  if (audit.missingIdOrName || audit.missingAutocomplete || audit.duplicateIds.length || audit.brokenLabels.length) {
-    const duplicateIdNames = audit.duplicateIds.map((entry) => `${entry.id} (${entry.count}x)`).join(', ');
-    const duplicateNodes = audit.duplicateIds.flatMap((entry) => {
-      const escapedId = CSS.escape(String(entry.id || ''));
-      return Array.from(document.querySelectorAll(`[id="${escapedId}"]`)).map((node) => ({
-        duplicateId: entry.id,
-        ...describeFieldNode(node)
-      }));
-    });
-    console.warn('[forms] pending accessibility issues', {
-      ...audit,
-      duplicateIdsSummary: duplicateIdNames || 'none',
-      duplicateNodes
-    });
-  }
-}
+// isViewActive, resolveFormFieldAutocomplete, describeFieldNode, getElementIdAttribute,
+// isValidDomId, toSafeId, setElementIdAttribute, normalizeInvalidDomIds,
+// ensureFormFieldAttributes, auditFormFieldIssues e setupFormFieldHardening
+// (identificação de elementos e campos de formulário) vivem em
+// static/js/modules/shared/ui/form-field-identity.js (UBX-V3, Etapa 1).
 
 function deepClone(value) {
   return globalThis.structuredClone?.(value) ?? JSON.parse(JSON.stringify(value));
@@ -2577,24 +2301,11 @@ function buildEmployeeAccessLink(token) {
   if (!normalizedToken) return '';
   return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
 }
-// ── Camada HTTP: fonte única em static/js/modules/api-client.js (Fase 1 UBX) ──
+// ── Camada HTTP: fonte única em static/js/modules/api-client.js ───────────────
 // api-client.js é carregado ANTES de app.js (ver _scripts.html) e expõe em
-// globalThis: apiFetch / apiFetchOptional / apiFetchWithRetry, além dos helpers
-// (requestApiResponse, parseApiPayload, ensureExpectedApiResponse,
-// throwIfApiRequestFailed, createApiError, waitMs). Estas funções eram cópias
-// idênticas dessa lógica; agora delegam para a única fonte de verdade, evitando
-// divergência entre as duas implementações.
-async function api(path, options = {}) {
-  return globalThis.apiFetch(path, options);
-}
-
-async function apiOptional(path, options = {}) {
-  return globalThis.apiFetchOptional(path, options);
-}
-
-async function apiWithBootstrapRetry(path, options = {}, config = {}) {
-  return globalThis.apiFetchWithRetry(path, options, config);
-}
+// globalThis apiFetch / apiFetchOptional / apiFetchWithRetry e, desde a UBX-V3
+// (Etapa 3), também os delegadores api / apiOptional / apiWithBootstrapRetry
+// que moravam aqui — o app.js e as views continuam chamando os mesmos nomes.
 
 function normalizeRole(role) {
   if (!role) return '';
@@ -2808,12 +2519,10 @@ function actorQuery() {
   return `actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
 }
 
-function unitTypeLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return tr('unit.typeVessel', 'Embarcação');
-  if (normalized === 'plataforma') return tr('unit.typePlatform', 'Plataforma');
-  return tr('unit.typeBase', 'Base');
-}
+// unitTypeLabel, formatCompanyAvailabilityText, employmentTypeLabel,
+// allocationTypeLabel, outsourcedEmployeeLinkLabel, epiProtectionLabel e
+// epiMeasureLabel (rótulos traduzidos com tr) vivem em
+// static/js/modules/shared/ui/domain-labels.js (UBX-V3, Etapa 2).
 
 function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
@@ -3076,65 +2785,14 @@ function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
-function renderEpiPhotoPreview(photoValue) {
-  const preview = document.getElementById('epi-photo-preview');
-  if (!preview) return;
-  if (!photoValue) {
-    preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
-    return;
-  }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
-}
-
-async function handleEpiPhotoUpload(event) {
-  const hiddenField = document.getElementById('epi-photo-data');
-  const file = event.target.files?.[0];
-  if (!hiddenField) return;
-  if (!file) {
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-    return;
-  }
-  if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem válido para o EPI.');
-    event.target.value = '';
-    return;
-  }
-  try {
-    hiddenField.value = await fileToJpegDataUrl(file, 960);
-    renderEpiPhotoPreview(hiddenField.value);
-  } catch (error) {
-    alert(error.message || 'Não foi possí­vel processar a foto do EPI.');
-    event.target.value = '';
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-  }
-}
+// renderEpiPhotoPreview, handleEpiPhotoUpload, openEpiPhotoPicker, configureEpiPhotoInputCapture,
+// canUseEpiAllUnitsScope, syncEpiUnitOptions, applyEpiJoinventureRules, startEditEpi, setEpiPhotoData,
+// prepareEpiFormValues, resetEpiForm e buildEpiRow (cadastro de EPI) vivem em
+// static/js/modules/epis/{ui,business}/; fileToDataUrl e fileToJpegDataUrl em
+// static/js/modules/shared/ui/file-data-url.js (UBX-V3, Etapa 5).
 
 function isMobileUserAgent() {
   return /android|iphone|ipad|ipod|mobile|tablet/i.test(String(navigator.userAgent || ''));
-}
-
-function openEpiPhotoPicker({ preferCamera = false } = {}) {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  if (preferCamera && isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
-  input.click();
-}
-
-function configureEpiPhotoInputCapture() {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  input.setAttribute('accept', 'image/*');
-  if (isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
 }
 
 function getCompanyFormField(name) {
@@ -3195,15 +2853,6 @@ async function handlePlatformLogoUpload(event) {
   }
 }
 
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.readAsDataURL(file);
-  });
-}
-
 async function handlePlatformLoginLogoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) {
@@ -3224,30 +2873,6 @@ async function handlePlatformLoginLogoUpload(event) {
     alert(error.message);
     event.target.value = '';
   }
-}
-
-async function fileToJpegDataUrl(file, maxWidth = 720) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possí­vel ler o arquivo do logotipo.'));
-    reader.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possí­vel processar o logotipo enviado.'));
-      image.onload = () => {
-        const scale = Math.min(1, maxWidth / (image.width || maxWidth));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext('2d');
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      image.src = typeof reader.result === 'string' ? reader.result : '';
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 function renderPlatformBrand() {
@@ -3286,10 +2911,6 @@ function renderPlatformBrand() {
 
 function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
-}
-
-function canUseEpiAllUnitsScope() {
-  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
 }
 
 function hasConfigurationAccess() {
@@ -4996,23 +4617,10 @@ function populateRoleOptions() {
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
 }
 
-function populateUserFilters() {
-  if (!refs.userFilterCompany) return;
-  const all = tr('user.filterAll', 'Todos');
-  const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
-  refs.userFilterCompany.innerHTML = `<option value="">${all}</option>` + optionsHtml;
-  const roleKeys = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'];
-  refs.userFilterRole.innerHTML = `<option value="">${all}</option>` +
-    roleKeys.map((k) => `<option value="${k}">${tr('role.' + k, ROLE_LABELS[k] || k)}</option>`).join('');
-  refs.userFilterStatus.innerHTML = `<option value="">${all}</option>` +
-    `<option value="1">${tr('user.active', 'Ativo')}</option>` +
-    `<option value="0">${tr('user.inactive', 'Inativo')}</option>`;
-  refs.userFilterCompany.value = state.userFilters.company_id;
-  refs.userFilterRole.value = state.userFilters.role;
-  refs.userFilterStatus.value = state.userFilters.active;
-  refs.userFilterSearch.value = state.userFilters.search;
-}
+// populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
+// userActionButtons, add{Edit,Promote,Password,Management}Buttons, startEditUser, updateUserAccess,
+// resetUserForm e syncUserFilters (gestão de usuários) vivem em static/js/modules/users/ (UBX-V3,
+// Etapa 6). As regras can* (fallback visual de RBAC), saveUser e deleteUser seguem aqui.
 
 function scopedCompaniesForSearch() {
   return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
@@ -5305,17 +4913,6 @@ function syncDeliveriesOptions() {
   }
 }
 
-function renderUsersSummary() {
-  const visible = filteredUsers();
-  const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
-  const active = visible.filter((item) => Number(item.active) === 1).length;
-  refs.usersSummary.innerHTML = [
-    [tr('user.kpiVisible', 'Visíveis'), visible.length],
-    [tr('user.kpiAdmins', 'Administradores'), admins],
-    [tr('user.kpiActive', 'Ativos'), active]
-  ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
-}
-
 function renderCompaniesSummary() {
   if (!refs.companiesSummary) return;
   const visibleCompanies = filterByUserCompany(state.companies);
@@ -5349,12 +4946,6 @@ function companyUsageText(company) {
 
 function formatCompanyCurrency(value) {
   return formatCurrency(value || 0);
-}
-
-function formatCompanyAvailabilityText(company) {
-  return Number(company.limit_reached) === 1
-    ? tr('company.limitReached', 'Limite atingido')
-    : tr('company.availableSlotsText', '{count} vaga(s) disponíveis').replace('{count}', company.available_slots || 0);
 }
 
 function renderCompanyDetails(companyId = null) {
@@ -6167,19 +5758,6 @@ async function toggleCompany(companyId, active) {
   } catch (error) { alert(error.message); }
 }
 
-function filteredUsers() {
-  return filterByUserCompany(state.users).filter((item) => {
-    if (state.userFilters.company_id && String(item.company_id || '') !== String(state.userFilters.company_id)) return false;
-    if (state.userFilters.role && item.role !== state.userFilters.role) return false;
-    if (state.userFilters.active !== '' && String(Number(item.active)) !== String(state.userFilters.active)) return false;
-    if (state.userFilters.search) {
-      const haystack = `${item.full_name} ${item.username} ${item.company_name || ''}`.toLowerCase();
-      if (!haystack.includes(state.userFilters.search)) return false;
-    }
-    return true;
-  });
-}
-
 // Aguarda o backend ficar PRONTO antes de chamar /api/bootstrap.
 //
 // No cold-start do Render o backend sobe e roda as funções de schema (ensure_*)
@@ -6443,73 +6021,6 @@ function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].inclu
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
 function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
 
-function setUserFormFeedback(message = '', isError = false) {
-  const field = document.getElementById('user-form-feedback');
-  if (!field) return;
-  field.textContent = String(message || '');
-  field.classList.toggle('error', Boolean(isError));
-}
-
-function syncUserFormAccess() {
-  const roleField = refs.userForm?.elements?.role;
-  const companyField = refs.userForm?.elements?.company_id;
-  if (!roleField || !companyField) return;
-
-  const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);
-  const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
-
-  if (companyLocked) {
-    companyField.value = state.user?.company_id || '';
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = !requiresCompany;
-    if (!requiresCompany) companyField.value = '';
-  }
-
-  if (requiresCompany && !companyField.value) {
-    companyField.value = String(state.selectedCompanyId || state.user?.company_id || state.companies[0]?.id || '');
-  }
-
-  populateLinkedEmployeeOptions();
-  syncUserEmployeeLink();
-}
-
-function userActionButtons(target) {
-  if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
-  const actions = [];
-  
-  addEditButtons(actions, target);
-  addPromoteButtons(actions, target);
-  addPasswordButtons(actions, target);
-  addManagementButtons(actions, target);
-  addEmployeeButtons(actions, target);
-  
-  if (actions.length === 0) return '-';
-  return `<div class="action-group">${actions.join('')}</div>`;
-}
-
-function addEditButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(`<button class="ghost" data-user-edit="${target.id}">${tr('edit', 'Editar')}</button>`);
-  }
-}
-
-function addPromoteButtons(actions, target) {
-  if (canPromoteToAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">${tr('user.promoteToAdmin', 'Tornar Administrador')}</button>`);
-  }
-  if (canPromoteToGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">${tr('user.promoteToGeneralAdmin', 'Tornar Adm. Geral')}</button>`);
-  }
-  if (canDemoteGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">${tr('user.removeFromGeneral', 'Remover do Geral')}</button>`);
-  }
-  if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">${tr('user.demoteToUser', 'Rebaixar para Usuário')}</button>`);
-  }
-}
-
 function canGenerateRecoveryToken(target) {
   if (state.user?.role === 'master_admin') {
     return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
@@ -6518,37 +6029,6 @@ function canGenerateRecoveryToken(target) {
     return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
   }
   return false;
-}
-
-function addPasswordButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">${tr('user.generateProvPassword', 'Gerar senha provisória')}</button>`,
-      `<button class="ghost" data-user-generate-copy-password="${target.id}">${tr('user.generateCopyPassword', 'Gerar e copiar senha')}</button>`
-    );
-    if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">${tr('user.forcePasswordChange', 'Forçar troca da senha novamente')}</button>`);
-    }
-  }
-  if (canGenerateRecoveryToken(target)) {
-    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">${tr('user.generateRecoveryKey', 'Gerar chave de recuperação')}</button>`);
-  }
-}
-
-function addManagementButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-copy-email="${target.id}">${tr('user.copyEmail', 'Copiar e-mail')}</button>`,
-      `<button class="ghost" data-user-copy-whatsapp="${target.id}">${tr('user.copyWhatsapp', 'Copiar WhatsApp')}</button>`
-    );
-  }
-  if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? tr('user.deactivate', 'Desativar Usuário') : tr('user.activate', 'Ativar Usuário');
-    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
-  }
-  if (canDeleteUser(target)) {
-    actions.push(`<button class="ghost" data-user-delete="${target.id}">${tr('user.remove', 'Remover')}</button>`);
-  }
 }
 
 function addEmployeeButtons(actions, target) {
@@ -6576,36 +6056,6 @@ async function printEmployeePortalLink(employeeId) {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
-    alert(error.message);
-  }
-}
-
-function startEditUser(userId) {
-  const user = state.users.find((item) => String(item.id) === String(userId));
-  if (!user) return;
-  state.editingUserId = user.id;
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = user.id;
-  refs.userForm.elements.full_name.value = user.full_name;
-  refs.userForm.elements.username.value = user.username;
-  refs.userForm.elements.password.value = '';
-  populateRoleOptions();
-  refs.userForm.elements.role.value = canManageUser(user) ? user.role : refs.userRole.value;
-  refs.userForm.elements.company_id.value = user.company_id || '';
-  refs.userForm.elements.linked_employee_id.value = user.linked_employee_id || '';
-  syncUserFormAccess();
-}
-
-async function updateUserAccess(userId, changes, successMessage = '') {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  try {
-    await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
-    if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
-    await loadBootstrap();
-  } catch (error) {
-    setUserFormFeedback(error.message, true);
     alert(error.message);
   }
 }
@@ -6753,7 +6203,7 @@ async function confirmDestructive(opts) {
 async function deleteUser(userId) {
   if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
-    await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
+    await globalThis.__EPI_USERS_API__.deleteUser(userId, actorQuery());
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
     setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
@@ -6761,16 +6211,6 @@ async function deleteUser(userId) {
     setUserFormFeedback(error.message, true);
     alert(error.message);
   }
-}
-
-function resetUserForm() {
-  state.editingUserId = null;
-  refs.userForm.reset();
-  if (refs.userLinkedEmployeeSearch) refs.userLinkedEmployeeSearch.value = '';
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = '';
-  populateRoleOptions();
-  syncUserFormAccess();
 }
 
 function dashboardInteractiveEmptyMessage(message) {
@@ -6934,22 +6374,6 @@ function applyFichaEmployeeFilters(items) {
   });
 }
 
-function employmentTypeLabel(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'clt') return tr('employee.vincClt', 'CLT');
-  if (normalized === 'terceirizado') return tr('employee.vincOutsourced', 'Terceirizado');
-  if (normalized === 'temporário' || normalized === 'temporario') return tr('employee.vincTemporary', 'Temporário');
-  if (normalized === 'prestador de serviço' || normalized === 'prestador de servico') return tr('employee.vincServiceProvider', 'Prestador de Serviço');
-  if (normalized === 'menor aprendiz') return tr('employee.vincApprentice', 'Menor Aprendiz');
-  if (normalized === 'praticante') return tr('employee.vincTrainee', 'Praticante');
-  if (normalized === 'estagiário' || normalized === 'estagiario') return tr('employee.vincIntern', 'Estagiário');
-  return value || 'CLT';
-}
-
-function allocationTypeLabel(value) {
-  return value === 'temporary' ? tr('employee.allocationTemporary', 'Temporário') : tr('employee.allocationPrimary', 'Principal');
-}
-
 // "É mão de obra contratada?" — a mesma pergunta que `outsourcedEmployeesList`
 // faz, com a mesma fonte: o módulo de regras, e o fallback só se ele não
 // carregou. Existe porque `buildEmployeeRow`/`buildEmployeeOpsRow` decidiam por
@@ -6983,38 +6407,6 @@ function buildEmployeeOpsRow(item) {
   const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
   const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
-}
-
-function epiProtectionLabel(value) {
-  const labels = {
-    'Proteção-Membros Superiores': tr('epi.protectionUpperLimbs', 'Proteção-Membros Superiores'),
-    'Proteção-Membros Inferiores': tr('epi.protectionLowerLimbs', 'Proteção-Membros Inferiores'),
-    'Proteção-Auditiva': tr('epi.protectionHearing', 'Proteção-Auditiva'),
-    'Proteção-Olhos e Face': tr('epi.protectionEyesFace', 'Proteção-Olhos e Face'),
-    'Proteção-Respiratória': tr('epi.protectionRespiratory', 'Proteção-Respiratória'),
-    'Proteção-Mãos e Braços': tr('epi.protectionHandsArms', 'Proteção-Mãos e Braços'),
-    'Proteção-Cabeça': tr('epi.protectionHead', 'Proteção-Cabeça'),
-    'Proteção-Combate a Incêndio': tr('epi.protectionFirefighting', 'Proteção-Combate a Incêndio'),
-    'Proteção-Contra Queda': tr('epi.protectionFallProtection', 'Proteção-Contra Queda'),
-    'Proteção-Eletricidade': tr('epi.protectionElectricity', 'Proteção-Eletricidade')
-  };
-  return labels[value] || value || '-';
-}
-
-function epiMeasureLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'unidade') return tr('epi.measureUnit', 'Unidade');
-  if (normalized === 'par') return tr('epi.measurePair', 'Par');
-  return value || '-';
-}
-
-function buildEpiRow(item, canManageEpiRecords) {
-  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-archive="${item.id}">${tr('epi.archive', 'Arquivar')}</button></div>` : '-';
-  const scopeLabel = item.scope_label
-    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
-      ? tr('epi.allUnits', 'Todas as Unidades')
-      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
-  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${epiProtectionLabel(item.sector)}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${epiMeasureLabel(item.unit_measure)}</td><td>${actions}</td></tr>`;
 }
 
 function buildDeliveryRow(item) {
@@ -7918,45 +7310,6 @@ function selectStockEpiFromSearch(epiId) {
   renderStockEpiSearchResults();
 }
 
-function syncEpiUnitOptions() {
-  const companyField = document.getElementById('epi-company');
-  const unitField = document.getElementById('epi-unit');
-  if (!companyField || !unitField) return;
-  const operationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  if (operationalProfile && state.user?.company_id) {
-    companyField.value = String(state.user.company_id);
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = false;
-  }
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const previous = String(unitField.value || '');
-  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  const allowAllUnitsScope = canUseEpiAllUnitsScope();
-  if (operationalProfile) {
-    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
-    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
-    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
-    unitField.disabled = true;
-  } else {
-    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">${tr('epi.allUnits', 'Todas as Unidades')}</option>` : '';
-    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
-    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
-      unitField.value = EPI_ALL_UNITS_VALUE;
-    } else if (previous && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else if (units.length) {
-      unitField.value = String(units[0].id);
-    } else {
-      unitField.value = '';
-    }
-    unitField.disabled = false;
-  }
-  applyEpiJoinventureRules();
-}
-
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
   const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
@@ -8001,23 +7354,6 @@ function parseActiveJoinventureToken(value) {
   if (!raw.includes('@@')) return { name: raw, unit_id: null };
   const [name, unitId] = raw.split('@@');
   return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
-}
-
-function applyEpiJoinventureRules() {
-  const unitField = document.getElementById('epi-unit');
-  const activeSelect = document.getElementById('epi-joinventure-active');
-  const hint = document.getElementById('epi-unit-rule-hint');
-  if (!unitField || !activeSelect) return;
-  const selected = parseActiveJoinventureToken(activeSelect.value);
-  if (selected.name && selected.unit_id) {
-    unitField.value = String(selected.unit_id);
-    unitField.disabled = true;
-    if (hint) hint.textContent = tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.').replace('{name}', selected.name);
-  } else {
-    unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.');
-  }
 }
 
 function formatActiveJoinventureOption(entry) {
@@ -8185,43 +7521,6 @@ function startEditEmployee(employeeId) {
   syncEmpresaOrigemVisibility();
   setFormSubmitLabel('employee-form', 'Atualizar colaborador');
   showView('colaboradores');
-}
-
-function startEditEpi(epiId) {
-  const item = state.epis.find((epi) => String(epi.id) === String(epiId));
-  const form = document.getElementById('epi-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  syncEpiUnitOptions();
-  form.elements.unit_id.value = item.unit_id || '';
-  form.elements.name.value = item.name || '';
-  form.elements.purchase_code.value = item.purchase_code || '';
-  form.elements.ca.value = item.ca || '';
-  form.elements.sector.value = item.sector || '';
-  form.elements.epi_section.value = item.epi_section || '';
-  form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
-  form.elements.manufacturer.value = item.manufacturer || '';
-  form.elements.supplier_company.value = item.supplier_company || '';
-  form.elements.unit_measure.value = item.unit_measure || 'unidade';
-  form.elements.ca_expiry.value = item.ca_expiry || '';
-  form.elements.epi_validity_date.value = item.epi_validity_date || '';
-  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
-  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
-  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
-  form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
-  form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
-  form.elements.epi_photo_data.value = item.epi_photo_data || '';
-  if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
-  renderEpiPhotoPreview(form.elements.epi_photo_data.value);
-  document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
-  renderJoinventureList();
-  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
-  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Atualizar EPI');
-  showView('epis');
 }
 
 // ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
@@ -9813,12 +9112,6 @@ function renderOutsourcedEmployees() {
 // nada. Os quatro estados vêm de `local_unit_link_status` (ADR-0002 §13):
 // `null`/ausente = não se aplica; 'none' = aplicável e inexistente nesta
 // Unidade; 'active' = vinculado; 'inactive' = arquivado nesta Unidade.
-function outsourcedEmployeeLinkLabel(status) {
-  if (!status) return '-';
-  if (status === 'active') return tr('employee.unitLinkActive', 'Vinculado');
-  if (status === 'inactive') return tr('employee.unitLinkArchived', 'Arquivado nesta Unidade');
-  return tr('employee.unitLinkAbsent', 'Não vinculado');
-}
 
 // Vincular/ativar/desativar o colaborador NESTA Unidade (ADR-0002 §13, PR B).
 // Não arquiva a pessoa (isso é ARCHIVAL_ENTITIES.outsourcedEmployee) e não
@@ -10647,60 +9940,8 @@ function syncReportLegalEntityOptions() {
   }
 }
 
-function syncReportOptions() {
-  syncReportLegalEntityOptions();
-  const companyField = document.getElementById('report-company');
-  const unitField = document.getElementById('report-unit');
-  const employeeField = document.getElementById('report-employee');
-  const unitHint = document.getElementById('report-unit-hint');
-  if (!companyField || !unitField || !employeeField) return;
-  const lockByOperationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  if (lockByOperationalProfile && state.user?.company_id) {
-    companyField.value = String(state.user.company_id);
-  }
-  const companyId = companyField.value || state.user?.company_id || '';
-  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  if (lockByOperationalProfile && !operationalUnitId) units = [];
-  if (lockByOperationalProfile && operationalUnitId) {
-    units = units.filter((item) => String(item.id) === operationalUnitId);
-  }
-  const previousUnit = String(unitField.value || '');
-  unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
-  if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
-    unitField.value = '';
-  } else if (lockByOperationalProfile) {
-    unitField.value = String(units[0].id);
-  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
-    unitField.value = previousUnit;
-  }
-  companyField.disabled = lockByOperationalProfile;
-  unitField.disabled = lockByOperationalProfile;
-  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  const selectedUnitId = String(unitField.value || '');
-  const employees = filterByUserCompany(state.employees).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (!selectedUnitId) return true;
-    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
-    return employeeUnitId === selectedUnitId;
-  });
-  const previousEmployee = String(employeeField.value || '');
-  employeeField.innerHTML = `<option value="">${tr('employee.allEmployees', 'Todos os colaboradores')}</option>` + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
-    employeeField.value = previousEmployee;
-  } else {
-    employeeField.value = '';
-  }
-}
-
-function formatEpiOptionLabel(item) {
-  const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-  const manufacturer = item.manufacturer || '';
-  const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
-  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
-}
+// syncReportOptions vive em static/js/modules/reports/ui/reports-view.js
+// (UBX-V3, Etapa 4), com o restante de Relatórios.
 
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
@@ -12462,109 +11703,9 @@ async function copyFichaPeriodMessage(periodId) {
   }
 }
 
-async function renderReports(filters = null) {
-  if (!hasPermission('reports:view')) {
-    recordOptionalBootstrapSectionSkipped('reports', 'missing_permission', { permission: 'reports:view' });
-    return;
-  }
-  const normalizedFilters = filters || collectReportFilters();
-  const params = new URLSearchParams({ ...normalizedFilters, actor_user_id: state.user.id });
-  try {
-    state.reports = await api(`/api/reports?${params.toString()}`);
-  } catch (error) {
-    if (Number(error?.status || 0) === 403) {
-      recordOptionalBootstrapSectionSkipped('reports', 'forbidden', { status: 403, permission: 'reports:view' });
-      return;
-    }
-    reportNonCriticalError('[renderReports] falha ao carregar relatório', error);
-    if (refs.reportSummary) refs.reportSummary.innerHTML = '<div class="summary-item hint">Não foi possível carregar os relatórios agora. Tente novamente.</div>';
-    return;
-  }
-  refs.reportSummary.innerHTML = `<div class="summary-item"><strong>${tr('delivery.list', 'Entregas')}:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>${tr('report.totalDelivered', 'Total entregue')}:</strong> ${state.reports.total_quantity}</div>`;
-  refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  const reportTipoVinculoEl = document.getElementById('report-tipo-vinculo-summary');
-  if (reportTipoVinculoEl) {
-    reportTipoVinculoEl.innerHTML = Object.entries(state.reports.by_tipo_vinculo || {}).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  }
-  if (!refs.reportEmployeeFichas) return;
-  const employeeFichas = state.reports.employee_fichas || [];
-  refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | ${tr('delivery.status', 'Status')}: ${item.status}</div><div>${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'} | ${tr('report.items', 'Itens')}: ${item.total_items} | ${tr('report.totalQuantity', 'Quantidade total')}: ${item.total_quantity}</div></div>`;
-  }).join('') || `<div class="summary-item">${tr('report.selectEmployeeRecords', 'Selecione um colaborador para visualizar as fichas de EPI.')}</div>`;
-  await loadArchiveReports({
-    company_id: normalizedFilters.company_id || '',
-    unit_id: normalizedFilters.unit_id || '',
-    employee_id: normalizedFilters.employee_id || '',
-    sector: normalizedFilters.sector || '',
-    status: normalizedFilters.status || '',
-    date_from: normalizedFilters.start_date || '',
-    date_to: normalizedFilters.end_date || '',
-  });
-}
-
-
-function retentionStatusBadge(status) {
-  const normalized = String(status || 'archived').toLowerCase();
-  if (normalized === 'expired') return renderBadge('status', 'warning', 'expirada');
-  if (normalized === 'purged') return renderBadge('status', 'inactive', 'purgada');
-  return renderBadge('status', 'active', 'arquivada');
-}
-
-function renderArchiveTable() {
-  if (!refs.reportArchiveTable) return;
-  refs.reportArchiveTable.innerHTML = (state.reportArchiveItems || []).map((item) => `
-    <tr>
-      <td>${formatDateTime(item.generated_at)}</td>
-      <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
-      <td>${item.company_name || '-'}</td>
-      <td>${item.unit_name || '-'}</td>
-      <td>${retentionStatusBadge(item.status)}</td>
-      <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
-      <td>
-        <div class="action-group">
-          <button class="ghost" data-archive-view="${item.id}">Visualizar</button>
-          <button class="ghost" data-archive-print="${item.id}">Imprimir</button>
-          <button class="ghost" data-archive-export="${item.id}">Exportar</button>
-        </div>
-      </td>
-    </tr>
-  `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem fichas arquivadas para os filtros informados.' });
-  if (refs.reportArchivePagination) {
-    refs.reportArchivePagination.textContent = `Registros: ${state.reportArchiveTotal} | Página ${state.reportArchivePage}`;
-  }
-}
-
-async function loadArchiveReports(filters = {}) {
-  if (!hasPermission('reports:view')) {
-    recordOptionalBootstrapSectionSkipped('report_archive', 'missing_permission', { permission: 'reports:view' });
-    return;
-  }
-  const params = new URLSearchParams({
-    ...filters,
-    page: String(state.reportArchivePage || 1),
-    page_size: String(state.reportArchivePageSize || 50),
-    actor_user_id: String(state.user?.id || '')
-  });
-  let payload;
-  try {
-    payload = await api(`/api/ficha-archive?${params.toString()}`);
-  } catch (error) {
-    if (Number(error?.status || 0) === 403) {
-      recordOptionalBootstrapSectionSkipped('report_archive', 'forbidden', { status: 403, permission: 'reports:view' });
-      return;
-    }
-    reportNonCriticalError('[loadArchiveReports] falha ao carregar arquivo', error);
-    state.reportArchiveItems = [];
-    state.reportArchiveTotal = 0;
-    renderArchiveTable();
-    return;
-  }
-  state.reportArchiveItems = payload.items || [];
-  state.reportArchiveTotal = Number(payload.total || 0);
-  state.fichaRetentionPolicy = payload.retention_policy || state.fichaRetentionPolicy;
-  renderArchiveTable();
-}
+// renderReports, collectReportFilters, renderArchiveTable, retentionStatusBadge,
+// loadArchiveReports e exportReportPdf (Relatórios) vivem em
+// static/js/modules/reports/{ui,business,integrations}/ (UBX-V3, Etapa 4).
 
 async function loadArchivalPolicy() {
   if (!refs.archivalPolicyForm || !hasConfigurationAccess()) return;
@@ -12617,52 +11758,6 @@ async function loadRetentionPolicy() {
   } catch (error) {
     console.warn('[retention-policy] erro ao carregar', error);
   }
-}
-
-function collectReportFilters() {
-  const reportForm = document.getElementById('report-filter-form');
-  const normalizeOptionalInt = (fieldName, value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    if (!/^\d+$/.test(raw)) {
-      throw new Error(`Filtro inválido: ${fieldName} deve ser numérico.`);
-    }
-    return raw;
-  };
-  const normalizeOptionalDate = (fieldName, value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      throw new Error(`Filtro inválido: ${fieldName} deve estar no formato AAAA-MM-DD.`);
-    }
-    return raw;
-  };
-  const values = {
-    company_id: normalizeOptionalInt('company_id', reportForm?.querySelector('#report-company')?.value),
-    legal_entity_id: normalizeOptionalInt('legal_entity_id', reportForm?.querySelector('#report-legal-entity')?.value),
-    unit_id: normalizeOptionalInt('unit_id', reportForm?.querySelector('#report-unit')?.value),
-    employee_id: normalizeOptionalInt('employee_id', reportForm?.querySelector('#report-employee')?.value),
-    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
-    tipo_vinculo: String(reportForm?.querySelector('#report-tipo-vinculo')?.value || '').trim(),
-    epi_id: normalizeOptionalInt('epi_id', reportForm?.querySelector('#report-epi')?.value),
-    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim(),
-    start_date: normalizeOptionalDate('start_date', reportForm?.querySelector('input[name="start_date"]')?.value),
-    end_date: normalizeOptionalDate('end_date', reportForm?.querySelector('input[name="end_date"]')?.value)
-  };
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-}
-
-function exportReportPdf() {
-  if (!requirePermission('reports:view')) return;
-  let filters;
-  try {
-    filters = collectReportFilters();
-  } catch (error) {
-    alert(error?.message || 'Filtros inválidos.');
-    return;
-  }
-  const params = new URLSearchParams({ actor_user_id: state.user?.id || '', ...filters });
-  globalThis.open(`/api/reports.pdf?${params.toString()}`, '_blank');
 }
 
 function refreshDeliveryContext({ syncUnit = false } = {}) {
@@ -13080,21 +12175,11 @@ async function saveUser(event) {
   try {
     setUserFormFeedback('');
     const values = formValues(refs.userForm);
-    values.actor_user_id = state.user.id;
-    if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
+    // Regras de cliente em modules/users/business/user-form.js; o ROLE_LABELS
+    // passado é o deste arquivo (o de core/constants.js tem um perfil a mais).
+    globalThis.__EPI_USERS_BUSINESS__.prepareUserFormValues(values, { actor: state.user, roleLabels: ROLE_LABELS });
 
-    values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
-    const noLink = !String(values.linked_employee_id || '').trim();
-    if (['admin', 'user'].includes(values.role) && noLink) {
-      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
-    }
-    if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
-    }
-
-    await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    await globalThis.__EPI_USERS_API__.saveUser(state.editingUserId, values);
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
@@ -13104,69 +12189,12 @@ async function saveUser(event) {
   }
 }
 
-function normalizeEpiSizes(values) {
-  values.glove_size = String(values.glove_size || 'N/A');
-  values.size = String(values.size || 'N/A');
-  values.uniform_size = String(values.uniform_size || 'N/A');
-}
-
 function setEpiValidity(values) {
   const months = parseMonthsValue(values.manufacturer_validity_months);
   values.manufacturer_validity_months = months;
   values.validity_years = 0;
   values.validity_months = months;
   values.validity_days = months * 30;
-}
-
-async function setEpiPhotoData(values, editingId) {
-  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-  if (photoFile) {
-    values.epi_photo_data = await fileToDataUrl(photoFile);
-  } else if (editingId) {
-    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-    values.epi_photo_data = currentEpi?.epi_photo_data || '';
-  }
-}
-
-async function prepareEpiFormValues(values, editingId, event) {
-  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-    values.unit_id = parsedActiveJoinventure.unit_id;
-  }
-  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-    values.unit_id = '';
-  }
-  values.active_joinventure = parsedActiveJoinventure.name || '';
-  values.stock = 0;
-  
-  normalizeEpiSizes(values);
-  setEpiValidity(values);
-  
-  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-  
-  if (!values.epi_photo_data && editingId) {
-    await setEpiPhotoData(values, editingId);
-  }
-  return values;
-}
-
-function resetEpiForm(form) {
-  if (form.elements.id) form.elements.id.value = '';
-  const hidden = document.getElementById('epi-joinventures');
-  if (hidden) hidden.value = '[]';
-  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
-  const photoFile = document.getElementById('epi-photo-file');
-  if (photoFile) photoFile.value = '';
-  renderEpiPhotoPreview('');
-  renderJoinventureList();
-  if (form.elements.unit_id) {
-    form.elements.unit_id.value = canUseEpiAllUnitsScope()
-      ? EPI_ALL_UNITS_VALUE
-      : (form.elements.unit_id.options[0]?.value || '');
-  }
-  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar EPI');
 }
 
 async function saveSimpleForm(event, path, permission) {
@@ -14450,14 +13478,6 @@ async function saveEmployeeMovement(event) {
   } catch (error) {
     alert(error.message);
   }
-}
-
-function syncUserFilters() {
-  state.userFilters.company_id = refs.userFilterCompany.value;
-  state.userFilters.role = refs.userFilterRole.value;
-  state.userFilters.active = refs.userFilterStatus.value;
-  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
-  renderTables();
 }
 
 
@@ -20117,8 +19137,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   }
 });
 
+// api/apiOptional saíram desta lista na UBX-V3 (Etapa 3): moram em
+// modules/api-client.js, que já os publica em globalThis antes do app.js.
 Object.assign(globalThis, {
-  api, apiOptional, loadBootstrap,
+  loadBootstrap,
   loadAuthorizedSuppliers, loadPurchaseDemands, loadPurchaseRequests,
   loadPurchaseOrders, loadAprovacoesSolicitacoes, loadFornecedoresPurchaseFunctions,
   importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,

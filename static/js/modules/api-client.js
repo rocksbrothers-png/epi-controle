@@ -210,6 +210,25 @@
     throw lastError || new Error('Falha ao carregar dados da API.');
   }
 
+  // ── Contrato legado do app.js (UBX-V3, Etapa 3) ─────────────────────────────
+  // `api`, `apiOptional` e `apiWithBootstrapRetry` eram declarados no app.js
+  // como simples delegadores destas funções; as views os chamam por
+  // `globalThis.api(...)`. Moram agora aqui, na camada de integração, com o
+  // mesmo corpo: a delegação continua resolvida na CHAMADA (um teste ou um
+  // embrulhador que troque globalThis.apiFetch depois do boot segue valendo).
+
+  async function api(path, options = {}) {
+    return globalThis.apiFetch(path, options);
+  }
+
+  async function apiOptional(path, options = {}) {
+    return globalThis.apiFetchOptional(path, options);
+  }
+
+  async function apiWithBootstrapRetry(path, options = {}, config = {}) {
+    return globalThis.apiFetchWithRetry(path, options, config);
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exports = {
@@ -230,6 +249,13 @@
     globalThis[name] = fn;
   }
   globalThis.__EPI_API_CLIENT__ = Object.freeze({ ...exports });
+
+  // Só em globalThis, como o app.js publicava (Annex B): o namespace e o
+  // registro de helpers não mudam.
+  const legacyAppExports = { api, apiOptional, apiWithBootstrapRetry };
+  for (const [name, fn] of Object.entries(legacyAppExports)) {
+    globalThis[name] = fn;
+  }
 
   const helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
   Object.assign(helpers, exports);

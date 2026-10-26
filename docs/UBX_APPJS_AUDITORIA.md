@@ -457,3 +457,98 @@ limites, teste de dono único e a correção da §11.4.
 3. regras `can*` → `modules/auth/business` (puras, por parâmetro), sem tocar o backend;
 4. Empresas/Unidades/CNPJ (risco alto: escopo de tenant) só com teste de isolamento por empresa;
 5. Compras, Estoque e Migração só depois de estabilizados; bootstrap/`init`/navegação por último.
+
+## 12. UBX-V4 (2026-10-26) — diálogos, Colaboradores/Terceirizados e regras `can*`
+
+### 12.1 Base e preparação
+
+| Repositório | `main` de partida |
+|---|---|
+| Corporate (`rocksbrothers-png/epi-controle`) | `7694bef196aaf1c035d11a400c080286588a301e` |
+| SaaS (`rocksbrothers-png/epi-controle-app`) | `053f0749a2aafe26315739ced56cf1f0d70433d3` |
+
+UBX-V3 integrada nas duas `main` (epi-controle#1053 / epi-controle-app#426); `app.js` byte-idêntico
+(19.227 linhas, 878 declarações, 117 endpoints). Depois dela só entraram atualizações de dependências
+(dependabot). Internacionalização: 1.751 chaves alinhadas nos cinco idiomas (pt-BR, en-GB, es-ES,
+fr-FR, nb-NO), idênticas entre Corporate e SaaS; as branches de tradução existentes são de junho a
+agosto e estão paradas — nenhum trabalho de i18n paralelo a coordenar. Nenhuma branch do Codex tocada.
+
+### 12.2 Etapas
+
+| Etapa | Módulos | `app.js` (linhas) | Declarações / endpoints |
+|---|---|---:|---:|
+| início (`7694bef1`) | — | 19.227 | 878 / 117 |
+| A — diálogos | `shared/ui/dialogs.js` (`confirmDestructive`, `getFocusableElements`, `openModal`, `closeModal`, `bindModalKeyboard` + WeakMaps privados); `deleteUser` → `users/ui/users-view.js` | 19.159 | 870 / 117 |
+| B1 — Colaboradores | `employees/{business/employee-rules, integrations/employees-api, ui/employees-view}.js` | 18.928 | 850 / 117 |
+| B2 — Terceirizados e Prestadores | `outsourced/{integrations/outsourced-api, ui/outsourced-companies-view, ui/outsourced-company-requests-view, ui/outsourced-employees-view}.js` | 18.185 | 814 / 112 |
+| C — regras `can*` | `auth/{business/access-rules, ui/access-context}.js`; `canAccessView` vira adaptador | **18.106** | **798 / 112** |
+
+Total: **−1.121 linhas** (−5,8%), **−80 declarações**, **−5 endpoints**; 13 módulos novos (1.669 linhas, maior
+com 443). Ficaram no `app.js`, de propósito: `archiveOutsourcedEmployee` (depende de `archiveEntityRecord`,
+`async` de bloco), `canAccessView` (adaptador: os mapas `VIEW_*` são usados também por `showView`/menus),
+`canViewConfiguration` e `canManageStockConfig` (só delegam), `hasPermission` (central; não alterado).
+
+### 12.3 Validação
+
+- Caracterização gerada das funções ORIGINAIS de cada etapa (fatiadas do `app.js` do commit anterior,
+  dentro de um bloco com as constantes de bloco de que dependem): diálogos 21 cenários, Colaboradores 42,
+  Terceirizados 87 (com e sem os módulos de regras puras reais). Sabotagem conferida em todas; cada
+  sabotagem não detectada virou cenário (perfil Gestor de EPI no escopo por Unidade; valores de
+  visibilidade "falsos" não booleanos; permissões que só vêm do backend, como `employees:transfer`).
+- **RBAC antes × depois:** `static/js/test/access-rules-runtime.js` compara as decisões das regras
+  originais (trechos congelados em `static/js/test/fixtures/app-before-ubx-v4-c.js.txt`) com as novas
+  numa matriz de 11 atores (9 perfis, perfil desconhecido, sem usuário) × 5 conjuntos de permissões
+  (perfil, vazia → fallback real de `ROLE_PERMISSIONS`, só leitura, arbitrária, todas) × 30 alvos ×
+  todas as views × 7 estados de visibilidade de módulos: **23.320 decisões (4.488 concessões,
+  18.832 negações), 0 divergências**. Nenhuma permissão ampliada; a matriz RBAC do backend não foi tocada.
+- Navegador real (backend + PostgreSQL descartável, antes × depois de cada etapa): confirmação
+  (Escape/Enter/cancelar/OK), modal real (foco, Tab, Escape), remoção de usuário, cadastro/edição/lote/CSV
+  de Colaboradores, cadastro/edição/promoção de empresa terceirizada, colaborador terceirizado e headcount,
+  menus por perfil e botões por linha — idênticos. A única variação dos smokes gerais é a corrida conhecida
+  do pré-carregamento de `/api/i18n/en-GB`, que oscila também entre duas execuções do mesmo lado.
+- i18n: nenhum texto novo — todos os literais dos módulos da V4 já existiam no `app.js` (verificado por
+  tokenização); chaves e fallbacks inalterados; CA/CE/CPF intocados.
+
+### 12.4 Acoplamento
+
+| Medida no `app.js` | `7694bef1` | branch |
+|---|---:|---:|
+| chamadas `api(`/`apiOptional(`/`apiWithBootstrapRetry(` | 163 | 152 |
+| `hasPermission(` | 101 | 76 |
+| `state.` | 922 | 839 |
+| `refs.` | 1.026 | 987 |
+| `document.` | 1.214 | 1.183 |
+| `innerHTML` | 226 | 213 |
+| `tr(` | 569 | 524 |
+
+Desacoplou de verdade: as regras de acesso da interface viraram negócio puro testável sem DOM nem estado
+(contexto explícito `{ actor, permissions }`); o HTTP de Colaboradores e Terceirizados está em
+`integrations/`; a seleção em lote tem um dono (o módulo) e o `app.js` a lê pelo namespace. Continua
+acoplado (dito com honestidade): as UIs extraídas ainda chamam funções globais do `app.js`
+(`hasPermission`, `requirePermission`, `showView`, `setFormSubmitLabel`, …) e o `app.js` chama as delas —
+ciclo por função global, invisível ao grafo de namespaces (§11.4). O grafo de namespaces segue sem ciclos.
+
+### 12.5 Achados (registrados; nenhum corrigido — mudar é decisão de negócio)
+
+1. **`toggleEmployeeUnitLink` chama `loadEmployees()`, que não existe** em lugar nenhum: depois do POST
+   bem-sucedido o `catch` mostra "loadEmployees is not defined" e a lista não re-renderiza. Preservado
+   e fixado em teste; correção sugerida: chamar `loadBootstrap()` (ou o loader real) — decisão separada.
+2. `canManageUsers`, `canManageEpi` e `canViewReports` não têm chamador no frontend (código morto
+   preservado como global).
+3. `globalThis.hasPermission` é definido por `modules/permissions-rt.js` com outra assinatura
+   (`(roleOrPermsList, permission)`) e sobrescrito pelo `hasPermission(permission)` do `app.js` no carregamento;
+   o adaptador de acesso não depende de nenhum dos dois (usa a lista ativa direto).
+4. Depois de cadastrar uma empresa terceirizada a lista não recarrega até reabrir a tela (comportamento
+   igual em `main`, observado no smoke).
+5. No smoke de Colaboradores, após "Editar" o snapshot do formulário veio sem os valores (igual em `main`);
+   a triar — pode ser o reset de navegação de `showView` (F5-B) atuando depois da edição.
+6. Continuam valendo os achados da §11.6.
+
+### 12.6 Próximos candidatos (UBX-V5, não iniciada — requer autorização)
+
+1. Corrigir/decidir os achados 1, 4 e 5 acima (são comportamento, fora de refatoração pura);
+2. `archiveEntityRecord`/arquivamento genérico (`ARCHIVAL_ENTITIES`) → módulo próprio (destrava
+   `archiveOutsourcedEmployee`);
+3. Empresas/Unidades/CNPJ (risco alto: escopo de tenant), com o mesmo teste de matriz por empresa;
+4. mapas `VIEW_*` + `showView`/menus (navegação) — último bloco antes do bootstrap.
+

@@ -7754,6 +7754,7 @@ require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
 require('./reports-view-runtime')({ testAsync, test, assert, eq });
 require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 require('./users-view-runtime')({ testAsync, test, assert, eq });
+require('./extracted-globals-ownership-runtime')({ test, assert });
 
 (async () => {
   for (const t of asyncTests) {

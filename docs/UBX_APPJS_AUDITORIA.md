@@ -319,7 +319,7 @@ commit a commit —, e foi conferido que o diff da UBX-V3 e o diff do Codex fica
 deslocamento de linhas). Nenhuma função tocada pelo Codex saiu do `app.js`.
 
 UBX-V1, associação de cotações e UBX-V2 (epi-controle#1050 / epi-controle-app#423) integrados nas
-duas `main`. Nenhum PR aberto no início; nenhuma branch recente fora de `main` alterava o `app.js`.
+duas `main`. Nenhum PR aberto no início; nenhuma branch recente fora de `main` alterava o `app.js` (os dois PRs do Codex abaixo entraram depois e foram integrados por rebase).
 `static/app.js` byte-idêntico entre os dois repositórios (20.200 linhas em 8c63ea00; 20.205 após os PRs do Codex). As correções recentes de
 Estoque, Compras, Migração e Biblioteca de Segurança não foram tocadas (`views/procurement.js`,
 `views/safety-library.js`, `views/stock-*.js` e os módulos de migração ficaram fora do diff).
@@ -382,14 +382,25 @@ O que **realmente** desacoplou:
 O que **só mudou de lugar** (dito com honestidade): as UIs extraídas ainda leem `state`/`refs` do
 `app.js` (os mesmos objetos, por `__EPI_APP_STATE__`/`__EPI_REFS__`) e chamam funções globais dele
 — 11 em `reports-view.js`, 19 em `epi-registration.js`, 17 em `users-view.js` (declaradas no
-cabeçalho `/* global */` de cada módulo). Esse acoplamento por função global (Annex B) não aparece
-no grafo de namespaces. Reduzi-lo exige mover `confirmDestructive`, as regras `can*` e o
+cabeçalho `/* global */` de cada módulo), cerca de 47 chamadas. No sentido inverso, o `app.js` faz
+cerca de 84 chamadas soltas aos nomes movidos. Ou seja: `app.js` ↔ `reports-view`/`epi-registration`/
+`users-view` são **ciclos reais por função global** (Annex B), que o grafo de namespaces ("0 ciclos")
+não enxerga. Efeito colateral: as chamadas internas do `app.js` a esses nomes (e às 163 de `api(`)
+passaram de ligação de bloco para busca em `globalThis` na hora da chamada — um script que
+reatribuísse um deles interceptaria o próprio `app.js`. Para fixar isso, o teste
+`extracted-globals-ownership-runtime.js` falha se qualquer arquivo de `static/` fora do módulo dono
+publicar um nome extraído (exceção registrada: os três de `utils/dom.js`, achado 1, com a ordem de
+carga verificada). Reduzi-lo exige mover `confirmDestructive`, as regras `can*` e o
 bootstrap/`renderTables` — itens de risco alto da matriz (§10.3).
 
 ### 11.5 Guarda
 
 Regra 9 nova: catraca de `fetch` cru na camada UI (`uiRawFetch`, semente 9 → 4 após a Etapa 3).
-`--update` só remove. Sabotagem em `tests/test_app_js_ubx_boundary.py`. Os limites da §10.6 continuam.
+`--update` só remove. Sabotagem em `tests/test_app_js_ubx_boundary.py`. Os limites da §10.6 continuam,
+e a auditoria independente mostrou os desta regra: não conta `fetch?.(…)`, `globalThis['fetch'](…)`,
+`fetch.call(…)`, `(0, fetch)(…)`, alias (`const f = fetch`), `XMLHttpRequest`/`sendBeacon` na UI,
+um `fetch` na mesma linha depois de uma string com `//`, nem arquivos fora de `views/`,
+`modules/*/ui` e `static/*.js`. Ela barra o idioma comum; a revisão humana segue necessária.
 
 ### 11.6 Achados registrados (nenhum corrigido — mudar é decisão de negócio)
 
@@ -412,6 +423,27 @@ Regra 9 nova: catraca de `fetch` cru na camada UI (`uiRawFetch`, semente 9 → 4
    para perfis que não exigem colaborador — comportamento idêntico em `main` (validação HTML/genérica
    preexistente), registrado para triagem.
 8. Continuam valendo: `addDaysFromBaseDate` em fusos a leste de UTC (§10.5) e os limites da guarda.
+9. Fallback removido das views (Etapa 3): em `main`, o `api` local de `fichas`/`profile`/`purchases`/
+   `employee-portal` caía num `fetch` **sem JWT** se `globalThis.api` ainda não existisse; agora vai
+   sempre ao cliente autenticado (carregado antes). Caso-limite: se `api-client.js` não carregar, essas
+   quatro lançam `TypeError` síncrono em vez de devolver promessa rejeitada. No SaaS, o
+   `views/feedback-detail.js` tinha o mesmo wrapper com fallback — removido na Etapa 3 do SaaS
+   (passa a chamar `globalThis.apiFetch`, como no Corporate; `api` só delegava a `apiFetch`), e o
+   arquivo ficou byte-idêntico ao do Corporate.
+
+### 11.8 Auditoria independente (adversarial)
+
+Feita por um agente separado, só leitura, sobre a série completa. **Nenhum P0/P1.** Conferido: as
+58 funções removidas casadas por AST com as versões dos módulos (53 idênticas; 5 mudadas de propósito
+— `collectReportFilters`, `renderReports`, `loadArchiveReports`, `exportReportPdf`, `updateUserAccess`
+— revisadas à mão: ordem e mensagens de validação, URLs, query, ordem das chaves do JSON, escopo do
+`try` e caminhos de 403 iguais); o resto do `app.js` idêntico fora `saveUser`, `deleteUser` e a lista
+do `Object.assign`; resolução de cada nome antes de bloco; nomes que viraram globais sem colisão;
+tabelas de caracterização reproduzidas a partir das originais (0 divergências); literais e U+00AD;
+baseline só encolheu; Estoque, Compras, Migração e Biblioteca intocados. Os P2/P3 apontados
+(base defasada, digestos de paridade, limites da regra 9, ligação por `globalThis`, fallback das
+views, ciclo por função global) foram tratados acima: rebase, mesmos commits no SaaS, registro dos
+limites, teste de dono único e a correção da §11.4.
 
 ### 11.7 Próximos módulos recomendados
 

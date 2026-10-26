@@ -85,7 +85,8 @@ function loadModule(relPath) {
   'modules/epis/ui/epi-registration.js',
   'modules/users/business/user-form.js',
   'modules/users/integrations/users-api.js',
-  'modules/users/ui/users-view.js'
+  'modules/users/ui/users-view.js',
+  'modules/shared/ui/dialogs.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7754,6 +7755,7 @@ require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
 require('./reports-view-runtime')({ testAsync, test, assert, eq });
 require('./epis-registration-runtime')({ testAsync, test, assert, eq });
 require('./users-view-runtime')({ testAsync, test, assert, eq });
+require('./shared-dialogs-runtime')({ testAsync, test, assert, eq });
 require('./extracted-globals-ownership-runtime')({ test, assert });
 
 (async () => {

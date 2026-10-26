@@ -4620,7 +4620,7 @@ function populateRoleOptions() {
 // populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
 // userActionButtons, add{Edit,Promote,Password,Management}Buttons, startEditUser, updateUserAccess,
 // resetUserForm e syncUserFilters (gestão de usuários) vivem em static/js/modules/users/ (UBX-V3,
-// Etapa 6). As regras can* (fallback visual de RBAC), saveUser e deleteUser seguem aqui.
+// Etapa 6). As regras can* (fallback visual de RBAC) e saveUser seguem aqui; deleteUser saiu na UBX-V4.
 
 function scopedCompaniesForSearch() {
   return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
@@ -6192,26 +6192,9 @@ async function generateAndCopyTemporaryPassword(userId) {
   } catch (error) { alert(error.message); }
 }
 
-// P0-2 — confirmação estilizada para ações destrutivas (substitui window.confirm).
-// Cai para o confirm nativo se o módulo de UI helpers não estiver disponível.
-async function confirmDestructive(opts) {
-  const o = opts || {};
-  if (typeof globalThis.dsConfirm === 'function') { return globalThis.dsConfirm(o); }
-  return globalThis.confirm(o.message || '');
-}
-
-async function deleteUser(userId) {
-  if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) return;
-  try {
-    await globalThis.__EPI_USERS_API__.deleteUser(userId, actorQuery());
-    if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usuário removido com sucesso.');
-    await loadBootstrap();
-  } catch (error) {
-    setUserFormFeedback(error.message, true);
-    alert(error.message);
-  }
-}
+// confirmDestructive e os helpers de modal (openModal, closeModal, bindModalKeyboard,
+// getFocusableElements) vivem em static/js/modules/shared/ui/dialogs.js (UBX-V4, Etapa A);
+// deleteUser, em static/js/modules/users/ui/users-view.js.
 
 function dashboardInteractiveEmptyMessage(message) {
   return `<div class="dashboard-chart-empty">${message}</div>`;
@@ -10459,59 +10442,8 @@ function setupDrawingCanvas(canvas, clearButton) {
 }
 
 let signaturePadController = null;
-const modalFocusState = new WeakMap();
-const modalKeydownState = new WeakMap();
 
-function getFocusableElements(container) {
-  if (!container) return [];
-  return Array.from(container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
-    .filter((el) => !el.disabled && !el.hidden && el.getAttribute('aria-hidden') !== 'true');
-}
-
-function openModal(modalElement) {
-  if (!modalElement) return;
-  modalFocusState.set(modalElement, document.activeElement instanceof HTMLElement ? document.activeElement : null);
-  modalElement.hidden = false;
-  if ('inert' in modalElement) modalElement.inert = false;
-  modalElement.classList.add('is-open');
-  const focusables = getFocusableElements(modalElement);
-  (focusables[0] || modalElement).focus?.();
-}
-
-function closeModal(modalElement) {
-  if (!modalElement) return;
-  if (modalElement.contains(document.activeElement)) document.activeElement?.blur?.();
-  modalElement.hidden = true;
-  if ('inert' in modalElement) modalElement.inert = true;
-  modalElement.classList.remove('is-open');
-  const previousFocus = modalFocusState.get(modalElement);
-  if (previousFocus?.isConnected) previousFocus.focus();
-}
-
-function bindModalKeyboard(modalElement, onClose) {
-  if (!modalElement || modalKeydownState.has(modalElement)) return;
-  const keydownHandler = (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose?.();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusables = getFocusableElements(modalElement);
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-  safeOn(modalElement, 'keydown', keydownHandler);
-  modalKeydownState.set(modalElement, keydownHandler);
-}
+// Helpers de modal: static/js/modules/shared/ui/dialogs.js (UBX-V4, Etapa A).
 
 function signatureModalRefs() {
   return {

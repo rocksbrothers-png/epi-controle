@@ -17,8 +17,9 @@ const JS_ROOT = path.resolve(__dirname, '..');
 const MODULES = ['modules/users/business/user-form.js', 'modules/users/integrations/users-api.js', 'modules/users/ui/users-view.js'];
 const UI = ['populateUserFilters', 'renderUsersSummary', 'filteredUsers', 'setUserFormFeedback', 'syncUserFormAccess',
   'userActionButtons', 'addEditButtons', 'addPromoteButtons', 'addPasswordButtons', 'addManagementButtons', 'startEditUser',
-  'updateUserAccess', 'resetUserForm', 'syncUserFilters'];
-const APP_KEPT = ['saveUser', 'deleteUser'];
+  'updateUserAccess', 'resetUserForm', 'syncUserFilters', 'deleteUser'];
+// deleteUser saiu do app.js na UBX-V4 (Etapa A); as tabelas seguem as das originais.
+const APP_KEPT = ['saveUser'];
 const CAN = ['canManageUser', 'canDeleteUser', 'canPromoteToAdmin', 'canPromoteToGeneralAdmin', 'canDemoteAdmin',
   'canDemoteGeneralAdmin', 'canGenerateRecoveryToken', 'canToggleActive'];
 

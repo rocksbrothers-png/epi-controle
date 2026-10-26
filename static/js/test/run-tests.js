@@ -82,7 +82,10 @@ function loadModule(relPath) {
   // UBX-V3: cadastro de EPI e leitura de arquivo.
   'modules/shared/ui/file-data-url.js',
   'modules/epis/business/epi-form-values.js',
-  'modules/epis/ui/epi-registration.js'
+  'modules/epis/ui/epi-registration.js',
+  'modules/users/business/user-form.js',
+  'modules/users/integrations/users-api.js',
+  'modules/users/ui/users-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -7750,6 +7753,7 @@ require('./shared-domain-labels-runtime')({ test, assert, eq });
 require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
 require('./reports-view-runtime')({ testAsync, test, assert, eq });
 require('./epis-registration-runtime')({ testAsync, test, assert, eq });
+require('./users-view-runtime')({ testAsync, test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

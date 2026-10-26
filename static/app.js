@@ -4617,23 +4617,10 @@ function populateRoleOptions() {
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
 }
 
-function populateUserFilters() {
-  if (!refs.userFilterCompany) return;
-  const all = tr('user.filterAll', 'Todos');
-  const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
-  refs.userFilterCompany.innerHTML = `<option value="">${all}</option>` + optionsHtml;
-  const roleKeys = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'];
-  refs.userFilterRole.innerHTML = `<option value="">${all}</option>` +
-    roleKeys.map((k) => `<option value="${k}">${tr('role.' + k, ROLE_LABELS[k] || k)}</option>`).join('');
-  refs.userFilterStatus.innerHTML = `<option value="">${all}</option>` +
-    `<option value="1">${tr('user.active', 'Ativo')}</option>` +
-    `<option value="0">${tr('user.inactive', 'Inativo')}</option>`;
-  refs.userFilterCompany.value = state.userFilters.company_id;
-  refs.userFilterRole.value = state.userFilters.role;
-  refs.userFilterStatus.value = state.userFilters.active;
-  refs.userFilterSearch.value = state.userFilters.search;
-}
+// populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
+// userActionButtons, add{Edit,Promote,Password,Management}Buttons, startEditUser, updateUserAccess,
+// resetUserForm e syncUserFilters (gestão de usuários) vivem em static/js/modules/users/ (UBX-V3,
+// Etapa 6). As regras can* (fallback visual de RBAC), saveUser e deleteUser seguem aqui.
 
 function scopedCompaniesForSearch() {
   return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
@@ -4924,17 +4911,6 @@ function syncDeliveriesOptions() {
   if (lockByOperationalProfile) {
     state.deliveriesFilters.unit_id = String(unitField.value || '');
   }
-}
-
-function renderUsersSummary() {
-  const visible = filteredUsers();
-  const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
-  const active = visible.filter((item) => Number(item.active) === 1).length;
-  refs.usersSummary.innerHTML = [
-    [tr('user.kpiVisible', 'Visíveis'), visible.length],
-    [tr('user.kpiAdmins', 'Administradores'), admins],
-    [tr('user.kpiActive', 'Ativos'), active]
-  ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
 }
 
 function renderCompaniesSummary() {
@@ -5782,19 +5758,6 @@ async function toggleCompany(companyId, active) {
   } catch (error) { alert(error.message); }
 }
 
-function filteredUsers() {
-  return filterByUserCompany(state.users).filter((item) => {
-    if (state.userFilters.company_id && String(item.company_id || '') !== String(state.userFilters.company_id)) return false;
-    if (state.userFilters.role && item.role !== state.userFilters.role) return false;
-    if (state.userFilters.active !== '' && String(Number(item.active)) !== String(state.userFilters.active)) return false;
-    if (state.userFilters.search) {
-      const haystack = `${item.full_name} ${item.username} ${item.company_name || ''}`.toLowerCase();
-      if (!haystack.includes(state.userFilters.search)) return false;
-    }
-    return true;
-  });
-}
-
 // Aguarda o backend ficar PRONTO antes de chamar /api/bootstrap.
 //
 // No cold-start do Render o backend sobe e roda as funções de schema (ensure_*)
@@ -6058,73 +6021,6 @@ function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].inclu
 function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
 function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
 
-function setUserFormFeedback(message = '', isError = false) {
-  const field = document.getElementById('user-form-feedback');
-  if (!field) return;
-  field.textContent = String(message || '');
-  field.classList.toggle('error', Boolean(isError));
-}
-
-function syncUserFormAccess() {
-  const roleField = refs.userForm?.elements?.role;
-  const companyField = refs.userForm?.elements?.company_id;
-  if (!roleField || !companyField) return;
-
-  const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);
-  const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
-
-  if (companyLocked) {
-    companyField.value = state.user?.company_id || '';
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = !requiresCompany;
-    if (!requiresCompany) companyField.value = '';
-  }
-
-  if (requiresCompany && !companyField.value) {
-    companyField.value = String(state.selectedCompanyId || state.user?.company_id || state.companies[0]?.id || '');
-  }
-
-  populateLinkedEmployeeOptions();
-  syncUserEmployeeLink();
-}
-
-function userActionButtons(target) {
-  if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
-  const actions = [];
-  
-  addEditButtons(actions, target);
-  addPromoteButtons(actions, target);
-  addPasswordButtons(actions, target);
-  addManagementButtons(actions, target);
-  addEmployeeButtons(actions, target);
-  
-  if (actions.length === 0) return '-';
-  return `<div class="action-group">${actions.join('')}</div>`;
-}
-
-function addEditButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(`<button class="ghost" data-user-edit="${target.id}">${tr('edit', 'Editar')}</button>`);
-  }
-}
-
-function addPromoteButtons(actions, target) {
-  if (canPromoteToAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">${tr('user.promoteToAdmin', 'Tornar Administrador')}</button>`);
-  }
-  if (canPromoteToGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">${tr('user.promoteToGeneralAdmin', 'Tornar Adm. Geral')}</button>`);
-  }
-  if (canDemoteGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">${tr('user.removeFromGeneral', 'Remover do Geral')}</button>`);
-  }
-  if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">${tr('user.demoteToUser', 'Rebaixar para Usuário')}</button>`);
-  }
-}
-
 function canGenerateRecoveryToken(target) {
   if (state.user?.role === 'master_admin') {
     return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
@@ -6133,37 +6029,6 @@ function canGenerateRecoveryToken(target) {
     return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
   }
   return false;
-}
-
-function addPasswordButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">${tr('user.generateProvPassword', 'Gerar senha provisória')}</button>`,
-      `<button class="ghost" data-user-generate-copy-password="${target.id}">${tr('user.generateCopyPassword', 'Gerar e copiar senha')}</button>`
-    );
-    if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">${tr('user.forcePasswordChange', 'Forçar troca da senha novamente')}</button>`);
-    }
-  }
-  if (canGenerateRecoveryToken(target)) {
-    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">${tr('user.generateRecoveryKey', 'Gerar chave de recuperação')}</button>`);
-  }
-}
-
-function addManagementButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-copy-email="${target.id}">${tr('user.copyEmail', 'Copiar e-mail')}</button>`,
-      `<button class="ghost" data-user-copy-whatsapp="${target.id}">${tr('user.copyWhatsapp', 'Copiar WhatsApp')}</button>`
-    );
-  }
-  if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? tr('user.deactivate', 'Desativar Usuário') : tr('user.activate', 'Ativar Usuário');
-    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
-  }
-  if (canDeleteUser(target)) {
-    actions.push(`<button class="ghost" data-user-delete="${target.id}">${tr('user.remove', 'Remover')}</button>`);
-  }
 }
 
 function addEmployeeButtons(actions, target) {
@@ -6191,36 +6056,6 @@ async function printEmployeePortalLink(employeeId) {
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
   } catch (error) {
-    alert(error.message);
-  }
-}
-
-function startEditUser(userId) {
-  const user = state.users.find((item) => String(item.id) === String(userId));
-  if (!user) return;
-  state.editingUserId = user.id;
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = user.id;
-  refs.userForm.elements.full_name.value = user.full_name;
-  refs.userForm.elements.username.value = user.username;
-  refs.userForm.elements.password.value = '';
-  populateRoleOptions();
-  refs.userForm.elements.role.value = canManageUser(user) ? user.role : refs.userRole.value;
-  refs.userForm.elements.company_id.value = user.company_id || '';
-  refs.userForm.elements.linked_employee_id.value = user.linked_employee_id || '';
-  syncUserFormAccess();
-}
-
-async function updateUserAccess(userId, changes, successMessage = '') {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  try {
-    await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
-    if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
-    await loadBootstrap();
-  } catch (error) {
-    setUserFormFeedback(error.message, true);
     alert(error.message);
   }
 }
@@ -6368,7 +6203,7 @@ async function confirmDestructive(opts) {
 async function deleteUser(userId) {
   if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
-    await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
+    await globalThis.__EPI_USERS_API__.deleteUser(userId, actorQuery());
     if (String(state.editingUserId || '') === String(userId)) resetUserForm();
     setUserFormFeedback('Usuário removido com sucesso.');
     await loadBootstrap();
@@ -6376,16 +6211,6 @@ async function deleteUser(userId) {
     setUserFormFeedback(error.message, true);
     alert(error.message);
   }
-}
-
-function resetUserForm() {
-  state.editingUserId = null;
-  refs.userForm.reset();
-  if (refs.userLinkedEmployeeSearch) refs.userLinkedEmployeeSearch.value = '';
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = '';
-  populateRoleOptions();
-  syncUserFormAccess();
 }
 
 function dashboardInteractiveEmptyMessage(message) {
@@ -12350,21 +12175,11 @@ async function saveUser(event) {
   try {
     setUserFormFeedback('');
     const values = formValues(refs.userForm);
-    values.actor_user_id = state.user.id;
-    if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
+    // Regras de cliente em modules/users/business/user-form.js; o ROLE_LABELS
+    // passado é o deste arquivo (o de core/constants.js tem um perfil a mais).
+    globalThis.__EPI_USERS_BUSINESS__.prepareUserFormValues(values, { actor: state.user, roleLabels: ROLE_LABELS });
 
-    values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
-    const noLink = !String(values.linked_employee_id || '').trim();
-    if (['admin', 'user'].includes(values.role) && noLink) {
-      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
-    }
-    if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
-    }
-
-    await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    await globalThis.__EPI_USERS_API__.saveUser(state.editingUserId, values);
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
@@ -13663,14 +13478,6 @@ async function saveEmployeeMovement(event) {
   } catch (error) {
     alert(error.message);
   }
-}
-
-function syncUserFilters() {
-  state.userFilters.company_id = refs.userFilterCompany.value;
-  state.userFilters.role = refs.userFilterRole.value;
-  state.userFilters.active = refs.userFilterStatus.value;
-  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
-  renderTables();
 }
 
 

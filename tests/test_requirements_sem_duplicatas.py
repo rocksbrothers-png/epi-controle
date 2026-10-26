@@ -47,7 +47,9 @@ def test_cada_pacote_declarado_uma_unica_vez():
 
 
 def test_toda_dependencia_mantem_faixa_com_minimo_e_teto():
-    sem_faixa = [line for _, line in _requirement_lines() if '>=' not in line or '<' not in line.replace('<=', '')]
+    # Só o especificador conta: um `<` em marcador (`; python_version<"3.12"`) não é teto.
+    especificadores = [line.split(';', 1)[0] for _, line in _requirement_lines()]
+    sem_faixa = [spec for spec in especificadores if '>=' not in spec or '<' not in spec.replace('<=', '')]
     assert not sem_faixa, f'dependência sem faixa >=mínimo,<teto: {sem_faixa}'
 
 

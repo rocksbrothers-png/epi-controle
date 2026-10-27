@@ -5,6 +5,21 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const source = fs.readFileSync(path.resolve(__dirname, '../../app.js'), 'utf8');
 // FIX-NAV-REFRESH-V1: o fluxo gravar → atualizar vem do módulo real (shared/ui).
 const mutationFlow = fs.readFileSync(path.resolve(__dirname, '../modules/shared/ui/mutation-flow.js'), 'utf8');
+// UBX-V5 Etapa 1: arquivar/desarquivar/excluir saíram do app.js para os módulos
+// reais de modules/archival/ (configuração, integração e UI).
+const ARCHIVAL_MODULES = ['business/archival-rules.js', 'integrations/archival-api.js', 'ui/archival-view.js']
+  .map((rel) => fs.readFileSync(path.resolve(__dirname, '../modules/archival', rel), 'utf8'));
+function loadArchival(ctx) {
+  ctx.__EPI_APP_STATE__ = ctx.state;
+  ctx.__EPI_REFS__ = {};
+  for (const code of [mutationFlow, ...ARCHIVAL_MODULES]) { vm.runInContext(code, ctx); }
+}
+// A lista de arquivados é recarregada pelo GET real de loadArchivedRecords.
+function archivedReload(url) {
+  const match = /^\/api\/(employees|epis|outsourced-companies)\/archived\?actor_user_id=7(&outsourced_only=1)?$/.exec(url);
+  if (!match) { return null; }
+  return { 'employees': match[2] ? 'outsourcedEmployee' : 'employee', 'epis': 'epi', 'outsourced-companies': 'outsourcedCompany' }[match[1]];
+}
 function slice(name) {
   const lines = source.split('\n');
   const start = lines.findIndex((line) => new RegExp(`^(?:async )?function ${name}\\(`).test(line));
@@ -25,14 +40,16 @@ function environment(formId, editingId = '') {
   };
   const ctx = vm.createContext({
     state: { user: { id: 7, role: 'registry_admin', company_id: 901 }, outsourcedCompanies: [{ id: 11, name: 'QA' }] },
-    ARCHIVAL_ENTITIES: { outsourcedCompany: { path: '/api/outsourced-companies', stateList: 'outsourcedCompanies',
-      updatePermission: 'employees:update', deletePermission: 'employees:update', labelFallback: 'QA', i18nPrefix: 'outsourcedCompany' } },
     document: { getElementById: () => null, querySelector: () => null },
-    requirePermission: () => true, formValues: () => ({ id: id.value, name: 'QA', company_id: '901' }),
-    api: async (url, options) => { calls.push(['api', url, options.method]); return {}; },
+    requirePermission: () => true, hasPermission: () => true, actorQuery: () => 'actor_user_id=7',
+    formValues: () => ({ id: id.value, name: 'QA', company_id: '901' }),
+    api: async (url, options) => {
+      const kind = archivedReload(url);
+      calls.push(kind ? ['archived', kind] : ['api', url, (options || {}).method]);
+      return {};
+    },
     loadBootstrap: async (options) => calls.push(['bootstrap', options]),
     loadOutsourcedCompanies: async () => calls.push(['companies']),
-    loadArchivedRecords: async (kind) => calls.push(['archived', kind]),
     setFormSubmitLabel: () => {}, setOutsourcedCompanyFormMode: () => {}, syncOutsourcedCompanyUnitOptions: () => {},
     applyOutsourcedCompanyCorporateLock: () => {}, setEmployeeLegalEntityLock: () => {}, syncEmpresaOrigemVisibility: () => {},
     setOutsourcedEmployeeFormMode: () => {}, syncOutsourcedEmployeeUnitOptions: () => {}, renderOutsourcedEmployees: () => calls.push(['employees']),
@@ -40,17 +57,9 @@ function environment(formId, editingId = '') {
     showToast: () => {}, alert: (message) => { throw new Error(message); }
   });
   ctx.globalThis = ctx;
-  vm.runInContext(mutationFlow, ctx);
-  vm.runInContext([slice('saveSimpleForm'), slice('handleFormReset'), slice('archiveEntityRecord'), slice('restoreArchivedRecord')].join('\n'), ctx);
+  loadArchival(ctx);
+  vm.runInContext([slice('saveSimpleForm'), slice('handleFormReset')].join('\n'), ctx);
   return { ctx, form, calls };
-}
-function sliceConst(name) {
-  const lines = source.split('\n');
-  const start = lines.findIndex((line) => line.startsWith(`const ${name} = {`));
-  if (start < 0) { throw new Error(`missing ${name}`); }
-  let end = start;
-  while (!/^};/.test(lines[end])) { end++; }
-  return lines.slice(start, end + 1).join('\n').replace(/^const /, 'var ');
 }
 // Configuração REAL de ARCHIVAL_ENTITIES: arquivar/desarquivar/excluir
 // definitivamente nos cadastros de Colaboradores/Terceirizados atualiza as
@@ -63,18 +72,19 @@ function archivalEnvironment() {
       epis: [{ id: 32, name: 'QA' }], outsourcedCompanies: [{ id: 32, legal_name: 'QA' }],
       archivedEmployees: [archived], archivedEpis: [archived], archivedOutsourcedCompanies: [archived],
       archivedOutsourcedEmployees: [archived] },
-    requirePermission: () => true, actorQuery: () => 'actor_user_id=7', reportNonCriticalError: () => {},
-    api: async (url, options) => { calls.push(['api', url, (options || {}).method || 'GET']); return { records: {} }; },
+    requirePermission: () => true, hasPermission: () => true, actorQuery: () => 'actor_user_id=7', reportNonCriticalError: () => {},
+    api: async (url, options) => {
+      const kind = archivedReload(url);
+      calls.push(kind ? ['archived', kind] : ['api', url, (options || {}).method || 'GET']);
+      return { records: {} };
+    },
     loadBootstrap: async (options) => calls.push(['bootstrap', options || null]),
     loadOutsourcedCompanies: async () => calls.push(['companies']),
-    loadArchivedRecords: async (kind) => calls.push(['archived', kind]),
     tr: (_key, fallback) => fallback, confirmDestructive: async () => true, prompt: () => 'QA justificativa',
     showToast: () => {}, alert: () => {}
   });
   ctx.globalThis = ctx;
-  vm.runInContext(mutationFlow, ctx);
-  vm.runInContext([sliceConst('ARCHIVAL_ENTITIES'), slice('_epiArchivalPreflight'), slice('archiveEntityRecord'),
-    slice('restoreArchivedRecord'), slice('purgeArchivedRecord')].join('\n'), ctx);
+  loadArchival(ctx);
   return { ctx, calls };
 }
 module.exports = function ({ testAsync, eq, assert }) {

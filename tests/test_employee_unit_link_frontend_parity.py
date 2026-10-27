@@ -206,11 +206,12 @@ def test_both_frontends_gate_archiving_with_the_same_pair_of_permissions():
     some para eles ali e continua aparecendo no outro — mesma pessoa, mesmo
     perfil, telas discordando sobre o que ela pode fazer.
     """
-    app_js = _read('static', 'app.js')
+    # ARCHIVAL_ENTITIES saiu do app.js na UBX-V5, Etapa 1.
+    rules_js = _read('static', 'js', 'modules', 'archival', 'business', 'archival-rules.js')
     match = re.search(
-        r"outsourcedEmployee:.*?deletePermission:\s*'([^']+)'", app_js, re.DOTALL
+        r"outsourcedEmployee:.*?deletePermission:\s*'([^']+)'", rules_js, re.DOTALL
     )
-    assert match, 'deletePermission de outsourcedEmployee não encontrada em app.js'
+    assert match, 'deletePermission de outsourcedEmployee não encontrada em archival-rules.js'
     web_pair = set(match.group(1).split())
 
     tab = _read(

@@ -387,7 +387,9 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     for (const name of NAMES) {
       assert(!new RegExp(`^(?:async\\s+)?function\\s+${name}\\(`, 'm').test(app), `${name} voltou ao app.js`);
     }
-    assert(/^async function archiveOutsourcedEmployee\(/m.test(app), 'archiveOutsourcedEmployee segue no app.js (archiveEntityRecord é de bloco)');
+    // UBX-V5 Etapa 1: com archiveEntityRecord global (modules/archival/ui), o atalho mora no módulo.
+    eq(typeof ctx.archiveOutsourcedEmployee, 'function', 'archiveOutsourcedEmployee publicado pelo módulo');
+    assert(!/^async function archiveOutsourcedEmployee\(/m.test(app), 'archiveOutsourcedEmployee saiu do app.js');
     assert(!/^const (OUTSOURCED_COMPANY_CORPORATE_FIELDS|CONTRACTED_VINCULOS_FALLBACK)/m.test(app), 'constantes saíram do app.js');
   });
 };

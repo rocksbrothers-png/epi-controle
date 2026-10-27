@@ -7770,6 +7770,7 @@ require('./fix-colab-terc-runtime')({ testAsync, test, assert, eq });
 require('./fix-nav-refresh-runtime')({ testAsync, test, assert, eq });
 require('./employees-view-runtime')({ testAsync, test, assert, eq });
 require('./outsourced-view-runtime')({ testAsync, test, assert, eq });
+require('./archival-view-runtime')({ testAsync, test, assert, eq });
 require('./access-rules-runtime')({ test, assert, eq });
 require('./extracted-globals-ownership-runtime')({ test, assert });
 

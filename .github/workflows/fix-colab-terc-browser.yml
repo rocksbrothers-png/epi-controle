@@ -4,6 +4,7 @@ on:
     paths:
       - 'static/**'
       - 'scripts/browser/fix_colab_terc.py'
+      - 'scripts/browser/fix_nav_refresh.py'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
 permissions:
@@ -12,7 +13,7 @@ jobs:
   browser:
     name: Chromium functional regression (five locales)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -21,6 +22,9 @@ jobs:
       - run: pip install playwright==1.58.0
       - run: python -m playwright install --with-deps chromium
       - run: python scripts/browser/fix_colab_terc.py --output browser-evidence
+      # FIX-NAV-REFRESH-V1: tela mantida, uma requisição por lista, aviso verdadeiro, clique duplo.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/fix_nav_refresh.py --output browser-evidence/nav-refresh
       - uses: actions/upload-artifact@v7
         if: always()
         with:

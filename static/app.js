@@ -7261,35 +7261,42 @@ const UNIT_PURGE_RECORD_LABELS = {
 };
 
 async function archiveUnit(unitId) {
-  if (!requirePermission('units:delete')) return;
-  const unit = state.units.find((item) => String(item.id) === String(unitId));
-  const unitName = unit ? unit.name : `#${unitId}`;
-  const message = `${tr('unit.title', 'Unidade')}: "${unitName}"\n\n${tr('unit.archiveConfirm',
-    'Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.')}`;
-  if (!(await confirmDestructive({ title: tr('unit.archiveTitle', 'Arquivar Unidade'), message, confirmLabel: tr('unit.archive', 'Arquivar'), variant: 'danger' }))) return;
-  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
-  try {
-    await api(`/api/units/${unitId}/archive`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+  return runExclusiveMutation(`archive:unit:${unitId}`, async () => {
+    if (!requirePermission('units:delete')) return;
+    const unit = state.units.find((item) => String(item.id) === String(unitId));
+    const unitName = unit ? unit.name : `#${unitId}`;
+    const message = `${tr('unit.title', 'Unidade')}: "${unitName}"\n\n${tr('unit.archiveConfirm',
+      'Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.')}`;
+    if (!(await confirmDestructive({ title: tr('unit.archiveTitle', 'Arquivar Unidade'), message, confirmLabel: tr('unit.archive', 'Arquivar'), variant: 'danger' }))) return;
+    const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
+    try {
+      await api(`/api/units/${unitId}/archive`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, reason }),
+      });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: true });
+      await loadArchivedUnits();
     });
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-  }
+  });
 }
 
 async function loadArchivedUnits() {
   if (!hasPermission('units:view')) return;
-  try {
-    const data = await api(`/api/units/archived?${actorQuery()}`);
-    state.archivedUnits = data.units || [];
-  } catch (error) {
-    state.archivedUnits = [];
-    reportNonCriticalError('[unidades] falha ao carregar unidades arquivadas', error);
-  }
-  renderArchivedUnits();
+  return coalesceLoad('archived:units', async () => {
+    try {
+      const data = await api(`/api/units/archived?${actorQuery()}`);
+      state.archivedUnits = data.units || [];
+    } catch (error) {
+      state.archivedUnits = [];
+      reportNonCriticalError('[unidades] falha ao carregar unidades arquivadas', error);
+    }
+    renderArchivedUnits();
+  });
 }
 
 function applyArchivedUnitsFilters(items) {
@@ -7336,56 +7343,66 @@ function syncArchivedUnitsFilters() {
 }
 
 async function restoreArchivedUnit(unitId) {
-  if (!requirePermission('units:update')) return;
-  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar Unidade'), message: tr('unit.restoreConfirm', 'A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
-  try {
-    await api(`/api/units/${unitId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-  }
+  return runExclusiveMutation(`restore:unit:${unitId}`, async () => {
+    if (!requirePermission('units:update')) return;
+    if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar Unidade'), message: tr('unit.restoreConfirm', 'A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
+    try {
+      await api(`/api/units/${unitId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: true });
+      await loadArchivedUnits();
+    });
+  });
 }
 
 // Exclusão definitiva em duas etapas: resumo do histórico + confirmação com
 // justificativa obrigatória e digitação do nome exato da unidade.
 async function purgeArchivedUnit(unitId) {
-  if (!requirePermission('units:delete')) return;
-  const unit = state.archivedUnits.find((item) => String(item.id) === String(unitId));
-  if (!unit) return;
-  try {
-    const step1 = await api(`/api/units/${unitId}/purge-request`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    const records = step1.records || {};
-    const lines = Object.entries(UNIT_PURGE_RECORD_LABELS)
-      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
-      .join('\n');
-    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
-    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
-      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+  return runExclusiveMutation(`purge:unit:${unitId}`, async () => {
+    if (!requirePermission('units:delete')) return;
+    const unit = state.archivedUnits.find((item) => String(item.id) === String(unitId));
+    if (!unit) return;
+    try {
+      const step1 = await api(`/api/units/${unitId}/purge-request`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id }),
+      });
+      const records = step1.records || {};
+      const lines = Object.entries(UNIT_PURGE_RECORD_LABELS)
+        .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
+        .join('\n');
+      const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
+      if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
+        await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+        await loadArchivedUnits();
+        return;
+      }
+      const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
+      const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato da unidade para confirmar:')}\n"${unit.name}"`, '') ?? '';
+      if (!justification.trim() || !confirmName.trim()) {
+        await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+        await loadArchivedUnits();
+        return;
+      }
+      await api(`/api/units/${unitId}/purge-confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
+      });
+    } catch (error) {
+      alert(error.message);
       await loadArchivedUnits();
       return;
     }
-    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
-    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato da unidade para confirmar:')}\n"${unit.name}"`, '') ?? '';
-    if (!justification.trim() || !confirmName.trim()) {
-      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedUnits();
-      return;
-    }
-    await api(`/api/units/${unitId}/purge-confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
-    });
     alert(tr('unit.purgeDone', 'Unidade excluída definitivamente. O registro da operação foi gravado na auditoria.'));
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-    await loadArchivedUnits();
-  }
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: true });
+      await loadArchivedUnits();
+    });
+  });
 }
 
 // ── Arquivamento genérico (Colaboradores e EPIs) — mesma política das Unidades ─
@@ -7423,6 +7440,8 @@ const ARCHIVAL_ENTITIES = {
     responseKey: 'epis',
     deletePermission: 'epis:delete',
     updatePermission: 'epis:update',
+    // FIX-NAV-REFRESH-V1: mesma regra dos cadastros de Colaboradores.
+    preserveView: true,
     purgeLabels: {
       deliveries: 'Entregas', devolutions: 'Devoluções', stock_items: 'Itens de estoque (QR Codes)',
       stock_movements: 'Movimentações de estoque', epi_requests: 'Requisições de EPI',
@@ -7517,77 +7536,85 @@ async function _epiArchivalPreflight(recordId) {
 }
 
 async function archiveEntityRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !requirePermission(cfg.deletePermission)) return;
-  const record = (state[cfg.stateList] || []).find((item) => String(item.id) === String(recordId));
-  const recordName = record ? record.name : `#${recordId}`;
+  return runExclusiveMutation(`archive:${kind}:${recordId}`, async () => {
+    const cfg = ARCHIVAL_ENTITIES[kind];
+    if (!cfg || !requirePermission(cfg.deletePermission)) return;
+    const record = (state[cfg.stateList] || []).find((item) => String(item.id) === String(recordId));
+    const recordName = record ? record.name : `#${recordId}`;
 
-  let blockAndArchive = false;
-  if (kind === 'epi') {
-    const st = await _epiArchivalPreflight(recordId);
-    if (st && st.has_open_links) {
-      const linkMsg = `${cfg.labelFallback}: "${recordName}"\n\n`
-        + `${tr('epi.archiveHasStock', 'Este EPI possui saldo ou vínculos vivos:')}\n`
-        + `• ${tr('epi.stockAvailable', 'Disponível')}: ${st.available}\n`
-        + `• ${tr('epi.stockInTransit', 'Reservado/em trânsito')}: ${st.in_transit}\n`
-        + `• ${tr('epi.stockInPossession', 'Em posse (colaborador)')}: ${st.in_possession}\n`
-        + `• ${tr('epi.stockBlocked', 'Bloqueado')}: ${st.blocked}\n`
-        + `• ${tr('epi.pendingRequests', 'Solicitações abertas')}: ${st.pending_requests}\n`
-        + `• ${tr('epi.pendingPurchase', 'Pedidos abertos')}: ${st.pending_purchase}\n\n`
-        + (st.blockable > 0
-          ? tr('epi.archiveBlockExplain', 'Ao continuar, o saldo disponível será BLOQUEADO (movido para Estoque Bloqueado — rastreável, nada some) e o EPI será arquivado.')
-          : tr('epi.archiveNoBlockable', 'Não há saldo físico livre para bloquear; itens em posse/pedidos permanecem em seus fluxos. O EPI será arquivado.'));
-      if (!(await confirmDestructive({
-        title: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
-        message: linkMsg,
-        confirmLabel: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
-        variant: 'danger',
-      }))) return;
-      blockAndArchive = true;
+    let blockAndArchive = false;
+    if (kind === 'epi') {
+      const st = await _epiArchivalPreflight(recordId);
+      if (st && st.has_open_links) {
+        const linkMsg = `${cfg.labelFallback}: "${recordName}"\n\n`
+          + `${tr('epi.archiveHasStock', 'Este EPI possui saldo ou vínculos vivos:')}\n`
+          + `• ${tr('epi.stockAvailable', 'Disponível')}: ${st.available}\n`
+          + `• ${tr('epi.stockInTransit', 'Reservado/em trânsito')}: ${st.in_transit}\n`
+          + `• ${tr('epi.stockInPossession', 'Em posse (colaborador)')}: ${st.in_possession}\n`
+          + `• ${tr('epi.stockBlocked', 'Bloqueado')}: ${st.blocked}\n`
+          + `• ${tr('epi.pendingRequests', 'Solicitações abertas')}: ${st.pending_requests}\n`
+          + `• ${tr('epi.pendingPurchase', 'Pedidos abertos')}: ${st.pending_purchase}\n\n`
+          + (st.blockable > 0
+            ? tr('epi.archiveBlockExplain', 'Ao continuar, o saldo disponível será BLOQUEADO (movido para Estoque Bloqueado — rastreável, nada some) e o EPI será arquivado.')
+            : tr('epi.archiveNoBlockable', 'Não há saldo físico livre para bloquear; itens em posse/pedidos permanecem em seus fluxos. O EPI será arquivado.'));
+        if (!(await confirmDestructive({
+          title: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
+          message: linkMsg,
+          confirmLabel: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
+          variant: 'danger',
+        }))) return;
+        blockAndArchive = true;
+      }
     }
-  }
 
-  if (!blockAndArchive) {
-    const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
-    if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
-  }
+    if (!blockAndArchive) {
+      const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
+      if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
+    }
 
-  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
-  if (blockAndArchive && !String(reason).trim()) {
-    showToast(tr('epi.archiveReasonRequired', 'Motivo é obrigatório para bloquear o saldo e arquivar.'), 'error');
-    return;
-  }
-  try {
-    const result = await api(`${cfg.path}/${recordId}/archive`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason, block_and_archive: blockAndArchive }),
-    });
+    const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
+    if (blockAndArchive && !String(reason).trim()) {
+      showToast(tr('epi.archiveReasonRequired', 'Motivo é obrigatório para bloquear o saldo e arquivar.'), 'error');
+      return;
+    }
+    let result;
+    try {
+      result = await api(`${cfg.path}/${recordId}/archive`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, reason, block_and_archive: blockAndArchive }),
+      });
+    } catch (error) {
+      showToast(error.message || tr('epi.archiveFailed', 'Não foi possível arquivar.'), 'error');
+      return;
+    }
     if (blockAndArchive && Number(result?.blocked_stock_items) > 0) {
       showToast(`${result.blocked_stock_items} ${tr('epi.itemsBlockedArchived', 'item(ns) de estoque bloqueado(s) e EPI arquivado.')}`, 'success');
     } else {
       showToast(tr('epi.archivedOk', 'Registro arquivado.'), 'success');
     }
-    await loadBootstrap({ preserveView: cfg.preserveView === true });
-    if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
-    await loadArchivedRecords(kind);
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: cfg.preserveView === true });
+      if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
+      await loadArchivedRecords(kind);
+    });
     // Atualiza imediatamente as telas de estoque (itens recém-bloqueados aparecem em Estoque Bloqueado)
     if (kind === 'epi') { globalThis.loadBlockedStock?.(); }
-  } catch (error) {
-    showToast(error.message || tr('epi.archiveFailed', 'Não foi possível arquivar.'), 'error');
-  }
+  });
 }
 
 async function loadArchivedRecords(kind) {
   const cfg = ARCHIVAL_ENTITIES[kind];
   if (!cfg || !hasPermission(cfg.updatePermission.replace(':update', ':view'))) return;
-  try {
-    const data = await api(`${cfg.path}/archived?${actorQuery()}${cfg.archivedQueryExtra || ''}`);
-    state[cfg.archivedList] = data[cfg.responseKey] || [];
-  } catch (error) {
-    state[cfg.archivedList] = [];
-    reportNonCriticalError(`[${kind}] falha ao carregar arquivados`, error);
-  }
-  renderArchivedRecords(kind);
+  return coalesceLoad(`archived:${kind}`, async () => {
+    try {
+      const data = await api(`${cfg.path}/archived?${actorQuery()}${cfg.archivedQueryExtra || ''}`);
+      state[cfg.archivedList] = data[cfg.responseKey] || [];
+    } catch (error) {
+      state[cfg.archivedList] = [];
+      reportNonCriticalError(`[${kind}] falha ao carregar arquivados`, error);
+    }
+    renderArchivedRecords(kind);
+  });
 }
 
 function formatArchivedRecordRow(kind, item, canManage, canPurge) {
@@ -7653,63 +7680,73 @@ function syncArchivedRecordsFilters(kind) {
 }
 
 async function restoreArchivedRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !requirePermission(cfg.updatePermission)) return;
-  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
-  try {
-    await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap({ preserveView: cfg.preserveView === true });
-    if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
-    await loadArchivedRecords(kind);
-  } catch (error) {
-    alert(error.message);
-  }
+  return runExclusiveMutation(`restore:${kind}:${recordId}`, async () => {
+    const cfg = ARCHIVAL_ENTITIES[kind];
+    if (!cfg || !requirePermission(cfg.updatePermission)) return;
+    if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
+    try {
+      await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: cfg.preserveView === true });
+      if (kind === 'outsourcedCompany') { await loadOutsourcedCompanies(); }
+      await loadArchivedRecords(kind);
+    });
+  });
 }
 
 // Exclusão definitiva em duas etapas (habilitada só após a retenção mínima).
 async function purgeArchivedRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || cfg.supportsPurge === false || !requirePermission(cfg.deletePermission)) return;
-  const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
-  if (!record) return;
-  try {
-    const step1 = await api(`${cfg.path}/${recordId}/purge-request`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    const records = step1.records || {};
-    const lines = Object.entries(cfg.purgeLabels)
-      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
-      .join('\n');
-    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
-    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
-      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+  return runExclusiveMutation(`purge:${kind}:${recordId}`, async () => {
+    const cfg = ARCHIVAL_ENTITIES[kind];
+    if (!cfg || cfg.supportsPurge === false || !requirePermission(cfg.deletePermission)) return;
+    const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
+    if (!record) return;
+    try {
+      const step1 = await api(`${cfg.path}/${recordId}/purge-request`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id }),
+      });
+      const records = step1.records || {};
+      const lines = Object.entries(cfg.purgeLabels)
+        .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
+        .join('\n');
+      const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
+      if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
+        await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+        await loadArchivedRecords(kind);
+        return;
+      }
+      // `record.name` não existe para outsourcedCompany/outsourcedCompanyLike
+      // (a linha vem com `legal_name`/`trade_name`, ver identityKind acima) —
+      // sem o fallback, o prompt mostrava "undefined" e o backend nunca
+      // recebia o `confirm_name` exato que ele mesmo exibiu.
+      const recordDisplayName = record.name || record.legal_name || record.trade_name || '';
+      const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
+      const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${recordDisplayName}"`, '') ?? '';
+      if (!justification.trim() || !confirmName.trim()) {
+        await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
+        await loadArchivedRecords(kind);
+        return;
+      }
+      await api(`${cfg.path}/${recordId}/purge-confirm`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
+      });
+    } catch (error) {
+      alert(error.message);
       await loadArchivedRecords(kind);
       return;
     }
-    // `record.name` não existe para outsourcedCompany/outsourcedCompanyLike
-    // (a linha vem com `legal_name`/`trade_name`, ver identityKind acima) —
-    // sem o fallback, o prompt mostrava "undefined" e o backend nunca
-    // recebia o `confirm_name` exato que ele mesmo exibiu.
-    const recordDisplayName = record.name || record.legal_name || record.trade_name || '';
-    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
-    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${recordDisplayName}"`, '') ?? '';
-    if (!justification.trim() || !confirmName.trim()) {
-      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedRecords(kind);
-      return;
-    }
-    await api(`${cfg.path}/${recordId}/purge-confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
-    });
     alert(tr('unit.purgeDone', 'Registro excluído definitivamente. A operação foi gravada na auditoria.'));
-    await loadBootstrap({ preserveView: cfg.preserveView === true });
-    await loadArchivedRecords(kind);
-  } catch (error) {
-    alert(error.message);
-    await loadArchivedRecords(kind);
-  }
+    await refreshAfterMutation(async () => {
+      await loadBootstrap({ preserveView: cfg.preserveView === true });
+      await loadArchivedRecords(kind);
+    });
+  });
 }
 
 async function deleteRegistryEntity(path, entityId, permission, message) {
@@ -12375,15 +12412,18 @@ async function reprintStockLabelByQr() {
 async function saveEmployeeMovement(event) {
   event.preventDefault();
   if (!requirePermission('employees:transfer')) return;
-  try {
-    const values = formValues(event.target);
-    values.actor_user_id = state.user.id;
-    await api('/api/employee-unit-movements', { method: 'POST', body: JSON.stringify(values) });
+  return runExclusiveMutation('employee-movement', async () => {
+    try {
+      const values = formValues(event.target);
+      values.actor_user_id = state.user.id;
+      await api('/api/employee-unit-movements', { method: 'POST', body: JSON.stringify(values) });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
     event.target.reset();
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
-  }
+    await refreshAfterMutation(() => loadBootstrap({ preserveView: true }));
+  });
 }
 
 

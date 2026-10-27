@@ -163,20 +163,36 @@
     }
   }
 
+  // Época de escrita: avança no início e no fim de toda requisição que não é
+  // GET. modules/shared/ui/mutation-flow.js só junta leituras da MESMA época —
+  // uma leitura iniciada antes de uma gravação (ou durante ela) nunca é
+  // reaproveitada depois dela (FIX-NAV-REFRESH-V1).
+  let writeEpoch = 0;
+
+  function apiWriteEpoch() {
+    return writeEpoch;
+  }
+
   async function apiFetch(path, options = {}) {
-    const response = await requestApiResponse(path, options);
-    const { contentType, payload } = await parseApiPayload(response);
-    ensureExpectedApiResponse(path, response, payload, contentType);
-    throwIfApiRequestFailed(path, response, payload);
-    if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
-      if (payload.ok === false) {
-        const err = payload.error || {};
-        throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+    const isWrite = String(options.method || 'GET').toUpperCase() !== 'GET';
+    if (isWrite) {writeEpoch += 1;}
+    try {
+      const response = await requestApiResponse(path, options);
+      const { contentType, payload } = await parseApiPayload(response);
+      ensureExpectedApiResponse(path, response, payload, contentType);
+      throwIfApiRequestFailed(path, response, payload);
+      if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
+        if (payload.ok === false) {
+          const err = payload.error || {};
+          throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+        }
+        if (payload.data !== undefined) {return payload.data;}
+        return payload;
       }
-      if (payload.data !== undefined) {return payload.data;}
-      return payload;
+      return payload || {};
+    } finally {
+      if (isWrite) {writeEpoch += 1;}
     }
-    return payload || {};
   }
 
   async function apiFetchOptional(path, options = {}) {
@@ -232,6 +248,7 @@
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exports = {
+    apiWriteEpoch,
     createApiError,
     isBootstrapApiPath,
     waitMs,

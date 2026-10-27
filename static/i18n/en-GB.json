@@ -1875,5 +1875,8 @@
   "stock.physical.needSize": "Check the size of every selected QR.",
   "stock.physical.contextChanged": "The company/unit changed. Close and reopen verification.",
   "stock.physical.failed": "The action could not be recorded.",
-  "stock.blockedHint": "Expired items are automatically blocked by physical expiry. The unit names the recipient for donation, return or disposal and confirms shipment before stock is deducted."
+  "stock.blockedHint": "Expired items are automatically blocked by physical expiry. The unit names the recipient for donation, return or disposal and confirms shipment before stock is deducted.",
+  "mutation": {
+    "refreshFailed": "The operation was saved, but the screen could not be refreshed. Reload the page to see the latest data."
+  }
 }

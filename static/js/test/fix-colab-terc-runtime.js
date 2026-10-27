@@ -3,6 +3,8 @@
 // named-property and hidden-input reset semantics are covered by Chromium too.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const source = fs.readFileSync(path.resolve(__dirname, '../../app.js'), 'utf8');
+// FIX-NAV-REFRESH-V1: o fluxo gravar → atualizar vem do módulo real (shared/ui).
+const mutationFlow = fs.readFileSync(path.resolve(__dirname, '../modules/shared/ui/mutation-flow.js'), 'utf8');
 function slice(name) {
   const lines = source.split('\n');
   const start = lines.findIndex((line) => new RegExp(`^(?:async )?function ${name}\\(`).test(line));
@@ -38,6 +40,7 @@ function environment(formId, editingId = '') {
     showToast: () => {}, alert: (message) => { throw new Error(message); }
   });
   ctx.globalThis = ctx;
+  vm.runInContext(mutationFlow, ctx);
   vm.runInContext([slice('saveSimpleForm'), slice('handleFormReset'), slice('archiveEntityRecord'), slice('restoreArchivedRecord')].join('\n'), ctx);
   return { ctx, form, calls };
 }
@@ -69,6 +72,7 @@ function archivalEnvironment() {
     showToast: () => {}, alert: () => {}
   });
   ctx.globalThis = ctx;
+  vm.runInContext(mutationFlow, ctx);
   vm.runInContext([sliceConst('ARCHIVAL_ENTITIES'), slice('_epiArchivalPreflight'), slice('archiveEntityRecord'),
     slice('restoreArchivedRecord'), slice('purgeArchivedRecord')].join('\n'), ctx);
   return { ctx, calls };
@@ -99,10 +103,11 @@ module.exports = function ({ testAsync, eq, assert }) {
       assert(calls.some(([call, kind]) => call === 'archived' && kind === 'outsourcedCompany'));
     });
   }
-  const keepsView = { employee: true, outsourcedCompany: true, outsourcedEmployee: true, epi: false };
+  // FIX-NAV-REFRESH-V1: EPI passou a manter a tela, como os cadastros de Colaboradores.
+  const keepsView = { employee: true, outsourcedCompany: true, outsourcedEmployee: true, epi: true };
   for (const name of ['archiveEntityRecord', 'restoreArchivedRecord', 'purgeArchivedRecord']) {
     for (const [kind, preserve] of Object.entries(keepsView)) {
-      testAsync(`FIX-COLAB-TERC ${name}(${kind}) ${preserve ? 'mantém' : 'não altera'} a tela atual`, async () => {
+      testAsync(`FIX-COLAB-TERC ${name}(${kind}) mantém a tela atual`, async () => {
         const { ctx, calls } = archivalEnvironment();
         await ctx[name](kind, 32);
         const mutation = calls.filter(([call, , method]) => call === 'api' && method === 'POST').pop();

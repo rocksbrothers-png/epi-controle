@@ -1,6 +1,22 @@
 {
-  "note": "Results tied to each recorded headSha; whole-task translation remains incomplete.",
+  "note": "Results tied to each recorded headSha; whole-task translation remains incomplete. Backend failure at 624d8915/75185fb is a stale signature assertion, corrected in the next checkpoint while keeping required baseUrl and host isolation.",
   "runs": [
+    {
+      "conclusion": "failure",
+      "databaseId": 40534614724,
+      "headSha": "624d89153bfbddfd2853810b521376dd7f1811ed",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40534614724",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40534608574,
+      "headSha": "624d89153bfbddfd2853810b521376dd7f1811ed",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40534608574",
+      "workflowName": "Flutter CI"
+    },
     {
       "conclusion": "success",
       "databaseId": 40532653713,

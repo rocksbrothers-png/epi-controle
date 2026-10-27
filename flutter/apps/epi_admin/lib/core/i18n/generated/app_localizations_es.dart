@@ -2672,6 +2672,57 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get operationalAlertPhysicalExpiringTitle => 'Lotes próximos a vencer';
+
+  @override
+  String get passwordChangeTitle => 'Establezca una nueva contraseña';
+
+  @override
+  String get passwordChangeIntro =>
+      'Su contraseña es temporal. Por seguridad, establezca una nueva contraseña para continuar.';
+
+  @override
+  String get passwordChangeCurrent => 'Contraseña actual (temporal)';
+
+  @override
+  String get passwordChangeNew => 'Nueva contraseña';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmar nueva contraseña';
+
+  @override
+  String get passwordChangeSave => 'Guardar nueva contraseña';
+
+  @override
+  String get passwordChangeLogout => 'Cerrar sesión';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Introduzca su contraseña actual';
+
+  @override
+  String get passwordChangeMinLength =>
+      'La nueva contraseña debe tener al menos 6 caracteres';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'La nueva contraseña debe ser distinta de la temporal';
+
+  @override
+  String get passwordChangeMismatch => 'Las contraseñas no coinciden';
+
+  @override
+  String get passwordChangeFailed => 'No se pudo cambiar la contraseña';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmado';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Entrega actualizada';
+
+  @override
+  String get poSupplierRejected => 'Rechazado';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-DD';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -5342,4 +5393,55 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get operationalAlertPhysicalExpiringTitle => 'Lotes próximos a vencer';
+
+  @override
+  String get passwordChangeTitle => 'Establezca una nueva contraseña';
+
+  @override
+  String get passwordChangeIntro =>
+      'Su contraseña es temporal. Por seguridad, establezca una nueva contraseña para continuar.';
+
+  @override
+  String get passwordChangeCurrent => 'Contraseña actual (temporal)';
+
+  @override
+  String get passwordChangeNew => 'Nueva contraseña';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmar nueva contraseña';
+
+  @override
+  String get passwordChangeSave => 'Guardar nueva contraseña';
+
+  @override
+  String get passwordChangeLogout => 'Cerrar sesión';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Introduzca su contraseña actual';
+
+  @override
+  String get passwordChangeMinLength =>
+      'La nueva contraseña debe tener al menos 6 caracteres';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'La nueva contraseña debe ser distinta de la temporal';
+
+  @override
+  String get passwordChangeMismatch => 'Las contraseñas no coinciden';
+
+  @override
+  String get passwordChangeFailed => 'No se pudo cambiar la contraseña';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmado';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Entrega actualizada';
+
+  @override
+  String get poSupplierRejected => 'Rechazado';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-DD';
 }

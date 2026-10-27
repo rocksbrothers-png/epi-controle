@@ -1,0 +1,42 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart
+00:00 +0: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: long translated action wraps and stays operable at scale 1.0
+00:00 +1: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: localized long KPI value fits a narrow card at scale 1.0
+00:00 +2: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: long translated action wraps and stays operable at scale 1.3
+00:00 +3: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: localized long KPI value fits a narrow card at scale 1.3
+00:00 +4: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: long translated action wraps and stays operable at scale 1.6
+00:00 +5: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/i18n_layout_test.dart: localized long KPI value fits a narrow card at scale 1.6
+00:00 +6: loading /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart
+00:01 +6: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton renders label
+00:02 +7: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton shows spinner when loading
+00:02 +8: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton is disabled when onPressed is null
+00:02 +9: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton renders with icon
+00:02 +10: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton fullWidth fills available width
+00:02 +11: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton ghost variant renders
+00:02 +12: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiButton renders in dark mode
+00:02 +13: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.active with default label
+00:02 +14: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.inactive with default label
+00:02 +15: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.expired with default label
+00:02 +16: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.expiring with default label
+00:02 +17: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.pending with default label
+00:02 +18: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.approved with default label
+00:02 +19: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.rejected with default label
+00:02 +20: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.inReview with default label
+00:02 +21: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.noStock with default label
+00:02 +22: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders status EpiBadgeStatus.critical with default label
+00:02 +23: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders custom label
+00:02 +24: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiBadge renders all statuses in dark mode without overflow
+00:03 +25: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiKpiCard renders label and value
+00:03 +26: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiKpiCard renders icon when provided
+00:03 +27: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiKpiCard renders delta trend up
+00:03 +28: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiKpiCard renders in dark mode
+00:03 +29: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiKpiCard calls onTap when tapped
+00:03 +30: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiAvatar shows initials for two-word name
+00:03 +31: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiAvatar shows initials for single-word name
+00:03 +32: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiEmptyState renders title
+00:03 +33: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiEmptyState renders subtitle when provided
+00:03 +34: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiEmptyState renders CTA button when label and callback provided
+00:03 +35: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiEmptyState renders in dark mode
+00:03 +36: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiTheme light theme uses light brightness
+00:03 +37: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiTheme dark theme uses dark brightness
+00:03 +38: /workspace/i18n-full-v1/corporate/flutter/packages/epi_design/test/epi_design_test.dart: EpiTheme dark scaffold background differs from light
+00:03 +39: All tests passed!

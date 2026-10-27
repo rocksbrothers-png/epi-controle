@@ -2684,6 +2684,58 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Lots proches de l’expiration';
+
+  @override
+  String get passwordChangeTitle => 'Définissez un nouveau mot de passe';
+
+  @override
+  String get passwordChangeIntro =>
+      'Votre mot de passe est temporaire. Par sécurité, définissez un nouveau mot de passe pour continuer.';
+
+  @override
+  String get passwordChangeCurrent => 'Mot de passe actuel (temporaire)';
+
+  @override
+  String get passwordChangeNew => 'Nouveau mot de passe';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmer le nouveau mot de passe';
+
+  @override
+  String get passwordChangeSave => 'Enregistrer le nouveau mot de passe';
+
+  @override
+  String get passwordChangeLogout => 'Se déconnecter';
+
+  @override
+  String get passwordChangeCurrentRequired =>
+      'Saisissez votre mot de passe actuel';
+
+  @override
+  String get passwordChangeMinLength =>
+      'Le nouveau mot de passe doit comporter au moins 6 caractères';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'Le nouveau mot de passe doit être différent du mot de passe temporaire';
+
+  @override
+  String get passwordChangeMismatch => 'Les mots de passe ne correspondent pas';
+
+  @override
+  String get passwordChangeFailed => 'Impossible de modifier le mot de passe';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmé';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Livraison mise à jour';
+
+  @override
+  String get poSupplierRejected => 'Refusé';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -5366,4 +5418,56 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Lots proches de l’expiration';
+
+  @override
+  String get passwordChangeTitle => 'Définissez un nouveau mot de passe';
+
+  @override
+  String get passwordChangeIntro =>
+      'Votre mot de passe est temporaire. Par sécurité, définissez un nouveau mot de passe pour continuer.';
+
+  @override
+  String get passwordChangeCurrent => 'Mot de passe actuel (temporaire)';
+
+  @override
+  String get passwordChangeNew => 'Nouveau mot de passe';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmer le nouveau mot de passe';
+
+  @override
+  String get passwordChangeSave => 'Enregistrer le nouveau mot de passe';
+
+  @override
+  String get passwordChangeLogout => 'Se déconnecter';
+
+  @override
+  String get passwordChangeCurrentRequired =>
+      'Saisissez votre mot de passe actuel';
+
+  @override
+  String get passwordChangeMinLength =>
+      'Le nouveau mot de passe doit comporter au moins 6 caractères';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'Le nouveau mot de passe doit être différent du mot de passe temporaire';
+
+  @override
+  String get passwordChangeMismatch => 'Les mots de passe ne correspondent pas';
+
+  @override
+  String get passwordChangeFailed => 'Impossible de modifier le mot de passe';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmé';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Livraison mise à jour';
+
+  @override
+  String get poSupplierRejected => 'Refusé';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
 }

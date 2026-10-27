@@ -2646,6 +2646,57 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Batches approaching expiry';
+
+  @override
+  String get passwordChangeTitle => 'Set a new password';
+
+  @override
+  String get passwordChangeIntro =>
+      'Your password is temporary. For security, set a new password to continue.';
+
+  @override
+  String get passwordChangeCurrent => 'Current password (temporary)';
+
+  @override
+  String get passwordChangeNew => 'New password';
+
+  @override
+  String get passwordChangeConfirm => 'Confirm new password';
+
+  @override
+  String get passwordChangeSave => 'Save new password';
+
+  @override
+  String get passwordChangeLogout => 'Sign out';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Enter your current password';
+
+  @override
+  String get passwordChangeMinLength =>
+      'The new password must contain at least 6 characters';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'The new password must differ from the temporary password';
+
+  @override
+  String get passwordChangeMismatch => 'The passwords do not match';
+
+  @override
+  String get passwordChangeFailed => 'Could not change the password';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmed';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Delivery updated';
+
+  @override
+  String get poSupplierRejected => 'Rejected';
+
+  @override
+  String get poSupplierIsoDateHint => 'YYYY-MM-DD';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -5290,4 +5341,55 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Batches approaching expiry';
+
+  @override
+  String get passwordChangeTitle => 'Set a new password';
+
+  @override
+  String get passwordChangeIntro =>
+      'Your password is temporary. For security, set a new password to continue.';
+
+  @override
+  String get passwordChangeCurrent => 'Current password (temporary)';
+
+  @override
+  String get passwordChangeNew => 'New password';
+
+  @override
+  String get passwordChangeConfirm => 'Confirm new password';
+
+  @override
+  String get passwordChangeSave => 'Save new password';
+
+  @override
+  String get passwordChangeLogout => 'Sign out';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Enter your current password';
+
+  @override
+  String get passwordChangeMinLength =>
+      'The new password must contain at least 6 characters';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'The new password must differ from the temporary password';
+
+  @override
+  String get passwordChangeMismatch => 'The passwords do not match';
+
+  @override
+  String get passwordChangeFailed => 'Could not change the password';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmed';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Delivery updated';
+
+  @override
+  String get poSupplierRejected => 'Rejected';
+
+  @override
+  String get poSupplierIsoDateHint => 'YYYY-MM-DD';
 }

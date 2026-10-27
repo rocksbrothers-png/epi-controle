@@ -32,26 +32,10 @@ lib/features/epis/epi_detail_screen.dart|Dias restantes
 lib/features/qr/qr_scanner_screen.dart|Escanear novamente
 lib/features/qr/qr_scanner_screen.dart|Fechar
 # Relatórios — nomes de meses
-lib/features/reports/reports_screen.dart|Janeiro
-lib/features/reports/reports_screen.dart|Fevereiro
-lib/features/reports/reports_screen.dart|Março
-lib/features/reports/reports_screen.dart|Abril
-lib/features/reports/reports_screen.dart|Maio
-lib/features/reports/reports_screen.dart|Junho
-lib/features/reports/reports_screen.dart|Julho
-lib/features/reports/reports_screen.dart|Agosto
-lib/features/reports/reports_screen.dart|Setembro
-lib/features/reports/reports_screen.dart|Outubro
-lib/features/reports/reports_screen.dart|Novembro
-lib/features/reports/reports_screen.dart|Dezembro
 
 # Débito pré-existente (telas de assinatura/fornecedores/usuários/unidades)
 # registrado ao habilitar o gate para novas telas (Minha Empresa usa 100% l10n).
 # Migrar para AppLocalizations em passagens futuras por estas telas.
-lib/features/purchases/po_supplier_screen.dart|AAAA-MM-DD
-lib/features/purchases/po_supplier_screen.dart|confirmed
-lib/features/purchases/po_supplier_screen.dart|delivery_update
-lib/features/purchases/po_supplier_screen.dart|rejected
 lib/features/purchases/suppliers_screen.dart|API
 lib/features/purchases/suppliers_screen.dart|E-mail
 lib/features/purchases/suppliers_screen.dart|Portal
@@ -147,10 +131,3 @@ lib/features/subscription/subscription_screen.dart|Seu acesso continuará dispon
 #
 # Para zerar: migrar nos DOIS repositórios ao mesmo tempo, senão o gate de
 # drift passa a acusar a divergência que a migração criaria.
-lib/features/auth/change_password_screen.dart|Confirmar nova senha
-lib/features/auth/change_password_screen.dart|Defina uma nova senha
-lib/features/auth/change_password_screen.dart|Nova senha
-lib/features/auth/change_password_screen.dart|Sair
-lib/features/auth/change_password_screen.dart|Salvar nova senha
-lib/features/auth/change_password_screen.dart|Senha atual (temporária)
-lib/features/auth/change_password_screen.dart|Sua senha é temporária. Por segurança, defina uma nova senha para continuar.

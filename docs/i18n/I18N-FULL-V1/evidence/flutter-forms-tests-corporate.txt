@@ -1,0 +1,40 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart
+00:00 +0: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: password labels and existing validation rules pt_BR without requests
+00:02 +1: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: password labels and existing validation rules en_US without requests
+00:02 +2: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: password labels and existing validation rules es_ES without requests
+00:03 +3: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: password labels and existing validation rules fr_FR without requests
+00:03 +4: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: password labels and existing validation rules no_NO without requests
+00:04 +5: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/password_change_i18n_test.dart: validation messages follow locale changes and preserve entered passwords
+00:04 +6: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart
+00:05 +6: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base pt matches regional BR for every message
+00:06 +7: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base en matches regional US for every message
+00:06 +8: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base es matches regional ES for every message
+00:06 +9: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base fr matches regional FR for every message
+00:06 +10: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base no matches regional NO for every message
+00:06 +11: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart
+00:07 +11: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a rota de troca de senha existe e é privada Routes.changePassword está declarada e listada em `all`
+00:07 +12: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a rota de troca de senha existe e é privada NÃO é rota pública
+00:07 +13: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a rota de troca de senha existe e é privada não exige permissão específica
+00:07 +14: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: o gate prende o usuário até a troca redireciona qualquer rota privada para a tela de troca
+00:07 +15: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: o gate prende o usuário até a troca o gate vem ANTES do guard de permissão
+00:07 +16: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: o gate prende o usuário até a troca quem já trocou não fica preso na tela
+00:07 +17: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: o gate prende o usuário até a troca o gate reavalia quando a flag muda
+00:07 +18: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a flag atravessa o estado de autenticação AuthAuthenticated carrega mustChangePassword em props
+00:07 +19: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a flag atravessa o estado de autenticação o login propaga a flag vinda da API
+00:07 +20: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/change_password_gate_test.dart: a flag atravessa o estado de autenticação concluir a troca libera a navegação preservando a sessão
+00:07 +21: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/dashboard_i18n_mobile_test.dart
+00:08 +21: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/dashboard_i18n_mobile_test.dart: real dashboard in all five languages fits mobile and larger text without refetch
+00:15 +22: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart
+00:16 +22: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: (setUpAll)
+00:16 +22: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: report month labels preserve numeric period and original notes pt_BR
+00:18 +23: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: PO translated labels retain canonical confirmation code pt_BR
+00:19 +24: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: report month labels preserve numeric period and original notes en_US
+00:20 +25: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: PO translated labels retain canonical confirmation code en_US
+00:21 +26: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: report month labels preserve numeric period and original notes es_ES
+00:22 +27: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: PO translated labels retain canonical confirmation code es_ES
+00:22 +28: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: report month labels preserve numeric period and original notes fr_FR
+00:23 +29: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: PO translated labels retain canonical confirmation code fr_FR
+00:23 +30: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: report month labels preserve numeric period and original notes no_NO
+00:24 +31: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: PO translated labels retain canonical confirmation code no_NO
+00:24 +32: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart: (tearDownAll)
+00:24 +32: All tests passed!

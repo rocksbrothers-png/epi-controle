@@ -1219,5 +1219,21 @@
     }
   },
   "operationalAlertPhysicalUnknownTitle": "Validez física desconocida",
-  "operationalAlertPhysicalExpiringTitle": "Lotes próximos a vencer"
+  "operationalAlertPhysicalExpiringTitle": "Lotes próximos a vencer",
+  "passwordChangeTitle": "Establezca una nueva contraseña",
+  "passwordChangeIntro": "Su contraseña es temporal. Por seguridad, establezca una nueva contraseña para continuar.",
+  "passwordChangeCurrent": "Contraseña actual (temporal)",
+  "passwordChangeNew": "Nueva contraseña",
+  "passwordChangeConfirm": "Confirmar nueva contraseña",
+  "passwordChangeSave": "Guardar nueva contraseña",
+  "passwordChangeLogout": "Cerrar sesión",
+  "passwordChangeCurrentRequired": "Introduzca su contraseña actual",
+  "passwordChangeMinLength": "La nueva contraseña debe tener al menos 6 caracteres",
+  "passwordChangeMustDiffer": "La nueva contraseña debe ser distinta de la temporal",
+  "passwordChangeMismatch": "Las contraseñas no coinciden",
+  "passwordChangeFailed": "No se pudo cambiar la contraseña",
+  "poSupplierConfirmed": "Confirmado",
+  "poSupplierDeliveryUpdated": "Entrega actualizada",
+  "poSupplierRejected": "Rechazado",
+  "poSupplierIsoDateHint": "AAAA-MM-DD"
 }

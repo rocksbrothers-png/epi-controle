@@ -4968,6 +4968,102 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Lotes próximos do vencimento'**
   String get operationalAlertPhysicalExpiringTitle;
+
+  /// No description provided for @passwordChangeTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Defina uma nova senha'**
+  String get passwordChangeTitle;
+
+  /// No description provided for @passwordChangeIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sua senha é temporária. Por segurança, defina uma nova senha para continuar.'**
+  String get passwordChangeIntro;
+
+  /// No description provided for @passwordChangeCurrent.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha atual (temporária)'**
+  String get passwordChangeCurrent;
+
+  /// No description provided for @passwordChangeNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova senha'**
+  String get passwordChangeNew;
+
+  /// No description provided for @passwordChangeConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar nova senha'**
+  String get passwordChangeConfirm;
+
+  /// No description provided for @passwordChangeSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar nova senha'**
+  String get passwordChangeSave;
+
+  /// No description provided for @passwordChangeLogout.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sair'**
+  String get passwordChangeLogout;
+
+  /// No description provided for @passwordChangeCurrentRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe a senha atual'**
+  String get passwordChangeCurrentRequired;
+
+  /// No description provided for @passwordChangeMinLength.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A nova senha deve ter ao menos 6 caracteres'**
+  String get passwordChangeMinLength;
+
+  /// No description provided for @passwordChangeMustDiffer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A nova senha deve ser diferente da temporária'**
+  String get passwordChangeMustDiffer;
+
+  /// No description provided for @passwordChangeMismatch.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'As senhas não coincidem'**
+  String get passwordChangeMismatch;
+
+  /// No description provided for @passwordChangeFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao trocar a senha'**
+  String get passwordChangeFailed;
+
+  /// No description provided for @poSupplierConfirmed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmado'**
+  String get poSupplierConfirmed;
+
+  /// No description provided for @poSupplierDeliveryUpdated.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Entrega atualizada'**
+  String get poSupplierDeliveryUpdated;
+
+  /// No description provided for @poSupplierRejected.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recusado'**
+  String get poSupplierRejected;
+
+  /// No description provided for @poSupplierIsoDateHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'AAAA-MM-DD'**
+  String get poSupplierIsoDateHint;
 }
 
 class _AppLocalizationsDelegate

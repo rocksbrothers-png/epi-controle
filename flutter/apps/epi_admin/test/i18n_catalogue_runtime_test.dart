@@ -874,6 +874,22 @@ Map<String, String> messages(AppLocalizations l) => {
     "Original countLabel",
     "Original epi",
   ),
+  'passwordChangeTitle': l.passwordChangeTitle,
+  'passwordChangeIntro': l.passwordChangeIntro,
+  'passwordChangeCurrent': l.passwordChangeCurrent,
+  'passwordChangeNew': l.passwordChangeNew,
+  'passwordChangeConfirm': l.passwordChangeConfirm,
+  'passwordChangeSave': l.passwordChangeSave,
+  'passwordChangeLogout': l.passwordChangeLogout,
+  'passwordChangeCurrentRequired': l.passwordChangeCurrentRequired,
+  'passwordChangeMinLength': l.passwordChangeMinLength,
+  'passwordChangeMustDiffer': l.passwordChangeMustDiffer,
+  'passwordChangeMismatch': l.passwordChangeMismatch,
+  'passwordChangeFailed': l.passwordChangeFailed,
+  'poSupplierConfirmed': l.poSupplierConfirmed,
+  'poSupplierDeliveryUpdated': l.poSupplierDeliveryUpdated,
+  'poSupplierRejected': l.poSupplierRejected,
+  'poSupplierIsoDateHint': l.poSupplierIsoDateHint,
 };
 
 void main() {

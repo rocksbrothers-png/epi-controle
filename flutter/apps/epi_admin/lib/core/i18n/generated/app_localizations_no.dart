@@ -2662,6 +2662,57 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get operationalAlertPhysicalExpiringTitle => 'Partier nær utløpsdato';
+
+  @override
+  String get passwordChangeTitle => 'Angi et nytt passord';
+
+  @override
+  String get passwordChangeIntro =>
+      'Passordet ditt er midlertidig. Angi et nytt passord for å fortsette av sikkerhetshensyn.';
+
+  @override
+  String get passwordChangeCurrent => 'Gjeldende passord (midlertidig)';
+
+  @override
+  String get passwordChangeNew => 'Nytt passord';
+
+  @override
+  String get passwordChangeConfirm => 'Bekreft nytt passord';
+
+  @override
+  String get passwordChangeSave => 'Lagre nytt passord';
+
+  @override
+  String get passwordChangeLogout => 'Logg ut';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Skriv inn gjeldende passord';
+
+  @override
+  String get passwordChangeMinLength =>
+      'Det nye passordet må inneholde minst 6 tegn';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'Det nye passordet må være forskjellig fra det midlertidige';
+
+  @override
+  String get passwordChangeMismatch => 'Passordene samsvarer ikke';
+
+  @override
+  String get passwordChangeFailed => 'Kunne ikke endre passordet';
+
+  @override
+  String get poSupplierConfirmed => 'Bekreftet';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Levering oppdatert';
+
+  @override
+  String get poSupplierRejected => 'Avslått';
+
+  @override
+  String get poSupplierIsoDateHint => 'YYYY-MM-DD';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -5322,4 +5373,55 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get operationalAlertPhysicalExpiringTitle => 'Partier nær utløpsdato';
+
+  @override
+  String get passwordChangeTitle => 'Angi et nytt passord';
+
+  @override
+  String get passwordChangeIntro =>
+      'Passordet ditt er midlertidig. Angi et nytt passord for å fortsette av sikkerhetshensyn.';
+
+  @override
+  String get passwordChangeCurrent => 'Gjeldende passord (midlertidig)';
+
+  @override
+  String get passwordChangeNew => 'Nytt passord';
+
+  @override
+  String get passwordChangeConfirm => 'Bekreft nytt passord';
+
+  @override
+  String get passwordChangeSave => 'Lagre nytt passord';
+
+  @override
+  String get passwordChangeLogout => 'Logg ut';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Skriv inn gjeldende passord';
+
+  @override
+  String get passwordChangeMinLength =>
+      'Det nye passordet må inneholde minst 6 tegn';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'Det nye passordet må være forskjellig fra det midlertidige';
+
+  @override
+  String get passwordChangeMismatch => 'Passordene samsvarer ikke';
+
+  @override
+  String get passwordChangeFailed => 'Kunne ikke endre passordet';
+
+  @override
+  String get poSupplierConfirmed => 'Bekreftet';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Levering oppdatert';
+
+  @override
+  String get poSupplierRejected => 'Avslått';
+
+  @override
+  String get poSupplierIsoDateHint => 'YYYY-MM-DD';
 }

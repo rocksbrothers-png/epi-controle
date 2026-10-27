@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -135,17 +136,17 @@ class _DashboardContent extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: EpiSpacing.md,
           mainAxisSpacing: EpiSpacing.md,
-          childAspectRatio: 1.6,
+          mainAxisExtent: 176 + MediaQuery.textScalerOf(context).scale(48) - 48,
           children: [
             EpiKpiCard(
               label: l10n.dashboardDeliveriesToday,
-              value: '${state.deliveriesToday}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.deliveriesToday),
               icon: Icons.local_shipping_outlined,
               iconColor: EpiColors.info,
             ),
             EpiKpiCard(
               label: l10n.dashboardExpiringEpis,
-              value: '${state.expiringEpis}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.expiringEpis),
               icon: Icons.warning_amber_rounded,
               iconColor: EpiColors.warning,
             ),
@@ -154,13 +155,15 @@ class _DashboardContent extends StatelessWidget {
             // nenhum EPI está crítico, quando a pergunta nem foi feita.
             EpiKpiCard(
               label: l10n.dashboardCriticalStock,
-              value: '${state.criticalStock ?? '—'}',
+              value: state.criticalStock == null
+                  ? '—'
+                  : NumberFormat.decimalPattern(l10n.localeName).format(state.criticalStock),
               icon: Icons.inventory_2_outlined,
               iconColor: EpiColors.danger,
             ),
             EpiKpiCard(
               label: l10n.dashboardPendingPurchases,
-              value: '${state.pendingPurchases}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.pendingPurchases),
               icon: Icons.shopping_cart_outlined,
               iconColor: EpiColors.brand,
             ),

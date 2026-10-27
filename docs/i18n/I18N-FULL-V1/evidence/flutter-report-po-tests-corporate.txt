@@ -1,0 +1,14 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/report_po_i18n_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: report month labels preserve numeric period and original notes pt_BR
+00:01 +1: PO translated labels retain canonical confirmation code pt_BR
+00:02 +2: report month labels preserve numeric period and original notes en_US
+00:02 +3: PO translated labels retain canonical confirmation code en_US
+00:03 +4: report month labels preserve numeric period and original notes es_ES
+00:03 +5: PO translated labels retain canonical confirmation code es_ES
+00:03 +6: report month labels preserve numeric period and original notes fr_FR
+00:04 +7: PO translated labels retain canonical confirmation code fr_FR
+00:04 +8: report month labels preserve numeric period and original notes no_NO
+00:05 +9: PO translated labels retain canonical confirmation code no_NO
+00:05 +10: (tearDownAll)
+00:05 +10: All tests passed!

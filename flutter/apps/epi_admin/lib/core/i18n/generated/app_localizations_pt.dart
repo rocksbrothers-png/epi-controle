@@ -2670,6 +2670,57 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Lotes próximos do vencimento';
+
+  @override
+  String get passwordChangeTitle => 'Defina uma nova senha';
+
+  @override
+  String get passwordChangeIntro =>
+      'Sua senha é temporária. Por segurança, defina uma nova senha para continuar.';
+
+  @override
+  String get passwordChangeCurrent => 'Senha atual (temporária)';
+
+  @override
+  String get passwordChangeNew => 'Nova senha';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmar nova senha';
+
+  @override
+  String get passwordChangeSave => 'Salvar nova senha';
+
+  @override
+  String get passwordChangeLogout => 'Sair';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Informe a senha atual';
+
+  @override
+  String get passwordChangeMinLength =>
+      'A nova senha deve ter ao menos 6 caracteres';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'A nova senha deve ser diferente da temporária';
+
+  @override
+  String get passwordChangeMismatch => 'As senhas não coincidem';
+
+  @override
+  String get passwordChangeFailed => 'Erro ao trocar a senha';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmado';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Entrega atualizada';
+
+  @override
+  String get poSupplierRejected => 'Recusado';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-DD';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -5338,4 +5389,55 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get operationalAlertPhysicalExpiringTitle =>
       'Lotes próximos do vencimento';
+
+  @override
+  String get passwordChangeTitle => 'Defina uma nova senha';
+
+  @override
+  String get passwordChangeIntro =>
+      'Sua senha é temporária. Por segurança, defina uma nova senha para continuar.';
+
+  @override
+  String get passwordChangeCurrent => 'Senha atual (temporária)';
+
+  @override
+  String get passwordChangeNew => 'Nova senha';
+
+  @override
+  String get passwordChangeConfirm => 'Confirmar nova senha';
+
+  @override
+  String get passwordChangeSave => 'Salvar nova senha';
+
+  @override
+  String get passwordChangeLogout => 'Sair';
+
+  @override
+  String get passwordChangeCurrentRequired => 'Informe a senha atual';
+
+  @override
+  String get passwordChangeMinLength =>
+      'A nova senha deve ter ao menos 6 caracteres';
+
+  @override
+  String get passwordChangeMustDiffer =>
+      'A nova senha deve ser diferente da temporária';
+
+  @override
+  String get passwordChangeMismatch => 'As senhas não coincidem';
+
+  @override
+  String get passwordChangeFailed => 'Erro ao trocar a senha';
+
+  @override
+  String get poSupplierConfirmed => 'Confirmado';
+
+  @override
+  String get poSupplierDeliveryUpdated => 'Entrega atualizada';
+
+  @override
+  String get poSupplierRejected => 'Recusado';
+
+  @override
+  String get poSupplierIsoDateHint => 'AAAA-MM-DD';
 }

@@ -1,6 +1,7 @@
 """Item 1 (frontend) — o arquivamento de EPI consome a regra do backend (#735).
 
-Garante que app.js NÃO duplica a regra de negócio: a decisão de bloquear vem do
+Garante que o front (app.js + modules/archival/, extraídos na UBX-V5 Etapa 1)
+NÃO duplica a regra de negócio: a decisão de bloquear vem do
 estado do backend (has_open_links), o front apenas apresenta e reenvia
 block_and_archive. Cobre também o preflight no endpoint do #735, a exigência de
 motivo e o feedback.
@@ -10,13 +11,16 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APP_JS = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+ARCHIVAL_MODULES = sorted((ROOT / "static" / "js" / "modules" / "archival").rglob("*.js"))
+APP_JS = "\n".join(
+    path.read_text(encoding="utf-8") for path in [ROOT / "static" / "app.js", *ARCHIVAL_MODULES]
+)
 
 
 def test_preflight_consumes_backend_archival_state():
     # Consome exclusivamente o endpoint do #735 para decidir.
     assert re.search(r"/api/epis/\$\{recordId\}/archival-state", APP_JS), \
-        "app.js deve consultar GET /api/epis/{id}/archival-state (regra do #735)."
+        "O front deve consultar GET /api/epis/{id}/archival-state (regra do #735)."
 
 
 def test_block_decision_comes_from_backend_not_frontend():
@@ -28,7 +32,7 @@ def test_block_decision_comes_from_backend_not_frontend():
 
 def test_archive_post_sends_block_and_archive_flag():
     fn = APP_JS[APP_JS.index("async function archiveEntityRecord"):]
-    fn = fn[: fn.index("\n}\n") + 2] if "\n}\n" in fn else fn
+    fn = fn[: fn.index("\n  }\n") + 4]
     assert "block_and_archive: blockAndArchive" in fn, \
         "O POST /archive deve enviar block_and_archive."
 

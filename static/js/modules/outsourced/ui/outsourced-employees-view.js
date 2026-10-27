@@ -1,7 +1,7 @@
 'use strict';
 /* global tr, hasPermission, requirePermission, actorQuery, escapeHtml, unitTypeLabel,
    isOperationalProfile, filterByUserCompany, setFormSubmitLabel, showView, activateViewTab,
-   outsourcedEmployeeLinkLabel, outsourcedCompaniesViewHelpers, loadBootstrap --
+   outsourcedEmployeeLinkLabel, outsourcedCompaniesViewHelpers, loadBootstrap, archiveEntityRecord --
    globais do app.js, de shared/ui e de views/*, resolvidos na chamada (ver abaixo) */
 
 // UI: Terceirizados e Prestadores — colaboradores (Refatoração UBX-V4, Etapa B2 —
@@ -10,8 +10,8 @@
 // Seletores de empresa/Unidade do formulário, lista (derivada de
 // state.employees), vínculo local por Unidade, edição (GET do item), filtros e
 // relatório de headcount. Regras puras em js/views/outsourced-employees-view.js;
-// HTTP em ../integrations/outsourced-api.js. archiveOutsourcedEmployee fica no
-// app.js (depende de archiveEntityRecord, async de bloco).
+// HTTP em ../integrations/outsourced-api.js. archiveOutsourcedEmployee reusa
+// archiveEntityRecord (modules/archival/ui/archival-view.js, UBX-V5 Etapa 1).
 // isContractedVinculoJs (usado pela UI de Colaboradores) mora aqui com o
 // fallback da lista de vínculos contratados.
 (function () {
@@ -300,6 +300,18 @@
     });
   }
 
+  // Arquivar reaproveita a MESMA rota/regra do colaborador CLT
+  // (/api/employees/:id/archive) — é o mesmo registro, só filtrado nesta
+  // tela; reusa archiveEntityRecord(...) para não duplicar o fluxo de
+  // motivo/confirmação/auditoria. kind é 'outsourcedEmployee', não 'employee':
+  // só o primeiro tem deletePermission com a alternativa
+  // employees:update_simplified (ADR-0002 §10.5) e recarrega a lista de
+  // arquivados CERTA (archivedOutsourcedEmployees, filtrada outsourced_only=1).
+  async function archiveOutsourcedEmployee(entityId) {
+    await archiveEntityRecord('outsourcedEmployee', entityId);
+    renderOutsourcedEmployees();
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exportsMap = {
@@ -316,7 +328,8 @@
     resetOutsourcedEmployeeForm,
     startEditOutsourcedEmployee,
     loadOutsourcedEmployeesSummary,
-    renderOutsourcedEmployeesSummary
+    renderOutsourcedEmployeesSummary,
+    archiveOutsourcedEmployee
   };
 
   for (const [name, fn] of Object.entries(exportsMap)) {

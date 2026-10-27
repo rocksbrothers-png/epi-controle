@@ -103,7 +103,7 @@ Nenhuma extração pode mover decisão de autorização para o cliente nem remov
 | Helpers de perf (`markRender*`, `queueStorageWrite`, …) em `utils/perf.js` e `app.js` | Mantido; comparar corpo a corpo num PR próprio |
 | `formatCnpj` (L3184) × `formatCNPJ` (L17624); `formatCurrency` × `fmtBrl` | Candidatos a unificação em `shared/` — conferir formato antes |
 | Wrappers locais `api` em 6 views | Já registrado como gate P0 no plano UBX |
-| 53 funções sem chamador interno nem export explícito: 35 usadas por outros scripts; **18 sem nenhuma referência estática** (`loadScript`, `canManageUsers`, `canManageEpi`, `canViewReports`, `accessibleViews`, `renderUsersSummary`, `companyUsageText`, `copyUserAccessMessage`, `setTemporaryPassword`, `generateAndCopyTemporaryPassword`, `buildDeliveryRow`, `deleteRegistryEntity`, `preencherCampoPorQr`, `_workflowReasonOptions`, `openEditSupplierModal`, `poStatusLabel`, `checkSupplierAuthorized`, `loadUnitLinks`) | **Não removidas.** São globais (Annex B) e podem ser chamadas por console, Flutter WebView ou nome dinâmico. Remover só com evidência de runtime |
+| 53 funções sem chamador interno nem export explícito: 35 usadas por outros scripts; **18 sem nenhuma referência estática** (`loadScript`, `canManageUsers`, `canManageEpi`, `canViewReports`, `accessibleViews`, `renderUsersSummary`, `companyUsageText`, `copyUserAccessMessage`, `setTemporaryPassword`, `generateAndCopyTemporaryPassword`, `buildDeliveryRow`, `deleteRegistryEntity` (era `async` de bloco, nunca global; removida na UBX-V5 Etapa 1, §13), `preencherCampoPorQr`, `_workflowReasonOptions`, `openEditSupplierModal`, `poStatusLabel`, `checkSupplierAuthorized`, `loadUnitLinks`) | **Não removidas.** São globais (Annex B) e podem ser chamadas por console, Flutter WebView ou nome dinâmico. Remover só com evidência de runtime |
 
 ## 5. Arquitetura UBX adotada (sobre o layout existente)
 
@@ -580,3 +580,116 @@ Registrados como risco residual:
    `archiveOutsourcedEmployee`);
 3. Empresas/Unidades/CNPJ (risco alto: escopo de tenant), com o mesmo teste de matriz por empresa;
 4. mapas `VIEW_*` + `showView`/menus (navegação) — último bloco antes do bootstrap.
+
+## 13. UBX-V5, Etapa 1 (2026-10-27) — arquivamento genérico
+
+Base: Corporate `63da879f` / SaaS `0ea3cb08` (`main` com FIX-COLAB-TERC-V1 e FIX-NAV-REFRESH-V1 integradas;
+`app.js` idêntico byte a byte nos dois). Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão,
+regra de negócio, texto ou chave i18n.
+
+### 13.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/archival/business/archival-rules.js` (233) | `ARCHIVAL_ENTITIES` (congelado, `path` → `resource`), `UNIT_PURGE_RECORD_LABELS`, filtro único das listas de arquivados (Unidades e genérico eram cópias), normalização dos filtros, quem vê cada botão (`canManageArchived`, `canPurgeArchived`, `canManageArchivedUnits`), retenção/bloqueio jurídico, linhas do resumo de exclusão e nome de confirmação. Puro. |
+| `modules/archival/integrations/archival-api.js` (96) | As 25 chamadas (4 recursos × listar/arquivar/desarquivar/pedir, cancelar e confirmar exclusão + `archival-state` do EPI), com caminho e método literais: o contrato front↔back (`tests/test_frontend_api_contract.py`) agora confere todas — antes, `${cfg.path}/…` ficava fora dele. |
+| `modules/archival/ui/archival-view.js` (257) | `_epiArchivalPreflight`, `archiveEntityRecord`, `loadArchivedRecords`, `formatArchivedRecordRow`, `renderArchivedRecords`, `syncArchivedRecordsFilters`, `restoreArchivedRecord`, `purgeArchivedRecord` e as células comuns da linha (retenção e selos). |
+| `modules/archival/ui/unit-archival-view.js` (164) | `archiveUnit`, `loadArchivedUnits`, `formatArchivedUnitRow`, `renderArchivedUnits`, `syncArchivedUnitsFilters`, `restoreArchivedUnit`, `purgeArchivedUnit`. |
+| `modules/outsourced/ui/outsourced-employees-view.js` | `archiveOutsourcedEmployee` (ficava no `app.js` só porque `archiveEntityRecord` era `async` de bloco). |
+| removido | `deleteRegistryEntity` (código morto, sem chamadores — registrado na FIX-NAV-REFRESH-V1). |
+
+As funções `async` eram de bloco e agora são globais publicadas pelos módulos (o `app.js` as chama por nome em
+`showView`, `VIEW_FILTER_RESET`, `limparFiltrosArquivados` e nos listeners do `init`, sempre em tempo de
+execução). As correções da FIX-COLAB-TERC-V1 (lista de Empresas recarregada, `preserveView`, nome de confirmação
+das Empresas) e da FIX-NAV-REFRESH-V1 (`runExclusiveMutation`, `refreshAfterMutation`, `coalesceLoad`, gravação
+em `try` próprio) estão preservadas e cobertas pelos mesmos testes.
+
+### 13.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 18.167 | 17.638 (−529) |
+| Declarações no `app.js` (guarda) | 798 | 778 (−20) |
+| Endpoints literais no `app.js` | 112 | 108 (−4) |
+| Módulos UBX criados | — | 4 (`archival/business`, `integrations`, 2 × `ui`) |
+| Maior módulo novo | — | 257 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 644 | 646 (+2 do novo runtime; os de FIX-COLAB-TERC/FIX-NAV-REFRESH passam a carregar os módulos reais) |
+
+Dependências eliminadas: o arquivamento não lê mais nada de bloco do `app.js` (estado e `refs` via
+`__EPI_APP_STATE__`/`__EPI_REFS__`, helpers via globais publicados); `archiveOutsourcedEmployee` deixou de prender
+o módulo de Terceirizados ao `app.js`; os filtros duplicados (Unidades × genérico) viraram uma regra só. Nenhuma
+dependência nova do negócio/integração para a UI (guarda: camadas OK).
+
+### 13.3 Equivalência
+
+`static/js/test/archival-view-runtime.js` roda **214 cenários** contra os módulos e contra as funções originais
+(`fixtures/app-before-ubx-v5-archival.js.txt`: cada declaração copiada literalmente de `63da879f`, sem os
+comentários de seção e com `ARCHIVAL_ENTITIES` ao lado de `UNIT_PURGE_RECORD_LABELS`), no mesmo ambiente, e exige
+resultado idêntico: chamadas HTTP (método, caminho, corpo), diálogos, prompts, alertas, toasts, recargas
+(bootstrap com `preserveView`, Empresas, listas), estado final de listas e filtros e o HTML das tabelas.
+Cobre 6 papéis × 5 filtros na renderização, tabela ausente e vazia, carga com/sem permissão, falha e o
+comportamento herdado de `updatePermission.replace(':update', ':view')` (só a 1ª ocorrência), e arquivar,
+desarquivar e excluir para os 4 tipos, um tipo desconhecido e Unidades — ok, cancelar, motivo vazio/nulo,
+falha da gravação, falha da recarga, sem permissão, registro ausente, clique duplo, pré-voo do EPI (falha,
+vínculos, sem saldo bloqueável, sem motivo, cancelado), nome fantasia na confirmação e sessão sem usuário no meio
+da exclusão. Também registra as chaves de `runExclusiveMutation`/`coalesceLoad` e a ordem das chaves das
+opções HTTP. A referência não pode
+quebrar (nenhum cenário com exceção).
+
+Sabotagem: 17 mutações nos módulos (papéis de exclusão e de gestão, filtro `outsourced_only`, `replaceAll` na
+permissão de leitura, ordem do nome de confirmação, limite de retenção, recarga de Empresas na exclusão,
+atualização do Estoque Bloqueado, guarda de registro ausente, `preserveView` das Unidades, papel das Unidades,
+recarga fora de `refreshAfterMutation`, método HTTP, chave de `coalesceLoad`, chave de `runExclusiveMutation`,
+id do ator lido fora do `try`) — **todas detectadas**. A do `replaceAll` e as três últimas só passaram a ser
+detectadas depois dos cenários `soLeituraSimplificada` e `semUsuario` e do registro das chaves (achados P3 da
+auditoria, §13.6).
+
+Navegador (Chromium, 5 idiomas): `fix_colab_terc.py` 40/40 e `fix_nav_refresh.py` 35/35 contra o código
+extraído. Os idiomas não mudam: nenhum texto ou chave foi alterado, só a origem das chamadas a `tr()`.
+
+### 13.4 Mudança deliberada mínima
+
+`archivalConfig(kind)` só aceita chaves próprias (`hasOwnProperty`): antes, `ARCHIVAL_ENTITIES['constructor']`
+devolvia uma função do protótipo. Nenhum chamador passa esse valor (os `kind` vêm de `data-archived-*` que o
+próprio front escreve); o efeito é recusar em vez de quebrar.
+
+### 13.5 Riscos residuais
+
+- As funções passaram de bloco para globais: um script que declare o mesmo nome depois dos módulos as
+  sobrescreveria. A guarda (`extracted`) barra o nome voltando ao `app.js`;
+  `extracted-globals-ownership-runtime.js` só pega `globalThis.nome =`/`globalThis['nome'] =`, não o laço
+  `globalThis[name] = fn` dos módulos, então uma reexportação por outro módulo não seria apontada. Hoje nenhum
+  outro script declara ou publica esses nomes (conferido pela auditoria). `_epiArchivalPreflight`,
+  `formatArchivedRecordRow` e `formatArchivedUnitRow` constam de `extracted` mas não são mais globais (só nos
+  namespaces); `applyArchivedUnitsFilters` e as duas `format*Row` eram globais (Annex B) e deixaram de ser —
+  nenhuma referência fora de testes/docs, inclusive em `flutter/`.
+- `loadArchivalPolicy` (configuração da política) ficou no `app.js`: é domínio de configuração, vai com a
+  Etapa 2/3.
+- O teste Python de paridade de permissões (web × Flutter) e os testes estruturais de arquivamento passaram a
+  ler `archival-rules.js`/os módulos; quem barra uma cópia voltando ao `app.js` são o teste JS e a guarda.
+
+### 13.6 Auditoria independente
+
+Agente separado, só leitura, sobre `d182f659`/`9d04c618` (e o ajuste de CodeQL `fb07349d`/`28bf15a`). **Nenhum
+P0/P1/P2.** Conferido de forma independente:
+
+- equivalência linha a linha das 25 chamadas HTTP (método, caminho, query, ordem das chaves do corpo), diálogos,
+  `alert` × `showToast`, fronteiras de `try`, recargas, papéis e HTML;
+- cada declaração do fixture idêntica à de `63da879f`;
+- resolução de nomes (bloco × Annex B, provado em `vm`), ordem de carga e ausência de colisão;
+- regras de camada, contrato HTTP e `filterByUserCompany` em todas as listas;
+- paridade SaaS byte a byte;
+- 20 mutações próprias: 17 detectadas, 2 sobreviventes (renomear chaves) e 1 controle neutro.
+
+Os 7 achados P3 foram tratados no PR:
+
+- id do ator lido uma vez fora do `try` na exclusão: voltou a ser lido em cada chamada, como no original, com
+  cenário `semUsuario`;
+- delta de linhas corrigido;
+- cobertura real do teste de propriedade dos globais;
+- helpers que deixaram de ser globais;
+- `deleteRegistryEntity` na §4;
+- descrição do fixture;
+- chaves de execução única e de leitura coalescida agora registradas pelo teste, de modo que as duas mutações
+  sobreviventes passam a ser detectadas.

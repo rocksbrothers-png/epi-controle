@@ -7,7 +7,8 @@
 //   3. gravação concluída + atualização com falha: aviso verdadeiro, nenhuma
 //      mensagem de falha da gravação, nenhuma segunda gravação; clique duplo
 //      grava uma vez.
-// Exercita as funções REAIS do app.js (fatiadas) e o módulo real
+// Exercita as funções REAIS: saveEmployeeMovement fatiada do app.js, os módulos
+// de arquivamento (modules/archival/, UBX-V5 Etapa 1) e o módulo real
 // modules/shared/ui/mutation-flow.js.
 const fs = require('fs');
 const path = require('path');
@@ -15,6 +16,8 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.resolve(__dirname, '../../app.js'), 'utf8');
 const flowSource = fs.readFileSync(path.resolve(__dirname, '../modules/shared/ui/mutation-flow.js'), 'utf8');
+const ARCHIVAL_SOURCES = ['business/archival-rules.js', 'integrations/archival-api.js', 'ui/archival-view.js', 'ui/unit-archival-view.js']
+  .map((rel) => fs.readFileSync(path.resolve(__dirname, '../modules/archival', rel), 'utf8'));
 
 function slice(name) {
   const lines = source.split('\n');
@@ -23,14 +26,6 @@ function slice(name) {
   let end = start;
   while (!/^}/.test(lines[end])) { end++; }
   return lines.slice(start, end + 1).join('\n');
-}
-
-function sliceConst(name) {
-  const lines = source.split('\n');
-  const start = lines.findIndex((line) => line.startsWith(`const ${name} = {`));
-  let end = start;
-  while (!/^};/.test(lines[end])) { end++; }
-  return lines.slice(start, end + 1).join('\n').replace(/^const /, 'var ');
 }
 
 const REFRESH_FAILED = 'mutation.refreshFailed';
@@ -47,7 +42,6 @@ function environment({ failBootstrap = false, failMutation = false } = {}) {
       employees: [record], archivedEmployees: [record], outsourcedCompanies: [record],
       archivedOutsourcedCompanies: [record], archivedOutsourcedEmployees: [record]
     },
-    UNIT_PURGE_RECORD_LABELS: { deliveries: 'Entregas' },
     requirePermission: () => true, hasPermission: () => true, actorQuery: () => 'actor_user_id=7',
     reportNonCriticalError: () => calls.push(['reportNonCritical']),
     apiWriteEpoch: () => writeEpoch,
@@ -71,8 +65,6 @@ function environment({ failBootstrap = false, failMutation = false } = {}) {
       if (failBootstrap) { throw new Error('QA bootstrap 500'); }
     },
     loadOutsourcedCompanies: async () => calls.push(['companies']),
-    renderArchivedUnits: () => calls.push(['renderUnits']),
-    renderArchivedRecords: (kind) => calls.push(['renderArchived', kind]),
     formValues: () => ({ employee_id: '31', target_unit_id: '6' }),
     tr: (key, fallback) => (key === REFRESH_FAILED ? REFRESH_FAILED : fallback),
     confirmDestructive: async () => true, prompt: () => 'QA justificativa',
@@ -80,11 +72,11 @@ function environment({ failBootstrap = false, failMutation = false } = {}) {
     alert: (message) => calls.push(['alert', message])
   });
   ctx.globalThis = ctx;
-  vm.runInContext(flowSource, ctx);
-  vm.runInContext([sliceConst('ARCHIVAL_ENTITIES'), slice('_epiArchivalPreflight'), slice('archiveEntityRecord'),
-    slice('restoreArchivedRecord'), slice('purgeArchivedRecord'), slice('loadArchivedRecords'),
-    slice('archiveUnit'), slice('restoreArchivedUnit'), slice('purgeArchivedUnit'), slice('loadArchivedUnits'),
-    slice('saveEmployeeMovement')].join('\n'), ctx);
+  // Sem tabelas: as funções de render reais saem cedo.
+  ctx.__EPI_APP_STATE__ = ctx.state;
+  ctx.__EPI_REFS__ = {};
+  for (const code of [flowSource, ...ARCHIVAL_SOURCES]) { vm.runInContext(code, ctx); }
+  vm.runInContext(slice('saveEmployeeMovement'), ctx);
   return { ctx, calls };
 }
 

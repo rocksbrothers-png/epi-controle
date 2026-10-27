@@ -232,7 +232,7 @@ def redundant_reloads(f):
     f.page.wait_for_timeout(600)
     for path in ['/api/employees/archived', '/api/outsourced-companies/archived', '/api/outsourced-companies']:
         count = len(f.gets(path, before))
-        assert count <= 1, f'{path} requested {count}x after archive'
+        assert count == 1, f'{path} requested {count}x after archive (expected exactly once)'
     assert active_view(f) == 'terceirizados-view'
 
 

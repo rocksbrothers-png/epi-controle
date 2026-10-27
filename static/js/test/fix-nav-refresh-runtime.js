@@ -38,6 +38,8 @@ const REFRESH_FAILED = 'mutation.refreshFailed';
 function environment({ failBootstrap = false, failMutation = false } = {}) {
   const calls = [];
   const record = { id: 6, name: 'QA', legal_name: 'QA' };
+  // Época de escrita como a do api-client: avança no início e no fim de cada não-GET.
+  let writeEpoch = 0;
   const ctx = vm.createContext({
     state: {
       user: { id: 7, role: 'registry_admin', company_id: 901 },
@@ -48,14 +50,20 @@ function environment({ failBootstrap = false, failMutation = false } = {}) {
     UNIT_PURGE_RECORD_LABELS: { deliveries: 'Entregas' },
     requirePermission: () => true, hasPermission: () => true, actorQuery: () => 'actor_user_id=7',
     reportNonCriticalError: () => calls.push(['reportNonCritical']),
+    apiWriteEpoch: () => writeEpoch,
     api: async (url, options) => {
       const method = (options || {}).method || 'GET';
       calls.push(['api', method, url]);
-      await Promise.resolve();
-      if (failMutation && method === 'POST' && /\/(archive|restore|purge-confirm)$|movements$/.test(url)) {
-        throw new Error('QA gravação recusada');
+      if (method !== 'GET') { writeEpoch += 1; }
+      try {
+        await Promise.resolve();
+        if (failMutation && method === 'POST' && /\/(archive|restore|purge-confirm)$|movements$/.test(url)) {
+          throw new Error('QA gravação recusada');
+        }
+        return { records: {}, units: [record], epis: [record] };
+      } finally {
+        if (method !== 'GET') { writeEpoch += 1; }
       }
-      return { records: {}, units: [], epis: [] };
     },
     loadBootstrap: async (options) => {
       calls.push(['bootstrap', options || null]);
@@ -135,6 +143,47 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     await ctx.coalesceLoad('a', load);
     eq(loads, 1, 'janela fechada ao terminar');
   });
+
+  testAsync('FIX-NAV-REFRESH coalesceLoad: gravação de outro fluxo durante a janela força leitura nova', async () => {
+    const { ctx } = environment();
+    const reads = [];
+    let version = 'antes';
+    const load = async () => { reads.push(version); return version; };
+    let otherWrite;
+    await ctx.refreshAfterMutation(async () => {
+      const first = ctx.coalesceLoad('lista', load);
+      // Outra gravação (fora do fluxo) começa e termina enquanto a leitura está em andamento.
+      otherWrite = ctx.api('/api/outsourced-companies/1/unit-link/activate', { method: 'POST' }).then(() => { version = 'depois'; });
+      await otherWrite;
+      const second = await ctx.coalesceLoad('lista', load);
+      eq(second, 'depois', 'leitura posterior à gravação não reaproveita a anterior');
+      await first;
+    });
+    eq(reads.join(','), 'antes,depois');
+  });
+
+  testAsync('FIX-NAV-REFRESH coalesceLoad: sem época de escrita disponível, nada é reaproveitado', async () => {
+    const { ctx } = environment();
+    ctx.apiWriteEpoch = undefined;
+    let loads = 0;
+    await ctx.refreshAfterMutation(async () => {
+      await Promise.all([ctx.coalesceLoad('a', async () => { loads++; }), ctx.coalesceLoad('a', async () => { loads++; })]);
+    });
+    eq(loads, 2);
+  });
+
+  for (const [name, args] of [['archiveEntityRecord', ['epi', 6]], ['restoreArchivedRecord', ['epi', 6]],
+    ['archiveUnit', [6]], ['restoreArchivedUnit', [6]], ['purgeArchivedUnit', [6]], ['purgeArchivedRecord', ['epi', 6]]]) {
+    testAsync(`FIX-NAV-REFRESH ${name}: cancelar o diálogo libera a chave`, async () => {
+      const { ctx, calls } = environment();
+      ctx.confirmDestructive = async () => false;
+      await ctx[name](...args);
+      ctx.confirmDestructive = async () => true;
+      await ctx[name](...args);
+      const writes = calls.filter(([c, method, url]) => c === 'api' && method === 'POST' && /\/(archive|restore|purge-confirm)$/.test(url));
+      eq(writes.length, 1, 'segunda tentativa grava depois do cancelamento');
+    });
+  }
 
   testAsync('FIX-NAV-REFRESH refreshAfterMutation: falha vira aviso verdadeiro; 401/403 não duplicam aviso', async () => {
     const { ctx, calls } = environment();

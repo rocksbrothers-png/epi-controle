@@ -14,8 +14,9 @@
 // coalesceLoad(key, load): durante uma atualização aberta por
 //   refreshAfterMutation, a mesma lista pedida duas vezes (pela tela reaberta
 //   em showView e pela própria operação) gera uma só requisição. Fora dessa
-//   janela é transparente: uma requisição iniciada ANTES da gravação nunca é
-//   reaproveitada, então a lista nunca volta desatualizada.
+//   janela é transparente. Dentro dela, só junta leituras da mesma "época de
+//   escrita" do api-client: qualquer gravação iniciada ou concluída depois da
+//   leitura em andamento (deste fluxo ou de outro) força uma leitura nova.
 (function () {
   if (globalThis.__EPI_MODULE_SHARED_MUTATION_FLOW_LOADED__) { return; }
   globalThis.__EPI_MODULE_SHARED_MUTATION_FLOW_LOADED__ = true;
@@ -33,11 +34,23 @@
     }
   }
 
+  // Época de escrita do cliente HTTP (modules/api-client.js). Sem ela, nada é
+  // reaproveitado (NaN nunca é igual a si mesmo).
+  function currentWriteEpoch() {
+    return typeof globalThis.apiWriteEpoch === 'function' ? globalThis.apiWriteEpoch() : NaN;
+  }
+
   function coalesceLoad(key, load) {
     const scope = activeRefresh;
     if (!scope) {return load();}
-    if (!scope.loads.has(key)) {scope.loads.set(key, Promise.resolve().then(load));}
-    return scope.loads.get(key);
+    const epoch = currentWriteEpoch();
+    const pending = scope.loads.get(key);
+    // Só junta leituras da MESMA época: se qualquer gravação (deste fluxo ou de
+    // outro) começou ou terminou depois da leitura em andamento, uma nova é feita.
+    if (pending && pending.epoch === epoch) {return pending.promise;}
+    const entry = { epoch, promise: Promise.resolve().then(load) };
+    scope.loads.set(key, entry);
+    return entry.promise;
   }
 
   async function refreshAfterMutation(refresh) {

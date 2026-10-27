@@ -17,7 +17,7 @@ São 37 chamadas: 33 no `app.js` e 4 em `modules/`/`views/`. A proposta citava "
 | Grupo | Chamadas | Tratamento |
 |---|---|---|
 | **A — Inicialização / sessão / navegação** (mantêm a navegação atual) | `init` ×2, `handleLogin`, `handleForcedPasswordChange`, `retryBootstrap`, `advanceOnboardingStep` (o onboarding navega de propósito) | **Inalteradas.** Login, logout, inicialização e revalidação de permissões continuam iguais. |
-| **B — Já preservavam a tela** | `archiveEntityRecord`/`restoreArchivedRecord`/`purgeArchivedRecord` (Colaboradores/Terceirizados, via `ARCHIVAL_ENTITIES.preserveView`), `saveSimpleForm` (3 formulários), `toggleEmployeeUnitLink` | Mantidas; ganham o fluxo novo de mensagem, clique único e recarga sem duplicata. |
+| **B — Já preservavam a tela** | `archiveEntityRecord`/`restoreArchivedRecord`/`purgeArchivedRecord` (Colaboradores/Terceirizados, via `ARCHIVAL_ENTITIES.preserveView`), `saveSimpleForm` (3 formulários), `toggleEmployeeUnitLink` | Arquivar/desarquivar/excluir ganham o fluxo novo (mensagem, clique único, recarga sem duplicata). `saveSimpleForm` e `toggleEmployeeUnitLink` **não mudaram**. |
 | **C — Corrigidas nesta demanda** | `saveEmployeeMovement` (transferência), arquivar/desarquivar/excluir **EPI** (`ARCHIVAL_ENTITIES.epi.preserveView`), `archiveUnit`/`restoreArchivedUnit`/`purgeArchivedUnit` | `preserveView: true` + fluxo gravar → atualizar (abaixo). |
 | **D — Mesma classe, fora do escopo autorizado** (registradas para decisão) | Comercial (`toggleCommercialStatus`, `saveCommercial`, `saveCommercialSettings`), Empresas (`openCompanyLogoEditor`, `saveCompany`, `toggleCompany`), Usuários (`copyUserAccessMessage`, `setTemporaryPassword`, `generateAndCopyTemporaryPassword`, `saveUser`, `users-view.js` ×2), `deactivateLegalEntity`, `finalizeFichaPeriod` ×2, `handleStockMovementSubmit`, `saveMyCompany`, `views/devolution.js`, botões "Atualizar" da Fase 2 (`refreshPhase2Module`, `refreshPhase2EpisModule`, `INTERACTIVE_TOOLS_MODULES.colaboradores.refresh`), `saveSimpleForm` nos demais formulários (Unidade, CNPJ, EPI, Entrega) | **Inalteradas.** Ao contrário do grupo C, muitas delas acontecem com a tela de origem em modo SPA ou em fluxos com navegação própria. Cada uma precisa de cenário próprio antes de mudar. |
 | **Código morto** | `deleteRegistryEntity` (sem chamadores) | Inalterado; vai para a limpeza da UBX-V5. |
@@ -25,7 +25,8 @@ São 37 chamadas: 33 no `app.js` e 4 em `modules/`/`views/`. A proposta citava "
 ## Correção
 
 **`static/js/modules/shared/ui/mutation-flow.js`** é um módulo UBX novo (`shared/ui`), carregado antes do `app.js`. Nenhuma
-declaração nova foi criada no monólito: a guarda continua em 798 declarações e 112 endpoints.
+declaração nova foi criada no monólito: a guarda continua em 798 declarações e 112 endpoints. O `modules/api-client.js`
+expõe `apiWriteEpoch()`, usado só por `coalesceLoad`.
 
 - **`runExclusiveMutation(key, task)`**: uma execução por chave (`archive:epi:61`, `employee-movement`…). Clique duplo,
   ou repetição antes do diálogo abrir, não reenvia a gravação. A chave é liberada depois de sucesso **e** de erro.
@@ -33,9 +34,12 @@ declaração nova foi criada no monólito: a guarda continua em 798 declaraçõe
   verdadeiro `mutation.refreshFailed` ("A operação foi registrada, mas não foi possível atualizar a tela…") e não trata a
   gravação como falha. Com 401/403 não há aviso extra, porque `loadBootstrap` já encerra a sessão.
 - **`coalesceLoad(key, load)`**: durante a recarga, a mesma lista pedida pela tela reaberta (`showView`) e pela própria
-  operação gera **uma** requisição. Fora dessa janela não há efeito, então uma requisição iniciada antes da gravação nunca
-  é reaproveitada e a lista nunca volta desatualizada. Isso vale para `loadArchivedRecords`, `loadArchivedUnits` e
-  `loadOutsourcedCompanies`.
+  operação gera **uma** requisição. Fora dessa janela não há efeito. Dentro dela, só junta leituras da mesma **época de
+  escrita** do `api-client`: a época avança no início e no fim de toda requisição que não é GET. Assim, se outra gravação
+  de qualquer fluxo começar ou terminar depois da leitura em andamento, uma leitura nova é feita, e a lista não volta
+  anterior a uma gravação. Isso vale para `loadArchivedRecords`, `loadArchivedUnits` e `loadOutsourcedCompanies`.
+  Os 4 `fetch` crus aceitos pela catraca (`procurement.js`, `safety-library.js`, `i18n.js`, `tenant-init.js`) não tocam
+  essas listas.
 
 **`app.js`**:
 
@@ -56,9 +60,11 @@ es-ES, fr-FR, nb-NO).
 
 ## Regressões
 
-- **`static/js/test/fix-nav-refresh-runtime.js`**: 37 casos sobre as funções **reais** do `app.js` (fatiadas) e o módulo
+- **`static/js/test/fix-nav-refresh-runtime.js`**: 45 casos sobre as funções **reais** do `app.js` (fatiadas) e o módulo
   real. Cobre tela mantida, uma requisição de lista, gravação ok com recarga falha, gravação recusada e clique duplo, para
-  8 operações, mais a transferência e o próprio módulo. Contra a `main`, **26 falham**.
+  8 operações, mais a transferência, a chave liberada após cancelar o diálogo e o próprio módulo (inclusive leitura
+  nova quando outra gravação acontece na janela). Contra o `app.js` da `main`, **23 deles falham**; outros 3 falham em
+  `fix-colab-terc-runtime.js`, porque o EPI passou a manter a tela.
 - **`scripts/browser/fix_nav_refresh.py`** (Chromium, 5 idiomas, roda no workflow *Colaboradores and outsourced browser
   regression*): `transfer`, `epi_archival`, `unit_archival`, `lost_access`, `redundant_reloads`, `truthful_message` e
   `double_click`, com **35/35**. Contra a `main`, 6 dos 7 falham em todos os idiomas; `lost_access` passa nos dois, porque

@@ -892,3 +892,56 @@ Achados e tratamento:
 - P3, registrados sem mudança: `saveCompany`/`toggleCompany` passaram de `async` de bloco a globais (o backend autoriza
   cada chamada); os módulos dependem do `hasPermission` de um argumento do `app.js` (mesmo padrão das fatias
   anteriores); os módulos rodam em modo estrito (sem efeito observável).
+
+## 16. UBX-V5, Etapa 2 — fatia 3 (2026-10-27): Minha Empresa
+
+Base: Corporate `c1c9ac6f` / SaaS `b936120a` (`main` com Empresas integrada; `app.js` idêntico nos dois).
+Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão, regra de negócio, texto ou chave i18n.
+
+### 16.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/my-company/business/my-company-rules.js` (51) | Tipos de imagem por campo, cores padrão, modo de tema em `theme_json` e os rótulos de situação dos domínios. Puro. |
+| `modules/my-company/integrations/my-company-api.js` (52) | `GET`/`PUT /api/my-company` e os domínios (`GET`/`POST /api/my-company/domains`, `POST .../verify`, `POST .../primary`, `DELETE` com corpo), com caminho e método literais. A empresa vem da sessão no backend. |
+| `modules/my-company/ui/my-company-view.js` (228) | `myCompanyThemeMode`, `fillMyCompanyFields`, `renderMyCompanyImagePreview`, `collectMyCompanyFields`, `wireMyCompanyImageInputs`, `loadMyCompany`, `renderMyCompanyReadonly`, `loadMyCompanyCard`, `saveMyCompany`, `loadMyCompanyDomains`, `domainStatusLabel`, `addMyCompanyDomain`, `handleMyCompanyDomainAction`; e as constantes `MY_COMPANY_IMAGE_TYPES`/`MY_COMPANY_COLOR_DEFAULTS` (no negócio). |
+
+Fica no `app.js` `renderMyCompanyDomains` (alterada pelo I18N-FULL-V1; nenhuma das 15 declarações extraídas é
+alterada por aquele PR, conferido hunk a hunk sobre a ponta `5baea4bc`), chamada pelo módulo pelo nome global. As
+ações de domínio tiveram de vir junto: eram `async` de bloco e `loadMyCompanyCard` as liga. O assistente de
+implantação (`app.js`) continua chamando `loadMyCompany`, `fillMyCompanyFields`, `wireMyCompanyImageInputs` e
+`collectMyCompanyFields`, agora globais publicadas pelo módulo.
+
+### 16.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 17.120 | 16.941 (−179) |
+| Declarações no `app.js` (guarda) | 742 | 727 (−15) |
+| Endpoints literais no `app.js` | 106 | 104 (−2) |
+| Módulos UBX criados | — | 3 (`my-company/business`, `integrations`, `ui`) |
+| Maior módulo novo | — | 228 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 650 | 652 (+2 do novo runtime) |
+
+### 16.3 Equivalência
+
+`static/js/test/my-company-view-runtime.js` roda **62 cenários** contra os módulos e contra as funções originais
+(`fixtures/app-before-ubx-v5-my-company.js.txt`, cada declaração copiada literalmente de `c1c9ac6f`): preencher e
+coletar (tema válido/inválido/ausente, cores normalizadas, campos ausentes, espaços), prévia, contrato somente
+leitura, rótulos; carga (cache, forçada, sem permissão, sem empresa, falha que propaga como no original); cartão
+(primeira carga liga os listeners uma vez, segunda não, sem formulário, falha com `console.warn`); imagens (logo em
+JPEG, favicon, tipo inválido, sem arquivo, campo desconhecido, falha de conversão, sem campo oculto, vários
+arquivos, sem religar); gravação (ok, resposta sem empresa, falha com e sem retorno, sem permissão, sem
+formulário, sem sessão); domínios (listar, resposta não-lista/nula, falha, sem tabela, sem permissão; registrar com
+e sem tipo, vazio, falha, sem campos, sem sessão; verificar, principal, remover com e sem confirmação, nenhuma
+ação, falhas). 0 divergências.
+
+Sabotagem: 22 mutações (tipos de imagem, cores, tema padrão e gravado, rótulos, método e corpo HTTP, cache, estado
+após a resposta, `trim`, religar imagens, limpar o arquivo recusado, JPEG do logo, religar o formulário, recarga dos
+domínios, retorno sem feedback, confirmação de remoção, recarga após falha, permissão, domínio vazio) — **todas
+detectadas**.
+
+Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_my_company.py` (novo, no workflow) — aba Empresa das
+Configurações (formulário preenchido com tema e cores, contrato somente leitura, `PUT` sem `company_id`) e domínios
+(registrar, instruções de DNS, verificar, remover com confirmação): **10/10**, e 10/10 também contra a `main`.

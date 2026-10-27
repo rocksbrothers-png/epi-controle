@@ -693,3 +693,79 @@ Os 7 achados P3 foram tratados no PR:
 - descrição do fixture;
 - chaves de execução única e de leitura coalescida agora registradas pelo teste, de modo que as duas mutações
   sobreviventes passam a ser detectadas.
+
+## 14. UBX-V5, Etapa 2 — fatia 1 (2026-10-27): Unidades e CNPJ
+
+Base: Corporate `4aca4ada` / SaaS `58235935` (`main` com a Etapa 1 integrada; `app.js` idêntico nos dois).
+Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão, regra de negócio, texto ou chave i18n.
+Ordem autorizada da Etapa 2: Unidades e CNPJ → Empresas → Minha Empresa → Comercial (este após a I18N-FULL-V1).
+
+### 14.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/legal-entities/integrations/legal-entities-api.js` (21) | Inativação de CNPJ (`DELETE /api/legal-entities/<id>?actor`), com caminho e método literais (agora conferida pelo contrato front↔back). Cadastro e edição seguem pelo `saveSimpleForm` do `app.js`. |
+| `modules/legal-entities/ui/legal-entities-view.js` (284) | Seletores de vínculo jurídico (`legalEntityHelpers`, `legalEntitiesForCompany`, `unitLegalEntityLabel`, `legalEntityOptionsHtml`, `syncUnitLegalEntityOptions`, `syncReportLegalEntityOptions`) e a tela de CNPJs (`legalEntitiesViewHelpers`, `renderLegalEntities`, `formatLegalEntityRow`, `syncLegalEntitiesFilters`, `syncLegalEntityCompanyField`, `setLegalEntityFormMode`, `resetLegalEntityForm`, `startEditLegalEntity`, `deactivateLegalEntity`). |
+| `modules/units/business/unit-rules.js` (29) | Filtro da lista de Unidades e Unidades por empresa. Puro. |
+| `modules/units/ui/units-view.js` (89) | `unitsForSearchByCompany`, `syncUnitsSearchFilters`, `applyUnitsFilters`, `formatUnitTableRow`, `formatUnitOption`, `startEditUnit`. A tabela continua montada em `renderTables` (app.js). |
+
+As regras puras já existentes (`js/views/legal-entity-fields.js`, `js/views/legal-entities-view.js`) não mudaram:
+o I18N-FULL-V1 (Codex, ainda aberto) altera `js/views/legal-entities-view.js`, e mexer nele agora criaria
+conflito. Nenhuma das 21 funções extraídas é alterada por aquele PR (conferido hunk a hunk sobre a base dele).
+Todas eram globais do `app.js` (Annex B), exceto `deactivateLegalEntity` (`async` de bloco); continuam
+publicadas com os mesmos nomes — `modules/employees`, `modules/reports` e o `app.js` as chamam.
+
+### 14.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 17.638 | 17.342 (−296) |
+| Declarações no `app.js` (guarda) | 778 | 757 (−21) |
+| Endpoints literais no `app.js` | 108 | 107 (−1) |
+| Módulos UBX criados | — | 4 (`legal-entities/integrations`, `legal-entities/ui`, `units/business`, `units/ui`) |
+| Maior módulo novo | — | 284 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 646 | 648 (+2 do novo runtime) |
+
+Dependências eliminadas: a tela de CNPJs e a edição de Unidade não leem mais nada de bloco do `app.js` (estado e
+`refs` via `__EPI_APP_STATE__`/`__EPI_REFS__`); o filtro de Unidades virou regra pura com os filtros por
+parâmetro. Nenhuma dependência nova de negócio/integração para a UI.
+
+### 14.3 Equivalência
+
+`static/js/test/units-legal-entities-runtime.js` roda **100 cenários** contra os módulos e contra as funções
+originais (`fixtures/app-before-ubx-v5-units-legal-entities.js.txt`: cada declaração copiada literalmente de
+`4aca4ada`), no mesmo ambiente, com e sem as regras puras carregadas (fallbacks). Compara chamadas (API,
+`confirm`, `alert`, `loadBootstrap`, rótulo do botão, navegação, `populateSelect`, `renderTables`), campos e
+formulários, HTML das tabelas e filtros. Cobre permissões de editar/inativar, CNPJ inativo e único ativo, filtros
+da tela, campo de empresa (Master × demais × sem nome × sem elementos), modo de edição, reset, edição com e sem
+campo de empresa/CNPJ, inativação (ok, cancelada, sem permissão, inexistente, falha da API e da recarga),
+seletores de CNPJ de Unidade e Relatórios (empresa do campo × do usuário, seleção mantida × descartada) e
+Unidades (busca por empresa, filtros, linha com/sem gestão, opção, edição). 0 divergências; a referência não
+quebra em nenhum cenário.
+
+Sabotagem: 16 mutações nos módulos (`activeOnly`, papel do Master, recarga com `preserveView`, situação na edição,
+permissão de inativar, campo de empresa habilitado, confirmação ignorada, seleção anterior não validada, HTML sem
+escape, método HTTP, caixa do tipo de Unidade, Unidades sem empresa no filtro, escopo `filterByUserCompany`, coluna de CNPJ,
+sincronização do CNPJ na edição, filtros sem minúsculas) — **todas detectadas**. Duas só passaram a ser detectadas
+depois de o elemento falso limpar o valor ao reescrever as opções (como um `<select>` real) e de incluir uma
+Unidade com tipo em maiúsculas.
+
+Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_units_legal_entities.py` (novo, roda no workflow
+*Colaboradores and outsourced browser regression*) — tela de CNPJs (lista só ativos, editar preenche o formulário
+inclusive a situação, "Novo CNPJ" volta a cadastrar), inativação (confirmação + `DELETE` com o ator) e Unidades
+(coluna de CNPJ, filtro por nome, edição com o CNPJ vinculado sem sair da tela): **15/15**, e 15/15 também contra a
+`main` (mesmo comportamento antes e depois). `fix_colab_terc.py` 40/40 e `fix_nav_refresh.py` 35/35 continuam.
+
+### 14.4 Observações e riscos residuais
+
+- Comportamento herdado preservado, não corrigido: `syncUnitsSearchFilters` guarda o tipo em minúsculas e o filtro
+  compara com o tipo do registro sem normalizar; uma Unidade com tipo em maiúsculas nunca casaria. Os tipos
+  cadastrados hoje são minúsculos.
+- O novo harness acusou um erro de página que já existe na `main` e nos harnesses da FIX: o fixture base responde
+  `/api/reports` com um payload genérico e `renderReports` quebra ao montar o resumo. É do fixture, não do produto
+  (o backend sempre manda `deliveries`); o harness novo responde no formato real e exige zero erros de página.
+- `deactivateLegalEntity` continua recarregando com `loadBootstrap()` sem `preserveView` (grupo D da
+  FIX-NAV-REFRESH-V1, fora do escopo desta refatoração).
+- O I18N-FULL-V1 altera `UNIT_PURGE_RECORD_LABELS`, que a Etapa 1 moveu para `archival-rules.js`: o Codex terá
+  conflito ao atualizar a branch dele (aviso registrado no relatório da etapa).

@@ -9,7 +9,7 @@
 // A empresa contratante é configurada pelo Administrador Geral (Owner da
 // tenant); o backend a deriva do usuário autenticado. Regras puras em
 // ../business/my-company-rules.js; HTTP em ../integrations/my-company-api.js.
-// Fica no app.js renderMyCompanyDomains (alterada pelo I18N-FULL-V1), chamada
+// Fica no app.js renderMyCompanyDomains (alterada pelo PR pendente I18N-FULL-V1), chamada
 // aqui pelo nome global. O assistente de implantação (app.js) usa
 // loadMyCompany, fillMyCompanyFields, wireMyCompanyImageInputs e
 // collectMyCompanyFields. As funções async eram de bloco no app.js; agora são

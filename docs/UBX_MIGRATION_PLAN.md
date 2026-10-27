@@ -264,8 +264,9 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §15](UBX_APPJS_AUDITORIA.md#15-ubx-v5-eta
 Detalhes em [`UBX_APPJS_AUDITORIA.md` §16](UBX_APPJS_AUDITORIA.md#16-ubx-v5-etapa-2--fatia-3-2026-10-27-minha-empresa).
 
 - `app.js` 17.120 → 16.941 linhas; 742 → 727 declarações; 106 → 104 endpoints.
-- `modules/my-company/{business,integrations,ui}`: 62 cenários comparados com as funções originais
-  (0 divergências), 22 sabotagens detectadas e Chromium 10/10 nos 5 idiomas.
+- `modules/my-company/{business,integrations,ui}`: 64 cenários comparados com as funções originais
+  (0 divergências), 27 sabotagens detectadas e Chromium 10/10 nos 5 idiomas.
+  Auditoria independente aprovada; risco de segurança preexistente (logotipo) documentado na §16.4.
 
 ## Próximo passo
 UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`), após a I18N-FULL-V1 e,

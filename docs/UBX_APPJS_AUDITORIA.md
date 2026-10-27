@@ -926,7 +926,7 @@ implantação (`app.js`) continua chamando `loadMyCompany`, `fillMyCompanyFields
 
 ### 16.3 Equivalência
 
-`static/js/test/my-company-view-runtime.js` roda **62 cenários** contra os módulos e contra as funções originais
+`static/js/test/my-company-view-runtime.js` roda **64 cenários** contra os módulos e contra as funções originais
 (`fixtures/app-before-ubx-v5-my-company.js.txt`, cada declaração copiada literalmente de `c1c9ac6f`): preencher e
 coletar (tema válido/inválido/ausente, cores normalizadas, campos ausentes, espaços), prévia, contrato somente
 leitura, rótulos; carga (cache, forçada, sem permissão, sem empresa, falha que propaga como no original); cartão
@@ -935,13 +935,48 @@ JPEG, favicon, tipo inválido, sem arquivo, campo desconhecido, falha de convers
 arquivos, sem religar); gravação (ok, resposta sem empresa, falha com e sem retorno, sem permissão, sem
 formulário, sem sessão); domínios (listar, resposta não-lista/nula, falha, sem tabela, sem permissão; registrar com
 e sem tipo, vazio, falha, sem campos, sem sessão; verificar, principal, remover com e sem confirmação, nenhuma
-ação, falhas). 0 divergências.
+ação, falhas, falha do `loadBootstrap` após gravar, recarga depois de falha). O registro inclui o nome do handler
+ligado e o instante em que a função devolve. 0 divergências.
 
-Sabotagem: 22 mutações (tipos de imagem, cores, tema padrão e gravado, rótulos, método e corpo HTTP, cache, estado
+Sabotagem: 27 mutações (tipos de imagem, cores, tema padrão e gravado, rótulos, método e corpo HTTP, cache, estado
 após a resposta, `trim`, religar imagens, limpar o arquivo recusado, JPEG do logo, religar o formulário, recarga dos
-domínios, retorno sem feedback, confirmação de remoção, recarga após falha, permissão, domínio vazio) — **todas
-detectadas**.
+domínios, retorno sem feedback, confirmação de remoção, recarga após falha, permissão, domínio vazio, e — após a auditoria — handler errado no submit, no botão de
+adicionar e nos dois trocados, `loadBootstrap` sem `await` e recarga sem `await` no erro de ação de domínio) —
+**todas detectadas**.
 
 Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_my_company.py` (novo, no workflow) — aba Empresa das
 Configurações (formulário preenchido com tema e cores, contrato somente leitura, `PUT` sem `company_id`) e domínios
 (registrar, instruções de DNS, verificar, remover com confirmação): **10/10**, e 10/10 também contra a `main`.
+
+### 16.4 Auditoria independente e riscos residuais
+
+Auditoria somente leitura (Corporate `3327065d`, SaaS `9e561cd2`): **aprovada, sem bloqueios**. Confirmou, declaração
+a declaração, equivalência de ramos, textos, ids, chaves e ordem dos corpos HTTP, momento da avaliação de
+`state.user.id` e da ligação dos listeners; que todo chamador restante resolve na chamada; fixture literal de
+`c1c9ac6f`; contrato HTTP (7 chamadas, método e caminho literais); paridade byte a byte com o SaaS; e os números da
+§16.2. Achados tratados neste PR:
+
+| Achado | Tratamento |
+|---|---|
+| Stub de `bindAppListener` não registrava qual função era ligada (3 trocas de handler passavam) | Log com `handler.name`; as 3 trocas agora divergem |
+| `loadBootstrap` nunca falhava (remover o `await` passava) | Cenário `salvar:falhaBootstrap` |
+| Ordem do `await` na recarga após falha de ação de domínio | Marca `resolved` no fim de cada cenário + `dominio:acao:falhaRecarrega` |
+| Guarda "nada volta ao app.js" só via declarações na coluna 0 | Regex aceita indentação |
+| Comentário dizia que a I18N-FULL-V1 já alterou `renderMyCompanyDomains` | Corrigido: PR pendente |
+
+Riscos residuais (não tratados aqui):
+
+- **Segurança — preexistente, alta (CodeQL "DOM text reinterpreted as HTML" na prévia de imagem).** A validação de
+  logotipo (`validate_logo_payload`, `modules/commercial/service.py`) e `companyLogoSrc` só conferem o prefixo
+  `data:image/`; um valor como `data:image/png" onerror="…"` é aceito, gravado e fecha o atributo `src` onde
+  `companyLogoMarkup` renderiza (topbar, lista de Empresas do Administrador Master, prévias). Grava quem tem
+  `company_settings:update` (Administrador Geral) ou o Master; afeta os usuários da empresa e o Master. O CSP do app é
+  *Report-Only*. A linha só mudou de arquivo (na `main`: `static/app.js:11427`). Correção proposta em PR de segurança
+  separado, aguardando autorização: regex estrita de data URL base64 (PNG/JPEG/SVG) no backend e escape do atributo no
+  frontend.
+- O assistente de implantação (`app.js`) chama `loadMyCompany`, `fillMyCompanyFields`, `wireMyCompanyImageInputs` e
+  `collectMyCompanyFields` pelo nome global; a resolução foi conferida estaticamente, mas nenhum teste de navegador
+  percorre o assistente.
+- Seis funções antes `async` de bloco agora são globais (mesmo padrão da §15); nada as sonda e as guardas de
+  permissão são as mesmas.
+- O teste de navegador não clica em "Tornar principal" nem envia imagem (ambos cobertos pelo teste de runtime).

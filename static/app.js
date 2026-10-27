@@ -11392,7 +11392,7 @@ async function saveEmployeeMovement(event) {
 
 // Minha Empresa (configurações, imagens, tema, leitura, gravação) e as ações de domínio:
 // static/js/modules/my-company/{business,integrations,ui}/ (UBX-V5, Etapa 2). canConfigureMyCompany: modules/auth/
-// (UBX-V4, Etapa C). renderMyCompanyDomains fica abaixo (alterada pelo I18N-FULL-V1).
+// (UBX-V4, Etapa C). renderMyCompanyDomains fica abaixo (alterada pelo PR pendente I18N-FULL-V1).
 
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 

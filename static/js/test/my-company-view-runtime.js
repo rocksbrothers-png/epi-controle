@@ -5,7 +5,8 @@
 // app.js (fixtures/app-before-ubx-v5-my-company.js.txt, main c1c9ac6f), no mesmo
 // ambiente, e os resultados têm de ser idênticos. Cada cenário registra chamadas
 // (API com método/corpo, alert, confirm, console.warn, loadBootstrap,
-// renderMyCompanyDomains, listeners, conversões de imagem), os campos do
+// renderMyCompanyDomains, listeners com o nome do handler, conversões de imagem),
+// o instante em que a função devolve ('resolved'), os campos do
 // formulário, as prévias, os textos de retorno e state.myCompany.
 const fs = require('fs');
 const path = require('path');
@@ -59,8 +60,8 @@ function makeEnv(opts = {}) {
     companyLogoMarkup: (c, cls) => `<img class="${cls}" data-logo="${c.logo_type}" alt="${c.name}">`,
     fileToJpegDataUrl: async (f) => { log.push(['jpeg', f.type]); if (opts.convertFails) { throw new Error('falha conv'); } return `jpeg:${f.type}`; },
     fileToDataUrl: async (f) => { log.push(['dataUrl', f.type]); if (opts.convertFails) { throw new Error('falha conv'); } return `data:${f.type}`; },
-    bindAppListener: (target, event, handler) => { log.push(['listen', target ? (target.id || 'form/input') : null, event]); handlers.push([target, event, handler]); },
-    loadBootstrap: async (o) => log.push(['loadBootstrap', JSON.stringify(o ?? null)]),
+    bindAppListener: (target, event, handler) => { log.push(['listen', target ? (target.id || 'form/input') : null, event, handler && handler.name]); handlers.push([target, event, handler]); },
+    loadBootstrap: async (o) => { log.push(['loadBootstrap', JSON.stringify(o ?? null)]); if (opts.bootstrapFails) { throw new Error('bootstrap fora do ar'); } },
     renderMyCompanyDomains: (domains) => log.push(['renderDomains', JSON.stringify(domains)]),
     alert: (m) => log.push(['alert', String(m)]),
     confirm: (m) => { const r = confirms.length ? confirms.shift() : true; log.push(['confirm', m, r]); return r; },
@@ -98,6 +99,7 @@ async function run(load, opts, fn) {
   let result;
   let thrown = null;
   try { result = await fn(ctx, env); } catch (error) { thrown = String(error && error.message); }
+  env.log.push(['resolved']);
   await settle(); await settle();
   const pick = (n) => (n ? [n.value, n.textContent, n.innerHTML] : null);
   return JSON.parse(JSON.stringify({ thrown, result: result === undefined ? null : result, log: env.log,
@@ -163,7 +165,8 @@ async function scenario(load) {
   const ev = (env) => ({ preventDefault: () => env.log.push(['preventDefault']) });
   for (const [name, opts] of [['ok', { replies: { '/api/my-company': { company: { id: 901, saved: true } } } }], ['semEmpresaNaResposta', { cached: true, replies: { '/api/my-company': {} } }],
     ['falha', { replies: { '/api/my-company': new Error('cor inválida') } }], ['falhaSemFeedback', { missing: ['my-company-feedback'], replies: { '/api/my-company': new Error('x') } }],
-    ['semPermissao', { canConfigure: false }], ['semForm', { missing: ['my-company-form'] }], ['semUsuario', { noUser: true }]]) {
+    ['semPermissao', { canConfigure: false }], ['semForm', { missing: ['my-company-form'] }], ['semUsuario', { noUser: true }],
+    ['falhaBootstrap', { bootstrapFails: true, replies: { '/api/my-company': { company: { id: 901 } } } }]]) {
     out[`salvar:${name}`] = await run(load, opts, (ctx, env) => { ctx.fillMyCompanyFields(env.nodes['my-company-form'], COMPANY); return ctx.saveMyCompany(ev(env)); });
   }
   // Domínios.
@@ -185,7 +188,8 @@ async function scenario(load) {
     ['removerCancelado', { domainDelete: '6' }, { confirms: [false] }], ['nenhuma', {}, {}],
     ['falha', { domainVerify: '4' }, { replies: { '/api/my-company/domains/4': new Error('TXT ausente') } }],
     ['falhaSemFeedback', { domainPrimary: '5' }, { missing: ['my-company-domain-feedback'], replies: { '/api/my-company/domains/5': new Error('y') } }],
-    ['semUsuario', { domainDelete: '6' }, { noUser: true }]]) {
+    ['semUsuario', { domainDelete: '6' }, { noUser: true }],
+    ['falhaRecarrega', { domainVerify: '4' }, { replies: { '/api/my-company/domains/4': new Error('TXT ausente'), '/api/my-company/domains?': { domains: [{ id: 4 }] } } }]]) {
     out[`dominio:acao:${name}`] = await run(load, opts, (ctx) => ctx.handleMyCompanyDomainAction({ target: { dataset } }));
   }
   return out;
@@ -219,9 +223,9 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     assert(Math.max(...idx) < order.indexOf('/app.js'), 'antes do app.js');
     const app = fs.readFileSync(path.resolve(JS_ROOT, '..', 'app.js'), 'utf8');
     for (const name of [...NAMES, 'MY_COMPANY_IMAGE_TYPES', 'MY_COMPANY_COLOR_DEFAULTS']) {
-      assert(!new RegExp(`^(?:async\\s+)?(?:function|const|let|var)\\s+${name}\\b`, 'm').test(app), `${name} voltou ao app.js`);
+      assert(!new RegExp(`^\\s*(?:async\\s+)?(?:function|const|let|var)\\s+${name}\\b`, 'm').test(app), `${name} voltou ao app.js`);
     }
-    assert(/^function renderMyCompanyDomains\(/m.test(app), 'renderMyCompanyDomains segue no app.js (I18N-FULL-V1)');
+    assert(/^function renderMyCompanyDomains\(/m.test(app), 'renderMyCompanyDomains segue no app.js (alterada pelo PR pendente I18N-FULL-V1)');
   });
 };
 

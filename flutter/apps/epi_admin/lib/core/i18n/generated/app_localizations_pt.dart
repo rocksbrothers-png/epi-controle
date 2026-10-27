@@ -2721,6 +2721,136 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-DD';
+
+  @override
+  String get billingActive => 'Ativa';
+
+  @override
+  String get billingPending => 'Pendente';
+
+  @override
+  String get billingPaused => 'Pausada';
+
+  @override
+  String get billingCancelled => 'Cancelada';
+
+  @override
+  String get billingExpired => 'Expirada';
+
+  @override
+  String get billingAnnual => 'Anual';
+
+  @override
+  String get billingMonthly => 'Mensal';
+
+  @override
+  String get billingRecurringCard => 'Cartão (recorrente)';
+
+  @override
+  String get billingCard => 'Cartão';
+
+  @override
+  String get billingBoleto => 'Boleto';
+
+  @override
+  String get billingConfirmTitle => 'Tem certeza?';
+
+  @override
+  String get billingConfirmBody =>
+      'Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmar Cancelamento';
+
+  @override
+  String get billingCancelledNotice => 'Assinatura cancelada.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Não foi possível cancelar: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Valor';
+
+  @override
+  String get billingCycle => 'Periodicidade';
+
+  @override
+  String get billingMethod => 'Forma de pagamento';
+
+  @override
+  String get billingStarted => 'Data da contratação';
+
+  @override
+  String get billingNextPayment => 'Próxima cobrança';
+
+  @override
+  String get billingLastPayment => 'Última cobrança';
+
+  @override
+  String get billingCancelDate => 'Cancelada em';
+
+  @override
+  String get billingManualRenewal => 'Renovação manual';
+
+  @override
+  String get billingMpSubscriptionId => 'ID da assinatura (MP)';
+
+  @override
+  String get billingMpStatus => 'Status Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancelar assinatura';
+
+  @override
+  String get billingCancelledBody =>
+      'Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.';
+
+  @override
+  String get billingEmptyTitle => 'Nenhuma assinatura ativa';
+
+  @override
+  String get billingEmptyBody =>
+      'Quando uma assinatura for contratada, os detalhes aparecerão aqui.';
+
+  @override
+  String get billingLoadFailed => 'Não foi possível carregar a assinatura.';
+
+  @override
+  String get billingInvoicePaid => 'Pago';
+
+  @override
+  String get billingInvoicePending => 'Pendente';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelado';
+
+  @override
+  String get billingInvoiceRefunded => 'Reembolsado';
+
+  @override
+  String get billingInvoiceFailed => 'Falhou';
+
+  @override
+  String get billingOpenReceipt => 'Abrir recibo';
+
+  @override
+  String get billingReceiptOpenFailed => 'Não foi possível abrir o recibo.';
+
+  @override
+  String get billingHistoryLoadFailed =>
+      'Não foi possível carregar o histórico.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Nenhuma cobrança encontrada';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'As cobranças da sua assinatura aparecerão aqui.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -5440,4 +5570,134 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-DD';
+
+  @override
+  String get billingActive => 'Ativa';
+
+  @override
+  String get billingPending => 'Pendente';
+
+  @override
+  String get billingPaused => 'Pausada';
+
+  @override
+  String get billingCancelled => 'Cancelada';
+
+  @override
+  String get billingExpired => 'Expirada';
+
+  @override
+  String get billingAnnual => 'Anual';
+
+  @override
+  String get billingMonthly => 'Mensal';
+
+  @override
+  String get billingRecurringCard => 'Cartão (recorrente)';
+
+  @override
+  String get billingCard => 'Cartão';
+
+  @override
+  String get billingBoleto => 'Boleto';
+
+  @override
+  String get billingConfirmTitle => 'Tem certeza?';
+
+  @override
+  String get billingConfirmBody =>
+      'Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmar Cancelamento';
+
+  @override
+  String get billingCancelledNotice => 'Assinatura cancelada.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Não foi possível cancelar: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Valor';
+
+  @override
+  String get billingCycle => 'Periodicidade';
+
+  @override
+  String get billingMethod => 'Forma de pagamento';
+
+  @override
+  String get billingStarted => 'Data da contratação';
+
+  @override
+  String get billingNextPayment => 'Próxima cobrança';
+
+  @override
+  String get billingLastPayment => 'Última cobrança';
+
+  @override
+  String get billingCancelDate => 'Cancelada em';
+
+  @override
+  String get billingManualRenewal => 'Renovação manual';
+
+  @override
+  String get billingMpSubscriptionId => 'ID da assinatura (MP)';
+
+  @override
+  String get billingMpStatus => 'Status Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancelar assinatura';
+
+  @override
+  String get billingCancelledBody =>
+      'Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.';
+
+  @override
+  String get billingEmptyTitle => 'Nenhuma assinatura ativa';
+
+  @override
+  String get billingEmptyBody =>
+      'Quando uma assinatura for contratada, os detalhes aparecerão aqui.';
+
+  @override
+  String get billingLoadFailed => 'Não foi possível carregar a assinatura.';
+
+  @override
+  String get billingInvoicePaid => 'Pago';
+
+  @override
+  String get billingInvoicePending => 'Pendente';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelado';
+
+  @override
+  String get billingInvoiceRefunded => 'Reembolsado';
+
+  @override
+  String get billingInvoiceFailed => 'Falhou';
+
+  @override
+  String get billingOpenReceipt => 'Abrir recibo';
+
+  @override
+  String get billingReceiptOpenFailed => 'Não foi possível abrir o recibo.';
+
+  @override
+  String get billingHistoryLoadFailed =>
+      'Não foi possível carregar o histórico.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Nenhuma cobrança encontrada';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'As cobranças da sua assinatura aparecerão aqui.';
 }

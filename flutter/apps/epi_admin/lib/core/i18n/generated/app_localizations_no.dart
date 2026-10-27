@@ -2713,6 +2713,136 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get poSupplierIsoDateHint => 'YYYY-MM-DD';
+
+  @override
+  String get billingActive => 'Aktivt';
+
+  @override
+  String get billingPending => 'Venter';
+
+  @override
+  String get billingPaused => 'Satt på pause';
+
+  @override
+  String get billingCancelled => 'Avsluttet';
+
+  @override
+  String get billingExpired => 'Utløpt';
+
+  @override
+  String get billingAnnual => 'Årlig';
+
+  @override
+  String get billingMonthly => 'Månedlig';
+
+  @override
+  String get billingRecurringCard => 'Kort (gjentakende)';
+
+  @override
+  String get billingCard => 'Kort';
+
+  @override
+  String get billingBoleto => 'Boleto (brasiliansk betalingsblankett)';
+
+  @override
+  String get billingConfirmTitle => 'Er du sikker?';
+
+  @override
+  String get billingConfirmBody =>
+      'Tilgangen din beholdes til slutten av perioden som allerede er betalt.\nDet foretas ingen nye belastninger.';
+
+  @override
+  String get billingConfirmCancel => 'Bekreft avslutning';
+
+  @override
+  String get billingCancelledNotice => 'Abonnementet er avsluttet.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Kunne ikke avslutte: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Beløp';
+
+  @override
+  String get billingCycle => 'Betalingsperiode';
+
+  @override
+  String get billingMethod => 'Betalingsmåte';
+
+  @override
+  String get billingStarted => 'Startdato for abonnementet';
+
+  @override
+  String get billingNextPayment => 'Neste betaling';
+
+  @override
+  String get billingLastPayment => 'Siste betaling';
+
+  @override
+  String get billingCancelDate => 'Avsluttet den';
+
+  @override
+  String get billingManualRenewal => 'Manuell fornyelse';
+
+  @override
+  String get billingMpSubscriptionId => 'Abonnements-ID (MP)';
+
+  @override
+  String get billingMpStatus => 'Mercado Pago-status';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Avslutt abonnement';
+
+  @override
+  String get billingCancelledBody =>
+      'Abonnementet er avsluttet. Tilgangen beholdes til slutten av perioden som allerede er betalt. Det foretas ingen nye belastninger.';
+
+  @override
+  String get billingEmptyTitle => 'Ingen aktive abonnementer';
+
+  @override
+  String get billingEmptyBody =>
+      'Abonnementsdetaljene vises her når et abonnement er bestilt.';
+
+  @override
+  String get billingLoadFailed => 'Kunne ikke laste abonnementet.';
+
+  @override
+  String get billingInvoicePaid => 'Betalt';
+
+  @override
+  String get billingInvoicePending => 'Venter';
+
+  @override
+  String get billingInvoiceCancelled => 'Kansellert';
+
+  @override
+  String get billingInvoiceRefunded => 'Refundert';
+
+  @override
+  String get billingInvoiceFailed => 'Mislyktes';
+
+  @override
+  String get billingOpenReceipt => 'Åpne kvittering';
+
+  @override
+  String get billingReceiptOpenFailed => 'Kunne ikke åpne kvitteringen.';
+
+  @override
+  String get billingHistoryLoadFailed =>
+      'Kunne ikke laste betalingshistorikken.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Fant ingen betalinger';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Betalingene for abonnementet ditt vises her.';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -5424,4 +5554,134 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get poSupplierIsoDateHint => 'YYYY-MM-DD';
+
+  @override
+  String get billingActive => 'Aktivt';
+
+  @override
+  String get billingPending => 'Venter';
+
+  @override
+  String get billingPaused => 'Satt på pause';
+
+  @override
+  String get billingCancelled => 'Avsluttet';
+
+  @override
+  String get billingExpired => 'Utløpt';
+
+  @override
+  String get billingAnnual => 'Årlig';
+
+  @override
+  String get billingMonthly => 'Månedlig';
+
+  @override
+  String get billingRecurringCard => 'Kort (gjentakende)';
+
+  @override
+  String get billingCard => 'Kort';
+
+  @override
+  String get billingBoleto => 'Boleto (brasiliansk betalingsblankett)';
+
+  @override
+  String get billingConfirmTitle => 'Er du sikker?';
+
+  @override
+  String get billingConfirmBody =>
+      'Tilgangen din beholdes til slutten av perioden som allerede er betalt.\nDet foretas ingen nye belastninger.';
+
+  @override
+  String get billingConfirmCancel => 'Bekreft avslutning';
+
+  @override
+  String get billingCancelledNotice => 'Abonnementet er avsluttet.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Kunne ikke avslutte: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Beløp';
+
+  @override
+  String get billingCycle => 'Betalingsperiode';
+
+  @override
+  String get billingMethod => 'Betalingsmåte';
+
+  @override
+  String get billingStarted => 'Startdato for abonnementet';
+
+  @override
+  String get billingNextPayment => 'Neste betaling';
+
+  @override
+  String get billingLastPayment => 'Siste betaling';
+
+  @override
+  String get billingCancelDate => 'Avsluttet den';
+
+  @override
+  String get billingManualRenewal => 'Manuell fornyelse';
+
+  @override
+  String get billingMpSubscriptionId => 'Abonnements-ID (MP)';
+
+  @override
+  String get billingMpStatus => 'Mercado Pago-status';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Avslutt abonnement';
+
+  @override
+  String get billingCancelledBody =>
+      'Abonnementet er avsluttet. Tilgangen beholdes til slutten av perioden som allerede er betalt. Det foretas ingen nye belastninger.';
+
+  @override
+  String get billingEmptyTitle => 'Ingen aktive abonnementer';
+
+  @override
+  String get billingEmptyBody =>
+      'Abonnementsdetaljene vises her når et abonnement er bestilt.';
+
+  @override
+  String get billingLoadFailed => 'Kunne ikke laste abonnementet.';
+
+  @override
+  String get billingInvoicePaid => 'Betalt';
+
+  @override
+  String get billingInvoicePending => 'Venter';
+
+  @override
+  String get billingInvoiceCancelled => 'Kansellert';
+
+  @override
+  String get billingInvoiceRefunded => 'Refundert';
+
+  @override
+  String get billingInvoiceFailed => 'Mislyktes';
+
+  @override
+  String get billingOpenReceipt => 'Åpne kvittering';
+
+  @override
+  String get billingReceiptOpenFailed => 'Kunne ikke åpne kvitteringen.';
+
+  @override
+  String get billingHistoryLoadFailed =>
+      'Kunne ikke laste betalingshistorikken.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Fant ingen betalinger';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Betalingene for abonnementet ditt vises her.';
 }

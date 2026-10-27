@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 
 class SummaryAdapter implements HttpClientAdapter {
   int requests = 0;
+  int? criticalStock = 1234;
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -23,11 +24,15 @@ class SummaryAdapter implements HttpClientAdapter {
     expect(options.path, '/api/dashboard/summary');
     return ResponseBody.fromString(
       jsonEncode({
-        'scope': {'company_id': 41, 'unit_id': 42, 'locked': true},
+        'scope': {
+          'company_id': 41,
+          'unit_id': criticalStock == null ? null : 42,
+          'locked': criticalStock != null,
+        },
         'kpis': {
           'deliveries_today': 12345678,
           'expiring_epis': 1234,
-          'critical_stock': 1234,
+          'critical_stock': criticalStock,
           'pending_purchases': 1234,
         },
         'alerts': [
@@ -154,6 +159,38 @@ void main() {
         }
       }
       expect(adapter.requests, 1);
+      // Explicit refresh now exercises two distinct server answers. A missing
+      // operational unit is unknown (dash), while a resolved zero is zero.
+      for (final count in <int?>[null, 0]) {
+        adapter.criticalStock = count;
+        await tester.tap(find.byIcon(Icons.refresh_rounded));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 30)),
+        );
+        await tester.pumpAndSettle();
+        final l = AppLocalizations.of(
+          tester.element(find.byType(DashboardScreen)),
+        );
+        await tester.scrollUntilVisible(
+          find.text(l.dashboardCriticalStock),
+          -300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        final card = find.ancestor(
+          of: find.text(l.dashboardCriticalStock),
+          matching: find.byType(EpiKpiCard),
+        );
+        expect(
+          find.descendant(
+            of: card,
+            matching: find.text(count == null ? '—' : '0'),
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      }
+      expect(adapter.requests, 3);
       await tester.pumpWidget(const SizedBox());
     },
   );

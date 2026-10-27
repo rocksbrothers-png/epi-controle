@@ -39,28 +39,6 @@ lib/features/qr/qr_scanner_screen.dart|Fechar
 lib/features/purchases/suppliers_screen.dart|API
 lib/features/purchases/suppliers_screen.dart|E-mail
 lib/features/purchases/suppliers_screen.dart|Portal
-lib/features/subscription/invoices_screen.dart|Abrir recibo
-lib/features/subscription/invoices_screen.dart|Histórico Financeiro
-lib/features/subscription/invoices_screen.dart|Não foi possível abrir o recibo.
-lib/features/subscription/invoices_screen.dart|Tentar novamente
-lib/features/subscription/subscription_screen.dart|Assinatura cancelada.
-lib/features/subscription/subscription_screen.dart|Cancelada em
-lib/features/subscription/subscription_screen.dart|Cancelar assinatura
-lib/features/subscription/subscription_screen.dart|Confirmar Cancelamento
-lib/features/subscription/subscription_screen.dart|Data da contratação
-lib/features/subscription/subscription_screen.dart|Empresa
-lib/features/subscription/subscription_screen.dart|Forma de pagamento
-lib/features/subscription/subscription_screen.dart|ID da assinatura (MP)
-lib/features/subscription/subscription_screen.dart|Minha Assinatura
-lib/features/subscription/subscription_screen.dart|Periodicidade
-lib/features/subscription/subscription_screen.dart|Próxima cobrança
-lib/features/subscription/subscription_screen.dart|Status Mercado Pago
-lib/features/subscription/subscription_screen.dart|Tem certeza?
-lib/features/subscription/subscription_screen.dart|Tenant
-lib/features/subscription/subscription_screen.dart|Tentar novamente
-lib/features/subscription/subscription_screen.dart|Valor
-lib/features/subscription/subscription_screen.dart|Voltar
-lib/features/subscription/subscription_screen.dart|Última cobrança
 lib/features/units/units_screen.dart|Cidade
 lib/features/units/units_screen.dart|Empresa
 lib/features/units/units_screen.dart|Nome
@@ -114,11 +92,6 @@ lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
 lib/features/qr/qr_scanner_screen.dart|Código detectado
 lib/features/settings/archival_policy_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
 lib/features/settings/archival_policy_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
-lib/features/subscription/subscription_screen.dart|Assinatura cancelada. O acesso permanece ativo até o final do 
-lib/features/subscription/subscription_screen.dart|Nenhuma assinatura ativa
-lib/features/subscription/subscription_screen.dart|Não foi possível carregar a assinatura.
-lib/features/subscription/subscription_screen.dart|Quando uma assinatura for contratada, os detalhes aparecerão aqui.
-lib/features/subscription/subscription_screen.dart|Seu acesso continuará disponível até o final do período já pago.\n
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO — tela de troca obrigatória de senha (Lote 1 de paridade).

@@ -2723,6 +2723,135 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-DD';
+
+  @override
+  String get billingActive => 'Activa';
+
+  @override
+  String get billingPending => 'Pendiente';
+
+  @override
+  String get billingPaused => 'Pausada';
+
+  @override
+  String get billingCancelled => 'Cancelada';
+
+  @override
+  String get billingExpired => 'Caducada';
+
+  @override
+  String get billingAnnual => 'Anual';
+
+  @override
+  String get billingMonthly => 'Mensual';
+
+  @override
+  String get billingRecurringCard => 'Tarjeta (recurrente)';
+
+  @override
+  String get billingCard => 'Tarjeta';
+
+  @override
+  String get billingBoleto => 'Boleto bancario brasileño';
+
+  @override
+  String get billingConfirmTitle => '¿Está seguro?';
+
+  @override
+  String get billingConfirmBody =>
+      'Su acceso seguirá disponible hasta el final del período ya pagado.\nNo se realizarán nuevos cobros.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmar cancelación';
+
+  @override
+  String get billingCancelledNotice => 'Suscripción cancelada.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'No se pudo cancelar: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Importe';
+
+  @override
+  String get billingCycle => 'Periodicidad';
+
+  @override
+  String get billingMethod => 'Forma de pago';
+
+  @override
+  String get billingStarted => 'Fecha de contratación';
+
+  @override
+  String get billingNextPayment => 'Próximo cobro';
+
+  @override
+  String get billingLastPayment => 'Último cobro';
+
+  @override
+  String get billingCancelDate => 'Cancelada el';
+
+  @override
+  String get billingManualRenewal => 'Renovación manual';
+
+  @override
+  String get billingMpSubscriptionId => 'ID de suscripción (MP)';
+
+  @override
+  String get billingMpStatus => 'Estado de Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancelar suscripción';
+
+  @override
+  String get billingCancelledBody =>
+      'Suscripción cancelada. El acceso seguirá activo hasta el final del período ya pagado; no se realizarán nuevos cobros.';
+
+  @override
+  String get billingEmptyTitle => 'Ninguna suscripción activa';
+
+  @override
+  String get billingEmptyBody =>
+      'Los detalles de su suscripción aparecerán aquí cuando la contrate.';
+
+  @override
+  String get billingLoadFailed => 'No se pudo cargar la suscripción.';
+
+  @override
+  String get billingInvoicePaid => 'Pagado';
+
+  @override
+  String get billingInvoicePending => 'Pendiente';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelado';
+
+  @override
+  String get billingInvoiceRefunded => 'Reembolsado';
+
+  @override
+  String get billingInvoiceFailed => 'Fallido';
+
+  @override
+  String get billingOpenReceipt => 'Abrir recibo';
+
+  @override
+  String get billingReceiptOpenFailed => 'No se pudo abrir el recibo.';
+
+  @override
+  String get billingHistoryLoadFailed => 'No se pudo cargar el historial.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'No se encontraron cobros';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Los cobros de su suscripción aparecerán aquí.';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -5444,4 +5573,133 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-DD';
+
+  @override
+  String get billingActive => 'Activa';
+
+  @override
+  String get billingPending => 'Pendiente';
+
+  @override
+  String get billingPaused => 'Pausada';
+
+  @override
+  String get billingCancelled => 'Cancelada';
+
+  @override
+  String get billingExpired => 'Caducada';
+
+  @override
+  String get billingAnnual => 'Anual';
+
+  @override
+  String get billingMonthly => 'Mensual';
+
+  @override
+  String get billingRecurringCard => 'Tarjeta (recurrente)';
+
+  @override
+  String get billingCard => 'Tarjeta';
+
+  @override
+  String get billingBoleto => 'Boleto bancario brasileño';
+
+  @override
+  String get billingConfirmTitle => '¿Está seguro?';
+
+  @override
+  String get billingConfirmBody =>
+      'Su acceso seguirá disponible hasta el final del período ya pagado.\nNo se realizarán nuevos cobros.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmar cancelación';
+
+  @override
+  String get billingCancelledNotice => 'Suscripción cancelada.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'No se pudo cancelar: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Importe';
+
+  @override
+  String get billingCycle => 'Periodicidad';
+
+  @override
+  String get billingMethod => 'Forma de pago';
+
+  @override
+  String get billingStarted => 'Fecha de contratación';
+
+  @override
+  String get billingNextPayment => 'Próximo cobro';
+
+  @override
+  String get billingLastPayment => 'Último cobro';
+
+  @override
+  String get billingCancelDate => 'Cancelada el';
+
+  @override
+  String get billingManualRenewal => 'Renovación manual';
+
+  @override
+  String get billingMpSubscriptionId => 'ID de suscripción (MP)';
+
+  @override
+  String get billingMpStatus => 'Estado de Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancelar suscripción';
+
+  @override
+  String get billingCancelledBody =>
+      'Suscripción cancelada. El acceso seguirá activo hasta el final del período ya pagado; no se realizarán nuevos cobros.';
+
+  @override
+  String get billingEmptyTitle => 'Ninguna suscripción activa';
+
+  @override
+  String get billingEmptyBody =>
+      'Los detalles de su suscripción aparecerán aquí cuando la contrate.';
+
+  @override
+  String get billingLoadFailed => 'No se pudo cargar la suscripción.';
+
+  @override
+  String get billingInvoicePaid => 'Pagado';
+
+  @override
+  String get billingInvoicePending => 'Pendiente';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelado';
+
+  @override
+  String get billingInvoiceRefunded => 'Reembolsado';
+
+  @override
+  String get billingInvoiceFailed => 'Fallido';
+
+  @override
+  String get billingOpenReceipt => 'Abrir recibo';
+
+  @override
+  String get billingReceiptOpenFailed => 'No se pudo abrir el recibo.';
+
+  @override
+  String get billingHistoryLoadFailed => 'No se pudo cargar el historial.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'No se encontraron cobros';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Los cobros de su suscripción aparecerán aquí.';
 }

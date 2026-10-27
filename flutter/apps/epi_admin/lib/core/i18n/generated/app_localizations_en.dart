@@ -2697,6 +2697,135 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get poSupplierIsoDateHint => 'YYYY-MM-DD';
+
+  @override
+  String get billingActive => 'Active';
+
+  @override
+  String get billingPending => 'Pending';
+
+  @override
+  String get billingPaused => 'Paused';
+
+  @override
+  String get billingCancelled => 'Cancelled';
+
+  @override
+  String get billingExpired => 'Expired';
+
+  @override
+  String get billingAnnual => 'Annual';
+
+  @override
+  String get billingMonthly => 'Monthly';
+
+  @override
+  String get billingRecurringCard => 'Card (recurring)';
+
+  @override
+  String get billingCard => 'Card';
+
+  @override
+  String get billingBoleto => 'Boleto (Brazilian bank payment slip)';
+
+  @override
+  String get billingConfirmTitle => 'Are you sure?';
+
+  @override
+  String get billingConfirmBody =>
+      'Your access will remain available until the end of the period already paid for.\nNo further charges will be made.';
+
+  @override
+  String get billingConfirmCancel => 'Confirm cancellation';
+
+  @override
+  String get billingCancelledNotice => 'Subscription cancelled.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Could not cancel: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Amount';
+
+  @override
+  String get billingCycle => 'Billing cycle';
+
+  @override
+  String get billingMethod => 'Payment method';
+
+  @override
+  String get billingStarted => 'Subscription start date';
+
+  @override
+  String get billingNextPayment => 'Next payment';
+
+  @override
+  String get billingLastPayment => 'Last payment';
+
+  @override
+  String get billingCancelDate => 'Cancelled on';
+
+  @override
+  String get billingManualRenewal => 'Manual renewal';
+
+  @override
+  String get billingMpSubscriptionId => 'Subscription ID (MP)';
+
+  @override
+  String get billingMpStatus => 'Mercado Pago status';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancel subscription';
+
+  @override
+  String get billingCancelledBody =>
+      'Subscription cancelled. Access remains active until the end of the period already paid for; no further charges will be made.';
+
+  @override
+  String get billingEmptyTitle => 'No active subscription';
+
+  @override
+  String get billingEmptyBody =>
+      'Your subscription details will appear here once you subscribe.';
+
+  @override
+  String get billingLoadFailed => 'Could not load the subscription.';
+
+  @override
+  String get billingInvoicePaid => 'Paid';
+
+  @override
+  String get billingInvoicePending => 'Pending';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelled';
+
+  @override
+  String get billingInvoiceRefunded => 'Refunded';
+
+  @override
+  String get billingInvoiceFailed => 'Failed';
+
+  @override
+  String get billingOpenReceipt => 'Open receipt';
+
+  @override
+  String get billingReceiptOpenFailed => 'Could not open the receipt.';
+
+  @override
+  String get billingHistoryLoadFailed => 'Could not load the payment history.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'No payments found';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Your subscription payments will appear here.';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -5392,4 +5521,133 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get poSupplierIsoDateHint => 'YYYY-MM-DD';
+
+  @override
+  String get billingActive => 'Active';
+
+  @override
+  String get billingPending => 'Pending';
+
+  @override
+  String get billingPaused => 'Paused';
+
+  @override
+  String get billingCancelled => 'Cancelled';
+
+  @override
+  String get billingExpired => 'Expired';
+
+  @override
+  String get billingAnnual => 'Annual';
+
+  @override
+  String get billingMonthly => 'Monthly';
+
+  @override
+  String get billingRecurringCard => 'Card (recurring)';
+
+  @override
+  String get billingCard => 'Card';
+
+  @override
+  String get billingBoleto => 'Boleto (Brazilian bank payment slip)';
+
+  @override
+  String get billingConfirmTitle => 'Are you sure?';
+
+  @override
+  String get billingConfirmBody =>
+      'Your access will remain available until the end of the period already paid for.\nNo further charges will be made.';
+
+  @override
+  String get billingConfirmCancel => 'Confirm cancellation';
+
+  @override
+  String get billingCancelledNotice => 'Subscription cancelled.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Could not cancel: $detail';
+  }
+
+  @override
+  String get billingAmount => 'Amount';
+
+  @override
+  String get billingCycle => 'Billing cycle';
+
+  @override
+  String get billingMethod => 'Payment method';
+
+  @override
+  String get billingStarted => 'Subscription start date';
+
+  @override
+  String get billingNextPayment => 'Next payment';
+
+  @override
+  String get billingLastPayment => 'Last payment';
+
+  @override
+  String get billingCancelDate => 'Cancelled on';
+
+  @override
+  String get billingManualRenewal => 'Manual renewal';
+
+  @override
+  String get billingMpSubscriptionId => 'Subscription ID (MP)';
+
+  @override
+  String get billingMpStatus => 'Mercado Pago status';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Cancel subscription';
+
+  @override
+  String get billingCancelledBody =>
+      'Subscription cancelled. Access remains active until the end of the period already paid for; no further charges will be made.';
+
+  @override
+  String get billingEmptyTitle => 'No active subscription';
+
+  @override
+  String get billingEmptyBody =>
+      'Your subscription details will appear here once you subscribe.';
+
+  @override
+  String get billingLoadFailed => 'Could not load the subscription.';
+
+  @override
+  String get billingInvoicePaid => 'Paid';
+
+  @override
+  String get billingInvoicePending => 'Pending';
+
+  @override
+  String get billingInvoiceCancelled => 'Cancelled';
+
+  @override
+  String get billingInvoiceRefunded => 'Refunded';
+
+  @override
+  String get billingInvoiceFailed => 'Failed';
+
+  @override
+  String get billingOpenReceipt => 'Open receipt';
+
+  @override
+  String get billingReceiptOpenFailed => 'Could not open the receipt.';
+
+  @override
+  String get billingHistoryLoadFailed => 'Could not load the payment history.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'No payments found';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Your subscription payments will appear here.';
 }

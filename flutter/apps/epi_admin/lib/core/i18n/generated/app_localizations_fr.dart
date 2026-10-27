@@ -2736,6 +2736,135 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
+
+  @override
+  String get billingActive => 'Active';
+
+  @override
+  String get billingPending => 'En attente';
+
+  @override
+  String get billingPaused => 'En pause';
+
+  @override
+  String get billingCancelled => 'Résiliée';
+
+  @override
+  String get billingExpired => 'Expirée';
+
+  @override
+  String get billingAnnual => 'Annuelle';
+
+  @override
+  String get billingMonthly => 'Mensuelle';
+
+  @override
+  String get billingRecurringCard => 'Carte (récurrent)';
+
+  @override
+  String get billingCard => 'Carte';
+
+  @override
+  String get billingBoleto => 'Boleto (titre de paiement brésilien)';
+
+  @override
+  String get billingConfirmTitle => 'Confirmez-vous ?';
+
+  @override
+  String get billingConfirmBody =>
+      'Votre accès restera disponible jusqu’à la fin de la période déjà payée.\nAucun nouveau prélèvement ne sera effectué.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmer la résiliation';
+
+  @override
+  String get billingCancelledNotice => 'Abonnement résilié.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Impossible de résilier : $detail';
+  }
+
+  @override
+  String get billingAmount => 'Montant';
+
+  @override
+  String get billingCycle => 'Périodicité';
+
+  @override
+  String get billingMethod => 'Mode de paiement';
+
+  @override
+  String get billingStarted => 'Date de souscription';
+
+  @override
+  String get billingNextPayment => 'Prochain prélèvement';
+
+  @override
+  String get billingLastPayment => 'Dernier prélèvement';
+
+  @override
+  String get billingCancelDate => 'Résilié le';
+
+  @override
+  String get billingManualRenewal => 'Renouvellement manuel';
+
+  @override
+  String get billingMpSubscriptionId => 'Identifiant d’abonnement (MP)';
+
+  @override
+  String get billingMpStatus => 'Statut Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Résilier l’abonnement';
+
+  @override
+  String get billingCancelledBody =>
+      'Abonnement résilié. L’accès reste actif jusqu’à la fin de la période déjà payée ; aucun nouveau prélèvement ne sera effectué.';
+
+  @override
+  String get billingEmptyTitle => 'Aucun abonnement actif';
+
+  @override
+  String get billingEmptyBody =>
+      'Les détails de votre abonnement s’afficheront ici après la souscription.';
+
+  @override
+  String get billingLoadFailed => 'Impossible de charger l’abonnement.';
+
+  @override
+  String get billingInvoicePaid => 'Payée';
+
+  @override
+  String get billingInvoicePending => 'En attente';
+
+  @override
+  String get billingInvoiceCancelled => 'Annulée';
+
+  @override
+  String get billingInvoiceRefunded => 'Remboursée';
+
+  @override
+  String get billingInvoiceFailed => 'Échec';
+
+  @override
+  String get billingOpenReceipt => 'Ouvrir le reçu';
+
+  @override
+  String get billingReceiptOpenFailed => 'Impossible d’ouvrir le reçu.';
+
+  @override
+  String get billingHistoryLoadFailed => 'Impossible de charger l’historique.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Aucun paiement trouvé';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Les paiements de votre abonnement s’afficheront ici.';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -5470,4 +5599,133 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
+
+  @override
+  String get billingActive => 'Active';
+
+  @override
+  String get billingPending => 'En attente';
+
+  @override
+  String get billingPaused => 'En pause';
+
+  @override
+  String get billingCancelled => 'Résiliée';
+
+  @override
+  String get billingExpired => 'Expirée';
+
+  @override
+  String get billingAnnual => 'Annuelle';
+
+  @override
+  String get billingMonthly => 'Mensuelle';
+
+  @override
+  String get billingRecurringCard => 'Carte (récurrent)';
+
+  @override
+  String get billingCard => 'Carte';
+
+  @override
+  String get billingBoleto => 'Boleto (titre de paiement brésilien)';
+
+  @override
+  String get billingConfirmTitle => 'Confirmez-vous ?';
+
+  @override
+  String get billingConfirmBody =>
+      'Votre accès restera disponible jusqu’à la fin de la période déjà payée.\nAucun nouveau prélèvement ne sera effectué.';
+
+  @override
+  String get billingConfirmCancel => 'Confirmer la résiliation';
+
+  @override
+  String get billingCancelledNotice => 'Abonnement résilié.';
+
+  @override
+  String billingCancelFailed(String detail) {
+    return 'Impossible de résilier : $detail';
+  }
+
+  @override
+  String get billingAmount => 'Montant';
+
+  @override
+  String get billingCycle => 'Périodicité';
+
+  @override
+  String get billingMethod => 'Mode de paiement';
+
+  @override
+  String get billingStarted => 'Date de souscription';
+
+  @override
+  String get billingNextPayment => 'Prochain prélèvement';
+
+  @override
+  String get billingLastPayment => 'Dernier prélèvement';
+
+  @override
+  String get billingCancelDate => 'Résilié le';
+
+  @override
+  String get billingManualRenewal => 'Renouvellement manuel';
+
+  @override
+  String get billingMpSubscriptionId => 'Identifiant d’abonnement (MP)';
+
+  @override
+  String get billingMpStatus => 'Statut Mercado Pago';
+
+  @override
+  String get billingTenant => 'Tenant';
+
+  @override
+  String get billingCancelAction => 'Résilier l’abonnement';
+
+  @override
+  String get billingCancelledBody =>
+      'Abonnement résilié. L’accès reste actif jusqu’à la fin de la période déjà payée ; aucun nouveau prélèvement ne sera effectué.';
+
+  @override
+  String get billingEmptyTitle => 'Aucun abonnement actif';
+
+  @override
+  String get billingEmptyBody =>
+      'Les détails de votre abonnement s’afficheront ici après la souscription.';
+
+  @override
+  String get billingLoadFailed => 'Impossible de charger l’abonnement.';
+
+  @override
+  String get billingInvoicePaid => 'Payée';
+
+  @override
+  String get billingInvoicePending => 'En attente';
+
+  @override
+  String get billingInvoiceCancelled => 'Annulée';
+
+  @override
+  String get billingInvoiceRefunded => 'Remboursée';
+
+  @override
+  String get billingInvoiceFailed => 'Échec';
+
+  @override
+  String get billingOpenReceipt => 'Ouvrir le reçu';
+
+  @override
+  String get billingReceiptOpenFailed => 'Impossible d’ouvrir le reçu.';
+
+  @override
+  String get billingHistoryLoadFailed => 'Impossible de charger l’historique.';
+
+  @override
+  String get billingInvoicesEmptyTitle => 'Aucun paiement trouvé';
+
+  @override
+  String get billingInvoicesEmptyBody =>
+      'Les paiements de votre abonnement s’afficheront ici.';
 }

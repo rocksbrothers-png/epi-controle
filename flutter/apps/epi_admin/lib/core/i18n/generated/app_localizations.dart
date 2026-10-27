@@ -5064,6 +5064,252 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'AAAA-MM-DD'**
   String get poSupplierIsoDateHint;
+
+  /// No description provided for @billingActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ativa'**
+  String get billingActive;
+
+  /// No description provided for @billingPending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pendente'**
+  String get billingPending;
+
+  /// No description provided for @billingPaused.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pausada'**
+  String get billingPaused;
+
+  /// No description provided for @billingCancelled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelada'**
+  String get billingCancelled;
+
+  /// No description provided for @billingExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Expirada'**
+  String get billingExpired;
+
+  /// No description provided for @billingAnnual.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Anual'**
+  String get billingAnnual;
+
+  /// No description provided for @billingMonthly.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mensal'**
+  String get billingMonthly;
+
+  /// No description provided for @billingRecurringCard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cartão (recorrente)'**
+  String get billingRecurringCard;
+
+  /// No description provided for @billingCard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cartão'**
+  String get billingCard;
+
+  /// No description provided for @billingBoleto.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Boleto'**
+  String get billingBoleto;
+
+  /// No description provided for @billingConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tem certeza?'**
+  String get billingConfirmTitle;
+
+  /// No description provided for @billingConfirmBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.'**
+  String get billingConfirmBody;
+
+  /// No description provided for @billingConfirmCancel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar Cancelamento'**
+  String get billingConfirmCancel;
+
+  /// No description provided for @billingCancelledNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Assinatura cancelada.'**
+  String get billingCancelledNotice;
+
+  /// No description provided for @billingCancelFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível cancelar: {detail}'**
+  String billingCancelFailed(String detail);
+
+  /// No description provided for @billingAmount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Valor'**
+  String get billingAmount;
+
+  /// No description provided for @billingCycle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Periodicidade'**
+  String get billingCycle;
+
+  /// No description provided for @billingMethod.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Forma de pagamento'**
+  String get billingMethod;
+
+  /// No description provided for @billingStarted.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data da contratação'**
+  String get billingStarted;
+
+  /// No description provided for @billingNextPayment.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próxima cobrança'**
+  String get billingNextPayment;
+
+  /// No description provided for @billingLastPayment.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Última cobrança'**
+  String get billingLastPayment;
+
+  /// No description provided for @billingCancelDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelada em'**
+  String get billingCancelDate;
+
+  /// No description provided for @billingManualRenewal.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Renovação manual'**
+  String get billingManualRenewal;
+
+  /// No description provided for @billingMpSubscriptionId.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'ID da assinatura (MP)'**
+  String get billingMpSubscriptionId;
+
+  /// No description provided for @billingMpStatus.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Status Mercado Pago'**
+  String get billingMpStatus;
+
+  /// No description provided for @billingTenant.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tenant'**
+  String get billingTenant;
+
+  /// No description provided for @billingCancelAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelar assinatura'**
+  String get billingCancelAction;
+
+  /// No description provided for @billingCancelledBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.'**
+  String get billingCancelledBody;
+
+  /// No description provided for @billingEmptyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma assinatura ativa'**
+  String get billingEmptyTitle;
+
+  /// No description provided for @billingEmptyBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quando uma assinatura for contratada, os detalhes aparecerão aqui.'**
+  String get billingEmptyBody;
+
+  /// No description provided for @billingLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a assinatura.'**
+  String get billingLoadFailed;
+
+  /// No description provided for @billingInvoicePaid.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pago'**
+  String get billingInvoicePaid;
+
+  /// No description provided for @billingInvoicePending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pendente'**
+  String get billingInvoicePending;
+
+  /// No description provided for @billingInvoiceCancelled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelado'**
+  String get billingInvoiceCancelled;
+
+  /// No description provided for @billingInvoiceRefunded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reembolsado'**
+  String get billingInvoiceRefunded;
+
+  /// No description provided for @billingInvoiceFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Falhou'**
+  String get billingInvoiceFailed;
+
+  /// No description provided for @billingOpenReceipt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Abrir recibo'**
+  String get billingOpenReceipt;
+
+  /// No description provided for @billingReceiptOpenFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível abrir o recibo.'**
+  String get billingReceiptOpenFailed;
+
+  /// No description provided for @billingHistoryLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar o histórico.'**
+  String get billingHistoryLoadFailed;
+
+  /// No description provided for @billingInvoicesEmptyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma cobrança encontrada'**
+  String get billingInvoicesEmptyTitle;
+
+  /// No description provided for @billingInvoicesEmptyBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'As cobranças da sua assinatura aparecerão aqui.'**
+  String get billingInvoicesEmptyBody;
 }
 
 class _AppLocalizationsDelegate

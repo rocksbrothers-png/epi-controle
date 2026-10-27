@@ -931,6 +931,23 @@ Map<String, String> messages(AppLocalizations l) => {
   'billingHistoryLoadFailed': l.billingHistoryLoadFailed,
   'billingInvoicesEmptyTitle': l.billingInvoicesEmptyTitle,
   'billingInvoicesEmptyBody': l.billingInvoicesEmptyBody,
+  'feedbackTitle': l.feedbackTitle,
+  'feedbackLoadFailed': l.feedbackLoadFailed,
+  'feedbackEmpty': l.feedbackEmpty,
+  'feedbackValidate': l.feedbackValidate,
+  'feedbackStatusOpen': l.feedbackStatusOpen,
+  'feedbackStatusResolved': l.feedbackStatusResolved,
+  'feedbackStatusClosed': l.feedbackStatusClosed,
+  'feedbackStatusReceived': l.feedbackStatusReceived,
+  'feedbackStatusManagerReview': l.feedbackStatusManagerReview,
+  'feedbackStatusAwaitingHseq': l.feedbackStatusAwaitingHseq,
+  'feedbackStatusHseqCompleted': l.feedbackStatusHseqCompleted,
+  'feedbackStatusForwardedAdmin': l.feedbackStatusForwardedAdmin,
+  'feedbackStatusAwaitingAdmin': l.feedbackStatusAwaitingAdmin,
+  'feedbackStatusCorrectiveAction': l.feedbackStatusCorrectiveAction,
+  'feedbackStatusMoreInformation': l.feedbackStatusMoreInformation,
+  'feedbackStatusEnded': l.feedbackStatusEnded,
+  'feedbackStatusNotApproved': l.feedbackStatusNotApproved,
 };
 
 void main() {

@@ -2826,6 +2826,57 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get billingInvoicesEmptyBody =>
       'Your subscription payments will appear here.';
+
+  @override
+  String get feedbackTitle => 'PPE feedback';
+
+  @override
+  String get feedbackLoadFailed => 'Could not load feedback';
+
+  @override
+  String get feedbackEmpty => 'No feedback found';
+
+  @override
+  String get feedbackValidate => 'Validate';
+
+  @override
+  String get feedbackStatusOpen => 'Open';
+
+  @override
+  String get feedbackStatusResolved => 'Resolved';
+
+  @override
+  String get feedbackStatusClosed => 'Closed';
+
+  @override
+  String get feedbackStatusReceived => 'Received';
+
+  @override
+  String get feedbackStatusManagerReview => 'Under review by the PPE manager';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Awaiting HSEQ review';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'HSEQ review completed';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Forwarded to administration';
+
+  @override
+  String get feedbackStatusAwaitingAdmin => 'Awaiting administrative approval';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Corrective action open';
+
+  @override
+  String get feedbackStatusMoreInformation => 'More information requested';
+
+  @override
+  String get feedbackStatusEnded => 'Concluded';
+
+  @override
+  String get feedbackStatusNotApproved => 'Not approved';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -5650,4 +5701,55 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
   @override
   String get billingInvoicesEmptyBody =>
       'Your subscription payments will appear here.';
+
+  @override
+  String get feedbackTitle => 'PPE feedback';
+
+  @override
+  String get feedbackLoadFailed => 'Could not load feedback';
+
+  @override
+  String get feedbackEmpty => 'No feedback found';
+
+  @override
+  String get feedbackValidate => 'Validate';
+
+  @override
+  String get feedbackStatusOpen => 'Open';
+
+  @override
+  String get feedbackStatusResolved => 'Resolved';
+
+  @override
+  String get feedbackStatusClosed => 'Closed';
+
+  @override
+  String get feedbackStatusReceived => 'Received';
+
+  @override
+  String get feedbackStatusManagerReview => 'Under review by the PPE manager';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Awaiting HSEQ review';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'HSEQ review completed';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Forwarded to administration';
+
+  @override
+  String get feedbackStatusAwaitingAdmin => 'Awaiting administrative approval';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Corrective action open';
+
+  @override
+  String get feedbackStatusMoreInformation => 'More information requested';
+
+  @override
+  String get feedbackStatusEnded => 'Concluded';
+
+  @override
+  String get feedbackStatusNotApproved => 'Not approved';
 }

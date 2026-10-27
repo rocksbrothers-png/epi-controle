@@ -1,0 +1,15 @@
+# Auditoria independente estática — Feedback Flutter
+
+Escopo: Corporate working tree após `c1faf3a3`, FeedbackScreen, feedback_presentation e novo diálogo de justificativa. Somente leitura; nenhum Flutter, gerador ou teste de FeedbackScreen executado pelo auditor. Este relatório complementa o parecer linguístico dos 17 recursos, sem certificar funcionalmente a tela.
+
+`flutter-feedback-static-results.json` comprova contra a base: `_badgeStatus`, condições canValidate/canAdmin/terminal/canClose e guards de justificativa nula/vazia iguais ignorando apenas whitespace. Chamadas validate/forwardToAdmin/closeFeedback/reject/adminDecision e códigos aprovar_sugestao/reprovar_sugestao/encerrar permanecem iguais. Os valores de filtro continuam null/open/in_review/resolved; somente seus rótulos passam a depender de locale.
+
+FeedbackCubit, API, modelo Feedback, ApiClient e serviço backend estão byte a byte iguais à base. Portanto nenhum cálculo, status persistido, cor do classificador, regra de permissão ou endpoint foi introduzido pela tradução. Os estados do fluxo português continuam usando a classificação anterior, inclusive seu fallback; o helper de rótulos não assume essa classificação. Códigos desconhecidos continuam mostrados literalmente e não são regravados.
+
+O novo `_FeedbackReasonDialog` possui o próprio controller no State e o descarta em dispose no unmount da rota. Isso evita o descarte externo imediatamente após showDialog completar, enquanto os campos ainda podem estar na animação de saída. O retorno continua text.trim, cancelamento retorna null e os chamadores mantêm guards null/vazio antes do mesmo cubit. Locale é consultado pelo contexto do próprio diálogo, preservando controller e texto ao reconstruir a apresentação. Não foi encontrado novo problema estático nesse ownership; a prova de animação/cancelamento informada pelo root não é apresentada como execução independente.
+
+A ressalva temporal inicial foi resolvida na fonte: FeedbackScreen chama agora formatFeedbackDate, dedicado a timestamps. O helper usa DateTime.parse(raw), igual ao formatter anterior, e só depois DateFormat.yMd(locale). Assim mantém a normalização UTC dos offsets explícitos e os mesmos fallbacks para vazio/parse inválido; não usa o formatter de prefixo de calendário de billing. O root informou teste de 23h com offset -03 normalizando para o dia UTC seguinte. O auditor confirmou a fonte sem executar novo SDK; esse teste de runtime continua atribuído ao implementador.
+
+A badge passa a ter Flexible para acomodar o rótulo maior; a inspeção não prova ausência de overflow em todas as configurações. O parecer linguístico identificou e acompanhou a correção Ended/Closed em EN/ES e manteve NotApproved distinto de Rejected. Ainda não há aprovação de runtime/integracão de FeedbackScreen ou de I18N-FULL-V1 integralmente.
+
+As nove recomendações linguísticas foram aplicadas pelo root e conferidas por leitura nos ARBs regionais, aliases e getters gerados. Isto não certifica FeedbackScreen em runtime; os únicos testes independentes de Flutter desta etapa continuam os quatro de billing/badges anteriores a essas correções de redação.

@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -564,10 +565,10 @@ class _StockTile extends StatelessWidget {
                 // ela devolvia era a corporativa — nesta tela, que é da
                 // Unidade.
                 if (validade != null) ...[
-                  EpiBadge(status: validade),
+                  LocalizedEpiBadge(status: validade),
                   const SizedBox(width: EpiSpacing.xs),
                 ],
-                if (status != null) EpiStockBadge(status: status),
+                if (status != null) LocalizedEpiStockBadge(status: status),
                 // Abre os QRs disponíveis deste EPI. Botão próprio em vez de
                 // reaproveitar o toque do card, que já abre a movimentação —
                 // duas ações distintas não devem disputar o mesmo gesto.

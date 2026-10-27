@@ -113,6 +113,7 @@ void main() {
         );
         expect(item, findsOneWidget);
         expect(tester.widget<PopupMenuItem<String>>(item).value, 'archive');
+        expect(find.text(l.statusActive), findsOneWidget);
         expect(adapter.requests.length, initialReads);
       }
       var l = AppLocalizations.of(tester.element(find.byType(EmployeesScreen)));

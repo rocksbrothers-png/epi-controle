@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/feedback_cubit.dart';
+import 'feedback_presentation.dart';
 
 class FeedbackScreen extends StatelessWidget {
   const FeedbackScreen({super.key});
@@ -20,21 +21,17 @@ class FeedbackScreen extends StatelessWidget {
 class _FeedbackBody extends StatelessWidget {
   const _FeedbackBody();
 
-  static const _filters = <(String?, String)>[
-    (null, 'Todos'),
-    ('open', 'Aberto'),
-    ('in_review', 'Em análise'),
-    ('resolved', 'Resolvido'),
-  ];
+  static const _filters = <String?>[null, 'open', 'in_review', 'resolved'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Avaliações de EPIs'),
+        title: Text(AppLocalizations.of(context).feedbackTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
+            tooltip: AppLocalizations.of(context).refresh,
             onPressed: () => context.read<FeedbackCubit>().load(),
           ),
         ],
@@ -53,7 +50,7 @@ class _FeedbackBody extends StatelessWidget {
 class _FilterBar extends StatelessWidget {
   const _FilterBar({required this.filters});
 
-  final List<(String?, String)> filters;
+  final List<String?> filters;
 
   @override
   Widget build(BuildContext context) {
@@ -69,9 +66,11 @@ class _FilterBar extends StatelessWidget {
             ),
             scrollDirection: Axis.horizontal,
             children: [
-              for (final (value, label) in filters) ...[
+              for (final value in filters) ...[
                 EpiChip(
-                  label: label,
+                  label: value == null
+                      ? AppLocalizations.of(ctx).filterAll
+                      : feedbackStatusLabel(value, AppLocalizations.of(ctx)),
                   selected: state.statusFilter == value,
                   onTap: () =>
                       ctx.read<FeedbackCubit>().setFilter(value),
@@ -115,7 +114,7 @@ class _FeedbackList extends StatelessWidget {
                 ),
                 const SizedBox(height: EpiSpacing.lg),
                 Text(
-                  'Erro ao carregar avaliações',
+                  AppLocalizations.of(ctx).feedbackLoadFailed,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: EpiSpacing.xs),
@@ -137,8 +136,8 @@ class _FeedbackList extends StatelessWidget {
         }
 
         if (state.items.isEmpty) {
-          return const EpiEmptyState(
-            title: 'Nenhuma avaliação encontrada',
+          return EpiEmptyState(
+            title: AppLocalizations.of(ctx).feedbackEmpty,
           );
         }
 
@@ -173,49 +172,11 @@ class _FeedbackCard extends StatelessWidget {
         _ => EpiBadgeStatus.pending,
       };
 
-  String _statusLabel(String status) => switch (status) {
-        'open' => 'Aberto',
-        'in_review' => 'Em análise',
-        'resolved' => 'Resolvido',
-        'closed' => 'Fechado',
-        'rejected' => 'Rejeitado',
-        _ => status,
-      };
-
-  String _formatDate(String raw) {
-    if (raw.isEmpty) return '';
-    try {
-      final dt = DateTime.parse(raw);
-      return '${dt.day.toString().padLeft(2, '0')}/'
-          '${dt.month.toString().padLeft(2, '0')}/'
-          '${dt.year}';
-    } catch (_) {
-      return raw;
-    }
-  }
-
   Future<void> _reject(BuildContext context, FeedbackCubit cubit) async {
-
-    final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
-      builder: (d) => AlertDialog(
-        title: Text(AppLocalizations.of(context).feedbackReject),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: AppLocalizations.of(context).feedbackRejectReason),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(AppLocalizations.of(context).cancel)),
-          TextButton(
-            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
-            child: Text(AppLocalizations.of(context).confirm),
-          ),
-        ],
-      ),
+      builder: (_) => const _FeedbackReasonDialog(rejection: true),
     );
-    controller.dispose();
     if (reason != null && reason.isNotEmpty) {
       await cubit.reject(item.id, reason);
     }
@@ -224,27 +185,10 @@ class _FeedbackCard extends StatelessWidget {
   /// Decisão administrativa (exige justificativa). `decision` é o valor do
   /// backend (ex.: aprovar_sugestao / reprovar_sugestao / encerrar).
   Future<void> _decide(BuildContext context, FeedbackCubit cubit, String decision) async {
-
-    final controller = TextEditingController();
     final justification = await showDialog<String>(
       context: context,
-      builder: (d) => AlertDialog(
-        title: Text(AppLocalizations.of(context).confirm),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(labelText: AppLocalizations.of(context).feedbackJustification),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(AppLocalizations.of(context).cancel)),
-          TextButton(
-            onPressed: () => Navigator.of(d).pop(controller.text.trim()),
-            child: Text(AppLocalizations.of(context).confirm),
-          ),
-        ],
-      ),
+      builder: (_) => const _FeedbackReasonDialog(rejection: false),
     );
-    controller.dispose();
     if (justification != null && justification.isNotEmpty) {
       await cubit.adminDecision(item.id, decision, justification);
     }
@@ -264,7 +208,8 @@ class _FeedbackCard extends StatelessWidget {
     final subtitleParts = <String>[
       if (item.employeeName != null) item.employeeName!,
       if (item.unitName != null) item.unitName!,
-      if (item.createdAt.isNotEmpty) _formatDate(item.createdAt),
+      if (item.createdAt.isNotEmpty)
+        formatFeedbackDate(item.createdAt, l10n.localeName),
     ];
 
     return Card(
@@ -289,9 +234,11 @@ class _FeedbackCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: EpiSpacing.sm),
-                EpiBadge(
-                  status: _badgeStatus(item.status),
-                  label: _statusLabel(item.status),
+                Flexible(
+                  child: EpiBadge(
+                    status: _badgeStatus(item.status),
+                    label: feedbackStatusLabel(item.status, l10n),
+                  ),
                 ),
               ],
             ),
@@ -323,7 +270,7 @@ class _FeedbackCard extends StatelessWidget {
                   if (canValidate)
                     TextButton.icon(
                       icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Validar'),
+                      label: Text(l10n.feedbackValidate),
                       onPressed: () => cubit.validate(item.id),
                     ),
                   if (canAdmin && item.type == 'sugestao')
@@ -377,6 +324,52 @@ class _FeedbackCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+/// Own the controller until the closing route has actually removed its fields.
+class _FeedbackReasonDialog extends StatefulWidget {
+  const _FeedbackReasonDialog({required this.rejection});
+
+  final bool rejection;
+
+  @override
+  State<_FeedbackReasonDialog> createState() => _FeedbackReasonDialogState();
+}
+
+class _FeedbackReasonDialogState extends State<_FeedbackReasonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(widget.rejection ? l.feedbackReject : l.confirm),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: widget.rejection
+              ? l.feedbackRejectReason
+              : l.feedbackJustification,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.cancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(l.confirm),
+        ),
+      ],
     );
   }
 }

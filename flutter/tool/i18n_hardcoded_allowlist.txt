@@ -22,8 +22,6 @@ lib/features/settings/appearance_screen.dart|Norsk
 # (B) DÉBITO TÉCNICO (migrar para epi_i18n em PRs futuros)
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
 # Avaliações / Feedback
-lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
-lib/features/feedback/feedback_screen.dart|Validar
 # Detalhe de EPI
 lib/features/epis/epi_detail_screen.dart|Dias restantes
 # Scanner QR
@@ -68,7 +66,6 @@ lib/features/units/units_screen.dart|Desarquivar Unidade
 #
 # Para zerar: migre a string para epi_i18n e remova a linha daqui. O gate
 # avisa (sem bloquear) quando uma entrada desta lista já não existe no código.
-lib/features/feedback/feedback_screen.dart|Erro ao carregar avaliações
 lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
 lib/features/qr/qr_scanner_screen.dart|Código detectado
 lib/features/settings/archival_policy_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 

@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -300,7 +301,7 @@ class _DerivedSummary extends StatelessWidget {
                       style: Theme.of(ctx).textTheme.titleSmall,
                     ),
                   ),
-                  if (status != null) EpiStockBadge(status: status),
+                  if (status != null) LocalizedEpiStockBadge(status: status),
                 ],
               ),
               const SizedBox(height: EpiSpacing.sm),

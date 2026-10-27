@@ -1,8 +1,8 @@
-# Billing Flutter — revisão independente pendente
+# Billing Flutter — revisão independente parcial entregue
 
 O implementador validou as duas telas e os formatadores nos cinco locales, com dados sintéticos e transportes interceptados. Foram aprovados 28 testes direcionados em cada produto, incluindo filtros canônicos, confirmação explícita antes de cancelar, mensagens de erro, ausência de dados, URLs originais de recibos e valores BRL. A prova de recibos usa uma porta de plataforma simulada; não abriu um recibo real.
 
-A revisão independente começou com observações estáticas: filtros null/paid/pending/cancelled/refunded/failed, cancel() depois de confirmed == true, reason padrão vazio, Bearer, URI e LaunchMode originais, IDs opacos, arredondamento .2f e data de calendário preservados. A execução do agente foi interrompida por limite de uso antes do relatório consolidado e de prova de runtime própria. Essas observações não constituem auditoria final aprovada. A revisão independente deste recorte permanece pendente; as auditorias históricas de alertas/formulários conservam seus escopos e SHAs.
+A revisão independente interrompida por limite de uso foi retomada e concluída para este recorte. Os quatro testes externos passaram: arredondamento BRL/data, filtro pending/URL opaco, confirmação antes do POST/reason vazio/SnackBar e os 14 indicadores tipados. Os relatórios FLUTTER_BILLING_AUDIT.md e FLUTTER_BADGES_AUDIT.md registram as leituras de contrato, resultados e limites. As correções linguísticas posteriores foram conferidas em fonte pelo auditor; os CIs e testes do implementador validam a redação final. Isso não é auditoria final de I18N-FULL-V1 nem certificação de RBAC real.
 
 PIX e os nomes comerciais dos planos permanecem originais. IDs de empresa, tenant e Mercado Pago, URLs e códigos externos desconhecidos são dados opacos. Boleto é identificado como o instrumento brasileiro nas traduções estrangeiras; não foi convertido em outro meio de pagamento.
 

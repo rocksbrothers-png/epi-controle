@@ -1,0 +1,7 @@
+Analyzing feedback_presentation.dart, feedback_screen.dart, feedback_i18n_test.dart...
+
+   info - lib/features/feedback/feedback_screen.dart:99:35 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - lib/features/feedback/feedback_screen.dart:101:30 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+   info - lib/features/feedback/feedback_screen.dart:149:35 - Unnecessary use of multiple underscores. Try using '_'. - unnecessary_underscores
+
+3 issues found.

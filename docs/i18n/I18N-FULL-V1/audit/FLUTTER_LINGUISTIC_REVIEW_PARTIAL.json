@@ -1,0 +1,249 @@
+{
+  "recommendations": [
+    {
+      "locale": "fr_FR",
+      "key": "billingActive",
+      "pt_source": "Ativa",
+      "current": "Active",
+      "suggested": "Actif",
+      "reason": "O sujeito mostrado na tela é abonnement, masculino; manter o rótulo concordante.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Actif",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingCancelled",
+      "pt_source": "Cancelada",
+      "current": "Résiliée",
+      "suggested": "Résilié",
+      "reason": "O sujeito é abonnement; harmonizar com billingCancelledNotice, que já usa Abonnement résilié.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Résilié",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingExpired",
+      "pt_source": "Expirada",
+      "current": "Expirée",
+      "suggested": "Expiré",
+      "reason": "O sujeito é abonnement, masculino.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Expiré",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingRecurringCard",
+      "pt_source": "Cartão (recorrente)",
+      "current": "Carte (récurrent)",
+      "suggested": "Carte (paiement récurrent)",
+      "reason": "Explicitar o substantivo paiement evita a concordância ambígua de récurrent com carte e mantém o mesmo método/ciclo.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Carte (paiement récurrent)",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingNextPayment",
+      "pt_source": "Próxima cobrança",
+      "current": "Prochain prélèvement",
+      "suggested": "Prochain paiement",
+      "reason": "Pagamento cobre os métodos atuais cartão/PIX/boleto; prélèvement sugere débito automático e é mais restrito que a fonte.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Prochain paiement",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingLastPayment",
+      "pt_source": "Última cobrança",
+      "current": "Dernier prélèvement",
+      "suggested": "Dernier paiement",
+      "reason": "Mesma precisão: pagamento não deve parecer limitado a débito automático.",
+      "scope": "billing",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Dernier paiement",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "fr_FR",
+      "key": "statusExpiring",
+      "pt_source": "Vencendo",
+      "current": "Expirant",
+      "suggested": "Expire bientôt",
+      "reason": "Rótulo isolado mais natural e claro para validade próxima que Expirant; não altera estado ou prazo.",
+      "scope": "badges",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Expire bientôt",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_fr_FR.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_fr.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_fr.dart"
+      ]
+    },
+    {
+      "locale": "no_NO",
+      "key": "epiStatusNoStock",
+      "pt_source": "Sem estoque",
+      "current": "Tomt lager",
+      "suggested": "Ikke på lager",
+      "reason": "Expressa disponibilidade deste item com mais precisão que Tomt lager, que pode sugerir que todo o depósito está vazio.",
+      "scope": "badges",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Ikke på lager",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_no_NO.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_no.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_no.dart"
+      ]
+    },
+    {
+      "locale": "no_NO",
+      "key": "feedbackStatusCorrectiveAction",
+      "pt_source": "Ação Corretiva Aberta",
+      "current": "Korrigerende tiltak åpent",
+      "suggested": "Åpent korrigerende tiltak",
+      "reason": "Ordem mais natural em norueguês para o mesmo estado de ação corretiva aberta, sem acrescentar aprovação/conclusão.",
+      "scope": "feedback_TSV_only",
+      "kind": "presentation_only_recommendation",
+      "status": "Applied by implementer; verified read-only in regional ARB, base alias and generated getters.",
+      "applied_value": "Åpent korrigerende tiltak",
+      "verification_paths": [
+        "flutter/packages/epi_i18n/lib/l10n/app_no_NO.arb",
+        "flutter/packages/epi_i18n/lib/l10n/app_no.arb",
+        "flutter/apps/epi_admin/lib/core/i18n/generated/app_localizations_no.dart"
+      ]
+    }
+  ],
+  "feedback17_partial_review": {
+    "source": "/workspace/i18n-full-v1/flutter-feedback-translations.tsv",
+    "sha256": "a0a27a746760e7b009a5c1662825885094a8ef3490d003c27aec1c1b8c9765ff",
+    "resources": 17,
+    "locales": [
+      "pt_BR",
+      "en_US",
+      "es_ES",
+      "fr_FR",
+      "no_NO"
+    ],
+    "resolved_findings": [
+      {
+        "key": "feedbackStatusEnded",
+        "locale": "en_US",
+        "before": "Closed",
+        "current": "Concluded",
+        "assessment": "Distinto de feedbackStatusClosed após correção do root."
+      },
+      {
+        "key": "feedbackStatusEnded",
+        "locale": "es_ES",
+        "before": "Cerrado",
+        "current": "Finalizado",
+        "assessment": "Distinto de feedbackStatusClosed após correção do root."
+      }
+    ],
+    "preserved_semantics": [
+      "Gestor de EPI mantém autoridade de revisão, sem ser traduzido como administrador.",
+      "HSEQ permanece o mesmo acrônimo e etapa de análise.",
+      "NotApproved difere de Rejected; Ended difere de Closed.",
+      "Validar não foi reescrito como aprovação administrativa."
+    ],
+    "limits": "Revisão somente das 17 mensagens propostas em cinco idiomas; não executou gerador e não certifica integração ou funcionamento de FeedbackScreen."
+  },
+  "recommendation_current_field_note": "The current field records wording at the initial review; all nine suggestions are now applied in source. Historical runtime/capture artifacts have not been rewritten.",
+  "source_recheck": [
+    {
+      "locale": "fr_FR",
+      "key": "billingActive",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingCancelled",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingExpired",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingRecurringCard",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingNextPayment",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "billingLastPayment",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "fr_FR",
+      "key": "statusExpiring",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "no_NO",
+      "key": "epiStatusNoStock",
+      "applied": true,
+      "generated_getters_matching": 2
+    },
+    {
+      "locale": "no_NO",
+      "key": "feedbackStatusCorrectiveAction",
+      "applied": true,
+      "generated_getters_matching": 2
+    }
+  ]
+}

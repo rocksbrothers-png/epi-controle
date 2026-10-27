@@ -1,0 +1,142 @@
+{
+  "baseline": "c1faf3a3",
+  "views": [
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/employee_detail_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "6dbe9675d58463facff0678103ff7ef53153e2445871136a6e0ef6f3243ac9f5"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "40ae78d37e7a131cc2d939163d7e90905b769023b01be4d8974c64583cae29da"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/epis/epi_detail_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "5e06716040ff0a6cd8643f83b21083e5195fce915d8afc3894b8cdaaa85af8f4"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "3148c9bfc1b05cc96758ac82cf5c18c0694d8804d2098c2af1cec5835d579fce"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "335001de9f13f721f875358642c3849e27199cb4cbe3ec144c13ee8efa95d0e6"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/stock_config_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "c9b278e9865b5e93777f9337c13f6f6d795a02f775f37bea6d9cf267dae0a8c8"
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/new_delivery_screen.dart",
+      "inverse_import_and_wrapper_rename": "BYTE_IDENTICAL_TO_BASE",
+      "sha256": "d979a499a8c0f8a322892ca6d52687e7a3a180f386fee6072cb36ea9726715c3"
+    }
+  ],
+  "design_system_and_API_policy": "BYTE_IDENTICAL_TO_BASE",
+  "catalog_status_mapping": {
+    "active": "statusActive",
+    "inactive": "statusInactive",
+    "expired": "statusExpired",
+    "expiring": "statusExpiring",
+    "pending": "statusPending",
+    "approved": "statusApproved",
+    "rejected": "statusRejected",
+    "inReview": "statusInReview",
+    "noStock": "epiStatusNoStock",
+    "critical": "stockConfigStatusCritical"
+  },
+  "unit_stock_status_mapping": {
+    "normal": "stockConfigStatusNormal",
+    "nearMinimum": "stockConfigStatusNearMinimum",
+    "critical": "stockConfigStatusCritical",
+    "disabled": "stockConfigStatusDisabled"
+  },
+  "locale_labels": {
+    "pt_BR": {
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "expired": "Vencido",
+      "expiring": "Vencendo",
+      "pending": "Pendente",
+      "approved": "Aprovado",
+      "rejected": "Rejeitado",
+      "inReview": "Em análise",
+      "noStock": "Sem estoque",
+      "critical": "Crítico",
+      "stock.normal": "Normal",
+      "stock.nearMinimum": "Próximo do mínimo",
+      "stock.critical": "Crítico",
+      "stock.disabled": "Alerta desabilitado"
+    },
+    "en_US": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "expired": "Expired",
+      "expiring": "Expiring",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "inReview": "In review",
+      "noStock": "Out of stock",
+      "critical": "Critical",
+      "stock.normal": "Normal",
+      "stock.nearMinimum": "Near minimum",
+      "stock.critical": "Critical",
+      "stock.disabled": "Alert disabled"
+    },
+    "es_ES": {
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "expired": "Vencido",
+      "expiring": "Por vencer",
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "inReview": "En revisión",
+      "noStock": "Sin stock",
+      "critical": "Crítico",
+      "stock.normal": "Normal",
+      "stock.nearMinimum": "Cerca del mínimo",
+      "stock.critical": "Crítico",
+      "stock.disabled": "Alerta desactivada"
+    },
+    "fr_FR": {
+      "active": "Actif",
+      "inactive": "Inactif",
+      "expired": "Expiré",
+      "expiring": "Expirant",
+      "pending": "En attente",
+      "approved": "Approuvé",
+      "rejected": "Rejeté",
+      "inReview": "En cours d'examen",
+      "noStock": "Rupture de stock",
+      "critical": "Critique",
+      "stock.normal": "Normal",
+      "stock.nearMinimum": "Proche du minimum",
+      "stock.critical": "Critique",
+      "stock.disabled": "Alerte désactivée"
+    },
+    "no_NO": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "expired": "Utløpt",
+      "expiring": "Utløper snart",
+      "pending": "Venter",
+      "approved": "Godkjent",
+      "rejected": "Avvist",
+      "inReview": "Under vurdering",
+      "noStock": "Tomt lager",
+      "critical": "Kritisk",
+      "stock.normal": "Normal",
+      "stock.nearMinimum": "Nær minimum",
+      "stock.critical": "Kritisk",
+      "stock.disabled": "Varsel deaktivert"
+    }
+  },
+  "scope": "Source restoration proof; wrappers change display labels only, not any view condition/action/null guard."
+}

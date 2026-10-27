@@ -1,6 +1,22 @@
 {
-  "note": "Results tied to headSha. Billing checkpoint Backend CI and Flutter CI approved in both products. Later local changes need CI at their own head. Whole-task coverage and final independent audit remain incomplete.",
+  "note": "Results tied to headSha. Existing view bindings checkpoint Backend CI and Flutter CI approved in both products. Later badge changes need CI at their own head. Whole-task coverage and final independent audit remain incomplete.",
   "runs": [
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40558058533,
+      "headSha": "c1faf3a3e58c05b2656a70ea67495d1ea451923a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40558058533"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40558053149,
+      "headSha": "c1faf3a3e58c05b2656a70ea67495d1ea451923a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40558053149"
+    },
     {
       "workflowName": "Backend CI",
       "databaseId": 40552793834,

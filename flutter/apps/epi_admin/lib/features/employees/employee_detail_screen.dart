@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -63,7 +64,7 @@ class EmployeeDetailScreen extends StatelessWidget {
           ],
           const SizedBox(height: EpiSpacing.lg),
           Center(
-            child: EpiBadge(
+            child: LocalizedEpiBadge(
               status: employee.isActive
                   ? EpiBadgeStatus.active
                   : EpiBadgeStatus.inactive,

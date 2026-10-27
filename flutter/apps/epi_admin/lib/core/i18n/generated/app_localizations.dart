@@ -5310,6 +5310,108 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'As cobranças da sua assinatura aparecerão aqui.'**
   String get billingInvoicesEmptyBody;
+
+  /// No description provided for @feedbackTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Avaliações de EPIs'**
+  String get feedbackTitle;
+
+  /// No description provided for @feedbackLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao carregar avaliações'**
+  String get feedbackLoadFailed;
+
+  /// No description provided for @feedbackEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma avaliação encontrada'**
+  String get feedbackEmpty;
+
+  /// No description provided for @feedbackValidate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validar'**
+  String get feedbackValidate;
+
+  /// No description provided for @feedbackStatusOpen.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aberto'**
+  String get feedbackStatusOpen;
+
+  /// No description provided for @feedbackStatusResolved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Resolvido'**
+  String get feedbackStatusResolved;
+
+  /// No description provided for @feedbackStatusClosed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fechado'**
+  String get feedbackStatusClosed;
+
+  /// No description provided for @feedbackStatusReceived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recebido'**
+  String get feedbackStatusReceived;
+
+  /// No description provided for @feedbackStatusManagerReview.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Em Análise pelo Gestor de EPI'**
+  String get feedbackStatusManagerReview;
+
+  /// No description provided for @feedbackStatusAwaitingHseq.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando HSEQ'**
+  String get feedbackStatusAwaitingHseq;
+
+  /// No description provided for @feedbackStatusHseqCompleted.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Análise HSEQ Concluída'**
+  String get feedbackStatusHseqCompleted;
+
+  /// No description provided for @feedbackStatusForwardedAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Encaminhado para Administração'**
+  String get feedbackStatusForwardedAdmin;
+
+  /// No description provided for @feedbackStatusAwaitingAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando Aprovação Administrativa'**
+  String get feedbackStatusAwaitingAdmin;
+
+  /// No description provided for @feedbackStatusCorrectiveAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ação Corretiva Aberta'**
+  String get feedbackStatusCorrectiveAction;
+
+  /// No description provided for @feedbackStatusMoreInformation.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Solicitada Mais Informação'**
+  String get feedbackStatusMoreInformation;
+
+  /// No description provided for @feedbackStatusEnded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Encerrado'**
+  String get feedbackStatusEnded;
+
+  /// No description provided for @feedbackStatusNotApproved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reprovado'**
+  String get feedbackStatusNotApproved;
 }
 
 class _AppLocalizationsDelegate

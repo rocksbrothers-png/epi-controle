@@ -1283,5 +1283,22 @@
   "billingReceiptOpenFailed": "No se pudo abrir el recibo.",
   "billingHistoryLoadFailed": "No se pudo cargar el historial.",
   "billingInvoicesEmptyTitle": "No se encontraron cobros",
-  "billingInvoicesEmptyBody": "Los cobros de su suscripción aparecerán aquí."
+  "billingInvoicesEmptyBody": "Los cobros de su suscripción aparecerán aquí.",
+  "feedbackTitle": "Evaluaciones de EPI",
+  "feedbackLoadFailed": "No se pudieron cargar las evaluaciones",
+  "feedbackEmpty": "No se encontraron evaluaciones",
+  "feedbackValidate": "Validar",
+  "feedbackStatusOpen": "Abierto",
+  "feedbackStatusResolved": "Resuelto",
+  "feedbackStatusClosed": "Cerrado",
+  "feedbackStatusReceived": "Recibido",
+  "feedbackStatusManagerReview": "En revisión por el gestor de EPI",
+  "feedbackStatusAwaitingHseq": "En espera de revisión HSEQ",
+  "feedbackStatusHseqCompleted": "Revisión HSEQ completada",
+  "feedbackStatusForwardedAdmin": "Enviado a administración",
+  "feedbackStatusAwaitingAdmin": "En espera de aprobación administrativa",
+  "feedbackStatusCorrectiveAction": "Acción correctiva abierta",
+  "feedbackStatusMoreInformation": "Se solicitó más información",
+  "feedbackStatusEnded": "Finalizado",
+  "feedbackStatusNotApproved": "No aprobado"
 }

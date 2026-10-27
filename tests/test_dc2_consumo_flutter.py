@@ -264,7 +264,10 @@ def test_os_quatro_estados_tem_rotulos_distintos():
 def test_a_tela_desenha_badge_apenas_com_classificacao():
     """`null` fica sem badge — e por isso `normal` precisa ter um."""
     corpo = _sem_comentarios(STOCK_SCREEN.read_text(encoding='utf-8'))
-    assert 'if (status != null) EpiStockBadge(status: status)' in corpo
+    assert 'if (status != null) LocalizedEpiStockBadge(status: status)' in corpo
+    badge = (APP / 'core/i18n/localized_epi_badge.dart').read_text(encoding='utf-8')
+    assert 'return EpiStockBadge(status: status, label: label);' in badge
+    assert 'final EpiStockStatus status;' in badge
 
 
 def test_kpi_critico_nulo_nao_vira_zero_na_tela():

@@ -730,7 +730,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get statusExpired => 'Expiré';
 
   @override
-  String get statusExpiring => 'Expirant';
+  String get statusExpiring => 'Expire bientôt';
 
   @override
   String get statusPending => 'En attente';
@@ -2738,7 +2738,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
 
   @override
-  String get billingActive => 'Active';
+  String get billingActive => 'Actif';
 
   @override
   String get billingPending => 'En attente';
@@ -2747,10 +2747,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get billingPaused => 'En pause';
 
   @override
-  String get billingCancelled => 'Résiliée';
+  String get billingCancelled => 'Résilié';
 
   @override
-  String get billingExpired => 'Expirée';
+  String get billingExpired => 'Expiré';
 
   @override
   String get billingAnnual => 'Annuelle';
@@ -2759,7 +2759,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get billingMonthly => 'Mensuelle';
 
   @override
-  String get billingRecurringCard => 'Carte (récurrent)';
+  String get billingRecurringCard => 'Carte (paiement récurrent)';
 
   @override
   String get billingCard => 'Carte';
@@ -2798,10 +2798,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get billingStarted => 'Date de souscription';
 
   @override
-  String get billingNextPayment => 'Prochain prélèvement';
+  String get billingNextPayment => 'Prochain paiement';
 
   @override
-  String get billingLastPayment => 'Dernier prélèvement';
+  String get billingLastPayment => 'Dernier paiement';
 
   @override
   String get billingCancelDate => 'Résilié le';
@@ -2865,6 +2865,60 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get billingInvoicesEmptyBody =>
       'Les paiements de votre abonnement s’afficheront ici.';
+
+  @override
+  String get feedbackTitle => 'Évaluations des EPI';
+
+  @override
+  String get feedbackLoadFailed => 'Impossible de charger les évaluations';
+
+  @override
+  String get feedbackEmpty => 'Aucune évaluation trouvée';
+
+  @override
+  String get feedbackValidate => 'Valider';
+
+  @override
+  String get feedbackStatusOpen => 'Ouvert';
+
+  @override
+  String get feedbackStatusResolved => 'Résolu';
+
+  @override
+  String get feedbackStatusClosed => 'Fermé';
+
+  @override
+  String get feedbackStatusReceived => 'Reçu';
+
+  @override
+  String get feedbackStatusManagerReview =>
+      'En cours d’examen par le gestionnaire des EPI';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'En attente d’examen HSEQ';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'Examen HSEQ terminé';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Transmis à l’administration';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'En attente d’approbation administrative';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Action corrective ouverte';
+
+  @override
+  String get feedbackStatusMoreInformation =>
+      'Informations complémentaires demandées';
+
+  @override
+  String get feedbackStatusEnded => 'Clôturé';
+
+  @override
+  String get feedbackStatusNotApproved => 'Non approuvé';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -3593,7 +3647,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get statusExpired => 'Expiré';
 
   @override
-  String get statusExpiring => 'Expirant';
+  String get statusExpiring => 'Expire bientôt';
 
   @override
   String get statusPending => 'En attente';
@@ -5601,7 +5655,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get poSupplierIsoDateHint => 'AAAA-MM-JJ';
 
   @override
-  String get billingActive => 'Active';
+  String get billingActive => 'Actif';
 
   @override
   String get billingPending => 'En attente';
@@ -5610,10 +5664,10 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get billingPaused => 'En pause';
 
   @override
-  String get billingCancelled => 'Résiliée';
+  String get billingCancelled => 'Résilié';
 
   @override
-  String get billingExpired => 'Expirée';
+  String get billingExpired => 'Expiré';
 
   @override
   String get billingAnnual => 'Annuelle';
@@ -5622,7 +5676,7 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get billingMonthly => 'Mensuelle';
 
   @override
-  String get billingRecurringCard => 'Carte (récurrent)';
+  String get billingRecurringCard => 'Carte (paiement récurrent)';
 
   @override
   String get billingCard => 'Carte';
@@ -5661,10 +5715,10 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   String get billingStarted => 'Date de souscription';
 
   @override
-  String get billingNextPayment => 'Prochain prélèvement';
+  String get billingNextPayment => 'Prochain paiement';
 
   @override
-  String get billingLastPayment => 'Dernier prélèvement';
+  String get billingLastPayment => 'Dernier paiement';
 
   @override
   String get billingCancelDate => 'Résilié le';
@@ -5728,4 +5782,58 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
   @override
   String get billingInvoicesEmptyBody =>
       'Les paiements de votre abonnement s’afficheront ici.';
+
+  @override
+  String get feedbackTitle => 'Évaluations des EPI';
+
+  @override
+  String get feedbackLoadFailed => 'Impossible de charger les évaluations';
+
+  @override
+  String get feedbackEmpty => 'Aucune évaluation trouvée';
+
+  @override
+  String get feedbackValidate => 'Valider';
+
+  @override
+  String get feedbackStatusOpen => 'Ouvert';
+
+  @override
+  String get feedbackStatusResolved => 'Résolu';
+
+  @override
+  String get feedbackStatusClosed => 'Fermé';
+
+  @override
+  String get feedbackStatusReceived => 'Reçu';
+
+  @override
+  String get feedbackStatusManagerReview =>
+      'En cours d’examen par le gestionnaire des EPI';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'En attente d’examen HSEQ';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'Examen HSEQ terminé';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Transmis à l’administration';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'En attente d’approbation administrative';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Action corrective ouverte';
+
+  @override
+  String get feedbackStatusMoreInformation =>
+      'Informations complémentaires demandées';
+
+  @override
+  String get feedbackStatusEnded => 'Clôturé';
+
+  @override
+  String get feedbackStatusNotApproved => 'Non approuvé';
 }

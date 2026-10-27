@@ -2851,6 +2851,58 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get billingInvoicesEmptyBody =>
       'As cobranças da sua assinatura aparecerão aqui.';
+
+  @override
+  String get feedbackTitle => 'Avaliações de EPIs';
+
+  @override
+  String get feedbackLoadFailed => 'Erro ao carregar avaliações';
+
+  @override
+  String get feedbackEmpty => 'Nenhuma avaliação encontrada';
+
+  @override
+  String get feedbackValidate => 'Validar';
+
+  @override
+  String get feedbackStatusOpen => 'Aberto';
+
+  @override
+  String get feedbackStatusResolved => 'Resolvido';
+
+  @override
+  String get feedbackStatusClosed => 'Fechado';
+
+  @override
+  String get feedbackStatusReceived => 'Recebido';
+
+  @override
+  String get feedbackStatusManagerReview => 'Em Análise pelo Gestor de EPI';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Aguardando HSEQ';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'Análise HSEQ Concluída';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Encaminhado para Administração';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'Aguardando Aprovação Administrativa';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Ação Corretiva Aberta';
+
+  @override
+  String get feedbackStatusMoreInformation => 'Solicitada Mais Informação';
+
+  @override
+  String get feedbackStatusEnded => 'Encerrado';
+
+  @override
+  String get feedbackStatusNotApproved => 'Reprovado';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -5700,4 +5752,56 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get billingInvoicesEmptyBody =>
       'As cobranças da sua assinatura aparecerão aqui.';
+
+  @override
+  String get feedbackTitle => 'Avaliações de EPIs';
+
+  @override
+  String get feedbackLoadFailed => 'Erro ao carregar avaliações';
+
+  @override
+  String get feedbackEmpty => 'Nenhuma avaliação encontrada';
+
+  @override
+  String get feedbackValidate => 'Validar';
+
+  @override
+  String get feedbackStatusOpen => 'Aberto';
+
+  @override
+  String get feedbackStatusResolved => 'Resolvido';
+
+  @override
+  String get feedbackStatusClosed => 'Fechado';
+
+  @override
+  String get feedbackStatusReceived => 'Recebido';
+
+  @override
+  String get feedbackStatusManagerReview => 'Em Análise pelo Gestor de EPI';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Aguardando HSEQ';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'Análise HSEQ Concluída';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Encaminhado para Administração';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'Aguardando Aprovação Administrativa';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Ação Corretiva Aberta';
+
+  @override
+  String get feedbackStatusMoreInformation => 'Solicitada Mais Informação';
+
+  @override
+  String get feedbackStatusEnded => 'Encerrado';
+
+  @override
+  String get feedbackStatusNotApproved => 'Reprovado';
 }

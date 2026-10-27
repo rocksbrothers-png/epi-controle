@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
@@ -40,7 +41,7 @@ class EpiDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: EpiSpacing.lg),
-          Center(child: EpiBadge(status: badgeStatus)),
+          Center(child: LocalizedEpiBadge(status: badgeStatus)),
           const SizedBox(height: EpiSpacing.xl2),
 
           // KPIs de estoque — CORPORATIVOS. Esta é a ficha do catálogo da

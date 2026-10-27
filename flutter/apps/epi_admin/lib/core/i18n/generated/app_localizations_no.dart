@@ -346,7 +346,7 @@ class AppLocalizationsNo extends AppLocalizations {
   String get epiStatusExpired => 'Utløpt';
 
   @override
-  String get epiStatusNoStock => 'Tomt lager';
+  String get epiStatusNoStock => 'Ikke på lager';
 
   @override
   String get stockTitle => 'Lager';
@@ -2843,6 +2843,59 @@ class AppLocalizationsNo extends AppLocalizations {
   @override
   String get billingInvoicesEmptyBody =>
       'Betalingene for abonnementet ditt vises her.';
+
+  @override
+  String get feedbackTitle => 'Vurderinger av verneutstyr';
+
+  @override
+  String get feedbackLoadFailed => 'Kunne ikke laste vurderingene';
+
+  @override
+  String get feedbackEmpty => 'Ingen vurderinger funnet';
+
+  @override
+  String get feedbackValidate => 'Valider';
+
+  @override
+  String get feedbackStatusOpen => 'Åpen';
+
+  @override
+  String get feedbackStatusResolved => 'Løst';
+
+  @override
+  String get feedbackStatusClosed => 'Lukket';
+
+  @override
+  String get feedbackStatusReceived => 'Mottatt';
+
+  @override
+  String get feedbackStatusManagerReview =>
+      'Under vurdering hos ansvarlig for verneutstyr';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Venter på HSEQ-vurdering';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'HSEQ-vurdering fullført';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Videresendt til administrasjonen';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'Venter på administrativ godkjenning';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Åpent korrigerende tiltak';
+
+  @override
+  String get feedbackStatusMoreInformation => 'Mer informasjon etterspurt';
+
+  @override
+  String get feedbackStatusEnded => 'Avsluttet';
+
+  @override
+  String get feedbackStatusNotApproved => 'Ikke godkjent';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -3187,7 +3240,7 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String get epiStatusExpired => 'Utløpt';
 
   @override
-  String get epiStatusNoStock => 'Tomt lager';
+  String get epiStatusNoStock => 'Ikke på lager';
 
   @override
   String get stockTitle => 'Lager';
@@ -5684,4 +5737,57 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   @override
   String get billingInvoicesEmptyBody =>
       'Betalingene for abonnementet ditt vises her.';
+
+  @override
+  String get feedbackTitle => 'Vurderinger av verneutstyr';
+
+  @override
+  String get feedbackLoadFailed => 'Kunne ikke laste vurderingene';
+
+  @override
+  String get feedbackEmpty => 'Ingen vurderinger funnet';
+
+  @override
+  String get feedbackValidate => 'Valider';
+
+  @override
+  String get feedbackStatusOpen => 'Åpen';
+
+  @override
+  String get feedbackStatusResolved => 'Løst';
+
+  @override
+  String get feedbackStatusClosed => 'Lukket';
+
+  @override
+  String get feedbackStatusReceived => 'Mottatt';
+
+  @override
+  String get feedbackStatusManagerReview =>
+      'Under vurdering hos ansvarlig for verneutstyr';
+
+  @override
+  String get feedbackStatusAwaitingHseq => 'Venter på HSEQ-vurdering';
+
+  @override
+  String get feedbackStatusHseqCompleted => 'HSEQ-vurdering fullført';
+
+  @override
+  String get feedbackStatusForwardedAdmin => 'Videresendt til administrasjonen';
+
+  @override
+  String get feedbackStatusAwaitingAdmin =>
+      'Venter på administrativ godkjenning';
+
+  @override
+  String get feedbackStatusCorrectiveAction => 'Åpent korrigerende tiltak';
+
+  @override
+  String get feedbackStatusMoreInformation => 'Mer informasjon etterspurt';
+
+  @override
+  String get feedbackStatusEnded => 'Avsluttet';
+
+  @override
+  String get feedbackStatusNotApproved => 'Ikke godkjent';
 }

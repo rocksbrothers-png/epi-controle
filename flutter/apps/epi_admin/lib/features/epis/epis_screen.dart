@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -277,7 +278,7 @@ class _EpiTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          EpiBadge(status: badgeStatus),
+          LocalizedEpiBadge(status: badgeStatus),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'archive') {

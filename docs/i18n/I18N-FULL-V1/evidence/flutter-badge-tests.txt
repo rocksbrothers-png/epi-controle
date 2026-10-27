@@ -1,0 +1,25 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/localized_epi_badge_test.dart
+00:00 +0: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/localized_epi_badge_test.dart: all status labels follow live locale changes and retain status colors
+00:02 +1: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/archive_labels_i18n_test.dart
+00:03 +1: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/archive_labels_i18n_test.dart: real employee popup and archive dialog update existing labels without changing values or input
+00:05 +2: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart
+00:06 +2: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitBadgeStatus — os quatro estados do backend critical é o estado crítico, com o rótulo do estado
+00:06 +3: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitBadgeStatus — os quatro estados do backend near_minimum é a faixa de atenção
+00:06 +4: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitBadgeStatus — os quatro estados do backend normal é normal e não conta como crítico
+00:06 +5: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitBadgeStatus — os quatro estados do backend disabled NÃO conta como crítico
+00:06 +6: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitBadgeStatus — os quatro estados do backend underlying_status critical + stock_status disabled continua disabled
+00:06 +7: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: cores dos estados critical vermelho, near_minimum laranja, normal verde
+00:07 +8: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: cores dos estados disabled é cinza — nunca verde de "normal"
+00:07 +9: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: cores dos estados o badge de disabled desenha o próprio rótulo
+00:07 +10: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: ausência de classificação stock_status nulo NÃO vira normal
+00:07 +11: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: ausência de classificação saldo abaixo do mínimo da Unidade não produz crítico sozinho
+00:07 +12: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: ausência de classificação status desconhecido de um backend mais novo também é null
+00:07 +13: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitStockGauge — a barra mede a faixa de atenção usa attention_limit, não o mínimo corporativo
+00:07 +14: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitStockGauge — a barra mede a faixa de atenção satura em 1.0 acima do limite
+00:07 +15: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitStockGauge — a barra mede a faixa de atenção limite zero enche a barra em vez de dividir por zero
+00:07 +16: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: epiUnitStockGauge — a barra mede a faixa de atenção sem attention_limit não há barra
+00:07 +17: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: separação entre catálogo corporativo e Unidade epiBadgeStatus usa a criticidade CORPORATIVA do backend
+00:07 +18: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: separação entre catálogo corporativo e Unidade epiBadgeStatus ignora a classificação da Unidade
+00:07 +19: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: separação entre catálogo corporativo e Unidade epiBadgeStatus não deduz criticidade quando o backend não a envia
+00:07 +20: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/epi_unit_status_test.dart: separação entre catálogo corporativo e Unidade validade e estoque são eixos independentes
+00:07 +21: All tests passed!

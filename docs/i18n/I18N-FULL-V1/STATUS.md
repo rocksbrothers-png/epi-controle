@@ -101,3 +101,25 @@ Foram conectadas 25 ocorrências literais de sete views a recursos já existente
 Os itens de popup usam um contexto local para acompanhar o idioma enquanto o menu está aberto; cancelamentos e rótulos dos dialogs também leem o locale do próprio dialog. O teste de EmployeesScreen real passou nos dois projetos: cinco idiomas no popup conservam value=archive e nenhuma nova consulta; FR→EN no dialog conserva o motivo digitado, sem escrita ao cancelar. A comparação AST do implementador confirma condições if, valores nomeados e ações exatamente iguais nas sete views. Não equivale a auditoria independente ou prova de RBAC real. Os 36 testes direcionados de paridade/consumo/migração passaram no Corporate.
 
 Backend CI e Flutter CI aprovaram ambos os HEADs financeiros 0f83da08/7480dbc; os links constam de CI-RESULTS.json. O próximo HEAD de bindings exige suas próprias execuções. A auditoria independente global, as lacunas remanescentes e a integração concorrente com main continuam pendentes. READY permanece NO.
+
+
+## Flutter — indicadores de catálogo e estoque por unidade
+
+Sete views usam wrappers de apresentação para os dez status do catálogo e os quatro status de estoque por unidade. Os wrappers usam 14 getters ARB existentes (13 recursos únicos), preservam os enums separados e delegam cores/estilos aos componentes originais. Não classificam estoque nem convertem ausência de classificação em normal. Labels personalizados e os componentes do design system permanecem intactos; o catálogo continua com 862 mensagens por locale regional.
+
+Os 21 testes direcionados passaram em cada projeto: 14 status × cinco idiomas × temas claro/escuro, troca com os mesmos widgets montados, comparação de cores/estilos com os badges originais, labels personalizados opacos, EmployeesScreen real e testes preexistentes de separação catálogo/unidade. As 34 guardas de consumo e paridade também passaram em ambos; a guarda de source aceita o wrapper e exige a delegação do enum intacto. Analyzer dos dois arquivos novos sem apontamentos. O manifesto cobre 287 arquivos. Isso não certifica todas as telas nem substitui RBAC real.
+
+Backend CI e Flutter CI dos checkpoints c1faf3a3/272697a9 aprovaram os dois produtos. O bloco de badges necessita de CI no próprio HEAD. Auditoria independente parcial em retomada; READY FOR HUMAN MERGE DECISION continua NO.
+
+
+## Flutter — avaliações, diálogos e revisão independente retomada
+
+A tela de avaliações passou a localizar título, filtros, ausência de dados, erro de carregamento, validação e os 21 status atuais/legados. Dezessete novos recursos elevam os catálogos regionais a 879 mensagens. Os valores null/open/in_review/resolved dos filtros, classificação de cores, condições das ações, decisões administrativas, API, Cubit e modelo permanecem. Status desconhecidos e textos originais de colaborador/unidade/EPI/descrição continuam opacos. O erro específico da API permanece preservado; a tradução global de erros ainda está em andamento.
+
+Os dois diálogos consultam o idioma pelo próprio contexto e possuem seu controller até o unmount da rota. Isso corrige o descarte antes do fim da animação, detectado pelo teste de troca de idioma/cancelamento. Trim, guards null/vazio e chamadas administrativas permanecem. A data usa DateTime.parse igual à implementação anterior antes do Intl, inclusive a normalização UTC de timestamps com offset; não houve alteração temporal de dados.
+
+Corporate passou 26 testes direcionados (20 cenários reais nos cinco idiomas, mapeamento de status/data e cinco pares dos delegates); SaaS passou os mesmos 26 e o teste de 14 indicadores × cinco idiomas × dois temas. Carregamento foi mantido por porta sintética pendente, seguido de sucesso/vazio/erro. Filtros preservam os códigos e somente uma seleção explícita consulta novamente; trocar idioma mantém filtro, input e quantidade de leituras. Nenhuma escrita foi feita nesses testes de avaliações. Não certificam RBAC real nem os demais módulos. Analyzer da tela registra somente três infos de underscores preexistentes, sem erros/warnings nos arquivos analisados.
+
+Nove sugestões linguísticas independentes foram aplicadas: concordância/pagamentos FR de assinatura, validade próxima FR, item sem estoque NO e ação corretiva NO. Encerrado/Fechado e Reprovado/Rejeitado têm rótulos distintos. Auditoria independente de billing/badges foi retomada: quatro testes externos passaram; fonte, resultados e limites foram incorporados. Feedback recebeu revisão independente estática e linguística; seu runtime foi validado pelo implementador. A captura dos badges é anterior às últimas correções de redação e está marcada como histórica. As capturas de avaliações usam os widgets reais anterior c1faf3a3 e atual, fixture idêntico, fontes reais e viewport FR 390×844, sem erros ou escrita.
+
+O manifesto de paridade passou com 295 arquivos sincronizados. A lista de allowlist perdeu três entradas migradas; o gate continua bloqueando novas strings. A matriz funcional integral, os demais hardcodes/backend/documentos e a integração concorrente continuam pendentes. READY FOR HUMAN MERGE DECISION: NO.

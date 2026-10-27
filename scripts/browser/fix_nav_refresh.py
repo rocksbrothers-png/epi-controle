@@ -42,7 +42,8 @@ UNIT = dict(id=6, company_id=901, company_name='Empresa QA', name='Base Norte QA
 class Fixture(base.Fixture):
     def __init__(self, *args):
         super().__init__(*args)
-        self.permissions = PERMISSIONS[:]
+        # Acrescenta (sem redefinir o atributo da base) as permissões de EPI/Unidade/transferência.
+        self.permissions.extend(p for p in PERMISSIONS if p not in self.permissions)
         self.epis, self.units = [copy.deepcopy(EPI)], [dict(id=5, company_id=901, name='Unidade QA', unit_type='base'),
                                                       copy.deepcopy(UNIT)]
         self.archived_epis, self.archived_units = [], []

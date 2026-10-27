@@ -79,7 +79,7 @@ function makeEnv(opts = {}) {
     apiWriteEpoch: () => writeEpoch,
     api: async (url, options) => {
       const method = (options || {}).method || 'GET';
-      log.push(['api', method, url, options && options.body]);
+      log.push(['api', method, url, options && options.body, Object.keys(options || {}).join(',')]);
       if (method !== 'GET') { writeEpoch += 1; }
       try {
         await Promise.resolve();
@@ -134,6 +134,10 @@ function snapshot(env) {
 async function run(load, opts, fn) {
   const env = makeEnv(opts);
   const ctx = load(env);
+  // Chaves de execução única e de leitura coalescida também fazem parte do contrato.
+  const { runExclusiveMutation, coalesceLoad } = ctx;
+  ctx.runExclusiveMutation = (key, task) => { env.log.push(['mutex', key]); return runExclusiveMutation(key, task); };
+  ctx.coalesceLoad = (key, load) => { env.log.push(['coalesce', key]); return coalesceLoad(key, load); };
   let thrown = null;
   try { await fn(ctx, env); } catch (error) { thrown = String(error && error.message); }
   return JSON.parse(JSON.stringify({ thrown, ...snapshot(env) }));
@@ -243,6 +247,11 @@ async function scenario(load) {
   for (const [name, opts] of purgeCases) {
     out[`unit:purge:${name}`] = await run(load, opts, (ctx) => ctx.purgeArchivedUnit(61));
   }
+  // Sessão sem usuário no meio da exclusão: o erro fica dentro do try (alerta + recarga da lista).
+  for (const kind of KINDS) {
+    out[`purge:${kind}:semUsuario`] = await run(load, {}, (ctx, env) => { env.state.user = null; return ctx.purgeArchivedRecord(kind, 61); });
+  }
+  out['unit:purge:semUsuario'] = await run(load, {}, (ctx, env) => { env.state.user = null; return ctx.purgeArchivedUnit(61); });
   out['unit:purge:registroAusente'] = await run(load, {}, (ctx) => ctx.purgeArchivedUnit(777));
   out['unit:purge:duplo'] = await run(load, { prompts: ['j longa', 'Ana', 'j longa', 'Ana'] }, (ctx) => Promise.all([ctx.purgeArchivedUnit(61), ctx.purgeArchivedUnit(61)]));
   return out;

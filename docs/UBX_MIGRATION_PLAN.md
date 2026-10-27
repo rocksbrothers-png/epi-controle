@@ -238,9 +238,9 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §12](UBX_APPJS_AUDITORIA.md#12-ubx-v4-202
 
 Detalhes em [`UBX_APPJS_AUDITORIA.md` §13](UBX_APPJS_AUDITORIA.md#13-ubx-v5-etapa-1-2026-10-27--arquivamento-genérico).
 
-- `app.js` 18.167 → 17.639 linhas; 798 → 778 declarações; 112 → 108 endpoints.
-- `modules/archival/{business,integrations,ui}`: 209 cenários comparados com as funções originais
-  (0 divergências) e 14 sabotagens detectadas; contrato HTTP de arquivamento agora verificado contra o router.
+- `app.js` 18.167 → 17.638 linhas; 798 → 778 declarações; 112 → 108 endpoints.
+- `modules/archival/{business,integrations,ui}`: 214 cenários comparados com as funções originais
+  (0 divergências) e 17 sabotagens detectadas; contrato HTTP de arquivamento agora verificado contra o router.
 
 ## Próximo passo
 UBX-V5, Etapa 2 (Unidades e CNPJ → Empresas → Minha Empresa → Comercial, este após a I18N-FULL-V1) e,

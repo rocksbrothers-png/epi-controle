@@ -210,20 +210,19 @@
       if (!cfg || cfg.supportsPurge === false || !requirePermission(cfg.deletePermission)) {return;}
       const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
       if (!record) {return;}
-      const actor = { actor_user_id: state.user.id };
       try {
-        const step1 = await archivalApi().requestPurge(cfg.resource, recordId, actor);
+        const step1 = await archivalApi().requestPurge(cfg.resource, recordId, { actor_user_id: state.user.id });
         const lines = rules().purgeSummaryLines(cfg.purgeLabels, step1.records || {});
         const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
         if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
-          await archivalApi().cancelPurge(cfg.resource, recordId, actor);
+          await archivalApi().cancelPurge(cfg.resource, recordId, { actor_user_id: state.user.id });
           await loadArchivedRecords(kind);
           return;
         }
         const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
         const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${rules().purgeDisplayName(record)}"`, '') ?? '';
         if (!justification.trim() || !confirmName.trim()) {
-          await archivalApi().cancelPurge(cfg.resource, recordId, actor);
+          await archivalApi().cancelPurge(cfg.resource, recordId, { actor_user_id: state.user.id });
           await loadArchivedRecords(kind);
           return;
         }

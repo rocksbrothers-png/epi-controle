@@ -62,24 +62,24 @@
     <div class="card" style="max-width:520px;width:min(520px,96vw);margin:auto;padding:24px;">
       <h3 style="margin:0 0 12px;">Triagem do Feedback #${esc(String(fb.id))}</h3>
       <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px;">Classifique o feedback e defina prioridade. Se necessário, solicite avaliação HSEQ.</p>
-      <label style="display:block;margin-bottom:8px;">Tipo <select id="ftriage-type" style="width:100%;margin-top:4px;">
-        <option value="avaliacao"${fb.type === 'avaliacao' ? ' selected' : ''}>Avaliação</option>
-        <option value="sugestao"${fb.type === 'sugestao' ? ' selected' : ''}>Sugestão</option>
-        <option value="reclamacao"${fb.type === 'reclamacao' ? ' selected' : ''}>Reclamação</option>
-        <option value="elogio"${fb.type === 'elogio' ? ' selected' : ''}>Elogio</option>
+      <label style="display:block;margin-bottom:8px;" data-i18n="outsourcedCompany.filterKind">Tipo <select id="ftriage-type" style="width:100%;margin-top:4px;">
+        <option value="avaliacao"${fb.type === 'avaliacao' ? ' selected' : ''} data-i18n="evaluation.single">Avaliação</option>
+        <option value="sugestao"${fb.type === 'sugestao' ? ' selected' : ''} data-i18n="evaluation.suggestionSingle">Sugestão</option>
+        <option value="reclamacao"${fb.type === 'reclamacao' ? ' selected' : ''} data-i18n="evaluation.complaintSingle">Reclamação</option>
+        <option value="elogio"${fb.type === 'elogio' ? ' selected' : ''} data-i18n="evaluation.praiseSingle">Elogio</option>
       </select></label>
       <label style="display:block;margin-bottom:8px;">Categoria <input id="ftriage-category" type="text" style="width:100%;margin-top:4px;" placeholder="Ex: Qualidade, Conforto..." value="${esc(fb.category || '')}"></label>
-      <label style="display:block;margin-bottom:8px;">Prioridade <select id="ftriage-priority" style="width:100%;margin-top:4px;">
+      <label style="display:block;margin-bottom:8px;" data-i18n="evaluation.priority">Prioridade <select id="ftriage-priority" style="width:100%;margin-top:4px;">
         <option value="baixa"${fb.priority === 'baixa' ? ' selected' : ''}>Baixa</option>
-        <option value="normal"${(!fb.priority || fb.priority === 'normal') ? ' selected' : ''}>Normal</option>
+        <option value="normal"${(!fb.priority || fb.priority === 'normal') ? ' selected' : ''} data-i18n="stock.statusNormal">Normal</option>
         <option value="alta"${fb.priority === 'alta' ? ' selected' : ''}>Alta</option>
-        <option value="urgente"${fb.priority === 'urgente' ? ' selected' : ''}>Urgente</option>
+        <option value="urgente"${fb.priority === 'urgente' ? ' selected' : ''} data-i18n="commercial.urgentBadge">Urgente</option>
       </select></label>
       <label style="display:block;margin-bottom:8px;"><input type="checkbox" id="ftriage-hseq"${fb.hseq_required ? ' checked' : ''}> Solicitar avaliação HSEQ</label>
-      <label style="display:block;margin-bottom:12px;">Observações <textarea id="ftriage-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações da triagem..."></textarea></label>
+      <label style="display:block;margin-bottom:12px;" data-i18n="outsourcedCompany.employeeNotesLabel">Observações <textarea id="ftriage-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações da triagem..."></textarea></label>
       <div id="ftriage-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn ghost" id="ftriage-cancel">Cancelar</button>
+        <button class="btn ghost" id="ftriage-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
         <button class="btn" id="ftriage-confirm">Salvar Triagem</button>
       </div>
     </div>`;
@@ -121,12 +121,12 @@
       <label style="display:block;margin-bottom:12px;">Parecer técnico HSEQ <span style="color:var(--color-danger)">*</span>
         <textarea id="fhseq-opinion" rows="4" style="width:100%;margin-top:4px;" placeholder="Descreva o parecer técnico HSEQ..."></textarea>
       </label>
-      <label style="display:block;margin-bottom:12px;">Observações adicionais
+      <label style="display:block;margin-bottom:12px;" data-i18n="devolution.additionalNotes">Observações adicionais
         <textarea id="fhseq-notes" rows="2" style="width:100%;margin-top:4px;"></textarea>
       </label>
       <div id="fhseq-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn ghost" id="fhseq-cancel">Cancelar</button>
+        <button class="btn ghost" id="fhseq-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
         <button class="btn" id="fhseq-confirm">Registrar Parecer</button>
       </div>
     </div>`;
@@ -201,19 +201,19 @@
       <h3 style="margin:0 0 12px;">Decisão Administrativa — Feedback #${esc(String(fb.id))}</h3>
       <label style="display:block;margin-bottom:8px;">Decisão <span style="color:var(--color-danger)">*</span>
         <select id="fadmin-decision" style="width:100%;margin-top:4px;">
-          <option value="">Selecione...</option>
+          <option value="" data-i18n="purchase.functionsSelectPlaceholder">Selecione...</option>
           ${options.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}
         </select>
       </label>
-      <label style="display:block;margin-bottom:8px;">Justificativa <span style="color:var(--color-danger)">*</span>
+      <label style="display:block;margin-bottom:8px;" data-i18n="portal.justification">Justificativa <span style="color:var(--color-danger)">*</span>
         <textarea id="fadmin-justification" rows="3" style="width:100%;margin-top:4px;" placeholder="Justificativa obrigatória para a decisão..."></textarea>
       </label>
-      <label style="display:block;margin-bottom:12px;">Observações adicionais
+      <label style="display:block;margin-bottom:12px;" data-i18n="devolution.additionalNotes">Observações adicionais
         <textarea id="fadmin-notes" rows="2" style="width:100%;margin-top:4px;"></textarea>
       </label>
       <div id="fadmin-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn ghost" id="fadmin-cancel">Cancelar</button>
+        <button class="btn ghost" id="fadmin-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
         <button class="btn" id="fadmin-confirm">Registrar Decisão</button>
       </div>
     </div>`;

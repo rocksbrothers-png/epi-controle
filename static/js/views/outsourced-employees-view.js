@@ -17,12 +17,12 @@
   //
   // "Temporário" entrou junto com a decisão de que os três vínculos
   // contratados existem exclusivamente no módulo Terceirizados (PR #214).
-  var CONTRACTED_VINCULOS = ['Terceirizado', 'Prestador de Serviço', 'Temporário'];
+  const CONTRACTED_VINCULOS = ['Terceirizado', 'Prestador de Serviço', 'Temporário'];
 
-  var VINC_LABELS = {
-    'Terceirizado': 'Terceirizado',
-    'Prestador de Serviço': 'Prestador de Serviço',
-    'Temporário': 'Temporário',
+  const VINC_LABELS = {
+    get ['Terceirizado']() { return (globalThis.trEpi?.('employee.employmentOutsourced','Terceirizado',{}) ?? 'Terceirizado'); },
+    get ['Prestador de Servi\u00e7o']() { return (globalThis.trEpi?.('employee.employmentServiceProvider','Prestador de Servi\u00e7o',{}) ?? 'Prestador de Servi\u00e7o'); },
+    get ['Tempor\u00e1rio']() { return (globalThis.trEpi?.('employee.employmentTemporary','Tempor\u00e1rio',{}) ?? 'Tempor\u00e1rio'); },
   };
 
   function isContractedVinculo(value) {
@@ -60,7 +60,7 @@
   function visibleOutsourcedEmployees(employees, options) {
     const term = String(options?.search || '').trim().toLowerCase();
     const list = Array.isArray(employees) ? employees : [];
-    if (!term) return list;
+    if (!term) {return list;}
     return list.filter((item) => {
       const haystack = [item?.name, item?.role_name]
         .map((value) => String(value || '').toLowerCase())

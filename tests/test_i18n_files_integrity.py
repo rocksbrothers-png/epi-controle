@@ -94,10 +94,7 @@ def _used_keys():
     keys = set()
     html = (_STATIC / "index.html").read_text(encoding="utf-8")
     keys |= set(re.findall(r'data-i18n(?:-\w+)?="([\w.]+)"', html))
-    # pagamento.js tem dicionário próprio (const I18N embutido) — fora do escopo.
     for path in glob.glob(str(_STATIC / "**" / "*.js"), recursive=True):
-        if "pagamento" in path:
-            continue
         src = open(path, encoding="utf-8").read()
         keys |= set(re.findall(r"""\btr\(\s*['"]([\w.]+)['"]""", src))
     # Descarta prefixos dinâmicos (tr('purchase.poStatus.' + x)) e fragmentos soltos.

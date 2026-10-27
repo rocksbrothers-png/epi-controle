@@ -69,7 +69,7 @@
       function setLoading(value, text) {
         if (!loading) return;
         loading.hidden = !value;
-        loading.textContent = text || 'Atualizando dados...';
+        loading.textContent = text || (globalThis.trEpi?.("delivery.updatingData","Atualizando dados...",{}) ?? "Atualizando dados...");
       }
 
       function setFeedback(message, tone) {

@@ -16,7 +16,7 @@ def run_scenario(scenario):
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const writes = [], events = [], pending = {};
+const writes = [], events = [], pending = {}, listeners = {};
 const dictionaries = {
   'pt-BR': {label:'Português', greeting:'Olá, {name}', action:'Salvar', note:'Existente', summary:'Configuração {note}'},
   'en-GB': {label:'English', greeting:'Hello, {name}', action:'Save', note:'Existing', summary:'Configuration {note}'},
@@ -38,7 +38,8 @@ const sandbox = {document:doc, navigator:{language:'pt-BR'},
     const locale=decodeURIComponent(url.split('/').pop());
     if (pending[locale]) return pending[locale];
     return {ok:true,json:async()=>({ok:true,locale,fallback:false,translations:dictionaries[locale]})};
-  }, dispatchEvent(e){events.push(e)},
+  }, addEventListener(type, callback){(listeners[type] ||= []).push(callback)},
+  dispatchEvent(e){events.push(e);for(const callback of listeners[e.type] || [])callback(e)},
 };
 sandbox.window=sandbox; sandbox.globalThis=sandbox;
 vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), sandbox);
@@ -183,4 +184,162 @@ await api.setLang('pt-BR',{persist:false,initial:true});
 complete(response('en-GB'));await chosen;
 assert.equal(api.lang,'en-GB');
 assert.equal(writes.length,1);assert.equal(writes[0].idioma,'en-GB');
+''')
+
+
+def test_checkout_uses_five_catalogues_and_keeps_payment_intent_and_payload():
+    run_scenario('''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+}
+const fields={};
+const field=id=>fields[id] ||= Object.assign(element(),{value:'audit@example.invalid',innerHTML:'',appendChild(){},addEventListener(){},querySelector(){return field('radio')}});
+doc.getElementById=field;doc.createElement=()=>field('generated');
+sandbox.URLSearchParams=URLSearchParams;sandbox.location={search:'?plan=individual&lang=pt-BR&checkout_token=synthetic-fixture'};
+let source=fs.readFileSync(path.join(staticRoot,'js/pagamento.js'),'utf8');
+assert(source.includes('init().catch((e) => showResult(String(e)));'));
+source=source.replace('init().catch((e) => showResult(String(e)));','');
+source+=`
+ globalThis.checkoutProbe={seed(){plans.monthly={key:'individual',cycle:'monthly',amount:1234.56,currency:'BRL',max_users:1};options=buildOptions();selectOption('pix')},payload:basePayload,intent:()=>typeof checkoutIntentKey==='undefined'?null:checkoutIntentKey,selected:()=>selected.id};`;
+vm.runInNewContext(source,sandbox);
+sandbox.checkoutProbe.seed();
+const original=JSON.stringify(sandbox.checkoutProbe.payload()), nonce=sandbox.checkoutProbe.intent();
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ await api.setLang(locale,{persist:false});
+ assert.equal(sandbox.checkoutProbe.selected(),'pix');
+ assert.equal(sandbox.checkoutProbe.intent(),nonce);
+ assert.equal(JSON.stringify(sandbox.checkoutProbe.payload()),original);
+ assert.equal(field('payBtn').textContent,dictionaries[locale].checkout.finish_payment);
+ assert.equal(field('s-total').textContent,new Intl.NumberFormat(locale,{style:'currency',currency:'BRL'}).format(1234.56));
+ if(locale==='en-GB') assert(!field('s-benefits').innerHTML.includes('1 users'));
+}
+const payload=sandbox.checkoutProbe.payload();
+assert.equal(payload.plan_key,'individual');
+assert.equal(payload.cycle,'monthly');
+assert.equal(payload.payer_email,'audit@example.invalid');
+if(nonce!==null) assert.equal(payload.idempotency_key,nonce);
+else assert.equal(payload.checkout_token,'synthetic-fixture');
+if(nonce!==null) assert.equal(payload.payment_method,'pix');
+assert.equal(writes.length,0);
+''')
+
+
+def test_date_and_money_bindings_change_format_without_changing_source_values():
+    run_scenario('''
+dictionaries['en-GB'].record='{date}: {amount}';
+dictionaries['fr-FR'].record='{date} : {amount}';
+await api.setLang('en-GB');
+const record={date:'2026-05-02',amount:1234.56}, original=JSON.stringify(record);
+const node=element(), refs={date:{type:'date',value:record.date},amount:{type:'number',value:record.amount,options:{style:'currency',currency:'BRL'}}};
+node.textContent=api.textFor(node,'record','',{...record},refs);
+assert(node.textContent.includes('02/05/2026'));
+await api.setLang('fr-FR');api.translateDOM(node);
+assert(node.textContent.includes(new Intl.NumberFormat('fr-FR',{style:'currency',currency:'BRL'}).format(record.amount)));
+assert.equal(JSON.stringify(record),original);
+assert.equal(api.formatDate('2026-02-31'),'2026-02-31');
+assert.equal(api.formatDate('not-a-date'),'not-a-date');
+''')
+
+
+def test_api_messages_preserve_specific_details_payload_and_live_field_labels():
+    run_scenario(r'''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO'])dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ await api.setLang(locale,{persist:false});
+ for(const [name,template] of Object.entries(dictionaries['pt-BR'].apiErrors.messages)) {
+  const original=template.replace(/\{(\w+)\}/g,(_match,name)=>name==='key'?'title':'sample_'+name);
+  const payload={error:original,code:'FORBIDDEN',validation:{field:'title',line:7,item_id:99}};
+  const before=JSON.stringify(payload), localized=api.describeApiError(payload);
+  assert.equal(JSON.stringify(payload),before);
+  assert.equal(localized.key,'apiErrors.messages.'+name);
+  assert(localized.text);assert(!localized.text.includes('apiErrors.messages.'));
+ }
+}
+await api.setLang('en-GB');
+const error=api.describeApiError({error:'Campo title inválido.',validation:{code:'SOME_SPECIFIC_CODE',line:7}});
+assert(error.text.includes('Title'));
+const feedback=element();feedback.textContent=api.textFor(feedback,error.key,error.text,error.vars,error.refs);
+await api.setLang('fr-FR');api.translateDOM(feedback);
+assert(feedback.textContent.includes('Titre'));
+const unknown='Specific unknown rule: PPE ABC / row 7';
+assert.equal(api.apiMessage({error:unknown,code:'FORBIDDEN'}),unknown);
+assert.equal(api.apiMessage({error:unknown,i18n:{key:'apiErrors.messages.__proto__.constructor.name'}}),unknown);
+assert.equal(api.apiMessage({error:unknown,i18n:{key:42}}),unknown);
+assert.equal(sandbox.t('constructor.name'),'constructor.name');
+const alt=element({'data-i18n-alt':'login.showPassword'});api.translateDOM(alt);
+assert.equal(alt.getAttribute('alt'),dictionaries['fr-FR'].login.showPassword);
+''')
+
+
+def test_api_client_keeps_error_contract_and_gateway_fallback():
+    run_scenario('''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO'])dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+sandbox.__EPI_APP_STATE__={token:'synthetic-session'};
+vm.runInNewContext(fs.readFileSync(path.join(staticRoot,'js/modules/api-client.js'),'utf8'),sandbox);
+const client=sandbox.__EPI_API_CLIENT__;
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ await api.setLang(locale,{persist:false});
+ const headers=client.buildApiHeaders();
+ assert.equal(headers.Authorization,'Bearer synthetic-session');
+ assert.equal(headers['Accept-Language'],locale);
+ const payload={error:'Campo title inválido.',validation:{code:'INVALID_FIELD',line:7,item_id:99}},before=JSON.stringify(payload);
+ let actual;
+ try{client.throwIfApiRequestFailed('/api/library',{ok:false,status:422},payload)}catch(error){actual=error}
+ assert(actual);assert.equal(actual.message,api.apiMessage(payload));
+ assert.equal(actual.payload,payload);assert.equal(JSON.stringify(payload),before);
+ assert.equal(actual.status,422);assert.equal(actual.code,'INVALID_FIELD');assert(actual.i18n);
+ const gateway={error:{code:'UPSTREAM_FAILURE',message:'<html>private gateway diagnostic</html>'}};
+ try{client.throwIfApiRequestFailed('/api/library',{ok:false,status:503},gateway)}catch(error){actual=error}
+ assert.equal(actual.message,api.apiMessage({error:'Servidor temporariamente indisponível. Tente novamente em instantes.',code:'UPSTREAM_FAILURE'}));
+ assert(!actual.message.includes('private gateway diagnostic'));
+ assert.equal(actual.payload,gateway);assert.equal(actual.status,503);
+ assert.equal(actual.code,'UPSTREAM_FAILURE');assert.equal(actual.nonFatal,true);
+ const unknown={error:'Uncatalogued specific rejection: row 7, PPE 99',code:'FORBIDDEN'};
+ try{client.throwIfApiRequestFailed('/api/library',{ok:false,status:403},unknown)}catch(error){actual=error}
+ assert.equal(actual.message,unknown.error);assert.equal(actual.payload,unknown);
+}
+assert.equal(writes.length,0);
+''')
+
+
+def test_accessible_attribute_bindings_follow_state_and_preserve_text_parameters():
+    run_scenario('''
+dictionaries['en-GB'].show='Show password';dictionaries['en-GB'].hide='Hide password';
+dictionaries['fr-FR'].show='Afficher le mot de passe';dictionaries['fr-FR'].hide='Masquer le mot de passe';
+await api.setLang('en-GB');
+const button=element({'data-i18n-aria-label':'show'});
+button.textContent=api.textFor(button,'greeting','',{name:'Ana'});
+api.translateDOM(button);
+button.setAttribute('aria-label',api.attributeFor(button,'aria-label','hide',''));
+await api.setLang('fr-FR');api.translateDOM(button);
+assert.equal(button.getAttribute('aria-label'),'Masquer le mot de passe');
+assert.equal(button.textContent,'Bonjour, Ana');
+button.setAttribute('aria-label','User-provided original label');
+await api.setLang('en-GB');api.translateDOM(button);
+assert.equal(button.getAttribute('aria-label'),'User-provided original label');
+assert.equal(button.hasAttribute('data-i18n-aria-label'),false);
+''')
+
+
+def test_static_parent_labels_ignore_child_control_translations_and_keep_brand_data():
+    run_scenario('''
+await api.setLang('en-GB');
+const label=element({'data-i18n':'action'}), text={nodeType:3,textContent:'Salvar'}, child={nodeType:1,textContent:'Opção'};
+label.firstElementChild=child;label.childNodes=[text,child];
+Object.defineProperty(label,'textContent',{get(){return text.textContent+child.textContent}});
+api.translateDOM(label);assert.equal(text.textContent,' Save');
+child.textContent='Translated option';
+await api.setLang('fr-FR');api.translateDOM(label);
+assert.equal(text.textContent,' Enregistrer');
+assert.equal(label.getAttribute('data-i18n'),'action');
+assert.equal(child.textContent,'Translated option');
+const company=element({'data-i18n':'label'});api.translateDOM(company);
+company.textContent='ACME original';
+await api.setLang('en-GB');api.translateDOM(company);
+assert.equal(company.textContent,'ACME original');assert.equal(company.hasAttribute('data-i18n'),false);
+api.textFor(company,'label','');api.clearBinding(company);company.textContent='English';
+await api.setLang('fr-FR');api.translateDOM(company);assert.equal(company.textContent,'English');
 ''')

@@ -88,7 +88,7 @@
           : '';
       return `<span class="ds-pipeline__node ${cls}"><span class="ds-dot" aria-hidden="true"></span>${dsEsc(step && step.label)}</span>`;
     }).join('');
-    return `<span class="ds-pipeline" role="list" aria-label="Status">${nodes}</span>`;
+    return `<span class="ds-pipeline" role="list" aria-label="Status" data-i18n-aria-label="user.status">${nodes}</span>`;
   }
 
   // FilterBar — chips de filtros ativos com remoção individual + limpar tudo.
@@ -331,11 +331,11 @@
     const btns = (actions || []).map((a) =>
       `<button type="button" class="btn btn-sm ${a.danger ? 'btn-danger' : (a.variant || 'btn-ghost')} ds-bulk-bar__action" data-ds-bulk-action="${dsEsc(a.id)}">${dsEsc(a.label)}</button>`
     ).join('');
-    return `<div class="ds-bulk-bar" role="region" aria-label="Ações em lote">`
+    return '<div class="ds-bulk-bar" role="region" aria-label="Ações em lote">'
       + `<span class="ds-bulk-bar__count"><strong>${Number(count)}</strong> ${dsEsc(label)}</span>`
       + `<div class="ds-bulk-bar__actions">${btns}`
       + `<button type="button" class="btn btn-sm btn-ghost ds-bulk-bar__clear" data-ds-bulk-action="__clear">${dsEsc(o.clearLabel || 'Limpar seleção')}</button>`
-      + `</div></div>`;
+      + '</div></div>';
   }
 
   // Verifica se a resposta a um desafio de identidade confere (case/acentos-insensível).
@@ -433,7 +433,7 @@
       document.body.appendChild(dr);
     }
     dr.innerHTML = `<header class="ds-drawer__header"><strong>${dsEsc(o.title || 'Detalhes')}</strong>`
-      + '<button type="button" class="icon-action ds-drawer-close" aria-label="Fechar">✕</button></header>'
+      + '<button type="button" class="icon-action ds-drawer-close" aria-label="Fechar" data-i18n-aria-label="close">\u2715</button></header>'
       + `<div class="ds-drawer__body">${o.bodyHtml || ''}</div>`
       + (o.footerHtml ? `<div class="ds-drawer__footer">${o.footerHtml}</div>` : '');
     const closeBtn = dr.querySelector('.ds-drawer-close');

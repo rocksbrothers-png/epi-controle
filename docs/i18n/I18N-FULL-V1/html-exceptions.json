@@ -1670,5 +1670,12 @@
     "existing": null,
     "key": "ui.gestao_colaborador.id_384397",
     "reason": "Sigla técnica internacional; não representa nome de documento estrangeiro."
+  },
+  {
+    "kind": "text",
+    "file": "static/views/_head.html",
+    "tag": "title",
+    "text": "EPI Controle",
+    "reason": "Identidade padrão do produto; branding do tenant e títulos específicos continuam controlados pelos fluxos existentes. Não substituir por um título de outra tela."
   }
 ]

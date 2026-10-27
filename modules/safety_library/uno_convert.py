@@ -73,7 +73,7 @@ def convert(source):
                 parts.append({'name': selected.Name, 'file': filename})
         else:
             document.storeToURL((root / 'part-0.pdf').as_uri(), (prop('FilterName', 'writer_pdf_Export'), prop('Overwrite', True)))
-            parts.append({'name': 'Documento', 'file': 'part-0.pdf'})
+            parts.append({'name': 'Documento', 'name_i18n_key': 'safetyLibrary.preview.document', 'file': 'part-0.pdf'})
         (root / 'office-parts.json').write_text(json.dumps(parts))
     finally:
         if document is not None:

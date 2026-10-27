@@ -39,9 +39,9 @@
       border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
     .pay-opt:hover { border-color: #b9cde6; }
     .pay-opt.selected { border-color: var(--c-primary); background: var(--c-soft); box-shadow: 0 0 0 1px var(--c-primary) inset; }
-    .pay-opt input { margin-top: 3px; }
-    .pay-opt .opt-body { flex: 1; }
-    .pay-opt .opt-title { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+    .pay-opt input[type=radio] { margin-top: 3px; width: auto; flex: 0 0 auto; }
+    .pay-opt .opt-body { flex: 1; min-width: 0; }
+    .pay-opt .opt-title { font-weight: 600; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
     .pay-opt .opt-price { font-weight: 700; white-space: nowrap; }
     .pay-opt .opt-desc { font-size: 12.5px; color: var(--c-muted); margin-top: 3px; line-height: 1.4; }
     .badge { font-size: 11px; font-weight: 700; color: var(--c-ok); background: #e7f6ee;
@@ -85,7 +85,7 @@
         <div class="card" style="margin-bottom:16px">
           <h2 data-i18n="ui.pagamento.seus_dados_580425">Seus dados</h2>
           <label class="field" for="payer_email" data-i18n="employee.email">E-mail</label>
-          <input id="payer_email" type="email" placeholder="voce@empresa.com" autocomplete="email" />
+          <input id="payer_email" type="email" placeholder="voce@empresa.com" data-i18n-placeholder="checkout.emailExample" autocomplete="email" />
         </div>
 
         <div class="card" id="methods-card" style="margin-bottom:16px">
@@ -141,6 +141,7 @@
     </div>
   </main>
 
+  <script src="/i18n.js"></script>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="/js/pagamento.js" type="module"></script>
 </body>

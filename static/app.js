@@ -10,14 +10,14 @@ var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
 globalThis.STORAGE_KEYS = STORAGE_KEYS;
 const USER_COMPANY_REQUIRED_ROLES = Object.freeze(['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']);
 const ROLE_LABELS = {
-  master_admin: 'Administrador Master',
-  general_admin: 'Administrador Geral',
-  registry_admin: 'Administrador de Registro',
-  admin: 'Administrador Local',
-  user: 'Gestor de EPI',
-  buyer: 'Comprador',
-  approver: 'Aprovador',
-  employee: 'Funcionário'
+  get master_admin() { return (tr("role.master_admin", "Administrador Master", {})); },
+  get general_admin() { return (tr("role.general_admin", "Administrador Geral", {})); },
+  get registry_admin() { return (tr("role.registry_admin", "Administrador de Registro", {})); },
+  get admin() { return (tr("role.admin", "Administrador Local", {})); },
+  get user() { return (tr("role.user", "Gestor de EPI", {})); },
+  get buyer() { return (tr("role.buyer", "Comprador", {})); },
+  get approver() { return (tr("role.approver", "Aprovador", {})); },
+  get employee() { return (tr("role.employee", "Funcionário", {})); }
 };
 
 var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLegacyTranslator === 'function')
@@ -136,22 +136,22 @@ const VIEW_MODULE = {
 // Rótulos dos módulos configuráveis na aba Visualização — mesmas chaves de
 // `VIEW_MODULE` acima e de `MODULE_KEYS` em epi_backend/rule_engine.py.
 const MODULE_VISIBILITY_LABELS = {
-  dashboard: 'Dashboard',
-  compras: 'Compras',
-  estoque: 'Estoque',
-  entregas: 'Entregas',
-  solicitacoes: 'Solicitações',
+  get dashboard() { return (tr("dashboard.title", "Dashboard", {})); },
+  get compras() { return (tr("settingsTabs.purchases", "Compras", {})); },
+  get estoque() { return (tr("tabs.stock", "Estoque", {})); },
+  get entregas() { return (tr("dashboard.deliveries", "Entregas", {})); },
+  get solicitacoes() { return (tr("outsourcedCompany.requestsTab", "Solicitações", {})); },
   fichas: 'Fichas de EPI',
-  relatorios: 'Relatórios',
+  get relatorios() { return (tr("outsourcedCompany.reportsTab", "Relatórios", {})); },
   administracao: 'Administração',
-  configuracoes: 'Configurações',
-  terceirizados: 'Terceirizados e Prestadores',
-  migracao: 'Migração de Dados',
+  get configuracoes() { return (tr("settings.title", "Configurações", {})); },
+  get terceirizados() { return (tr("outsourcedCompany.pageTitle", "Terceirizados e Prestadores", {})); },
+  get migracao() { return (tr("dataMigration.pageTitle", "Migração de Dados", {})); },
   // Módulo opt-in irmão (ADR-0002 §10.3): Cadastro de Colaboradores
   // simplificado dentro da mesma tela de Terceirizados e Prestadores —
   // liga/desliga independente do módulo acima (admin/user só têm a
   // permissão técnica deste, nunca do de Empresas).
-  terceirizados_colaboradores: 'Cadastro de Colaboradores'
+  get terceirizados_colaboradores() { return (tr("outsourcedCompany.employeesTab", "Cadastro de Colaboradores", {})); }
 };
 // Espelha _UNIT_SCOPED_ROLES de epi_backend/rule_engine.py: só admin
 // (Administrador Local) e user (Gestor de EPI) têm vínculo de unidade
@@ -176,23 +176,23 @@ const VIEW_PERMISSION_ALTERNATIVES = {
   terceirizados: 'employees:create_simplified'
 };
 const VIEW_EYEBROW = {
-  dashboard: 'Visão Geral',
+  get dashboard() { return (tr("ui.topbar.visao_geral_f7e888", "Visão Geral", {})); },
   empresas: 'Administração',
   comercial: 'Administração',
   usuarios: 'Administração',
-  unidades: 'Cadastro',
-  cnpjs: 'Cadastro',
-  colaboradores: 'Cadastro',
-  terceirizados: 'Cadastro',
-  'gestao-colaborador': 'Operação',
-  epis: 'Cadastro',
-  estoque: 'Operação',
-  entregas: 'Operação',
-  fichas: 'Operação',
-  compras: 'Compras',
-  configuracao: 'Configuração',
-  relatorios: 'Relatórios',
-  avaliacoes: 'Avaliações',
+  get unidades() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get cnpjs() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get colaboradores() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get terceirizados() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get ["gestao-colaborador"]() { return (tr("nav.groupOperation", "Operação", {})); },
+  get epis() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get estoque() { return (tr("nav.groupOperation", "Operação", {})); },
+  get entregas() { return (tr("nav.groupOperation", "Operação", {})); },
+  get fichas() { return (tr("nav.groupOperation", "Operação", {})); },
+  get compras() { return (tr("settingsTabs.purchases", "Compras", {})); },
+  get configuracao() { return (tr("ui.topbar.configuracao_8d60e1", "Configuração", {})); },
+  get relatorios() { return (tr("outsourcedCompany.reportsTab", "Relatórios", {})); },
+  get avaliacoes() { return (tr("ppetest.evaluations", "Avaliações", {})); },
   migracao: 'Administração'
 };
 const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
@@ -3003,7 +3003,7 @@ function setLoginPasswordVisibility(isVisible) {
   if (!refs.loginPassword || !refs.loginPasswordToggle) return;
   refs.loginPassword.type = isVisible ? 'text' : 'password';
   refs.loginPasswordToggle.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
-  refs.loginPasswordToggle.setAttribute('aria-label', isVisible ? 'Ocultar senha' : 'Mostrar senha');
+  refs.loginPasswordToggle.setAttribute('aria-label', isVisible ? (globalThis.EpiI18n?.attributeFor?.(refs.loginPasswordToggle,"aria-label","login.hidePassword","Ocultar senha",{}) ?? tr("login.hidePassword", "Ocultar senha", {})) : (globalThis.EpiI18n?.attributeFor?.(refs.loginPasswordToggle,"aria-label","login.showPassword","Mostrar senha",{}) ?? tr("login.showPassword", "Mostrar senha", {})));
 }
 
 function toggleLoginPasswordVisibility() {
@@ -3252,7 +3252,10 @@ async function fileToJpegDataUrl(file, maxWidth = 720) {
 
 function renderPlatformBrand() {
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
-  if (refs.platformBrandName) refs.platformBrandName.textContent = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  if (refs.platformBrandName) {
+    globalThis.EpiI18n?.clearBinding?.(refs.platformBrandName);
+    refs.platformBrandName.textContent = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  }
   if (refs.platformBrandLogo) refs.platformBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: brand.logo_type }, 'company-logo company-logo-sm');
   if (refs.platformBrandForm) {
     refs.platformBrandForm.elements.display_name.value = brand.display_name || '';
@@ -4817,7 +4820,7 @@ function applyRoleVisibility() {
   if (myCompanyForm) myCompanyForm.style.display = canConfigureMyCompany() ? '' : 'none';
   const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
   if (platformBrandCard) platformBrandCard.style.display = state.user?.role === 'master_admin' ? '' : 'none';
-  refs.profileLabel.textContent = state.user ? roleLabel(state.user.role) : 'Perfil';
+  refs.profileLabel.textContent = state.user ? (globalThis.EpiI18n?.textFor?.(refs.profileLabel, 'role.' + state.user.role, roleLabel(state.user.role)) ?? roleLabel(state.user.role)) : ((globalThis.EpiI18n?.textFor?.(refs.profileLabel,"user.role","Perfil",{}) ?? tr("user.role", "Perfil", {})));
   if (refs.loggedUserIdentity) {
     const parts = splitUserName(state.user?.full_name || state.user?.username || '');
     refs.loggedUserIdentity.textContent = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
@@ -4840,9 +4843,7 @@ function applyThemeToggleUI() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   btn.textContent = dark ? '☀️' : '🌙';
   btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
-  btn.title = dark
-    ? tr('theme.toDark', 'Tema escuro ativo — clique para claro')
-    : tr('theme.toLight', 'Tema claro ativo — clique para escuro');
+  btn.title = dark ? (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toDark','Tema escuro ativo — clique para claro') ?? tr('theme.toDark', 'Tema escuro ativo — clique para claro')) : (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toLight','Tema claro ativo — clique para escuro') ?? tr('theme.toLight', 'Tema claro ativo — clique para escuro'));
 }
 function setupThemeToggle() {
   const btn = document.getElementById('theme-toggle');
@@ -4960,7 +4961,7 @@ function updateTopbarCompanyBadge() {
   const unit = state.user?.unit_name || state.user?.current_unit_name;
   if (!company) {
     badge.hidden = false;
-    badge.textContent = tr('topbar.generalAccess', 'Acesso geral');
+    badge.textContent = (globalThis.EpiI18n?.textFor?.(badge,'topbar.generalAccess','Acesso geral') ?? tr('topbar.generalAccess', 'Acesso geral'));
     badge.classList.add('topbar-company-badge--general');
     return;
   }
@@ -5260,7 +5261,7 @@ function syncFichaOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockByOperationalProfile) {
     unitField.value = String(units[0].id);
@@ -5295,7 +5296,7 @@ function syncDeliveriesOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockByOperationalProfile) {
     unitField.value = String(units[0].id);
@@ -5750,7 +5751,7 @@ function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
   const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const optionsHtml = names.map((name) => `<option value="${name}">${name}</option>`).join('');
-  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>` + optionsHtml;
+  refs.commercialFilterActor.innerHTML = `<option value="" data-i18n="user.filterAll">Todos</option>` + optionsHtml;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
   refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
   refs.commercialFilterDateTo.value = state.commercialFilters.date_to;
@@ -5827,7 +5828,7 @@ function printCommercialHistory() {
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th scope="col">Empresa</th><th scope="col">ação</th><th scope="col">Responsável</th><th scope="col">Data</th><th scope="col">Resumo</th><th scope="col">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th><th scope="col">ação</th><th scope="col" data-i18n="dataMigration.jobActor">Responsável</th><th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th><th scope="col" data-i18n="report.summary">Resumo</th><th scope="col" data-i18n="tabs.details">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
   if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
@@ -7265,7 +7266,7 @@ async function loadStockMovementsReport() {
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
   } catch (e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="color:var(--color-danger);">Erro: ${escapeHtml(e.message || 'Falha ao carregar')}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="color:var(--color-danger);">${(globalThis.EpiI18n?.bindText?.("ui.app.erro_p0_83a174",{p0:(e.message || 'Falha ao carregar')},"Erro: {p0}") ?? `Erro: ${escapeHtml(e.message || 'Falha ao carregar')}`)}</td></tr>`;
   }
 }
 
@@ -7310,7 +7311,7 @@ function renderStockMovementsReport(items) {
   }
   if (hint) {
     hint.style.display = items.length >= 500 ? '' : 'none';
-    hint.textContent = tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.');
+    hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'stock.limitedResult','Resultado limitado a 500 registros. Use os filtros para refinar.') ?? tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.'));
   }
   if (!items.length) {
     tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:var(--color-text-muted);">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
@@ -8017,11 +8018,11 @@ function applyEpiJoinventureRules() {
   if (selected.name && selected.unit_id) {
     unitField.value = String(selected.unit_id);
     unitField.disabled = true;
-    if (hint) hint.textContent = tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.').replace('{name}', selected.name);
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.lockedByJoinventureHint','Unidade travada pela Joint Venture ativa: {name}.') ?? tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.')).replace('{name}', selected.name);
   } else {
     unitField.disabled = isOperationalProfile();
     if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.');
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.noActiveJoinventureHint','Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.') ?? tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.'));
   }
 }
 
@@ -8232,11 +8233,11 @@ function startEditEpi(epiId) {
 // ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
 
 const UNIT_PURGE_RECORD_LABELS = {
-  employees: 'Colaboradores',
+  get employees() { return (tr("employee.listTitle", "Colaboradores", {})); },
   employee_movements: 'Movimentações de colaboradores',
   epis: 'EPIs',
-  deliveries: 'Entregas',
-  devolutions: 'Devoluções',
+  get deliveries() { return (tr("dashboard.deliveries", "Entregas", {})); },
+  get devolutions() { return (tr("dashboard.returns", "Devoluções", {})); },
   stock_movements: 'Movimentações de estoque',
   stock_items: 'Itens de estoque (QR Codes)',
   epi_requests: 'Requisições de EPI',
@@ -8795,7 +8796,7 @@ async function loadAvailableQrsForSelectedEpi() {
   const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   if (!companyId || !unitId || !epiId) {
     target.innerHTML = `<option value="">${tr('delivery.availableQrLoadPrompt', 'Selecione empresa/unidade/EPI para carregar os QRs')}</option>`;
-    if (hint) hint.textContent = tr('delivery.availableQrSelectHint', 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.');
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.availableQrSelectHint','Selecione empresa, unidade e EPI para listar os QRs disponíveis.') ?? tr('delivery.availableQrSelectHint', 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.'));
     return;
   }
   target.innerHTML = `<option value="">${tr('delivery.loadingAvailableQrs', 'Carregando QRs disponíveis...')}</option>`;
@@ -8810,7 +8811,7 @@ async function loadAvailableQrsForSelectedEpi() {
     const items = Array.isArray(payload?.items) ? payload.items : [];
     if (!items.length) {
       target.innerHTML = `<option value="">${tr('delivery.noQrAvailable', 'Nenhum QR disponível para este EPI na unidade')}</option>`;
-      if (hint) hint.textContent = tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.');
+      if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.noQrAvailableHint','Nenhum QR disponível para este EPI na unidade selecionada.') ?? tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.'));
       return;
     }
     // FEFO: os itens já chegam ordenados por validade mais próxima. O primeiro
@@ -8822,10 +8823,10 @@ async function loadAvailableQrsForSelectedEpi() {
       const mfgLabel = mfg ? ` — ${tr('delivery.manufactureShort', 'Fab.')}: ${escapeHtml(mfg)}` : '';
       return `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${fefoTag}${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))}${mfgLabel}</option>`;
     }).join('');
-    if (hint) hint.textContent = tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).').replace('{count}', String(items.length));
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrCountAvailableFefo','{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).') ?? tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).')).replace('{count}', String(items.length));
   } catch (error) {
     target.innerHTML = `<option value="">${tr('delivery.qrLoadFailure', 'Falha ao carregar QR disponíveis')}</option>`;
-    if (hint) hint.textContent = tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}').replace('{error}', String(error?.message || 'erro desconhecido'));
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrLoadFailureHint','Falha ao carregar QRs disponíveis: {error}') ?? tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}')).replace('{error}', String(error?.message || 'erro desconhecido'));
   }
 }
   
@@ -9485,7 +9486,7 @@ function syncOutsourcedCompanyUnitOptions() {
   const scopedUnit = filterByUserCompany(state.units || []).find((item) => String(item.id) === operationalUnitId);
   unitField.innerHTML = scopedUnit
     ? `<option value="${scopedUnit.id}">${scopedUnit.name} - ${unitTypeLabel(scopedUnit.unit_type)}</option>`
-    : '<option value="">Sem unidade operacional ativa</option>';
+    : "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
   unitField.value = scopedUnit ? String(scopedUnit.id) : '';
   unitField.disabled = true;
 }
@@ -9762,7 +9763,7 @@ function syncOutsourcedEmployeeUnitOptions() {
     : units;
   unitField.innerHTML = scopedUnits.length
     ? scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
-    : '<option value="">Sem unidade operacional ativa</option>';
+    : "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
   if (scopedUnits.length && !scopedUnits.some((item) => String(item.id) === String(unitField.value))) {
     unitField.value = String(scopedUnits[0].id);
   } else if (!scopedUnits.length) {
@@ -10108,16 +10109,16 @@ function renderDataMigrationEntityFields() {
   if (!descriptor) { refs.migracaoEntityFields.textContent = ''; return; }
   const required = (descriptor.fields || []).filter((field) => field.required).map((field) => field.label);
   const optional = (descriptor.fields || []).filter((field) => !field.required).length;
-  refs.migracaoEntityFields.textContent = tr(
+  refs.migracaoEntityFields.textContent = (globalThis.EpiI18n?.textFor?.(refs.migracaoEntityFields,'dataMigration.entityFieldsHint','Obrigatórios: {required}. Mais {optional} campos opcionais.') ?? tr(
     'dataMigration.entityFieldsHint',
     'Obrigatórios: {required}. Mais {optional} campos opcionais.',
-  ).replace('{required}', required.join(', ') || '-').replace('{optional}', String(optional));
+  )).replace('{required}', required.join(', ') || '-').replace('{optional}', String(optional));
 }
 
 function syncDataMigrationStrategyHint() {
   if (!refs.migracaoStrategyHint || !refs.migracaoStrategy) return;
   const strategy = refs.migracaoStrategy.value || 'upsert';
-  refs.migracaoStrategyHint.textContent = tr(`dataMigration.strategyHint.${strategy}`, '');
+  refs.migracaoStrategyHint.textContent = (globalThis.EpiI18n?.textFor?.(refs.migracaoStrategyHint,`dataMigration.strategyHint.${strategy}`,'') ?? tr(`dataMigration.strategyHint.${strategy}`, ''));
 }
 
 function renderDataMigrationSteps() {
@@ -10201,7 +10202,7 @@ function renderDataMigrationMapping() {
   if (refs.migracaoMappingSummary) {
     const summary = helpers.mappingSummary ? helpers.mappingSummary(draft.details, missing) : null;
     refs.migracaoMappingSummary.textContent = summary
-      ? tr('dataMigration.mappingSummary', '{mapped} de {total} colunas reconhecidas · {review} para conferir')
+      ? (globalThis.EpiI18n?.textFor?.(refs.migracaoMappingSummary,'dataMigration.mappingSummary','{mapped} de {total} colunas reconhecidas · {review} para conferir') ?? tr('dataMigration.mappingSummary', '{mapped} de {total} colunas reconhecidas · {review} para conferir'))
         .replace('{mapped}', String(summary.mapped))
         .replace('{total}', String(summary.total))
         .replace('{review}', String(summary.review))
@@ -10244,7 +10245,7 @@ function renderDataMigrationPreview() {
   if (!preview) return;
   const actual = preview.actual_totals;
   const hint = refs.migracaoPreviewCard?.querySelector('[data-i18n="dataMigration.previewHint"]');
-  if (hint) hint.textContent = actual ? tr('dataMigration.finalHint', 'Resultado conciliado com os registros persistidos.') : tr('dataMigration.previewHint', 'Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.');
+  if (hint) hint.textContent = actual ? (globalThis.EpiI18n?.textFor?.(hint,'dataMigration.finalHint','Resultado conciliado com os registros persistidos.') ?? tr('dataMigration.finalHint', 'Resultado conciliado com os registros persistidos.')) : (globalThis.EpiI18n?.textFor?.(hint,'dataMigration.previewHint','Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.') ?? tr('dataMigration.previewHint', 'Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.'));
   if (refs.migracaoPreviewCounters) {
     const counters = [
       ['dataMigration.pvTotal', 'Linhas lidas', preview.total_rows],
@@ -10673,7 +10674,7 @@ function syncReportOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockByOperationalProfile) {
     unitField.value = String(units[0].id);
@@ -10727,7 +10728,7 @@ function syncStockOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockUnitByProfile) {
     unitField.value = String(units[0].id);
@@ -10844,7 +10845,7 @@ function renderDeliveryQrSession() {
   if (!sessionViews.length) return;
   if (!qrScannerState.scanSession.length) {
     sessionViews.forEach(({ summary, list }) => {
-      list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
+      list.innerHTML = "<li class=\"hint\" data-i18n=\"delivery.noQrConfirmed\">Nenhum QR confirmado nesta sess\u00e3o.</li>";
       summary.style.display = 'none';
     });
     return;
@@ -11314,7 +11315,7 @@ function ensureSignatureModalDom() {
     '</div>',
     '<footer class="signature-modal__footer">',
     `<button id="signature-modal-cancel" class="ghost" type="button">${tr('cancel', 'Cancelar')}</button>`,
-    '<button id="signature-modal-confirm" class="primary" type="button">OK</button>',
+    "<button id=\"signature-modal-confirm\" class=\"primary\" type=\"button\" data-i18n=\"ui.modals.ok_565339\">OK</button>",
     '</footer>',
     '</div>'
   ].join('');
@@ -11367,7 +11368,7 @@ function setupSignatureModal() {
       const identityErr = document.getElementById('signature-modal-identity-error');
       if (identityErr) {
         identityErr.hidden = false;
-        identityErr.textContent = tr('signature.identityRequired', 'Confirme a declaração de identidade para assinar.');
+        identityErr.textContent = (globalThis.EpiI18n?.textFor?.(identityErr,'signature.identityRequired','Confirme a declaração de identidade para assinar.') ?? tr('signature.identityRequired', 'Confirme a declaração de identidade para assinar.'));
       }
       identityCheck.focus();
       return;
@@ -11389,7 +11390,7 @@ function applyDeliverySignature(payload) {
   if (refs.deliverySignatureName) refs.deliverySignatureName.value = String(payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital'));
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = String(payload.signature_at || '');
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = String(payload.signature_comment || '');
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signedByAt', 'Assinado por {name} em {date}.').replace('{name}', payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital')).replace('{date}', signatureNowLabel());
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signedByAt','Assinado por {name} em {date}.') ?? tr('delivery.signedByAt', 'Assinado por {name} em {date}.')).replace('{name}', payload.signature_name || (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.digitalSignature','Assinatura digital') ?? tr('delivery.digitalSignature', 'Assinatura digital'))).replace('{date}', signatureNowLabel());
   qrScannerState.scanSession = (qrScannerState.scanSession || []).map((item) => ({ ...item, signed: true }));
   renderDeliveryQrSession();
 }
@@ -11404,7 +11405,7 @@ function resetDeliverySignatureDraft() {
   if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePendingFicha', 'Assinatura pendente (pode assinar agora ou depois no período da ficha).');
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePendingFicha','Assinatura pendente (pode assinar agora ou depois no período da ficha).') ?? tr('delivery.signaturePendingFicha', 'Assinatura pendente (pode assinar agora ou depois no período da ficha).'));
 }
 
 function setupDeliverySignatureCanvas() {
@@ -12528,9 +12529,9 @@ function renderArchiveTable() {
       <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
       <td>
         <div class="action-group">
-          <button class="ghost" data-archive-view="${item.id}">Visualizar</button>
-          <button class="ghost" data-archive-print="${item.id}">Imprimir</button>
-          <button class="ghost" data-archive-export="${item.id}">Exportar</button>
+          <button class="ghost" data-archive-view="${item.id}" data-i18n="ui.compras.visualizar_1acb4b">Visualizar</button>
+          <button class="ghost" data-archive-print="${item.id}" data-i18n="records.print">Imprimir</button>
+          <button class="ghost" data-archive-export="${item.id}" data-i18n="export">Exportar</button>
         </div>
       </td>
     </tr>
@@ -12600,10 +12601,10 @@ function renderRetentionPolicy() {
     const timeline = Array.isArray(state.fichaRetentionPolicy?.timeline) && state.fichaRetentionPolicy.timeline.length
       ? state.fichaRetentionPolicy.timeline
       : [
-        { label: 'Fechamento: snapshot gerado' },
-        { label: 'Ano 1-2: retenção ativa' },
-        { label: 'Ano 3-4: auditoria legal' },
-        { label: '5 anos: expiração NR-6' },
+        { get label() { return (tr("ui.configuracao.fechamento_snapshot_gerado_82340d", "Fechamento: snapshot gerado", {})); } },
+        { get label() { return (tr("ui.configuracao.ano_1_2_retencao_ativa_fe0461", "Ano 1-2: retenção ativa", {})); } },
+        { get label() { return (tr("ui.configuracao.ano_3_4_auditoria_legal_bbfd64", "Ano 3-4: auditoria legal", {})); } },
+        { get label() { return (tr("ui.configuracao.5_anos_expiracao_nr_6_0a7a0f", "5 anos: expiração NR-6", {})); } },
         { label: 'Purge automático (se habilitado)' },
       ];
     refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${item.label}</li>`).join('');
@@ -12796,7 +12797,7 @@ function syncUserEmployeeLink() {
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
     const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-    unitField.innerHTML = `<option value="">Selecione</option>${unitOptions}`;
+    unitField.innerHTML = `<option value="" data-i18n="ui.aval_action_modal.selecione_987d5b">Selecione</option>${unitOptions}`;
   }
   
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
@@ -13392,7 +13393,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
     if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
     if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePending', 'Assinatura pendente.');
+    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePending','Assinatura pendente.') ?? tr('delivery.signaturePending', 'Assinatura pendente.'));
     clearDeliveryStockItemSelection();
     resetDeliveryQrSession();
     syncDeliveryDevolutionOptions();
@@ -13538,10 +13539,10 @@ function syncManualReceiptValidityFields() {
   if (lot) lot.required = known;
   const hint = document.getElementById('stock-receipt-validity-hint');
   if (hint) hint.textContent = !canCapture
-    ? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.')
+    ? (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.noPermission','Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.') ?? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.'))
     : source.value === 'unknown'
-      ? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.')
-      : tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.');
+      ? (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.pending','As peças entrarão pendentes de regularização e indisponíveis para entrega.') ?? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.'))
+      : (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.sameLot','A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.') ?? tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.'));
 }
 
 function manualReceiptValidityValues(values) {
@@ -13904,7 +13905,7 @@ async function loadValidityOverview() {
     _renderValidityBreakdown('validity-by-lot', payload.by_lot);
     const valueEl = document.getElementById('validity-mgmt-value');
     if (valueEl) {
-      valueEl.textContent = tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).')
+      valueEl.textContent = (globalThis.EpiI18n?.textFor?.(valueEl,'validity.valueSummary','Valor do estoque em risco de perda: {v} ({n} itens).') ?? tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).'))
         .replace('{v}', formatCurrency(summary.value_at_risk || 0, globalThis.EpiI18n?.lang))
         .replace('{n}', String(summary.at_risk_total || 0));
     }
@@ -14006,7 +14007,7 @@ function updatePendingRegularizationSelection() {
     header.indeterminate = count > 0 && count < members.length;
   }
   const count = document.getElementById('pending-reg-selection-count');
-  if (count) count.textContent = tr('stock.pendingBulk.selection', '{n} peça(s) em {lots} grupo(s) selecionado(s).')
+  if (count) count.textContent = (globalThis.EpiI18n?.textFor?.(count,'stock.pendingBulk.selection','{n} peça(s) em {lots} grupo(s) selecionado(s).') ?? tr('stock.pendingBulk.selection', '{n} peça(s) em {lots} grupo(s) selecionado(s).'))
     .replace('{n}', String(selected.length)).replace('{lots}', String(new Set(selected.map((node) => node.dataset.group)).size));
   const button = document.getElementById('pending-reg-lot');
   if (button) button.disabled = selected.length === 0 || !!regularizeSelectedStockLot.busy;
@@ -14048,7 +14049,7 @@ async function loadPendingRegularization() {
     const lotButton = document.getElementById('pending-reg-lot');
     if (lotButton) lotButton.hidden = !canRegularize;
     if (countEl) {
-      countEl.textContent = tr('stock.pendingReg.count', '{n} peça(s) pendente(s)')
+      countEl.textContent = (globalThis.EpiI18n?.textFor?.(countEl,'stock.pendingReg.count','{n} peça(s) pendente(s)') ?? tr('stock.pendingReg.count', '{n} peça(s) pendente(s)'))
         .replace('{n}', String(payload.count ?? items.length));
     }
     const groups = groupPendingRegularizationItems(items);
@@ -14611,7 +14612,7 @@ async function saveMyCompany(event) {
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
 const ONBOARDING_STEP_LABELS = {
-  1: 'Etapa 1 de 5 — Segurança da conta',
+  get [1]() { return (tr("ui.modals.etapa_1_de_5_seguranca_da_conta_0e6737", "Etapa 1 de 5 — Segurança da conta", {})); },
   2: 'Etapa 2 de 5 — Dados da empresa',
   3: 'Etapa 3 de 5 — Identidade visual',
   4: 'Etapa 4 de 5 — Domínio',
@@ -14636,8 +14637,8 @@ function setOnboardingStep(step) {
   const nextBtn = document.getElementById('onboarding-next');
   if (nextBtn) {
     if (onboardingStep === ONBOARDING_LAST_STEP) nextBtn.textContent = 'Ir para o dashboard';
-    else if (onboardingStep === 1) nextBtn.textContent = 'Continuar';
-    else nextBtn.textContent = 'Salvar e continuar';
+    else if (onboardingStep === 1) nextBtn.textContent = ((globalThis.EpiI18n?.textFor?.(nextBtn,"continue","Continuar",{}) ?? tr("continue", "Continuar", {})));
+    else nextBtn.textContent = ((globalThis.EpiI18n?.textFor?.(nextBtn,"ui.modals.salvar_e_continuar_af2b1a","Salvar e continuar",{}) ?? tr("ui.modals.salvar_e_continuar_af2b1a", "Salvar e continuar", {})));
   }
   if (onboardingStep === 1) void refreshOnboarding2faStatus();
 }
@@ -14747,7 +14748,7 @@ function renderMyCompanyDomains(domains) {
     } else if (Number(item.is_primary) !== 1) {
       actions.push(`<button class="ghost" type="button" data-domain-primary="${item.id}">Tornar principal</button>`);
     }
-    actions.push(`<button class="ghost" type="button" data-domain-delete="${item.id}">Remover</button>`);
+    actions.push(`<button class="ghost" type="button" data-domain-delete="${item.id}" data-i18n="user.remove">Remover</button>`);
     return `<tr><td>${item.full_host}${primaryMark}</td><td>${item.type_label}</td>` +
       `<td>${domainStatusLabel(item.verification_status)}</td><td>${domainStatusLabel(item.ssl_status)}</td>` +
       `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
@@ -14931,7 +14932,7 @@ function renderConfigurationRules() {
         <td>${rule.can_view_unit ? '✅' : '❌'}</td>
         <td>${rule.can_view_epis ? '✅' : '❌'}</td>
         <td>${rule.can_view_employees ? '✅' : '❌'}</td>
-        <td><button class="ghost" type="button" data-remove-config-rule="${rule.id}">Remover</button></td>
+        <td><button class="ghost" type="button" data-remove-config-rule="${rule.id}" data-i18n="user.remove">Remover</button></td>
       </tr>
     `;
   }).join('') || '<tr><td colspan="7">Sem regras específicas. O sistema aplicará as regras padrão por perfil.</td></tr>';
@@ -14943,11 +14944,11 @@ function hydrateConfigurationForms() {
   const units = filterByUserCompany(state.units);
   refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
   if (refs.fichaAuditEmployee) {
-    refs.fichaAuditEmployee.innerHTML = '<option value="">Todos os colaboradores</option>' + filterByUserCompany(state.employees)
+    refs.fichaAuditEmployee.innerHTML = "<option value=\"\" data-i18n=\"portal.allEmployees\">Todos os colaboradores</option>" + filterByUserCompany(state.employees)
       .map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   }
   if (refs.fichaAuditManager) {
-    refs.fichaAuditManager.innerHTML = '<option value="">Todos os gestores</option>' + filterByUserCompany(state.users)
+    refs.fichaAuditManager.innerHTML = "<option value=\"\" data-i18n=\"ui.configuracao.todos_os_gestores_b7332e\">Todos os gestores</option>" + filterByUserCompany(state.users)
       .map((item) => `<option value="${item.id}">${item.full_name}</option>`).join('');
   }
   renderConfigurationRules();
@@ -15073,10 +15074,10 @@ async function onSubmitModuleVisibility(event) {
     };
     if (refs.moduleVisibilityFeedback) {
       refs.moduleVisibilityFeedback.textContent = unitId
-        ? tr('moduleVisibility.savedForRoleUnit', 'Visibilidade de módulos salva para {role} na Unidade {unit}.')
+        ? (globalThis.EpiI18n?.textFor?.(refs.moduleVisibilityFeedback,'moduleVisibility.savedForRoleUnit','Visibilidade de módulos salva para {role} na Unidade {unit}.') ?? tr('moduleVisibility.savedForRoleUnit', 'Visibilidade de módulos salva para {role} na Unidade {unit}.'))
           .replace('{role}', roleLabel(role))
           .replace('{unit}', (state.units.find((item) => String(item.id) === unitId) || {}).name || `#${unitId}`)
-        : tr('moduleVisibility.savedForRole', 'Visibilidade de módulos salva para {role}.').replace('{role}', roleLabel(role));
+        : (globalThis.EpiI18n?.textFor?.(refs.moduleVisibilityFeedback,'moduleVisibility.savedForRole','Visibilidade de módulos salva para {role}.') ?? tr('moduleVisibility.savedForRole', 'Visibilidade de módulos salva para {role}.')).replace('{role}', roleLabel(role));
     }
   } catch (e) {
     if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = '';
@@ -15211,19 +15212,19 @@ function imprimirFichaEpi(employeeId) {
 // DEVOLUÇÃO DE EPI
 // ═══════════════════════════════════════════════════════
 const DEVOLUTION_CONDITIONS = [
-  {value:'usable',label:'Reutilizável'},
-  {value:'damaged',label:'Danificado'},
-  {value:'discarded',label:'Descartado'},
-  {value:'maintenance',label:'Em manutenção'},
-  {value:'quarantine',label:'Em quarentena'},
-  {value:'hygiene',label:'Para higienização'},
+  {value:'usable',get label() { return (tr("devolution.conditionReusable", "Reutilizável", {})); }},
+  {value:'damaged',get label() { return (tr("devolution.conditionDamaged", "Danificado", {})); }},
+  {value:'discarded',get label() { return (tr("devolution.conditionDiscarded", "Descartado", {})); }},
+  {value:'maintenance',get label() { return (tr("devolution.conditionMaintenance", "Em manutenção", {})); }},
+  {value:'quarantine',get label() { return (tr("devolution.conditionQuarantine", "Em quarentena", {})); }},
+  {value:'hygiene',get label() { return (tr("devolution.conditionHygiene", "Para higienização", {})); }},
 ];
 const DEVOLUTION_DESTINATIONS = [
-  {value:'stock',label:'Retornar ao estoque'},
-  {value:'discard',label:'Descartar'},
-  {value:'maintenance',label:'Encaminhar para manutenção'},
-  {value:'hygiene',label:'Encaminhar para higienização'},
-  {value:'quarantine',label:'Colocar em quarentena'},
+  {value:'stock',get label() { return (tr("devolution.destinationStockShort", "Retornar ao estoque", {})); }},
+  {value:'discard',get label() { return (tr("devolution.destinationDiscard", "Descartar", {})); }},
+  {value:'maintenance',get label() { return (tr("devolution.destinationMaintenance", "Encaminhar para manutenção", {})); }},
+  {value:'hygiene',get label() { return (tr("devolution.destinationHygiene", "Encaminhar para higienização", {})); }},
+  {value:'quarantine',get label() { return (tr("devolution.destinationQuarantine", "Colocar em quarentena", {})); }},
 ];
 
 function bindAppListener(target, eventName, handler, options = {}) {
@@ -15329,7 +15330,7 @@ async function init() {
     const val = document.getElementById('recovery-token-value')?.textContent || '';
     navigator.clipboard?.writeText(val).catch(() => {});
     const btn = document.getElementById('recovery-token-copy');
-    if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => { btn.textContent = 'Copiar'; }, 2000); }
+    if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => { btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,"ui.modals.copiar_39dcf1","Copiar",{}) ?? tr("ui.modals.copiar_39dcf1", "Copiar", {}))); }, 2000); }
   });
   safeOn(document.getElementById('recovery-token-close'), 'click', () => {
     const modal = document.getElementById('recovery-token-modal');
@@ -15576,11 +15577,11 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? tr('delivery.registerReturn', 'Registrar devolução') : tr('delivery.save', 'Registrar EPI');
+    if (submitButton) submitButton.textContent = enabled ? (globalThis.EpiI18n?.textFor?.(submitButton,'delivery.registerReturn','Registrar devolução') ?? tr('delivery.registerReturn', 'Registrar devolução')) : (globalThis.EpiI18n?.textFor?.(submitButton,'delivery.save','Registrar EPI') ?? tr('delivery.save', 'Registrar EPI'));
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
-        ? tr('delivery.returnSignatureOptional', 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).')
-        : tr('delivery.signaturePending', 'Assinatura pendente.');
+        ? (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.returnSignatureOptional','Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).') ?? tr('delivery.returnSignatureOptional', 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'))
+        : (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePending','Assinatura pendente.') ?? tr('delivery.signaturePending', 'Assinatura pendente.'));
     }
   });
   bindAppListener(document.getElementById('delivery-employee'), 'change', () => {
@@ -15963,7 +15964,7 @@ async function init() {
       if (refs.archivalRetentionUnits) refs.archivalRetentionUnits.value = String(payload.unit_retention_years ?? refs.archivalRetentionUnits.value);
       if (refs.archivalRetentionEpis) refs.archivalRetentionEpis.value = String(payload.epi_retention_years ?? refs.archivalRetentionEpis.value);
       if (refs.archivalRetentionEmployees) refs.archivalRetentionEmployees.value = String(payload.employee_retention_years ?? refs.archivalRetentionEmployees.value);
-      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.');
+      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = (globalThis.EpiI18n?.textFor?.(refs.archivalPolicyFeedback,'rules.archivalSaved','Política de arquivamento salva com sucesso.') ?? tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.'));
       alert(tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.'));
     } catch (error) {
       if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = error.message;
@@ -16994,14 +16995,14 @@ function openReceiptLotCaptureModal(initial = {}, quantity = 1, epiName = '') {
       attachment = null; preview(null); processing = true; resetConfirmation();
       overlay.querySelector('#receipt-capture-save').disabled = true;
       const status = overlay.querySelector('#receipt-capture-status');
-      status.textContent = tr('stock.receiptCapture.reading', 'Lendo foto; revise as sugestões antes de confirmar…');
+      status.textContent = (globalThis.EpiI18n?.textFor?.(status,'stock.receiptCapture.reading','Lendo foto; revise as sugestões antes de confirmar…') ?? tr('stock.receiptCapture.reading', 'Lendo foto; revise as sugestões antes de confirmar…'));
       try {
         const result = await readReceiptLotPhoto({ files: [chosen] });
         if (closed || version !== fileVersion) return;
         attachment = result.file; preview(attachment);
         if (attachment.mime === 'application/pdf') overlay.querySelector('#receipt-capture-source').value = 'manufacturer_document';
         applyReceiptDateSuggestions(overlay, result.dates);
-        status.textContent = attachment.filename + ' · ' + tr('stock.receiptCapture.review', 'Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.');
+        status.textContent = attachment.filename + ' · ' + (globalThis.EpiI18n?.textFor?.(status,'stock.receiptCapture.review','Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.') ?? tr('stock.receiptCapture.review', 'Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.'));
         if (result.error || result.dates.error) error(tr('stock.receiptCapture.manual', 'A leitura automática não concluiu. A foto foi mantida; informe e confira as datas manualmente.'));
         const evidence = overlay.querySelector('#receipt-capture-evidence');
         if (!evidence.value) evidence.value = attachment.filename;
@@ -17338,12 +17339,12 @@ function openConferenciaModal(prId, items, options = {}) {
         }
         const sum = it.lots.reduce((s, l) => s + (Number(l.quantity) > 0 ? Math.floor(Number(l.quantity)) : 0), 0);
         if (sum !== it._N) {
-          showError((tr('ui.app.p0_a_soma_das_quantidades_dos_lotes_p1_nao_confere_com_a_quantidade_recebid_c4e389', '{p0}: a soma das quantidades dos lotes ({p1}) não confere com a quantidade recebida ({p2}).', {p0:(nameById[it.id] || (globalThis.trEpi?.("ui.purchases.item_652bcc","Item",{}) ?? "Item")),p1:(sum),p2:(it._N)})));
+          showError((tr('ui.app.p0_a_soma_das_quantidades_dos_lotes_p1_nao_confere_com_a_quantidade_recebid_c4e389', '{p0}: a soma das quantidades dos lotes ({p1}) não confere com a quantidade recebida ({p2}).', {p0:(nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {}))),p1:(sum),p2:(it._N)})));
           return;
         }
         for (const l of it.lots) {
           if (l.manufacturer_validity_date && !l.evidence) {
-            showError((tr('ui.app.p0_evidencia_verificavel_e_obrigatoria_quando_o_lote_informa_validade_fisic_16392d', '{p0}: evidência verificável é obrigatória quando o lote informa validade física.', {p0:(nameById[it.id] || (globalThis.trEpi?.("ui.purchases.item_652bcc","Item",{}) ?? "Item"))})));
+            showError((tr('ui.app.p0_evidencia_verificavel_e_obrigatoria_quando_o_lote_informa_validade_fisic_16392d', '{p0}: evidência verificável é obrigatória quando o lote informa validade física.', {p0:(nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {})))})));
             return;
           }
         }
@@ -17670,10 +17671,10 @@ window.toggleSupplierActive = async function toggleSupplierActive(id, name, curr
 }
 
 const PO_STATUS_LABELS = {
-  draft: 'Rascunho', waiting_admin_review: 'Em Compra', approved: 'Aprovada',
-  partially_approved: 'Aprovada Parcialmente', rejected: 'Reprovada',
-  postponed: 'Prorrogada', received: 'Recebida', received_partial: 'Recebida Parcialmente',
-  checked: 'Conferida', closed: 'Fechada', not_received: 'Não Recebido',
+  get draft() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, get waiting_admin_review() { return (tr('purchase.poStatus.waiting_admin_review', 'Em Compra', {})); }, get approved() { return (tr('purchase.poStatus.approved', 'Aprovada', {})); },
+  get partially_approved() { return (tr('purchase.poStatus.partially_approved', 'Aprovada Parcialmente', {})); }, get rejected() { return (tr('purchase.poStatus.rejected', 'Reprovada', {})); },
+  get postponed() { return (tr('purchase.poStatus.postponed', 'Prorrogada', {})); }, get received() { return (tr('purchase.poStatus.received', 'Recebida', {})); }, get received_partial() { return (tr('purchase.poStatus.received_partial', 'Recebida Parcialmente', {})); },
+  get checked() { return (tr('purchase.poStatus.checked', 'Conferida', {})); }, get closed() { return (tr('purchase.poStatus.closed', 'Fechada', {})); }, get not_received() { return (tr('purchase.poStatus.not_received', 'Não Recebido', {})); },
 };
 
 function poStatusLabel(status) {
@@ -17739,7 +17740,7 @@ function checkSupplierAuthorized(cnpj) {
 
 // ── Item 3: Mailto para solicitar inclusão de fornecedor ──────────────────
 function buildSupplierInclusionMailto(supplierName, cnpj) {
-  const subject = encodeURIComponent((tr('ui.app.solicitacao_de_inclusao_de_fornecedor_p0_cnpj_p1_77eb3d', 'Solicitação de Inclusão de Fornecedor: {p0} — CNPJ: {p1}', {p0:(supplierName || (globalThis.trEpi?.("ui.compras.novo_fornecedor_7b78e3","Novo Fornecedor",{}) ?? "Novo Fornecedor")),p1:(cnpj)})));
+  const subject = encodeURIComponent((tr('ui.app.solicitacao_de_inclusao_de_fornecedor_p0_cnpj_p1_77eb3d', 'Solicitação de Inclusão de Fornecedor: {p0} — CNPJ: {p1}', {p0:(supplierName || (tr('ui.compras.novo_fornecedor_7b78e3', 'Novo Fornecedor', {}))),p1:(cnpj)})));
   const requester = state.user?.full_name || (tr('role.buyer', 'Comprador', {}));
   const company = state.user?.company_name || '';
   const body = encodeURIComponent(
@@ -17892,7 +17893,7 @@ function renderPurchaseFunctionControls() {
       const resultFallback = selectedOutsideFilter
         ? (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_selecao_atual_mantida_fora_do_filtro_eaf16c', '{p0} de {p1} usuário(s) encontrado(s); seleção atual mantida fora do filtro', {p0:(filteredEligible.length),p1:(allEligible.length)}))
         : (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_1c30c2', '{p0} de {p1} usuário(s) encontrado(s)', {p0:(filteredEligible.length),p1:(allEligible.length)}));
-      searchHint.textContent = tr(resultKey, resultFallback).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
+      searchHint.textContent = (globalThis.EpiI18n?.textFor?.(searchHint,resultKey,resultFallback) ?? tr(resultKey, resultFallback)).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
     }
     employeeSel.innerHTML = allEligible.length
       ? `<option value="">${tr('purchase.functionsSelectPlaceholder', 'Selecione...')}</option>` + visibleOptions.map(e => {
@@ -17927,7 +17928,7 @@ function _syncPurchaseFunctionTypeToEmployee() {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
-      hintEl.textContent = tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`).replace('{role}', roleLabel(userEntry.role));
+      hintEl.textContent = (globalThis.EpiI18n?.textFor?.(hintEl,'purchase.functionsUserRoleHint',`Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`) ?? tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`)).replace('{role}', roleLabel(userEntry.role));
       hintEl.hidden = false;
     }
   } else {
@@ -18368,15 +18369,15 @@ function _syncManualRequestItemsJson() {
 
 // ── Módulo Aprovação de Solicitações de EPI ──────────────────────────────────
 const EPI_REQUEST_STATUS_LABELS = {
-  'solicitado': 'Solicitado',
-  'em análise': 'Em Análise',
-  'aprovado': 'Aprovado',
-  'rejeitado': 'Reprovado',
-  'prorrogado': 'Prorrogado',
-  'separado': 'Separado',
-  'entregue': 'Entregue',
-  'assinado': 'Assinado',
-  'included_in_request': 'Em Requisição'
+  get solicitado() { return (tr('portal.statusRequested', 'Solicitado', {})); },
+  get ["em an\u00e1lise"]() { return (tr('portal.statusInReview', 'Em Análise', {})); },
+  get aprovado() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+  get rejeitado() { return (tr('portal.statusRejected', 'Reprovado', {})); },
+  get prorrogado() { return (tr('portal.statusPostponed', 'Prorrogado', {})); },
+  get separado() { return (tr('portal.statusSeparated', 'Separado', {})); },
+  get entregue() { return (tr('delivery.delivered', 'Entregue', {})); },
+  get assinado() { return (tr('portal.statusSigned', 'Assinado', {})); },
+  get included_in_request() { return (tr('portal.statusInRequest', 'Em Requisição', {})); }
 };
 
 function epiRequestStatusBadge(status) {
@@ -18547,7 +18548,7 @@ function emailPrToComprador(pr, items) {
   const body = encodeURIComponent(
     (tr('ui.app.ola_segue_a_requisicao_de_compra_de_epi_p0_5649ce', 'Olá,\n\nSegue a Requisição de Compra de EPI #{p0}.\n', {p0:(pr.id)})) +
     `Unidade: ${unit}\nData: ${date}\n\nItens:\n${itemLines}\n\n` +
-    (tr('ui.app.por_favor_crie_a_po_no_sistema_interno_e_faca_o_upload_dos_valores_no_siste_7b045e', 'Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n{p0}', {p0:(state.user?.full_name || state.user?.username || (globalThis.trEpi?.("ui.app.administrador_d45845","Administrador",{}) ?? "Administrador"))}))
+    (tr('ui.app.por_favor_crie_a_po_no_sistema_interno_e_faca_o_upload_dos_valores_no_siste_7b045e', 'Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n{p0}', {p0:(state.user?.full_name || state.user?.username || (tr('ui.app.administrador_d45845', 'Administrador', {})))}))
   );
   window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
 }
@@ -18593,18 +18594,18 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 
 (function initAvaliaoesModule() {
   const PORTAL_STATUS_LABELS = {
-    '': 'Enviada', enviado_gestor: 'Em Análise', enviado_admin: 'Encaminh. Admin',
-    aceito: 'Aceito', recusado: 'Recusado', bem_avaliado: '⭐ Bem Avaliado',
-    mal_avaliado: '⚠ Mal Avaliado', em_reavaliacao_3m: 'Reavaliação 3m', em_reavaliacao_6m: 'Reavaliação 6m',
+    get [""]() { return (tr('portal.statusSent', 'Enviada', {})); }, get enviado_gestor() { return (tr('portal.statusInReview', 'Em Análise', {})); }, get enviado_admin() { return (tr('portal.statusForwardedAdmin', 'Encaminh. Admin', {})); },
+    aceito: 'Aceito', get recusado() { return (tr('portal.statusRefused', 'Recusado', {})); }, get bem_avaliado() { return (tr('portal.statusWellRated', '⭐ Bem Avaliado', {})); },
+    get mal_avaliado() { return (tr('portal.statusPoorlyRated', '⚠ Mal Avaliado', {})); }, get em_reavaliacao_3m() { return (tr('portal.statusReevaluation3m', 'Reavaliação 3m', {})); }, get em_reavaliacao_6m() { return (tr('portal.statusReevaluation6m', 'Reavaliação 6m', {})); },
   };
   const PORTAL_STATUS_COLORS = {
     aceito: 'success', recusado: 'danger', bem_avaliado: 'success', mal_avaliado: 'danger',
     em_reavaliacao_3m: 'warning', em_reavaliacao_6m: 'warning', enviado_admin: 'accent',
     enviado_gestor: 'info',
   };
-  const EVAL_STATUS_LABELS = { normal: 'Normal', super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
+  const EVAL_STATUS_LABELS = { get normal() { return (tr('stock.statusNormal', 'Normal', {})); }, super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
   const EVAL_STATUS_COLORS = { normal: '', super_bem_avaliado: 'success', super_mal_avaliado: 'danger' };
-  const RISK_LABELS = { nenhum: 'Nenhum', baixo: 'Baixo', alto: '⚠ Alto' };
+  const RISK_LABELS = { get nenhum() { return (tr('ui.aval_action_modal.nenhum_496a53', 'Nenhum', {})); }, get baixo() { return (tr('ui.aval_action_modal.baixo_2914b0', 'Baixo', {})); }, alto: '⚠ Alto' };
   const RISK_COLORS = { nenhum: '', baixo: 'warning', alto: 'danger' };
 
   let _summaryData = null;
@@ -18710,7 +18711,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     if (!tbody) return;
     const isGeneralAdmin = role === 'general_admin';
     const headerEl = document.querySelector('#avaliacoes-pane-pendentes h3');
-    if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : 'Avaliações Pendentes de Validação';
+    if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : ((globalThis.EpiI18n?.textFor?.(headerEl,'evaluation.pendingValidation','Avaliações Pendentes de Validação',{}) ?? tr('evaluation.pendingValidation', 'Avaliações Pendentes de Validação', {})));
 
     if (!isAdmin) {
       const pending = items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
@@ -18723,12 +18724,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
         if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
         if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-        return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+        return "<span style=\"background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;\" data-i18n=\"evaluation.singleIcon\">\ud83d\udccb Avalia\u00e7\u00e3o</span>";
       };
       tbody.innerHTML = pending.map((fb) => {
         const actions = canManagerEval()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
-             <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`
+             <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button" data-i18n="dataMigration.action.reject">Rejeitar</button>`
           : '—';
         return `<tr>
           <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
@@ -18757,7 +18758,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
       if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
       if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-      return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+      return "<span style=\"background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;\" data-i18n=\"evaluation.singleIcon\">\ud83d\udccb Avalia\u00e7\u00e3o</span>";
     };
     const rowHtml = (fb, actionHtml) => `<tr>
       <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
@@ -18783,7 +18784,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       html += finalEvalItems.map((fb) => {
         const btn = isGeneralAdmin && canDecide()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;background:#16a34a;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`
-          : '<span style="font-size:11px;opacity:.6;">Prévia Concluída</span>';
+          : "<span style=\"font-size:11px;opacity:.6;\" data-i18n=\"evaluation.previousCompleted\">Pr\u00e9via Conclu\u00edda</span>";
         return rowHtml(fb, btn);
       }).join('');
     }
@@ -18905,7 +18906,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-accept="${esc(fb.id)}" type="button">Aceitar</button>`
         : '';
       const rejectBtn = canDecide()
-        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button">Recusar</button>`
+        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button" data-i18n="ui.procurement.recusar_ce4328">Recusar</button>`
         : '';
       const sugPortalStatus = fb.employee_portal_status || '';
       const sugTechAction = (sugPortalStatus === 'avaliacao_previa' && canDecide()) ? 'admin_evaluate' : (canPreEval() ? 'pre_evaluate' : null);
@@ -18966,7 +18967,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       }
       if (sugTbody) {
         const sugs = sugData.items || [];
-        const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', '': 'Pendente' };
+        const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', get [""]() { return (tr('purchase.status.pending', 'Pendente', {})); } };
         const SUG_STATUS_COLORS = { aceito: 'success', recusado: 'danger', '': 'muted' };
         sugTbody.innerHTML = sugs.length ? sugs.map((s, idx) => {
           const sc = Number(s.score_sugestao) || 0;
@@ -19051,9 +19052,9 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           techEl.value = 'recomenda_aceitar';
         }
       } else {
-        if (labelEl) labelEl.textContent = 'Decisão Final';
+        if (labelEl) labelEl.textContent = ((globalThis.EpiI18n?.textFor?.(labelEl,'ui.aval_action_modal.decisao_final_c32aff','Decisão Final',{}) ?? tr('ui.aval_action_modal.decisao_final_c32aff', 'Decisão Final', {})));
         if (techEl) {
-          techEl.innerHTML = '<option value="aceito">✓ Aceitar</option><option value="recusado">✗ Recusar</option>';
+          techEl.innerHTML = "<option value=\"aceito\" data-i18n=\"ui.aval_action_modal.aceitar_e4b9f9\">\u2713 Aceitar</option><option value=\"recusado\" data-i18n=\"ui.aval_action_modal.recusar_ba465f\">\u2717 Recusar</option>";
           techEl.value = 'aceito';
         }
       }
@@ -19066,7 +19067,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     }
     const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI', pre_evaluate: '📋 Avaliação Prévia Técnica', admin_evaluate: '✅ Avaliação Final — Admin Geral' };
     const titleEl = document.getElementById('aval-modal-title');
-    if (titleEl) titleEl.textContent = titleMap[action] || 'Ação';
+    if (titleEl) titleEl.textContent = titleMap[action] || ((globalThis.EpiI18n?.textFor?.(titleEl,'employee.action','Ação',{}) ?? tr('employee.action', 'Ação', {})));
     if (action === 'validate') {
       const subtypeEl = document.getElementById('aval-modal-subtype');
       if (subtypeEl) subtypeEl.value = fb.feedback_subtype || fb.type || 'reclamacao';
@@ -19089,7 +19090,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       function updateRankOptions(subtype) {
         const opts = RANK_OPTIONS[subtype];
         if (rankSelect) {
-          rankSelect.innerHTML = '<option value="">Selecione</option>' +
+          rankSelect.innerHTML = "<option value=\"\" data-i18n=\"ui.aval_action_modal.selecione_987d5b\">Selecione</option>" +
             (opts ? opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('') : '');
         }
         if (rankField) rankField.style.display = opts ? '' : 'none';
@@ -19211,7 +19212,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     } catch (e) {
       showToast(e.message || 'Erro ao computar status.', 'error');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '⚙ Computar Status EPIs'; }
+      if (btn) { btn.disabled = false; btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,'ui.avaliacoes.computar_status_epis_71a083','⚙ Computar Status EPIs',{}) ?? tr('ui.avaliacoes.computar_status_epis_71a083', '⚙ Computar Status EPIs', {}))); }
     }
   }
 
@@ -19267,10 +19268,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 // ── Novos EPIs em Teste (fluxo separado — produto ainda não homologado) ───────
 (function initPpeTestsModule() {
   const STATUS_LABELS = {
-    rascunho: 'Rascunho', em_triagem: 'Em Triagem', em_analise_tecnica: 'Em Análise Técnica',
-    aprovado_para_teste: 'Aprovado para Teste', em_teste: 'Em Teste', teste_suspenso: 'Teste Suspenso',
-    teste_concluido: 'Teste Concluído', em_decisao: 'Em Decisão', aprovado: 'Aprovado',
-    reprovado: 'Reprovado', homologado: 'Homologado', arquivado: 'Arquivado',
+    get rascunho() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, em_triagem: 'Em Triagem', em_analise_tecnica: 'Em Análise Técnica',
+    aprovado_para_teste: 'Aprovado para Teste', get em_teste() { return (tr('ppetest.inProgress', 'Em Teste', {})); }, teste_suspenso: 'Teste Suspenso',
+    teste_concluido: 'Teste Concluído', em_decisao: 'Em Decisão', get aprovado() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+    get reprovado() { return (tr('portal.statusRejected', 'Reprovado', {})); }, homologado: 'Homologado', get arquivado() { return (tr('outsourcedCompany.linkInactive', 'Arquivado', {})); },
   };
   const STATUS_COLORS = {
     em_teste: 'info', teste_suspenso: 'warning', teste_concluido: 'accent', em_decisao: 'pending',
@@ -19278,15 +19279,15 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     aprovado_para_teste: 'accent',
   };
   const SUG_STATUS_LABELS = {
-    recebida: 'Recebida', em_triagem: 'Em Triagem', aprovada_para_analise: 'Aprovada p/ Análise',
+    get recebida() { return (tr('purchase.poStatus.received', 'Recebida', {})); }, em_triagem: 'Em Triagem', aprovada_para_analise: 'Aprovada p/ Análise',
     info_solicitada: 'Mais Informações', duplicada: 'Duplicada', inviavel: 'Inviável',
-    rejeitada: 'Rejeitada', convertida: 'Convertida',
+    get rejeitada() { return (tr('ui.compras.rejeitada_fcd760', 'Rejeitada', {})); }, convertida: 'Convertida',
   };
   const SOURCE_LABELS = {
     colaborador: 'Sugestão de colaborador', empresa: 'Proposta da empresa',
     representante: 'Representante responsável', seguranca_trabalho: 'Segurança do Trabalho',
-    fornecedor: 'Fornecedor', gestor_unidade: 'Gestor da unidade',
-    comissao_interna: 'Comissão interna', joint_venture: 'Joint Venture', outro: 'Outro',
+    get fornecedor() { return (tr('epi.supplierShort', 'Fornecedor', {})); }, gestor_unidade: 'Gestor da unidade',
+    comissao_interna: 'Comissão interna', joint_venture: 'Joint Venture', get outro() { return (tr('outsourcedCompany.kindOther', 'Outro', {})); },
   };
   const STAGE_LABELS = { inicial: 'Inicial', intermediaria: 'Intermediária', final: 'Final' };
   const SCALE_OPTIONS = [
@@ -19462,14 +19463,14 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   // ── Ações de sugestão ───────────────────────────────────────────────────────
   function openNewSuggestion() {
     openForm('Nova Sugestão de EPI em Teste', [
-      { name: 'suggested_name', label: 'Nome do EPI sugerido', required: true },
+      { name: 'suggested_name', label: (tr('portal.suggestedPpeName', 'Nome do EPI sugerido', {})), required: true },
       {
-        name: 'source_type', label: 'Origem', type: 'select', value: 'colaborador',
+        name: 'source_type', label: (tr('dataMigration.jobSource', 'Origem', {})), type: 'select', value: 'colaborador',
         options: Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
       },
       { name: 'requester_name', label: 'Nome do solicitante', required: true, value: state.user?.full_name || '' },
       {
-        name: 'unit_id', label: 'Unidade', type: 'select',
+        name: 'unit_id', label: (tr('moduleVisibility.unitLabel', 'Unidade', {})), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
       },
       {
@@ -19480,13 +19481,13 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         name: 'current_epi_id', label: 'EPI atual utilizado', type: 'select',
         options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
       },
-      { name: 'reason', label: 'Motivo', type: 'textarea', required: true },
+      { name: 'reason', label: (tr('ppetest.reason', 'Motivo', {})), type: 'textarea', required: true },
       { name: 'problem_identified', label: 'Problema identificado', type: 'textarea' },
       { name: 'expected_benefit', label: 'Benefício esperado', type: 'textarea' },
       { name: 'related_activity', label: 'Função ou atividade relacionada' },
       { name: 'risks', label: 'Riscos que pretende controlar' },
       { name: 'current_epi_issue', label: 'Dificuldade encontrada no EPI atual', type: 'textarea' },
-      { name: 'notes', label: 'Observações', type: 'textarea' },
+      { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-test-suggestions', values);
       showToast('Sugestão registrada. Ela seguirá para triagem.');
@@ -19501,7 +19502,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         options: [
           { value: 'aprovado_analise_tecnica', label: 'Aprovado para análise técnica' },
           { value: 'solicitar_informacoes', label: 'Solicitar mais informações' },
-          { value: 'duplicado', label: 'Duplicado' },
+          { value: 'duplicado', label: (tr('dataMigration.classification.duplicate', 'Duplicado', {})) },
           { value: 'inviavel', label: 'Inviável para teste' },
           { value: 'rejeitado', label: 'Rejeitado na triagem' },
         ],
@@ -19530,12 +19531,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       { name: 'name', label: 'Nome provisório', required: true, value: sug?.suggested_name || '' },
       { name: 'category', label: 'Categoria / setor' },
       { name: 'protection_type', label: 'Tipo de proteção' },
-      { name: 'manufacturer', label: 'Fabricante' },
+      { name: 'manufacturer', label: (tr('epi.manufacturer', 'Fabricante', {})) },
       { name: 'model_reference', label: 'Modelo' },
-      { name: 'supplier', label: 'Fornecedor' },
+      { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
       { name: 'ca', label: 'CA' },
-      { name: 'ca_expiry', label: 'Validade do CA', type: 'date' },
-      { name: 'size', label: 'Tamanho' },
+      { name: 'ca_expiry', label: (tr('epi.caExpiry', 'Validade do CA', {})), type: 'date' },
+      { name: 'size', label: (tr('delivery.size', 'Tamanho', {})) },
       { name: 'material', label: 'Material' },
       { name: 'test_batch', label: 'Lote de teste' },
       { name: 'quantity_available', label: 'Quantidade disponível para o teste', type: 'number', value: '0' },
@@ -19544,7 +19545,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       { name: 'risks_covered', label: 'Riscos atendidos', type: 'textarea' },
       { name: 'activities', label: 'Atividades indicadas' },
       { name: 'restrictions', label: 'Restrições' },
-      { name: 'notes', label: 'Observações', type: 'textarea' },
+      { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-tests', { ...values, suggestion_id: suggestionId || undefined });
       showToast('Cadastro provisório criado — fora do banco oficial de EPIs.');
@@ -19676,7 +19677,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     const participants = t.participants || [];
     sections.push(`<h4 style="margin:14px 0 6px;">Participantes (${participants.length})</h4>
       ${participants.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Colaborador</th><th>Unidade</th><th>Tamanho</th><th>Entrega</th><th>Status</th></tr></thead>
+        <thead><tr><th data-i18n="handover.collaborator">Colaborador</th><th data-i18n="moduleVisibility.unitLabel">Unidade</th><th data-i18n="delivery.size">Tamanho</th><th data-i18n="delivery.title">Entrega</th><th data-i18n="user.status">Status</th></tr></thead>
         <tbody>${participants.map((p) => `<tr>
           <td>${esc(p.employee_name || p.employee_id)}</td>
           <td>${esc(p.unit_name || '—')}</td>
@@ -19689,7 +19690,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     sections.push(`<h4 style="margin:14px 0 6px;">Distribuição Controlada</h4>
       <p style="margin:0 0 6px;">Recebido: <strong>${bal.recebido ?? 0}</strong> · Entregue: <strong>${bal.entregue ?? 0}</strong> · Devolvido: <strong>${bal.devolvido ?? 0}</strong> · Descartado: <strong>${bal.descartado ?? 0}</strong> · Saldo: <strong>${bal.saldo ?? 0}</strong></p>
       ${distributions.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Data</th><th>Movimento</th><th>Qtd</th><th>Lote</th><th>Responsável</th><th>Obs.</th></tr></thead>
+        <thead><tr><th data-i18n="outsourcedCompany.requestDate">Data</th><th>Movimento</th><th data-i18n="stock.receipt.qty">Qtd</th><th data-i18n="handover.lot">Lote</th><th data-i18n="dataMigration.jobActor">Responsável</th><th>Obs.</th></tr></thead>
         <tbody>${distributions.map((d) => `<tr>
           <td>${fmtDate(d.created_at)}</td><td>${esc(d.movement_type)}</td><td>${d.quantity}</td>
           <td>${esc(d.batch || '—')}</td><td>${esc(d.responsible_name || '—')}</td><td>${esc(d.notes || '—')}</td>
@@ -19711,12 +19712,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       const canManage = hasPermission('ppe_test:manage');
       sections.push(`<h4 style="margin:14px 0 6px;">Ocorrências (${incidents.length})</h4>
         <div class="table-wrap"><table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Gravidade</th><th>Descrição</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="outsourcedCompany.requestDate">Data</th><th data-i18n="outsourcedCompany.filterKind">Tipo</th><th>Gravidade</th><th data-i18n="ui.procurement.descricao_46332f">Descrição</th><th data-i18n="user.status">Status</th><th></th></tr></thead>
         <tbody>${incidents.map((i) => `<tr>
           <td>${fmtDate(i.created_at)}</td><td>${esc(i.incident_type)}</td>
           <td>${i.severity === 'critica' ? '<strong style="color:var(--danger);">CRÍTICA</strong>' : esc(i.severity)}</td>
           <td>${esc(i.description)}</td>
-          <td>${i.status === 'resolvida' ? '<span style="color:var(--success);">Resolvida</span>' : '<span style="color:var(--pending);">Aberta</span>'}</td>
+          <td>${i.status === 'resolvida' ? '<span style="color:var(--success);">Resolvida</span>' : "<span style=\"color:var(--pending);\" data-i18n=\"ui.compras.aberta_262ff7\">Aberta</span>"}</td>
           <td>${canManage && i.status !== 'resolvida' ? `<button class="btn ghost" data-ppe-incident-resolve="${i.id}" style="font-size:11px;">Tratar</button>` : ''}</td>
         </tr>`).join('')}</tbody></table></div>`);
     }
@@ -19754,13 +19755,13 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       case 'tech-review':
         openForm('Análise Técnica e Documental', [
           {
-            name: 'result', label: 'Resultado', type: 'select', required: true,
+            name: 'result', label: (tr('dataMigration.jobCounters', 'Resultado', {})), type: 'select', required: true,
             options: [
               { value: 'aprovar_para_teste', label: 'Aprovar para teste' },
               { value: 'solicitar_correcao', label: 'Solicitar correção' },
               { value: 'solicitar_documento', label: 'Solicitar documento' },
               { value: 'encaminhar_aprovacao_superior', label: 'Encaminhar para aprovação superior' },
-              { value: 'rejeitar', label: 'Rejeitar' },
+              { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
             ],
           },
           { name: 'ck_ca_valido', label: 'CA válido', type: 'checkbox' },
@@ -19783,7 +19784,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       case 'plan': {
         const plan = t.plan || {};
         openForm('Plano de Teste', [
-          { name: 'start_date', label: 'Data inicial', type: 'date', required: true, value: plan.start_date || '' },
+          { name: 'start_date', label: (tr('delivery.startDate', 'Data inicial', {})), type: 'date', required: true, value: plan.start_date || '' },
           { name: 'end_date', label: 'Data final prevista', type: 'date', required: true, value: plan.end_date || '' },
           {
             name: 'pilot_unit_id', label: 'Unidade piloto', type: 'select', value: plan.pilot_unit_id || '',
@@ -19791,7 +19792,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           },
           { name: 'objective', label: 'Objetivo do teste', type: 'textarea', value: plan.objective || '' },
           { name: 'hypothesis', label: 'Hipótese', value: plan.hypothesis || '' },
-          { name: 'sector', label: 'Setor', value: plan.sector || '' },
+          { name: 'sector', label: (tr('employee.sector', 'Setor', {})), value: plan.sector || '' },
           { name: 'activity', label: 'Atividade', value: plan.activity || '' },
           { name: 'participants_target', label: 'Quantidade de participantes', type: 'number', value: plan.participants_target || '' },
           { name: 'epis_quantity', label: 'Quantidade de EPIs', type: 'number', value: plan.epis_quantity || '' },
@@ -19819,8 +19820,8 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       case 'participant':
         openForm('Selecionar Participante', [
           {
-            name: 'employee_id', label: 'Colaborador', type: 'select', required: true,
-            options: [{ value: '', label: 'Selecione' }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
+            name: 'employee_id', label: (tr('handover.collaborator', 'Colaborador', {})), type: 'select', required: true,
+            options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
           },
           { name: 'size', label: 'Tamanho necessário' },
           {
@@ -19842,10 +19843,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       case 'receive':
         openForm('Receber Lote de Teste', [
           { name: 'quantity', label: 'Quantidade recebida', type: 'number', required: true },
-          { name: 'batch', label: 'Lote' },
-          { name: 'supplier', label: 'Fornecedor' },
+          { name: 'batch', label: (tr('handover.lot', 'Lote', {})) },
+          { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
           { name: 'storage_location', label: 'Local de armazenamento' },
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'recebimento' });
           showToast('Recebimento registrado no controle próprio do teste.');
@@ -19854,11 +19855,11 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'deliver':
         openForm('Entregar EPI de Teste (uso controlado)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
-          { name: 'quantity', label: 'Quantidade', type: 'number', required: true, value: '1' },
+          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
+          { name: 'quantity', label: (tr('delivery.quantity', 'Quantidade', {})), type: 'number', required: true, value: '1' },
           { name: 'signature_name', label: 'Assinatura (nome)' },
           { name: 'expected_return', label: 'Devolução esperada', type: 'date' },
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'entrega' });
           showToast('Entrega controlada registrada.');
@@ -19867,7 +19868,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'start':
         openForm('Iniciar Período de Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/start`, values);
           showToast('Teste iniciado.');
@@ -19876,7 +19877,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'suspend':
         openForm('Suspender Teste', [
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/suspend`, values);
           showToast('Teste suspenso.');
@@ -19885,7 +19886,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'resume':
         openForm('Retomar Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/resume`, values);
           showToast('Teste retomado.');
@@ -19894,7 +19895,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'complete':
         openForm('Concluir Período de Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/complete`, values);
           showToast('Teste concluído — pronto para consolidação e decisão.');
@@ -19903,7 +19904,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'evaluate':
         openForm('Registrar Avaliação (escala 1–5)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
+          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
           {
             name: 'stage', label: 'Momento', type: 'select', required: true,
             options: Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
@@ -19953,15 +19954,15 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         openForm('Registrar Ocorrência', [
           { name: 'participant_id', label: 'Participante', type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
           {
-            name: 'incident_type', label: 'Tipo', type: 'select', required: true,
+            name: 'incident_type', label: (tr('outsourcedCompany.filterKind', 'Tipo', {})), type: 'select', required: true,
             options: ['desconforto', 'irritacao', 'falha', 'ruptura', 'incompatibilidade', 'tamanho_inadequado', 'perda', 'dano', 'incidente', 'quase_acidente', 'interrupcao_uso', 'substituicao', 'recusa', 'treinamento_adicional'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') })),
           },
           {
             name: 'severity', label: 'Gravidade', type: 'select', required: true,
             options: [{ value: 'leve', label: 'Leve' }, { value: 'moderada', label: 'Moderada' }, { value: 'grave', label: 'Grave' }, { value: 'critica', label: 'Crítica' }],
           },
-          { name: 'description', label: 'Descrição', type: 'textarea', required: true },
-          { name: 'evidence', label: 'Evidência' },
+          { name: 'description', label: (tr('ui.procurement.descricao_46332f', 'Descrição', {})), type: 'textarea', required: true },
+          { name: 'evidence', label: (tr('stock.receipt.evidence', 'Evidência', {})) },
           { name: 'action_taken', label: 'Ação tomada' },
           { name: 'suspend_test', label: 'Suspender o teste (apenas gravidade crítica)', type: 'checkbox' },
         ], async (values) => {
@@ -19975,16 +19976,16 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           {
             name: 'decision', label: 'Decisão', type: 'select', required: true,
             options: [
-              { value: 'aprovar', label: 'Aprovar' },
+              { value: 'aprovar', label: (tr('purchase.approve', 'Aprovar', {})) },
               { value: 'aprovar_com_restricao', label: 'Aprovar com restrição' },
               { value: 'prorrogar_teste', label: 'Prorrogar teste' },
               { value: 'nova_rodada', label: 'Nova rodada de avaliação' },
               { value: 'solicitar_ajuste_fornecedor', label: 'Solicitar ajuste ao fornecedor' },
-              { value: 'rejeitar', label: 'Rejeitar' },
-              { value: 'arquivar', label: 'Arquivar' },
+              { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
+              { value: 'arquivar', label: (tr('outsourcedCompany.archive', 'Arquivar', {})) },
             ],
           },
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
           { name: 'technical_opinion', label: 'Parecer técnico (obrigatório p/ aprovação)', type: 'textarea' },
           { name: 'operational_opinion', label: 'Parecer operacional', type: 'textarea' },
           { name: 'purchasing_opinion', label: 'Parecer de compras', type: 'textarea' },
@@ -20017,7 +20018,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           { name: 'official_name', label: 'Nome oficial do EPI', value: t.name },
           { name: 'purchase_code', label: 'Código oficial (vazio = automático)' },
           { name: 'manufacture_date', label: 'Data de fabricação', type: 'date' },
-          { name: 'epi_validity_date', label: 'Validade do EPI', type: 'date' },
+          { name: 'epi_validity_date', label: (tr('epi.validityDate', 'Validade do EPI', {})), type: 'date' },
           { name: 'validity_days', label: 'Validade (dias) p/ substituição', type: 'number' },
           { name: 'notes', label: 'Observações da homologação', type: 'textarea' },
         ], async (values) => {
@@ -20029,13 +20030,13 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         break;
       case 'reject':
         openForm('Reprovar EPI em Teste', [
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
           {
             name: 'items_destination', label: 'Destino dos itens', type: 'select',
             options: [
               { value: '', label: '—' },
               { value: 'devolucao_fornecedor', label: 'Devolução ao fornecedor' },
-              { value: 'descarte', label: 'Descarte' },
+              { value: 'descarte', label: (tr('stock.physical.discard', 'Descarte', {})) },
               { value: 'recolhimento', label: 'Recolhimento e guarda' },
             ],
           },

@@ -1,0 +1,729 @@
+[
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 18,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "O conversor requer Linux com libseccomp.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ba4a43ec8174"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 37,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Não foi possível iniciar isolamento do conversor.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ee439c95c59b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 44,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro de rede indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c1d24f3587bb"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 48,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro do conversor indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8f5dd2196152"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 50,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro do conversor não pôde ser aplicado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6997d9543ff7"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 58,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Isolamento de rede não confirmado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_9487cbe18214"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 66,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a XLS.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_27a26ecb33d6"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 73,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Macros, objetos ativos e arquivos cifrados não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_24afb962e184"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 80,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "XLS cifrado ou folha de macro não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_44c60e57c0c1"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 83,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Referências externas ativas não são permitidas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_3f3173600d4c"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 87,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Planilha excede 30 abas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c8ea67ef966e"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 90,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a Office Open XML.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_71a93f325c28"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 97,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Arquivo Office excede os limites de descompactação.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1a53447a937d"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 101,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Formato Office incompatível com a extensão.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c39b6b62d4d2"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 105,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Arquivo cifrado ou excessivamente comprimido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_46c285c88160"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 107,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Macros, objetos ativos e referências externas não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_fe6172e1da05"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 109,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "SVG incorporado requer conversão prévia para PDF ou imagem raster segura.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4726b9667c5e"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 117,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f2d56c1a8237"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 119,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Campos DDE não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_93aa01a4acd4"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 124,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f2d56c1a8237"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 130,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Template externo com formato ativo ou desconhecido não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_bcf5323da830"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 138,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Recurso externo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4c38ee20a9ea"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 155,
+    "function": "validate_pdf_content",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo de PDF não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_89d7c0bfd2e9"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 161,
+    "function": "validate_pdf_content",
+    "exception": "ValueError",
+    "message_template": "Ação automática de PDF não permitida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_65480dc7ee02"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 187,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a PDF.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_5685f6cf3d8b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 193,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde à imagem declarada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0d2fb05f35b3"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 201,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Imagem excede o limite de pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_028b3e24adad"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 210,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "PDF cifrado ou sem páginas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_213cafb5a3d2"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 216,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Documento excede os limites de páginas ou pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_47f279fff99b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 222,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excede o limite de armazenamento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_75f777ce750f"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 226,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Documento sem conteúdo visível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_5a09a82b50a7"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 44,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Conversor Office indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_149bcc1bb9fc"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 51,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Conversor Office não respondeu.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_2c096c34ad8e"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 59,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Arquivo Office não pôde ser aberto com segurança.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_9f5c5df89fec"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 42,
+    "function": "_origin",
+    "exception": "PermissionError",
+    "message_template": "Origem não autorizada para a biblioteca.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_e7be18ecf79e"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 50,
+    "function": "employee_context",
+    "exception": "PermissionError",
+    "message_template": "Colaborador indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_904db392637d"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 57,
+    "function": "employee_context",
+    "exception": "PermissionError",
+    "message_template": "Empresa ou unidade indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b0f878fb330b"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 98,
+    "function": "handle",
+    "exception": "ValueError",
+    "message_template": "Política e justificativa obrigatórias.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_91ba8a222f56"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 115,
+    "function": "handle",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 129,
+    "function": "handle",
+    "exception": "ValueError",
+    "message_template": "Página indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6c08b8b684f6"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 140,
+    "function": "handle",
+    "exception": "PermissionError",
+    "message_template": "Operação não autorizada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_15837cda9084"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 162,
+    "function": "_id",
+    "exception": "ValueError",
+    "message_template": "{key} inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6597a98cce2e"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 45,
+    "function": "manager",
+    "exception": "PermissionError",
+    "message_template": "Administrador sem empresa efetiva.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_cffc167ff2c8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 58,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Associações devem ser listas com no máximo 200 entradas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c420760ff822"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 61,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Identificador inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d34ba284de79"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 64,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Setor ou atividade inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1e1d36494bf0"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 73,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Campo {key} inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8e28dd2bfad8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 76,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Data de vigência deve usar AAAA-MM-DD.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_86efa1ec4410"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 80,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Categoria inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_bf09808ae926"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 82,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Defina explicitamente o alcance de unidades.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_57483342e079"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 87,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Escolha todas as unidades ou unidades específicas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4f9ccb25db5e"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 89,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Informe pelo menos uma unidade.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_18cfbe2515f8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 95,
+    "function": "validate_metadata",
+    "exception": "PermissionError",
+    "message_template": "EPI fora do escopo da empresa.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_470c612e4cfd"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 115,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1937451d7218"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 118,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Nome de arquivo inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_83583fd74839"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 121,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Arquivo ausente ou maior que 20 MiB.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_cfc2c9ecd606"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 125,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Conteúdo base64 inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_dc43826781de"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 129,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Documento inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_429c84dacd58"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 137,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência reutilizada com conteúdo diferente.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d5793e2ff0bf"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 144,
+    "function": "upload",
+    "exception": "PermissionError",
+    "message_template": "Escopo do administrador alterado durante o envio. Reinicie a operação.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c6264d16f8c5"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 150,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência reutilizada com conteúdo diferente.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d5793e2ff0bf"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 158,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Documento arquivado; crie um novo documento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f7f6f9bc9f0f"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 172,
+    "function": "own_document",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 179,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Justificativa obrigatória (até 2000 caracteres).",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4e98ab463a83"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 185,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Versão não pode ser publicada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f381bb828999"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 198,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Ação inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_518b636439eb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 205,
+    "function": "company_today",
+    "exception": "PermissionError",
+    "message_template": "Calendário da empresa indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b4f086fbbdfb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 209,
+    "function": "company_today",
+    "exception": "PermissionError",
+    "message_template": "Calendário da empresa indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b4f086fbbdfb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 235,
+    "function": "visible_version",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 288,
+    "function": "download_original",
+    "exception": "PermissionError",
+    "message_template": "Download de original não autorizado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ec7bf1a153d5"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 291,
+    "function": "download_original",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 298,
+    "function": "photo",
+    "exception": "PermissionError",
+    "message_template": "EPI indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8a2411e51342"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 302,
+    "function": "photo",
+    "exception": "ValueError",
+    "message_template": "Foto indisponível em formato seguro.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_76319fb726e6"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 306,
+    "function": "photo",
+    "exception": "ValueError",
+    "message_template": "Foto excede limite de pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_705ecaf0eb26"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 29,
+    "function": "render_preview",
+    "exception": "ValueError",
+    "message_template": "Conversor ocupado. Tente novamente em instantes.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_36a7ee157a9c"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 39,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Extensão ou MIME não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0c821a3b3204"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 41,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Arquivo vazio ou maior que 20 MiB.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_2db3a78cfd98"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 65,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excedeu o tempo permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0d3da595826a"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 79,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excede o limite de armazenamento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_75f777ce750f"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 173,
+    "function": "render",
+    "kind": "preview_warning",
+    "message_template": "Pré-visualização gerada: fontes e paginação podem diferir do aplicativo Office original.",
+    "key": "apiErrors.messages.m_69ed8bc9a667"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 135,
+    "function": "validate_office",
+    "kind": "preview_warning",
+    "message_template": "Modelo externo do Word ignorado; apenas estilos incorporados foram utilizados.",
+    "key": "apiErrors.messages.m_d8fe3c76b8e2"
+  }
+]

@@ -174,7 +174,7 @@
       overlay.querySelectorAll('[data-purchase-rejection-reason]').forEach(select => bindAppListener(select, 'change', () => {
         const row = select.closest('[data-purchase-approval-row]');
         const comment = row?.querySelector('[data-purchase-rejection-comment]');
-        if (comment) {comment.placeholder = select.value === 'Outro' ? (globalThis.trEpi?.('ui.purchases.obrigatorio_para_outro_b9081a','Obrigat\u00f3rio para Outro',{}) ?? 'Obrigat\u00f3rio para Outro') : (globalThis.trEpi?.('employee.notes','Observa\u00e7\u00e3o',{}) ?? 'Observa\u00e7\u00e3o');}
+        if (comment) {comment.placeholder = select.value === 'Outro' ? (globalThis.EpiI18n?.attributeFor?.(comment,'placeholder','ui.purchases.obrigatorio_para_outro_b9081a','Obrigat\u00f3rio para Outro',{}) ?? globalThis.trEpi?.('ui.purchases.obrigatorio_para_outro_b9081a','Obrigat\u00f3rio para Outro',{}) ?? 'Obrigat\u00f3rio para Outro') : (globalThis.EpiI18n?.attributeFor?.(comment,'placeholder','employee.notes','Observa\u00e7\u00e3o',{}) ?? globalThis.trEpi?.('employee.notes','Observa\u00e7\u00e3o',{}) ?? 'Observa\u00e7\u00e3o');}
       }));
       bindAppListener(overlay.querySelector('[data-purchase-approval-select-all]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = true; }); syncApprovalRows(); });
       bindAppListener(overlay.querySelector('[data-purchase-approval-clear]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = false; }); syncApprovalRows(); });

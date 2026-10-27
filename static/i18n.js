@@ -34,6 +34,7 @@
   let _lang = FALLBACK;
   let _languageSequence = 0;
   const _boundText = new WeakMap();
+  const _boundAttributes = new WeakMap();
 
   /* ── Resolução de chaves aninhadas ───────────────────────────────────────── */
 
@@ -42,6 +43,7 @@
     let node = dict;
     for (const p of parts) {
       if (!node || typeof node !== 'object') {return undefined;}
+      if (!Object.prototype.hasOwnProperty.call(node, p)) {return undefined;}
       node = node[p];
     }
     return typeof node === 'string' ? node : undefined;
@@ -95,12 +97,37 @@
 
   // Binding de mensagem dinâmica: valores são texto, nunca HTML executável.
   // Os parâmetros ficam no DOM para uma troca de idioma preservar o conteúdo.
-  function resolveMessageVars(vars, variableKeys) {
+  function formatNumber(value, options) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {return String(value ?? '');}
+    try {return new Intl.NumberFormat(_lang, options || {}).format(number);}
+    catch {return String(value ?? '');}
+  }
+
+  function formatDate(value, options) {
+    if (!value) {return '';}
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(value));
+    const date = new Date(dateOnly ? `${value}T00:00:00Z` : value);
+    if (!Number.isFinite(date.getTime()) || dateOnly && date.toISOString().slice(0, 10) !== value) {return String(value);}
+    try {
+      return new Intl.DateTimeFormat(_lang, {dateStyle:'short', ...(dateOnly ? {timeZone:'UTC'} : {}), ...(options || {})}).format(date);
+    } catch {return String(value);}
+  }
+
+  function resolveMessageVars(vars, variableKeys, depth = 0) {
     const resolved = { ...(vars || {}) };
+    if (depth > 4) {return resolved;}
     for (const [name, key] of Object.entries(variableKeys || {})) {
       if (typeof key === 'string') {
         const value = t(key);
         if (value !== key) { resolved[name] = value; }
+      } else if (key && typeof key === 'object') {
+        if (key.type === 'date') {resolved[name] = formatDate(key.value, key.options);}
+        else if (key.type === 'number') {resolved[name] = formatNumber(key.value, key.options);}
+        else if (key.type === 'message' && typeof key.key === 'string') {
+          const value = t(key.key, resolveMessageVars(key.vars, key.refs, depth + 1));
+          if (value !== key.key) {resolved[name] = value;}
+        }
       }
     }
     return resolved;
@@ -122,6 +149,123 @@
     if (element?.setAttribute) { _boundText.set(element, value); }
     return value;
   }
+
+  function clearBinding(element, kind = 'text') {
+    if (!element?.removeAttribute) {return;}
+    const binding = kind === 'text' ? 'data-i18n' : 'data-i18n-' + kind;
+    element.removeAttribute(binding);
+    if (kind === 'text') {_boundText.delete(element);}
+    else {
+      element.removeAttribute(binding + '-vars');
+      element.removeAttribute(binding + '-var-keys');
+      _boundAttributes.get(element)?.delete(kind);
+    }
+  }
+
+  function attributeFor(element, attribute, key, fallback, vars, variableKeys) {
+    const value = trEpi(key, fallback, resolveMessageVars(vars, variableKeys));
+    if (element?.setAttribute) {
+      const binding = 'data-i18n-' + attribute;
+      element.setAttribute(binding, key);
+      element.setAttribute(binding + '-vars', JSON.stringify(vars || {}));
+      element.setAttribute(binding + '-var-keys', JSON.stringify(variableKeys || {}));
+      const attributes = _boundAttributes.get(element) || new Map();
+      attributes.set(attribute, value);
+      _boundAttributes.set(element, attributes);
+    }
+    return value;
+  }
+
+  let _apiMessageIndex;
+
+  function _apiTemplates() {
+    if (_apiMessageIndex?.source === _fallback) {return _apiMessageIndex.entries;}
+    const entries = [];
+    function visit(node, prefix, existingErrors = false) {
+      for (const [part, value] of Object.entries(node || {})) {
+        const key = prefix ? `${prefix}.${part}` : part;
+        if (existingErrors && key.startsWith('apiErrors.')) {continue;}
+        if (typeof value === 'string') {
+          if (existingErrors && !/error|invalid|failed|denied|notfound|required|mismatch|unavailable|forbidden/i.test(key)) {continue;}
+          const tokens = [...value.matchAll(/\{(\w+)\}/g)];
+          entries.push({key, value, tokens, specificity:value.replace(/\{\w+\}/g, '').length});
+        } else if (value && typeof value === 'object') {visit(value, key, existingErrors);}
+      }
+    }
+    visit(_fallback.apiErrors?.messages, 'apiErrors.messages');
+    visit(_fallback, '', true);
+    entries.sort((a, b) => b.specificity - a.specificity);
+    _apiMessageIndex = {source:_fallback, entries};
+    return entries;
+  }
+
+  // Correspondência ancorada e linear. Somente mensagens de sistema do
+  // namespace apiErrors participam; nomes, registros e justificativas livres
+  // não são procurados no catálogo nem reescritos.
+  function _matchApiTemplate(template, original) {
+    if (!template.tokens.length) {return template.value === original ? {} : null;}
+    if (template.specificity < 8 || original.length > 8192) {return null;}
+    const vars = Object.create(null);
+    let sourcePosition = 0, position = 0;
+    for (let i = 0; i < template.tokens.length; i++) {
+      const token = template.tokens[i];
+      const before = template.value.slice(sourcePosition, token.index);
+      if (!original.startsWith(before, position)) {return null;}
+      position += before.length;
+      sourcePosition = token.index + token[0].length;
+      const next = template.tokens[i + 1];
+      const after = template.value.slice(sourcePosition, next ? next.index : undefined);
+      if (!after && next) {return null;}
+      const end = after ? original.indexOf(after, position) : original.length;
+      if (end < 0) {return null;}
+      const value = original.slice(position, end);
+      if (Object.prototype.hasOwnProperty.call(vars, token[1]) && vars[token[1]] !== value) {return null;}
+      vars[token[1]] = value;
+      position = end;
+    }
+    const suffix = template.value.slice(sourcePosition);
+    return original.slice(position) === suffix ? vars : null;
+  }
+
+  function describeApiError(payload, fallback) {
+    const error = payload?.error;
+    const original = String((typeof payload === 'string' ? payload : null) || (typeof error === 'string' ? error : error?.message) || payload?.message || fallback || '');
+    function result(key, vars) {
+      const source = _resolve(_fallback, key);
+      if (typeof source !== 'string' || [...source.matchAll(/\{(\w+)\}/g)].some(match => !Object.prototype.hasOwnProperty.call(vars, match[1]))) {return null;}
+      const refs = {};
+      for (const name of ['key', 'field']) {
+        if (typeof vars[name] === 'string') {
+          const fieldKey = 'apiErrors.fields.' + vars[name];
+          if (_resolve(_fallback, fieldKey) !== undefined) {refs[name] = fieldKey;}
+        }
+      }
+      return {key, vars, refs, text:trEpi(key, original, resolveMessageVars(vars, refs))};
+    }
+    const metadata = payload?.i18n || error?.i18n || payload?.validation?.i18n;
+    if (typeof metadata?.key === 'string' && metadata.key.startsWith('apiErrors.')) {
+      const translated = result(metadata.key, metadata.params || metadata.vars || {});
+      if (translated) {return translated;}
+    }
+    // Um código só substitui a mensagem quando seu template corresponde aos
+    // detalhes recebidos. Códigos genéricos não apagam uma validação específica.
+    const code = payload?.code || error?.code || payload?.validation?.code;
+    if (typeof code === 'string') {
+      const key = 'apiErrors.codes.' + code, source = _resolve(_fallback, key);
+      if (source) {
+        const template = {value:source,tokens:[...source.matchAll(/\{(\w+)\}/g)],specificity:source.replace(/\{\w+\}/g,'').length};
+        const vars = _matchApiTemplate(template, original);
+        if (vars) {return result(key, vars);}
+      }
+    }
+    for (const template of _apiTemplates()) {
+      const vars = _matchApiTemplate(template, original);
+      if (vars) {return result(template.key, vars);}
+    }
+    return {key:null, vars:{}, refs:{}, text:original};
+  }
+
+  function apiMessage(payload, fallback) {return describeApiError(payload, fallback).text;}
 
   /* ── Carregamento de traduções ───────────────────────────────────────────── */
 
@@ -158,10 +302,20 @@
     ['data-i18n-title',       'title'],
     ['data-i18n-aria-label',  'aria-label'],
     ['data-i18n-value',       'value'],
+    ['data-i18n-alt',         'alt'],
   ];
 
   // Substitui apenas o texto de um elemento, preservando elementos filhos
   // (ex.: um <button> com <svg> ícone + rótulo de texto).
+  function _ownLabel(el) {
+    if (el.firstElementChild === null) {return el.textContent;}
+    for (let i = el.childNodes.length - 1; i >= 0; i--) {
+      const node = el.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {return node.textContent;}
+    }
+    return '';
+  }
+
   function _setTextPreservingChildren(el, val) {
     const hasElementChild = el.firstElementChild !== null;
     if (!hasElementChild) {
@@ -190,15 +344,23 @@
         if (!key) {return;}
         // Um campo reutilizado pode receber erro da API ou ficar vazio. Nesse
         // caso a mensagem anterior deixou de representar o estado atual.
-        if (kind === 'text' && _boundText.has(el) && el.textContent !== _boundText.get(el)) {
+        if (kind === 'text' && _boundText.has(el) && _ownLabel(el) !== _boundText.get(el)) {
           for (const binding of ['data-i18n', 'data-i18n-vars', 'data-i18n-var-keys']) {el.removeAttribute(binding);}
           _boundText.delete(el);
           return;
         }
+        if (kind !== 'text' && kind !== 'html') {
+          const attributes = _boundAttributes.get(el);
+          if (attributes?.has(kind) && el.getAttribute(kind) !== attributes.get(kind)) {
+            for (const binding of [attr, attr + '-vars', attr + '-var-keys']) {el.removeAttribute(binding);}
+            attributes.delete(kind);
+            return;
+          }
+        }
         let vars;
-        try { vars = JSON.parse(el.getAttribute('data-i18n-vars') || 'null'); } catch { vars = null; }
+        try { vars = JSON.parse(el.getAttribute(attr + '-vars') || el.getAttribute('data-i18n-vars') || 'null'); } catch { vars = null; }
         let variableKeys;
-        try { variableKeys = JSON.parse(el.getAttribute('data-i18n-var-keys') || 'null'); } catch { variableKeys = null; }
+        try { variableKeys = JSON.parse(el.getAttribute(attr + '-var-keys') || el.getAttribute('data-i18n-var-keys') || 'null'); } catch { variableKeys = null; }
         vars = resolveMessageVars(vars, variableKeys);
         if (kind === 'html' && vars && typeof vars === 'object') {
           vars = Object.fromEntries(Object.entries(vars).map(([name, value]) => [name, escapeMarkup(value)]));
@@ -207,10 +369,15 @@
         if (val === key) {return;} // sem tradução → preserva o texto original
         if (kind === 'text') {
           _setTextPreservingChildren(el, val);
-          if (_boundText.has(el)) {_boundText.set(el, el.textContent);}
+          _boundText.set(el, _ownLabel(el));
         }
         else if (kind === 'html') {el.innerHTML = val;}
-        else {el.setAttribute(kind, val);}
+        else {
+          el.setAttribute(kind, val);
+          const attributes = _boundAttributes.get(el) || new Map();
+          attributes.set(kind, val);
+          _boundAttributes.set(el, attributes);
+        }
       });
     }
     window.dispatchEvent(new CustomEvent('epi:domtranslated', { detail: { lang: _lang } }));
@@ -315,6 +482,12 @@
     bindText,
     escapeMarkup,
     textFor,
+    attributeFor,
+    clearBinding,
+    formatDate,
+    formatNumber,
+    describeApiError,
+    apiMessage,
     setLang,
     translateDOM,
     resolveInitialLang,

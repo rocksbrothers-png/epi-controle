@@ -1,0 +1,1082 @@
+[
+  {
+    "locale": "es-ES",
+    "key": "employee.archivedHint",
+    "pt_source": "Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived employees are deactivated for new operations (deliveries, requests and movements), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Los empleados archivados quedan desactivados para nuevas operaciones (entregas, solicitudes y movimientos), pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Los empleados archivados quedan desactivados para nuevas operaciones (entregas, solicitudes y movimientos), pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años)."
+  },
+  {
+    "locale": "es-ES",
+    "key": "employee.archiveConfirm",
+    "pt_source": "Este colaborador será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This employee will be archived and will no longer receive new operations (deliveries, requests and movements).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Este empleado se archivará y dejará de recibir nuevas operaciones (entregas, solicitudes y movimientos).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Este empleado se archivará y dejará de recibir nuevas operaciones (entregas, solicitudes y movimientos).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato."
+  },
+  {
+    "locale": "es-ES",
+    "key": "employee.restoreConfirm",
+    "pt_source": "O colaborador será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "El empleado se desarchivará y volverá a estar activo, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "El empleado se desarchivará y volverá a estar activo, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?"
+  },
+  {
+    "locale": "es-ES",
+    "key": "epi.archivedHint",
+    "pt_source": "EPIs arquivados ficam desativados para novas operações (entregas, estoque, requisições e compras), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived PPE items are deactivated for new operations (deliveries, stock, requests and purchases), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Los EPI archivados quedan desactivados para nuevas operaciones (entregas, existencias, solicitudes y compras), pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Los EPI archivados quedan desactivados para nuevas operaciones (entregas, existencias, solicitudes y compras), pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años)."
+  },
+  {
+    "locale": "es-ES",
+    "key": "epi.archiveConfirm",
+    "pt_source": "Este EPI será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Este EPI se archivará y dejará de recibir nuevas operaciones (entregas, existencias, solicitudes y compras).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Este EPI se archivará y dejará de recibir nuevas operaciones (entregas, existencias, solicitudes y compras).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato."
+  },
+  {
+    "locale": "es-ES",
+    "key": "epi.restoreConfirm",
+    "pt_source": "O EPI será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "El EPI se desarchivará y volverá a estar activo, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "El EPI se desarchivará y volverá a estar activo, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?"
+  },
+  {
+    "locale": "es-ES",
+    "key": "report.fixedOperationalUnitHint",
+    "pt_source": "Seu perfil está vinculado a uma unidade operacional fixa.",
+    "current": "Your profile is linked to a fixed operational unit.",
+    "suggested": "Su perfil está vinculado a una unidad operativa fija.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Su perfil está vinculado a una unidad operativa fija."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.cpfLast3Required",
+    "pt_source": "Informe exatamente os 3 últimos dígitos do CPF.",
+    "current": "Enter exactly the last 3 CPF digits.",
+    "suggested": "Introduzca exactamente los 3 últimos dígitos del CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Introduzca exactamente los 3 últimos dígitos del CPF."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.cpfValidationFailed",
+    "pt_source": "Não foi possível validar o CPF.",
+    "current": "Could not validate the CPF.",
+    "suggested": "No se ha podido validar el CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "No se ha podido validar el CPF."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.pendingUseBatchSignature",
+    "pt_source": "Pendente (use assinatura em lote do período)",
+    "current": "Pending (use period batch signature)",
+    "suggested": "Pendiente (utilice la firma en lote del período)",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Pendiente (utilice la firma en lote del período)"
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.noDeliveryForPeriod",
+    "pt_source": "Nenhuma entrega registrada para o período selecionado.",
+    "current": "No delivery recorded for the selected period.",
+    "suggested": "No hay entregas registradas para el período seleccionado.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "No hay entregas registradas para el período seleccionado."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.rankingContributeText",
+    "pt_source": "Suas avaliações alimentam o Ranking de EPIs da empresa. EPIs bem avaliados são priorizados nas compras e o retorno que você recebe aqui reflete exatamente o rank do equipamento. Sugestões de novos EPIs são analisadas pelos gestores — a decisão final é do Administrador Geral.",
+    "current": "Your evaluations feed the company PPE ranking. Well-rated PPE is prioritised for purchases and the feedback you receive here reflects the equipment rank exactly. Suggestions for new PPE are reviewed by managers — the final decision is made by the General Administrator.",
+    "suggested": "Sus evaluaciones contribuyen a la clasificación de EPI de la empresa. Los EPI bien valorados tienen prioridad en las compras y la información que recibe aquí refleja exactamente la posición del equipo en la clasificación. Los gestores analizan las sugerencias de nuevos EPI; la decisión final corresponde al Administrador General.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a autoridade final do Administrador Geral; nenhuma alteração de RBAC.",
+    "applied": "Sus evaluaciones contribuyen a la clasificación de EPI de la empresa. Los EPI bien valorados tienen prioridad en las compras y la información que recibe aquí refleja exactamente la posición del equipo en la clasificación. Los gestores analizan las sugerencias de nuevos EPI; la decisión final corresponde al Administrador General."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.evaluatePpeHint",
+    "pt_source": "Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.",
+    "current": "Evaluate approved PPE that you have already received or are using. Your score goes directly into the ranking.",
+    "suggested": "Evalúe un EPI aprobado que ya haya recibido o esté utilizando. Su puntuación se incorpora directamente a la clasificación.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Evalúe un EPI aprobado que ya haya recibido o esté utilizando. Su puntuación se incorpora directamente a la clasificación."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.pendingSignatureAlert",
+    "pt_source": "Ainda existem itens sem assinatura. Clique em \"Clique aqui para assinar\" para prosseguir.",
+    "current": "There are still unsigned items. Click \"Click here to sign\" to continue.",
+    "suggested": "Todavía hay elementos sin firmar. Pulse «Haga clic aquí para firmar» para continuar.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. A expressão entre aspas coincide com portal.clickHereToSign no catálogo atual.",
+    "applied": "Todavía hay elementos sin firmar. Pulse «Haga clic aquí para firmar» para continuar."
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.evaluationSentSuccess",
+    "pt_source": "Avaliação enviada com sucesso!",
+    "current": "Evaluation sent successfully!",
+    "suggested": "¡Evaluación enviada correctamente!",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "¡Evaluación enviada correctamente!"
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.signatureCommentPlaceholder",
+    "pt_source": "Caso não reconheça algum EPI, informe neste campo",
+    "current": "If you do not recognise any PPE, report it in this field",
+    "suggested": "Si no reconoce algún EPI, indíquelo en este campo",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Si no reconoce algún EPI, indíquelo en este campo"
+  },
+  {
+    "locale": "es-ES",
+    "key": "portal.signatureRequiredDraw",
+    "pt_source": "Assinatura digital obrigatória. Desenhe no campo de assinatura.",
+    "current": "Digital signature required. Draw in the signature field.",
+    "suggested": "La firma digital es obligatoria. Dibuje su firma en el campo de firma.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "La firma digital es obligatoria. Dibuje su firma en el campo de firma."
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.archivedHint",
+    "pt_source": "Unidades arquivadas não recebem novas operações, mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+    "current": "Archived units no longer receive new operations, but all history remains preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.",
+    "suggested": "Las unidades archivadas no reciben nuevas operaciones, pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Las unidades archivadas no reciben nuevas operaciones, pero todo el historial se conserva durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías."
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.retentionExpired",
+    "pt_source": "Retenção cumprida",
+    "current": "Retention period elapsed",
+    "suggested": "Período de conservación cumplido",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Período de conservación cumplido"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.restoreConfirm",
+    "pt_source": "A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The unit will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "La unidad se desarchivará y volverá a estar activa, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "La unidad se desarchivará y volverá a estar activa, por lo que podrá recibir nuevas operaciones. Todo el historial conservado permanecerá intacto. ¿Desea continuar?"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.archiveConfirm",
+    "pt_source": "Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This Unit will be archived and will no longer receive new operations (employees, PPE, deliveries, stock and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Esta unidad se archivará y dejará de recibir nuevas operaciones (empleados, EPI, entregas, existencias y compras).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Esta unidad se archivará y dejará de recibir nuevas operaciones (empleados, EPI, entregas, existencias y compras).\n\nTodo el historial se conservará durante el período mínimo de conservación configurado (al menos 5 años) para consultas, informes y auditorías.\n\nNo se eliminará ningún dato."
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.archiveReasonPrompt",
+    "pt_source": "Motivo do arquivamento (registrado na auditoria):",
+    "current": "Archiving reason (recorded in the audit trail):",
+    "suggested": "Motivo del archivo (se registrará en la pista de auditoría):",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Motivo del archivo (se registrará en la pista de auditoría):"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.purgeSummaryIntro",
+    "pt_source": "ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:",
+    "current": "WARNING: permanent and irreversible deletion. The following historical records will be removed:",
+    "suggested": "ATENCIÓN: eliminación definitiva e irreversible. Se eliminarán los siguientes registros históricos:",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "ATENCIÓN: eliminación definitiva e irreversible. Se eliminarán los siguientes registros históricos:"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.purgeSummaryOutro",
+    "pt_source": "O registro de auditoria desta operação será preservado permanentemente.",
+    "current": "The audit record of this operation will be preserved permanently.",
+    "suggested": "El registro de auditoría de esta operación se conservará permanentemente.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "El registro de auditoría de esta operación se conservará permanentemente."
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.purgeJustification",
+    "pt_source": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
+    "current": "Mandatory justification for permanent deletion (minimum 10 characters):",
+    "suggested": "Justificación obligatoria de la eliminación definitiva (mínimo 10 caracteres):",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Justificación obligatoria de la eliminación definitiva (mínimo 10 caracteres):"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.purgeConfirmName",
+    "pt_source": "Digite o nome exato para confirmar:",
+    "current": "Type the exact name to confirm:",
+    "suggested": "Escriba el nombre exacto para confirmar:",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Escriba el nombre exacto para confirmar:"
+  },
+  {
+    "locale": "es-ES",
+    "key": "unit.purgeDone",
+    "pt_source": "Registro excluído definitivamente. A operação foi gravada na auditoria.",
+    "current": "Record permanently deleted. The operation was recorded in the audit trail.",
+    "suggested": "Registro eliminado definitivamente. La operación se ha registrado en la pista de auditoría.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Registro eliminado definitivamente. La operación se ha registrado en la pista de auditoría."
+  },
+  {
+    "locale": "es-ES",
+    "key": "evaluation.feedbackIntro",
+    "pt_source": "Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.",
+    "current": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "suggested": "Evaluaciones, sugerencias, reclamaciones y elogios recibidos de los empleados sobre los EPI.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Evaluaciones, sugerencias, reclamaciones y elogios recibidos de los empleados sobre los EPI."
+  },
+  {
+    "locale": "es-ES",
+    "key": "evaluation.previousCompletedIcon",
+    "pt_source": "📋 Prévia Concluída",
+    "current": "📋 Previous review completed",
+    "suggested": "📋 Evaluación preliminar finalizada",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. O estado técnico avaliacao_previa significa avaliação preliminar concluída, e não uma revisão anterior; preservar o emoji quando presente.",
+    "applied": "📋 Evaluación preliminar finalizada"
+  },
+  {
+    "locale": "es-ES",
+    "key": "evaluation.forwardToAdmin",
+    "pt_source": "Encaminhar para Administração",
+    "current": "Forward to Administration",
+    "suggested": "Remitir a Administración",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Remitir a Administración"
+  },
+  {
+    "locale": "es-ES",
+    "key": "rules.archivalTitle",
+    "pt_source": "Política de Arquivamento e Retenção",
+    "current": "Archiving and Retention Policy",
+    "suggested": "Política de archivo y conservación",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Política de archivo y conservación"
+  },
+  {
+    "locale": "es-ES",
+    "key": "rules.archivalHint",
+    "pt_source": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.",
+    "current": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
+    "suggested": "Defina, de acuerdo con la política interna de la empresa, durante cuántos años se conservan los registros archivados de cada elemento antes de habilitar su eliminación definitiva. Mínimo legal: 5 años. La conservación de la Ficha de EPI (5 años, NR-6) tiene su propia regla y no se modifica aquí.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Manter literalmente 5 anos e NR-6 e a separação da retenção da Ficha de EPI. Isto traduz o aviso existente, sem atestar ou modificar seu fundamento jurídico.",
+    "applied": "Defina, de acuerdo con la política interna de la empresa, durante cuántos años se conservan los registros archivados de cada elemento antes de habilitar su eliminación definitiva. Mínimo legal: 5 años. La conservación de la Ficha de EPI (5 años, NR-6) tiene su propia regla y no se modifica aquí."
+  },
+  {
+    "locale": "es-ES",
+    "key": "rules.archivalSaved",
+    "pt_source": "Política de arquivamento salva com sucesso.",
+    "current": "Archiving policy saved successfully.",
+    "suggested": "Política de archivo guardada correctamente.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Política de archivo guardada correctamente."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "employee.archivedHint",
+    "pt_source": "Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived employees are deactivated for new operations (deliveries, requests and movements), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Les salariés archivés sont désactivés pour les nouvelles opérations (remises, demandes et mouvements), mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Les salariés archivés sont désactivés pour les nouvelles opérations (remises, demandes et mouvements), mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans)."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "employee.archiveConfirm",
+    "pt_source": "Este colaborador será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This employee will be archived and will no longer receive new operations (deliveries, requests and movements).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Ce salarié sera archivé et ne pourra plus faire l’objet de nouvelles opérations (remises, demandes et mouvements).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Ce salarié sera archivé et ne pourra plus faire l’objet de nouvelles opérations (remises, demandes et mouvements).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "employee.restoreConfirm",
+    "pt_source": "O colaborador será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "Le salarié sera désarchivé et redeviendra actif, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Le salarié sera désarchivé et redeviendra actif, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "epi.archivedHint",
+    "pt_source": "EPIs arquivados ficam desativados para novas operações (entregas, estoque, requisições e compras), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived PPE items are deactivated for new operations (deliveries, stock, requests and purchases), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Les EPI archivés sont désactivés pour les nouvelles opérations (remises, stocks, demandes et achats), mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Les EPI archivés sont désactivés pour les nouvelles opérations (remises, stocks, demandes et achats), mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans)."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "epi.archiveConfirm",
+    "pt_source": "Este EPI será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Cet EPI sera archivé et ne pourra plus faire l’objet de nouvelles opérations (remises, stocks, demandes et achats).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Cet EPI sera archivé et ne pourra plus faire l’objet de nouvelles opérations (remises, stocks, demandes et achats).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "epi.restoreConfirm",
+    "pt_source": "O EPI será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "L’EPI sera désarchivé et redeviendra actif, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "L’EPI sera désarchivé et redeviendra actif, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "report.fixedOperationalUnitHint",
+    "pt_source": "Seu perfil está vinculado a uma unidade operacional fixa.",
+    "current": "Your profile is linked to a fixed operational unit.",
+    "suggested": "Votre profil est rattaché à une unité opérationnelle fixe.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Votre profil est rattaché à une unité opérationnelle fixe."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.cpfLast3Required",
+    "pt_source": "Informe exatamente os 3 últimos dígitos do CPF.",
+    "current": "Enter exactly the last 3 CPF digits.",
+    "suggested": "Saisissez exactement les 3 derniers chiffres du CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Saisissez exactement les 3 derniers chiffres du CPF."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.cpfValidationFailed",
+    "pt_source": "Não foi possível validar o CPF.",
+    "current": "Could not validate the CPF.",
+    "suggested": "Impossible de valider le CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Impossible de valider le CPF."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.pendingUseBatchSignature",
+    "pt_source": "Pendente (use assinatura em lote do período)",
+    "current": "Pending (use period batch signature)",
+    "suggested": "En attente (utilisez la signature par lot de la période)",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "En attente (utilisez la signature par lot de la période)"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.noDeliveryForPeriod",
+    "pt_source": "Nenhuma entrega registrada para o período selecionado.",
+    "current": "No delivery recorded for the selected period.",
+    "suggested": "Aucune remise enregistrée pour la période sélectionnée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Aucune remise enregistrée pour la période sélectionnée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.rankingContributeText",
+    "pt_source": "Suas avaliações alimentam o Ranking de EPIs da empresa. EPIs bem avaliados são priorizados nas compras e o retorno que você recebe aqui reflete exatamente o rank do equipamento. Sugestões de novos EPIs são analisadas pelos gestores — a decisão final é do Administrador Geral.",
+    "current": "Your evaluations feed the company PPE ranking. Well-rated PPE is prioritised for purchases and the feedback you receive here reflects the equipment rank exactly. Suggestions for new PPE are reviewed by managers — the final decision is made by the General Administrator.",
+    "suggested": "Vos évaluations alimentent le classement des EPI de l’entreprise. Les EPI bien notés sont prioritaires lors des achats et les informations affichées ici reflètent exactement la position de l’équipement dans le classement. Les suggestions de nouveaux EPI sont examinées par les gestionnaires ; la décision finale revient à l’Administrateur général.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a autoridade final do Administrador Geral; nenhuma alteração de RBAC.",
+    "applied": "Vos évaluations alimentent le classement des EPI de l’entreprise. Les EPI bien notés sont prioritaires lors des achats et les informations affichées ici reflètent exactement la position de l’équipement dans le classement. Les suggestions de nouveaux EPI sont examinées par les gestionnaires ; la décision finale revient à l’Administrateur général."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.evaluatePpeHint",
+    "pt_source": "Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.",
+    "current": "Evaluate approved PPE that you have already received or are using. Your score goes directly into the ranking.",
+    "suggested": "Évaluez un EPI approuvé que vous avez déjà reçu ou que vous utilisez. Votre note est directement prise en compte dans le classement.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Évaluez un EPI approuvé que vous avez déjà reçu ou que vous utilisez. Votre note est directement prise en compte dans le classement."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.suggestedPpePlaceholder",
+    "pt_source": "Ex: Luva de nitrilo tamanho M",
+    "current": "E.g.: nitrile glove size M",
+    "suggested": "Ex. : gant en nitrile, taille M",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Ex. : gant en nitrile, taille M"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.whyPpePlaceholder",
+    "pt_source": "Qual problema ele resolve? Em que situação seria usado?",
+    "current": "What problem does it solve? In what situation would it be used?",
+    "suggested": "Quel problème résout-il ? Dans quelle situation serait-il utilisé ?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Quel problème résout-il ? Dans quelle situation serait-il utilisé ?"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.noEvaluations",
+    "pt_source": "Sem avaliações registradas.",
+    "current": "No evaluations recorded.",
+    "suggested": "Aucune évaluation enregistrée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Aucune évaluation enregistrée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.noSuggestions",
+    "pt_source": "Sem sugestões registradas.",
+    "current": "No suggestions recorded.",
+    "suggested": "Aucune suggestion enregistrée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Aucune suggestion enregistrée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.pendingSignatureAlert",
+    "pt_source": "Ainda existem itens sem assinatura. Clique em \"Clique aqui para assinar\" para prosseguir.",
+    "current": "There are still unsigned items. Click \"Click here to sign\" to continue.",
+    "suggested": "Il reste des éléments non signés. Cliquez sur « Cliquer ici pour signer » pour continuer.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. A expressão entre aspas coincide com portal.clickHereToSign no catálogo atual.",
+    "applied": "Il reste des éléments non signés. Cliquez sur « Cliquer ici pour signer » pour continuer."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.evaluationSentSuccess",
+    "pt_source": "Avaliação enviada com sucesso!",
+    "current": "Evaluation sent successfully!",
+    "suggested": "Évaluation envoyée avec succès !",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Évaluation envoyée avec succès !"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.signatureCommentPlaceholder",
+    "pt_source": "Caso não reconheça algum EPI, informe neste campo",
+    "current": "If you do not recognise any PPE, report it in this field",
+    "suggested": "Si vous ne reconnaissez pas un EPI, indiquez-le dans ce champ",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Si vous ne reconnaissez pas un EPI, indiquez-le dans ce champ"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "portal.signatureRequiredDraw",
+    "pt_source": "Assinatura digital obrigatória. Desenhe no campo de assinatura.",
+    "current": "Digital signature required. Draw in the signature field.",
+    "suggested": "La signature numérique est obligatoire. Dessinez votre signature dans le champ de signature.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "La signature numérique est obligatoire. Dessinez votre signature dans le champ de signature."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.archivedHint",
+    "pt_source": "Unidades arquivadas não recebem novas operações, mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+    "current": "Archived units no longer receive new operations, but all history remains preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.",
+    "suggested": "Les unités archivées ne font plus l’objet de nouvelles opérations, mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Les unités archivées ne font plus l’objet de nouvelles opérations, mais tout leur historique est conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.retentionExpired",
+    "pt_source": "Retenção cumprida",
+    "current": "Retention period elapsed",
+    "suggested": "Durée de conservation écoulée",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Durée de conservation écoulée"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.restoreConfirm",
+    "pt_source": "A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The unit will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "L’unité sera désarchivée et redeviendra active, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "L’unité sera désarchivée et redeviendra active, ce qui permettra de nouvelles opérations. Tout son historique conservé restera intact. Continuer ?"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.archiveConfirm",
+    "pt_source": "Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This Unit will be archived and will no longer receive new operations (employees, PPE, deliveries, stock and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Cette unité sera archivée et ne pourra plus faire l’objet de nouvelles opérations (salariés, EPI, remises, stocks et achats).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Cette unité sera archivée et ne pourra plus faire l’objet de nouvelles opérations (salariés, EPI, remises, stocks et achats).\n\nTout son historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans), à des fins de consultation, de rapports et d’audits.\n\nAucune donnée ne sera supprimée."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.archiveReasonPrompt",
+    "pt_source": "Motivo do arquivamento (registrado na auditoria):",
+    "current": "Archiving reason (recorded in the audit trail):",
+    "suggested": "Motif de l’archivage (consigné dans la piste d’audit) :",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Motif de l’archivage (consigné dans la piste d’audit) :"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.purgeSummaryIntro",
+    "pt_source": "ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:",
+    "current": "WARNING: permanent and irreversible deletion. The following historical records will be removed:",
+    "suggested": "ATTENTION : suppression définitive et irréversible. Les enregistrements historiques suivants seront supprimés :",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "ATTENTION : suppression définitive et irréversible. Les enregistrements historiques suivants seront supprimés :"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.purgeSummaryOutro",
+    "pt_source": "O registro de auditoria desta operação será preservado permanentemente.",
+    "current": "The audit record of this operation will be preserved permanently.",
+    "suggested": "L’enregistrement d’audit de cette opération sera conservé de manière permanente.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "L’enregistrement d’audit de cette opération sera conservé de manière permanente."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.purgeJustification",
+    "pt_source": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
+    "current": "Mandatory justification for permanent deletion (minimum 10 characters):",
+    "suggested": "Justification obligatoire de la suppression définitive (au moins 10 caractères) :",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Justification obligatoire de la suppression définitive (au moins 10 caractères) :"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.purgeConfirmName",
+    "pt_source": "Digite o nome exato para confirmar:",
+    "current": "Type the exact name to confirm:",
+    "suggested": "Saisissez le nom exact pour confirmer :",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Saisissez le nom exact pour confirmer :"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "unit.purgeDone",
+    "pt_source": "Registro excluído definitivamente. A operação foi gravada na auditoria.",
+    "current": "Record permanently deleted. The operation was recorded in the audit trail.",
+    "suggested": "Enregistrement supprimé définitivement. L’opération a été consignée dans la piste d’audit.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Enregistrement supprimé définitivement. L’opération a été consignée dans la piste d’audit."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "evaluation.feedbackIntro",
+    "pt_source": "Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.",
+    "current": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "suggested": "Évaluations, suggestions, réclamations et compliments reçus des salariés concernant les EPI.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Évaluations, suggestions, réclamations et compliments reçus des salariés concernant les EPI."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "evaluation.previousCompletedIcon",
+    "pt_source": "📋 Prévia Concluída",
+    "current": "📋 Previous review completed",
+    "suggested": "📋 Pré-évaluation terminée",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. O estado técnico avaliacao_previa significa avaliação preliminar concluída, e não uma revisão anterior; preservar o emoji quando presente.",
+    "applied": "📋 Pré-évaluation terminée"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "evaluation.forwardToAdmin",
+    "pt_source": "Encaminhar para Administração",
+    "current": "Forward to Administration",
+    "suggested": "Transmettre à l’administration",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Transmettre à l’administration"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "rules.archivalTitle",
+    "pt_source": "Política de Arquivamento e Retenção",
+    "current": "Archiving and Retention Policy",
+    "suggested": "Politique d’archivage et de conservation",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Politique d’archivage et de conservation"
+  },
+  {
+    "locale": "fr-FR",
+    "key": "rules.archivalHint",
+    "pt_source": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.",
+    "current": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
+    "suggested": "Définissez, conformément à la politique interne de l’entreprise, pendant combien d’années les enregistrements archivés de chaque élément sont conservés avant que leur suppression définitive soit autorisée. Minimum légal : 5 ans. La conservation de la Fiche EPI (5 ans, NR-6) obéit à une règle distincte qui n’est pas modifiée ici.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Manter literalmente 5 anos e NR-6 e a separação da retenção da Ficha de EPI. Isto traduz o aviso existente, sem atestar ou modificar seu fundamento jurídico.",
+    "applied": "Définissez, conformément à la politique interne de l’entreprise, pendant combien d’années les enregistrements archivés de chaque élément sont conservés avant que leur suppression définitive soit autorisée. Minimum légal : 5 ans. La conservation de la Fiche EPI (5 ans, NR-6) obéit à une règle distincte qui n’est pas modifiée ici."
+  },
+  {
+    "locale": "fr-FR",
+    "key": "rules.archivalSaved",
+    "pt_source": "Política de arquivamento salva com sucesso.",
+    "current": "Archiving policy saved successfully.",
+    "suggested": "Politique d’archivage enregistrée avec succès.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Politique d’archivage enregistrée avec succès."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "employee.archivedHint",
+    "pt_source": "Colaboradores arquivados ficam desativados para novas operações (entregas, requisições e movimentações), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived employees are deactivated for new operations (deliveries, requests and movements), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Arkiverte medarbeidere er deaktivert for nye operasjoner (utleveringer, forespørsler og bevegelser), men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Arkiverte medarbeidere er deaktivert for nye operasjoner (utleveringer, forespørsler og bevegelser), men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år)."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "employee.archiveConfirm",
+    "pt_source": "Este colaborador será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This employee will be archived and will no longer receive new operations (deliveries, requests and movements).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Denne medarbeideren blir arkivert og kan ikke lenger inngå i nye operasjoner (utleveringer, forespørsler og bevegelser).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Denne medarbeideren blir arkivert og kan ikke lenger inngå i nye operasjoner (utleveringer, forespørsler og bevegelser).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "employee.restoreConfirm",
+    "pt_source": "O colaborador será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The employee will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "Medarbeideren blir hentet frem fra arkivet og blir aktiv igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Medarbeideren blir hentet frem fra arkivet og blir aktiv igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "epi.archivedHint",
+    "pt_source": "EPIs arquivados ficam desativados para novas operações (entregas, estoque, requisições e compras), mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+    "current": "Archived PPE items are deactivated for new operations (deliveries, stock, requests and purchases), but all history remains preserved for the configured minimum retention period (at least 5 years).",
+    "suggested": "Arkivert PVU er deaktivert for nye operasjoner (utleveringer, lager, forespørsler og innkjøp), men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Arkivert PVU er deaktivert for nye operasjoner (utleveringer, lager, forespørsler og innkjøp), men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år)."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "epi.archiveConfirm",
+    "pt_source": "Este EPI será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This PPE item will be archived and will no longer receive new operations (deliveries, stock, requests and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Dette PVU-et blir arkivert og kan ikke lenger inngå i nye operasjoner (utleveringer, lager, forespørsler og innkjøp).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Dette PVU-et blir arkivert og kan ikke lenger inngå i nye operasjoner (utleveringer, lager, forespørsler og innkjøp).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "epi.restoreConfirm",
+    "pt_source": "O EPI será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The PPE item will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "PVU-et blir hentet frem fra arkivet og blir aktivt igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "PVU-et blir hentet frem fra arkivet og blir aktivt igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "report.fixedOperationalUnitHint",
+    "pt_source": "Seu perfil está vinculado a uma unidade operacional fixa.",
+    "current": "Your profile is linked to a fixed operational unit.",
+    "suggested": "Profilen din er knyttet til en fast driftsenhet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Profilen din er knyttet til en fast driftsenhet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.cpfAttemptsHint",
+    "pt_source": "Você tem até 3 tentativas por token.",
+    "current": "You have up to 3 attempts per token.",
+    "suggested": "Du har opptil 3 forsøk per token.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Du har opptil 3 forsøk per token."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.cpfLast3Required",
+    "pt_source": "Informe exatamente os 3 últimos dígitos do CPF.",
+    "current": "Enter exactly the last 3 CPF digits.",
+    "suggested": "Oppgi nøyaktig de 3 siste sifrene i CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Oppgi nøyaktig de 3 siste sifrene i CPF."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.cpfValidationFailed",
+    "pt_source": "Não foi possível validar o CPF.",
+    "current": "Could not validate the CPF.",
+    "suggested": "Kunne ikke validere CPF.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. CPF permanece o identificador brasileiro, sem substituição por identificador local; quantidade de dígitos/tentativas intacta.",
+    "applied": "Kunne ikke validere CPF."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.periodSignaturePending",
+    "pt_source": "Assinatura pendente para o período.",
+    "current": "Signature pending for the period.",
+    "suggested": "Signatur mangler for perioden.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Signatur mangler for perioden."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.pendingUseBatchSignature",
+    "pt_source": "Pendente (use assinatura em lote do período)",
+    "current": "Pending (use period batch signature)",
+    "suggested": "Venter (bruk samlet signering for perioden)",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Venter (bruk samlet signering for perioden)"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.noDeliveryForPeriod",
+    "pt_source": "Nenhuma entrega registrada para o período selecionado.",
+    "current": "No delivery recorded for the selected period.",
+    "suggested": "Ingen utleveringer er registrert for den valgte perioden.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Ingen utleveringer er registrert for den valgte perioden."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.rankingContributeTitle",
+    "pt_source": "Contribua para o Ranking de EPIs!",
+    "current": "Contribute to the PPE ranking!",
+    "suggested": "Bidra til rangeringen av PVU!",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Bidra til rangeringen av PVU!"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.rankingContributeText",
+    "pt_source": "Suas avaliações alimentam o Ranking de EPIs da empresa. EPIs bem avaliados são priorizados nas compras e o retorno que você recebe aqui reflete exatamente o rank do equipamento. Sugestões de novos EPIs são analisadas pelos gestores — a decisão final é do Administrador Geral.",
+    "current": "Your evaluations feed the company PPE ranking. Well-rated PPE is prioritised for purchases and the feedback you receive here reflects the equipment rank exactly. Suggestions for new PPE are reviewed by managers — the final decision is made by the General Administrator.",
+    "suggested": "Vurderingene dine bidrar til bedriftens rangering av PVU. PVU med gode vurderinger prioriteres ved innkjøp, og tilbakemeldingen du får her, gjenspeiler utstyrets nøyaktige plassering i rangeringen. Forslag til nytt PVU vurderes av lederne – hovedadministratoren tar den endelige beslutningen.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a autoridade final do Administrador Geral; nenhuma alteração de RBAC.",
+    "applied": "Vurderingene dine bidrar til bedriftens rangering av PVU. PVU med gode vurderinger prioriteres ved innkjøp, og tilbakemeldingen du får her, gjenspeiler utstyrets nøyaktige plassering i rangeringen. Forslag til nytt PVU vurderes av lederne – generell administrator tar den endelige beslutningen."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.evaluatePpeHint",
+    "pt_source": "Avalie um EPI aprovado que você já recebeu ou está usando. Sua nota entra diretamente no ranking.",
+    "current": "Evaluate approved PPE that you have already received or are using. Your score goes directly into the ranking.",
+    "suggested": "Vurder godkjent PVU som du allerede har mottatt eller bruker. Poengsummen din inngår direkte i rangeringen.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Vurder godkjent PVU som du allerede har mottatt eller bruker. Poengsummen din inngår direkte i rangeringen."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.complaintPpeProblem",
+    "pt_source": "👎 Reclamação — EPI tem problema",
+    "current": "👎 Complaint — PPE has a problem",
+    "suggested": "👎 Klage – det er et problem med PVU-et",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "👎 Klage – det er et problem med PVU-et"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.experiencePlaceholder",
+    "pt_source": "Descreva sua experiência com este EPI...",
+    "current": "Describe your experience with this PPE...",
+    "suggested": "Beskriv erfaringen din med dette PVU-et ...",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Beskriv erfaringen din med dette PVU-et ..."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.improvementSuggestionForPpe",
+    "pt_source": "Sugestão de melhoria para este EPI",
+    "current": "Improvement suggestion for this PPE",
+    "suggested": "Forslag til forbedring av dette PVU-et",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Forslag til forbedring av dette PVU-et"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.improvementPlaceholder",
+    "pt_source": "Como poderíamos melhorar este EPI?",
+    "current": "How could we improve this PPE?",
+    "suggested": "Hvordan kan vi forbedre dette PVU-et?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Hvordan kan vi forbedre dette PVU-et?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.suggestNewPpeHint",
+    "pt_source": "Sugira um equipamento que deveria ser adquirido. A decisão final é do Administrador Geral.",
+    "current": "Suggest equipment that should be purchased. The final decision is made by the General Administrator.",
+    "suggested": "Foreslå utstyr som bør kjøpes inn. Hovedadministratoren tar den endelige beslutningen.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a autoridade final do Administrador Geral; nenhuma alteração de RBAC.",
+    "applied": "Foreslå utstyr som bør kjøpes inn. Hovedadministratoren tar den endelige beslutningen."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.suggestedPpePlaceholder",
+    "pt_source": "Ex: Luva de nitrilo tamanho M",
+    "current": "E.g.: nitrile glove size M",
+    "suggested": "F.eks.: nitrilhanske i størrelse M",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "F.eks.: nitrilhanske i størrelse M"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.whyPpeNeeded",
+    "pt_source": "Por que este EPI é necessário?",
+    "current": "Why is this PPE needed?",
+    "suggested": "Hvorfor er dette PVU-et nødvendig?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Hvorfor er dette PVU-et nødvendig?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.whyPpePlaceholder",
+    "pt_source": "Qual problema ele resolve? Em que situação seria usado?",
+    "current": "What problem does it solve? In what situation would it be used?",
+    "suggested": "Hvilket problem løser det? I hvilken situasjon ville det bli brukt?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Hvilket problem løser det? I hvilken situasjon ville det bli brukt?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.referenceLinkOptional",
+    "pt_source": "Link de referência (opcional)",
+    "current": "Reference link (optional)",
+    "suggested": "Referanselenke (valgfritt)",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Referanselenke (valgfritt)"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.noEvaluations",
+    "pt_source": "Sem avaliações registradas.",
+    "current": "No evaluations recorded.",
+    "suggested": "Ingen vurderinger er registrert.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Ingen vurderinger er registrert."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.noSuggestions",
+    "pt_source": "Sem sugestões registradas.",
+    "current": "No suggestions recorded.",
+    "suggested": "Ingen forslag er registrert.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Ingen forslag er registrert."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.pendingSignatureAlert",
+    "pt_source": "Ainda existem itens sem assinatura. Clique em \"Clique aqui para assinar\" para prosseguir.",
+    "current": "There are still unsigned items. Click \"Click here to sign\" to continue.",
+    "suggested": "Det finnes fortsatt usignerte elementer. Klikk på «Klikk her for å signere» for å fortsette.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. A expressão entre aspas coincide com portal.clickHereToSign no catálogo atual.",
+    "applied": "Det finnes fortsatt usignerte elementer. Klikk på «Klikk her for å signere» for å fortsette."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.evaluationSentSuccess",
+    "pt_source": "Avaliação enviada com sucesso!",
+    "current": "Evaluation sent successfully!",
+    "suggested": "Vurderingen er sendt!",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Vurderingen er sendt!"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.signatureCommentPlaceholder",
+    "pt_source": "Caso não reconheça algum EPI, informe neste campo",
+    "current": "If you do not recognise any PPE, report it in this field",
+    "suggested": "Hvis du ikke kjenner igjen noe av PVU-et, oppgi det i dette feltet",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Hvis du ikke kjenner igjen noe av PVU-et, oppgi det i dette feltet"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "portal.signatureRequiredDraw",
+    "pt_source": "Assinatura digital obrigatória. Desenhe no campo de assinatura.",
+    "current": "Digital signature required. Draw in the signature field.",
+    "suggested": "Digital signatur er påkrevd. Tegn signaturen din i signaturfeltet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Digital signatur er påkrevd. Tegn signaturen din i signaturfeltet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.archivedHint",
+    "pt_source": "Unidades arquivadas não recebem novas operações, mas todo o histórico permanece preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+    "current": "Archived units no longer receive new operations, but all history remains preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.",
+    "suggested": "Arkiverte enheter kan ikke inngå i nye operasjoner, men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Arkiverte enheter kan ikke inngå i nye operasjoner, men hele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.retentionExpired",
+    "pt_source": "Retenção cumprida",
+    "current": "Retention period elapsed",
+    "suggested": "Oppbevaringstiden er oppfylt",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Oppbevaringstiden er oppfylt"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.restoreConfirm",
+    "pt_source": "A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?",
+    "current": "The unit will be unarchived and become active again, able to receive new operations. All preserved history remains intact. Continue?",
+    "suggested": "Enheten blir hentet frem fra arkivet og blir aktiv igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Enheten blir hentet frem fra arkivet og blir aktiv igjen, slik at nye operasjoner er mulig. Hele den bevarte historikken forblir intakt. Vil du fortsette?"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.archiveConfirm",
+    "pt_source": "Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.",
+    "current": "This Unit will be archived and will no longer receive new operations (employees, PPE, deliveries, stock and purchases).\n\nAll history will remain preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.\n\nNo data will be deleted.",
+    "suggested": "Denne enheten blir arkivert og kan ikke lenger inngå i nye operasjoner (medarbeidere, PVU, utleveringer, lager og innkjøp).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Denne enheten blir arkivert og kan ikke lenger inngå i nye operasjoner (medarbeidere, PVU, utleveringer, lager og innkjøp).\n\nHele historikken bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.\n\nIngen data blir slettet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.archiveReasonPrompt",
+    "pt_source": "Motivo do arquivamento (registrado na auditoria):",
+    "current": "Archiving reason (recorded in the audit trail):",
+    "suggested": "Årsak til arkivering (registreres i revisjonssporet):",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar a distinção entre arquivar e excluir, o histórico e o prazo mínimo configurado de 5 anos; não alterar a política nem os dados.",
+    "applied": "Årsak til arkivering (registreres i revisjonssporet):"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.purgeSummaryIntro",
+    "pt_source": "ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:",
+    "current": "WARNING: permanent and irreversible deletion. The following historical records will be removed:",
+    "suggested": "ADVARSEL: permanent sletting som ikke kan angres. Følgende historiske oppføringer blir fjernet:",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "ADVARSEL: permanent sletting som ikke kan angres. Følgende historiske oppføringer blir fjernet:"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.purgeSummaryOutro",
+    "pt_source": "O registro de auditoria desta operação será preservado permanentemente.",
+    "current": "The audit record of this operation will be preserved permanently.",
+    "suggested": "Revisjonsoppføringen for denne operasjonen bevares permanent.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Revisjonsoppføringen for denne operasjonen bevares permanent."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.purgeJustification",
+    "pt_source": "Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):",
+    "current": "Mandatory justification for permanent deletion (minimum 10 characters):",
+    "suggested": "Obligatorisk begrunnelse for permanent sletting (minst 10 tegn):",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Obligatorisk begrunnelse for permanent sletting (minst 10 tegn):"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.purgeConfirmName",
+    "pt_source": "Digite o nome exato para confirmar:",
+    "current": "Type the exact name to confirm:",
+    "suggested": "Skriv inn det nøyaktige navnet for å bekrefte:",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Skriv inn det nøyaktige navnet for å bekrefte:"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "unit.purgeDone",
+    "pt_source": "Registro excluído definitivamente. A operação foi gravada na auditoria.",
+    "current": "Record permanently deleted. The operation was recorded in the audit trail.",
+    "suggested": "Oppføringen er slettet permanent. Operasjonen er registrert i revisjonssporet.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Preservar irreversibilidade, confirmação exata, limite de 10 caracteres quando presente e permanência do registro de auditoria.",
+    "applied": "Oppføringen er slettet permanent. Operasjonen er registrert i revisjonssporet."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.ppeEvaluationsSuggestions",
+    "pt_source": "Avaliações e Sugestões de EPI",
+    "current": "PPE evaluations and suggestions",
+    "suggested": "Vurderinger og forslag om PVU",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Vurderinger og forslag om PVU"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.feedbackIntro",
+    "pt_source": "Avaliações, sugestões, reclamações e elogios recebidos dos colaboradores sobre EPIs.",
+    "current": "Evaluations, suggestions, complaints and praise received from employees about PPE.",
+    "suggested": "Vurderinger, forslag, klager og ros fra medarbeidere om PVU.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Vurderinger, forslag, klager og ros fra medarbeidere om PVU."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.previousCompleted",
+    "pt_source": "Prévia Concluída",
+    "current": "Previous review completed",
+    "suggested": "Foreløpig vurdering fullført",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. O estado técnico avaliacao_previa significa avaliação preliminar concluída, e não uma revisão anterior; preservar o emoji quando presente.",
+    "applied": "Foreløpig vurdering fullført"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.previousCompletedIcon",
+    "pt_source": "📋 Prévia Concluída",
+    "current": "📋 Previous review completed",
+    "suggested": "📋 Foreløpig vurdering fullført",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. O estado técnico avaliacao_previa significa avaliação preliminar concluída, e não uma revisão anterior; preservar o emoji quando presente.",
+    "applied": "📋 Foreløpig vurdering fullført"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.adminDecision",
+    "pt_source": "Decisão Administrativa",
+    "current": "Administrative decision",
+    "suggested": "Administrativ beslutning",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Administrativ beslutning"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "evaluation.forwardToAdmin",
+    "pt_source": "Encaminhar para Administração",
+    "current": "Forward to Administration",
+    "suggested": "Send til administrasjonen",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Send til administrasjonen"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "rules.archivalTitle",
+    "pt_source": "Política de Arquivamento e Retenção",
+    "current": "Archiving and Retention Policy",
+    "suggested": "Retningslinjer for arkivering og oppbevaring",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Retningslinjer for arkivering og oppbevaring"
+  },
+  {
+    "locale": "nb-NO",
+    "key": "rules.archivalHint",
+    "pt_source": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada. Mínimo legal: 5 anos. A retenção da Ficha de EPI (5 anos, NR-6) tem regra própria e não é alterada aqui.",
+    "current": "Define, according to your company policy, how many years archived records of each item remain preserved before permanent deletion becomes available. Legal minimum: 5 years. The PPE Record retention (5 years, NR-6) has its own rule and is not changed here.",
+    "suggested": "Definer, i samsvar med bedriftens interne retningslinjer, hvor mange år de arkiverte oppføringene for hvert element skal bevares før permanent sletting blir tilgjengelig. Lovpålagt minimum: 5 år. Oppbevaringen av PVU-kortet (5 år, NR-6) følger en egen regel og endres ikke her.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa. Manter literalmente 5 anos e NR-6 e a separação da retenção da Ficha de EPI. Isto traduz o aviso existente, sem atestar ou modificar seu fundamento jurídico.",
+    "applied": "Definer, i samsvar med bedriftens interne retningslinjer, hvor mange år de arkiverte oppføringene for hvert element skal bevares før permanent sletting blir tilgjengelig. Lovpålagt minimum: 5 år. Oppbevaringen av PVU-kortet (5 år, NR-6) følger en egen regel og endres ikke her."
+  },
+  {
+    "locale": "nb-NO",
+    "key": "rules.archivalSaved",
+    "pt_source": "Política de arquivamento salva com sucesso.",
+    "current": "Archiving policy saved successfully.",
+    "suggested": "Retningslinjene for arkivering er lagret.",
+    "reason": "Texto integral em inglês no catálogo do idioma solicitado; traduzir a apresentação preservando o significado da fonte portuguesa.",
+    "applied": "Retningslinjene for arkivering er lagret."
+  }
+]

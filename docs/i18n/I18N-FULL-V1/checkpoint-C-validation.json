@@ -1,0 +1,30 @@
+{
+  "stage": "C-checkpoint",
+  "complete": false,
+  "product": "corporate",
+  "python_targeted": 46,
+  "javascript_suite": 523,
+  "guards": 78,
+  "ubx": {
+    "declarations": 936,
+    "app_endpoints": 121,
+    "ui_endpoints": 69,
+    "cycles": 0
+  },
+  "browser": {
+    "library": 5,
+    "checkout": 5,
+    "viewports": [
+      1280,
+      390
+    ],
+    "fixtures": "synthetic intercepted API and payment SDK; no writes"
+  },
+  "ci": "pending workflow dispatch",
+  "limitations": [
+    "Full UI functional matrix incomplete",
+    "Backend errors, generated documents and supplier portal incomplete",
+    "Flutter full translation and generation incomplete",
+    "Whole-task independent verdict not issued"
+  ]
+}

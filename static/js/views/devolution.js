@@ -229,7 +229,7 @@
         onConfirm: (payloadSignature) => {
           devolutionSignature = payloadSignature;
           if (devSignatureStatus) {
-            devSignatureStatus.textContent = msg('devolution.signedCaptured', '✓ Assinatura capturada em {date}.', { date: formatDateTime(payloadSignature.signature_at) });
+            devSignatureStatus.textContent = msg('devolution.signedCaptured', (globalThis.trEpi?.('devolution.signedCaptured','\u2713 Assinatura capturada em {date}.',{}) ?? '\u2713 Assinatura capturada em {date}.'), { date: formatDateTime(payloadSignature.signature_at) });
             devSignatureStatus.style.color = '#28a745';
           }
           if (devSignatureBtn) { devSignatureBtn.textContent = tr('devolution.changeSignature', 'Alterar assinatura'); }

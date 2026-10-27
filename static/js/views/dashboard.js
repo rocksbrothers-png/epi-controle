@@ -317,10 +317,10 @@
   function _kpiGroupHtml(title, cards) {
     const visible = cards.filter(Boolean);
     if (!visible.length) { return ''; }
-    return `<section class="kpi-group">`
+    return '<section class="kpi-group">'
       + `<h4 class="kpi-group-title">${title}</h4>`
       + `<div class="dashboard-kpi-grid">${visible.map(_kpiCardHtml).join('')}</div>`
-      + `</section>`;
+      + '</section>';
   }
 
   // Painel executivo consolidado (auditoria Dashboard §1/§2): fonte única de KPIs
@@ -473,11 +473,11 @@
     ]);
     phase3Cards(refs.phase3GestaoSummary, [
       { label: 'Vínculos ativos', value: scoped(state.employees || []).length },
-      { label: 'Movimentações', value: scoped(state.employeeMovements || []).length },
-      { label: 'Unidades', value: scopedUnitsList().length }
+      { label: (globalThis.trEpi?.('tabs.movements','Movimenta\u00e7\u00f5es',{}) ?? 'Movimenta\u00e7\u00f5es'), value: scoped(state.employeeMovements || []).length },
+      { label: (globalThis.trEpi?.('dashboard.units','Unidades',{}) ?? 'Unidades'), value: scopedUnitsList().length }
     ]);
     phase3Cards(refs.phase3EpisSummary, [
-      { label: 'Catálogo', value: scopedKeepingCompanyWide(state.epis || []).length },
+      { label: (globalThis.trEpi?.('ui.app.catalogo_dc7aba','Cat\u00e1logo',{}) ?? 'Cat\u00e1logo'), value: scopedKeepingCompanyWide(state.epis || []).length },
       { label: 'Com foto', value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.epi_photo_data || '').trim()).length },
       { label: tr('epi.caExpiry', 'Validade do CA'), value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.ca_expiry || '').trim()).length }
     ]);

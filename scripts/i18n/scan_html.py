@@ -9,7 +9,7 @@ def flat(d,p=''):
 def norm(v):return re.sub(r'\s+',' ',unescape(v)).strip()
 base=flat(json.loads((ROOT/'static/i18n/pt-BR.json').read_text()));known={}
 for k,v in base.items():known.setdefault(norm(v),k)
-TECHNICAL={'API','CSV','XLSX','PDF','PNG','JPEG','JPG','QR Code','CNPJ','CPF','CA','CE','BRL','EPI Controle','EPI Control','WhatsApp','Microsoft','Google','Facebook','Apple','Android','iOS','Start','Business','Enterprise','QR','HTML','JSON','HTTP','URL','UTC','LTDA','CNAE','UF','CEP','XML','Pix','PIX','A4','A5','UTF-8','P','M','G','GG','XG','XXG','EXG','XS','S','L','XL','XXL'}
+TECHNICAL={'API','CSV','XLSX','PDF','PNG','JPEG','JPG','QR Code','CNPJ','CPF','CA','CE','BRL','EPI Controle','EPI Control','WhatsApp','Microsoft','Google','Facebook','Apple','Android','iOS','Start','Business','Corporate','Individual','Enterprise','QR','HTML','JSON','HTTP','URL','UTC','LTDA','CNAE','UF','CEP','XML','Pix','PIX','A4','A5','UTF-8','P','M','G','GG','XG','XXG','EXG','XS','S','L','XL','XXL'}
 class Scan(HTMLParser):
  def __init__(self,src,name):
   super().__init__(convert_charrefs=False);self.src=src;self.name=name;self.offsets=[0];self.stack=[];self.nodes=[];self.records=[]

@@ -73,7 +73,7 @@
     if (forgotBtn) {forgotBtn.textContent = t('login.forgotPassword');}
 
     const recoverBtn = document.getElementById('recovery-submit');
-    if (recoverBtn) {recoverBtn.textContent = t('login.button');}
+    if (recoverBtn) {recoverBtn.textContent = t('login.recovery.submit');}
 
     const h2 = document.querySelector('#login-form h2');
     if (h2) {h2.textContent = t('login.title');}
@@ -108,6 +108,7 @@
     if (branding.institutional_message) {
       const msgEl = document.getElementById('login-institutional-msg');
       if (msgEl) {
+        I18N?.clearBinding?.(msgEl);
         msgEl.textContent = branding.institutional_message;
         msgEl.style.display = 'block';
       }
@@ -252,7 +253,7 @@
   }
 
   function renderLanguageError() {
-    document.getElementById('epi-language-error')?.remove();
+    document.getElementById('epi-language-error')?.remove?.();
     const notice = document.createElement('div');
     notice.id = 'epi-language-error';
     notice.className = 'epi-toast-container';
@@ -263,7 +264,7 @@
     text.textContent = window.trEpi('i18n.languageLoadFailed', 'Não foi possível carregar o idioma. O idioma anterior foi preservado. Tente novamente.');
     notice.appendChild(text);
     document.body.appendChild(notice);
-    setTimeout(() => notice.remove(), 8000);
+    setTimeout(() => notice.remove?.(), 8000);
   }
 
   /* ── Init ────────────────────────────────────────────────────────────────── */
@@ -293,7 +294,7 @@
     window.addEventListener('epi:langchange', () => {
       applyTranslationsToLogin();
       renderLanguageSelector(I18N?.lang || activeLang);
-      if (!I18N?.loadError) { document.getElementById('epi-language-error')?.remove(); }
+      if (!I18N?.loadError) { document.getElementById('epi-language-error')?.remove?.(); }
     });
   }
 

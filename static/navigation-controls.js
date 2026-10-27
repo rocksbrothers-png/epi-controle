@@ -35,24 +35,24 @@
 
   // Para novas telas, adicione entradas em VIEW_HIERARCHY para manter breadcrumb e menu consistentes.
   var VIEW_HIERARCHY = {
-    dashboard: { label: 'Dashboard', parent: 'operacao' },
-    empresas: { label: 'Empresas', parent: 'operacao' },
-    comercial: { label: 'Comercial', parent: 'operacao' },
-    usuarios: { label: 'Usuários', parent: 'operacao' },
-    unidades: { label: 'Unidades', parent: 'operacao' },
-    colaboradores: { label: 'Cadastro', parent: 'colaboradores-group' },
+    dashboard: { get ["label"]() { return (globalThis.trEpi?.("dashboard.title","Dashboard",{}) ?? "Dashboard"); }, parent: 'operacao' },
+    empresas: { get ["label"]() { return (globalThis.trEpi?.("company.kpiTotal","Empresas",{}) ?? "Empresas"); }, parent: 'operacao' },
+    comercial: { get ["label"]() { return (globalThis.trEpi?.("nav.commercial","Comercial",{}) ?? "Comercial"); }, parent: 'operacao' },
+    usuarios: { get ["label"]() { return (globalThis.trEpi?.("user.title","Usu\u00e1rios",{}) ?? "Usu\u00e1rios"); }, parent: 'operacao' },
+    unidades: { get ["label"]() { return (globalThis.trEpi?.("dashboard.units","Unidades",{}) ?? "Unidades"); }, parent: 'operacao' },
+    colaboradores: { get ["label"]() { return (globalThis.trEpi?.("outsourcedCompany.registrationMode","Cadastro",{}) ?? "Cadastro"); }, parent: 'colaboradores-group' },
     'gestao-colaborador': { label: 'Gestão', parent: 'colaboradores-group' },
-    epis: { label: 'Cadastro', parent: 'epi-group' },
-    estoque: { label: 'Estoque', parent: 'epi-group' },
-    entregas: { label: 'Entrega', parent: 'epi-group' },
+    epis: { get ["label"]() { return (globalThis.trEpi?.("outsourcedCompany.registrationMode","Cadastro",{}) ?? "Cadastro"); }, parent: 'epi-group' },
+    estoque: { get ["label"]() { return (globalThis.trEpi?.("tabs.stock","Estoque",{}) ?? "Estoque"); }, parent: 'epi-group' },
+    entregas: { get ["label"]() { return (globalThis.trEpi?.("delivery.title","Entrega",{}) ?? "Entrega"); }, parent: 'epi-group' },
     fichas: { label: 'Ficha', parent: 'epi-group' },
-    relatorios: { label: 'Relatórios', parent: 'operacao' },
-    configuracao: { label: 'Configuração', parent: 'operacao' }
+    relatorios: { get ["label"]() { return (globalThis.trEpi?.("outsourcedCompany.reportsTab","Relat\u00f3rios",{}) ?? "Relat\u00f3rios"); }, parent: 'operacao' },
+    configuracao: { get ["label"]() { return (globalThis.trEpi?.("ui.topbar.configuracao_8d60e1","Configura\u00e7\u00e3o",{}) ?? "Configura\u00e7\u00e3o"); }, parent: 'operacao' }
   };
 
   var TREE_GROUPS = {
-    operacao: { label: 'Operação', view: 'dashboard', parent: null },
-    'colaboradores-group': { label: 'Colaboradores', view: 'colaboradores', parent: 'operacao' },
+    operacao: { get ["label"]() { return (globalThis.trEpi?.("nav.groupOperation","Opera\u00e7\u00e3o",{}) ?? "Opera\u00e7\u00e3o"); }, view: 'dashboard', parent: null },
+    'colaboradores-group': { get ["label"]() { return (globalThis.trEpi?.("employee.listTitle","Colaboradores",{}) ?? "Colaboradores"); }, view: 'colaboradores', parent: 'operacao' },
     'epi-group': { label: 'EPI', view: 'epis', parent: 'operacao' }
   };
 
@@ -126,7 +126,7 @@
       refs.config.classList.toggle('active', settingsOpen);
       refs.config.setAttribute('aria-expanded', settingsOpen ? 'true' : 'false');
       refs.config.setAttribute('aria-controls', 'ux-settings-panel');
-      refs.config.setAttribute('aria-label', settingsOpen ? 'Fechar configuração' : 'Abrir configuração');
+      refs.config.setAttribute('aria-label', settingsOpen ? (globalThis.EpiI18n?.clearBinding?.(refs.config,"aria-label"), 'Fechar configuração') : (globalThis.EpiI18n?.attributeFor?.(refs.config,"aria-label","ui.topbar.abrir_configuracao_6a7a95","Abrir configura\u00e7\u00e3o",{}) ?? globalThis.trEpi?.("ui.topbar.abrir_configuracao_6a7a95","Abrir configura\u00e7\u00e3o",{}) ?? "Abrir configura\u00e7\u00e3o"));
     }
 
     if (refs.burger) {
@@ -134,7 +134,7 @@
       refs.burger.setAttribute('aria-expanded', operationOpen ? 'true' : 'false');
       refs.burger.setAttribute('aria-controls', 'ux-operation-panel');
       refs.burger.hidden = false;
-      refs.burger.title = 'Operação';
+      refs.burger.title = ((globalThis.EpiI18n?.attributeFor?.(refs.burger,"title","nav.groupOperation","Opera\u00e7\u00e3o",{}) ?? globalThis.trEpi?.("nav.groupOperation","Opera\u00e7\u00e3o",{}) ?? "Opera\u00e7\u00e3o"));
       refs.burger.setAttribute('aria-label', operationOpen ? 'Fechar menu Operação' : 'Abrir menu Operação');
     }
 
@@ -193,7 +193,7 @@
     if (refs.back) {
       refs.back.hidden = false;
       refs.back.disabled = false;
-      refs.back.title = 'Voltar';
+      refs.back.title = ((globalThis.EpiI18n?.attributeFor?.(refs.back,"title","dataMigration.back","Voltar",{}) ?? globalThis.trEpi?.("dataMigration.back","Voltar",{}) ?? "Voltar"));
       refs.back.setAttribute('aria-label', 'Voltar para área anterior');
     }
 
@@ -228,11 +228,11 @@
   function buildOperationTreeHtml() {
     var groups = [
       {
-        label: 'Operação',
+        label: (globalThis.trEpi?.("nav.groupOperation","Opera\u00e7\u00e3o",{}) ?? "Opera\u00e7\u00e3o"),
         views: ['dashboard', 'empresas', 'comercial', 'usuarios', 'unidades', 'relatorios']
       },
       {
-        label: 'Colaboradores',
+        label: (globalThis.trEpi?.("employee.listTitle","Colaboradores",{}) ?? "Colaboradores"),
         views: ['colaboradores', 'gestao-colaborador']
       },
       {
@@ -262,7 +262,7 @@
     }
     items.push('<button type="button" class="ux-panel-link" data-nav-view="dashboard">Voltar ao dashboard</button>');
     return [
-      '<div class="ux-panel-head"><strong>Configuração</strong><small>Ações rápidas da área</small></div>',
+      "<div class=\"ux-panel-head\"><strong data-i18n=\"ui.topbar.configuracao_8d60e1\">Configura\u00e7\u00e3o</strong><small>A\u00e7\u00f5es r\u00e1pidas da \u00e1rea</small></div>",
     ].concat(items).join('');
   }
 
@@ -284,7 +284,7 @@
     ui.operationPanel.setAttribute('aria-hidden', 'true');
     ui.operationPanel.setAttribute('tabindex', '-1');
     ui.operationPanel.innerHTML = [
-      '<div class="ux-panel-head"><strong>Operação</strong><small>Módulos e submódulos</small></div>',
+      "<div class=\"ux-panel-head\"><strong data-i18n=\"nav.groupOperation\">Opera\u00e7\u00e3o</strong><small>M\u00f3dulos e subm\u00f3dulos</small></div>",
       '<nav class="ux-operation-tree" aria-label="Navegação Operação">',
       buildOperationTreeHtml(),
       '</nav>'

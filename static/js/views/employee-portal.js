@@ -232,7 +232,7 @@
           <button class="menu-link active" data-portal-tab="ficha">${tr('records.title', 'Ficha de EPI')}</button>
           <button class="menu-link" data-portal-tab="solicitacao">${tr('portal.ppeRequest', 'Solicitação de EPI')}</button>
           <button class="menu-link" data-portal-tab="aprovados">EPIs Aprovados</button>
-          <button class="menu-link" data-portal-tab="biblioteca">Biblioteca de Segurança</button>
+          <button class="menu-link" data-portal-tab="biblioteca" data-i18n="ui.sidebar.biblioteca_de_seguranca_795807">Biblioteca de Segurança</button>
           <button class="menu-link" data-portal-tab="avaliacao">${tr('evaluation.single', 'Avaliação')}</button>
         </div>
         <div data-portal-pane="aprovados" style="display:none" id="portal-approved-epis"></div>
@@ -429,7 +429,7 @@
         const signaturePadController = globalThis.signaturePadController || null;
         const signatureData = signaturePadController?.getData?.() || '';
         if (!signatureData) {
-          alert('Assinatura digital obrigatória. Desenhe no campo de assinatura.');
+          alert((globalThis.trEpi?.('portal.signatureRequiredDraw','Assinatura digital obrigat\u00f3ria. Desenhe no campo de assinatura.',{}) ?? 'Assinatura digital obrigat\u00f3ria. Desenhe no campo de assinatura.'));
           return;
         }
         appState.signatureDraft.onConfirm({
@@ -477,7 +477,7 @@
           } catch (error) {
             alert(error?.message || 'Falha ao salvar assinatura em lote.');
             if (employeeSignatureStatus) {
-              employeeSignatureStatus.textContent = 'Assinatura pendente para o período.';
+              employeeSignatureStatus.textContent = (globalThis.trEpi?.('portal.periodSignaturePending','Assinatura pendente para o per\u00edodo.',{}) ?? 'Assinatura pendente para o per\u00edodo.');
             }
           }
         }

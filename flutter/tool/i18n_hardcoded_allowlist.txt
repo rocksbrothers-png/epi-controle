@@ -23,34 +23,23 @@ lib/features/settings/appearance_screen.dart|Norsk
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
 # Avaliações / Feedback
 lib/features/feedback/feedback_screen.dart|Avaliações de EPIs
-lib/features/feedback/feedback_screen.dart|Fechar
 lib/features/feedback/feedback_screen.dart|Validar
-lib/features/feedback/feedback_screen.dart|Tentar novamente
 # Detalhe de EPI
 lib/features/epis/epi_detail_screen.dart|Dias restantes
 # Scanner QR
 lib/features/qr/qr_scanner_screen.dart|Escanear novamente
-lib/features/qr/qr_scanner_screen.dart|Fechar
 # Relatórios — nomes de meses
 
 # Débito pré-existente (telas de assinatura/fornecedores/usuários/unidades)
 # registrado ao habilitar o gate para novas telas (Minha Empresa usa 100% l10n).
 # Migrar para AppLocalizations em passagens futuras por estas telas.
 lib/features/purchases/suppliers_screen.dart|API
-lib/features/purchases/suppliers_screen.dart|E-mail
-lib/features/purchases/suppliers_screen.dart|Portal
 lib/features/units/units_screen.dart|Cidade
-lib/features/units/units_screen.dart|Empresa
 lib/features/units/units_screen.dart|Nome
-lib/features/units/units_screen.dart|Observações (opcional)
-lib/features/units/units_screen.dart|Tipo
 lib/features/users/users_screen.dart|Copiar senha
-lib/features/users/users_screen.dart|Empresa
 lib/features/users/users_screen.dart|Gerar senha segura
 lib/features/users/users_screen.dart|ID do Colaborador (obrigatório para admin/user/employee)
-lib/features/users/users_screen.dart|Nome completo
 lib/features/users/users_screen.dart|Nome de usuário
-lib/features/users/users_screen.dart|Perfil
 lib/features/users/users_screen.dart|Senha copiada para a área de transferência.
 lib/features/users/users_screen.dart|Senha temporária
 
@@ -58,22 +47,14 @@ lib/features/users/users_screen.dart|Senha temporária
 # (conferência de entrega / conformidade / bloquear-e-arquivar). Estas telas de
 # arquivar/desarquivar (EPIs, colaboradores, unidades, política) foram mergeadas
 # antes desta passagem; migrar para AppLocalizations em PR de i18n dedicado.
-lib/features/employees/employees_screen.dart|Arquivar
 lib/features/employees/employees_screen.dart|Arquivar Colaborador
-lib/features/employees/employees_screen.dart|Desarquivar
 lib/features/employees/employees_screen.dart|Desarquivar Colaborador
-lib/features/employees/employees_screen.dart|Motivo do arquivamento (auditoria)
-lib/features/epis/epis_screen.dart|Arquivar
 lib/features/epis/epis_screen.dart|Arquivar EPI
-lib/features/epis/epis_screen.dart|Desarquivar
 lib/features/epis/epis_screen.dart|Desarquivar EPI
 lib/features/settings/archival_policy_screen.dart|Política de arquivamento salva com sucesso.
 lib/features/settings/archival_policy_screen.dart|Salvar política de arquivamento
-lib/features/units/units_screen.dart|Arquivar
 lib/features/units/units_screen.dart|Arquivar Unidade
-lib/features/units/units_screen.dart|Desarquivar
 lib/features/units/units_screen.dart|Desarquivar Unidade
-lib/features/units/units_screen.dart|Motivo do arquivamento (auditoria)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO — descoberto quando o gate voltou a varrer de verdade.

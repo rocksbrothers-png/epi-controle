@@ -128,7 +128,7 @@ class _FeedbackList extends StatelessWidget {
                 ),
                 const SizedBox(height: EpiSpacing.xl),
                 EpiButton(
-                  label: 'Tentar novamente',
+                  label: AppLocalizations.of(ctx).retry,
                   onPressed: () => ctx.read<FeedbackCubit>().load(),
                 ),
               ],
@@ -195,22 +195,22 @@ class _FeedbackCard extends StatelessWidget {
   }
 
   Future<void> _reject(BuildContext context, FeedbackCubit cubit) async {
-    final l10n = AppLocalizations.of(context);
+
     final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
       builder: (d) => AlertDialog(
-        title: Text(l10n.feedbackReject),
+        title: Text(AppLocalizations.of(context).feedbackReject),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: l10n.feedbackRejectReason),
+          decoration: InputDecoration(labelText: AppLocalizations.of(context).feedbackRejectReason),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(AppLocalizations.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.of(d).pop(controller.text.trim()),
-            child: Text(l10n.confirm),
+            child: Text(AppLocalizations.of(context).confirm),
           ),
         ],
       ),
@@ -224,22 +224,22 @@ class _FeedbackCard extends StatelessWidget {
   /// Decisão administrativa (exige justificativa). `decision` é o valor do
   /// backend (ex.: aprovar_sugestao / reprovar_sugestao / encerrar).
   Future<void> _decide(BuildContext context, FeedbackCubit cubit, String decision) async {
-    final l10n = AppLocalizations.of(context);
+
     final controller = TextEditingController();
     final justification = await showDialog<String>(
       context: context,
       builder: (d) => AlertDialog(
-        title: Text(l10n.confirm),
+        title: Text(AppLocalizations.of(context).confirm),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: InputDecoration(labelText: l10n.feedbackJustification),
+          decoration: InputDecoration(labelText: AppLocalizations.of(context).feedbackJustification),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(AppLocalizations.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.of(d).pop(controller.text.trim()),
-            child: Text(l10n.confirm),
+            child: Text(AppLocalizations.of(context).confirm),
           ),
         ],
       ),
@@ -365,7 +365,7 @@ class _FeedbackCard extends StatelessWidget {
                   if (canClose)
                     TextButton.icon(
                       icon: const Icon(Icons.lock_outline, size: 16),
-                      label: const Text('Fechar'),
+                      label: Text(AppLocalizations.of(context).close),
                       style: TextButton.styleFrom(
                         foregroundColor: EpiColors.textMuted,
                       ),

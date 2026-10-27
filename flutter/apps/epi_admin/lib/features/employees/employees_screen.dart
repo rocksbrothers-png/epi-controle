@@ -172,7 +172,7 @@ class _EmployeeTile extends StatelessWidget {
   final Employee employee;
 
   Future<void> _confirmArchive(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final cubit = context.read<EmployeesCubit>();
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -193,9 +193,9 @@ class _EmployeeTile extends StatelessWidget {
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Motivo do arquivamento (auditoria)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(dialogCtx).archiveReasonLabel,
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
             ),
@@ -204,12 +204,12 @@ class _EmployeeTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).archive),
           ),
         ],
       ),
@@ -257,14 +257,14 @@ class _EmployeeTile extends StatelessWidget {
             itemBuilder: (_) => [
               PopupMenuItem<String>(
                 value: 'edit',
-                child: Text(AppLocalizations.of(context).edit),
+                child: Builder(builder: (i18nContext) => Text(AppLocalizations.of(i18nContext).edit)),
               ),
-              const PopupMenuItem<String>(
+               PopupMenuItem<String>(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
-                ),
+                child: Builder(builder: (i18nContext) => Text(
+                  AppLocalizations.of(i18nContext).archive,
+                  style: const TextStyle(color: EpiColors.danger),
+                )),
               ),
             ],
           ),
@@ -283,7 +283,7 @@ class _ArchivedEmployeeTile extends StatelessWidget {
   final Map<String, dynamic> employee;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final cubit = context.read<EmployeesCubit>();
     final name = employee['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
@@ -298,11 +298,11 @@ class _ArchivedEmployeeTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).restore),
           ),
         ],
       ),
@@ -354,7 +354,7 @@ class _ArchivedEmployeeTile extends StatelessWidget {
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }

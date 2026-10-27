@@ -154,7 +154,7 @@ class _UnitTile extends StatelessWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final name = unit['name'] as String? ?? '';
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -173,7 +173,7 @@ class _UnitTile extends StatelessWidget {
             ),
             const SizedBox(height: EpiSpacing.md),
             EpiInput(
-              label: 'Motivo do arquivamento (auditoria)',
+              label: AppLocalizations.of(ctx).archiveReasonLabel,
               controller: reasonCtrl,
               maxLines: 2,
             ),
@@ -182,12 +182,12 @@ class _UnitTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(ctx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(ctx).archive),
           ),
         ],
       ),
@@ -249,12 +249,12 @@ class _UnitTile extends StatelessWidget {
           PopupMenuButton<String>(
             itemBuilder: (ctx) => [
               PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-              const PopupMenuItem(
+               PopupMenuItem(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
-                ),
+                child: Builder(builder: (i18nContext) => Text(
+                  AppLocalizations.of(i18nContext).archive,
+                  style: const TextStyle(color: EpiColors.danger),
+                )),
               ),
             ],
             onSelected: (action) {
@@ -278,7 +278,7 @@ class _ArchivedUnitTile extends StatelessWidget {
   final Map<String, dynamic> unit;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final name = unit['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
       context: context,
@@ -292,11 +292,11 @@ class _ArchivedUnitTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(ctx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(ctx).restore),
           ),
         ],
       ),
@@ -358,7 +358,7 @@ class _ArchivedUnitTile extends StatelessWidget {
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }
@@ -551,9 +551,9 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
                 value: _unitType,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).legalEntityTypeLabel,
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
                 items: _unitTypes
@@ -576,9 +576,9 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
               else
                 DropdownButtonFormField<int>(
                   value: _companyId,
-                  decoration: const InputDecoration(
-                    labelText: 'Empresa',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).settingsCompanyLabel,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: _companies
@@ -627,7 +627,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 const SizedBox(height: EpiSpacing.md),
               ],
               EpiInput(
-                label: 'Observações (opcional)',
+                label: AppLocalizations.of(context).reportsRequestNotes,
                 controller: _notesCtrl,
                 maxLines: 2,
                 enabled: !_saving,

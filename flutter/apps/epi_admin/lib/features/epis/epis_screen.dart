@@ -185,7 +185,7 @@ class _EpiTile extends StatelessWidget {
     BuildContext context,
     EpisCubit cubit,
   ) async {
-    final l10n = AppLocalizations.of(context);
+
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -206,7 +206,7 @@ class _EpiTile extends StatelessWidget {
               controller: reasonCtrl,
               maxLines: 2,
               decoration: InputDecoration(
-                labelText: l10n.epiArchiveReasonLabel,
+                labelText: AppLocalizations.of(dialogCtx).epiArchiveReasonLabel,
                 border: const OutlineInputBorder(),
                 isDense: true,
               ),
@@ -216,12 +216,12 @@ class _EpiTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).archive),
           ),
         ],
       ),
@@ -296,12 +296,12 @@ class _EpiTile extends StatelessWidget {
                 value: 'edit',
                 child: Text(l10n.edit),
               ),
-              const PopupMenuItem<String>(
+               PopupMenuItem<String>(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
-                ),
+                child: Builder(builder: (i18nContext) => Text(
+                  AppLocalizations.of(i18nContext).archive,
+                  style: const TextStyle(color: EpiColors.danger),
+                )),
               ),
             ],
           ),
@@ -320,7 +320,7 @@ class _ArchivedEpiTile extends StatelessWidget {
   final Map<String, dynamic> epi;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final cubit = context.read<EpisCubit>();
     final name = epi['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
@@ -335,11 +335,11 @@ class _ArchivedEpiTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).restore),
           ),
         ],
       ),
@@ -400,7 +400,7 @@ class _ArchivedEpiTile extends StatelessWidget {
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }

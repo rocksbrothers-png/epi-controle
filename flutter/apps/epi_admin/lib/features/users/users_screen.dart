@@ -126,22 +126,22 @@ class _UserTile extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
+
     final name = user['full_name'] as String? ?? user['username'] as String? ?? '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.confirmDeleteTitle),
-        content: Text('Excluir usuário "$name"?\n\n${l10n.confirmDeleteMessage}'),
+        title: Text(AppLocalizations.of(ctx).confirmDeleteTitle),
+        content: Text('Excluir usuário "$name"?\n\n${AppLocalizations.of(ctx).confirmDeleteMessage}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(ctx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: Text(l10n.confirmDeleteButton),
+            child: Text(AppLocalizations.of(ctx).confirmDeleteButton),
           ),
         ],
       ),
@@ -420,7 +420,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               ),
               const SizedBox(height: EpiSpacing.md),
               EpiInput(
-                label: 'Nome completo',
+                label: AppLocalizations.of(context).employeeNameLabel,
                 hint: 'Ex: João Silva',
                 controller: _fullNameCtrl,
                 enabled: !_saving,
@@ -428,9 +428,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
                 value: _role,
-                decoration: const InputDecoration(
-                  labelText: 'Perfil',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).moduleVisibilityRoleLabel,
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
                 items: _roles
@@ -453,9 +453,9 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               else
                 DropdownButtonFormField<int>(
                   value: _companyId,
-                  decoration: const InputDecoration(
-                    labelText: 'Empresa',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).settingsCompanyLabel,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: _companies

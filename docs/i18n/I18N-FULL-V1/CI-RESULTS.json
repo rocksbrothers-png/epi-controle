@@ -1,6 +1,22 @@
 {
-  "note": "Results are tied to headSha; task remains incomplete. Backend CI at 454bee68/8863a2d failed only the old exact-source assertion for the unknown KPI. This checkpoint updates that guard and verifies null versus zero in the real widget. Corporate tests/ subsequently passed 4471/49 skipped locally; next head still requires CI.",
+  "note": "Results tied to headSha. Billing checkpoint Backend CI and Flutter CI approved in both products. Later local changes need CI at their own head. Whole-task coverage and final independent audit remain incomplete.",
   "runs": [
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40552793834,
+      "headSha": "0f83da08d0ebff7b0f4e7aaa202634d5173ef44e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40552793834"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40552788644,
+      "headSha": "0f83da08d0ebff7b0f4e7aaa202634d5173ef44e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40552788644"
+    },
     {
       "workflowName": "Backend CI",
       "databaseId": 40538504176,

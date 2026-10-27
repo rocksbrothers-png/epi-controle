@@ -218,7 +218,7 @@ class _ScanResultSheet extends StatelessWidget {
           ),
           const SizedBox(height: EpiSpacing.md),
           EpiButton(
-            label: 'Fechar',
+            label: AppLocalizations.of(context).close,
             onPressed: () => Navigator.pop(context),
             fullWidth: true,
           ),

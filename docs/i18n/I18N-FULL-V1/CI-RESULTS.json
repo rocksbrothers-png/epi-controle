@@ -3,6 +3,22 @@
   "runs": [
     {
       "conclusion": "success",
+      "databaseId": 40439226968,
+      "headSha": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40439226968",
+      "workflowName": "Flutter CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40439223946,
+      "headSha": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40439223946",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
       "databaseId": 40435981453,
       "headSha": "3f32341d5be89cedf49024b2480b57156cad6b8c",
       "status": "completed",

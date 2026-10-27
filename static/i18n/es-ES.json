@@ -3162,7 +3162,8 @@
       "m_e55d0e79b9dd": "No se encontró la cotización del enlace.",
       "m_fab0d68c071e": "No se encontró la orden de compra del enlace.",
       "m_b7a4dae4fe74": "El contenido del archivo de la propuesta no es válido.",
-      "m_60d276d721d5": "No se puede enviar al portal una cotización con estado \"{p1}\"."
+      "m_60d276d721d5": "No se puede enviar al portal una cotización con estado \"{p1}\".",
+      "m_d84b6bd17b4f": "No se pudo cargar el idioma solicitado para el documento."
     },
     "fields": {
       "title": "Título",
@@ -3280,5 +3281,44 @@
     },
     "chooseFile": "Elegir archivo",
     "noFile": "Ningún archivo seleccionado"
+  },
+  "documents": {
+    "rfq": {
+      "subject": "Solicitud de cotización n.º {id} — Solicitud de compra n.º {request}",
+      "title": "Solicitud de cotización n.º {id}",
+      "intro": "Solicitamos una cotización para los siguientes artículos (solicitud de compra n.º {request}):",
+      "item": "{epi} (CA brasileño {ca}) — {quantity} {measure}",
+      "size": " — talla {sizes}",
+      "deadline": "Fecha límite de respuesta: {date}",
+      "instructions": "Responda a este correo indicando el precio unitario, el plazo de entrega y el transporte por artículo, o adjunte su propuesta.",
+      "filename": "cotización_{id}.pdf",
+      "subtitle": {
+        "one": "Solicitud de compra n.º {request} — {count} artículo",
+        "other": "Solicitud de compra n.º {request} — {count} artículos"
+      }
+    },
+    "greeting": "Estimado proveedor {name}:",
+    "notes": "Observaciones: {notes}",
+    "closing": "Atentamente,",
+    "department": "EPI Controle — Compras",
+    "po": {
+      "title": "Orden de compra {id}",
+      "intro": "A continuación se indica la orden de compra {id} aprobada:",
+      "item": "{epi} (CA brasileño {ca}) — {quantity} x {price} = {total}",
+      "total": "Total: {total}",
+      "delivery": "Entrega prevista: {date}",
+      "instructions": "Confirme la recepción de este pedido respondiendo a este correo.",
+      "supplier": "Proveedor: {name}",
+      "partner": "socio",
+      "filename": "orden_compra_{id}.pdf"
+    },
+    "portal": {
+      "quoteSubject": "Solicitud de cotización n.º {id} — Portal del Proveedor",
+      "orderSubject": "Orden de compra {id} — Portal del Proveedor",
+      "quoteAction": "Acceda al Portal del Proveedor para responder a la cotización (precio, plazo y transporte por artículo) y adjuntar su propuesta:",
+      "orderAction": "Acceda al Portal del Proveedor para confirmar el pedido y actualizar el estado de la entrega:",
+      "expiry": "Este enlace es personal y caduca el {date}.",
+      "private": "No comparta este enlace."
+    }
   }
 }

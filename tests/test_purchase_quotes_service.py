@@ -363,7 +363,9 @@ def test_send_po_only_when_approved_and_keeps_status():
     assert po['sent_channel'] == 'email'
     # e-mail resolvido pelo CNPJ do fornecedor cadastrado
     assert spy.sent[0]['to'] == 'vendas@loja.com'
-    assert 'R$ 100.00' in spy.sent[0]['body']
+    assert 'R$\u00a0100,00' in spy.sent[0]['body']
+    row=conn.execute('SELECT quantity, unit_price FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)).fetchone()
+    assert tuple(row)==(10,10.0)
 
 
 def test_send_po_accepts_explicit_to_email():

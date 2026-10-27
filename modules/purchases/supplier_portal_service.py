@@ -15,6 +15,9 @@ import base64
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
+
+from modules.i18n.presentation import Translator
 
 from epi_backend.db import row_to_dict
 
@@ -345,13 +348,14 @@ def portal_confirm_po(connection, link, payload, ip_address='', user_agent=''):
 
 # ── Envio do link por e-mail (integra com o Nível 1) ─────────────────────────
 
-def portal_link_url(base_url, token):
+def portal_link_url(base_url, token, locale=None):
     base = str(base_url or '').strip().rstrip('/')
-    return f'{base}/fornecedor/{token}'
+    url = f'{base}/fornecedor/{token}'
+    return url + '?' + urlencode({'lang': Translator(locale).locale}) if locale is not None else url
 
 
 def send_portal_link_email(connection, actor, entity_type, entity_id, expires_days=None,
-                            base_url='', send_email_fn=None):
+                            base_url='', send_email_fn=None, *, locale=None):
     """Cria o link e envia ao fornecedor por e-mail. Retorna o link (sem token).
 
     Para cotações, também marca a RFQ como enviada (canal portal) — o envio
@@ -377,22 +381,23 @@ def send_portal_link_email(connection, actor, entity_type, entity_id, expires_da
         base_url = WEB_BASE_URL
     if not base_url:
         raise ValueError('WEB_BASE_URL não configurada para gerar o link do portal.')
-    url = portal_link_url(base_url, token)
+    presentation = Translator(locale)
+    url = portal_link_url(base_url, token, locale=locale)
     if entity_type == 'quote':
-        subject = f'Solicitação de Cotação #{entity_id} — Portal do Fornecedor'
-        action_text = 'responder a cotação (preço, prazo e frete por item) e anexar sua proposta'
+        subject = presentation.t('documents.portal.quoteSubject', id=entity_id)
+        action_text = presentation.t('documents.portal.quoteAction')
     else:
         po = get_purchase_order_by_id(connection, int(entity_id))
-        subject = f"Pedido de Compra {(po or {}).get('po_number') or entity_id} — Portal do Fornecedor"
-        action_text = 'confirmar o pedido e atualizar o status da entrega'
-    body = (
-        f"Prezado fornecedor {(supplier or {}).get('name') or ''},\n\n"
-        f'Acesse o Portal do Fornecedor para {action_text}:\n\n'
-        f'  {url}\n\n'
-        f"O link é pessoal e expira em {str(link.get('expires_at') or '')[:10]}.\n"
-        f'Não compartilhe este link.\n\n'
-        f'Atenciosamente,\nEPI Controle — Compras'
-    )
+        subject = presentation.t('documents.portal.orderSubject', id=(po or {}).get('po_number') or entity_id)
+        action_text = presentation.t('documents.portal.orderAction')
+    body = '\n\n'.join([
+        presentation.t('documents.greeting', name=(supplier or {}).get('name') or ''),
+        action_text,
+        '  ' + url,
+        presentation.t('documents.portal.expiry', date=presentation.date(link.get('expires_at'))) + '\n'
+        + presentation.t('documents.portal.private'),
+        presentation.t('documents.closing') + '\n' + presentation.t('documents.department'),
+    ])
     if send_email_fn is None:
         from epi_backend.mailer import send_email as send_email_fn
     send_email_fn(contact_email, subject, body)

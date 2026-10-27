@@ -3162,7 +3162,8 @@
       "m_e55d0e79b9dd": "The quotation for this link was not found.",
       "m_fab0d68c071e": "The purchase order for this link was not found.",
       "m_b7a4dae4fe74": "Invalid proposal file content.",
-      "m_60d276d721d5": "A quotation with status \"{p1}\" cannot be sent to the portal."
+      "m_60d276d721d5": "A quotation with status \"{p1}\" cannot be sent to the portal.",
+      "m_d84b6bd17b4f": "The requested document language could not be loaded."
     },
     "fields": {
       "title": "Title",
@@ -3280,5 +3281,44 @@
     },
     "chooseFile": "Choose file",
     "noFile": "No file selected"
+  },
+  "documents": {
+    "rfq": {
+      "subject": "Request for quotation #{id} — Purchase request #{request}",
+      "title": "Request for quotation #{id}",
+      "intro": "Please quote for the items below (purchase request #{request}):",
+      "item": "{epi} (Brazilian CA {ca}) — {quantity} {measure}",
+      "size": " — size {sizes}",
+      "deadline": "Response deadline: {date}",
+      "instructions": "Please reply to this email with the unit price, lead time and freight for each item, or attach your proposal.",
+      "filename": "quotation_{id}.pdf",
+      "subtitle": {
+        "one": "Purchase request #{request} — {count} item",
+        "other": "Purchase request #{request} — {count} items"
+      }
+    },
+    "greeting": "Dear supplier {name},",
+    "notes": "Notes: {notes}",
+    "closing": "Kind regards,",
+    "department": "EPI Controle — Purchasing",
+    "po": {
+      "title": "Purchase Order {id}",
+      "intro": "Please find approved purchase order {id} below:",
+      "item": "{epi} (Brazilian CA {ca}) — {quantity} x {price} = {total}",
+      "total": "Total: {total}",
+      "delivery": "Expected delivery: {date}",
+      "instructions": "Please confirm receipt of this order by replying to this email.",
+      "supplier": "Supplier: {name}",
+      "partner": "partner",
+      "filename": "purchase_order_{id}.pdf"
+    },
+    "portal": {
+      "quoteSubject": "Request for quotation #{id} — Supplier Portal",
+      "orderSubject": "Purchase Order {id} — Supplier Portal",
+      "quoteAction": "Open the Supplier Portal to answer the quotation (price, lead time and freight per item) and attach your proposal:",
+      "orderAction": "Open the Supplier Portal to confirm the order and update the delivery status:",
+      "expiry": "This link is personal and expires on {date}.",
+      "private": "Do not share this link."
+    }
   }
 }

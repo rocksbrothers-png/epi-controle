@@ -1103,5 +1103,26 @@
     "message_template": "Apenas POs aprovadas podem ser enviadas ao fornecedor.",
     "key": "apiErrors.messages.m_f1e64b251de7",
     "kind": "raise"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 75,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 108,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 116,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
   }
 ]

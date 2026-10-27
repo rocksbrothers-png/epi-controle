@@ -1,0 +1,102 @@
+[
+  {
+    "kind": "po",
+    "locale": "pt-BR",
+    "subject": "Pedido de Compra PO-ORIGINAL-0007",
+    "filename": "pedido_PO-ORIGINAL-0007.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "rfq",
+    "locale": "pt-BR",
+    "subject": "Solicitação de Cotação #17 — Requisição #19",
+    "filename": "cotacao_17.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "po",
+    "locale": "en-GB",
+    "subject": "Purchase Order PO-ORIGINAL-0007",
+    "filename": "purchase_order_PO-ORIGINAL-0007.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "rfq",
+    "locale": "en-GB",
+    "subject": "Request for quotation #17 — Purchase request #19",
+    "filename": "quotation_17.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "po",
+    "locale": "es-ES",
+    "subject": "Orden de compra PO-ORIGINAL-0007",
+    "filename": "orden_compra_PO-ORIGINAL-0007.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "rfq",
+    "locale": "es-ES",
+    "subject": "Solicitud de cotización n.º 17 — Solicitud de compra n.º 19",
+    "filename": "cotización_17.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "po",
+    "locale": "fr-FR",
+    "subject": "Commande d’achat PO-ORIGINAL-0007",
+    "filename": "commande_PO-ORIGINAL-0007.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "rfq",
+    "locale": "fr-FR",
+    "subject": "Demande de devis n° 17 — Demande d’achat n° 19",
+    "filename": "devis_17.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "po",
+    "locale": "nb-NO",
+    "subject": "Innkjøpsordre PO-ORIGINAL-0007",
+    "filename": "innkjøpsordre_PO-ORIGINAL-0007.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  },
+  {
+    "kind": "rfq",
+    "locale": "nb-NO",
+    "subject": "Tilbudsforespørsel nr. 17 — Innkjøpsforespørsel nr. 19",
+    "filename": "tilbud_17.pdf",
+    "source_unit_price": 1234.56,
+    "source_quantity": 7,
+    "source_ca": "00123",
+    "sent": false
+  }
+]

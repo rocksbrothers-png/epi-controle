@@ -3162,7 +3162,8 @@
       "m_e55d0e79b9dd": "Tilbudet for denne lenken ble ikke funnet.",
       "m_fab0d68c071e": "Innkjøpsordren for denne lenken ble ikke funnet.",
       "m_b7a4dae4fe74": "Ugyldig innhold i tilbudsfilen.",
-      "m_60d276d721d5": "Et tilbud med status «{p1}» kan ikke sendes til portalen."
+      "m_60d276d721d5": "Et tilbud med status «{p1}» kan ikke sendes til portalen.",
+      "m_d84b6bd17b4f": "Kunne ikke laste inn ønsket språk for dokumentet."
     },
     "fields": {
       "title": "Tittel",
@@ -3280,5 +3281,44 @@
     },
     "chooseFile": "Velg fil",
     "noFile": "Ingen fil valgt"
+  },
+  "documents": {
+    "rfq": {
+      "subject": "Tilbudsforespørsel nr. {id} — Innkjøpsforespørsel nr. {request}",
+      "title": "Tilbudsforespørsel nr. {id}",
+      "intro": "Vi ber om tilbud på artiklene nedenfor (innkjøpsforespørsel nr. {request}):",
+      "item": "{epi} (brasiliansk CA {ca}) — {quantity} {measure}",
+      "size": " — størrelse {sizes}",
+      "deadline": "Svarfrist: {date}",
+      "instructions": "Svar på denne e-posten med enhetspris, leveringstid og frakt per artikkel, eller legg ved tilbudet ditt.",
+      "filename": "tilbud_{id}.pdf",
+      "subtitle": {
+        "one": "Innkjøpsforespørsel nr. {request} — {count} artikkel",
+        "other": "Innkjøpsforespørsel nr. {request} — {count} artikler"
+      }
+    },
+    "greeting": "Kjære leverandør {name},",
+    "notes": "Merknader: {notes}",
+    "closing": "Med vennlig hilsen,",
+    "department": "EPI Controle — Innkjøp",
+    "po": {
+      "title": "Innkjøpsordre {id}",
+      "intro": "Nedenfor følger godkjent innkjøpsordre {id}:",
+      "item": "{epi} (brasiliansk CA {ca}) — {quantity} x {price} = {total}",
+      "total": "Totalt: {total}",
+      "delivery": "Forventet levering: {date}",
+      "instructions": "Bekreft at du har mottatt denne bestillingen ved å svare på denne e-posten.",
+      "supplier": "Leverandør: {name}",
+      "partner": "partner",
+      "filename": "innkjøpsordre_{id}.pdf"
+    },
+    "portal": {
+      "quoteSubject": "Tilbudsforespørsel nr. {id} — Leverandørportal",
+      "orderSubject": "Innkjøpsordre {id} — Leverandørportal",
+      "quoteAction": "Åpne leverandørportalen for å besvare tilbudsforespørselen (pris, leveringstid og frakt per artikkel) og legge ved tilbudet ditt:",
+      "orderAction": "Åpne leverandørportalen for å bekrefte bestillingen og oppdatere leveringsstatusen:",
+      "expiry": "Lenken er personlig og utløper {date}.",
+      "private": "Ikke del denne lenken."
+    }
   }
 }

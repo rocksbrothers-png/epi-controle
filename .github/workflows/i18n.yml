@@ -34,7 +34,7 @@ jobs:
           npm ci --ignore-scripts
       - name: Catalogue, runtime, PDF and additive alert contracts
         run: |
-          pytest tests/test_i18n_engine_runtime.py tests/test_i18n_files_integrity.py tests/test_i18n_pdf_runtime.py tests/test_i18n_alert_metadata.py -q
+          pytest tests/test_i18n_engine_runtime.py tests/test_i18n_files_integrity.py tests/test_i18n_pdf_runtime.py tests/test_i18n_document_runtime.py tests/test_i18n_alert_metadata.py -q
           node static/js/test/app-js-boundary.js
       - name: Synthetic browser checkpoints in all five languages
         run: |

@@ -17,6 +17,7 @@ from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
 from modules.employees.service import actor_operational_unit_id
+from modules.i18n.presentation import request_locale
 from modules.purchases.quotes_service import ensure_quote_scope, get_quote_by_id
 from modules.purchases.service import (
     ensure_purchase_order_action_scope,
@@ -68,6 +69,7 @@ def handle_post_quote_portal_link(handler, parsed, payload, match):
             connection, actor, 'quote', int(match.group(1)),
             expires_days=payload.get('expires_days'),
             base_url=str(payload.get('base_url') or '').strip(),
+            locale=request_locale(handler, parsed),
         )
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'item': link})
@@ -85,6 +87,7 @@ def handle_post_po_portal_link(handler, parsed, payload, match):
             connection, actor, 'purchase_order', int(match.group(1)),
             expires_days=payload.get('expires_days'),
             base_url=str(payload.get('base_url') or '').strip(),
+            locale=request_locale(handler, parsed),
         )
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'item': link})

@@ -3162,7 +3162,8 @@
       "m_e55d0e79b9dd": "Le devis associé au lien est introuvable.",
       "m_fab0d68c071e": "La commande associée au lien est introuvable.",
       "m_b7a4dae4fe74": "Le contenu du fichier d’offre est invalide.",
-      "m_60d276d721d5": "Un devis à l’état « {p1} » ne peut pas être envoyé au portail."
+      "m_60d276d721d5": "Un devis à l’état « {p1} » ne peut pas être envoyé au portail.",
+      "m_d84b6bd17b4f": "Impossible de charger la langue demandée pour le document."
     },
     "fields": {
       "title": "Titre",
@@ -3280,5 +3281,44 @@
     },
     "chooseFile": "Choisir un fichier",
     "noFile": "Aucun fichier sélectionné"
+  },
+  "documents": {
+    "rfq": {
+      "subject": "Demande de devis n° {id} — Demande d’achat n° {request}",
+      "title": "Demande de devis n° {id}",
+      "intro": "Merci de nous adresser un devis pour les articles ci-dessous (demande d’achat n° {request}) :",
+      "item": "{epi} (CA brésilien {ca}) — {quantity} {measure}",
+      "size": " — taille {sizes}",
+      "deadline": "Date limite de réponse : {date}",
+      "instructions": "Merci de répondre à cet e-mail en précisant le prix unitaire, le délai de livraison et les frais de transport par article, ou en joignant votre offre.",
+      "filename": "devis_{id}.pdf",
+      "subtitle": {
+        "one": "Demande d’achat n° {request} — {count} article",
+        "other": "Demande d’achat n° {request} — {count} articles"
+      }
+    },
+    "greeting": "Cher fournisseur {name},",
+    "notes": "Remarques : {notes}",
+    "closing": "Cordialement,",
+    "department": "EPI Controle — Achats",
+    "po": {
+      "title": "Commande d’achat {id}",
+      "intro": "Veuillez trouver ci-dessous la commande d’achat {id} approuvée :",
+      "item": "{epi} (CA brésilien {ca}) — {quantity} x {price} = {total}",
+      "total": "Total : {total}",
+      "delivery": "Livraison prévue : {date}",
+      "instructions": "Merci de confirmer la réception de cette commande en répondant à cet e-mail.",
+      "supplier": "Fournisseur : {name}",
+      "partner": "partenaire",
+      "filename": "commande_{id}.pdf"
+    },
+    "portal": {
+      "quoteSubject": "Demande de devis n° {id} — Portail Fournisseur",
+      "orderSubject": "Commande d’achat {id} — Portail Fournisseur",
+      "quoteAction": "Accédez au Portail Fournisseur pour répondre au devis (prix, délai et transport par article) et joindre votre offre :",
+      "orderAction": "Accédez au Portail Fournisseur pour confirmer la commande et mettre à jour l’état de la livraison :",
+      "expiry": "Ce lien est personnel et expire le {date}.",
+      "private": "Ne partagez pas ce lien."
+    }
   }
 }

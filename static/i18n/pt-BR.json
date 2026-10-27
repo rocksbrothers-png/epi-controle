@@ -3162,7 +3162,8 @@
       "m_e55d0e79b9dd": "Cotação do link não encontrada.",
       "m_fab0d68c071e": "PO do link não encontrada.",
       "m_b7a4dae4fe74": "Conteúdo do arquivo da proposta inválido.",
-      "m_60d276d721d5": "Cotação com status \"{p1}\" não pode ser enviada ao portal."
+      "m_60d276d721d5": "Cotação com status \"{p1}\" não pode ser enviada ao portal.",
+      "m_d84b6bd17b4f": "Não foi possível carregar o idioma solicitado para o documento."
     },
     "fields": {
       "title": "Título",
@@ -3280,5 +3281,44 @@
     },
     "chooseFile": "Escolher arquivo",
     "noFile": "Nenhum arquivo selecionado"
+  },
+  "documents": {
+    "rfq": {
+      "subject": "Solicitação de Cotação #{id} — Requisição #{request}",
+      "title": "Solicitação de Cotação #{id}",
+      "intro": "Solicitamos cotação para os itens abaixo (requisição #{request}):",
+      "item": "{epi} (CA {ca}) — {quantity} {measure}",
+      "size": " — tamanho {sizes}",
+      "deadline": "Prazo para resposta: {date}",
+      "instructions": "Por favor, responda este e-mail informando preço unitário, prazo de entrega e frete por item, ou anexando sua proposta.",
+      "filename": "cotacao_{id}.pdf",
+      "subtitle": {
+        "one": "Requisição #{request} — {count} item",
+        "other": "Requisição #{request} — {count} itens"
+      }
+    },
+    "greeting": "Prezado fornecedor {name},",
+    "notes": "Observações: {notes}",
+    "closing": "Atenciosamente,",
+    "department": "EPI Controle — Compras",
+    "po": {
+      "title": "Pedido de Compra {id}",
+      "intro": "Segue o pedido de compra {id} aprovado:",
+      "item": "{epi} (CA {ca}) — {quantity} x {price} = {total}",
+      "total": "Total: {total}",
+      "delivery": "Entrega prevista: {date}",
+      "instructions": "Por favor, confirme o recebimento deste pedido respondendo este e-mail.",
+      "supplier": "Fornecedor: {name}",
+      "partner": "parceiro",
+      "filename": "pedido_{id}.pdf"
+    },
+    "portal": {
+      "quoteSubject": "Solicitação de Cotação #{id} — Portal do Fornecedor",
+      "orderSubject": "Pedido de Compra {id} — Portal do Fornecedor",
+      "quoteAction": "Acesse o Portal do Fornecedor para responder a cotação (preço, prazo e frete por item) e anexar sua proposta:",
+      "orderAction": "Acesse o Portal do Fornecedor para confirmar o pedido e atualizar o status da entrega:",
+      "expiry": "O link é pessoal e expira em {date}.",
+      "private": "Não compartilhe este link."
+    }
   }
 }

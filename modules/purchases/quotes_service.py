@@ -12,9 +12,11 @@ Regras preservadas (docs/PLANO_TECNICO_MODULO_COMPRAS.md §1):
 """
 
 from datetime import datetime, timezone
+from textwrap import wrap
 
 from core.auth import ensure_resource_company
 from core.pdf import build_pdf_document
+from modules.i18n.presentation import Translator
 from epi_backend.db import row_to_dict
 
 from modules.purchases.service import (
@@ -533,26 +535,38 @@ def select_quote(connection, actor, quote_id, ip_address=''):
 # ── Envio por e-mail (Nível 1) ────────────────────────────────────────────────
 
 def _pdf_lines(title, subtitle, rows):
-    lines = [
-        {'text': title, 'bold': True, 'size': 14, 'x': 50, 'y': 780},
-        {'text': subtitle, 'x': 50, 'y': 758},
-        {'text': ' ', 'x': 50, 'y': 744},
-    ]
-    y = 726
+    """Wrap localized labels and keep every row in newly generated attachments."""
+    def header():
+        lines = []
+        y = 780
+        for text in wrap(str(title), width=70) or ['']:
+            lines.append({'text': text, 'bold': True, 'size': 14, 'x': 50, 'y': y})
+            y -= 18
+        y -= 4
+        for text in wrap(str(subtitle), width=94) or ['']:
+            lines.append({'text': text, 'x': 50, 'y': y})
+            y -= 16
+        return lines, y - 16
+
+    pages = []
+    lines, y = header()
     for row in rows:
-        lines.append({'text': row, 'x': 50, 'y': y, 'size': 10})
-        y -= 16
-        if y < 60:
-            break
-    return [lines]
+        for text in wrap(str(row), width=94) or ['']:
+            if y < 60:
+                pages.append(lines)
+                lines, y = header()
+            lines.append({'text': text, 'x': 50, 'y': y, 'size': 10})
+            y -= 16
+    return pages + [lines]
 
 
-def build_rfq_email(connection, quote, supplier, pr, items):
-    subject = f"Solicitação de Cotação #{quote['id']} — Requisição #{pr['id']}"
+def build_rfq_email(connection, quote, supplier, pr, items, *, locale=None):
+    presentation = Translator(locale)
+    subject = presentation.t('documents.rfq.subject', id=quote['id'], request=pr['id'])
     body_lines = [
-        f"Prezado fornecedor {supplier.get('name')},",
+        presentation.t('documents.greeting', name=supplier.get('name')),
         '',
-        f"Solicitamos cotação para os itens abaixo (requisição #{pr['id']}):",
+        presentation.t('documents.rfq.intro', request=pr['id']),
         '',
     ]
     pdf_rows = []
@@ -561,34 +575,30 @@ def build_rfq_email(connection, quote, supplier, pr, items):
             v for v in (item.get('glove_size'), item.get('size'), item.get('uniform_size'))
             if v and v != 'N/A'
         )
-        line = (
-            f"- {item.get('epi_name')} (CA {item.get('ca') or '-'}) — "
-            f"{item.get('quantity_requested')} {item.get('unit_measure') or 'un'}"
-            + (f' — tamanho {sizes}' if sizes else '')
-        )
+        quantity = item.get('quantity_requested')
+        line = '- ' + presentation.t('documents.rfq.item',
+            epi=item.get('epi_name'), ca=item.get('ca') or '-',
+            quantity=presentation.number(quantity),
+            measure=presentation.measure(item.get('unit_measure') or 'un', quantity))
+        if sizes:
+            line += presentation.t('documents.rfq.size', sizes=sizes)
         body_lines.append(line)
-        pdf_rows.append(line.lstrip('- '))
+        pdf_rows.append(line.removeprefix('- '))
     if quote.get('valid_until'):
-        body_lines.extend(['', f"Prazo para resposta: {quote['valid_until']}"])
+        body_lines.extend(['', presentation.t('documents.rfq.deadline', date=presentation.date(quote['valid_until']))])
     if quote.get('notes'):
-        body_lines.extend(['', f"Observações: {quote['notes']}"])
-    body_lines.extend([
-        '',
-        'Por favor, responda este e-mail informando preço unitário, prazo de',
-        'entrega e frete por item, ou anexando sua proposta.',
-        '',
-        'Atenciosamente,',
-        'EPI Controle — Compras',
-    ])
+        body_lines.extend(['', presentation.t('documents.notes', notes=quote['notes'])])
+    body_lines.extend(['', presentation.t('documents.rfq.instructions'), '',
+                       presentation.t('documents.closing'), presentation.t('documents.department')])
     pdf_bytes = build_pdf_document(_pdf_lines(
-        f"Solicitação de Cotação #{quote['id']}",
-        f"Requisição #{pr['id']} — {len(items)} itens",
+        presentation.t('documents.rfq.title', id=quote['id']),
+        presentation.t('documents.rfq.subtitle', request=pr['id'], count=len(items)),
         pdf_rows,
     ))
-    return subject, '\n'.join(body_lines), [(f"cotacao_{quote['id']}.pdf", pdf_bytes)]
+    return subject, '\n'.join(body_lines), [(presentation.t('documents.rfq.filename', id=quote['id']), pdf_bytes)]
 
 
-def send_quote_to_supplier(connection, actor, quote_id, ip_address='', send_email_fn=None):
+def send_quote_to_supplier(connection, actor, quote_id, ip_address='', send_email_fn=None, *, locale=None):
     """Envia a RFQ ao fornecedor por e-mail (canal do Nível 1)."""
     quote = get_quote_by_id(connection, quote_id)
     if not quote:
@@ -604,7 +614,7 @@ def send_quote_to_supplier(connection, actor, quote_id, ip_address='', send_emai
         raise ValueError('Fornecedor sem e-mail de contato cadastrado.')
     pr = get_purchase_request_by_id(connection, int(quote['purchase_request_id']))
     items = fetch_quote_items(connection, quote_id)
-    subject, body, attachments = build_rfq_email(connection, quote, supplier, pr, items)
+    subject, body, attachments = build_rfq_email(connection, quote, supplier, pr, items, locale=locale)
     if send_email_fn is None:
         from epi_backend.mailer import send_email as send_email_fn
     send_email_fn(contact_email, subject, body, attachments=attachments)
@@ -630,14 +640,12 @@ def _po_items(connection, po_id):
     return [row_to_dict(row) for row in rows]
 
 
-def build_po_email(po, items, supplier_name):
-    subject = f"Pedido de Compra {po.get('po_number') or po['id']}"
-    body_lines = [
-        f'Prezado fornecedor {supplier_name},',
-        '',
-        f"Segue o pedido de compra {po.get('po_number') or po['id']} aprovado:",
-        '',
-    ]
+def build_po_email(po, items, supplier_name, *, locale=None):
+    presentation = Translator(locale)
+    identifier = po.get('po_number') or po['id']
+    subject = presentation.t('documents.po.title', id=identifier)
+    body_lines = [presentation.t('documents.greeting', name=supplier_name), '',
+                  presentation.t('documents.po.intro', id=identifier), '']
     pdf_rows = []
     total = 0.0
     for item in items:
@@ -645,32 +653,26 @@ def build_po_email(po, items, supplier_name):
         unit_price = float(item.get('unit_price') or 0)
         line_total = round(quantity * unit_price, 2)
         total += line_total
-        line = (
-            f"- {item.get('epi_name')} (CA {item.get('ca') or '-'}) — "
-            f"{quantity} x R$ {unit_price:.2f} = R$ {line_total:.2f}"
-        )
+        line = '- ' + presentation.t('documents.po.item',
+            epi=item.get('epi_name'), ca=item.get('ca') or '-',
+            quantity=presentation.number(quantity), price=presentation.money(unit_price),
+            total=presentation.money(line_total))
         body_lines.append(line)
-        pdf_rows.append(line.lstrip('- '))
-    body_lines.extend(['', f'Total: R$ {total:.2f}'])
+        pdf_rows.append(line.removeprefix('- '))
+    total_label = presentation.t('documents.po.total', total=presentation.money(total))
+    body_lines.extend(['', total_label])
     if po.get('expected_delivery_date'):
-        body_lines.append(f"Entrega prevista: {po['expected_delivery_date']}")
-    body_lines.extend([
-        '',
-        'Por favor, confirme o recebimento deste pedido respondendo este e-mail.',
-        '',
-        'Atenciosamente,',
-        'EPI Controle — Compras',
-    ])
-    pdf_rows.append(f'TOTAL: R$ {total:.2f}')
+        body_lines.append(presentation.t('documents.po.delivery', date=presentation.date(po['expected_delivery_date'])))
+    body_lines.extend(['', presentation.t('documents.po.instructions'), '',
+                       presentation.t('documents.closing'), presentation.t('documents.department')])
+    pdf_rows.append(total_label)
     pdf_bytes = build_pdf_document(_pdf_lines(
-        f"Pedido de Compra {po.get('po_number') or po['id']}",
-        f"Fornecedor: {supplier_name}",
-        pdf_rows,
+        subject, presentation.t('documents.po.supplier', name=supplier_name), pdf_rows,
     ))
-    return subject, '\n'.join(body_lines), [(f"pedido_{po.get('po_number') or po['id']}.pdf", pdf_bytes)]
+    return subject, '\n'.join(body_lines), [(presentation.t('documents.po.filename', id=identifier), pdf_bytes)]
 
 
-def send_po_to_supplier(connection, actor, po_id, payload=None, ip_address='', send_email_fn=None):
+def send_po_to_supplier(connection, actor, po_id, payload=None, ip_address='', send_email_fn=None, *, locale=None):
     """Envia PO aprovada ao fornecedor por e-mail; grava campos de envio.
 
     Não altera o status da PO (máquina de estados intacta) — o envio é
@@ -703,7 +705,7 @@ def send_po_to_supplier(connection, actor, po_id, payload=None, ip_address='', s
     if not contact_email:
         raise ValueError('Fornecedor da PO sem e-mail de contato. Informe to_email ou cadastre o fornecedor.')
     items = _po_items(connection, po_id)
-    subject, body, attachments = build_po_email(po, items, supplier_name or 'parceiro')
+    subject, body, attachments = build_po_email(po, items, supplier_name or Translator(locale).t('documents.po.partner'), locale=locale)
     if send_email_fn is None:
         from epi_backend.mailer import send_email as send_email_fn
     send_email_fn(contact_email, subject, body, attachments=attachments)

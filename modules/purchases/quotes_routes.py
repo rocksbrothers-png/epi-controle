@@ -20,6 +20,7 @@ from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json
 from modules.employees.service import actor_operational_unit_id
+from modules.i18n.presentation import request_locale
 from modules.purchases.service import (
     ensure_purchase_order_action_scope,
     ensure_purchase_request_action_scope,
@@ -155,7 +156,7 @@ def handle_post_quote_send(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_QUOTES_MANAGE)
         _load_scoped_quote(connection, actor, match)
-        quote = send_quote_to_supplier(connection, actor, int(match.group(1)), _client_ip(handler))
+        quote = send_quote_to_supplier(connection, actor, int(match.group(1)), _client_ip(handler), locale=request_locale(handler, parsed))
         connection.commit()
         return send_json(handler, 200, {'ok': True, 'item': quote})
 
@@ -190,7 +191,7 @@ def handle_post_purchase_order_send(handler, parsed, payload, match):
         if not po:
             raise ValueError('PO não encontrada.')
         ensure_purchase_order_action_scope(connection, actor, po, actor_operational_unit_id=actor_operational_unit_id)
-        po = send_po_to_supplier(connection, actor, int(match.group(1)), payload, _client_ip(handler))
+        po = send_po_to_supplier(connection, actor, int(match.group(1)), payload, _client_ip(handler), locale=request_locale(handler, parsed))
         connection.commit()
         return send_json(handler, 200, {'ok': True, 'item': po})
 

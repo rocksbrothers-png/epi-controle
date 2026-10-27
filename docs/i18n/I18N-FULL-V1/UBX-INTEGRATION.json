@@ -1,0 +1,30 @@
+{
+  "task_head": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+  "common_base": "3e6fe8c592c4c738c6bc1b55d8bba2969c52d4b8",
+  "observed_main": "63da879f2be48a1bbce947e409addcd04bf1d102",
+  "overlapping_changed_paths": [
+    "static/app.js",
+    "static/i18n/en-GB.json",
+    "static/i18n/es-ES.json",
+    "static/i18n/fr-FR.json",
+    "static/i18n/nb-NO.json",
+    "static/i18n/pt-BR.json",
+    "static/index.html",
+    "static/js/modules/api-client.js",
+    "static/js/test/run-tests.js",
+    "static/js/views/employee-portal.js",
+    "static/js/views/feedback.js",
+    "static/js/views/fichas.js",
+    "static/js/views/purchases.js",
+    "static/views/_scripts.html",
+    "tests/test_343_f4_portal_cpf_sem_cache.py",
+    "tests/test_343_f5b_navegacao_estado_inicial.py",
+    "tests/test_employee_unit_link_frontend_parity.py",
+    "tests/test_outsourced_companies_legacy_web_wiring.py",
+    "tests/test_outsourced_employees_legacy_web_wiring.py",
+    "tests/test_static_assets.py"
+  ],
+  "simulation_exit_code": 1,
+  "simulation_output": "12ec160e06af36d6fd518181cb2350ba7d50b216\nstatic/app.js\nstatic/i18n/en-GB.json\nstatic/i18n/es-ES.json\nstatic/i18n/fr-FR.json\nstatic/i18n/nb-NO.json\nstatic/i18n/pt-BR.json\nstatic/index.html\ntests/test_343_f4_portal_cpf_sem_cache.py\ntests/test_343_f5b_navegacao_estado_inicial.py\n\nAuto-merging static/app.js\nCONFLICT (content): Merge conflict in static/app.js\nAuto-merging static/i18n/en-GB.json\nCONFLICT (content): Merge conflict in static/i18n/en-GB.json\nAuto-merging static/i18n/es-ES.json\nCONFLICT (content): Merge conflict in static/i18n/es-ES.json\nAuto-merging static/i18n/fr-FR.json\nCONFLICT (content): Merge conflict in static/i18n/fr-FR.json\nAuto-merging static/i18n/nb-NO.json\nCONFLICT (content): Merge conflict in static/i18n/nb-NO.json\nAuto-merging static/i18n/pt-BR.json\nCONFLICT (content): Merge conflict in static/i18n/pt-BR.json\nAuto-merging static/index.html\nCONFLICT (content): Merge conflict in static/index.html\nAuto-merging static/js/modules/api-client.js\nAuto-merging static/js/test/run-tests.js\nAuto-merging static/js/views/employee-portal.js\nAuto-merging static/js/views/feedback.js\nAuto-merging static/js/views/fichas.js\nAuto-merging static/js/views/purchases.js\nAuto-merging static/views/_scripts.html\nAuto-merging tests/test_343_f4_portal_cpf_sem_cache.py\nCONFLICT (content): Merge conflict in tests/test_343_f4_portal_cpf_sem_cache.py\nAuto-merging tests/test_343_f5b_navegacao_estado_inicial.py\nCONFLICT (content): Merge conflict in tests/test_343_f5b_navegacao_estado_inicial.py\nAuto-merging tests/test_employee_unit_link_frontend_parity.py\nAuto-merging tests/test_outsourced_companies_legacy_web_wiring.py\nAuto-merging tests/test_outsourced_employees_legacy_web_wiring.py\nAuto-merging tests/test_static_assets.py\n",
+  "note": "Read-only integration simulation: no merge commit, branch change or worktree application."
+}

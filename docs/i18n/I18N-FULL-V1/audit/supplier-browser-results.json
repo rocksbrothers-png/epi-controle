@@ -1,0 +1,128 @@
+{
+  "cases": [
+    {
+      "locale": "pt-BR",
+      "kind": "quote",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "pt-BR",
+      "kind": "purchase_order",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "en-GB",
+      "kind": "quote",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "en-GB",
+      "kind": "purchase_order",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "es-ES",
+      "kind": "quote",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "es-ES",
+      "kind": "purchase_order",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "fr-FR",
+      "kind": "quote",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "fr-FR",
+      "kind": "purchase_order",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "nb-NO",
+      "kind": "quote",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    },
+    {
+      "locale": "nb-NO",
+      "kind": "purchase_order",
+      "canonicalPayloadUnchanged": true,
+      "retryPayloadEqual": true,
+      "publicTokenPathPreserved": true,
+      "sessionAuthorizationAbsent": true,
+      "specificErrorLiveTranslation": true,
+      "escaping": true,
+      "pageErrors": []
+    }
+  ],
+  "snapshot_sha256": {
+    "static/i18n.js": "e3b7c50a4b5523fd0012dbc3d679234b151709346615287bae606b4a867ed7c5",
+    "modules/purchases/supplier_portal_page.py": "ed58ce61c8e385ccbbfdeb6a1d4a310d30cf1d63088e20c5e8a4c586f01bea1a",
+    "static/i18n/pt-BR.json": "f9ed722fbc7872dcf6269cc9e769f4d2c1b744124f1532bc57150e6fdd6345a1",
+    "static/i18n/es-ES.json": "0ee8a06c726af587c80599b962e166e0c8467b84ae38898679c7c2695ecead9c",
+    "static/i18n/en-GB.json": "6a017c9af8567f0fdec7066e874ddd0e19d13b6e6341999712c87bcba53aa5d9",
+    "static/i18n/nb-NO.json": "185d1eaf1686dd226772ae51af653a3d7e97f7911054f5fd6e10041749b7e877",
+    "static/i18n/fr-FR.json": "dc874350a83aa860a448c855920d3e6609a47005a1284e4a5b3d882de78e2ede",
+    "static/js/views/supplier-portal.js": "384a0241e505de029ff916053733a27b04a87a78b6de6877013aefd3875447a0",
+    "static/js/views/procurement.js": "00a963e3e6f3cffdc5afa29195a53333c0c1709d8f6487d83fd54677d6817e97",
+    "static/js/views/ui-helpers.js": "8b990bb261f3fcdd0593a1367581b3af21e4eb532423edd9c45ae1f941cdfc4e",
+    "static/js/modules/purchases/integrations/supplier-portal-api.js": "a42d2ece46f0f3124e13f2cce9768b1dff2e5ee01b30108fff25644482b3d8cc"
+  },
+  "limits": "Real shell/modules/Chromium with local HTTP fixture only; no real token/RBAC/backend/database write/payment or supplier contact."
+}

@@ -22,10 +22,17 @@
   }
 
   function api(path, options) {
-    const opts = { headers: { 'Content-Type': 'application/json', ...(globalThis.authHeaders?.() || {}) }, ...options };
+    const opts = { headers: { 'Content-Type': 'application/json', 'Accept-Language':globalThis.EpiI18n?.lang || 'pt-BR', ...(globalThis.authHeaders?.() || {}) }, ...options };
     return fetch(path, opts).then(async (res) => {
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {throw new Error(data?.error?.message || data?.error || (globalThis.trEpi?.('ui.procurement.erro_p0_6b5d33','Erro {p0}',{p0:(res.status)}) ?? `Erro ${res.status}`));}
+      if (!res.ok) {
+        const fallback = globalThis.trEpi?.('ui.procurement.erro_p0_6b5d33','Erro {p0}',{p0:res.status}) || ('Erro '+res.status);
+        const detail = globalThis.EpiI18n?.describeApiError?.(data, fallback);
+        const error = new Error(detail?.text || data?.error?.message || data?.error || fallback);
+        if (detail?.key) {error.i18n=detail;}
+        error.status=res.status;error.code=data?.code || data?.error?.code || data?.validation?.code || '';error.payload=data;
+        throw error;
+      }
       return data;
     });
   }
@@ -38,9 +45,21 @@
     return (globalThis.fmtBrl ?? ((x, locale) => new Intl.NumberFormat(locale, {style:'currency', currency:'BRL'}).format(Number(x || 0))))(v, globalThis.EpiI18n?.lang || 'pt-BR');
   }
 
+  function errorText(node, error, fallback) {
+    const detail=error?.i18n;
+    if (detail?.key && globalThis.EpiI18n?.textFor) {return globalThis.EpiI18n.textFor(node,detail.key,detail.text,detail.vars,detail.refs);}
+    if (error?.message) {globalThis.EpiI18n?.clearBinding?.(node);return error.message;}
+    return fallback();
+  }
+
+  function errorMarkup(error, fallback) {
+    const detail=error?.i18n;
+    return detail?.key && globalThis.EpiI18n?.bindText ? globalThis.EpiI18n.bindText(detail.key,detail.vars,detail.text,detail.refs) : esc(error?.message || fallback());
+  }
+
   function toast(message, type) {
     if (typeof globalThis.showToast === 'function') {globalThis.showToast(message, type);}
-    else {alert(message);}
+    else {alert(message?.message || message);}
   }
 
   // ── Overlay/modal genérico (mesmo padrão de openPurchaseWorkflowModal) ─────
@@ -83,7 +102,7 @@
         renderQuotes([], {});
       }
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_requisicoes_ec390a','Erro ao carregar requisi\u00e7\u00f5es.',{}) ?? 'Erro ao carregar requisi\u00e7\u00f5es.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_requisicoes_ec390a','Erro ao carregar requisi\u00e7\u00f5es.',{}) ?? 'Erro ao carregar requisi\u00e7\u00f5es.')), 'error');
     }
   }
 
@@ -96,7 +115,7 @@
       _quotesCache = res.items || [];
       renderQuotes(_quotesCache, res.comparison || {});
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_cotacoes_a31470','Erro ao carregar cota\u00e7\u00f5es.',{}) ?? 'Erro ao carregar cota\u00e7\u00f5es.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_cotacoes_a31470','Erro ao carregar cota\u00e7\u00f5es.',{}) ?? 'Erro ao carregar cota\u00e7\u00f5es.')), 'error');
     }
   }
 
@@ -190,7 +209,7 @@
       const res = await api('/api/authorized-suppliers');
       suppliers = (res.items || []).filter((s) => s.active);
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_fornecedores_db079f','Erro ao carregar fornecedores.',{}) ?? 'Erro ao carregar fornecedores.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_fornecedores_db079f','Erro ao carregar fornecedores.',{}) ?? 'Erro ao carregar fornecedores.')), 'error');
       return;
     }
     if (!suppliers.length) { toast((globalThis.trEpi?.('ui.procurement.cadastre_fornecedores_ativos_antes_de_cotar_3daa28','Cadastre fornecedores ativos antes de cotar.',{}) ?? 'Cadastre fornecedores ativos antes de cotar.'), 'error'); return; }
@@ -216,7 +235,7 @@
         toast((globalThis.trEpi?.('ui.procurement.cotacoes_criadas_a39c5b','Cota\u00e7\u00f5es criadas.',{}) ?? 'Cota\u00e7\u00f5es criadas.'), 'success');
         loadQuotesForSelectedPr();
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{})) ?? 'Erro ao criar cota\u00e7\u00f5es.');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_criar_cotacoes_dd66e8','Erro ao criar cota\u00e7\u00f5es.',{})) ?? 'Erro ao criar cota\u00e7\u00f5es.'));
       }
     });
   }
@@ -232,7 +251,7 @@
       toast(channel === 'api' ? (globalThis.trEpi?.('ui.procurement.cotacao_respondida_via_api_b267f4','Cota\u00e7\u00e3o respondida via API.',{}) ?? 'Cota\u00e7\u00e3o respondida via API.') : (globalThis.trEpi?.('ui.procurement.enviado_ao_fornecedor_16f6bc','Enviado ao fornecedor.',{}) ?? 'Enviado ao fornecedor.'), 'success');
       loadQuotesForSelectedPr();
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_enviar_cotacao_58155a','Erro ao enviar cota\u00e7\u00e3o.',{}) ?? 'Erro ao enviar cota\u00e7\u00e3o.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_enviar_cotacao_58155a','Erro ao enviar cota\u00e7\u00e3o.',{}) ?? 'Erro ao enviar cota\u00e7\u00e3o.')), 'error');
     }
   }
 
@@ -281,7 +300,7 @@
         toast((globalThis.trEpi?.('ui.procurement.resposta_registrada_038f54','Resposta registrada.',{}) ?? 'Resposta registrada.'), 'success');
         loadQuotesForSelectedPr();
       } catch (err) {
-        overlay.querySelector('[data-answer-feedback]').textContent = err.message || ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-answer-feedback]'),'ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{})) ?? 'Erro ao salvar.');
+        overlay.querySelector('[data-answer-feedback]').textContent = errorText(overlay.querySelector('[data-answer-feedback]'), err, () => ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-answer-feedback]'),'ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_61374a','Erro ao salvar.',{})) ?? 'Erro ao salvar.'));
       }
     });
   }
@@ -298,7 +317,7 @@
         globalThis.loadPurchaseOrders?.();
       }
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_selecionar_a_cotacao_4f0281','Erro ao selecionar a cota\u00e7\u00e3o.',{}) ?? 'Erro ao selecionar a cota\u00e7\u00e3o.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_selecionar_a_cotacao_4f0281','Erro ao selecionar a cota\u00e7\u00e3o.',{}) ?? 'Erro ao selecionar a cota\u00e7\u00e3o.')), 'error');
     }
   }
 
@@ -345,7 +364,7 @@
           refresh();
         }));
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--color-danger,#c00);">${esc(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_catalogo_00941e','Erro ao carregar cat\u00e1logo.',{}) ?? 'Erro ao carregar cat\u00e1logo.'))}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--color-danger,#c00);">${errorMarkup(err, () => (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_catalogo_00941e','Erro ao carregar cat\u00e1logo.',{}) ?? 'Erro ao carregar cat\u00e1logo.'))}</td></tr>`;
       }
     }
 
@@ -365,7 +384,7 @@
         feedback.textContent = '';
         refresh();
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{})) ?? 'Erro ao salvar produto.');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_produto_2dc40c','Erro ao salvar produto.',{})) ?? 'Erro ao salvar produto.'));
       }
     });
     overlay.querySelector('[data-catalog-sync]')?.addEventListener('click', async () => {
@@ -375,7 +394,7 @@
         feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.catalogo_sincronizado_p0_produtos_importados_da_loja_3f7094','Cat\u00e1logo sincronizado: {p0} produtos importados da loja.',{p0:(res.imported)}) ?? globalThis.trEpi?.('ui.procurement.catalogo_sincronizado_p0_produtos_importados_da_loja_3f7094','Cat\u00e1logo sincronizado: {p0} produtos importados da loja.',{p0:(res.imported)})) ?? `Catálogo sincronizado: ${res.imported} produtos importados da loja.`);
         refresh();
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{})) ?? 'Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_sincronizar_o_fornecedor_tem_integracao_de_api_ativa_e7a3e4','Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).',{})) ?? 'Erro ao sincronizar (o fornecedor tem integra\u00e7\u00e3o de API ativa?).'));
       }
     });
     refresh();
@@ -430,7 +449,7 @@
         feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.integracao_salva_f8e88a','Integra\u00e7\u00e3o salva.',{}) ?? globalThis.trEpi?.('ui.procurement.integracao_salva_f8e88a','Integra\u00e7\u00e3o salva.',{})) ?? 'Integra\u00e7\u00e3o salva.');
         globalThis.loadAuthorizedSuppliers?.();
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{})) ?? 'Erro ao salvar integra\u00e7\u00e3o.');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_salvar_integracao_7c9c38','Erro ao salvar integra\u00e7\u00e3o.',{})) ?? 'Erro ao salvar integra\u00e7\u00e3o.'));
       }
     });
     overlay.querySelector('[data-integration-test]').addEventListener('click', async () => {
@@ -438,7 +457,7 @@
         const res = await api(`/api/authorized-suppliers/${supplierId}/integration/test`, { method: 'POST', body: withActor({}) });
         feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.conexao_ok_p0_c8552e','Conex\u00e3o OK ({p0}).',{p0:(res.connector_key)}) ?? globalThis.trEpi?.('ui.procurement.conexao_ok_p0_c8552e','Conex\u00e3o OK ({p0}).',{p0:(res.connector_key)})) ?? `Conexão OK (${res.connector_key}).`);
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.teste_falhou_a64e41','Teste falhou.',{}) ?? globalThis.trEpi?.('ui.procurement.teste_falhou_a64e41','Teste falhou.',{})) ?? 'Teste falhou.');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.teste_falhou_a64e41','Teste falhou.',{}) ?? globalThis.trEpi?.('ui.procurement.teste_falhou_a64e41','Teste falhou.',{})) ?? 'Teste falhou.'));
       }
     });
   }
@@ -451,7 +470,7 @@
       const res = await api(`/api/purchase-orders/${poId}/tracking?actor_user_id=${getState().user?.id}`);
       tracking = res.item || {};
     } catch (err) {
-      toast(err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_acompanhamento_2142fc','Erro ao carregar acompanhamento.',{}) ?? 'Erro ao carregar acompanhamento.'), 'error');
+      toast((err.i18n ? err : err.message || (globalThis.trEpi?.('ui.procurement.erro_ao_carregar_acompanhamento_2142fc','Erro ao carregar acompanhamento.',{}) ?? 'Erro ao carregar acompanhamento.')), 'error');
       return;
     }
     const canSend = hasPermission('purchase_orders:create');
@@ -491,7 +510,7 @@
         toast((globalThis.trEpi?.('ui.procurement.acao_executada_789459','A\u00e7\u00e3o executada.',{}) ?? 'A\u00e7\u00e3o executada.'), 'success');
         openPoSupplierActionsModal(poId);
       } catch (err) {
-        feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{})) ?? 'Erro ao executar a a\u00e7\u00e3o.');
+        feedback.textContent = errorText(feedback, err, () => ((globalThis.EpiI18n?.textFor?.(feedback,'ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_executar_a_acao_f6d97b','Erro ao executar a a\u00e7\u00e3o.',{})) ?? 'Erro ao executar a a\u00e7\u00e3o.'));
       }
     }));
     overlay.querySelector('[data-po-confirm]')?.addEventListener('click', () => {
@@ -536,7 +555,7 @@
         toast((globalThis.trEpi?.('ui.procurement.confirmacao_registrada_0036b0','Confirma\u00e7\u00e3o registrada.',{}) ?? 'Confirma\u00e7\u00e3o registrada.'), 'success');
         openPoSupplierActionsModal(poId);
       } catch (err) {
-        overlay.querySelector('[data-confirm-feedback]').textContent = err.message || ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-confirm-feedback]'),'ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{})) ?? 'Erro ao registrar.');
+        overlay.querySelector('[data-confirm-feedback]').textContent = errorText(overlay.querySelector('[data-confirm-feedback]'), err, () => ((globalThis.EpiI18n?.textFor?.(overlay.querySelector('[data-confirm-feedback]'),'ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{}) ?? globalThis.trEpi?.('ui.procurement.erro_ao_registrar_ce0cc7','Erro ao registrar.',{})) ?? 'Erro ao registrar.'));
       }
     });
   }

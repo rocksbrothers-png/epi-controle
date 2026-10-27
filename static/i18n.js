@@ -35,6 +35,7 @@
   let _languageSequence = 0;
   const _boundText = new WeakMap();
   const _boundAttributes = new WeakMap();
+  const _pluralCount = Symbol('numeric plural count');
 
   /* ── Resolução de chaves aninhadas ───────────────────────────────────────── */
 
@@ -61,8 +62,9 @@
   function _message(dict, key, vars, locale) {
     const direct = _resolve(dict, key);
     if (direct !== undefined) {return direct;}
-    if (vars && Number.isFinite(vars.count)) {
-      const category = new Intl.PluralRules(locale).select(vars.count);
+    const count = vars?.[_pluralCount] ?? vars?.count;
+    if (Number.isFinite(count)) {
+      const category = new Intl.PluralRules(locale).select(count);
       return _resolve(dict, `${key}.${category}`) ?? _resolve(dict, `${key}.other`);
     }
     return undefined;
@@ -116,6 +118,10 @@
 
   function resolveMessageVars(vars, variableKeys, depth = 0) {
     const resolved = { ...(vars || {}) };
+    // Display formatting may turn count into "1,234" or "1 234". PluralRules
+    // must keep the original numeric operand, including in nested messages.
+    const count = vars?.[_pluralCount] ?? vars?.count;
+    if (Number.isFinite(count)) {Object.defineProperty(resolved, _pluralCount, {value:count});}
     if (depth > 4) {return resolved;}
     for (const [name, key] of Object.entries(variableKeys || {})) {
       if (typeof key === 'string') {

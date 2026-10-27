@@ -62,7 +62,10 @@
     toast.style.background = bg;
     toast.style.color = '#fff';
     toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
-    toast.textContent = String(message == null ? '' : message);
+    const binding = message?.i18n;
+    toast.textContent = binding?.key && globalThis.EpiI18n?.textFor
+      ? globalThis.EpiI18n.textFor(toast,binding.key,binding.text,binding.vars,binding.refs)
+      : String(message == null ? '' : message);
     document.body.appendChild(toast);
     const ttl = Number(durationMs) > 0 ? Number(durationMs) : 4000;
     setTimeout(() => { if (toast.isConnected) {toast.remove();} }, ttl);

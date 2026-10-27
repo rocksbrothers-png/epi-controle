@@ -12,12 +12,13 @@
       "Validade do fabricante vencida: Aprovado ",
       "Validade física desconhecida",
       "Lotes próximos do vencimento"
-    ]
+    ],
+    "baseline_note": "Original pre-presentation screenshot retained; after fixtures add a batch expiring in three days and a singular unknown item."
   },
   {
     "before": false,
     "locale": "pt-BR",
-    "alerts": 9,
+    "alerts": 12,
     "titles": [
       "Saldo negativo: Aprovado <img src=x onerror=window.__xss=1>",
       "Estoque zerado: Aprovado <img src=x onerror=window.__xss=1>",
@@ -27,7 +28,10 @@
       "CA próximo do vencimento: Aprovado <img src=x onerror=window.__xss=1>",
       "Validade do fabricante vencida: Aprovado <img src=x onerror=window.__xss=1>",
       "Validade física desconhecida",
-      "Lotes próximos do vencimento"
+      "Lotes próximos do vencimento",
+      "CA próximo do vencimento: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validade do fabricante próxima: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validade física desconhecida"
     ],
     "localized_size_search": true,
     "keyboard_action": {
@@ -46,7 +50,7 @@
   {
     "before": false,
     "locale": "en-GB",
-    "alerts": 9,
+    "alerts": 12,
     "titles": [
       "Negative stock balance: Aprovado <img src=x onerror=window.__xss=1>",
       "Out of stock: Aprovado <img src=x onerror=window.__xss=1>",
@@ -56,7 +60,10 @@
       "Brazilian CA approaching expiry: Aprovado <img src=x onerror=window.__xss=1>",
       "Manufacturer expiry date passed: Aprovado <img src=x onerror=window.__xss=1>",
       "Unknown physical expiry date",
-      "Batches approaching expiry"
+      "Batches approaching expiry",
+      "Brazilian CA approaching expiry: Aprovado <img src=x onerror=window.__xss=1>",
+      "Manufacturer expiry date approaching: Aprovado <img src=x onerror=window.__xss=1>",
+      "Unknown physical expiry date"
     ],
     "localized_size_search": true,
     "keyboard_action": {
@@ -75,7 +82,7 @@
   {
     "before": false,
     "locale": "es-ES",
-    "alerts": 9,
+    "alerts": 12,
     "titles": [
       "Saldo negativo: Aprovado <img src=x onerror=window.__xss=1>",
       "Sin existencias: Aprovado <img src=x onerror=window.__xss=1>",
@@ -85,7 +92,10 @@
       "CA brasileño próximo a caducar: Aprovado <img src=x onerror=window.__xss=1>",
       "Validez del fabricante vencida: Aprovado <img src=x onerror=window.__xss=1>",
       "Validez física desconocida",
-      "Lotes próximos a vencer"
+      "Lotes próximos a vencer",
+      "CA brasileño próximo a caducar: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validez del fabricante próxima a vencer: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validez física desconocida"
     ],
     "localized_size_search": true,
     "keyboard_action": {
@@ -104,7 +114,7 @@
   {
     "before": false,
     "locale": "fr-FR",
-    "alerts": 9,
+    "alerts": 12,
     "titles": [
       "Solde de stock négatif : Aprovado <img src=x onerror=window.__xss=1>",
       "Rupture de stock : Aprovado <img src=x onerror=window.__xss=1>",
@@ -114,7 +124,10 @@
       "CA brésilien proche de son expiration : Aprovado <img src=x onerror=window.__xss=1>",
       "Date de validité du fabricant dépassée : Aprovado <img src=x onerror=window.__xss=1>",
       "Date de validité physique inconnue",
-      "Lots proches de l’expiration"
+      "Lots proches de l’expiration",
+      "CA brésilien proche de son expiration : Aprovado <img src=x onerror=window.__xss=1>",
+      "Date de validité du fabricant proche : Aprovado <img src=x onerror=window.__xss=1>",
+      "Date de validité physique inconnue"
     ],
     "localized_size_search": true,
     "keyboard_action": {
@@ -133,7 +146,7 @@
   {
     "before": false,
     "locale": "nb-NO",
-    "alerts": 9,
+    "alerts": 12,
     "titles": [
       "Negativ lagerbeholdning: Aprovado <img src=x onerror=window.__xss=1>",
       "Tomt på lager: Aprovado <img src=x onerror=window.__xss=1>",
@@ -143,7 +156,10 @@
       "Brasiliansk CA nær utløpsdato: Aprovado <img src=x onerror=window.__xss=1>",
       "Produsentens utløpsdato er passert: Aprovado <img src=x onerror=window.__xss=1>",
       "Ukjent fysisk utløpsdato",
-      "Partier nær utløpsdato"
+      "Partier nær utløpsdato",
+      "Brasiliansk CA nær utløpsdato: Aprovado <img src=x onerror=window.__xss=1>",
+      "Produsentens utløpsdato nærmer seg: Aprovado <img src=x onerror=window.__xss=1>",
+      "Ukjent fysisk utløpsdato"
     ],
     "localized_size_search": true,
     "keyboard_action": {

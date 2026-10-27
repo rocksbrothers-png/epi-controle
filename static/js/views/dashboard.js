@@ -572,11 +572,18 @@
         labels ? presentation.text(labels.description) : item.description, labels ? presentation.sizeText(labels.sizes) : '', item.type]));
     refs.alertsList.innerHTML = items.map(({item, labels}) => {
       const action = _alertAction(item);
+      const labelKey = {physical_unknown:'dashboard.alertRegularizeValidity',ca:'dashboard.alertViewEpis',stock:'dashboard.alertViewStock',manufacturer:'dashboard.alertViewStock'}[item.category];
+      const actionLabel = action && labelKey && globalThis.EpiI18n?.bindText
+        ? globalThis.EpiI18n.bindText(labelKey,{},action.label) : esc(action?.label || '');
+      const ariaKey = item.epi_name ? 'dashboard.alertRegularizeValidityFor' : 'dashboard.alertRegularizeValidity';
+      const ariaVars = {epi:item.epi_name || ''};
+      const ariaFallback = (action?.label || '') + (item.epi_name ? ': ' + item.epi_name : '');
+      const ariaLabel = globalThis.trEpi?.(ariaKey,ariaFallback,ariaVars) || ariaFallback;
       const pending = action?.pending
-        ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(action.label + (item.epi_name ? ': ' + item.epi_name : ''))}"`
+        ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(ariaLabel)}" data-i18n-aria-label="${ariaKey}" data-i18n-vars="${esc(JSON.stringify(ariaVars))}"`
         : '';
       const btn = action
-        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${action.label}</button>`
+        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${actionLabel}</button>`
         : '';
       const title = labels ? presentation.markup(labels.title) : esc(item.title);
       const description = labels ? presentation.markup(labels.description) + presentation.sizeMarkup(labels.sizes) : esc(item.description);

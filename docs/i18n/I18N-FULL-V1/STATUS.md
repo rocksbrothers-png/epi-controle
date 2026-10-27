@@ -39,3 +39,13 @@ Os alertas operacionais passaram a receber metadados de apresentação aditivos;
 Os cinco ARBs base do Flutter foram sincronizados com seus respectivos catálogos regionais. O gerador oficial 3.47.7 foi executado. Um teste dos delegates gerados compara todas as 781 mensagens entre pt/pt_BR, en/en_US, es/es_ES, fr/fr_FR e no/no_NO, incluindo parâmetros. Isso elimina o fallback acidental causado pelos aliases parciais; não certifica tradução de toda a interface Flutter, cujos hardcodes ainda precisam de revisão.
 
 CI do checkpoint 3693b04f: Portal Docs aprovado no run 40434076866. Backend e Flutter reprovaram; foram encontrados e corrigidos import F401, manifesto ARB desatualizado e verificações estáticas que não reconheciam getters/bindings de tradução. Nova execução será vinculada ao próximo HEAD. Sem aprovação integral ou autorização de merge.
+
+## Portal do fornecedor e erros de cotação (em validação)
+
+A página pública `/fornecedor/<token>` usa o catálogo central nos cinco idiomas e um seletor sem persistência na conta do painel. O transporte foi extraído para `purchases/integrations/supplier-portal-api.js`; token, endpoints e payloads de resposta/confirmação permanecem. O teste Chromium cobre cotação editável, cotação respondida, pedido e link inválido em cada idioma, troca com campos/arquivo preenchidos, mensagens específicas, sucesso e celular. Toda a API é interceptada com dados sintéticos.
+
+Os 42 templates de erro de `quotes_service.py` e `supplier_portal_service.py` receberam recursos nos cinco idiomas (54 ocorrências rastreadas no manifesto), sem mudar as mensagens no backend. Procurement passou a localizar seus erros mantendo status, código, payload e metadados para retraduzir feedback/toast. Outros templates de Compras e backend ainda estão pendentes.
+
+A auditoria independente detectou contagem formatada como string quebrando plurais aninhados e a retradução de peças físicas. O core agora preserva o operando numérico separado do texto de apresentação; o teste verifica 1.234 peças, 0/1/2 e dias aninhados em EN→FR→EN. A prova dos alertas foi ampliada para lote próximo do vencimento e troca sem rerenderizar o dashboard.
+
+Os workflows Backend CI, Flutter CI, Contract Tests e Backend Isolation Guard aprovaram ambos os HEADs de alertas/aliases (Corporate `3f32341d`, SaaS `9ff2e44`). Resultados e SHAs estão em `CI-RESULTS.json`; os novos ajustes posteriores ainda precisam de CI no próximo HEAD.

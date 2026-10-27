@@ -725,5 +725,383 @@
     "kind": "preview_warning",
     "message_template": "Modelo externo do Word ignorado; apenas estilos incorporados foram utilizados.",
     "key": "apiErrors.messages.m_d8fe3c76b8e2"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 65,
+    "message_template": "Fornecedor não encontrado.",
+    "key": "apiErrors.messages.m_0d3a841b89b5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 77,
+    "message_template": "Produto não encontrado.",
+    "key": "apiErrors.messages.m_1ee863587351",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 85,
+    "message_template": "Empresa é obrigatória para cadastrar fornecedor.",
+    "key": "apiErrors.messages.m_f2de247cc3e6",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 88,
+    "message_template": "Nome do fornecedor é obrigatório.",
+    "key": "apiErrors.messages.m_4135cc3ec49e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 92,
+    "message_template": "Nível de integração inválido (email, portal ou api).",
+    "key": "apiErrors.messages.m_440a1f3e33f7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 98,
+    "message_template": "Já existe fornecedor com este CNPJ nesta empresa.",
+    "key": "apiErrors.messages.m_0272d51c4178",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 174,
+    "message_template": "Fornecedor não encontrado.",
+    "key": "apiErrors.messages.m_0d3a841b89b5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 178,
+    "message_template": "Informe SKU ou descrição do produto.",
+    "key": "apiErrors.messages.m_1da58be87f83",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 276,
+    "message_template": "Requisição não encontrada.",
+    "key": "apiErrors.messages.m_b2071b0a7a3f",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 279,
+    "message_template": "Informe ao menos um fornecedor para cotar.",
+    "key": "apiErrors.messages.m_e6492d02730b",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 286,
+    "message_template": "A requisição não possui itens cotáveis.",
+    "key": "apiErrors.messages.m_e771eb420de3",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 411,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 413,
+    "message_template": "Cotação com status \"{p1}\" não pode receber resposta.",
+    "key": "apiErrors.messages.m_8b32f538600d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 416,
+    "message_template": "Informe os itens respondidos da cotação.",
+    "key": "apiErrors.messages.m_26e01b46a315",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 479,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 481,
+    "message_template": "Apenas cotações respondidas podem ser selecionadas.",
+    "key": "apiErrors.messages.m_4f7bc5df0d9f",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 595,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 597,
+    "message_template": "Cotação com status \"{p1}\" não pode ser enviada.",
+    "key": "apiErrors.messages.m_e93095efbe8a",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 601,
+    "message_template": "Fornecedor da cotação não encontrado.",
+    "key": "apiErrors.messages.m_a03235d0a593",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 604,
+    "message_template": "Fornecedor sem e-mail de contato cadastrado.",
+    "key": "apiErrors.messages.m_14afc9faa80c",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 682,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 684,
+    "message_template": "Apenas POs aprovadas podem ser enviadas ao fornecedor.",
+    "key": "apiErrors.messages.m_f1e64b251de7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 704,
+    "message_template": "Fornecedor da PO sem e-mail de contato. Informe to_email ou cadastre o fornecedor.",
+    "key": "apiErrors.messages.m_89eacf5f005d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 731,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 734,
+    "message_template": "Status de confirmação inválido (confirmed, rejected ou delivery_update).",
+    "key": "apiErrors.messages.m_bffbd38d799e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 139,
+    "message_template": "Nível de integração inválido (email, portal ou api).",
+    "key": "apiErrors.messages.m_440a1f3e33f7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 185,
+    "message_template": "EPI vinculado não encontrado nesta empresa.",
+    "key": "apiErrors.messages.m_e6e5ec1dbb6d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 294,
+    "message_template": "Fornecedor {p1} não encontrado nesta empresa.",
+    "key": "apiErrors.messages.m_72c03b3bd866",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 296,
+    "message_template": "Fornecedor \"{p1}\" está inativo.",
+    "key": "apiErrors.messages.m_195e3dbeae42",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 303,
+    "message_template": "Já existe cotação aberta para o fornecedor \"{p1}\" nesta requisição.",
+    "key": "apiErrors.messages.m_c8fc22f90fad",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 431,
+    "message_template": "Item de cotação não encontrado na cotação informada.",
+    "key": "apiErrors.messages.m_c1a0c4919a69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 435,
+    "message_template": "Item \"{p1}\": informe preço unitário ou marque como recusado.",
+    "key": "apiErrors.messages.m_e1675ea0f5e5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 86,
+    "message_template": "Tipo de entidade do portal inválido (quote ou purchase_order).",
+    "key": "apiErrors.messages.m_f68bafe5789a",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 107,
+    "message_template": "Expiração deve estar entre 1 e {p1} dias.",
+    "key": "apiErrors.messages.m_453f7d4089b6",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 166,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 172,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 182,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 280,
+    "message_template": "Proposta anexada sem nome ou conteúdo.",
+    "key": "apiErrors.messages.m_73781fd61a84",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 282,
+    "message_template": "Tipo de arquivo da proposta inválido (PDF, JPEG ou PNG).",
+    "key": "apiErrors.messages.m_c742b21ed7e4",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 290,
+    "message_template": "Proposta excede o limite de 5 MB.",
+    "key": "apiErrors.messages.m_150d8a0b8902",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 307,
+    "message_template": "Este link não permite responder cotação.",
+    "key": "apiErrors.messages.m_6cce4cad6983",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 310,
+    "message_template": "Fornecedor do link não encontrado.",
+    "key": "apiErrors.messages.m_294a17d5b2d2",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 332,
+    "message_template": "Este link não permite confirmar pedido.",
+    "key": "apiErrors.messages.m_b1b0ecbfee89",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 335,
+    "message_template": "Fornecedor do link não encontrado.",
+    "key": "apiErrors.messages.m_294a17d5b2d2",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 374,
+    "message_template": "Fornecedor sem e-mail de contato cadastrado.",
+    "key": "apiErrors.messages.m_14afc9faa80c",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 379,
+    "message_template": "WEB_BASE_URL não configurada para gerar o link do portal.",
+    "key": "apiErrors.messages.m_38c8746e6bf4",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 90,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 95,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 102,
+    "message_template": "PO sem fornecedor cadastrado — cadastre o fornecedor (CNPJ) antes de gerar o link.",
+    "key": "apiErrors.messages.m_8eead2050e66",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 216,
+    "message_template": "Cotação do link não encontrada.",
+    "key": "apiErrors.messages.m_e55d0e79b9dd",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 246,
+    "message_template": "PO do link não encontrada.",
+    "key": "apiErrors.messages.m_fab0d68c071e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 288,
+    "message_template": "Conteúdo do arquivo da proposta inválido.",
+    "key": "apiErrors.messages.m_b7a4dae4fe74",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 364,
+    "message_template": "Cotação com status \"{p1}\" não pode ser enviada ao portal.",
+    "key": "apiErrors.messages.m_60d276d721d5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 369,
+    "message_template": "Apenas POs aprovadas podem ser enviadas ao fornecedor.",
+    "key": "apiErrors.messages.m_f1e64b251de7",
+    "kind": "raise"
   }
 ]

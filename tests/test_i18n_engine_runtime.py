@@ -370,3 +370,79 @@ for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
 }
 assert.equal(writes.length,0);
 ''')
+
+
+def test_formatted_plural_counts_keep_numeric_operand_and_nested_message_on_switch():
+    run_scenario('''
+dictionaries['en-GB'].pieces={one:'{count} physical item',other:'{count} physical items'};
+dictionaries['fr-FR'].pieces={one:'{count} pièce physique',other:'{count} pièces physiques'};
+dictionaries['en-GB'].days={one:'{count} day',other:'{count} days'};
+dictionaries['fr-FR'].days={one:'{count} jour',other:'{count} jours'};
+dictionaries['en-GB'].expiry='Expires in {daysLabel}';
+dictionaries['fr-FR'].expiry='Expire dans {daysLabel}';
+const pieces=element(),expiry=element();
+const count=1234,numberRef={type:'number',value:count},nested={daysLabel:{type:'message',key:'days',vars:{count:3},refs:{count:{type:'number',value:3}}}};
+await api.setLang('en-GB',{persist:false});
+pieces.textContent=api.textFor(pieces,'pieces','',{count},{count:numberRef});
+expiry.textContent=api.textFor(expiry,'expiry','',{daysLabel:'fallback'},nested);
+assert.equal(pieces.textContent,'1,234 physical items');
+assert.equal(expiry.textContent,'Expires in 3 days');
+await api.setLang('fr-FR',{persist:false});api.translateDOM(pieces);api.translateDOM(expiry);
+assert.equal(pieces.textContent,new Intl.NumberFormat('fr-FR').format(count)+' pièces physiques');
+assert.equal(expiry.textContent,'Expire dans 3 jours');
+await api.setLang('en-GB',{persist:false});api.translateDOM(pieces);api.translateDOM(expiry);
+assert.equal(pieces.textContent,'1,234 physical items');
+assert.equal(expiry.textContent,'Expires in 3 days');
+for(const value of [0,1,2]) {
+ pieces.textContent=api.textFor(pieces,'pieces','',{count:value},{count:{type:'number',value}});
+ assert.equal(pieces.textContent,value+' physical '+(value===1?'item':'items'));
+}
+assert.equal(count,1234);assert.equal(writes.length,0);
+''')
+
+
+def test_procurement_error_port_preserves_auth_payload_details_and_live_feedback():
+    run_scenario(r'''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO'])dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+doc.readyState='complete';doc.getElementById=()=>null;
+sandbox.authHeaders=()=>({Authorization:'Bearer synthetic-session'});
+let source=fs.readFileSync(path.join(staticRoot,'js/views/procurement.js'),'utf8');
+const end=source.lastIndexOf('})();');assert(end>=0);
+source=source.slice(0,end)+'globalThis.procurementProbe={api,errorText,errorMarkup};'+source.slice(end);
+vm.runInNewContext(source,sandbox);
+const originalFetch=sandbox.fetch, requests=[];
+let payload={error:'Item "Original <img src=x>": informe preço unitário ou marque como recusado.',validation:{code:'INVALID_QUOTE_ITEM',line:7,item_id:33}};
+sandbox.fetch=async(url,options)=>{
+ if(url.startsWith('/api/i18n/'))return originalFetch(url,options);
+ requests.push({url,options});return {ok:false,status:422,json:async()=>payload};
+};
+const body=JSON.stringify({actor_user_id:23,items:[{quote_item_id:33,unit_price:1234.56,declined:false}]});
+let error;
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ await api.setLang(locale,{persist:false});
+ try{await sandbox.procurementProbe.api('/api/quotes/7/answer',{method:'POST',body})}catch(actual){error=actual}
+ assert(error.i18n);assert.equal(error.status,422);assert.equal(error.code,'INVALID_QUOTE_ITEM');
+ assert.equal(error.payload,payload);assert.equal(error.message,api.apiMessage(payload));
+ const request=requests.at(-1);
+ assert.equal(request.options.headers.Authorization,'Bearer synthetic-session');
+ assert.equal(request.options.headers['Accept-Language'],locale);
+ assert.equal(request.options.body,body);assert.equal(request.options.method,'POST');
+ const markup=sandbox.procurementProbe.errorMarkup(error,()=>{throw Error('specific error discarded')});
+ assert(!markup.includes('<img'));assert(markup.includes('&lt;img'));
+}
+const feedback=element();feedback.textContent=sandbox.procurementProbe.errorText(feedback,error,()=>{throw Error('specific error discarded')});
+await api.setLang('fr-FR',{persist:false});api.translateDOM(feedback);
+assert.equal(feedback.textContent,api.apiMessage(payload));
+let toast;
+doc.body={appendChild(node){toast=node}};doc.createElement=()=>Object.assign(element(),{style:{}});sandbox.setTimeout=()=>0;
+vm.runInNewContext(fs.readFileSync(path.join(staticRoot,'js/views/ui-helpers.js'),'utf8'),sandbox);
+sandbox.showToast(error,'error');
+await api.setLang('en-GB',{persist:false});api.translateDOM(toast);
+assert.equal(toast.textContent,api.apiMessage(payload));assert.equal(toast.getAttribute('role'),'alert');
+const unknown=new Error('Specific uncatalogued failure / row 7');
+feedback.textContent=sandbox.procurementProbe.errorText(feedback,unknown,()=>{throw Error('specific error discarded')});
+await api.setLang('fr-FR',{persist:false});api.translateDOM(feedback);
+assert.equal(feedback.textContent,unknown.message);assert(!feedback.hasAttribute('data-i18n'));
+assert.equal(writes.length,0);
+''')

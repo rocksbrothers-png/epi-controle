@@ -1020,5 +1020,234 @@
         "type": "String"
       }
     }
-  }
+  },
+  "operationalAlertStockNearMinimum": "Estoque próximo do mínimo: {epi}",
+  "@operationalAlertStockNearMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockNegative": "Saldo negativo: {epi}",
+  "@operationalAlertStockNegative": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockZero": "Estoque zerado: {epi}",
+  "@operationalAlertStockZero": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockBelowMinimum": "Estoque abaixo do mínimo: {epi}",
+  "@operationalAlertStockBelowMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockAtMinimum": "Estoque no limite mínimo: {epi}",
+  "@operationalAlertStockAtMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockDescription": "{company} / {unit} - saldo atual de {stock} {measure}, mínimo {minimum}.",
+  "@operationalAlertStockDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      },
+      "minimum": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaTitle": "CA próximo do vencimento: {epi}",
+  "@operationalAlertCaTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaDescription": "{company} - vence em {date}.",
+  "@operationalAlertCaDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredTitle": "Validade do fabricante vencida: {epi}",
+  "@operationalAlertManufacturerExpiredTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringTitle": "Validade do fabricante próxima: {epi}",
+  "@operationalAlertManufacturerExpiringTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredDescription": "{company} - validade do fabricante venceu em {date}. Retire do estoque ({stock} {measure}): EPI vencido não pode ser entregue ao trabalhador.",
+  "@operationalAlertManufacturerExpiredDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringDescription": "{company} - validade do fabricante vence em {date} (em {daysLabel}). Priorize a entrega deste lote ({stock} {measure} em estoque) antes do vencimento (PEPS).",
+  "@operationalAlertManufacturerExpiringDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "daysLabel": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizes": "Tamanhos em estoque:",
+  "operationalAlertSizeGlove": "Luva:{value}",
+  "@operationalAlertSizeGlove": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeSize": "Tam:{value}",
+  "@operationalAlertSizeSize": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUniform": "Unif:{value}",
+  "@operationalAlertSizeUniform": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUnspecified": "S/Tam",
+  "operationalAlertQuantity": "{count}",
+  "@operationalAlertQuantity": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertMeasureUnit": "{count, plural, one{unidade} other{unidades}}",
+  "@operationalAlertMeasureUnit": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertMeasurePair": "{count, plural, one{par} other{pares}}",
+  "@operationalAlertMeasurePair": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertDays": "{count, plural, one{{countLabel} dia} other{{countLabel} dias}}",
+  "@operationalAlertDays": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalDescription": "{count, plural, one{{epi}: {countLabel} peça física.} other{{epi}: {countLabel} peças físicas.}}",
+  "@operationalAlertPhysicalDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      },
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalUnknownTitle": "Validade física desconhecida",
+  "operationalAlertPhysicalExpiringTitle": "Lotes próximos do vencimento"
 }

@@ -4803,6 +4803,171 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
   String prConfInvalidQuantityLine(int line, String item, String id);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque próximo do mínimo: {epi}'**
+  String operationalAlertStockNearMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Saldo negativo: {epi}'**
+  String operationalAlertStockNegative(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque zerado: {epi}'**
+  String operationalAlertStockZero(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque abaixo do mínimo: {epi}'**
+  String operationalAlertStockBelowMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque no limite mínimo: {epi}'**
+  String operationalAlertStockAtMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} / {unit} - saldo atual de {stock} {measure}, mínimo {minimum}.'**
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  );
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA próximo do vencimento: {epi}'**
+  String operationalAlertCaTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - vence em {date}.'**
+  String operationalAlertCaDescription(String company, String date);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida: {epi}'**
+  String operationalAlertManufacturerExpiredTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima: {epi}'**
+  String operationalAlertManufacturerExpiringTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - validade do fabricante venceu em {date}. Retire do estoque ({stock} {measure}): EPI vencido não pode ser entregue ao trabalhador.'**
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  );
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - validade do fabricante vence em {date} (em {daysLabel}). Priorize a entrega deste lote ({stock} {measure} em estoque) antes do vencimento (PEPS).'**
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  );
+
+  /// No description provided for @operationalAlertSizes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tamanhos em estoque:'**
+  String get operationalAlertSizes;
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Luva:{value}'**
+  String operationalAlertSizeGlove(String value);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tam:{value}'**
+  String operationalAlertSizeSize(String value);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unif:{value}'**
+  String operationalAlertSizeUniform(String value);
+
+  /// No description provided for @operationalAlertSizeUnspecified.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'S/Tam'**
+  String get operationalAlertSizeUnspecified;
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count}'**
+  String operationalAlertQuantity(String count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{unidade} other{unidades}}'**
+  String operationalAlertMeasureUnit(num count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{par} other{pares}}'**
+  String operationalAlertMeasurePair(num count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} dia} other{{countLabel} dias}}'**
+  String operationalAlertDays(num count, String countLabel);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{epi}: {countLabel} peça física.} other{{epi}: {countLabel} peças físicas.}}'**
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  );
+
+  /// No description provided for @operationalAlertPhysicalUnknownTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade física desconhecida'**
+  String get operationalAlertPhysicalUnknownTitle;
+
+  /// No description provided for @operationalAlertPhysicalExpiringTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Lotes próximos do vencimento'**
+  String get operationalAlertPhysicalExpiringTitle;
 }
 
 class _AppLocalizationsDelegate

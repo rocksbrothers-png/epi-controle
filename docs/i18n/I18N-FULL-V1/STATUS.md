@@ -61,3 +61,13 @@ O layout dos novos anexos quebra linhas e pagina os itens, acomodando traduçõe
 ## Integração concorrente
 
 A main avançou com FIX-NAV-REFRESH-V1 durante a implementação. A simulação registrada em `UBX-INTEGRATION.json` não foi aplicada ao worktree e não criou commit de merge. Foram encontrados conflitos em app.js, nos cinco catálogos, no index gerado e nos dois digests de paridade. Os SHAs observados da main e os caminhos sobrepostos estão no relatório. A integração precisa preservar tanto os novos contratos de navegação quanto os bindings desta tarefa; as branches do Claude permanecem intactas. A implementação integral e a integração final continuam pendentes.
+
+## Flutter — alertas operacionais e locale das requisições
+
+O dashboard móvel usa os metadados aditivos dos alertas com recursos ARB centrais equivalentes aos da web. Os 24 recursos novos preservam nomes e tamanhos originais, formatam datas/números e mantêm o operando numérico dos plurais separado do texto de exibição. Metadados incompletos ou desconhecidos conservam a mensagem legada inteira. Não foram acrescentadas condições de classificação, ações, permissões ou mutações. Os delegates gerados agora são comparados em todas as 805 mensagens dos cinco pares base/região.
+
+O transporte Dio recebe o locale efetivo do LocaleProvider a cada requisição, incluindo refresh/retry, usando os códigos existentes pt-BR/en-US/es-ES/fr-FR/no-NO no Accept-Language. Não são acrescentados campos ao corpo ou à query. Bearer, ator, empresa/unidade e persistência de preferências permanecem no contrato anterior. Os testes locais passaram 33 casos em cada projeto, incluindo o refresh real com adapters sintéticos, preservação de payload e troca de idioma. A análise estática dos arquivos novos passou sem apontamentos; ARB/guarda UBX e paridade de 276 arquivos passaram. Isso não certifica os hardcodes restantes do Flutter.
+
+O Backend CI aprovou o checkpoint anterior de documentos nos dois projetos (Corporate 51794c00, SaaS 0576de5), incluindo a suíte completa, PostgreSQL, JS e provas de navegador. Os links vinculados a SHA estão em CI-RESULTS.json. O próximo checkpoint Flutter exige sua própria execução de CI.
+
+A auditoria independente parcial exercitou o DashboardScreen real nos cinco idiomas, com uma única consulta ao summary durante as trocas. Os adapters externos confirmaram que locale altera apenas o cabeçalho de apresentação, preservando Bearer, query e JSON. A matriz incluiu plurais, datas/dias, tamanhos, nomes opacos e fallback completo. Evidências parciais em audit/flutter-independent-results.json; relatório consolidado do bloco em preparação.

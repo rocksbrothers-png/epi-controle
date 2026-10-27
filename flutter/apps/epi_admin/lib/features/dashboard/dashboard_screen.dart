@@ -10,6 +10,7 @@ import '../../core/bloc/dashboard_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
 import '../../core/router/navigation_policy.dart';
 import '../../core/router/routes.dart';
+import 'alert_presentation.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.localeProvider});
@@ -355,9 +356,9 @@ class _AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title =
-        alert['title'] as String? ?? alert['message'] as String? ?? '—';
-    final description = alert['description'] as String?;
+    final presentation = presentOperationalAlert(alert, AppLocalizations.of(context));
+    final title = presentation.title;
+    final description = presentation.description;
     // O backend (compute_alerts) classifica o alerta na chave 'type'
     // (danger/warning); mantém-se 'severity' como fallback de compatibilidade.
     final severity =

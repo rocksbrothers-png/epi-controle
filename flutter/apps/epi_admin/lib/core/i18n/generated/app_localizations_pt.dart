@@ -2511,6 +2511,165 @@ class AppLocalizationsPt extends AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Estoque próximo do mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Saldo negativo: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Estoque zerado: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Estoque abaixo do mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Estoque no limite mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - saldo atual de $stock $measure, mínimo $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'CA próximo do vencimento: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - vence em $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Validade do fabricante vencida: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Validade do fabricante próxima: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - validade do fabricante venceu em $date. Retire do estoque ($stock $measure): EPI vencido não pode ser entregue ao trabalhador.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - validade do fabricante vence em $date (em $daysLabel). Priorize a entrega deste lote ($stock $measure em estoque) antes do vencimento (PEPS).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Tamanhos em estoque:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Luva:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Tam:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Unif:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'S/Tam';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'unidades',
+      one: 'unidade',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pares',
+      one: 'par',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel dias',
+      one: '$countLabel dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel peças físicas.',
+      one: '$epi: $countLabel peça física.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle =>
+      'Validade física desconhecida';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle =>
+      'Lotes próximos do vencimento';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -5020,4 +5179,163 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linha $line — $item (item #$id): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Estoque próximo do mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Saldo negativo: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Estoque zerado: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Estoque abaixo do mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Estoque no limite mínimo: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - saldo atual de $stock $measure, mínimo $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'CA próximo do vencimento: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - vence em $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Validade do fabricante vencida: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Validade do fabricante próxima: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - validade do fabricante venceu em $date. Retire do estoque ($stock $measure): EPI vencido não pode ser entregue ao trabalhador.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - validade do fabricante vence em $date (em $daysLabel). Priorize a entrega deste lote ($stock $measure em estoque) antes do vencimento (PEPS).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Tamanhos em estoque:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Luva:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Tam:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Unif:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'S/Tam';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'unidades',
+      one: 'unidade',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pares',
+      one: 'par',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel dias',
+      one: '$countLabel dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel peças físicas.',
+      one: '$epi: $countLabel peça física.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle =>
+      'Validade física desconhecida';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle =>
+      'Lotes próximos do vencimento';
 }

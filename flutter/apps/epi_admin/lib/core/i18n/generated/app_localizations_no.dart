@@ -2505,6 +2505,163 @@ class AppLocalizationsNo extends AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linje $line — $item (vare #$id): faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Lagerbeholdning nær minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Negativ lagerbeholdning: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Tomt på lager: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Lagerbeholdning under minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Lagerbeholdning på minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - gjeldende beholdning: $stock $measure, minimum $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'Brasiliansk CA nær utløpsdato: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - utløper $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Produsentens utløpsdato er passert: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Produsentens utløpsdato nærmer seg: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - produsentens utløpsdato var $date. Ta ut av lageret ($stock $measure): utløpt PVU kan ikke utleveres til ansatte.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - produsentens utløpsdato er $date (om $daysLabel). Prioriter utlevering fra dette partiet ($stock $measure på lager) før utløp (FIFO).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Størrelser på lager:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Hanske:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Størrelse:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Arbeidstøy:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'Uspesifisert størrelse';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'enheter',
+      one: 'enhet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'par',
+      one: 'par',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel dager',
+      one: '$countLabel dag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel fysiske enheter.',
+      one: '$epi: $countLabel fysisk enhet.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle => 'Ukjent fysisk utløpsdato';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle => 'Partier nær utløpsdato';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -5008,4 +5165,161 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Linje $line — $item (vare #$id): faktisk mottatt mengde er ugyldig eller ikke positiv. Korriger mottaket før bekreftelse.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Lagerbeholdning nær minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Negativ lagerbeholdning: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Tomt på lager: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Lagerbeholdning under minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Lagerbeholdning på minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - gjeldende beholdning: $stock $measure, minimum $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'Brasiliansk CA nær utløpsdato: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - utløper $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Produsentens utløpsdato er passert: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Produsentens utløpsdato nærmer seg: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - produsentens utløpsdato var $date. Ta ut av lageret ($stock $measure): utløpt PVU kan ikke utleveres til ansatte.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - produsentens utløpsdato er $date (om $daysLabel). Prioriter utlevering fra dette partiet ($stock $measure på lager) før utløp (FIFO).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Størrelser på lager:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Hanske:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Størrelse:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Arbeidstøy:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'Uspesifisert størrelse';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'enheter',
+      one: 'enhet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'par',
+      one: 'par',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel dager',
+      one: '$countLabel dag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel fysiske enheter.',
+      one: '$epi: $countLabel fysisk enhet.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle => 'Ukjent fysisk utløpsdato';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle => 'Partier nær utløpsdato';
 }

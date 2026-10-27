@@ -2487,6 +2487,165 @@ class AppLocalizationsEn extends AppLocalizations {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Line $line — $item (item #$id): effective received quantity is invalid or non-positive. Correct the receipt before confirming.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Stock approaching minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Negative stock balance: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Out of stock: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Stock below minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Stock at minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - current balance: $stock $measure, minimum $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'Brazilian CA approaching expiry: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - expires on $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Manufacturer expiry date passed: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Manufacturer expiry date approaching: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - manufacturer expiry date: $date. Remove from stock ($stock $measure): expired PPE must not be issued to workers.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - manufacturer expiry date: $date (in $daysLabel). Prioritise issuing this batch ($stock $measure in stock) before expiry (FIFO).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Sizes in stock:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Glove:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Size:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Uniform:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'Unspecified size';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'units',
+      one: 'unit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pairs',
+      one: 'pair',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel days',
+      one: '$countLabel day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel physical items.',
+      one: '$epi: $countLabel physical item.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle =>
+      'Unknown physical expiry date';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle =>
+      'Batches approaching expiry';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -4972,4 +5131,163 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
   String prConfInvalidQuantityLine(int line, String item, String id) {
     return 'Line $line — $item (item #$id): effective received quantity is invalid or non-positive. Correct the receipt before confirming.';
   }
+
+  @override
+  String operationalAlertStockNearMinimum(String epi) {
+    return 'Stock approaching minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockNegative(String epi) {
+    return 'Negative stock balance: $epi';
+  }
+
+  @override
+  String operationalAlertStockZero(String epi) {
+    return 'Out of stock: $epi';
+  }
+
+  @override
+  String operationalAlertStockBelowMinimum(String epi) {
+    return 'Stock below minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockAtMinimum(String epi) {
+    return 'Stock at minimum: $epi';
+  }
+
+  @override
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  ) {
+    return '$company / $unit - current balance: $stock $measure, minimum $minimum.';
+  }
+
+  @override
+  String operationalAlertCaTitle(String epi) {
+    return 'Brazilian CA approaching expiry: $epi';
+  }
+
+  @override
+  String operationalAlertCaDescription(String company, String date) {
+    return '$company - expires on $date.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredTitle(String epi) {
+    return 'Manufacturer expiry date passed: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringTitle(String epi) {
+    return 'Manufacturer expiry date approaching: $epi';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  ) {
+    return '$company - manufacturer expiry date: $date. Remove from stock ($stock $measure): expired PPE must not be issued to workers.';
+  }
+
+  @override
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  ) {
+    return '$company - manufacturer expiry date: $date (in $daysLabel). Prioritise issuing this batch ($stock $measure in stock) before expiry (FIFO).';
+  }
+
+  @override
+  String get operationalAlertSizes => 'Sizes in stock:';
+
+  @override
+  String operationalAlertSizeGlove(String value) {
+    return 'Glove:$value';
+  }
+
+  @override
+  String operationalAlertSizeSize(String value) {
+    return 'Size:$value';
+  }
+
+  @override
+  String operationalAlertSizeUniform(String value) {
+    return 'Uniform:$value';
+  }
+
+  @override
+  String get operationalAlertSizeUnspecified => 'Unspecified size';
+
+  @override
+  String operationalAlertQuantity(String count) {
+    return '$count';
+  }
+
+  @override
+  String operationalAlertMeasureUnit(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'units',
+      one: 'unit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertMeasurePair(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'pairs',
+      one: 'pair',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel days',
+      one: '$countLabel day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$epi: $countLabel physical items.',
+      one: '$epi: $countLabel physical item.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get operationalAlertPhysicalUnknownTitle =>
+      'Unknown physical expiry date';
+
+  @override
+  String get operationalAlertPhysicalExpiringTitle =>
+      'Batches approaching expiry';
 }

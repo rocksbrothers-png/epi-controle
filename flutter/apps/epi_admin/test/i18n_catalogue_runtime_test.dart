@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/core/i18n/generated/app_localizations.dart';
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 
 Map<String, String> messages(AppLocalizations l) => {
   'appName': l.appName,
@@ -809,6 +809,70 @@ Map<String, String> messages(AppLocalizations l) => {
     7,
     "Original item",
     "Original id",
+  ),
+  'operationalAlertStockNearMinimum': l.operationalAlertStockNearMinimum(
+    "Original epi",
+  ),
+  'operationalAlertStockNegative': l.operationalAlertStockNegative(
+    "Original epi",
+  ),
+  'operationalAlertStockZero': l.operationalAlertStockZero("Original epi"),
+  'operationalAlertStockBelowMinimum': l.operationalAlertStockBelowMinimum(
+    "Original epi",
+  ),
+  'operationalAlertStockAtMinimum': l.operationalAlertStockAtMinimum(
+    "Original epi",
+  ),
+  'operationalAlertStockDescription': l.operationalAlertStockDescription(
+    "Original company",
+    "Original unit",
+    "Original stock",
+    "Original measure",
+    "Original minimum",
+  ),
+  'operationalAlertCaTitle': l.operationalAlertCaTitle("Original epi"),
+  'operationalAlertCaDescription': l.operationalAlertCaDescription(
+    "Original company",
+    "Original date",
+  ),
+  'operationalAlertManufacturerExpiredTitle': l
+      .operationalAlertManufacturerExpiredTitle("Original epi"),
+  'operationalAlertManufacturerExpiringTitle': l
+      .operationalAlertManufacturerExpiringTitle("Original epi"),
+  'operationalAlertManufacturerExpiredDescription': l
+      .operationalAlertManufacturerExpiredDescription(
+        "Original company",
+        "Original date",
+        "Original stock",
+        "Original measure",
+      ),
+  'operationalAlertManufacturerExpiringDescription': l
+      .operationalAlertManufacturerExpiringDescription(
+        "Original company",
+        "Original date",
+        "Original daysLabel",
+        "Original stock",
+        "Original measure",
+      ),
+  'operationalAlertPhysicalUnknownTitle':
+      l.operationalAlertPhysicalUnknownTitle,
+  'operationalAlertPhysicalExpiringTitle':
+      l.operationalAlertPhysicalExpiringTitle,
+  'operationalAlertSizes': l.operationalAlertSizes,
+  'operationalAlertSizeGlove': l.operationalAlertSizeGlove("Original value"),
+  'operationalAlertSizeSize': l.operationalAlertSizeSize("Original value"),
+  'operationalAlertSizeUniform': l.operationalAlertSizeUniform(
+    "Original value",
+  ),
+  'operationalAlertSizeUnspecified': l.operationalAlertSizeUnspecified,
+  'operationalAlertQuantity': l.operationalAlertQuantity("Original count"),
+  'operationalAlertMeasureUnit': l.operationalAlertMeasureUnit(7),
+  'operationalAlertMeasurePair': l.operationalAlertMeasurePair(7),
+  'operationalAlertDays': l.operationalAlertDays(7, "Original countLabel"),
+  'operationalAlertPhysicalDescription': l.operationalAlertPhysicalDescription(
+    7,
+    "Original countLabel",
+    "Original epi",
   ),
 };
 

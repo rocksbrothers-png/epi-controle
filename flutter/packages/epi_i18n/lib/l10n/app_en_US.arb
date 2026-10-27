@@ -1017,5 +1017,234 @@
         "type": "String"
       }
     }
-  }
+  },
+  "operationalAlertStockNearMinimum": "Stock approaching minimum: {epi}",
+  "@operationalAlertStockNearMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockNegative": "Negative stock balance: {epi}",
+  "@operationalAlertStockNegative": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockZero": "Out of stock: {epi}",
+  "@operationalAlertStockZero": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockBelowMinimum": "Stock below minimum: {epi}",
+  "@operationalAlertStockBelowMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockAtMinimum": "Stock at minimum: {epi}",
+  "@operationalAlertStockAtMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockDescription": "{company} / {unit} - current balance: {stock} {measure}, minimum {minimum}.",
+  "@operationalAlertStockDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      },
+      "minimum": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaTitle": "Brazilian CA approaching expiry: {epi}",
+  "@operationalAlertCaTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaDescription": "{company} - expires on {date}.",
+  "@operationalAlertCaDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredTitle": "Manufacturer expiry date passed: {epi}",
+  "@operationalAlertManufacturerExpiredTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringTitle": "Manufacturer expiry date approaching: {epi}",
+  "@operationalAlertManufacturerExpiringTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredDescription": "{company} - manufacturer expiry date: {date}. Remove from stock ({stock} {measure}): expired PPE must not be issued to workers.",
+  "@operationalAlertManufacturerExpiredDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringDescription": "{company} - manufacturer expiry date: {date} (in {daysLabel}). Prioritise issuing this batch ({stock} {measure} in stock) before expiry (FIFO).",
+  "@operationalAlertManufacturerExpiringDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "daysLabel": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizes": "Sizes in stock:",
+  "operationalAlertSizeGlove": "Glove:{value}",
+  "@operationalAlertSizeGlove": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeSize": "Size:{value}",
+  "@operationalAlertSizeSize": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUniform": "Uniform:{value}",
+  "@operationalAlertSizeUniform": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUnspecified": "Unspecified size",
+  "operationalAlertQuantity": "{count}",
+  "@operationalAlertQuantity": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertMeasureUnit": "{count, plural, one{unit} other{units}}",
+  "@operationalAlertMeasureUnit": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertMeasurePair": "{count, plural, one{pair} other{pairs}}",
+  "@operationalAlertMeasurePair": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertDays": "{count, plural, one{{countLabel} day} other{{countLabel} days}}",
+  "@operationalAlertDays": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalDescription": "{count, plural, one{{epi}: {countLabel} physical item.} other{{epi}: {countLabel} physical items.}}",
+  "@operationalAlertPhysicalDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      },
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalUnknownTitle": "Unknown physical expiry date",
+  "operationalAlertPhysicalExpiringTitle": "Batches approaching expiry"
 }

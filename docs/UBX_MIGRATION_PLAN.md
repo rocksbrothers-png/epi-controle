@@ -255,8 +255,8 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §14](UBX_APPJS_AUDITORIA.md#14-ubx-v5-eta
 Detalhes em [`UBX_APPJS_AUDITORIA.md` §15](UBX_APPJS_AUDITORIA.md#15-ubx-v5-etapa-2--fatia-2-2026-10-27-empresas).
 
 - `app.js` 17.342 → 17.120 linhas; 757 → 742 declarações; 107 → 106 endpoints.
-- `modules/companies/{business,integrations,ui}`: 49 cenários comparados com as funções originais (0 divergências),
-  19 sabotagens detectadas (+1 equivalente) e Chromium 20/20 nos 5 idiomas.
+- `modules/companies/{business,integrations,ui}`: 53 cenários comparados com as funções originais (0 divergências),
+  23 sabotagens detectadas (+1 equivalente) e Chromium 20/20 nos 5 idiomas.
 - Defeito preexistente registrado (§15.4): o status da Empresa sai vazio do formulário web.
 
 ## Próximo passo

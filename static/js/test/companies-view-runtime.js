@@ -152,7 +152,11 @@ async function scenario(load) {
     ['semPermissaoCriar', { perms: ['companies:update'] }, { name: 'N' }],
     ['semPermissaoEditar', { perms: ['companies:create'], editingCompanyId: 901 }, { name: 'N' }],
     ['falhaApi', { apiFails: 'CNPJ duplicado' }, { name: 'N', cnpj: '1', active: '1', general_admin_email: '', general_admin_name: '' }],
-    ['semUsuario', { noUser: true, perms: ['companies:create'] }, { name: 'N' }]]) {
+    ['semUsuario', { noUser: true, perms: ['companies:create'] }, { name: 'N' }],
+    // Sem sessão E com campos ausentes: o ator é lido antes do formulário (sem console.error).
+    ['semUsuarioSemCampos', { noUser: true, perms: ['companies:create'], missingFields: ['name', 'cnpj'] }, {}],
+    // Empresa inativa sem o campo de status: o padrão vem de `active ?? 1` (0 é mantido).
+    ['editarInativaSemStatus', { editingCompanyId: 902, missingFields: ['active'] }, { name: 'N', legal_name: '', cnpj: '2' }]]) {
     out[`salvar:${name}`] = await run(load, opts, (ctx, env) => { fill(env, values); return ctx.saveCompany(submitEvent(env.log)); });
   }
   // Ativar/inativar.
@@ -169,7 +173,11 @@ async function scenario(load) {
     ['semArquivo', { prompts: ['justificativa ok!!'], files: [] }],
     ['falhaApi', { prompts: ['justificativa ok!!'], files: [{ type: 'image/jpeg' }], apiFails: 'auditoria indisponível' }],
     ['curta', { prompts: ['  curta    '] }], ['cancelada', { prompts: [null] }], ['naoMaster', { role: 'general_admin', prompts: ['justificativa ok!!'] }],
-    ['dezExatos', { prompts: ['0123456789'], files: [{ type: 'image/png' }] }]]) {
+    ['dezExatos', { prompts: ['0123456789'], files: [{ type: 'image/png' }] }],
+    // Justificativa vazia (não é cancelamento): cai na regra do mínimo.
+    ['vazia', { prompts: [''] }],
+    // Vários arquivos: vale o primeiro.
+    ['variosArquivos', { prompts: ['justificativa ok!!'], files: [{ type: 'image/gif' }, { type: 'image/png' }] }]]) {
     out[`logo:${name}`] = await run(load, opts, async (ctx, env) => { ctx.openCompanyLogoEditor(901); await fire(env); });
   }
   out['logo:inexistente'] = await run(load, { prompts: ['justificativa ok!!'] }, (ctx) => ctx.openCompanyLogoEditor(77));

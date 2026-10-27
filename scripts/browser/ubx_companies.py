@@ -116,9 +116,10 @@ def company_edit(f):
     body = sent[0]['body']
     assert body['actor_user_id'] == 7 and body['plan_name'] == 'pro' and body['user_limit'] == 10, body
     assert 'general_admin_email' not in body and 'general_admin_name' not in body, body
-    # Defeito preexistente (main), registrado à parte: data-i18n-value troca o value das opções
-    # do <select name="active"> e o formulário envia active=''. O harness só fixa o comportamento.
-    assert 'active' in body, body
+    # KNOWN-DEFECT (preexistente na main, docs/UBX_APPJS_AUDITORIA.md §15.4): data-i18n-value troca o
+    # value das opções do <select name="active"> e o formulário envia active=''; o backend real recusa.
+    # O fixture aceita, e esta asserção fixa o comportamento atual — a correção vai fazê-la falhar de propósito.
+    assert body['active'] == '', body
     expect(form.locator('[name="id"]')).to_have_value('')
 
 
@@ -137,6 +138,8 @@ def company_create(f):
     assert [(c['method'], c['path']) for c in sent] == [('POST', '/api/companies')], sent
     body = sent[0]['body']
     assert body['general_admin_email'] == 'owner@nova.test' and body['plan_name'] == 'start', body
+    assert body['general_admin_name'] == '', body
+    assert body['active'] == '', body  # KNOWN-DEFECT §15.4 (ver company_edit)
 
 
 def company_toggle(f):
@@ -148,6 +151,7 @@ def company_toggle(f):
     sent = writes(f, before)
     assert [(c['method'], c['path']) for c in sent] == [('PUT', '/api/companies/902')], sent
     assert sent[0]['body']['active'] == 0 and sent[0]['body']['name'] == 'Cliente Dois', sent[0]['body']
+    assert not f.dialogs, f.dialogs  # inativar não pede confirmação nem mostra alerta
 
 
 SCENARIOS = [company_list, company_edit, company_create, company_toggle]

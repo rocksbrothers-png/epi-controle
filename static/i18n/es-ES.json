@@ -1069,7 +1069,8 @@
     "user": "Gestor de EPP",
     "employee": "Empleado",
     "buyer": "Comprador",
-    "approver": "Aprobador"
+    "approver": "Aprobador",
+    "certification_readonly": "Certificación (solo lectura)"
   },
   "portal": {
     "title": "Portal del Empleado",
@@ -3129,6 +3130,58 @@
       "actor_user_id": "Identificador del usuario",
       "part_index": "Índice de la pestaña",
       "page_index": "Índice de la página"
+    }
+  },
+  "operationalAlerts": {
+    "stock": {
+      "nearMinimum": "Existencias próximas al mínimo: {epi}",
+      "negative": "Saldo negativo: {epi}",
+      "zero": "Sin existencias: {epi}",
+      "belowMinimum": "Existencias por debajo del mínimo: {epi}",
+      "atMinimum": "Existencias en el mínimo: {epi}",
+      "description": "{company} / {unit} - saldo actual de {stock} {measure}, mínimo {minimum}."
+    },
+    "ca": {
+      "title": "CA brasileño próximo a caducar: {epi}",
+      "description": "{company} - caduca el {date}."
+    },
+    "manufacturer": {
+      "expiredTitle": "Validez del fabricante vencida: {epi}",
+      "expiringTitle": "Validez del fabricante próxima a vencer: {epi}",
+      "expiredDescription": "{company} - la validez del fabricante venció el {date}. Retire del almacén ({stock} {measure}): los EPI vencidos no pueden entregarse al trabajador.",
+      "expiringDescription": "{company} - la validez del fabricante vence el {date} (en {daysLabel}). Priorice la entrega de este lote ({stock} {measure} en almacén) antes del vencimiento (PEPS)."
+    },
+    "physical_unknown": {
+      "title": "Validez física desconocida"
+    },
+    "physical_expiring": {
+      "title": "Lotes próximos a vencer"
+    },
+    "sizes": "Tallas en almacén:",
+    "size": {
+      "glove": "Guante:{value}",
+      "size": "Talla:{value}",
+      "uniform": "Uniforme:{value}",
+      "unspecified": "Talla sin especificar"
+    },
+    "quantity": "{count}",
+    "measure": {
+      "unit": {
+        "one": "unidad",
+        "other": "unidades"
+      },
+      "pair": {
+        "one": "par",
+        "other": "pares"
+      }
+    },
+    "days": {
+      "one": "{count} día",
+      "other": "{count} días"
+    },
+    "physicalDescription": {
+      "one": "{epi}: {count} pieza física.",
+      "other": "{epi}: {count} piezas físicas."
     }
   }
 }

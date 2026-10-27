@@ -178,7 +178,7 @@ def main() -> int:
     require_contains(I18N_PATH, "trEpi,", "safe dynamic i18n helper public API")
     require_contains(INDEX_PATH, "/i18n-helper.js?v=", "shared i18n helper script load")
     require_contains(I18N_HELPER_PATH, "function resolveLegacyTranslator()", "shared legacy i18n fallback resolver")
-    require_contains(I18N_HELPER_PATH, "if (typeof existingTranslator !== 'function') global.trEpi = translator;", "shared i18n fallback avoids overriding i18n.js")
+    require_contains(I18N_HELPER_PATH, "if (typeof existingTranslator !== 'function') {global.trEpi = translator;}", "shared i18n fallback avoids overriding i18n.js")
     require_count(ROOT / "static" / "app.js", "globalThis.EpiI18nHelper.resolveLegacyTranslator()", 1, "single legacy i18n helper delegation")
     require_contains(ROOT / "static" / "app.js", "if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;", "legacy i18n fallback avoids overriding i18n.js")
     require_not_contains(ROOT / "static" / "app.js", "\nglobalThis.trEpi = tr;", "legacy app must not overwrite the i18n.js helper")

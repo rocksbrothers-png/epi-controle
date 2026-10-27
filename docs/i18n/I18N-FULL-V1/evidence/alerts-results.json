@@ -1,0 +1,162 @@
+[
+  {
+    "before": true,
+    "locale": "fr-FR",
+    "titles": [
+      "Saldo negativo: Aprovado ",
+      "Estoque zerado: Aprovado ",
+      "Estoque abaixo do mínimo: Aprovado ",
+      "Estoque no limite mínimo: Aprovado ",
+      "Estoque próximo do mínimo: Aprovado ",
+      "CA próximo do vencimento: Aprovado ",
+      "Validade do fabricante vencida: Aprovado ",
+      "Validade física desconhecida",
+      "Lotes próximos do vencimento"
+    ]
+  },
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "alerts": 9,
+    "titles": [
+      "Saldo negativo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Estoque zerado: Aprovado <img src=x onerror=window.__xss=1>",
+      "Estoque abaixo do mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Estoque no limite mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Estoque próximo do mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "CA próximo do vencimento: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validade do fabricante vencida: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validade física desconhecida",
+      "Lotes próximos do vencimento"
+    ],
+    "localized_size_search": true,
+    "keyboard_action": {
+      "company_id": "41",
+      "unit_id": "42",
+      "epi_id": "43",
+      "epi_name": "Aprovado <img src=x onerror=window.__xss=1>"
+    },
+    "read_permission_respected": true,
+    "records_preserved": true,
+    "live_switch": true,
+    "page_errors": [],
+    "writes": [],
+    "mobile_overflow": false
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "alerts": 9,
+    "titles": [
+      "Negative stock balance: Aprovado <img src=x onerror=window.__xss=1>",
+      "Out of stock: Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock below minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock at minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock approaching minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Brazilian CA approaching expiry: Aprovado <img src=x onerror=window.__xss=1>",
+      "Manufacturer expiry date passed: Aprovado <img src=x onerror=window.__xss=1>",
+      "Unknown physical expiry date",
+      "Batches approaching expiry"
+    ],
+    "localized_size_search": true,
+    "keyboard_action": {
+      "company_id": "41",
+      "unit_id": "42",
+      "epi_id": "43",
+      "epi_name": "Aprovado <img src=x onerror=window.__xss=1>"
+    },
+    "read_permission_respected": true,
+    "records_preserved": true,
+    "live_switch": true,
+    "page_errors": [],
+    "writes": [],
+    "mobile_overflow": false
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "alerts": 9,
+    "titles": [
+      "Saldo negativo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Sin existencias: Aprovado <img src=x onerror=window.__xss=1>",
+      "Existencias por debajo del mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Existencias en el mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "Existencias próximas al mínimo: Aprovado <img src=x onerror=window.__xss=1>",
+      "CA brasileño próximo a caducar: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validez del fabricante vencida: Aprovado <img src=x onerror=window.__xss=1>",
+      "Validez física desconocida",
+      "Lotes próximos a vencer"
+    ],
+    "localized_size_search": true,
+    "keyboard_action": {
+      "company_id": "41",
+      "unit_id": "42",
+      "epi_id": "43",
+      "epi_name": "Aprovado <img src=x onerror=window.__xss=1>"
+    },
+    "read_permission_respected": true,
+    "records_preserved": true,
+    "live_switch": true,
+    "page_errors": [],
+    "writes": [],
+    "mobile_overflow": false
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "alerts": 9,
+    "titles": [
+      "Solde de stock négatif : Aprovado <img src=x onerror=window.__xss=1>",
+      "Rupture de stock : Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock inférieur au minimum : Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock au seuil minimum : Aprovado <img src=x onerror=window.__xss=1>",
+      "Stock proche du minimum : Aprovado <img src=x onerror=window.__xss=1>",
+      "CA brésilien proche de son expiration : Aprovado <img src=x onerror=window.__xss=1>",
+      "Date de validité du fabricant dépassée : Aprovado <img src=x onerror=window.__xss=1>",
+      "Date de validité physique inconnue",
+      "Lots proches de l’expiration"
+    ],
+    "localized_size_search": true,
+    "keyboard_action": {
+      "company_id": "41",
+      "unit_id": "42",
+      "epi_id": "43",
+      "epi_name": "Aprovado <img src=x onerror=window.__xss=1>"
+    },
+    "read_permission_respected": true,
+    "records_preserved": true,
+    "live_switch": true,
+    "page_errors": [],
+    "writes": [],
+    "mobile_overflow": false
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "alerts": 9,
+    "titles": [
+      "Negativ lagerbeholdning: Aprovado <img src=x onerror=window.__xss=1>",
+      "Tomt på lager: Aprovado <img src=x onerror=window.__xss=1>",
+      "Lagerbeholdning under minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Lagerbeholdning på minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Lagerbeholdning nær minimum: Aprovado <img src=x onerror=window.__xss=1>",
+      "Brasiliansk CA nær utløpsdato: Aprovado <img src=x onerror=window.__xss=1>",
+      "Produsentens utløpsdato er passert: Aprovado <img src=x onerror=window.__xss=1>",
+      "Ukjent fysisk utløpsdato",
+      "Partier nær utløpsdato"
+    ],
+    "localized_size_search": true,
+    "keyboard_action": {
+      "company_id": "41",
+      "unit_id": "42",
+      "epi_id": "43",
+      "epi_name": "Aprovado <img src=x onerror=window.__xss=1>"
+    },
+    "read_permission_respected": true,
+    "records_preserved": true,
+    "live_switch": true,
+    "page_errors": [],
+    "writes": [],
+    "mobile_overflow": false
+  }
+]

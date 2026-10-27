@@ -566,8 +566,11 @@
     const refs = getRefs();
     renderCriticalStockBanner();
     if (!refs.alertsList) { return; }
-    const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
-    refs.alertsList.innerHTML = items.map((item) => {
+    const presentation = globalThis.__EPI_ALERT_PRESENTATION__;
+    const items = (getState().alerts || []).map(item => ({item, labels:presentation?.describe(item)}))
+      .filter(({item, labels}) => matchesQuery([labels ? presentation.text(labels.title) : item.title,
+        labels ? presentation.text(labels.description) : item.description, labels ? presentation.sizeText(labels.sizes) : '', item.type]));
+    refs.alertsList.innerHTML = items.map(({item, labels}) => {
       const action = _alertAction(item);
       const pending = action?.pending
         ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(action.label + (item.epi_name ? ': ' + item.epi_name : ''))}"`
@@ -575,7 +578,9 @@
       const btn = action
         ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${action.label}</button>`
         : '';
-      return `<div class="alert-item ${item.type}"><div class="alert-item-body"><strong>${item.title}</strong><div>${item.description}</div></div>${btn}</div>`;
+      const title = labels ? presentation.markup(labels.title) : esc(item.title);
+      const description = labels ? presentation.markup(labels.description) + presentation.sizeMarkup(labels.sizes) : esc(item.description);
+      return `<div class="alert-item ${esc(item.type)}"><div class="alert-item-body"><strong>${title}</strong><div>${description}</div></div>${btn}</div>`;
     }).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
     _bindAlertActions(refs.alertsList);

@@ -1069,7 +1069,8 @@
     "user": "PVU-ansvarlig",
     "employee": "Ansatt",
     "buyer": "Innkjøper",
-    "approver": "Godkjenner"
+    "approver": "Godkjenner",
+    "certification_readonly": "Sertifisering (skrivebeskyttet)"
   },
   "portal": {
     "title": "Ansattportal",
@@ -3129,6 +3130,58 @@
       "actor_user_id": "Bruker-ID",
       "part_index": "Faneindeks",
       "page_index": "Sideindeks"
+    }
+  },
+  "operationalAlerts": {
+    "stock": {
+      "nearMinimum": "Lagerbeholdning nær minimum: {epi}",
+      "negative": "Negativ lagerbeholdning: {epi}",
+      "zero": "Tomt på lager: {epi}",
+      "belowMinimum": "Lagerbeholdning under minimum: {epi}",
+      "atMinimum": "Lagerbeholdning på minimum: {epi}",
+      "description": "{company} / {unit} - gjeldende beholdning: {stock} {measure}, minimum {minimum}."
+    },
+    "ca": {
+      "title": "Brasiliansk CA nær utløpsdato: {epi}",
+      "description": "{company} - utløper {date}."
+    },
+    "manufacturer": {
+      "expiredTitle": "Produsentens utløpsdato er passert: {epi}",
+      "expiringTitle": "Produsentens utløpsdato nærmer seg: {epi}",
+      "expiredDescription": "{company} - produsentens utløpsdato var {date}. Ta ut av lageret ({stock} {measure}): utløpt PVU kan ikke utleveres til ansatte.",
+      "expiringDescription": "{company} - produsentens utløpsdato er {date} (om {daysLabel}). Prioriter utlevering fra dette partiet ({stock} {measure} på lager) før utløp (FIFO)."
+    },
+    "physical_unknown": {
+      "title": "Ukjent fysisk utløpsdato"
+    },
+    "physical_expiring": {
+      "title": "Partier nær utløpsdato"
+    },
+    "sizes": "Størrelser på lager:",
+    "size": {
+      "glove": "Hanske:{value}",
+      "size": "Størrelse:{value}",
+      "uniform": "Arbeidstøy:{value}",
+      "unspecified": "Uspesifisert størrelse"
+    },
+    "quantity": "{count}",
+    "measure": {
+      "unit": {
+        "one": "enhet",
+        "other": "enheter"
+      },
+      "pair": {
+        "one": "par",
+        "other": "par"
+      }
+    },
+    "days": {
+      "one": "{count} dag",
+      "other": "{count} dager"
+    },
+    "physicalDescription": {
+      "one": "{epi}: {count} fysisk enhet.",
+      "other": "{epi}: {count} fysiske enheter."
     }
   }
 }

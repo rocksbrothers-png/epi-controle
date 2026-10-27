@@ -1069,7 +1069,8 @@
     "user": "PPE Manager",
     "employee": "Employee",
     "buyer": "Buyer",
-    "approver": "Approver"
+    "approver": "Approver",
+    "certification_readonly": "Certification (read-only)"
   },
   "portal": {
     "title": "Employee Portal",
@@ -3129,6 +3130,58 @@
       "actor_user_id": "User ID",
       "part_index": "Sheet index",
       "page_index": "Page index"
+    }
+  },
+  "operationalAlerts": {
+    "stock": {
+      "nearMinimum": "Stock approaching minimum: {epi}",
+      "negative": "Negative stock balance: {epi}",
+      "zero": "Out of stock: {epi}",
+      "belowMinimum": "Stock below minimum: {epi}",
+      "atMinimum": "Stock at minimum: {epi}",
+      "description": "{company} / {unit} - current balance: {stock} {measure}, minimum {minimum}."
+    },
+    "ca": {
+      "title": "Brazilian CA approaching expiry: {epi}",
+      "description": "{company} - expires on {date}."
+    },
+    "manufacturer": {
+      "expiredTitle": "Manufacturer expiry date passed: {epi}",
+      "expiringTitle": "Manufacturer expiry date approaching: {epi}",
+      "expiredDescription": "{company} - manufacturer expiry date: {date}. Remove from stock ({stock} {measure}): expired PPE must not be issued to workers.",
+      "expiringDescription": "{company} - manufacturer expiry date: {date} (in {daysLabel}). Prioritise issuing this batch ({stock} {measure} in stock) before expiry (FIFO)."
+    },
+    "physical_unknown": {
+      "title": "Unknown physical expiry date"
+    },
+    "physical_expiring": {
+      "title": "Batches approaching expiry"
+    },
+    "sizes": "Sizes in stock:",
+    "size": {
+      "glove": "Glove:{value}",
+      "size": "Size:{value}",
+      "uniform": "Uniform:{value}",
+      "unspecified": "Unspecified size"
+    },
+    "quantity": "{count}",
+    "measure": {
+      "unit": {
+        "one": "unit",
+        "other": "units"
+      },
+      "pair": {
+        "one": "pair",
+        "other": "pairs"
+      }
+    },
+    "days": {
+      "one": "{count} day",
+      "other": "{count} days"
+    },
+    "physicalDescription": {
+      "one": "{epi}: {count} physical item.",
+      "other": "{epi}: {count} physical items."
     }
   }
 }

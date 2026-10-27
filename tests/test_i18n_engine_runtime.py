@@ -343,3 +343,30 @@ assert.equal(company.textContent,'ACME original');assert.equal(company.hasAttrib
 api.textFor(company,'label','');api.clearBinding(company);company.textContent='English';
 await api.setLang('fr-FR');api.translateDOM(company);assert.equal(company.textContent,'English');
 ''')
+
+
+def test_actual_login_toggle_retains_password_and_translates_both_states():
+    run_scenario(r'''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO'])dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+const app=fs.readFileSync(path.join(staticRoot,'app.js'),'utf8');
+const start=app.indexOf('function setLoginPasswordVisibility(isVisible) {');
+assert(start>=0);
+const end=app.indexOf('\n}\n',start);
+assert(end>start);
+sandbox.refs={loginPassword:{type:'password',value:'unchanged-password'},loginPasswordToggle:element()};
+sandbox.tr=(key,fallback,vars)=>sandbox.trEpi(key,fallback,vars);
+vm.runInNewContext(app.slice(start,end+2),sandbox);
+for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
+ await api.setLang(locale,{persist:false});
+ for(const visible of [true,false]) {
+  sandbox.setLoginPasswordVisibility(visible);
+  const button=sandbox.refs.loginPasswordToggle;
+  assert.equal(button.getAttribute('aria-pressed'),String(visible));
+  assert.equal(sandbox.refs.loginPassword.type,visible?'text':'password');
+  assert.equal(button.getAttribute('aria-label'),dictionaries[locale].login[visible?'hidePassword':'showPassword']);
+  assert.equal(sandbox.refs.loginPassword.value,'unchanged-password');
+ }
+}
+assert.equal(writes.length,0);
+''')

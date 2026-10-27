@@ -1,7 +1,7 @@
 from pathlib import Path
 from html.parser import HTMLParser
 from html import unescape
-import re,json,hashlib,collections
+import re,json,hashlib
 import sys
 ROOT=Path(sys.argv[1]).resolve() if len(sys.argv)>1 else Path(__file__).resolve().parents[2]
 def flat(d,p=''):

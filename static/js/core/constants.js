@@ -26,7 +26,7 @@
     // USER_COMPANY_REQUIRED_ROLES, CONFIGURATION_ADMIN_ROLES e
     // EPI_ALL_UNITS_PROFILES, e de todo seletor de criação/edição: visibilidade
     // não é permissão para criar pela tela.
-    certification_readonly: 'Certificação (somente leitura)'
+    get certification_readonly() { return globalThis.trEpi?.('role.certification_readonly', 'Certificação (somente leitura)') ?? 'Certificação (somente leitura)'; }
   });
 
   const ROLE_ALIASES = Object.freeze({

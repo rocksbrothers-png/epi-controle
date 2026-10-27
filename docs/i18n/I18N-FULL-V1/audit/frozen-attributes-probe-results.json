@@ -1,0 +1,58 @@
+{
+  "locales": [
+    {
+      "lang": "pt-BR",
+      "label": " Salvar",
+      "hasBinding": true,
+      "placeholder": "Salvar",
+      "aria": "Cancelar",
+      "child": "<img src=x onerror=alert(1)> Nome original"
+    },
+    {
+      "lang": "en-GB",
+      "label": " Save",
+      "hasBinding": true,
+      "placeholder": "Save",
+      "aria": "Cancel",
+      "child": "<img src=x onerror=alert(1)> Nome original"
+    },
+    {
+      "lang": "es-ES",
+      "label": " Guardar",
+      "hasBinding": true,
+      "placeholder": "Guardar",
+      "aria": "Cancelar",
+      "child": "<img src=x onerror=alert(1)> Nome original"
+    },
+    {
+      "lang": "fr-FR",
+      "label": " Enregistrer",
+      "hasBinding": true,
+      "placeholder": "Enregistrer",
+      "aria": "Annuler",
+      "child": "<img src=x onerror=alert(1)> Nome original"
+    },
+    {
+      "lang": "nb-NO",
+      "label": " Lagre",
+      "hasBinding": true,
+      "placeholder": "Lagre",
+      "aria": "Avbryt",
+      "child": "<img src=x onerror=alert(1)> Nome original"
+    }
+  ],
+  "externalAttributeOwnership": "PASS",
+  "explicitClear": "PASS",
+  "libraryError": {
+    "source": "Documento indisponível neste escopo.",
+    "key": "apiErrors.messages.m_673c687b8844",
+    "vars": {},
+    "refs": {},
+    "text": "Document indisponible dans ce périmètre."
+  },
+  "payloadUnchanged": true,
+  "prototypeOwnKey": "PASS",
+  "unmatchedTextUnchanged": true,
+  "imgCount": 0,
+  "page_errors": []
+}

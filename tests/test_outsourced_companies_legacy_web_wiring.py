@@ -48,7 +48,8 @@ def test_module_visibility_label_registered_for_config_screen():
     """Sem isto o checkbox de Configuração > Regras > Visualização nunca
     aparece, e o Administrador Geral não consegue ligar o módulo."""
     app_js = _read('static', 'app.js')
-    assert "terceirizados: 'Terceirizados e Prestadores'" in app_js
+    assert 'get terceirizados()' in app_js
+    assert 'tr("outsourcedCompany.pageTitle", "Terceirizados e Prestadores"' in app_js
 
 
 # ── view #terceirizados-view ────────────────────────────────────────────────

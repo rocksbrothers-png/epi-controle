@@ -87,7 +87,8 @@ def test_show_view_second_permission_gate_also_checks_the_alternative():
 
 def test_module_visibility_label_registered_for_colaboradores_module():
     app_js = _read('static', 'app.js')
-    assert "terceirizados_colaboradores: 'Cadastro de Colaboradores'" in app_js
+    assert 'get terceirizados_colaboradores()' in app_js
+    assert 'tr("outsourcedCompany.employeesTab", "Cadastro de Colaboradores"' in app_js
 
 
 # ── view: novas abas dentro de #terceirizados-view ──────────────────────────

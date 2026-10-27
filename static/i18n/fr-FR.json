@@ -1069,7 +1069,8 @@
     "user": "Gestionnaire EPI",
     "employee": "Employé",
     "buyer": "Acheteur",
-    "approver": "Approbateur"
+    "approver": "Approbateur",
+    "certification_readonly": "Certification (lecture seule)"
   },
   "portal": {
     "title": "Portail des Employés",
@@ -3129,6 +3130,58 @@
       "actor_user_id": "Identifiant de l’utilisateur",
       "part_index": "Indice de l’onglet",
       "page_index": "Indice de la page"
+    }
+  },
+  "operationalAlerts": {
+    "stock": {
+      "nearMinimum": "Stock proche du minimum : {epi}",
+      "negative": "Solde de stock négatif : {epi}",
+      "zero": "Rupture de stock : {epi}",
+      "belowMinimum": "Stock inférieur au minimum : {epi}",
+      "atMinimum": "Stock au seuil minimum : {epi}",
+      "description": "{company} / {unit} - solde actuel de {stock} {measure}, minimum {minimum}."
+    },
+    "ca": {
+      "title": "CA brésilien proche de son expiration : {epi}",
+      "description": "{company} - expire le {date}."
+    },
+    "manufacturer": {
+      "expiredTitle": "Date de validité du fabricant dépassée : {epi}",
+      "expiringTitle": "Date de validité du fabricant proche : {epi}",
+      "expiredDescription": "{company} - validité du fabricant expirée le {date}. Retirer du stock ({stock} {measure}) : un EPI périmé ne peut pas être remis au salarié.",
+      "expiringDescription": "{company} - validité du fabricant jusqu’au {date} (dans {daysLabel}). Donner la priorité à la remise de ce lot ({stock} {measure} en stock) avant expiration (PEPS)."
+    },
+    "physical_unknown": {
+      "title": "Date de validité physique inconnue"
+    },
+    "physical_expiring": {
+      "title": "Lots proches de l’expiration"
+    },
+    "sizes": "Tailles en stock :",
+    "size": {
+      "glove": "Gant : {value}",
+      "size": "Taille : {value}",
+      "uniform": "Tenue : {value}",
+      "unspecified": "Taille non précisée"
+    },
+    "quantity": "{count}",
+    "measure": {
+      "unit": {
+        "one": "unité",
+        "other": "unités"
+      },
+      "pair": {
+        "one": "paire",
+        "other": "paires"
+      }
+    },
+    "days": {
+      "one": "{count} jour",
+      "other": "{count} jours"
+    },
+    "physicalDescription": {
+      "one": "{epi} : {count} pièce physique.",
+      "other": "{epi} : {count} pièces physiques."
     }
   }
 }

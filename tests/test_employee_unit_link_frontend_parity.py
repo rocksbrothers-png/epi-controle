@@ -40,7 +40,7 @@ def test_frontend_and_backend_agree_on_contracted_vinculos():
     from modules.employees.service import CONTRACTED_VINCULOS
 
     view_js = _read('static', 'js', 'views', 'outsourced-employees-view.js')
-    match = re.search(r'var CONTRACTED_VINCULOS = \[(.*?)\];', view_js, re.DOTALL)
+    match = re.search(r'(?:const|let|var) CONTRACTED_VINCULOS = \[(.*?)\];', view_js, re.DOTALL)
     assert match, 'CONTRACTED_VINCULOS não encontrada em outsourced-employees-view.js'
     frontend = tuple(re.findall(r"'([^']+)'", match.group(1)))
     assert frontend == tuple(CONTRACTED_VINCULOS), (

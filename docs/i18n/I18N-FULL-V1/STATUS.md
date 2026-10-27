@@ -31,3 +31,11 @@ O componente de cartão do Mercado Pago é externo e oferece somente os locales 
 A Biblioteca recebeu bindings de filtros, categorias, estados, datas, metadados e mensagens de erro específicas. Os testes usam documentos sintéticos e verificam os cinco idiomas, formulários preenchidos, escape de conteúdo e celular. Os metadados adicionais de pré-visualização identificam somente nomes gerados pelo sistema; nomes de planilhas e documentos originais permanecem intactos.
 
 Foram aplicadas 120 recomendações linguísticas da revisão independente, registradas em `linguistic-corrections.json`. A avaliação prévia é apresentada como avaliação preliminar e a autoridade do Administrador Geral permanece distinta do Master.
+
+## Alertas e aliases Flutter
+
+Os alertas operacionais passaram a receber metadados de apresentação aditivos; títulos e descrições legados, condições, severidades e identificadores permanecem. O módulo de apresentação usa datas/números/plurais e preserva empresa, unidade, EPI e tamanhos. Testes locais em Chromium cobrem os cinco idiomas, busca por tamanho localizado, Enter, leitura, escape de valores e celular. Não houve regularização ou outra escrita.
+
+Os cinco ARBs base do Flutter foram sincronizados com seus respectivos catálogos regionais. O gerador oficial 3.47.7 foi executado. Um teste dos delegates gerados compara todas as 781 mensagens entre pt/pt_BR, en/en_US, es/es_ES, fr/fr_FR e no/no_NO, incluindo parâmetros. Isso elimina o fallback acidental causado pelos aliases parciais; não certifica tradução de toda a interface Flutter, cujos hardcodes ainda precisam de revisão.
+
+CI do checkpoint 3693b04f: Portal Docs aprovado no run 40434076866. Backend e Flutter reprovaram; foram encontrados e corrigidos import F401, manifesto ARB desatualizado e verificações estáticas que não reconheciam getters/bindings de tradução. Nova execução será vinculada ao próximo HEAD. Sem aprovação integral ou autorização de merge.

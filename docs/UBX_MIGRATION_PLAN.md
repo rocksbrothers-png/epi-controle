@@ -242,6 +242,14 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §13](UBX_APPJS_AUDITORIA.md#13-ubx-v5-eta
 - `modules/archival/{business,integrations,ui}`: 214 cenários comparados com as funções originais
   (0 divergências) e 17 sabotagens detectadas; contrato HTTP de arquivamento agora verificado contra o router.
 
+## UBX-V5, Etapa 2 — fatia 1 (2026-10-27): Unidades e CNPJ
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §14](UBX_APPJS_AUDITORIA.md#14-ubx-v5-etapa-2--fatia-1-2026-10-27-unidades-e-cnpj).
+
+- `app.js` 17.638 → 17.342 linhas; 778 → 757 declarações; 108 → 107 endpoints.
+- `modules/legal-entities/{integrations,ui}` e `modules/units/{business,ui}`: 102 cenários comparados com as
+  funções originais (0 divergências), 19 sabotagens detectadas e Chromium 15/15 nos 5 idiomas.
+
 ## Próximo passo
-UBX-V5, Etapa 2 (Unidades e CNPJ → Empresas → Minha Empresa → Comercial, este após a I18N-FULL-V1) e,
+UBX-V5, Etapa 2 (restantes) (Empresas → Minha Empresa → Comercial, este após a I18N-FULL-V1) e,
 por último, a Etapa 3 (navegação/bootstrap) com os pré-requisitos de auditoria de autorização.

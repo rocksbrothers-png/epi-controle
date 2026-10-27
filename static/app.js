@@ -4587,9 +4587,8 @@ function populateSearchSelect(select, items, labelBuilder, selectedValue = '', i
   if (normalized && items.some((item) => String(item.id) === normalized)) select.value = normalized;
 }
 
-function unitsForSearchByCompany(companyId = '') {
-  return filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-}
+// unitsForSearchByCompany, syncUnitsSearchFilters, applyUnitsFilters, formatUnitTableRow,
+// formatUnitOption e startEditUnit: static/js/modules/units/{business,ui}/ (UBX-V5, Etapa 2).
 
 function populateScopedSearchFilters() {
   const companies = scopedCompaniesForSearch();
@@ -4657,14 +4656,6 @@ function populateScopedSearchFilters() {
   if (refs.deliveriesFilterDateTo) refs.deliveriesFilterDateTo.value = state.deliveriesFilters.date_to;
   if (refs.deliveriesFilterStatus) refs.deliveriesFilterStatus.value = state.deliveriesFilters.status;
   if (refs.fichaFilterSearch) refs.fichaFilterSearch.value = state.fichaFilters.search;
-}
-
-function syncUnitsSearchFilters() {
-  state.unitsFilters.company_id = String(refs.unitsFilterCompany?.value || '').trim();
-  state.unitsFilters.name = String(refs.unitsFilterName?.value || '').trim().toLowerCase();
-  state.unitsFilters.type = String(refs.unitsFilterType?.value || '').trim().toLowerCase();
-  state.unitsFilters.city = String(refs.unitsFilterCity?.value || '').trim().toLowerCase();
-  renderTables();
 }
 
 function syncEpisSearchFilters() {
@@ -6079,16 +6070,6 @@ function dashboardInteractiveEmptyMessage(message) {
   return `<div class="dashboard-chart-empty">${message}</div>`;
 }
 
-function applyUnitsFilters(items) {
-  return items.filter((item) => {
-    if (state.unitsFilters.company_id && String(item.company_id) !== String(state.unitsFilters.company_id)) return false;
-    if (state.unitsFilters.type && String(item.unit_type) !== String(state.unitsFilters.type)) return false;
-    if (state.unitsFilters.name && !String(item.name || '').toLowerCase().includes(state.unitsFilters.name)) return false;
-    if (state.unitsFilters.city && !String(item.city || '').toLowerCase().includes(state.unitsFilters.city)) return false;
-    return true;
-  });
-}
-
 // Escopo de visibilidade de EPI por unidade operacional. Espelha o backend
 // (epi_backend/epi_scope.is_epi_visible_for_unit): um EPI aparece para uma
 // unidade quando é de nível empresa (GLOBAL / "Todas as Unidades") ou pertence
@@ -6221,14 +6202,6 @@ function applyFichaEmployeeFilters(items) {
 
 function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
-}
-
-function formatUnitTableRow(item, canManageUnitRecords) {
-  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-archive="${item.id}">${tr('unit.archive', 'Arquivar')}</button></div>` : '-';
-  // Sem esta coluna, uma empresa com vários CNPJs vê uma lista em que todas as
-  // unidades parecem iguais — e é justamente aqui que a distinção importa.
-  const legalEntity = escapeHtml(unitLegalEntityLabel(item)) || '-';
-  return `<tr><td>${item.company_name}</td><td>${legalEntity}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
 }
 
 const DELIVERIES_PER_PAGE = 20;
@@ -7210,26 +7183,6 @@ function focusViewTab(group, key) {
   if (nav) activateViewTab(nav, key);
 }
 
-function startEditUnit(unitId) {
-  const item = state.units.find((unit) => String(unit.id) === String(unitId));
-  const form = document.getElementById('unit-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  form.elements.name.value = item.name || '';
-  form.elements.unit_type.value = item.unit_type || 'base';
-  form.elements.city.value = item.city || '';
-  form.elements.notes.value = item.notes || '';
-  // A lista de CNPJs depende da empresa, que acabou de ser preenchida.
-  syncUnitLegalEntityOptions();
-  if (form.elements.legal_entity_id) {
-    form.elements.legal_entity_id.value = item.legal_entity_id ? String(item.legal_entity_id) : '';
-  }
-  setFormSubmitLabel('unit-form', 'Atualizar unidade');
-  showView('unidades');
-  focusRegistrationTab('unidades');
-}
-
 // syncEmpresaOrigemVisibility, isOwnWorkforceVinculo e OWN_WORKFORCE_VINCULOS: modules/employees/ (UBX-V4).
 
 // Os vínculos de mão de obra CONTRATADA (Terceirizado, Prestador de Serviço,
@@ -7245,10 +7198,6 @@ function startEditUnit(unitId) {
 
 // Arquivamento (Unidades e genérico: Colaboradores, EPIs, Empresas e Colaboradores
 // terceirizados) mora em static/js/modules/archival/{business,integrations,ui}/ (UBX-V5, Etapa 1).
-
-function formatUnitOption(item) {
-  return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
-}
 
 function syncDeliveryOptions() {
   const companyField = document.getElementById('delivery-company');
@@ -7531,220 +7480,9 @@ function selectDeliveryEpiFromSearch(epiId) {
   renderDeliveryEpiSearchResults();
 }
 
-// ── Multi-CNPJ: seletores de vínculo jurídico ────────────────────────────────
-
-// Regras puras vivem em js/views/legal-entity-fields.js (testadas no harness);
-// aqui ficam apenas os wrappers que leem o estado e mexem no DOM.
-function legalEntityHelpers() {
-  return globalThis.__EPI_LEGAL_ENTITY_FIELDS__ || {};
-}
-
-function legalEntitiesForCompany(companyId, options) {
-  const helper = legalEntityHelpers().legalEntitiesForCompany;
-  return helper ? helper(state.legalEntities, companyId, options) : [];
-}
-
-function unitLegalEntityLabel(unit) {
-  const helper = legalEntityHelpers().unitLegalEntityLabel;
-  return helper ? helper(unit) : String(unit?.legal_entity_cnpj || '');
-}
-
-function legalEntityOptionsHtml(entities) {
-  const label = legalEntityHelpers().legalEntityLabel || ((item) => String(item?.cnpj || ''));
-  return entities
-    .map((item) => `<option value="${item.id}">${escapeHtml(label(item))}</option>`)
-    .join('');
-}
-
-// Vínculo jurídico do colaborador.
-//
-// O campo só aparece quando a empresa tem CNPJs cadastrados, e só é obrigatório
-// quando há mais de um ativo: com CNPJ único o backend resolve sozinho, e
-// exigir escolha seria ruído. Com mais de um, o backend recusa o cadastro sem
-// o campo — por isso a obrigatoriedade aqui espelha a regra do servidor em vez
-// de inventar uma própria.
-
-// Trava (ou destrava) o seletor de CNPJ do colaborador.
-//
-// Na edição o campo fica visível e desabilitado: o operador precisa VER a qual
-// CNPJ o colaborador pertence, mas não pode trocar por aqui. Campo desabilitado
-// não é serializado no submit, o que também impede o envio acidental do valor.
-
-// ── Tela de CNPJs (web legado) ───────────────────────────────────────────────
-
-// Regras puras vivem em js/views/legal-entities-view.js (testadas no harness);
-// aqui ficam a leitura do estado, o DOM e as chamadas de API.
-function legalEntitiesViewHelpers() {
-  return globalThis.__EPI_LEGAL_ENTITIES_VIEW__ || {};
-}
-
-function renderLegalEntities() {
-  if (!refs.legalEntitiesTable) return;
-  const helpers = legalEntitiesViewHelpers();
-  const visible = helpers.visibleLegalEntities
-    ? helpers.visibleLegalEntities(state.legalEntities, state.legalEntitiesFilters)
-    : (state.legalEntities || []);
-  const canUpdate = hasPermission('legal_entities:update');
-  const canDelete = hasPermission('legal_entities:delete');
-  refs.legalEntitiesTable.innerHTML = visible
-    .map((item) => formatLegalEntityRow(item, { canUpdate, canDelete }))
-    .join('') || globalThis.dsTableState({
-      colspan: 6,
-      message: tr('legalEntity.empty', 'Sem CNPJs cadastrados.'),
-    });
-}
-
-function formatLegalEntityRow(item, permissions) {
-  const helpers = legalEntitiesViewHelpers();
-  const typeLabel = helpers.entityTypeLabel ? helpers.entityTypeLabel(item.entity_type) : '';
-  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
-  const status = active
-    ? tr('legalEntity.statusActive', 'Ativo')
-    : tr('legalEntity.statusInactive', 'Inativo');
-  // O botão de inativar só aparece quando a ação é possível: o backend recusa
-  // o último CNPJ ativo, e oferecer o botão só geraria mensagem de erro.
-  const showDeactivate = permissions.canDelete
-    && (helpers.canDeactivate ? helpers.canDeactivate(item, state.legalEntities) : active);
-  // O id vira atributo HTML: escapado como qualquer outro dado vindo do
-  // servidor, mesmo sendo numérico na prática.
-  const entityId = escapeHtml(String(item.id ?? ''));
-  const buttons = [];
-  if (permissions.canUpdate) {
-    buttons.push(`<button class="ghost" data-legal-entity-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
-  }
-  if (showDeactivate) {
-    buttons.push(`<button class="ghost" data-legal-entity-deactivate="${entityId}">${escapeHtml(tr('legalEntity.deactivate', 'Inativar'))}</button>`);
-  }
-  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
-  return `<tr><td>${escapeHtml(item.cnpj || '')}</td><td>${escapeHtml(item.legal_name || '')}</td>`
-    + `<td>${escapeHtml(item.trade_name || '') || '-'}</td><td>${escapeHtml(typeLabel)}</td>`
-    + `<td>${escapeHtml(status)}</td><td>${actions}</td></tr>`;
-}
-
-function syncLegalEntitiesFilters() {
-  state.legalEntitiesFilters.search = String(refs.legalEntitiesFilterSearch?.value || '').trim();
-  state.legalEntitiesFilters.type = String(refs.legalEntitiesFilterType?.value || '').trim();
-  state.legalEntitiesFilters.showInactive = Boolean(refs.legalEntitiesShowInactive?.checked);
-  renderLegalEntities();
-}
-
-// Empresa só é escolhida pelo Administrador Master, que atende vários clientes.
-// Para os demais o campo some: a empresa é a do próprio usuário, e mostrar um
-// seletor de uma opção só induz a erro.
-function syncLegalEntityCompanyField() {
-  const field = document.getElementById('legal-entity-company');
-  const wrapper = document.getElementById('legal-entity-company-field');
-  const hint = document.getElementById('legal-entity-company-hint');
-  if (!field || !wrapper) return;
-  const isMaster = state.user?.role === 'master_admin';
-
-  if (isMaster) {
-    // Só o Master escolhe: ele atende vários clientes e não tem empresa
-    // própria de onde deduzir. O placeholder faz uma seleção vazia ler como
-    // "escolha uma", e não como campo quebrado.
-    const previous = field.value;
-    wrapper.hidden = false;
-    field.disabled = false;
-    field.required = true;
-    populateSelect('legal-entity-company', state.companies, (item) => `${item.name} - ${item.cnpj}`);
-    field.insertBefore(
-      new Option(tr('company.select', 'Selecione a empresa'), ''),
-      field.firstChild,
-    );
-    field.value = previous || '';
-    if (hint) hint.hidden = true;
-    return;
-  }
-
-  // Demais perfis: a empresa é a da conta e não se escolhe. Mostrar o nome —
-  // desabilitado, como o CNPJ do colaborador na edição — informa em qual
-  // empresa o CNPJ vai nascer sem oferecer uma decisão que não existe.
-  //
-  // Esconder o campo também evitaria o erro, mas tiraria essa confirmação
-  // justamente na tela onde ela importa: a de cadastrar pessoa jurídica.
-  const companyName = String(state.user?.company_name || '').trim();
-  // Sem nome não há o que afirmar; nesse caso o campo some, e o aviso geral de
-  // dados indisponíveis explica a tela.
-  wrapper.hidden = companyName === '';
-  field.required = false;
-  // Desabilitado não é serializado no submit — de propósito: o backend resolve
-  // a empresa pela sessão, e enviar um palpite daqui seria uma forma de gravar
-  // na empresa errada.
-  field.disabled = true;
-  field.replaceChildren(new Option(companyName, String(state.user?.company_id || '')));
-  if (hint) hint.hidden = wrapper.hidden;
-}
-
-// Alterna o formulário entre cadastrar e atualizar.
-//
-// O estado precisa ser visível: o rótulo do botão muda e a saída ("Novo CNPJ")
-// só aparece quando há de onde sair. Um formulário preso em "Atualizar" sem
-// nenhuma indicação de por quê foi exatamente o que se viu em produção.
-function setLegalEntityFormMode(mode) {
-  const cancel = document.getElementById('legal-entity-cancel-edit');
-  if (cancel) cancel.hidden = mode !== 'edit';
-}
-
-function resetLegalEntityForm() {
-  const form = document.getElementById('legal-entity-form');
-  if (!form) return;
-  form.reset();
-  form.elements.id.value = '';
-  // `reset()` devolve o valor do atributo `value` do HTML, que é '1'; sendo
-  // explícito aqui para não depender do markup na hora de voltar a cadastrar.
-  if (form.elements.active) form.elements.active.value = '1';
-  setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
-  setLegalEntityFormMode('create');
-  syncLegalEntityCompanyField();
-}
-
-function startEditLegalEntity(entityId) {
-  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
-  const form = document.getElementById('legal-entity-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  syncLegalEntityCompanyField();
-  if (form.elements.company_id) form.elements.company_id.value = item.company_id || '';
-  form.elements.cnpj.value = item.cnpj || '';
-  form.elements.legal_name.value = item.legal_name || '';
-  form.elements.trade_name.value = item.trade_name || '';
-  form.elements.entity_type.value = item.entity_type || 'matriz';
-  form.elements.state_registration.value = item.state_registration || '';
-  form.elements.municipal_registration.value = item.municipal_registration || '';
-  form.elements.cnae.value = item.cnae || '';
-  form.elements.opening_date.value = item.opening_date || '';
-  form.elements.address.value = item.address || '';
-  form.elements.municipality.value = item.municipality || '';
-  form.elements.uf.value = item.uf || '';
-  form.elements.cep.value = item.cep || '';
-  form.elements.notes.value = item.notes || '';
-  // Preserva a situação atual: sem isso o backend assumiria `active = 1` e a
-  // simples edição de um CNPJ inativo o reativaria.
-  const helpers = legalEntitiesViewHelpers();
-  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
-  form.elements.active.value = active ? '1' : '0';
-  setFormSubmitLabel('legal-entity-form', tr('legalEntity.update', 'Atualizar CNPJ'));
-  setLegalEntityFormMode('edit');
-  showView('cnpjs');
-  focusRegistrationTab('cnpjs');
-}
-
-async function deactivateLegalEntity(entityId) {
-  if (!requirePermission('legal_entities:delete')) return;
-  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
-  if (!item) return;
-  const confirmed = confirm(tr(
-    'legalEntity.deactivateConfirm',
-    'Inativar este CNPJ? O histórico jurídico e fiscal é preservado; ele apenas deixa de ser usado em novas operações.',
-  ) + `\n\n${item.cnpj} — ${item.legal_name}`);
-  if (!confirmed) return;
-  try {
-    await api(`/api/legal-entities/${entityId}?${actorQuery()}`, { method: 'DELETE' });
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
-  }
-}
+// Multi-CNPJ (seletores de vínculo jurídico e tela de CNPJs) mora em
+// static/js/modules/legal-entities/{integrations,ui}/ (UBX-V5, Etapa 2); as regras puras seguem em
+// js/views/legal-entity-fields.js e js/views/legal-entities-view.js.
 
 // ── Tela de Terceirizados e Prestadores (web legado, ADR-0002) ──────────────
 
@@ -8367,41 +8105,7 @@ function bindDataMigrationEvents() {
   });
 }
 
-// Vínculo jurídico da unidade.
-//
-// Diferente do colaborador, aqui não há imutabilidade: a unidade pode mudar de
-// CNPJ responsável (reorganização societária, troca de operadora da JV). O que
-// o backend não faz é *limpar* o vínculo — enviar vazio mantém o valor atual —
-// então o seletor não oferece uma opção "nenhum" que não teria efeito.
-function syncUnitLegalEntityOptions() {
-  const field = document.getElementById('unit-legal-entity');
-  const wrapper = document.getElementById('unit-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('unit-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId);
-  const previous = field.value;
-  wrapper.hidden = entities.length === 0;
-  field.innerHTML = `<option value="">${tr('legalEntity.selectOptional', 'Selecione o CNPJ')}</option>`
-    + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
-
-function syncReportLegalEntityOptions() {
-  const field = document.getElementById('report-legal-entity');
-  const wrapper = document.getElementById('report-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('report-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId, { activeOnly: false });
-  const previous = field.value;
-  wrapper.hidden = entities.length === 0;
-  field.innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>`
-    + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
+// syncUnitLegalEntityOptions e syncReportLegalEntityOptions: modules/legal-entities/ui/ (UBX-V5, Etapa 2).
 
 // syncReportOptions vive em static/js/modules/reports/ui/reports-view.js
 // (UBX-V3, Etapa 4), com o restante de Relatórios.

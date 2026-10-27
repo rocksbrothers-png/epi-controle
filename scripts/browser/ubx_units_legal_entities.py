@@ -5,8 +5,8 @@ bootstrap. Confere, nos 5 idiomas, que a tela de CNPJs e a de Unidades
 continuam funcionando com o código extraído para modules/legal-entities e
 modules/units:
 
-1. CNPJs: lista só os ativos, editar preenche o formulário (inclusive a
-   situação), "Novo CNPJ" volta a cadastrar; inativar pede confirmação e envia
+1. CNPJs: lista só os ativos, campo de empresa desabilitado fora do Master,
+   editar preenche o formulário (inclusive a situação), "Novo CNPJ" volta a cadastrar; inativar pede confirmação e envia
    DELETE /api/legal-entities/<id> com o ator.
 2. Unidades: a coluna de CNPJ aparece, o filtro por nome restringe a lista e
    editar preenche o formulário com o CNPJ vinculado sem sair da tela.
@@ -92,6 +92,11 @@ def cnpj_screen(f):
     expect(table).to_have_count(2)
     expect(table.first).to_contain_text('11222333000181')
     expect(f.page.locator('[data-legal-entity-deactivate="46"]')).to_have_count(0)
+    # Fora do Master a empresa não se escolhe: o campo mostra a da conta, desabilitado
+    # (não vai no submit; o backend resolve pela sessão).
+    company = f.page.locator('#legal-entity-company')
+    expect(company).to_be_disabled()
+    expect(company).to_have_value('901')
     f.page.locator('[data-legal-entity-edit="44"]').click()
     form = f.page.locator('#legal-entity-form')
     expect(form.locator('[name="cnpj"]')).to_have_value('11222333000181')

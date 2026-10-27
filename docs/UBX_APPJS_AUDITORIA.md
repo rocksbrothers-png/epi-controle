@@ -733,7 +733,7 @@ parâmetro. Nenhuma dependência nova de negócio/integração para a UI.
 
 ### 14.3 Equivalência
 
-`static/js/test/units-legal-entities-runtime.js` roda **100 cenários** contra os módulos e contra as funções
+`static/js/test/units-legal-entities-runtime.js` roda **102 cenários** contra os módulos e contra as funções
 originais (`fixtures/app-before-ubx-v5-units-legal-entities.js.txt`: cada declaração copiada literalmente de
 `4aca4ada`), no mesmo ambiente, com e sem as regras puras carregadas (fallbacks). Compara chamadas (API,
 `confirm`, `alert`, `loadBootstrap`, rótulo do botão, navegação, `populateSelect`, `renderTables`), campos e
@@ -744,15 +744,19 @@ seletores de CNPJ de Unidade e Relatórios (empresa do campo × do usuário, sel
 Unidades (busca por empresa, filtros, linha com/sem gestão, opção, edição). 0 divergências; a referência não
 quebra em nenhum cenário.
 
-Sabotagem: 16 mutações nos módulos (`activeOnly`, papel do Master, recarga com `preserveView`, situação na edição,
+Sabotagem: 19 mutações nos módulos (`activeOnly`, papel do Master, recarga com `preserveView`, situação na edição,
 permissão de inativar, campo de empresa habilitado, confirmação ignorada, seleção anterior não validada, HTML sem
 escape, método HTTP, caixa do tipo de Unidade, Unidades sem empresa no filtro, escopo `filterByUserCompany`, coluna de CNPJ,
-sincronização do CNPJ na edição, filtros sem minúsculas) — **todas detectadas**. Duas só passaram a ser detectadas
-depois de o elemento falso limpar o valor ao reescrever as opções (como um `<select>` real) e de incluir uma
-Unidade com tipo em maiúsculas.
+sincronização do CNPJ na edição, filtros sem minúsculas, e as três que a auditoria achou sobreviventes: escape da
+coluna de CNPJ das Unidades, ordem campo de empresa × valor na edição, id não limpo no "Novo CNPJ") — **todas
+detectadas**. Cinco só passaram a ser detectadas depois de aproximar o ambiente falso do DOM: reescrever as opções
+limpa o valor, trocar as opções seleciona a primeira, `form.reset()` não limpa o id oculto, o `company_id` do
+formulário é o próprio `#legal-entity-company`, mais uma Unidade com tipo em maiúsculas e outra com HTML no rótulo
+do CNPJ.
 
 Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_units_legal_entities.py` (novo, roda no workflow
-*Colaboradores and outsourced browser regression*) — tela de CNPJs (lista só ativos, editar preenche o formulário
+*Colaboradores and outsourced browser regression*) — tela de CNPJs (lista só ativos, campo de empresa desabilitado
+fora do Master, editar preenche o formulário
 inclusive a situação, "Novo CNPJ" volta a cadastrar), inativação (confirmação + `DELETE` com o ator) e Unidades
 (coluna de CNPJ, filtro por nome, edição com o CNPJ vinculado sem sair da tela): **15/15**, e 15/15 também contra a
 `main` (mesmo comportamento antes e depois). `fix_colab_terc.py` 40/40 e `fix_nav_refresh.py` 35/35 continuam.
@@ -769,3 +773,34 @@ inclusive a situação, "Novo CNPJ" volta a cadastrar), inativação (confirmaç
   FIX-NAV-REFRESH-V1, fora do escopo desta refatoração).
 - O I18N-FULL-V1 altera `UNIT_PURGE_RECORD_LABELS`, que a Etapa 1 moveu para `archival-rules.js`: o Codex terá
   conflito ao atualizar a branch dele (aviso registrado no relatório da etapa).
+
+### 14.5 Auditoria independente
+
+Agente separado, só leitura, sobre `131bca79`/`5000626`. **Nenhum P0/P1/P2.** Conferido de forma independente:
+
+- equivalência linha a linha contra `4aca4ada` (escrita no DOM e sua ordem, permissões, chamada HTTP, `confirm`,
+  `alert`, `loadBootstrap()` sem argumentos, escape, fallbacks sem as regras);
+- fixture idêntico declaração a declaração (comparação por AST);
+- só as 21 declarações saíram do `app.js` (AST antes × depois);
+- resolução de nomes (inclusive `hasPermission` de um argumento, que o `app.js` sobrescreve pelo Annex B) e todos os
+  chamadores; nenhum outro script publica esses nomes;
+- isolamento por empresa e campo de empresa fora do Master;
+- paridade SaaS byte a byte;
+- conflitos com o I18N-FULL-V1 (`624d8915`): os mesmos 9 arquivos e hunks da Etapa 1, nenhum novo —
+  `formatUnitOption`/`syncReportLegalEntityOptions` caem dentro de hunks que já existiam. Ao resolver, o Codex
+  precisa descartar a cópia dessas duas do lado dele; a guarda e o teste "voltou ao app.js" acusam o engano.
+
+Achados P3 e tratamento:
+
+- 3 mutações (de 32 do auditor) passavam pelo teste de caracterização: escape da coluna de CNPJ, ordem na edição e
+  id no reset. O ambiente falso foi aproximado do DOM (§14.3) e as três passaram a ser detectadas. A quarta
+  sobrevivente é equivalente (`mode !== 'edit'` × `mode === 'create'` para os únicos valores usados).
+- O harness Chromium não conferia o campo de empresa fora do Master: passou a conferir (desabilitado, empresa da
+  conta).
+- Registrado como risco residual, sem mudança: se `unit-rules.js` ou `legal-entities-api.js` não carregar,
+  `applyUnitsFilters` lança (e `renderTables` aborta) e inativar mostra um `alert` com o `TypeError` — antes tudo
+  estava num arquivo só. É o mesmo padrão aceito na Etapa 1; a ordem de carga é conferida pelo teste de contrato.
+- Preexistente, preservado: `formatUnitTableRow`/`formatUnitOption` interpolam nome, empresa e cidade da Unidade
+  sem escape (como no `app.js`). Correção de segurança, se desejada, vai num PR próprio.
+- Os testes do harness ainda não cobrem os seletores de CNPJ de Colaboradores e Relatórios nem o listener de troca
+  de empresa da Unidade (cobertos pelo teste de caracterização).

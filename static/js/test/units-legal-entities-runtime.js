@@ -35,6 +35,9 @@ const UNITS = [
   { id: 5, company_id: 901, company_name: 'Empresa QA', name: 'Base Norte', unit_type: 'base', city: 'Macaé', notes: 'obs',
     legal_entity_id: 1, legal_entity_cnpj: '11.222.333/0001-81', legal_entity_name: 'Matriz' },
   { id: 6, company_id: 901, company_name: 'Empresa QA', name: 'Navio <1>', unit_type: 'navio', city: 'Rio', legal_entity_id: null },
+  // Rótulo de CNPJ com HTML: a coluna da tabela de Unidades precisa escapar.
+  { id: 9, company_id: 901, company_name: 'Empresa QA', name: 'Base Sul', unit_type: 'base', city: 'Rio', legal_entity_id: 3,
+    legal_entity_cnpj: '<b>22</b>', legal_entity_name: 'SPE "x" & <i>y</i>' },
   { id: 7, company_id: 902, company_name: 'Outra', name: 'Plataforma', unit_type: 'plataforma', city: 'Vitória' },
   // Tipo em maiúsculas: o filtro compara o tipo sem normalizar o do registro.
   { id: 8, company_id: 901, company_name: 'Empresa QA', name: 'FPSO Sul', unit_type: 'FPSO', city: 'Macaé' }
@@ -49,18 +52,26 @@ function makeEnv(opts = {}) {
     set innerHTML(html) { this._html = html; this.value = ''; },
     get firstChild() { return this.children[0] || null; },
     insertBefore(child, ref) { log.push(['insertBefore', id, child.text, child.value, ref ? ref.text : null]); this.children.unshift(child); },
-    replaceChildren(...kids) { log.push(['replaceChildren', id, kids.map((k) => [k.text, k.value])]); this.children = kids; },
+    // Como num <select>: trocar as opções seleciona a primeira.
+    replaceChildren(...kids) { log.push(['replaceChildren', id, kids.map((k) => [k.text, k.value])]); this.children = kids; this.value = kids.length ? kids[0].value : ''; },
     ...extra
   });
-  const form = (id, names) => {
-    const elements = Object.fromEntries(names.map((n) => [n, node(`${id}:${n}`)]));
-    return { id, elements, reset() { log.push(['reset', id]); for (const el of Object.values(elements)) { el.value = el.defaultValue || ''; } } };
+  // Como no DOM: form.reset() não limpa o <input type="hidden"> do id, e os
+  // campos podem ser o mesmo elemento que getElementById devolve.
+  const form = (id, names, shared = {}) => {
+    const elements = Object.fromEntries(names.map((n) => [n, shared[n] || node(`${id}:${n}`)]));
+    return { id, elements, reset() {
+      log.push(['reset', id]);
+      for (const [n, el] of Object.entries(elements)) { if (n !== 'id') { el.value = el.defaultValue || ''; } }
+    } };
   };
   const nodes = {};
   for (const id of ['unit-legal-entity', 'unit-legal-entity-field', 'unit-company', 'report-legal-entity', 'report-legal-entity-field', 'report-company',
     'legal-entity-company', 'legal-entity-company-field', 'legal-entity-company-hint', 'legal-entity-cancel-edit']) { nodes[id] = node(id); }
+  // company_id do formulário de CNPJ É o #legal-entity-company (mesmo <select>).
   nodes['legal-entity-form'] = form('legal-entity-form', ['id', 'company_id', 'cnpj', 'legal_name', 'trade_name', 'entity_type', 'state_registration',
-    'municipal_registration', 'cnae', 'opening_date', 'address', 'municipality', 'uf', 'cep', 'notes', 'active']);
+    'municipal_registration', 'cnae', 'opening_date', 'address', 'municipality', 'uf', 'cep', 'notes', 'active'],
+  { company_id: nodes['legal-entity-company'] });
   nodes['legal-entity-form'].elements.active.defaultValue = '1';
   nodes['unit-form'] = form('unit-form', ['id', 'company_id', 'name', 'unit_type', 'city', 'notes', 'legal_entity_id']);
   for (const id of opts.missing || []) { delete nodes[id]; }
@@ -189,6 +200,7 @@ async function scenario(load) {
     out[`${tag}:reset`] = await run(load, { noRules }, (ctx, env) => { env.nodes['legal-entity-form'].elements.id.value = '3'; ctx.resetLegalEntityForm(); });
     out[`${tag}:reset:semForm`] = await run(load, { noRules, missing: ['legal-entity-form'] }, (ctx) => ctx.resetLegalEntityForm());
     for (const [name, id, opts] of [['ativo', 1, {}], ['inativo', 2, {}], ['parcial', 3, { role: 'master_admin' }], ['semCampoEmpresa', 1, { noCompanyField: true }],
+      ['outraEmpresa', 4, {}],
       ['inexistente', 77, {}], ['semForm', 1, { missing: ['legal-entity-form'] }]]) {
       out[`${tag}:editar:${name}`] = await run(load, { ...opts, noRules }, (ctx) => ctx.startEditLegalEntity(id));
     }

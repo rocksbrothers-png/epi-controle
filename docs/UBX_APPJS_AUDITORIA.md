@@ -804,3 +804,61 @@ Achados P3 e tratamento:
   sem escape (como no `app.js`). Correção de segurança, se desejada, vai num PR próprio.
 - Os testes do harness ainda não cobrem os seletores de CNPJ de Colaboradores e Relatórios nem o listener de troca
   de empresa da Unidade (cobertos pelo teste de caracterização).
+
+## 15. UBX-V5, Etapa 2 — fatia 2 (2026-10-27): Empresas
+
+Base: Corporate `a2358206` / SaaS `c6f6d687` (`main` com Unidades e CNPJ integradas; `app.js` idêntico nos dois).
+Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão, regra de negócio, texto ou chave i18n.
+
+### 15.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/companies/business/company-rules.js` (93) | Contagens do resumo, tom do selo de licença, risco de uso (no limite × próxima do limite), corpos de gravação da empresa (cadastro/edição e ativar/inativar, mesmas chaves e padrões) e as regras do suporte auditado de logotipo (justificativa ≥ 10, tipos de imagem). Puro. |
+| `modules/companies/integrations/companies-api.js` (29) | `POST /api/companies`, `PUT /api/companies/<id>`, `POST /api/companies/<id>/support-update`, com caminho e método literais (o `PUT`/`POST` condicional do `saveCompany` virou dois ramos literais, agora conferidos pelo contrato front↔back). |
+| `modules/companies/ui/companies-view.js` (294) | `getCompanyFormField`, `setCompanyFieldValue`, `readCompanyFieldValue`, `renderCompaniesSummary`, `companyStatusBadges`, `companyUsageText`, `renderCompanyDetails`, `companyRowActions`, `formatCompanyRow`, `renderCompanies`, `resetCompanyForm`, `startEditCompany`, `openCompanyLogoEditor`, `saveCompany`, `toggleCompany`. |
+
+Ficam no `app.js`: `companyLogoSrc`/`companyLogoMarkup` (compartilhados por topo, Comercial e Fichas — vão para
+`shared/` numa fatia própria), `formatCompanyCurrency` e `updateTopbarCompanyBadge` (alterados pelo I18N-FULL-V1;
+nenhuma das 15 funções extraídas é alterada por aquele PR, conferido hunk a hunk sobre a ponta `454bee68`) e os
+filtros do Comercial. `companyUsageText` não tem chamador, mas era global (Annex B) e continua publicada.
+`saveCompany` lê `state.user.id` antes do formulário, como o original (sem sessão, falha antes de ler os campos).
+
+### 15.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 17.342 | 17.120 (−222) |
+| Declarações no `app.js` (guarda) | 757 | 742 (−15) |
+| Endpoints literais no `app.js` | 107 | 106 (−1) |
+| Módulos UBX criados | — | 3 (`companies/business`, `integrations`, `ui`) |
+| Maior módulo novo | — | 294 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 648 | 650 (+2 do novo runtime) |
+
+### 15.3 Equivalência
+
+`static/js/test/companies-view-runtime.js` roda **49 cenários** contra os módulos e contra as funções originais
+(`fixtures/app-before-ubx-v5-companies.js.txt`, cada declaração copiada literalmente de `a2358206`): resumo, lista e
+detalhes por permissão, área comercial, visibilidade e seleção; selos e ações de linha para cada estado de licença
+e uso; campos do formulário presentes/ausentes (com o `console.error` do original); reset; edição; gravação (criar
+com/sem Administrador Geral inicial, editar, empresa incompleta, campos ausentes, sem permissão, falha da API, sem
+sessão); ativar/inativar; logotipo por suporte (ok, SVG, tipo inválido, sem arquivo, falha da API, justificativa
+curta/cancelada/exatamente 10, não-Master, empresa inexistente). 0 divergências; a referência não quebra.
+
+Sabotagem: 20 mutações — 19 detectadas; a restante é equivalente (forçar os campos do Administrador Geral também na
+edição: chegam `undefined` e `JSON.stringify` os descarta, o corpo enviado é o mesmo).
+
+Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_companies.py` (novo, no workflow *Colaboradores and
+outsourced browser regression*, cujo limite passou de 20 para 30 minutos com quatro harnesses) — lista/resumo/
+detalhes, editar e gravar (`PUT` com os valores comerciais atuais e sem o Administrador Geral), cadastrar (`POST`
+com o Administrador Geral) e inativar (`PUT` com `active: 0`): **20/20**, e 20/20 também contra a `main`.
+
+### 15.4 Defeito preexistente encontrado (fora do escopo, não corrigido)
+
+O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
+opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o
+formulário envia `active: ''`. O backend recusa (`require_fields` → "Campo obrigatório: active"), então cadastrar e
+editar Empresa pelo web falha em todos os idiomas — reproduzido no Chromium contra a `main`. Vem de #974; o
+I18N-FULL-V1 mantém o atributo. Correção proposta à parte (remover `data-i18n-value` das duas opções, mantendo o
+texto traduzido por `data-i18n`, com teste), por ser mudança de comportamento.

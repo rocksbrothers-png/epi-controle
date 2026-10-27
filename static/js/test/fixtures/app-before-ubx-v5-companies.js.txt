@@ -1,0 +1,235 @@
+// Fixture da UBX-V5, Etapa 2 — Empresas (tests: static/js/test/companies-view-runtime.js).
+//
+// Cada declaração copiada literalmente do static/app.js imediatamente antes da extração (main a2358206,
+// depois da fatia Unidades e CNPJ), sem os comentários de seção. Referência fixa para a comparação
+// antes × depois. Não é carregado pela aplicação.
+
+function getCompanyFormField(name) {
+  const field = refs.companyForm?.elements?.namedItem(name) || null;
+  if (!field) console.error(`[company-form] Campo esperado Não encontrado: ${name}`);
+  return field;
+}
+
+function setCompanyFieldValue(name, value = '', options = {}) {
+  const field = options.optional ? refs.companyForm?.elements?.namedItem(name) || null : getCompanyFormField(name);
+  if (field) field.value = value ?? '';
+}
+
+function readCompanyFieldValue(name, fallback = '', options = {}) {
+  const field = options.optional ? refs.companyForm?.elements?.namedItem(name) || null : getCompanyFormField(name);
+  return field ? field.value ?? fallback : fallback;
+}
+
+function renderCompaniesSummary() {
+  if (!refs.companiesSummary) return;
+  const visibleCompanies = filterByUserCompany(state.companies);
+  const active = visibleCompanies.filter((item) => Number(item.active) === 1).length;
+  const nearLimit = visibleCompanies.filter((item) => item.near_limit && Number(item.limit_reached) !== 1).length;
+  const blocked = visibleCompanies.filter((item) => Number(item.active) !== 1 || ['suspended', 'expired'].includes(item.license_status)).length;
+  refs.companiesSummary.innerHTML = [
+    [tr('company.kpiTotal', 'Empresas'), visibleCompanies.length],
+    [tr('company.kpiActive', 'Ativas'), active],
+    [tr('company.kpiNearLimit', 'Próximas do limite'), nearLimit],
+    [tr('company.kpiBlocked', 'Bloqueadas'), blocked]
+  ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
+}
+
+function companyStatusBadges(company) {
+  const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? tr('company.statusActive', 'Empresa ativa') : tr('company.statusInactive', 'Empresa inativa'))];
+
+  let licenseTone = 'inactive';
+  if (company.license_status === 'active') licenseTone = 'active';
+  else if (company.license_status === 'trial') licenseTone = 'warning';
+
+  badges.push(renderBadge('status', licenseTone, tr(`license.${company.license_status}`, company.license_status_label || company.license_status)));
+  if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', tr('commercial.risk.atLimit', 'No limite')));
+  else if (company.near_limit) badges.push(renderBadge('status', 'warning', tr('commercial.risk.nearLimit', 'Próxima do limite')));
+  return badges.join(' ');
+}
+
+function companyUsageText(company) {
+  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
+}
+
+function renderCompanyDetails(companyId = null) {
+  if (!refs.companyDetails) return;
+  const visibleCompanies = filterByUserCompany(state.companies);
+  if (!visibleCompanies.length) {
+    refs.companyDetails.innerHTML = `<div class="summary-item">${tr('company.noCompanySelected', 'Nenhuma empresa disponível.')}</div>`;
+    return;
+  }
+  const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
+  state.selectedCompanyId = selected.id;
+  const monthly = formatCompanyCurrency(selected.monthly_value);
+  const projected = formatCompanyCurrency(selected.projected_monthly_value);
+  const cnpjLabel = tr('company.cnpjLabel', 'CNPJ');
+  const validityRange = tr('company.validityRange', '{start} até {end}')
+    .replace('{start}', formatDate(selected.contract_start))
+    .replace('{end}', formatDate(selected.contract_end));
+  refs.companyDetails.innerHTML = `
+    <div class="company-detail-hero">
+      ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
+      <div>
+        <strong>${selected.name}</strong>
+        <span>${selected.legal_name || '-'}</span>
+        <span>${cnpjLabel}: ${selected.cnpj}</span>
+      </div>
+    </div>
+    <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
+    <div class="company-detail-grid">
+      <div class="summary-chip"><strong>${selected.user_count ?? '—'}</strong><span>${tr('company.possibleUsers', 'Usuários possíveis')}</span></div>
+      <div class="summary-chip"><strong>${selected.user_limit ?? '—'}</strong><span>${tr('company.contractedLimit', 'Limite contratado')}</span></div>
+      <div class="summary-chip"><strong>${monthly}</strong><span>${tr('company.monthlyValue', 'Valor mensal atual')}</span></div>
+      <div class="summary-chip"><strong>${projected}</strong><span>${tr('company.projectedValue', 'Valor projetado')}</span></div>
+      <div class="summary-chip"><strong>${selected.available_slots ?? 0}</strong><span>${tr('company.availableSlots', 'Vagas disponíveis')}</span></div>
+    </div>
+    <div class="company-detail-list">
+      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.unitPrice', 'Valor unitário')}:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
+      <div class="summary-item"><strong>${tr('company.validity', 'Vigência')}:</strong> ${validityRange}</div>
+      <div class="summary-item"><strong>${tr('company.addendum', 'Aditivo contratual')}:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo')}</div>
+      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${selected.commercial_notes || '-'}</div>
+    </div>
+    ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">${tr('company.viewContract', 'Visualizar contrato')}</button></div>` : ''}`;
+}
+
+function companyRowActions(item, canManageCompanies) {
+  const viewDetailsLabel = tr('company.viewDetails', 'Visualizar detalhes');
+  if (!canManageCompanies) {
+    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button></div>`;
+  }
+  const toggleMode = Number(item.active) === 1 ? 0 : 1;
+  const toggleLabel = Number(item.active) === 1 ? tr('company.deactivate', 'Inativar') : tr('company.activate', 'Ativar');
+  const commercialAction = canAccessCommercialArea()
+    ? `<button class="ghost" data-company-commercial="${item.id}">${tr('company.configureLicense', 'Configurar licença')}</button>`
+    : '';
+  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button><button class="ghost" data-company-edit="${item.id}">${tr('company.editAction', 'Editar')}</button><button class="ghost" data-company-logo="${item.id}">Logotipo (suporte)</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
+}
+
+function formatCompanyRow(item, selectedId) {
+  const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
+  const validityRange = tr('company.validityRange', '{start} até {end}')
+    .replace('{start}', formatDate(item.contract_start))
+    .replace('{end}', formatDate(item.contract_end));
+  return `
+      <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
+        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
+        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
+        <td><div class="company-cell">${companyStatusBadges(item)}<span>${tr('company.validity', 'Vigência')}: ${validityRange}</span></div></td>
+        <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
+        <td><div class="company-cell"><strong>${item.user_count ?? '—'}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
+        <td><div class="company-cell"><strong>${item.user_limit ?? '—'}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
+        <td>${actions}</td>
+      </tr>`;
+}
+
+function renderCompanies() {
+  if (!refs.companiesTable) return;
+  const visibleCompanies = filterByUserCompany(state.companies);
+  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
+  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || globalThis.dsTableState({ colspan: 7, message: tr('company.noCompanies', 'Sem empresas disponíveis.') });
+}
+
+function resetCompanyForm() {
+  if (!refs.companyForm) return;
+  state.editingCompanyId = null;
+  refs.companyForm.reset();
+  setCompanyFieldValue('id', '');
+  setCompanyFieldValue('active', '1');
+  setCompanyFieldValue('general_admin_email', '', { optional: true });
+  setCompanyFieldValue('general_admin_name', '', { optional: true });
+  renderCompanyDetails();
+}
+
+function startEditCompany(companyId) {
+  if (!hasPermission('companies:update')) return;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company || !refs.companyForm) return;
+  state.editingCompanyId = company.id;
+  state.selectedCompanyId = company.id;
+  setCompanyFieldValue('id', company.id);
+  setCompanyFieldValue('name', company.name || '');
+  setCompanyFieldValue('legal_name', company.legal_name || '');
+  setCompanyFieldValue('cnpj', company.cnpj || '');
+  setCompanyFieldValue('general_admin_email', '', { optional: true });
+  setCompanyFieldValue('general_admin_name', '', { optional: true });
+  setCompanyFieldValue('active', String(Number(company.active || 1)));
+  renderCompanies();
+  renderCompanyDetails(company.id);
+  refs.companyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openCompanyLogoEditor(companyId) {
+  if (state.user?.role !== 'master_admin') return;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company) return;
+  const reason = window.prompt(`Suporte auditado — justifique a alteração do logotipo de ${company.name} (mínimo 10 caracteres):`);
+  if (reason === null) return;
+  if (String(reason).trim().length < 10) {
+    alert('Justificativa muito curta. Informe pelo menos 10 caracteres.');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml';
+  bindAppListener(input, 'change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
+    if (!allowed.includes(file.type)) {
+      alert('Envie um logotipo PNG, JPG ou SVG.');
+      return;
+    }
+    try {
+      const logoType = await fileToJpegDataUrl(file);
+      await api(`/api/companies/${company.id}/support-update`, {
+        method: 'POST',
+        body: JSON.stringify({ actor_user_id: state.user.id, support_reason: String(reason).trim(), logo_type: logoType })
+      });
+      await loadBootstrap();
+      alert('Logotipo atualizado via suporte auditado.');
+    } catch (error) { alert(error.message); }
+  });
+  input.click();
+}
+
+async function saveCompany(event) {
+  event.preventDefault();
+  if (!requirePermission(state.editingCompanyId ? 'companies:update' : 'companies:create')) return;
+  try {
+    const currentCompany = state.companies.find((item) => String(item.id) === String(state.editingCompanyId || '')) || {};
+    const values = {
+      actor_user_id: state.user.id,
+      name: readCompanyFieldValue('name', currentCompany.name || ''),
+      legal_name: readCompanyFieldValue('legal_name', currentCompany.legal_name || ''),
+      cnpj: formatCnpj(readCompanyFieldValue('cnpj', currentCompany.cnpj || '')),
+      logo_type: currentCompany.logo_type || '',
+      plan_name: currentCompany.plan_name || 'start',
+      user_limit: currentCompany.user_limit || 10,
+      addendum_enabled: currentCompany.addendum_enabled || 0,
+      contract_start: currentCompany.contract_start || '',
+      contract_end: currentCompany.contract_end || '',
+      monthly_value: currentCompany.monthly_value || 0,
+      license_status: currentCompany.license_status || 'active',
+      active: readCompanyFieldValue('active', String(Number(currentCompany.active ?? 1))),
+      commercial_notes: currentCompany.commercial_notes || ''
+    };
+    if (!state.editingCompanyId) {
+      values.general_admin_email = readCompanyFieldValue('general_admin_email', '', { optional: true }).trim();
+      values.general_admin_name = readCompanyFieldValue('general_admin_name', '', { optional: true }).trim();
+    }
+    await api(state.editingCompanyId ? `/api/companies/${state.editingCompanyId}` : '/api/companies', { method: state.editingCompanyId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    resetCompanyForm();
+    await loadBootstrap();
+  } catch (error) { alert(error.message); }
+}
+
+async function toggleCompany(companyId, active) {
+  if (!hasPermission('companies:update')) return;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company) return;
+  try {
+    await api(`/api/companies/${companyId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, name: company.name, legal_name: company.legal_name, cnpj: company.cnpj, logo_type: company.logo_type, plan_name: company.plan_name, user_limit: company.user_limit, contract_start: company.contract_start || '', contract_end: company.contract_end || '', monthly_value: company.monthly_value || 0, addendum_enabled: company.addendum_enabled || 0, license_status: company.license_status, active, commercial_notes: company.commercial_notes || '' }) });
+    await loadBootstrap();
+  } catch (error) { alert(error.message); }
+}

@@ -6,6 +6,7 @@ on:
       - 'scripts/browser/fix_colab_terc.py'
       - 'scripts/browser/fix_nav_refresh.py'
       - 'scripts/browser/ubx_units_legal_entities.py'
+      - 'scripts/browser/ubx_companies.py'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
 permissions:
@@ -14,7 +15,7 @@ jobs:
   browser:
     name: Chromium functional regression (five locales)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -29,6 +30,9 @@ jobs:
       # UBX-V5, Etapa 2: telas de CNPJs e Unidades sobre modules/legal-entities e modules/units.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/ubx_units_legal_entities.py --output browser-evidence/units-legal-entities
+      # UBX-V5, Etapa 2: tela de Empresas sobre modules/companies.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/ubx_companies.py --output browser-evidence/companies
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -804,3 +804,91 @@ Achados P3 e tratamento:
   sem escape (como no `app.js`). Correção de segurança, se desejada, vai num PR próprio.
 - Os testes do harness ainda não cobrem os seletores de CNPJ de Colaboradores e Relatórios nem o listener de troca
   de empresa da Unidade (cobertos pelo teste de caracterização).
+
+## 15. UBX-V5, Etapa 2 — fatia 2 (2026-10-27): Empresas
+
+Base: Corporate `a2358206` / SaaS `c6f6d687` (`main` com Unidades e CNPJ integradas; `app.js` idêntico nos dois).
+Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão, regra de negócio, texto ou chave i18n.
+
+### 15.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/companies/business/company-rules.js` (93) | Contagens do resumo, tom do selo de licença, risco de uso (no limite × próxima do limite), corpos de gravação da empresa (cadastro/edição e ativar/inativar, mesmas chaves e padrões) e as regras do suporte auditado de logotipo (justificativa ≥ 10, tipos de imagem). Puro. |
+| `modules/companies/integrations/companies-api.js` (29) | `POST /api/companies`, `PUT /api/companies/<id>`, `POST /api/companies/<id>/support-update`, com caminho e método literais (o `PUT`/`POST` condicional do `saveCompany` virou dois ramos literais, agora conferidos pelo contrato front↔back). |
+| `modules/companies/ui/companies-view.js` (294) | `getCompanyFormField`, `setCompanyFieldValue`, `readCompanyFieldValue`, `renderCompaniesSummary`, `companyStatusBadges`, `companyUsageText`, `renderCompanyDetails`, `companyRowActions`, `formatCompanyRow`, `renderCompanies`, `resetCompanyForm`, `startEditCompany`, `openCompanyLogoEditor`, `saveCompany`, `toggleCompany`. |
+
+Ficam no `app.js`: `companyLogoSrc`/`companyLogoMarkup` (compartilhados por topo, Comercial e Fichas — vão para
+`shared/` numa fatia própria), `formatCompanyCurrency` e `updateTopbarCompanyBadge` (alterados pelo I18N-FULL-V1;
+nenhuma das 15 funções extraídas é alterada por aquele PR, conferido hunk a hunk sobre a ponta `454bee68`) e os
+filtros do Comercial. `companyUsageText` não tem chamador, mas era global (Annex B) e continua publicada.
+`saveCompany` lê `state.user.id` antes do formulário, como o original (sem sessão, falha antes de ler os campos).
+
+### 15.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 17.342 | 17.120 (−222) |
+| Declarações no `app.js` (guarda) | 757 | 742 (−15) |
+| Endpoints literais no `app.js` | 107 | 106 (−1) |
+| Módulos UBX criados | — | 3 (`companies/business`, `integrations`, `ui`) |
+| Maior módulo novo | — | 294 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 648 | 650 (+2 do novo runtime) |
+
+### 15.3 Equivalência
+
+`static/js/test/companies-view-runtime.js` roda **53 cenários** contra os módulos e contra as funções originais
+(`fixtures/app-before-ubx-v5-companies.js.txt`, cada declaração copiada literalmente de `a2358206`): resumo, lista e
+detalhes por permissão, área comercial, visibilidade e seleção; selos e ações de linha para cada estado de licença
+e uso; campos do formulário presentes/ausentes (com o `console.error` do original); reset; edição; gravação (criar
+com/sem Administrador Geral inicial, editar, empresa incompleta, campos ausentes, sem permissão, falha da API, sem
+sessão); ativar/inativar; logotipo por suporte (ok, SVG, tipo inválido, sem arquivo, falha da API, justificativa
+curta/vazia/cancelada/exatamente 10, vários arquivos, não-Master, empresa inexistente), mais sem sessão com campos
+ausentes (fixa a ordem de leitura) e empresa inativa sem o campo de status. 0 divergências; a referência não quebra.
+
+Sabotagem: 24 mutações — 23 detectadas; a restante é equivalente (forçar os campos do Administrador Geral também na
+edição: chegam `undefined` e `JSON.stringify` os descarta, o corpo enviado é o mesmo). Quatro delas (ordem ator ×
+formulário, `?? 1` × `|| 1`, justificativa vazia, primeiro arquivo) só passaram a ser detectadas com os cenários
+acrescentados após a auditoria (§15.5).
+
+Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_companies.py` (novo, no workflow *Colaboradores and
+outsourced browser regression*, cujo limite passou de 20 para 30 minutos com quatro harnesses) — lista/resumo/
+detalhes, editar e gravar (`PUT` com os valores comerciais atuais e sem o Administrador Geral), cadastrar (`POST`
+com o Administrador Geral) e inativar (`PUT` com `active: 0`, sem diálogos): **20/20**, e 20/20 também contra a `main`.
+O fixture aceita `active: ''`; o harness fixa esse valor com o marcador `KNOWN-DEFECT` (§15.4), para que a correção
+apareça como falha esperada, e não passe em silêncio.
+
+### 15.4 Defeito preexistente encontrado (fora do escopo, não corrigido)
+
+O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
+opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o
+formulário envia `active: ''`. O backend recusa (`require_fields` → "Campo obrigatório: active", antes de qualquer
+autorização, em `POST` e `PUT`), então cadastrar e editar Empresa pelo web falha em todos os idiomas — reproduzido no
+Chromium contra a `main`. Se o usuário escolher a opção à mão, vai o texto traduzido ("Inativa"/"Inactive") e o backend
+falha no `int()` (`modules/companies/routes.py:155`, `service.py:423/456`). As opções também não têm `data-i18n`: o
+texto visível fica em português em todos os idiomas. Ativar/inativar pela lista não é afetado (não lê o formulário).
+Nenhum outro `data-i18n-value` em `<option>`/campo enviado existe em `static/views` ou `static/index.html`. Vem de #974; o
+I18N-FULL-V1 mantém o atributo. Correção proposta à parte (remover `data-i18n-value` das duas opções, mantendo o
+texto traduzido por `data-i18n`, com teste), por ser mudança de comportamento.
+
+### 15.5 Auditoria independente
+
+Agente separado, só leitura, sobre `1e09e160`/`b743a9f`. **Nenhum P0/P1 na refatoração.** Conferido de forma
+independente: equivalência função a função contra `a2358206` (escritas no DOM e ordem, ordem de avaliação do
+`saveCompany`, corpos com as mesmas chaves e ordem, métodos/caminhos, permissões, checagem de Master, textos de
+prompt/alert, `try/catch`); fixture idêntico e só as 15 declarações removidas (AST); resolução de todos os nomes
+livres (inclusive `planLabel` — o de `pagamento.js` só carrega em `pagamento.html` — e `hasPermission` de um
+argumento, que o `app.js` sobrescreve antes de qualquer chamada) e de todos os chamadores; camadas, contrato HTTP
+(3 mutações de rota detectadas), isolamento por empresa; paridade SaaS byte a byte; métricas da §15.2; e o
+I18N-FULL-V1 (ponta `0f83da08`): mesmos arquivos e hunks de conflito das fatias anteriores, nenhum novo.
+
+Achados e tratamento:
+
+- Defeito preexistente da §15.4 confirmado e detalhado (texto acima).
+- P2 — o harness aceitava `active` qualquer: passou a fixar `active == ''` com o marcador `KNOWN-DEFECT`, a conferir
+  `general_admin_name` no cadastro e a exigir nenhum diálogo ao inativar.
+- P3 — 4 mutações do auditor (de 26) sobreviviam ao teste de caracterização; os 4 cenários acrescentados as detectam.
+- P3, registrados sem mudança: `saveCompany`/`toggleCompany` passaram de `async` de bloco a globais (o backend autoriza
+  cada chamada); os módulos dependem do `hasPermission` de um argumento do `app.js` (mesmo padrão das fatias
+  anteriores); os módulos rodam em modo estrito (sem efeito observável).

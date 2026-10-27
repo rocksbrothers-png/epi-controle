@@ -25,7 +25,6 @@ const KINDS = ['employee', 'epi', 'outsourcedCompany', 'outsourcedEmployee'];
 const ROLES = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'viewer'];
 const LIST = { employee: 'archivedEmployees', epi: 'archivedEpis', outsourcedCompany: 'archivedOutsourcedCompanies', outsourcedEmployee: 'archivedOutsourcedEmployees' };
 const PREFIX = { employee: 'archivedEmployees', epi: 'archivedEpis', outsourcedCompany: 'archivedOutsourcedCompanies', outsourcedEmployee: 'archivedOutsourcedEmployees' };
-const ACTIVE = { employee: 'employees', epi: 'epis', outsourcedCompany: 'outsourcedCompanies', outsourcedEmployee: 'employees' };
 
 function sampleArchived() {
   return [

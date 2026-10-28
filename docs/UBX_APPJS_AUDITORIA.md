@@ -859,7 +859,10 @@ com o Administrador Geral) e inativar (`PUT` com `active: 0`, sem diálogos): **
 O fixture aceita `active: ''`; o harness fixa esse valor com o marcador `KNOWN-DEFECT` (§15.4), para que a correção
 apareça como falha esperada, e não passe em silêncio.
 
-### 15.4 Defeito preexistente encontrado (fora do escopo, não corrigido)
+### 15.4 Defeito preexistente encontrado (fora do escopo; corrigido depois em FIX-EMPRESAS-ACTIVE-V1)
+
+Corrigido em PR próprio: ver `docs/FIX_EMPRESAS_ACTIVE_V1.md`.
+
 
 O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
 opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o

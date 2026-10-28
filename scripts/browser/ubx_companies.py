@@ -116,10 +116,8 @@ def company_edit(f):
     body = sent[0]['body']
     assert body['actor_user_id'] == 7 and body['plan_name'] == 'pro' and body['user_limit'] == 10, body
     assert 'general_admin_email' not in body and 'general_admin_name' not in body, body
-    # KNOWN-DEFECT (preexistente na main, docs/UBX_APPJS_AUDITORIA.md §15.4): data-i18n-value troca o
-    # value das opções do <select name="active"> e o formulário envia active=''; o backend real recusa.
-    # O fixture aceita, e esta asserção fixa o comportamento atual — a correção vai fazê-la falhar de propósito.
-    assert body['active'] == '', body
+    # FIX-EMPRESAS-ACTIVE-V1 (antes: active='' — docs/UBX_APPJS_AUDITORIA.md §15.4): o seletor envia 1/0.
+    assert body['active'] == '1', body
     expect(form.locator('[name="id"]')).to_have_value('')
 
 
@@ -139,7 +137,7 @@ def company_create(f):
     body = sent[0]['body']
     assert body['general_admin_email'] == 'owner@nova.test' and body['plan_name'] == 'start', body
     assert body['general_admin_name'] == '', body
-    assert body['active'] == '', body  # KNOWN-DEFECT §15.4 (ver company_edit)
+    assert body['active'] == '1', body  # FIX-EMPRESAS-ACTIVE-V1 (ver company_edit)
 
 
 def company_toggle(f):

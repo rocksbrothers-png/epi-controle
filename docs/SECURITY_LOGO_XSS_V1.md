@@ -48,7 +48,17 @@ validação nenhuma. Na prática, a `main` aceitava 11 das 12 entradas maliciosa
    - Logotipo e favicon aceitam PNG/JPEG/SVG; o logotipo de login aceita PNG/SVG, como antes.
    - `favicon_type` no white-label de Empresas passa a usar a mesma validação de Minha Empresa.
    - Texto legado sem `data:` (que o app nunca mostrou como imagem; mostrava o logotipo padrão) é descartado ao
-     gravar, em vez de recusado. Assim, editar uma empresa antiga não quebra.
+     gravar, em vez de recusado.
+   - No cadastro de Empresas, as imagens do white-label são validadas fora do `try/except` que engolia erros
+     (achado da auditoria: antes o valor bruto chegava ao `INSERT`).
+   - **Valor já gravado reenviado não bloqueia a gravação.** As telas reenviam a imagem atual com os demais campos
+     (`companySavePayload`, ativar/inativar, Comercial, Minha Empresa, marca da plataforma). Uma data URL gravada
+     antes da regra estrita poderia impedir o Master de editar ou suspender a empresa, ou o Administrador Geral de
+     salvar as configurações. Por isso:
+     - na edição de Empresas, as imagens são campos protegidos que a rota restaura do registro atual; o valor
+       reenviado só é saneado, sem recusa;
+     - em Minha Empresa e na marca da plataforma, se o valor enviado é igual ao gravado, ele é mantido como está (a
+       exibição já o ignora); um valor novo continua sujeito à regra estrita.
 2. **Leitura pública.** `/api/tenant/resolve` (sem login) devolve vazio para valores gravados antes da correção que
    não passem na regra.
 3. **Exibição (defesa em profundidade, cobre dados já gravados).**
@@ -67,15 +77,46 @@ de CodeQL nem exclusões.
 
 | Teste | Cobre | Na `main` | Com a correção |
 |---|---|---|---|
-| `tests/test_security_logo_xss_v1.py` (63) | Validação de logotipo, login e favicon; marca da plataforma; Minha Empresa; white-label; resolução pública de tenant; ficha HTML. Negativos (12 entradas maliciosas) e positivos (PNG/JPEG/JPG/SVG reais) | não importa (helper inexistente); o validador antigo aceita 11/12 entradas maliciosas | 63 passam |
+| `tests/test_security_logo_xss_v1.py` (73) | Validação de logotipo, login e favicon; marca da plataforma; Minha Empresa; white-label; cadastro e edição de Empresas; valor legado reenviado; resolução pública de tenant; ficha HTML. Negativos (12 entradas maliciosas) e positivos (PNG/JPEG/JPG/SVG reais) | não importa (helper inexistente); o validador antigo aceita 11/12 entradas maliciosas | 73 passam |
 | `static/js/test/security-logo-xss-runtime.js` (3) | `companyLogoSrc`, `companyLogoMarkup` e `applyBranding` lidos do código real | 3 falham | 3 passam |
 | `scripts/browser/security_logo_xss.py` (Chromium, 5 idiomas, 8 cenários) | Login, topo e marca da plataforma, Empresas, Minha Empresa: malicioso não executa, legítimo aparece | maliciosos executam (4/4) | 40/40 |
 
-Suítes completas: pytest 4.549 passaram; a única falha é `test_migration_phase2_formats[ods]`, que precisa do pacote
+Suítes completas: pytest 4.559 passaram; a única falha é `test_migration_phase2_formats[ods]`, que precisa do pacote
 `odf`, ausente no ambiente local (falha igual na `main`). Testes JS: 653.
 
-## 5. Riscos residuais (fora deste PR — propostos como correções separadas)
+## 5. Auditoria independente
 
+Agente separado, só leitura, sobre `1518afc7`/`91f7f37`. Conferiu:
+- todos os caminhos de gravação e de exibição;
+- a regex (`fullmatch` + `strip`; JS com `^…$` sem flag `m`; sem backtracking catastrófico);
+- o escape;
+- os logotipos legítimos (uploads e PDF);
+- RBAC e isolamento, sem ciclos de importação;
+- a paridade byte a byte com o SaaS.
+
+Das mutações aplicadas, 13 foram detectadas. As 2 não detectadas (tirar o escape do `src` no `app.js` ou no
+`tenant-init`) são equivalentes, porque a regex já impede os caracteres perigosos.
+
+Achados e tratamento:
+
+| Achado | Tratamento |
+|---|---|
+| **F1 (major)** — cadastro de Empresas: `login_logo_type`/`favicon_type` validados dentro de `try/except: pass`; o valor malicioso chegava ao `INSERT` | Validação estrita fora do `except` (cadastro) + testes do caminho de cadastro |
+| **F2 (minor→major)** — valor legado fora da regra, reenviado pelas telas, bloquearia editar/suspender a empresa e salvar Minha Empresa/marca | Edição de Empresas saneia (campo protegido, restaurado pela rota); Minha Empresa e marca mantêm o valor gravado quando reenviado igual; testes |
+| **F3 (minor)** — lista de riscos residuais incompleta | Lista abaixo atualizada |
+| **F4 (info)** — testes não cobriam cadastro nem o legado | Cobertos (73 testes) |
+| **F5 (info)** — CodeQL | Nenhuma alteração de configuração; conferir no PR que o alerta original fecha |
+
+## 6. Riscos residuais (fora deste PR — propostos como correções separadas)
+
+- **APIs autenticadas devolvem o valor gravado sem saneamento.** `GET /api/my-company`, `/api/companies`,
+  `platform_brand` e `user.logo_type` do bootstrap. A proteção contra valores antigos fica na exibição do app (e
+  na resolução pública de tenant). Um consumidor novo dessas APIs precisa aplicar a mesma regra.
+- **Antes de integrar, contagem de dados (só leitura):** quantas linhas têm `logo_type`, `login_logo_type` ou
+  `favicon_type` começando com `data:` e fora da regra, mais o `platform_brand`. Essas imagens passam a aparecer
+  como o logotipo padrão até um novo upload. Não alteramos dados reais.
+- **Validação do white-label no cadastro ainda engole outros erros** (slug, cores…) no `try/except` preexistente.
+  Fora do escopo: as imagens já saíram dele.
 - **Ficha EPI em HTML: demais campos sem escape (alta).** `render_ficha_epi_html_document` insere sem escape
   colaborador, função, setor, EPI, CA, unidade, empregador, declaração e observações. A ficha é servida na mesma
   origem (`text/html`, sem CSP) e guardada em snapshot. Quem cadastra colaboradores/EPIs consegue injetar HTML.
@@ -84,8 +125,9 @@ Suítes completas: pytest 4.549 passaram; a única falha é `test_migration_phas
 - **Foto do EPI e assinaturas (alta).** `epi_photo_data` é gravado sem validação (`modules/epis/service.py`) e
   exibido sem escape em `static/js/views/epis.js` (lista de EPIs). `signature_data` entra na ficha HTML com
   `startswith('data:image')`. Proposta: a mesma regra de data URL base64 e escape.
-- **Texto de empresa no topo** (`company_name`/`company_cnpj` em `updateTopbarCompanyBadge`) e outros textos sem
-  escape já registrados na auditoria UBX. Proposta: escapar em uma revisão dedicada.
+- **Textos sem escape ao lado do logotipo:** `company_name`/`company_cnpj` no selo do topo (`static/app.js`,
+  `refs.companyBadge.innerHTML`), o nome da empresa nos cartões do Comercial (`${item.name}`) e outros textos já
+  registrados na auditoria UBX. Proposta: escapar em uma revisão dedicada.
 - **CSP em Report-Only.** Passar a aplicar o CSP reduziria o impacto de qualquer XSS remanescente. Exige revisão
   dos scripts inline.
 - **Valores maliciosos já gravados** continuam no banco até a próxima gravação. Não são mais exibidos (exibição

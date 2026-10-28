@@ -132,6 +132,25 @@ def validate_login_logo_payload(value):
     return logo
 
 
+def validate_image_keeping_stored(value, stored, validator=None):
+    """Valida a imagem enviada sem bloquear a gravação por causa de um valor já gravado.
+
+    As telas reenviam a imagem atual junto com os demais campos. Se o valor
+    enviado é o mesmo já gravado e não passa na regra estrita (gravado antes de
+    SECURITY-LOGO-XSS-V1), ele é mantido como está — a exibição já o ignora e só
+    um upload novo o substitui —, em vez de impedir salvar o resto do formulário.
+    Valor novo continua sujeito à validação estrita.
+    """
+    validator = validator or validate_logo_payload
+    submitted = str(value or '').strip()
+    if submitted and submitted == str(stored or '').strip():
+        try:
+            return validator(submitted)
+        except ValueError:
+            return stored
+    return validator(value)
+
+
 def company_license_label(status):
     return {
         'active': 'Ativo',
@@ -265,13 +284,15 @@ def get_platform_brand(connection):
     return {**DEFAULT_PLATFORM_BRAND, **parsed}
 
 
-def validate_platform_brand_payload(payload):
+def validate_platform_brand_payload(payload, previous=None):
+    previous = previous or {}
     brand = {
         'display_name': str(payload.get('display_name', '')).strip() or DEFAULT_PLATFORM_BRAND['display_name'],
         'legal_name': str(payload.get('legal_name', '')).strip(),
         'cnpj': str(payload.get('cnpj', '')).strip(),
-        'logo_type': validate_logo_payload(payload.get('logo_type', '')),
-        'login_logo_type': validate_login_logo_payload(payload.get('login_logo_type', '')),
+        'logo_type': validate_image_keeping_stored(payload.get('logo_type', ''), previous.get('logo_type')),
+        'login_logo_type': validate_image_keeping_stored(
+            payload.get('login_logo_type', ''), previous.get('login_logo_type'), validate_login_logo_payload),
     }
     if brand['cnpj']:
         brand['cnpj'] = validate_cnpj(brand['cnpj'])
@@ -279,7 +300,7 @@ def validate_platform_brand_payload(payload):
 
 
 def save_platform_brand(connection, payload):
-    brand = validate_platform_brand_payload(payload)
+    brand = validate_platform_brand_payload(payload, get_platform_brand(connection))
     set_meta(connection, 'platform_brand', json.dumps(brand, ensure_ascii=False))
     return brand
 

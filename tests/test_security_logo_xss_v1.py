@@ -164,3 +164,66 @@ def test_ficha_html_escapes_company_name_in_logo_fallback():
     # sem escape (achado separado, registrado em docs/SECURITY_LOGO_XSS_V1.md).
     html = _ficha({'name': '<script>alert(1)</script>', 'logo_type': ''})
     assert 'font-weight:bold;">&lt;script&gt;alert(1)&lt;/script&gt;</div>' in html
+
+
+# ── Cadastro/edição de Empresas (Administrador Master) ───────────────────────
+
+def _company_payload(**extra):
+    return {'name': 'Nova', 'legal_name': 'Nova Ltda', 'cnpj': '11.222.333/0001-81', 'plan_name': 'start',
+            'user_limit': 10, 'license_status': 'active', 'active': 1, **extra}
+
+
+@pytest.fixture
+def company_settings(monkeypatch):
+    import modules.companies.service as companies_service
+    from modules.commercial.service import default_commercial_settings
+    monkeypatch.setattr(companies_service, 'get_commercial_settings', lambda _c: default_commercial_settings())
+    monkeypatch.setattr(companies_service, 'count_company_users', lambda *_a, **_k: 0)
+    return companies_service
+
+
+@pytest.mark.parametrize('field', ['logo_type', 'login_logo_type', 'favicon_type'])
+def test_company_create_rejects_malicious_images(company_settings, field):
+    # Achado da auditoria: login_logo_type/favicon_type eram validados dentro de um
+    # try/except que engolia o erro, e o valor bruto ia para o INSERT do cadastro.
+    with pytest.raises(ValueError, match='Logotipo'):
+        company_settings.validate_company_payload(sqlite3.connect(':memory:'), _company_payload(**{field: MALICIOUS[0]}), None)
+
+
+def test_company_create_keeps_legit_images(company_settings):
+    payload = company_settings.validate_company_payload(
+        sqlite3.connect(':memory:'), _company_payload(logo_type=JPEG, login_logo_type=SVG, favicon_type=PNG), None)
+    assert (payload['logo_type'], payload['login_logo_type'], payload['favicon_type']) == (JPEG, SVG, PNG)
+
+
+def test_company_update_does_not_block_on_stored_legacy_image(company_settings):
+    # Na edição as imagens são campos protegidos, restaurados do registro atual pela
+    # rota; o app reenvia o logotipo gravado (companySavePayload/ativar/inativar).
+    # Um valor antigo fora da regra não pode impedir o Master de editar ou suspender.
+    payload = company_settings.validate_company_payload(
+        sqlite3.connect(':memory:'), _company_payload(logo_type=MALICIOUS[0], login_logo_type=MALICIOUS[4],
+                                                      favicon_type=MALICIOUS[2]), 901)
+    assert (payload['logo_type'], payload['login_logo_type'], payload['favicon_type']) == ('', '', '')
+
+
+# ── Valor já gravado reenviado pelos formulários ─────────────────────────────
+
+@pytest.mark.parametrize('field', ['logo_type', 'favicon_type', 'login_logo_type'])
+def test_my_company_resent_stored_legacy_image_does_not_block_saving(field):
+    stored = 'data:image/svg+xml;utf8,<svg></svg>' if field != 'logo_type' else MALICIOUS[0]
+    fields = validate_my_company_payload(sqlite3.connect(':memory:'), {field: stored, 'display_name': ' X '}, 1, {field: stored})
+    assert fields[field] == stored  # mantido como está (a exibição o ignora); não é reescrito
+    assert fields['display_name'] == 'X'
+
+
+def test_my_company_new_malicious_image_still_rejected_even_with_stored_legacy():
+    with pytest.raises(ValueError):
+        validate_my_company_payload(sqlite3.connect(':memory:'), {'logo_type': MALICIOUS[1]}, 1, {'logo_type': MALICIOUS[0]})
+
+
+def test_platform_brand_resent_stored_legacy_logo_does_not_block_saving():
+    previous = {'logo_type': MALICIOUS[0], 'login_logo_type': MALICIOUS[4]}
+    brand = validate_platform_brand_payload({'display_name': 'Y', 'logo_type': MALICIOUS[0], 'login_logo_type': MALICIOUS[4]}, previous)
+    assert (brand['display_name'], brand['logo_type'], brand['login_logo_type']) == ('Y', MALICIOUS[0], MALICIOUS[4])
+    with pytest.raises(ValueError):
+        validate_platform_brand_payload({'display_name': 'Y', 'logo_type': MALICIOUS[1]}, previous)

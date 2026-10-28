@@ -129,7 +129,20 @@ def edit_change_state(f):
     assert submit_and_get(f, 'PUT', '/api/companies/902')['active'] == '1'
 
 
-SCENARIOS = [create_default_active, create_inactive, edit_active_keeps_active, edit_inactive_keeps_inactive, edit_change_state]
+def commercial_inactive_keeps_inactive(f):
+    # Painel Comercial: mesma causa (`|| 1`) — empresa inativa abria como Ativa e salvar a reativava.
+    f.permissions.extend(p for p in ('commercial:view', 'commercial:update') if p not in f.permissions)
+    f.view('comercial')
+    f.tab('comercial', 'contratos')
+    f.page.locator('#commercial-company').select_option('902')
+    select = f.page.locator('#commercial-form select[name="active"]')
+    expect(select).to_have_value('0')
+    f.page.locator('#commercial-company').select_option('901')
+    expect(select).to_have_value('1')
+
+
+SCENARIOS = [create_default_active, create_inactive, edit_active_keeps_active, edit_inactive_keeps_inactive, edit_change_state,
+             commercial_inactive_keeps_inactive]
 
 
 def main():

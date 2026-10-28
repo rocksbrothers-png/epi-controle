@@ -856,13 +856,12 @@ Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_companies.py` (novo, no wo
 outsourced browser regression*, cujo limite passou de 20 para 30 minutos com quatro harnesses) — lista/resumo/
 detalhes, editar e gravar (`PUT` com os valores comerciais atuais e sem o Administrador Geral), cadastrar (`POST`
 com o Administrador Geral) e inativar (`PUT` com `active: 0`, sem diálogos): **20/20**, e 20/20 também contra a `main`.
-O fixture aceita `active: ''`; o harness fixa esse valor com o marcador `KNOWN-DEFECT` (§15.4), para que a correção
-apareça como falha esperada, e não passe em silêncio.
+O fixture aceita `active: ''`; o harness fixava esse valor com o marcador `KNOWN-DEFECT` (§15.4). Com
+FIX-EMPRESAS-ACTIVE-V1, passou a exigir `active == '1'`.
 
 ### 15.4 Defeito preexistente encontrado (fora do escopo; corrigido depois em FIX-EMPRESAS-ACTIVE-V1)
 
-Corrigido em PR próprio: ver `docs/FIX_EMPRESAS_ACTIVE_V1.md`.
-
+Corrigido em PR próprio: ver `docs/FIX_EMPRESAS_ACTIVE_V1.md`. Texto original do achado:
 
 O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
 opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o
@@ -889,7 +888,8 @@ I18N-FULL-V1 (ponta `0f83da08`): mesmos arquivos e hunks de conflito das fatias 
 Achados e tratamento:
 
 - Defeito preexistente da §15.4 confirmado e detalhado (texto acima).
-- P2 — o harness aceitava `active` qualquer: passou a fixar `active == ''` com o marcador `KNOWN-DEFECT`, a conferir
+- P2 — o harness aceitava `active` qualquer: passou a fixar `active == ''` com o marcador `KNOWN-DEFECT` (hoje `'1'`, após
+  FIX-EMPRESAS-ACTIVE-V1), a conferir
   `general_admin_name` no cadastro e a exigir nenhum diálogo ao inativar.
 - P3 — 4 mutações do auditor (de 26) sobreviviam ao teste de caracterização; os 4 cenários acrescentados as detectam.
 - P3, registrados sem mudança: `saveCompany`/`toggleCompany` passaram de `async` de bloco a globais (o backend autoriza

@@ -28,6 +28,16 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     }
   });
 
+  test('FIX-EMPRESAS-ACTIVE-V1: formulários de empresa não carregam `active` com `|| 1` (0 viraria 1)', () => {
+    const sources = {
+      'app.js (fillCommercialForm)': fs.readFileSync(path.resolve(VIEWS, '..', 'app.js'), 'utf8'),
+      'companies-view.js': fs.readFileSync(path.resolve(__dirname, '..', 'modules', 'companies', 'ui', 'companies-view.js'), 'utf8')
+    };
+    for (const [name, source] of Object.entries(sources)) {
+      assert(!/(?:selected|company)\.active\s*\|\|\s*1/.test(source), `${name}: active || 1`);
+    }
+  });
+
   testAsync('FIX-EMPRESAS-ACTIVE-V1: editar carrega o estado real (inativa abre como 0, ativa como 1)', async () => {
     const out = await companies.scenario(companies.loadModules);
     eq(out['editar:inativa'].form.active, '0', 'empresa inativa');

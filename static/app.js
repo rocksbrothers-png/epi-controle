@@ -4887,7 +4887,8 @@ function fillCommercialForm(companyId) {
   refs.commercialForm.elements.contract_start.value = selected.contract_start || '';
   refs.commercialForm.elements.contract_end.value = selected.contract_end || '';
   refs.commercialForm.elements.license_status.value = selected.license_status || 'active';
-  refs.commercialForm.elements.active.value = String(Number(selected.active || 1));
+  // FIX-EMPRESAS-ACTIVE-V1: `?? 1` (não `|| 1`) — empresa inativa (0) abre como inativa e não é reativada ao salvar.
+  refs.commercialForm.elements.active.value = String(Number(selected.active ?? 1));
   refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
   refreshCommercialPreview(selected);
   resetCommercialContractForm({ preserveClauses: true });

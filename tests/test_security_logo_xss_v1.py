@@ -14,13 +14,13 @@ import sqlite3
 
 import pytest
 
+import modules.companies.service as companies_service
 from modules.commercial.service import (
     safe_image_data_url,
     validate_login_logo_payload,
     validate_logo_payload,
     validate_platform_brand_payload,
 )
-from modules.companies.service import validate_company_whitelabel_payload
 from modules.company_settings.service import validate_my_company_payload
 from modules.ficha.service import render_ficha_epi_html_document
 from modules.tenant.service import resolve_tenant_by_id
@@ -106,10 +106,10 @@ def test_my_company_keeps_legit_images():
 def test_company_whitelabel_validates_favicon_and_login_logo():
     # Antes o favicon era gravado sem nenhuma validação neste caminho.
     with pytest.raises(ValueError):
-        validate_company_whitelabel_payload({'favicon_type': MALICIOUS[0]})
+        companies_service.validate_company_whitelabel_payload({'favicon_type': MALICIOUS[0]})
     with pytest.raises(ValueError):
-        validate_company_whitelabel_payload({'login_logo_type': MALICIOUS[0]})
-    payload = validate_company_whitelabel_payload({'favicon_type': PNG, 'login_logo_type': SVG})
+        companies_service.validate_company_whitelabel_payload({'login_logo_type': MALICIOUS[0]})
+    payload = companies_service.validate_company_whitelabel_payload({'favicon_type': PNG, 'login_logo_type': SVG})
     assert (payload['favicon_type'], payload['login_logo_type']) == (PNG, SVG)
 
 
@@ -175,7 +175,6 @@ def _company_payload(**extra):
 
 @pytest.fixture
 def company_settings(monkeypatch):
-    import modules.companies.service as companies_service
     from modules.commercial.service import default_commercial_settings
     monkeypatch.setattr(companies_service, 'get_commercial_settings', lambda _c: default_commercial_settings())
     monkeypatch.setattr(companies_service, 'count_company_users', lambda *_a, **_k: 0)
@@ -227,3 +226,27 @@ def test_platform_brand_resent_stored_legacy_logo_does_not_block_saving():
     assert (brand['display_name'], brand['logo_type'], brand['login_logo_type']) == ('Y', MALICIOUS[0], MALICIOUS[4])
     with pytest.raises(ValueError):
         validate_platform_brand_payload({'display_name': 'Y', 'logo_type': MALICIOUS[1]}, previous)
+
+
+def _meta_conn(brand):
+    import json
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute('CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT)')
+    conn.execute("INSERT INTO app_meta (key, value) VALUES ('platform_brand', ?)", (json.dumps(brand),))
+    return conn
+
+
+def test_save_platform_brand_keeps_stored_legacy_logo_and_rejects_new_malicious():
+    from modules.commercial.service import get_platform_brand, save_platform_brand
+    conn = _meta_conn({'display_name': 'X', 'logo_type': MALICIOUS[0], 'login_logo_type': MALICIOUS[4]})
+    saved = save_platform_brand(conn, {'display_name': 'Novo', 'logo_type': MALICIOUS[0], 'login_logo_type': MALICIOUS[4]})
+    assert (saved['display_name'], saved['logo_type'], saved['login_logo_type']) == ('Novo', MALICIOUS[0], MALICIOUS[4])
+    assert get_platform_brand(conn)['display_name'] == 'Novo'
+    with pytest.raises(ValueError):
+        save_platform_brand(conn, {'display_name': 'Novo', 'logo_type': MALICIOUS[1]})
+
+
+def test_platform_brand_login_logo_keeps_png_svg_only_rule():
+    with pytest.raises(ValueError):
+        validate_platform_brand_payload({'display_name': 'X', 'login_logo_type': JPEG})

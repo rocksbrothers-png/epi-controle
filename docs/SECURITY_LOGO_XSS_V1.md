@@ -77,7 +77,7 @@ de CodeQL nem exclusões.
 
 | Teste | Cobre | Na `main` | Com a correção |
 |---|---|---|---|
-| `tests/test_security_logo_xss_v1.py` (73) | Validação de logotipo, login e favicon; marca da plataforma; Minha Empresa; white-label; cadastro e edição de Empresas; valor legado reenviado; resolução pública de tenant; ficha HTML. Negativos (12 entradas maliciosas) e positivos (PNG/JPEG/JPG/SVG reais) | não importa (helper inexistente); o validador antigo aceita 11/12 entradas maliciosas | 73 passam |
+| `tests/test_security_logo_xss_v1.py` (75) | Validação de logotipo, login e favicon; marca da plataforma; Minha Empresa; white-label; cadastro e edição de Empresas; valor legado reenviado; resolução pública de tenant; ficha HTML. Negativos (12 entradas maliciosas) e positivos (PNG/JPEG/JPG/SVG reais) | não importa (helper inexistente); o validador antigo aceita 11/12 entradas maliciosas | 75 passam |
 | `static/js/test/security-logo-xss-runtime.js` (3) | `companyLogoSrc`, `companyLogoMarkup` e `applyBranding` lidos do código real | 3 falham | 3 passam |
 | `scripts/browser/security_logo_xss.py` (Chromium, 5 idiomas, 8 cenários) | Login, topo e marca da plataforma, Empresas, Minha Empresa: malicioso não executa, legítimo aparece | maliciosos executam (4/4) | 40/40 |
 
@@ -104,8 +104,13 @@ Achados e tratamento:
 | **F1 (major)** — cadastro de Empresas: `login_logo_type`/`favicon_type` validados dentro de `try/except: pass`; o valor malicioso chegava ao `INSERT` | Validação estrita fora do `except` (cadastro) + testes do caminho de cadastro |
 | **F2 (minor→major)** — valor legado fora da regra, reenviado pelas telas, bloquearia editar/suspender a empresa e salvar Minha Empresa/marca | Edição de Empresas saneia (campo protegido, restaurado pela rota); Minha Empresa e marca mantêm o valor gravado quando reenviado igual; testes |
 | **F3 (minor)** — lista de riscos residuais incompleta | Lista abaixo atualizada |
-| **F4 (info)** — testes não cobriam cadastro nem o legado | Cobertos (73 testes) |
+| **F4 (info)** — testes não cobriam cadastro nem o legado | Cobertos (75 testes) |
 | **F5 (info)** — CodeQL | Nenhuma alteração de configuração; conferir no PR que o alerta original fecha |
+
+Reverificação (mesmo auditor, sobre `24b18e24`/`5ff8bb4`): **aprovado, sem bloqueio**. O caminho que mantém a
+imagem gravada só devolve o valor já existente no banco, nunca o enviado. Nenhum outro caminho de gravação deixa
+passar imagem fora da regra. Reverter as correções faz 7 testes falharem. As duas lacunas apontadas (chamada de
+`save_platform_brand` sem `previous`; logotipo de login da marca aceitando JPEG) ganharam testes.
 
 ## 6. Riscos residuais (fora deste PR — propostos como correções separadas)
 
@@ -130,6 +135,6 @@ Achados e tratamento:
   registrados na auditoria UBX. Proposta: escapar em uma revisão dedicada.
 - **CSP em Report-Only.** Passar a aplicar o CSP reduziria o impacto de qualquer XSS remanescente. Exige revisão
   dos scripts inline.
-- **Valores maliciosos já gravados** continuam no banco até a próxima gravação. Não são mais exibidos (exibição
+- **Valores maliciosos já gravados** continuam no banco até um novo upload ou a remoção da imagem (regravar o formulário os mantém). Não são mais exibidos (exibição
   saneada) e não aparecem na resolução pública. Uma limpeza de dados exigiria autorização (dados reais), então não
   foi feita.

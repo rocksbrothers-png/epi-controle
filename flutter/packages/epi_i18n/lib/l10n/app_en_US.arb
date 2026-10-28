@@ -1327,5 +1327,59 @@
   "feedbackStatusCorrectiveAction": "Corrective action open",
   "feedbackStatusMoreInformation": "More information requested",
   "feedbackStatusEnded": "Concluded",
-  "feedbackStatusNotApproved": "Not approved"
+  "feedbackStatusNotApproved": "Not approved",
+  "qrInstruction": "Point at a QR code or barcode",
+  "qrDetected": "Code detected",
+  "qrScanAgain": "Scan again",
+  "qrTorchOn": "Turn flashlight on",
+  "qrTorchOff": "Turn flashlight off",
+  "formNameLabel": "Name",
+  "formCityLabel": "City",
+  "formSaveFailed": "Could not save",
+  "formExample": "E.g. {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "New user",
+  "userTemporaryPassword": "Temporary password",
+  "userPasswordHint": "Enter a password or use the button to generate one",
+  "userCopyPassword": "Copy password",
+  "userGeneratePassword": "Generate a secure password",
+  "userPasswordCopied": "Password copied to the clipboard.",
+  "userEmployeeIdRequired": "Employee ID (required)",
+  "userIdentityRequired": "Enter a username and full name",
+  "userDeleteNamed": "Delete user \"{name}\"?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "New unit",
+  "unitFieldsRequired": "Enter a name, city and company",
+  "archivalLoadFailed": "Could not load the archival policy.",
+  "archivalInvalidPeriods": "Enter valid retention periods (at least 5 years).",
+  "archivalSaved": "Archival policy saved successfully.",
+  "archivalSave": "Save archival policy",
+  "archivalYearsSuffix": "years",
+  "archivalPolicyIntro": "Set how many years archived records are retained under the company’s internal policy before permanent deletion becomes available (Brazilian legal minimum: 5 years).",
+  "archivalPpeRecordRule": "PPE issue record: fixed 5-year retention under Brazil’s NR-6 — a separate rule unaffected by this policy.",
+  "roleMasterAdmin": "Master Administrator",
+  "roleGeneralAdmin": "General Administrator",
+  "roleRegistryAdmin": "Registry Administrator",
+  "roleLocalAdmin": "Local Administrator",
+  "rolePpeManager": "PPE Manager",
+  "roleEmployee": "Employee",
+  "roleBuyer": "Buyer",
+  "roleApprover": "Approver",
+  "roleCertificationReadOnly": "Certification (read-only)",
+  "unitNameHint": "E.g. Platform P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Vessel",
+  "unitTypePlatform": "Platform"
 }

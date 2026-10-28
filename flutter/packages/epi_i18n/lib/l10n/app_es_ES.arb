@@ -1300,5 +1300,59 @@
   "feedbackStatusCorrectiveAction": "Acción correctiva abierta",
   "feedbackStatusMoreInformation": "Se solicitó más información",
   "feedbackStatusEnded": "Finalizado",
-  "feedbackStatusNotApproved": "No aprobado"
+  "feedbackStatusNotApproved": "No aprobado",
+  "qrInstruction": "Apunte a un código QR o de barras",
+  "qrDetected": "Código detectado",
+  "qrScanAgain": "Escanear de nuevo",
+  "qrTorchOn": "Encender la linterna",
+  "qrTorchOff": "Apagar la linterna",
+  "formNameLabel": "Nombre",
+  "formCityLabel": "Ciudad",
+  "formSaveFailed": "No se pudo guardar",
+  "formExample": "Ej.: {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "Nuevo usuario",
+  "userTemporaryPassword": "Contraseña temporal",
+  "userPasswordHint": "Escriba una contraseña o use el botón para generarla",
+  "userCopyPassword": "Copiar contraseña",
+  "userGeneratePassword": "Generar una contraseña segura",
+  "userPasswordCopied": "Contraseña copiada al portapapeles.",
+  "userEmployeeIdRequired": "ID del empleado (obligatorio)",
+  "userIdentityRequired": "Introduzca el usuario y el nombre completo",
+  "userDeleteNamed": "¿Eliminar al usuario \"{name}\"?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "Nueva unidad",
+  "unitFieldsRequired": "Introduzca el nombre, la ciudad y la empresa",
+  "archivalLoadFailed": "No se pudo cargar la política de archivo.",
+  "archivalInvalidPeriods": "Introduzca períodos válidos (mínimo 5 años).",
+  "archivalSaved": "Política de archivo guardada correctamente.",
+  "archivalSave": "Guardar política de archivo",
+  "archivalYearsSuffix": "años",
+  "archivalPolicyIntro": "Defina durante cuántos años se conservan los registros archivados conforme a la política interna de la empresa antes de habilitar su eliminación definitiva (mínimo legal brasileño: 5 años).",
+  "archivalPpeRecordRule": "Ficha de entrega de EPI: conservación fija de 5 años según la NR-6 brasileña; esta regla independiente no cambia con esta política.",
+  "roleMasterAdmin": "Administrador Master",
+  "roleGeneralAdmin": "Administrador General",
+  "roleRegistryAdmin": "Administrador de Registro",
+  "roleLocalAdmin": "Administrador Local",
+  "rolePpeManager": "Gestor de EPP",
+  "roleEmployee": "Empleado",
+  "roleBuyer": "Comprador",
+  "roleApprover": "Aprobador",
+  "roleCertificationReadOnly": "Certificación (solo lectura)",
+  "unitNameHint": "Ej.: Plataforma P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Embarcación",
+  "unitTypePlatform": "Plataforma"
 }

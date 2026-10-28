@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/i18n/entity_labels.dart';
 import '../../core/bloc/users_cubit.dart';
 
 class UsersScreen extends StatelessWidget {
@@ -45,6 +46,7 @@ class _UsersBody extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
+            tooltip: l10n.refresh,
             onPressed: () => context.read<UsersCubit>().load(),
           ),
         ],
@@ -132,7 +134,7 @@ class _UserTile extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(AppLocalizations.of(ctx).confirmDeleteTitle),
-        content: Text('Excluir usuário "$name"?\n\n${AppLocalizations.of(ctx).confirmDeleteMessage}'),
+        content: Text('${AppLocalizations.of(ctx).userDeleteNamed(name)}\n\n${AppLocalizations.of(ctx).confirmDeleteMessage}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -201,7 +203,10 @@ class _UserTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (role.isNotEmpty)
-            EpiBadge(status: EpiBadgeStatus.inReview, label: role),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .35),
+              child: EpiBadge(status: EpiBadgeStatus.inReview, label: appRoleLabel(role, l10n)),
+            ),
           PopupMenuButton<String>(
             itemBuilder: (ctx) => [
               PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
@@ -250,6 +255,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   bool _saving = false;
   bool _showPassword = false;
   String? _error;
+  String Function(AppLocalizations)? _localError;
 
   static const _roles = [
     'general_admin',
@@ -284,14 +290,14 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     await Clipboard.setData(ClipboardData(text: _passwordCtrl.text));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Senha copiada para a área de transferência.')),
+        SnackBar(content: Builder(builder: (context) => Text(AppLocalizations.of(context).userPasswordCopied))),
       );
     }
   }
 
   /// Extrai a mensagem real do envelope de erro do backend
   /// ({error:{message}}, {error: '...'} ou {message: '...'}).
-  static String _errorMessageFrom(DioException e) {
+  static String? _errorMessageFrom(DioException e) {
     final data = e.response?.data;
     if (data is Map) {
       final err = data['error'];
@@ -300,7 +306,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       if (data['message'] is String) return data['message'] as String;
       if (data['detail'] is String) return data['detail'] as String;
     }
-    return 'Erro ao salvar';
+    return null;
   }
 
   @override
@@ -349,7 +355,10 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     final username = _usernameCtrl.text.trim();
     final fullName = _fullNameCtrl.text.trim();
     if (username.isEmpty || fullName.isEmpty) {
-      setState(() => _error = 'Preencha usuário e nome completo');
+      setState(() {
+        _error = null;
+        _localError = (l) => l.userIdentityRequired;
+      });
       return;
     }
 
@@ -372,6 +381,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
     setState(() {
       _saving = true;
       _error = null;
+      _localError = null;
     });
 
     try {
@@ -391,6 +401,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
       setState(() {
         _saving = false;
         _error = _errorMessageFrom(e);
+        _localError = _error == null ? (l) => l.formSaveFailed : null;
       });
     } catch (e) {
       setState(() {
@@ -404,7 +415,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(_isEdit ? l10n.edit : 'Novo usuário'),
+      title: Text(_isEdit ? l10n.edit : l10n.userNewTitle),
       content: SizedBox(
         width: 360,
         child: SingleChildScrollView(
@@ -413,28 +424,31 @@ class _UserFormDialogState extends State<_UserFormDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               EpiInput(
-                label: 'Nome de usuário',
-                hint: 'Ex: joao.silva',
+                label: l10n.loginUsername,
+                hint: l10n.formExample('joao.silva'),
                 controller: _usernameCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               EpiInput(
                 label: AppLocalizations.of(context).employeeNameLabel,
-                hint: 'Ex: João Silva',
+                hint: l10n.formExample('João Silva'),
                 controller: _fullNameCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
+                isExpanded: true,
+                itemHeight: null,
                 value: _role,
                 decoration: InputDecoration(
                   labelText: AppLocalizations.of(context).moduleVisibilityRoleLabel,
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
+                selectedItemBuilder: (context) => _roles.map((r) => _selectedDropdownLabel(appRoleLabel(r, AppLocalizations.of(context)))).toList(),
                 items: _roles
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                    .map((r) => DropdownMenuItem(value: r, child: Builder(builder: (context) => Text(appRoleLabel(r, AppLocalizations.of(context))))))
                     .toList(),
                 onChanged: _saving
                     ? null
@@ -452,12 +466,15 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                 )
               else
                 DropdownButtonFormField<int>(
+                isExpanded: true,
+                itemHeight: null,
                   value: _companyId,
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context).settingsCompanyLabel,
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
+                  selectedItemBuilder: (context) => _companies.map((c) => _selectedDropdownLabel(c.name)).toList(),
                   items: _companies
                       .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                       .toList(),
@@ -466,8 +483,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               if (_needsEmployee) ...[
                 const SizedBox(height: EpiSpacing.md),
                 EpiInput(
-                  label: 'ID do Colaborador (obrigatório para admin/user/employee)',
-                  hint: 'Ex: 42',
+                  label: l10n.userEmployeeIdRequired,
+                  hint: l10n.formExample('42'),
                   controller: _employeeIdCtrl,
                   keyboardType: TextInputType.number,
                   enabled: !_saving,
@@ -476,8 +493,8 @@ class _UserFormDialogState extends State<_UserFormDialog> {
               if (!_isEdit) ...[
                 const SizedBox(height: EpiSpacing.md),
                 EpiInput(
-                  label: 'Senha temporária',
-                  hint: 'Digite ou use o botão para gerar',
+                  label: l10n.userTemporaryPassword,
+                  hint: l10n.userPasswordHint,
                   controller: _passwordCtrl,
                   obscureText: !_showPassword,
                   enabled: !_saving,
@@ -485,7 +502,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: _showPassword ? 'Ocultar senha' : 'Mostrar senha',
+                        tooltip: _showPassword ? l10n.loginHidePassword : l10n.loginShowPassword,
                         icon: Icon(
                           _showPassword
                               ? Icons.visibility_off_rounded
@@ -497,7 +514,7 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                             : () => setState(() => _showPassword = !_showPassword),
                       ),
                       IconButton(
-                        tooltip: 'Copiar senha',
+                        tooltip: l10n.userCopyPassword,
                         icon: const Icon(Icons.copy_rounded, size: 20),
                         onPressed: _saving ? null : _copyPassword,
                       ),
@@ -510,14 +527,14 @@ class _UserFormDialogState extends State<_UserFormDialog> {
                   child: TextButton.icon(
                     onPressed: _saving ? null : _generatePassword,
                     icon: const Icon(Icons.password_rounded, size: 18),
-                    label: const Text('Gerar senha segura'),
+                    label: Text(l10n.userGeneratePassword),
                   ),
                 ),
               ],
-              if (_error != null) ...[
+              if (_error != null || _localError != null) ...[
                 const SizedBox(height: EpiSpacing.md),
                 Text(
-                  _error!,
+                  _error ?? _localError!(l10n),
                   style: const TextStyle(color: EpiColors.danger, fontSize: 12),
                 ),
               ],
@@ -563,3 +580,9 @@ class _RetryView extends StatelessWidget {
     );
   }
 }
+
+
+Widget _selectedDropdownLabel(String text) => Tooltip(
+  message: text,
+  child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+);

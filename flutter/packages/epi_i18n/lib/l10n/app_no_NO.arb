@@ -1300,5 +1300,59 @@
   "feedbackStatusCorrectiveAction": "Åpent korrigerende tiltak",
   "feedbackStatusMoreInformation": "Mer informasjon etterspurt",
   "feedbackStatusEnded": "Avsluttet",
-  "feedbackStatusNotApproved": "Ikke godkjent"
+  "feedbackStatusNotApproved": "Ikke godkjent",
+  "qrInstruction": "Rett kameraet mot en QR-kode eller strekkode",
+  "qrDetected": "Kode registrert",
+  "qrScanAgain": "Skann på nytt",
+  "qrTorchOn": "Slå på lommelykten",
+  "qrTorchOff": "Slå av lommelykten",
+  "formNameLabel": "Navn",
+  "formCityLabel": "By",
+  "formSaveFailed": "Kunne ikke lagre",
+  "formExample": "F.eks. {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "Ny bruker",
+  "userTemporaryPassword": "Midlertidig passord",
+  "userPasswordHint": "Skriv inn et passord eller bruk knappen for å generere et",
+  "userCopyPassword": "Kopier passord",
+  "userGeneratePassword": "Generer et sikkert passord",
+  "userPasswordCopied": "Passordet er kopiert til utklippstavlen.",
+  "userEmployeeIdRequired": "Medarbeider-ID (påkrevd)",
+  "userIdentityRequired": "Fyll inn brukernavn og fullt navn",
+  "userDeleteNamed": "Slette brukeren «{name}»?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "Ny enhet",
+  "unitFieldsRequired": "Fyll inn navn, by og selskap",
+  "archivalLoadFailed": "Kunne ikke laste arkiveringsreglene.",
+  "archivalInvalidPeriods": "Oppgi gyldige oppbevaringstider (minst 5 år).",
+  "archivalSaved": "Arkiveringsreglene er lagret.",
+  "archivalSave": "Lagre arkiveringsreglene",
+  "archivalYearsSuffix": "år",
+  "archivalPolicyIntro": "Angi hvor mange år arkiverte oppføringer beholdes etter selskapets interne regler før permanent sletting blir tilgjengelig (brasiliansk lovpålagt minimum: 5 år).",
+  "archivalPpeRecordRule": "Utleveringsjournal for verneutstyr: fast oppbevaring i 5 år etter brasiliansk NR-6 – en egen regel som ikke endres av disse innstillingene.",
+  "roleMasterAdmin": "Masteradministrator",
+  "roleGeneralAdmin": "Generell administrator",
+  "roleRegistryAdmin": "Registeradministrator",
+  "roleLocalAdmin": "Lokal administrator",
+  "rolePpeManager": "PVU-ansvarlig",
+  "roleEmployee": "Ansatt",
+  "roleBuyer": "Innkjøper",
+  "roleApprover": "Godkjenner",
+  "roleCertificationReadOnly": "Sertifisering (skrivebeskyttet)",
+  "unitNameHint": "F.eks. plattform P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Fartøy",
+  "unitTypePlatform": "Plattform"
 }

@@ -2919,6 +2919,137 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get feedbackStatusNotApproved => 'Non approuvé';
+
+  @override
+  String get qrInstruction => 'Visez un code QR ou un code-barres';
+
+  @override
+  String get qrDetected => 'Code détecté';
+
+  @override
+  String get qrScanAgain => 'Scanner à nouveau';
+
+  @override
+  String get qrTorchOn => 'Allumer la lampe';
+
+  @override
+  String get qrTorchOff => 'Éteindre la lampe';
+
+  @override
+  String get formNameLabel => 'Nom';
+
+  @override
+  String get formCityLabel => 'Ville';
+
+  @override
+  String get formSaveFailed => 'Impossible d’enregistrer';
+
+  @override
+  String formExample(String value) {
+    return 'Ex. : $value';
+  }
+
+  @override
+  String get userNewTitle => 'Nouvel utilisateur';
+
+  @override
+  String get userTemporaryPassword => 'Mot de passe temporaire';
+
+  @override
+  String get userPasswordHint =>
+      'Saisissez un mot de passe ou utilisez le bouton pour en générer un';
+
+  @override
+  String get userCopyPassword => 'Copier le mot de passe';
+
+  @override
+  String get userGeneratePassword => 'Générer un mot de passe sécurisé';
+
+  @override
+  String get userPasswordCopied => 'Mot de passe copié dans le presse-papiers.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID du salarié (obligatoire)';
+
+  @override
+  String get userIdentityRequired =>
+      'Saisissez l’identifiant et le nom complet';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Supprimer l’utilisateur « $name » ?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nouvelle unité';
+
+  @override
+  String get unitFieldsRequired =>
+      'Renseignez le nom, la ville et l’entreprise';
+
+  @override
+  String get archivalLoadFailed =>
+      'Impossible de charger la politique d’archivage.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Saisissez des durées valides (au moins 5 ans).';
+
+  @override
+  String get archivalSaved => 'Politique d’archivage enregistrée.';
+
+  @override
+  String get archivalSave => 'Enregistrer la politique d’archivage';
+
+  @override
+  String get archivalYearsSuffix => 'ans';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Définissez la durée de conservation des enregistrements archivés selon la politique interne de l’entreprise avant d’autoriser leur suppression définitive (minimum légal brésilien : 5 ans).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Fiche de remise des EPI : conservation fixe de 5 ans selon la NR-6 brésilienne — règle distincte, inchangée par cette politique.';
+
+  @override
+  String get roleMasterAdmin => 'Administrateur Principal';
+
+  @override
+  String get roleGeneralAdmin => 'Administrateur Général';
+
+  @override
+  String get roleRegistryAdmin => 'Administrateur de Registre';
+
+  @override
+  String get roleLocalAdmin => 'Administrateur Local';
+
+  @override
+  String get rolePpeManager => 'Gestionnaire EPI';
+
+  @override
+  String get roleEmployee => 'Employé';
+
+  @override
+  String get roleBuyer => 'Acheteur';
+
+  @override
+  String get roleApprover => 'Approbateur';
+
+  @override
+  String get roleCertificationReadOnly => 'Certification (lecture seule)';
+
+  @override
+  String get unitNameHint => 'Ex. : plateforme P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Navire';
+
+  @override
+  String get unitTypePlatform => 'Plateforme';
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -5836,4 +5967,135 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get feedbackStatusNotApproved => 'Non approuvé';
+
+  @override
+  String get qrInstruction => 'Visez un code QR ou un code-barres';
+
+  @override
+  String get qrDetected => 'Code détecté';
+
+  @override
+  String get qrScanAgain => 'Scanner à nouveau';
+
+  @override
+  String get qrTorchOn => 'Allumer la lampe';
+
+  @override
+  String get qrTorchOff => 'Éteindre la lampe';
+
+  @override
+  String get formNameLabel => 'Nom';
+
+  @override
+  String get formCityLabel => 'Ville';
+
+  @override
+  String get formSaveFailed => 'Impossible d’enregistrer';
+
+  @override
+  String formExample(String value) {
+    return 'Ex. : $value';
+  }
+
+  @override
+  String get userNewTitle => 'Nouvel utilisateur';
+
+  @override
+  String get userTemporaryPassword => 'Mot de passe temporaire';
+
+  @override
+  String get userPasswordHint =>
+      'Saisissez un mot de passe ou utilisez le bouton pour en générer un';
+
+  @override
+  String get userCopyPassword => 'Copier le mot de passe';
+
+  @override
+  String get userGeneratePassword => 'Générer un mot de passe sécurisé';
+
+  @override
+  String get userPasswordCopied => 'Mot de passe copié dans le presse-papiers.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID du salarié (obligatoire)';
+
+  @override
+  String get userIdentityRequired =>
+      'Saisissez l’identifiant et le nom complet';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Supprimer l’utilisateur « $name » ?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nouvelle unité';
+
+  @override
+  String get unitFieldsRequired =>
+      'Renseignez le nom, la ville et l’entreprise';
+
+  @override
+  String get archivalLoadFailed =>
+      'Impossible de charger la politique d’archivage.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Saisissez des durées valides (au moins 5 ans).';
+
+  @override
+  String get archivalSaved => 'Politique d’archivage enregistrée.';
+
+  @override
+  String get archivalSave => 'Enregistrer la politique d’archivage';
+
+  @override
+  String get archivalYearsSuffix => 'ans';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Définissez la durée de conservation des enregistrements archivés selon la politique interne de l’entreprise avant d’autoriser leur suppression définitive (minimum légal brésilien : 5 ans).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Fiche de remise des EPI : conservation fixe de 5 ans selon la NR-6 brésilienne — règle distincte, inchangée par cette politique.';
+
+  @override
+  String get roleMasterAdmin => 'Administrateur Principal';
+
+  @override
+  String get roleGeneralAdmin => 'Administrateur Général';
+
+  @override
+  String get roleRegistryAdmin => 'Administrateur de Registre';
+
+  @override
+  String get roleLocalAdmin => 'Administrateur Local';
+
+  @override
+  String get rolePpeManager => 'Gestionnaire EPI';
+
+  @override
+  String get roleEmployee => 'Employé';
+
+  @override
+  String get roleBuyer => 'Acheteur';
+
+  @override
+  String get roleApprover => 'Approbateur';
+
+  @override
+  String get roleCertificationReadOnly => 'Certification (lecture seule)';
+
+  @override
+  String get unitNameHint => 'Ex. : plateforme P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Navire';
+
+  @override
+  String get unitTypePlatform => 'Plateforme';
 }

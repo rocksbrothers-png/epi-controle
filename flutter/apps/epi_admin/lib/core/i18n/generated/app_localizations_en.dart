@@ -2877,6 +2877,134 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedbackStatusNotApproved => 'Not approved';
+
+  @override
+  String get qrInstruction => 'Point at a QR code or barcode';
+
+  @override
+  String get qrDetected => 'Code detected';
+
+  @override
+  String get qrScanAgain => 'Scan again';
+
+  @override
+  String get qrTorchOn => 'Turn flashlight on';
+
+  @override
+  String get qrTorchOff => 'Turn flashlight off';
+
+  @override
+  String get formNameLabel => 'Name';
+
+  @override
+  String get formCityLabel => 'City';
+
+  @override
+  String get formSaveFailed => 'Could not save';
+
+  @override
+  String formExample(String value) {
+    return 'E.g. $value';
+  }
+
+  @override
+  String get userNewTitle => 'New user';
+
+  @override
+  String get userTemporaryPassword => 'Temporary password';
+
+  @override
+  String get userPasswordHint =>
+      'Enter a password or use the button to generate one';
+
+  @override
+  String get userCopyPassword => 'Copy password';
+
+  @override
+  String get userGeneratePassword => 'Generate a secure password';
+
+  @override
+  String get userPasswordCopied => 'Password copied to the clipboard.';
+
+  @override
+  String get userEmployeeIdRequired => 'Employee ID (required)';
+
+  @override
+  String get userIdentityRequired => 'Enter a username and full name';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Delete user \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'New unit';
+
+  @override
+  String get unitFieldsRequired => 'Enter a name, city and company';
+
+  @override
+  String get archivalLoadFailed => 'Could not load the archival policy.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Enter valid retention periods (at least 5 years).';
+
+  @override
+  String get archivalSaved => 'Archival policy saved successfully.';
+
+  @override
+  String get archivalSave => 'Save archival policy';
+
+  @override
+  String get archivalYearsSuffix => 'years';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Set how many years archived records are retained under the company’s internal policy before permanent deletion becomes available (Brazilian legal minimum: 5 years).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'PPE issue record: fixed 5-year retention under Brazil’s NR-6 — a separate rule unaffected by this policy.';
+
+  @override
+  String get roleMasterAdmin => 'Master Administrator';
+
+  @override
+  String get roleGeneralAdmin => 'General Administrator';
+
+  @override
+  String get roleRegistryAdmin => 'Registry Administrator';
+
+  @override
+  String get roleLocalAdmin => 'Local Administrator';
+
+  @override
+  String get rolePpeManager => 'PPE Manager';
+
+  @override
+  String get roleEmployee => 'Employee';
+
+  @override
+  String get roleBuyer => 'Buyer';
+
+  @override
+  String get roleApprover => 'Approver';
+
+  @override
+  String get roleCertificationReadOnly => 'Certification (read-only)';
+
+  @override
+  String get unitNameHint => 'E.g. Platform P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Vessel';
+
+  @override
+  String get unitTypePlatform => 'Platform';
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -5752,4 +5880,132 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get feedbackStatusNotApproved => 'Not approved';
+
+  @override
+  String get qrInstruction => 'Point at a QR code or barcode';
+
+  @override
+  String get qrDetected => 'Code detected';
+
+  @override
+  String get qrScanAgain => 'Scan again';
+
+  @override
+  String get qrTorchOn => 'Turn flashlight on';
+
+  @override
+  String get qrTorchOff => 'Turn flashlight off';
+
+  @override
+  String get formNameLabel => 'Name';
+
+  @override
+  String get formCityLabel => 'City';
+
+  @override
+  String get formSaveFailed => 'Could not save';
+
+  @override
+  String formExample(String value) {
+    return 'E.g. $value';
+  }
+
+  @override
+  String get userNewTitle => 'New user';
+
+  @override
+  String get userTemporaryPassword => 'Temporary password';
+
+  @override
+  String get userPasswordHint =>
+      'Enter a password or use the button to generate one';
+
+  @override
+  String get userCopyPassword => 'Copy password';
+
+  @override
+  String get userGeneratePassword => 'Generate a secure password';
+
+  @override
+  String get userPasswordCopied => 'Password copied to the clipboard.';
+
+  @override
+  String get userEmployeeIdRequired => 'Employee ID (required)';
+
+  @override
+  String get userIdentityRequired => 'Enter a username and full name';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Delete user \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'New unit';
+
+  @override
+  String get unitFieldsRequired => 'Enter a name, city and company';
+
+  @override
+  String get archivalLoadFailed => 'Could not load the archival policy.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Enter valid retention periods (at least 5 years).';
+
+  @override
+  String get archivalSaved => 'Archival policy saved successfully.';
+
+  @override
+  String get archivalSave => 'Save archival policy';
+
+  @override
+  String get archivalYearsSuffix => 'years';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Set how many years archived records are retained under the company’s internal policy before permanent deletion becomes available (Brazilian legal minimum: 5 years).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'PPE issue record: fixed 5-year retention under Brazil’s NR-6 — a separate rule unaffected by this policy.';
+
+  @override
+  String get roleMasterAdmin => 'Master Administrator';
+
+  @override
+  String get roleGeneralAdmin => 'General Administrator';
+
+  @override
+  String get roleRegistryAdmin => 'Registry Administrator';
+
+  @override
+  String get roleLocalAdmin => 'Local Administrator';
+
+  @override
+  String get rolePpeManager => 'PPE Manager';
+
+  @override
+  String get roleEmployee => 'Employee';
+
+  @override
+  String get roleBuyer => 'Buyer';
+
+  @override
+  String get roleApprover => 'Approver';
+
+  @override
+  String get roleCertificationReadOnly => 'Certification (read-only)';
+
+  @override
+  String get unitNameHint => 'E.g. Platform P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Vessel';
+
+  @override
+  String get unitTypePlatform => 'Platform';
 }

@@ -5412,6 +5412,246 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Reprovado'**
   String get feedbackStatusNotApproved;
+
+  /// No description provided for @qrInstruction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aponte para um código QR ou de barras'**
+  String get qrInstruction;
+
+  /// No description provided for @qrDetected.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Código detectado'**
+  String get qrDetected;
+
+  /// No description provided for @qrScanAgain.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Escanear novamente'**
+  String get qrScanAgain;
+
+  /// No description provided for @qrTorchOn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ligar lanterna'**
+  String get qrTorchOn;
+
+  /// No description provided for @qrTorchOff.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desligar lanterna'**
+  String get qrTorchOff;
+
+  /// No description provided for @formNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome'**
+  String get formNameLabel;
+
+  /// No description provided for @formCityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cidade'**
+  String get formCityLabel;
+
+  /// No description provided for @formSaveFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao salvar'**
+  String get formSaveFailed;
+
+  /// No description provided for @formExample.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ex: {value}'**
+  String formExample(String value);
+
+  /// No description provided for @userNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo usuário'**
+  String get userNewTitle;
+
+  /// No description provided for @userTemporaryPassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha temporária'**
+  String get userTemporaryPassword;
+
+  /// No description provided for @userPasswordHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Digite ou use o botão para gerar'**
+  String get userPasswordHint;
+
+  /// No description provided for @userCopyPassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Copiar senha'**
+  String get userCopyPassword;
+
+  /// No description provided for @userGeneratePassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gerar senha segura'**
+  String get userGeneratePassword;
+
+  /// No description provided for @userPasswordCopied.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha copiada para a área de transferência.'**
+  String get userPasswordCopied;
+
+  /// No description provided for @userEmployeeIdRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'ID do Colaborador (obrigatório)'**
+  String get userEmployeeIdRequired;
+
+  /// No description provided for @userIdentityRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha usuário e nome completo'**
+  String get userIdentityRequired;
+
+  /// No description provided for @userDeleteNamed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Excluir usuário \"{name}\"?'**
+  String userDeleteNamed(String name);
+
+  /// No description provided for @unitNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova unidade'**
+  String get unitNewTitle;
+
+  /// No description provided for @unitFieldsRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha nome, cidade e empresa'**
+  String get unitFieldsRequired;
+
+  /// No description provided for @archivalLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a política de arquivamento.'**
+  String get archivalLoadFailed;
+
+  /// No description provided for @archivalInvalidPeriods.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe períodos válidos (mínimo 5 anos).'**
+  String get archivalInvalidPeriods;
+
+  /// No description provided for @archivalSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Política de arquivamento salva com sucesso.'**
+  String get archivalSaved;
+
+  /// No description provided for @archivalSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar política de arquivamento'**
+  String get archivalSave;
+
+  /// No description provided for @archivalYearsSuffix.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'anos'**
+  String get archivalYearsSuffix;
+
+  /// No description provided for @archivalPolicyIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).'**
+  String get archivalPolicyIntro;
+
+  /// No description provided for @archivalPpeRecordRule.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.'**
+  String get archivalPpeRecordRule;
+
+  /// No description provided for @roleMasterAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Master'**
+  String get roleMasterAdmin;
+
+  /// No description provided for @roleGeneralAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Geral'**
+  String get roleGeneralAdmin;
+
+  /// No description provided for @roleRegistryAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador de Registro'**
+  String get roleRegistryAdmin;
+
+  /// No description provided for @roleLocalAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Local'**
+  String get roleLocalAdmin;
+
+  /// No description provided for @rolePpeManager.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gestor de EPI'**
+  String get rolePpeManager;
+
+  /// No description provided for @roleEmployee.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Funcionário'**
+  String get roleEmployee;
+
+  /// No description provided for @roleBuyer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Comprador'**
+  String get roleBuyer;
+
+  /// No description provided for @roleApprover.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovador'**
+  String get roleApprover;
+
+  /// No description provided for @roleCertificationReadOnly.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Certificação (somente leitura)'**
+  String get roleCertificationReadOnly;
+
+  /// No description provided for @unitNameHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ex: Plataforma P-40'**
+  String get unitNameHint;
+
+  /// No description provided for @unitTypeBase.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Base'**
+  String get unitTypeBase;
+
+  /// No description provided for @unitTypeVessel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Embarcação'**
+  String get unitTypeVessel;
+
+  /// No description provided for @unitTypePlatform.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Plataforma'**
+  String get unitTypePlatform;
 }
 
 class _AppLocalizationsDelegate

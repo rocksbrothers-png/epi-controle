@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/i18n/entity_labels.dart';
 import '../../core/bloc/units_cubit.dart';
 import 'unit_labels.dart';
 
@@ -61,6 +62,7 @@ class _UnitsBody extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
+            tooltip: l10n.refresh,
                 onPressed: () => context.read<UnitsCubit>().load(),
               ),
             ],
@@ -245,7 +247,7 @@ class _UnitTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (type.isNotEmpty)
-            EpiBadge(status: EpiBadgeStatus.inReview, label: type),
+            EpiBadge(status: EpiBadgeStatus.inReview, label: appUnitTypeLabel(type, l10n)),
           PopupMenuButton<String>(
             itemBuilder: (ctx) => [
               PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
@@ -385,6 +387,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
   bool _loadingCompanies = true;
   bool _saving = false;
   String? _error;
+  String Function(AppLocalizations)? _localError;
 
   /// CNPJs da empresa selecionada. A unidade pertence a **um** CNPJ: é ele que
   /// responde fiscalmente pelas entregas e pelo estoque daquela unidade.
@@ -477,7 +480,10 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
     final name = _nameCtrl.text.trim();
     final city = _cityCtrl.text.trim();
     if (name.isEmpty || city.isEmpty || _companyId == null) {
-      setState(() => _error = 'Preencha nome, cidade e empresa');
+      setState(() {
+        _error = null;
+        _localError = (l) => l.unitFieldsRequired;
+      });
       return;
     }
 
@@ -493,6 +499,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
     setState(() {
       _saving = true;
       _error = null;
+      _localError = null;
     });
 
     try {
@@ -513,7 +520,8 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
       final detail = data is Map ? data['detail']?.toString() : null;
       setState(() {
         _saving = false;
-        _error = detail ?? 'Erro ao salvar';
+        _error = detail;
+        _localError = detail == null ? (l) => l.formSaveFailed : null;
       });
     } catch (e) {
       setState(() {
@@ -527,7 +535,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(_isEdit ? l10n.edit : 'Nova unidade'),
+      title: Text(_isEdit ? l10n.edit : l10n.unitNewTitle),
       content: SizedBox(
         width: 360,
         child: SingleChildScrollView(
@@ -536,28 +544,31 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               EpiInput(
-                label: 'Nome',
-                hint: 'Ex: Plataforma P-40',
+                label: l10n.formNameLabel,
+                hint: l10n.unitNameHint,
                 controller: _nameCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               EpiInput(
-                label: 'Cidade',
-                hint: 'Ex: Macaé',
+                label: l10n.formCityLabel,
+                hint: l10n.formExample('Macaé'),
                 controller: _cityCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
+                isExpanded: true,
+                itemHeight: null,
                 value: _unitType,
                 decoration: InputDecoration(
                   labelText: AppLocalizations.of(context).legalEntityTypeLabel,
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
+                selectedItemBuilder: (context) => _unitTypes.map((t) => _selectedDropdownLabel(appUnitTypeLabel(t, AppLocalizations.of(context)))).toList(),
                 items: _unitTypes
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .map((t) => DropdownMenuItem(value: t, child: Builder(builder: (context) => Text(appUnitTypeLabel(t, AppLocalizations.of(context))))))
                     .toList(),
                 onChanged: _saving
                     ? null
@@ -575,12 +586,15 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 )
               else
                 DropdownButtonFormField<int>(
+                isExpanded: true,
+                itemHeight: null,
                   value: _companyId,
                   decoration: InputDecoration(
                     labelText: AppLocalizations.of(context).settingsCompanyLabel,
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
+                  selectedItemBuilder: (context) => _companies.map((c) => _selectedDropdownLabel(c.name)).toList(),
                   items: _companies
                       .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                       .toList(),
@@ -607,6 +621,8 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 )
               else if (_legalEntities.isNotEmpty) ...[
                 DropdownButtonFormField<int>(
+                isExpanded: true,
+                itemHeight: null,
                   value: _legalEntityId,
                   decoration: InputDecoration(
                     labelText: l10n.unitLegalEntityLabel,
@@ -615,6 +631,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
+                  selectedItemBuilder: (context) => _legalEntities.map((e) => _selectedDropdownLabel(e.displayLabel)).toList(),
                   items: _legalEntities
                       .map((e) => DropdownMenuItem(
                             value: e.id,
@@ -632,10 +649,10 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 maxLines: 2,
                 enabled: !_saving,
               ),
-              if (_error != null) ...[
+              if (_error != null || _localError != null) ...[
                 const SizedBox(height: EpiSpacing.md),
                 Text(
-                  _error!,
+                  _error ?? _localError!(l10n),
                   style: const TextStyle(color: EpiColors.danger, fontSize: 12),
                 ),
               ],
@@ -681,3 +698,9 @@ class _RetryView extends StatelessWidget {
     );
   }
 }
+
+
+Widget _selectedDropdownLabel(String text) => Tooltip(
+  message: text,
+  child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+);

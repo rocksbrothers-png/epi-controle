@@ -2904,6 +2904,136 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get feedbackStatusNotApproved => 'No aprobado';
+
+  @override
+  String get qrInstruction => 'Apunte a un código QR o de barras';
+
+  @override
+  String get qrDetected => 'Código detectado';
+
+  @override
+  String get qrScanAgain => 'Escanear de nuevo';
+
+  @override
+  String get qrTorchOn => 'Encender la linterna';
+
+  @override
+  String get qrTorchOff => 'Apagar la linterna';
+
+  @override
+  String get formNameLabel => 'Nombre';
+
+  @override
+  String get formCityLabel => 'Ciudad';
+
+  @override
+  String get formSaveFailed => 'No se pudo guardar';
+
+  @override
+  String formExample(String value) {
+    return 'Ej.: $value';
+  }
+
+  @override
+  String get userNewTitle => 'Nuevo usuario';
+
+  @override
+  String get userTemporaryPassword => 'Contraseña temporal';
+
+  @override
+  String get userPasswordHint =>
+      'Escriba una contraseña o use el botón para generarla';
+
+  @override
+  String get userCopyPassword => 'Copiar contraseña';
+
+  @override
+  String get userGeneratePassword => 'Generar una contraseña segura';
+
+  @override
+  String get userPasswordCopied => 'Contraseña copiada al portapapeles.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID del empleado (obligatorio)';
+
+  @override
+  String get userIdentityRequired =>
+      'Introduzca el usuario y el nombre completo';
+
+  @override
+  String userDeleteNamed(String name) {
+    return '¿Eliminar al usuario \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nueva unidad';
+
+  @override
+  String get unitFieldsRequired =>
+      'Introduzca el nombre, la ciudad y la empresa';
+
+  @override
+  String get archivalLoadFailed => 'No se pudo cargar la política de archivo.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Introduzca períodos válidos (mínimo 5 años).';
+
+  @override
+  String get archivalSaved => 'Política de archivo guardada correctamente.';
+
+  @override
+  String get archivalSave => 'Guardar política de archivo';
+
+  @override
+  String get archivalYearsSuffix => 'años';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Defina durante cuántos años se conservan los registros archivados conforme a la política interna de la empresa antes de habilitar su eliminación definitiva (mínimo legal brasileño: 5 años).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Ficha de entrega de EPI: conservación fija de 5 años según la NR-6 brasileña; esta regla independiente no cambia con esta política.';
+
+  @override
+  String get roleMasterAdmin => 'Administrador Master';
+
+  @override
+  String get roleGeneralAdmin => 'Administrador General';
+
+  @override
+  String get roleRegistryAdmin => 'Administrador de Registro';
+
+  @override
+  String get roleLocalAdmin => 'Administrador Local';
+
+  @override
+  String get rolePpeManager => 'Gestor de EPP';
+
+  @override
+  String get roleEmployee => 'Empleado';
+
+  @override
+  String get roleBuyer => 'Comprador';
+
+  @override
+  String get roleApprover => 'Aprobador';
+
+  @override
+  String get roleCertificationReadOnly => 'Certificación (solo lectura)';
+
+  @override
+  String get unitNameHint => 'Ej.: Plataforma P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Embarcación';
+
+  @override
+  String get unitTypePlatform => 'Plataforma';
 }
 
 /// The translations for Spanish Castilian, as used in Spain (`es_ES`).
@@ -5806,4 +5936,134 @@ class AppLocalizationsEsEs extends AppLocalizationsEs {
 
   @override
   String get feedbackStatusNotApproved => 'No aprobado';
+
+  @override
+  String get qrInstruction => 'Apunte a un código QR o de barras';
+
+  @override
+  String get qrDetected => 'Código detectado';
+
+  @override
+  String get qrScanAgain => 'Escanear de nuevo';
+
+  @override
+  String get qrTorchOn => 'Encender la linterna';
+
+  @override
+  String get qrTorchOff => 'Apagar la linterna';
+
+  @override
+  String get formNameLabel => 'Nombre';
+
+  @override
+  String get formCityLabel => 'Ciudad';
+
+  @override
+  String get formSaveFailed => 'No se pudo guardar';
+
+  @override
+  String formExample(String value) {
+    return 'Ej.: $value';
+  }
+
+  @override
+  String get userNewTitle => 'Nuevo usuario';
+
+  @override
+  String get userTemporaryPassword => 'Contraseña temporal';
+
+  @override
+  String get userPasswordHint =>
+      'Escriba una contraseña o use el botón para generarla';
+
+  @override
+  String get userCopyPassword => 'Copiar contraseña';
+
+  @override
+  String get userGeneratePassword => 'Generar una contraseña segura';
+
+  @override
+  String get userPasswordCopied => 'Contraseña copiada al portapapeles.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID del empleado (obligatorio)';
+
+  @override
+  String get userIdentityRequired =>
+      'Introduzca el usuario y el nombre completo';
+
+  @override
+  String userDeleteNamed(String name) {
+    return '¿Eliminar al usuario \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nueva unidad';
+
+  @override
+  String get unitFieldsRequired =>
+      'Introduzca el nombre, la ciudad y la empresa';
+
+  @override
+  String get archivalLoadFailed => 'No se pudo cargar la política de archivo.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Introduzca períodos válidos (mínimo 5 años).';
+
+  @override
+  String get archivalSaved => 'Política de archivo guardada correctamente.';
+
+  @override
+  String get archivalSave => 'Guardar política de archivo';
+
+  @override
+  String get archivalYearsSuffix => 'años';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Defina durante cuántos años se conservan los registros archivados conforme a la política interna de la empresa antes de habilitar su eliminación definitiva (mínimo legal brasileño: 5 años).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Ficha de entrega de EPI: conservación fija de 5 años según la NR-6 brasileña; esta regla independiente no cambia con esta política.';
+
+  @override
+  String get roleMasterAdmin => 'Administrador Master';
+
+  @override
+  String get roleGeneralAdmin => 'Administrador General';
+
+  @override
+  String get roleRegistryAdmin => 'Administrador de Registro';
+
+  @override
+  String get roleLocalAdmin => 'Administrador Local';
+
+  @override
+  String get rolePpeManager => 'Gestor de EPP';
+
+  @override
+  String get roleEmployee => 'Empleado';
+
+  @override
+  String get roleBuyer => 'Comprador';
+
+  @override
+  String get roleApprover => 'Aprobador';
+
+  @override
+  String get roleCertificationReadOnly => 'Certificación (solo lectura)';
+
+  @override
+  String get unitNameHint => 'Ej.: Plataforma P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Embarcación';
+
+  @override
+  String get unitTypePlatform => 'Plataforma';
 }

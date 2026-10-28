@@ -1330,5 +1330,59 @@
   "feedbackStatusCorrectiveAction": "Ação Corretiva Aberta",
   "feedbackStatusMoreInformation": "Solicitada Mais Informação",
   "feedbackStatusEnded": "Encerrado",
-  "feedbackStatusNotApproved": "Reprovado"
+  "feedbackStatusNotApproved": "Reprovado",
+  "qrInstruction": "Aponte para um código QR ou de barras",
+  "qrDetected": "Código detectado",
+  "qrScanAgain": "Escanear novamente",
+  "qrTorchOn": "Ligar lanterna",
+  "qrTorchOff": "Desligar lanterna",
+  "formNameLabel": "Nome",
+  "formCityLabel": "Cidade",
+  "formSaveFailed": "Erro ao salvar",
+  "formExample": "Ex: {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "Novo usuário",
+  "userTemporaryPassword": "Senha temporária",
+  "userPasswordHint": "Digite ou use o botão para gerar",
+  "userCopyPassword": "Copiar senha",
+  "userGeneratePassword": "Gerar senha segura",
+  "userPasswordCopied": "Senha copiada para a área de transferência.",
+  "userEmployeeIdRequired": "ID do Colaborador (obrigatório)",
+  "userIdentityRequired": "Preencha usuário e nome completo",
+  "userDeleteNamed": "Excluir usuário \"{name}\"?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "Nova unidade",
+  "unitFieldsRequired": "Preencha nome, cidade e empresa",
+  "archivalLoadFailed": "Não foi possível carregar a política de arquivamento.",
+  "archivalInvalidPeriods": "Informe períodos válidos (mínimo 5 anos).",
+  "archivalSaved": "Política de arquivamento salva com sucesso.",
+  "archivalSave": "Salvar política de arquivamento",
+  "archivalYearsSuffix": "anos",
+  "archivalPolicyIntro": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).",
+  "archivalPpeRecordRule": "Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.",
+  "roleMasterAdmin": "Administrador Master",
+  "roleGeneralAdmin": "Administrador Geral",
+  "roleRegistryAdmin": "Administrador de Registro",
+  "roleLocalAdmin": "Administrador Local",
+  "rolePpeManager": "Gestor de EPI",
+  "roleEmployee": "Funcionário",
+  "roleBuyer": "Comprador",
+  "roleApprover": "Aprovador",
+  "roleCertificationReadOnly": "Certificação (somente leitura)",
+  "unitNameHint": "Ex: Plataforma P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Embarcação",
+  "unitTypePlatform": "Plataforma"
 }

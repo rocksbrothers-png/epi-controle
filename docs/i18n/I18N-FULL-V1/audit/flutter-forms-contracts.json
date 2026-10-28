@@ -1,0 +1,56 @@
+[
+  {
+    "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+    "api_calls_equal": true,
+    "api_calls": [
+      "ApiClient.companies.getCompanies()",
+      "ApiClient.users.updateUser(widget.user!['id'] as int, {...body, 'actor_user_id' : actorId})",
+      "ApiClient.users.createUser({...body, 'actor_user_id' : actorId})"
+    ],
+    "rules_equal": true,
+    "rules": [
+      "_roles = ['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']",
+      "bool get _needsEmployee => _role == 'admin' || _role == 'user' || _role == 'employee';",
+      "void _generatePassword() {const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#%&*'; final rng = Random.secure(); final pwd = List.generate(14, (_) => chars[rng.nextInt(chars.length)]).join(); setState(() {_passwordCtrl.text = pwd; _showPassword = true;});}",
+      "body = <String, dynamic>{'username' : username, 'full_name' : fullName, 'role' : _role, if (_companyId != null) 'company_id' : _companyId}"
+    ]
+  },
+  {
+    "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+    "api_calls_equal": true,
+    "api_calls": [
+      "ApiClient.companies.getCompanies()",
+      "ApiClient.legalEntities.getCompanyLegalEntities(companyId, actorUserId: ApiClient.actorUserId)",
+      "ApiClient.units.updateUnit(widget.unit!['id'] as int, {...body, 'actor_user_id' : actorId})",
+      "ApiClient.units.createUnit({...body, 'actor_user_id' : actorId})"
+    ],
+    "rules_equal": true,
+    "rules": [
+      "_unitTypes = ['base', 'embarcacao', 'plataforma']",
+      "body = <String, dynamic>{'company_id' : _companyId, 'name' : name, 'unit_type' : _unitType, 'city' : city, if (_legalEntityId != null) 'legal_entity_id' : _legalEntityId, if (_notesCtrl.text.trim().isNotEmpty) 'notes' : _notesCtrl.text.trim()}"
+    ]
+  },
+  {
+    "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+    "api_calls_equal": true,
+    "api_calls": [
+      "ApiClient.settings.getArchivalPolicy(companyId: widget.companyId)",
+      "ApiClient.settings.updateArchivalPolicy(actorUserId: ApiClient.actorUserId, unitRetentionYears: units, epiRetentionYears: epis, employeeRetentionYears: employees, companyId: widget.companyId)"
+    ],
+    "rules_equal": true,
+    "rules": [
+      "int? _parseYears(TextEditingController ctrl) {final value = int.tryParse(ctrl.text.trim()); if (value == null || value < 5) return null; return value;}",
+      "canEdit = role == 'master_admin' || role == 'general_admin'"
+    ]
+  },
+  {
+    "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+    "api_calls_equal": true,
+    "api_calls": [],
+    "rules_equal": true,
+    "rules": [
+      "void _onDetect(BarcodeCapture capture) {if (_scanned) return; final barcode = capture.barcodes.firstOrNull; if (barcode?.rawValue == null) return; setState(() => _scanned = true); if (widget.returnResult) {Navigator.of(context).pop<String>(barcode!.rawValue); return;} _showResult(context, barcode!.rawValue!);}",
+      "void _showResult(BuildContext context, String value) {showModalBottomSheet<void>(context: context, isScrollControlled: true, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(EpiRadius.lg))), builder: (_) => _ScanResultSheet(value: value, onScanAgain: () {Navigator.pop(context); setState(() => _scanned = false);}));}"
+    ]
+  }
+]

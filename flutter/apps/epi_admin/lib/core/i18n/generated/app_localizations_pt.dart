@@ -2903,6 +2903,135 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get feedbackStatusNotApproved => 'Reprovado';
+
+  @override
+  String get qrInstruction => 'Aponte para um código QR ou de barras';
+
+  @override
+  String get qrDetected => 'Código detectado';
+
+  @override
+  String get qrScanAgain => 'Escanear novamente';
+
+  @override
+  String get qrTorchOn => 'Ligar lanterna';
+
+  @override
+  String get qrTorchOff => 'Desligar lanterna';
+
+  @override
+  String get formNameLabel => 'Nome';
+
+  @override
+  String get formCityLabel => 'Cidade';
+
+  @override
+  String get formSaveFailed => 'Erro ao salvar';
+
+  @override
+  String formExample(String value) {
+    return 'Ex: $value';
+  }
+
+  @override
+  String get userNewTitle => 'Novo usuário';
+
+  @override
+  String get userTemporaryPassword => 'Senha temporária';
+
+  @override
+  String get userPasswordHint => 'Digite ou use o botão para gerar';
+
+  @override
+  String get userCopyPassword => 'Copiar senha';
+
+  @override
+  String get userGeneratePassword => 'Gerar senha segura';
+
+  @override
+  String get userPasswordCopied =>
+      'Senha copiada para a área de transferência.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID do Colaborador (obrigatório)';
+
+  @override
+  String get userIdentityRequired => 'Preencha usuário e nome completo';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Excluir usuário \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nova unidade';
+
+  @override
+  String get unitFieldsRequired => 'Preencha nome, cidade e empresa';
+
+  @override
+  String get archivalLoadFailed =>
+      'Não foi possível carregar a política de arquivamento.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Informe períodos válidos (mínimo 5 anos).';
+
+  @override
+  String get archivalSaved => 'Política de arquivamento salva com sucesso.';
+
+  @override
+  String get archivalSave => 'Salvar política de arquivamento';
+
+  @override
+  String get archivalYearsSuffix => 'anos';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.';
+
+  @override
+  String get roleMasterAdmin => 'Administrador Master';
+
+  @override
+  String get roleGeneralAdmin => 'Administrador Geral';
+
+  @override
+  String get roleRegistryAdmin => 'Administrador de Registro';
+
+  @override
+  String get roleLocalAdmin => 'Administrador Local';
+
+  @override
+  String get rolePpeManager => 'Gestor de EPI';
+
+  @override
+  String get roleEmployee => 'Funcionário';
+
+  @override
+  String get roleBuyer => 'Comprador';
+
+  @override
+  String get roleApprover => 'Aprovador';
+
+  @override
+  String get roleCertificationReadOnly => 'Certificação (somente leitura)';
+
+  @override
+  String get unitNameHint => 'Ex: Plataforma P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Embarcação';
+
+  @override
+  String get unitTypePlatform => 'Plataforma';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -5804,4 +5933,133 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get feedbackStatusNotApproved => 'Reprovado';
+
+  @override
+  String get qrInstruction => 'Aponte para um código QR ou de barras';
+
+  @override
+  String get qrDetected => 'Código detectado';
+
+  @override
+  String get qrScanAgain => 'Escanear novamente';
+
+  @override
+  String get qrTorchOn => 'Ligar lanterna';
+
+  @override
+  String get qrTorchOff => 'Desligar lanterna';
+
+  @override
+  String get formNameLabel => 'Nome';
+
+  @override
+  String get formCityLabel => 'Cidade';
+
+  @override
+  String get formSaveFailed => 'Erro ao salvar';
+
+  @override
+  String formExample(String value) {
+    return 'Ex: $value';
+  }
+
+  @override
+  String get userNewTitle => 'Novo usuário';
+
+  @override
+  String get userTemporaryPassword => 'Senha temporária';
+
+  @override
+  String get userPasswordHint => 'Digite ou use o botão para gerar';
+
+  @override
+  String get userCopyPassword => 'Copiar senha';
+
+  @override
+  String get userGeneratePassword => 'Gerar senha segura';
+
+  @override
+  String get userPasswordCopied =>
+      'Senha copiada para a área de transferência.';
+
+  @override
+  String get userEmployeeIdRequired => 'ID do Colaborador (obrigatório)';
+
+  @override
+  String get userIdentityRequired => 'Preencha usuário e nome completo';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Excluir usuário \"$name\"?';
+  }
+
+  @override
+  String get unitNewTitle => 'Nova unidade';
+
+  @override
+  String get unitFieldsRequired => 'Preencha nome, cidade e empresa';
+
+  @override
+  String get archivalLoadFailed =>
+      'Não foi possível carregar a política de arquivamento.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Informe períodos válidos (mínimo 5 anos).';
+
+  @override
+  String get archivalSaved => 'Política de arquivamento salva com sucesso.';
+
+  @override
+  String get archivalSave => 'Salvar política de arquivamento';
+
+  @override
+  String get archivalYearsSuffix => 'anos';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.';
+
+  @override
+  String get roleMasterAdmin => 'Administrador Master';
+
+  @override
+  String get roleGeneralAdmin => 'Administrador Geral';
+
+  @override
+  String get roleRegistryAdmin => 'Administrador de Registro';
+
+  @override
+  String get roleLocalAdmin => 'Administrador Local';
+
+  @override
+  String get rolePpeManager => 'Gestor de EPI';
+
+  @override
+  String get roleEmployee => 'Funcionário';
+
+  @override
+  String get roleBuyer => 'Comprador';
+
+  @override
+  String get roleApprover => 'Aprovador';
+
+  @override
+  String get roleCertificationReadOnly => 'Certificação (somente leitura)';
+
+  @override
+  String get unitNameHint => 'Ex: Plataforma P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Embarcação';
+
+  @override
+  String get unitTypePlatform => 'Plataforma';
 }

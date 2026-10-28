@@ -25,21 +25,12 @@ lib/features/settings/appearance_screen.dart|Norsk
 # Detalhe de EPI
 lib/features/epis/epi_detail_screen.dart|Dias restantes
 # Scanner QR
-lib/features/qr/qr_scanner_screen.dart|Escanear novamente
 # Relatórios — nomes de meses
 
 # Débito pré-existente (telas de assinatura/fornecedores/usuários/unidades)
 # registrado ao habilitar o gate para novas telas (Minha Empresa usa 100% l10n).
 # Migrar para AppLocalizations em passagens futuras por estas telas.
 lib/features/purchases/suppliers_screen.dart|API
-lib/features/units/units_screen.dart|Cidade
-lib/features/units/units_screen.dart|Nome
-lib/features/users/users_screen.dart|Copiar senha
-lib/features/users/users_screen.dart|Gerar senha segura
-lib/features/users/users_screen.dart|ID do Colaborador (obrigatório para admin/user/employee)
-lib/features/users/users_screen.dart|Nome de usuário
-lib/features/users/users_screen.dart|Senha copiada para a área de transferência.
-lib/features/users/users_screen.dart|Senha temporária
 
 # Débito de arquivamento (item 1) pré-existente ao registrar telas Flutter novas
 # (conferência de entrega / conformidade / bloquear-e-arquivar). Estas telas de
@@ -49,8 +40,6 @@ lib/features/employees/employees_screen.dart|Arquivar Colaborador
 lib/features/employees/employees_screen.dart|Desarquivar Colaborador
 lib/features/epis/epis_screen.dart|Arquivar EPI
 lib/features/epis/epis_screen.dart|Desarquivar EPI
-lib/features/settings/archival_policy_screen.dart|Política de arquivamento salva com sucesso.
-lib/features/settings/archival_policy_screen.dart|Salvar política de arquivamento
 lib/features/units/units_screen.dart|Arquivar Unidade
 lib/features/units/units_screen.dart|Desarquivar Unidade
 
@@ -66,10 +55,6 @@ lib/features/units/units_screen.dart|Desarquivar Unidade
 #
 # Para zerar: migre a string para epi_i18n e remova a linha daqui. O gate
 # avisa (sem bloquear) quando uma entrada desta lista já não existe no código.
-lib/features/qr/qr_scanner_screen.dart|Aponte para um código QR ou de barras
-lib/features/qr/qr_scanner_screen.dart|Código detectado
-lib/features/settings/archival_policy_screen.dart|Defina, conforme a política interna da empresa, por quantos anos 
-lib/features/settings/archival_policy_screen.dart|Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO — tela de troca obrigatória de senha (Lote 1 de paridade).

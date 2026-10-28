@@ -2896,6 +2896,134 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get feedbackStatusNotApproved => 'Ikke godkjent';
+
+  @override
+  String get qrInstruction => 'Rett kameraet mot en QR-kode eller strekkode';
+
+  @override
+  String get qrDetected => 'Kode registrert';
+
+  @override
+  String get qrScanAgain => 'Skann på nytt';
+
+  @override
+  String get qrTorchOn => 'Slå på lommelykten';
+
+  @override
+  String get qrTorchOff => 'Slå av lommelykten';
+
+  @override
+  String get formNameLabel => 'Navn';
+
+  @override
+  String get formCityLabel => 'By';
+
+  @override
+  String get formSaveFailed => 'Kunne ikke lagre';
+
+  @override
+  String formExample(String value) {
+    return 'F.eks. $value';
+  }
+
+  @override
+  String get userNewTitle => 'Ny bruker';
+
+  @override
+  String get userTemporaryPassword => 'Midlertidig passord';
+
+  @override
+  String get userPasswordHint =>
+      'Skriv inn et passord eller bruk knappen for å generere et';
+
+  @override
+  String get userCopyPassword => 'Kopier passord';
+
+  @override
+  String get userGeneratePassword => 'Generer et sikkert passord';
+
+  @override
+  String get userPasswordCopied => 'Passordet er kopiert til utklippstavlen.';
+
+  @override
+  String get userEmployeeIdRequired => 'Medarbeider-ID (påkrevd)';
+
+  @override
+  String get userIdentityRequired => 'Fyll inn brukernavn og fullt navn';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Slette brukeren «$name»?';
+  }
+
+  @override
+  String get unitNewTitle => 'Ny enhet';
+
+  @override
+  String get unitFieldsRequired => 'Fyll inn navn, by og selskap';
+
+  @override
+  String get archivalLoadFailed => 'Kunne ikke laste arkiveringsreglene.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Oppgi gyldige oppbevaringstider (minst 5 år).';
+
+  @override
+  String get archivalSaved => 'Arkiveringsreglene er lagret.';
+
+  @override
+  String get archivalSave => 'Lagre arkiveringsreglene';
+
+  @override
+  String get archivalYearsSuffix => 'år';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Angi hvor mange år arkiverte oppføringer beholdes etter selskapets interne regler før permanent sletting blir tilgjengelig (brasiliansk lovpålagt minimum: 5 år).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Utleveringsjournal for verneutstyr: fast oppbevaring i 5 år etter brasiliansk NR-6 – en egen regel som ikke endres av disse innstillingene.';
+
+  @override
+  String get roleMasterAdmin => 'Masteradministrator';
+
+  @override
+  String get roleGeneralAdmin => 'Generell administrator';
+
+  @override
+  String get roleRegistryAdmin => 'Registeradministrator';
+
+  @override
+  String get roleLocalAdmin => 'Lokal administrator';
+
+  @override
+  String get rolePpeManager => 'PVU-ansvarlig';
+
+  @override
+  String get roleEmployee => 'Ansatt';
+
+  @override
+  String get roleBuyer => 'Innkjøper';
+
+  @override
+  String get roleApprover => 'Godkjenner';
+
+  @override
+  String get roleCertificationReadOnly => 'Sertifisering (skrivebeskyttet)';
+
+  @override
+  String get unitNameHint => 'F.eks. plattform P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Fartøy';
+
+  @override
+  String get unitTypePlatform => 'Plattform';
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -5790,4 +5918,132 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get feedbackStatusNotApproved => 'Ikke godkjent';
+
+  @override
+  String get qrInstruction => 'Rett kameraet mot en QR-kode eller strekkode';
+
+  @override
+  String get qrDetected => 'Kode registrert';
+
+  @override
+  String get qrScanAgain => 'Skann på nytt';
+
+  @override
+  String get qrTorchOn => 'Slå på lommelykten';
+
+  @override
+  String get qrTorchOff => 'Slå av lommelykten';
+
+  @override
+  String get formNameLabel => 'Navn';
+
+  @override
+  String get formCityLabel => 'By';
+
+  @override
+  String get formSaveFailed => 'Kunne ikke lagre';
+
+  @override
+  String formExample(String value) {
+    return 'F.eks. $value';
+  }
+
+  @override
+  String get userNewTitle => 'Ny bruker';
+
+  @override
+  String get userTemporaryPassword => 'Midlertidig passord';
+
+  @override
+  String get userPasswordHint =>
+      'Skriv inn et passord eller bruk knappen for å generere et';
+
+  @override
+  String get userCopyPassword => 'Kopier passord';
+
+  @override
+  String get userGeneratePassword => 'Generer et sikkert passord';
+
+  @override
+  String get userPasswordCopied => 'Passordet er kopiert til utklippstavlen.';
+
+  @override
+  String get userEmployeeIdRequired => 'Medarbeider-ID (påkrevd)';
+
+  @override
+  String get userIdentityRequired => 'Fyll inn brukernavn og fullt navn';
+
+  @override
+  String userDeleteNamed(String name) {
+    return 'Slette brukeren «$name»?';
+  }
+
+  @override
+  String get unitNewTitle => 'Ny enhet';
+
+  @override
+  String get unitFieldsRequired => 'Fyll inn navn, by og selskap';
+
+  @override
+  String get archivalLoadFailed => 'Kunne ikke laste arkiveringsreglene.';
+
+  @override
+  String get archivalInvalidPeriods =>
+      'Oppgi gyldige oppbevaringstider (minst 5 år).';
+
+  @override
+  String get archivalSaved => 'Arkiveringsreglene er lagret.';
+
+  @override
+  String get archivalSave => 'Lagre arkiveringsreglene';
+
+  @override
+  String get archivalYearsSuffix => 'år';
+
+  @override
+  String get archivalPolicyIntro =>
+      'Angi hvor mange år arkiverte oppføringer beholdes etter selskapets interne regler før permanent sletting blir tilgjengelig (brasiliansk lovpålagt minimum: 5 år).';
+
+  @override
+  String get archivalPpeRecordRule =>
+      'Utleveringsjournal for verneutstyr: fast oppbevaring i 5 år etter brasiliansk NR-6 – en egen regel som ikke endres av disse innstillingene.';
+
+  @override
+  String get roleMasterAdmin => 'Masteradministrator';
+
+  @override
+  String get roleGeneralAdmin => 'Generell administrator';
+
+  @override
+  String get roleRegistryAdmin => 'Registeradministrator';
+
+  @override
+  String get roleLocalAdmin => 'Lokal administrator';
+
+  @override
+  String get rolePpeManager => 'PVU-ansvarlig';
+
+  @override
+  String get roleEmployee => 'Ansatt';
+
+  @override
+  String get roleBuyer => 'Innkjøper';
+
+  @override
+  String get roleApprover => 'Godkjenner';
+
+  @override
+  String get roleCertificationReadOnly => 'Sertifisering (skrivebeskyttet)';
+
+  @override
+  String get unitNameHint => 'F.eks. plattform P-40';
+
+  @override
+  String get unitTypeBase => 'Base';
+
+  @override
+  String get unitTypeVessel => 'Fartøy';
+
+  @override
+  String get unitTypePlatform => 'Plattform';
 }

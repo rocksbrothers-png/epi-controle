@@ -1300,5 +1300,59 @@
   "feedbackStatusCorrectiveAction": "Action corrective ouverte",
   "feedbackStatusMoreInformation": "Informations complémentaires demandées",
   "feedbackStatusEnded": "Clôturé",
-  "feedbackStatusNotApproved": "Non approuvé"
+  "feedbackStatusNotApproved": "Non approuvé",
+  "qrInstruction": "Visez un code QR ou un code-barres",
+  "qrDetected": "Code détecté",
+  "qrScanAgain": "Scanner à nouveau",
+  "qrTorchOn": "Allumer la lampe",
+  "qrTorchOff": "Éteindre la lampe",
+  "formNameLabel": "Nom",
+  "formCityLabel": "Ville",
+  "formSaveFailed": "Impossible d’enregistrer",
+  "formExample": "Ex. : {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "Nouvel utilisateur",
+  "userTemporaryPassword": "Mot de passe temporaire",
+  "userPasswordHint": "Saisissez un mot de passe ou utilisez le bouton pour en générer un",
+  "userCopyPassword": "Copier le mot de passe",
+  "userGeneratePassword": "Générer un mot de passe sécurisé",
+  "userPasswordCopied": "Mot de passe copié dans le presse-papiers.",
+  "userEmployeeIdRequired": "ID du salarié (obligatoire)",
+  "userIdentityRequired": "Saisissez l’identifiant et le nom complet",
+  "userDeleteNamed": "Supprimer l’utilisateur « {name} » ?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "Nouvelle unité",
+  "unitFieldsRequired": "Renseignez le nom, la ville et l’entreprise",
+  "archivalLoadFailed": "Impossible de charger la politique d’archivage.",
+  "archivalInvalidPeriods": "Saisissez des durées valides (au moins 5 ans).",
+  "archivalSaved": "Politique d’archivage enregistrée.",
+  "archivalSave": "Enregistrer la politique d’archivage",
+  "archivalYearsSuffix": "ans",
+  "archivalPolicyIntro": "Définissez la durée de conservation des enregistrements archivés selon la politique interne de l’entreprise avant d’autoriser leur suppression définitive (minimum légal brésilien : 5 ans).",
+  "archivalPpeRecordRule": "Fiche de remise des EPI : conservation fixe de 5 ans selon la NR-6 brésilienne — règle distincte, inchangée par cette politique.",
+  "roleMasterAdmin": "Administrateur Principal",
+  "roleGeneralAdmin": "Administrateur Général",
+  "roleRegistryAdmin": "Administrateur de Registre",
+  "roleLocalAdmin": "Administrateur Local",
+  "rolePpeManager": "Gestionnaire EPI",
+  "roleEmployee": "Employé",
+  "roleBuyer": "Acheteur",
+  "roleApprover": "Approbateur",
+  "roleCertificationReadOnly": "Certification (lecture seule)",
+  "unitNameHint": "Ex. : plateforme P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Navire",
+  "unitTypePlatform": "Plateforme"
 }

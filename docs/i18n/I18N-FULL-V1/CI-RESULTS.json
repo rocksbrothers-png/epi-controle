@@ -1,6 +1,14 @@
 {
-  "note": "Flutter CI approved the badge/feedback checkpoints in both products. Backend Test & Coverage had one stale exact-component-name assertion; all other tests passed (4459 Corporate / 4400 SaaS). Null classification guard and wrapper delegation are preserved. Assertion adapted; 47 targeted tests passed locally in each. New Backend CI is required for the correction. Whole task remains incomplete.",
+  "note": "Backend CI approved the delivery guard correction in both products (46fd5d67/d000861). Flutter CI approved the preceding badge/feedback product trees (5baea4bc/3010613f). New unpublished forms/settings work needs its own checks. Whole task remains incomplete.",
   "runs": [
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40717395418,
+      "headSha": "46fd5d677a10e5c4d1be0732f40c31a7c7393719",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40717395418"
+    },
     {
       "workflowName": "Backend CI",
       "databaseId": 40561809388,

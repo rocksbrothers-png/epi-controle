@@ -5824,7 +5824,7 @@ async function copyUserAccessMessage(userId, channel = 'email') {
 async function applyTemporaryPassword(userId, password, username, options = {}) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target) return false;
-  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
+  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, force_password_change: 1 }) });
   const label = username || target.username;
   if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
   return true;

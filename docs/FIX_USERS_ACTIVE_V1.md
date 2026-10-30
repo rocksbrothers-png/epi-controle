@@ -42,8 +42,10 @@ O formulário mostrou o vínculo vazio nos dois casos.
 
 - **Frontend** (`user-form.js`): sem valor explícito, `active` **não vai** no corpo; valor explícito (`'0'`/`'1'`)
   continua indo como número.
-  - O botão **Ativar/Desativar Usuário** (`userAccessUpdatePayload`) não mudou: manda o status explícito.
-  - Promover/rebaixar mantêm o status atual (já era assim).
+  - O botão **Ativar/Desativar Usuário** (`userAccessUpdatePayload`) manda o status explícito.
+  - **Promover/rebaixar** e **senha provisória** não mandam mais `active` (achado da auditoria independente).
+    Antes enviavam o status da lista carregada; com a lista desatualizada, por exemplo depois de outro
+    administrador desativar a conta, a ação reativava o usuário.
 - **Backend** (`update_user`): `resolve_user_active` mantém o status atual quando `active` não vem (ou vem vazio).
   - Aceita só `0`/`1`; outro valor é recusado com "Status do usuário inválido." e nada é gravado.
   - O limite de usuários da empresa passa a usar o status resultante.
@@ -62,13 +64,13 @@ ativo, como antes), regras de promoção, rotas e textos de interface.
 
 | Teste | `main` | Com a correção |
 |---|---|---|
-| `tests_postgres/test_fix_users_active_v1_postgres.py` (10), PostgreSQL real via `update_user` com autorização: editar inativo (Adm. Geral e Registro) e ativo sem status; reativar/desativar explícitos com trilha; status inválido; perfil sem permissão (Gestor, Comprador); outra empresa (A→B, B→A); leitura em conexão nova | 5 falham | 10 passam |
+| `tests_postgres/test_fix_users_active_v1_postgres.py` (13), PostgreSQL real via `update_user` com autorização: editar inativo (Adm. Geral e Registro) e ativo sem status; reativar/desativar explícitos com trilha; status inválido; perfil sem permissão (Gestor, Comprador); outra empresa (A→B, B→A); leitura em conexão nova; status explícito igual ao atual sem registro; ator e antes/depois na trilha; editar inativo com a empresa no limite | 5 falham | 13 passam |
 | `tests/test_fix_users_active_v1.py` (26): regra de status, trilha, rótulos | não importa | 26 passam |
-| `static/js/test/users-active-runtime.js` (5): corpo sem `active`, status explícito, botão Ativar/Desativar, formulário sem campo de status, vínculo preservado | 2 falham | 5 passam |
-| Caracterização `users-view-runtime.js`: o corpo dos 4 casos com `active` vazio deixa de levar `"active":1` (mudança deliberada, comentada) | — | 664 testes JS |
+| `static/js/test/users-active-runtime.js` (6): corpo sem `active`, status explícito, botão Ativar/Desativar (promover não manda status), formulário sem campo de status (fragmento e `index.html`), senha provisória sem status, vínculo preservado | 4 falham | 6 passam |
+| Caracterização `users-view-runtime.js`: os corpos de salvar com `active` vazio e de promover/rebaixar deixam de levar `active` (mudança deliberada, comentada) | — | 665 testes JS |
 | `scripts/browser/fix_users_active_realflow.py`, Chromium **no fluxo real** (SPA + app.py + PostgreSQL local), 5 idiomas: cenários 1–6 da demanda, inclusive recarregar a página | pt-BR: falha ao salvar (vínculo perdido) | 5/5 idiomas, todos os cenários |
 
-O harness real recusa `DATABASE_URL` que não seja `localhost`/`127.0.0.1`. Ele não roda no CI, porque precisa de
+O harness real recusa `DATABASE_URL` e `--base` que não sejam `localhost`/`127.0.0.1`. Ele não roda no CI, porque precisa de
 servidor e banco reais. O CI cobre o mesmo caminho pela suíte `tests_postgres`.
 
 ## 5. Riscos residuais
@@ -77,5 +79,6 @@ servidor e banco reais. O CI cobre o mesmo caminho pela suíte `tests_postgres`.
   que ficou como está; o formulário não oferece isso.
 - **Clientes antigos**: um cliente que mande `active` explícito continua mudando o status, como sempre, pelas mesmas
   regras de permissão.
+- **Usuários sem empresa (Master)**: ativar/desativar não gera registro, porque a trilha é por empresa.
 - **Status já alterados**: contas reativadas indevidamente antes desta correção continuam ativas. Identificá-las
   exigiria cruzar logs; nenhum dado foi alterado.

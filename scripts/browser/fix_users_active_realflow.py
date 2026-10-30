@@ -222,6 +222,8 @@ def main():
     parser.add_argument('--locales', nargs='+', default=LOCALES)
     parser.add_argument('--output', required=True)
     args = parser.parse_args()
+    if urlparse(args.base).hostname not in ('localhost', '127.0.0.1'):
+        raise SystemExit(f'Recusado: --base {args.base!r} não é local; este script altera usuários.')
     db = Db(os.environ.get('DATABASE_URL', ''))
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)

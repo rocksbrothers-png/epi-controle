@@ -158,6 +158,33 @@ def test_reativar_e_desativar_explicitos_autorizados_com_auditoria(cenario):
     assert f'{PREFIXO}_gestor_inativo_a desativado por Registro A' in trilha[1][1]
 
 
+def test_status_explicito_igual_ao_atual_nao_gera_registro(cenario):
+    _editar(cenario, 'geral_a', 'gestor_ativo_a', active=1)
+    _editar(cenario, 'geral_a', 'gestor_inativo_a', active=0)
+    assert _status(cenario['gestor_ativo_a']) == 1 and _status(cenario['gestor_inativo_a']) == 0
+    assert _auditoria(cenario['empresa_A']) == []
+
+
+def test_registro_traz_ator_e_antes_depois(cenario):
+    _editar(cenario, 'registro_a', 'gestor_inativo_a', active=1)
+    with closing(get_connection()) as conexao:
+        linha = conexao.execute(
+            "SELECT actor_user_id, actor_name, details_json FROM company_audit_logs WHERE company_id = ? "
+            "AND action_type = 'user_reactivate'", (cenario['empresa_A'],)).fetchone()
+    assert int(linha[0]) == cenario['registro_a'] and linha[1] == 'Registro A'
+    assert '"before": "Inativo"' in linha[2] and '"after": "Ativo"' in linha[2]
+
+
+def test_editar_inativo_com_empresa_no_limite_nao_esbarra_no_limite(cenario):
+    # Empresa A no limite de usuários: editar quem está inativo (sem reativar) segue permitido.
+    with closing(get_connection()) as conexao:
+        ativos = int(_um(conexao, 'SELECT COUNT(*) FROM users WHERE company_id = ? AND active = 1', (cenario['empresa_A'],)))
+        conexao.execute('UPDATE companies SET user_limit = ? WHERE id = ?', (ativos, cenario['empresa_A']))
+        conexao.commit()
+    alvo = _editar(cenario, 'geral_a', 'gestor_inativo_a')
+    assert _status(alvo) == 0
+
+
 def test_status_invalido_e_recusado_sem_alterar(cenario):
     for valor in ('x', 2, -1):
         with pytest.raises(ValueError):

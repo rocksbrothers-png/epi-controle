@@ -75,14 +75,21 @@ module.exports = function ({ test, assert, eq }) {
     const target = { username: 'g', full_name: 'G', role: 'user', company_id: 9, active: 0 };
     eq(business().userAccessUpdatePayload(target, { active: 1 }, 1).active, 1, 'reativar');
     eq(business().userAccessUpdatePayload({ ...target, active: 1 }, { active: 0 }, 1).active, 0, 'desativar');
-    eq(business().userAccessUpdatePayload(target, { role: 'admin' }, 1).active, 0, 'promover não reativa');
+    assert(!('active' in business().userAccessUpdatePayload({ ...target, active: 1 }, { role: 'admin' }, 1)), 'promover não manda o status da lista');
   });
 
-  test('FIX-USERS-ACTIVE-V1: o formulário de usuário não tem campo de status', () => {
-    const html = fs.readFileSync(path.join(VIEWS, 'usuarios.html'), 'utf8');
-    const form = /<form id="user-form"[\s\S]*?<\/form>/.exec(html);
-    assert(form, 'user-form em usuarios.html');
-    assert(!/name="active"/.test(form[0]), 'campo active no formulário de usuário');
+  test('FIX-USERS-ACTIVE-V1: o formulário de usuário não tem campo de status (fragmento e index.html)', () => {
+    for (const file of [path.join(VIEWS, 'usuarios.html'), path.resolve(VIEWS, '..', 'index.html')]) {
+      const form = /<form id="user-form"[\s\S]*?<\/form>/.exec(fs.readFileSync(file, 'utf8'));
+      assert(form, `user-form em ${path.basename(file)}`);
+      assert(!/name="active"/.test(form[0]), `campo active no formulário de usuário (${path.basename(file)})`);
+    }
+  });
+
+  test('FIX-USERS-ACTIVE-V1: senha provisória não manda o status da lista', () => {
+    const body = /function applyTemporaryPassword\([\s\S]*?JSON\.stringify\((\{[^)]*\})\)/.exec(fs.readFileSync(APP, 'utf8'));
+    assert(body, 'corpo do PUT de applyTemporaryPassword');
+    assert(!/\bactive\s*:/.test(body[1]), `applyTemporaryPassword envia active: ${body[1]}`);
   });
 
   test('FIX-USERS-ACTIVE-V1: refazer as opções de vínculo mantém o colaborador selecionado', () => {

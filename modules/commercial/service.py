@@ -1,6 +1,7 @@
 """Serviços comerciais: configurações, marca, contratos e métricas."""
 import base64
 import json
+import re
 import textwrap
 from datetime import date, datetime, timezone
 
@@ -93,14 +94,32 @@ def validate_cnpj(value):
     return format_cnpj(value)
 
 
+# SECURITY-LOGO-XSS-V1: logotipos são gravados como data URL e inseridos em
+# atributos src (app, tela de login, ficha HTML). Só uma data URL base64 de
+# tipo permitido é aceita — o alfabeto base64 não tem aspas, espaços nem < >,
+# então o valor não consegue fechar o atributo nem abrir outro elemento.
+_IMAGE_DATA_URL_RE = re.compile(r'data:image/(png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}')
+LOGO_IMAGE_TYPES = ('png', 'jpeg', 'jpg', 'svg+xml')
+LOGIN_LOGO_IMAGE_TYPES = ('png', 'svg+xml')
+
+
+def safe_image_data_url(value, allowed_types=LOGO_IMAGE_TYPES):
+    """Devolve o valor se for data URL base64 de um tipo permitido; senão ''."""
+    image = str(value or '').strip()
+    match = _IMAGE_DATA_URL_RE.fullmatch(image)
+    return image if match and match.group(1) in allowed_types else ''
+
+
 def validate_logo_payload(value):
     logo = str(value or '').strip()
     if not logo:
         return ''
-    if logo.startswith('data:image/'):
-        allowed = ('data:image/png', 'data:image/jpeg', 'data:image/jpg', 'data:image/svg+xml')
-        if not logo.startswith(allowed):
-            raise ValueError('Logotipo inválido. Envie PNG, JPG ou SVG.')
+    if not logo.startswith('data:'):
+        # Texto legado que nunca foi exibido como imagem (o app mostra o logotipo
+        # padrão para qualquer valor fora de data:image/): não é gravado.
+        return ''
+    if not safe_image_data_url(logo, LOGO_IMAGE_TYPES):
+        raise ValueError('Logotipo inválido. Envie PNG, JPG ou SVG.')
     return logo
 
 
@@ -108,9 +127,28 @@ def validate_login_logo_payload(value):
     logo = str(value or '').strip()
     if not logo:
         return ''
-    if not logo.startswith(('data:image/png', 'data:image/svg+xml')):
+    if not safe_image_data_url(logo, LOGIN_LOGO_IMAGE_TYPES):
         raise ValueError('Logotipo da tela de login inválido. Envie PNG ou SVG.')
     return logo
+
+
+def validate_image_keeping_stored(value, stored, validator=None):
+    """Valida a imagem enviada sem bloquear a gravação por causa de um valor já gravado.
+
+    As telas reenviam a imagem atual junto com os demais campos. Se o valor
+    enviado é o mesmo já gravado e não passa na regra estrita (gravado antes de
+    SECURITY-LOGO-XSS-V1), ele é mantido como está — a exibição já o ignora e só
+    um upload novo o substitui —, em vez de impedir salvar o resto do formulário.
+    Valor novo continua sujeito à validação estrita.
+    """
+    validator = validator or validate_logo_payload
+    submitted = str(value or '').strip()
+    if submitted and submitted == str(stored or '').strip():
+        try:
+            return validator(submitted)
+        except ValueError:
+            return stored
+    return validator(value)
 
 
 def company_license_label(status):
@@ -246,13 +284,15 @@ def get_platform_brand(connection):
     return {**DEFAULT_PLATFORM_BRAND, **parsed}
 
 
-def validate_platform_brand_payload(payload):
+def validate_platform_brand_payload(payload, previous=None):
+    previous = previous or {}
     brand = {
         'display_name': str(payload.get('display_name', '')).strip() or DEFAULT_PLATFORM_BRAND['display_name'],
         'legal_name': str(payload.get('legal_name', '')).strip(),
         'cnpj': str(payload.get('cnpj', '')).strip(),
-        'logo_type': validate_logo_payload(payload.get('logo_type', '')),
-        'login_logo_type': validate_login_logo_payload(payload.get('login_logo_type', '')),
+        'logo_type': validate_image_keeping_stored(payload.get('logo_type', ''), previous.get('logo_type')),
+        'login_logo_type': validate_image_keeping_stored(
+            payload.get('login_logo_type', ''), previous.get('login_logo_type'), validate_login_logo_payload),
     }
     if brand['cnpj']:
         brand['cnpj'] = validate_cnpj(brand['cnpj'])
@@ -260,7 +300,7 @@ def validate_platform_brand_payload(payload):
 
 
 def save_platform_brand(connection, payload):
-    brand = validate_platform_brand_payload(payload)
+    brand = validate_platform_brand_payload(payload, get_platform_brand(connection))
     set_meta(connection, 'platform_brand', json.dumps(brand, ensure_ascii=False))
     return brand
 

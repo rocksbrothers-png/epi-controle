@@ -18,7 +18,6 @@ import pytest
 
 import modules.epis.service as epis_service
 import modules.ficha.routes as routes
-from modules.epis.service import validate_epi_photo_payload
 from modules.ficha.service import render_ficha_epi_html_document
 from tests.test_ficha_archive_view_print_export import (  # noqa: F401 — fixture reaproveitada
     _call,
@@ -129,7 +128,7 @@ def test_all_ficha_html_routes_send_csp():
 @pytest.mark.parametrize('value', [PNG, 'data:image/jpeg;base64,/9j/4AAQ', 'data:image/webp;base64,UklGRg==',
                                    'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='])
 def test_epi_photo_accepts_base64_images(value):
-    assert validate_epi_photo_payload(value) == value
+    assert epis_service.validate_epi_photo_payload(value) == value
 
 
 @pytest.mark.parametrize('value', [EVIL_IMAGE, 'x" onerror="alert(1)', 'javascript:alert(1)', 'https://evil.test/x.png',
@@ -137,14 +136,14 @@ def test_epi_photo_accepts_base64_images(value):
                                    'data:image/png;base64,'])
 def test_epi_photo_rejects_unsafe_values(value):
     with pytest.raises(ValueError):
-        validate_epi_photo_payload(value)
+        epis_service.validate_epi_photo_payload(value)
 
 
 def test_epi_photo_empty_clears_and_stored_legacy_does_not_block_edit():
-    assert validate_epi_photo_payload('') == '' and validate_epi_photo_payload(None) == ''
-    assert validate_epi_photo_payload(EVIL_IMAGE, stored=EVIL_IMAGE) == EVIL_IMAGE  # mantido; a exibição o ignora
+    assert epis_service.validate_epi_photo_payload('') == '' and epis_service.validate_epi_photo_payload(None) == ''
+    assert epis_service.validate_epi_photo_payload(EVIL_IMAGE, stored=EVIL_IMAGE) == EVIL_IMAGE  # mantido; a exibição o ignora
     with pytest.raises(ValueError):
-        validate_epi_photo_payload('x" onerror="y', stored=EVIL_IMAGE)  # valor novo segue a regra
+        epis_service.validate_epi_photo_payload('x" onerror="y', stored=EVIL_IMAGE)  # valor novo segue a regra
 
 
 def test_epi_create_and_update_call_photo_validation():

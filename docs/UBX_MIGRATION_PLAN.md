@@ -257,8 +257,18 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §15](UBX_APPJS_AUDITORIA.md#15-ubx-v5-eta
 - `app.js` 17.342 → 17.120 linhas; 757 → 742 declarações; 107 → 106 endpoints.
 - `modules/companies/{business,integrations,ui}`: 53 cenários comparados com as funções originais (0 divergências),
   23 sabotagens detectadas (+1 equivalente) e Chromium 20/20 nos 5 idiomas.
-- Defeito preexistente registrado (§15.4): o status da Empresa sai vazio do formulário web.
+- Defeito preexistente registrado (§15.4): o status da Empresa saía vazio do formulário web — corrigido à parte
+  (`data-i18n` nas opções, com teste de regressão).
+
+## UBX-V5, Etapa 2 — fatia 3 (2026-10-27): Minha Empresa
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §16](UBX_APPJS_AUDITORIA.md#16-ubx-v5-etapa-2--fatia-3-2026-10-27-minha-empresa).
+
+- `app.js` 17.120 → 16.941 linhas; 742 → 727 declarações; 106 → 104 endpoints.
+- `modules/my-company/{business,integrations,ui}`: 64 cenários comparados com as funções originais
+  (0 divergências), 27 sabotagens detectadas e Chromium 10/10 nos 5 idiomas.
+  Auditoria independente aprovada; risco de segurança preexistente (logotipo) documentado na §16.4.
 
 ## Próximo passo
-UBX-V5, Etapa 2 (restantes) (Minha Empresa → Comercial, este após a I18N-FULL-V1) e,
+UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`), após a I18N-FULL-V1 e,
 por último, a Etapa 3 (navegação/bootstrap) com os pré-requisitos de auditoria de autorização.

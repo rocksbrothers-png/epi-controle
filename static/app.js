@@ -11398,135 +11398,9 @@ async function saveEmployeeMovement(event) {
 // tenant). O backend deriva a empresa do usuário autenticado — o frontend
 // nunca envia company_id/tenant_id para estas rotas.
 
-const MY_COMPANY_IMAGE_TYPES = {
-  logo_type: ['image/png', 'image/jpeg', 'image/svg+xml'],
-  favicon_type: ['image/png', 'image/svg+xml'],
-  login_logo_type: ['image/png', 'image/svg+xml']
-};
-const MY_COMPANY_COLOR_DEFAULTS = { primary_color: '#1565C0', secondary_color: '#42A5F5', accent_color: '#FF6F00' };
-
-// canConfigureMyCompany: modules/auth/ (UBX-V4, Etapa C).
-
-function myCompanyThemeMode(company) {
-  try { return JSON.parse(company?.theme_json || '{}').mode || 'auto'; } catch { return 'auto'; }
-}
-
-function fillMyCompanyFields(container, company) {
-  if (!container || !company) return;
-  container.querySelectorAll('[data-mc-field]').forEach((field) => {
-    const name = field.dataset.mcField;
-    if (name === 'theme_mode') { field.value = myCompanyThemeMode(company); return; }
-    if (field.type === 'color') {
-      field.value = normalizeHexColor(company[name], MY_COMPANY_COLOR_DEFAULTS[name] || '#1565C0');
-      return;
-    }
-    field.value = company[name] ?? '';
-  });
-  container.querySelectorAll('[data-mc-preview]').forEach((preview) => {
-    renderMyCompanyImagePreview(container, preview.dataset.mcPreview);
-  });
-}
-
-function renderMyCompanyImagePreview(container, name) {
-  const preview = container.querySelector(`[data-mc-preview="${name}"]`);
-  if (!preview) return;
-  const hidden = container.querySelector(`[data-mc-field="${name}"]`);
-  const value = hidden?.value || '';
-  preview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Imagem', logo_type: value }, 'company-logo company-logo-lg')}<span>${value ? 'Imagem carregada' : 'Imagem padrão em uso'}</span></div>`;
-}
-
-function collectMyCompanyFields(container) {
-  const values = {};
-  if (!container) return values;
-  container.querySelectorAll('[data-mc-field]').forEach((field) => {
-    const name = field.dataset.mcField;
-    if (name === 'theme_mode') {
-      values.theme_json = JSON.stringify({ mode: field.value || 'auto' });
-      return;
-    }
-    values[name] = String(field.value || '').trim();
-  });
-  return values;
-}
-
-function wireMyCompanyImageInputs(container) {
-  if (!container) return;
-  container.querySelectorAll('[data-mc-image]').forEach((input) => {
-    if (input.dataset.mcWired) return;
-    input.dataset.mcWired = '1';
-    bindAppListener(input, 'change', async () => {
-      const name = input.dataset.mcImage;
-      const file = input.files?.[0];
-      const hidden = container.querySelector(`[data-mc-field="${name}"]`);
-      if (!file || !hidden) return;
-      if (!(MY_COMPANY_IMAGE_TYPES[name] || []).includes(file.type)) {
-        alert('Formato de imagem não suportado para este campo.');
-        input.value = '';
-        return;
-      }
-      try {
-        hidden.value = name === 'logo_type' ? await fileToJpegDataUrl(file) : await fileToDataUrl(file);
-        renderMyCompanyImagePreview(container, name);
-      } catch (error) {
-        alert(error.message);
-        input.value = '';
-      }
-    });
-  });
-}
-
-async function loadMyCompany(force = false) {
-  if (!canConfigureMyCompany()) return null;
-  if (state.myCompany && !force) return state.myCompany;
-  const payload = await api(`/api/my-company?${actorQuery()}`);
-  state.myCompany = payload.company || null;
-  return state.myCompany;
-}
-
-function renderMyCompanyReadonly(company) {
-  const box = document.getElementById('my-company-readonly');
-  if (!box || !company) return;
-  box.innerHTML = `<strong>Contrato (somente leitura)</strong><span>Plano: ${company.plan_name || '-'} · Limite de usuários: ${company.user_limit || '-'} · Licença: ${company.license_status || '-'}</span>`;
-}
-
-async function loadMyCompanyCard(force = false) {
-  const form = document.getElementById('my-company-form');
-  if (!form || !canConfigureMyCompany()) return;
-  try {
-    const company = await loadMyCompany(force);
-    if (!company) return;
-    fillMyCompanyFields(form, company);
-    renderMyCompanyReadonly(company);
-    wireMyCompanyImageInputs(form);
-    if (!form.dataset.mcWired) {
-      form.dataset.mcWired = '1';
-      bindAppListener(form, 'submit', saveMyCompany);
-      bindAppListener(document.getElementById('my-company-domain-add'), 'click', addMyCompanyDomain);
-      bindAppListener(document.getElementById('my-company-domains-table'), 'click', handleMyCompanyDomainAction);
-    }
-    void loadMyCompanyDomains();
-  } catch (error) {
-    console.warn('[my-company] falha ao carregar configurações da empresa', error);
-  }
-}
-
-async function saveMyCompany(event) {
-  event.preventDefault();
-  const form = document.getElementById('my-company-form');
-  if (!form || !canConfigureMyCompany()) return;
-  const feedback = document.getElementById('my-company-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    const values = collectMyCompanyFields(form);
-    values.actor_user_id = state.user.id;
-    const payload = await api('/api/my-company', { method: 'PUT', body: JSON.stringify(values) });
-    state.myCompany = payload.company || state.myCompany;
-    if (feedback) feedback.textContent = 'Configurações da empresa salvas com sucesso.';
-    await loadBootstrap();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-  }
-}
+// Minha Empresa (configurações, imagens, tema, leitura, gravação) e as ações de domínio:
+// static/js/modules/my-company/{business,integrations,ui}/ (UBX-V5, Etapa 2). canConfigureMyCompany: modules/auth/
+// (UBX-V4, Etapa C). renderMyCompanyDomains fica abaixo (alterada pelo PR pendente I18N-FULL-V1).
 
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
@@ -11639,21 +11513,8 @@ async function confirmOnboarding2fa() {
 }
 
 // ── Domínios da tenant (Minha Empresa) ───────────────────────────────────────
-
-async function loadMyCompanyDomains() {
-  const table = document.getElementById('my-company-domains-table');
-  if (!table || !canConfigureMyCompany()) return;
-  try {
-    const payload = await api(`/api/my-company/domains?${actorQuery()}`);
-    renderMyCompanyDomains(Array.isArray(payload?.domains) ? payload.domains : []);
-  } catch (error) {
-    table.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
-  }
-}
-
-function domainStatusLabel(status) {
-  return { pending: 'Pendente', verified: 'Verificado', failed: 'Falhou', active: 'Ativo' }[status] || status || '-';
-}
+// loadMyCompanyDomains, domainStatusLabel, addMyCompanyDomain e handleMyCompanyDomainAction:
+// static/js/modules/my-company/ui/ (UBX-V5, Etapa 2).
 
 function renderMyCompanyDomains(domains) {
   const table = document.getElementById('my-company-domains-table');
@@ -11679,46 +11540,6 @@ function renderMyCompanyDomains(domains) {
       ? `Para ativar <strong>${pending.full_host}</strong>: crie um CNAME apontando para <code>${pending.cname_target}</code> ` +
         `e um registro TXT em <code>${pending.txt_record}</code> com o valor <code>${pending.verification_token}</code>, depois clique em Verificar.`
       : '';
-  }
-}
-
-async function addMyCompanyDomain() {
-  const feedback = document.getElementById('my-company-domain-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    const domain = String(document.getElementById('my-company-domain-input')?.value || '').trim();
-    const domainType = String(document.getElementById('my-company-domain-type')?.value || 'custom_domain');
-    if (!domain) throw new Error('Informe o domínio a registrar.');
-    await api('/api/my-company/domains', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, domain, domain_type: domainType }) });
-    const input = document.getElementById('my-company-domain-input');
-    if (input) input.value = '';
-    if (feedback) feedback.textContent = 'Domínio registrado. Siga as instruções de DNS e clique em Verificar.';
-    await loadMyCompanyDomains();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-  }
-}
-
-async function handleMyCompanyDomainAction(event) {
-  const target = event.target;
-  const feedback = document.getElementById('my-company-domain-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    if (target.dataset.domainVerify) {
-      await api(`/api/my-company/domains/${target.dataset.domainVerify}/verify`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      if (feedback) feedback.textContent = 'Domínio verificado com sucesso.';
-    } else if (target.dataset.domainPrimary) {
-      await api(`/api/my-company/domains/${target.dataset.domainPrimary}/primary`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    } else if (target.dataset.domainDelete) {
-      if (!confirm('Remover este domínio da sua empresa?')) return;
-      await api(`/api/my-company/domains/${target.dataset.domainDelete}`, { method: 'DELETE', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    } else {
-      return;
-    }
-    await loadMyCompanyDomains();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-    await loadMyCompanyDomains();
   }
 }
 

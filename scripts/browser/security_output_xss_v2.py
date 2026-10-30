@@ -58,9 +58,10 @@ class Fixture(base.Fixture):
         super().__init__(page, origin, locale)
         self.malicious = malicious
         self.actor.update(role='master_admin', company_id=901, operational_unit_id=5)
-        self.permissions = ALL_PERMISSIONS[:]
+        # Atualiza (sem redefinir os atributos da base) o perfil e os colaboradores do cenário.
+        self.permissions[:] = ALL_PERMISSIONS
         t = self.text
-        self.employees = [dict(
+        self.employees[:] = [dict(
             id=31, company_id=901, company_name='Empresa QA', unit_id=5, unit_name=t('colab-unidade', 'unidade'),
             current_unit_name=t('colab-unidade-atual', 'unidade'), employee_id_code=t('matricula', 'M-1'),
             name=t('colab', 'colab'), sector=t('setor', 'Convés'), role_name=t('funcao', 'Técnica'),

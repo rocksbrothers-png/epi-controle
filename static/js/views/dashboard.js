@@ -599,7 +599,7 @@
     const items = filterByCompany(getState().deliveries || [])
       .filter((item) => matchesQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
       .slice(0, 5);
-    refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${item.company_name}${item.unit_name ? ' / ' + esc(item.unit_name) : ''}  ${fmtDate(item.delivery_date)}</small></div>`).join('')
+    refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${esc(`${item.company_name}`)}${item.unit_name ? ' / ' + esc(item.unit_name) : ''}  ${fmtDate(item.delivery_date)}</small></div>`).join('')
       || `<div class="summary-item">${tr('dashboard.noDeliveriesFilter', 'Sem entregas para o filtro atual.')}</div>`;
   }
 

@@ -18,6 +18,11 @@
   globalThis.__EPI_MODULE_COMPANIES_UI_LOADED__ = true;
 
   function rules() { return globalThis.__EPI_COMPANIES_BUSINESS__; }
+  // SECURITY-OUTPUT-XSS-V1: nome, razão social, CNPJ, plano e observações vêm
+  // do cadastro (o Administrador Geral edita o nome) e entram escapados.
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function companiesApi() { return globalThis.__EPI_COMPANIES_API__; }
 
   // ── Formulário de Empresa ───────────────────────────────────────────────────
@@ -96,9 +101,9 @@
     <div class="company-detail-hero">
       ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
       <div>
-        <strong>${selected.name}</strong>
-        <span>${selected.legal_name || '-'}</span>
-        <span>${cnpjLabel}: ${selected.cnpj}</span>
+        <strong>${esc(selected.name)}</strong>
+        <span>${esc(selected.legal_name || '-')}</span>
+        <span>${cnpjLabel}: ${esc(selected.cnpj)}</span>
       </div>
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
@@ -110,11 +115,11 @@
       <div class="summary-chip"><strong>${selected.available_slots ?? 0}</strong><span>${tr('company.availableSlots', 'Vagas disponíveis')}</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${esc(planLabel(selected.plan_name) || '-')}</div>
       <div class="summary-item"><strong>${tr('company.unitPrice', 'Valor unitário')}:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
       <div class="summary-item"><strong>${tr('company.validity', 'Vigência')}:</strong> ${validityRange}</div>
       <div class="summary-item"><strong>${tr('company.addendum', 'Aditivo contratual')}:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo')}</div>
-      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${esc(selected.commercial_notes || '-')}</div>
     </div>
     ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">${tr('company.viewContract', 'Visualizar contrato')}</button></div>` : ''}`;
   }
@@ -139,8 +144,8 @@
     const validityRange = validityRangeText(item);
     return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
-        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
-        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
+        <td><div class="company-cell"><strong>${esc(item.name)}</strong><span>${esc(item.legal_name || '-')}</span></div></td>
+        <td><div class="company-cell"><strong>${esc(item.cnpj)}</strong><span>${esc(item.plan_name || '-')}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>${tr('company.validity', 'Vigência')}: ${validityRange}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count ?? '—'}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>

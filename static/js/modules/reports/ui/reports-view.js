@@ -26,6 +26,10 @@
   if (globalThis.__EPI_MODULE_REPORTS_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_REPORTS_UI_LOADED__ = true;
 
+  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
+  function escapeCompanyText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function reportsBusiness() { return globalThis.__EPI_REPORTS_BUSINESS__; }
   function reportsApi() { return globalThis.__EPI_REPORTS_API__; }
 
@@ -145,7 +149,7 @@
     <tr>
       <td>${formatDateTime(item.generated_at)}</td>
       <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
-      <td>${item.company_name || '-'}</td>
+      <td>${escapeCompanyText(item.company_name || '-')}</td>
       <td>${item.unit_name || '-'}</td>
       <td>${retentionStatusBadge(item.status)}</td>
       <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>

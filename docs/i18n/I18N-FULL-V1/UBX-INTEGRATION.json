@@ -3,11 +3,13 @@
   "products": {
     "corporate": {
       "main_integrated": "776d516dd38f1605605638ab2eecee1766229de6",
-      "pre_integration_head": "8a0ded84677f578524279e0e936f95ff923f8ae6"
+      "pre_integration_head": "8a0ded84677f578524279e0e936f95ff923f8ae6",
+      "additional_main_integrated": "91b60160dfb7e4bcf0b341ae2404e4fb68f14dae"
     },
     "saas": {
       "main_integrated": "df453a5c88c530e521994fb9856072ccac40acf1",
-      "pre_integration_head": "3b016875bba78ac059a04eb4e055ab1f2d1688e5"
+      "pre_integration_head": "3b016875bba78ac059a04eb4e055ab1f2d1688e5",
+      "additional_main_integrated": "decedc513332bac38945ca4cf3a2ecf5ec35604c"
     }
   },
   "resolved_paths": [
@@ -28,7 +30,9 @@
     "company_status": "Keep canonical option values 1/0 and text-only data-i18n; preserve main active-status fix.",
     "generated": "Regenerate index from merged fragments; recompute paired-file digests from both final trees.",
     "new_regressions": "Keep JV name in textFor variables. Language event renders presentation without navigation/loaders; dirty employee form retains identity, unit/CNPJ, data and active tab across five locales.",
-    "test_fixtures": "Locale API fixture includes locale field and reports returns canonical empty shape. Characterization requires exact added translation bindings; permission/payload comparisons remain."
+    "test_fixtures": "Locale API fixture includes locale field and reports returns canonical empty shape. Characterization requires exact added translation bindings; permission/payload comparisons remain.",
+    "security_output": "Preserve main SECURITY-OUTPUT-XSS-V1 escapes together with I18N bindings in all five app conflict regions; inherit all service/module security changes.",
+    "user_drafts": "Keep role and employee link after rebuilding localized select options only if still allowed in the existing role/company filters. Independent browser reproduced unintended employee->admin and link32->31 before fix; regression covers all named field values/disabled states across five locales."
   },
   "validation": {
     "javascript_per_product": "659 passed before final language-handler verification; final results linked in PR",
@@ -37,7 +41,8 @@
     "saas_python_before_last_regression": "4618 passed, 45 skipped, one recovery timing failure; unchanged test/production files, not suppressed",
     "i18n_engine_after_jv_fix": "18 passed Corporate; five-locale real engine + extracted module regression",
     "saas_targeted_after_fixes": "97 passed",
-    "browser_locale_editor": "reproduced extra data loads before; FR suite with five live language changes passed after, preserving all named fields/disabled states and zero extra data calls/writes"
+    "browser_locale_editor": "reproduced extra data loads before; FR suite with five live language changes passed after, preserving all named fields/disabled states and zero extra data calls/writes",
+    "output_xss_guards": "47 passed Corporate after security integration"
   },
   "remaining": "Full I18N implementation still incomplete; no PR merged, no deploy or shared database writes."
 }

@@ -37,6 +37,10 @@
   function renderEpiPhotoPreview(photoValue) {
     const preview = document.getElementById('epi-photo-preview');
     if (!preview) {return;}
+    // SECURITY-OUTPUT-XSS-V1: só data URL base64 de imagem vira <img>.
+    if (!/^data:image\/[a-z0-9.+-]{1,40};base64,[A-Za-z0-9+/]+={0,2}$/.test(String(photoValue || ''))) {
+      photoValue = '';
+    }
     if (!photoValue) {
       preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
       return;
@@ -249,7 +253,10 @@
       || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
         ? tr('epi.allUnits', 'Todas as Unidades')
         : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
-    return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${epiProtectionLabel(item.sector)}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${epiMeasureLabel(item.unit_measure)}</td><td>${actions}</td></tr>`;
+    // SECURITY-OUTPUT-XSS-V1: dados do cadastro entram escapados (mesmo escape da foto).
+    // `${v}` mantém a saída anterior para campo ausente ("undefined"), só que escapada.
+    const e = (value) => escapeAttribute(`${value}`);
+    return `<tr><td>${e(item.company_name)}</td><td>${e(scopeLabel)}</td><td>${e(item.name)}</td><td>${e(item.purchase_code)}</td><td>${e(epiProtectionLabel(item.sector))}</td><td>${e(item.epi_section || '-')}</td><td>${e(item.manufacturer || '-')}</td><td>${e(item.supplier_company || '-')}</td><td>${e(item.active_joinventure || '-')}</td><td>${e(epiMeasureLabel(item.unit_measure))}</td><td>${actions}</td></tr>`;
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────

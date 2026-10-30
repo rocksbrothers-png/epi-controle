@@ -4391,7 +4391,8 @@ function applyRoleVisibility() {
     const parts = splitUserName(state.user?.full_name || state.user?.username || '');
     refs.loggedUserIdentity.textContent = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
   }
-  refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${state.user.company_name}<br>${state.user.company_cnpj}</span>` : 'Acesso geral';
+  // SECURITY-OUTPUT-XSS-V1: nome e CNPJ da empresa entram escapados (o Administrador Geral edita o nome).
+  refs.companyBadge.innerHTML = state.user?.company_name ? `${companyLogoMarkup({ name: state.user.company_name, logo_type: state.user.logo_type }, 'company-logo company-logo-sm')}<span>${escapeHtml(state.user.company_name)}<br>${escapeHtml(state.user.company_cnpj)}</span>` : 'Acesso geral';
   const masterProfileBtn = document.getElementById('master-profile-btn');
   if (masterProfileBtn) masterProfileBtn.style.display = state.user?.role === 'master_admin' ? '' : 'none';
   // P1-4 — contexto multi-tenant sempre visível no topbar (empresa/unidade ativa).
@@ -4564,8 +4565,10 @@ function populateRoleOptions() {
     general_admin: ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'],
     registry_admin: ['admin', 'user', 'employee']
   };
+  const previousRole = refs.userRole.value;
   const roles = (roleKeys[state.user?.role] || []).map((k) => [k, tr('role.' + k, ROLE_LABELS[k] || k)]);
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
+  if (roles.some(([value]) => value === previousRole)) refs.userRole.value = previousRole;
 }
 
 // populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
@@ -4579,8 +4582,9 @@ function scopedCompaniesForSearch() {
 
 function populateSearchSelect(select, items, labelBuilder, selectedValue = '', includeAll = true, emptyLabel = tr('unit.filterAllCompanies', 'Todas')) {
   if (!select) return;
-  const options = includeAll ? [`<option value="">${emptyLabel}</option>`] : [];
-  options.push(...items.map((item) => `<option value="${item.id}">${labelBuilder(item)}</option>`));
+  // SECURITY-OUTPUT-XSS-V1: rótulos com nomes do cadastro entram escapados (filtros de empresa/unidade).
+  const options = includeAll ? [`<option value="">${escapeHtml(emptyLabel)}</option>`] : [];
+  options.push(...items.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(labelBuilder(item))}</option>`));
   select.innerHTML = options.join('');
   const normalized = String(selectedValue || '');
   if (normalized && items.some((item) => String(item.id) === normalized)) select.value = normalized;
@@ -4888,7 +4892,7 @@ function refreshCommercialPreview(company = null) {
 function fillCommercialForm(companyId) {
   if (!refs.commercialForm || !refs.commercialCompany) return;
   const visibleCompanies = filterByUserCompany(state.companies);
-  refs.commercialCompany.innerHTML = visibleCompanies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+  refs.commercialCompany.innerHTML = visibleCompanies.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('');
   refs.commercialForm.elements.plan_name.innerHTML = planOptionMarkup();
   const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || refs.commercialCompany.value)) || visibleCompanies[0];
   if (!selected) return;
@@ -5062,12 +5066,14 @@ function commercialAlertTone(item) {
   return Number(item.limit_reached) === 1 || item.license_status === 'expired' ? 'danger' : 'warning';
 }
 
+// SECURITY-OUTPUT-XSS-V1: cards do Comercial — nome da empresa, plano e motivos entram escapados
+// (o nome vem do cadastro e é exibido ao Administrador Master).
 function renderCommercialSummaryCard(item) {
   const usage = `${item.user_count}/${item.user_limit}`;
   const monthly = formatCurrency(item.monthly_value || 0, globalThis.EpiI18n?.lang);
   const projected = formatCurrency(item.projected_monthly_value || 0, globalThis.EpiI18n?.lang);
   const risk = commercialRiskMeta(item);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${tr('commercial.usersCount', '{count} Usuários').replace('{count}', usage)}</span><span>${monthly} ${tr('commercial.currentLabel', 'atual')} | ${projected} ${tr('commercial.projectedLabel', 'projetado')}</span><span>${planLabel(item.plan_name)}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${escapeHtml(item.name)}</strong><span>${tr('commercial.usersCount', '{count} Usuários').replace('{count}', escapeHtml(usage))}</span><span>${monthly} ${tr('commercial.currentLabel', 'atual')} | ${projected} ${tr('commercial.projectedLabel', 'projetado')}</span><span>${escapeHtml(planLabel(item.plan_name))}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
 
 function renderCommercialAlertCard(item) {
@@ -5077,7 +5083,7 @@ function renderCommercialAlertCard(item) {
   if (['suspended', 'expired'].includes(item.license_status)) reasons.push(tr(`license.${item.license_status}`, item.license_status_label || item.license_status));
   if (Number(item.active) !== 1) reasons.push(tr('commercial.inactiveAlert', 'empresa inativa'));
   const tone = commercialAlertTone(item);
-  return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${item.name}</strong><div>${reasons.join(' | ')}</div></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="alert-item ${tone}"><strong>${escapeHtml(item.name)}</strong><div>${reasons.map(escapeHtml).join(' | ')}</div></div>${commercialActions(item)}</div>`;
 }
 
 function renderCommercialExpiringCard(entry) {
@@ -5086,7 +5092,7 @@ function renderCommercialExpiringCard(entry) {
   const badgeLabel = days <= 7 ? tr('commercial.urgentBadge', 'Urgente') : tr('commercial.monitorBadge', 'Acompanhar');
   const expiresText = tr('commercial.expiresOn', 'Vence em {date}').replace('{date}', formatDate(item.contract_end));
   const remainingText = tr('commercial.daysRemaining', '{days} dia(s) restantes').replace('{days}', days);
-  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${item.name}</strong><span>${expiresText}</span><span>${remainingText}</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${escapeHtml(item.name)}</strong><span>${expiresText}</span><span>${remainingText}</span></div><span class="badge badge-status-${badgeTone}">${badgeLabel}</span></div>${commercialActions(item)}</div>`;
 }
 
 async function toggleCommercialStatus(companyId, mode) {
@@ -5148,13 +5154,13 @@ function renderCommercialAlerts() {
 }
 
 function formatCommercialAuditDetails(details) {
-  const detailsHtml = (details || []).map((detail) => `<div class="audit-detail-row"><strong>${detail.field}</strong><span>${detail.before || '-'} -> ${detail.after || '-'}</span></div>`).join('');
+  const detailsHtml = (details || []).map((detail) => `<div class="audit-detail-row"><strong>${escapeHtml(detail.field)}</strong><span>${escapeHtml(detail.before || '-')} -> ${escapeHtml(detail.after || '-')}</span></div>`).join('');
   return detailsHtml ? `<div class="audit-details">${detailsHtml}</div>` : '';
 }
 
 function renderCommercialHistoryItem(item) {
   const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${item.company_name}</strong><span>${item.action_label} por ${item.actor_name}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${item.action_label}</span></div><div class="summary-item">${item.summary}</div>${formatCommercialAuditDetails(item.details)}</div>`;
+  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${escapeHtml(item.company_name)}</strong><span>${escapeHtml(item.action_label)} por ${escapeHtml(item.actor_name)}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${escapeHtml(item.action_label)}</span></div><div class="summary-item">${escapeHtml(item.summary)}</div>${formatCommercialAuditDetails(item.details)}</div>`;
 }
 
 function renderCommercialHistory() {
@@ -5177,7 +5183,7 @@ function renderCommercialExpiring() {
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
   const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const optionsHtml = names.map((name) => `<option value="${name}">${name}</option>`).join('');
+  const optionsHtml = names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
   refs.commercialFilterActor.innerHTML = `<option value="" data-i18n="user.filterAll">Todos</option>` + optionsHtml;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
   refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
@@ -5196,7 +5202,7 @@ function exportCommercialExcel() {
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${exportBrandName}</td><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td>${detailsHtml}</td></tr>`;
+    return `<tr><td>${escapeHtml(exportBrandName)}</td><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
   const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
   const headerCells = header.map((item) => `<th scope="col">${item}</th>`).join('');
@@ -5219,7 +5225,7 @@ function formatCommercialFiltersLabel() {
 }
 
 function formatCommercialDetails(details, separator = '<br>') {
-  return (details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(separator);
+  return (details || []).map((detail) => `${escapeHtml(detail.field)}: ${escapeHtml(detail.before || '-')} -> ${escapeHtml(detail.after || '-')}`).join(separator);
 }
 
 function openAndPrintPopup(html, features = 'width=1100,height=800') {
@@ -5253,9 +5259,9 @@ function printCommercialHistory() {
   const rowsHtml = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
     const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${item.company_name}</td><td>${item.action_label}</td><td>${item.actor_name}</td><td>${createdAt}</td><td>${item.summary}</td><td class="detail">${detailsHtml}</td></tr>`;
+    return `<tr><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${filters}</p><table><thead><tr><th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th><th scope="col">ação</th><th scope="col" data-i18n="dataMigration.jobActor">Responsável</th><th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th><th scope="col" data-i18n="report.summary">Resumo</th><th scope="col" data-i18n="tabs.details">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${escapeHtml(filters)}</p><table><thead><tr><th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th><th scope="col">ação</th><th scope="col" data-i18n="dataMigration.jobActor">Responsável</th><th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th><th scope="col" data-i18n="report.summary">Resumo</th><th scope="col" data-i18n="tabs.details">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
   if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
 }
 
@@ -5666,8 +5672,9 @@ async function loadBootstrap(options = null) {
 function populateSelect(selectId, items, labelBuilder, valueKey = 'id', includeEmpty = false, emptyLabel = 'Selecione') {
   const select = document.getElementById(selectId);
   const filtered = filterByUserCompany(items);
-  const emptyOption = includeEmpty ? `<option value="">${emptyLabel}</option>` : '';
-  const optionsHtml = filtered.map((item) => `<option value="${item[valueKey]}">${labelBuilder(item)}</option>`).join('');
+  // SECURITY-OUTPUT-XSS-V1: rótulos montados com nomes/CNPJ do cadastro entram escapados.
+  const emptyOption = includeEmpty ? `<option value="">${escapeHtml(emptyLabel)}</option>` : '';
+  const optionsHtml = filtered.map((item) => `<option value="${escapeHtml(item[valueKey])}">${escapeHtml(labelBuilder(item))}</option>`).join('');
   select.innerHTML = emptyOption + optionsHtml;
 }
 
@@ -5993,7 +6000,7 @@ function applyFichaEmployeeFilters(items) {
 
 
 function buildDeliveryRow(item) {
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
+  return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
 const DELIVERIES_PER_PAGE = 20;
@@ -6011,7 +6018,7 @@ function renderTables() {
   const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
   const filteredEpis = applyEpisFilters(episForOperationalScope(filterByUserCompany(state.epis)));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${item.company_name || 'Sistema'}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${escapeHtml(item.full_name)}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${escapeHtml(item.company_name || 'Sistema')}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || globalThis.dsTableState({ colspan: 6, message: tr('unit.empty', 'Sem unidades.') });
   // P1-1 — paginação client-side da tabela de Colaboradores (alta volumetria).
   const employeesPage = globalThis.dsPaginate(filteredEmployeesBase, state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
@@ -6824,7 +6831,7 @@ function renderStockEpiSearchResults() {
   }
   list.innerHTML = source.slice(0, 40).map((item) => {
     const summary = `${item.name || '-'} | ${tr('stock.fabShort', 'Fab')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('stock.protectionShort', 'Proteção')}: ${epiProtectionLabel(item.sector || '-')} | ${tr('stock.sizeShort', 'Tam')}: ${item.size || item.glove_size || item.uniform_size || 'N/A'} | ${tr('stock.balanceShort', 'Saldo')}: ${unitStockOf(item)}`;
-    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${item.id}">${summary}</button>`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-stock-epi-pick="${escapeHtml(item.id)}">${escapeHtml(summary)}</button>`;
   }).join('') || `<div class="summary-item">${tr('stock.typeNameManufacturer', 'Digite nome e/ou fabricante para buscar o EPI.')}</div>`;
 }
 
@@ -7211,7 +7218,7 @@ function populateDeliveryEpiField(epiField, epis) {
     const stock = unitStockOf(item);
     const stockLabel = stock > 0 ? `${stock} ${tr('delivery.inStock', 'em estoque')}` : tr('delivery.noStock', 'Sem saldo');
     const sizeLabel = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
-    return `<option value="${item.id}">${item.name} - ${item.unit_measure} (${stockLabel}) - ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(sizeLabel)}</option>`;
+    return `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} - ${escapeHtml(item.unit_measure)} (${stockLabel}) - ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(sizeLabel)}</option>`;
   }).join('') || `<option value="">${tr('delivery.noEpiForUnit', 'Nenhum EPI disponível para a unidade')}</option>`;
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) {
     epiField.value = String(epis[0].id);
@@ -7254,7 +7261,7 @@ function renderDeliveryEpiSearchResults() {
   list.innerHTML = source.slice(0, 30).map((item) => {
     const sizeSummary = formatSizeBalancesDisplay(item.size_balances).replace(/<br>/g, ' | ');
     const summary = `${item.name || '-'} | ${tr('epi.manufacturer', 'Fabricante')}: ${item.manufacturer || '-'} | ${tr('epi.caShort', 'CA')}: ${item.ca || '-'} | ${tr('delivery.protectionLabel', 'Proteção')}: ${item.sector || '-'} | ${tr('delivery.sizeShort', 'Tam.')}: ${sizeSummary} | ${tr('delivery.balanceLabel', 'Saldo')}: ${unitStockOf(item)}`;
-    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${item.id}">${summary}</button>`;
+    return `<button type="button" class="ghost stock-epi-search-item" data-delivery-epi-pick="${escapeHtml(item.id)}">${escapeHtml(summary)}</button>`;
   }).join('');
 }
 
@@ -7941,7 +7948,7 @@ function syncStockOptions() {
   unitField.disabled = lockByOperationalProfile;
   companyField.disabled = lockByOperationalProfile;
   if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  epiField.innerHTML = epis.map((item) => `<option value="${item.id}">${formatEpiOptionLabel(item)}</option>`).join('');
+  epiField.innerHTML = epis.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(formatEpiOptionLabel(item))}</option>`).join('');
   if (epis.length && !epis.some((item) => String(item.id) === String(epiField.value))) epiField.value = String(epis[0].id);
   epiField.dispatchEvent(new Event('change', { bubbles: true }));
   syncStockSizeDefaults();
@@ -9758,11 +9765,13 @@ function renderLinkedEmployeeSearchResults() {
 function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
+  const previousEmployeeId = field.value;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
   field.innerHTML = `${firstOption}${employeeOptions}`;
+  if ((canUseWithoutLink && previousEmployeeId === '') || employees.some((item) => String(item.id) === previousEmployeeId)) field.value = previousEmployeeId;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -11611,7 +11620,7 @@ function syncFichaConfigCompanyPicker() {
   }
   const previous = select.value;
   select.innerHTML = (state.companies || []).map((c) =>
-    `<option value="${c.id}">${c.name}</option>`).join('');
+    `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
   if (previous) select.value = previous;
   const active = (state.companies || []).find((c) => String(c.id) === String(select.value));
   if (banner) {
@@ -11695,7 +11704,7 @@ function hydrateConfigurationForms() {
   }
   if (refs.fichaAuditManager) {
     refs.fichaAuditManager.innerHTML = "<option value=\"\" data-i18n=\"ui.configuracao.todos_os_gestores_b7332e\">Todos os gestores</option>" + filterByUserCompany(state.users)
-      .map((item) => `<option value="${item.id}">${item.full_name}</option>`).join('');
+      .map((item) => `<option value="${item.id}">${escapeHtml(item.full_name)}</option>`).join('');
   }
   renderConfigurationRules();
   renderConfigurationFramework();
@@ -13172,7 +13181,7 @@ function _initDemandsCompanyFilter() {
   const companies = state.companies || [];
   const current = filter.value;
   filter.innerHTML = "<option value=\"\" data-i18n=\"ui.compras.todas_as_empresas_fe2a9c\">Todas as empresas</option>" +
-    companies.map(c => `<option value="${c.id}"${String(c.id) === current ? ' selected' : ''}>${c.name} - ${c.cnpj}</option>`).join('');
+    companies.map(c => `<option value="${escapeHtml(c.id)}"${String(c.id) === current ? ' selected' : ''}>${escapeHtml(c.name)} - ${escapeHtml(c.cnpj)}</option>`).join('');
 }
 
 async function loadPurchaseDemands() {
@@ -13200,7 +13209,7 @@ async function loadPurchaseDemands() {
     const showCompanyCol = state.user?.role === 'master_admin' && !document.getElementById('compras-demands-company-filter')?.value;
     tbody.innerHTML = _purchaseDemands.map((d, i) => {
       const originLabel = d.demand_type === 'employee_request' ? "<span style=\"color:var(--color-primary)\" data-i18n=\"handover.collaborator\">Colaborador</span>" : "<span style=\"color:var(--color-warning)\" data-i18n=\"stock.minimumBalance\">Estoque M\u00ednimo</span>";
-      const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${d.company_name}</small>` : '';
+      const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${escapeHtml(d.company_name)}</small>` : '';
       const who = d.demand_type === 'employee_request'
         ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
         : `${d.unit_name || '—'}${companyTag}`;

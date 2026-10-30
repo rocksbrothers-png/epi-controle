@@ -3,7 +3,12 @@
 // Cada declaração copiada literalmente do static/app.js imediatamente antes da extração (main a2358206,
 // depois da fatia Unidades e CNPJ), sem os comentários de seção. Referência fixa para a comparação
 // antes × depois. Não é carregado pela aplicação.
-// Única alteração posterior: FIX-EMPRESAS-ACTIVE-V1 em startEditCompany (mesma correção do módulo).
+// Alterações posteriores (mesmas correções do módulo): FIX-EMPRESAS-ACTIVE-V1 em startEditCompany e
+// SECURITY-OUTPUT-XSS-V1 (secEsc em nome, razão social, CNPJ, plano e observações).
+
+function secEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
 
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
@@ -71,9 +76,9 @@ function renderCompanyDetails(companyId = null) {
     <div class="company-detail-hero">
       ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
       <div>
-        <strong>${selected.name}</strong>
-        <span>${selected.legal_name || '-'}</span>
-        <span>${cnpjLabel}: ${selected.cnpj}</span>
+        <strong>${secEsc(selected.name)}</strong>
+        <span>${secEsc(selected.legal_name || '-')}</span>
+        <span>${cnpjLabel}: ${secEsc(selected.cnpj)}</span>
       </div>
     </div>
     <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
@@ -85,11 +90,11 @@ function renderCompanyDetails(companyId = null) {
       <div class="summary-chip"><strong>${selected.available_slots ?? 0}</strong><span>${tr('company.availableSlots', 'Vagas disponíveis')}</span></div>
     </div>
     <div class="company-detail-list">
-      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${planLabel(selected.plan_name) || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${secEsc(planLabel(selected.plan_name) || '-')}</div>
       <div class="summary-item"><strong>${tr('company.unitPrice', 'Valor unitário')}:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
       <div class="summary-item"><strong>${tr('company.validity', 'Vigência')}:</strong> ${validityRange}</div>
       <div class="summary-item"><strong>${tr('company.addendum', 'Aditivo contratual')}:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo')}</div>
-      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${selected.commercial_notes || '-'}</div>
+      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${secEsc(selected.commercial_notes || '-')}</div>
     </div>
     ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">${tr('company.viewContract', 'Visualizar contrato')}</button></div>` : ''}`;
 }
@@ -114,8 +119,8 @@ function formatCompanyRow(item, selectedId) {
     .replace('{end}', formatDate(item.contract_end));
   return `
       <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
-        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
-        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
+        <td><div class="company-cell"><strong>${secEsc(item.name)}</strong><span>${secEsc(item.legal_name || '-')}</span></div></td>
+        <td><div class="company-cell"><strong>${secEsc(item.cnpj)}</strong><span>${secEsc(item.plan_name || '-')}</span></div></td>
         <td><div class="company-cell">${companyStatusBadges(item)}<span>${tr('company.validity', 'Vigência')}: ${validityRange}</span></div></td>
         <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
         <td><div class="company-cell"><strong>${item.user_count ?? '—'}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>

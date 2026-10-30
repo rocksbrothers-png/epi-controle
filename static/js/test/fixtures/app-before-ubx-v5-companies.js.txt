@@ -3,6 +3,7 @@
 // Cada declaração copiada literalmente do static/app.js imediatamente antes da extração (main a2358206,
 // depois da fatia Unidades e CNPJ), sem os comentários de seção. Referência fixa para a comparação
 // antes × depois. Não é carregado pela aplicação.
+// Única alteração posterior: FIX-EMPRESAS-ACTIVE-V1 em startEditCompany (mesma correção do módulo).
 
 function getCompanyFormField(name) {
   const field = refs.companyForm?.elements?.namedItem(name) || null;
@@ -153,7 +154,8 @@ function startEditCompany(companyId) {
   setCompanyFieldValue('cnpj', company.cnpj || '');
   setCompanyFieldValue('general_admin_email', '', { optional: true });
   setCompanyFieldValue('general_admin_name', '', { optional: true });
-  setCompanyFieldValue('active', String(Number(company.active || 1)));
+  // FIX-EMPRESAS-ACTIVE-V1 (correção deliberada, igual no módulo): `?? 1` — empresa inativa abre como inativa.
+  setCompanyFieldValue('active', String(Number(company.active ?? 1)));
   renderCompanies();
   renderCompanyDetails(company.id);
   refs.companyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });

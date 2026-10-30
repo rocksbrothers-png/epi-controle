@@ -862,6 +862,10 @@ ao editar e `active: '0'` ao cadastrar escolhendo "Inativa".
 
 ### 15.4 Defeito preexistente encontrado (fora do escopo da refatoração; corrigido à parte)
 
+Corrigido à parte: o `value` das opções no PR da §15.4, e o carregamento do estado (`?? 1` em Empresas e no
+Comercial, que abriam empresa inativa como ativa) em FIX-EMPRESAS-ACTIVE-V1 — ver `docs/FIX_EMPRESAS_ACTIVE_V1.md`.
+Texto original do achado:
+
 O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
 opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o
 formulário envia `active: ''`. O backend recusa (`require_fields` → "Campo obrigatório: active", antes de qualquer
@@ -895,7 +899,8 @@ I18N-FULL-V1 (ponta `0f83da08`): mesmos arquivos e hunks de conflito das fatias 
 Achados e tratamento:
 
 - Defeito preexistente da §15.4 confirmado e detalhado (texto acima).
-- P2 — o harness aceitava `active` qualquer: passou a fixar `active == ''` com o marcador `KNOWN-DEFECT`, a conferir
+- P2 — o harness aceitava `active` qualquer: passou a fixar `active == ''` com o marcador `KNOWN-DEFECT` (hoje `'1'`, após
+  FIX-EMPRESAS-ACTIVE-V1), a conferir
   `general_admin_name` no cadastro e a exigir nenhum diálogo ao inativar.
 - P3 — 4 mutações do auditor (de 26) sobreviviam ao teste de caracterização; os 4 cenários acrescentados as detectam.
 - P3, registrados sem mudança: `saveCompany`/`toggleCompany` passaram de `async` de bloco a globais (o backend autoriza

@@ -187,7 +187,8 @@
     setCompanyFieldValue('cnpj', company.cnpj || '');
     setCompanyFieldValue('general_admin_email', '', { optional: true });
     setCompanyFieldValue('general_admin_name', '', { optional: true });
-    setCompanyFieldValue('active', String(Number(company.active || 1)));
+    // FIX-EMPRESAS-ACTIVE-V1: `?? 1` (não `|| 1`) — empresa inativa (0) abre como inativa.
+    setCompanyFieldValue('active', String(Number(company.active ?? 1)));
     renderCompanies();
     renderCompanyDetails(company.id);
     refs.companyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });

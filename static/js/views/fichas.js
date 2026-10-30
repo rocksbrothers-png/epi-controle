@@ -107,7 +107,7 @@
       <td>${fichaAuditActionBadge(item.action)}</td>
       <td>${escapeHtml(item.unit_name || '-')}</td>
       <td>${escapeHtml(item.ip_address || '-')}</td>
-      <td>${item.user_agent || '-'}</td>
+      <td>${escapeHtml(item.user_agent || '-')}</td>
     </tr>
   `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem logs de auditoria de ficha.' });
   }

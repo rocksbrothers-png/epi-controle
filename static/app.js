@@ -6250,7 +6250,7 @@ function renderStockMovementsReport(items) {
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(' ') || '';
-    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${sizeInfo}</small>` : h(item.epi_name);
+    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${h(sizeInfo)}</small>` : h(item.epi_name);
     const caCell = item.ca
       ? `${h(item.ca)}${item.ca_expiry ? ` <small style="color:var(--color-text-muted);">${formatDate(item.ca_expiry)}</small>` : ''}`
       : '—';
@@ -9719,7 +9719,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
     if (balances.length) {
       const parts = balances.map((s) => {
         const label = [s.glove_size !== 'N/A' ? `Luva ${s.glove_size}` : '', s.size !== 'N/A' ? `Tam. ${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif. ${s.uniform_size}` : ''].filter(Boolean).join(' / ');
-        return label ? `<strong>${label}</strong>: ${s.quantity} un.` : '';
+        return label ? `<strong>${escapeHtml(label)}</strong>: ${escapeHtml(`${s.quantity}`)} un.` : '';
       }).filter(Boolean);
       sizesPanel.innerHTML = `<span style="font-weight:600;margin-right:6px;">Saldo por tamanho:</span>${parts.join('<span style="margin:0 8px;color:var(--color-text-muted)">|</span>')}`;
       sizesPanel.style.display = '';
@@ -13217,19 +13217,19 @@ async function loadPurchaseDemands() {
         if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
           const parts = d.size_demands.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || 'Único';
-            return `${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`;
+            return escapeHtml(`${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`);
           }).join('<br>');
           if (parts) return parts;
         }
         if (Array.isArray(d.size_balances) && d.size_balances.length) {
           const parts = d.size_balances.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
-            return sp ? `${sp}×${s.quantity}` : `Qtd:${s.quantity}`;
+            return escapeHtml(sp ? `${sp}×${s.quantity}` : `Qtd:${s.quantity}`);
           }).filter(Boolean).join(', ');
           if (parts) return parts;
         }
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
-        return flatSize || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
+        return escapeHtml(flatSize) || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
       })();
       const qty = d.demand_type === 'employee_request'
         ? (d.quantity || 1)
@@ -13296,7 +13296,7 @@ async function loadPurchaseRequests() {
         <td>${escapeHtml(pr.unit_name || '—')}</td>
         <td>${purchaseStatusBadge(pr.status, postponedExtra)}</td>
         <td>${pr.items_count || 0}</td>
-        <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
+        <td style="font-size:12px;">${escapeHtml(pr.created_by_name || '—')}</td>
         <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
         <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
       </tr>`;
@@ -15169,7 +15169,7 @@ async function loadAprovacoesSolicitacoes() {
         <td>${esc(r.unit_name || '—')}</td>
         <td>${esc(r.epi_name || '—')}</td>
         <td>${esc(r.ca || '—')}</td>
-        <td style="font-size:12px;">${sizeInfo}</td>
+        <td style="font-size:12px;">${esc(sizeInfo)}</td>
         <td>${esc(r.quantity)}</td>
         <td style="font-size:12px;">${formatDate(r.requested_at)}</td>
         <td>${epiRequestStatusBadge(r.status)}${extra}</td>

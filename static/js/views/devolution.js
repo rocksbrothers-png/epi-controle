@@ -148,8 +148,8 @@
       '</header>',
       '<div class="signature-modal__body" style="display:flex;flex-direction:column;gap:12px">',
       '<div class="card" style="background:#f8f9fa;padding:12px;border-radius:6px;margin:0">',
-      `<strong>${tr('epi.title', 'EPI')}:</strong> ${epiName}<br>`,
-      `<strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${employeeName}`,
+      `<strong>${tr('epi.title', 'EPI')}:</strong> ${escapeText(epiName)}<br>`,
+      `<strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${escapeText(employeeName)}`,
       '</div>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
       `<span>${tr('devolution.returnDate', 'Data da devolução')} <span style="color:red">*</span></span>`,
@@ -327,7 +327,7 @@
       +'<td>'+escapeText(item.employee_id_code||'')+'</td>'
       +'<td>'+escapeText(item.employee_name||'')+'</td>'
       +'<td>'+escapeText(item.epi_name||'')+'</td>'
-      +'<td>'+formatItemSizeDisplay(item)+'</td>'
+      +'<td>'+escapeText(formatItemSizeDisplay(item))+'</td>'
       +'<td>'+escapeText(item.quantity||'')+'</td>'
       +'<td>'+escapeText(item.quantity_label||'')+'</td>'
       +'<td>'+formatDate(item.delivery_date)+'</td>'

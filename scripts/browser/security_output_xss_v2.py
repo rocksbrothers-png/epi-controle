@@ -78,6 +78,7 @@ class Fixture(base.Fixture):
             id=81, company_id=901, company_name='Empresa QA', employee_id=31, employee_name=t('entrega-colab', 'colab'),
             employee_id_code=t('entrega-matricula', 'M-1'), epi_id=61, epi_name=t('entrega-epi', 'epi'), unit_id=5,
             unit_name=t('entrega-unidade', 'unidade'), quantity=1, quantity_label=t('entrega-medida', 'par'),
+            glove_size=t('entrega-luva', 'P'), size=t('entrega-tamanho', 'M'), uniform_size=t('entrega-uniforme', 'G'),
             delivery_date='2026-10-01')]
         self.alerts = [dict(type='warning', title=t('alerta-titulo', 'CA vencendo'), description=t('alerta-desc', 'desc'),
                             company_id=901, unit_id=5, epi_id=61, epi_name=t('alerta-epi', 'epi'))]
@@ -102,19 +103,25 @@ class Fixture(base.Fixture):
             return super().route(route)
         data = None
         if path == '/api/stock/epis':
-            data = dict(items=[dict(id=61, name=t('estoque-epi', 'epi'), sector='maos', epi_section=t('secao', 'Deck'),
-                                    manufacturer=t('estoque-fab', 'Fab'), ca=t('estoque-ca', '123'),
-                                    unit_name=t('estoque-unidade', 'unidade'), stock=1, size_balances=[],
-                                    unit_measure='UN', minimum_stock=0)])
+            data = dict(items=[dict(id=61, name=t('estoque-epi', 'epi'), sector=t('protecao', 'maos'),
+                                    epi_section=t('secao', 'Deck'), manufacturer=t('estoque-fab', 'Fab'),
+                                    ca=t('estoque-ca', '123'), unit_name=t('estoque-unidade', 'unidade'), stock=1,
+                                    size_balances=[dict(glove_size=t('saldo-luva', 'P'), size='N/A', uniform_size='N/A',
+                                                        quantity=1)],
+                                    unit_measure=t('medida', 'UN'), minimum_stock=0)])
         elif path == '/api/stock/low':
             data = dict(items=[dict(company_name='Empresa QA', unit_name=t('baixo-unidade', 'unidade'),
-                                    epi_name=t('baixo-epi', 'epi'), stock=0, minimum_stock=5, unit_measure='UN')])
+                                    epi_name=t('baixo-epi', 'epi'), stock=0, minimum_stock=5,
+                                    unit_measure=t('baixo-medida', 'UN'),
+                                    size_balances=[dict(glove_size=t('baixo-luva', 'P'), size='N/A', uniform_size='N/A',
+                                                        quantity=0)])])
         elif path == '/api/purchase-demands':
             data = dict(items=[dict(demand_type='employee_request', employee_name=t('demanda-colab', 'colab'),
                                     unit_name=t('demanda-unidade', 'unidade'), employee_sector=t('demanda-setor', 'setor'),
                                     employee_role=t('demanda-funcao', 'funcao'), epi_name=t('demanda-epi', 'epi'),
                                     ca=t('demanda-ca', '123'), manufacturer=t('demanda-fab', 'Fab'),
-                                    supplier=t('demanda-fornecedor', 'Forn'), status='solicitado', company_name='Empresa QA')])
+                                    supplier=t('demanda-fornecedor', 'Forn'), status='solicitado', company_name='Empresa QA',
+                                    glove_size=t('demanda-luva', 'P'), size='N/A', uniform_size='N/A')])
         elif path == '/api/purchase-requests/91':
             data = dict(item=dict(id=91, title=t('requisicao', 'Req'), status='draft', company_id=901),
                         items=[dict(id=1, epi_name=t('req-item-epi', 'epi'), ca=t('req-item-ca', '1'),
@@ -123,7 +130,8 @@ class Fixture(base.Fixture):
                                     glove_size='N/A', size='N/A', uniform_size='N/A', quantity_requested=1)])
         elif path == '/api/purchase-requests':
             data = dict(items=[dict(id=91, title=t('requisicao', 'Req'), unit_name=t('requisicao-unidade', 'unidade'),
-                                    status='draft', items_count=1, linked_po_number=t('po', 'PO-1'))])
+                                    status='draft', items_count=1, linked_po_number=t('po', 'PO-1'),
+                                    created_by_name=t('requisitante', 'QA'))])
         elif path == '/api/units/archived':
             data = dict(units=[dict(id=7, company_id=901, company_name='Empresa QA', name=t('unidade-arquivada', 'unidade'),
                                     archived_at='2026-01-01', archive_reason=t('motivo', 'Fim'),
@@ -147,7 +155,8 @@ class Fixture(base.Fixture):
 
 
 EXTRA_RENDERS = [
-    # Renderizadores pontuais do app real (funções globais do app.js e dos módulos).
+    # Renderizadores pontuais do app real (funções globais do app.js e dos módulos). Uma função
+    # ausente ou que lance erro reprova o cenário: senão a varredura passaria sem renderizar nada.
     "await loadPurchaseDemands()",
     "await loadPurchaseRequests()",
     "await openPrDetail(91)",
@@ -156,7 +165,7 @@ EXTRA_RENDERS = [
     "renderLinkedEmployeeSearchResults()",
     "hydrateConfigurationForms()",
     "openDeliveryDetailDrawer(81)",
-    "renderAlerts && renderAlerts()",
+    "renderAlerts()",
 ]
 
 
@@ -177,13 +186,25 @@ def sweep(f):
                 tabs.nth(index).click()
                 visited.append(f'{view}/{tabs.nth(index).get_attribute("data-vtab")}')
                 f.page.wait_for_timeout(200)
+    render_errors = []
     for call in EXTRA_RENDERS:
-        f.page.evaluate(f'async () => {{ try {{ {call}; }} catch (e) {{}} }}')
+        error = f.page.evaluate(f'async () => {{ try {{ {call}; return null; }} catch (e) {{ return String(e); }} }}')
+        if error:
+            render_errors.append(f'{call}: {error}')
         f.page.wait_for_timeout(150)
+    # Botão "↩ Devolver" do histórico de entregas: abre o modal com EPI e colaborador.
+    f.view('entregas')
+    f.page.evaluate("renderTables()")
+    devolver = f.page.locator('[data-dev-delivery]')
+    if devolver.count():
+        devolver.first.dispatch_event('click')
+        f.page.wait_for_timeout(300)
+    else:
+        render_errors.append('botão Devolver não encontrado')
     f.page.wait_for_timeout(300)
     injected = f.page.eval_on_selector_all('img[src="x"], [onerror]', 'els => els.length')
     hits = sorted(set(f.page.evaluate('window.__xss || []')))
-    return visited, unavailable, injected, hits
+    return visited, unavailable, injected, hits, render_errors
 
 
 def run_locale(browser, origin, locale, malicious):
@@ -191,17 +212,22 @@ def run_locale(browser, origin, locale, malicious):
     page = context.new_page()
     f = Fixture(page, origin, locale, malicious=malicious)
     try:
-        visited, unavailable, injected, hits = sweep(f)
+        visited, unavailable, injected, hits, render_errors = sweep(f)
         body = page.locator('body').inner_text()
         tainted_routes = sorted({c['path'] for c in f.calls if c['path'] in TAINTED_ROUTES})
-        result = dict(visited=visited, unavailable=unavailable, injected=injected, xss_hits=hits, tainted_routes=tainted_routes,
+        missing_routes = sorted(TAINTED_ROUTES - set(tainted_routes))
+        result = dict(visited=visited, unavailable=unavailable, injected=injected, xss_hits=hits,
+                      tainted_routes=tainted_routes, missing_routes=missing_routes, render_errors=render_errors,
                       page_errors=f.errors[:5])
+        covered = not missing_routes and not render_errors
         if malicious:
-            result['status'] = 'passed' if not hits and not injected else 'failed'
+            result['status'] = 'passed' if covered and not hits and not injected else 'failed'
         else:
-            # Texto legítimo aparece como texto, sem escape duplicado.
-            ok = 'Ana & "Bia" Ltda' in body and '&amp;' not in body and not hits
-            result['status'] = 'passed' if ok else 'failed'
+            # Texto legítimo aparece como texto, sem escape duplicado (nenhuma entidade visível na tela).
+            legit_ok = all(text in body for text in LEGIT.values())
+            no_entities = not any(entity in body for entity in ('&amp;', '&lt;', '&gt;', '&quot;', '&#39;'))
+            result.update(legit_visible=legit_ok, no_visible_entities=no_entities)
+            result['status'] = 'passed' if covered and legit_ok and no_entities and not hits else 'failed'
         return result
     finally:
         context.close()

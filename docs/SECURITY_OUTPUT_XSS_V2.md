@@ -27,8 +27,11 @@ abrem as listas, o dashboard e as compras.
 
 | | Execuções do payload | Elementos injetados | Contêineres afetados |
 |---|---|---|---|
-| `main` | **129** | 93 | 35 |
+| `main` | **148** | 105 | 37 |
 | Com a correção | **0** | 0 | 0 |
+
+Na `main`, o cenário legítimo também falha: o título da gaveta de entrega mostrava a entidade (`&amp;`) no nome do
+EPI, por escape duplicado.
 
 Os 35 contêineres da `main` são:
 - **Colaboradores:** lista, Gestão de Colaboradores, arquivados, terceirizados.
@@ -75,12 +78,43 @@ O escape é aplicado na saída, no ponto em que o texto entra no HTML. Nenhum da
 - **Sem mudança em:** rotas, RBAC, isolamento multiempresa, regras de negócio, dados gravados e textos de interface
   (5 idiomas).
 
+### Rodada da auditoria independente
+
+A auditoria somente leitura aprovou com correções. Apontou dois bloqueios, reproduzidos no Chromium nos dois
+projetos.
+
+- **B1. Modal "↩ Devolver":** o EPI e o colaborador eram lidos de volta dos atributos `data-dev-*` (o navegador
+  decodifica as entidades) e iam crus ao `innerHTML`. Agora são escapados.
+- **B2. Tamanhos (luva, tamanho, uniforme):** são texto livre, e a solicitação do portal do colaborador também os
+  aceita. Agora são escapados em:
+  - histórico de entregas;
+  - estoque (saldo por tamanho, estoque baixo, solicitações);
+  - movimentações;
+  - painel de saldo da entrega;
+  - demandas de compra;
+  - aprovações.
+
+  Os helpers compartilhados (`formatItemSizeDisplay` e `formatSizeBalancesDisplay`) não mudaram: outros chamadores
+  já escapam a saída, e mudá-los geraria escape duplicado.
+- **Itens a corrigir:**
+  - proteção e unidade de medida do EPI no estoque (os rótulos devolvem o valor desconhecido inalterado);
+  - requisitante (`created_by_name`) nas requisições;
+  - `User-Agent` na auditoria de ficha.
+- **Guarda:** inclui os campos acima, contexto de atributo e interpolação depois de outra; o limite está documentado.
+- **Varredura:**
+  - passa a exigir as 10 rotas contaminadas e a reprovar se um renderizador não existir ou lançar erro;
+  - clica em "↩ Devolver";
+  - contamina tamanhos, proteção, medida e requisitante;
+  - no cenário legítimo, confere os três textos e a ausência de `&amp;`, `&lt;`, `&gt;`, `&quot;` e `&#39;`.
+
+  Sobre o código anterior a esta rodada, a nova varredura acusa 19 execuções, e 0 depois.
+
 ## 4. Testes
 
 | Teste | `main` | Com a correção |
 |---|---|---|
-| `scripts/browser/security_output_xss_v2.py` (Chromium, 5 idiomas): malicioso (nada executa, nada injetado, 10 rotas contaminadas exercitadas) e legítimo (`Ana & "Bia" Ltda`, `Base D'Água`, `Luva <nitrílica>` aparecem como texto, sem `&amp;` duplicado) | 129 execuções | 10/10 |
-| `tests/test_security_output_xss_v2_guard.py`: guarda que falha se um template de `static/` interpolar ou concatenar texto de cadastro cru logo após uma tag | 58 + 5 pontos crus | 0 |
+| `scripts/browser/security_output_xss_v2.py` (Chromium, 5 idiomas): malicioso (nada executa, nada injetado, as 10 rotas contaminadas exigidas, renderizadores conferidos, modal Devolver aberto) e legítimo (`Ana & "Bia" Ltda`, `Base D'Água`, `Luva <nitrílica>` aparecem como texto, sem entidade visível) | 148 execuções; legítimo falha | 10/10 |
+| `tests/test_security_output_xss_v2_guard.py`: guarda que falha se um template de `static/` interpolar (após tag, após outra interpolação ou em atributo) ou concatenar texto de cadastro cru | 65 + 5 pontos crus | 0 |
 | Caracterizações UBX (colaboradores, terceirizados, arquivamento, unidades) | — | 665 testes JS |
 
 Sobre as caracterizações:

@@ -22,7 +22,11 @@
     values.actor_user_id = actor.id;
     if (['general_admin', 'admin'].includes(actor.role)) { values.company_id = actor.company_id; }
 
-    values.active = Number(values.active || 1);
+    // FIX-USERS-ACTIVE-V1: o formulário não tem campo de status. Sem valor explícito,
+    // `active` não vai no corpo: na edição o servidor mantém o status atual (na criação, ativo).
+    // Ativar/desativar é só pelo botão próprio (userAccessUpdatePayload).
+    if (values.active === undefined || String(values.active).trim() === '') {delete values.active;}
+    else {values.active = Number(values.active);}
     if (!String(values.company_id || '').trim()) { throw new Error('Empresa Usuário.'); }
     if (!roleLabels[values.role]) { throw new Error('Perfil inválido.'); }
     const noLink = !String(values.linked_employee_id || '').trim();

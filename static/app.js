@@ -9761,7 +9761,11 @@ function populateLinkedEmployeeOptions() {
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  // FIX-USERS-ACTIVE-V1: refazer as opções apagava a seleção — ao editar, o colaborador
+  // vinculado sumia do formulário. Mantém o valor quando ele continua entre as opções.
+  const previousValue = field.value;
   field.innerHTML = `${firstOption}${employeeOptions}`;
+  if (previousValue && [...field.options].some((option) => option.value === previousValue)) field.value = previousValue;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }

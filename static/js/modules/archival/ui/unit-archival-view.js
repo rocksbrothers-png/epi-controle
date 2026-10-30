@@ -15,8 +15,8 @@
   if (globalThis.__EPI_MODULE_UNIT_ARCHIVAL_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_UNIT_ARCHIVAL_UI_LOADED__ = true;
 
-  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
-  function escapeCompanyText(value) {
+  // SECURITY-OUTPUT-XSS-V1/V2: escape local de texto de cadastro (não depende do helper global).
+  function escapeText(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
   function rules() { return globalThis.__EPI_ARCHIVAL_RULES__; }
@@ -72,7 +72,7 @@
     if (canPurge && rules().isPurgeable(item)) {
       actions.push(`<button class="ghost" data-unit-purge="${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
     }
-    return `<tr><td>${escapeCompanyText(`${item.company_name}`)}</td><td>${item.name}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
+    return `<tr><td>${escapeText(`${item.company_name}`)}</td><td>${escapeText(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${escapeText(item.archive_reason || '-')}</td><td>${escapeText(item.archived_by_name || '-')}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
   }
 
   function renderArchivedUnits() {

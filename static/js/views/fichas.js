@@ -39,7 +39,7 @@
     const filteredEmployees = applyFichaEmployeeFilters(filterByUserCompany(state.employees));
     if (refs.fichaEmployee) {
       const previous = String(refs.fichaEmployee.value || '');
-      refs.fichaEmployee.innerHTML = filteredEmployees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+      refs.fichaEmployee.innerHTML = filteredEmployees.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`).join('');
       if (previous && filteredEmployees.some((item) => String(item.id) === previous)) { refs.fichaEmployee.value = previous; }
     }
     const employeeId = refs.fichaEmployee.value || filteredEmployees[0]?.id;
@@ -102,11 +102,11 @@
     refs.fichaAuditTable.innerHTML = (state.fichaAuditLogs || []).map((item) => `
     <tr>
       <td>${formatDateTime(item.accessed_at)}</td>
-      <td>${item.actor_name || '-'}</td>
-      <td>${item.employee_name || '-'}</td>
+      <td>${escapeHtml(item.actor_name || '-')}</td>
+      <td>${escapeHtml(item.employee_name || '-')}</td>
       <td>${fichaAuditActionBadge(item.action)}</td>
-      <td>${item.unit_name || '-'}</td>
-      <td>${item.ip_address || '-'}</td>
+      <td>${escapeHtml(item.unit_name || '-')}</td>
+      <td>${escapeHtml(item.ip_address || '-')}</td>
       <td>${item.user_agent || '-'}</td>
     </tr>
   `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem logs de auditoria de ficha.' });

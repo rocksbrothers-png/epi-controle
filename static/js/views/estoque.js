@@ -166,12 +166,12 @@
     const faixa = attentionHint(item);
     const detalheMinimo = [origemMinimo, faixa].filter(Boolean).join(' · ');
     return `<tr>
-    <td>${item.name}</td>
+    <td>${esc(`${item.name}`)}</td>
     <td>${epiProtectionLabel(item.sector)}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${item.unit_name || '-'}</td>
+    <td>${esc(item.epi_section || '-')}</td>
+    <td>${esc(item.manufacturer || '-')}</td>
+    <td>${esc(item.ca || '-')}</td>
+    <td>${esc(item.unit_name || '-')}</td>
     <td>${sizesDisplay}</td>
     <td>${saldo.value} ${epiMeasureLabel(item.unit_measure)}(s)${escopoSaldo}</td>
     <td>${minimo.value}${detalheMinimo ? `<br><small>${esc(detalheMinimo)}</small>` : ''}</td>
@@ -240,7 +240,7 @@
         subjacente ? esc(tr('stock.underlyingIs', 'condição atual: {s}').replace('{s}', subjacente)) : '',
         explicacao ? esc(explicacao) : ''
       ].filter(Boolean).join(' — ');
-      return `<div class="summary-item"><strong>${esc(`${item.company_name}`)} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
+      return `<div class="summary-item"><strong>${esc(`${item.company_name}`)} / ${esc(`${item.unit_name}`)}</strong><div>${esc(`${item.epi_name}`)}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
     }).join('') || `<div class="summary-item">${tr('stock.noLowStockItems', 'Sem itens com estoque baixo.')}</div>`;
   }
 

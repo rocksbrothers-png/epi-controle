@@ -279,7 +279,7 @@
     const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
     const scopedUnit = filterByUserCompany(state.units || []).find((item) => String(item.id) === operationalUnitId);
     unitField.innerHTML = scopedUnit
-      ? `<option value="${scopedUnit.id}">${scopedUnit.name} - ${unitTypeLabel(scopedUnit.unit_type)}</option>`
+      ? `<option value="${escapeHtml(scopedUnit.id)}">${escapeHtml(`${scopedUnit.name}`)} - ${unitTypeLabel(scopedUnit.unit_type)}</option>`
       : '<option value="">Sem unidade operacional ativa</option>';
     unitField.value = scopedUnit ? String(scopedUnit.id) : '';
     unitField.disabled = true;

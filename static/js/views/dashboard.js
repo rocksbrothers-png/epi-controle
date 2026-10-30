@@ -573,9 +573,10 @@
         ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(action.label + (item.epi_name ? ': ' + item.epi_name : ''))}"`
         : '';
       const btn = action
-        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${action.label}</button>`
+        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${esc(action.label)}</button>`
         : '';
-      return `<div class="alert-item ${item.type}"><div class="alert-item-body"><strong>${item.title}</strong><div>${item.description}</div></div>${btn}</div>`;
+      // SECURITY-OUTPUT-XSS-V2: título/descrição montados no servidor com nome de EPI, empresa e unidade.
+      return `<div class="alert-item ${esc(item.type)}"><div class="alert-item-body"><strong>${esc(item.title)}</strong><div>${esc(item.description)}</div></div>${btn}</div>`;
     }).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
     _bindAlertActions(refs.alertsList);
@@ -587,7 +588,7 @@
     const items = filterByCompany(getState().deliveries || [])
       .filter((item) => matchesQuery([item.employee_name, item.epi_name, item.company_name, item.quantity_label]))
       .slice(0, 5);
-    refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${item.employee_name}</strong><div>${item.epi_name} - ${item.quantity} ${item.quantity_label}(s)</div><small>${esc(`${item.company_name}`)}${item.unit_name ? ' / ' + esc(item.unit_name) : ''}  ${fmtDate(item.delivery_date)}</small></div>`).join('')
+    refs.latestDeliveries.innerHTML = items.map((item) => `<div class="list-item"><strong>${esc(`${item.employee_name}`)}</strong><div>${esc(`${item.epi_name}`)} - ${esc(`${item.quantity}`)} ${esc(`${item.quantity_label}`)}(s)</div><small>${esc(`${item.company_name}`)}${item.unit_name ? ' / ' + esc(item.unit_name) : ''}  ${fmtDate(item.delivery_date)}</small></div>`).join('')
       || `<div class="summary-item">${tr('dashboard.noDeliveriesFilter', 'Sem entregas para o filtro atual.')}</div>`;
   }
 

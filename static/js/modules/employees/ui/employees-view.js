@@ -24,8 +24,8 @@
   if (globalThis.__EPI_MODULE_EMPLOYEES_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_EMPLOYEES_UI_LOADED__ = true;
 
-  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
-  function escapeCompanyText(value) {
+  // SECURITY-OUTPUT-XSS-V1/V2: escape local de texto de cadastro (não depende do helper global).
+  function escapeText(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
   function employeesBusiness() { return globalThis.__EPI_EMPLOYEES_BUSINESS__; }
@@ -73,7 +73,7 @@
     const target = state.users.find((item) => String(item.id) === String(userId));
     if (!target?.employee_access_token) {return alert('Funcionário sem token externo.');}
     const accessLink = buildEmployeeAccessLink(target.employee_access_token);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${escapeText(accessLink)}">${escapeText(accessLink)}</a></p></body></html>`;
     if (!openAndPrintPopup(html, 'width=520,height=700')) {return alert('Não tem acesso.');}
   }
 
@@ -83,7 +83,7 @@
       const payload = await employeesApi().createEmployeePortalLink(state.user.id, employeeId);
       const employee = state.employees.find((item) => String(item.id) === String(employeeId));
       const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
-      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${escapeText(employee?.name || 'Colaborador')}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${escapeText(accessLink)}">${escapeText(accessLink)}</a></p></body></html>`;
       if (!openAndPrintPopup(html, 'width=520,height=700')) {return alert('Não tem acesso.');}
     } catch (error) {
       alert(error.message);
@@ -100,20 +100,20 @@
     const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
     const allocation = allocationTypeLabel(item.unit_allocation_type);
     const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
-    const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
+    const contact = [item.whatsapp ? `WhatsApp: ${escapeText(item.whatsapp)}` : '', item.email ? `E-mail: ${escapeText(item.email)}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
     const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
     const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-    const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-    const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
-    return `<tr>${checkCell}<td>${escapeCompanyText(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+    const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${escapeText(item.empresa_origem)}</small>` : '';
+    const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${escapeText(`${item.name}`)}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
+    return `<tr>${checkCell}<td>${escapeText(`${item.company_name}`)}</td><td>${escapeText(`${item.employee_id_code}`)}</td><td>${escapeText(`${item.name}`)}</td><td>${contact}</td><td>${escapeText(`${item.sector}`)}</td><td>${escapeText(`${item.role_name}`)}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${escapeText(`${item.current_unit_name || item.unit_name}`)}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
   }
 
   function buildEmployeeOpsRow(item) {
     const allocation = allocationTypeLabel(item.unit_allocation_type);
     const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
     const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-    const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-    return `<tr><td>${escapeCompanyText(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
+    const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${escapeText(item.empresa_origem)}</small>` : '';
+    return `<tr><td>${escapeText(`${item.company_name}`)}</td><td>${escapeText(`${item.employee_id_code}`)}</td><td>${escapeText(`${item.name}`)}</td><td>${escapeText(`${item.sector}`)}</td><td>${escapeText(`${item.role_name}`)}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${escapeText(`${item.current_unit_name || item.unit_name}`)}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
   }
 
   function currentEmployeesBulkScope() {
@@ -217,7 +217,7 @@
     if (!companyField || !unitField) {return;}
     const companyId = companyField.value || state.user?.company_id || '';
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-    unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+    unitField.innerHTML = units.map((item) => `<option value="${escapeText(item.id)}">${escapeText(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
     if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
       unitField.value = String(units[0].id);
     }

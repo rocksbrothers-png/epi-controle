@@ -26,8 +26,8 @@
   if (globalThis.__EPI_MODULE_REPORTS_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_REPORTS_UI_LOADED__ = true;
 
-  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
-  function escapeCompanyText(value) {
+  // SECURITY-OUTPUT-XSS-V1/V2: escape local de texto de cadastro (não depende do helper global).
+  function escapeText(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
   function reportsBusiness() { return globalThis.__EPI_REPORTS_BUSINESS__; }
@@ -73,7 +73,7 @@
       return employeeUnitId === selectedUnitId;
     });
     const previousEmployee = String(employeeField.value || '');
-    employeeField.innerHTML = `<option value="">${tr('employee.allEmployees', 'Todos os colaboradores')}</option>` + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+    employeeField.innerHTML = `<option value="">${tr('employee.allEmployees', 'Todos os colaboradores')}</option>` + employees.map((item) => `<option value="${escapeText(item.id)}">${escapeText(`${item.employee_id_code}`)} - ${escapeText(`${item.name}`)}</option>`).join('');
     if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
       employeeField.value = previousEmployee;
     } else {
@@ -129,7 +129,7 @@
     if (!refs.reportEmployeeFichas) {return;}
     const employeeFichas = state.reports.employee_fichas || [];
     refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-      return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | ${tr('delivery.status', 'Status')}: ${item.status}</div><div>${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'} | ${tr('report.items', 'Itens')}: ${item.total_items} | ${tr('report.totalQuantity', 'Quantidade total')}: ${item.total_quantity}</div></div>`;
+      return `<div class="summary-item"><strong>${escapeText(`${item.employee_name}`)} (${escapeText(`${item.employee_id_code}`)})</strong><div>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | ${tr('delivery.status', 'Status')}: ${escapeText(`${item.status}`)}</div><div>${tr('unit.title', 'Unidade')}: ${escapeText(item.unit_name || '-')} | ${tr('report.items', 'Itens')}: ${item.total_items} | ${tr('report.totalQuantity', 'Quantidade total')}: ${item.total_quantity}</div></div>`;
     }).join('') || `<div class="summary-item">${tr('report.selectEmployeeRecords', 'Selecione um colaborador para visualizar as fichas de EPI.')}</div>`;
     await loadArchiveReports(reportsBusiness().archiveFiltersFromReportFilters(normalizedFilters));
   }
@@ -148,9 +148,9 @@
     refs.reportArchiveTable.innerHTML = (state.reportArchiveItems || []).map((item) => `
     <tr>
       <td>${formatDateTime(item.generated_at)}</td>
-      <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
-      <td>${escapeCompanyText(item.company_name || '-')}</td>
-      <td>${item.unit_name || '-'}</td>
+      <td>${escapeText(item.employee_name || '-')} (${escapeText(item.employee_id_code || '-')})</td>
+      <td>${escapeText(item.company_name || '-')}</td>
+      <td>${escapeText(item.unit_name || '-')}</td>
       <td>${retentionStatusBadge(item.status)}</td>
       <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
       <td>

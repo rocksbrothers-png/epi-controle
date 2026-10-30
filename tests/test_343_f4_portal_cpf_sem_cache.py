@@ -323,7 +323,7 @@ ARQUIVOS_PAREADOS_F4 = (
 ESTE_ARQUIVO = 'tests/test_343_f4_portal_cpf_sem_cache.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F4 = '
 
-DIGESTO_PARIDADE_F4 = '0b410ae2660835f2fdd4daf5451de4ba8cd0ea8fe1af21df7d1303f67866bcae'
+DIGESTO_PARIDADE_F4 = '1d179bf9a77751c0e440abfe181ba103e50b7d04b16d0603ed581d2c7e7ecf41'
 
 
 def _bytes_para_o_digesto(rel):

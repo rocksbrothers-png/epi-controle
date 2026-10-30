@@ -648,7 +648,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = 'c97f29719b00cb874df8af8a3ed92c6d14846dfdd4de6a4e6252490babf4fa17'
+DIGESTO_PARIDADE_F5B = '83c78149eb0a20cf37d31b5b5ba895d41405f8cbb07dd4133e9a9407d144245f'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

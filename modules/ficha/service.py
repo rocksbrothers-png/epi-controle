@@ -8,7 +8,7 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
 from core.auth import ensure_resource_company, ensure_company_access
 from core.schema import _col_exists
-from modules.commercial.service import safe_image_data_url
+from modules.commercial.service import ANY_IMAGE_TYPE, safe_image_data_url
 from modules.settings.service import get_ficha_config, get_ficha_retention_policy
 from modules.employees.service import (
     actor_operational_unit_id,
@@ -274,22 +274,31 @@ def ensure_ficha_for_devolution(connection, devolution_row):
     return ficha_id
 
 
+def _esc(value):
+    """Escapa um dado de registro para HTML (texto e atributo); None vira ''."""
+    return html.escape(str(value if value is not None else ''))
+
+
 def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devolutions, config, period_label=''):
     """Renderiza o HTML da ficha com dados já resolvidos (sem consultas implícitas)."""
     logo_data = str(company.get('logo_type') or '')
     rows_html = ''
+    # SECURITY-OUTPUT-XSS-V1: este HTML é servido na mesma origem do app e
+    # guardado em snapshot; todo dado de registro entra escapado (_esc) e a
+    # assinatura só entra como data URL base64 de imagem.
     for item in deliveries:
         sig_html = ''
-        if item.get('signature_data') and str(item['signature_data']).startswith('data:image'):
-            sig_html = f'<img src="{item["signature_data"]}" style="max-height:28px;max-width:80px;">'
-        qty = str(item.get('quantity') or 1)
-        unid = str(item.get('unit_measure') or 'UNIDADE').upper()
-        epi_name = str(item.get('epi_name') or '')
-        ca = str(item.get('ca') or '')
-        fab = str(item.get('manufacture_date') or '')
-        validade = str(item.get('next_replacement_date') or item.get('epi_validity_date') or '')
-        recebido = str(item.get('delivery_date') or '')
-        devolvido = str(item.get('returned_date') or '')
+        signature = safe_image_data_url(item.get('signature_data'), ANY_IMAGE_TYPE)
+        if signature:
+            sig_html = f'<img src="{_esc(signature)}" style="max-height:28px;max-width:80px;">'
+        qty = _esc(item.get('quantity') or 1)
+        unid = _esc(str(item.get('unit_measure') or 'UNIDADE').upper())
+        epi_name = _esc(item.get('epi_name'))
+        ca = _esc(item.get('ca'))
+        fab = _esc(item.get('manufacture_date'))
+        validade = _esc(item.get('next_replacement_date') or item.get('epi_validity_date'))
+        recebido = _esc(item.get('delivery_date'))
+        devolvido = _esc(item.get('returned_date'))
         rows_html += f"""
         <tr>
           <td style="text-align:center">{qty}</td>
@@ -318,9 +327,9 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
     else:
         logo_html = f'<div style="font-size:18px;font-weight:bold;">{html.escape(str(company.get("name") or ""))}</div>'
 
-    declaracao_html = str(config.get('declaracao', '')).replace('\n', '<br>')
-    observacoes_html = str(config.get('observacoes', '')).replace('\n', '<br>')
-    unit_name = str(unit.get('name') or '')
+    declaracao_html = _esc(config.get('declaracao', '')).replace('\n', '<br>')
+    observacoes_html = _esc(config.get('observacoes', '')).replace('\n', '<br>')
+    unit_name = _esc(unit.get('name'))
 
     condition_labels = {
         'usable': 'Reutilizável', 'damaged': 'Danificado', 'discarded': 'Descartado',
@@ -334,15 +343,15 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
     for dv in devolutions:
         devol_rows_html += (
             f'<tr>'
-            f'<td>{dv.get("epi_name","")}</td>'
-            f'<td style="text-align:center">{dv.get("qty_entregue","")}</td>'
-            f'<td style="text-align:center">{dv.get("delivery_date","")}</td>'
-            f'<td style="text-align:center">{dv.get("returned_date","")}</td>'
-            f'<td style="text-align:center">{condition_labels.get(dv.get("condition",""),dv.get("condition",""))}</td>'
-            f'<td style="text-align:center">{destination_labels.get(dv.get("destination",""),dv.get("destination",""))}</td>'
-            f'<td style="text-align:center">{dv.get("received_by_name","")}</td>'
-            f'<td style="text-align:center">{dv.get("signature_name","") or ("Pendente no fechamento" if not dv.get("signature_at","") else "")}</td>'
-            f'<td>{dv.get("reason","") or dv.get("notes","")}</td>'
+            f'<td>{_esc(dv.get("epi_name",""))}</td>'
+            f'<td style="text-align:center">{_esc(dv.get("qty_entregue",""))}</td>'
+            f'<td style="text-align:center">{_esc(dv.get("delivery_date",""))}</td>'
+            f'<td style="text-align:center">{_esc(dv.get("returned_date",""))}</td>'
+            f'<td style="text-align:center">{_esc(condition_labels.get(dv.get("condition",""),dv.get("condition","")))}</td>'
+            f'<td style="text-align:center">{_esc(destination_labels.get(dv.get("destination",""),dv.get("destination","")))}</td>'
+            f'<td style="text-align:center">{_esc(dv.get("received_by_name",""))}</td>'
+            f'<td style="text-align:center">{_esc(dv.get("signature_name","") or ("Pendente no fechamento" if not dv.get("signature_at","") else ""))}</td>'
+            f'<td>{_esc(dv.get("reason","") or dv.get("notes",""))}</td>'
             f'</tr>'
         )
 
@@ -378,7 +387,7 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
     if str(period_label or '').strip():
         period_row = f"""
   <div class="dados-linha">
-    <div class="campo"><span class="campo-label">PERÍODO:</span> <span>{period_label}</span></div>
+    <div class="campo"><span class="campo-label">PERÍODO:</span> <span>{_esc(period_label)}</span></div>
   </div>"""
 
     # Identificação do empregador: obrigatória na ficha (NR-6). O CNPJ vem do
@@ -399,13 +408,13 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
     source_company_row = ''
     if tipo_vinculo != 'CLT' and empresa_origem:
         source_company_row = f"""
-  <div class="dados-linha"><div class="campo"><span class="campo-label">EMPRESA DE ORIGEM:</span> <span>{empresa_origem}</span></div></div>"""
+  <div class="dados-linha"><div class="campo"><span class="campo-label">EMPRESA DE ORIGEM:</span> <span>{_esc(empresa_origem)}</span></div></div>"""
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Ficha EPI - {employee.get("name","")}</title>
+<title>Ficha EPI - {_esc(employee.get("name",""))}</title>
 <style>
   @page {{ size: A4; margin: 12mm 15mm; }}
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -432,16 +441,16 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 </head>
 <body>
 <div class="header"><div class="logo">{logo_html}</div></div>
-<div class="titulo">{config['titulo']}</div>
+<div class="titulo">{_esc(config['titulo'])}</div>
 <div class="dados-colaborador">
-  <div class="dados-linha"><div class="campo"><span class="campo-label">NOME:</span> <span>{employee.get('name','')}</span></div></div>
+  <div class="dados-linha"><div class="campo"><span class="campo-label">NOME:</span> <span>{_esc(employee.get('name',''))}</span></div></div>
   <div class="dados-linha">
-    <div class="campo"><span class="campo-label">EMPRESA:</span> <span>{employer_name}</span></div>
-    <div class="campo" style="margin-left:auto"><span class="campo-label">CNPJ:</span> <span>{employer_cnpj}</span></div>
+    <div class="campo"><span class="campo-label">EMPRESA:</span> <span>{_esc(employer_name)}</span></div>
+    <div class="campo" style="margin-left:auto"><span class="campo-label">CNPJ:</span> <span>{_esc(employer_cnpj)}</span></div>
   </div>{source_company_row}
-  <div class="dados-linha"><div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{employee.get('role_name','')}</span></div></div>
+  <div class="dados-linha"><div class="campo"><span class="campo-label">FUNÇÃO:</span> <span>{_esc(employee.get('role_name',''))}</span></div></div>
   <div class="dados-linha">
-    <div class="campo"><span class="campo-label">SETOR:</span> <span>{employee.get('sector','')}</span></div>
+    <div class="campo"><span class="campo-label">SETOR:</span> <span>{_esc(employee.get('sector',''))}</span></div>
     <div class="campo" style="margin-left:auto"><span class="campo-label">UNIDADE:</span> <span>{unit_name}</span></div>
   </div>{period_row}
 </div>
@@ -453,7 +462,7 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
 </tr></thead><tbody>{rows_html}</tbody></table>
 <div class="observacoes">{observacoes_html}</div>
 {devol_section_html}
-<div class="rodape">{config['rastreabilidade']}</div>
+<div class="rodape">{_esc(config['rastreabilidade'])}</div>
 </body>
 </html>"""
 

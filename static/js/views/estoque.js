@@ -240,7 +240,7 @@
         subjacente ? esc(tr('stock.underlyingIs', 'condição atual: {s}').replace('{s}', subjacente)) : '',
         explicacao ? esc(explicacao) : ''
       ].filter(Boolean).join(' — ');
-      return `<div class="summary-item"><strong>${item.company_name} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
+      return `<div class="summary-item"><strong>${esc(`${item.company_name}`)} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
     }).join('') || `<div class="summary-item">${tr('stock.noLowStockItems', 'Sem itens com estoque baixo.')}</div>`;
   }
 

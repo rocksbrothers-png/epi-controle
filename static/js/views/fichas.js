@@ -17,7 +17,11 @@
   function formatDate(d) { return globalThis.formatDate?.(d) ?? (d ?? ''); }
   function formatDateTime(d) { return globalThis.formatDateTime?.(d) ?? (d ?? ''); }
   function tr(key, fallback) { return globalThis.tr?.(key, fallback) ?? fallback ?? key; }
-  function escapeHtml(s) { return globalThis.escapeHtml?.(s) ?? String(s ?? ''); }
+  // SECURITY-OUTPUT-XSS-V1: sem o helper global, escapa aqui mesmo (nunca devolve o texto cru).
+  function escapeHtml(s) {
+    return globalThis.escapeHtml?.(s)
+      ?? String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function filterByUserCompany(items) { return globalThis.filterByUserCompany?.(items) ?? items; }
   function applyFichaEmployeeFilters(items) { return globalThis.applyFichaEmployeeFilters?.(items) ?? items; }
   function companyLogoMarkup(company, cls) { return globalThis.companyLogoMarkup?.(company, cls) ?? ''; }
@@ -69,13 +73,13 @@
         : '';
       return `<div class="summary-item">
       <strong>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)}</strong>
-      <div>${tr('delivery.status', 'Status')}: ${fichaStatusLabel(item.status)} | ${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'}</div>
+      <div>${tr('delivery.status', 'Status')}: ${fichaStatusLabel(item.status)} | ${tr('unit.title', 'Unidade')}: ${escapeHtml(item.unit_name || '-')}</div>
       <div>${tr('records.itemsInPeriod', 'Itens no período')}: ${Number(item.total_items || 0)} | ${tr('records.pendingSignaturesCount', 'Pendentes de assinatura')}: ${pendingItems}</div>
       <div>${tr('records.batchSignature', 'Assinatura em lote')}: ${signed ? `${tr('common.yes', 'Sim')} (${formatDateTime(item.batch_signature_at)})` : tr('records.pendingSignatureHint', 'Pendente (pode assinar localmente ou no link do colaborador)')}</div>
       ${finalizeButton}
     </div>`;
     }).join('');
-    refs.fichaView.innerHTML = `<div class="summary-item"><strong>${tr('company.title', 'Empresa')}:</strong> ${employee.company_name} (${employee.company_cnpj})</div><div class="summary-item ficha-logo"><strong>${tr('company.logo', 'Logotipo')}:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${employee.name}</div><div class="summary-item"><strong>ID:</strong> ${employee.employee_id_code}</div><div class="summary-item"><strong>${tr('employee.sector', 'Setor')}:</strong> ${employee.sector}</div><div class="summary-item"><strong>${tr('employee.function', 'Função')}:</strong> ${employee.role_name || employee.position || '-'}</div>${periodsHtml || `<div class="summary-item">${tr('records.noPeriodsForEmployee', 'Sem períodos de ficha para este colaborador.')}</div>`}`;
+    refs.fichaView.innerHTML = `<div class="summary-item"><strong>${tr('company.title', 'Empresa')}:</strong> ${escapeHtml(employee.company_name)} (${escapeHtml(employee.company_cnpj)})</div><div class="summary-item ficha-logo"><strong>${tr('company.logo', 'Logotipo')}:</strong> ${companyLogoMarkup({ name: employee.company_name, logo_type: employee.logo_type }, 'company-logo company-logo-sm')}</div><div class="summary-item"><strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${escapeHtml(employee.name)}</div><div class="summary-item"><strong>ID:</strong> ${escapeHtml(employee.employee_id_code)}</div><div class="summary-item"><strong>${tr('employee.sector', 'Setor')}:</strong> ${escapeHtml(employee.sector)}</div><div class="summary-item"><strong>${tr('employee.function', 'Função')}:</strong> ${escapeHtml(employee.role_name || employee.position || '-')}</div>${periodsHtml || `<div class="summary-item">${tr('records.noPeriodsForEmployee', 'Sem períodos de ficha para este colaborador.')}</div>`}`;
   }
 
   function fichaAuditActionBadge(action) {

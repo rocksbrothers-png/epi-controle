@@ -25,6 +25,10 @@
   globalThis.__EPI_MODULE_USERS_UI_LOADED__ = true;
 
   function usersBusiness() { return globalThis.__EPI_USERS_BUSINESS__; }
+  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function usersApi() { return globalThis.__EPI_USERS_API__; }
 
   function populateUserFilters() {
@@ -33,7 +37,7 @@
     if (!refs.userFilterCompany) {return;}
     const all = tr('user.filterAll', 'Todos');
     const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-    const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+    const optionsHtml = companies.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('');
     refs.userFilterCompany.innerHTML = `<option value="">${all}</option>` + optionsHtml;
     const roleKeys = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'];
     refs.userFilterRole.innerHTML = `<option value="">${all}</option>` +

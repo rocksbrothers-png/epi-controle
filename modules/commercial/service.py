@@ -101,11 +101,18 @@ def validate_cnpj(value):
 _IMAGE_DATA_URL_RE = re.compile(r'data:image/(png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}')
 LOGO_IMAGE_TYPES = ('png', 'jpeg', 'jpg', 'svg+xml')
 LOGIN_LOGO_IMAGE_TYPES = ('png', 'svg+xml')
+# SECURITY-OUTPUT-XSS-V1: foto de EPI e assinatura aceitam qualquer subtipo de
+# imagem (o upload aceita image/*), mas com a mesma forma estrita: subtipo só
+# com [a-z0-9.+-] e conteúdo base64 — nada que feche o atributo src.
+ANY_IMAGE_TYPE = 'any-image'
+_ANY_IMAGE_DATA_URL_RE = re.compile(r'data:image/([a-z0-9.+-]{1,40});base64,[A-Za-z0-9+/]+={0,2}')
 
 
 def safe_image_data_url(value, allowed_types=LOGO_IMAGE_TYPES):
     """Devolve o valor se for data URL base64 de um tipo permitido; senão ''."""
     image = str(value or '').strip()
+    if allowed_types == ANY_IMAGE_TYPE:
+        return image if _ANY_IMAGE_DATA_URL_RE.fullmatch(image) else ''
     match = _IMAGE_DATA_URL_RE.fullmatch(image)
     return image if match and match.group(1) in allowed_types else ''
 

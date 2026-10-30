@@ -24,6 +24,10 @@
   if (globalThis.__EPI_MODULE_EMPLOYEES_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_EMPLOYEES_UI_LOADED__ = true;
 
+  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
+  function escapeCompanyText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function employeesBusiness() { return globalThis.__EPI_EMPLOYEES_BUSINESS__; }
   function employeesApi() { return globalThis.__EPI_EMPLOYEES_API__; }
 
@@ -101,7 +105,7 @@
     const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
     const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
     const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
-    return `<tr>${checkCell}<td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
+    return `<tr>${checkCell}<td>${escapeCompanyText(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
   }
 
   function buildEmployeeOpsRow(item) {
@@ -109,7 +113,7 @@
     const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
     const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
     const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-    return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
+    return `<tr><td>${escapeCompanyText(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
   }
 
   function currentEmployeesBulkScope() {

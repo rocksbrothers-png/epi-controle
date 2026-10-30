@@ -19,6 +19,10 @@
   if (globalThis.__EPI_MODULE_ARCHIVAL_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_ARCHIVAL_UI_LOADED__ = true;
 
+  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
+  function escapeCompanyText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function rules() { return globalThis.__EPI_ARCHIVAL_RULES__; }
   function archivalApi() { return globalThis.__EPI_ARCHIVAL_API__; }
 
@@ -152,7 +156,7 @@
       : identityKind === 'outsourcedCompanyLike'
         ? `<td>${item.legal_name || item.trade_name || ''}${statusBadge}${holdBadge}</td><td>${item.cnpj || '-'}</td>`
         : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
-    return `<tr><td>${item.company_name || '-'}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
+    return `<tr><td>${escapeCompanyText(item.company_name || '-')}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
   }
 
   function renderArchivedRecords(kind) {

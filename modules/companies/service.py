@@ -237,6 +237,8 @@ def company_action_label(action_type):
         'support_update': 'Suporte excepcional (Master)',
         'onboarding_complete': 'Implantação concluída',
         'provision': 'Liberação da tenant',
+        'user_deactivate': 'Usuário desativado',
+        'user_reactivate': 'Usuário reativado',
     }.get(action_type, action_type)
 
 

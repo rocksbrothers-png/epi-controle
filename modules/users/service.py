@@ -3,6 +3,7 @@
 import secrets as _secrets
 from datetime import datetime, timedelta
 
+from core.audit import register_company_audit
 from core.auth import ensure_company_access, ensure_resource_company
 from core.repository import authorize_action, get_employee_by_id, get_user_by_id
 from core.roles import (
@@ -274,6 +275,40 @@ def create_user(connection, payload, *, actor_user_id):
     connection.commit()
 
 
+def resolve_user_active(payload, current):
+    """FIX-USERS-ACTIVE-V1: status da conta na edição.
+
+    Sem ``active`` explícito no corpo (o formulário de edição não tem esse campo),
+    o status atual é mantido — antes o padrão ``1`` reativava contas inativas.
+    Ativar/desativar continua pelo mesmo PUT, com ``active`` explícito (0 ou 1).
+    """
+    raw = payload.get('active')
+    if raw is None or str(raw).strip() == '':
+        return 1 if int(current.get('active') or 0) == 1 else 0
+    if isinstance(raw, bool):
+        return int(raw)
+    try:
+        value = int(str(raw).strip())
+    except ValueError:
+        raise ValueError('Status do usuário inválido.') from None
+    if value not in (0, 1):
+        raise ValueError('Status do usuário inválido.')
+    return value
+
+
+def register_user_status_audit(connection, actor, current, active, company_id):
+    """Registra ativação/desativação na trilha de auditoria da empresa do usuário."""
+    if not company_id:
+        return
+    reactivated = active == 1
+    summary = (f"Usuário {current.get('username')} {'reativado' if reactivated else 'desativado'} "
+               f"por {actor.get('full_name') or actor.get('username')}.")
+    details = [{'field': 'Status do usuário', 'before': 'Inativo' if reactivated else 'Ativo',
+                'after': 'Ativo' if reactivated else 'Inativo'}]
+    register_company_audit(connection, int(company_id), actor, 'user_reactivate' if reactivated else 'user_deactivate',
+                           summary, details)
+
+
 def update_user(connection, user_id, payload, *, actor_user_id):
     # Mesmo contrato de `create_user`: o ator é o resolvido pela rota, nunca o
     # `actor_user_id` do corpo (F-01).
@@ -300,9 +335,12 @@ def update_user(connection, user_id, payload, *, actor_user_id):
     linked_employee_id, company_id = resolve_user_employee_link(connection, actor, payload_for_link, company_id,
         allow_manual_create=allow_manual_link and str(linked_value or '').strip() == '')
     ensure_operational_role_link(connection, role, linked_employee_id, company_id)
-    if company_id and int(payload.get('active', 1)) == 1:
+    active = resolve_user_active(payload, current)
+    if company_id and active == 1:
         ensure_company_user_limit(connection, int(company_id), ignore_user_id=user_id)
-    connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, int(payload.get('active', 1)), linked_employee_id, user_id))
+    connection.execute(SQL_UPDATE_USER, (str(payload.get('username', '')).strip(), password, str(payload.get('full_name', '')).strip(), role, company_id, active, linked_employee_id, user_id))
+    if active != (1 if int(current.get('active') or 0) == 1 else 0):
+        register_user_status_audit(connection, actor, current, active, company_id or current.get('company_id'))
     # Reset de senha por admin também gera credencial temporária (troca no
     # próximo acesso + expiração). Sem nova senha, a política fica intacta.
     if incoming_password:

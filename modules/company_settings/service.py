@@ -151,8 +151,8 @@ def validate_my_company_payload(connection, payload: dict, company_id: int, prev
     """
     from modules.commercial.service import (
         validate_cnpj,
+        validate_image_keeping_stored,
         validate_login_logo_payload,
-        validate_logo_payload,
     )
     from modules.companies.service import (
         _validate_color,
@@ -194,12 +194,16 @@ def validate_my_company_payload(connection, payload: dict, company_id: int, prev
         if field in fields:
             fields[field] = str(fields[field] or '').strip()
 
+    # SECURITY-LOGO-XSS-V1: imagem nova passa pela regra estrita; a já gravada que o
+    # formulário reenvia não bloqueia salvar os demais campos (ver validate_image_keeping_stored).
+    previous = previous or {}
     if 'logo_type' in fields:
-        fields['logo_type'] = validate_logo_payload(fields['logo_type'])
+        fields['logo_type'] = validate_image_keeping_stored(fields['logo_type'], previous.get('logo_type'))
     if 'favicon_type' in fields:
-        fields['favicon_type'] = validate_logo_payload(fields['favicon_type'])
+        fields['favicon_type'] = validate_image_keeping_stored(fields['favicon_type'], previous.get('favicon_type'))
     if 'login_logo_type' in fields:
-        fields['login_logo_type'] = validate_login_logo_payload(fields['login_logo_type'])
+        fields['login_logo_type'] = validate_image_keeping_stored(
+            fields['login_logo_type'], previous.get('login_logo_type'), validate_login_logo_payload)
 
     if 'primary_color' in fields:
         fields['primary_color'] = _validate_color(fields['primary_color'], '#1565C0')

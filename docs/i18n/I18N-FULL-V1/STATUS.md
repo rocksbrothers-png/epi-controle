@@ -161,3 +161,14 @@ Revisão independente parcial: quatro provas próprias aprovadas, incluindo cada
 A primeira Backend CI deste bloco (Corporate `2a9bc778`, SaaS `2f0bb527`) expôs um guard de menu que só reconhecia a tupla Dart em uma linha. A permissão `legal_entities:view` permaneceu no quarto campo. A falha foi reproduzida nos dois projetos (sete testes aprovados e um reprovado) e o matcher passou a aceitar whitespace entre os campos, exigindo rota, dois ícones e permissão nessa ordem. Os oito testes passaram em ambos após o ajuste; a nova revisão independente e CI são vinculadas nos PRs, sem mudança de lógica do produto.
 
 No Corporate, o guard preexistente de logout também exigia o literal português `Sair`. Foi reproduzido (dois aprovados/um reprovado) e passou a exigir o recurso localizado `passwordChangeLogout`, mantendo as verificações de posição na AppBar e chamada de `AuthCubit.logout()`. Seus três testes passaram após o ajuste. O teste não existe na branch SaaS; não houve alteração adicional de produto.
+
+
+## Integração das branches dos PRs com a main — 30/10/2026
+
+Os conflitos mostrados nos PRs #1060/#434 foram conciliados nas branches de trabalho com a main Corporate `776d516d` e SaaS `df453a5`. A estrutura UBX-V5 prevalece para a propriedade das funções; cinco funções extraídas recebem os bindings de apresentação da I18N. Todos os recursos dos dois lados foram preservados, sem substituir o catálogo inteiro por uma versão. A correção de Situação da Empresa conserva `active` como `1/0`, sem `data-i18n-value` nas opções. Index e digests são regenerados a partir das fontes conciliadas.
+
+A revisão independente encontrou dois defeitos de apresentação preexistentes: interpolação externa ao binding da dica Joint Venture e uso de navegação/refresh de dados na troca de idioma. Ambos foram reproduzidos e corrigidos. A nova prova engine+módulo conserva nome e trava de unidade nos cinco idiomas. A prova Chromium de Colaboradores mantém rascunho, ID, unidade/CNPJ, estados disabled e aba ativa durante cinco trocas, sem novas consultas de dados ou escritas. A resposta do fixture de locale foi atualizada para o contrato `locale`/`translations`, e o relatório vazio usa a estrutura real; não houve mudança de API para satisfazer o fixture.
+
+Os testes de caracterização continuam comparando permissões, corpos, IDs e fluxos, passando a exigir os novos bindings de tradução. A guarda UBX passou sem novas responsabilidades/endpoints no monólito. O relatório `UBX-INTEGRATION.json` descreve esta integração e seus limites; os resultados finais por HEAD serão vinculados aos PRs. As quatro CIs Backend/Flutter do checkpoint anterior `8a0ded84`/`3b016875` passaram e estão registradas em `CI-RESULTS.json`; não substituem a CI pós-integração.
+
+A internacionalização integral continua em andamento. READY FOR HUMAN MERGE DECISION: NO. Os PRs permanecem draft, sem merge dos PRs na main, deploy, force-push ou escrita em bancos compartilhados.

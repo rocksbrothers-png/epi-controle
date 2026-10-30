@@ -1,22 +1,18 @@
 psycopg2-binary>=2.9.13,<3
 gunicorn>=26.2.0,<27
 python-dotenv>=1.2.4,<2
-gunicorn>=26.0.0,<27
-python-dotenv>=1.2.3,<2
 bcrypt>=5.0,<6
 cryptography>=50.0.2,<51
 numpy>=2.4.6,<2.5
 opencv-python-headless>=5.0.0.93,<6
 pytesseract>=0.3.13,<0.4
-pandas>=3.0.6,<4
-pytesseract>=0.3.10,<0.4
-pandas>=3.0.5,<4
+pandas>=3.1.0,<4
 Pillow>=12.3.0,<13
 openpyxl>=3.1.5,<4
 odfpy>=1.4.1,<2
 
 # Private library preview (Office requires native LibreOffice + python3-uno + libseccomp).
-PyMuPDF>=1.28.2,<2
+PyMuPDF>=2.0,<3
 xlrd>=2.0.2,<3
 olefile>=0.47,<1
 defusedxml>=0.7.1,<1

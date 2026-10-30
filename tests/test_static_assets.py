@@ -181,7 +181,9 @@ def test_optional_bootstrap_sections_are_permission_guarded_and_403_is_skipped()
 
 def test_reports_are_not_loaded_or_alerted_when_permission_is_missing_or_forbidden():
     source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
-    render_reports_section = source[source.index("async function renderReports"):source.index("async function loadArchiveReports")]
+    # UBX-V3 (Etapa 4): renderReports mora em modules/reports/ui/reports-view.js.
+    reports_view = (_repo_root() / "static" / "js" / "modules" / "reports" / "ui" / "reports-view.js").read_text(encoding="utf-8")
+    render_reports_section = reports_view[reports_view.index("async function renderReports"):reports_view.index("function retentionStatusBadge")]
     render_all_section = source[source.index("function renderAll"):source.index("function init")]
 
     assert "recordOptionalBootstrapSectionSkipped('reports', 'missing_permission'" in render_reports_section
@@ -355,9 +357,9 @@ def test_async_functions_consumed_by_view_modules_are_exposed_on_globalthis():
 
     # São async functions (não ganham Annex B hoisting) e são consumidas por
     # static/js/views/*.js via globalThis.<fn>(). Devem estar expostas.
+    # api/apiOptional moram em static/js/modules/api-client.js desde a UBX-V3
+    # (Etapa 3) — conferidos em test_http_layer_delegates_to_canonical_api_client.
     required_global_async = [
-        "api",
-        "apiOptional",
         "loadBootstrap",
         "loadAuthorizedSuppliers",
         "loadPurchaseDemands",
@@ -384,11 +386,18 @@ def test_http_layer_delegates_to_canonical_api_client():
     apiWithBootstrapRetry delegam ao módulo canônico static/js/modules/api-client.js
     (apiFetch/apiFetchOptional/apiFetchWithRetry), fonte única de verdade."""
     app_js = _app_js()
+    client_js = (_repo_root() / "static" / "js" / "modules" / "api-client.js").read_text(encoding="utf-8")
 
-    # app.js delega aos canônicos expostos por api-client.js
-    assert "return globalThis.apiFetch(path, options);" in app_js
-    assert "return globalThis.apiFetchOptional(path, options);" in app_js
-    assert "return globalThis.apiFetchWithRetry(path, options, config);" in app_js
+    # UBX-V3 (Etapa 3): os delegadores saíram do app.js para o próprio módulo
+    # canônico, com o mesmo corpo, e são publicados em globalThis por ele.
+    assert "return globalThis.apiFetch(path, options);" in client_js
+    assert "return globalThis.apiFetchOptional(path, options);" in client_js
+    assert "return globalThis.apiFetchWithRetry(path, options, config);" in client_js
+    assert "const legacyAppExports = { api, apiOptional, apiWithBootstrapRetry };" in client_js
+    for name in ("api", "apiOptional", "apiWithBootstrapRetry"):
+        assert not re.search(rf"^(?:async\s+)?function {name}\(", app_js, flags=re.MULTILINE), (
+            f"{name} voltou a ser declarado no app.js"
+        )
 
     # Não reintroduzir a lógica duplicada em app.js (deve viver só no módulo).
     assert "const { contentType, payload } = await parseApiPayload(response);" not in app_js

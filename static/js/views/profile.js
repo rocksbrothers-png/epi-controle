@@ -7,15 +7,10 @@
   // ── Local wrappers ─────────────────────────────────────────────────────────
   function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
   function getRefs() { return globalThis.__EPI_REFS__ || {}; }
+  // Cliente HTTP único: modules/api-client.js (carregado antes das views) publica
+  // `api`; o fallback de fetch cru que existia aqui era código redundante.
   function api(path, opts) {
-    if (typeof globalThis.api === 'function') { return globalThis.api(path, opts); }
-    const options = opts || {};
-    if (!options.headers) { options.headers = {}; }
-    return fetch(path, options).then(async (r) => {
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) { throw new Error(data?.error || data?.message || `HTTP ${r.status}`); }
-      return data;
-    });
+    return globalThis.api(path, opts);
   }
 
   // ── Implementations ────────────────────────────────────────────────────────

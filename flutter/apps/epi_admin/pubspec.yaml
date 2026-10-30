@@ -27,7 +27,7 @@ dependencies:
 
   # State management
   flutter_bloc: ^9.1.1
-  equatable: ^2.0.5
+  equatable: ^3.0.0
 
   # Navigation
   go_router: ^18.0.0
@@ -81,7 +81,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  build_runner: ^2.4.13
+  build_runner: ^2.17.1
   retrofit_generator: ^10.2.6
   drift_dev: ^2.20.3
   json_serializable: ^6.8.0

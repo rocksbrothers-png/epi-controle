@@ -1,0 +1,53 @@
+name: Colaboradores and outsourced browser regression
+on:
+  pull_request:
+    paths:
+      - 'static/**'
+      - 'scripts/browser/fix_colab_terc.py'
+      - 'scripts/browser/fix_nav_refresh.py'
+      - 'scripts/browser/ubx_units_legal_entities.py'
+      - 'scripts/browser/ubx_companies.py'
+      - 'scripts/browser/fix_empresas_active.py'
+      - 'scripts/browser/ubx_my_company.py'
+      - 'scripts/browser/security_logo_xss.py'
+      - '.github/workflows/fix-colab-terc-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    name: Chromium functional regression (five locales)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: pip install playwright==1.58.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python scripts/browser/fix_colab_terc.py --output browser-evidence
+      # FIX-NAV-REFRESH-V1: tela mantida, uma requisição por lista, aviso verdadeiro, clique duplo.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/fix_nav_refresh.py --output browser-evidence/nav-refresh
+      # UBX-V5, Etapa 2: telas de CNPJs e Unidades sobre modules/legal-entities e modules/units.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/ubx_units_legal_entities.py --output browser-evidence/units-legal-entities
+      # UBX-V5, Etapa 2: tela de Empresas sobre modules/companies.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/ubx_companies.py --output browser-evidence/companies
+      # FIX-EMPRESAS-ACTIVE-V1: campo Situação carrega, mostra e grava 1/0 nos 5 idiomas.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/fix_empresas_active.py --output browser-evidence/empresas-active
+      # UBX-V5, Etapa 2: Minha Empresa (configurações e domínios) sobre modules/my-company.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/ubx_my_company.py --output browser-evidence/my-company
+      # SECURITY-LOGO-XSS-V1: logotipo malicioso não executa (login, topo, Empresas, Minha Empresa); legítimo aparece.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/security_logo_xss.py --output browser-evidence/security-logo-xss
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fix-colab-terc-browser-${{ github.sha }}
+          path: browser-evidence/
+          retention-days: 14

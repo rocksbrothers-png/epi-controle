@@ -8,6 +8,34 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_extracted_epi_hint_keeps_name_and_unit_lock_across_five_languages():
+    run_scenario(r'''
+const path = require('node:path');
+const staticRoot = path.dirname(process.argv[1]);
+const locales = ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'];
+for (const locale of locales) dictionaries[locale] = JSON.parse(fs.readFileSync(path.join(staticRoot, 'i18n', locale + '.json'), 'utf8'));
+const hint = element(), unit = {value:'', disabled:false}, active = {value:'opaque-token'};
+const name = 'JV original <img src=x>';
+doc.getElementById = id => ({'epi-unit':unit, 'epi-joinventure-active':active, 'epi-unit-rule-hint':hint})[id];
+doc.querySelectorAll = selector => selector === '[data-i18n]' && hint.hasAttribute('data-i18n') ? [hint] : [];
+sandbox.parseActiveJoinventureToken = () => ({name, unit_id:5});
+sandbox.tr = sandbox.trEpi;
+vm.runInNewContext(fs.readFileSync(path.join(staticRoot, 'js/modules/epis/ui/epi-registration.js'), 'utf8'), sandbox);
+await api.setLang('pt-BR', {persist:false});
+sandbox.applyEpiJoinventureRules();
+for (const locale of locales) {
+  await api.setLang(locale, {persist:false});
+  assert.equal(hint.textContent, api.t('epi.lockedByJoinventureHint', {name}));
+  assert.equal(hint.getAttribute('data-i18n'), 'epi.lockedByJoinventureHint');
+  assert.equal(JSON.parse(hint.getAttribute('data-i18n-vars')).name, name);
+  assert.equal(unit.value, '5');
+  assert.equal(unit.disabled, true);
+  assert.equal(active.value, 'opaque-token');
+}
+assert.equal(writes.length, 0);
+''')
+
+
 def run_scenario(scenario):
     node = shutil.which('node')
     if not node:

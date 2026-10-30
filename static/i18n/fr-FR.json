@@ -3320,5 +3320,8 @@
       "expiry": "Ce lien est personnel et expire le {date}.",
       "private": "Ne partagez pas ce lien."
     }
+  },
+  "mutation": {
+    "refreshFailed": "L’opération a été enregistrée, mais l’écran n’a pas pu être actualisé. Rechargez la page pour voir les données à jour."
   }
 }

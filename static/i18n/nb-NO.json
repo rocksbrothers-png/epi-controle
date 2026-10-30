@@ -3320,5 +3320,8 @@
       "expiry": "Lenken er personlig og utløper {date}.",
       "private": "Ikke del denne lenken."
     }
+  },
+  "mutation": {
+    "refreshFailed": "Handlingen ble lagret, men skjermen kunne ikke oppdateres. Last inn siden på nytt for å se oppdaterte data."
   }
 }

@@ -3320,5 +3320,8 @@
       "expiry": "This link is personal and expires on {date}.",
       "private": "Do not share this link."
     }
+  },
+  "mutation": {
+    "refreshFailed": "The operation was saved, but the screen could not be refreshed. Reload the page to see the latest data."
   }
 }

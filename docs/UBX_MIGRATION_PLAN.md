@@ -216,7 +216,59 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §10](UBX_APPJS_AUDITORIA.md#10-ubx-v2-202
 - Guarda: catraca de endpoints na camada UI, ciclos entre scripts, `business` sem dependência da UI
   nem leitura de globais, limite de 500 linhas por módulo.
 
+## UBX-V3 (2026-10-26) — seis extrações incrementais
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §11](UBX_APPJS_AUDITORIA.md#11-ubx-v3-2026-10-26--seis-extrações-incrementais).
+
+- Etapas: helpers de DOM, rótulos com `tr`, HTTP das views pelo cliente único, Relatórios, EPIs e
+  Usuários — cada uma com caracterização gerada das funções originais e comparação no navegador.
+- `app.js` 20.205 → 19.227 linhas (base `3e6fe8c5`); 936 → 878 declarações; 121 → 117 endpoints; `fetch` cru na UI 9 → 4.
+- O gate de unificação HTTP foi cumprido para as 5 views com `api` local; `procurement.js` fica
+  para decisão separada (não desembrulha `{ ok, data }`).
+
+## UBX-V4 (2026-10-26) — diálogos, Colaboradores/Terceirizados e regras `can*`
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §12](UBX_APPJS_AUDITORIA.md#12-ubx-v4-2026-10-26--diálogos-colaboradoresterceirizados-e-regras-can).
+
+- `app.js` 19.227 → 18.106 linhas; 878 → 798 declarações; 117 → 112 endpoints.
+- Regras de acesso da interface como negócio puro (`modules/auth/business/access-rules.js`), com
+  23.320 decisões comparadas antes × depois (0 divergências). O backend continua sendo quem autoriza.
+
+## UBX-V5, Etapa 1 (2026-10-27) — arquivamento genérico
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §13](UBX_APPJS_AUDITORIA.md#13-ubx-v5-etapa-1-2026-10-27--arquivamento-genérico).
+
+- `app.js` 18.167 → 17.638 linhas; 798 → 778 declarações; 112 → 108 endpoints.
+- `modules/archival/{business,integrations,ui}`: 214 cenários comparados com as funções originais
+  (0 divergências) e 17 sabotagens detectadas; contrato HTTP de arquivamento agora verificado contra o router.
+
+## UBX-V5, Etapa 2 — fatia 1 (2026-10-27): Unidades e CNPJ
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §14](UBX_APPJS_AUDITORIA.md#14-ubx-v5-etapa-2--fatia-1-2026-10-27-unidades-e-cnpj).
+
+- `app.js` 17.638 → 17.342 linhas; 778 → 757 declarações; 108 → 107 endpoints.
+- `modules/legal-entities/{integrations,ui}` e `modules/units/{business,ui}`: 102 cenários comparados com as
+  funções originais (0 divergências), 19 sabotagens detectadas e Chromium 15/15 nos 5 idiomas.
+
+## UBX-V5, Etapa 2 — fatia 2 (2026-10-27): Empresas
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §15](UBX_APPJS_AUDITORIA.md#15-ubx-v5-etapa-2--fatia-2-2026-10-27-empresas).
+
+- `app.js` 17.342 → 17.120 linhas; 757 → 742 declarações; 107 → 106 endpoints.
+- `modules/companies/{business,integrations,ui}`: 53 cenários comparados com as funções originais (0 divergências),
+  23 sabotagens detectadas (+1 equivalente) e Chromium 20/20 nos 5 idiomas.
+- Defeito preexistente registrado (§15.4): o status da Empresa saía vazio do formulário web — corrigido à parte
+  (`data-i18n` nas opções, com teste de regressão).
+
+## UBX-V5, Etapa 2 — fatia 3 (2026-10-27): Minha Empresa
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §16](UBX_APPJS_AUDITORIA.md#16-ubx-v5-etapa-2--fatia-3-2026-10-27-minha-empresa).
+
+- `app.js` 17.120 → 16.941 linhas; 742 → 727 declarações; 106 → 104 endpoints.
+- `modules/my-company/{business,integrations,ui}`: 64 cenários comparados com as funções originais
+  (0 divergências), 27 sabotagens detectadas e Chromium 10/10 nos 5 idiomas.
+  Auditoria independente aprovada; risco de segurança preexistente (logotipo) documentado na §16.4.
+
 ## Próximo passo
-Executar o **gate de unificação dos adaptadores HTTP locais das views**, com contrato e teste de
-compatibilidade sobre `static/js/modules/api-client.js`. Somente depois iniciar a **Fase 2**
-(Compras), sem criar um segundo cliente HTTP.
+UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`), após a I18N-FULL-V1 e,
+por último, a Etapa 3 (navegação/bootstrap) com os pré-requisitos de auditoria de autorização.

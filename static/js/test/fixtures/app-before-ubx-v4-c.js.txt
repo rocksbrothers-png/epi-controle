@@ -1,0 +1,266 @@
+// Fixture da UBX-V4, Etapa C (tests: static/js/test/access-rules-runtime.js).
+//
+// Trechos ORIGINAIS do static/app.js imediatamente antes da extração das regras
+// can* (commit da Etapa B2), copiados sem alteração: as constantes de
+// view/módulo e as funções de permissão. Servem de referência fixa para a
+// comparação de decisões antes × depois. Não é carregado pela aplicação.
+
+const VIEW_PERMISSIONS = {
+  dashboard: 'dashboard:view',
+  empresas: 'companies:view',
+  comercial: 'commercial:view',
+  usuarios: 'users:view',
+  unidades: 'units:view',
+  cnpjs: 'legal_entities:view',
+  colaboradores: 'employees:view',
+  // Reaproveita o mesmo piso técnico de criar colaborador (ADR-0002) — sem
+  // permissão dedicada, por decisão explícita do ADR.
+  terceirizados: 'employees:create',
+  // Só transferência entre unidades (form + tabela somente-leitura) — nunca
+  // teve edição de dados cadastrais, então a permissão certa sempre foi a de
+  // movimentação, não a de update genérico.
+  'gestao-colaborador': 'employees:transfer',
+  epis: 'epis:view',
+  'biblioteca-seguranca': 'safety_library:manage',
+  estoque: 'stock:view',
+  entregas: 'deliveries:view',
+  fichas: 'fichas:view',
+  compras: 'purchase_requests:view',
+  configuracao: 'settings:view',
+  relatorios: 'reports:view',
+  avaliacoes: 'epi_evaluation:view',
+  // Centro de Migração de Dados (ADR-0003). Permissão exclusiva de
+  // master_admin/general_admin — nunca Administrador Local, Gestores ou
+  // Colaboradores, que não a têm em core/permissions.py.
+  migracao: 'data_migration:manage'
+};
+
+const VIEW_MODULE = {
+  dashboard: 'dashboard',
+  empresas: 'administracao',
+  usuarios: 'administracao',
+  cnpjs: 'administracao',
+  // Módulo opt-in próprio (ADR-0002): diferente de `cnpjs` acima, nasce
+  // OCULTO para todo papel — mesmo quem tem a permissão técnica — até o
+  // Administrador Geral ligá-lo explicitamente por tenant.
+  terceirizados: 'terceirizados',
+  estoque: 'estoque',
+  entregas: 'entregas',
+  fichas: 'fichas',
+  compras: 'compras',
+  configuracao: 'configuracoes',
+  relatorios: 'relatorios',
+  // Opt-in como `terceirizados`: mesmo o Administrador Geral só vê depois de
+  // ligar em Configuração → Regras → Visualização (_OPT_IN_MODULES no
+  // rule_engine.py).
+  migracao: 'migracao'
+};
+
+const VIEW_MODULE_ALTERNATIVES = {
+  terceirizados: 'terceirizados_colaboradores'
+};
+
+const VIEW_PERMISSION_ALTERNATIVES = {
+  terceirizados: 'employees:create_simplified'
+};
+
+const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
+
+function normalizePermissionList(permission) {
+  if (Array.isArray(permission)) return permission;
+  return String(permission || '').split(/\s+/).filter(Boolean);
+}
+
+function hasPermission(permission) {
+  const activePermissions = state.permissions.length ? state.permissions : normalizePermissions(state.user, []);
+  return normalizePermissionList(permission).some((p) => activePermissions.includes(p));
+}
+
+function hasConfigurationAccess() {
+  return CONFIGURATION_ADMIN_ROLES.includes(state.user?.role) && hasPermission('settings:view');
+}
+
+function sameCompany(target) {
+  return String(target.company_id || '') === String(state.user?.company_id || '');
+}
+
+function canManageUser(target) {
+  if (!hasPermission('users:update')) return false;
+  if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
+  if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
+  if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
+  return false;
+}
+
+function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+function canPromoteToAdmin(target) { return ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
+function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canPromoteToAdmin(target) { return ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
+function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
+function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
+function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canGenerateRecoveryToken(target) {
+  if (state.user?.role === 'master_admin') {
+    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
+  }
+  if (state.user?.role === 'general_admin') {
+    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
+  }
+  return false;
+}
+
+function canManageUsers() {
+  return hasPermission('users:update') || hasPermission('users:create') || hasPermission('users:delete');
+}
+
+function canManageEpi() {
+  return hasPermission('epis:create') || hasPermission('epis:update') || hasPermission('epis:delete');
+}
+
+function canViewReports() {
+  return hasPermission('reports:view');
+}
+
+function canAccessCommercialArea() {
+  return state.user?.role === 'master_admin' && hasPermission('commercial:view');
+}
+
+function canConfigureMyCompany() {
+  return Boolean(state.user) && hasPermission('company_settings:update');
+}
+
+function canPrintPurchaseQrLabels() {
+  return hasPermission('purchase_requests:update') || hasPermission('stock:adjust') || hasPermission('stock:view');
+}
+
+function canManagePurchaseFunctions() {
+  return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
+}
+
+function canAccessView(view) {
+  const permission = VIEW_PERMISSIONS[view];
+  if (permission && !hasPermission(permission)) {
+    // ADR-0002 §10 (correção de escopo): Terceirizados e Prestadores abre
+    // com employees:create (aba Empresas) OU employees:create_simplified
+    // (aba Cadastro de Colaboradores) — sem isso, admin/user (que só têm a
+    // segunda) nunca alcançavam a tela mesmo com o módulo ligado.
+    const altPermission = VIEW_PERMISSION_ALTERNATIVES[view];
+    if (!altPermission || !hasPermission(altPermission)) return false;
+  }
+  const role = state.user?.role;
+  // Views de cadastro estrutural: apenas administradores estruturais.
+  if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)
+      && !['master_admin', 'general_admin', 'registry_admin'].includes(role)) {
+    return false;
+  }
+  // Gestão de colaborador (movimentação entre unidades): administradores +
+  // perfis operacionais (Local/Gestor) — fora do escopo de module_visibility
+  // (não é um dos módulos configuráveis), mantém a restrição fixa.
+  if (view === 'gestao-colaborador'
+      && !['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(role)) {
+    return false;
+  }
+  // Estoque/Entregas/Fichas de EPI: a restrição fixa de papel foi
+  // substituída pela visibilidade por módulo (configurável pelo
+  // Administrador Geral) logo abaixo — o padrão do sistema já nega estas
+  // três para Comprador/Aprovador (MODULE_REQUIRED_PERMISSIONS/
+  // _STRUCTURALLY_HIDDEN_BY_DEFAULT em rule_engine.py), mas agora pode ser
+  // liberado por configuração, o que um `return false` fixo aqui impediria.
+  if (view === 'configuracao') return hasConfigurationAccess();
+  // Visibilidade estrutural por módulo (configuração do Administrador
+  // Geral): módulo ausente do mapa é tratado como visível — só restringe
+  // quando o backend explicitamente desliga o módulo para o papel. Nunca
+  // amplia o que a permissão técnica acima já negou.
+  const module = VIEW_MODULE[view];
+  if (module && state.moduleVisibility && Object.prototype.hasOwnProperty.call(state.moduleVisibility, module)) {
+    if (Boolean(state.moduleVisibility[module])) return true;
+    // Mesma correção acima, agora para o módulo: terceirizados OU
+    // terceirizados_colaboradores libera a view.
+    const altModule = VIEW_MODULE_ALTERNATIVES[view];
+    if (altModule && Object.prototype.hasOwnProperty.call(state.moduleVisibility, altModule)) {
+      return Boolean(state.moduleVisibility[altModule]);
+    }
+    return false;
+  }
+  return true;
+}

@@ -49,16 +49,10 @@
     return globalThis.formatDateTime?.(value) ?? String(value || '-');
   }
 
+  // Cliente HTTP único: modules/api-client.js (carregado antes das views) publica
+  // `api`; o fallback de fetch cru que existia aqui era código redundante.
   function api(path, options) {
-    if (typeof globalThis.api === 'function') {return globalThis.api(path, options);}
-    // Fallback minimal para uso fora do contexto de app.js
-    const opts = options || {};
-    if (!opts.headers) {opts.headers = {};}
-    return fetch(path, opts).then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {throw new Error(data?.error || data?.message || `HTTP ${res.status}`);}
-      return data;
-    });
+    return globalThis.api(path, options);
   }
 
   function resolveItemSize(formValues) {

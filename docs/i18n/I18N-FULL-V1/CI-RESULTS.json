@@ -1,6 +1,38 @@
 {
-  "note": "Backend CI approved the delivery guard correction in both products (46fd5d67/d000861). Flutter CI approved the preceding badge/feedback product trees (5baea4bc/3010613f). New unpublished forms/settings work needs its own checks. Whole task remains incomplete.",
+  "note": "Backend and Flutter CI approved 8a0ded84 (Corporate) and 3b016875 (SaaS) before main integration. Integration fixes require their own exact-head checks linked in PRs. Whole task remains incomplete.",
   "runs": [
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 41051335197,
+      "headSha": "8a0ded84677f578524279e0e936f95ff923f8ae6",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/41051335197"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 41051340440,
+      "headSha": "8a0ded84677f578524279e0e936f95ff923f8ae6",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/41051340440"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 41051337497,
+      "headSha": "3b016875bba78ac059a04eb4e055ab1f2d1688e5",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle-app/actions/runs/41051337497"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 41051342224,
+      "headSha": "3b016875bba78ac059a04eb4e055ab1f2d1688e5",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle-app/actions/runs/41051342224"
+    },
     {
       "workflowName": "Backend CI",
       "databaseId": 40717395418,

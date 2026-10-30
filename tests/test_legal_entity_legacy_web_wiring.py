@@ -20,6 +20,24 @@ def _read(*parts):
         return fh.read()
 
 
+def _front_js():
+    """`app.js` + os módulos de CNPJ e Unidades (UBX-V5, Etapa 2).
+
+    A tela de CNPJs, os seletores de vínculo jurídico e a edição de Unidade
+    saíram do app.js para static/js/modules/legal-entities/ e
+    static/js/modules/units/ — as asserções continuam as mesmas, sobre o código
+    que hoje os contém. Quem barra uma cópia voltando ao app.js é a guarda UBX.
+    """
+    import glob
+    parts = [_read('static', 'app.js')]
+    for domain in ('legal-entities', 'units'):
+        pattern = os.path.join(ROOT, 'static', 'js', 'modules', domain, '**', '*.js')
+        for path in sorted(glob.glob(pattern, recursive=True)):
+            with open(path, encoding='utf-8') as handle:
+                parts.append(handle.read())
+    return '\n'.join(parts)
+
+
 # ── cadastro de colaborador ──────────────────────────────────────────────────
 
 def test_employee_form_has_legal_entity_select():
@@ -58,9 +76,12 @@ def test_report_filter_has_legal_entity_select():
 
 def test_report_payload_sends_legal_entity_id():
     """O backend já filtra por `legal_entity_id`; o legado precisa enviá-lo."""
-    app_js = _read('static', 'app.js')
-    assert "normalizeOptionalInt('legal_entity_id'" in app_js
-    assert "#report-legal-entity" in app_js
+    # UBX-V3 (Etapa 4): a leitura do formulário mora em reports-view.js (UI) e a
+    # validação numérica em report-filters.js (negócio).
+    view_js = _read('static', 'js', 'modules', 'reports', 'ui', 'reports-view.js')
+    business_js = _read('static', 'js', 'modules', 'reports', 'business', 'report-filters.js')
+    assert "legal_entity_id: reportForm?.querySelector('#report-legal-entity')?.value" in view_js
+    assert "['legal_entity_id', 'int']" in business_js
 
 
 # ── cadastro de unidade ──────────────────────────────────────────────────────
@@ -87,7 +108,7 @@ def test_unit_legal_entity_field_starts_hidden():
 
 def test_unit_legal_entity_follows_the_company_select():
     """CNPJ de outra empresa é recusado pelo backend — a lista tem de resincronizar."""
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'function syncUnitLegalEntityOptions()' in app_js
     assert re.search(
         r"getElementById\('unit-company'\), 'change'", app_js
@@ -95,7 +116,7 @@ def test_unit_legal_entity_follows_the_company_select():
 
 
 def test_unit_edit_preselects_the_current_legal_entity():
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert re.search(
         r"form\.elements\.legal_entity_id\.value = item\.legal_entity_id", app_js
     )
@@ -103,7 +124,7 @@ def test_unit_edit_preselects_the_current_legal_entity():
 
 def test_unit_table_shows_the_legal_entity_column():
     """Empresa com vários CNPJs precisa distinguir as unidades na lista."""
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'unitLegalEntityLabel(item)' in app_js
     assert 'data-i18n="unit.tableLegalEntity"' in _read('static', 'views', 'unidades.html')
     assert 'data-i18n="unit.tableLegalEntity"' in _read('static', 'index.html')
@@ -139,7 +160,7 @@ def test_legal_entities_view_is_registered_in_the_builder():
 
 
 def test_legal_entities_view_is_permission_gated():
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert re.search(r"cnpjs:\s*'legal_entities:view'", app_js)
 
 
@@ -151,14 +172,18 @@ def test_legal_entity_form_preserves_the_active_flag():
     """
     html = _read('static', 'index.html')
     assert re.search(r'<input[^>]*name="active"[^>]*id="legal-entity-active"', html)
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert "form.elements.active.value = active ? '1' : '0'" in app_js
 
 
 def test_legal_entity_deactivation_uses_the_delete_route():
     """A inativação é a rota DELETE; não existe exclusão física de CNPJ."""
-    app_js = _read('static', 'app.js')
-    assert re.search(r"api\(`/api/legal-entities/\$\{entityId\}\?\$\{actorQuery\(\)\}`, \{ method: 'DELETE' \}\)", app_js)
+    app_js = _front_js()
+    # A chamada mora na integração (UBX-V5, Etapa 2); a UI passa actorQuery().
+    assert re.search(
+        r"api\(`/api/legal-entities/\$\{entityId\}\?\$\{actorQueryString\}`, \{ method: 'DELETE' \}\)", app_js
+    )
+    assert 'deactivateLegalEntity(entityId, actorQuery())' in app_js
 
 
 def test_legal_entity_company_field_starts_hidden_and_optional():
@@ -186,7 +211,7 @@ def test_company_field_shows_the_account_company_instead_of_going_blank():
     cadastrar pessoa jurídica. A escolha aqui é a mesma já usada no CNPJ do
     colaborador em edição: mostrar desabilitado.
     """
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'field.disabled = true;' in app_js, 'campo informativo precisa ficar desabilitado'
     assert 'state.user?.company_name' in app_js, 'precisa exibir o nome da empresa da conta'
     assert 'id="legal-entity-company-hint"' in _read('static', 'index.html'), (
@@ -196,13 +221,13 @@ def test_company_field_shows_the_account_company_instead_of_going_blank():
 
 def test_master_gets_a_placeholder_instead_of_a_blank_selection():
     """Seleção vazia precisa ler como "escolha uma", não como campo quebrado."""
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert re.search(r"tr\('company\.select'", app_js)
 
 
 def test_company_field_hides_when_the_company_is_unknown():
     """Sem nome carregado não há o que afirmar — melhor sumir do que mentir."""
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert "wrapper.hidden = companyName === '';" in app_js
 
 
@@ -217,7 +242,7 @@ def test_company_labels_exist_in_all_locales():
 
 def test_legal_entity_company_field_is_master_only():
     """Empresa só é escolhida pelo Master; para os demais é a do próprio usuário."""
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'function syncLegalEntityCompanyField()' in app_js
     assert "state.user?.role === 'master_admin'" in app_js
     assert 'id="legal-entity-company-field"' in _read('static', 'views', 'cnpjs.html')
@@ -249,7 +274,7 @@ def test_edit_takes_the_operator_to_the_registration_tab():
     quem clicou, nada acontecia. Ao abrir o cadastro depois, aparecia um
     formulário em "Atualizar CNPJ" sem explicação — foi o que foi relatado.
     """
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'function focusRegistrationTab(' in app_js
     assert re.search(
         r"setFormSubmitLabel\('legal-entity-form', tr\('legalEntity\.update'.*\n(?:.*\n)*?"
@@ -270,13 +295,13 @@ def test_form_offers_a_way_out_of_edit_mode():
     assert 'id="legal-entity-cancel-edit"' in html
     assert re.search(r'id="legal-entity-cancel-edit"[^>]*hidden', html), \
         'a saída só faz sentido quando há edição em curso'
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'function resetLegalEntityForm()' in app_js
     assert "bindAppListener(document.getElementById('legal-entity-cancel-edit'), 'click', resetLegalEntityForm)" in app_js
 
 
 def test_edit_mode_is_visible_and_reversible():
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'function setLegalEntityFormMode(' in app_js
     assert "setLegalEntityFormMode('edit')" in app_js
     # Depois de salvar, o formulário volta a cadastrar — senão o próximo
@@ -291,7 +316,7 @@ def test_cnpj_view_requires_bootstrap_data():
     havendo CNPJ cadastrado — e o operador concluía que a empresa não tinha
     nenhum. A view depende inteiramente de `state.legalEntities`.
     """
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     required = re.search(r'BOOTSTRAP_REQUIRED_VIEWS = new Set\(\[([^\]]*)\]\)', app_js)
     assert required, 'lista de views que exigem bootstrap não encontrada'
     assert "'cnpjs'" in required.group(1)
@@ -318,13 +343,14 @@ def test_employee_legal_entity_is_locked_on_edit():
     O operador precisa ver a qual CNPJ o colaborador pertence; trocar exige o
     processo administrativo auditado.
     """
-    app_js = _read('static', 'app.js')
-    assert 'setEmployeeLegalEntityLock' in app_js
-    assert re.search(r'setEmployeeLegalEntityLock\(item\.legal_entity_id \|\| \'\', true\)', app_js)
+    # UBX-V4: edição e trava do CNPJ saíram do app.js para o módulo de UI de Colaboradores.
+    view_js = _read('static', 'js', 'modules', 'employees', 'ui', 'employees-view.js')
+    assert 'function setEmployeeLegalEntityLock' in view_js
+    assert re.search(r'setEmployeeLegalEntityLock\(item\.legal_entity_id \|\| \'\', true\)', view_js)
 
 
 def test_bootstrap_legal_entities_land_in_state():
-    app_js = _read('static', 'app.js')
+    app_js = _front_js()
     assert 'state.legalEntities = Array.isArray(payload.legal_entities)' in app_js
 
 

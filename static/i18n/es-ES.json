@@ -3320,5 +3320,8 @@
       "expiry": "Este enlace es personal y caduca el {date}.",
       "private": "No comparta este enlace."
     }
+  },
+  "mutation": {
+    "refreshFailed": "La operación se registró, pero no fue posible actualizar la pantalla. Recargue la página para ver los datos actualizados."
   }
 }

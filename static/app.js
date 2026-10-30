@@ -567,287 +567,11 @@ function safeOn(target, eventName, handler, options) {
   }
 }
 
-function isViewActive(viewSelector) {
-  if (!viewSelector) return false;
-  const viewElement = document.querySelector(viewSelector);
-  if (!viewElement) return false;
-  return viewElement.classList.contains('active');
-}
-
-function resolveFormFieldAutocomplete(field) {
-  if (!field || typeof field.getAttribute !== 'function') return null;
-  const tag = String(field.tagName || '').toLowerCase();
-  if (tag === 'select' || tag === 'textarea') return 'off';
-  const type = String(field.getAttribute('type') || 'text').toLowerCase();
-  if (['hidden', 'checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'range', 'color'].includes(type)) return null;
-  if (type === 'password') {
-    const marker = String(field.id || field.name || '').toLowerCase();
-    if (marker.includes('new') || marker.includes('confirm') || marker.includes('recovery')) return 'new-password';
-    return 'current-password';
-  }
-  const marker = String((field.id || '') + ' ' + (field.name || '')).toLowerCase();
-  if (marker.includes('user') || marker.includes('login')) return 'username';
-  if (marker.includes('email')) return 'email';
-  if (marker.includes('phone') || marker.includes('whatsapp') || marker.includes('tel')) return 'tel';
-  if (marker === 'name' || marker.endsWith(' name') || marker.includes('-name') || marker.includes('_name')) return 'name';
-  if (type === 'search' || type === 'date' || type === 'number') return 'off';
-  return 'off';
-}
-
-
-function describeFieldNode(node) {
-  if (!node || !(node instanceof HTMLElement)) return null;
-  const nearestForm = node.closest('form');
-  const id = getElementIdAttribute(node);
-  const classSuffix = String(node.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
-  const selector = `${String(node.tagName || '').toLowerCase()}${id ? `#${id}` : ''}${classSuffix ? `.${classSuffix}` : ''}`;
-  return {
-    id,
-    rawDomIdProperty: String(node.id || ''),
-    tagName: String(node.tagName || '').toLowerCase(),
-    name: String(node.getAttribute('name') || ''),
-    type: String(node.getAttribute('type') || ''),
-    placeholder: String(node.getAttribute('placeholder') || ''),
-    nearestFormId: getElementIdAttribute(nearestForm),
-    formId: getElementIdAttribute(nearestForm),
-    nearestFormId: String((nearestForm && nearestForm.id) || ''),
-    formId: String((nearestForm && nearestForm.id) || ''),
-    outerHTML: String(node.outerHTML || '').replace(/\s+/g, ' ').trim().slice(0, 220),
-    selector
-  };
-}
-
-function getElementIdAttribute(node) {
-  if (!node || typeof node.getAttribute !== 'function') return '';
-  return String(node.getAttribute('id') || '').trim();
-}
-
-function isValidDomId(value) {
-  if (typeof value !== 'string') return false;
-  const normalized = value.trim();
-  if (!normalized) return false;
-  if (normalized.includes('[object')) return false;
-  if (/[<>"']/.test(normalized)) return false;
-  if (/^(undefined|null|nan)$/i.test(normalized)) return false;
-  return true;
-}
-
-function toSafeId(value, fallback) {
-  const raw = typeof value === 'string' ? value : '';
-  const base = raw.trim() || String(fallback || 'form');
-  const sanitized = String(base)
-    .replace(/[^a-zA-Z0-9_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase();
-  return sanitized || String(fallback || 'form');
-}
-
-function setElementIdAttribute(node, value, contextLabel = 'unknown') {
-  if (!node || typeof node.setAttribute !== 'function') return false;
-  if (value instanceof HTMLElement) {
-    console.warn('[forms] tentativa de usar elemento como ID ignorada', { contextLabel });
-    return false;
-  }
-  if (typeof value !== 'string') {
-    console.warn('[forms] id inválido ignorado', { contextLabel });
-    return false;
-  }
-  const normalized = String(value || '').trim();
-  if (!isValidDomId(normalized)) return false;
-  node.setAttribute('id', normalized);
-  return true;
-}
-
-function normalizeInvalidDomIds(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return [];
-  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
-  const allNodes = Array.from(document.querySelectorAll('[id]'));
-  const idCounts = new Map();
-  allNodes.forEach((node) => {
-    const id = getElementIdAttribute(node);
-    if (!id) return;
-    idCounts.set(id, (idCounts.get(id) || 0) + 1);
-  });
-  const toNormalize = allNodes.filter((node) => {
-    const id = getElementIdAttribute(node);
-    return Boolean(id) && (isObjectLikeId(id) || (idCounts.get(id) || 0) > 1);
-  });
-  const updates = [];
-  toNormalize.forEach((node, index) => {
-    const previousId = getElementIdAttribute(node);
-    if (!previousId) return;
-    const tagName = String(node.tagName || 'node').toLowerCase();
-    const nearestForm = node.closest('form');
-    const basePrefix = nearestForm ? `${nearestForm.id || 'epi-form'}-${tagName}` : `epi-${tagName}`;
-    let candidateId = `${basePrefix}-normalized-${index + 1}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
-    let seq = 1;
-    while (candidateId && document.getElementById(candidateId) && document.getElementById(candidateId) !== node) {
-      seq += 1;
-      candidateId = `${basePrefix}-normalized-${index + 1}-${seq}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
-    }
-    if (!candidateId) return;
-    setElementIdAttribute(node, candidateId, 'normalizeInvalidDomIds');
-    Array.from(document.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
-      label.setAttribute('for', candidateId);
-    });
-    updates.push({ previousId, newId: candidateId, node: describeFieldNode(node) });
-  });
-  return updates;
-}
-
-function ensureFormFieldAttributes(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return;
-  if (!globalThis.__EPI_FORM_FIELD_ID_SEQ__) globalThis.__EPI_FORM_FIELD_ID_SEQ__ = 0;
-
-  const isObjectLikeId = (value) => /^\[object\s+[^\]]+\]$/i.test(String(value || '').trim());
-  const hasDuplicateId = (value, exceptNode = null) => {
-    const normalized = String(value || '').trim();
-    if (!normalized) return false;
-    const nodes = Array.from(document.querySelectorAll(`[id="${CSS.escape(normalized)}"]`));
-    if (!exceptNode) return nodes.length > 1;
-    return nodes.some((node) => node !== exceptNode);
-  };
-  const buildSafeFieldId = (baseId) => {
-    let candidateId = String(baseId || '').trim() || `epi-field-${Date.now()}`;
-    while (document.getElementById(candidateId)) {
-      globalThis.__EPI_FORM_FIELD_ID_SEQ__ += 1;
-      candidateId = `${String(baseId || 'epi-field').trim() || 'epi-field'}-${globalThis.__EPI_FORM_FIELD_ID_SEQ__}`;
-    }
-    return candidateId;
-  };
-  const buildStableFieldId = (formId, field, fieldIndex) => {
-    const safeFormId = isValidDomId(formId) ? formId : `form-${fieldIndex + 1}`;
-    const rawName = String(field?.getAttribute?.('name') || getElementIdAttribute(field) || field?.getAttribute?.('type') || 'field');
-    const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'field';
-    return buildSafeFieldId(`${String(safeFormId || 'form').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${normalizedName}-${fieldIndex + 1}`);
-  };
-
-  const forms = Array.from(root.querySelectorAll('form'));
-  if (root instanceof HTMLFormElement) forms.unshift(root);
-
-  forms.forEach((form, formIndex) => {
-    const currentFormId = getElementIdAttribute(form);
-    let formId = currentFormId;
-
-    if (!isValidDomId(formId) || isObjectLikeId(formId) || hasDuplicateId(formId, form)) {
-      const fallback = `form-${formIndex + 1}`;
-      const safeId = toSafeId(form.getAttribute('name'), fallback);
-      formId = buildSafeFieldId(safeId);
-      setElementIdAttribute(form, formId, 'ensureFormFieldAttributes:form');
-    }
-
-    const fields = Array.from(form.querySelectorAll('input, select, textarea'));
-    fields.forEach((field, fieldIndex) => {
-      const hasId = field.hasAttribute('id');
-      const hasName = field.hasAttribute('name');
-      const currentFieldId = getElementIdAttribute(field);
-      const shouldNormalizeInvalidId = hasId && (!isValidDomId(currentFieldId) || isObjectLikeId(currentFieldId) || hasDuplicateId(currentFieldId, field));
-
-      if (shouldNormalizeInvalidId || (!hasId && !hasName)) {
-        const previousId = currentFieldId;
-        const fallback = `${formId || 'form'}-${field.getAttribute('name') || field.getAttribute('type') || 'field'}-${fieldIndex + 1}`;
-        let candidateId = toSafeId(currentFieldId, fallback);
-        if (!isValidDomId(candidateId) || isObjectLikeId(candidateId) || hasDuplicateId(candidateId, field)) {
-          candidateId = buildStableFieldId(formId, field, fieldIndex);
-        }
-        setElementIdAttribute(field, candidateId, 'ensureFormFieldAttributes:field');
-        if (previousId && previousId !== candidateId) {
-          Array.from(form.querySelectorAll(`label[for="${CSS.escape(previousId)}"]`)).forEach((label) => {
-            if (!label.control || label.control === field) label.setAttribute('for', candidateId);
-          });
-        }
-      }
-
-      if ((field.hasAttribute('id') || field.hasAttribute('name')) && !field.hasAttribute('autocomplete')) {
-        const autocompleteValue = resolveFormFieldAutocomplete(field);
-        if (autocompleteValue) field.setAttribute('autocomplete', autocompleteValue);
-      }
-    });
-  });
-}
-
-function auditFormFieldIssues(root = document) {
-  if (!root || typeof root.querySelectorAll !== 'function') return { missingIdOrName: 0, missingAutocomplete: 0, duplicateIds: [], brokenLabels: [] };
-  const scope = root.querySelectorAll ? root : document;
-  const fields = Array.from(scope.querySelectorAll('form input, form select, form textarea'));
-  const missingIdOrName = fields.filter((field) => !field.id && !field.name).length;
-  const missingAutocomplete = fields.filter((field) => {
-    if (!field.id && !field.name) return false;
-    if (field.hasAttribute('autocomplete')) return false;
-    return Boolean(resolveFormFieldAutocomplete(field));
-  }).length;
-
-  const idMap = new Map();
-  Array.from(document.querySelectorAll('[id]')).forEach((node) => {
-    const id = getElementIdAttribute(node);
-    if (!id) return;
-    if (!idMap.has(id)) {
-      idMap.set(id, { count: 0, nodes: [] });
-    }
-    const entry = idMap.get(id);
-    entry.count += 1;
-    const tag = String(node.tagName || 'node').toLowerCase();
-    const marker = node.className ? `${tag}#${id}.${String(node.className).trim().replace(/\s+/g, '.')}` : `${tag}#${id}`;
-    if (entry.nodes.length < 4) entry.nodes.push(marker);
-  });
-  const duplicateIds = Array.from(idMap.entries())
-    .filter(([, entry]) => entry.count > 1)
-    .map(([id, entry]) => ({ id, count: entry.count, nodes: entry.nodes }));
-
-  const brokenLabels = Array.from(document.querySelectorAll('label[for]')).filter((label) => {
-    const targetId = String(label.getAttribute('for') || '').trim();
-    if (!targetId) return false;
-    return !document.getElementById(targetId);
-  }).map((label) => label.getAttribute('for'));
-
-  return { missingIdOrName, missingAutocomplete, duplicateIds, brokenLabels };
-}
-
-function setupFormFieldHardening() {
-  if (globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__) return;
-  globalThis.__EPI_FORM_FIELD_HARDENING_BOUND__ = true;
-
-  ensureFormFieldAttributes(document);
-  const normalizedIdsOnBoot = normalizeInvalidDomIds(document);
-  ensureFormFieldAttributes(document);
-  if (normalizedIdsOnBoot.length && globalThis.__EPI_DEBUG_FORMS__) console.warn('[forms] normalized invalid ids on boot', normalizedIdsOnBoot);
-  const observer = new MutationObserver((records) => {
-    records.forEach((record) => {
-      record.addedNodes.forEach((node) => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.matches('form, input, select, textarea')) {
-          ensureFormFieldAttributes(node.closest('form') || node);
-          normalizeInvalidDomIds(node.closest('form') || document);
-          return;
-        }
-        if (node.querySelector) {
-          ensureFormFieldAttributes(node);
-          normalizeInvalidDomIds(node);
-        }
-      });
-    });
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-  globalThis.__EPI_FORM_FIELD_HARDENING_OBSERVER__ = observer;
-
-  const audit = auditFormFieldIssues(document);
-  globalThis.__EPI_FORM_FIELD_AUDIT__ = audit;
-  if (audit.missingIdOrName || audit.missingAutocomplete || audit.duplicateIds.length || audit.brokenLabels.length) {
-    const duplicateIdNames = audit.duplicateIds.map((entry) => `${entry.id} (${entry.count}x)`).join(', ');
-    const duplicateNodes = audit.duplicateIds.flatMap((entry) => {
-      const escapedId = CSS.escape(String(entry.id || ''));
-      return Array.from(document.querySelectorAll(`[id="${escapedId}"]`)).map((node) => ({
-        duplicateId: entry.id,
-        ...describeFieldNode(node)
-      }));
-    });
-    console.warn('[forms] pending accessibility issues', {
-      ...audit,
-      duplicateIdsSummary: duplicateIdNames || 'none',
-      duplicateNodes
-    });
-  }
-}
+// isViewActive, resolveFormFieldAutocomplete, describeFieldNode, getElementIdAttribute,
+// isValidDomId, toSafeId, setElementIdAttribute, normalizeInvalidDomIds,
+// ensureFormFieldAttributes, auditFormFieldIssues e setupFormFieldHardening
+// (identificação de elementos e campos de formulário) vivem em
+// static/js/modules/shared/ui/form-field-identity.js (UBX-V3, Etapa 1).
 
 function deepClone(value) {
   return globalThis.structuredClone?.(value) ?? JSON.parse(JSON.stringify(value));
@@ -2572,29 +2296,14 @@ function qrCodeImageUrl(value) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=${normalized}`;
 }
 
-function buildEmployeeAccessLink(token) {
-  const normalizedToken = String(token || '').trim();
-  if (!normalizedToken) return '';
-  return `${globalThis.location.origin}/?employee_token=${encodeURIComponent(normalizedToken)}`;
-}
-// ── Camada HTTP: fonte única em static/js/modules/api-client.js (Fase 1 UBX) ──
+// buildEmployeeAccessLink e o restante da UI de Colaboradores (filtros, linhas, seleção em lote,
+// edição, CNPJ, link/QR de acesso) vivem em static/js/modules/employees/ (UBX-V4, Etapa B1).
+
+// ── Camada HTTP: fonte única em static/js/modules/api-client.js ───────────────
 // api-client.js é carregado ANTES de app.js (ver _scripts.html) e expõe em
-// globalThis: apiFetch / apiFetchOptional / apiFetchWithRetry, além dos helpers
-// (requestApiResponse, parseApiPayload, ensureExpectedApiResponse,
-// throwIfApiRequestFailed, createApiError, waitMs). Estas funções eram cópias
-// idênticas dessa lógica; agora delegam para a única fonte de verdade, evitando
-// divergência entre as duas implementações.
-async function api(path, options = {}) {
-  return globalThis.apiFetch(path, options);
-}
-
-async function apiOptional(path, options = {}) {
-  return globalThis.apiFetchOptional(path, options);
-}
-
-async function apiWithBootstrapRetry(path, options = {}, config = {}) {
-  return globalThis.apiFetchWithRetry(path, options, config);
-}
+// globalThis apiFetch / apiFetchOptional / apiFetchWithRetry e, desde a UBX-V3
+// (Etapa 3), também os delegadores api / apiOptional / apiWithBootstrapRetry
+// que moravam aqui — o app.js e as views continuam chamando os mesmos nomes.
 
 function normalizeRole(role) {
   if (!role) return '';
@@ -2808,12 +2517,10 @@ function actorQuery() {
   return `actor_user_id=${encodeURIComponent(state.user?.id || '')}`;
 }
 
-function unitTypeLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'navio' || normalized === 'embarcacao') return tr('unit.typeVessel', 'Embarcação');
-  if (normalized === 'plataforma') return tr('unit.typePlatform', 'Plataforma');
-  return tr('unit.typeBase', 'Base');
-}
+// unitTypeLabel, formatCompanyAvailabilityText, employmentTypeLabel,
+// allocationTypeLabel, outsourcedEmployeeLinkLabel, epiProtectionLabel e
+// epiMeasureLabel (rótulos traduzidos com tr) vivem em
+// static/js/modules/shared/ui/domain-labels.js (UBX-V3, Etapa 2).
 
 function setLoginMessage(message = '', isError = false) {
   if (!refs.loginMessage) return;
@@ -3076,91 +2783,33 @@ function formValues(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
-function renderEpiPhotoPreview(photoValue) {
-  const preview = document.getElementById('epi-photo-preview');
-  if (!preview) return;
-  if (!photoValue) {
-    preview.innerHTML = `<div class="summary-item">${tr('epi.photoMissing', 'Sem foto anexada.')}</div>`;
-    return;
-  }
-  preview.innerHTML = `<div class="logo-preview-card"><img class="company-logo company-logo-lg" src="${photoValue}" alt="Preview da foto do EPI"><span>${tr('epi.photoAttached', 'Foto do EPI anexada')}</span></div>`;
-}
-
-async function handleEpiPhotoUpload(event) {
-  const hiddenField = document.getElementById('epi-photo-data');
-  const file = event.target.files?.[0];
-  if (!hiddenField) return;
-  if (!file) {
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-    return;
-  }
-  if (!String(file.type || '').startsWith('image/')) {
-    alert('Envie um arquivo de imagem válido para o EPI.');
-    event.target.value = '';
-    return;
-  }
-  try {
-    hiddenField.value = await fileToJpegDataUrl(file, 960);
-    renderEpiPhotoPreview(hiddenField.value);
-  } catch (error) {
-    alert(error.message || 'Não foi possí­vel processar a foto do EPI.');
-    event.target.value = '';
-    hiddenField.value = '';
-    renderEpiPhotoPreview('');
-  }
-}
+// renderEpiPhotoPreview, handleEpiPhotoUpload, openEpiPhotoPicker, configureEpiPhotoInputCapture,
+// canUseEpiAllUnitsScope, syncEpiUnitOptions, applyEpiJoinventureRules, startEditEpi, setEpiPhotoData,
+// prepareEpiFormValues, resetEpiForm e buildEpiRow (cadastro de EPI) vivem em
+// static/js/modules/epis/{ui,business}/; fileToDataUrl e fileToJpegDataUrl em
+// static/js/modules/shared/ui/file-data-url.js (UBX-V3, Etapa 5).
 
 function isMobileUserAgent() {
   return /android|iphone|ipad|ipod|mobile|tablet/i.test(String(navigator.userAgent || ''));
 }
 
-function openEpiPhotoPicker({ preferCamera = false } = {}) {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  if (preferCamera && isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
-  input.click();
-}
-
-function configureEpiPhotoInputCapture() {
-  const input = document.getElementById('epi-photo-file');
-  if (!input) return;
-  input.setAttribute('accept', 'image/*');
-  if (isMobileUserAgent()) {
-    input.setAttribute('capture', 'environment');
-  } else {
-    input.removeAttribute('capture');
-  }
-}
-
-function getCompanyFormField(name) {
-  const field = refs.companyForm?.elements?.namedItem(name) || null;
-  if (!field) console.error(`[company-form] Campo esperado Não encontrado: ${name}`);
-  return field;
-}
-
-function setCompanyFieldValue(name, value = '', options = {}) {
-  const field = options.optional ? refs.companyForm?.elements?.namedItem(name) || null : getCompanyFormField(name);
-  if (field) field.value = value ?? '';
-}
-
-function readCompanyFieldValue(name, fallback = '', options = {}) {
-  const field = options.optional ? refs.companyForm?.elements?.namedItem(name) || null : getCompanyFormField(name);
-  return field ? field.value ?? fallback : fallback;
-}
+// getCompanyFormField, setCompanyFieldValue e readCompanyFieldValue: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
 
+// SECURITY-LOGO-XSS-V1: o logotipo vem do banco e entra num atributo src via
+// innerHTML. Só uma data URL base64 de PNG/JPEG/SVG é usada (o alfabeto base64
+// não tem aspas, espaços nem < >); qualquer outro valor mostra o logotipo padrão.
+// O backend aplica a mesma regra ao gravar (modules/commercial/service.py).
 function companyLogoSrc(logoValue) {
-  return String(logoValue || '').startsWith('data:image/') ? logoValue : DEFAULT_COMPANY_LOGO;
+  const value = String(logoValue || '');
+  return /^data:image\/(?:png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : DEFAULT_COMPANY_LOGO;
 }
 
 function companyLogoMarkup(company, className = 'company-logo') {
   const label = company?.name || 'Empresa';
-  return `<img class="${className}" src="${companyLogoSrc(company?.logo_type)}" alt="Logotipo de ${label}">`;
+  // Nome da empresa e src vão escapados para atributo (aspas não fecham o atributo).
+  const attr = (text) => String(text).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  return `<img class="${attr(className)}" src="${attr(companyLogoSrc(company?.logo_type))}" alt="Logotipo de ${attr(label)}">`;
 }
 
 function renderPlatformLogoPreview(logoValue) {
@@ -3195,15 +2844,6 @@ async function handlePlatformLogoUpload(event) {
   }
 }
 
-async function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo do logotipo.'));
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.readAsDataURL(file);
-  });
-}
-
 async function handlePlatformLoginLogoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) {
@@ -3224,30 +2864,6 @@ async function handlePlatformLoginLogoUpload(event) {
     alert(error.message);
     event.target.value = '';
   }
-}
-
-async function fileToJpegDataUrl(file, maxWidth = 720) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Não foi possí­vel ler o arquivo do logotipo.'));
-    reader.onload = () => {
-      const image = new Image();
-      image.onerror = () => reject(new Error('Não foi possí­vel processar o logotipo enviado.'));
-      image.onload = () => {
-        const scale = Math.min(1, maxWidth / (image.width || maxWidth));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(image.width * scale));
-        canvas.height = Math.max(1, Math.round(image.height * scale));
-        const context = canvas.getContext('2d');
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.92));
-      };
-      image.src = typeof reader.result === 'string' ? reader.result : '';
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 function renderPlatformBrand() {
@@ -3291,12 +2907,10 @@ function isOperationalProfile() {
   return ['admin', 'user'].includes(state.user?.role);
 }
 
-function canUseEpiAllUnitsScope() {
-  return EPI_ALL_UNITS_PROFILES.includes(state.user?.role);
-}
-
 function hasConfigurationAccess() {
-  return CONFIGURATION_ADMIN_ROLES.includes(state.user?.role) && hasPermission('settings:view');
+  // Fonte única: a mesma regra pura que canAccessView('configuracao') usa
+  // (modules/auth/business/access-rules.js, UBX-V4).
+  return globalThis.__EPI_ACCESS_RULES__.hasConfigurationAccess(globalThis.__EPI_ACCESS_CONTEXT__.current(), CONFIGURATION_ADMIN_ROLES);
 }
 
 function hasHardeningAccess() {
@@ -3307,21 +2921,8 @@ function canViewConfiguration() {
   return hasConfigurationAccess();
 }
 
-function canManageUsers() {
-  return hasPermission('users:update') || hasPermission('users:create') || hasPermission('users:delete');
-}
-
-function canManageEpi() {
-  return hasPermission('epis:create') || hasPermission('epis:update') || hasPermission('epis:delete');
-}
-
-function canViewReports() {
-  return hasPermission('reports:view');
-}
-
-function canAccessCommercialArea() {
-  return state.user?.role === 'master_admin' && hasPermission('commercial:view');
-}
+// canManageUsers, canManageEpi, canViewReports e canAccessCommercialArea: regras puras em
+// static/js/modules/auth/business/access-rules.js, publicadas por .../auth/ui/access-context.js (UBX-V4, Etapa C).
 
 function splitUserName(fullName) {
   const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -3547,51 +3148,16 @@ function bindSpaNavigationHistory() {
 // centraliza a regra para que a navegação programática (cards do dashboard,
 // deep-links) não abra uma view proibida para o papel.
 function canAccessView(view) {
-  const permission = VIEW_PERMISSIONS[view];
-  if (permission && !hasPermission(permission)) {
-    // ADR-0002 §10 (correção de escopo): Terceirizados e Prestadores abre
-    // com employees:create (aba Empresas) OU employees:create_simplified
-    // (aba Cadastro de Colaboradores) — sem isso, admin/user (que só têm a
-    // segunda) nunca alcançavam a tela mesmo com o módulo ligado.
-    const altPermission = VIEW_PERMISSION_ALTERNATIVES[view];
-    if (!altPermission || !hasPermission(altPermission)) return false;
-  }
-  const role = state.user?.role;
-  // Views de cadastro estrutural: apenas administradores estruturais.
-  if (['epis', 'colaboradores', 'unidades', 'usuarios'].includes(view)
-      && !['master_admin', 'general_admin', 'registry_admin'].includes(role)) {
-    return false;
-  }
-  // Gestão de colaborador (movimentação entre unidades): administradores +
-  // perfis operacionais (Local/Gestor) — fora do escopo de module_visibility
-  // (não é um dos módulos configuráveis), mantém a restrição fixa.
-  if (view === 'gestao-colaborador'
-      && !['master_admin', 'general_admin', 'registry_admin', 'admin', 'user'].includes(role)) {
-    return false;
-  }
-  // Estoque/Entregas/Fichas de EPI: a restrição fixa de papel foi
-  // substituída pela visibilidade por módulo (configurável pelo
-  // Administrador Geral) logo abaixo — o padrão do sistema já nega estas
-  // três para Comprador/Aprovador (MODULE_REQUIRED_PERMISSIONS/
-  // _STRUCTURALLY_HIDDEN_BY_DEFAULT em rule_engine.py), mas agora pode ser
-  // liberado por configuração, o que um `return false` fixo aqui impediria.
-  if (view === 'configuracao') return hasConfigurationAccess();
-  // Visibilidade estrutural por módulo (configuração do Administrador
-  // Geral): módulo ausente do mapa é tratado como visível — só restringe
-  // quando o backend explicitamente desliga o módulo para o papel. Nunca
-  // amplia o que a permissão técnica acima já negou.
-  const module = VIEW_MODULE[view];
-  if (module && state.moduleVisibility && Object.prototype.hasOwnProperty.call(state.moduleVisibility, module)) {
-    if (Boolean(state.moduleVisibility[module])) return true;
-    // Mesma correção acima, agora para o módulo: terceirizados OU
-    // terceirizados_colaboradores libera a view.
-    const altModule = VIEW_MODULE_ALTERNATIVES[view];
-    if (altModule && Object.prototype.hasOwnProperty.call(state.moduleVisibility, altModule)) {
-      return Boolean(state.moduleVisibility[altModule]);
-    }
-    return false;
-  }
-  return true;
+  // Regra pura em modules/auth/business/access-rules.js (UBX-V4, Etapa C); os
+  // mapas de view/módulo continuam aqui (usados também por showView/menus).
+  return globalThis.__EPI_ACCESS_RULES__.canAccessView(globalThis.__EPI_ACCESS_CONTEXT__.current(), view, {
+    viewPermissions: VIEW_PERMISSIONS,
+    viewPermissionAlternatives: VIEW_PERMISSION_ALTERNATIVES,
+    viewModule: VIEW_MODULE,
+    viewModuleAlternatives: VIEW_MODULE_ALTERNATIVES,
+    configurationAdminRoles: CONFIGURATION_ADMIN_ROLES,
+    moduleVisibility: state.moduleVisibility
+  });
 }
 globalThis.canAccessView = canAccessView;
 
@@ -5002,23 +4568,10 @@ function populateRoleOptions() {
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
 }
 
-function populateUserFilters() {
-  if (!refs.userFilterCompany) return;
-  const all = tr('user.filterAll', 'Todos');
-  const companies = state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
-  const optionsHtml = companies.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
-  refs.userFilterCompany.innerHTML = `<option value="">${all}</option>` + optionsHtml;
-  const roleKeys = ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'];
-  refs.userFilterRole.innerHTML = `<option value="">${all}</option>` +
-    roleKeys.map((k) => `<option value="${k}">${tr('role.' + k, ROLE_LABELS[k] || k)}</option>`).join('');
-  refs.userFilterStatus.innerHTML = `<option value="">${all}</option>` +
-    `<option value="1">${tr('user.active', 'Ativo')}</option>` +
-    `<option value="0">${tr('user.inactive', 'Inativo')}</option>`;
-  refs.userFilterCompany.value = state.userFilters.company_id;
-  refs.userFilterRole.value = state.userFilters.role;
-  refs.userFilterStatus.value = state.userFilters.active;
-  refs.userFilterSearch.value = state.userFilters.search;
-}
+// populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
+// userActionButtons, add{Edit,Promote,Password,Management}Buttons, startEditUser, updateUserAccess,
+// resetUserForm e syncUserFilters (gestão de usuários) vivem em static/js/modules/users/ (UBX-V3,
+// Etapa 6). As regras can* (fallback visual de RBAC) e saveUser seguem aqui; deleteUser saiu na UBX-V4.
 
 function scopedCompaniesForSearch() {
   return state.user?.role === 'master_admin' ? state.companies : filterByUserCompany(state.companies);
@@ -5033,9 +4586,8 @@ function populateSearchSelect(select, items, labelBuilder, selectedValue = '', i
   if (normalized && items.some((item) => String(item.id) === normalized)) select.value = normalized;
 }
 
-function unitsForSearchByCompany(companyId = '') {
-  return filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-}
+// unitsForSearchByCompany, syncUnitsSearchFilters, applyUnitsFilters, formatUnitTableRow,
+// formatUnitOption e startEditUnit: static/js/modules/units/{business,ui}/ (UBX-V5, Etapa 2).
 
 function populateScopedSearchFilters() {
   const companies = scopedCompaniesForSearch();
@@ -5103,34 +4655,6 @@ function populateScopedSearchFilters() {
   if (refs.deliveriesFilterDateTo) refs.deliveriesFilterDateTo.value = state.deliveriesFilters.date_to;
   if (refs.deliveriesFilterStatus) refs.deliveriesFilterStatus.value = state.deliveriesFilters.status;
   if (refs.fichaFilterSearch) refs.fichaFilterSearch.value = state.fichaFilters.search;
-}
-
-function syncUnitsSearchFilters() {
-  state.unitsFilters.company_id = String(refs.unitsFilterCompany?.value || '').trim();
-  state.unitsFilters.name = String(refs.unitsFilterName?.value || '').trim().toLowerCase();
-  state.unitsFilters.type = String(refs.unitsFilterType?.value || '').trim().toLowerCase();
-  state.unitsFilters.city = String(refs.unitsFilterCity?.value || '').trim().toLowerCase();
-  renderTables();
-}
-
-function syncEmployeesSearchFilters(source = 'employees') {
-  const isOps = source === 'ops';
-  const filters = isOps ? state.employeesOpsFilters : state.employeesFilters;
-  const companyField = isOps ? refs.employeesOpsFilterCompany : refs.employeesFilterCompany;
-  const unitField = isOps ? refs.employeesOpsFilterUnit : refs.employeesFilterUnit;
-  const searchField = isOps ? refs.employeesOpsFilterSearch : refs.employeesFilterSearch;
-  const sectorField = isOps ? refs.employeesOpsFilterSector : refs.employeesFilterSector;
-  const roleField = isOps ? refs.employeesOpsFilterRole : refs.employeesFilterRole;
-  filters.company_id = String(companyField?.value || '').trim();
-  filters.unit_id = String(unitField?.value || '').trim();
-  filters.search = String(searchField?.value || '').trim().toLowerCase();
-  filters.sector = String(sectorField?.value || '').trim().toLowerCase();
-  filters.role_name = String(roleField?.value || '').trim().toLowerCase();
-  if (isOps) populateSearchSelect(refs.employeesOpsFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
-  else populateSearchSelect(refs.employeesFilterUnit, unitsForSearchByCompany(filters.company_id), (item) => item.name, filters.unit_id);
-  filters.unit_id = String(unitField?.value || '').trim();
-  if (!isOps && state.pagination) state.pagination.employees = 1; // volta à 1ª página ao filtrar
-  renderTables();
 }
 
 function syncEpisSearchFilters() {
@@ -5311,98 +4835,11 @@ function syncDeliveriesOptions() {
   }
 }
 
-function renderUsersSummary() {
-  const visible = filteredUsers();
-  const admins = visible.filter((item) => ['master_admin', 'general_admin', 'admin'].includes(item.role)).length;
-  const active = visible.filter((item) => Number(item.active) === 1).length;
-  refs.usersSummary.innerHTML = [
-    [tr('user.kpiVisible', 'Visíveis'), visible.length],
-    [tr('user.kpiAdmins', 'Administradores'), admins],
-    [tr('user.kpiActive', 'Ativos'), active]
-  ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
-}
-
-function renderCompaniesSummary() {
-  if (!refs.companiesSummary) return;
-  const visibleCompanies = filterByUserCompany(state.companies);
-  const active = visibleCompanies.filter((item) => Number(item.active) === 1).length;
-  const nearLimit = visibleCompanies.filter((item) => item.near_limit && Number(item.limit_reached) !== 1).length;
-  const blocked = visibleCompanies.filter((item) => Number(item.active) !== 1 || ['suspended', 'expired'].includes(item.license_status)).length;
-  refs.companiesSummary.innerHTML = [
-    [tr('company.kpiTotal', 'Empresas'), visibleCompanies.length],
-    [tr('company.kpiActive', 'Ativas'), active],
-    [tr('company.kpiNearLimit', 'Próximas do limite'), nearLimit],
-    [tr('company.kpiBlocked', 'Bloqueadas'), blocked]
-  ].map((item) => `<div class="summary-chip"><strong>${item[1]}</strong><span>${item[0]}</span></div>`).join('');
-}
-
-function companyStatusBadges(company) {
-  const badges = [renderBadge('status', Number(company.active) === 1 ? 'active' : 'inactive', Number(company.active) === 1 ? tr('company.statusActive', 'Empresa ativa') : tr('company.statusInactive', 'Empresa inativa'))];
-
-  let licenseTone = 'inactive';
-  if (company.license_status === 'active') licenseTone = 'active';
-  else if (company.license_status === 'trial') licenseTone = 'warning';
-
-  badges.push(renderBadge('status', licenseTone, tr(`license.${company.license_status}`, company.license_status_label || company.license_status)));
-  if (Number(company.limit_reached) === 1) badges.push(renderBadge('status', 'inactive', tr('commercial.risk.atLimit', 'No limite')));
-  else if (company.near_limit) badges.push(renderBadge('status', 'warning', tr('commercial.risk.nearLimit', 'Próxima do limite')));
-  return badges.join(' ');
-}
-
-function companyUsageText(company) {
-  return `${company.user_count} faturável(eis) de ${company.user_limit} contratado(s)`;
-}
+// renderCompaniesSummary, companyStatusBadges, companyUsageText e renderCompanyDetails:
+// static/js/modules/companies/ui/ (UBX-V5, Etapa 2). formatCompanyCurrency fica aqui (I18N-FULL-V1 a altera).
 
 function formatCompanyCurrency(value) {
   return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
-}
-
-function formatCompanyAvailabilityText(company) {
-  return Number(company.limit_reached) === 1
-    ? tr('company.limitReached', 'Limite atingido')
-    : tr('company.availableSlotsText', '{count} vaga(s) disponíveis').replace('{count}', company.available_slots || 0);
-}
-
-function renderCompanyDetails(companyId = null) {
-  if (!refs.companyDetails) return;
-  const visibleCompanies = filterByUserCompany(state.companies);
-  if (!visibleCompanies.length) {
-    refs.companyDetails.innerHTML = `<div class="summary-item">${tr('company.noCompanySelected', 'Nenhuma empresa disponível.')}</div>`;
-    return;
-  }
-  const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || state.selectedCompanyId)) || visibleCompanies[0];
-  state.selectedCompanyId = selected.id;
-  const monthly = formatCompanyCurrency(selected.monthly_value);
-  const projected = formatCompanyCurrency(selected.projected_monthly_value);
-  const cnpjLabel = tr('company.cnpjLabel', 'CNPJ');
-  const validityRange = tr('company.validityRange', '{start} até {end}')
-    .replace('{start}', formatDate(selected.contract_start))
-    .replace('{end}', formatDate(selected.contract_end));
-  refs.companyDetails.innerHTML = `
-    <div class="company-detail-hero">
-      ${companyLogoMarkup(selected, 'company-logo company-logo-lg')}
-      <div>
-        <strong>${selected.name}</strong>
-        <span>${selected.legal_name || '-'}</span>
-        <span>${cnpjLabel}: ${selected.cnpj}</span>
-      </div>
-    </div>
-    <div class="company-detail-badges">${companyStatusBadges(selected)}</div>
-    <div class="company-detail-grid">
-      <div class="summary-chip"><strong>${selected.user_count ?? '—'}</strong><span>${tr('company.possibleUsers', 'Usuários possíveis')}</span></div>
-      <div class="summary-chip"><strong>${selected.user_limit ?? '—'}</strong><span>${tr('company.contractedLimit', 'Limite contratado')}</span></div>
-      <div class="summary-chip"><strong>${monthly}</strong><span>${tr('company.monthlyValue', 'Valor mensal atual')}</span></div>
-      <div class="summary-chip"><strong>${projected}</strong><span>${tr('company.projectedValue', 'Valor projetado')}</span></div>
-      <div class="summary-chip"><strong>${selected.available_slots ?? 0}</strong><span>${tr('company.availableSlots', 'Vagas disponíveis')}</span></div>
-    </div>
-    <div class="company-detail-list">
-      <div class="summary-item"><strong>${tr('company.planLabel', 'Plano / licença')}:</strong> ${planLabel(selected.plan_name) || '-'}</div>
-      <div class="summary-item"><strong>${tr('company.unitPrice', 'Valor unitário')}:</strong> ${formatCompanyCurrency(selected.unit_price)}</div>
-      <div class="summary-item"><strong>${tr('company.validity', 'Vigência')}:</strong> ${validityRange}</div>
-      <div class="summary-item"><strong>${tr('company.addendum', 'Aditivo contratual')}:</strong> ${Number(selected.addendum_enabled || 0) === 1 ? tr('user.active', 'Ativo') : tr('user.inactive', 'Inativo')}</div>
-      <div class="summary-item"><strong>${tr('company.commercialNotes', 'Observações comerciais')}:</strong> ${selected.commercial_notes || '-'}</div>
-    </div>
-    ${canAccessCommercialArea() ? `<div class="action-group"><button class="ghost" type="button" data-company-view-contract="${selected.id}">${tr('company.viewContract', 'Visualizar contrato')}</button></div>` : ''}`;
 }
 
 function filteredCommercialCompanies() {
@@ -5463,7 +4900,8 @@ function fillCommercialForm(companyId) {
   refs.commercialForm.elements.contract_start.value = selected.contract_start || '';
   refs.commercialForm.elements.contract_end.value = selected.contract_end || '';
   refs.commercialForm.elements.license_status.value = selected.license_status || 'active';
-  refs.commercialForm.elements.active.value = String(Number(selected.active || 1));
+  // FIX-EMPRESAS-ACTIVE-V1: `?? 1` (não `|| 1`) — empresa inativa (0) abre como inativa e não é reativada ao salvar.
+  refs.commercialForm.elements.active.value = String(Number(selected.active ?? 1));
   refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
   refreshCommercialPreview(selected);
   resetCommercialContractForm({ preserveClauses: true });
@@ -5734,18 +5172,7 @@ function renderCommercialExpiring() {
   refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
 }
 
-function companyRowActions(item, canManageCompanies) {
-  const viewDetailsLabel = tr('company.viewDetails', 'Visualizar detalhes');
-  if (!canManageCompanies) {
-    return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button></div>`;
-  }
-  const toggleMode = Number(item.active) === 1 ? 0 : 1;
-  const toggleLabel = Number(item.active) === 1 ? tr('company.deactivate', 'Inativar') : tr('company.activate', 'Ativar');
-  const commercialAction = canAccessCommercialArea()
-    ? `<button class="ghost" data-company-commercial="${item.id}">${tr('company.configureLicense', 'Configurar licença')}</button>`
-    : '';
-  return `<div class="action-group"><button class="ghost" data-company-details="${item.id}">${viewDetailsLabel}</button><button class="ghost" data-company-edit="${item.id}">${tr('company.editAction', 'Editar')}</button><button class="ghost" data-company-logo="${item.id}">Logotipo (suporte)</button>${commercialAction}<button class="ghost" data-company-toggle="${item.id}" data-company-active="${toggleMode}">${toggleLabel}</button></div>`;
-}
+// companyRowActions: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
@@ -6042,149 +5469,9 @@ async function saveCommercialSettings(event) {
   } catch (error) { alert(error.message); }
 }
 
-function formatCompanyRow(item, selectedId) {
-  const actions = companyRowActions(item, hasPermission('companies:create') || hasPermission('companies:update'));
-  const validityRange = tr('company.validityRange', '{start} até {end}')
-    .replace('{start}', formatDate(item.contract_start))
-    .replace('{end}', formatDate(item.contract_end));
-  return `
-      <tr class="${selectedId === String(item.id) ? 'selected-row' : ''}">
-        <td><div class="company-cell"><strong>${item.name}</strong><span>${item.legal_name || '-'}</span></div></td>
-        <td><div class="company-cell"><strong>${item.cnpj}</strong><span>${item.plan_name || '-'}</span></div></td>
-        <td><div class="company-cell">${companyStatusBadges(item)}<span>${tr('company.validity', 'Vigência')}: ${validityRange}</span></div></td>
-        <td><div class="company-logo-slot">${companyLogoMarkup(item, 'company-logo company-logo-sm')}</div></td>
-        <td><div class="company-cell"><strong>${item.user_count ?? '—'}</strong><span>${formatCompanyAvailabilityText(item)}</span></div></td>
-        <td><div class="company-cell"><strong>${item.user_limit ?? '—'}</strong><span>${formatCompanyCurrency(item.monthly_value)}</span></div></td>
-        <td>${actions}</td>
-      </tr>`;
-}
-
-function renderCompanies() {
-  if (!refs.companiesTable) return;
-  const visibleCompanies = filterByUserCompany(state.companies);
-  const selectedId = String(state.selectedCompanyId || visibleCompanies[0]?.id || '');
-  refs.companiesTable.innerHTML = visibleCompanies.map((item) => formatCompanyRow(item, selectedId)).join('') || globalThis.dsTableState({ colspan: 7, message: tr('company.noCompanies', 'Sem empresas disponíveis.') });
-}
-
-function resetCompanyForm() {
-  if (!refs.companyForm) return;
-  state.editingCompanyId = null;
-  refs.companyForm.reset();
-  setCompanyFieldValue('id', '');
-  setCompanyFieldValue('active', '1');
-  setCompanyFieldValue('general_admin_email', '', { optional: true });
-  setCompanyFieldValue('general_admin_name', '', { optional: true });
-  renderCompanyDetails();
-}
-
-function startEditCompany(companyId) {
-  if (!hasPermission('companies:update')) return;
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  if (!company || !refs.companyForm) return;
-  state.editingCompanyId = company.id;
-  state.selectedCompanyId = company.id;
-  setCompanyFieldValue('id', company.id);
-  setCompanyFieldValue('name', company.name || '');
-  setCompanyFieldValue('legal_name', company.legal_name || '');
-  setCompanyFieldValue('cnpj', company.cnpj || '');
-  setCompanyFieldValue('general_admin_email', '', { optional: true });
-  setCompanyFieldValue('general_admin_name', '', { optional: true });
-  setCompanyFieldValue('active', String(Number(company.active || 1)));
-  renderCompanies();
-  renderCompanyDetails(company.id);
-  refs.companyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// Suporte excepcional (auditado): o Administrador Master não edita a
-// identidade visual da tenant pela rota operacional — apenas via
-// support-update, com justificativa registrada no log de auditoria.
-function openCompanyLogoEditor(companyId) {
-  if (state.user?.role !== 'master_admin') return;
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  if (!company) return;
-  const reason = window.prompt(`Suporte auditado — justifique a alteração do logotipo de ${company.name} (mínimo 10 caracteres):`);
-  if (reason === null) return;
-  if (String(reason).trim().length < 10) {
-    alert('Justificativa muito curta. Informe pelo menos 10 caracteres.');
-    return;
-  }
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml';
-  bindAppListener(input, 'change', async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
-    if (!allowed.includes(file.type)) {
-      alert('Envie um logotipo PNG, JPG ou SVG.');
-      return;
-    }
-    try {
-      const logoType = await fileToJpegDataUrl(file);
-      await api(`/api/companies/${company.id}/support-update`, {
-        method: 'POST',
-        body: JSON.stringify({ actor_user_id: state.user.id, support_reason: String(reason).trim(), logo_type: logoType })
-      });
-      await loadBootstrap();
-      alert('Logotipo atualizado via suporte auditado.');
-    } catch (error) { alert(error.message); }
-  });
-  input.click();
-}
-
-async function saveCompany(event) {
-  event.preventDefault();
-  if (!requirePermission(state.editingCompanyId ? 'companies:update' : 'companies:create')) return;
-  try {
-    const currentCompany = state.companies.find((item) => String(item.id) === String(state.editingCompanyId || '')) || {};
-    const values = {
-      actor_user_id: state.user.id,
-      name: readCompanyFieldValue('name', currentCompany.name || ''),
-      legal_name: readCompanyFieldValue('legal_name', currentCompany.legal_name || ''),
-      cnpj: formatCnpj(readCompanyFieldValue('cnpj', currentCompany.cnpj || '')),
-      logo_type: currentCompany.logo_type || '',
-      plan_name: currentCompany.plan_name || 'start',
-      user_limit: currentCompany.user_limit || 10,
-      addendum_enabled: currentCompany.addendum_enabled || 0,
-      contract_start: currentCompany.contract_start || '',
-      contract_end: currentCompany.contract_end || '',
-      monthly_value: currentCompany.monthly_value || 0,
-      license_status: currentCompany.license_status || 'active',
-      active: readCompanyFieldValue('active', String(Number(currentCompany.active ?? 1))),
-      commercial_notes: currentCompany.commercial_notes || ''
-    };
-    if (!state.editingCompanyId) {
-      values.general_admin_email = readCompanyFieldValue('general_admin_email', '', { optional: true }).trim();
-      values.general_admin_name = readCompanyFieldValue('general_admin_name', '', { optional: true }).trim();
-    }
-    await api(state.editingCompanyId ? `/api/companies/${state.editingCompanyId}` : '/api/companies', { method: state.editingCompanyId ? 'PUT' : 'POST', body: JSON.stringify(values) });
-    resetCompanyForm();
-    await loadBootstrap();
-  } catch (error) { alert(error.message); }
-}
-
-async function toggleCompany(companyId, active) {
-  if (!hasPermission('companies:update')) return;
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  if (!company) return;
-  try {
-    await api(`/api/companies/${companyId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, name: company.name, legal_name: company.legal_name, cnpj: company.cnpj, logo_type: company.logo_type, plan_name: company.plan_name, user_limit: company.user_limit, contract_start: company.contract_start || '', contract_end: company.contract_end || '', monthly_value: company.monthly_value || 0, addendum_enabled: company.addendum_enabled || 0, license_status: company.license_status, active, commercial_notes: company.commercial_notes || '' }) });
-    await loadBootstrap();
-  } catch (error) { alert(error.message); }
-}
-
-function filteredUsers() {
-  return filterByUserCompany(state.users).filter((item) => {
-    if (state.userFilters.company_id && String(item.company_id || '') !== String(state.userFilters.company_id)) return false;
-    if (state.userFilters.role && item.role !== state.userFilters.role) return false;
-    if (state.userFilters.active !== '' && String(Number(item.active)) !== String(state.userFilters.active)) return false;
-    if (state.userFilters.search) {
-      const haystack = `${item.full_name} ${item.username} ${item.company_name || ''}`.toLowerCase();
-      if (!haystack.includes(state.userFilters.search)) return false;
-    }
-    return true;
-  });
-}
+// Tela de Empresas (formatCompanyRow, renderCompanies, resetCompanyForm, startEditCompany,
+// openCompanyLogoEditor, saveCompany, toggleCompany): static/js/modules/companies/{business,integrations,ui}/
+// (UBX-V5, Etapa 2).
 
 // Aguarda o backend ficar PRONTO antes de chamar /api/bootstrap.
 //
@@ -6216,7 +5503,8 @@ async function waitForBackendReady({ maxWaitMs = 90000, pollMs = 2000 } = {}) {
   }
 }
 
-async function loadBootstrap() {
+async function loadBootstrap(options = null) {
+  const preserveView = options?.preserveView === true;
   try {
     updatePhase3ContextStatus('dashboard', 'loading', 'Atualizando...');
     // Evita a tempestade de 503 no cold-start: espera o backend sinalizar
@@ -6357,7 +5645,7 @@ async function loadBootstrap() {
     }
     safeStorageWrite(STORAGE_KEYS.permissions, JSON.stringify(state.permissions));
     clearBootstrapDegraded();
-    renderAll();
+    renderAll({ preserveView });
     updatePhase3ContextStatus('dashboard', 'success', 'Dados sincronizados');
   } catch (error) {
     updatePhase3ContextStatus('dashboard', 'error', 'Falha ao atualizar');
@@ -6431,190 +5719,8 @@ function bindDependentSelects() {
   populateStockProtectionFilter();
 }
 
-function sameCompany(target) {
-  return String(target.company_id || '') === String(state.user?.company_id || '');
-}
-
-function canManageUser(target) {
-  if (!hasPermission('users:update')) return false;
-  if (state.user?.role === 'master_admin') return target.role !== 'master_admin';
-  if (state.user?.role === 'general_admin') return ['registry_admin', 'admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
-  if (state.user?.role === 'registry_admin') return ['admin', 'user', 'employee'].includes(target.role) && sameCompany(target);
-  return false;
-}
-function canDeleteUser(target) { return hasPermission('users:delete') && canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-function canPromoteToAdmin(target) { return ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role) && target.role === 'user' && (state.user?.role === 'master_admin' || sameCompany(target)); }
-function canPromoteToGeneralAdmin(target) { return state.user?.role === 'master_admin' && ['admin', 'user'].includes(target.role); }
-function canDemoteAdmin(target) { return ['master_admin', 'general_admin'].includes(state.user?.role) && target.role === 'admin' && (state.user?.role === 'master_admin' || sameCompany(target)); }
-function canDemoteGeneralAdmin(target) { return state.user?.role === 'master_admin' && target.role === 'general_admin'; }
-function canToggleActive(target) { return canManageUser(target) && String(target.id) !== String(state.user?.id || ''); }
-
-function setUserFormFeedback(message = '', isError = false) {
-  const field = document.getElementById('user-form-feedback');
-  if (!field) return;
-  field.textContent = String(message || '');
-  field.classList.toggle('error', Boolean(isError));
-}
-
-function syncUserFormAccess() {
-  const roleField = refs.userForm?.elements?.role;
-  const companyField = refs.userForm?.elements?.company_id;
-  if (!roleField || !companyField) return;
-
-  const selectedRole = String(roleField.value || '').trim();
-  const requiresCompany = USER_COMPANY_REQUIRED_ROLES.includes(selectedRole);
-  const companyLocked = ['general_admin', 'registry_admin', 'admin'].includes(state.user?.role);
-
-  if (companyLocked) {
-    companyField.value = state.user?.company_id || '';
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = !requiresCompany;
-    if (!requiresCompany) companyField.value = '';
-  }
-
-  if (requiresCompany && !companyField.value) {
-    companyField.value = String(state.selectedCompanyId || state.user?.company_id || state.companies[0]?.id || '');
-  }
-
-  populateLinkedEmployeeOptions();
-  syncUserEmployeeLink();
-}
-
-function userActionButtons(target) {
-  if (!canManageUser(target) && !canDeleteUser(target) && target.role !== 'employee') return '-';
-  const actions = [];
-  
-  addEditButtons(actions, target);
-  addPromoteButtons(actions, target);
-  addPasswordButtons(actions, target);
-  addManagementButtons(actions, target);
-  addEmployeeButtons(actions, target);
-  
-  if (actions.length === 0) return '-';
-  return `<div class="action-group">${actions.join('')}</div>`;
-}
-
-function addEditButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(`<button class="ghost" data-user-edit="${target.id}">${tr('edit', 'Editar')}</button>`);
-  }
-}
-
-function addPromoteButtons(actions, target) {
-  if (canPromoteToAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-admin="${target.id}">${tr('user.promoteToAdmin', 'Tornar Administrador')}</button>`);
-  }
-  if (canPromoteToGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-promote-general="${target.id}">${tr('user.promoteToGeneralAdmin', 'Tornar Adm. Geral')}</button>`);
-  }
-  if (canDemoteGeneralAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-general="${target.id}">${tr('user.removeFromGeneral', 'Remover do Geral')}</button>`);
-  }
-  if (canDemoteAdmin(target)) {
-    actions.push(`<button class="ghost" data-user-demote-admin="${target.id}">${tr('user.demoteToUser', 'Rebaixar para Usuário')}</button>`);
-  }
-}
-
-function canGenerateRecoveryToken(target) {
-  if (state.user?.role === 'master_admin') {
-    return target.role !== 'master_admin' || String(target.id) === String(state.user?.id);
-  }
-  if (state.user?.role === 'general_admin') {
-    return ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'].includes(target.role) && sameCompany(target);
-  }
-  return false;
-}
-
-function addPasswordButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-temp-password="${target.id}">${tr('user.generateProvPassword', 'Gerar senha provisória')}</button>`,
-      `<button class="ghost" data-user-generate-copy-password="${target.id}">${tr('user.generateCopyPassword', 'Gerar e copiar senha')}</button>`
-    );
-    if (Number(target.force_password_change || 0) !== 1) {
-      actions.push(`<button class="ghost" data-user-force-password-change="${target.id}">${tr('user.forcePasswordChange', 'Forçar troca da senha novamente')}</button>`);
-    }
-  }
-  if (canGenerateRecoveryToken(target)) {
-    actions.push(`<button class="ghost" data-user-recovery-token="${target.id}">${tr('user.generateRecoveryKey', 'Gerar chave de recuperação')}</button>`);
-  }
-}
-
-function addManagementButtons(actions, target) {
-  if (canManageUser(target)) {
-    actions.push(
-      `<button class="ghost" data-user-copy-email="${target.id}">${tr('user.copyEmail', 'Copiar e-mail')}</button>`,
-      `<button class="ghost" data-user-copy-whatsapp="${target.id}">${tr('user.copyWhatsapp', 'Copiar WhatsApp')}</button>`
-    );
-  }
-  if (canToggleActive(target)) {
-    const label = Number(target.active) === 1 ? tr('user.deactivate', 'Desativar Usuário') : tr('user.activate', 'Ativar Usuário');
-    actions.push(`<button class="ghost" data-user-toggle="${target.id}">${label}</button>`);
-  }
-  if (canDeleteUser(target)) {
-    actions.push(`<button class="ghost" data-user-delete="${target.id}">${tr('user.remove', 'Remover')}</button>`);
-  }
-}
-
-function addEmployeeButtons(actions, target) {
-  if (target.role === 'employee' && target.employee_access_token) {
-    actions.push(`<button class="ghost" data-user-employee-qr="${target.id}">${tr('user.externalQr', 'QR Acesso Externo')}</button>`);
-  }
-}
-
-function printEmployeeAccessQr(userId) {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target?.employee_access_token) return alert('Funcionário sem token externo.');
-  const accessLink = buildEmployeeAccessLink(target.employee_access_token);
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Acesso Funcionário"></head><body><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-  if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
-}
-
-async function printEmployeePortalLink(employeeId) {
-  try {
-    const payload = await api('/api/employee-portal-link', {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, employee_id: Number(employeeId) })
-    });
-    const employee = state.employees.find((item) => String(item.id) === String(employeeId));
-    const accessLink = payload.access_link || payload.qr_code_value || buildEmployeeAccessLink(payload.token);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>${employee?.name || 'Colaborador'}</h2><p>Link de acesso externo</p><img src="${qrCodeImageUrl(accessLink)}" alt="Link acesso colaborador"><p><a href="${accessLink}">${accessLink}</a></p></body></html>`;
-    if (!openAndPrintPopup(html, 'width=520,height=700')) return alert('Não tem acesso.');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function startEditUser(userId) {
-  const user = state.users.find((item) => String(item.id) === String(userId));
-  if (!user) return;
-  state.editingUserId = user.id;
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = user.id;
-  refs.userForm.elements.full_name.value = user.full_name;
-  refs.userForm.elements.username.value = user.username;
-  refs.userForm.elements.password.value = '';
-  populateRoleOptions();
-  refs.userForm.elements.role.value = canManageUser(user) ? user.role : refs.userRole.value;
-  refs.userForm.elements.company_id.value = user.company_id || '';
-  refs.userForm.elements.linked_employee_id.value = user.linked_employee_id || '';
-  syncUserFormAccess();
-}
-
-async function updateUserAccess(userId, changes, successMessage = '') {
-  const target = state.users.find((item) => String(item.id) === String(userId));
-  if (!target) return;
-  try {
-    await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password: '', role: changes.role || target.role, company_id: changes.company_id === undefined ? target.company_id : changes.company_id, active: changes.active === undefined ? target.active : changes.active }) });
-    if (successMessage) alert(successMessage);
-    setUserFormFeedback(successMessage || 'Usuário atualizado com sucesso.');
-    await loadBootstrap();
-  } catch (error) {
-    setUserFormFeedback(error.message, true);
-    alert(error.message);
-  }
-}
+// sameCompany e as regras can* de gestão de usuários (canManageUser, canDeleteUser, canPromote*,
+// canDemote*, canToggleActive, canGenerateRecoveryToken): modules/auth/ (UBX-V4, Etapa C).
 
 function askTemporaryPassword(defaultValue = '') {
   const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
@@ -6748,69 +5854,12 @@ async function generateAndCopyTemporaryPassword(userId) {
   } catch (error) { alert(error.message); }
 }
 
-// P0-2 — confirmação estilizada para ações destrutivas (substitui window.confirm).
-// Cai para o confirm nativo se o módulo de UI helpers não estiver disponível.
-async function confirmDestructive(opts) {
-  const o = opts || {};
-  if (typeof globalThis.dsConfirm === 'function') { return globalThis.dsConfirm(o); }
-  return globalThis.confirm(o.message || '');
-}
-
-async function deleteUser(userId) {
-  if (!(await confirmDestructive({ title: 'Remover usuário', message: 'Deseja remover este usuário?', confirmLabel: 'Remover', variant: 'danger' }))) return;
-  try {
-    await api(`/api/users/${userId}?${actorQuery()}`, { method: 'DELETE' });
-    if (String(state.editingUserId || '') === String(userId)) resetUserForm();
-    setUserFormFeedback('Usuário removido com sucesso.');
-    await loadBootstrap();
-  } catch (error) {
-    setUserFormFeedback(error.message, true);
-    alert(error.message);
-  }
-}
-
-function resetUserForm() {
-  state.editingUserId = null;
-  refs.userForm.reset();
-  if (refs.userLinkedEmployeeSearch) refs.userLinkedEmployeeSearch.value = '';
-  setUserFormFeedback('');
-  refs.userForm.elements.id.value = '';
-  populateRoleOptions();
-  syncUserFormAccess();
-}
+// confirmDestructive e os helpers de modal (openModal, closeModal, bindModalKeyboard,
+// getFocusableElements) vivem em static/js/modules/shared/ui/dialogs.js (UBX-V4, Etapa A);
+// deleteUser, em static/js/modules/users/ui/users-view.js.
 
 function dashboardInteractiveEmptyMessage(message) {
   return `<div class="dashboard-chart-empty">${message}</div>`;
-}
-
-function matchesEmployeeSearchText(item, searchValue) {
-  const search = String(searchValue || '').trim().toLowerCase();
-  if (!search) return true;
-  const haystack = `${item.name || ''} ${item.employee_id_code || ''} ${item.id || ''}`.toLowerCase();
-  return haystack.includes(search);
-}
-
-function applyUnitsFilters(items) {
-  return items.filter((item) => {
-    if (state.unitsFilters.company_id && String(item.company_id) !== String(state.unitsFilters.company_id)) return false;
-    if (state.unitsFilters.type && String(item.unit_type) !== String(state.unitsFilters.type)) return false;
-    if (state.unitsFilters.name && !String(item.name || '').toLowerCase().includes(state.unitsFilters.name)) return false;
-    if (state.unitsFilters.city && !String(item.city || '').toLowerCase().includes(state.unitsFilters.city)) return false;
-    return true;
-  });
-}
-
-function applyEmployeesFilters(items, source = 'employees') {
-  const filters = source === 'ops' ? state.employeesOpsFilters : state.employeesFilters;
-  return items.filter((item) => {
-    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
-    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
-    if (filters.unit_id && employeeUnitId !== String(filters.unit_id)) return false;
-    if (!matchesEmployeeSearchText(item, filters.search)) return false;
-    if (filters.sector && !String(item.sector || '').toLowerCase().includes(filters.sector)) return false;
-    if (filters.role_name && !String(item.role_name || '').toLowerCase().includes(filters.role_name)) return false;
-    return true;
-  });
 }
 
 // Escopo de visibilidade de EPI por unidade operacional. Espelha o backend
@@ -6940,148 +5989,19 @@ function applyFichaEmployeeFilters(items) {
   });
 }
 
-function employmentTypeLabel(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'clt') return tr('employee.vincClt', 'CLT');
-  if (normalized === 'terceirizado') return tr('employee.vincOutsourced', 'Terceirizado');
-  if (normalized === 'temporário' || normalized === 'temporario') return tr('employee.vincTemporary', 'Temporário');
-  if (normalized === 'prestador de serviço' || normalized === 'prestador de servico') return tr('employee.vincServiceProvider', 'Prestador de Serviço');
-  if (normalized === 'menor aprendiz') return tr('employee.vincApprentice', 'Menor Aprendiz');
-  if (normalized === 'praticante') return tr('employee.vincTrainee', 'Praticante');
-  if (normalized === 'estagiário' || normalized === 'estagiario') return tr('employee.vincIntern', 'Estagiário');
-  return value || 'CLT';
-}
+// isContractedVinculoJs: modules/outsourced/ui/outsourced-employees-view.js (UBX-V4, Etapa B2).
 
-function allocationTypeLabel(value) {
-  return value === 'temporary' ? tr('employee.allocationTemporary', 'Temporário') : tr('employee.allocationPrimary', 'Principal');
-}
-
-// "É mão de obra contratada?" — a mesma pergunta que `outsourcedEmployeesList`
-// faz, com a mesma fonte: o módulo de regras, e o fallback só se ele não
-// carregou. Existe porque `buildEmployeeRow`/`buildEmployeeOpsRow` decidiam por
-// `tipoVinculoRaw !== 'CLT'`, que classifica Menor Aprendiz, Praticante e
-// Estagiário como contratados. Inofensivo enquanto o backend zera
-// `empresa_origem` para mão de obra própria e o `&&` seguinte filtra — mas é o
-// idioma que o PR #214 baniu, e ele sobreviveu aqui porque o teste de paridade
-// procurava `tipo !==`, que não casa com `tipoVinculoRaw !==`.
-function isContractedVinculoJs(tipoVinculo) {
-  const helpers = outsourcedEmployeesViewHelpers();
-  if (helpers.isContractedVinculo) return helpers.isContractedVinculo(tipoVinculo);
-  const contracted = helpers.CONTRACTED_VINCULOS || CONTRACTED_VINCULOS_FALLBACK;
-  return contracted.includes(String(tipoVinculo || '').trim());
-}
-
-function buildEmployeeRow(item, canManageRecords) {
-  const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
-  const allocation = allocationTypeLabel(item.unit_allocation_type);
-  const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
-  const contact = [item.whatsapp ? `WhatsApp: ${item.whatsapp}` : '', item.email ? `E-mail: ${item.email}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
-  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
-  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  const checkCell = employeesBulk ? `<td class="ds-bulk-cell"><input type="checkbox" class="ds-bulk-checkbox" data-emp-check="${item.id}" aria-label="Selecionar ${item.name}"${employeesBulk.has(item.id) ? ' checked' : ''}></td>` : '';
-  return `<tr>${checkCell}<td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${contact}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td>-</td><td>${actions}</td></tr>`;
-}
-
-function buildEmployeeOpsRow(item) {
-  const allocation = allocationTypeLabel(item.unit_allocation_type);
-  const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
-  const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
-  const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${item.empresa_origem}</small>` : '';
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.name}</td><td>${item.sector}</td><td>${item.role_name}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${item.current_unit_name || item.unit_name}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
-}
-
-function epiProtectionLabel(value) {
-  const labels = {
-    'Proteção-Membros Superiores': tr('epi.protectionUpperLimbs', 'Proteção-Membros Superiores'),
-    'Proteção-Membros Inferiores': tr('epi.protectionLowerLimbs', 'Proteção-Membros Inferiores'),
-    'Proteção-Auditiva': tr('epi.protectionHearing', 'Proteção-Auditiva'),
-    'Proteção-Olhos e Face': tr('epi.protectionEyesFace', 'Proteção-Olhos e Face'),
-    'Proteção-Respiratória': tr('epi.protectionRespiratory', 'Proteção-Respiratória'),
-    'Proteção-Mãos e Braços': tr('epi.protectionHandsArms', 'Proteção-Mãos e Braços'),
-    'Proteção-Cabeça': tr('epi.protectionHead', 'Proteção-Cabeça'),
-    'Proteção-Combate a Incêndio': tr('epi.protectionFirefighting', 'Proteção-Combate a Incêndio'),
-    'Proteção-Contra Queda': tr('epi.protectionFallProtection', 'Proteção-Contra Queda'),
-    'Proteção-Eletricidade': tr('epi.protectionElectricity', 'Proteção-Eletricidade')
-  };
-  return labels[value] || value || '-';
-}
-
-function epiMeasureLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'unidade') return tr('epi.measureUnit', 'Unidade');
-  if (normalized === 'par') return tr('epi.measurePair', 'Par');
-  return value || '-';
-}
-
-function buildEpiRow(item, canManageEpiRecords) {
-  const actions = canManageEpiRecords ? `<div class="action-group"><button class="ghost" data-epi-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-epi-archive="${item.id}">${tr('epi.archive', 'Arquivar')}</button></div>` : '-';
-  const scopeLabel = item.scope_label
-    || (String(item.scope_type || '').toUpperCase() === 'GLOBAL'
-      ? tr('epi.allUnits', 'Todas as Unidades')
-      : `${item.unit_name || '-'}${Number(item.is_joint_venture || 0) === 1 ? ' (Joint Venture)' : ''}`);
-  return `<tr><td>${item.company_name}</td><td>${scopeLabel}</td><td>${item.name}</td><td>${item.purchase_code}</td><td>${epiProtectionLabel(item.sector)}</td><td>${item.epi_section || '-'}</td><td>${item.manufacturer || '-'}</td><td>${item.supplier_company || '-'}</td><td>${item.active_joinventure || '-'}</td><td>${epiMeasureLabel(item.unit_measure)}</td><td>${actions}</td></tr>`;
-}
 
 function buildDeliveryRow(item) {
   return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
-function formatUnitTableRow(item, canManageUnitRecords) {
-  const actions = canManageUnitRecords ? `<div class="action-group"><button class="ghost" data-unit-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-unit-archive="${item.id}">${tr('unit.archive', 'Arquivar')}</button></div>` : '-';
-  // Sem esta coluna, uma empresa com vários CNPJs vê uma lista em que todas as
-  // unidades parecem iguais — e é justamente aqui que a distinção importa.
-  const legalEntity = escapeHtml(unitLegalEntityLabel(item)) || '-';
-  return `<tr><td>${item.company_name}</td><td>${legalEntity}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
-}
-
 const DELIVERIES_PER_PAGE = 20;
 const EMPLOYEES_PER_PAGE = 20;
 const EPIS_PER_PAGE = 20;
-// Seleção em lote da listagem de Colaboradores (componente reutilizável do DS).
-const employeesBulk = globalThis.dsCreateBulkSelection ? globalThis.dsCreateBulkSelection() : null;
-
-function currentEmployeesBulkScope() {
-  // Base atual (empresa + filtros) — a seleção e o "selecionar todos da página"
-  // operam sobre o que está visível, respeitando os filtros ativos.
-  return applyEmployeesFilters(filterByUserCompany(state.employees), 'employees');
-}
-
-function exportSelectedEmployeesCsv() {
-  if (!employeesBulk || employeesBulk.count() === 0) return;
-  const ids = new Set(employeesBulk.ids().map(String));
-  const rows = currentEmployeesBulkScope().filter((e) => ids.has(String(e.id)));
-  if (!rows.length) return;
-  const header = ['Empresa', 'ID', 'Nome', 'CPF', 'E-mail', 'WhatsApp', 'Setor', 'Função', 'Tipo de Vínculo', 'Unidade'];
-  const lines = rows.map((e) => [
-    e.company_name, e.employee_id_code, e.name, e.cpf, e.email, e.whatsapp,
-    e.sector, e.role_name, employmentTypeLabel(e.tipo_vinculo || 'CLT'),
-    e.current_unit_name || e.unit_name,
-  ]);
-  const csv = [header, ...lines]
-    .map((row) => row.map((v) => `"${String(v == null ? '' : v).replaceAll('"', '""')}"`).join(';'))
-    .join('\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'colaboradores-selecionados.csv';
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-function renderEmployeesBulkUi(pageIds) {
-  if (!employeesBulk || !refs.employeesBulkBar) return;
-  refs.employeesBulkBar.innerHTML = globalThis.dsBulkBar(
-    employeesBulk.count(),
-    [{ id: 'export', label: tr('bulk.exportCsv', 'Exportar CSV'), variant: 'btn-primary' }],
-    { labelPlural: tr('bulk.selectedPlural', 'selecionados'), labelSingular: tr('bulk.selectedSingular', 'selecionado'), clearLabel: tr('bulk.clear', 'Limpar seleção') }
-  );
-  if (refs.employeesSelectAll) {
-    const st = employeesBulk.pageState(pageIds);
-    refs.employeesSelectAll.checked = st === 'all';
-    refs.employeesSelectAll.indeterminate = st === 'some';
-  }
-}
+// Seleção em lote da listagem de Colaboradores: a instância é criada em
+// modules/employees/ui/employees-view.js (UBX-V4) e lida aqui pelo namespace.
+const employeesBulk = globalThis.__EPI_EMPLOYEES_VIEW__ ? globalThis.__EPI_EMPLOYEES_VIEW__.employeesBulk : null;
 
 function renderTables() {
   const canManageRecords = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role);
@@ -7924,45 +6844,6 @@ function selectStockEpiFromSearch(epiId) {
   renderStockEpiSearchResults();
 }
 
-function syncEpiUnitOptions() {
-  const companyField = document.getElementById('epi-company');
-  const unitField = document.getElementById('epi-unit');
-  if (!companyField || !unitField) return;
-  const operationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  if (operationalProfile && state.user?.company_id) {
-    companyField.value = String(state.user.company_id);
-    companyField.disabled = true;
-  } else {
-    companyField.disabled = false;
-  }
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const previous = String(unitField.value || '');
-  const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  const allowAllUnitsScope = canUseEpiAllUnitsScope();
-  if (operationalProfile) {
-    const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
-    unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
-    unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
-    unitField.disabled = true;
-  } else {
-    const allUnitsOption = allowAllUnitsScope ? `<option value="${EPI_ALL_UNITS_VALUE}">${tr('epi.allUnits', 'Todas as Unidades')}</option>` : '';
-    unitField.innerHTML = `${allUnitsOption}${unitOptions}`;
-    if (allowAllUnitsScope && (!previous || previous === EPI_ALL_UNITS_VALUE)) {
-      unitField.value = EPI_ALL_UNITS_VALUE;
-    } else if (previous && units.some((item) => String(item.id) === previous)) {
-      unitField.value = previous;
-    } else if (units.length) {
-      unitField.value = String(units[0].id);
-    } else {
-      unitField.value = '';
-    }
-    unitField.disabled = false;
-  }
-  applyEpiJoinventureRules();
-}
-
 function currentJoinventures() {
   const hidden = document.getElementById('epi-joinventures');
   const companyId = document.getElementById('epi-company')?.value || state.user?.company_id || '';
@@ -8007,23 +6888,6 @@ function parseActiveJoinventureToken(value) {
   if (!raw.includes('@@')) return { name: raw, unit_id: null };
   const [name, unitId] = raw.split('@@');
   return { name: String(name || '').trim(), unit_id: String(unitId || '').trim() || null };
-}
-
-function applyEpiJoinventureRules() {
-  const unitField = document.getElementById('epi-unit');
-  const activeSelect = document.getElementById('epi-joinventure-active');
-  const hint = document.getElementById('epi-unit-rule-hint');
-  if (!unitField || !activeSelect) return;
-  const selected = parseActiveJoinventureToken(activeSelect.value);
-  if (selected.name && selected.unit_id) {
-    unitField.value = String(selected.unit_id);
-    unitField.disabled = true;
-    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.lockedByJoinventureHint','Unidade travada pela Joint Venture ativa: {name}.') ?? tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.')).replace('{name}', selected.name);
-  } else {
-    unitField.disabled = isOperationalProfile();
-    if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) unitField.value = EPI_ALL_UNITS_VALUE;
-    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.noActiveJoinventureHint','Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.') ?? tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.'));
-  }
 }
 
 function formatActiveJoinventureOption(entry) {
@@ -8111,37 +6975,7 @@ function focusViewTab(group, key) {
   if (nav) activateViewTab(nav, key);
 }
 
-function startEditUnit(unitId) {
-  const item = state.units.find((unit) => String(unit.id) === String(unitId));
-  const form = document.getElementById('unit-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  form.elements.name.value = item.name || '';
-  form.elements.unit_type.value = item.unit_type || 'base';
-  form.elements.city.value = item.city || '';
-  form.elements.notes.value = item.notes || '';
-  // A lista de CNPJs depende da empresa, que acabou de ser preenchida.
-  syncUnitLegalEntityOptions();
-  if (form.elements.legal_entity_id) {
-    form.elements.legal_entity_id.value = item.legal_entity_id ? String(item.legal_entity_id) : '';
-  }
-  setFormSubmitLabel('unit-form', 'Atualizar unidade');
-  showView('unidades');
-  focusRegistrationTab('unidades');
-}
-
-// Único ponto que decide a visibilidade de "Empresa de Origem": chamado no
-// setup inicial, no 'change' do select, na edição e no reset do formulário —
-// nunca `row.hidden = ...` duplicado nesses lugares, para não divergir.
-// Vínculos de mão de obra própria — espelha OWN_WORKFORCE_VINCULOS do backend
-// (modules/employees/service.py). Para eles a empresa é a própria empregadora
-// e responsável pelo EPI, então "Empresa de Origem" não se aplica.
-//
-// Era `tv === 'CLT'`: com Menor Aprendiz, Praticante e Estagiário no seletor,
-// o campo aparecia para os três e o backend recusava o cadastro pedindo uma
-// empresa de origem que não existe.
-const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiário'];
+// syncEmpresaOrigemVisibility, isOwnWorkforceVinculo e OWN_WORKFORCE_VINCULOS: modules/employees/ (UBX-V4).
 
 // Os vínculos de mão de obra CONTRATADA (Terceirizado, Prestador de Serviço,
 // Temporário) existem exclusivamente no módulo Terceirizados e Prestadores: o
@@ -8154,558 +6988,8 @@ const OWN_WORKFORCE_VINCULOS = ['CLT', 'Menor Aprendiz', 'Praticante', 'Estagiá
 // formulário simplesmente não tem as opções. Declará-la "para espelhar o
 // backend" era código morto, e foi o que o CodeQL apontou.
 
-function isOwnWorkforceVinculo(value) {
-  return OWN_WORKFORCE_VINCULOS.includes(String(value || 'CLT').trim());
-}
-
-function syncEmpresaOrigemVisibility() {
-  const tv = document.getElementById('employee-tipo-vinculo')?.value || 'CLT';
-  const row = document.getElementById('employee-empresa-origem-row');
-  if (row) row.hidden = isOwnWorkforceVinculo(tv);
-}
-
-function startEditEmployee(employeeId) {
-  const item = state.employees.find((employee) => String(employee.id) === String(employeeId));
-  const form = document.getElementById('employee-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  syncEmployeeUnitOptions();
-  form.elements.unit_id.value = item.unit_id || '';
-  // CNPJ é o vínculo jurídico do contrato: imutável na edição comum. Mostramos
-  // o valor atual, mas desabilitado — alterar exige o processo administrativo
-  // auditado de transferência, e o backend ignora este campo no update.
-  setEmployeeLegalEntityLock(item.legal_entity_id || '', true);
-  form.elements.employee_id_code.value = item.employee_id_code || '';
-  form.elements.cpf.value = item.cpf || '';
-  form.elements.name.value = item.name || '';
-  form.elements.email.value = item.email || '';
-  form.elements.whatsapp.value = item.whatsapp || '';
-  form.elements.preferred_contact_channel.value = item.preferred_contact_channel || 'whatsapp';
-  form.elements.sector.value = item.sector || '';
-  form.elements.role_name.value = item.role_name || '';
-  form.elements.schedule_type.value = item.schedule_type || '14x14';
-  form.elements.admission_date.value = item.admission_date || '';
-  form.elements.tipo_vinculo.value = item.tipo_vinculo || 'CLT';
-  form.elements.empresa_origem.value = item.empresa_origem || '';
-  syncEmpresaOrigemVisibility();
-  setFormSubmitLabel('employee-form', 'Atualizar colaborador');
-  showView('colaboradores');
-}
-
-function startEditEpi(epiId) {
-  const item = state.epis.find((epi) => String(epi.id) === String(epiId));
-  const form = document.getElementById('epi-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.company_id.value = item.company_id;
-  syncEpiUnitOptions();
-  form.elements.unit_id.value = item.unit_id || '';
-  form.elements.name.value = item.name || '';
-  form.elements.purchase_code.value = item.purchase_code || '';
-  form.elements.ca.value = item.ca || '';
-  form.elements.sector.value = item.sector || '';
-  form.elements.epi_section.value = item.epi_section || '';
-  form.elements.model_reference.value = item.model_reference || '';
-  if (!form.elements.sector.value) form.elements.sector.value = 'Proteção-Membros Superiores';
-  form.elements.manufacturer.value = item.manufacturer || '';
-  form.elements.supplier_company.value = item.supplier_company || '';
-  form.elements.unit_measure.value = item.unit_measure || 'unidade';
-  form.elements.ca_expiry.value = item.ca_expiry || '';
-  form.elements.epi_validity_date.value = item.epi_validity_date || '';
-  if (form.elements.glove_size) form.elements.glove_size.value = item.glove_size || 'N/A';
-  if (form.elements.size) form.elements.size.value = item.size || 'N/A';
-  if (form.elements.uniform_size) form.elements.uniform_size.value = item.uniform_size || 'N/A';
-  form.elements.manufacturer_validity_months.value = String(item.manufacturer_validity_months ?? item.validity_months ?? 0);
-  form.elements.manufacturer_recommendations.value = item.manufacturer_recommendations || '';
-  form.elements.epi_photo_data.value = item.epi_photo_data || '';
-  if (document.getElementById('epi-photo-file')) document.getElementById('epi-photo-file').value = '';
-  renderEpiPhotoPreview(form.elements.epi_photo_data.value);
-  document.getElementById('epi-joinventures').value = item.joinventures_json || '[]';
-  renderJoinventureList();
-  const existingEntry = currentJoinventures().find((entry) => entry.name === String(item.active_joinventure || '').trim());
-  form.elements.active_joinventure.value = existingEntry ? activeJoinventureToken(existingEntry) : '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Atualizar EPI');
-  showView('epis');
-}
-
-// ── Arquivamento de Unidades (soft delete com retenção mínima de 5 anos) ─────
-
-const UNIT_PURGE_RECORD_LABELS = {
-  get employees() { return (tr("employee.listTitle", "Colaboradores", {})); },
-  employee_movements: 'Movimentações de colaboradores',
-  epis: 'EPIs',
-  get deliveries() { return (tr("dashboard.deliveries", "Entregas", {})); },
-  get devolutions() { return (tr("dashboard.returns", "Devoluções", {})); },
-  stock_movements: 'Movimentações de estoque',
-  stock_items: 'Itens de estoque (QR Codes)',
-  epi_requests: 'Requisições de EPI',
-  feedbacks: 'Avaliações e feedbacks',
-  ficha_periods: 'Fichas de EPI',
-  purchase_requests: 'Requisições de compra',
-  purchase_orders: 'Pedidos de compra',
-};
-
-async function archiveUnit(unitId) {
-  if (!requirePermission('units:delete')) return;
-  const unit = state.units.find((item) => String(item.id) === String(unitId));
-  const unitName = unit ? unit.name : `#${unitId}`;
-  const message = `${tr('unit.title', 'Unidade')}: "${unitName}"\n\n${tr('unit.archiveConfirm',
-    'Esta Unidade será arquivada e deixará de receber novas operações (colaboradores, EPIs, entregas, estoque e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.\n\nNenhum dado será excluído.')}`;
-  if (!(await confirmDestructive({ title: tr('unit.archiveTitle', 'Arquivar Unidade'), message, confirmLabel: tr('unit.archive', 'Arquivar'), variant: 'danger' }))) return;
-  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
-  try {
-    await api(`/api/units/${unitId}/archive`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
-    });
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-async function loadArchivedUnits() {
-  if (!hasPermission('units:view')) return;
-  try {
-    const data = await api(`/api/units/archived?${actorQuery()}`);
-    state.archivedUnits = data.units || [];
-  } catch (error) {
-    state.archivedUnits = [];
-    reportNonCriticalError('[unidades] falha ao carregar unidades arquivadas', error);
-  }
-  renderArchivedUnits();
-}
-
-function applyArchivedUnitsFilters(items) {
-  const filters = state.archivedUnitsFilters;
-  return items.filter((item) => {
-    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
-    if (filters.date && !String(item.archived_at || '').startsWith(filters.date)) return false;
-    if (filters.reason && !String(item.archive_reason || '').toLowerCase().includes(filters.reason)) return false;
-    if (filters.user && !String(item.archived_by_name || '').toLowerCase().includes(filters.user)) return false;
-    return true;
-  });
-}
-
-function formatArchivedUnitRow(item, canManage, canPurge) {
-  const retentionOver = Number(item.retention_days_remaining || 0) <= 0;
-  const retentionLabel = retentionOver
-    ? tr('unit.retentionExpired', 'Retenção cumprida')
-    : `${item.retention_days_remaining} ${tr('unit.retentionDays', 'dia(s)')}`;
-  const statusBadge = item.status === 'pending_deletion' ? ` <span class="badge">${tr('unit.pendingDeletion', 'Em processo de exclusão')}</span>` : '';
-  const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
-  const actions = [];
-  if (canManage) actions.push(`<button class="ghost" data-unit-restore="${item.id}">${tr('unit.restore', 'Desarquivar')}</button>`);
-  if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
-    actions.push(`<button class="ghost" data-unit-purge="${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
-  }
-  return `<tr><td>${item.company_name}</td><td>${item.name}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
-}
-
-function renderArchivedUnits() {
-  if (!refs.archivedUnitsTable) return;
-  const canManage = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  const canPurge = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  const items = applyArchivedUnitsFilters(filterByUserCompany(state.archivedUnits));
-  refs.archivedUnitsTable.innerHTML = items.map((item) => formatArchivedUnitRow(item, canManage, canPurge)).join('')
-    || globalThis.dsTableState({ colspan: 7, message: tr('unit.archivedEmpty', 'Nenhuma unidade arquivada.') });
-}
-
-function syncArchivedUnitsFilters() {
-  state.archivedUnitsFilters.company_id = String(refs.archivedUnitsFilterCompany?.value || '').trim();
-  state.archivedUnitsFilters.date = String(refs.archivedUnitsFilterDate?.value || '').trim();
-  state.archivedUnitsFilters.reason = String(refs.archivedUnitsFilterReason?.value || '').trim().toLowerCase();
-  state.archivedUnitsFilters.user = String(refs.archivedUnitsFilterUser?.value || '').trim().toLowerCase();
-  renderArchivedUnits();
-}
-
-async function restoreArchivedUnit(unitId) {
-  if (!requirePermission('units:update')) return;
-  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar Unidade'), message: tr('unit.restoreConfirm', 'A unidade será desarquivada e voltará a ficar ativa, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
-  try {
-    await api(`/api/units/${unitId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Exclusão definitiva em duas etapas: resumo do histórico + confirmação com
-// justificativa obrigatória e digitação do nome exato da unidade.
-async function purgeArchivedUnit(unitId) {
-  if (!requirePermission('units:delete')) return;
-  const unit = state.archivedUnits.find((item) => String(item.id) === String(unitId));
-  if (!unit) return;
-  try {
-    const step1 = await api(`/api/units/${unitId}/purge-request`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    const records = step1.records || {};
-    const lines = Object.entries(UNIT_PURGE_RECORD_LABELS)
-      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
-      .join('\n');
-    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
-    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
-      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedUnits();
-      return;
-    }
-    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
-    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato da unidade para confirmar:')}\n"${unit.name}"`, '') ?? '';
-    if (!justification.trim() || !confirmName.trim()) {
-      await api(`/api/units/${unitId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedUnits();
-      return;
-    }
-    await api(`/api/units/${unitId}/purge-confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
-    });
-    alert(tr('unit.purgeDone', 'Unidade excluída definitivamente. O registro da operação foi gravado na auditoria.'));
-    await loadBootstrap();
-    await loadArchivedUnits();
-  } catch (error) {
-    alert(error.message);
-    await loadArchivedUnits();
-  }
-}
-
-// ── Arquivamento genérico (Colaboradores e EPIs) — mesma política das Unidades ─
-
-const ARCHIVAL_ENTITIES = {
-  employee: {
-    path: '/api/employees',
-    stateList: 'employees',
-    archivedList: 'archivedEmployees',
-    filters: 'archivedEmployeesFilters',
-    tableRef: 'archivedEmployeesTable',
-    i18nPrefix: 'employee',
-    labelFallback: 'Colaborador',
-    responseKey: 'employees',
-    deletePermission: 'employees:delete',
-    updatePermission: 'employees:update',
-    purgeLabels: {
-      deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
-      feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
-      unit_movements: 'Movimentações de unidade', portal_links: 'Links do portal',
-      portal_audit_logs: 'Logs do portal',
-    },
-  },
-  epi: {
-    path: '/api/epis',
-    stateList: 'epis',
-    archivedList: 'archivedEpis',
-    filters: 'archivedEpisFilters',
-    tableRef: 'archivedEpisTable',
-    i18nPrefix: 'epi',
-    labelFallback: 'EPI',
-    responseKey: 'epis',
-    deletePermission: 'epis:delete',
-    updatePermission: 'epis:update',
-    purgeLabels: {
-      deliveries: 'Entregas', devolutions: 'Devoluções', stock_items: 'Itens de estoque (QR Codes)',
-      stock_movements: 'Movimentações de estoque', epi_requests: 'Requisições de EPI',
-      feedbacks: 'Avaliações e feedbacks', ficha_items: 'Itens de ficha',
-      purchase_request_items: 'Itens de requisição de compra', purchase_order_items: 'Itens de pedido de compra',
-    },
-  },
-  // Empresa terceirizada/prestadora (ADR-0002 §10.4/§10.5/§12) — mesma
-  // política de arquivamento de Colaboradores/Unidades/EPIs. Purge exclui
-  // deliberadamente `employees`: um colaborador não é "histórico" da
-  // empresa que o contratou, sobrevive à exclusão definitiva do cadastro
-  // corporativo (ver nota em modules/outsourced_companies/service.py,
-  // purge_outsourced_company_history) — só contratos/vínculos por
-  // Unidade/solicitações de atualização/ressarcimentos são removidos.
-  // Botão de excluir definitivamente só aparece para Administrador Geral/
-  // de Registro (o backend, _require_deletion_admin em
-  // modules/outsourced_companies/routes.py, é quem decide de fato).
-  // `identityKind` existe porque `kind` aqui não é 'employee' nem 'epi' —
-  // reaproveita a mesma coluna de identidade que o EPI usa (nome + segunda
-  // coluna), só trocando o texto da segunda coluna. Segunda permissão
-  // (`employees:update_simplified`): Administrador Local/Gestor de EPI,
-  // restrito à própria Unidade operacional — o backend
-  // (ensure_actor_outsourced_company_scope + ensure_module_enabled_for_unit,
-  // modules/outsourced_companies/routes.py) valida de novo e é quem decide
-  // de fato.
-  outsourcedCompany: {
-    path: '/api/outsourced-companies',
-    stateList: 'outsourcedCompanies',
-    archivedList: 'archivedOutsourcedCompanies',
-    filters: 'archivedOutsourcedCompaniesFilters',
-    tableRef: 'archivedOutsourcedCompaniesTable',
-    i18nPrefix: 'outsourcedCompany',
-    labelFallback: 'Empresa terceirizada',
-    responseKey: 'outsourced_companies',
-    deletePermission: 'employees:update employees:update_simplified',
-    updatePermission: 'employees:update employees:update_simplified',
-    identityKind: 'outsourcedCompanyLike',
-    purgeLabels: {
-      service_contracts: 'Contratos de prestação de serviço', unit_links: 'Vínculos com Unidades',
-      update_requests: 'Solicitações de atualização cadastral', epi_reimbursements: 'Ressarcimentos de EPI',
-    },
-  },
-  // Colaborador terceirizado/prestador (ADR-0002 §10.4/§10.5) — MESMA
-  // tabela/rota de arquivamento do colaborador CLT
-  // (`/api/employees/<id>/archive` etc.), só a LISTAGEM de arquivados é
-  // filtrada (?outsourced_only=1, via archivedQueryExtra) para não
-  // misturar com "Colaboradores Arquivados" do cadastro completo.
-  // `identityKind: 'employee'` reaproveita a mesma formatação de linha e os
-  // mesmos textos i18n (`employee.*`) do colaborador CLT — é o mesmo tipo
-  // de registro, só filtrado. Segunda permissão
-  // (`employees:update_simplified`): Administrador Local/Gestor de EPI só
-  // arquivam/desarquivam o PRÓPRIO Cadastro de Colaboradores (terceirizado/
-  // prestador, nunca CLT) — o backend
-  // (_load_employee_for_lifecycle/outsourced_alternative,
-  // modules/employees/routes.py) recusa qualquer tentativa contra um
-  // colaborador CLT ou de outra Unidade.
-  outsourcedEmployee: {
-    path: '/api/employees',
-    stateList: 'employees',
-    archivedList: 'archivedOutsourcedEmployees',
-    filters: 'archivedOutsourcedEmployeesFilters',
-    tableRef: 'archivedOutsourcedEmployeesTable',
-    i18nPrefix: 'employee',
-    labelFallback: 'Colaborador',
-    responseKey: 'employees',
-    deletePermission: 'employees:delete employees:update_simplified',
-    updatePermission: 'employees:update employees:update_simplified',
-    identityKind: 'employee',
-    archivedQueryExtra: '&outsourced_only=1',
-    purgeLabels: {
-      deliveries: 'Entregas', devolutions: 'Devoluções', epi_requests: 'Requisições de EPI',
-      feedbacks: 'Avaliações e feedbacks', ficha_periods: 'Fichas de EPI', ficha_items: 'Itens de ficha',
-      unit_movements: 'Movimentações de unidade', portal_links: 'Links do portal',
-      portal_audit_logs: 'Logs do portal',
-    },
-  },
-};
-
-// Item 1: EPI com saldo/vínculos vivos exige decisão autorizada. Consome
-// EXCLUSIVAMENTE a regra do backend (#735): GET archival-state para decidir e
-// POST /archive com block_and_archive. Nenhuma regra é duplicada no frontend.
-async function _epiArchivalPreflight(recordId) {
-  try {
-    const resp = await api(`/api/epis/${recordId}/archival-state?${actorQuery()}`);
-    return resp.archival_state || null;
-  } catch (error) {
-    reportNonCriticalError('[epi] falha ao consultar estado de arquivamento', error);
-    return null;
-  }
-}
-
-async function archiveEntityRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !requirePermission(cfg.deletePermission)) return;
-  const record = (state[cfg.stateList] || []).find((item) => String(item.id) === String(recordId));
-  const recordName = record ? record.name : `#${recordId}`;
-
-  let blockAndArchive = false;
-  if (kind === 'epi') {
-    const st = await _epiArchivalPreflight(recordId);
-    if (st && st.has_open_links) {
-      const linkMsg = `${cfg.labelFallback}: "${recordName}"\n\n`
-        + `${tr('epi.archiveHasStock', 'Este EPI possui saldo ou vínculos vivos:')}\n`
-        + `• ${tr('epi.stockAvailable', 'Disponível')}: ${st.available}\n`
-        + `• ${tr('epi.stockInTransit', 'Reservado/em trânsito')}: ${st.in_transit}\n`
-        + `• ${tr('epi.stockInPossession', 'Em posse (colaborador)')}: ${st.in_possession}\n`
-        + `• ${tr('epi.stockBlocked', 'Bloqueado')}: ${st.blocked}\n`
-        + `• ${tr('epi.pendingRequests', 'Solicitações abertas')}: ${st.pending_requests}\n`
-        + `• ${tr('epi.pendingPurchase', 'Pedidos abertos')}: ${st.pending_purchase}\n\n`
-        + (st.blockable > 0
-          ? tr('epi.archiveBlockExplain', 'Ao continuar, o saldo disponível será BLOQUEADO (movido para Estoque Bloqueado — rastreável, nada some) e o EPI será arquivado.')
-          : tr('epi.archiveNoBlockable', 'Não há saldo físico livre para bloquear; itens em posse/pedidos permanecem em seus fluxos. O EPI será arquivado.'));
-      if (!(await confirmDestructive({
-        title: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
-        message: linkMsg,
-        confirmLabel: tr('epi.blockAndArchive', 'Bloquear saldo e arquivar'),
-        variant: 'danger',
-      }))) return;
-      blockAndArchive = true;
-    }
-  }
-
-  if (!blockAndArchive) {
-    const message = `${cfg.labelFallback}: "${recordName}"\n\n${tr(`${cfg.i18nPrefix}.archiveConfirm`, 'Este registro será arquivado e deixará de receber novas operações. Todo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos). Nenhum dado será excluído.')}`;
-    if (!(await confirmDestructive({ title: tr(`${cfg.i18nPrefix}.archiveTitle`, `Arquivar ${cfg.labelFallback}`), message, confirmLabel: tr(`${cfg.i18nPrefix}.archive`, 'Arquivar'), variant: 'danger' }))) return;
-  }
-
-  const reason = globalThis.prompt(tr('unit.archiveReasonPrompt', 'Motivo do arquivamento (registrado na auditoria):'), '') ?? '';
-  if (blockAndArchive && !String(reason).trim()) {
-    showToast(tr('epi.archiveReasonRequired', 'Motivo é obrigatório para bloquear o saldo e arquivar.'), 'error');
-    return;
-  }
-  try {
-    const result = await api(`${cfg.path}/${recordId}/archive`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason, block_and_archive: blockAndArchive }),
-    });
-    if (blockAndArchive && Number(result?.blocked_stock_items) > 0) {
-      showToast(`${result.blocked_stock_items} ${tr('epi.itemsBlockedArchived', 'item(ns) de estoque bloqueado(s) e EPI arquivado.')}`, 'success');
-    } else {
-      showToast(tr('epi.archivedOk', 'Registro arquivado.'), 'success');
-    }
-    await loadBootstrap();
-    await loadArchivedRecords(kind);
-    // Atualiza imediatamente as telas de estoque (itens recém-bloqueados aparecem em Estoque Bloqueado)
-    if (kind === 'epi') { globalThis.loadBlockedStock?.(); }
-  } catch (error) {
-    showToast(error.message || tr('epi.archiveFailed', 'Não foi possível arquivar.'), 'error');
-  }
-}
-
-async function loadArchivedRecords(kind) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !hasPermission(cfg.updatePermission.replace(':update', ':view'))) return;
-  try {
-    const data = await api(`${cfg.path}/archived?${actorQuery()}${cfg.archivedQueryExtra || ''}`);
-    state[cfg.archivedList] = data[cfg.responseKey] || [];
-  } catch (error) {
-    state[cfg.archivedList] = [];
-    reportNonCriticalError(`[${kind}] falha ao carregar arquivados`, error);
-  }
-  renderArchivedRecords(kind);
-}
-
-function formatArchivedRecordRow(kind, item, canManage, canPurge) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  const retentionOver = Number(item.retention_days_remaining || 0) <= 0;
-  const retentionLabel = retentionOver
-    ? tr('unit.retentionExpired', 'Retenção cumprida')
-    : `${item.retention_days_remaining} ${tr('unit.retentionDays', 'dia(s)')}`;
-  const statusBadge = item.status === 'pending_deletion' ? ` <span class="badge">${tr('unit.pendingDeletion', 'Em processo de exclusão')}</span>` : '';
-  const holdBadge = Number(item.legal_hold || 0) ? ` <span class="badge">${tr('unit.legalHold', 'Bloqueio jurídico')}</span>` : '';
-  const actions = [];
-  if (canManage) actions.push(`<button class="ghost" data-archived-restore="${kind}:${item.id}">${tr('unit.restore', 'Desarquivar')}</button>`);
-  if (canPurge && cfg.supportsPurge !== false && retentionOver && !Number(item.legal_hold || 0)) {
-    actions.push(`<button class="ghost" data-archived-purge="${kind}:${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
-  }
-  const actionsCell = actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-';
-  const identityKind = cfg.identityKind || kind;
-  const identity = identityKind === 'employee'
-    ? `<td>${item.employee_id_code || '-'} · ${item.name}${statusBadge}${holdBadge}</td><td>${item.unit_name || '-'}</td>`
-    : identityKind === 'outsourcedCompanyLike'
-      ? `<td>${item.legal_name || item.trade_name || ''}${statusBadge}${holdBadge}</td><td>${item.cnpj || '-'}</td>`
-      : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
-  return `<tr><td>${item.company_name || '-'}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
-}
-
-function renderArchivedRecords(kind) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  const table = refs[cfg.tableRef];
-  if (!table) return;
-  // Administrador Local/Gestor de EPI (ADR-0002 §10.5): só desarquivam
-  // Empresas Terceirizadas/Colaboradores terceirizados/prestadores da
-  // própria Unidade — nunca exclusão definitiva (purge continua exclusivo
-  // de general_admin/registry_admin, em qualquer kind — nunca master_admin,
-  // doutrina PAPEIS_E_ATRIBUICOES.md #1). O backend
-  // (ensure_actor_outsourced_company_scope / _load_employee_for_lifecycle /
-  // _require_deletion_admin) é quem decide de fato; isto só evita mostrar
-  // um botão que o backend vai recusar para os demais kinds (employee CLT
-  // / epi).
-  const unitScopedManageKinds = ['outsourcedCompany', 'outsourcedEmployee'];
-  const canManage = ['master_admin', 'general_admin', 'registry_admin'].includes(state.user?.role)
-    || (unitScopedManageKinds.includes(kind) && ['admin', 'user'].includes(state.user?.role));
-  const canPurge = ['general_admin', 'registry_admin'].includes(state.user?.role);
-  const filters = state[cfg.filters];
-  const items = filterByUserCompany(state[cfg.archivedList] || []).filter((item) => {
-    if (filters.company_id && String(item.company_id) !== String(filters.company_id)) return false;
-    if (filters.date && !String(item.archived_at || '').startsWith(filters.date)) return false;
-    if (filters.reason && !String(item.archive_reason || '').toLowerCase().includes(filters.reason)) return false;
-    if (filters.user && !String(item.archived_by_name || '').toLowerCase().includes(filters.user)) return false;
-    return true;
-  });
-  table.innerHTML = items.map((item) => formatArchivedRecordRow(kind, item, canManage, canPurge)).join('')
-    || `<tr><td colspan="8">${tr(`${cfg.i18nPrefix}.archivedEmpty`, 'Nenhum registro arquivado.')}</td></tr>`;
-}
-
-function syncArchivedRecordsFilters(kind) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  const prefix = cfg.tableRef.replace('Table', '');
-  state[cfg.filters].company_id = String(refs[`${prefix}FilterCompany`]?.value || '').trim();
-  state[cfg.filters].date = String(refs[`${prefix}FilterDate`]?.value || '').trim();
-  state[cfg.filters].reason = String(refs[`${prefix}FilterReason`]?.value || '').trim().toLowerCase();
-  state[cfg.filters].user = String(refs[`${prefix}FilterUser`]?.value || '').trim().toLowerCase();
-  renderArchivedRecords(kind);
-}
-
-async function restoreArchivedRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || !requirePermission(cfg.updatePermission)) return;
-  if (!(await confirmDestructive({ title: tr('unit.restoreTitle', 'Desarquivar'), message: tr(`${cfg.i18nPrefix}.restoreConfirm`, 'O registro será desarquivado e voltará a ficar ativo, podendo receber novas operações. Todo o histórico preservado permanece intacto. Continuar?'), confirmLabel: tr('unit.restore', 'Desarquivar'), variant: 'primary' }))) return;
-  try {
-    await api(`${cfg.path}/${recordId}/restore`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    await loadBootstrap();
-    await loadArchivedRecords(kind);
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Exclusão definitiva em duas etapas (habilitada só após a retenção mínima).
-async function purgeArchivedRecord(kind, recordId) {
-  const cfg = ARCHIVAL_ENTITIES[kind];
-  if (!cfg || cfg.supportsPurge === false || !requirePermission(cfg.deletePermission)) return;
-  const record = (state[cfg.archivedList] || []).find((item) => String(item.id) === String(recordId));
-  if (!record) return;
-  try {
-    const step1 = await api(`${cfg.path}/${recordId}/purge-request`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    const records = step1.records || {};
-    const lines = Object.entries(cfg.purgeLabels)
-      .map(([key, label]) => `• ${label}: ${Number(records[key] || 0)}`)
-      .join('\n');
-    const message = `${tr('unit.purgeSummaryIntro', 'ATENÇÃO: exclusão definitiva e irreversível. Os seguintes registros históricos serão removidos:')}\n\n${lines}\n\n${tr('unit.purgeSummaryOutro', 'O registro de auditoria desta operação será preservado permanentemente.')}`;
-    if (!(await confirmDestructive({ title: tr('unit.purgeTitle', 'Excluir definitivamente'), message, confirmLabel: tr('continue', 'Continuar'), variant: 'danger' }))) {
-      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedRecords(kind);
-      return;
-    }
-    // `record.name` não existe para outsourcedCompany/outsourcedCompanyLike
-    // (a linha vem com `legal_name`/`trade_name`, ver identityKind acima) —
-    // sem o fallback, o prompt mostrava "undefined" e o backend nunca
-    // recebia o `confirm_name` exato que ele mesmo exibiu.
-    const recordDisplayName = record.name || record.legal_name || record.trade_name || '';
-    const justification = globalThis.prompt(tr('unit.purgeJustification', 'Justificativa obrigatória da exclusão definitiva (mínimo 10 caracteres):'), '') ?? '';
-    const confirmName = globalThis.prompt(`${tr('unit.purgeConfirmName', 'Digite o nome exato para confirmar:')}\n"${recordDisplayName}"`, '') ?? '';
-    if (!justification.trim() || !confirmName.trim()) {
-      await api(`${cfg.path}/${recordId}/purge-cancel`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      await loadArchivedRecords(kind);
-      return;
-    }
-    await api(`${cfg.path}/${recordId}/purge-confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, justification, confirm_name: confirmName }),
-    });
-    alert(tr('unit.purgeDone', 'Registro excluído definitivamente. A operação foi gravada na auditoria.'));
-    await loadBootstrap();
-    await loadArchivedRecords(kind);
-  } catch (error) {
-    alert(error.message);
-    await loadArchivedRecords(kind);
-  }
-}
-
-async function deleteRegistryEntity(path, entityId, permission, message) {
-  if (!requirePermission(permission)) return;
-  if (!(await confirmDestructive({ title: 'Confirmar exclusão', message, confirmLabel: 'Excluir', variant: 'danger' }))) return;
-  try {
-    await api(`${path}/${entityId}?actor_user_id=${encodeURIComponent(state.user.id)}`, { method: 'DELETE' });
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function formatUnitOption(item) {
-  return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
-}
+// Arquivamento (Unidades e genérico: Colaboradores, EPIs, Empresas e Colaboradores
+// terceirizados) mora em static/js/modules/archival/{business,integrations,ui}/ (UBX-V5, Etapa 1).
 
 function syncDeliveryOptions() {
   const companyField = document.getElementById('delivery-company');
@@ -8988,1020 +7272,16 @@ function selectDeliveryEpiFromSearch(epiId) {
   renderDeliveryEpiSearchResults();
 }
 
-function syncEmployeeUnitOptions() {
-  const companyField = document.getElementById('employee-company');
-  const unitField = document.getElementById('employee-unit');
-  if (!companyField || !unitField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  unitField.innerHTML = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-  if (units.length && !units.some((item) => String(item.id) === String(unitField.value))) {
-    unitField.value = String(units[0].id);
-  }
-  // O CNPJ acompanha a empresa selecionada, então é resincronizado junto.
-  syncEmployeeLegalEntityOptions();
-}
-
-// ── Multi-CNPJ: seletores de vínculo jurídico ────────────────────────────────
-
-// Regras puras vivem em js/views/legal-entity-fields.js (testadas no harness);
-// aqui ficam apenas os wrappers que leem o estado e mexem no DOM.
-function legalEntityHelpers() {
-  return globalThis.__EPI_LEGAL_ENTITY_FIELDS__ || {};
-}
-
-function legalEntitiesForCompany(companyId, options) {
-  const helper = legalEntityHelpers().legalEntitiesForCompany;
-  return helper ? helper(state.legalEntities, companyId, options) : [];
-}
-
-function unitLegalEntityLabel(unit) {
-  const helper = legalEntityHelpers().unitLegalEntityLabel;
-  return helper ? helper(unit) : String(unit?.legal_entity_cnpj || '');
-}
-
-function legalEntityOptionsHtml(entities) {
-  const label = legalEntityHelpers().legalEntityLabel || ((item) => String(item?.cnpj || ''));
-  return entities
-    .map((item) => `<option value="${item.id}">${escapeHtml(label(item))}</option>`)
-    .join('');
-}
-
-// Vínculo jurídico do colaborador.
-//
-// O campo só aparece quando a empresa tem CNPJs cadastrados, e só é obrigatório
-// quando há mais de um ativo: com CNPJ único o backend resolve sozinho, e
-// exigir escolha seria ruído. Com mais de um, o backend recusa o cadastro sem
-// o campo — por isso a obrigatoriedade aqui espelha a regra do servidor em vez
-// de inventar uma própria.
-function syncEmployeeLegalEntityOptions() {
-  const field = document.getElementById('employee-legal-entity');
-  const wrapper = document.getElementById('employee-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('employee-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId);
-  const previous = field.value;
-  const required = legalEntityHelpers().employeeLegalEntityRequired;
-  const mandatory = required ? required(entities) : entities.length > 1;
-  wrapper.hidden = entities.length === 0;
-  field.required = mandatory;
-  const placeholder = mandatory
-    ? `<option value="">${tr('legalEntity.select', 'Selecione o CNPJ')}</option>`
-    : `<option value="">${tr('legalEntity.auto', 'Automático (CNPJ único)')}</option>`;
-  field.innerHTML = placeholder + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
-
-// Trava (ou destrava) o seletor de CNPJ do colaborador.
-//
-// Na edição o campo fica visível e desabilitado: o operador precisa VER a qual
-// CNPJ o colaborador pertence, mas não pode trocar por aqui. Campo desabilitado
-// não é serializado no submit, o que também impede o envio acidental do valor.
-function setEmployeeLegalEntityLock(legalEntityId, locked) {
-  const field = document.getElementById('employee-legal-entity');
-  if (!field) return;
-  syncEmployeeLegalEntityOptions();
-  if (legalEntityId) field.value = String(legalEntityId);
-  field.disabled = Boolean(locked);
-  if (locked) field.required = false;
-}
-
-// ── Tela de CNPJs (web legado) ───────────────────────────────────────────────
-
-// Regras puras vivem em js/views/legal-entities-view.js (testadas no harness);
-// aqui ficam a leitura do estado, o DOM e as chamadas de API.
-function legalEntitiesViewHelpers() {
-  return globalThis.__EPI_LEGAL_ENTITIES_VIEW__ || {};
-}
-
-function renderLegalEntities() {
-  if (!refs.legalEntitiesTable) return;
-  const helpers = legalEntitiesViewHelpers();
-  const visible = helpers.visibleLegalEntities
-    ? helpers.visibleLegalEntities(state.legalEntities, state.legalEntitiesFilters)
-    : (state.legalEntities || []);
-  const canUpdate = hasPermission('legal_entities:update');
-  const canDelete = hasPermission('legal_entities:delete');
-  refs.legalEntitiesTable.innerHTML = visible
-    .map((item) => formatLegalEntityRow(item, { canUpdate, canDelete }))
-    .join('') || globalThis.dsTableState({
-      colspan: 6,
-      message: tr('legalEntity.empty', 'Sem CNPJs cadastrados.'),
-    });
-}
-
-function formatLegalEntityRow(item, permissions) {
-  const helpers = legalEntitiesViewHelpers();
-  const typeLabel = helpers.entityTypeLabel ? helpers.entityTypeLabel(item.entity_type) : '';
-  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
-  const status = active
-    ? tr('legalEntity.statusActive', 'Ativo')
-    : tr('legalEntity.statusInactive', 'Inativo');
-  // O botão de inativar só aparece quando a ação é possível: o backend recusa
-  // o último CNPJ ativo, e oferecer o botão só geraria mensagem de erro.
-  const showDeactivate = permissions.canDelete
-    && (helpers.canDeactivate ? helpers.canDeactivate(item, state.legalEntities) : active);
-  // O id vira atributo HTML: escapado como qualquer outro dado vindo do
-  // servidor, mesmo sendo numérico na prática.
-  const entityId = escapeHtml(String(item.id ?? ''));
-  const buttons = [];
-  if (permissions.canUpdate) {
-    buttons.push(`<button class="ghost" data-legal-entity-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
-  }
-  if (showDeactivate) {
-    buttons.push(`<button class="ghost" data-legal-entity-deactivate="${entityId}">${escapeHtml(tr('legalEntity.deactivate', 'Inativar'))}</button>`);
-  }
-  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
-  return `<tr><td>${escapeHtml(item.cnpj || '')}</td><td>${escapeHtml(item.legal_name || '')}</td>`
-    + `<td>${escapeHtml(item.trade_name || '') || '-'}</td><td>${escapeHtml(typeLabel)}</td>`
-    + `<td>${escapeHtml(status)}</td><td>${actions}</td></tr>`;
-}
-
-function syncLegalEntitiesFilters() {
-  state.legalEntitiesFilters.search = String(refs.legalEntitiesFilterSearch?.value || '').trim();
-  state.legalEntitiesFilters.type = String(refs.legalEntitiesFilterType?.value || '').trim();
-  state.legalEntitiesFilters.showInactive = Boolean(refs.legalEntitiesShowInactive?.checked);
-  renderLegalEntities();
-}
-
-// Empresa só é escolhida pelo Administrador Master, que atende vários clientes.
-// Para os demais o campo some: a empresa é a do próprio usuário, e mostrar um
-// seletor de uma opção só induz a erro.
-function syncLegalEntityCompanyField() {
-  const field = document.getElementById('legal-entity-company');
-  const wrapper = document.getElementById('legal-entity-company-field');
-  const hint = document.getElementById('legal-entity-company-hint');
-  if (!field || !wrapper) return;
-  const isMaster = state.user?.role === 'master_admin';
-
-  if (isMaster) {
-    // Só o Master escolhe: ele atende vários clientes e não tem empresa
-    // própria de onde deduzir. O placeholder faz uma seleção vazia ler como
-    // "escolha uma", e não como campo quebrado.
-    const previous = field.value;
-    wrapper.hidden = false;
-    field.disabled = false;
-    field.required = true;
-    populateSelect('legal-entity-company', state.companies, (item) => `${item.name} - ${item.cnpj}`);
-    field.insertBefore(
-      new Option(tr('company.select', 'Selecione a empresa'), ''),
-      field.firstChild,
-    );
-    field.value = previous || '';
-    if (hint) hint.hidden = true;
-    return;
-  }
-
-  // Demais perfis: a empresa é a da conta e não se escolhe. Mostrar o nome —
-  // desabilitado, como o CNPJ do colaborador na edição — informa em qual
-  // empresa o CNPJ vai nascer sem oferecer uma decisão que não existe.
-  //
-  // Esconder o campo também evitaria o erro, mas tiraria essa confirmação
-  // justamente na tela onde ela importa: a de cadastrar pessoa jurídica.
-  const companyName = String(state.user?.company_name || '').trim();
-  // Sem nome não há o que afirmar; nesse caso o campo some, e o aviso geral de
-  // dados indisponíveis explica a tela.
-  wrapper.hidden = companyName === '';
-  field.required = false;
-  // Desabilitado não é serializado no submit — de propósito: o backend resolve
-  // a empresa pela sessão, e enviar um palpite daqui seria uma forma de gravar
-  // na empresa errada.
-  field.disabled = true;
-  field.replaceChildren(new Option(companyName, String(state.user?.company_id || '')));
-  if (hint) hint.hidden = wrapper.hidden;
-}
-
-// Alterna o formulário entre cadastrar e atualizar.
-//
-// O estado precisa ser visível: o rótulo do botão muda e a saída ("Novo CNPJ")
-// só aparece quando há de onde sair. Um formulário preso em "Atualizar" sem
-// nenhuma indicação de por quê foi exatamente o que se viu em produção.
-function setLegalEntityFormMode(mode) {
-  const cancel = document.getElementById('legal-entity-cancel-edit');
-  if (cancel) cancel.hidden = mode !== 'edit';
-}
-
-function resetLegalEntityForm() {
-  const form = document.getElementById('legal-entity-form');
-  if (!form) return;
-  form.reset();
-  form.elements.id.value = '';
-  // `reset()` devolve o valor do atributo `value` do HTML, que é '1'; sendo
-  // explícito aqui para não depender do markup na hora de voltar a cadastrar.
-  if (form.elements.active) form.elements.active.value = '1';
-  setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
-  setLegalEntityFormMode('create');
-  syncLegalEntityCompanyField();
-}
-
-function startEditLegalEntity(entityId) {
-  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
-  const form = document.getElementById('legal-entity-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  syncLegalEntityCompanyField();
-  if (form.elements.company_id) form.elements.company_id.value = item.company_id || '';
-  form.elements.cnpj.value = item.cnpj || '';
-  form.elements.legal_name.value = item.legal_name || '';
-  form.elements.trade_name.value = item.trade_name || '';
-  form.elements.entity_type.value = item.entity_type || 'matriz';
-  form.elements.state_registration.value = item.state_registration || '';
-  form.elements.municipal_registration.value = item.municipal_registration || '';
-  form.elements.cnae.value = item.cnae || '';
-  form.elements.opening_date.value = item.opening_date || '';
-  form.elements.address.value = item.address || '';
-  form.elements.municipality.value = item.municipality || '';
-  form.elements.uf.value = item.uf || '';
-  form.elements.cep.value = item.cep || '';
-  form.elements.notes.value = item.notes || '';
-  // Preserva a situação atual: sem isso o backend assumiria `active = 1` e a
-  // simples edição de um CNPJ inativo o reativaria.
-  const helpers = legalEntitiesViewHelpers();
-  const active = helpers.isActive ? helpers.isActive(item) : Boolean(item.active);
-  form.elements.active.value = active ? '1' : '0';
-  setFormSubmitLabel('legal-entity-form', tr('legalEntity.update', 'Atualizar CNPJ'));
-  setLegalEntityFormMode('edit');
-  showView('cnpjs');
-  focusRegistrationTab('cnpjs');
-}
-
-async function deactivateLegalEntity(entityId) {
-  if (!requirePermission('legal_entities:delete')) return;
-  const item = (state.legalEntities || []).find((entity) => String(entity.id) === String(entityId));
-  if (!item) return;
-  const confirmed = confirm(tr(
-    'legalEntity.deactivateConfirm',
-    'Inativar este CNPJ? O histórico jurídico e fiscal é preservado; ele apenas deixa de ser usado em novas operações.',
-  ) + `\n\n${item.cnpj} — ${item.legal_name}`);
-  if (!confirmed) return;
-  try {
-    await api(`/api/legal-entities/${entityId}?${actorQuery()}`, { method: 'DELETE' });
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
-  }
-}
+// Multi-CNPJ (seletores de vínculo jurídico e tela de CNPJs) mora em
+// static/js/modules/legal-entities/{integrations,ui}/ (UBX-V5, Etapa 2); as regras puras seguem em
+// js/views/legal-entity-fields.js e js/views/legal-entities-view.js.
 
 // ── Tela de Terceirizados e Prestadores (web legado, ADR-0002) ──────────────
 
-// Regras puras vivem em js/views/outsourced-companies-view.js (testadas no
-// harness); aqui ficam a leitura do estado, o DOM e as chamadas de API.
-function outsourcedCompaniesViewHelpers() {
-  return globalThis.__EPI_OUTSOURCED_COMPANIES_VIEW__ || {};
-}
-
-// Diferente de `state.legalEntities`, esta lista não chega no bootstrap — o
-// módulo nasce oculto por padrão, então só busca quando a tela é aberta
-// (chamado a partir de showView).
-async function loadOutsourcedCompanies() {
-  // Gate alinhado ao backend (handle_get_outsourced_companies exige só
-  // PERM_EMPLOYEES_VIEW, igual a loadOutsourcedEmployeesSummary logo abaixo)
-  // — 'employees:create' era restritivo demais e nunca é concedido a
-  // Administrador Local/Gestor de EPI (só têm employees:create_simplified),
-  // então a lista nunca carregava para esses perfis: nem a aba "Lista" nem o
-  // seletor de empresa do Cadastro de Colaboradores (syncOutsourcedEmployeeCompanySelect,
-  // chamado por renderOutsourcedCompanies logo abaixo) recebiam dados.
-  if (!hasPermission('employees:view')) return;
-  try {
-    const data = await api(`/api/outsourced-companies?${actorQuery()}`);
-    state.outsourcedCompanies = data.outsourced_companies || data.items || [];
-    // Empresas do tenant ainda não vinculadas à própria Unidade (ADR-0002
-    // §12 — compartilhamento por tenant): campos públicos só, mascarados no
-    // backend (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
-    // nunca contrato/nota/colaborador de outra Unidade. Vazio para quem não
-    // é escopado por Unidade (já vê tudo em outsourcedCompanies).
-    state.outsourcedCompaniesAvailable = data.available_outsourced_companies || [];
-  } catch (error) {
-    state.outsourcedCompanies = [];
-    state.outsourcedCompaniesAvailable = [];
-    reportNonCriticalError('[terceirizados] falha ao carregar empresas terceirizadas', error);
-  }
-  renderOutsourcedCompanies();
-}
-
-function renderOutsourcedCompanies() {
-  if (!refs.outsourcedCompaniesTable) return;
-  const helpers = outsourcedCompaniesViewHelpers();
-  // Perfis escopados por Unidade (Administrador Local/Gestor de EPI) são os
-  // únicos cujos itens vêm com local_status (annotate_outsourced_company_visibility,
-  // só roda para eles) — é o que diferencia "arquivar nesta Unidade" (por
-  // vínculo) do arquivamento global do corporativo, que continua exclusivo
-  // de quem não é escopado.
-  const isUnitScoped = ['admin', 'user'].includes(state.user?.role);
-  const allLinked = state.outsourcedCompanies || [];
-  const isArchivedInUnit = helpers.isArchivedInUnit || ((item) => String(item?.local_status || '') === 'inactive');
-  const activeLinked = isUnitScoped
-    ? allLinked.filter((item) => !isArchivedInUnit(item))
-    : allLinked;
-  const visible = helpers.visibleOutsourcedCompanies
-    ? helpers.visibleOutsourcedCompanies(activeLinked, state.outsourcedCompaniesFilters)
-    : activeLinked;
-  const canUpdate = hasPermission(['employees:update', 'employees:update_simplified']);
-  refs.outsourcedCompaniesTable.innerHTML = visible
-    .map((item) => formatOutsourcedCompanyRow(item, { canUpdate }))
-    .join('') || globalThis.dsTableState({
-      colspan: 7,
-      message: tr('outsourcedCompany.empty', 'Nenhuma empresa terceirizada cadastrada.'),
-    });
-  // Empresas do tenant que a própria Unidade ainda não vinculou (ADR-0002
-  // §12) — seção separada da "Lista" principal, nunca junto: mostrar como
-  // "vinculável" algo que ainda não é gerenciável evitaria confundir com o
-  // que já está sob a Unidade do ator.
-  if (refs.outsourcedCompaniesAvailableTable) {
-    const available = state.outsourcedCompaniesAvailable || [];
-    refs.outsourcedCompaniesAvailableTable.innerHTML = available
-      .map((item) => formatOutsourcedCompanyAvailableRow(item))
-      .join('') || globalThis.dsTableState({
-        colspan: 7,
-        message: tr('outsourcedCompany.availableEmpty', 'Nenhuma empresa disponível para vincular.'),
-      });
-  }
-  // Empresas arquivadas NESTA Unidade (Administrador Local/Gestor de EPI) —
-  // mesma ação de vínculo local (toggleOutsourcedCompanyUnitLink), só
-  // exibida em seção separada da Lista principal; nunca duplica o
-  // arquivamento global (ARCHIVAL_ENTITIES.outsourcedCompany/"restaurar"),
-  // que continua exclusivo de quem não é escopado por Unidade — os dois
-  // cartões da aba "Empresas Arquivadas" são mutuamente exclusivos por
-  // perfil, nunca mostrados juntos.
-  if (refs.outsourcedCompanyUnitArchivedCard) refs.outsourcedCompanyUnitArchivedCard.hidden = !isUnitScoped;
-  if (refs.archivedOutsourcedCompaniesCard) refs.archivedOutsourcedCompaniesCard.hidden = isUnitScoped;
-  if (isUnitScoped && refs.outsourcedCompanyUnitArchivedTable) {
-    const archived = allLinked.filter((item) => isArchivedInUnit(item));
-    refs.outsourcedCompanyUnitArchivedTable.innerHTML = archived
-      .map((item) => formatOutsourcedCompanyUnitArchivedRow(item))
-      .join('') || globalThis.dsTableState({
-        colspan: 6,
-        message: tr('outsourcedCompany.unitArchivedEmpty', 'Nenhuma empresa arquivada nesta Unidade.'),
-      });
-  }
-  // O seletor de empresa do Cadastro de Colaboradores depende da mesma
-  // lista — resincroniza sempre que ela muda (mesma lógica de
-  // bindDependentSelects, mas esta lista não vem do bootstrap).
-  syncOutsourcedEmployeeCompanySelect();
-  renderOutsourcedEmployees();
-}
-
-// Linha de "Empresas arquivadas nesta Unidade" — mesmos dados do vínculo
-// local (unit_link_deactivated_at/reason/by_user_id, anexados por
-// annotate_outsourced_company_visibility), só que renderizados numa seção
-// separada da Lista, com "Desarquivar" em vez de "Editar".
-function formatOutsourcedCompanyUnitArchivedRow(item) {
-  const entityId = escapeHtml(String(item.id ?? ''));
-  const responsible = (state.users || []).find((u) => String(u.id) === String(item.unit_link_deactivated_by_user_id));
-  const responsibleName = responsible ? (responsible.full_name || '') : '';
-  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
-    + `<td>${formatDate(item.unit_link_deactivated_at)}</td><td>${escapeHtml(item.unit_link_deactivation_reason || '') || '-'}</td>`
-    + `<td>${escapeHtml(responsibleName) || '-'}</td>`
-    + `<td><button class="ghost" data-outsourced-company-toggle-link="${entityId}" data-activate="1">${escapeHtml(tr('outsourcedCompany.activateLink', 'Desarquivar nesta Unidade'))}</button></td></tr>`;
-}
-
-function formatOutsourcedCompanyRow(item, permissions) {
-  const helpers = outsourcedCompaniesViewHelpers();
-  const kindLabel = helpers.companyKindLabel ? helpers.companyKindLabel(item.company_kind) : (item.company_kind || '');
-  const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
-  const hasFullUpdate = hasPermission('employees:update');
-  // Promover só faz sentido para quem ainda está no Simplificado — o backend
-  // também recusa promover quem já é Padrão, mas oferecer o botão sempre só
-  // geraria mensagem de erro sem efeito. Ação exclusiva de Administrador
-  // Geral/de Registro (employees:update completo) — Administrador Local/
-  // Gestor de EPI (só employees:update_simplified) nunca a alcançam no
-  // backend (handle_post_outsourced_company_promote não foi ampliada de
-  // propósito, ADR-0002 §10.5), então o botão fica fora para eles também.
-  const showPromote = hasFullUpdate && (helpers.canPromote ? helpers.canPromote(item) : true);
-  // Trava pós-promoção (ADR-0002 §12): "Editar" só continua valendo se o
-  // ator tem employees:update completo OU a empresa ainda está no
-  // Simplificado — espelha ensure_actor_can_edit_outsourced_company_corporate_fields
-  // do backend, que é quem decide de fato. Travado + ainda pode gerenciar
-  // (permissions.canUpdate) → oferece "Solicitar atualização" no lugar.
-  const corporateLocked = helpers.isCorporateLocked ? helpers.isCorporateLocked(item) : false;
-  const canEditCorporate = helpers.canEditCorporateFields
-    ? helpers.canEditCorporateFields(item, hasFullUpdate) : true;
-  const entityId = escapeHtml(String(item.id ?? ''));
-  const buttons = [];
-  if (permissions.canUpdate && canEditCorporate) {
-    buttons.push(`<button class="ghost" data-outsourced-company-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
-  } else if (permissions.canUpdate && corporateLocked) {
-    buttons.push(`<button class="ghost" data-outsourced-company-request-update="${entityId}">${escapeHtml(tr('outsourcedCompany.requestUpdate', 'Solicitar atualização cadastral'))}</button>`);
-  }
-  if (showPromote) {
-    buttons.push(`<button class="ghost" data-outsourced-company-promote="${entityId}">${escapeHtml(tr('outsourcedCompany.promote', 'Promover a Cadastro Padrão'))}</button>`);
-  }
-  // "Arquivar nesta Unidade" (vínculo local, ex-"Desativar vínculo local" —
-  // ADR-0002 §12 item 8/Problema 4 do pedido): nunca a mesma coisa que
-  // arquivar o corporativo (ARCHIVAL_ENTITIES.outsourcedCompany, exclusivo
-  // de quem não é escopado por Unidade) — sempre liberado para quem já
-  // gerencia a empresa, independente de registration_mode/trava acima.
-  // `local_status` só vem preenchido para quem é escopado por Unidade
-  // (fetch_outsourced_companies/annotate_outsourced_company_visibility) —
-  // ausente para Geral/Registro, que não têm UMA Unidade só para alternar.
-  // Na prática só chega aqui com linkActive === true: renderOutsourcedCompanies
-  // já filtra local_status === 'inactive' para fora desta tabela (formatOutsourcedCompanyUnitArchivedRow
-  // cobre a seção "Empresas arquivadas nesta Unidade") — o ramo inativo
-  // segue aqui só como defesa, nunca alcançado no fluxo normal.
-  const linkStatus = item.local_status;
-  if (permissions.canUpdate && linkStatus !== undefined && linkStatus !== null) {
-    const linkActive = String(linkStatus) !== 'inactive';
-    const toggleLabel = linkActive
-      ? tr('outsourcedCompany.deactivateLink', 'Arquivar nesta Unidade')
-      : tr('outsourcedCompany.activateLink', 'Desarquivar nesta Unidade');
-    buttons.push(`<button class="ghost" data-outsourced-company-toggle-link="${entityId}" data-activate="${linkActive ? '0' : '1'}">${escapeHtml(toggleLabel)}</button>`);
-  }
-  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
-  const linkStatusLabel = linkStatus === undefined || linkStatus === null
-    ? '-'
-    : (String(linkStatus) === 'inactive' ? tr('outsourcedCompany.linkInactive', 'Arquivado') : tr('outsourcedCompany.linkActive', 'Ativo'));
-  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.cnpj || '') || '-'}</td>`
-    + `<td>${escapeHtml(kindLabel)}</td><td>${escapeHtml(item.epi_responsibility || '')}</td>`
-    + `<td>${escapeHtml(modeLabel)}</td><td>${escapeHtml(linkStatusLabel)}</td><td>${actions}</td></tr>`;
-}
-
-// Empresas do tenant ainda não vinculadas à Unidade do ator — linha com só
-// os campos públicos (ADR-0002 §12 item 12 do pedido: nunca contrato, nota
-// ou colaborador de outra Unidade) + a ação "Vincular à minha unidade".
-function formatOutsourcedCompanyAvailableRow(item) {
-  const helpers = outsourcedCompaniesViewHelpers();
-  const modeLabel = helpers.registrationModeLabel ? helpers.registrationModeLabel(item) : '';
-  const entityId = escapeHtml(String(item.id ?? ''));
-  // origin_unit_name/linked_units_count (decisão explícita do usuário,
-  // reversão da máscara original — ver _mask_outsourced_company_public_fields
-  // em modules/outsourced_companies/service.py). Só a Unidade de origem fica
-  // '-' quando a empresa é "do tenant" (sem origem) — a contagem de vínculos
-  // vale para qualquer empresa, com ou sem origem.
-  const originUnitLabel = escapeHtml(item.origin_unit_name || '') || '-';
-  const linkedUnitsLabel = String(Number(item.linked_units_count || 0));
-  return `<tr><td>${escapeHtml(item.legal_name || '')}</td><td>${escapeHtml(item.trade_name || '') || '-'}</td>`
-    + `<td>${escapeHtml(item.cnpj || '') || '-'}</td><td>${originUnitLabel}</td><td>${linkedUnitsLabel}</td>`
-    + `<td>${escapeHtml(modeLabel)}</td>`
-    + `<td><button class="ghost" data-outsourced-company-link="${entityId}">${escapeHtml(tr('outsourcedCompany.linkToMyUnit', 'Vincular à minha unidade'))}</button></td></tr>`;
-}
-
-function syncOutsourcedCompaniesFilters() {
-  state.outsourcedCompaniesFilters.search = String(refs.outsourcedCompaniesFilterSearch?.value || '').trim();
-  state.outsourcedCompaniesFilters.kind = String(refs.outsourcedCompaniesFilterKind?.value || '').trim();
-  renderOutsourcedCompanies();
-}
-
-// Alterna o formulário entre cadastrar e atualizar — mesmo padrão de
-// setLegalEntityFormMode.
-function setOutsourcedCompanyFormMode(mode) {
-  const cancel = document.getElementById('outsourced-company-cancel-edit');
-  if (cancel) cancel.hidden = mode !== 'edit';
-}
-
-// Unidade de origem (ADR-0002 §12): imutável depois de criada — nem
-// Administrador Geral reatribui por aqui, o backend nem lê mais esse campo
-// no update. No CADASTRO (sem id ainda), continua o comportamento de
-// sempre: Administrador Local/Gestor de EPI (isOperationalProfile())
-// travados na própria unidade operacional (resolve_outsourced_company_unit_id
-// só roda no create), demais perfis com seletor livre. Auto-detecta o modo
-// pelo próprio estado do formulário (mesmo `editingId` que saveSimpleForm
-// usa), então funciona tanto chamado por startEditOutsourcedCompany/
-// resetOutsourcedCompanyForm quanto por bindDependentSelects (que não sabe
-// se há uma edição em andamento).
-function syncOutsourcedCompanyUnitOptions() {
-  const unitField = document.getElementById('outsourced-company-unit');
-  if (!unitField) return;
-  const form = document.getElementById('outsourced-company-form');
-  const editingId = form?.elements?.id?.value ? String(form.elements.id.value) : '';
-  if (editingId) {
-    const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === editingId);
-    const origin = item?.unit_id != null
-      ? (state.units || []).find((unit) => String(unit.id) === String(item.unit_id))
-      : null;
-    unitField.innerHTML = origin
-      ? `<option value="${origin.id}">${escapeHtml(origin.name)} - ${escapeHtml(unitTypeLabel(origin.unit_type))}</option>`
-      : `<option value="">${escapeHtml(tr('outsourcedCompany.allUnits', 'Todas as unidades (padrão)'))}</option>`;
-    unitField.value = origin ? String(origin.id) : '';
-    unitField.disabled = true;
-    return;
-  }
-  const lockByOperationalProfile = isOperationalProfile();
-  if (!lockByOperationalProfile) {
-    unitField.disabled = false;
-    return;
-  }
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  const scopedUnit = filterByUserCompany(state.units || []).find((item) => String(item.id) === operationalUnitId);
-  unitField.innerHTML = scopedUnit
-    ? `<option value="${scopedUnit.id}">${scopedUnit.name} - ${unitTypeLabel(scopedUnit.unit_type)}</option>`
-    : "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
-  unitField.value = scopedUnit ? String(scopedUnit.id) : '';
-  unitField.disabled = true;
-}
-
-// Trava pós-promoção (ADR-0002 §12): quando o ator não tem employees:update
-// completo e a empresa já é Cadastro Padrão, os campos corporativos ficam
-// só-leitura com um aviso — mesma decisão que
-// ensure_actor_can_edit_outsourced_company_corporate_fields toma no
-// backend (que é quem decide de fato); aqui só evita deixar o formulário
-// "sumir" sem explicação quando "Solicitar atualização" é a única ação
-// oferecida na linha (formatOutsourcedCompanyRow).
-const OUTSOURCED_COMPANY_CORPORATE_FIELDS = ['legal_name', 'trade_name', 'cnpj', 'company_kind', 'epi_responsibility'];
-
-function applyOutsourcedCompanyCorporateLock(item) {
-  const form = document.getElementById('outsourced-company-form');
-  const banner = refs.outsourcedCompanyCorporateLockBanner;
-  const helpers = outsourcedCompaniesViewHelpers();
-  const locked = Boolean(item) && helpers.isCorporateLocked
-    && helpers.isCorporateLocked(item) && !hasPermission('employees:update');
-  if (form) {
-    OUTSOURCED_COMPANY_CORPORATE_FIELDS.forEach((name) => {
-      const field = form.elements[name];
-      if (field) field.disabled = locked;
-    });
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) submitButton.hidden = locked;
-  }
-  if (banner) banner.hidden = !locked;
-}
-
-function resetOutsourcedCompanyForm() {
-  const form = document.getElementById('outsourced-company-form');
-  if (!form) return;
-  form.reset();
-  form.elements.id.value = '';
-  syncOutsourcedCompanyUnitOptions();
-  applyOutsourcedCompanyCorporateLock(null);
-  setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
-  setOutsourcedCompanyFormMode('create');
-}
-
-function startEditOutsourcedCompany(entityId) {
-  const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === String(entityId));
-  const form = document.getElementById('outsourced-company-form');
-  if (!item || !form) return;
-  form.elements.id.value = item.id;
-  form.elements.legal_name.value = item.legal_name || '';
-  form.elements.trade_name.value = item.trade_name || '';
-  form.elements.cnpj.value = item.cnpj || '';
-  form.elements.company_kind.value = item.company_kind || 'outsourced';
-  form.elements.epi_responsibility.value = item.epi_responsibility || 'Conforme Contrato';
-  syncOutsourcedCompanyUnitOptions();
-  applyOutsourcedCompanyCorporateLock(item);
-  setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.update', 'Atualizar Empresa'));
-  setOutsourcedCompanyFormMode('edit');
-  showView('terceirizados');
-  focusRegistrationTab('terceirizados');
-}
-
-// "Vincular à minha unidade" (ADR-0002 §12) — cria o vínculo local sem
-// duplicar o cadastro corporativo; usado tanto pelo botão na seção
-// "Empresas disponíveis para vinculação" quanto pelo fluxo de duplicidade
-// de CNPJ (handleOutsourcedCompanyDuplicateError, perto de saveSimpleForm).
-async function linkOutsourcedCompanyToMyUnit(entityId) {
-  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
-  try {
-    await api(`/api/outsourced-companies/${entityId}/link`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    await loadOutsourcedCompanies();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Arquiva/desarquiva a empresa NESTA Unidade (vínculo local) — nunca o
-// cadastro corporativo (ADR-0002 §12 item 8 do pedido: não confundir com o
-// arquivamento global de ARCHIVAL_ENTITIES.outsourcedCompany, exclusivo de
-// quem não é escopado por Unidade). Some da Lista e do seletor de novos
-// colaboradores desta Unidade; outras Unidades vinculadas não são afetadas.
-async function toggleOutsourcedCompanyUnitLink(entityId, activate) {
-  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
-  let reason = '';
-  if (!activate) {
-    reason = prompt(tr('outsourcedCompany.deactivateLinkReasonPrompt', 'Motivo do arquivamento (opcional):')) || '';
-    if (reason === null) return;
-  }
-  // Caminho literal em cada ramo (em vez de interpolar activate/deactivate
-  // na URL) — mesma convenção do resto do app.js, path dinâmico só para
-  // IDs numéricos; test_frontend_api_contract.py confronta cada chamada
-  // com as rotas registradas no router e não resolve enum-em-path.
-  const path = activate
-    ? `/api/outsourced-companies/${entityId}/unit-link/activate`
-    : `/api/outsourced-companies/${entityId}/unit-link/deactivate`;
-  try {
-    await api(path, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
-    });
-    await loadOutsourcedCompanies();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// "Solicitar atualização cadastral" (ADR-0002 §12) — modal simples
-// (mensagem livre), mesmo padrão de openRequestReportModal/submitReportRequest
-// (estoque.html), só que sem tela dedicada: usa prompt() para manter o
-// escopo proporcional a "avisar que um campo precisa de correção".
-async function requestOutsourcedCompanyUpdate(entityId) {
-  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
-  const message = prompt(tr(
-    'outsourcedCompany.requestUpdatePrompt',
-    'Descreva o que precisa ser corrigido/atualizado no cadastro corporativo:',
-  ));
-  if (!message || !message.trim()) return;
-  try {
-    await api(`/api/outsourced-companies/${entityId}/update-requests`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, message: message.trim() }),
-    });
-    alert(tr('outsourcedCompany.requestUpdateSent', 'Solicitação enviada ao Administrador Geral/de Registro.'));
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// ── Inbox de "Solicitações" (Geral/Registro, ADR-0002 §12) ────────────────
-async function loadOutsourcedCompanyUpdateRequests() {
-  // Card (e por tabela, a própria aba "Solicitações" — syncViewTabsVisibility
-  // esconde uma aba cujo painel não tem nenhum filho visível) só existe para
-  // quem tem employees:update completo (Geral/Registro): Administrador
-  // Local/Gestor de EPI só REGISTRAM pedido (requestOutsourcedCompanyUpdate),
-  // nunca veem a fila de resolução dos outros.
-  const allowed = hasPermission('employees:update');
-  if (refs.outsourcedCompanyUpdateRequestsCard) refs.outsourcedCompanyUpdateRequestsCard.hidden = !allowed;
-  const nav = document.querySelector('[data-vtabs="terceirizados"]');
-  if (nav && typeof syncViewTabsVisibility === 'function') syncViewTabsVisibility(nav);
-  if (!allowed) return;
-  try {
-    const data = await api(`/api/outsourced-companies/update-requests?status=pending&${actorQuery()}`);
-    state.outsourcedCompanyUpdateRequests = data.outsourced_company_update_requests || data.items || [];
-  } catch (error) {
-    state.outsourcedCompanyUpdateRequests = [];
-    reportNonCriticalError('[terceirizados] falha ao carregar solicitações de atualização', error);
-  }
-  renderOutsourcedCompanyUpdateRequests();
-}
-
-function renderOutsourcedCompanyUpdateRequests() {
-  if (!refs.outsourcedCompanyUpdateRequestsTable) return;
-  const items = state.outsourcedCompanyUpdateRequests || [];
-  refs.outsourcedCompanyUpdateRequestsTable.innerHTML = items.map((request) => {
-    const companyName = (state.outsourcedCompanies || [])
-      .find((c) => String(c.id) === String(request.outsourced_company_id))?.legal_name || `#${request.outsourced_company_id}`;
-    return `<tr><td>${escapeHtml(companyName)}</td><td>${escapeHtml(request.requested_by_name || '')}</td>`
-      + `<td>${escapeHtml(request.message || '')}</td><td>${escapeHtml(request.created_at || '')}</td>`
-      + `<td><button class="ghost" data-outsourced-company-update-request-resolve="${escapeHtml(String(request.id))}">${escapeHtml(tr('outsourcedCompany.resolveRequest', 'Resolver'))}</button></td></tr>`;
-  }).join('') || globalThis.dsTableState({
-    colspan: 5,
-    message: tr('outsourcedCompany.requestsEmpty', 'Nenhuma solicitação pendente.'),
-  });
-}
-
-async function resolveOutsourcedCompanyUpdateRequest(requestId) {
-  if (!requirePermission('employees:update')) return;
-  const notes = prompt(tr('outsourcedCompany.resolveRequestNotesPrompt', 'Notas da resolução (opcional):')) || '';
-  try {
-    await api(`/api/outsourced-companies/update-requests/${requestId}/resolve`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, status: 'resolved', resolution_notes: notes }),
-    });
-    await loadOutsourcedCompanyUpdateRequests();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Chamado só pelo catch de saveSimpleForm para o outsourced-company-form
-// (ADR-0002 §12 itens 14-15 do pedido). Devolve `true` quando já tratou o
-// erro (a mensagem genérica não deve mais aparecer via alert()).
-async function handleOutsourcedCompanyDuplicateError(error, form) {
-  if (error?.code === 'duplicate_cnpj') {
-    const existingId = error.payload?.existing_company_id;
-    const confirmed = confirm(
-      `${error.message}\n\n${tr('outsourcedCompany.duplicateCnpjLinkPrompt', 'Deseja vincular essa empresa à sua Unidade em vez de cadastrar de novo?')}`,
-    );
-    if (confirmed && existingId) {
-      await linkOutsourcedCompanyToMyUnit(existingId);
-    }
-    return true;
-  }
-  if (error?.code === 'possible_duplicate') {
-    const matches = error.payload?.matches || [];
-    const names = matches.map((item) => `- ${item.legal_name}${item.trade_name ? ` (${item.trade_name})` : ''}`).join('\n');
-    const confirmed = confirm(
-      `${error.message}\n\n${names}\n\n${tr('outsourcedCompany.confirmCreateAnyway', 'Cadastrar mesmo assim?')}`,
-    );
-    if (confirmed) {
-      form.dataset.confirmDuplicate = '1';
-      if (typeof form.requestSubmit === 'function') form.requestSubmit();
-      else form.dispatchEvent(new Event('submit', { cancelable: true }));
-    }
-    return true;
-  }
-  return false;
-}
-
-async function promoteOutsourcedCompany(entityId) {
-  if (!requirePermission('employees:update')) return;
-  const item = (state.outsourcedCompanies || []).find((entity) => String(entity.id) === String(entityId));
-  if (!item) return;
-  const confirmed = confirm(tr(
-    'outsourcedCompany.promoteConfirm',
-    'Promover ao Cadastro Padrão? A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.',
-  ) + `\n\n${item.legal_name}`);
-  if (!confirmed) return;
-  try {
-    await api(`/api/outsourced-companies/${entityId}/promote`, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id }),
-    });
-    await loadOutsourcedCompanies();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Popula o seletor de empresa terceirizada/prestadora do Cadastro de
-// Colaboradores — depende de state.outsourcedCompanies, que (ao contrário de
-// state.companies/state.units) só chega quando a tela é aberta, então este
-// sync roda de novo a cada loadOutsourcedCompanies(), não em
-// bindDependentSelects() (que só cobre dados do bootstrap).
-function syncOutsourcedEmployeeCompanySelect() {
-  const field = document.getElementById('outsourced-employee-outsourced-company');
-  if (!field) return;
-  const previous = field.value;
-  // Empresa arquivada NESTA Unidade não pode ser oferecida para novos
-  // colaboradores — mesmo espelho do backend
-  // (is_outsourced_company_available_to_unit, Problema 3 do pedido): some
-  // do seletor assim que arquivada, volta assim que desarquivada. Some
-  // sozinho quando o próprio state.outsourcedCompanies muda (toggleOutsourcedCompanyUnitLink
-  // recarrega a lista), sem precisar de lógica extra aqui.
-  const helpers = outsourcedCompaniesViewHelpers();
-  const isArchivedInUnit = helpers.isArchivedInUnit || ((item) => String(item?.local_status || '') === 'inactive');
-  const companies = filterByUserCompany(state.outsourcedCompanies || [])
-    .filter((item) => !isArchivedInUnit(item));
-  field.innerHTML = companies
-    .map((item) => `<option value="${item.id}">${escapeHtml(item.trade_name || item.legal_name || '')}</option>`)
-    .join('');
-  if (previous && companies.some((item) => String(item.id) === previous)) field.value = previous;
-}
-
-// Administrador Local/Gestor de EPI (isOperationalProfile()) só operam
-// dentro da própria unidade operacional — o backend já força isso em
-// create/update_employee_outsourced_simplified
-// (ensure_actor_unit_scope_for_target), mas até esta correção o campo
-// aparecia como um seletor livre, deixando esses perfis escolherem outra
-// unidade na UI e só descobrirem o bloqueio depois de tentar salvar.
-// Mesmo padrão já usado em syncEpiUnitOptions/hint de Unidade nos filtros
-// de Ficha/Entregas: preenche com a própria unidade e desabilita o campo.
-function syncOutsourcedEmployeeUnitOptions() {
-  const companyField = document.getElementById('outsourced-employee-company');
-  const unitField = document.getElementById('outsourced-employee-unit');
-  const unitHint = document.getElementById('outsourced-employee-unit-hint');
-  if (!companyField || !unitField) return;
-  const companyId = companyField.value || state.user?.company_id || '';
-  const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  const lockByOperationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  const scopedUnits = lockByOperationalProfile
-    ? units.filter((item) => String(item.id) === operationalUnitId)
-    : units;
-  unitField.innerHTML = scopedUnits.length
-    ? scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
-    : "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
-  if (scopedUnits.length && !scopedUnits.some((item) => String(item.id) === String(unitField.value))) {
-    unitField.value = String(scopedUnits[0].id);
-  } else if (!scopedUnits.length) {
-    unitField.value = '';
-  }
-  unitField.disabled = lockByOperationalProfile;
-  if (unitHint) unitHint.hidden = !lockByOperationalProfile;
-}
-
-// ── Cadastro de Colaboradores simplificado (ADR-0002 §10.2) ─────────────────
-// Só terceirizado/prestador, nunca CLT (o backend recusa). Sem rota de
-// listagem própria — deriva de state.employees (já carregado pelo
-// bootstrap, `fetch_employees` inclui tipo_vinculo/outsourced_company_id),
-// mesma estratégia do app Flutter: filtro client-side, sem endpoint novo.
-
-// Último recurso, para o caso de `js/views/outsourced-employees-view.js` não
-// carregar. A FONTE é aquele módulo (export `CONTRACTED_VINCULOS`); aqui só
-// existe para a tela não quebrar sem ele, e o teste de paridade cobre as duas.
-const CONTRACTED_VINCULOS_FALLBACK = ['Terceirizado', 'Prestador de Serviço', 'Temporário'];
-
-function outsourcedEmployeesViewHelpers() {
-  return globalThis.__EPI_OUTSOURCED_EMPLOYEES_VIEW__ || {};
-}
-
-function outsourcedEmployeesList() {
-  const helpers = outsourcedEmployeesViewHelpers();
-  const all = filterByUserCompany(state.employees || []);
-  if (helpers.outsourcedEmployeesOnly) return helpers.outsourcedEmployeesOnly(all);
-  // Fallback só vale se o módulo de regras não carregou. Mesmo predicado do
-  // módulo — lista explícita, nunca `tipo !== 'CLT'` (ver PR #214).
-  const contracted = helpers.CONTRACTED_VINCULOS || CONTRACTED_VINCULOS_FALLBACK;
-  return all.filter((item) => contracted.includes(String(item.tipo_vinculo || '').trim())
-    && Boolean(item.outsourced_company_id));
-}
-
-function renderOutsourcedEmployees() {
-  if (!refs.outsourcedEmployeesTable) return;
-  const helpers = outsourcedEmployeesViewHelpers();
-  const all = outsourcedEmployeesList();
-  const visible = helpers.visibleOutsourcedEmployees
-    ? helpers.visibleOutsourcedEmployees(all, state.outsourcedEmployeesFilters)
-    : all;
-  const canUpdate = hasPermission('employees:update_simplified');
-  refs.outsourcedEmployeesTable.innerHTML = visible
-    .map((item) => formatOutsourcedEmployeeRow(item, { canUpdate }))
-    .join('') || globalThis.dsTableState({
-      colspan: 7,
-      message: tr('outsourcedCompany.employeesEmpty', 'Nenhum colaborador terceirizado/prestador cadastrado.'),
-    });
-}
-
-// Rótulo do vínculo local. Traduz o valor que o BACKEND mandou — não decide
-// nada. Os quatro estados vêm de `local_unit_link_status` (ADR-0002 §13):
-// `null`/ausente = não se aplica; 'none' = aplicável e inexistente nesta
-// Unidade; 'active' = vinculado; 'inactive' = arquivado nesta Unidade.
-function outsourcedEmployeeLinkLabel(status) {
-  if (!status) return '-';
-  if (status === 'active') return tr('employee.unitLinkActive', 'Vinculado');
-  if (status === 'inactive') return tr('employee.unitLinkArchived', 'Arquivado nesta Unidade');
-  return tr('employee.unitLinkAbsent', 'Não vinculado');
-}
-
-// Vincular/ativar/desativar o colaborador NESTA Unidade (ADR-0002 §13, PR B).
-// Não arquiva a pessoa (isso é ARCHIVAL_ENTITIES.outsourcedEmployee) e não
-// autoriza entrega de EPI — o gate continua decidindo pela Unidade atual de
-// movimentação. Some da lista desta Unidade; outras Unidades não são afetadas.
-async function toggleEmployeeUnitLink(entityId, action) {
-  if (!requirePermission(['employees:update', 'employees:update_simplified'])) return;
-  let reason = '';
-  if (action === 'deactivate') {
-    const answer = prompt(tr('employee.unitLinkDeactivateReason', 'Motivo do arquivamento (opcional):'));
-    if (answer === null) return;
-    reason = answer || '';
-  }
-  // Caminho literal em cada ramo, nunca interpolando a ação na URL: o
-  // test_frontend_api_contract.py confronta cada chamada com as rotas
-  // registradas no router e não resolve enum-em-path.
-  let path;
-  if (action === 'link') {
-    path = `/api/employees/${entityId}/link`;
-  } else if (action === 'activate') {
-    path = `/api/employees/${entityId}/unit-link/activate`;
-  } else {
-    path = `/api/employees/${entityId}/unit-link/deactivate`;
-  }
-  try {
-    await api(path, {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, reason }),
-    });
-    await loadEmployees();
-    renderOutsourcedEmployees();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-
-function formatOutsourcedEmployeeRow(item, permissions) {
-  const helpers = outsourcedEmployeesViewHelpers();
-  const vincLabel = helpers.tipoVinculoLabel ? helpers.tipoVinculoLabel(item.tipo_vinculo) : (item.tipo_vinculo || '');
-  const outsourcedCompany = (state.outsourcedCompanies || []).find((c) => String(c.id) === String(item.outsourced_company_id));
-  const companyLabel = outsourcedCompany ? (outsourcedCompany.trade_name || outsourcedCompany.legal_name) : '-';
-  const entityId = escapeHtml(String(item.id ?? ''));
-  const buttons = [];
-  if (permissions.canUpdate) {
-    buttons.push(`<button class="ghost" data-outsourced-employee-edit="${entityId}">${escapeHtml(tr('edit', 'Editar'))}</button>`);
-  }
-  // Mesma dupla de permissões de ARCHIVAL_ENTITIES.outsourcedEmployee.deletePermission
-  // (ADR-0002 §10.5): Administrador Local/Gestor de EPI só têm
-  // employees:update_simplified, nunca employees:delete — sem a segunda
-  // permissão o botão nunca aparecia para o perfil que mais usa esta tela.
-  if (hasPermission('employees:delete') || permissions.canUpdate) {
-    buttons.push(`<button class="ghost" data-outsourced-employee-archive="${entityId}">${escapeHtml(tr('employee.archive', 'Arquivar'))}</button>`);
-  }
-  // Vínculo local com a Unidade selecionada (ADR-0002 §13, PR C1/C2). O estado
-  // vem PRONTO do backend em `local_unit_link_status` — a tela não deduz nada:
-  // não compara unit_id, não infere por empresa, não adivinha. `null`/ausente
-  // significa "não se aplica" (sem Unidade selecionada, ou mão de obra
-  // própria) e nenhuma ação por Unidade aparece.
-  const linkStatus = item.local_unit_link_status;
-  if (permissions.canUpdate && linkStatus) {
-    if (linkStatus === 'active') {
-      buttons.push(`<button class="ghost" data-employee-unit-link-deactivate="${entityId}">`
-        + `${escapeHtml(tr('employee.unitLinkDeactivate', 'Arquivar nesta Unidade'))}</button>`);
-    } else if (linkStatus === 'inactive') {
-      buttons.push(`<button class="ghost" data-employee-unit-link-activate="${entityId}">`
-        + `${escapeHtml(tr('employee.unitLinkActivate', 'Reativar nesta Unidade'))}</button>`);
-    } else {
-      buttons.push(`<button class="ghost" data-employee-unit-link="${entityId}">`
-        + `${escapeHtml(tr('employee.unitLink', 'Vincular à minha unidade'))}</button>`);
-    }
-  }
-  const actions = buttons.length ? `<div class="action-group">${buttons.join('')}</div>` : '-';
-  return `<tr><td>${escapeHtml(item.name || '')}</td><td>${escapeHtml(item.role_name || '')}</td>`
-    + `<td>${escapeHtml(vincLabel)}</td><td>${escapeHtml(companyLabel)}</td>`
-    + `<td>${escapeHtml(item.unit_name || '')}</td>`
-    + `<td>${escapeHtml(outsourcedEmployeeLinkLabel(linkStatus))}</td><td>${actions}</td></tr>`;
-}
-
-function syncOutsourcedEmployeesFilters() {
-  state.outsourcedEmployeesFilters.search = String(refs.outsourcedEmployeesFilterSearch?.value || '').trim();
-  renderOutsourcedEmployees();
-}
-
-function setOutsourcedEmployeeFormMode(mode) {
-  const cancel = document.getElementById('outsourced-employee-cancel-edit');
-  if (cancel) cancel.hidden = mode !== 'edit';
-}
-
-function resetOutsourcedEmployeeForm() {
-  const form = document.getElementById('outsourced-employee-form');
-  if (!form) return;
-  form.reset();
-  form.elements.id.value = '';
-  syncOutsourcedEmployeeUnitOptions();
-  setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
-  setOutsourcedEmployeeFormMode('create');
-}
-
-// Diferente de startEditOutsourcedCompany (que reaproveita state.outsourcedCompanies
-// já carregado), o Cadastro de Colaboradores só tem no bootstrap os campos da
-// listagem geral — origin_company_registration/badge_number/notes só vêm do
-// item único (GET /api/employees/:id), por isso busca de novo ao editar.
-async function startEditOutsourcedEmployee(entityId) {
-  const form = document.getElementById('outsourced-employee-form');
-  if (!form) return;
-  try {
-    const data = await api(`/api/employees/${entityId}?${actorQuery()}`);
-    const item = data.employee || data;
-    if (!item || !item.id) return;
-    form.elements.id.value = item.id;
-    if (form.elements.company_id) form.elements.company_id.value = item.company_id || '';
-    syncOutsourcedEmployeeUnitOptions();
-    if (form.elements.unit_id) form.elements.unit_id.value = item.unit_id || '';
-    syncOutsourcedEmployeeCompanySelect();
-    if (form.elements.outsourced_company_id) form.elements.outsourced_company_id.value = item.outsourced_company_id || '';
-    form.elements.name.value = item.name || '';
-    form.elements.cpf.value = item.cpf || '';
-    form.elements.role_name.value = item.role_name || '';
-    form.elements.tipo_vinculo.value = item.tipo_vinculo || 'Terceirizado';
-    form.elements.admission_date.value = item.admission_date || '';
-    if (form.elements.origin_company_registration) form.elements.origin_company_registration.value = item.origin_company_registration || '';
-    if (form.elements.badge_number) form.elements.badge_number.value = item.badge_number || '';
-    if (form.elements.notes) form.elements.notes.value = item.notes || '';
-    setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeUpdate', 'Atualizar Colaborador'));
-    setOutsourcedEmployeeFormMode('edit');
-    showView('terceirizados');
-    const nav = document.querySelector('[data-vtabs="terceirizados"]');
-    if (nav) activateViewTab(nav, 'colaboradores');
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-// Arquivar reaproveita a MESMA rota/regra do colaborador CLT
-// (/api/employees/:id/archive) — é o mesmo registro, só filtrado nesta
-// tela; reusa archiveEntityRecord(...) para não duplicar o fluxo de
-// motivo/confirmação/auditoria. kind é 'outsourcedEmployee', não 'employee':
-// só o primeiro tem deletePermission com a alternativa
-// employees:update_simplified (ADR-0002 §10.5) e recarrega a lista de
-// arquivados CERTA (archivedOutsourcedEmployees, filtrada outsourced_only=1)
-// — com 'employee' o arquivamento funcionava para quem tinha
-// employees:delete completo, mas atualizava a lista de arquivados errada.
-async function archiveOutsourcedEmployee(entityId) {
-  await archiveEntityRecord('outsourcedEmployee', entityId);
-  renderOutsourcedEmployees();
-}
-
-// ── Relatório de headcount por empresa terceirizada/prestadora (ADR-0002
-// §10.4) — GET /api/outsourced-companies/employees-summary. ─────────────────
-async function loadOutsourcedEmployeesSummary() {
-  if (!hasPermission('employees:view')) return;
-  try {
-    const data = await api(`/api/outsourced-companies/employees-summary?${actorQuery()}`);
-    state.outsourcedEmployeesSummary = data.outsourced_employees_summary || data.items || [];
-  } catch (error) {
-    state.outsourcedEmployeesSummary = [];
-    reportNonCriticalError('[terceirizados] falha ao carregar relatório de colaboradores', error);
-  }
-  renderOutsourcedEmployeesSummary();
-}
-
-function renderOutsourcedEmployeesSummary() {
-  if (!refs.outsourcedEmployeesSummaryTable) return;
-  const items = state.outsourcedEmployeesSummary || [];
-  refs.outsourcedEmployeesSummaryTable.innerHTML = items.map((entry) => {
-    const byTipo = Object.entries(entry.by_tipo_vinculo || {})
-      .map(([tipo, count]) => `${escapeHtml(tipo)}: ${count}`)
-      .join(' · ') || '-';
-    const name = entry.trade_name || entry.legal_name || '';
-    return `<tr><td>${escapeHtml(name)}</td><td>${entry.active_count ?? 0}</td>`
-      + `<td>${entry.archived_count ?? 0}</td><td>${byTipo}</td></tr>`;
-  }).join('') || globalThis.dsTableState({
-    colspan: 4,
-    message: tr('outsourcedCompany.reportsEmpty', 'Nenhuma empresa terceirizada/prestadora cadastrada.'),
-  });
-}
+// Terceirizados e Prestadores: empresas em static/js/modules/outsourced/ui/outsourced-companies-view.js,
+// colaboradores terceirizados/prestadores em .../outsourced-employees-view.js e endpoints em
+// .../integrations/outsourced-api.js (UBX-V4, Etapa B2). Regras puras seguem em js/views/outsourced-*-view.js.
+// archiveOutsourcedEmployee mora em .../outsourced-employees-view.js (UBX-V5, Etapa 1).
 
 // ── Centro de Migração de Dados (ADR-0003, fase 2) ─────────────────────────
 //
@@ -10617,96 +7897,10 @@ function bindDataMigrationEvents() {
   });
 }
 
-// Vínculo jurídico da unidade.
-//
-// Diferente do colaborador, aqui não há imutabilidade: a unidade pode mudar de
-// CNPJ responsável (reorganização societária, troca de operadora da JV). O que
-// o backend não faz é *limpar* o vínculo — enviar vazio mantém o valor atual —
-// então o seletor não oferece uma opção "nenhum" que não teria efeito.
-function syncUnitLegalEntityOptions() {
-  const field = document.getElementById('unit-legal-entity');
-  const wrapper = document.getElementById('unit-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('unit-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId);
-  const previous = field.value;
-  wrapper.hidden = entities.length === 0;
-  field.innerHTML = `<option value="">${tr('legalEntity.selectOptional', 'Selecione o CNPJ')}</option>`
-    + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
+// syncUnitLegalEntityOptions e syncReportLegalEntityOptions: modules/legal-entities/ui/ (UBX-V5, Etapa 2).
 
-function syncReportLegalEntityOptions() {
-  const field = document.getElementById('report-legal-entity');
-  const wrapper = document.getElementById('report-legal-entity-field');
-  if (!field || !wrapper) return;
-  const companyId = document.getElementById('report-company')?.value || state.user?.company_id || '';
-  const entities = legalEntitiesForCompany(companyId, { activeOnly: false });
-  const previous = field.value;
-  wrapper.hidden = entities.length === 0;
-  field.innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>`
-    + legalEntityOptionsHtml(entities);
-  if (previous && entities.some((item) => String(item.id) === String(previous))) {
-    field.value = previous;
-  }
-}
-
-function syncReportOptions() {
-  syncReportLegalEntityOptions();
-  const companyField = document.getElementById('report-company');
-  const unitField = document.getElementById('report-unit');
-  const employeeField = document.getElementById('report-employee');
-  const unitHint = document.getElementById('report-unit-hint');
-  if (!companyField || !unitField || !employeeField) return;
-  const lockByOperationalProfile = isOperationalProfile();
-  const operationalUnitId = String(state.user?.operational_unit_id || '').trim();
-  if (lockByOperationalProfile && state.user?.company_id) {
-    companyField.value = String(state.user.company_id);
-  }
-  const companyId = companyField.value || state.user?.company_id || '';
-  let units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-  if (lockByOperationalProfile && !operationalUnitId) units = [];
-  if (lockByOperationalProfile && operationalUnitId) {
-    units = units.filter((item) => String(item.id) === operationalUnitId);
-  }
-  const previousUnit = String(unitField.value || '');
-  unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
-  if (!units.length) {
-    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
-    unitField.value = '';
-  } else if (lockByOperationalProfile) {
-    unitField.value = String(units[0].id);
-  } else if (previousUnit && units.some((item) => String(item.id) === previousUnit)) {
-    unitField.value = previousUnit;
-  }
-  companyField.disabled = lockByOperationalProfile;
-  unitField.disabled = lockByOperationalProfile;
-  if (unitHint) unitHint.style.display = lockByOperationalProfile ? 'block' : 'none';
-  const selectedUnitId = String(unitField.value || '');
-  const employees = filterByUserCompany(state.employees).filter((item) => {
-    if (companyId && String(item.company_id) !== String(companyId)) return false;
-    if (!selectedUnitId) return true;
-    const employeeUnitId = String(item.current_unit_id || item.unit_id || '');
-    return employeeUnitId === selectedUnitId;
-  });
-  const previousEmployee = String(employeeField.value || '');
-  employeeField.innerHTML = `<option value="">${tr('employee.allEmployees', 'Todos os colaboradores')}</option>` + employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
-  if (previousEmployee && employees.some((item) => String(item.id) === previousEmployee)) {
-    employeeField.value = previousEmployee;
-  } else {
-    employeeField.value = '';
-  }
-}
-
-function formatEpiOptionLabel(item) {
-  const sizeParts = [item.glove_size, item.size, item.uniform_size].filter((value) => value && value !== 'N/A');
-  const manufacturer = item.manufacturer || '';
-  const sizeLabel = sizeParts.length ? ` Tam: ${sizeParts.join(' / ')}` : '';
-  const manufacturerLabel = manufacturer ? ` | Fab: ${manufacturer}` : '';
-  return `${item.name}${manufacturerLabel}${sizeLabel} | ${item.unit_measure}`;
-}
+// syncReportOptions vive em static/js/modules/reports/ui/reports-view.js
+// (UBX-V3, Etapa 4), com o restante de Relatórios.
 
 function syncStockOptions() {
   const companyField = document.getElementById('stock-company');
@@ -11224,59 +8418,8 @@ function setupDrawingCanvas(canvas, clearButton) {
 }
 
 let signaturePadController = null;
-const modalFocusState = new WeakMap();
-const modalKeydownState = new WeakMap();
 
-function getFocusableElements(container) {
-  if (!container) return [];
-  return Array.from(container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
-    .filter((el) => !el.disabled && !el.hidden && el.getAttribute('aria-hidden') !== 'true');
-}
-
-function openModal(modalElement) {
-  if (!modalElement) return;
-  modalFocusState.set(modalElement, document.activeElement instanceof HTMLElement ? document.activeElement : null);
-  modalElement.hidden = false;
-  if ('inert' in modalElement) modalElement.inert = false;
-  modalElement.classList.add('is-open');
-  const focusables = getFocusableElements(modalElement);
-  (focusables[0] || modalElement).focus?.();
-}
-
-function closeModal(modalElement) {
-  if (!modalElement) return;
-  if (modalElement.contains(document.activeElement)) document.activeElement?.blur?.();
-  modalElement.hidden = true;
-  if ('inert' in modalElement) modalElement.inert = true;
-  modalElement.classList.remove('is-open');
-  const previousFocus = modalFocusState.get(modalElement);
-  if (previousFocus?.isConnected) previousFocus.focus();
-}
-
-function bindModalKeyboard(modalElement, onClose) {
-  if (!modalElement || modalKeydownState.has(modalElement)) return;
-  const keydownHandler = (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose?.();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusables = getFocusableElements(modalElement);
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-  safeOn(modalElement, 'keydown', keydownHandler);
-  modalKeydownState.set(modalElement, keydownHandler);
-}
+// Helpers de modal: static/js/modules/shared/ui/dialogs.js (UBX-V4, Etapa A).
 
 function signatureModalRefs() {
   return {
@@ -12468,109 +9611,9 @@ async function copyFichaPeriodMessage(periodId) {
   }
 }
 
-async function renderReports(filters = null) {
-  if (!hasPermission('reports:view')) {
-    recordOptionalBootstrapSectionSkipped('reports', 'missing_permission', { permission: 'reports:view' });
-    return;
-  }
-  const normalizedFilters = filters || collectReportFilters();
-  const params = new URLSearchParams({ ...normalizedFilters, actor_user_id: state.user.id });
-  try {
-    state.reports = await api(`/api/reports?${params.toString()}`);
-  } catch (error) {
-    if (Number(error?.status || 0) === 403) {
-      recordOptionalBootstrapSectionSkipped('reports', 'forbidden', { status: 403, permission: 'reports:view' });
-      return;
-    }
-    reportNonCriticalError('[renderReports] falha ao carregar relatório', error);
-    if (refs.reportSummary) refs.reportSummary.innerHTML = '<div class="summary-item hint">Não foi possível carregar os relatórios agora. Tente novamente.</div>';
-    return;
-  }
-  refs.reportSummary.innerHTML = `<div class="summary-item"><strong>${tr('delivery.list', 'Entregas')}:</strong> ${state.reports.deliveries.length}</div><div class="summary-item"><strong>${tr('report.totalDelivered', 'Total entregue')}:</strong> ${state.reports.total_quantity}</div>`;
-  refs.reportUnits.innerHTML = Object.entries(state.reports.by_unit).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  refs.reportSectors.innerHTML = Object.entries(state.reports.by_sector).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  const reportTipoVinculoEl = document.getElementById('report-tipo-vinculo-summary');
-  if (reportTipoVinculoEl) {
-    reportTipoVinculoEl.innerHTML = Object.entries(state.reports.by_tipo_vinculo || {}).map((item) => `<div class="report-row"><strong>${item[0]}</strong> ${item[1]}</div>`).join('') || `<div class="summary-item">${tr('report.noData', 'Sem dados.')}</div>`;
-  }
-  if (!refs.reportEmployeeFichas) return;
-  const employeeFichas = state.reports.employee_fichas || [];
-  refs.reportEmployeeFichas.innerHTML = employeeFichas.map((item) => {
-    return `<div class="summary-item"><strong>${item.employee_name} (${item.employee_id_code})</strong><div>${tr('report.period', 'Período')}: ${formatDate(item.period_start)} a ${formatDate(item.period_end)} | ${tr('delivery.status', 'Status')}: ${item.status}</div><div>${tr('unit.title', 'Unidade')}: ${item.unit_name || '-'} | ${tr('report.items', 'Itens')}: ${item.total_items} | ${tr('report.totalQuantity', 'Quantidade total')}: ${item.total_quantity}</div></div>`;
-  }).join('') || `<div class="summary-item">${tr('report.selectEmployeeRecords', 'Selecione um colaborador para visualizar as fichas de EPI.')}</div>`;
-  await loadArchiveReports({
-    company_id: normalizedFilters.company_id || '',
-    unit_id: normalizedFilters.unit_id || '',
-    employee_id: normalizedFilters.employee_id || '',
-    sector: normalizedFilters.sector || '',
-    status: normalizedFilters.status || '',
-    date_from: normalizedFilters.start_date || '',
-    date_to: normalizedFilters.end_date || '',
-  });
-}
-
-
-function retentionStatusBadge(status) {
-  const normalized = String(status || 'archived').toLowerCase();
-  if (normalized === 'expired') return renderBadge('status', 'warning', 'expirada');
-  if (normalized === 'purged') return renderBadge('status', 'inactive', 'purgada');
-  return renderBadge('status', 'active', 'arquivada');
-}
-
-function renderArchiveTable() {
-  if (!refs.reportArchiveTable) return;
-  refs.reportArchiveTable.innerHTML = (state.reportArchiveItems || []).map((item) => `
-    <tr>
-      <td>${formatDateTime(item.generated_at)}</td>
-      <td>${item.employee_name || '-'} (${item.employee_id_code || '-'})</td>
-      <td>${item.company_name || '-'}</td>
-      <td>${item.unit_name || '-'}</td>
-      <td>${retentionStatusBadge(item.status)}</td>
-      <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
-      <td>
-        <div class="action-group">
-          <button class="ghost" data-archive-view="${item.id}" data-i18n="ui.compras.visualizar_1acb4b">Visualizar</button>
-          <button class="ghost" data-archive-print="${item.id}" data-i18n="records.print">Imprimir</button>
-          <button class="ghost" data-archive-export="${item.id}" data-i18n="export">Exportar</button>
-        </div>
-      </td>
-    </tr>
-  `).join('') || globalThis.dsTableState({ colspan: 7, message: 'Sem fichas arquivadas para os filtros informados.' });
-  if (refs.reportArchivePagination) {
-    refs.reportArchivePagination.textContent = `Registros: ${state.reportArchiveTotal} | Página ${state.reportArchivePage}`;
-  }
-}
-
-async function loadArchiveReports(filters = {}) {
-  if (!hasPermission('reports:view')) {
-    recordOptionalBootstrapSectionSkipped('report_archive', 'missing_permission', { permission: 'reports:view' });
-    return;
-  }
-  const params = new URLSearchParams({
-    ...filters,
-    page: String(state.reportArchivePage || 1),
-    page_size: String(state.reportArchivePageSize || 50),
-    actor_user_id: String(state.user?.id || '')
-  });
-  let payload;
-  try {
-    payload = await api(`/api/ficha-archive?${params.toString()}`);
-  } catch (error) {
-    if (Number(error?.status || 0) === 403) {
-      recordOptionalBootstrapSectionSkipped('report_archive', 'forbidden', { status: 403, permission: 'reports:view' });
-      return;
-    }
-    reportNonCriticalError('[loadArchiveReports] falha ao carregar arquivo', error);
-    state.reportArchiveItems = [];
-    state.reportArchiveTotal = 0;
-    renderArchiveTable();
-    return;
-  }
-  state.reportArchiveItems = payload.items || [];
-  state.reportArchiveTotal = Number(payload.total || 0);
-  state.fichaRetentionPolicy = payload.retention_policy || state.fichaRetentionPolicy;
-  renderArchiveTable();
-}
+// renderReports, collectReportFilters, renderArchiveTable, retentionStatusBadge,
+// loadArchiveReports e exportReportPdf (Relatórios) vivem em
+// static/js/modules/reports/{ui,business,integrations}/ (UBX-V3, Etapa 4).
 
 async function loadArchivalPolicy() {
   if (!refs.archivalPolicyForm || !hasConfigurationAccess()) return;
@@ -12623,52 +9666,6 @@ async function loadRetentionPolicy() {
   } catch (error) {
     console.warn('[retention-policy] erro ao carregar', error);
   }
-}
-
-function collectReportFilters() {
-  const reportForm = document.getElementById('report-filter-form');
-  const normalizeOptionalInt = (fieldName, value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    if (!/^\d+$/.test(raw)) {
-      throw new Error(`Filtro inválido: ${fieldName} deve ser numérico.`);
-    }
-    return raw;
-  };
-  const normalizeOptionalDate = (fieldName, value) => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      throw new Error(`Filtro inválido: ${fieldName} deve estar no formato AAAA-MM-DD.`);
-    }
-    return raw;
-  };
-  const values = {
-    company_id: normalizeOptionalInt('company_id', reportForm?.querySelector('#report-company')?.value),
-    legal_entity_id: normalizeOptionalInt('legal_entity_id', reportForm?.querySelector('#report-legal-entity')?.value),
-    unit_id: normalizeOptionalInt('unit_id', reportForm?.querySelector('#report-unit')?.value),
-    employee_id: normalizeOptionalInt('employee_id', reportForm?.querySelector('#report-employee')?.value),
-    sector: String(reportForm?.querySelector('#report-sector')?.value || '').trim(),
-    tipo_vinculo: String(reportForm?.querySelector('#report-tipo-vinculo')?.value || '').trim(),
-    epi_id: normalizeOptionalInt('epi_id', reportForm?.querySelector('#report-epi')?.value),
-    status: String(reportForm?.querySelector('#report-ficha-status')?.value || '').trim(),
-    start_date: normalizeOptionalDate('start_date', reportForm?.querySelector('input[name="start_date"]')?.value),
-    end_date: normalizeOptionalDate('end_date', reportForm?.querySelector('input[name="end_date"]')?.value)
-  };
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-}
-
-function exportReportPdf() {
-  if (!requirePermission('reports:view')) return;
-  let filters;
-  try {
-    filters = collectReportFilters();
-  } catch (error) {
-    alert(error?.message || 'Filtros inválidos.');
-    return;
-  }
-  const params = new URLSearchParams({ actor_user_id: state.user?.id || '', ...filters });
-  globalThis.open(`/api/reports.pdf?${params.toString()}`, '_blank');
 }
 
 function refreshDeliveryContext({ syncUnit = false } = {}) {
@@ -12842,7 +9839,11 @@ function clearUserEmployeeFields(unitField) {
   if (unitField) unitField.value = '';
 }
 
-function renderAll() {
+function renderAll(options = null) {
+  const preserveView = options?.preserveView === true;
+  // Mutation refreshes keep the current module; initial/session loads retain
+  // their default navigation. showView still enforces the current RBAC gates.
+  const activeView = preserveView ? viewAtivaNoDom() : '';
   refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
   applySpaNavigationVisibility();
   applyPhase3UiVisibility();
@@ -12901,8 +9902,8 @@ function renderAll() {
     }
   }
   const preferredView = isSpaNavigationEnabled() ? resolveViewFromLocation() : '';
-  const nextView = preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView();
-  showView(nextView, { partial: isSpaNavigationEnabled(), historyMode: isSpaNavigationEnabled() ? 'replace' : null });
+  const nextView = activeView || (preferredView && VIEW_PERMISSIONS[preferredView] ? preferredView : defaultView());
+  showView(nextView, { partial: !preserveView && isSpaNavigationEnabled(), historyMode: !preserveView && isSpaNavigationEnabled() ? 'replace' : null });
 
 }
 
@@ -13086,21 +10087,11 @@ async function saveUser(event) {
   try {
     setUserFormFeedback('');
     const values = formValues(refs.userForm);
-    values.actor_user_id = state.user.id;
-    if (['general_admin', 'admin'].includes(state.user.role)) values.company_id = state.user.company_id;
+    // Regras de cliente em modules/users/business/user-form.js; o ROLE_LABELS
+    // passado é o deste arquivo (o de core/constants.js tem um perfil a mais).
+    globalThis.__EPI_USERS_BUSINESS__.prepareUserFormValues(values, { actor: state.user, roleLabels: ROLE_LABELS });
 
-    values.active = Number(values.active || 1);
-    if (!String(values.company_id || '').trim()) throw new Error('Empresa Usuário.');
-    if (!ROLE_LABELS[values.role]) throw new Error('Perfil inválido.');
-    const noLink = !String(values.linked_employee_id || '').trim();
-    if (['admin', 'user'].includes(values.role) && noLink) {
-      throw new Error('Administrador Local e Gestor de EPI devem ser vinculados a um colaborador com unidade.');
-    }
-    if (noLink && !['master_admin', 'general_admin'].includes(state.user?.role)) {
-      throw new Error('Seu perfil Não permite ví­nculo de colaborador.');
-    }
-
-    await api(state.editingUserId ? `/api/users/${state.editingUserId}` : '/api/users', { method: state.editingUserId ? 'PUT' : 'POST', body: JSON.stringify(values) });
+    await globalThis.__EPI_USERS_API__.saveUser(state.editingUserId, values);
     setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
     resetUserForm();
     await loadBootstrap();
@@ -13108,12 +10099,6 @@ async function saveUser(event) {
     setUserFormFeedback(error.message, true);
     alert(error.message);
   }
-}
-
-function normalizeEpiSizes(values) {
-  values.glove_size = String(values.glove_size || 'N/A');
-  values.size = String(values.size || 'N/A');
-  values.uniform_size = String(values.uniform_size || 'N/A');
 }
 
 function setEpiValidity(values) {
@@ -13124,62 +10109,13 @@ function setEpiValidity(values) {
   values.validity_days = months * 30;
 }
 
-async function setEpiPhotoData(values, editingId) {
-  const photoFile = document.getElementById('epi-photo-file')?.files?.[0];
-  if (photoFile) {
-    values.epi_photo_data = await fileToDataUrl(photoFile);
-  } else if (editingId) {
-    const currentEpi = state.epis.find((epi) => String(epi.id) === String(editingId));
-    values.epi_photo_data = currentEpi?.epi_photo_data || '';
-  }
-}
-
-async function prepareEpiFormValues(values, editingId, event) {
-  const parsedActiveJoinventure = parseActiveJoinventureToken(values.active_joinventure);
-  if (parsedActiveJoinventure.name && parsedActiveJoinventure.unit_id) {
-    values.unit_id = parsedActiveJoinventure.unit_id;
-  }
-  if (!parsedActiveJoinventure.name && String(values.unit_id || '') === EPI_ALL_UNITS_VALUE) {
-    values.unit_id = '';
-  }
-  values.active_joinventure = parsedActiveJoinventure.name || '';
-  values.stock = 0;
-  
-  normalizeEpiSizes(values);
-  setEpiValidity(values);
-  
-  values.joinventures_json = document.getElementById('epi-joinventures')?.value || '[]';
-  
-  if (!values.epi_photo_data && editingId) {
-    await setEpiPhotoData(values, editingId);
-  }
-  return values;
-}
-
-function resetEpiForm(form) {
-  if (form.elements.id) form.elements.id.value = '';
-  const hidden = document.getElementById('epi-joinventures');
-  if (hidden) hidden.value = '[]';
-  if (form.elements.epi_photo_data) form.elements.epi_photo_data.value = '';
-  const photoFile = document.getElementById('epi-photo-file');
-  if (photoFile) photoFile.value = '';
-  renderEpiPhotoPreview('');
-  renderJoinventureList();
-  if (form.elements.unit_id) {
-    form.elements.unit_id.value = canUseEpiAllUnitsScope()
-      ? EPI_ALL_UNITS_VALUE
-      : (form.elements.unit_id.options[0]?.value || '');
-  }
-  if (form.elements.active_joinventure) form.elements.active_joinventure.value = '';
-  applyEpiJoinventureRules();
-  setFormSubmitLabel('epi-form', 'Salvar EPI');
-}
-
 async function saveSimpleForm(event, path, permission) {
   event.preventDefault();
+  // name="id" shadows HTMLFormElement.id in real browsers.
+  const formId = event.target.getAttribute('id');
   if (!requirePermission(permission)) return;
   if (event.target.dataset.submitting === '1') return;
-  if (event.target.id === 'delivery-form') {
+  if (formId === 'delivery-form') {
     document.dispatchEvent(new CustomEvent('epi:delivery-submit-start'));
   }
   event.target.dataset.submitting = '1';
@@ -13190,19 +10126,19 @@ async function saveSimpleForm(event, path, permission) {
     const editingId = String(values.id || '').trim();
     if ('id' in values) delete values.id;
     
-    if (event.target.id === 'epi-form') {
+    if (formId === 'epi-form') {
       await prepareEpiFormValues(values, editingId, event);
     }
     // Reenvio depois do aviso de possível duplicata por nome (ADR-0002
     // §12 item 15 do pedido) — handleOutsourcedCompanyDuplicateError arma
     // esta flag e resubmete o formulário; consumo único, nunca herda para
     // o próximo cadastro.
-    if (event.target.id === 'outsourced-company-form') {
+    if (formId === 'outsourced-company-form') {
       if (event.target.dataset.confirmDuplicate === '1') values.confirm_duplicate = true;
       delete event.target.dataset.confirmDuplicate;
     }
     let deliveryHandledInBatch = false;
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       const companyField = document.getElementById('delivery-company');
       const unitField = document.getElementById('delivery-unit-filter');
       const epiField = document.getElementById('delivery-epi');
@@ -13286,7 +10222,7 @@ async function saveSimpleForm(event, path, permission) {
     const updatePermission = event.target.dataset.updatePermission || permission;
     if (editingId && !requirePermission(updatePermission)) return;
     let requestPath = editingId ? `${path}/${editingId}` : path;
-    if (event.target.id === 'delivery-form' && refs.deliveryIsDevolution?.checked) {
+    if (formId === 'delivery-form' && refs.deliveryIsDevolution?.checked) {
       requestPath = '/api/devolutions';
       delete values.company_id;
       delete values.unit_id;
@@ -13306,34 +10242,34 @@ async function saveSimpleForm(event, path, permission) {
       payload = await api(requestPath, { method: editingId ? 'PUT' : 'POST', body: JSON.stringify(values) });
     }
     
-    if (event.target.id === 'employee-form' && payload?.employee_access_link) {
+    if (formId === 'employee-form' && payload?.employee_access_link) {
       await handleEmployeeFormSuccess(payload.employee_access_link);
     }
     
     event.target.reset();
     handleFormReset(event.target);
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-success'));
     }
     
-    await loadBootstrap();
+    await loadBootstrap({ preserveView: ['employee-form', 'outsourced-company-form', 'outsourced-employee-form'].includes(formId) });
     // Terceirizados e Prestadores não vem no bootstrap (módulo opt-in) —
     // recarrega a lista à parte, mesma lógica de loadOutsourcedCompanies().
-    if (event.target.id === 'outsourced-company-form') {
+    if (formId === 'outsourced-company-form') {
       await loadOutsourcedCompanies();
     }
     // Cadastro de Colaboradores simplificado: deriva de state.employees, que
     // loadBootstrap() acima já atualizou — só falta re-renderizar a tabela
     // (o reset do modo de edição já roda em handleFormReset, como no
     // outsourced-company-form).
-    if (event.target.id === 'outsourced-employee-form') {
+    if (formId === 'outsourced-employee-form') {
       renderOutsourcedEmployees();
     }
   } catch (error) {
-    if (event.target.id === 'delivery-form') {
+    if (formId === 'delivery-form') {
       document.dispatchEvent(new CustomEvent('epi:delivery-submit-error', { detail: { message: String(error?.message || '') } }));
     }
-    if (event.target.id === 'outsourced-company-form' && await handleOutsourcedCompanyDuplicateError(error, event.target)) {
+    if (formId === 'outsourced-company-form' && await handleOutsourcedCompanyDuplicateError(error, event.target)) {
       return;
     }
     alert(error.message);
@@ -13343,42 +10279,38 @@ async function saveSimpleForm(event, path, permission) {
   }
 }
 
-async function handleEmployeeFormSuccess(accessLink) {
-  try {
-    await navigator.clipboard?.writeText(accessLink);
-  } catch (error) {
-    console.warn('[employee-form] Falha ao copiar link para area de transferencia:', error);
-  }
-  alert(`Colaborador cadastrado com sucesso.\nLink de acesso externo:\n${accessLink}`);
-}
-
 function handleFormReset(form) {
-  if (form.id === 'epi-form') {
+  const formId = form.getAttribute('id');
+  // Native reset preserves hidden input values (including the edit identity).
+  if (['employee-form', 'outsourced-company-form', 'outsourced-employee-form'].includes(formId)) {
+    form.elements.id.value = '';
+  }
+  if (formId === 'epi-form') {
     resetEpiForm(form);
-  } else if (form.id === 'legal-entity-form') {
+  } else if (formId === 'legal-entity-form') {
     setFormSubmitLabel('legal-entity-form', tr('legalEntity.save', 'Salvar CNPJ'));
     if (form.elements.active) form.elements.active.value = '1';
     setLegalEntityFormMode('create');
     syncLegalEntityCompanyField();
-  } else if (form.id === 'outsourced-company-form') {
+  } else if (formId === 'outsourced-company-form') {
     setFormSubmitLabel('outsourced-company-form', tr('outsourcedCompany.save', 'Salvar Empresa'));
     setOutsourcedCompanyFormMode('create');
     syncOutsourcedCompanyUnitOptions();
     applyOutsourcedCompanyCorporateLock(null);
-  } else if (form.id === 'outsourced-employee-form') {
+  } else if (formId === 'outsourced-employee-form') {
     setFormSubmitLabel('outsourced-employee-form', tr('outsourcedCompany.employeeSave', 'Salvar Colaborador'));
     setOutsourcedEmployeeFormMode('create');
     syncOutsourcedEmployeeUnitOptions();
-  } else if (form.id === 'unit-form') {
+  } else if (formId === 'unit-form') {
     setFormSubmitLabel('unit-form', 'Salvar unidade');
-  } else if (form.id === 'employee-form') {
+  } else if (formId === 'employee-form') {
     setFormSubmitLabel('employee-form', 'Salvar colaborador');
     // Volta ao modo de admissão: o CNPJ é escolhível de novo.
     setEmployeeLegalEntityLock('', false);
     const tipoVinculoEl = document.getElementById('employee-tipo-vinculo');
     if (tipoVinculoEl) tipoVinculoEl.value = 'CLT';
     syncEmpresaOrigemVisibility();
-  } else if (form.id === 'delivery-form') {
+  } else if (formId === 'delivery-form') {
     form.elements.delivery_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.value = new Date().toISOString().split('T')[0];
     form.elements.next_replacement_date.dataset.autoSuggested = '1';
@@ -14447,23 +11379,18 @@ async function reprintStockLabelByQr() {
 async function saveEmployeeMovement(event) {
   event.preventDefault();
   if (!requirePermission('employees:transfer')) return;
-  try {
-    const values = formValues(event.target);
-    values.actor_user_id = state.user.id;
-    await api('/api/employee-unit-movements', { method: 'POST', body: JSON.stringify(values) });
+  return runExclusiveMutation('employee-movement', async () => {
+    try {
+      const values = formValues(event.target);
+      values.actor_user_id = state.user.id;
+      await api('/api/employee-unit-movements', { method: 'POST', body: JSON.stringify(values) });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
     event.target.reset();
-    await loadBootstrap();
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-function syncUserFilters() {
-  state.userFilters.company_id = refs.userFilterCompany.value;
-  state.userFilters.role = refs.userFilterRole.value;
-  state.userFilters.active = refs.userFilterStatus.value;
-  state.userFilters.search = refs.userFilterSearch.value.trim().toLowerCase();
-  renderTables();
+    await refreshAfterMutation(() => loadBootstrap({ preserveView: true }));
+  });
 }
 
 
@@ -14477,137 +11404,9 @@ function syncUserFilters() {
 // tenant). O backend deriva a empresa do usuário autenticado — o frontend
 // nunca envia company_id/tenant_id para estas rotas.
 
-const MY_COMPANY_IMAGE_TYPES = {
-  logo_type: ['image/png', 'image/jpeg', 'image/svg+xml'],
-  favicon_type: ['image/png', 'image/svg+xml'],
-  login_logo_type: ['image/png', 'image/svg+xml']
-};
-const MY_COMPANY_COLOR_DEFAULTS = { primary_color: '#1565C0', secondary_color: '#42A5F5', accent_color: '#FF6F00' };
-
-function canConfigureMyCompany() {
-  return Boolean(state.user) && hasPermission('company_settings:update');
-}
-
-function myCompanyThemeMode(company) {
-  try { return JSON.parse(company?.theme_json || '{}').mode || 'auto'; } catch { return 'auto'; }
-}
-
-function fillMyCompanyFields(container, company) {
-  if (!container || !company) return;
-  container.querySelectorAll('[data-mc-field]').forEach((field) => {
-    const name = field.dataset.mcField;
-    if (name === 'theme_mode') { field.value = myCompanyThemeMode(company); return; }
-    if (field.type === 'color') {
-      field.value = normalizeHexColor(company[name], MY_COMPANY_COLOR_DEFAULTS[name] || '#1565C0');
-      return;
-    }
-    field.value = company[name] ?? '';
-  });
-  container.querySelectorAll('[data-mc-preview]').forEach((preview) => {
-    renderMyCompanyImagePreview(container, preview.dataset.mcPreview);
-  });
-}
-
-function renderMyCompanyImagePreview(container, name) {
-  const preview = container.querySelector(`[data-mc-preview="${name}"]`);
-  if (!preview) return;
-  const hidden = container.querySelector(`[data-mc-field="${name}"]`);
-  const value = hidden?.value || '';
-  preview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Imagem', logo_type: value }, 'company-logo company-logo-lg')}<span>${value ? 'Imagem carregada' : 'Imagem padrão em uso'}</span></div>`;
-}
-
-function collectMyCompanyFields(container) {
-  const values = {};
-  if (!container) return values;
-  container.querySelectorAll('[data-mc-field]').forEach((field) => {
-    const name = field.dataset.mcField;
-    if (name === 'theme_mode') {
-      values.theme_json = JSON.stringify({ mode: field.value || 'auto' });
-      return;
-    }
-    values[name] = String(field.value || '').trim();
-  });
-  return values;
-}
-
-function wireMyCompanyImageInputs(container) {
-  if (!container) return;
-  container.querySelectorAll('[data-mc-image]').forEach((input) => {
-    if (input.dataset.mcWired) return;
-    input.dataset.mcWired = '1';
-    bindAppListener(input, 'change', async () => {
-      const name = input.dataset.mcImage;
-      const file = input.files?.[0];
-      const hidden = container.querySelector(`[data-mc-field="${name}"]`);
-      if (!file || !hidden) return;
-      if (!(MY_COMPANY_IMAGE_TYPES[name] || []).includes(file.type)) {
-        alert('Formato de imagem não suportado para este campo.');
-        input.value = '';
-        return;
-      }
-      try {
-        hidden.value = name === 'logo_type' ? await fileToJpegDataUrl(file) : await fileToDataUrl(file);
-        renderMyCompanyImagePreview(container, name);
-      } catch (error) {
-        alert(error.message);
-        input.value = '';
-      }
-    });
-  });
-}
-
-async function loadMyCompany(force = false) {
-  if (!canConfigureMyCompany()) return null;
-  if (state.myCompany && !force) return state.myCompany;
-  const payload = await api(`/api/my-company?${actorQuery()}`);
-  state.myCompany = payload.company || null;
-  return state.myCompany;
-}
-
-function renderMyCompanyReadonly(company) {
-  const box = document.getElementById('my-company-readonly');
-  if (!box || !company) return;
-  box.innerHTML = `<strong>Contrato (somente leitura)</strong><span>Plano: ${company.plan_name || '-'} · Limite de usuários: ${company.user_limit || '-'} · Licença: ${company.license_status || '-'}</span>`;
-}
-
-async function loadMyCompanyCard(force = false) {
-  const form = document.getElementById('my-company-form');
-  if (!form || !canConfigureMyCompany()) return;
-  try {
-    const company = await loadMyCompany(force);
-    if (!company) return;
-    fillMyCompanyFields(form, company);
-    renderMyCompanyReadonly(company);
-    wireMyCompanyImageInputs(form);
-    if (!form.dataset.mcWired) {
-      form.dataset.mcWired = '1';
-      bindAppListener(form, 'submit', saveMyCompany);
-      bindAppListener(document.getElementById('my-company-domain-add'), 'click', addMyCompanyDomain);
-      bindAppListener(document.getElementById('my-company-domains-table'), 'click', handleMyCompanyDomainAction);
-    }
-    void loadMyCompanyDomains();
-  } catch (error) {
-    console.warn('[my-company] falha ao carregar configurações da empresa', error);
-  }
-}
-
-async function saveMyCompany(event) {
-  event.preventDefault();
-  const form = document.getElementById('my-company-form');
-  if (!form || !canConfigureMyCompany()) return;
-  const feedback = document.getElementById('my-company-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    const values = collectMyCompanyFields(form);
-    values.actor_user_id = state.user.id;
-    const payload = await api('/api/my-company', { method: 'PUT', body: JSON.stringify(values) });
-    state.myCompany = payload.company || state.myCompany;
-    if (feedback) feedback.textContent = 'Configurações da empresa salvas com sucesso.';
-    await loadBootstrap();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-  }
-}
+// Minha Empresa (configurações, imagens, tema, leitura, gravação) e as ações de domínio:
+// static/js/modules/my-company/{business,integrations,ui}/ (UBX-V5, Etapa 2). canConfigureMyCompany: modules/auth/
+// (UBX-V4, Etapa C). renderMyCompanyDomains fica abaixo (alterada pelo PR pendente I18N-FULL-V1).
 
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
@@ -14720,21 +11519,8 @@ async function confirmOnboarding2fa() {
 }
 
 // ── Domínios da tenant (Minha Empresa) ───────────────────────────────────────
-
-async function loadMyCompanyDomains() {
-  const table = document.getElementById('my-company-domains-table');
-  if (!table || !canConfigureMyCompany()) return;
-  try {
-    const payload = await api(`/api/my-company/domains?${actorQuery()}`);
-    renderMyCompanyDomains(Array.isArray(payload?.domains) ? payload.domains : []);
-  } catch (error) {
-    table.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
-  }
-}
-
-function domainStatusLabel(status) {
-  return { pending: 'Pendente', verified: 'Verificado', failed: 'Falhou', active: 'Ativo' }[status] || status || '-';
-}
+// loadMyCompanyDomains, domainStatusLabel, addMyCompanyDomain e handleMyCompanyDomainAction:
+// static/js/modules/my-company/ui/ (UBX-V5, Etapa 2).
 
 function renderMyCompanyDomains(domains) {
   const table = document.getElementById('my-company-domains-table');
@@ -14760,46 +11546,6 @@ function renderMyCompanyDomains(domains) {
       ? `Para ativar <strong>${pending.full_host}</strong>: crie um CNAME apontando para <code>${pending.cname_target}</code> ` +
         `e um registro TXT em <code>${pending.txt_record}</code> com o valor <code>${pending.verification_token}</code>, depois clique em Verificar.`
       : '';
-  }
-}
-
-async function addMyCompanyDomain() {
-  const feedback = document.getElementById('my-company-domain-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    const domain = String(document.getElementById('my-company-domain-input')?.value || '').trim();
-    const domainType = String(document.getElementById('my-company-domain-type')?.value || 'custom_domain');
-    if (!domain) throw new Error('Informe o domínio a registrar.');
-    await api('/api/my-company/domains', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id, domain, domain_type: domainType }) });
-    const input = document.getElementById('my-company-domain-input');
-    if (input) input.value = '';
-    if (feedback) feedback.textContent = 'Domínio registrado. Siga as instruções de DNS e clique em Verificar.';
-    await loadMyCompanyDomains();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-  }
-}
-
-async function handleMyCompanyDomainAction(event) {
-  const target = event.target;
-  const feedback = document.getElementById('my-company-domain-feedback');
-  if (feedback) feedback.textContent = '';
-  try {
-    if (target.dataset.domainVerify) {
-      await api(`/api/my-company/domains/${target.dataset.domainVerify}/verify`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-      if (feedback) feedback.textContent = 'Domínio verificado com sucesso.';
-    } else if (target.dataset.domainPrimary) {
-      await api(`/api/my-company/domains/${target.dataset.domainPrimary}/primary`, { method: 'POST', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    } else if (target.dataset.domainDelete) {
-      if (!confirm('Remover este domínio da sua empresa?')) return;
-      await api(`/api/my-company/domains/${target.dataset.domainDelete}`, { method: 'DELETE', body: JSON.stringify({ actor_user_id: state.user.id }) });
-    } else {
-      return;
-    }
-    await loadMyCompanyDomains();
-  } catch (error) {
-    if (feedback) feedback.textContent = error.message; else alert(error.message);
-    await loadMyCompanyDomains();
   }
 }
 
@@ -16263,16 +13009,16 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
       try {
         if (!state || !state.user) return; // só re-renderiza quando autenticado
         const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '');
-        if (activeView && typeof showView === 'function') {
-          showView(activeView, { partial: false });
-        }
-        // Re-executa o refresh do módulo ativo para atualizar conteúdo JS-gerado
-        // (cards de KPI, seletores de filtro, botões de ação) sem buscar novos dados.
-        if (activeView && typeof resolveInteractiveToolsModule === 'function') {
-          const mod = resolveInteractiveToolsModule(activeView);
-          if (mod && typeof mod.refresh === 'function') {
-            void Promise.resolve().then(() => mod.refresh());
+        // Idioma só redesenha apresentação: showView/refresh também carregam
+        // dados e disparam eventos de navegação, que podem apagar um rascunho.
+        if (activeView) {
+          const titleText = document.querySelector(`.menu-link[data-view="${activeView}"]`)?.textContent;
+          if (refs.viewTitle && titleText) {
+            refs.viewTitle.textContent = titleText;
+            document.title = `${titleText} · Controle de EPI`;
           }
+          if (refs.topbarEyebrow) refs.topbarEyebrow.textContent = VIEW_EYEBROW[activeView] || 'EPI Controle';
+          updateNavBackUi(activeView);
         }
         // Atualiza os filtros de usuário (seletor de perfil e status) se visível
         if (typeof populateUserFilters === 'function') {
@@ -16831,9 +13577,7 @@ async function executePrConferenciaAction(prId, prItems) {
 
 const purchaseQrLabelsByPr = {};
 
-function canPrintPurchaseQrLabels() {
-  return hasPermission('purchase_requests:update') || hasPermission('stock:adjust') || hasPermission('stock:view');
-}
+// canPrintPurchaseQrLabels: modules/auth/ (UBX-V4, Etapa C).
 
 async function openPurchaseQrPrintFromDetail(prId) {
   let labels = purchaseQrLabelsByPr[prId];
@@ -17849,9 +14593,7 @@ const _purchaseFunctionSelectedUnitIds = new Set();
 let _purchaseFunctionUnitSearch = '';
 let _purchaseFunctionEmployeeSearch = '';
 
-function canManagePurchaseFunctions() {
-  return ['general_admin', 'registry_admin'].includes(state.user?.role) && hasPermission('unit_links:manage');
-}
+// canManagePurchaseFunctions: modules/auth/ (UBX-V4, Etapa C).
 
 function _getBuyerApproverUserEntry(employeeId) {
   return (state.users || []).find(u => String(u.linked_employee_id) === String(employeeId) && ['buyer','approver'].includes(u.role));
@@ -20123,8 +16865,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   }
 });
 
+// api/apiOptional saíram desta lista na UBX-V3 (Etapa 3): moram em
+// modules/api-client.js, que já os publica em globalThis antes do app.js.
 Object.assign(globalThis, {
-  api, apiOptional, loadBootstrap,
+  loadBootstrap,
   loadAuthorizedSuppliers, loadPurchaseDemands, loadPurchaseRequests,
   loadPurchaseOrders, loadAprovacoesSolicitacoes, loadFornecedoresPurchaseFunctions,
   importSuppliersCSV, saveEditSupplier, openPoDetail, openPrDetail,

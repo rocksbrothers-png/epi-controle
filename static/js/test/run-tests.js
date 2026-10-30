@@ -70,7 +70,33 @@ function loadModule(relPath) {
   // Refatoração UBX: camada Business de Compras extraída do app.js.
   'modules/purchases/business/purchase-import-matching.js',
   // UBX-V2: formatação e leitura de valores compartilhadas.
-  'modules/shared/business/value-format.js'
+  'modules/shared/business/value-format.js',
+  // UBX-V3: identificação de elementos e campos de formulário.
+  'modules/shared/ui/form-field-identity.js',
+  // UBX-V3: rótulos de domínio traduzidos com tr.
+  'modules/shared/ui/domain-labels.js',
+  // UBX-V3: Relatórios (business → integrations → ui).
+  'modules/reports/business/report-filters.js',
+  'modules/reports/integrations/reports-api.js',
+  'modules/reports/ui/reports-view.js',
+  // UBX-V3: cadastro de EPI e leitura de arquivo.
+  'modules/shared/ui/file-data-url.js',
+  'modules/epis/business/epi-form-values.js',
+  'modules/epis/ui/epi-registration.js',
+  'modules/users/business/user-form.js',
+  'modules/users/integrations/users-api.js',
+  'modules/users/ui/users-view.js',
+  'modules/shared/ui/dialogs.js',
+  'modules/shared/ui/mutation-flow.js',
+  'modules/auth/business/access-rules.js',
+  'modules/auth/ui/access-context.js',
+  'modules/employees/business/employee-rules.js',
+  'modules/employees/integrations/employees-api.js',
+  'modules/employees/ui/employees-view.js',
+  'modules/outsourced/integrations/outsourced-api.js',
+  'modules/outsourced/ui/outsourced-companies-view.js',
+  'modules/outsourced/ui/outsourced-company-requests-view.js',
+  'modules/outsourced/ui/outsourced-employees-view.js'
 ].forEach(loadModule);
 
 // ── Mini framework ────────────────────────────────────────────────────────
@@ -2332,7 +2358,7 @@ function criarNoF5B(tag, attrs = {}) {
       }
     },
     setAttribute(k, v) { no._attrs[k] = String(v); },
-    getAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k) ? no._attrs[k] : null; },
+    getAttribute(k) { if (k === 'id') {return no.id || null;} return Object.prototype.hasOwnProperty.call(no._attrs, k) ? no._attrs[k] : null; },
     hasAttribute(k) { return Object.prototype.hasOwnProperty.call(no._attrs, k); },
     removeAttribute(k) { delete no._attrs[k]; },
     appendChild(filho) { filho.parent = no; no.children.push(filho); return filho; },
@@ -7738,6 +7764,25 @@ require('./purchase-lot-capture-runtime')({ testAsync, assert, eq });
 require('./stock-physical-runtime')({ testAsync, assert, eq });
 require('./purchase-quote-import-runtime')({ test, testAsync, assert, eq });
 require('./shared-value-format-runtime')({ test, assert, eq });
+require('./shared-form-field-identity-runtime')({ test, assert, eq });
+require('./shared-domain-labels-runtime')({ test, assert, eq });
+require('./api-client-legacy-runtime')({ testAsync, test, assert, eq });
+require('./reports-view-runtime')({ testAsync, test, assert, eq });
+require('./epis-registration-runtime')({ testAsync, test, assert, eq });
+require('./users-view-runtime')({ testAsync, test, assert, eq });
+require('./shared-dialogs-runtime')({ testAsync, test, assert, eq });
+require('./fix-colab-terc-runtime')({ testAsync, test, assert, eq });
+require('./fix-nav-refresh-runtime')({ testAsync, test, assert, eq });
+require('./employees-view-runtime')({ testAsync, test, assert, eq });
+require('./outsourced-view-runtime')({ testAsync, test, assert, eq });
+require('./archival-view-runtime')({ testAsync, test, assert, eq });
+require('./units-legal-entities-runtime')({ testAsync, test, assert, eq });
+require('./companies-view-runtime')({ testAsync, test, assert, eq });
+require('./my-company-view-runtime')({ testAsync, test, assert, eq });
+require('./access-rules-runtime')({ test, assert, eq });
+require('./extracted-globals-ownership-runtime')({ test, assert });
+require('./empresas-active-runtime')({ testAsync, test, assert, eq });
+require('./security-logo-xss-runtime')({ test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

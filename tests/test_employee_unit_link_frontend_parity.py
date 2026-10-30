@@ -24,6 +24,23 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 def _read(*parts):
     return (REPO_ROOT.joinpath(*parts)).read_text(encoding='utf-8')
 
+def _app_and_outsourced_modules_js():
+    """`app.js` + os módulos de Terceirizados (UBX-V4, Etapa B2).
+
+    A UI, os endpoints e o fallback de vínculos contratados saíram do app.js
+    para static/js/modules/outsourced/ — as asserções continuam as mesmas,
+    sobre o código que hoje os contém.
+    """
+    import glob
+    import os as _os
+    root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    parts = [_read('static', 'app.js')]
+    for path in sorted(glob.glob(_os.path.join(root, 'static', 'js', 'modules', 'outsourced', '**', '*.js'), recursive=True)):
+        with open(path, encoding='utf-8') as handle:
+            parts.append(handle.read())
+    return '\n'.join(parts)
+
+
 
 def _strip_js_comments(body):
     """Remove comentários antes de procurar o anti-padrão.
@@ -54,7 +71,7 @@ def test_the_app_js_fallback_matches_too():
     um script carregou ou não — o pior tipo de bug para reproduzir."""
     from modules.employees.service import CONTRACTED_VINCULOS
 
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     match = re.search(r'const CONTRACTED_VINCULOS_FALLBACK = \[(.*?)\];', app_js, re.DOTALL)
     assert match, 'CONTRACTED_VINCULOS_FALLBACK não encontrada em app.js'
     fallback = tuple(re.findall(r"'([^']+)'", match.group(1)))
@@ -189,11 +206,12 @@ def test_both_frontends_gate_archiving_with_the_same_pair_of_permissions():
     some para eles ali e continua aparecendo no outro — mesma pessoa, mesmo
     perfil, telas discordando sobre o que ela pode fazer.
     """
-    app_js = _read('static', 'app.js')
+    # ARCHIVAL_ENTITIES saiu do app.js na UBX-V5, Etapa 1.
+    rules_js = _read('static', 'js', 'modules', 'archival', 'business', 'archival-rules.js')
     match = re.search(
-        r"outsourcedEmployee:.*?deletePermission:\s*'([^']+)'", app_js, re.DOTALL
+        r"outsourcedEmployee:.*?deletePermission:\s*'([^']+)'", rules_js, re.DOTALL
     )
-    assert match, 'deletePermission de outsourcedEmployee não encontrada em app.js'
+    assert match, 'deletePermission de outsourcedEmployee não encontrada em archival-rules.js'
     web_pair = set(match.group(1).split())
 
     tab = _read(
@@ -282,7 +300,7 @@ def test_no_code_decides_who_is_outsourced_by_comparing_against_clt(path):
 
 def test_the_frontend_reads_the_link_state_instead_of_deducing_it():
     """A tela consome `local_unit_link_status`; não reconstrói o estado."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'local_unit_link_status' in app_js, (
         'app.js precisa consumir local_unit_link_status — o estado do vínculo '
         'é decidido pelo backend (PR C1), não pela tela.'
@@ -293,7 +311,7 @@ def test_the_three_link_paths_are_literal_not_interpolated():
     """`test_frontend_api_contract.py` confronta cada chamada com as rotas
     registradas e não resolve enum-em-path. Interpolar a ação na URL faria a
     verificação de contrato deixar de enxergar estas três chamadas."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     for path in (
         '/api/employees/${entityId}/link',
         '/api/employees/${entityId}/unit-link/activate',
@@ -318,7 +336,7 @@ def test_the_status_values_used_by_the_screen_match_the_backend():
         UNIT_LINK_STATUS_INACTIVE,
     )
 
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert f"linkStatus === '{UNIT_LINK_STATUS_ACTIVE}'" in app_js
     assert f"linkStatus === '{UNIT_LINK_STATUS_INACTIVE}'" in app_js
 
@@ -327,7 +345,7 @@ def test_own_workforce_never_gets_a_unit_link_button():
     """Defesa em profundidade: mesmo que o backend mandasse um status para mão
     de obra própria, a tela só oferece ação quando `local_unit_link_status` é
     verdadeiro — e o backend manda `null` para ela (PR C1)."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'if (permissions.canUpdate && linkStatus) {' in app_js, (
         'o botão de vínculo precisa depender de linkStatus ser verdadeiro'
     )

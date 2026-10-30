@@ -31,6 +31,37 @@ def _read(*parts):
 
 # ── correção de escopo: permissão/módulo alternativos (ADR-0002 §10.3) ──────
 
+def _app_and_outsourced_modules_js():
+    """`app.js` + os módulos de Terceirizados (UBX-V4, Etapa B2) e de
+    Arquivamento (UBX-V5, Etapa 1).
+
+    A UI, os endpoints e o fallback de vínculos contratados saíram do app.js
+    para static/js/modules/outsourced/, e o arquivamento genérico para
+    static/js/modules/archival/ — as asserções continuam as mesmas, sobre o
+    código que hoje os contém.
+    """
+    import glob
+    import os as _os
+    root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    parts = [_read('static', 'app.js')]
+    for domain in ('outsourced', 'archival'):
+        for path in sorted(glob.glob(_os.path.join(root, 'static', 'js', 'modules', domain, '**', '*.js'), recursive=True)):
+            with open(path, encoding='utf-8') as handle:
+                parts.append(handle.read())
+    return '\n'.join(parts)
+
+def _function_source(src, marker):
+    """Trecho de `src` da função que começa em `marker` até a chave que a fecha
+    na MESMA indentação da sua linha ("\n}\n" no app.js, "\n  }\n" nos módulos
+    UBX-V4)."""
+    start = src.index(marker)
+    line_start = src.rfind('\n', 0, start) + 1
+    indent = src[line_start:start].replace('async ', '')
+    end = src.index('\n' + indent + '}\n', start)
+    return src[start:end + len(indent) + 2]
+
+
+
 def test_role_permissions_grant_create_simplified_to_admin_and_user():
     """admin (Administrador Local) e user (Gestor de EPI) nunca têm
     employees:create/update — só a versão simplificada (ADR-0002 §10.2).
@@ -137,33 +168,39 @@ def test_reports_table_exists():
 
 # ── ARCHIVAL_ENTITIES extension ──────────────────────────────────────────────
 
+def _archival_entities_block():
+    rules = _read('static', 'js', 'modules', 'archival', 'business', 'archival-rules.js')
+    return rules[rules.index('const ARCHIVAL_ENTITIES = {'):rules.index('function archivalConfig(')]
+
+
 def test_archival_entities_has_outsourced_company_with_purge():
-    app_js = _read('static', 'app.js')
-    entities_block = app_js[app_js.index('const ARCHIVAL_ENTITIES = {'):app_js.index('async function _epiArchivalPreflight')]
+    entities_block = _archival_entities_block()
     assert 'outsourcedCompany: {' in entities_block
     outsourced_company_block = entities_block[entities_block.index('outsourcedCompany: {'):entities_block.index('outsourcedEmployee: {')]
-    assert "path: '/api/outsourced-companies'" in outsourced_company_block
+    assert "resource: 'outsourced-companies'" in outsourced_company_block
     assert 'supportsPurge: false' not in outsourced_company_block
     assert 'purgeLabels' in outsourced_company_block
+    api = _read('static', 'js', 'modules', 'archival', 'integrations', 'archival-api.js')
+    assert "'outsourced-companies': {" in api
+    assert '/api/outsourced-companies/${id}/purge-confirm' in api
 
 
 def test_archival_entities_has_outsourced_employee_filtered_by_query():
-    app_js = _read('static', 'app.js')
-    entities_block = app_js[app_js.index('const ARCHIVAL_ENTITIES = {'):app_js.index('async function _epiArchivalPreflight')]
+    entities_block = _archival_entities_block()
     assert 'outsourcedEmployee: {' in entities_block
     outsourced_employee_block = entities_block[entities_block.index('outsourcedEmployee: {'):]
-    assert "path: '/api/employees'" in outsourced_employee_block
+    assert "resource: 'employees'" in outsourced_employee_block
     assert "archivedQueryExtra: '&outsourced_only=1'" in outsourced_employee_block
 
 
 def test_purge_button_and_purge_call_respect_supports_purge_flag():
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'canPurge && cfg.supportsPurge !== false' in app_js
     assert 'cfg.supportsPurge === false' in app_js
 
 
 def test_load_archived_records_appends_query_extra():
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'cfg.archivedQueryExtra' in app_js
 
 
@@ -182,9 +219,8 @@ def test_archival_bindings_cover_new_kinds():
 # da lista ativa tinha ficado de fora.
 
 def test_archive_button_accepts_the_update_simplified_alternative():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('function formatOutsourcedEmployeeRow('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'function formatOutsourcedEmployeeRow(')
     assert "hasPermission('employees:delete') || permissions.canUpdate" in fn
 
 
@@ -193,9 +229,8 @@ def test_archive_outsourced_employee_uses_the_outsourced_kind_not_plain_employee
     deletePermission só 'employees:delete' (sem a alternativa) e recarregava
     a lista de arquivados do Cadastro de Colaboradores completo, não a desta
     tela (archivedOutsourcedEmployees, filtrada outsourced_only=1)."""
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('async function archiveOutsourcedEmployee('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'async function archiveOutsourcedEmployee(')
     assert "archiveEntityRecord('outsourcedEmployee', entityId)" in fn
 
 
@@ -207,14 +242,14 @@ def test_employee_form_submit_posts_to_outsourced_simplified_endpoint():
 
 
 def test_employees_summary_loaded_from_report_endpoint():
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert '/api/outsourced-companies/employees-summary' in app_js
 
 
 def test_employees_list_is_derived_client_side_not_from_new_route():
     """Sem rota de listagem própria — deriva de state.employees (já
     carregado pelo bootstrap), mesma estratégia do app Flutter."""
-    app_js = _read('static', 'app.js')
+    app_js = _app_and_outsourced_modules_js()
     assert 'function outsourcedEmployeesList()' in app_js
     fn = app_js[app_js.index('function outsourcedEmployeesList()'):app_js.index('function outsourcedEmployeesList()') + 600]
     assert 'state.employees' in fn
@@ -280,9 +315,8 @@ def test_unit_field_hint_exists_in_fragment_and_generated_index():
 
 
 def test_sync_outsourced_employee_unit_options_locks_the_field_for_operational_profiles():
-    app_js = _read('static', 'app.js')
-    fn = app_js[app_js.index('function syncOutsourcedEmployeeUnitOptions('):]
-    fn = fn[:fn.index('\n}\n') + 2]
+    app_js = _app_and_outsourced_modules_js()
+    fn = _function_source(app_js, 'function syncOutsourcedEmployeeUnitOptions(')
     assert 'isOperationalProfile()' in fn
     assert 'operational_unit_id' in fn
     assert 'unitField.disabled = lockByOperationalProfile' in fn

@@ -167,20 +167,36 @@
     }
   }
 
+  // Época de escrita: avança no início e no fim de toda requisição que não é
+  // GET. modules/shared/ui/mutation-flow.js só junta leituras da MESMA época —
+  // uma leitura iniciada antes de uma gravação (ou durante ela) nunca é
+  // reaproveitada depois dela (FIX-NAV-REFRESH-V1).
+  let writeEpoch = 0;
+
+  function apiWriteEpoch() {
+    return writeEpoch;
+  }
+
   async function apiFetch(path, options = {}) {
-    const response = await requestApiResponse(path, options);
-    const { contentType, payload } = await parseApiPayload(response);
-    ensureExpectedApiResponse(path, response, payload, contentType);
-    throwIfApiRequestFailed(path, response, payload);
-    if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
-      if (payload.ok === false) {
-        const err = payload.error || {};
-        throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+    const isWrite = String(options.method || 'GET').toUpperCase() !== 'GET';
+    if (isWrite) {writeEpoch += 1;}
+    try {
+      const response = await requestApiResponse(path, options);
+      const { contentType, payload } = await parseApiPayload(response);
+      ensureExpectedApiResponse(path, response, payload, contentType);
+      throwIfApiRequestFailed(path, response, payload);
+      if (payload && typeof payload === 'object' && Object.hasOwn(payload, 'ok')) {
+        if (payload.ok === false) {
+          const err = payload.error || {};
+          throw createApiError(err.message || 'Falha na API.', response, payload, err.code || '');
+        }
+        if (payload.data !== undefined) {return payload.data;}
+        return payload;
       }
-      if (payload.data !== undefined) {return payload.data;}
-      return payload;
+      return payload || {};
+    } finally {
+      if (isWrite) {writeEpoch += 1;}
     }
-    return payload || {};
   }
 
   async function apiFetchOptional(path, options = {}) {
@@ -214,9 +230,29 @@
     throw lastError || new Error('Falha ao carregar dados da API.');
   }
 
+  // ── Contrato legado do app.js (UBX-V3, Etapa 3) ─────────────────────────────
+  // `api`, `apiOptional` e `apiWithBootstrapRetry` eram declarados no app.js
+  // como simples delegadores destas funções; as views os chamam por
+  // `globalThis.api(...)`. Moram agora aqui, na camada de integração, com o
+  // mesmo corpo: a delegação continua resolvida na CHAMADA (um teste ou um
+  // embrulhador que troque globalThis.apiFetch depois do boot segue valendo).
+
+  async function api(path, options = {}) {
+    return globalThis.apiFetch(path, options);
+  }
+
+  async function apiOptional(path, options = {}) {
+    return globalThis.apiFetchOptional(path, options);
+  }
+
+  async function apiWithBootstrapRetry(path, options = {}, config = {}) {
+    return globalThis.apiFetchWithRetry(path, options, config);
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exports = {
+    apiWriteEpoch,
     createApiError,
     isBootstrapApiPath,
     waitMs,
@@ -234,6 +270,13 @@
     globalThis[name] = fn;
   }
   globalThis.__EPI_API_CLIENT__ = Object.freeze({ ...exports });
+
+  // Só em globalThis, como o app.js publicava (Annex B): o namespace e o
+  // registro de helpers não mudam.
+  const legacyAppExports = { api, apiOptional, apiWithBootstrapRetry };
+  for (const [name, fn] of Object.entries(legacyAppExports)) {
+    globalThis[name] = fn;
+  }
 
   const helpers = globalThis.__EPI_FRONTEND_HELPERS__ || {};
   Object.assign(helpers, exports);

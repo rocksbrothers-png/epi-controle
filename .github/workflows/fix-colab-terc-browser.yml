@@ -10,6 +10,8 @@ on:
       - 'scripts/browser/fix_empresas_active.py'
       - 'scripts/browser/ubx_my_company.py'
       - 'scripts/browser/security_logo_xss.py'
+      - 'scripts/browser/security_output_xss.py'
+      - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
 permissions:
@@ -24,7 +26,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - run: pip install playwright==1.58.0
+      # python-dotenv: o cenário da ficha HTML (SECURITY-OUTPUT-XSS-V1) importa o renderizador do backend.
+      - run: pip install playwright==1.58.0 'python-dotenv>=1.2.4,<2'
       - run: python -m playwright install --with-deps chromium
       - run: python scripts/browser/fix_colab_terc.py --output browser-evidence
       # FIX-NAV-REFRESH-V1: tela mantida, uma requisição por lista, aviso verdadeiro, clique duplo.
@@ -45,6 +48,9 @@ jobs:
       # SECURITY-LOGO-XSS-V1: logotipo malicioso não executa (login, topo, Empresas, Minha Empresa); legítimo aparece.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_logo_xss.py --output browser-evidence/security-logo-xss
+      # SECURITY-OUTPUT-XSS-V1: nome/CNPJ, EPI/foto e ficha HTML (com CSP) não executam HTML do cadastro.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/security_output_xss.py --output browser-evidence/security-output-xss
       - uses: actions/upload-artifact@v7
         if: always()
         with:

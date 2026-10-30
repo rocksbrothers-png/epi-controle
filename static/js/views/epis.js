@@ -18,6 +18,15 @@
   function fmtDate(v) {
     return typeof globalThis.formatDate === 'function' ? globalThis.formatDate(v) : String(v || '-');
   }
+  // SECURITY-OUTPUT-XSS-V1: dados do cadastro entram escapados; a foto só
+  // como data URL base64 de imagem (qualquer outro valor mostra '-').
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+  function safePhoto(value) {
+    const photo = String(value || '');
+    return /^data:image\/[a-z0-9.+-]{1,40};base64,[A-Za-z0-9+/]+={0,2}$/.test(photo) ? photo : '';
+  }
 
   // ── Funções de render ─────────────────────────────────────────────────────
 
@@ -37,16 +46,16 @@
       && String(item.epi_section || '').toLowerCase().includes(bySection)
     );
     refs.approvedEpiTable.innerHTML = rows.map((item) => `<tr>
-    <td>${item.name || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.model_reference || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${fmtDate(item.ca_expiry)}</td>
+    <td>${esc(item.name || '-')}</td>
+    <td>${esc(item.manufacturer || '-')}</td>
+    <td>${esc(item.model_reference || '-')}</td>
+    <td>${esc(item.ca || '-')}</td>
+    <td>${esc(fmtDate(item.ca_expiry))}</td>
     <td>${Number(item.manufacturer_validity_months || 0)}</td>
-    <td>${item.sector || '-'}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.epi_photo_data ? `<img src="${item.epi_photo_data}" alt="Foto ${item.name}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">` : '-'}</td>
-    <td>${item.manufacturer_recommendations || '-'}</td>
+    <td>${esc(item.sector || '-')}</td>
+    <td>${esc(item.epi_section || '-')}</td>
+    <td>${safePhoto(item.epi_photo_data) ? `<img src="${esc(safePhoto(item.epi_photo_data))}" alt="Foto ${esc(item.name)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">` : '-'}</td>
+    <td>${esc(item.manufacturer_recommendations || '-')}</td>
   </tr>`).join('') || globalThis.dsTableState({ colspan: 10, message: 'Sem EPIs aprovados para os filtros informados.' });
   }
 

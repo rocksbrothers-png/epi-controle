@@ -1,5 +1,7 @@
 """Rotas de fichas de EPI."""
 
+import base64
+import hashlib
 import time
 from contextlib import closing
 from datetime import datetime, timezone
@@ -360,9 +362,27 @@ def handle_get_ficha_html(handler, parsed, payload, match):
         body = html_content.encode('utf-8')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Security-Policy', FICHA_HTML_CSP)
         handler.send_header('Content-Length', str(len(body)))
         handler.end_headers()
         handler.wfile.write(body)
+
+
+# SECURITY-OUTPUT-XSS-V1: a ficha é HTML servido na mesma origem do app — e o
+# snapshot guarda o HTML gerado antes desta correção. A política abaixo vale
+# para as três rotas: sem script algum (nem handler inline), exceto o de
+# impressão do arquivo, liberado pelo hash; imagens só data: (logotipo e
+# assinatura) e estilos inline do próprio documento.
+_FICHA_PRINT_SCRIPT = (
+    'window.addEventListener("load",function(){'
+    'setTimeout(function(){try{window.focus();window.print();}catch(e){}},300);});'
+)
+_FICHA_PRINT_SCRIPT_HASH = base64.b64encode(hashlib.sha256(_FICHA_PRINT_SCRIPT.encode('utf-8')).digest()).decode('ascii')
+FICHA_HTML_CSP = (
+    "default-src 'none'; img-src data:; style-src 'unsafe-inline'; "
+    f"script-src 'sha256-{_FICHA_PRINT_SCRIPT_HASH}'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+)
 
 
 def handle_get_ficha_period_html(handler, parsed, payload, match):
@@ -382,6 +402,7 @@ def handle_get_ficha_period_html(handler, parsed, payload, match):
         body = str(snapshot.get('html_content') or '').encode('utf-8')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Security-Policy', FICHA_HTML_CSP)
         handler.send_header('Content-Length', str(len(body)))
         handler.end_headers()
         handler.wfile.write(body)
@@ -429,10 +450,7 @@ def handle_get_ficha_archive_html(handler, parsed, payload, match):
         connection.commit()
         html = str(snapshot.get('html_content') or '')
         if action == 'snapshot_print':
-            print_script = (
-                '<script>window.addEventListener("load",function(){'
-                'setTimeout(function(){try{window.focus();window.print();}catch(e){}},300);});</script>'
-            )
+            print_script = f'<script>{_FICHA_PRINT_SCRIPT}</script>'
             if '</body>' in html:
                 html = html.replace('</body>', print_script + '</body>', 1)
             else:
@@ -440,6 +458,7 @@ def handle_get_ficha_archive_html(handler, parsed, payload, match):
         body = html.encode('utf-8')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/html; charset=utf-8')
+        handler.send_header('Content-Security-Policy', FICHA_HTML_CSP)
         if action == 'snapshot_export':
             employee_label = str(snapshot.get('employee_name') or f'ficha-{snapshot_id}')
             safe_name = ''.join(ch if ch.isalnum() else '-' for ch in employee_label).strip('-') or f'ficha-{snapshot_id}'

@@ -7776,6 +7776,7 @@ require('./companies-view-runtime')({ testAsync, test, assert, eq });
 require('./access-rules-runtime')({ test, assert, eq });
 require('./extracted-globals-ownership-runtime')({ test, assert });
 require('./empresas-active-runtime')({ testAsync, test, assert, eq });
+require('./security-logo-xss-runtime')({ test, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

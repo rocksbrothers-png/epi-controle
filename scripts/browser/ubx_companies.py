@@ -10,6 +10,7 @@ modules/companies:
    /api/companies/<id> com os valores comerciais atuais e sem o Administrador
    Geral inicial, e limpa o formulário.
 3. Cadastrar envia POST /api/companies com o Administrador Geral inicial.
+   O status vai como '1'/'0' (nunca o texto traduzido da opção) — §15.4.
 4. Inativar envia PUT com active=0 e a empresa inteira.
 
 pip install playwright; playwright install chromium
@@ -107,6 +108,7 @@ def company_edit(f):
     form = f.page.locator('#company-form')
     expect(form.locator('[name="name"]')).to_have_value('Cliente Dois')
     expect(form.locator('[name="cnpj"]')).to_have_value('22333444000155')
+    expect(form.locator('[name="active"]')).to_have_value('1')
     form.locator('[name="name"]').fill('Cliente Dois Renomeado')
     before = len(f.calls)
     form.locator('button[type="submit"]').click()
@@ -116,10 +118,9 @@ def company_edit(f):
     body = sent[0]['body']
     assert body['actor_user_id'] == 7 and body['plan_name'] == 'pro' and body['user_limit'] == 10, body
     assert 'general_admin_email' not in body and 'general_admin_name' not in body, body
-    # KNOWN-DEFECT (preexistente na main, docs/UBX_APPJS_AUDITORIA.md §15.4): data-i18n-value troca o
-    # value das opções do <select name="active"> e o formulário envia active=''; o backend real recusa.
-    # O fixture aceita, e esta asserção fixa o comportamento atual — a correção vai fazê-la falhar de propósito.
-    assert body['active'] == '', body
+    # §15.4: o status sai como '1'/'0' em todos os idiomas (antes, data-i18n-value trocava o value das
+    # opções pelo texto traduzido e o formulário enviava active=''; o backend real recusa).
+    assert body['active'] == '1', body
     expect(form.locator('[name="id"]')).to_have_value('')
 
 
@@ -131,6 +132,8 @@ def company_create(f):
     form.locator('[name="legal_name"]').fill('Nova QA Ltda')
     form.locator('[name="cnpj"]').fill('33444555000166')
     form.locator('[name="general_admin_email"]').fill('owner@nova.test')
+    expect(form.locator('[name="active"]')).to_have_value('1')
+    form.locator('[name="active"]').select_option('0')
     before = len(f.calls)
     form.locator('button[type="submit"]').click()
     f.page.wait_for_function('__EPI_APP_STATE__.companies.some(c=>c.name==="Nova QA")')
@@ -139,7 +142,7 @@ def company_create(f):
     body = sent[0]['body']
     assert body['general_admin_email'] == 'owner@nova.test' and body['plan_name'] == 'start', body
     assert body['general_admin_name'] == '', body
-    assert body['active'] == '', body  # KNOWN-DEFECT §15.4 (ver company_edit)
+    assert body['active'] == '0', body  # §15.4: escolher "Inativa" envia '0', não o texto traduzido
 
 
 def company_toggle(f):

@@ -8,6 +8,7 @@ on:
       - 'scripts/browser/ubx_units_legal_entities.py'
       - 'scripts/browser/ubx_companies.py'
       - 'scripts/browser/ubx_my_company.py'
+      - 'scripts/browser/security_logo_xss.py'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
 permissions:
@@ -37,6 +38,9 @@ jobs:
       # UBX-V5, Etapa 2: Minha Empresa (configurações e domínios) sobre modules/my-company.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/ubx_my_company.py --output browser-evidence/my-company
+      # SECURITY-LOGO-XSS-V1: logotipo malicioso não executa (login, topo, Empresas, Minha Empresa); legítimo aparece.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/security_logo_xss.py --output browser-evidence/security-logo-xss
       - uses: actions/upload-artifact@v7
         if: always()
         with:

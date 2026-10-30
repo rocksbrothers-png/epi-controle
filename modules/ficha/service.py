@@ -1,5 +1,6 @@
 """Serviços de fichas EPI."""
 import hashlib
+import html
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -7,6 +8,7 @@ from epi_backend.db import row_to_dict
 from epi_backend.http_utils import structured_log
 from core.auth import ensure_resource_company, ensure_company_access
 from core.schema import _col_exists
+from modules.commercial.service import safe_image_data_url
 from modules.settings.service import get_ficha_config, get_ficha_retention_policy
 from modules.employees.service import (
     actor_operational_unit_id,
@@ -308,10 +310,13 @@ def render_ficha_epi_html_document(*, employee, company, unit, deliveries, devol
           <td></td><td></td><td></td><td></td><td></td>
         </tr>"""
 
-    if logo_data.startswith('data:image'):
-        logo_html = f'<img src="{logo_data}" style="max-height:60px;max-width:180px;">'
+    # SECURITY-LOGO-XSS-V1: este HTML é servido na mesma origem do app; o
+    # logotipo só entra como data URL base64 de imagem, e o nome é escapado.
+    logo_data = safe_image_data_url(logo_data)
+    if logo_data:
+        logo_html = f'<img src="{html.escape(logo_data)}" style="max-height:60px;max-width:180px;">'
     else:
-        logo_html = f'<div style="font-size:18px;font-weight:bold;">{company.get("name","")}</div>'
+        logo_html = f'<div style="font-size:18px;font-weight:bold;">{html.escape(str(company.get("name") or ""))}</div>'
 
     declaracao_html = str(config.get('declaracao', '')).replace('\n', '<br>')
     observacoes_html = str(config.get('observacoes', '')).replace('\n', '<br>')

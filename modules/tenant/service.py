@@ -11,6 +11,7 @@ import re
 from urllib.parse import urlparse
 
 from epi_backend.db import row_to_dict
+from modules.commercial.service import LOGIN_LOGO_IMAGE_TYPES, safe_image_data_url
 
 _SUPPORTED_LANGUAGES = {'pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO'}
 _LANGUAGE_FALLBACK = 'pt-BR'
@@ -143,10 +144,12 @@ def _build_tenant_response(row, match_type: str = 'unknown') -> dict:
             'subdomain': d.get('subdomain') or '',
             'custom_domain': d.get('custom_domain') or '',
         },
+        # SECURITY-LOGO-XSS-V1: endpoint público (tela de login); valores gravados
+        # antes da validação estrita que não sejam data URL base64 de imagem saem vazios.
         'branding': {
-            'logo_type': d.get('logo_type') or '',
-            'login_logo_type': d.get('login_logo_type') or '',
-            'favicon_type': d.get('favicon_type') or '',
+            'logo_type': safe_image_data_url(d.get('logo_type')),
+            'login_logo_type': safe_image_data_url(d.get('login_logo_type'), LOGIN_LOGO_IMAGE_TYPES),
+            'favicon_type': safe_image_data_url(d.get('favicon_type')),
             'primary_color': d.get('primary_color') or '#1565C0',
             'secondary_color': d.get('secondary_color') or '#42A5F5',
             'accent_color': d.get('accent_color') or '#FF6F00',

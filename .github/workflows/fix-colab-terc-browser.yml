@@ -8,6 +8,7 @@ on:
       - 'scripts/browser/ubx_units_legal_entities.py'
       - 'scripts/browser/ubx_companies.py'
       - 'scripts/browser/fix_empresas_active.py'
+      - 'scripts/browser/security_logo_xss.py'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
 permissions:
@@ -37,6 +38,9 @@ jobs:
       # FIX-EMPRESAS-ACTIVE-V1: campo Situação carrega, mostra e grava 1/0 nos 5 idiomas.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/fix_empresas_active.py --output browser-evidence/empresas-active
+      # SECURITY-LOGO-XSS-V1: logotipo malicioso não executa (login, topo, Empresas, Minha Empresa); legítimo aparece.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/security_logo_xss.py --output browser-evidence/security-logo-xss
       - uses: actions/upload-artifact@v7
         if: always()
         with:

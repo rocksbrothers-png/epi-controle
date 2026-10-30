@@ -7,9 +7,12 @@ from core.audit import register_company_audit as _register_company_audit
 from core.roles import BILLABLE_ROLES
 from epi_backend.db import row_to_dict
 from modules.commercial.service import (
+    LOGIN_LOGO_IMAGE_TYPES,
     count_company_users,
     get_commercial_settings,
+    safe_image_data_url,
     validate_cnpj,
+    validate_login_logo_payload,
     validate_logo_payload,
     normalize_plan_key,
     only_digits,
@@ -303,13 +306,12 @@ def validate_company_whitelabel_payload(payload, company_id=None):
 
     payload['subdomain'] = str(payload.get('subdomain') or '').strip().lower() or None
     payload['custom_domain'] = str(payload.get('custom_domain') or '').strip().lower() or None
-    from modules.commercial.service import validate_login_logo_payload
     payload['login_logo_type'] = validate_login_logo_payload(payload.get('login_logo_type', ''))
     payload['primary_color'] = _validate_color(payload.get('primary_color', ''), '#1565C0')
     payload['secondary_color'] = _validate_color(payload.get('secondary_color', ''), '#42A5F5')
     payload['accent_color'] = _validate_color(payload.get('accent_color', ''), '#FF6F00')
     payload['default_language'] = _validate_language(payload.get('default_language', ''))
-    payload['favicon_type'] = str(payload.get('favicon_type') or '').strip()
+    payload['favicon_type'] = validate_logo_payload(payload.get('favicon_type', ''))
     payload['institutional_message'] = str(payload.get('institutional_message') or '').strip()
     payload['contact_email'] = str(payload.get('contact_email') or '').strip()
     payload['contact_phone'] = str(payload.get('contact_phone') or '').strip()
@@ -334,7 +336,13 @@ def validate_company_payload(connection, payload, company_id=None):
     payload['legal_name'] = str(payload.get('legal_name', '')).strip()
     payload['cnpj'] = validate_cnpj(payload.get('cnpj', ''))
     ensure_unique_company_cnpj(connection, payload['cnpj'], company_id)
-    payload['logo_type'] = validate_logo_payload(payload.get('logo_type', ''))
+    if company_id is None:
+        payload['logo_type'] = validate_logo_payload(payload.get('logo_type', ''))
+    else:
+        # SECURITY-LOGO-XSS-V1: na edição as imagens são campos protegidos
+        # (MASTER_PROTECTED_COMPANY_FIELDS), restaurados do registro atual pela rota;
+        # o valor reenviado pelo app é descartado e não pode bloquear a gravação.
+        payload['logo_type'] = safe_image_data_url(payload.get('logo_type', ''))
     payload['plan_name'] = normalize_plan_key(payload.get('plan_name') or 'start')
     if payload['plan_name'] not in settings['plans']:
         raise ValueError('Plano comercial invalido.')
@@ -382,6 +390,15 @@ def validate_company_payload(connection, payload, company_id=None):
         validate_company_whitelabel_payload(payload, company_id)
     except Exception:
         pass
+    # SECURITY-LOGO-XSS-V1: as imagens do white-label não podem escapar pelo `except`
+    # acima (o valor bruto ficaria no payload). No cadastro, validação estrita; na
+    # edição são campos protegidos (restaurados pela rota) e só são saneados.
+    if company_id is None:
+        payload['login_logo_type'] = validate_login_logo_payload(payload.get('login_logo_type', ''))
+        payload['favicon_type'] = validate_logo_payload(payload.get('favicon_type', ''))
+    else:
+        payload['login_logo_type'] = safe_image_data_url(payload.get('login_logo_type', ''), LOGIN_LOGO_IMAGE_TYPES)
+        payload['favicon_type'] = safe_image_data_url(payload.get('favicon_type', ''))
     return payload
 
 

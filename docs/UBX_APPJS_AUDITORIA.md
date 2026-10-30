@@ -856,10 +856,11 @@ Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_companies.py` (novo, no wo
 outsourced browser regression*, cujo limite passou de 20 para 30 minutos com quatro harnesses) — lista/resumo/
 detalhes, editar e gravar (`PUT` com os valores comerciais atuais e sem o Administrador Geral), cadastrar (`POST`
 com o Administrador Geral) e inativar (`PUT` com `active: 0`, sem diálogos): **20/20**, e 20/20 também contra a `main`.
-O fixture aceita `active: ''`; o harness fixa esse valor com o marcador `KNOWN-DEFECT` (§15.4), para que a correção
-apareça como falha esperada, e não passe em silêncio.
+O fixture aceita `active: ''`; o harness fixava esse valor com o marcador `KNOWN-DEFECT` (§15.4), para que a correção
+aparecesse como falha esperada, e não passasse em silêncio. Com a correção da §15.4 ele passou a exigir `active: '1'`
+ao editar e `active: '0'` ao cadastrar escolhendo "Inativa".
 
-### 15.4 Defeito preexistente encontrado (fora do escopo, não corrigido)
+### 15.4 Defeito preexistente encontrado (fora do escopo da refatoração; corrigido à parte)
 
 O `<select name="active">` do formulário de Empresas (`static/views/empresas.html`) usa `data-i18n-value` nas
 opções; o `i18n.js` troca o `value` delas pelo texto traduzido ("Ativa"/"Inativa"), o seletor perde `1`/`0` e o
@@ -871,6 +872,14 @@ texto visível fica em português em todos os idiomas. Ativar/inativar pela list
 Nenhum outro `data-i18n-value` em `<option>`/campo enviado existe em `static/views` ou `static/index.html`. Vem de #974; o
 I18N-FULL-V1 mantém o atributo. Correção proposta à parte (remover `data-i18n-value` das duas opções, mantendo o
 texto traduzido por `data-i18n`, com teste), por ser mudança de comportamento.
+
+**Correção (PR à parte, sobre esta fatia).** As duas opções trocaram `data-i18n-value` por `data-i18n`: o `value`
+fica `1`/`0` em todos os idiomas e o rótulo passa a ser traduzido. `static/index.html` regenerado
+(`scripts/build_index.py build`; o `asset_version` não muda). Regressão em duas camadas:
+`tests/test_i18n_value_em_campos_enviados.py` reprova qualquer `data-i18n-value` em `<option>`/`<input>`/`<select>`/
+`<textarea>`/`<button>` de `static/views/*.html` e `static/index.html` (falha na versão anterior, nas 4 ocorrências);
+`scripts/browser/ubx_companies.py` exige o seletor em `1` ao abrir a edição e o cadastro, `active: '1'` no `PUT` e
+`active: '0'` no `POST` após escolher "Inativa" — 20/20 nos 5 idiomas com a correção, e falha sem ela.
 
 ### 15.5 Auditoria independente
 
@@ -892,3 +901,91 @@ Achados e tratamento:
 - P3, registrados sem mudança: `saveCompany`/`toggleCompany` passaram de `async` de bloco a globais (o backend autoriza
   cada chamada); os módulos dependem do `hasPermission` de um argumento do `app.js` (mesmo padrão das fatias
   anteriores); os módulos rodam em modo estrito (sem efeito observável).
+
+## 16. UBX-V5, Etapa 2 — fatia 3 (2026-10-27): Minha Empresa
+
+Base: Corporate `c1c9ac6f` / SaaS `b936120a` (`main` com Empresas integrada; `app.js` idêntico nos dois).
+Refatoração pura: sem mudança de backend, rota, corpo HTTP, permissão, regra de negócio, texto ou chave i18n.
+
+### 16.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/my-company/business/my-company-rules.js` (51) | Tipos de imagem por campo, cores padrão, modo de tema em `theme_json` e os rótulos de situação dos domínios. Puro. |
+| `modules/my-company/integrations/my-company-api.js` (52) | `GET`/`PUT /api/my-company` e os domínios (`GET`/`POST /api/my-company/domains`, `POST .../verify`, `POST .../primary`, `DELETE` com corpo), com caminho e método literais. A empresa vem da sessão no backend. |
+| `modules/my-company/ui/my-company-view.js` (228) | `myCompanyThemeMode`, `fillMyCompanyFields`, `renderMyCompanyImagePreview`, `collectMyCompanyFields`, `wireMyCompanyImageInputs`, `loadMyCompany`, `renderMyCompanyReadonly`, `loadMyCompanyCard`, `saveMyCompany`, `loadMyCompanyDomains`, `domainStatusLabel`, `addMyCompanyDomain`, `handleMyCompanyDomainAction`; e as constantes `MY_COMPANY_IMAGE_TYPES`/`MY_COMPANY_COLOR_DEFAULTS` (no negócio). |
+
+Fica no `app.js` `renderMyCompanyDomains` (alterada pelo I18N-FULL-V1; nenhuma das 15 declarações extraídas é
+alterada por aquele PR, conferido hunk a hunk sobre a ponta `5baea4bc`), chamada pelo módulo pelo nome global. As
+ações de domínio tiveram de vir junto: eram `async` de bloco e `loadMyCompanyCard` as liga. O assistente de
+implantação (`app.js`) continua chamando `loadMyCompany`, `fillMyCompanyFields`, `wireMyCompanyImageInputs` e
+`collectMyCompanyFields`, agora globais publicadas pelo módulo.
+
+### 16.2 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| `app.js` (linhas, `wc -l`) | 17.120 | 16.941 (−179) |
+| Declarações no `app.js` (guarda) | 742 | 727 (−15) |
+| Endpoints literais no `app.js` | 106 | 104 (−2) |
+| Módulos UBX criados | — | 3 (`my-company/business`, `integrations`, `ui`) |
+| Maior módulo novo | — | 228 linhas (limite 500) |
+| Ciclos entre scripts | 0 | 0 |
+| Testes JS | 650 | 652 (+2 do novo runtime) |
+
+### 16.3 Equivalência
+
+`static/js/test/my-company-view-runtime.js` roda **64 cenários** contra os módulos e contra as funções originais
+(`fixtures/app-before-ubx-v5-my-company.js.txt`, cada declaração copiada literalmente de `c1c9ac6f`): preencher e
+coletar (tema válido/inválido/ausente, cores normalizadas, campos ausentes, espaços), prévia, contrato somente
+leitura, rótulos; carga (cache, forçada, sem permissão, sem empresa, falha que propaga como no original); cartão
+(primeira carga liga os listeners uma vez, segunda não, sem formulário, falha com `console.warn`); imagens (logo em
+JPEG, favicon, tipo inválido, sem arquivo, campo desconhecido, falha de conversão, sem campo oculto, vários
+arquivos, sem religar); gravação (ok, resposta sem empresa, falha com e sem retorno, sem permissão, sem
+formulário, sem sessão); domínios (listar, resposta não-lista/nula, falha, sem tabela, sem permissão; registrar com
+e sem tipo, vazio, falha, sem campos, sem sessão; verificar, principal, remover com e sem confirmação, nenhuma
+ação, falhas, falha do `loadBootstrap` após gravar, recarga depois de falha). O registro inclui o nome do handler
+ligado e o instante em que a função devolve. 0 divergências.
+
+Sabotagem: 27 mutações (tipos de imagem, cores, tema padrão e gravado, rótulos, método e corpo HTTP, cache, estado
+após a resposta, `trim`, religar imagens, limpar o arquivo recusado, JPEG do logo, religar o formulário, recarga dos
+domínios, retorno sem feedback, confirmação de remoção, recarga após falha, permissão, domínio vazio, e — após a auditoria — handler errado no submit, no botão de
+adicionar e nos dois trocados, `loadBootstrap` sem `await` e recarga sem `await` no erro de ação de domínio) —
+**todas detectadas**.
+
+Navegador (Chromium, 5 idiomas): `scripts/browser/ubx_my_company.py` (novo, no workflow) — aba Empresa das
+Configurações (formulário preenchido com tema e cores, contrato somente leitura, `PUT` sem `company_id`) e domínios
+(registrar, instruções de DNS, verificar, remover com confirmação): **10/10**, e 10/10 também contra a `main`.
+
+### 16.4 Auditoria independente e riscos residuais
+
+Auditoria somente leitura (Corporate `3327065d`, SaaS `9e561cd2`): **aprovada, sem bloqueios**. Confirmou, declaração
+a declaração, equivalência de ramos, textos, ids, chaves e ordem dos corpos HTTP, momento da avaliação de
+`state.user.id` e da ligação dos listeners; que todo chamador restante resolve na chamada; fixture literal de
+`c1c9ac6f`; contrato HTTP (7 chamadas, método e caminho literais); paridade byte a byte com o SaaS; e os números da
+§16.2. Achados tratados neste PR:
+
+| Achado | Tratamento |
+|---|---|
+| Stub de `bindAppListener` não registrava qual função era ligada (3 trocas de handler passavam) | Log com `handler.name`; as 3 trocas agora divergem |
+| `loadBootstrap` nunca falhava (remover o `await` passava) | Cenário `salvar:falhaBootstrap` |
+| Ordem do `await` na recarga após falha de ação de domínio | Marca `resolved` no fim de cada cenário + `dominio:acao:falhaRecarrega` |
+| Guarda "nada volta ao app.js" só via declarações na coluna 0 | Regex aceita indentação |
+| Comentário dizia que a I18N-FULL-V1 já alterou `renderMyCompanyDomains` | Corrigido: PR pendente |
+
+Riscos residuais (não tratados aqui):
+
+- **Segurança — preexistente, alta (CodeQL "DOM text reinterpreted as HTML" na prévia de imagem).** A validação de
+  logotipo (`validate_logo_payload`, `modules/commercial/service.py`) e `companyLogoSrc` só conferem o prefixo
+  `data:image/`; um valor como `data:image/png" onerror="…"` é aceito, gravado e fecha o atributo `src` onde
+  `companyLogoMarkup` renderiza (topbar, lista de Empresas do Administrador Master, prévias). Grava quem tem
+  `company_settings:update` (Administrador Geral) ou o Master; afeta os usuários da empresa e o Master. O CSP do app é
+  *Report-Only*. A linha só mudou de arquivo (na `main`: `static/app.js:11427`). Correção proposta em PR de segurança
+  separado, aguardando autorização: regex estrita de data URL base64 (PNG/JPEG/SVG) no backend e escape do atributo no
+  frontend.
+- O assistente de implantação (`app.js`) chama `loadMyCompany`, `fillMyCompanyFields`, `wireMyCompanyImageInputs` e
+  `collectMyCompanyFields` pelo nome global; a resolução foi conferida estaticamente, mas nenhum teste de navegador
+  percorre o assistente.
+- Seis funções antes `async` de bloco agora são globais (mesmo padrão da §15); nada as sonda e as guardas de
+  permissão são as mesmas.
+- O teste de navegador não clica em "Tornar principal" nem envia imagem (ambos cobertos pelo teste de runtime).

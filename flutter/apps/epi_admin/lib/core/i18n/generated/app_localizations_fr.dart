@@ -3050,6 +3050,264 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get unitTypePlatform => 'Plateforme';
+
+  @override
+  String get employeeShowActive => 'Voir les collaborateurs actifs';
+
+  @override
+  String get employeeShowArchived => 'Voir les collaborateurs archivés';
+
+  @override
+  String get employeeArchivedEmpty => 'Aucun collaborateur archivé.';
+
+  @override
+  String get employeeArchiveTitle => 'Archiver le collaborateur';
+
+  @override
+  String get employeeRestoreTitle => 'Restaurer le collaborateur';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Le collaborateur « $name » sera archivé et ne pourra plus recevoir de nouvelles opérations (remises, demandes et mouvements).\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Le collaborateur « $name » sera restauré et redeviendra actif, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String get epiShowActive => 'Voir les EPI actifs';
+
+  @override
+  String get epiShowArchived => 'Voir les EPI archivés';
+
+  @override
+  String get epiArchivedEmpty => 'Aucun EPI archivé.';
+
+  @override
+  String get epiArchiveTitle => 'Archiver l’EPI';
+
+  @override
+  String get epiRestoreTitle => 'Restaurer l’EPI';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'L’EPI « $name » sera archivé et ne pourra plus recevoir de nouvelles opérations (remises, stock, demandes et achats).\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'L’EPI « $name » sera restauré et redeviendra actif, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Archivées';
+  }
+
+  @override
+  String get unitShowActive => 'Voir les unités actives';
+
+  @override
+  String get unitShowArchived => 'Voir les unités archivées';
+
+  @override
+  String get unitArchivedEmpty => 'Aucune unité archivée.';
+
+  @override
+  String get unitArchiveTitle => 'Archiver l’unité';
+
+  @override
+  String get unitRestoreTitle => 'Restaurer l’unité';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'L’unité « $name » sera archivée et ne pourra plus recevoir de nouvelles opérations.\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans) pour les consultations, rapports et audits.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'L’unité « $name » sera restaurée et redeviendra active, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Archivé le $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Conservation restante : $countLabel jours',
+      one: 'Conservation restante : $countLabel jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Durée de conservation écoulée';
+
+  @override
+  String get employeeDetailsSection => 'Informations du collaborateur';
+
+  @override
+  String get epiDaysRemaining => 'Jours restants';
+
+  @override
+  String get epiIdentificationSection => 'Identification';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel éléments en attente',
+      one: '$countLabel élément en attente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel EPI',
+      one: '$countLabel EPI',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Péremption fabricant proche';
+
+  @override
+  String get stockManufacturerExpired =>
+      'Date de péremption fabricant dépassée';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Date de péremption fabricant dépassée : retirer du stock (ne pas distribuer).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Péremption fabricant proche : prioriser la distribution (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Péremption fabricant proche (dans $days) : prioriser la distribution (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError =>
+      'Impossible de charger la visibilité des modules.';
+
+  @override
+  String get moduleRequests => 'Demandes';
+
+  @override
+  String get moduleAdministration => 'Administration';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Ligne $row : $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Entreprise contractante';
+
+  @override
+  String get responsibilityOutsourced => 'Entreprise sous-traitante';
+
+  @override
+  String get responsibilityProvider => 'Prestataire de services';
+
+  @override
+  String get responsibilityShared => 'Responsabilité partagée';
+
+  @override
+  String get responsibilityContract => 'Selon le contrat';
+
+  @override
+  String get responsibilityUndefined => 'Non défini';
+
+  @override
+  String get purchaseCreated => 'Demande d’achat créée avec succès';
+
+  @override
+  String get criticalStockTitle => 'Stock critique';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel EPI sous le stock minimum',
+      one: '$countLabel EPI sous le stock minimum',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'Nouvelle entreprise';
+
+  @override
+  String get companyCnpjLength =>
+      'Le CNPJ brésilien doit comporter 14 chiffres';
+
+  @override
+  String get companyUserLimit => 'Nombre maximal d’utilisateurs';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'Minimum de $count pour cette offre';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — facultatif';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'S’il est renseigné, l’Owner reçoit par e-mail une invitation contenant la clé du premier accès. L’$role ne connaît jamais le mot de passe.';
+  }
+
+  @override
+  String get companyOwnerName => 'Nom de l’Owner';
+
+  @override
+  String get companyOwnerEmail =>
+      'E-mail de l’Owner (destinataire de l’invitation)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 utilisateur)';
+
+  @override
+  String get companyPlanStart => 'Start (jusqu’à 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 à 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 à 100)';
+
+  @override
+  String get formValidNumber => 'Saisissez un nombre valide';
+
+  @override
+  String get formValidEmail => 'Adresse e-mail invalide';
+
+  @override
+  String get moduleEmployeeRegistration => 'Enregistrement des collaborateurs';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Archivée le $date';
+  }
 }
 
 /// The translations for French, as used in France (`fr_FR`).
@@ -6098,4 +6356,262 @@ class AppLocalizationsFrFr extends AppLocalizationsFr {
 
   @override
   String get unitTypePlatform => 'Plateforme';
+
+  @override
+  String get employeeShowActive => 'Voir les collaborateurs actifs';
+
+  @override
+  String get employeeShowArchived => 'Voir les collaborateurs archivés';
+
+  @override
+  String get employeeArchivedEmpty => 'Aucun collaborateur archivé.';
+
+  @override
+  String get employeeArchiveTitle => 'Archiver le collaborateur';
+
+  @override
+  String get employeeRestoreTitle => 'Restaurer le collaborateur';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Le collaborateur « $name » sera archivé et ne pourra plus recevoir de nouvelles opérations (remises, demandes et mouvements).\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Le collaborateur « $name » sera restauré et redeviendra actif, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String get epiShowActive => 'Voir les EPI actifs';
+
+  @override
+  String get epiShowArchived => 'Voir les EPI archivés';
+
+  @override
+  String get epiArchivedEmpty => 'Aucun EPI archivé.';
+
+  @override
+  String get epiArchiveTitle => 'Archiver l’EPI';
+
+  @override
+  String get epiRestoreTitle => 'Restaurer l’EPI';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'L’EPI « $name » sera archivé et ne pourra plus recevoir de nouvelles opérations (remises, stock, demandes et achats).\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'L’EPI « $name » sera restauré et redeviendra actif, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Archivées';
+  }
+
+  @override
+  String get unitShowActive => 'Voir les unités actives';
+
+  @override
+  String get unitShowArchived => 'Voir les unités archivées';
+
+  @override
+  String get unitArchivedEmpty => 'Aucune unité archivée.';
+
+  @override
+  String get unitArchiveTitle => 'Archiver l’unité';
+
+  @override
+  String get unitRestoreTitle => 'Restaurer l’unité';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'L’unité « $name » sera archivée et ne pourra plus recevoir de nouvelles opérations.\n\nTout l’historique sera conservé pendant la durée minimale de conservation configurée (au moins 5 ans) pour les consultations, rapports et audits.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'L’unité « $name » sera restaurée et redeviendra active, permettant de nouvelles opérations.\n\nTout l’historique conservé restera intact.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Archivé le $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Conservation restante : $countLabel jours',
+      one: 'Conservation restante : $countLabel jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Durée de conservation écoulée';
+
+  @override
+  String get employeeDetailsSection => 'Informations du collaborateur';
+
+  @override
+  String get epiDaysRemaining => 'Jours restants';
+
+  @override
+  String get epiIdentificationSection => 'Identification';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel éléments en attente',
+      one: '$countLabel élément en attente',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel EPI',
+      one: '$countLabel EPI',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Péremption fabricant proche';
+
+  @override
+  String get stockManufacturerExpired =>
+      'Date de péremption fabricant dépassée';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Date de péremption fabricant dépassée : retirer du stock (ne pas distribuer).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Péremption fabricant proche : prioriser la distribution (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Péremption fabricant proche (dans $days) : prioriser la distribution (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError =>
+      'Impossible de charger la visibilité des modules.';
+
+  @override
+  String get moduleRequests => 'Demandes';
+
+  @override
+  String get moduleAdministration => 'Administration';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Ligne $row : $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Entreprise contractante';
+
+  @override
+  String get responsibilityOutsourced => 'Entreprise sous-traitante';
+
+  @override
+  String get responsibilityProvider => 'Prestataire de services';
+
+  @override
+  String get responsibilityShared => 'Responsabilité partagée';
+
+  @override
+  String get responsibilityContract => 'Selon le contrat';
+
+  @override
+  String get responsibilityUndefined => 'Non défini';
+
+  @override
+  String get purchaseCreated => 'Demande d’achat créée avec succès';
+
+  @override
+  String get criticalStockTitle => 'Stock critique';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel EPI sous le stock minimum',
+      one: '$countLabel EPI sous le stock minimum',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'Nouvelle entreprise';
+
+  @override
+  String get companyCnpjLength =>
+      'Le CNPJ brésilien doit comporter 14 chiffres';
+
+  @override
+  String get companyUserLimit => 'Nombre maximal d’utilisateurs';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'Minimum de $count pour cette offre';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — facultatif';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'S’il est renseigné, l’Owner reçoit par e-mail une invitation contenant la clé du premier accès. L’$role ne connaît jamais le mot de passe.';
+  }
+
+  @override
+  String get companyOwnerName => 'Nom de l’Owner';
+
+  @override
+  String get companyOwnerEmail =>
+      'E-mail de l’Owner (destinataire de l’invitation)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 utilisateur)';
+
+  @override
+  String get companyPlanStart => 'Start (jusqu’à 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 à 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 à 100)';
+
+  @override
+  String get formValidNumber => 'Saisissez un nombre valide';
+
+  @override
+  String get formValidEmail => 'Adresse e-mail invalide';
+
+  @override
+  String get moduleEmployeeRegistration => 'Enregistrement des collaborateurs';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Archivée le $date';
+  }
 }

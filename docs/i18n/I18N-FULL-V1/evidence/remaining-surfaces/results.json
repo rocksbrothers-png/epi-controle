@@ -1,0 +1,55 @@
+{
+  "synthetic_only": true,
+  "locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "new_widget_and_presentation_tests": 19,
+  "all_app_tests": {
+    "corporate": {
+      "passed": 572,
+      "skipped": 2
+    },
+    "saas": {
+      "passed": 548,
+      "skipped": 2
+    }
+  },
+  "directed_python_corporate": {
+    "passed": 184
+  },
+  "design_tests": 39,
+  "catalogue_package_tests": 5,
+  "catalogues": {
+    "new_resources": 64,
+    "regional_messages": 983,
+    "aliases_equal": true
+  },
+  "parity_manifest_files": 299,
+  "independent_probes_corporate": 4,
+  "capture": {
+    "viewport": "390x844",
+    "locale": "fr_FR",
+    "fonts": "local Inter and MaterialIcons",
+    "same_fixture_before_after": true,
+    "calls": 0,
+    "source_baseline": "5b2546c953dba3a2167b613e1adf855d5088f3bf"
+  },
+  "limits": [
+    "intercepted Flutter API adapters",
+    "not native-device or full backend RBAC proof",
+    "full task and main integration remain incomplete"
+  ],
+  "directed_python_saas": {
+    "passed": 184
+  },
+  "analyzer": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 131,
+    "scope": "complete corporate app before final documentation; infos not promoted to false green"
+  }
+}

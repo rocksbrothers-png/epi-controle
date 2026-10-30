@@ -1354,5 +1354,210 @@
   "unitNameHint": "Ej.: Plataforma P-40",
   "unitTypeBase": "Base",
   "unitTypeVessel": "Embarcación",
-  "unitTypePlatform": "Plataforma"
+  "unitTypePlatform": "Plataforma",
+  "employeeShowActive": "Ver colaboradores activos",
+  "employeeShowArchived": "Ver colaboradores archivados",
+  "employeeArchivedEmpty": "No hay colaboradores archivados.",
+  "employeeArchiveTitle": "Archivar colaborador",
+  "employeeRestoreTitle": "Restaurar colaborador",
+  "employeeArchiveBody": "El colaborador \"{name}\" se archivará y dejará de recibir nuevas operaciones (entregas, solicitudes y movimientos).\n\nTodo el historial se conservará durante el período mínimo de retención configurado (al menos 5 años).",
+  "@employeeArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeRestoreBody": "El colaborador \"{name}\" se restaurará y volverá a estar activo, permitiendo nuevas operaciones.\n\nTodo el historial conservado permanecerá intacto.",
+  "@employeeRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiShowActive": "Ver EPI activos",
+  "epiShowArchived": "Ver EPI archivados",
+  "epiArchivedEmpty": "No hay EPI archivados.",
+  "epiArchiveTitle": "Archivar EPI",
+  "epiRestoreTitle": "Restaurar EPI",
+  "epiArchiveBody": "El EPI \"{name}\" se archivará y dejará de recibir nuevas operaciones (entregas, existencias, solicitudes y compras).\n\nTodo el historial se conservará durante el período mínimo de retención configurado (al menos 5 años).",
+  "@epiArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiRestoreBody": "El EPI \"{name}\" se restaurará y volverá a estar activo, permitiendo nuevas operaciones.\n\nTodo el historial conservado permanecerá intacto.",
+  "@epiRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitArchivedTitle": "{title} · Archivadas",
+  "@unitArchivedTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "unitShowActive": "Ver unidades activas",
+  "unitShowArchived": "Ver unidades archivadas",
+  "unitArchivedEmpty": "No hay unidades archivadas.",
+  "unitArchiveTitle": "Archivar unidad",
+  "unitRestoreTitle": "Restaurar unidad",
+  "unitArchiveBody": "La unidad \"{name}\" se archivará y dejará de recibir nuevas operaciones.\n\nTodo el historial se conservará durante el período mínimo de retención configurado (al menos 5 años) para consultas, informes y auditorías.",
+  "@unitArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitRestoreBody": "La unidad \"{name}\" se restaurará y volverá a estar activa, permitiendo nuevas operaciones.\n\nTodo el historial conservado permanecerá intacto.",
+  "@unitRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedOnDate": "Archivado el {date}",
+  "@archivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionRemainingDays": "{count, plural, one{Retención restante: {countLabel} día} other{Retención restante: {countLabel} días}}",
+  "@retentionRemainingDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionSatisfied": "Período de retención cumplido",
+  "employeeDetailsSection": "Datos del colaborador",
+  "epiDaysRemaining": "Días restantes",
+  "epiIdentificationSection": "Identificación",
+  "recordsPendingCount": "{count, plural, one{{countLabel} pendiente} other{{countLabel} pendientes}}",
+  "@recordsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockPpeCount": "{count, plural, one{{countLabel} EPI} other{{countLabel} EPI}}",
+  "@stockPpeCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockManufacturerExpiring": "Vencimiento del fabricante próximo",
+  "stockManufacturerExpired": "Vencimiento del fabricante superado",
+  "stockManufacturerExpiredNote": "Vencimiento del fabricante superado: retirar del inventario (no entregar).",
+  "stockManufacturerExpiringNote": "Vencimiento del fabricante próximo: priorizar entrega (FIFO).",
+  "stockManufacturerExpiringInNote": "Vencimiento del fabricante próximo (en {days}): priorizar entrega (FIFO).",
+  "@stockManufacturerExpiringInNote": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleVisibilityLoadError": "No se pudo cargar la visibilidad de los módulos.",
+  "moduleRequests": "Solicitudes",
+  "moduleAdministration": "Administración",
+  "importRowError": "Fila {row}: {detail}",
+  "@importRowError": {
+    "placeholders": {
+      "row": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "responsibilityContracting": "Empresa contratante",
+  "responsibilityOutsourced": "Empresa subcontratada",
+  "responsibilityProvider": "Empresa prestadora de servicios",
+  "responsibilityShared": "Responsabilidad compartida",
+  "responsibilityContract": "Según contrato",
+  "responsibilityUndefined": "Sin definir",
+  "purchaseCreated": "Solicitud de compra creada correctamente",
+  "criticalStockTitle": "Existencias críticas",
+  "criticalStockBody": "{count, plural, one{{countLabel} EPI por debajo de las existencias mínimas} other{{countLabel} EPI por debajo de las existencias mínimas}}",
+  "@criticalStockBody": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNewTitle": "Nueva empresa",
+  "companyCnpjLength": "El CNPJ brasileño debe tener 14 dígitos",
+  "companyUserLimit": "Límite de usuarios",
+  "companyMinimumUsers": "Mínimo de {count} para este plan",
+  "@companyMinimumUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "companyOwnerOptional": "Owner ({role}) — opcional",
+  "companyOwnerInviteHint": "Si se indica, el Owner recibe por correo la invitación con la clave de primer acceso. El {role} nunca conoce la contraseña.",
+  "companyOwnerName": "Nombre del Owner",
+  "companyOwnerEmail": "Correo del Owner (destinatario de la invitación)",
+  "companyPlanIndividual": "Individual (1 usuario)",
+  "companyPlanStart": "Start (hasta 10)",
+  "companyPlanBusiness": "Business (de 11 a 25)",
+  "companyPlanCorporate": "Corporate (de 26 a 100)",
+  "formValidNumber": "Introduzca un número válido",
+  "formValidEmail": "Correo electrónico no válido",
+  "moduleEmployeeRegistration": "Registro de colaboradores",
+  "unitArchivedOnDate": "Archivada el {date}",
+  "@unitArchivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerOptional": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerInviteHint": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  }
 }

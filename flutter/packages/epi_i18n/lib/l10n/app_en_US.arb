@@ -1381,5 +1381,210 @@
   "unitNameHint": "E.g. Platform P-40",
   "unitTypeBase": "Base",
   "unitTypeVessel": "Vessel",
-  "unitTypePlatform": "Platform"
+  "unitTypePlatform": "Platform",
+  "employeeShowActive": "View active employees",
+  "employeeShowArchived": "View archived employees",
+  "employeeArchivedEmpty": "No archived employees.",
+  "employeeArchiveTitle": "Archive employee",
+  "employeeRestoreTitle": "Restore employee",
+  "employeeArchiveBody": "Employee \"{name}\" will be archived and will no longer receive new operations (issues, requests and transfers).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).",
+  "@employeeArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeRestoreBody": "Employee \"{name}\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.",
+  "@employeeRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiShowActive": "View active PPE",
+  "epiShowArchived": "View archived PPE",
+  "epiArchivedEmpty": "No archived PPE.",
+  "epiArchiveTitle": "Archive PPE",
+  "epiRestoreTitle": "Restore PPE",
+  "epiArchiveBody": "PPE \"{name}\" will be archived and will no longer receive new operations (issues, stock, requests and purchases).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).",
+  "@epiArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiRestoreBody": "PPE \"{name}\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.",
+  "@epiRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitArchivedTitle": "{title} · Archived",
+  "@unitArchivedTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "unitShowActive": "View active units",
+  "unitShowArchived": "View archived units",
+  "unitArchivedEmpty": "No archived units.",
+  "unitArchiveTitle": "Archive unit",
+  "unitRestoreTitle": "Restore unit",
+  "unitArchiveBody": "Unit \"{name}\" will be archived and will no longer receive new operations.\n\nAll history will be preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.",
+  "@unitArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitRestoreBody": "Unit \"{name}\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.",
+  "@unitRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedOnDate": "Archived on {date}",
+  "@archivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionRemainingDays": "{count, plural, one{Retention remaining: {countLabel} day} other{Retention remaining: {countLabel} days}}",
+  "@retentionRemainingDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionSatisfied": "Retention period completed",
+  "employeeDetailsSection": "Employee details",
+  "epiDaysRemaining": "Days remaining",
+  "epiIdentificationSection": "Identification",
+  "recordsPendingCount": "{count, plural, one{{countLabel} pending item} other{{countLabel} pending items}}",
+  "@recordsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockPpeCount": "{count, plural, one{{countLabel} PPE type} other{{countLabel} PPE types}}",
+  "@stockPpeCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockManufacturerExpiring": "Manufacturer expiry approaching",
+  "stockManufacturerExpired": "Manufacturer expiry passed",
+  "stockManufacturerExpiredNote": "Manufacturer expiry passed — remove from stock (do not issue).",
+  "stockManufacturerExpiringNote": "Manufacturer expiry approaching — prioritise issue (FIFO).",
+  "stockManufacturerExpiringInNote": "Manufacturer expiry approaching (in {days}) — prioritise issue (FIFO).",
+  "@stockManufacturerExpiringInNote": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleVisibilityLoadError": "Could not load module visibility.",
+  "moduleRequests": "Requests",
+  "moduleAdministration": "Administration",
+  "importRowError": "Row {row}: {detail}",
+  "@importRowError": {
+    "placeholders": {
+      "row": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "responsibilityContracting": "Contracting company",
+  "responsibilityOutsourced": "Outsourced company",
+  "responsibilityProvider": "Service provider",
+  "responsibilityShared": "Shared responsibility",
+  "responsibilityContract": "As per contract",
+  "responsibilityUndefined": "Not defined",
+  "purchaseCreated": "Purchase requisition created successfully",
+  "criticalStockTitle": "Critical stock",
+  "criticalStockBody": "{count, plural, one{{countLabel} PPE type below minimum stock} other{{countLabel} PPE types below minimum stock}}",
+  "@criticalStockBody": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNewTitle": "New company",
+  "companyCnpjLength": "The Brazilian CNPJ must have 14 digits",
+  "companyUserLimit": "User limit",
+  "companyMinimumUsers": "At least {count} for this plan",
+  "@companyMinimumUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "companyOwnerOptional": "Owner ({role}) — optional",
+  "companyOwnerInviteHint": "If provided, the Owner receives an email invitation with the first-access key. The {role} never knows the password.",
+  "companyOwnerName": "Owner name",
+  "companyOwnerEmail": "Owner email (invitation recipient)",
+  "companyPlanIndividual": "Individual (1 user)",
+  "companyPlanStart": "Start (up to 10)",
+  "companyPlanBusiness": "Business (11 to 25)",
+  "companyPlanCorporate": "Corporate (26 to 100)",
+  "formValidNumber": "Enter a valid number",
+  "formValidEmail": "Invalid email address",
+  "moduleEmployeeRegistration": "Employee registration",
+  "unitArchivedOnDate": "Archived on {date}",
+  "@unitArchivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerOptional": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerInviteHint": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  }
 }

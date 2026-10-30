@@ -15,7 +15,8 @@ import 'unit_transfer_dialog.dart';
 
 /// Rótulo exibido para cada valor de `tipo_vinculo` — mesmo mapeamento do
 /// formulário de edição, para que a leitura e a escrita concordem.
-String _employmentTypeLabel(AppLocalizations l10n, String value) => switch (value) {
+String _employmentTypeLabel(AppLocalizations l10n, String value) =>
+    switch (value) {
       'CLT' => l10n.employmentTypeClt,
       'Terceirizado' => l10n.employmentTypeOutsourced,
       'Temporário' => l10n.employmentTypeTemporary,
@@ -41,7 +42,11 @@ class EmployeeDetailScreen extends StatelessWidget {
         children: [
           const SizedBox(height: EpiSpacing.lg),
           Center(
-            child: EpiAvatar(name: employee.name, imageUrl: employee.photoUrl, size: 88),
+            child: EpiAvatar(
+              name: employee.name,
+              imageUrl: employee.photoUrl,
+              size: 88,
+            ),
           ),
           const SizedBox(height: EpiSpacing.lg),
           Center(
@@ -75,14 +80,23 @@ class EmployeeDetailScreen extends StatelessWidget {
           _ContactRow(employee: employee),
           const SizedBox(height: EpiSpacing.xl2),
           _DetailSection(
-            title: 'Dados do colaborador',
+            title: l10n.employeeDetailsSection,
             items: [
               if (employee.code != null)
-                _DetailRow(label: l10n.employeeCodeLabel, value: employee.code!),
+                _DetailRow(
+                  label: l10n.employeeCodeLabel,
+                  value: employee.code!,
+                ),
               if (employee.sector != null)
-                _DetailRow(label: l10n.employeeSectorLabel, value: employee.sector!),
+                _DetailRow(
+                  label: l10n.employeeSectorLabel,
+                  value: employee.sector!,
+                ),
               if (employee.role != null)
-                _DetailRow(label: l10n.employeeRoleLabel, value: employee.role!),
+                _DetailRow(
+                  label: l10n.employeeRoleLabel,
+                  value: employee.role!,
+                ),
               if (employee.unitName != null)
                 _DetailRow(
                   label: l10n.employeeUnitLabel,
@@ -97,7 +111,8 @@ class EmployeeDetailScreen extends StatelessWidget {
                   employee.legalEntityCnpj!.isNotEmpty)
                 _DetailRow(
                   label: l10n.employeeLegalEntityLabel,
-                  value: employee.legalEntityName == null ||
+                  value:
+                      employee.legalEntityName == null ||
                           employee.legalEntityName!.isEmpty
                       ? employee.legalEntityCnpj!
                       : '${employee.legalEntityName!} — ${employee.legalEntityCnpj!}',
@@ -111,7 +126,10 @@ class EmployeeDetailScreen extends StatelessWidget {
                   value: employee.admissionDate!,
                 ),
               if (employee.schedule != null)
-                _DetailRow(label: l10n.employeeScheduleLabel, value: employee.schedule!),
+                _DetailRow(
+                  label: l10n.employeeScheduleLabel,
+                  value: employee.schedule!,
+                ),
               if (employee.employmentType != null &&
                   employee.employmentType!.isNotEmpty)
                 _DetailRow(
@@ -226,9 +244,9 @@ class _ContactRowState extends State<_ContactRow> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on Exception {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.employeeContactPdfError)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.employeeContactPdfError)));
       }
     } finally {
       if (mounted) setState(() => _pdfLoading = false);
@@ -243,10 +261,9 @@ class _ContactRowState extends State<_ContactRow> {
       children: [
         Text(
           l10n.employeeContactTitle,
-          style: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(color: EpiColors.textMuted),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: EpiColors.textMuted),
         ),
         const SizedBox(height: EpiSpacing.sm),
         Row(
@@ -315,9 +332,7 @@ class _ContactButton extends StatelessWidget {
           horizontal: EpiSpacing.md,
           vertical: EpiSpacing.sm,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: loading
           ? SizedBox(
@@ -332,10 +347,9 @@ class _ContactButton extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelSmall
-                      ?.copyWith(color: color),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: color),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -361,9 +375,9 @@ class _DetailSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: EpiColors.textMuted,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: EpiColors.textMuted),
         ),
         const SizedBox(height: EpiSpacing.sm),
         Card(
@@ -399,10 +413,9 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: EpiColors.textMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
             ),
           ),
           Expanded(

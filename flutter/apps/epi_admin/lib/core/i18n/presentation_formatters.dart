@@ -25,3 +25,16 @@ String formatDisplayDate(String iso, String locale) {
   }
   return DateFormat.yMd(locale).format(date);
 }
+
+String formatDisplayCount(num value, String locale) =>
+    NumberFormat.decimalPattern(locale).format(value);
+
+/// Month labels are presentation; malformed and original data stay opaque.
+String formatDisplayPeriod(String iso, String locale) {
+  final match = RegExp(r'^(\d{4})-(\d{2})(?:-|$)').firstMatch(iso);
+  if (match == null) return iso;
+  final year = int.tryParse(match.group(1)!);
+  final month = int.tryParse(match.group(2)!);
+  if (year == null || month == null || month < 1 || month > 12) return iso;
+  return DateFormat.yMMM(locale).format(DateTime(year, month));
+}

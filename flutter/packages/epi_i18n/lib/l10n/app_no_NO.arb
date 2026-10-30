@@ -1354,5 +1354,210 @@
   "unitNameHint": "F.eks. plattform P-40",
   "unitTypeBase": "Base",
   "unitTypeVessel": "Fartøy",
-  "unitTypePlatform": "Plattform"
+  "unitTypePlatform": "Plattform",
+  "employeeShowActive": "Vis aktive medarbeidere",
+  "employeeShowArchived": "Vis arkiverte medarbeidere",
+  "employeeArchivedEmpty": "Ingen arkiverte medarbeidere.",
+  "employeeArchiveTitle": "Arkiver medarbeider",
+  "employeeRestoreTitle": "Gjenopprett medarbeider",
+  "employeeArchiveBody": "Medarbeideren «{name}» arkiveres og kan ikke lenger motta nye operasjoner (utleveringer, forespørsler og overføringer).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).",
+  "@employeeArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeRestoreBody": "Medarbeideren «{name}» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.",
+  "@employeeRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiShowActive": "Vis aktivt PVU",
+  "epiShowArchived": "Vis arkivert PVU",
+  "epiArchivedEmpty": "Ingen arkiverte PVU.",
+  "epiArchiveTitle": "Arkiver PVU",
+  "epiRestoreTitle": "Gjenopprett PVU",
+  "epiArchiveBody": "PVU «{name}» arkiveres og kan ikke lenger inngå i nye operasjoner (utleveringer, lager, forespørsler og innkjøp).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).",
+  "@epiArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiRestoreBody": "PVU «{name}» gjenopprettes og blir aktivt igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.",
+  "@epiRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitArchivedTitle": "{title} · Arkiverte",
+  "@unitArchivedTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "unitShowActive": "Vis aktive enheter",
+  "unitShowArchived": "Vis arkiverte enheter",
+  "unitArchivedEmpty": "Ingen arkiverte enheter.",
+  "unitArchiveTitle": "Arkiver enhet",
+  "unitRestoreTitle": "Gjenopprett enhet",
+  "unitArchiveBody": "Enheten «{name}» arkiveres og kan ikke lenger motta nye operasjoner.\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.",
+  "@unitArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitRestoreBody": "Enheten «{name}» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.",
+  "@unitRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedOnDate": "Arkivert {date}",
+  "@archivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionRemainingDays": "{count, plural, one{Gjenstående oppbevaring: {countLabel} dag} other{Gjenstående oppbevaring: {countLabel} dager}}",
+  "@retentionRemainingDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionSatisfied": "Oppbevaringstiden er utløpt",
+  "employeeDetailsSection": "Medarbeideropplysninger",
+  "epiDaysRemaining": "Dager igjen",
+  "epiIdentificationSection": "Identifikasjon",
+  "recordsPendingCount": "{count, plural, one{{countLabel} ventende element} other{{countLabel} ventende elementer}}",
+  "@recordsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockPpeCount": "{count, plural, one{{countLabel} PVU-type} other{{countLabel} PVU-typer}}",
+  "@stockPpeCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockManufacturerExpiring": "Produsentens utløpsdato nærmer seg",
+  "stockManufacturerExpired": "Produsentens utløpsdato er passert",
+  "stockManufacturerExpiredNote": "Produsentens utløpsdato er passert — fjern fra lageret (skal ikke utleveres).",
+  "stockManufacturerExpiringNote": "Produsentens utløpsdato nærmer seg — prioriter utlevering (FIFO).",
+  "stockManufacturerExpiringInNote": "Produsentens utløpsdato nærmer seg (om {days}) — prioriter utlevering (FIFO).",
+  "@stockManufacturerExpiringInNote": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleVisibilityLoadError": "Kunne ikke laste modulsynlighet.",
+  "moduleRequests": "Forespørsler",
+  "moduleAdministration": "Administrasjon",
+  "importRowError": "Rad {row}: {detail}",
+  "@importRowError": {
+    "placeholders": {
+      "row": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "responsibilityContracting": "Oppdragsgiver",
+  "responsibilityOutsourced": "Underleverandør",
+  "responsibilityProvider": "Tjenesteleverandør",
+  "responsibilityShared": "Delt ansvar",
+  "responsibilityContract": "I henhold til kontrakt",
+  "responsibilityUndefined": "Ikke definert",
+  "purchaseCreated": "Innkjøpsrekvisisjon opprettet",
+  "criticalStockTitle": "Kritisk lagerbeholdning",
+  "criticalStockBody": "{count, plural, one{{countLabel} PVU-type under minimumsbeholdningen} other{{countLabel} PVU-typer under minimumsbeholdningen}}",
+  "@criticalStockBody": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNewTitle": "Ny virksomhet",
+  "companyCnpjLength": "Brasiliansk CNPJ må ha 14 sifre",
+  "companyUserLimit": "Brukergrense",
+  "companyMinimumUsers": "Minst {count} for dette abonnementet",
+  "@companyMinimumUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "companyOwnerOptional": "Owner ({role}) — valgfritt",
+  "companyOwnerInviteHint": "Hvis oppgitt, mottar Owner en e-postinvitasjon med nøkkelen for første tilgang. {role} kjenner aldri passordet.",
+  "companyOwnerName": "Navn på Owner",
+  "companyOwnerEmail": "E-post til Owner (mottaker av invitasjonen)",
+  "companyPlanIndividual": "Individual (1 bruker)",
+  "companyPlanStart": "Start (opptil 10)",
+  "companyPlanBusiness": "Business (11 til 25)",
+  "companyPlanCorporate": "Corporate (26 til 100)",
+  "formValidNumber": "Oppgi et gyldig tall",
+  "formValidEmail": "Ugyldig e-postadresse",
+  "moduleEmployeeRegistration": "Medarbeiderregistrering",
+  "unitArchivedOnDate": "Arkivert {date}",
+  "@unitArchivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerOptional": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerInviteHint": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  }
 }

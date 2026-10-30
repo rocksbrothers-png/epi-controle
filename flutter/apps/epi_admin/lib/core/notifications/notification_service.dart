@@ -21,11 +21,7 @@ class NotificationService {
     if (!firebaseAvailable) return;
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
 
       // Foreground messages
       FirebaseMessaging.onMessage.listen(_handleMessage);
@@ -42,11 +38,13 @@ class NotificationService {
   }
 
   void _handleMessage(RemoteMessage message) {
-    _controller.add(AppNotification(
-      title: message.notification?.title ?? '',
-      body: message.notification?.body ?? '',
-      data: message.data,
-    ));
+    _controller.add(
+      AppNotification(
+        title: message.notification?.title ?? '',
+        body: message.notification?.body ?? '',
+        data: message.data,
+      ),
+    );
   }
 
   /// Push a local notification directly into the stream (e.g. critical-stock alerts).
@@ -64,7 +62,11 @@ class AppNotification {
     required this.title,
     required this.body,
     required this.data,
+    this.criticalStockCount,
   });
+
+  /// Local presentation metadata; remote FCM data is not reinterpreted.
+  final int? criticalStockCount;
   final String title;
   final String body;
   final Map<String, dynamic> data;

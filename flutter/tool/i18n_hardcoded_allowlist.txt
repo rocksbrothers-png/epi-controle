@@ -23,7 +23,6 @@ lib/features/settings/appearance_screen.dart|Norsk
 # Troca obrigatória de senha no 1º acesso (gen:l10n indisponível neste ambiente)
 # Avaliações / Feedback
 # Detalhe de EPI
-lib/features/epis/epi_detail_screen.dart|Dias restantes
 # Scanner QR
 # Relatórios — nomes de meses
 
@@ -36,12 +35,6 @@ lib/features/purchases/suppliers_screen.dart|API
 # (conferência de entrega / conformidade / bloquear-e-arquivar). Estas telas de
 # arquivar/desarquivar (EPIs, colaboradores, unidades, política) foram mergeadas
 # antes desta passagem; migrar para AppLocalizations em PR de i18n dedicado.
-lib/features/employees/employees_screen.dart|Arquivar Colaborador
-lib/features/employees/employees_screen.dart|Desarquivar Colaborador
-lib/features/epis/epis_screen.dart|Arquivar EPI
-lib/features/epis/epis_screen.dart|Desarquivar EPI
-lib/features/units/units_screen.dart|Arquivar Unidade
-lib/features/units/units_screen.dart|Desarquivar Unidade
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (B) DÉBITO TÉCNICO — descoberto quando o gate voltou a varrer de verdade.

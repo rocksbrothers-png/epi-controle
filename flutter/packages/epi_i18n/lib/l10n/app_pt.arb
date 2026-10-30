@@ -1385,5 +1385,210 @@
   "unitTypeBase": "Base",
   "unitTypeVessel": "Embarcação",
   "unitTypePlatform": "Plataforma",
+  "employeeShowActive": "Ver colaboradores ativos",
+  "employeeShowArchived": "Ver colaboradores arquivados",
+  "employeeArchivedEmpty": "Nenhum colaborador arquivado.",
+  "employeeArchiveTitle": "Arquivar Colaborador",
+  "employeeRestoreTitle": "Desarquivar Colaborador",
+  "employeeArchiveBody": "O colaborador \"{name}\" será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+  "@employeeArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeRestoreBody": "O colaborador \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@employeeRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiShowActive": "Ver EPIs ativos",
+  "epiShowArchived": "Ver EPIs arquivados",
+  "epiArchivedEmpty": "Nenhum EPI arquivado.",
+  "epiArchiveTitle": "Arquivar EPI",
+  "epiRestoreTitle": "Desarquivar EPI",
+  "epiArchiveBody": "O EPI \"{name}\" será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+  "@epiArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiRestoreBody": "O EPI \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@epiRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitArchivedTitle": "{title} · Arquivadas",
+  "@unitArchivedTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "unitShowActive": "Ver unidades ativas",
+  "unitShowArchived": "Ver unidades arquivadas",
+  "unitArchivedEmpty": "Nenhuma unidade arquivada.",
+  "unitArchiveTitle": "Arquivar Unidade",
+  "unitRestoreTitle": "Desarquivar Unidade",
+  "unitArchiveBody": "A unidade \"{name}\" será arquivada e deixará de receber novas operações.\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+  "@unitArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitRestoreBody": "A unidade \"{name}\" será desarquivada e voltará a ficar ativa, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@unitRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedOnDate": "Arquivado em {date}",
+  "@archivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionRemainingDays": "{count, plural, one{Retenção restante: {countLabel} dia} other{Retenção restante: {countLabel} dias}}",
+  "@retentionRemainingDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionSatisfied": "Retenção cumprida",
+  "employeeDetailsSection": "Dados do colaborador",
+  "epiDaysRemaining": "Dias restantes",
+  "epiIdentificationSection": "Identificação",
+  "recordsPendingCount": "{count, plural, one{{countLabel} pendente} other{{countLabel} pendentes}}",
+  "@recordsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockPpeCount": "{count, plural, one{{countLabel} EPI} other{{countLabel} EPIs}}",
+  "@stockPpeCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockManufacturerExpiring": "Validade do fabricante próxima",
+  "stockManufacturerExpired": "Validade do fabricante vencida",
+  "stockManufacturerExpiredNote": "Validade do fabricante vencida — retirar do estoque (não entregar).",
+  "stockManufacturerExpiringNote": "Validade do fabricante próxima — priorizar entrega (PEPS).",
+  "stockManufacturerExpiringInNote": "Validade do fabricante próxima (em {days}) — priorizar entrega (PEPS).",
+  "@stockManufacturerExpiringInNote": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleVisibilityLoadError": "Não foi possível carregar a visualização de módulos.",
+  "moduleRequests": "Solicitações",
+  "moduleAdministration": "Administração",
+  "importRowError": "Linha {row}: {detail}",
+  "@importRowError": {
+    "placeholders": {
+      "row": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "responsibilityContracting": "Empresa Contratante",
+  "responsibilityOutsourced": "Empresa Terceirizada",
+  "responsibilityProvider": "Empresa Prestadora de Serviço",
+  "responsibilityShared": "Responsabilidade Compartilhada",
+  "responsibilityContract": "Conforme Contrato",
+  "responsibilityUndefined": "Não Definido",
+  "purchaseCreated": "Requisição criada com sucesso",
+  "criticalStockTitle": "Estoque Crítico",
+  "criticalStockBody": "{count, plural, one{{countLabel} EPI abaixo do estoque mínimo} other{{countLabel} EPIs abaixo do estoque mínimo}}",
+  "@criticalStockBody": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNewTitle": "Nova empresa",
+  "companyCnpjLength": "CNPJ deve ter 14 dígitos",
+  "companyUserLimit": "Limite de usuários",
+  "companyMinimumUsers": "Mínimo de {count} para este plano",
+  "@companyMinimumUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "companyOwnerOptional": "Owner ({role}) — opcional",
+  "companyOwnerInviteHint": "Se informado, o Owner recebe por e-mail o convite com a chave de primeiro acesso. A senha nunca é conhecida pelo {role}.",
+  "companyOwnerName": "Nome do Owner",
+  "companyOwnerEmail": "E-mail do Owner (envia o convite)",
+  "companyPlanIndividual": "Individual (1 usuário)",
+  "companyPlanStart": "Start (até 10)",
+  "companyPlanBusiness": "Business (11 a 25)",
+  "companyPlanCorporate": "Corporate (26 a 100)",
+  "formValidNumber": "Informe um número válido",
+  "formValidEmail": "E-mail inválido",
+  "moduleEmployeeRegistration": "Cadastro de Colaboradores",
+  "unitArchivedOnDate": "Arquivada em {date}",
+  "@unitArchivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerOptional": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerInviteHint": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
   "@@comment": "Base-language mirror of pt_BR; generated by tool/sync_locale_aliases.py."
 }

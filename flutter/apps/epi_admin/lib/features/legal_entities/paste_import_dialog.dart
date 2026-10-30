@@ -81,6 +81,7 @@ class _PasteImportDialogState extends State<PasteImportDialog> {
   final _text = TextEditingController();
   bool _submitting = false;
   String? _summary;
+  List<dynamic> _rowErrors = const [];
 
   @override
   void dispose() {
@@ -104,13 +105,8 @@ class _PasteImportDialogState extends State<PasteImportDialog> {
       _submitting = false;
       // Erros vêm por linha (1-based, como na planilha) para o operador
       // corrigir só o que falhou e reenviar.
-      _summary = [
-        '+$created / ~$updated',
-        if (errors.isNotEmpty)
-          errors
-              .map((e) => 'linha ${(e as Map)['row']}: ${e['error']}')
-              .join('\n'),
-      ].join('\n');
+      _summary = '+$created / ~$updated';
+      _rowErrors = errors;
     });
   }
 
@@ -140,7 +136,16 @@ class _PasteImportDialogState extends State<PasteImportDialog> {
               if (_summary != null) ...[
                 const SizedBox(height: EpiSpacing.md),
                 Text(
-                  '${l10n.legalEntitiesImportResult}\n${_summary!}',
+                  [
+                    l10n.legalEntitiesImportResult,
+                    _summary!,
+                    ..._rowErrors.map(
+                      (e) => l10n.importRowError(
+                        '${(e as Map)['row']}',
+                        '${e['error']}',
+                      ),
+                    ),
+                  ].join('\n'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

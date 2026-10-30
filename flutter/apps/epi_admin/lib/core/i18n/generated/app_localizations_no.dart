@@ -3024,6 +3024,260 @@ class AppLocalizationsNo extends AppLocalizations {
 
   @override
   String get unitTypePlatform => 'Plattform';
+
+  @override
+  String get employeeShowActive => 'Vis aktive medarbeidere';
+
+  @override
+  String get employeeShowArchived => 'Vis arkiverte medarbeidere';
+
+  @override
+  String get employeeArchivedEmpty => 'Ingen arkiverte medarbeidere.';
+
+  @override
+  String get employeeArchiveTitle => 'Arkiver medarbeider';
+
+  @override
+  String get employeeRestoreTitle => 'Gjenopprett medarbeider';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Medarbeideren «$name» arkiveres og kan ikke lenger motta nye operasjoner (utleveringer, forespørsler og overføringer).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Medarbeideren «$name» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String get epiShowActive => 'Vis aktivt PVU';
+
+  @override
+  String get epiShowArchived => 'Vis arkivert PVU';
+
+  @override
+  String get epiArchivedEmpty => 'Ingen arkiverte PVU.';
+
+  @override
+  String get epiArchiveTitle => 'Arkiver PVU';
+
+  @override
+  String get epiRestoreTitle => 'Gjenopprett PVU';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'PVU «$name» arkiveres og kan ikke lenger inngå i nye operasjoner (utleveringer, lager, forespørsler og innkjøp).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'PVU «$name» gjenopprettes og blir aktivt igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Arkiverte';
+  }
+
+  @override
+  String get unitShowActive => 'Vis aktive enheter';
+
+  @override
+  String get unitShowArchived => 'Vis arkiverte enheter';
+
+  @override
+  String get unitArchivedEmpty => 'Ingen arkiverte enheter.';
+
+  @override
+  String get unitArchiveTitle => 'Arkiver enhet';
+
+  @override
+  String get unitRestoreTitle => 'Gjenopprett enhet';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'Enheten «$name» arkiveres og kan ikke lenger motta nye operasjoner.\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'Enheten «$name» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Arkivert $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gjenstående oppbevaring: $countLabel dager',
+      one: 'Gjenstående oppbevaring: $countLabel dag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Oppbevaringstiden er utløpt';
+
+  @override
+  String get employeeDetailsSection => 'Medarbeideropplysninger';
+
+  @override
+  String get epiDaysRemaining => 'Dager igjen';
+
+  @override
+  String get epiIdentificationSection => 'Identifikasjon';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel ventende elementer',
+      one: '$countLabel ventende element',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PVU-typer',
+      one: '$countLabel PVU-type',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Produsentens utløpsdato nærmer seg';
+
+  @override
+  String get stockManufacturerExpired => 'Produsentens utløpsdato er passert';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Produsentens utløpsdato er passert — fjern fra lageret (skal ikke utleveres).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Produsentens utløpsdato nærmer seg — prioriter utlevering (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Produsentens utløpsdato nærmer seg (om $days) — prioriter utlevering (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError => 'Kunne ikke laste modulsynlighet.';
+
+  @override
+  String get moduleRequests => 'Forespørsler';
+
+  @override
+  String get moduleAdministration => 'Administrasjon';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Rad $row: $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Oppdragsgiver';
+
+  @override
+  String get responsibilityOutsourced => 'Underleverandør';
+
+  @override
+  String get responsibilityProvider => 'Tjenesteleverandør';
+
+  @override
+  String get responsibilityShared => 'Delt ansvar';
+
+  @override
+  String get responsibilityContract => 'I henhold til kontrakt';
+
+  @override
+  String get responsibilityUndefined => 'Ikke definert';
+
+  @override
+  String get purchaseCreated => 'Innkjøpsrekvisisjon opprettet';
+
+  @override
+  String get criticalStockTitle => 'Kritisk lagerbeholdning';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PVU-typer under minimumsbeholdningen',
+      one: '$countLabel PVU-type under minimumsbeholdningen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'Ny virksomhet';
+
+  @override
+  String get companyCnpjLength => 'Brasiliansk CNPJ må ha 14 sifre';
+
+  @override
+  String get companyUserLimit => 'Brukergrense';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'Minst $count for dette abonnementet';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — valgfritt';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'Hvis oppgitt, mottar Owner en e-postinvitasjon med nøkkelen for første tilgang. $role kjenner aldri passordet.';
+  }
+
+  @override
+  String get companyOwnerName => 'Navn på Owner';
+
+  @override
+  String get companyOwnerEmail => 'E-post til Owner (mottaker av invitasjonen)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 bruker)';
+
+  @override
+  String get companyPlanStart => 'Start (opptil 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 til 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 til 100)';
+
+  @override
+  String get formValidNumber => 'Oppgi et gyldig tall';
+
+  @override
+  String get formValidEmail => 'Ugyldig e-postadresse';
+
+  @override
+  String get moduleEmployeeRegistration => 'Medarbeiderregistrering';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Arkivert $date';
+  }
 }
 
 /// The translations for Norwegian, as used in Norway (`no_NO`).
@@ -6046,4 +6300,258 @@ class AppLocalizationsNoNo extends AppLocalizationsNo {
 
   @override
   String get unitTypePlatform => 'Plattform';
+
+  @override
+  String get employeeShowActive => 'Vis aktive medarbeidere';
+
+  @override
+  String get employeeShowArchived => 'Vis arkiverte medarbeidere';
+
+  @override
+  String get employeeArchivedEmpty => 'Ingen arkiverte medarbeidere.';
+
+  @override
+  String get employeeArchiveTitle => 'Arkiver medarbeider';
+
+  @override
+  String get employeeRestoreTitle => 'Gjenopprett medarbeider';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Medarbeideren «$name» arkiveres og kan ikke lenger motta nye operasjoner (utleveringer, forespørsler og overføringer).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Medarbeideren «$name» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String get epiShowActive => 'Vis aktivt PVU';
+
+  @override
+  String get epiShowArchived => 'Vis arkivert PVU';
+
+  @override
+  String get epiArchivedEmpty => 'Ingen arkiverte PVU.';
+
+  @override
+  String get epiArchiveTitle => 'Arkiver PVU';
+
+  @override
+  String get epiRestoreTitle => 'Gjenopprett PVU';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'PVU «$name» arkiveres og kan ikke lenger inngå i nye operasjoner (utleveringer, lager, forespørsler og innkjøp).\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'PVU «$name» gjenopprettes og blir aktivt igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Arkiverte';
+  }
+
+  @override
+  String get unitShowActive => 'Vis aktive enheter';
+
+  @override
+  String get unitShowArchived => 'Vis arkiverte enheter';
+
+  @override
+  String get unitArchivedEmpty => 'Ingen arkiverte enheter.';
+
+  @override
+  String get unitArchiveTitle => 'Arkiver enhet';
+
+  @override
+  String get unitRestoreTitle => 'Gjenopprett enhet';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'Enheten «$name» arkiveres og kan ikke lenger motta nye operasjoner.\n\nAll historikk bevares i den konfigurerte minste oppbevaringstiden (minst 5 år) for oppslag, rapporter og revisjoner.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'Enheten «$name» gjenopprettes og blir aktiv igjen, slik at nye operasjoner er mulige.\n\nAll bevart historikk forblir uendret.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Arkivert $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Gjenstående oppbevaring: $countLabel dager',
+      one: 'Gjenstående oppbevaring: $countLabel dag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Oppbevaringstiden er utløpt';
+
+  @override
+  String get employeeDetailsSection => 'Medarbeideropplysninger';
+
+  @override
+  String get epiDaysRemaining => 'Dager igjen';
+
+  @override
+  String get epiIdentificationSection => 'Identifikasjon';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel ventende elementer',
+      one: '$countLabel ventende element',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PVU-typer',
+      one: '$countLabel PVU-type',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Produsentens utløpsdato nærmer seg';
+
+  @override
+  String get stockManufacturerExpired => 'Produsentens utløpsdato er passert';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Produsentens utløpsdato er passert — fjern fra lageret (skal ikke utleveres).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Produsentens utløpsdato nærmer seg — prioriter utlevering (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Produsentens utløpsdato nærmer seg (om $days) — prioriter utlevering (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError => 'Kunne ikke laste modulsynlighet.';
+
+  @override
+  String get moduleRequests => 'Forespørsler';
+
+  @override
+  String get moduleAdministration => 'Administrasjon';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Rad $row: $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Oppdragsgiver';
+
+  @override
+  String get responsibilityOutsourced => 'Underleverandør';
+
+  @override
+  String get responsibilityProvider => 'Tjenesteleverandør';
+
+  @override
+  String get responsibilityShared => 'Delt ansvar';
+
+  @override
+  String get responsibilityContract => 'I henhold til kontrakt';
+
+  @override
+  String get responsibilityUndefined => 'Ikke definert';
+
+  @override
+  String get purchaseCreated => 'Innkjøpsrekvisisjon opprettet';
+
+  @override
+  String get criticalStockTitle => 'Kritisk lagerbeholdning';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PVU-typer under minimumsbeholdningen',
+      one: '$countLabel PVU-type under minimumsbeholdningen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'Ny virksomhet';
+
+  @override
+  String get companyCnpjLength => 'Brasiliansk CNPJ må ha 14 sifre';
+
+  @override
+  String get companyUserLimit => 'Brukergrense';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'Minst $count for dette abonnementet';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — valgfritt';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'Hvis oppgitt, mottar Owner en e-postinvitasjon med nøkkelen for første tilgang. $role kjenner aldri passordet.';
+  }
+
+  @override
+  String get companyOwnerName => 'Navn på Owner';
+
+  @override
+  String get companyOwnerEmail => 'E-post til Owner (mottaker av invitasjonen)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 bruker)';
+
+  @override
+  String get companyPlanStart => 'Start (opptil 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 til 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 til 100)';
+
+  @override
+  String get formValidNumber => 'Oppgi et gyldig tall';
+
+  @override
+  String get formValidEmail => 'Ugyldig e-postadresse';
+
+  @override
+  String get moduleEmployeeRegistration => 'Medarbeiderregistrering';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Arkivert $date';
+  }
 }

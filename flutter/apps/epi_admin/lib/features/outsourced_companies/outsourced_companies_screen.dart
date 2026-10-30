@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/entity_labels.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +28,8 @@ class OutsourcedCompaniesScreen extends StatefulWidget {
   const OutsourcedCompaniesScreen({super.key});
 
   @override
-  State<OutsourcedCompaniesScreen> createState() => _OutsourcedCompaniesScreenState();
+  State<OutsourcedCompaniesScreen> createState() =>
+      _OutsourcedCompaniesScreenState();
 }
 
 class _OutsourcedCompaniesScreenState extends State<OutsourcedCompaniesScreen>
@@ -41,10 +43,12 @@ class _OutsourcedCompaniesScreenState extends State<OutsourcedCompaniesScreen>
     super.initState();
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthAuthenticated) {
-      _canCompanies = (authState.permissions.contains('employees:create') ||
+      _canCompanies =
+          (authState.permissions.contains('employees:create') ||
               authState.permissions.contains('employees:create_simplified')) &&
           authState.isModuleVisible('terceirizados');
-      _canEmployees = authState.permissions.contains('employees:create_simplified') &&
+      _canEmployees =
+          authState.permissions.contains('employees:create_simplified') &&
           authState.isModuleVisible('terceirizados_colaboradores');
     }
     final tabCount = (_canCompanies ? 1 : 0) + (_canEmployees ? 1 : 0) + 1;
@@ -96,7 +100,10 @@ class _OutsourcedCompaniesScreenState extends State<OutsourcedCompaniesScreen>
 class _CompaniesTabBody extends StatelessWidget {
   const _CompaniesTabBody();
 
-  Future<void> _openForm(BuildContext context, {OutsourcedCompany? company}) async {
+  Future<void> _openForm(
+    BuildContext context, {
+    OutsourcedCompany? company,
+  }) async {
     final cubit = context.read<OutsourcedCompaniesCubit>();
     final saved = await showDialog<bool>(
       context: context,
@@ -127,14 +134,19 @@ class _CompaniesTabBody extends StatelessWidget {
     cubit.clearTenantSearch();
   }
 
-  Future<void> _confirmPromote(BuildContext context, OutsourcedCompany company) async {
+  Future<void> _confirmPromote(
+    BuildContext context,
+    OutsourcedCompany company,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedCompaniesCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.outsourcedCompanyPromoteConfirmTitle),
-        content: Text('${company.displayLabel}\n\n${l10n.outsourcedCompanyPromoteConfirmBody}'),
+        content: Text(
+          '${company.displayLabel}\n\n${l10n.outsourcedCompanyPromoteConfirmBody}',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -150,7 +162,10 @@ class _CompaniesTabBody extends StatelessWidget {
     if (confirmed == true) await cubit.promoteCompany(company.id);
   }
 
-  Future<void> _confirmArchive(BuildContext context, OutsourcedCompany company) async {
+  Future<void> _confirmArchive(
+    BuildContext context,
+    OutsourcedCompany company,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedCompaniesCubit>();
     final reasonController = TextEditingController();
@@ -183,11 +198,17 @@ class _CompaniesTabBody extends StatelessWidget {
       ),
     );
     if (confirmed == true) {
-      await cubit.archiveCompany(company.id, reason: reasonController.text.trim());
+      await cubit.archiveCompany(
+        company.id,
+        reason: reasonController.text.trim(),
+      );
     }
   }
 
-  Future<void> _confirmRestore(BuildContext context, Map<String, dynamic> company) async {
+  Future<void> _confirmRestore(
+    BuildContext context,
+    Map<String, dynamic> company,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedCompaniesCubit>();
     final confirmed = await showDialog<bool>(
@@ -207,16 +228,20 @@ class _CompaniesTabBody extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) await cubit.restoreCompany((company['id'] as num).toInt());
+    if (confirmed == true)
+      await cubit.restoreCompany((company['id'] as num).toInt());
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return BlocConsumer<OutsourcedCompaniesCubit, OutsourcedCompaniesState>(
-      listenWhen: (prev, curr) => prev.error != curr.error && curr.error != null,
+      listenWhen: (prev, curr) =>
+          prev.error != curr.error && curr.error != null,
       listener: (ctx, state) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(state.error!)));
+        ScaffoldMessenger.of(
+          ctx,
+        ).showSnackBar(SnackBar(content: Text(state.error!)));
       },
       builder: (ctx, state) {
         return Scaffold(
@@ -244,7 +269,10 @@ class _CompaniesTabBody extends StatelessWidget {
                     ),
                   ],
                 ),
-          body: state.isLoading && state.companies.isEmpty && state.archivedCompanies.isEmpty
+          body:
+              state.isLoading &&
+                  state.companies.isEmpty &&
+                  state.archivedCompanies.isEmpty
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   children: [
@@ -258,7 +286,9 @@ class _CompaniesTabBody extends StatelessWidget {
                                 prefixIcon: const Icon(Icons.search),
                                 labelText: l10n.outsourcedCompaniesSearchHint,
                               ),
-                              onChanged: ctx.read<OutsourcedCompaniesCubit>().search,
+                              onChanged: ctx
+                                  .read<OutsourcedCompaniesCubit>()
+                                  .search,
                             ),
                           ),
                           IconButton(
@@ -270,7 +300,9 @@ class _CompaniesTabBody extends StatelessWidget {
                                   ? Icons.business_outlined
                                   : Icons.inventory_2_outlined,
                             ),
-                            onPressed: () => ctx.read<OutsourcedCompaniesCubit>().toggleArchivedView(),
+                            onPressed: () => ctx
+                                .read<OutsourcedCompaniesCubit>()
+                                .toggleArchivedView(),
                           ),
                         ],
                       ),
@@ -278,27 +310,49 @@ class _CompaniesTabBody extends StatelessWidget {
                     Expanded(
                       child: state.showArchived
                           ? (state.visibleArchived.isEmpty
-                              ? Center(child: Text(l10n.outsourcedCompaniesArchivedEmpty))
-                              : ListView.separated(
-                                  itemCount: state.visibleArchived.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
-                                  itemBuilder: (_, i) => _ArchivedOutsourcedCompanyTile(
-                                    company: state.visibleArchived[i],
-                                    onRestore: () => _confirmRestore(ctx, state.visibleArchived[i]),
-                                  ),
-                                ))
+                                ? Center(
+                                    child: Text(
+                                      l10n.outsourcedCompaniesArchivedEmpty,
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    itemCount: state.visibleArchived.length,
+                                    separatorBuilder: (_, __) =>
+                                        const Divider(height: 1),
+                                    itemBuilder: (_, i) =>
+                                        _ArchivedOutsourcedCompanyTile(
+                                          company: state.visibleArchived[i],
+                                          onRestore: () => _confirmRestore(
+                                            ctx,
+                                            state.visibleArchived[i],
+                                          ),
+                                        ),
+                                  ))
                           : (state.visible.isEmpty
-                              ? Center(child: Text(l10n.outsourcedCompaniesEmpty))
-                              : ListView.separated(
-                                  itemCount: state.visible.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
-                                  itemBuilder: (_, i) => _OutsourcedCompanyTile(
-                                    company: state.visible[i],
-                                    onEdit: () => _openForm(ctx, company: state.visible[i]),
-                                    onPromote: () => _confirmPromote(ctx, state.visible[i]),
-                                    onArchive: () => _confirmArchive(ctx, state.visible[i]),
-                                  ),
-                                )),
+                                ? Center(
+                                    child: Text(l10n.outsourcedCompaniesEmpty),
+                                  )
+                                : ListView.separated(
+                                    itemCount: state.visible.length,
+                                    separatorBuilder: (_, __) =>
+                                        const Divider(height: 1),
+                                    itemBuilder: (_, i) =>
+                                        _OutsourcedCompanyTile(
+                                          company: state.visible[i],
+                                          onEdit: () => _openForm(
+                                            ctx,
+                                            company: state.visible[i],
+                                          ),
+                                          onPromote: () => _confirmPromote(
+                                            ctx,
+                                            state.visible[i],
+                                          ),
+                                          onArchive: () => _confirmArchive(
+                                            ctx,
+                                            state.visible[i],
+                                          ),
+                                        ),
+                                  )),
                     ),
                   ],
                 ),
@@ -330,9 +384,11 @@ class _OutsourcedCompanyTile extends StatelessWidget {
           Flexible(child: Text(company.legalName)),
           const SizedBox(width: EpiSpacing.sm),
           Chip(
-            label: Text(company.isSimplified
-                ? l10n.outsourcedCompanySimplifiedBadge
-                : l10n.outsourcedCompanyStandardBadge),
+            label: Text(
+              company.isSimplified
+                  ? l10n.outsourcedCompanySimplifiedBadge
+                  : l10n.outsourcedCompanyStandardBadge,
+            ),
             visualDensity: VisualDensity.compact,
           ),
         ],
@@ -340,8 +396,8 @@ class _OutsourcedCompanyTile extends StatelessWidget {
       subtitle: Text(
         [
           if (company.cnpj.isNotEmpty) company.cnpj,
-          company.companyKindLabel,
-          company.epiResponsibility,
+          appCompanyKindLabel(company.companyKind, l10n),
+          appResponsibilityLabel(company.epiResponsibility, l10n),
         ].join(' · '),
       ),
       trailing: Row(
@@ -370,7 +426,10 @@ class _OutsourcedCompanyTile extends StatelessWidget {
 }
 
 class _ArchivedOutsourcedCompanyTile extends StatelessWidget {
-  const _ArchivedOutsourcedCompanyTile({required this.company, required this.onRestore});
+  const _ArchivedOutsourcedCompanyTile({
+    required this.company,
+    required this.onRestore,
+  });
 
   final Map<String, dynamic> company;
   final VoidCallback onRestore;
@@ -407,7 +466,8 @@ class _LinkCompanyToUnitDialog extends StatefulWidget {
   const _LinkCompanyToUnitDialog();
 
   @override
-  State<_LinkCompanyToUnitDialog> createState() => _LinkCompanyToUnitDialogState();
+  State<_LinkCompanyToUnitDialog> createState() =>
+      _LinkCompanyToUnitDialogState();
 }
 
 class _LinkCompanyToUnitDialogState extends State<_LinkCompanyToUnitDialog> {
@@ -419,7 +479,10 @@ class _LinkCompanyToUnitDialogState extends State<_LinkCompanyToUnitDialog> {
     super.dispose();
   }
 
-  Future<void> _confirmDeactivate(BuildContext context, OutsourcedCompany company) async {
+  Future<void> _confirmDeactivate(
+    BuildContext context,
+    OutsourcedCompany company,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final cubit = context.read<OutsourcedCompaniesCubit>();
     final reasonController = TextEditingController();
@@ -508,23 +571,29 @@ class _LinkCompanyToUnitDialogState extends State<_LinkCompanyToUnitDialog> {
                           // Misturá-los com as vinculadas faria a tela mostrar
                           // registros incompletos como se fossem gerenciáveis.
                           if (state.searchLinked.isNotEmpty) ...[
-                            _SectionLabel(l10n.outsourcedCompanyLinkSectionLinked),
+                            _SectionLabel(
+                              l10n.outsourcedCompanyLinkSectionLinked,
+                            ),
                             ...state.searchLinked.map(
                               (c) => _LinkableCompanyTile(
                                 company: c,
                                 onLink: () => cubit.linkCompanyToUnit(c.id),
-                                onActivate: () => cubit.activateCompanyUnitLink(c.id),
+                                onActivate: () =>
+                                    cubit.activateCompanyUnitLink(c.id),
                                 onDeactivate: () => _confirmDeactivate(ctx, c),
                               ),
                             ),
                           ],
                           if (state.searchAvailable.isNotEmpty) ...[
-                            _SectionLabel(l10n.outsourcedCompanyLinkSectionAvailable),
+                            _SectionLabel(
+                              l10n.outsourcedCompanyLinkSectionAvailable,
+                            ),
                             ...state.searchAvailable.map(
                               (c) => _LinkableCompanyTile(
                                 company: c,
                                 onLink: () => cubit.linkCompanyToUnit(c.id),
-                                onActivate: () => cubit.activateCompanyUnitLink(c.id),
+                                onActivate: () =>
+                                    cubit.activateCompanyUnitLink(c.id),
                                 onDeactivate: () => _confirmDeactivate(ctx, c),
                               ),
                             ),
@@ -555,12 +624,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: EpiSpacing.md, bottom: EpiSpacing.xs),
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-      );
+    padding: const EdgeInsets.only(top: EpiSpacing.md, bottom: EpiSpacing.xs),
+    child: Text(
+      text,
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+    ),
+  );
 }
 
 /// Linha do fluxo de vinculação: identificação + estado + UMA ação.
@@ -600,8 +669,13 @@ class _LinkableCompanyTile extends StatelessWidget {
               ),
             if (company.linkedUnitsCount != null)
               Text(
-                l10n.outsourcedCompanyLinkUsedByUnits(company.linkedUnitsCount!),
-                style: const TextStyle(fontSize: 12, color: EpiColors.textMuted),
+                l10n.outsourcedCompanyLinkUsedByUnits(
+                  company.linkedUnitsCount!,
+                ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: EpiColors.textMuted,
+                ),
               ),
           ],
         ],
@@ -625,18 +699,18 @@ class _LinkableCompanyTile extends StatelessWidget {
     }
     return switch (company.localUnitLinkStatus) {
       kUnitLinkStatusActive => TextButton(
-          onPressed: onDeactivate,
-          child: Text(l10n.outsourcedCompanyLinkDeactivate),
-        ),
+        onPressed: onDeactivate,
+        child: Text(l10n.outsourcedCompanyLinkDeactivate),
+      ),
       kUnitLinkStatusInactive => TextButton(
-          onPressed: onActivate,
-          child: Text(l10n.outsourcedCompanyLinkActivate),
-        ),
+        onPressed: onActivate,
+        child: Text(l10n.outsourcedCompanyLinkActivate),
+      ),
       // Mascarada: disponível para vincular.
       _ => FilledButton(
-          onPressed: onLink,
-          child: Text(l10n.outsourcedCompanyLinkLink),
-        ),
+        onPressed: onLink,
+        child: Text(l10n.outsourcedCompanyLinkLink),
+      ),
     };
   }
 }
@@ -650,13 +724,19 @@ class _OutsourcedCompanyFormDialog extends StatefulWidget {
   final OutsourcedCompany? company;
 
   @override
-  State<_OutsourcedCompanyFormDialog> createState() => _OutsourcedCompanyFormDialogState();
+  State<_OutsourcedCompanyFormDialog> createState() =>
+      _OutsourcedCompanyFormDialogState();
 }
 
-class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDialog> {
+class _OutsourcedCompanyFormDialogState
+    extends State<_OutsourcedCompanyFormDialog> {
   // Valores técnicos estáveis (inglês) — condição vinculante do ADR-0002:
   // o rótulo em português vive só na UI (ver _companyKindLabel).
-  static const _companyKinds = <String>['outsourced', 'service_provider', 'other_contracted'];
+  static const _companyKinds = <String>[
+    'outsourced',
+    'service_provider',
+    'other_contracted',
+  ];
 
   static const _epiResponsibilities = <String>[
     'Empresa Contratante',
@@ -720,7 +800,8 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
     super.dispose();
   }
 
-  String _companyKindLabel(AppLocalizations l10n, String value) => switch (value) {
+  String _companyKindLabel(AppLocalizations l10n, String value) =>
+      switch (value) {
         'outsourced' => l10n.outsourcedCompanyKindOutsourced,
         'service_provider' => l10n.outsourcedCompanyKindServiceProvider,
         _ => l10n.outsourcedCompanyKindOther,
@@ -751,7 +832,8 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    String? req(String? v) => (v == null || v.trim().isEmpty) ? l10n.required : null;
+    String? req(String? v) =>
+        (v == null || v.trim().isEmpty) ? l10n.required : null;
 
     return AlertDialog(
       title: Text(_editing ? l10n.edit : l10n.outsourcedCompanyNew),
@@ -764,12 +846,16 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
               TextFormField(
                 controller: _legalName,
                 validator: req,
-                decoration: InputDecoration(labelText: l10n.outsourcedCompanyLegalNameLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.outsourcedCompanyLegalNameLabel,
+                ),
               ),
               const SizedBox(height: EpiSpacing.md),
               TextFormField(
                 controller: _tradeName,
-                decoration: InputDecoration(labelText: l10n.outsourcedCompanyTradeNameLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.outsourcedCompanyTradeNameLabel,
+                ),
               ),
               const SizedBox(height: EpiSpacing.md),
               TextFormField(
@@ -782,29 +868,54 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
                 value: _companyKind,
-                decoration: InputDecoration(labelText: l10n.outsourcedCompanyKindLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.outsourcedCompanyKindLabel,
+                ),
                 items: _companyKinds
-                    .map((k) => DropdownMenuItem(value: k, child: Text(_companyKindLabel(l10n, k))))
+                    .map(
+                      (k) => DropdownMenuItem(
+                        value: k,
+                        child: Text(_companyKindLabel(l10n, k)),
+                      ),
+                    )
                     .toList(),
-                onChanged: (v) => setState(() => _companyKind = v ?? 'outsourced'),
+                onChanged: (v) =>
+                    setState(() => _companyKind = v ?? 'outsourced'),
               ),
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
                 value: _epiResponsibility,
-                decoration: InputDecoration(labelText: l10n.outsourcedCompanyResponsibilityLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.outsourcedCompanyResponsibilityLabel,
+                ),
                 items: _epiResponsibilities
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                    .map(
+                      (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(appResponsibilityLabel(r, l10n)),
+                      ),
+                    )
                     .toList(),
-                onChanged: (v) => setState(() => _epiResponsibility = v ?? 'Conforme Contrato'),
+                onChanged: (v) => setState(
+                  () => _epiResponsibility = v ?? 'Conforme Contrato',
+                ),
               ),
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<Map<String, dynamic>?>(
                 value: _unit,
-                decoration: InputDecoration(labelText: l10n.outsourcedCompanyUnitLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.outsourcedCompanyUnitLabel,
+                ),
                 items: [
-                  DropdownMenuItem(value: null, child: Text(l10n.outsourcedCompanyUnitAll)),
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(l10n.outsourcedCompanyUnitAll),
+                  ),
                   ..._units.map(
-                    (u) => DropdownMenuItem(value: u, child: Text('${u['name'] ?? ''}')),
+                    (u) => DropdownMenuItem(
+                      value: u,
+                      child: Text('${u['name'] ?? ''}'),
+                    ),
                   ),
                 ],
                 onChanged: (v) => setState(() => _unit = v),
@@ -815,7 +926,9 @@ class _OutsourcedCompanyFormDialogState extends State<_OutsourcedCompanyFormDial
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: Text(l10n.cancel),
         ),
         FilledButton(

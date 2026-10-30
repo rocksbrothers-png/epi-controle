@@ -3005,6 +3005,260 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unitTypePlatform => 'Platform';
+
+  @override
+  String get employeeShowActive => 'View active employees';
+
+  @override
+  String get employeeShowArchived => 'View archived employees';
+
+  @override
+  String get employeeArchivedEmpty => 'No archived employees.';
+
+  @override
+  String get employeeArchiveTitle => 'Archive employee';
+
+  @override
+  String get employeeRestoreTitle => 'Restore employee';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Employee \"$name\" will be archived and will no longer receive new operations (issues, requests and transfers).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Employee \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String get epiShowActive => 'View active PPE';
+
+  @override
+  String get epiShowArchived => 'View archived PPE';
+
+  @override
+  String get epiArchivedEmpty => 'No archived PPE.';
+
+  @override
+  String get epiArchiveTitle => 'Archive PPE';
+
+  @override
+  String get epiRestoreTitle => 'Restore PPE';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'PPE \"$name\" will be archived and will no longer receive new operations (issues, stock, requests and purchases).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'PPE \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Archived';
+  }
+
+  @override
+  String get unitShowActive => 'View active units';
+
+  @override
+  String get unitShowArchived => 'View archived units';
+
+  @override
+  String get unitArchivedEmpty => 'No archived units.';
+
+  @override
+  String get unitArchiveTitle => 'Archive unit';
+
+  @override
+  String get unitRestoreTitle => 'Restore unit';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'Unit \"$name\" will be archived and will no longer receive new operations.\n\nAll history will be preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'Unit \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Archived on $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Retention remaining: $countLabel days',
+      one: 'Retention remaining: $countLabel day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Retention period completed';
+
+  @override
+  String get employeeDetailsSection => 'Employee details';
+
+  @override
+  String get epiDaysRemaining => 'Days remaining';
+
+  @override
+  String get epiIdentificationSection => 'Identification';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel pending items',
+      one: '$countLabel pending item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PPE types',
+      one: '$countLabel PPE type',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Manufacturer expiry approaching';
+
+  @override
+  String get stockManufacturerExpired => 'Manufacturer expiry passed';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Manufacturer expiry passed — remove from stock (do not issue).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Manufacturer expiry approaching — prioritise issue (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Manufacturer expiry approaching (in $days) — prioritise issue (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError => 'Could not load module visibility.';
+
+  @override
+  String get moduleRequests => 'Requests';
+
+  @override
+  String get moduleAdministration => 'Administration';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Row $row: $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Contracting company';
+
+  @override
+  String get responsibilityOutsourced => 'Outsourced company';
+
+  @override
+  String get responsibilityProvider => 'Service provider';
+
+  @override
+  String get responsibilityShared => 'Shared responsibility';
+
+  @override
+  String get responsibilityContract => 'As per contract';
+
+  @override
+  String get responsibilityUndefined => 'Not defined';
+
+  @override
+  String get purchaseCreated => 'Purchase requisition created successfully';
+
+  @override
+  String get criticalStockTitle => 'Critical stock';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PPE types below minimum stock',
+      one: '$countLabel PPE type below minimum stock',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'New company';
+
+  @override
+  String get companyCnpjLength => 'The Brazilian CNPJ must have 14 digits';
+
+  @override
+  String get companyUserLimit => 'User limit';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'At least $count for this plan';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — optional';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'If provided, the Owner receives an email invitation with the first-access key. The $role never knows the password.';
+  }
+
+  @override
+  String get companyOwnerName => 'Owner name';
+
+  @override
+  String get companyOwnerEmail => 'Owner email (invitation recipient)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 user)';
+
+  @override
+  String get companyPlanStart => 'Start (up to 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 to 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 to 100)';
+
+  @override
+  String get formValidNumber => 'Enter a valid number';
+
+  @override
+  String get formValidEmail => 'Invalid email address';
+
+  @override
+  String get moduleEmployeeRegistration => 'Employee registration';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Archived on $date';
+  }
 }
 
 /// The translations for English, as used in the United States (`en_US`).
@@ -6008,4 +6262,258 @@ class AppLocalizationsEnUs extends AppLocalizationsEn {
 
   @override
   String get unitTypePlatform => 'Platform';
+
+  @override
+  String get employeeShowActive => 'View active employees';
+
+  @override
+  String get employeeShowArchived => 'View archived employees';
+
+  @override
+  String get employeeArchivedEmpty => 'No archived employees.';
+
+  @override
+  String get employeeArchiveTitle => 'Archive employee';
+
+  @override
+  String get employeeRestoreTitle => 'Restore employee';
+
+  @override
+  String employeeArchiveBody(String name) {
+    return 'Employee \"$name\" will be archived and will no longer receive new operations (issues, requests and transfers).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).';
+  }
+
+  @override
+  String employeeRestoreBody(String name) {
+    return 'Employee \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String get epiShowActive => 'View active PPE';
+
+  @override
+  String get epiShowArchived => 'View archived PPE';
+
+  @override
+  String get epiArchivedEmpty => 'No archived PPE.';
+
+  @override
+  String get epiArchiveTitle => 'Archive PPE';
+
+  @override
+  String get epiRestoreTitle => 'Restore PPE';
+
+  @override
+  String epiArchiveBody(String name) {
+    return 'PPE \"$name\" will be archived and will no longer receive new operations (issues, stock, requests and purchases).\n\nAll history will be preserved for the configured minimum retention period (at least 5 years).';
+  }
+
+  @override
+  String epiRestoreBody(String name) {
+    return 'PPE \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String unitArchivedTitle(String title) {
+    return '$title · Archived';
+  }
+
+  @override
+  String get unitShowActive => 'View active units';
+
+  @override
+  String get unitShowArchived => 'View archived units';
+
+  @override
+  String get unitArchivedEmpty => 'No archived units.';
+
+  @override
+  String get unitArchiveTitle => 'Archive unit';
+
+  @override
+  String get unitRestoreTitle => 'Restore unit';
+
+  @override
+  String unitArchiveBody(String name) {
+    return 'Unit \"$name\" will be archived and will no longer receive new operations.\n\nAll history will be preserved for the configured minimum retention period (at least 5 years) for queries, reports and audits.';
+  }
+
+  @override
+  String unitRestoreBody(String name) {
+    return 'Unit \"$name\" will be restored and become active again, allowing new operations.\n\nAll preserved history remains intact.';
+  }
+
+  @override
+  String archivedOnDate(String date) {
+    return 'Archived on $date';
+  }
+
+  @override
+  String retentionRemainingDays(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Retention remaining: $countLabel days',
+      one: 'Retention remaining: $countLabel day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get retentionSatisfied => 'Retention period completed';
+
+  @override
+  String get employeeDetailsSection => 'Employee details';
+
+  @override
+  String get epiDaysRemaining => 'Days remaining';
+
+  @override
+  String get epiIdentificationSection => 'Identification';
+
+  @override
+  String recordsPendingCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel pending items',
+      one: '$countLabel pending item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String stockPpeCount(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PPE types',
+      one: '$countLabel PPE type',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stockManufacturerExpiring => 'Manufacturer expiry approaching';
+
+  @override
+  String get stockManufacturerExpired => 'Manufacturer expiry passed';
+
+  @override
+  String get stockManufacturerExpiredNote =>
+      'Manufacturer expiry passed — remove from stock (do not issue).';
+
+  @override
+  String get stockManufacturerExpiringNote =>
+      'Manufacturer expiry approaching — prioritise issue (FIFO).';
+
+  @override
+  String stockManufacturerExpiringInNote(String days) {
+    return 'Manufacturer expiry approaching (in $days) — prioritise issue (FIFO).';
+  }
+
+  @override
+  String get moduleVisibilityLoadError => 'Could not load module visibility.';
+
+  @override
+  String get moduleRequests => 'Requests';
+
+  @override
+  String get moduleAdministration => 'Administration';
+
+  @override
+  String importRowError(String row, String detail) {
+    return 'Row $row: $detail';
+  }
+
+  @override
+  String get responsibilityContracting => 'Contracting company';
+
+  @override
+  String get responsibilityOutsourced => 'Outsourced company';
+
+  @override
+  String get responsibilityProvider => 'Service provider';
+
+  @override
+  String get responsibilityShared => 'Shared responsibility';
+
+  @override
+  String get responsibilityContract => 'As per contract';
+
+  @override
+  String get responsibilityUndefined => 'Not defined';
+
+  @override
+  String get purchaseCreated => 'Purchase requisition created successfully';
+
+  @override
+  String get criticalStockTitle => 'Critical stock';
+
+  @override
+  String criticalStockBody(num count, String countLabel) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countLabel PPE types below minimum stock',
+      one: '$countLabel PPE type below minimum stock',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get companyNewTitle => 'New company';
+
+  @override
+  String get companyCnpjLength => 'The Brazilian CNPJ must have 14 digits';
+
+  @override
+  String get companyUserLimit => 'User limit';
+
+  @override
+  String companyMinimumUsers(int count) {
+    return 'At least $count for this plan';
+  }
+
+  @override
+  String companyOwnerOptional(String role) {
+    return 'Owner ($role) — optional';
+  }
+
+  @override
+  String companyOwnerInviteHint(String role) {
+    return 'If provided, the Owner receives an email invitation with the first-access key. The $role never knows the password.';
+  }
+
+  @override
+  String get companyOwnerName => 'Owner name';
+
+  @override
+  String get companyOwnerEmail => 'Owner email (invitation recipient)';
+
+  @override
+  String get companyPlanIndividual => 'Individual (1 user)';
+
+  @override
+  String get companyPlanStart => 'Start (up to 10)';
+
+  @override
+  String get companyPlanBusiness => 'Business (11 to 25)';
+
+  @override
+  String get companyPlanCorporate => 'Corporate (26 to 100)';
+
+  @override
+  String get formValidNumber => 'Enter a valid number';
+
+  @override
+  String get formValidEmail => 'Invalid email address';
+
+  @override
+  String get moduleEmployeeRegistration => 'Employee registration';
+
+  @override
+  String unitArchivedOnDate(String date) {
+    return 'Archived on $date';
+  }
 }

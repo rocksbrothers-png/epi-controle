@@ -5652,6 +5652,390 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Plataforma'**
   String get unitTypePlatform;
+
+  /// No description provided for @employeeShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver colaboradores ativos'**
+  String get employeeShowActive;
+
+  /// No description provided for @employeeShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver colaboradores arquivados'**
+  String get employeeShowArchived;
+
+  /// No description provided for @employeeArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum colaborador arquivado.'**
+  String get employeeArchivedEmpty;
+
+  /// No description provided for @employeeArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar Colaborador'**
+  String get employeeArchiveTitle;
+
+  /// No description provided for @employeeRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar Colaborador'**
+  String get employeeRestoreTitle;
+
+  /// No description provided for @employeeArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O colaborador \"{name}\" será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).'**
+  String employeeArchiveBody(String name);
+
+  /// No description provided for @employeeRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O colaborador \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String employeeRestoreBody(String name);
+
+  /// No description provided for @epiShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPIs ativos'**
+  String get epiShowActive;
+
+  /// No description provided for @epiShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPIs arquivados'**
+  String get epiShowArchived;
+
+  /// No description provided for @epiArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum EPI arquivado.'**
+  String get epiArchivedEmpty;
+
+  /// No description provided for @epiArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar EPI'**
+  String get epiArchiveTitle;
+
+  /// No description provided for @epiRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar EPI'**
+  String get epiRestoreTitle;
+
+  /// No description provided for @epiArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O EPI \"{name}\" será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).'**
+  String epiArchiveBody(String name);
+
+  /// No description provided for @epiRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O EPI \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String epiRestoreBody(String name);
+
+  /// No description provided for @unitArchivedTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{title} · Arquivadas'**
+  String unitArchivedTitle(String title);
+
+  /// No description provided for @unitShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver unidades ativas'**
+  String get unitShowActive;
+
+  /// No description provided for @unitShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver unidades arquivadas'**
+  String get unitShowArchived;
+
+  /// No description provided for @unitArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma unidade arquivada.'**
+  String get unitArchivedEmpty;
+
+  /// No description provided for @unitArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar Unidade'**
+  String get unitArchiveTitle;
+
+  /// No description provided for @unitRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar Unidade'**
+  String get unitRestoreTitle;
+
+  /// No description provided for @unitArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A unidade \"{name}\" será arquivada e deixará de receber novas operações.\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.'**
+  String unitArchiveBody(String name);
+
+  /// No description provided for @unitRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A unidade \"{name}\" será desarquivada e voltará a ficar ativa, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String unitRestoreBody(String name);
+
+  /// No description provided for @archivedOnDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado em {date}'**
+  String archivedOnDate(String date);
+
+  /// No description provided for @retentionRemainingDays.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{Retenção restante: {countLabel} dia} other{Retenção restante: {countLabel} dias}}'**
+  String retentionRemainingDays(num count, String countLabel);
+
+  /// No description provided for @retentionSatisfied.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Retenção cumprida'**
+  String get retentionSatisfied;
+
+  /// No description provided for @employeeDetailsSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dados do colaborador'**
+  String get employeeDetailsSection;
+
+  /// No description provided for @epiDaysRemaining.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dias restantes'**
+  String get epiDaysRemaining;
+
+  /// No description provided for @epiIdentificationSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identificação'**
+  String get epiIdentificationSection;
+
+  /// No description provided for @recordsPendingCount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} pendente} other{{countLabel} pendentes}}'**
+  String recordsPendingCount(num count, String countLabel);
+
+  /// No description provided for @stockPpeCount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} EPI} other{{countLabel} EPIs}}'**
+  String stockPpeCount(num count, String countLabel);
+
+  /// No description provided for @stockManufacturerExpiring.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima'**
+  String get stockManufacturerExpiring;
+
+  /// No description provided for @stockManufacturerExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida'**
+  String get stockManufacturerExpired;
+
+  /// No description provided for @stockManufacturerExpiredNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida — retirar do estoque (não entregar).'**
+  String get stockManufacturerExpiredNote;
+
+  /// No description provided for @stockManufacturerExpiringNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima — priorizar entrega (PEPS).'**
+  String get stockManufacturerExpiringNote;
+
+  /// No description provided for @stockManufacturerExpiringInNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima (em {days}) — priorizar entrega (PEPS).'**
+  String stockManufacturerExpiringInNote(String days);
+
+  /// No description provided for @moduleVisibilityLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a visualização de módulos.'**
+  String get moduleVisibilityLoadError;
+
+  /// No description provided for @moduleRequests.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Solicitações'**
+  String get moduleRequests;
+
+  /// No description provided for @moduleAdministration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administração'**
+  String get moduleAdministration;
+
+  /// No description provided for @importRowError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Linha {row}: {detail}'**
+  String importRowError(String row, String detail);
+
+  /// No description provided for @responsibilityContracting.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Contratante'**
+  String get responsibilityContracting;
+
+  /// No description provided for @responsibilityOutsourced.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Terceirizada'**
+  String get responsibilityOutsourced;
+
+  /// No description provided for @responsibilityProvider.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Prestadora de Serviço'**
+  String get responsibilityProvider;
+
+  /// No description provided for @responsibilityShared.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Responsabilidade Compartilhada'**
+  String get responsibilityShared;
+
+  /// No description provided for @responsibilityContract.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conforme Contrato'**
+  String get responsibilityContract;
+
+  /// No description provided for @responsibilityUndefined.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não Definido'**
+  String get responsibilityUndefined;
+
+  /// No description provided for @purchaseCreated.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Requisição criada com sucesso'**
+  String get purchaseCreated;
+
+  /// No description provided for @criticalStockTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque Crítico'**
+  String get criticalStockTitle;
+
+  /// No description provided for @criticalStockBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} EPI abaixo do estoque mínimo} other{{countLabel} EPIs abaixo do estoque mínimo}}'**
+  String criticalStockBody(num count, String countLabel);
+
+  /// No description provided for @companyNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova empresa'**
+  String get companyNewTitle;
+
+  /// No description provided for @companyCnpjLength.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ deve ter 14 dígitos'**
+  String get companyCnpjLength;
+
+  /// No description provided for @companyUserLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Limite de usuários'**
+  String get companyUserLimit;
+
+  /// No description provided for @companyMinimumUsers.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mínimo de {count} para este plano'**
+  String companyMinimumUsers(int count);
+
+  /// No description provided for @companyOwnerOptional.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Owner ({role}) — opcional'**
+  String companyOwnerOptional(String role);
+
+  /// No description provided for @companyOwnerInviteHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Se informado, o Owner recebe por e-mail o convite com a chave de primeiro acesso. A senha nunca é conhecida pelo {role}.'**
+  String companyOwnerInviteHint(String role);
+
+  /// No description provided for @companyOwnerName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome do Owner'**
+  String get companyOwnerName;
+
+  /// No description provided for @companyOwnerEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'E-mail do Owner (envia o convite)'**
+  String get companyOwnerEmail;
+
+  /// No description provided for @companyPlanIndividual.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Individual (1 usuário)'**
+  String get companyPlanIndividual;
+
+  /// No description provided for @companyPlanStart.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Start (até 10)'**
+  String get companyPlanStart;
+
+  /// No description provided for @companyPlanBusiness.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Business (11 a 25)'**
+  String get companyPlanBusiness;
+
+  /// No description provided for @companyPlanCorporate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Corporate (26 a 100)'**
+  String get companyPlanCorporate;
+
+  /// No description provided for @formValidNumber.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe um número válido'**
+  String get formValidNumber;
+
+  /// No description provided for @formValidEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'E-mail inválido'**
+  String get formValidEmail;
+
+  /// No description provided for @moduleEmployeeRegistration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastro de Colaboradores'**
+  String get moduleEmployeeRegistration;
+
+  /// No description provided for @unitArchivedOnDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivada em {date}'**
+  String unitArchivedOnDate(String date);
 }
 
 class _AppLocalizationsDelegate

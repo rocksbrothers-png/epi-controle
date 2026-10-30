@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -155,10 +156,9 @@ class _FichaTile extends StatelessWidget {
                     if (period.employeeCode != null) ...[
                       Text(
                         period.employeeCode!,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: EpiColors.textMuted),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: EpiColors.textMuted,
+                        ),
                       ),
                       const SizedBox(width: EpiSpacing.sm),
                       Container(
@@ -174,10 +174,9 @@ class _FichaTile extends StatelessWidget {
                     Flexible(
                       child: Text(
                         period.unitName,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: EpiColors.textMuted),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: EpiColors.textMuted,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -194,20 +193,24 @@ class _FichaTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      period.periodLabel,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelSmall
-                          ?.copyWith(color: EpiColors.textMuted),
+                      formatDisplayPeriod(period.periodStart, l10n.localeName),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: EpiColors.textMuted,
+                      ),
                     ),
                     if (period.hasPending) ...[
                       const SizedBox(width: EpiSpacing.sm),
                       Text(
-                        '${period.pendingItems} pendente${period.pendingItems == 1 ? "" : "s"}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: EpiColors.warning),
+                        l10n.recordsPendingCount(
+                          period.pendingItems,
+                          formatDisplayCount(
+                            period.pendingItems,
+                            l10n.localeName,
+                          ),
+                        ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: EpiColors.warning,
+                        ),
                       ),
                     ],
                   ],
@@ -243,9 +246,9 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -262,7 +265,11 @@ class _RetryView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(l10n.errorNetwork, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: EpiSpacing.xl),

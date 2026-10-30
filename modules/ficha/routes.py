@@ -2,6 +2,7 @@
 
 import base64
 import hashlib
+import re
 import time
 from contextlib import closing
 from datetime import datetime, timezone
@@ -383,6 +384,19 @@ FICHA_HTML_CSP = (
     f"script-src 'sha256-{_FICHA_PRINT_SCRIPT_HASH}'; "
     "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
 )
+# O arquivo exportado não leva o cabeçalho: o mesmo CSP vai como <meta> logo após <head>,
+# antes de qualquer dado do snapshot (frame-ancestors não vale em <meta>).
+FICHA_EXPORT_CSP_META = (
+    '<meta http-equiv="Content-Security-Policy" content="'
+    + FICHA_HTML_CSP.replace("; frame-ancestors 'self'", '') + '">'
+)
+
+
+def _with_export_csp_meta(html):
+    head = re.search(r'<head\b[^>]*>', html, re.IGNORECASE)
+    if head:
+        return html[:head.end()] + FICHA_EXPORT_CSP_META + html[head.end():]
+    return FICHA_EXPORT_CSP_META + html
 
 
 def handle_get_ficha_period_html(handler, parsed, payload, match):
@@ -455,6 +469,8 @@ def handle_get_ficha_archive_html(handler, parsed, payload, match):
                 html = html.replace('</body>', print_script + '</body>', 1)
             else:
                 html += print_script
+        elif action == 'snapshot_export':
+            html = _with_export_csp_meta(html)
         body = html.encode('utf-8')
         handler.send_response(200)
         handler.send_header('Content-Type', 'text/html; charset=utf-8')

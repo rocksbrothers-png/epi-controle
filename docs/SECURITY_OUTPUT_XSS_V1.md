@@ -23,11 +23,14 @@ O CSP do app está em modo *Report-Only*, então não bloqueia nada.
 foto de EPI, e no resumo e responsável do histórico. Em pt-BR, os quatro cenários maliciosos executam script em:
 
 - **topo:** `#company-badge`;
-- **selects e filtros de empresa:** `#employee-company`, `#stock-company`, `#user-company`, `*-filter-company`;
-- **Comercial:** `#commercial-summary`, `#commercial-alerts`, `#commercial-history`;
+- **select de empresa:** `#employee-company`;
+- **Comercial:** `#commercial-summary`, `#commercial-alerts`, `#commercial-history`, `#commercial-company`;
 - **Empresas:** `#companies-table`, `#company-details`;
-- **usuários:** `#users-table`;
-- **EPI:** `#epis-table`, `#approved-epi-table` (nome, fabricante e foto), `#stock-epi-search-results`.
+- **EPI:** `#approved-epi-table` (nome, fabricante e foto).
+
+As demais telas corrigidas (usuários, colaboradores, unidades, relatórios, estoque, arquivamento, dashboard, demandas
+de compra, busca de EPI) usam o mesmo padrão de template e são cobertas pelos testes JS e pela guarda de código
+(item 4), não por cenário de navegador.
 
 Ficha HTML renderizada pelo código da `main` e servida como a `main` serve (sem CSP): **16 campos executam script**:
 
@@ -57,6 +60,9 @@ Ficha HTML renderizada pelo código da `main` e servida como a `main` serve (sem
   - Handlers inline (`onerror`, …) e qualquer outro script ficam bloqueados.
   - A impressão a partir da tela (`popup.print()` chamado pelo app) continua funcionando: é a página de origem que
     chama, e o CSP não usa `sandbox`.
+- **Arquivo exportado** (`snapshot_export`): o download não leva o cabeçalho, então o mesmo CSP (sem
+  `frame-ancestors`, que não vale em `<meta>`) é inserido como `<meta http-equiv>` logo após `<head>`, antes de
+  qualquer dado do snapshot.
 - Texto sem `& < > " '` sai idêntico; com esses caracteres, o visual é o mesmo e o HTML usa a entidade (o
   `html_sha256` de snapshots **novos** com esses caracteres muda; snapshots existentes não são alterados).
 
@@ -92,8 +98,11 @@ Ficha HTML renderizada pelo código da `main` e servida como a `main` serve (sem
   - `populateSearchSelect`: filtros de empresa e unidade de 9 telas;
   - select de EPI da entrega/estoque;
   - busca de EPI em Entrega/Estoque.
-- **Outros pontos com nome de empresa:**
-  - filtro e tabela de usuários;
+- **Outros pontos com nome de empresa** (todos os `innerHTML` com `company_name`, encontrados na auditoria
+  independente e numa varredura completa):
+  - colaboradores (lista e seleção), unidades, relatórios, estoque mínimo, arquivamento de colaboradores e de
+    unidades, dashboard (últimas entregas), relatório de entregas e demandas de compra (coluna do Master);
+  - filtro e tabela de usuários (nome do usuário também escapado);
   - select de empresa da configuração da ficha;
   - filtro de empresa com CNPJ;
   - tela da ficha na SPA (`fichas.js`): empresa, CNPJ, colaborador, setor, função, unidade. O fallback do escape
@@ -105,7 +114,8 @@ Sem mudança em RBAC, rotas, permissões, isolamento multiempresa, regras de neg
 
 | Teste | `main` | Com a correção |
 |---|---|---|
-| `tests/test_security_output_xss_v1.py` (41): todos os campos da ficha; assinatura maliciosa/não-imagem; dados legítimos (logotipo, assinatura, `<br>`, texto); CSP (hash do script de impressão, sem `unsafe-inline`); CSP enviado nas três rotas; foto de EPI (positivos, negativos, legado) | não importa (helper inexistente) | 41 passam |
+| `tests/test_security_output_xss_v1.py` (45): todos os campos da ficha; assinatura maliciosa/não-imagem; dados legítimos (logotipo, assinatura, `<br>`, texto); CSP (hash do script de impressão, sem `unsafe-inline`); CSP enviado nas três rotas e dentro do arquivo exportado; foto de EPI (positivos, negativos, legado) | não importa (helper inexistente) | 45 passam |
+| `tests/test_security_output_xss_v1_company_sinks.py`: guarda que falha se algum template de `static/` interpolar `company_name` cru logo após uma tag | 10 pontos crus | 0 |
 | `scripts/browser/security_output_xss.py` (Chromium, 5 idiomas, 9 cenários): topo e selects, Comercial, Empresas, EPIs (malicioso e legítimo, foto legítima carrega) e ficha HTML com CSP (render atual + snapshot antigo; impressão do arquivo roda) | maliciosos executam em todas as telas; ficha: 16 campos | 45/45, nada executa |
 | Caracterização UBX: `epis-registration-runtime.js` (mocks de foto passam a ser data URLs válidas; o teste do escape passa a exigir que valor malicioso não vire `<img>`) e a referência congelada de Empresas (mesmo escape, comentado) | — | 659 testes JS |
 
@@ -116,14 +126,15 @@ Isolamento multiempresa: nenhuma consulta, rota ou permissão mudou. As suítes 
 
 - **Texto de cadastro sem escape em outras telas (sistêmico).** Restam cerca de 188 interpolações `${item.campo}` em
   `innerHTML` (contagem heurística; parte é número/id). Exemplos:
-  - nomes de colaborador e de unidade em `employees-view.js`, `archival-view.js`, `estoque.js` e
-    `reports-view.js`;
-  - relatórios e dashboard.
+  - nomes de colaborador, de unidade e de EPI em `employees-view.js`, `archival-view.js`, `estoque.js`,
+    `reports-view.js`, dashboard e relatórios (o nome da **empresa** já está escapado em todas as telas, com guarda).
 
   Proposta: **SECURITY-OUTPUT-XSS-V2**, varredura sistemática com regra de lint/guarda que proíba interpolação crua
   em `innerHTML`.
 - **CSP do app em Report-Only** (ver proposta SECURITY-CSP-V1). A ficha já tem CSP aplicado.
 - **Valores maliciosos já gravados** (nomes, fotos) continuam no banco. Não são mais executados nos pontos
   corrigidos; a limpeza exigiria autorização.
+- **Tamanho da foto do EPI:** sem limite de tamanho ao gravar (anterior a esta correção; a biblioteca de segurança
+  limita a 8 MB). Proposta junto com V2.
 - **Assinaturas:** a gravação aceita qualquer texto. A exibição está protegida. Validar o formato ao gravar exige
   decisão (possível impacto em fluxos/evidência).

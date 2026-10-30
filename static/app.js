@@ -5992,7 +5992,7 @@ function applyFichaEmployeeFilters(items) {
 
 
 function buildDeliveryRow(item) {
-  return `<tr><td>${item.company_name}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
+  return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
 const DELIVERIES_PER_PAGE = 20;
@@ -6010,7 +6010,7 @@ function renderTables() {
   const filteredEmployeesOps = applyEmployeesFilters(filterByUserCompany(state.employees), 'ops');
   const filteredEpis = applyEpisFilters(episForOperationalScope(filterByUserCompany(state.epis)));
   const filteredDeliveries = applyDeliveriesFilters(filterByUserCompany(state.deliveries));
-  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${item.full_name}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${escapeHtml(item.company_name || 'Sistema')}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
+  refs.usersTable.innerHTML = filteredUsers().map((item) => `<tr><td>${escapeHtml(item.full_name)}</td><td>${renderBadge('role', item.role, roleLabel(item.role))}</td><td>${userStatusBadges(item)}</td><td>${escapeHtml(item.company_name || 'Sistema')}</td><td>${userActionButtons(item)}</td></tr>`).join('') || globalThis.dsTableState({ colspan: 5, message: 'Sem usuários cadastrados.' });
   refs.unitsTable.innerHTML = filteredUnits.map((item) => formatUnitTableRow(item, canManageStructuralRecords)).join('') || globalThis.dsTableState({ colspan: 6, message: tr('unit.empty', 'Sem unidades.') });
   // P1-1 — paginação client-side da tabela de Colaboradores (alta volumetria).
   const employeesPage = globalThis.dsPaginate(filteredEmployeesBase, state.pagination?.employees || 1, EMPLOYEES_PER_PAGE);
@@ -11694,7 +11694,7 @@ function hydrateConfigurationForms() {
   }
   if (refs.fichaAuditManager) {
     refs.fichaAuditManager.innerHTML = '<option value="">Todos os gestores</option>' + filterByUserCompany(state.users)
-      .map((item) => `<option value="${item.id}">${item.full_name}</option>`).join('');
+      .map((item) => `<option value="${item.id}">${escapeHtml(item.full_name)}</option>`).join('');
   }
   renderConfigurationRules();
   renderConfigurationFramework();
@@ -13199,7 +13199,7 @@ async function loadPurchaseDemands() {
     const showCompanyCol = state.user?.role === 'master_admin' && !document.getElementById('compras-demands-company-filter')?.value;
     tbody.innerHTML = _purchaseDemands.map((d, i) => {
       const originLabel = d.demand_type === 'employee_request' ? '<span style="color:var(--color-primary)">Colaborador</span>' : '<span style="color:var(--color-warning)">Estoque Mínimo</span>';
-      const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${d.company_name}</small>` : '';
+      const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${escapeHtml(d.company_name)}</small>` : '';
       const who = d.demand_type === 'employee_request'
         ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
         : `${d.unit_name || '—'}${companyTag}`;

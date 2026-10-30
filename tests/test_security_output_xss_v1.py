@@ -59,6 +59,8 @@ FIELDS = {
     'ca': dict(deliveries=[{'ca': EVIL}]),
     'unidade de medida': dict(deliveries=[{'unit_measure': EVIL}]),
     'datas': dict(deliveries=[{'delivery_date': EVIL, 'returned_date': EVIL, 'manufacture_date': EVIL}]),
+    'validade e troca': dict(deliveries=[{'epi_validity_date': EVIL, 'next_replacement_date': EVIL}]),
+    'quantidades': dict(deliveries=[{'quantity': EVIL}], devolutions=[{'qty_entregue': EVIL, 'quantity': EVIL}]),
     'devolução': dict(devolutions=[{'epi_name': EVIL, 'reason': EVIL, 'received_by_name': EVIL,
                                     'signature_name': EVIL, 'condition': EVIL, 'destination': EVIL}]),
 }
@@ -115,6 +117,24 @@ def test_archive_routes_send_csp(patched, action):  # noqa: F811 — fixture imp
     assert handler.sent_headers['Content-Security-Policy'] == routes.FICHA_HTML_CSP
     if action == 'snapshot_print':
         assert f'<script>{routes._FICHA_PRINT_SCRIPT}</script>'.encode() in handler.wfile.body
+
+
+def test_exported_snapshot_carries_csp_meta(patched):  # noqa: F811 — fixture importada
+    # O arquivo baixado não leva o cabeçalho: o CSP vai dentro do HTML, antes dos dados do snapshot.
+    body = _call('snapshot_export').wfile.body.decode()
+    assert body.index(routes.FICHA_EXPORT_CSP_META) < body.index('<h1>')
+    assert body.startswith('<!DOCTYPE html>')  # sem modo quirks
+    assert "frame-ancestors" not in routes.FICHA_EXPORT_CSP_META
+    assert f"script-src 'sha256-{routes._FICHA_PRINT_SCRIPT_HASH}'" in routes.FICHA_EXPORT_CSP_META
+    for action in ('snapshot_view', 'snapshot_print'):
+        assert routes.FICHA_EXPORT_CSP_META.encode() not in _call(action).wfile.body  # já têm o cabeçalho
+
+
+def test_export_csp_meta_goes_first_even_with_injected_head_markup():
+    legacy = '<!DOCTYPE html><html><HEAD lang="x"><title></title><img src=x onerror=alert(1)></title></head></html>'
+    out = routes._with_export_csp_meta(legacy)
+    assert out.index(routes.FICHA_EXPORT_CSP_META) < out.index('onerror')
+    assert routes._with_export_csp_meta('<p>sem head</p>').startswith(routes.FICHA_EXPORT_CSP_META)
 
 
 def test_all_ficha_html_routes_send_csp():

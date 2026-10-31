@@ -174,24 +174,34 @@ def test_supplier_portal_policy_allows_only_its_own_inline_script():
 
 
 def _frontend_sources():
-    yield STATIC / 'index.html'
-    yield STATIC / 'app.js'
-    for folder in ('js', 'views', 'fragments'):
-        for path in sorted((STATIC / folder).rglob('*')):
-            if path.suffix in ('.js', '.html') and '/test/' not in path.as_posix():
-                yield path
+    # Todo HTML e JS servido de static/ (inclusive os scripts de topo, pagamento.html e, no SaaS,
+    # cadastro.html), menos os testes JS e o build do Flutter Web (static/app, política própria).
+    for path in sorted(STATIC.rglob('*')):
+        rel = path.relative_to(STATIC).as_posix()
+        if path.suffix in ('.js', '.html') and not rel.startswith(('js/test/', 'app/')):
+            yield path
 
 
-INLINE_HANDLER = re.compile(r'''<[a-zA-Z][^<>]*\son[a-z]{3,}\s*=\s*["'\\]''')
+# Handler inline em tag, com ou sem aspas, inclusive com o atributo em outra linha do template.
+INLINE_HANDLER = re.compile(r'''<[a-zA-Z][^<>`]*?\son[a-z]{3,}\s*=''', re.S)
+# URL javascript: em atributo de navegação/carga (a CSP aplicada não executa).
+JAVASCRIPT_URL = re.compile(r'''(?:href|src|action|formaction)\s*=\s*["'\\]*\s*javascript:''', re.I)
 
 
-def test_frontend_has_no_inline_event_handlers():
+def test_frontend_has_no_inline_event_handlers_or_javascript_urls():
     offenders = []
     for path in _frontend_sources():
-        for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
-            if INLINE_HANDLER.search(line):
-                offenders.append(f'{path.relative_to(STATIC)}:{number}: {line.strip()[:100]}')
+        text = path.read_text(encoding='utf-8')
+        for match in list(INLINE_HANDLER.finditer(text)) + list(JAVASCRIPT_URL.finditer(text)):
+            line = text.count('\n', 0, match.start()) + 1
+            offenders.append(f'{path.relative_to(STATIC)}:{line}: {match.group(0)[:80]!r}')
     assert offenders == []
+
+
+def test_frontend_guard_covers_top_level_scripts_and_pages():
+    covered = {path.relative_to(STATIC).as_posix() for path in _frontend_sources()}
+    assert {'index.html', 'app.js', 'pagamento.html', 'tenant-init.js', 'js/boot/theme-preference.js'} <= covered
+    assert not any(rel.startswith('js/test/') for rel in covered)
 
 
 def test_index_has_no_inline_script_blocks():
@@ -202,7 +212,25 @@ def test_index_has_no_inline_script_blocks():
 
 def test_inline_handler_guard_detects_handlers():
     for bad in ('<button onclick="x()">', "<form onsubmit='return false'>", '`<img src=x onerror="a()">`',
-                '<td><button class="b" onclick=\\"go()\\">'):
+                '<td><button class="b" onclick=\\"go()\\">', '<button onclick=go()>',
+                '`<button class="b"\n   onclick="go()">`', '<div\nonmouseenter = "x()">'):
         assert INLINE_HANDLER.search(bad), bad
-    for ok in ('btn.onclick = () => go();', '<button data-action="x">', 'el.addEventListener("click", f)'):
+    for ok in ('btn.onclick = () => go();', '<button data-action="x">', 'el.addEventListener("click", f)',
+               '`<td>${x}</td>` + (a.onclick = f)', '<input data-online="1">'):
         assert not INLINE_HANDLER.search(ok), ok
+    for bad in ('<a href="javascript:void(0)">', "<a href='javascript:x()'>", '<a href=\\"javascript:go()\\">',
+                '<form action="JavaScript:x()">'):
+        assert JAVASCRIPT_URL.search(bad), bad
+    assert not JAVASCRIPT_URL.search('<a href="/ajuda/javascript">')
+
+
+def test_render_blueprint_keeps_production_in_report_only():
+    # Produção não liga a política restritiva sem validar (docs/SECURITY_CSP_V1.md §5): o blueprint
+    # declara report-only explicitamente em cada serviço que roda o app.py (Docker), sem depender de APP_ENV.
+    text = (ROOT / 'render.yaml').read_text(encoding='utf-8')
+    services = re.split(r'\n  - type: ', text)[1:]
+    app_services = [svc for svc in services if re.search(r'^\s+env: docker\s*$', svc, re.M)]
+    assert app_services
+    for service in app_services:
+        assert re.search(r'- key: CSP_MODE\n\s+value: report-only\n', service), service.splitlines()[1]
+        assert re.search(r'- key: CSP_REPORT_URI\n\s+value: /api/csp-report\n', service), service.splitlines()[1]

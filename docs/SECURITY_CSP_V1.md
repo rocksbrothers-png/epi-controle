@@ -38,6 +38,9 @@ Ausentes: `object-src`, `form-action`, `worker-src`, `media-src`. Rotas com pol�
 
 **Outras superfícies:**
 - **Portal do colaborador:** parte da própria SPA (`?employee_token=`), mesma política.
+- **Cadastro (só SaaS, `/cadastro`, `static/cadastro.html`):** recebe a política da SPA. É compatível: script
+  `type="module"` da própria origem, `<style>` inline (permitido em `style-src`), `fetch` só para a própria origem e
+  navegação para `/pagamento`. Coberto pela guarda de handler inline; não é exercitado pelo harness.
 - **Portal do fornecedor** (`/fornecedor/<token>`): página autocontida com um `<script>` embutido.
 - **Checkout** (`/pagamento`, `/checkout`, `pagamento.html`): SDK do Mercado Pago (scripts, frames e conexões de
   vários domínios).
@@ -79,7 +82,7 @@ Ausentes: `object-src`, `form-action`, `worker-src`, `media-src`. Rotas com pol�
   | Flutter Web (`/app/`, `/flutter_web/`) | sempre Report-Only | `'wasm-unsafe-eval'` (CanvasKit), `https://www.gstatic.com`, `connect-src 'self' https:` |
   | Checkout (`/pagamento`, `/checkout`, `/pagamento.html`) | sempre Report-Only | domínios do Mercado Pago (scripts, frames, conexões) |
   | Portal do fornecedor | aplicada, da rota | `default-src 'none'`; `script-src` só o **hash** do script embutido; `connect-src 'self'`; `frame-ancestors 'none'` |
-  | Ficha, Biblioteca | aplicada, da rota (sem mudança) | — |
+  | Ficha, Biblioteca | aplicada, da rota | a política da rota não muda; a ficha deixa de receber também a Report-Only da SPA (antes as duas eram enviadas) |
 
   Nenhuma política da SPA tem `'unsafe-inline'` ou `'unsafe-eval'` em `script-src`, nem host inteiro de CDN.
 - **`CSP_MODE`** (`enforce` | `report-only`):
@@ -91,6 +94,9 @@ Ausentes: `object-src`, `form-action`, `worker-src`, `media-src`. Rotas com pol�
   - o registro é zerado a cada resposta;
   - a Biblioteca segue só com a sua política.
 - **`report-uri`:** continua vindo de `CSP_REPORT_URI`. Agora também recusa espaço e `;`, que injetariam diretivas.
+- **`render.yaml` (os dois projetos):** declara `CSP_MODE=report-only` e `CSP_REPORT_URI=/api/csp-report` em cada
+  serviço que roda o `app.py`. Assim produção fica em Report-Only mesmo que `APP_ENV` não seja `prod`/`production`
+  (o blueprint não declara `APP_ENV`). Um teste falha se o blueprint deixar de declarar isso.
 - **`scripts/check_web_hardening.py`:** exige no `index.html` nenhum `<script>` inline e nenhum handler `on*=`, e na
   política da SPA nenhum `'unsafe-inline'`, `'unsafe-eval'`, `*`, `https:` ou `http:` em `script-src`.
 
@@ -100,7 +106,7 @@ Ausentes: `object-src`, `form-action`, `worker-src`, `media-src`. Rotas com pol�
 
 | Teste | Resultado |
 |---|---|
-| `tests/test_security_csp_v1.py` (37): política estrita; URLs exatos batem com o que o frontend carrega; padrões de `CSP_MODE`; Flutter/checkout Report-Only; rota com CSP própria não recebe a da SPA (ficha, Biblioteca); registro zerado por resposta; `report-uri` só quando seguro; hash do portal do fornecedor; nenhum handler inline em `static/` (guarda + autoteste); `index.html` sem script inline | 37/37 |
+| `tests/test_security_csp_v1.py` (39): política estrita; URLs exatos batem com o que o frontend carrega; padrões de `CSP_MODE`; Flutter/checkout Report-Only; rota com CSP própria não recebe a da SPA (ficha, Biblioteca); registro zerado por resposta; `report-uri` só quando seguro; hash do portal do fornecedor; guarda de handler inline e URL `javascript:` em todo HTML/JS de `static/` (scripts de topo, `pagamento.html`, `cadastro.html`; template multilinha e handler sem aspas, com autoteste); `index.html` sem script inline; `render.yaml` com `CSP_MODE=report-only` | 39/39 |
 | `scripts/browser/security_csp_v1.py` (Chromium, API sintética, CSP aplicada, 5 idiomas) | 5/5 idiomas, 0 violações |
 | `scripts/browser/security_csp_v1_realflow.py` (Chromium + `app.py` + PostgreSQL local descartável, 5 idiomas) | 5/5, 19 telas, 0 violações |
 | Negativos (abaixo) | 6/6 cenários |
@@ -118,7 +124,17 @@ Ausentes: `object-src`, `form-action`, `worker-src`, `media-src`. Rotas com pol�
 
   O nome `Forn O'Brien "Ltda"` chega íntegro às funções.
 - **Imagens:** logotipo, foto do EPI e assinatura desenhada no modal real e exibida carregam, assim como o QR code.
-- **Bibliotecas sob demanda:** html5-qrcode, ZXing e SheetJS carregam (pelo caminho real de importação de `.xlsx`).
+- **Bibliotecas:** sem opção, o harness serve um **stub** no URL exato de html5-qrcode, ZXing e SheetJS, o que prova
+  só que a política libera o URL (o SheetJS é pedido pelo caminho real de importação de `.xlsx`).
+  Com `--libs-dir`, serve o **código real** das bibliotecas, baixado do registro npm nas mesmas versões (as CDNs
+  não são acessíveis deste ambiente). O htmx entra junto, e o SRI do `index.html` confere com o pacote. Rodado em
+  pt-BR:
+  - htmx, html5-qrcode, ZXing e SheetJS carregam e funcionam sob a CSP aplicada;
+  - o SheetJS escreve e lê de volta uma planilha;
+  - 0 violações.
+
+  Nenhuma delas executa `eval`/`new Function` no caminho usado (o `new Function` do html5-qrcode só roda quando
+  `globalThis` não existe).
 - **Portais:** o portal do colaborador (tela de validação) e o do fornecedor (o script embutido roda e mostra a
   cotação).
 - **Ficha:** com a política da ficha, mostra logotipo e assinatura e roda só o script de impressão.
@@ -158,8 +174,9 @@ script não faz parte do CI.
 1. Publicar com o padrão. Em produção, a SPA fica em **Report-Only**, com a política estrita. Configurar
    `CSP_REPORT_URI=/api/csp-report`: o endpoint já existe e registra `security.csp_report` no log.
 2. Acompanhar os relatórios em uso real (perfis, idiomas, câmera, importação de planilha, impressão).
-3. Sem violações legítimas, definir `CSP_MODE=enforce` em produção. O rollback é voltar a variável, sem deploy de
-   código.
+3. Sem violações legítimas, definir `CSP_MODE=enforce` em produção (no `render.yaml`, em outra PR). O rollback é
+   voltar a variável, sem deploy de código. O modo é lido na inicialização do processo, então a troca exige
+   reiniciar o serviço (o Render reinicia ao mudar uma variável).
 
 ## 6. Riscos residuais
 
@@ -174,6 +191,10 @@ script não faz parte do CI.
   libera esse URL exato, mas o conteúdo pode mudar no CDN. Recomendado fixar a versão ou servir localmente.
 - **Bibliotecas externas em CDN público** (htmx, html5-qrcode, ZXing): liberadas pelo URL exato, e o htmx tem SRI.
   Hospedá-las na própria origem eliminaria a dependência de terceiros.
+- **ZXing com URL inexistente (preexistente, fora do escopo):** o `app.js` carrega
+  `https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js`, mas o pacote 0.1.5 só tem `umd/zxing-browser.min.js`.
+  Esse leitor alternativo de QR/código de barras já falha ao carregar (404) na `main`. Não corrigido aqui. Ao
+  corrigir o caminho, a lista exata em `core/csp.py` precisa acompanhar (o teste de URLs exatos acusa a diferença).
 - **Handlers atribuídos por JS** (`el.onclick = …`) e `addEventListener` não são afetados pela CSP e seguem
   funcionando. A guarda impede apenas o retorno de handlers inline em HTML.
 

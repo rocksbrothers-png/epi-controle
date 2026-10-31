@@ -14,8 +14,9 @@ própria (hash do script embutido), como a rota real. Em cada um dos 5 idiomas:
   botão de fornecedor da PO — cada clique tem de chegar à função.
 - **Imagens:** logotipo da empresa, foto do EPI e assinatura (desenhada no modal e
   exibida) carregam (`naturalWidth > 0`); QR code externo é permitido.
-- **Bibliotecas sob demanda:** html5-qrcode, ZXing e SheetJS carregam (servidas por
-  stub no mesmo URL exato que a política libera).
+- **Bibliotecas:** html5-qrcode, ZXing, SheetJS (sob demanda) e htmx. Sem `--libs-dir`,
+  um stub no mesmo URL exato prova só que a política libera o URL; com `--libs-dir` (pacotes
+  npm nas mesmas versões), o código REAL roda sob a CSP e é exercitado.
 - **Portais:** portal do colaborador (tela de validação do link) e portal do
   fornecedor (o script embutido roda e mostra a cotação).
 - **Ficha:** HTML com a política da ficha mostra logotipo e assinatura e roda só o
@@ -29,7 +30,9 @@ Testes negativos (SPA e portal do fornecedor): script inline, handler inline
 violação; o controle sem CSP mostra que as mesmas injeções executam (o teste detecta);
 em Report-Only, executam mas são reportadas (o que produção passa a registrar).
 
-python scripts/browser/security_csp_v1.py --output /tmp/security-csp-v1
+python scripts/browser/security_csp_v1.py --output /tmp/security-csp-v1 [--libs-dir /tmp/libs]
+  (para --libs-dir: npm pack htmx.org@1.9.12 html5-qrcode@2.3.8 @zxing/browser@0.1.5 xlsx e extraia
+   cada .tgz em <dir>/<nome-versao>/)
 CHROMIUM_EXECUTABLE=/usr/bin/chromium seleciona um navegador já instalado.
 """
 import argparse
@@ -62,6 +65,19 @@ PNG_BYTES = base64.b64decode(PNG.split(',', 1)[1])
 # Bibliotecas carregadas sob demanda: o stub marca que o script rodou (a CSP liberou o URL).
 LAZY_LIBS = [src for src in csp.SPA_EXTERNAL_SCRIPTS if 'htmx' not in src]
 SERVER_MODE = {'value': 'enforce'}  # enforce | report-only | none
+# --libs-dir: pacotes npm extraídos (npm pack + tar) nas mesmas versões dos URLs liberados. Com ele, o
+# harness serve o código REAL das bibliotecas (htmx com o SRI do index.html) em vez do stub, e confere
+# que carregam e funcionam sob a CSP aplicada (nenhuma usa eval/new Function no caminho executado).
+REAL_LIB_FILES = {
+    'https://unpkg.com/htmx.org@1.9.12': 'htmx.org-1.9.12/package/dist/htmx.min.js',
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js': 'html5-qrcode-2.3.8/package/html5-qrcode.min.js',
+    # O pacote 0.1.5 não tem umd/index.min.js (só umd/zxing-browser.min.js): o URL do app.js responde 404
+    # em produção (preexistente, docs/SECURITY_CSP_V1.md §6). Aqui o bundle UMD real é servido no URL
+    # liberado só para conferir a compatibilidade do código com a CSP.
+    'https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js': 'zxing-browser-0.1.5/package/umd/zxing-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js': 'xlsx-0.18.5/package/dist/xlsx.full.min.js',
+}
+REAL_LIBS = {'dir': None}
 
 VIOLATION_RECORDER = """
 window.__csp = [];
@@ -129,6 +145,12 @@ class Fixture(xss.Fixture):
         if parts.netloc != urlsplit(self.origin).netloc:
             # A requisição só chega aqui se a CSP deixou o navegador fazê-la.
             self.external_allowed.append(url)
+            if REAL_LIBS['dir'] and url in REAL_LIB_FILES:
+                if url in LAZY_LIBS:
+                    self.lazy_loaded.append(url)
+                return route.fulfill(content_type='application/javascript',
+                                     body=(Path(REAL_LIBS['dir']) / REAL_LIB_FILES[url]).read_bytes(),
+                                     headers={'Access-Control-Allow-Origin': '*'})
             if url in LAZY_LIBS:
                 self.lazy_loaded.append(url)
                 return route.fulfill(content_type='application/javascript',
@@ -300,7 +322,24 @@ def check_images_and_libs(f):
     page.set_input_files('#compras-suppliers-csv', files=[dict(name='fornecedores.xlsx', buffer=b'QA',
                          mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')])
     page.evaluate('async () => { await importSuppliersCSV(); }')
-    libs = sorted(page.evaluate('window.__libs || []'))
+    if REAL_LIBS['dir']:
+        # Código real: as bibliotecas carregaram e funcionam (SheetJS lê uma planilha gerada na hora).
+        real = page.evaluate("""() => {
+          const out = [];
+          if (window.Html5Qrcode) out.push('html5-qrcode');
+          if (window.ZXingBrowser && ZXingBrowser.BrowserMultiFormatReader) out.push('zxing');
+          try {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['nome'], ['Forn QA']]), 'f');
+            const back = XLSX.read(XLSX.write(wb, {type: 'array', bookType: 'xlsx'}), {type: 'array'});
+            if (XLSX.utils.sheet_to_json(back.Sheets.f)[0].nome === 'Forn QA') out.push('xlsx');
+          } catch (e) { /* biblioteca ausente ou bloqueada */ }
+          if (window.htmx && typeof htmx.process === 'function') out.push('htmx');
+          return out.sort();
+        }""")
+        libs = sorted(LAZY_LIBS) if real == ['html5-qrcode', 'htmx', 'xlsx', 'zxing'] else real
+    else:
+        libs = sorted(page.evaluate('window.__libs || []'))
     ok = bool(photo) and all(photo) and bool(logo) and all(logo) and signature['ok'] and qr and libs == sorted(LAZY_LIBS)
     return dict(ok=ok, epi_photo=photo, logo=logo, signature=signature, qr=qr, lazy_libs=libs)
 
@@ -427,7 +466,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--output', required=True)
     parser.add_argument('--locales', nargs='+', default=LOCALES)
+    parser.add_argument('--libs-dir', help='pacotes npm extraídos: usa o código real das bibliotecas')
     args = parser.parse_args()
+    REAL_LIBS['dir'] = args.libs_dir
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer(('127.0.0.1', 0), partial(CspHandler, directory=str(ROOT / 'static')))

@@ -6,6 +6,10 @@
 
   // ── Local wrappers ─────────────────────────────────────────────────────────
   function getState() { return globalThis.__EPI_APP_STATE__ || {}; }
+  // SECURITY-OUTPUT-XSS-V2: escape local de texto de cadastro (não depende do helper global).
+  function escapeText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
   function getRefs() { return globalThis.__EPI_REFS__ || {}; }
   function safeOn(el, evt, fn) { if (typeof globalThis.safeOn === 'function') { globalThis.safeOn(el, evt, fn); } }
   function api(path, opts) { return globalThis.apiFetch(path, opts); }
@@ -47,8 +51,8 @@
     const needsExplicitPick = list.length > 1;
     const options = list.map((item) => {
       const signatureLabel = item.signature_at ? msg('devolution.signedAt', 'assinado em {date}', { date: formatDateTime(item.signature_at) }) : tr('devolution.signaturePending', 'assinatura pendente');
-      const detail = `${formatDate(item.delivery_date)} | ${item.quantity} ${item.quantity_label || 'unidade'} | ${item.unit_name || tr('unit.undefined', 'Unidade não informada')} | ${signatureLabel}`;
-      return `<option value="${item.id}">#${item.id} — ${detail}</option>`;
+      const detail = `${formatDate(item.delivery_date)} | ${escapeText(`${item.quantity}`)} ${escapeText(item.quantity_label || 'unidade')} | ${escapeText(item.unit_name || tr('unit.undefined', 'Unidade não informada'))} | ${signatureLabel}`;
+      return `<option value="${escapeText(item.id)}">#${escapeText(item.id)} — ${detail}</option>`;
     }).join('');
     field.innerHTML = options || `<option value="">${tr('devolution.noOpenDelivery', 'Sem entrega aberta para este colaborador + EPI')}</option>`;
     if (needsExplicitPick) {
@@ -144,8 +148,8 @@
       '</header>',
       '<div class="signature-modal__body" style="display:flex;flex-direction:column;gap:12px">',
       '<div class="card" style="background:#f8f9fa;padding:12px;border-radius:6px;margin:0">',
-      `<strong>${tr('epi.title', 'EPI')}:</strong> ${epiName}<br>`,
-      `<strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${employeeName}`,
+      `<strong>${tr('epi.title', 'EPI')}:</strong> ${escapeText(epiName)}<br>`,
+      `<strong>${tr('employee.singleTitle', 'Colaborador')}:</strong> ${escapeText(employeeName)}`,
       '</div>',
       '<label style="display:flex;flex-direction:column;gap:4px">',
       `<span>${tr('devolution.returnDate', 'Data da devolução')} <span style="color:red">*</span></span>`,
@@ -297,7 +301,7 @@
         usable: tr('devolution.conditionReusable', 'Reutilizável'), damaged: tr('devolution.conditionDamaged', 'Danificado'), discarded: tr('devolution.conditionDiscarded', 'Descartado'),
         maintenance: tr('devolution.conditionMaintenance', 'Em manutenção'), quarantine: tr('devolution.conditionQuarantine', 'Em quarentena'), hygiene: tr('devolution.conditionHygiene', 'Para higienização')
       }[item.returned_condition || ''] || item.returned_condition || '';
-      col8 = '<span class="badge badge-status-inactive" title="'+msg('devolution.conditionTitle', 'Condição: {condition}', { condition: condLabel })+'">'
+      col8 = '<span class="badge badge-status-inactive" title="'+escapeText(msg('devolution.conditionTitle', 'Condição: {condition}', { condition: condLabel }))+'">'
             +tr('devolution.returnedShort', '↩ Dev.')+' '+formatDate(item.returned_date)+'</span>';
     } else {
       col8 = formatDate(item.next_replacement_date) || '<span style="color:#aaa">—</span>';
@@ -305,9 +309,9 @@
     let col9 = '';
     if (!devolvido && hasPermission('deliveries:create') && item.devolution_available !== 0) {
       col9 = '<button class="ghost" style="font-size:12px;padding:4px 10px;" '
-            +'data-dev-delivery="'+item.id+'" '
-            +'data-dev-epi="'+(item.epi_name||'').replace(/"/g,'&quot;')+'" '
-            +'data-dev-emp="'+(item.employee_name||'').replace(/"/g,'&quot;')+'" '
+            +'data-dev-delivery="'+escapeText(item.id)+'" '
+            +'data-dev-epi="'+escapeText(item.epi_name||'')+'" '
+            +'data-dev-emp="'+escapeText(item.employee_name||'')+'" '
             +'title="'+tr('devolution.registerReturnTitle', 'Registrar devolução deste EPI')+'">'+tr('devolution.returnButton', '↩ Devolver')+'</button>';
     } else if (devolvido) {
       col9 = '<span style="color:#6c757d;font-size:12px;">'+tr('devolution.returned', 'Devolvido')+'</span>';
@@ -319,13 +323,13 @@
       +'aria-label="'+tr('delivery.detailsTitle', 'Ver detalhes da entrega')+'">'
       +tr('delivery.details', 'Detalhes')+'</button>';
     return '<tr>'
-      +'<td>'+(item.company_name||'')+'</td>'
-      +'<td>'+(item.employee_id_code||'')+'</td>'
-      +'<td>'+(item.employee_name||'')+'</td>'
-      +'<td>'+(item.epi_name||'')+'</td>'
-      +'<td>'+formatItemSizeDisplay(item)+'</td>'
-      +'<td>'+(item.quantity||'')+'</td>'
-      +'<td>'+(item.quantity_label||'')+'</td>'
+      +'<td>'+escapeText(item.company_name||'')+'</td>'
+      +'<td>'+escapeText(item.employee_id_code||'')+'</td>'
+      +'<td>'+escapeText(item.employee_name||'')+'</td>'
+      +'<td>'+escapeText(item.epi_name||'')+'</td>'
+      +'<td>'+escapeText(formatItemSizeDisplay(item))+'</td>'
+      +'<td>'+escapeText(item.quantity||'')+'</td>'
+      +'<td>'+escapeText(item.quantity_label||'')+'</td>'
       +'<td>'+formatDate(item.delivery_date)+'</td>'
       +'<td>'+col8+'</td>'
       +'<td><div class="action-group">'+detailBtn+col9+'</div></td>'

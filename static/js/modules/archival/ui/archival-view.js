@@ -19,8 +19,8 @@
   if (globalThis.__EPI_MODULE_ARCHIVAL_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_ARCHIVAL_UI_LOADED__ = true;
 
-  // SECURITY-OUTPUT-XSS-V1: escape local (não depende do helper global).
-  function escapeCompanyText(value) {
+  // SECURITY-OUTPUT-XSS-V1/V2: escape local de texto de cadastro (não depende do helper global).
+  function escapeText(value) {
     return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
   function rules() { return globalThis.__EPI_ARCHIVAL_RULES__; }
@@ -152,11 +152,11 @@
     const actionsCell = actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-';
     const identityKind = cfg.identityKind || kind;
     const identity = identityKind === 'employee'
-      ? `<td>${item.employee_id_code || '-'} · ${item.name}${statusBadge}${holdBadge}</td><td>${item.unit_name || '-'}</td>`
+      ? `<td>${escapeText(item.employee_id_code || '-')} · ${escapeText(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${escapeText(item.unit_name || '-')}</td>`
       : identityKind === 'outsourcedCompanyLike'
-        ? `<td>${item.legal_name || item.trade_name || ''}${statusBadge}${holdBadge}</td><td>${item.cnpj || '-'}</td>`
-        : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
-    return `<tr><td>${escapeCompanyText(item.company_name || '-')}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
+        ? `<td>${escapeText(item.legal_name || item.trade_name || '')}${statusBadge}${holdBadge}</td><td>${escapeText(item.cnpj || '-')}</td>`
+        : `<td>${escapeText(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${escapeText(item.ca || '-')}</td>`;
+    return `<tr><td>${escapeText(item.company_name || '-')}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${escapeText(item.archive_reason || '-')}</td><td>${escapeText(item.archived_by_name || '-')}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
   }
 
   function renderArchivedRecords(kind) {

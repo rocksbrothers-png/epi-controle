@@ -116,11 +116,11 @@
     const companyId = companyField.value || state.user?.company_id || '';
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
     const previous = String(unitField.value || '');
-    const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+    const unitOptions = units.map((item) => `<option value="${escapeAttribute(`${item.id}`)}">${escapeAttribute(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
     const allowAllUnitsScope = canUseEpiAllUnitsScope();
     if (operationalProfile) {
       const scopedUnits = units.filter((item) => String(item.id) === operationalUnitId);
-      unitField.innerHTML = scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
+      unitField.innerHTML = scopedUnits.map((item) => `<option value="${escapeAttribute(`${item.id}`)}">${escapeAttribute(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('') || '<option value="">Sem unidade operacional vinculada</option>';
       unitField.value = scopedUnits.length ? String(scopedUnits[0].id) : '';
       unitField.disabled = true;
     } else {

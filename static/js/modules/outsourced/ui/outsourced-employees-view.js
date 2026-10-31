@@ -99,7 +99,7 @@
       ? units.filter((item) => String(item.id) === operationalUnitId)
       : units;
     unitField.innerHTML = scopedUnits.length
-      ? scopedUnits.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
+      ? scopedUnits.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
       : '<option value="">Sem unidade operacional ativa</option>';
     if (scopedUnits.length && !scopedUnits.some((item) => String(item.id) === String(unitField.value))) {
       unitField.value = String(scopedUnits[0].id);

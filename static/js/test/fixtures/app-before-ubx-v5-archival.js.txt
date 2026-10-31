@@ -5,6 +5,13 @@
 // alteração: as configurações e as funções de arquivamento de Unidades e
 // genérico. Servem de referência fixa para a comparação antes × depois. Não é
 // carregado pela aplicação. deleteRegistryEntity (código morto, removido) fica de fora.
+// Alterações posteriores (mesmas correções dos módulos): SECURITY-OUTPUT-XSS-V1/V2 (secEsc em empresa, nome, matrícula,
+// unidade, razão social, CNPJ, CA, motivo e responsável).
+
+function secEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
 
 const UNIT_PURGE_RECORD_LABELS = {
   employees: 'Colaboradores',
@@ -198,7 +205,7 @@ function formatArchivedUnitRow(item, canManage, canPurge) {
   if (canPurge && retentionOver && !Number(item.legal_hold || 0)) {
     actions.push(`<button class="ghost" data-unit-purge="${item.id}">${tr('unit.purge', 'Excluir definitivamente')}</button>`);
   }
-  return `<tr><td>${item.company_name}</td><td>${item.name}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
+  return `<tr><td>${secEsc(`${item.company_name}`)}</td><td>${secEsc(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${formatDate(item.archived_at)}</td><td>${secEsc(item.archive_reason || '-')}</td><td>${secEsc(item.archived_by_name || '-')}</td><td>${retentionLabel}</td><td>${actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-'}</td></tr>`;
 }
 
 function renderArchivedUnits() {
@@ -387,11 +394,11 @@ function formatArchivedRecordRow(kind, item, canManage, canPurge) {
   const actionsCell = actions.length ? `<div class="action-group">${actions.join('')}</div>` : '-';
   const identityKind = cfg.identityKind || kind;
   const identity = identityKind === 'employee'
-    ? `<td>${item.employee_id_code || '-'} · ${item.name}${statusBadge}${holdBadge}</td><td>${item.unit_name || '-'}</td>`
+    ? `<td>${secEsc(item.employee_id_code || '-')} · ${secEsc(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${secEsc(item.unit_name || '-')}</td>`
     : identityKind === 'outsourcedCompanyLike'
-      ? `<td>${item.legal_name || item.trade_name || ''}${statusBadge}${holdBadge}</td><td>${item.cnpj || '-'}</td>`
-      : `<td>${item.name}${statusBadge}${holdBadge}</td><td>${item.ca || '-'}</td>`;
-  return `<tr><td>${item.company_name || '-'}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${item.archive_reason || '-'}</td><td>${item.archived_by_name || '-'}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
+      ? `<td>${secEsc(item.legal_name || item.trade_name || '')}${statusBadge}${holdBadge}</td><td>${secEsc(item.cnpj || '-')}</td>`
+      : `<td>${secEsc(`${item.name}`)}${statusBadge}${holdBadge}</td><td>${secEsc(item.ca || '-')}</td>`;
+  return `<tr><td>${secEsc(item.company_name || '-')}</td>${identity}<td>${formatDate(item.archived_at)}</td><td>${secEsc(item.archive_reason || '-')}</td><td>${secEsc(item.archived_by_name || '-')}</td><td>${retentionLabel}</td><td>${actionsCell}</td></tr>`;
 }
 
 function renderArchivedRecords(kind) {

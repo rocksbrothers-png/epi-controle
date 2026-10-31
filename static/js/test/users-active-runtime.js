@@ -46,6 +46,7 @@ function runPopulate({ role = 'general_admin', selected = '4', employees }) {
     document: { getElementById: (id) => (id === 'user-linked-employee' ? field : null) },
     state: { user: { role } },
     tr: (_key, fallback) => fallback,
+    escapeHtml: (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])),
     filteredLinkedEmployees: () => employees,
     renderLinkedEmployeeSearchResults: () => {}
   };

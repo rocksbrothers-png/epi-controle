@@ -1,6 +1,6 @@
 from pathlib import Path
 from urllib.parse import urlparse
-import ast,base64,json,subprocess
+import ast,base64,json,runpy,subprocess
 from playwright.sync_api import sync_playwright
 import argparse, tempfile
 
@@ -13,6 +13,7 @@ args=parser.parse_args()
 ROOT=args.root.resolve()
 OUT=args.output or Path(tempfile.mkdtemp(prefix='epi-i18n-'))
 OUT.mkdir(parents=True,exist_ok=True)
+PORTAL=runpy.run_path(str(ROOT/'modules/purchases/supplier_portal_page.py'))
 
 LOCALES=['pt-BR','en-GB','es-ES','fr-FR','nb-NO']
 def html_from(source):
@@ -27,13 +28,18 @@ with sync_playwright() as pw:
  for before,locale,kind in ([(True,'fr-FR','quote')] if args.baseline else [])+[(False,l,k) for l in LOCALES for k in ['quote','order','answered','invalid']]:
   page=browser.new_page(viewport={'width':1280,'height':1000});errors=[];posts=[];reads=[];mode={'reply':'error'}
   page.on('pageerror',lambda e:errors.append(str(e)))
+  page.add_init_script("window.__portalCsp=[];document.addEventListener('securitypolicyviolation',e=>window.__portalCsp.push({directive:e.effectiveDirective,blocked:e.blockedURI}));")
   def route(request):
    req=request.request;path=urlparse(req.url).path
    if path.startswith('/api/i18n/'):
     lang=path.rsplit('/',1)[1];request.fulfill(json={'locale':lang,'fallback':False,'translations':json.loads((ROOT/'static/i18n'/f'{lang}.json').read_text())});return
    if path.startswith('/fornecedor/'):
-    source=subprocess.check_output(['git','show',args.baseline+':modules/purchases/supplier_portal_page.py'],cwd=ROOT).decode() if before else (ROOT/'modules/purchases/supplier_portal_page.py').read_text()
-    request.fulfill(content_type='text/html',body=html_from(source));return
+    if before:
+     source=subprocess.check_output(['git','show',args.baseline+':modules/purchases/supplier_portal_page.py'],cwd=ROOT).decode()
+     request.fulfill(content_type='text/html',body=html_from(source))
+    else:
+     request.fulfill(content_type='text/html',body=PORTAL['PORTAL_PAGE_HTML'],headers={'Content-Security-Policy':PORTAL['PORTAL_PAGE_CSP']})
+    return
    if path.startswith('/api/portal/supplier/'):
     assert path.startswith('/api/portal/supplier/synthetic-fixture')
     if req.method=='POST':
@@ -101,7 +107,8 @@ with sync_playwright() as pw:
   page.set_viewport_size({'width':390,'height':844});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
   page.screenshot(path=str(OUT/f'supplier-mobile-{kind}-{locale}.png'),full_page=True)
   assert not errors,errors
-  results.append({'before':False,'locale':locale,'kind':kind,'forms_preserved':True,'token_context':'synthetic-fixture','canonical_payloads_preserved':True,'mobile_overflow':False,'errors':errors,'posts':posts,'reads':reads})
+  violations=page.evaluate('window.__portalCsp');assert not violations,violations
+  results.append({'before':False,'locale':locale,'kind':kind,'forms_preserved':True,'token_context':'synthetic-fixture','canonical_payloads_preserved':True,'mobile_overflow':False,'errors':errors,'csp_violations':violations,'posts':posts,'reads':reads})
   page.close()
  browser.close()
 (OUT/'supplier-results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2)+'\n')

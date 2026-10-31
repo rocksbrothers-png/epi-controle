@@ -7113,8 +7113,12 @@ const PADRAO_OFICIAL = Object.freeze({ tema: 'light', densidade: 'normal', sideb
 // exatamente um script. Achado do CodeQL (`js/bad-tag-filter`).
 // Um lugar só: os dois gates que precisam disso chamam esta função.
 function scriptDoPrePaint() {
-  const arquivo = fs.readFileSync(
-    path.join(path.resolve(JS_ROOT, '..'), 'views', '_head.html'), 'utf-8');
+  // SECURITY-CSP-V1: o pré-paint deixou de ser <script> inline (bloqueado pela CSP) e virou
+  // arquivo próprio, carregado no mesmo ponto do <head>. Lê o arquivo que o _head.html carrega.
+  const raiz = path.resolve(JS_ROOT, '..');
+  const arquivo = fs.readFileSync(path.join(raiz, 'views', '_head.html'), 'utf-8');
+  const externo = /<script src="\/(js\/boot\/theme-preference\.js)\?v=[^"]*"><\/script>/.exec(arquivo);
+  if (externo) return fs.readFileSync(path.join(raiz, externo[1]), 'utf-8');
   const minusculo = arquivo.toLowerCase();
   const abre = minusculo.indexOf('<script>');
   const fecha = minusculo.indexOf('</script>', abre + 1);

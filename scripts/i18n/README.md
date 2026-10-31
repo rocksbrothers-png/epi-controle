@@ -26,3 +26,7 @@ Switching locale never repeats a submission. Invalid, blank and empty JSON confi
 Actor, connector and active values are preserved in submitted bodies.
 Use `--baseline REVISION` to run the checks with historical UI assets; failures are retained in JSON and screenshots.
 These intercepted requests complement backend scope tests. They never contact or configure a real supplier.
+
+The supplier portal checkpoint serves the runtime HTML with its actual Content-Security-Policy header.
+The independent regression `check_supplier_portal_csp_sri.py --output /tmp/portal-csp-sri` verifies the three matching SRI assets, blocked extra scripts, missing integrity and tampered bytes with the original policy frozen before the request.
+Backend CI now calls the reusable I18N workflow for relevant frontend and harness changes; a new workflow file cannot be dispatched separately before it exists on the default branch.

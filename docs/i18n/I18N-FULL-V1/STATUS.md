@@ -199,3 +199,8 @@ Este bloco cobre 17 templates de erro e dois nomes de conectores nos cinco idiom
 Antes/depois: 26 falhas reproduzidas e 165/165 verificações Chromium aprovadas por produto, incluindo JSON inválido/vazio, nomes personalizados, ator/Bearer e ausência de resubmissão ao trocar idioma. Testes locais dirigidos: Corporate 186/SaaS 184; JS 665 e regressão DOM 40 por produto. Auditoria independente: 60/60 probes por produto depois de encerrar o P2 de referência com dois-pontos; nenhum P0/P1/P2 no recorte. Ver audit/CONNECTORS_REVIEW.md, CONNECTORS-CHECKPOINT.json e evidence/connectors/. CI dos novos HEADs será registrada nos drafts.
 
 O inventário global anterior não deve ser interpretado como cobertura atual automática; o caminho dinâmico dos conectores está agora coberto neste modal Web. Demais mensagens dinâmicas, documentos/superfícies remanescentes e matriz integral continuam pendentes. **READY FOR HUMAN MERGE DECISION: NO.** Sem merge de PRs, deploy ou dados reais.
+
+
+## Conciliação com SECURITY-CSP-V1
+
+Main 13a1e8bf/25b0170b incorporada nas branches draft, conservando ações delegadas e bindings. A incompatibilidade do portal modular com hash de script inline foi reproduzida na importação e corrigida por SRI nos três assets exatos e CSP somente por hashes. Foram retestados 20 fluxos de formulário e 20 negativos/positivos independentes por produto nos cinco idiomas. Ver audit/CSP_INTEGRATION_REVIEW.md e CSP-INTEGRATION.json; os novos HEADs e CI são registrados nas descrições dos drafts. READY FOR HUMAN MERGE DECISION: NO.

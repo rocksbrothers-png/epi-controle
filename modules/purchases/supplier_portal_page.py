@@ -2,6 +2,10 @@
 
 The existing token routes remain the sole authority for supplier data/actions."""
 
+import base64
+import hashlib
+from pathlib import Path
+
 PORTAL_PAGE_HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -58,3 +62,32 @@ PORTAL_PAGE_HTML = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+# SECURITY-CSP-V1 + I18N: o portal usa três módulos locais, sem script inline.
+# CSP3 autoriza somente os bytes com hash/SRI, sem liberar a origem inteira.
+# Caminhos são constantes do pacote; não dependem de CWD ou dados da requisição.
+_STATIC_ROOT = Path(__file__).resolve().parents[2] / 'static'
+_PORTAL_SCRIPTS = (
+    '/i18n.js',
+    '/js/modules/purchases/integrations/supplier-portal-api.js',
+    '/js/views/supplier-portal.js',
+)
+_PORTAL_SCRIPT_SOURCES = []
+for _path in _PORTAL_SCRIPTS:
+    _digest = hashlib.sha256((_STATIC_ROOT / _path.lstrip('/')).read_bytes()).digest()
+    _integrity = 'sha256-' + base64.b64encode(_digest).decode('ascii')
+    # O cache-buster evita tentar validar um asset antigo contra a nova página.
+    PORTAL_PAGE_HTML = PORTAL_PAGE_HTML.replace(
+        f'<script src="{_path}"></script>',
+        f'<script src="{_path}?v={_digest.hex()[:12]}" integrity="{_integrity}"></script>',
+    )
+    _PORTAL_SCRIPT_SOURCES.append(f"'{_integrity}'")
+
+
+PORTAL_PAGE_CSP = (
+    "default-src 'none'; "
+    f"script-src {' '.join(_PORTAL_SCRIPT_SOURCES)}; "
+    "style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)

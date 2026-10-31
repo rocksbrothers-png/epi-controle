@@ -16,7 +16,7 @@
        Agora lê a cópia de sessão, que `sessionStorage` mantém presa a esta aba
        e que só é escrita DEPOIS da autenticação, carimbada com o principal.
        Por construção não há o que aplicar antes de saber de quem é. -->
-  <script>try{var p=JSON.parse(sessionStorage.getItem('epi-prefs-sessao')||'null');if(p&&p.tema==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}</script>
+  <script src="/js/boot/theme-preference.js?v=__ASSET_VERSION__"></script>
 <link rel="stylesheet" href="/styles/safety-library.css?v=__ASSET_VERSION__">
 </head>
 <body>

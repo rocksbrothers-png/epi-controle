@@ -15,7 +15,7 @@ from core.permissions import PERM_PO_CREATE, PERM_QUOTES_MANAGE, PERM_QUOTES_VIE
 from core.rate_limit import get_client_ip, supplier_portal_limiter
 from core.repository import authorize_action
 from core.security import resolve_actor_user_id
-from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
+from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.employees.service import actor_operational_unit_id
 from modules.i18n.presentation import request_locale
 from modules.purchases.quotes_service import ensure_quote_scope, get_quote_by_id
@@ -23,7 +23,7 @@ from modules.purchases.service import (
     ensure_purchase_order_action_scope,
     get_purchase_order_by_id,
 )
-from modules.purchases.supplier_portal_page import PORTAL_PAGE_HTML
+from modules.purchases.supplier_portal_page import PORTAL_PAGE_CSP, PORTAL_PAGE_HTML
 from modules.purchases.supplier_portal_service import (
     fetch_supplier_portal_links,
     get_portal_payload,
@@ -118,7 +118,14 @@ def handle_delete_supplier_portal_link(handler, parsed, payload, match):
 def handle_get_supplier_portal_page(handler, parsed, payload, match):
     if _rate_limited(handler):
         return True
-    return send_bytes(handler, 200, 'text/html; charset=utf-8', PORTAL_PAGE_HTML.encode('utf-8')) or True
+    body = PORTAL_PAGE_HTML.encode('utf-8')
+    handler.send_response(200)
+    handler.send_header('Content-Type', 'text/html; charset=utf-8')
+    handler.send_header('Content-Security-Policy', PORTAL_PAGE_CSP)
+    handler.send_header('Content-Length', str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+    return True
 
 
 def handle_get_supplier_portal_data(handler, parsed, payload, match):

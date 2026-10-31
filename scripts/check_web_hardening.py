@@ -5,12 +5,12 @@ This check is intentionally lightweight so it can run in CI without Flutter or a
 live database. It verifies controls that should remain true before deployment:
 README text is valid, legacy CDN dependencies are explicitly version-pinned and
 protected by SRI while still external, the Flutter Web SPA has a history fallback,
-and the server emits a CSP report-only header compatible with the current legacy
-website.
+and the server emits the SECURITY-CSP-V1 policy (core/csp.py): no 'unsafe-inline' or
+'unsafe-eval' in the SPA script-src, and no inline script or inline event handler left
+in the legacy index.html.
 """
 from __future__ import annotations
 
-import ast
 import re
 import sys
 from pathlib import Path
@@ -21,6 +21,7 @@ INDEX_PATH = ROOT / "static" / "index.html"
 I18N_PATH = ROOT / "static" / "i18n.js"
 I18N_HELPER_PATH = ROOT / "static" / "i18n-helper.js"
 APP_PATH = ROOT / "app.py"
+CSP_PATH = ROOT / "core" / "csp.py"
 ENV_EXAMPLE_PATH = ROOT / "env.example"
 DOCKERFILE_PATH = ROOT / "Dockerfile"
 # Melos 8+ (pub workspaces) não usa mais flutter/melos.yaml separado — a
@@ -64,11 +65,6 @@ def script_sources(index_html: str) -> list[str]:
     return re.findall(r"<script\b[^>]*\bsrc=[\"']([^\"']+)[\"']", index_html, flags=re.IGNORECASE)
 
 
-def origin(url: str) -> str:
-    parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}"
-
-
 def local_script_paths(index_html: str) -> list[Path]:
     paths: list[Path] = []
     for src in script_sources(index_html):
@@ -81,39 +77,21 @@ def local_script_paths(index_html: str) -> list[Path]:
     return paths
 
 
-def eval_csp_literal(node: ast.AST, constants: dict[str, object]) -> object:
-    if isinstance(node, ast.Name) and node.id in constants:
-        return constants[node.id]
-    if isinstance(node, ast.Tuple):
-        return tuple(eval_csp_literal(item, constants) for item in node.elts)
-    return ast.literal_eval(node)
+def load_csp_module():
+    sys.path.insert(0, str(ROOT))
+    try:
+        from core import csp  # noqa: PLC0415 - carregado do repositório verificado
+    finally:
+        sys.path.pop(0)
+    return csp
 
 
-def load_app_constants() -> dict[str, object]:
-    tree = ast.parse(APP_PATH.read_text(encoding="utf-8"))
-    constants: dict[str, object] = {}
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id.startswith("CSP_"):
-                    try:
-                        constants[target.id] = eval_csp_literal(node.value, constants)
-                    except (ValueError, SyntaxError, KeyError):
-                        pass
-    return constants
-
-
-def directive_sources(constants: dict[str, object], directive_name: str) -> set[str]:
-    directives = constants.get("CSP_REPORT_ONLY_DIRECTIVES")
-    if not isinstance(directives, tuple):
-        fail("app.py CSP_REPORT_ONLY_DIRECTIVES must be a literal tuple")
-    for item in directives:
-        if not isinstance(item, tuple) or len(item) != 2:
-            continue
-        name, values = item
-        if name == directive_name and isinstance(values, tuple):
+def spa_directive_sources(csp, directive_name: str) -> set[str]:
+    for name, values in csp.SPA_DIRECTIVES:
+        if name == directive_name:
             return {str(value) for value in values}
-    fail(f"app.py CSP_REPORT_ONLY_DIRECTIVES is missing {directive_name}")
+    fail(f"core/csp.py SPA_DIRECTIVES is missing {directive_name}")
+    return set()
 
 
 def main() -> int:
@@ -148,21 +126,32 @@ def main() -> int:
     if missing_sri:
         fail("external scripts must declare integrity and crossorigin: " + ", ".join(sorted(missing_sri)))
 
-    constants = load_app_constants()
-    script_src = directive_sources(constants, "script-src")
-    missing_csp_origins = sorted({origin(src) for src in external_scripts} - script_src)
-    if missing_csp_origins:
-        fail("CSP script-src is missing external script origins: " + ", ".join(missing_csp_origins))
-
-    require_contains(APP_PATH, "Content-Security-Policy-Report-Only", "CSP report-only")
+    csp = load_csp_module()
+    script_src = spa_directive_sources(csp, "script-src")
+    missing_csp_scripts = sorted(set(external_scripts) - script_src)
+    if missing_csp_scripts:
+        fail("CSP script-src is missing external scripts: " + ", ".join(missing_csp_scripts))
+    for unsafe in ("'unsafe-inline'", "'unsafe-eval'", "*", "https:", "http:"):
+        if unsafe in script_src:
+            fail(f"SPA CSP script-src must not allow {unsafe}")
+    for name, expected in (("object-src", {"'none'"}), ("base-uri", {"'self'"}), ("frame-ancestors", {"'self'"})):
+        if spa_directive_sources(csp, name) != expected:
+            fail(f"SPA CSP {name} must be {sorted(expected)}")
+    inline_scripts = re.findall(r"<script\b(?![^>]*\bsrc=)[^>]*>", index, flags=re.IGNORECASE)
+    if inline_scripts:
+        fail("static/index.html must not contain inline <script> blocks (CSP): " + ", ".join(inline_scripts))
+    inline_handlers = re.findall(r"<[a-z][^>]*\son[a-z]+\s*=", index, flags=re.IGNORECASE)
+    if inline_handlers:
+        fail(f"static/index.html must not contain inline event handlers (CSP): {len(inline_handlers)} found")
+    require_contains(APP_PATH, "csp_policy.policy_for_path(", "SECURITY-CSP-V1 per-surface policy")
+    require_contains(APP_PATH, "_route_csp_sent", "route-specific CSP is not stacked with the SPA policy")
+    require_contains(CSP_PATH, "Content-Security-Policy-Report-Only", "Report-Only mode for unvalidated surfaces")
     require_contains(APP_PATH, "CSP_REPORT_URI", "CSP report endpoint option")
     require_contains(APP_PATH, "APP_ENV not in ('prod', 'production') and csp_report_uri.startswith('http://')", "CSP report endpoint production HTTPS guard")
     require_contains(APP_PATH, "def _handle_csp_report", "local CSP report endpoint")
     require_contains(APP_PATH, "security.csp_report", "CSP report structured log")
     require_contains(APP_PATH, "parsed.path == '/api/csp-report'", "CSP report endpoint route")
     require_contains(ENV_EXAMPLE_PATH, "CSP_REPORT_URI=/api/csp-report", "CSP report endpoint documentation")
-    if "https://unpkg.com" not in script_src:
-        fail("CSP script-src must keep the pinned legacy CDN origin while HTMX remains external")
     require_contains(APP_PATH, "def _resolve_static_fallback_path", "centralized static fallback resolver")
     require_contains(APP_PATH, "path.startswith('/app/')", "official Flutter Web /app deep-link fallback")
     require_contains(APP_PATH, "return '/app/index.html'", "official Flutter Web /app SPA fallback")
@@ -170,8 +159,6 @@ def main() -> int:
     require_contains(APP_PATH, "target = '/app/'", "legacy /flutter_web redirect target")
     require_contains(MELOS_PATH, "--base-href /app/", "Flutter Web official base href")
     require_contains(DOCKERFILE_PATH, "./static/app/", "Docker copies Flutter Web build to official /app directory")
-    if not {"'self'", "'unsafe-inline'", "https://unpkg.com"}.issubset(script_src):
-        fail("CSP script-src must keep self, legacy inline compatibility and the pinned HTMX CDN origin")
     require_contains(APP_PATH, "request_path == '/flutter_web' or request_path.startswith('/flutter_web/')", "legacy /flutter_web static detection")
     require_contains(APP_PATH, "self.send_response(308)", "legacy /flutter_web permanent redirect")
     require_contains(I18N_PATH, "window.trEpi = trEpi", "safe dynamic i18n helper exposure")

@@ -1,0 +1,947 @@
+{
+  "product": "corporate",
+  "synthetic_api_only": true,
+  "static_checks": {
+    "exact_three_paths_in_order": true,
+    "sri_matches_independent_asset_bytes": true,
+    "policy_exact_asset_hashes": true,
+    "policy_has_no_self_inline_eval": true,
+    "no_inline_scripts": true
+  },
+  "cases": [
+    {
+      "locale": "pt-BR",
+      "mode": "legitimate",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "pt-BR",
+        "head": "Portal do Fornecedor",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "pt-BR",
+      "mode": "extra_same_origin",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/audit-unapproved.js"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/audit-unapproved.js"
+        ],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "pt-BR",
+        "head": "Portal do Fornecedor",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "pt-BR",
+      "mode": "approved_without_integrity",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "pt-BR",
+      "mode": "modified_approved_bytes",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": true,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "en-GB",
+      "mode": "legitimate",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "en-GB",
+        "head": "Supplier Portal",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/en-GB"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "en-GB",
+      "mode": "extra_same_origin",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/audit-unapproved.js"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/audit-unapproved.js"
+        ],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "en-GB",
+        "head": "Supplier Portal",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/en-GB"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "en-GB",
+      "mode": "approved_without_integrity",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "en-GB",
+      "mode": "modified_approved_bytes",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": true,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "es-ES",
+      "mode": "legitimate",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "es-ES",
+        "head": "Portal del Proveedor",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/es-ES"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "es-ES",
+      "mode": "extra_same_origin",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/audit-unapproved.js"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/audit-unapproved.js"
+        ],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "es-ES",
+        "head": "Portal del Proveedor",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/es-ES"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "es-ES",
+      "mode": "approved_without_integrity",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "es-ES",
+      "mode": "modified_approved_bytes",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": true,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "fr-FR",
+      "mode": "legitimate",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "fr-FR",
+        "head": "Portail Fournisseur",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/fr-FR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "fr-FR",
+      "mode": "extra_same_origin",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/audit-unapproved.js"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/audit-unapproved.js"
+        ],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "fr-FR",
+        "head": "Portail Fournisseur",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/fr-FR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "fr-FR",
+      "mode": "approved_without_integrity",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "fr-FR",
+      "mode": "modified_approved_bytes",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": true,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "nb-NO",
+      "mode": "legitimate",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "nb-NO",
+        "head": "Leverandørportal",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/nb-NO"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "nb-NO",
+      "mode": "extra_same_origin",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/audit-unapproved.js"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/audit-unapproved.js"
+        ],
+        "i18n": true,
+        "transport": true,
+        "contentVisible": true,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": "nb-NO",
+        "head": "Leverandørportal",
+        "ppeText": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/pt-BR"
+        },
+        {
+          "method": "GET",
+          "path": "/api/i18n/nb-NO"
+        },
+        {
+          "method": "GET",
+          "path": "/api/portal/supplier/audit-synthetic"
+        }
+      ],
+      "javascript_error_count": 0,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "nb-NO",
+      "mode": "approved_without_integrity",
+      "passed": true,
+      "observed": {
+        "csp": [
+          {
+            "directive": "script-src-elem",
+            "blocked": "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+          }
+        ],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": false,
+      "runtime_policy_and_integrity_frozen": true
+    },
+    {
+      "locale": "nb-NO",
+      "mode": "modified_approved_bytes",
+      "passed": true,
+      "observed": {
+        "csp": [],
+        "scriptErrors": [
+          "http://127.0.0.1:42831/i18n.js?v=265d8fa47f85"
+        ],
+        "i18n": false,
+        "transport": true,
+        "contentVisible": false,
+        "extraExecuted": 0,
+        "tamperedExecuted": 0,
+        "locale": null,
+        "head": "Portal do Fornecedor",
+        "ppeText": false
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/fornecedor/audit-synthetic"
+        },
+        {
+          "method": "GET",
+          "path": "/i18n.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/modules/purchases/integrations/supplier-portal-api.js"
+        },
+        {
+          "method": "GET",
+          "path": "/js/views/supplier-portal.js"
+        }
+      ],
+      "javascript_error_count": 1,
+      "integrity_console_error": true,
+      "runtime_policy_and_integrity_frozen": true
+    }
+  ],
+  "passed": 20,
+  "failed": 0
+}

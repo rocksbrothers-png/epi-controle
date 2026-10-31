@@ -42,6 +42,7 @@ jobs:
           python scripts/i18n/check_supplier_portal_browser.py --output "$RUNNER_TEMP/i18n-evidence/supplier"
           python scripts/i18n/check_library_browser.py --output "$RUNNER_TEMP/i18n-evidence/library"
           python scripts/i18n/check_connectors_browser.py --output "$RUNNER_TEMP/i18n-evidence/connectors"
+          python scripts/i18n/check_supplier_portal_csp_sri.py --output "$RUNNER_TEMP/i18n-evidence/portal-csp-sri"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -13343,7 +13343,7 @@ async function loadPurchaseOrders() {
       <td>${po.items_count || 0}</td>
       <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
-      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}" data-i18n="ui.app.ver_20ab38">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" onclick="openPoSupplierActionsModal(${po.id})" data-i18n="epi.supplierShort">Fornecedor</button></td>
+      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}" data-i18n="ui.app.ver_20ab38">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" data-i18n="epi.supplierShort" data-po-supplier-actions="${po.id}">Fornecedor</button></td>
     </tr>`).join('');
   } catch(e) {
     if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{})) ?? "Erro ao carregar POs."); }
@@ -14342,23 +14342,42 @@ async function loadAuthorizedSuppliers() {
     const canManage = hasPermission(SUPPLIERS_MANAGE_PERM);
     const canViewPOs = hasPermission('purchase_orders:view') || hasPermission('finance:view');
     populatePoSupplierSelect();
+    // SECURITY-CSP-V1: ações por delegação (a CSP aplicada não executa onclick inline). O nome do
+    // fornecedor vem da lista carregada — antes ia num literal JS dentro do atributo (injetável).
+    if (!tbody.dataset.supplierActionsBound) {
+      tbody.dataset.supplierActionsBound = '1';
+      bindAppListener(tbody, 'click', (event) => {
+        const button = event.target.closest('[data-supplier-action]');
+        if (!button || !tbody.contains(button)) return;
+        const supplier = _authorizedSuppliers.find((item) => String(item.id) === String(button.dataset.supplierId));
+        if (!supplier) return;
+        const handlers = {
+          edit: () => openEditSupplierModal(supplier.id),
+          toggle: () => toggleSupplierActive(supplier.id, supplier.name, supplier.active ? 1 : 0),
+          pos: () => window.openSupplierPOsModal(supplier.id),
+          catalog: () => globalThis.openSupplierCatalogModal(supplier.id, supplier.name),
+          integration: () => globalThis.openSupplierIntegrationModal(supplier.id, supplier.name),
+        };
+        handlers[button.dataset.supplierAction]?.();
+      });
+    }
     tbody.innerHTML = _authorizedSuppliers.length
       ? _authorizedSuppliers.map(s => {
           const statusBadge = s.active
             ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;" data-i18n="outsourcedCompany.linkActive">Ativo</span>`
             : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;" data-i18n="ui.comercial.suspenso_2d605a">Suspenso</span>`;
           const editBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openEditSupplierModal(${s.id})" data-i18n="company.editAction">Editar</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="company.editAction" data-supplier-action="edit" data-supplier-id="${esc(s.id)}">Editar</button>`
             : '';
           const toggleBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" onclick="toggleSupplierActive(${s.id}, '${esc(s.name)}', ${s.active ? 1 : 0})">${s.active ? (tr('ui.app.suspender_72f47d', 'Suspender', {})) : (tr('ui.app.reativar_86e02d', 'Reativar', {}))}</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" data-supplier-action="toggle" data-supplier-id="${esc(s.id)}" data-i18n="${s.active ? 'ui.app.suspender_72f47d' : 'ui.app.reativar_86e02d'}">${s.active ? (tr('ui.app.suspender_72f47d', 'Suspender', {})) : (tr('ui.app.reativar_86e02d', 'Reativar', {}))}</button>`
             : '';
           const posBtn = canViewPOs
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierPOsModal(${s.id})" data-i18n="ui.app.ver_pos_e3d80b">Ver POs</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.ver_pos_e3d80b" data-supplier-action="pos" data-supplier-id="${esc(s.id)}">Ver POs</button>`
             : '';
-          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierCatalogModal(${s.id}, '${esc(s.name)}')" data-i18n="ui.app.catalogo_dc7aba">Catálogo</button>`;
+          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.catalogo_dc7aba" data-supplier-action="catalog" data-supplier-id="${esc(s.id)}">Catálogo</button>`;
           const integrationBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openSupplierIntegrationModal(${s.id}, '${esc(s.name)}')" data-i18n="ui.app.integracao_9143a8">Integração</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.integracao_9143a8" data-supplier-action="integration" data-supplier-id="${esc(s.id)}">Integração</button>`
             : '';
           return `<tr style="${s.active ? '' : 'opacity:.6;'}">
             <td>${esc(s.name) || '—'}</td>

@@ -103,11 +103,18 @@
     const fragment = document.createDocumentFragment();
     const parents = [fragment];
     const entities = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+    const elements = {
+      strong: () => document.createElement('strong'),
+      em: () => document.createElement('em'),
+      b: () => document.createElement('b'),
+      i: () => document.createElement('i'),
+      br: () => document.createElement('br'),
+    };
     for (const part of String(value).split(/(<\/?(?:strong|em|b|i)>|<br\s*\/?>)/gi)) {
       if (!part) {continue;}
       const tag = /^<(\/?)(strong|em|b|i|br)\s*\/?>$/i.exec(part);
       if (tag && !tag[1]) {
-        const node = document.createElement(tag[2].toLowerCase());
+        const node = elements[tag[2].toLowerCase()]();
         parents[parents.length - 1].appendChild(node);
         if (tag[2].toLowerCase() !== 'br') {parents.push(node);}
       } else if (tag && parents.length > 1 && parents[parents.length - 1].nodeName.toLowerCase() === tag[2].toLowerCase()) {

@@ -22,8 +22,6 @@ name='Aprovado <img src=x onerror=window.__xss=1>'
 low=[{'stock':stock,'minimum_stock':10,'stock_status':status,'epi_name':name,'company_name':'Empresa original','unit_name':'Unidade original','unit_measure':'par','company_id':41,'unit_id':42,'epi_id':43,'size_balances':[{'glove_size':'G','size':'N/A','uniform_size':'N/A','quantity':stock}]} for stock,status in [(-2,'critical'),(0,'critical'),(4,'critical'),(10,'critical'),(11,'near_minimum')]]
 physical={43:{'as_of_date':today.isoformat(),'nearest_known_expiry':(today-timedelta(days=1)).isoformat(),'warning_days':30,'unknown':2,'expiring':4}}
 epis=[{'id':43,'active':1,'company_id':41,'unit_id':42,'name':name,'company_name':'Empresa original','stock':6,'unit_measure':'par','ca_expiry':(today+timedelta(days=10)).isoformat()}]
-with patch('modules.alerts.service.physical_summary_map',return_value=physical):
- alerts=compute_alerts(None,{'role':'admin'},fetch_low_stock_items=lambda *_:low,actor_operational_unit_id=lambda *_:42,fetch_epis=lambda *_:epis)
 physical[44]={**physical[43],'nearest_known_expiry':(today+timedelta(days=3)).isoformat(),'unknown':1,'expiring':1}
 epis.append({**epis[0],'id':44})
 with patch('modules.alerts.service.physical_summary_map',return_value=physical):

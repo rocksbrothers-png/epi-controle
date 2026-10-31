@@ -129,7 +129,7 @@ def handle_get_supplier_portal_data(handler, parsed, payload, match):
         payload_out = get_portal_payload(connection, link)
         connection.commit()
         send_json(handler, 200, {'item': payload_out})
-        return
+        return None
 
 
 def handle_post_supplier_portal_quote(handler, parsed, payload, match):
@@ -141,7 +141,7 @@ def handle_post_supplier_portal_quote(handler, parsed, payload, match):
         quote = portal_answer_quote(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
         send_json(handler, 200, {'ok': True, 'status': quote.get('status')})
-        return
+        return None
 
 
 def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
@@ -153,7 +153,7 @@ def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
         po = portal_confirm_po(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
         send_json(handler, 200, {'ok': True, 'supplier_confirmation_status': po.get('supplier_confirmation_status')})
-        return
+        return None
 
 
 def register_routes(router):

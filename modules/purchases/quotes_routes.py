@@ -82,10 +82,10 @@ def handle_put_authorized_supplier_procurement(handler, parsed, payload, match):
         found = update_supplier_procurement_fields(connection, company_id, supplier_id, payload)
         if not found:
             send_json(handler, 404, {'error': 'Fornecedor não encontrado.'})
-            return
+            return None
         connection.commit()
         send_json(handler, 200, {'ok': True})
-        return
+        return None
 
 
 def handle_get_supplier_products(handler, parsed, payload, match):

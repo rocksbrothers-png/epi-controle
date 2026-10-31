@@ -204,3 +204,21 @@ b2ab7f2b5d60c3cfb61fb869f0f4076b37ec4916:.github/workflows/stock-validity-integr
 8863a2dbb37fd3af96fac02fedf902aac7382c7e:docs/i18n/I18N-FULL-V1/audit/flutter-forms-layout-static-results.json:generic-api-key:5
 a1799412d4c131140e82ecdae93fcefab38240ce:docs/i18n/I18N-FULL-V1/audit/supplier-browser-results.json:generic-api-key:125
 bc9cf725d52933c977d2550bb0e032221756bc4e:docs/i18n/I18N-FULL-V1/audit/supplier-browser-results.json:generic-api-key:125
+
+# Exact public-source hash findings in the independent CodeQL regression evidence.
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:18
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:30
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:42
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:54
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json:generic-api-key:11
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json:generic-api-key:11
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json:generic-api-key:11
+0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json:generic-api-key:11
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:18
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:30
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:42
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:54
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json:generic-api-key:11
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json:generic-api-key:11
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json:generic-api-key:11
+8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json:generic-api-key:11

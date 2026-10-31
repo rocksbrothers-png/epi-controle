@@ -974,6 +974,9 @@
     bindAppListener(document.getElementById('compras-po-tbody'), 'click', (e) => {
       const btn = e.target.closest('[data-po-detail]');
       if (btn) {globalThis.openPoDetail?.(btn.dataset.poDetail);}
+      // SECURITY-CSP-V1: era onclick inline (bloqueado pela CSP aplicada).
+      const supplierBtn = e.target.closest('[data-po-supplier-actions]');
+      if (supplierBtn) {globalThis.openPoSupplierActionsModal?.(Number(supplierBtn.dataset.poSupplierActions));}
     });
     bindAppListener(document.getElementById('compras-po-detail-close'), 'click', () => {
       const el = document.getElementById('compras-po-detail');

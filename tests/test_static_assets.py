@@ -328,17 +328,22 @@ def test_flutter_web_build_targets_official_app_directory():
     assert "./static/flutter_web/" not in dockerfile
 
 
-def test_default_headers_emit_single_csp_report_only_header(monkeypatch):
+def test_default_headers_emit_single_spa_csp_header(monkeypatch):
+    # SECURITY-CSP-V1: a SPA recebe uma única CSP, aplicada (fora de produção) e sem
+    # 'unsafe-inline' em script-src. Cobertura completa em tests/test_security_csp_v1.py.
     import app
 
     monkeypatch.setenv("CSP_REPORT_URI", "/api/csp-report")
+    monkeypatch.setattr(app, "CSP_SPA_MODE", "enforce")
     handler = _HeaderCapture()
 
     app.EpiHandler._apply_default_response_headers(handler)
 
-    csp_headers = [value for name, value in handler.sent_headers if name == "Content-Security-Policy-Report-Only"]
+    csp_headers = [value for name, value in handler.sent_headers if name.startswith("Content-Security-Policy")]
     assert len(csp_headers) == 1
-    assert "script-src 'self' 'unsafe-inline' https://unpkg.com" in csp_headers[0]
+    assert ("Content-Security-Policy", csp_headers[0]) in handler.sent_headers
+    assert "script-src 'self' https://unpkg.com/htmx.org@1.9.12" in csp_headers[0]
+    assert "'unsafe-inline' https://fonts.googleapis.com" in csp_headers[0]  # só em style-src
     assert "report-uri /api/csp-report" in csp_headers[0]
 
 

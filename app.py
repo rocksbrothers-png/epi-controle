@@ -39,6 +39,7 @@ from epi_backend.config import (
     UTC,
 )
 from core.database import PostgresConnectionWrapper, db_pool_status, get_connection
+from core import csp as csp_policy
 from core.http_cache import is_no_store, resolve_cache_control
 from core.root_routing import is_flutter_root_redirect_enabled, resolve_root_request
 from core.schema import (
@@ -548,21 +549,10 @@ LOG_HTTP_PERMISSION_ERROR = 'http.permission_error'
 LOG_HTTP_VALUE_ERROR = 'http.value_error'
 LOG_HTTP_UNHANDLED_ERROR = 'http.unhandled_error'
 
-# CSP report-only policy for the legacy website + Flutter Web gateway.
-# Keep this in report-only mode while the legacy static HTML still contains
-# inline event handlers/styles; move to blocking mode only after modularization.
-CSP_LEGACY_SCRIPT_SOURCES = ("'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://sdk.mercadopago.com')
-CSP_LEGACY_STYLE_SOURCES = ("'self'", "'unsafe-inline'", 'https://fonts.googleapis.com')
-CSP_REPORT_ONLY_DIRECTIVES = (
-    ("default-src", ("'self'",)),
-    ("script-src", CSP_LEGACY_SCRIPT_SOURCES),
-    ("style-src", CSP_LEGACY_STYLE_SOURCES),
-    ("img-src", ("'self'", 'data:', 'blob:', 'https://api.qrserver.com')),
-    ("font-src", ("'self'", 'data:', 'https://fonts.gstatic.com')),
-    ("connect-src", ("'self'", 'https://api.mercadopago.com')),
-    ("frame-ancestors", ("'self'",)),
-    ("base-uri", ("'self'",)),
-)
+# SECURITY-CSP-V1: políticas por superfície em core/csp.py. A SPA recebe a política
+# estrita (sem 'unsafe-inline'/'unsafe-eval' em script-src), aplicada fora de produção e
+# Report-Only em produção até CSP_MODE=enforce; Flutter Web e checkout seguem Report-Only.
+CSP_SPA_MODE = csp_policy.spa_mode(os.environ.get('CSP_MODE'), APP_ENV in ('prod', 'production'))
 
 COMPANY_DOF_BRASIL = 'DOF Brasil'
 COMPANY_NORSKAN_OFFSHORE = 'Norskan Offshore'
@@ -712,24 +702,27 @@ class EpiHandler(SimpleHTTPRequestHandler):
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.send_header('Referrer-Policy', 'no-referrer' if library_response else 'strict-origin-when-cross-origin')
         self.send_header('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
-        csp_report_only = '; '.join(
-            f"{name} {' '.join(values)}"
-            for name, values in CSP_REPORT_ONLY_DIRECTIVES
-        )
         csp_report_uri = os.environ.get('CSP_REPORT_URI', '').strip()
         csp_report_uri_safe = (
             csp_report_uri
             and '\r' not in csp_report_uri
             and '\n' not in csp_report_uri
+            and ' ' not in csp_report_uri
+            and ';' not in csp_report_uri
             and (
                 csp_report_uri.startswith('/')
                 or csp_report_uri.startswith('https://')
                 or (APP_ENV not in ('prod', 'production') and csp_report_uri.startswith('http://'))
             )
         )
-        if csp_report_uri_safe:
-            csp_report_only = f"{csp_report_only}; report-uri {csp_report_uri}"
-        self.send_header('Content-Security-Policy-Report-Only', csp_report_only)
+        # A rota que já mandou a própria CSP (ficha, portal do fornecedor) ou a resposta da
+        # biblioteca (abaixo) não recebe a da SPA: duas CSPs aplicadas se somam (vale a
+        # interseção) e a da SPA bloquearia o script liberado por hash da rota.
+        if not (library_response or getattr(self, '_route_csp_sent', False)):
+            csp_header, csp_value = csp_policy.policy_for_path(
+                path, mode=CSP_SPA_MODE, report_uri=csp_report_uri if csp_report_uri_safe else '',
+            )
+            self.send_header(csp_header, csp_value)
         if APP_ENV in ('prod', 'production'):
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
 
@@ -743,8 +736,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
                 self.send_header('Pragma', 'no-cache')
                 self.send_header('Expires', '0')
 
+    def send_response(self, code, message=None):
+        self._route_csp_sent = False
+        return super().send_response(code, message)
+
+    def send_header(self, keyword, value):
+        if str(keyword).strip().lower() == 'content-security-policy':
+            self._route_csp_sent = True
+        return super().send_header(keyword, value)
+
     def end_headers(self):
         self._apply_default_response_headers()
+        self._route_csp_sent = False
         return super().end_headers()
 
     def guess_type(self, path):

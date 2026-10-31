@@ -6,6 +6,9 @@ Responsiva (o fornecedor abre no celular) e sem frameworks, no espírito do
 frontend legado.
 """
 
+import base64
+import hashlib
+
 PORTAL_PAGE_HTML = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -251,3 +254,20 @@ PORTAL_PAGE_HTML = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+# SECURITY-CSP-V1: a página roda o próprio <script> embutido; a política libera só ele, pelo
+# hash, e nada de handler inline, script externo ou injetado. Estilos inline (bloco <style> e
+# atributos style=) seguem permitidos; conexões só para a própria origem (API do portal).
+def _inline_script_hash(html):
+    start = html.index('<script>') + len('<script>')
+    body = html[start:html.index('</script>', start)]
+    return base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode('ascii')
+
+
+PORTAL_PAGE_CSP = (
+    "default-src 'none'; "
+    f"script-src 'sha256-{_inline_script_hash(PORTAL_PAGE_HTML)}'; "
+    "style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)

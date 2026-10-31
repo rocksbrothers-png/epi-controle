@@ -114,19 +114,32 @@
       return;
     }
     if (emptyEl) {emptyEl.style.display = 'none';}
+    // SECURITY-CSP-V1: ações por delegação (a CSP aplicada não executa onclick inline).
+    if (!tbody.dataset.quoteActionsBound) {
+      tbody.dataset.quoteActionsBound = '1';
+      tbody.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-quote-action]');
+        if (!button || !tbody.contains(button)) {return;}
+        const quoteId = Number(button.dataset.quoteId);
+        const action = button.dataset.quoteAction;
+        if (action === 'answer') {openAnswerQuoteModal(quoteId);}
+        else if (action === 'winner') {selectQuoteWinner(quoteId);}
+        else if (['email', 'portal', 'api'].includes(action)) {procurementSendQuote(quoteId, action);}
+      });
+    }
     tbody.innerHTML = quotes.map((q) => {
       const isOpen = q.status === 'draft' || q.status === 'sent';
       const actions = [];
       if (canManage && isOpen) {
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'email')">✉ E-mail</button>`);
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'portal')">🔗 Portal</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-quote-action="email" data-quote-id="${esc(q.id)}">✉ E-mail</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-quote-action="portal" data-quote-id="${esc(q.id)}">🔗 Portal</button>`);
         if (String(q.supplier_integration_level || '') === 'api') {
-          actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="procurementSendQuote(${q.id}, 'api')">⚡ Cotar via API</button>`);
+          actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-quote-action="api" data-quote-id="${esc(q.id)}">⚡ Cotar via API</button>`);
         }
-        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" onclick="openAnswerQuoteModal(${q.id})">Registrar resposta</button>`);
+        actions.push(`<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-quote-action="answer" data-quote-id="${esc(q.id)}">Registrar resposta</button>`);
       }
       if (canManage && q.status === 'answered') {
-        actions.push(`<button class="btn" style="font-size:12px;padding:3px 8px;" onclick="selectQuoteWinner(${q.id})">★ Selecionar vencedora</button>`);
+        actions.push(`<button class="btn" style="font-size:12px;padding:3px 8px;" data-quote-action="winner" data-quote-id="${esc(q.id)}">★ Selecionar vencedora</button>`);
       }
       return `<tr>
         <td>#${q.id}</td>

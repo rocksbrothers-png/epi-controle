@@ -1048,6 +1048,10 @@
         "glove_size": "talla de guante",
         "uniform_size": "talla de uniforme"
       }
+    },
+    "connectors": {
+      "demo": "Tienda de demostración (piloto)",
+      "httpJson": "API REST/JSON genérica (v1)"
     }
   },
   "plan": {
@@ -3163,7 +3167,19 @@
       "m_fab0d68c071e": "No se encontró la orden de compra del enlace.",
       "m_b7a4dae4fe74": "El contenido del archivo de la propuesta no es válido.",
       "m_60d276d721d5": "No se puede enviar al portal una cotización con estado \"{p1}\".",
-      "m_d84b6bd17b4f": "No se pudo cargar el idioma solicitado para el documento."
+      "m_d84b6bd17b4f": "No se pudo cargar el idioma solicitado para el documento.",
+      "connectorHttpsRequired": "La integración requiere base_url HTTPS.",
+      "connectorCatalogItemsRequired": "Al catálogo de la tienda le falta la clave \"items\".",
+      "connectorQuoteItemsRequired": "A la cotización de la tienda le falta la clave \"items\".",
+      "connectorOrderReferenceRequired": "La PO no tiene referencia de pedido en la tienda.",
+      "connectorHttpFailure": "La tienda respondió HTTP {status} en {path}.",
+      "connectorInvalidJson": "Respuesta inválida (no JSON) de la tienda en {path}.",
+      "connectorUnknown": "Conector desconocido: {connector}.",
+      "connectorActiveIntegrationRequired": "El proveedor no tiene una integración de API activa.",
+      "connectorSupplierCnpjRequired": "La PO no tiene un proveedor registrado (CNPJ) para la integración de API.",
+      "connectorOrderNotSent": "La PO aún no se ha enviado por API (sin referencia en la tienda).",
+      "connectorIntegrationNotConfigured": "El proveedor no tiene una integración configurada.",
+      "connectorNetworkFailure": "Error de comunicación con la tienda en {detail}"
     },
     "fields": {
       "title": "Título",
@@ -3174,6 +3190,13 @@
       "actor_user_id": "Identificador del usuario",
       "part_index": "Índice de la pestaña",
       "page_index": "Índice de la página"
+    },
+    "wrappers": {
+      "connectorTestFailed": "Falló la prueba de integración: {cause}",
+      "connectorCatalogQueryFailed": "Error al consultar el catálogo de la tienda: {cause}",
+      "connectorQuoteFailed": "Error al solicitar una cotización a la tienda: {cause}",
+      "connectorOrderCreationFailed": "Error al crear el pedido en la tienda: {cause}",
+      "connectorOrderStatusFailed": "Error al consultar el pedido en la tienda: {cause}"
     }
   },
   "operationalAlerts": {

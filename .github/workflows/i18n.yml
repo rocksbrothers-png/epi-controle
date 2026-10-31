@@ -41,6 +41,7 @@ jobs:
           python scripts/i18n/check_alerts_browser.py --output "$RUNNER_TEMP/i18n-evidence/alerts"
           python scripts/i18n/check_supplier_portal_browser.py --output "$RUNNER_TEMP/i18n-evidence/supplier"
           python scripts/i18n/check_library_browser.py --output "$RUNNER_TEMP/i18n-evidence/library"
+          python scripts/i18n/check_connectors_browser.py --output "$RUNNER_TEMP/i18n-evidence/connectors"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

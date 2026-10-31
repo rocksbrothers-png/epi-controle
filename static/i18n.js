@@ -229,6 +229,7 @@
       }
     }
     visit(_fallback.apiErrors?.messages, 'apiErrors.messages');
+    visit(_fallback.apiErrors?.wrappers, 'apiErrors.wrappers');
     visit(_fallback, '', true);
     entries.sort((a, b) => b.specificity - a.specificity);
     _apiMessageIndex = {source:_fallback, entries};
@@ -252,8 +253,10 @@
       const next = template.tokens[i + 1];
       const after = template.value.slice(sourcePosition, next ? next.index : undefined);
       if (!after && next) {return null;}
-      const end = after ? original.indexOf(after, position) : original.length;
-      if (end < 0) {return null;}
+      // O último delimitador é o sufixo ancorado, não a primeira ocorrência
+      // dentro de um identificador (por exemplo, vendor.v2 ou /orders/ref.v2).
+      const end = next ? original.indexOf(after, position) : original.endsWith(after) ? original.length - after.length : -1;
+      if (end < position) {return null;}
       const value = original.slice(position, end);
       if (Object.prototype.hasOwnProperty.call(vars, token[1]) && vars[token[1]] !== value) {return null;}
       vars[token[1]] = value;
@@ -264,6 +267,10 @@
   }
 
   function describeApiError(payload, fallback) {
+    return _describeApiError(payload, fallback, 0);
+  }
+
+  function _describeApiError(payload, fallback, depth) {
     const error = payload?.error;
     const original = String((typeof payload === 'string' ? payload : null) || (typeof error === 'string' ? error : error?.message) || payload?.message || fallback || '');
     function result(key, vars) {
@@ -275,6 +282,13 @@
           const fieldKey = 'apiErrors.fields.' + vars[name];
           if (_resolve(_fallback, fieldKey) !== undefined) {refs[name] = fieldKey;}
         }
+      }
+      // Somente wrappers de sistema conhecidos declaram uma causa traduzível.
+      // Diagnósticos externos e parâmetros livres continuam opacos. O limite
+      // acompanha resolveMessageVars para manter texto inicial e bindings iguais.
+      if (key.startsWith('apiErrors.wrappers.') && typeof vars.cause === 'string' && depth < 4) {
+        const cause = _describeApiError(vars.cause, undefined, depth + 1);
+        if (cause.key) {refs.cause = {type:'message', key:cause.key, vars:cause.vars, refs:cause.refs};}
       }
       return {key, vars, refs, text:trEpi(key, original, resolveMessageVars(vars, refs))};
     }

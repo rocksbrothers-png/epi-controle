@@ -1124,5 +1124,161 @@
     "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
     "key": "apiErrors.messages.m_d84b6bd17b4f",
     "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 32,
+    "function": "_base_url",
+    "exception": "ConnectorError",
+    "message_template": "Integração exige base_url HTTPS.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorHttpsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 65,
+    "function": "get_catalog",
+    "exception": "ConnectorError",
+    "message_template": "Catálogo da loja sem a chave \"items\".",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorCatalogItemsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 83,
+    "function": "get_price_and_stock",
+    "exception": "ConnectorError",
+    "message_template": "Cotação da loja sem a chave \"items\".",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorQuoteItemsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 120,
+    "function": "get_order_status",
+    "exception": "ConnectorError",
+    "message_template": "PO sem referência de pedido na loja.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorOrderReferenceRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 53,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Loja respondeu HTTP {status} em {path}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorHttpFailure"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 55,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Falha de comunicação com a loja em {detail}",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorNetworkFailure",
+    "source_template": "Falha de comunicação com a loja em {path}: {cause}",
+    "parameter_policy": "detail preserves the complete original path, separator and external exception as opaque text; parsing path/cause would be ambiguous for supplier references containing colon-space."
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 59,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Resposta inválida (não-JSON) da loja em {path}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorInvalidJson"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/__init__.py",
+    "line": 25,
+    "function": "get_connector",
+    "exception": "ValueError",
+    "message_template": "Conector desconhecido: {connector}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorUnknown",
+    "parameter_policy": "connector preserves the Python repr of the original key, including quotes."
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 119,
+    "function": "_active_connector_for_supplier",
+    "exception": "ValueError",
+    "message_template": "Fornecedor sem integração de API ativa.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorActiveIntegrationRequired"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 206,
+    "function": "_po_supplier_id",
+    "exception": "ValueError",
+    "message_template": "PO sem fornecedor cadastrado (CNPJ) para integração de API.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorSupplierCnpjRequired"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 260,
+    "function": "refresh_po_status_from_connector",
+    "exception": "ValueError",
+    "message_template": "PO ainda não foi enviada via API (sem referência na loja).",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorOrderNotSent"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 130,
+    "function": "ping_supplier_integration",
+    "exception": "ValueError",
+    "message_template": "Teste da integração falhou: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorTestFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 149,
+    "function": "sync_catalog_from_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao consultar o catálogo da loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorCatalogQueryFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 183,
+    "function": "quote_via_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao cotar na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorQuoteFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 224,
+    "function": "send_po_via_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao criar o pedido na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorOrderCreationFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 267,
+    "function": "refresh_po_status_from_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao consultar o pedido na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorOrderStatusFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_routes.py",
+    "line": 55,
+    "function": "handle_get_supplier_integration",
+    "exception": "HTTP 404 response",
+    "message_template": "Fornecedor sem integração configurada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorIntegrationNotConfigured"
   }
 ]

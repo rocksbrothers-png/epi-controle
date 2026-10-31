@@ -1048,6 +1048,10 @@
         "glove_size": "tamanho de luva",
         "uniform_size": "tamanho de uniforme"
       }
+    },
+    "connectors": {
+      "demo": "Loja de demonstração (piloto)",
+      "httpJson": "API REST/JSON genérica (v1)"
     }
   },
   "plan": {
@@ -3163,7 +3167,19 @@
       "m_fab0d68c071e": "PO do link não encontrada.",
       "m_b7a4dae4fe74": "Conteúdo do arquivo da proposta inválido.",
       "m_60d276d721d5": "Cotação com status \"{p1}\" não pode ser enviada ao portal.",
-      "m_d84b6bd17b4f": "Não foi possível carregar o idioma solicitado para o documento."
+      "m_d84b6bd17b4f": "Não foi possível carregar o idioma solicitado para o documento.",
+      "connectorHttpsRequired": "Integração exige base_url HTTPS.",
+      "connectorCatalogItemsRequired": "Catálogo da loja sem a chave \"items\".",
+      "connectorQuoteItemsRequired": "Cotação da loja sem a chave \"items\".",
+      "connectorOrderReferenceRequired": "PO sem referência de pedido na loja.",
+      "connectorHttpFailure": "Loja respondeu HTTP {status} em {path}.",
+      "connectorInvalidJson": "Resposta inválida (não-JSON) da loja em {path}.",
+      "connectorUnknown": "Conector desconhecido: {connector}.",
+      "connectorActiveIntegrationRequired": "Fornecedor sem integração de API ativa.",
+      "connectorSupplierCnpjRequired": "PO sem fornecedor cadastrado (CNPJ) para integração de API.",
+      "connectorOrderNotSent": "PO ainda não foi enviada via API (sem referência na loja).",
+      "connectorIntegrationNotConfigured": "Fornecedor sem integração configurada.",
+      "connectorNetworkFailure": "Falha de comunicação com a loja em {detail}"
     },
     "fields": {
       "title": "Título",
@@ -3174,6 +3190,13 @@
       "actor_user_id": "Identificador do usuário",
       "part_index": "Índice da aba",
       "page_index": "Índice da página"
+    },
+    "wrappers": {
+      "connectorTestFailed": "Teste da integração falhou: {cause}",
+      "connectorCatalogQueryFailed": "Falha ao consultar o catálogo da loja: {cause}",
+      "connectorQuoteFailed": "Falha ao cotar na loja: {cause}",
+      "connectorOrderCreationFailed": "Falha ao criar o pedido na loja: {cause}",
+      "connectorOrderStatusFailed": "Falha ao consultar o pedido na loja: {cause}"
     }
   },
   "operationalAlerts": {

@@ -87,8 +87,9 @@ const api=sandbox.EpiI18n;
 const response=(locale, translations=dictionaries[locale], fallback=false)=>({ok:true,json:async()=>({locale,translations,fallback})});
 (async()=>{
 ''' + scenario + '\n})().catch(error=>{console.error(error);process.exitCode=1});'
-    subprocess.run([node, '-e', script, str(ROOT / 'static/i18n.js')], check=True,
-                   capture_output=True, text=True, timeout=20)
+    completed = subprocess.run([node, '-e', script, str(ROOT / 'static/i18n.js')],
+                               capture_output=True, text=True, timeout=20)
+    assert completed.returncode == 0, completed.stderr
 
 
 def test_last_language_request_wins_without_persisting_stale_response():
@@ -314,6 +315,7 @@ for(const locale of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']) {
   assert.equal(JSON.stringify(payload),before);
   assert.equal(localized.key,'apiErrors.messages.'+name);
   assert(localized.text);assert(!localized.text.includes('apiErrors.messages.'));
+  assert(!/\{\w+\}/.test(localized.text));
  }
 }
 await api.setLang('en-GB');
@@ -329,6 +331,144 @@ assert.equal(api.apiMessage({error:unknown,i18n:{key:42}}),unknown);
 assert.equal(sandbox.t('constructor.name'),'constructor.name');
 const alt=element({'data-i18n-alt':'login.showPassword'});api.translateDOM(alt);
 assert.equal(alt.getAttribute('alt'),dictionaries['fr-FR'].login.showPassword);
+''')
+
+
+def test_connector_errors_translate_nested_system_causes_and_keep_external_details():
+    run_scenario(r'''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+const locales=['pt-BR','en-GB','es-ES','fr-FR','nb-NO'];
+for(const locale of locales)dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+const source='Teste da integração falhou: Falha de comunicação com a loja em /orders/ref.v2/status: remote.original <img src=x> {literal}\nnext';
+const payload={error:source,code:'CONNECTOR_FAILURE',validation:{supplier_id:41,line:7}};
+const before=JSON.stringify(payload);
+await api.setLang('en-GB',{persist:false});
+const detail=api.describeApiError(payload);
+assert.equal(detail.text,'Integration test failed: Could not communicate with the store at /orders/ref.v2/status: remote.original <img src=x> {literal}\nnext');
+assert.equal(JSON.stringify(payload),before);
+const node=element();node.textContent=api.textFor(node,detail.key,detail.text,detail.vars,detail.refs);
+for(const locale of locales){
+ await api.setLang(locale,{persist:false});api.translateDOM(node);
+ assert.equal(node.textContent,api.apiMessage(payload));
+ assert(node.textContent.endsWith('remote.original <img src=x> {literal}\nnext'));
+ const dotted=api.describeApiError({error:'Loja respondeu HTTP 429 em /orders/ref.v2/status.'});
+ assert.equal(dotted.vars.path,'/orders/ref.v2/status');
+ assert(!dotted.text.includes('{path}'));
+ const unknownConnector=api.describeApiError({error:"Conector desconhecido: 'vendor.v2'."});
+ assert.equal(unknownConnector.vars.connector,"'vendor.v2'");
+ const ambiguous='/orders/REF: v2/status: remote: original <img src=x>';
+ const network=api.describeApiError({error:'Falha de comunicação com a loja em '+ambiguous});
+ assert.equal(network.vars.detail,ambiguous);
+ assert(network.text.endsWith(ambiguous));
+}
+for(const source of ['Remote: Teste da integração falhou: Integração exige base_url HTTPS.',
+                    'Remote message Loja respondeu HTTP 400 em /catalog.', 'name.original']){
+ assert.equal(api.apiMessage({error:source}),source);
+}
+await api.setLang('en-GB',{persist:false});
+const opaque='Remote: Integração exige base_url HTTPS. <img src=x>';
+assert.equal(api.apiMessage({error:'Teste da integração falhou: '+opaque}),'Integration test failed: '+opaque);
+assert.equal(api.apiMessage({error:'Falha de comunicação com a loja em /catalog: Integração exige base_url HTTPS.'}),
+             'Could not communicate with the store at /catalog: Integração exige base_url HTTPS.');
+// A known failure followed by an opaque one must not regain its old binding.
+node.textContent='unknown remote detail';await api.setLang('fr-FR',{persist:false});api.translateDOM(node);
+assert.equal(node.textContent,'unknown remote detail');assert.equal(node.hasAttribute('data-i18n'),false);
+assert.equal(writes.length,0);
+''')
+
+
+def test_connector_cause_recursion_is_bounded_and_live_bindings_agree():
+    run_scenario(r'''
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+const locales=['pt-BR','en-GB','es-ES','fr-FR','nb-NO'];
+for(const locale of locales)dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+for(const locale of locales)dictionaries[locale].apiErrors.messages.connectorRepeatedProbe='Repeated {name}; {name}.';
+await api.setLang('en-GB',{persist:false});
+assert.equal(api.describeApiError('Repeated vendor.v2; vendor.v2.').vars.name,'vendor.v2');
+assert.equal(api.describeApiError('Repeated vendor.v2; another.').key,null);
+for(const depth of [0,1,4,5,20]){
+ const original='Teste da integração falhou: '.repeat(depth)+'Integração exige base_url HTTPS.';
+ await api.setLang('en-GB',{persist:false});
+ const detail=api.describeApiError({error:original}), node=element();
+ assert(detail.key);
+ node.textContent=api.textFor(node,detail.key,detail.text,detail.vars,detail.refs);
+ for(const locale of locales){
+  await api.setLang(locale,{persist:false});api.translateDOM(node);
+  assert.equal(node.textContent,api.apiMessage({error:original}));
+  assert(node.textContent.includes('base_url'));
+ }
+}
+for(const length of [8192,8193]){
+ const prefix='Teste da integração falhou: ', original=prefix+'x'.repeat(length-prefix.length);
+ const detail=api.describeApiError({error:original});
+ if(length===8193)assert.equal(detail.text,original);
+ else assert(detail.text.endsWith('x'.repeat(length-prefix.length)));
+}
+''')
+
+
+def test_real_http_connector_exceptions_reach_all_five_operation_translations(monkeypatch):
+    import io
+    import json
+    import urllib.error
+
+    from epi_backend.supplier_connectors import ConnectorError, get_connector
+    from epi_backend.supplier_connectors.http_json import HttpJsonConnector
+
+    connector = HttpJsonConnector({'base_url': 'https://fixture.invalid'})
+    cases = []
+
+    def capture(call, key):
+        with pytest.raises((ConnectorError, ValueError)) as failure:
+            call()
+        cases.append({'source': str(failure.value), 'key': 'apiErrors.messages.' + key})
+
+    capture(lambda: HttpJsonConnector({'base_url': 'http://fixture.invalid'})._base_url(), 'connectorHttpsRequired')
+    capture(lambda: get_connector('vendor.v2', {}), 'connectorUnknown')
+    capture(lambda: connector.get_order_status(''), 'connectorOrderReferenceRequired')
+    with monkeypatch.context() as patch:
+        patch.setattr(connector, '_request', lambda *args: {})
+        capture(connector.get_catalog, 'connectorCatalogItemsRequired')
+        capture(lambda: connector.get_price_and_stock([]), 'connectorQuoteItemsRequired')
+
+    def http_failure(*args, **kwargs):
+        raise urllib.error.HTTPError('https://fixture.invalid/catalog', 429, 'synthetic', {}, None)
+
+    def network_failure(*args, **kwargs):
+        raise urllib.error.URLError('remote.original <img src=x>')
+
+    for opener, key in [(http_failure, 'connectorHttpFailure'), (network_failure, 'connectorNetworkFailure'),
+                        (lambda *args, **kwargs: io.BytesIO(b'not-json'), 'connectorInvalidJson')]:
+        with monkeypatch.context() as patch:
+            patch.setattr('urllib.request.urlopen', opener)
+            capture(lambda: connector._request('GET', '/orders/ref.v2/status'), key)
+
+    run_scenario('const cases=' + json.dumps(cases) + r''';
+const path=require('node:path'), staticRoot=path.dirname(process.argv[1]);
+const locales=['pt-BR','en-GB','es-ES','fr-FR','nb-NO'];
+for(const locale of locales)dictionaries[locale]=JSON.parse(fs.readFileSync(path.join(staticRoot,'i18n',locale+'.json'),'utf8'));
+const operations={connectorTestFailed:'Teste da integração falhou: ',
+ connectorCatalogQueryFailed:'Falha ao consultar o catálogo da loja: ',
+ connectorQuoteFailed:'Falha ao cotar na loja: ',
+ connectorOrderCreationFailed:'Falha ao criar o pedido na loja: ',
+ connectorOrderStatusFailed:'Falha ao consultar o pedido na loja: '};
+for(const locale of locales){
+ await api.setLang(locale,{persist:false});
+ for(const example of cases){
+  const inner=api.describeApiError({error:example.source});
+  assert.equal(inner.key,example.key);
+  if(locale==='pt-BR')assert.equal(inner.text,example.source);
+  else assert.notEqual(inner.text,example.source);
+  for(const [key,prefix] of Object.entries(operations)){
+   const payload={error:prefix+example.source,code:'CONNECTOR_FAILURE',validation:{supplier_id:41,line:7}};
+   const before=JSON.stringify(payload), detail=api.describeApiError(payload);
+   assert.equal(JSON.stringify(payload),before);
+   assert.equal(detail.key,'apiErrors.wrappers.'+key);
+   assert.equal(detail.refs.cause.key,example.key);
+   assert.equal(detail.text,api.t(detail.key,{cause:inner.text}));
+  }
+ }
+}
 ''')
 
 

@@ -1048,6 +1048,10 @@
         "glove_size": "glove size",
         "uniform_size": "uniform size"
       }
+    },
+    "connectors": {
+      "demo": "Demo store (pilot)",
+      "httpJson": "Generic REST/JSON API (v1)"
     }
   },
   "plan": {
@@ -3163,7 +3167,19 @@
       "m_fab0d68c071e": "The purchase order for this link was not found.",
       "m_b7a4dae4fe74": "Invalid proposal file content.",
       "m_60d276d721d5": "A quotation with status \"{p1}\" cannot be sent to the portal.",
-      "m_d84b6bd17b4f": "The requested document language could not be loaded."
+      "m_d84b6bd17b4f": "The requested document language could not be loaded.",
+      "connectorHttpsRequired": "Integration requires an HTTPS base_url.",
+      "connectorCatalogItemsRequired": "Store catalogue is missing the \"items\" key.",
+      "connectorQuoteItemsRequired": "Store quotation is missing the \"items\" key.",
+      "connectorOrderReferenceRequired": "PO has no store order reference.",
+      "connectorHttpFailure": "Store returned HTTP {status} at {path}.",
+      "connectorInvalidJson": "Invalid (non-JSON) store response at {path}.",
+      "connectorUnknown": "Unknown connector: {connector}.",
+      "connectorActiveIntegrationRequired": "Supplier has no active API integration.",
+      "connectorSupplierCnpjRequired": "PO has no registered supplier (CNPJ) for API integration.",
+      "connectorOrderNotSent": "PO has not yet been sent via API (no store reference).",
+      "connectorIntegrationNotConfigured": "Supplier has no integration configured.",
+      "connectorNetworkFailure": "Could not communicate with the store at {detail}"
     },
     "fields": {
       "title": "Title",
@@ -3174,6 +3190,13 @@
       "actor_user_id": "User ID",
       "part_index": "Sheet index",
       "page_index": "Page index"
+    },
+    "wrappers": {
+      "connectorTestFailed": "Integration test failed: {cause}",
+      "connectorCatalogQueryFailed": "Could not retrieve the store catalogue: {cause}",
+      "connectorQuoteFailed": "Could not request a store quotation: {cause}",
+      "connectorOrderCreationFailed": "Could not create the store order: {cause}",
+      "connectorOrderStatusFailed": "Could not retrieve the store order: {cause}"
     }
   },
   "operationalAlerts": {

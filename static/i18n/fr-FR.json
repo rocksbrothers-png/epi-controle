@@ -1048,6 +1048,10 @@
         "glove_size": "taille de gant",
         "uniform_size": "taille de tenue"
       }
+    },
+    "connectors": {
+      "demo": "Boutique de démonstration (pilote)",
+      "httpJson": "API REST/JSON générique (v1)"
     }
   },
   "plan": {
@@ -3163,7 +3167,19 @@
       "m_fab0d68c071e": "La commande associée au lien est introuvable.",
       "m_b7a4dae4fe74": "Le contenu du fichier d’offre est invalide.",
       "m_60d276d721d5": "Un devis à l’état « {p1} » ne peut pas être envoyé au portail.",
-      "m_d84b6bd17b4f": "Impossible de charger la langue demandée pour le document."
+      "m_d84b6bd17b4f": "Impossible de charger la langue demandée pour le document.",
+      "connectorHttpsRequired": "La connexion nécessite une base_url HTTPS.",
+      "connectorCatalogItemsRequired": "La clé \"items\" est absente du catalogue de la boutique.",
+      "connectorQuoteItemsRequired": "La clé \"items\" est absente du devis de la boutique.",
+      "connectorOrderReferenceRequired": "La PO ne comporte aucune référence de commande dans la boutique.",
+      "connectorHttpFailure": "La boutique a renvoyé HTTP {status} sur {path}.",
+      "connectorInvalidJson": "Réponse non valide (non JSON) de la boutique sur {path}.",
+      "connectorUnknown": "Connecteur inconnu : {connector}.",
+      "connectorActiveIntegrationRequired": "Aucune connexion API active pour ce fournisseur.",
+      "connectorSupplierCnpjRequired": "La PO ne comporte aucun fournisseur enregistré (CNPJ) pour la connexion API.",
+      "connectorOrderNotSent": "La PO n’a pas encore été envoyée via l’API (aucune référence dans la boutique).",
+      "connectorIntegrationNotConfigured": "Aucune connexion configurée pour ce fournisseur.",
+      "connectorNetworkFailure": "Échec de la communication avec la boutique sur {detail}"
     },
     "fields": {
       "title": "Titre",
@@ -3174,6 +3190,13 @@
       "actor_user_id": "Identifiant de l’utilisateur",
       "part_index": "Indice de l’onglet",
       "page_index": "Indice de la page"
+    },
+    "wrappers": {
+      "connectorTestFailed": "Échec du test de connexion : {cause}",
+      "connectorCatalogQueryFailed": "Impossible de consulter le catalogue de la boutique : {cause}",
+      "connectorQuoteFailed": "Impossible de demander un devis à la boutique : {cause}",
+      "connectorOrderCreationFailed": "Impossible de créer la commande dans la boutique : {cause}",
+      "connectorOrderStatusFailed": "Impossible de consulter la commande dans la boutique : {cause}"
     }
   },
   "operationalAlerts": {

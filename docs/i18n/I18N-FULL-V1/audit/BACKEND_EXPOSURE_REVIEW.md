@@ -26,3 +26,8 @@ Os caminhos/linhas/excertos e consumidores estão em `backend-exposure-reviewed-
 ## Limites
 
 Alcance estático não equivale a propagação de exceção: catches podem substituir, suprimir ou registrar o erro. Callbacks produzem aproximação conservadora e dispatch dinâmico pode não ser resolvido. As 101 lacunas estáticas permanecem explícitas, mesmo quando oito conectores receberam evidência manual adicional. Não há afirmação de que todos os 863 templates sejam UI, nem de cobertura concluída dos demais. Flutter e todos os sinks restantes exigem análise/provas específicas.
+
+
+## Atualização — conectores de Compras
+
+A pendência dinâmica HTTP/fábrica do item 8 ganhou um bloco de apresentação comprovado no modal Web: oito erros de conector/fábrica, três guardas de integração, cinco wrappers e um 404, mais dois rótulos conhecidos. A classificação de exposição inicial foi preservada acima como histórico; não é uma lista de pendências atualizada automaticamente. `CONNECTORS_REVIEW.md` e `CONNECTORS-CHECKPOINT.json` delimitam a cobertura e os testes antes/depois. A inexistência de consumidor Flutter para estes endpoints foi pesquisada; não se afirma tradução genérica do backend ou cobertura de outros consumidores.

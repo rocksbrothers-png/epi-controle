@@ -9,6 +9,7 @@ pytest tests/test_i18n_engine_runtime.py tests/test_i18n_files_integrity.py test
 python scripts/i18n/check_alerts_browser.py --output /tmp/i18n-alerts
 python scripts/i18n/check_supplier_portal_browser.py --output /tmp/i18n-supplier
 python scripts/i18n/check_library_browser.py --output /tmp/i18n-library
+python scripts/i18n/check_connectors_browser.py --output /tmp/i18n-connectors
 ```
 
 Use `--browser /usr/bin/chromium` for an existing local browser and `--root /path/to/checkout` to select another checkout. Optional `--baseline REVISION` in alert/supplier checks captures that revision's rendering or HTML shell against the current synthetic fixtures; it is not a full historical application deployment. Committed before/after evidence records its original checkpoint separately.
@@ -18,3 +19,10 @@ The alert check covers backend presentation metadata, live plurals, dates, size 
 The library check runs the isolated converter for a synthetic PNG and exercises admin/portal views, live labels, original values, escaping and mobile layout through intercepted read APIs. It does not replace the full Office/RBAC PostgreSQL workflow.
 
 `scan_html.py` and `scan_js.cjs` produce review candidates. Technical tokens, canonical payload values, logs and dynamic references require classification. Candidate counts are not untranslated-string totals or functional coverage percentages.
+
+The connector check opens the procurement integration modal with intercepted responses.
+It verifies registered and custom labels, nested errors, opaque remote diagnostics and live locale changes.
+Switching locale never repeats a submission. Invalid, blank and empty JSON configurations retain their existing semantics.
+Actor, connector and active values are preserved in submitted bodies.
+Use `--baseline REVISION` to run the checks with historical UI assets; failures are retained in JSON and screenshots.
+These intercepted requests complement backend scope tests. They never contact or configure a real supplier.

@@ -1048,6 +1048,10 @@
         "glove_size": "hanskestørrelse",
         "uniform_size": "uniformstørrelse"
       }
+    },
+    "connectors": {
+      "demo": "Demobutikk (pilot)",
+      "httpJson": "Generisk REST/JSON-API (v1)"
     }
   },
   "plan": {
@@ -3163,7 +3167,19 @@
       "m_fab0d68c071e": "Innkjøpsordren for denne lenken ble ikke funnet.",
       "m_b7a4dae4fe74": "Ugyldig innhold i tilbudsfilen.",
       "m_60d276d721d5": "Et tilbud med status «{p1}» kan ikke sendes til portalen.",
-      "m_d84b6bd17b4f": "Kunne ikke laste inn ønsket språk for dokumentet."
+      "m_d84b6bd17b4f": "Kunne ikke laste inn ønsket språk for dokumentet.",
+      "connectorHttpsRequired": "Integrasjonen krever base_url med HTTPS.",
+      "connectorCatalogItemsRequired": "Butikkatalogen mangler nøkkelen \"items\".",
+      "connectorQuoteItemsRequired": "Butikkens pristilbud mangler nøkkelen \"items\".",
+      "connectorOrderReferenceRequired": "PO mangler en bestillingsreferanse hos butikken.",
+      "connectorHttpFailure": "Butikken svarte med HTTP {status} på {path}.",
+      "connectorInvalidJson": "Ugyldig svar (ikke JSON) fra butikken på {path}.",
+      "connectorUnknown": "Ukjent kobling: {connector}.",
+      "connectorActiveIntegrationRequired": "Leverandøren har ingen aktiv API-integrasjon.",
+      "connectorSupplierCnpjRequired": "PO mangler en registrert leverandør (CNPJ) for API-integrasjon.",
+      "connectorOrderNotSent": "PO er ennå ikke sendt via API (ingen referanse hos butikken).",
+      "connectorIntegrationNotConfigured": "Ingen integrasjon er konfigurert for leverandøren.",
+      "connectorNetworkFailure": "Kunne ikke kommunisere med butikken på {detail}"
     },
     "fields": {
       "title": "Tittel",
@@ -3174,6 +3190,13 @@
       "actor_user_id": "Bruker-ID",
       "part_index": "Faneindeks",
       "page_index": "Sideindeks"
+    },
+    "wrappers": {
+      "connectorTestFailed": "Integrasjonstesten mislyktes: {cause}",
+      "connectorCatalogQueryFailed": "Kunne ikke hente butikkatalogen: {cause}",
+      "connectorQuoteFailed": "Kunne ikke be om et pristilbud fra butikken: {cause}",
+      "connectorOrderCreationFailed": "Kunne ikke opprette bestillingen hos butikken: {cause}",
+      "connectorOrderStatusFailed": "Kunne ikke hente bestillingen fra butikken: {cause}"
     }
   },
   "operationalAlerts": {

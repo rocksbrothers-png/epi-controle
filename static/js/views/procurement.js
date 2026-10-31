@@ -402,6 +402,19 @@
 
   // ── Integração de API (Nível 3) ─────────────────────────────────────────────
 
+  function connectorOption(connector, selected) {
+    const registered = {
+      demo: {label:'Loja de demonstração (piloto)', key:'purchase.connectors.demo'},
+      http_json_v1: {label:'API REST/JSON genérica (v1)', key:'purchase.connectors.httpJson'},
+    };
+    const known = Object.hasOwn(registered, connector.key) ? registered[connector.key] : null;
+    // Chave e rótulo devem coincidir com o registro: nomes personalizados ou
+    // de conectores futuros permanecem dados opacos, inclusive em chaves conhecidas.
+    const translation = known && connector.label === known.label ? known : null;
+    const label = translation ? (globalThis.trEpi?.(translation.key, translation.label) ?? translation.label) : connector.label;
+    return `<option value="${esc(connector.key)}" ${selected === connector.key ? 'selected' : ''}${translation ? ` data-i18n="${esc(translation.key)}"` : ''}>${esc(label)}</option>`;
+  }
+
   async function openSupplierIntegrationModal(supplierId, supplierName) {
     let connectors = [];
     let integration = null;
@@ -417,7 +430,7 @@
       <h3 style="margin:0 0 12px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.integracao_de_api_p0_f7aa27',{p0:(supplierName || '')},'Integra\u00e7\u00e3o de API \u2014 {p0}') ?? `Integração de API — ${esc(supplierName || '')}`)}</h3>
       <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;" data-i18n="ui.procurement.nivel_3_o_sistema_cota_e_envia_pedidos_direto_na_loja_as_credenciais_sao_gr_380ade">Nível 3: o sistema cota e envia pedidos direto na loja. As credenciais são gravadas cifradas.</p>
       <div class="form-grid" style="margin-bottom:10px;">
-        <label data-i18n="ui.procurement.conector_db5b06">Conector<select data-integration-key>${connectors.map((c) => `<option value="${esc(c.key)}" ${integration?.connector_key === c.key ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select></label>
+        <label data-i18n="ui.procurement.conector_db5b06">Conector<select data-integration-key>${connectors.map((c) => connectorOption(c, integration?.connector_key)).join('')}</select></label>
         <label data-i18n="license.active">Ativa<select data-integration-active><option value="1" ${integration?.active ? 'selected' : ''} data-i18n="common.yes">Sim</option><option value="0" ${integration && !integration.active ? 'selected' : ''} data-i18n="common.no">Não</option></select></label>
       </div>
       <label style="display:block;margin-bottom:10px;">${(globalThis.EpiI18n?.bindText?.('ui.procurement.configuracao_json_p4_e56e03',{p4:(integration?.has_config ? (globalThis.trEpi?.('ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b',' \u2014 j\u00e1 existe; deixe em branco para manter',{}) ?? ' \u2014 j\u00e1 existe; deixe em branco para manter') : '')},'Configura\u00e7\u00e3o (JSON{p4})',integration?.has_config ? {p4:'ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b'} : {}) ?? `Configuração (JSON${integration?.has_config ? (globalThis.trEpi?.('ui.procurement.ja_existe_deixe_em_branco_para_manter_6bab2b',' \u2014 j\u00e1 existe; deixe em branco para manter',{}) ?? ' \u2014 j\u00e1 existe; deixe em branco para manter') : ''})`)}

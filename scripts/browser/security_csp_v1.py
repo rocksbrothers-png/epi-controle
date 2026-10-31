@@ -412,6 +412,17 @@ def run_locale(browser, origin, locale):
     return result
 
 
+def summary(result):
+    """Resumo gravado em disco: só status, contagens e diretivas (nada de dado de formulário ou de tela)."""
+    checks = ('login', 'sweep', 'actions', 'images', 'employee_portal', 'supplier_portal', 'ficha')
+    return dict(locale=result['locale'], status=result['status'],
+                checks={name: bool(result[name]['ok']) for name in checks},
+                screens_visited=int(result['sweep']['visited']),
+                violations=sorted({str(v.get('directive')) for v in result['app_violations']}),
+                violation_count=len(result['app_violations']),
+                lazy_libs_loaded=len(result['images'].get('lazy_libs', [])))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--output', required=True)
@@ -429,7 +440,7 @@ def main():
         for locale in args.locales:
             result = run_locale(browser, origin, locale)
             failed |= result['status'] != 'passed'
-            results['locales'].append(result)
+            results['locales'].append(summary(result))
             print(locale, result['status'], 'telas=', result['sweep']['visited'],
                   'violações=', len(result['app_violations']), {k: result[k]['ok'] for k in
                   ('login', 'actions', 'images', 'employee_portal', 'supplier_portal', 'ficha')})
@@ -439,7 +450,9 @@ def main():
             SERVER_MODE['value'] = mode
             for where in ('spa', 'fornecedor'):
                 neg = run_negative(browser, origin, args.locales[0], where)
-                results['negative'][f'{mode}/{where}'] = neg
+                results['negative'][f'{mode}/{where}'] = dict(executed=list(neg['executed']),
+                                                              violations=int(neg['violations']),
+                                                              evil_requested=bool(neg['evil_requested']))
                 if mode == 'enforce':
                     ok = not neg['executed'] and neg['violations'] >= len(NEGATIVE_KINDS) and not neg['evil_requested']
                 elif mode == 'none':
@@ -450,6 +463,7 @@ def main():
                     # A página do fornecedor tem a política própria, sempre aplicada (não segue CSP_MODE).
                     ok = not neg['executed'] and neg['violations'] >= len(NEGATIVE_KINDS)
                 neg['status'] = 'passed' if ok else 'failed'
+                results['negative'][f'{mode}/{where}']['status'] = neg['status']
                 failed |= not ok
                 print('negativo', mode, where, neg['status'], 'executou=', neg['executed'], 'violações=', neg['violations'])
         browser.close()

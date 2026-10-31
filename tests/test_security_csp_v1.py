@@ -161,13 +161,15 @@ def test_report_uri_is_appended_only_when_safe(report_uri, expected, monkeypatch
 
 def test_supplier_portal_policy_allows_only_its_own_inline_script():
     html = supplier_portal_page.PORTAL_PAGE_HTML
-    body = re.search(r'<script>(.*?)</script>', html, re.S).group(1)
+    # O hash cobre exatamente os bytes entre <script> e </script> da página servida.
+    start = html.index('<script>') + len('<script>')
+    body = html[start:html.index('</script>', start)]
     digest = base64.b64encode(hashlib.sha256(body.encode('utf-8')).digest()).decode('ascii')
     policy = supplier_portal_page.PORTAL_PAGE_CSP
     assert _directive(policy, 'script-src') == [f"'sha256-{digest}'"]
     assert _directive(policy, 'default-src') == ["'none'"]
     assert _directive(policy, 'connect-src') == ["'self'"]
-    assert html.count('<script') == 1
+    assert html.lower().count('<script') == 1
     assert not re.search(r'\son[a-z]+\s*=', html.replace("addEventListener", ''))
 
 

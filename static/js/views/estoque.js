@@ -32,10 +32,11 @@
   function epiMeasureLabel(value) {
     return typeof globalThis.epiMeasureLabel === 'function' ? globalThis.epiMeasureLabel(value) : (value || '-');
   }
+  // SECURITY-OUTPUT-XSS-V2: o tamanho é texto livre do cadastro — cada linha sai escapada antes do <br>
+  // (formatSizeBalancesDisplay junta o texto cru com <br>; os outros chamadores o usam como texto).
   function fmtSizeBalances(sizeBalances) {
-    return typeof globalThis.formatSizeBalancesDisplay === 'function'
-      ? globalThis.formatSizeBalancesDisplay(sizeBalances)
-      : '—';
+    if (!Array.isArray(sizeBalances) || !sizeBalances.length || typeof globalThis.formatItemSizeDisplay !== 'function') { return '—'; }
+    return sizeBalances.map((item) => esc(`${globalThis.formatItemSizeDisplay(item)} (${Number(item.quantity || 0)})`)).join('<br>');
   }
   function phase3Cards(container, items) {
     if (typeof globalThis.renderPhase3SummaryCards === 'function') {
@@ -154,7 +155,7 @@
       item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(', ');
-    const sizesDisplay = sizesFromBalances || sizesFromEpi || '—';
+    const sizesDisplay = sizesFromBalances || esc(sizesFromEpi) || '—';
     const saldo = stockReading(item);
     const minimo = minimumReading(item);
     // Sem Unidade resolvida os números são da EMPRESA. Dizê-lo é o que impede
@@ -166,14 +167,14 @@
     const faixa = attentionHint(item);
     const detalheMinimo = [origemMinimo, faixa].filter(Boolean).join(' · ');
     return `<tr>
-    <td>${item.name}</td>
-    <td>${epiProtectionLabel(item.sector)}</td>
-    <td>${item.epi_section || '-'}</td>
-    <td>${item.manufacturer || '-'}</td>
-    <td>${item.ca || '-'}</td>
-    <td>${item.unit_name || '-'}</td>
+    <td>${esc(`${item.name}`)}</td>
+    <td>${esc(epiProtectionLabel(item.sector))}</td>
+    <td>${esc(item.epi_section || '-')}</td>
+    <td>${esc(item.manufacturer || '-')}</td>
+    <td>${esc(item.ca || '-')}</td>
+    <td>${esc(item.unit_name || '-')}</td>
     <td>${sizesDisplay}</td>
-    <td>${saldo.value} ${epiMeasureLabel(item.unit_measure)}(s)${escopoSaldo}</td>
+    <td>${saldo.value} ${esc(epiMeasureLabel(item.unit_measure))}(s)${escopoSaldo}</td>
     <td>${minimo.value}${detalheMinimo ? `<br><small>${esc(detalheMinimo)}</small>` : ''}</td>
     <td>${stockStatusBadge(item) || '<span class="muted">—</span>'}</td>
   </tr>`;
@@ -221,7 +222,7 @@
           ].filter(Boolean).join('/');
           return label ? `${label}:${s.quantity}` : '';
         }).filter(Boolean).join(', ');
-        return parts ? ` [${parts}]` : '';
+        return parts ? ` [${esc(parts)}]` : '';
       })();
       // `/api/stock/low` já devolve `stock` e `minimum_stock` recortados NA
       // Unidade (saldo dela contra o mínimo efetivo dela) — não são os
@@ -240,7 +241,7 @@
         subjacente ? esc(tr('stock.underlyingIs', 'condição atual: {s}').replace('{s}', subjacente)) : '',
         explicacao ? esc(explicacao) : ''
       ].filter(Boolean).join(' — ');
-      return `<div class="summary-item"><strong>${esc(`${item.company_name}`)} / ${item.unit_name}</strong><div>${item.epi_name}${sizeTag}: ${item.stock} ${epiMeasureLabel(item.unit_measure)}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
+      return `<div class="summary-item"><strong>${esc(`${item.company_name}`)} / ${esc(`${item.unit_name}`)}</strong><div>${esc(`${item.epi_name}`)}${sizeTag}: ${esc(`${item.stock}`)} ${esc(epiMeasureLabel(item.unit_measure))}(s) (${tr('stock.minimum', 'mínimo')} ${item.minimum_stock})</div><small>${rodape}</small></div>`;
     }).join('') || `<div class="summary-item">${tr('stock.noLowStockItems', 'Sem itens com estoque baixo.')}</div>`;
   }
 
@@ -257,7 +258,7 @@
       return `<div class="summary-item">
       <strong>${esc(item.employee_name || '—')}</strong>
       <div>${esc(item.employee_sector || '—')} / ${esc(item.employee_role || '—')} — ${esc(item.unit_name || '—')}</div>
-      <div>${esc(item.epi_name || '—')} ${tr('epi.caShort', 'CA')}:${esc(item.ca || '—')} ${sizeInfo} × ${item.quantity}</div>
+      <div>${esc(item.epi_name || '—')} ${tr('epi.caShort', 'CA')}:${esc(item.ca || '—')} ${esc(sizeInfo)} × ${esc(`${item.quantity}`)}</div>
     </div>`;
     }).join('') || `<div class="summary-item">${tr('stock.noCriticalRequests', 'Sem solicitações críticas pendentes.')}</div>`;
   }

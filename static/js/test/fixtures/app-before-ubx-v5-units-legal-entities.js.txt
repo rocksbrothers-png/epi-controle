@@ -3,6 +3,13 @@
 // Cada declaração copiada literalmente do static/app.js imediatamente antes da extração (main 4aca4ada,
 // depois da Etapa 1), sem os comentários de seção. Referência fixa para a comparação antes × depois.
 // Não é carregado pela aplicação.
+// Alterações posteriores (mesmas correções dos módulos): SECURITY-OUTPUT-XSS-V1/V2 (secEsc em empresa, nome e cidade
+// da unidade e nas opções de unidade).
+
+function secEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
 
 function legalEntityHelpers() {
   return globalThis.__EPI_LEGAL_ENTITY_FIELDS__ || {};
@@ -246,11 +253,11 @@ function formatUnitTableRow(item, canManageUnitRecords) {
   // Sem esta coluna, uma empresa com vários CNPJs vê uma lista em que todas as
   // unidades parecem iguais — e é justamente aqui que a distinção importa.
   const legalEntity = escapeHtml(unitLegalEntityLabel(item)) || '-';
-  return `<tr><td>${item.company_name}</td><td>${legalEntity}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
+  return `<tr><td>${secEsc(`${item.company_name}`)}</td><td>${legalEntity}</td><td>${secEsc(`${item.name}`)}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${secEsc(`${item.city}`)}</td><td>${actions}</td></tr>`;
 }
 
 function formatUnitOption(item) {
-  return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
+  return `<option value="${secEsc(item.id)}">${secEsc(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`;
 }
 
 function startEditUnit(unitId) {

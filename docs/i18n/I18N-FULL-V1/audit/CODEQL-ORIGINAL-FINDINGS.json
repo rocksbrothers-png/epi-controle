@@ -1,0 +1,329 @@
+{
+  "corporate_head": "6cf37bac60cac997a1d451c967304077f24fc99b",
+  "saas_head": "bcc23d1a9cfc12e4b1b333fc3e9a5eba7f95748e",
+  "annotations": [
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/navigation-controls.js",
+      "start_line": 286,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/navigation-controls.js",
+      "start_line": 200,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "This stores sensitive data returned by [an access to requirePasswordChange](1) as clear text.",
+      "path": "static/app.js",
+      "start_line": 604,
+      "title": "Clear text storage of sensitive information"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/app.js",
+      "start_line": 1532,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/i18n.js",
+      "start_line": 380,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/app.js",
+      "start_line": 6920,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/app.js",
+      "start_line": 6927,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "failure",
+      "message": "[DOM text](1) is reinterpreted as HTML without escaping meta-characters.\n[DOM text](2) is reinterpreted as HTML without escaping meta-characters.\n[DOM text](3) is reinterpreted as HTML without escaping meta-characters.",
+      "path": "static/entrega-epi.js",
+      "start_line": 137,
+      "title": "DOM text reinterpreted as HTML"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "This use of variable 'vars' always evaluates to true.",
+      "path": "static/i18n.js",
+      "start_line": 371,
+      "title": "Useless conditional"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "This use of variable 'unitFilter' always evaluates to true.",
+      "path": "static/app.js",
+      "start_line": 7162,
+      "title": "Useless conditional"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable past.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 754,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable soon.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 755,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable far.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 756,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable callCount.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 921,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable origApproved.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 922,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function comPhase44LigadoF5B.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 2833,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function comPhase41LigadoF5B.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 2892,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function caracterizaDefeito.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 4590,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function celulaDaMatriz42x43.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 5092,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function appComDropdownDoPhase44.",
+      "path": "static/js/test/run-tests.js",
+      "start_line": 5148,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function msg.",
+      "path": "static/js/views/employee-portal.js",
+      "start_line": 26,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused function api.",
+      "path": "static/js/views/fichas.js",
+      "start_line": 12,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Avoid automated semicolon insertion (98% of all statements in [the enclosing script](1) have an explicit semicolon).",
+      "path": "static/app.js",
+      "start_line": 14477,
+      "title": "Semicolon insertion"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Avoid automated semicolon insertion (98% of all statements in [the enclosing script](1) have an explicit semicolon).",
+      "path": "static/app.js",
+      "start_line": 14424,
+      "title": "Semicolon insertion"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable res.",
+      "path": "static/app.js",
+      "start_line": 14416,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable isApprover.",
+      "path": "static/app.js",
+      "start_line": 13420,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable PURCHASE_APPROVAL_REJECTION_REASONS.",
+      "path": "static/app.js",
+      "start_line": 13131,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable DEVOLUTION_DESTINATIONS.",
+      "path": "static/app.js",
+      "start_line": 11977,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable DEVOLUTION_CONDITIONS.",
+      "path": "static/app.js",
+      "start_line": 11969,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable helpers.",
+      "path": "static/app.js",
+      "start_line": 7529,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable hint.",
+      "path": "static/app.js",
+      "start_line": 6171,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable summary.",
+      "path": "static/app.js",
+      "start_line": 6170,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable group.",
+      "path": "static/app.js",
+      "start_line": 3916,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable EPI_ALL_UNITS_PROFILES.",
+      "path": "static/app.js",
+      "start_line": 256,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Unused variable USER_COMPANY_REQUIRED_ROLES.",
+      "path": "static/app.js",
+      "start_line": 11,
+      "title": "Unused variable, import, function or class"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "File is opened but is not closed.",
+      "path": "tests/test_i18n_files_integrity.py",
+      "start_line": 98,
+      "title": "File is not always closed"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "The result of [send_json](1) is used even though it is always None.",
+      "path": "modules/purchases/quotes_routes.py",
+      "start_line": 84,
+      "title": "Use of the return value of a procedure"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "The result of [send_json](1) is used even though it is always None.",
+      "path": "modules/purchases/quotes_routes.py",
+      "start_line": 86,
+      "title": "Use of the return value of a procedure"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "The result of [send_json](1) is used even though it is always None.",
+      "path": "modules/purchases/supplier_portal_routes.py",
+      "start_line": 131,
+      "title": "Use of the return value of a procedure"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "The result of [send_json](1) is used even though it is always None.",
+      "path": "modules/purchases/supplier_portal_routes.py",
+      "start_line": 142,
+      "title": "Use of the return value of a procedure"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "The result of [send_json](1) is used even though it is always None.",
+      "path": "modules/purchases/supplier_portal_routes.py",
+      "start_line": 153,
+      "title": "Use of the return value of a procedure"
+    },
+    {
+      "annotation_level": "warning",
+      "message": "This assignment to 'original' is unnecessary as it is [redefined](1) before this value is used.",
+      "path": "scripts/i18n/check_alerts_browser.py",
+      "start_line": 27,
+      "title": "Variable defined multiple times"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Import of 'ensure_purchase_order_action_scope' is not used.",
+      "path": "modules/purchases/quotes_service.py",
+      "start_line": 22,
+      "title": "Unused import"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "The global variable 'QUOTE_FINAL_STATUSES' is not used.",
+      "path": "modules/purchases/quotes_service.py",
+      "start_line": 33,
+      "title": "Unused global variable"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "Import of 'get_purchase_request_by_id' is not used.",
+      "path": "modules/purchases/supplier_portal_service.py",
+      "start_line": 32,
+      "title": "Unused import"
+    },
+    {
+      "annotation_level": "notice",
+      "message": "'except' clause does nothing but pass and there is no explanatory comment.",
+      "path": "scripts/check_web_hardening.py",
+      "start_line": 101,
+      "title": "Empty except"
+    }
+  ],
+  "gate_policy": "unchanged; no alert dismissal or rule exclusion"
+}

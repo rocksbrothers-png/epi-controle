@@ -4725,7 +4725,8 @@ function renderDeliveriesFilterChips() {
 function openDeliveryDetailDrawer(deliveryId) {
   const item = (state.deliveries || []).find((d) => String(d.id) === String(deliveryId));
   if (!item || typeof globalThis.dsOpenDrawer !== 'function') return;
-  const esc = globalThis.dsEsc || ((v) => String(v == null ? '' : v));
+  // SECURITY-OUTPUT-XSS-V2: o fallback também escapa (antes devolvia o texto cru).
+  const esc = globalThis.dsEsc || escapeHtml;
   const devolvido = String(item.returned_date || '').trim();
   const statusKey = devolvido ? 'entregue' : (item.signature_data ? 'assinado' : 'entregue');
   const pipeline = typeof globalThis.dsStatusPipeline === 'function'
@@ -4745,7 +4746,8 @@ function openDeliveryDetailDrawer(deliveryId) {
     + row(tr('stock.qtyShort', 'Qtd'), `${item.quantity || ''} ${item.quantity_label || ''}`)
     + row(tr('delivery.deliveryDate', 'Data Entrega'), formatDate(item.delivery_date))
     + row(tr('delivery.nextReplacementReturn', 'Próx. Troca / Devolução'), devolvido ? `↩ ${formatDate(item.returned_date)}` : (formatDate(item.next_replacement_date) || '—'));
-  globalThis.dsOpenDrawer({ title: `${tr('delivery.details', 'Detalhes')} — ${esc(item.epi_name || '')}`, bodyHtml: body });
+  // O drawer escapa o título (dsEsc): escapar aqui também mostrava &amp; no nome do EPI.
+  globalThis.dsOpenDrawer({ title: `${tr('delivery.details', 'Detalhes')} — ${item.epi_name || ''}`, bodyHtml: body });
 }
 
 function clearDeliveriesFilterChip(key) {
@@ -5704,7 +5706,7 @@ function bindDependentSelects() {
   populateSelect('report-epi', episForOperationalScope(state.epis), (item) => item.name, 'id', true, tr('employee.filterAll', 'Todos'));
   populateSelect('report-employee', state.employees, (item) => `${item.employee_id_code} - ${item.name}`, 'id', true, tr('employee.allEmployees', 'Todos os colaboradores'));
   const sectors = [...new Set(filterByUserCompany(state.employees).map((item) => item.sector))].sort((a, b) => a.localeCompare(b));
-  document.getElementById('report-sector').innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>` + sectors.map((item) => `<option value="${item}">${item}</option>`).join('');
+  document.getElementById('report-sector').innerHTML = `<option value="">${tr('employee.filterAll', 'Todos')}</option>` + sectors.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('');
   const defaultCompanyId = companies[0]?.id ? String(companies[0].id) : '';
   const isMasterAdmin = state.user?.role === 'master_admin';
   ['unit-company', 'employee-company', 'epi-company', 'delivery-company', 'stock-company', 'outsourced-employee-company'].forEach((fieldId) => {
@@ -6000,7 +6002,7 @@ function applyFichaEmployeeFilters(items) {
 
 
 function buildDeliveryRow(item) {
-  return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${item.employee_id_code}</td><td>${item.employee_name}</td><td>${item.epi_name}</td><td>${item.quantity}</td><td>${item.quantity_label}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
+  return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${escapeHtml(`${item.employee_id_code}`)}</td><td>${escapeHtml(`${item.employee_name}`)}</td><td>${escapeHtml(`${item.epi_name}`)}</td><td>${escapeHtml(`${item.quantity}`)}</td><td>${escapeHtml(`${item.quantity_label}`)}</td><td>${formatDate(item.delivery_date)}</td></tr>`;
 }
 
 const DELIVERIES_PER_PAGE = 20;
@@ -6256,7 +6258,7 @@ function renderStockMovementsReport(items) {
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : ''
     ].filter(Boolean).join(' ') || '';
-    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${sizeInfo}</small>` : h(item.epi_name);
+    const epiDisplay = sizeInfo ? `${h(item.epi_name)} <small style="color:var(--color-text-muted);">${h(sizeInfo)}</small>` : h(item.epi_name);
     const caCell = item.ca
       ? `${h(item.ca)}${item.ca_expiry ? ` <small style="color:var(--color-text-muted);">${formatDate(item.ca_expiry)}</small>` : ''}`
       : '—';
@@ -7195,13 +7197,13 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
 function populateDeliveryEmployeeField(employeeField, employees, search) {
   const previousValue = String(employeeField.value || '').trim();
   const hasSearch = Boolean(String(search || '').trim());
-  const baseOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`);
+  const baseOptions = employees.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`);
   if (!hasSearch) {
     const hasPreviousInList = previousValue && employees.some((item) => String(item.id) === previousValue);
     if (previousValue && !hasPreviousInList) {
       const selectedEmployee = state.employees.find((item) => String(item.id) === previousValue);
       if (selectedEmployee) {
-        baseOptions.unshift(`<option value="${selectedEmployee.id}">${selectedEmployee.employee_id_code} - ${selectedEmployee.name}</option>`);
+        baseOptions.unshift(`<option value="${escapeHtml(selectedEmployee.id)}">${escapeHtml(`${selectedEmployee.employee_id_code}`)} - ${escapeHtml(`${selectedEmployee.name}`)}</option>`);
       }
     }
   }
@@ -9657,7 +9659,7 @@ function renderRetentionPolicy() {
         { get label() { return (tr("ui.configuracao.5_anos_expiracao_nr_6_0a7a0f", "5 anos: expiração NR-6", {})); } },
         { label: 'Purge automático (se habilitado)' },
       ];
-    refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${item.label}</li>`).join('');
+    refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${escapeHtml(item.label)}</li>`).join('');
   }
 }
 
@@ -9725,7 +9727,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
     if (balances.length) {
       const parts = balances.map((s) => {
         const label = [s.glove_size !== 'N/A' ? `Luva ${s.glove_size}` : '', s.size !== 'N/A' ? `Tam. ${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif. ${s.uniform_size}` : ''].filter(Boolean).join(' / ');
-        return label ? `<strong>${label}</strong>: ${s.quantity} un.` : '';
+        return label ? `<strong>${escapeHtml(label)}</strong>: ${escapeHtml(`${s.quantity}`)} un.` : '';
       }).filter(Boolean);
       sizesPanel.innerHTML = `<span style="font-weight:600;margin-right:6px;">Saldo por tamanho:</span>${parts.join('<span style="margin:0 8px;color:var(--color-text-muted)">|</span>')}`;
       sizesPanel.style.display = '';
@@ -9758,7 +9760,7 @@ function renderLinkedEmployeeSearchResults() {
   }
   box.innerHTML = employees.slice(0, 8).map((item) => {
     const subtitle = `${item.employee_id_code} - ${item.role_name || 'Sem funÃÂ§ÃÂ£o'} ${item.name}`;
-    return `<button type="button" class="ghost" data-user-linked-pick="${item.id}">${subtitle}</button>`;
+    return `<button type="button" class="ghost" data-user-linked-pick="${escapeHtml(item.id)}">${escapeHtml(subtitle)}</button>`;
   }).join('');
 }
 
@@ -9769,7 +9771,7 @@ function populateLinkedEmployeeOptions() {
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
-  const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  const employeeOptions = employees.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`).join('');
   // FIX-USERS-ACTIVE-V1: refazer as opções apagava a seleção — ao editar, o colaborador
   // vinculado sumia do formulário. Mantém o valor quando ele continua entre as opções.
   field.innerHTML = `${firstOption}${employeeOptions}`;
@@ -9804,7 +9806,7 @@ function syncUserEmployeeLink() {
   
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
-    const unitOptions = units.map((item) => `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
+    const unitOptions = units.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
     unitField.innerHTML = `<option value="" data-i18n="ui.aval_action_modal.selecione_987d5b">Selecione</option>${unitOptions}`;
   }
   
@@ -10350,16 +10352,16 @@ function printStockLabels(qrItems, copies = 1) {
   const blocks = qrItems.flatMap((item) => Array.from({ length: repeat }).map(() => `
     <div class="label">
       <img src="${qrCodeImageUrl(JSON.stringify({ type: 'stock_item', id: Number(item.stock_item_id || 0), code: String(item.qr_code_value || '') }))}" alt="QR item estoque">
-      <div><strong>${item.epi_name}</strong></div>
-      <div>Tamanho-Luvas: ${item.glove_size || 'N/A'}</div>
-      <div>Etiqueta: ${item.label_measure || 'unidade'} | ${item.label_print_format || '-'}</div>
-      <div>Impressora: ${item.label_printer_name || '-'}</div>
+      <div><strong>${escapeHtml(`${item.epi_name}`)}</strong></div>
+      <div>Tamanho-Luvas: ${escapeHtml(item.glove_size || 'N/A')}</div>
+      <div>Etiqueta: ${escapeHtml(item.label_measure || 'unidade')} | ${escapeHtml(item.label_print_format || '-')}</div>
+      <div>Impressora: ${escapeHtml(item.label_printer_name || '-')}</div>
       <div>Reimpressões: ${Number(item.reprint_count || 0)}</div>
-      <div>Tamanho Uniforme: ${item.uniform_size || 'N/A'}</div>
-      <div>Tamanho: ${item.size || 'N/A'}</div>
-      <div>ID: ${item.stock_item_id || '-'}</div>
-      <div>${item.qr_code_value}</div>
-      <div>${item.unit_name || '-'}</div>
+      <div>Tamanho Uniforme: ${escapeHtml(item.uniform_size || 'N/A')}</div>
+      <div>Tamanho: ${escapeHtml(item.size || 'N/A')}</div>
+      <div>ID: ${escapeHtml(item.stock_item_id || '-')}</div>
+      <div>${escapeHtml(`${item.qr_code_value}`)}</div>
+      <div>${escapeHtml(item.unit_name || '-')}</div>
     </div>
   `)).join('');
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class="grid">${blocks}</div></body></html>`;
@@ -11684,7 +11686,7 @@ function renderConfigurationRules() {
     return `
       <tr>
         <td>${roleLabel(rule.role)}</td>
-        <td>${unit?.name || `#${rule.unit_id}`}</td>
+        <td>${escapeHtml(unit?.name || `#${rule.unit_id}`)}</td>
         <td>${rule.unit_context === 'inside_jv' ? 'Em JV' : 'Fora de JV'}</td>
         <td>${rule.can_view_unit ? '✅' : '❌'}</td>
         <td>${rule.can_view_epis ? '✅' : '❌'}</td>
@@ -11699,10 +11701,10 @@ function hydrateConfigurationForms() {
   if (!refs.configRuleRole || !refs.configRuleUnit) return;
   refs.configRuleRole.innerHTML = configRoleOptions().map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
   const units = filterByUserCompany(state.units);
-  refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${item.id}">${item.name}</option>`).join('');
+  refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)}</option>`).join('');
   if (refs.fichaAuditEmployee) {
     refs.fichaAuditEmployee.innerHTML = "<option value=\"\" data-i18n=\"portal.allEmployees\">Todos os colaboradores</option>" + filterByUserCompany(state.employees)
-      .map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`).join('');
   }
   if (refs.fichaAuditManager) {
     refs.fichaAuditManager.innerHTML = "<option value=\"\" data-i18n=\"ui.configuracao.todos_os_gestores_b7332e\">Todos os gestores</option>" + filterByUserCompany(state.users)
@@ -13213,29 +13215,29 @@ async function loadPurchaseDemands() {
       const originLabel = d.demand_type === 'employee_request' ? "<span style=\"color:var(--color-primary)\" data-i18n=\"handover.collaborator\">Colaborador</span>" : "<span style=\"color:var(--color-warning)\" data-i18n=\"stock.minimumBalance\">Estoque M\u00ednimo</span>";
       const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${escapeHtml(d.company_name)}</small>` : '';
       const who = d.demand_type === 'employee_request'
-        ? `${d.employee_name || '—'}${companyTag}<br><small>${d.unit_name || ''}</small>`
-        : `${d.unit_name || '—'}${companyTag}`;
+        ? `${escapeHtml(d.employee_name || '—')}${companyTag}<br><small>${escapeHtml(d.unit_name || '')}</small>`
+        : `${escapeHtml(d.unit_name || '—')}${companyTag}`;
       const sector = d.demand_type === 'employee_request'
-        ? `${d.employee_sector || '—'} / ${d.employee_role || '—'}`
-        : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? d.employee_sector : '—');
+        ? `${escapeHtml(d.employee_sector || '—')} / ${escapeHtml(d.employee_role || '—')}`
+        : (d.employee_sector && d.employee_sector !== 'Estoque baixo' ? escapeHtml(d.employee_sector) : '—');
       const sizeInfo = (() => {
         // Estoque mínimo: mostra TODOS os tamanhos cadastrados com atual/mínimo/sugestão.
         if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
           const parts = d.size_demands.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || (tr('ui.app.unico_295aff', 'Único', {}));
-            return (tr('ui.app.p0_atual_p1_min_p2_p3_cfd4de', '{p0} (atual {p1}/mín {p2} → +{p3})', {p0:(sp),p1:(s.current_stock),p2:(s.minimum_stock),p3:(s.suggested_quantity)}));
+            return escapeHtml(tr('ui.app.p0_atual_p1_min_p2_p3_cfd4de', '{p0} (atual {p1}/mín {p2} → +{p3})', {p0:(sp),p1:(s.current_stock),p2:(s.minimum_stock),p3:(s.suggested_quantity)}));
           }).join('<br>');
           if (parts) return parts;
         }
         if (Array.isArray(d.size_balances) && d.size_balances.length) {
           const parts = d.size_balances.map(s => {
             const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ');
-            return sp ? `${sp}×${s.quantity}` : `Qtd:${s.quantity}`;
+            return escapeHtml(sp ? `${sp}×${s.quantity}` : `Qtd:${s.quantity}`);
           }).filter(Boolean).join(', ');
           if (parts) return parts;
         }
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
-        return flatSize || (d.demand_type === 'low_stock' ? (tr('ui.app.sem_rastreio_por_tamanho_c49bfd', 'Sem rastreio por tamanho', {})) : '—');
+        return escapeHtml(flatSize) || (d.demand_type === 'low_stock' ? (tr('ui.app.sem_rastreio_por_tamanho_c49bfd', 'Sem rastreio por tamanho', {})) : '—');
       })();
       const qty = d.demand_type === 'employee_request'
         ? (d.quantity || 1)
@@ -13248,10 +13250,10 @@ async function loadPurchaseDemands() {
       return `<tr>
         <td><input type="checkbox" class="demand-check" data-demand-index="${i}"></td>
         <td>${originLabel}</td>
-        <td>${d.epi_name || '—'}</td>
-        <td>${d.ca || '—'}</td>
-        <td>${d.manufacturer || '—'}</td>
-        <td style="font-size:12px;">${d.supplier || '—'}</td>
+        <td>${escapeHtml(d.epi_name || '—')}</td>
+        <td>${escapeHtml(d.ca || '—')}</td>
+        <td>${escapeHtml(d.manufacturer || '—')}</td>
+        <td style="font-size:12px;">${escapeHtml(d.supplier || '—')}</td>
         <td>${who}</td>
         <td style="font-size:12px;">${sector}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
@@ -13295,14 +13297,14 @@ async function loadPurchaseRequests() {
     tbody.innerHTML = _purchaseRequests.map(pr => {
       const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? (tr('ui.app.ate_p0_ce0eec', 'Até: {p0}', {p0:(pr.postponed_until)})) : '';
       const poInfo = pr.linked_po_number && ['approved','partially_approved','postponed'].includes(pr.status)
-        ? `<br><small style="color:var(--color-text-muted);">${(globalThis.EpiI18n?.bindText?.("ui.app.po_p0_835d85",{p0:(pr.linked_po_number)},"PO: {p0}") ?? `PO: ${pr.linked_po_number}`)}</small>` : '';
+        ? `<br><small style="color:var(--color-text-muted);">${(globalThis.EpiI18n?.bindText?.("ui.app.po_p0_835d85",{p0:(pr.linked_po_number)},"PO: {p0}") ?? `PO: ${escapeHtml(pr.linked_po_number)}`)}</small>` : '';
       return `<tr>
         <td>${pr.id}</td>
-        <td>${pr.title || '—'}${poInfo}</td>
-        <td>${pr.unit_name || '—'}</td>
+        <td>${escapeHtml(pr.title || '—')}${poInfo}</td>
+        <td>${escapeHtml(pr.unit_name || '—')}</td>
         <td>${purchaseStatusBadge(pr.status, postponedExtra)}</td>
         <td>${pr.items_count || 0}</td>
-        <td style="font-size:12px;">${pr.created_by_name || '—'}</td>
+        <td style="font-size:12px;">${escapeHtml(pr.created_by_name || '—')}</td>
         <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
         <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}" data-i18n="ui.app.ver_20ab38">Ver</button></td>
       </tr>`;
@@ -13360,13 +13362,13 @@ async function openPrDetail(prId) {
     if (detailEl) detailEl.style.display = '';
     const tbody = document.getElementById('compras-req-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => {
-      const sizeInfo = [i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
+      const sizeInfo = escapeHtml([i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—');
       return `<tr>
-        <td>${i.epi_name || i.epi_display_name || '—'}</td>
-        <td>${i.ca || i.epi_ca || '—'}</td>
-        <td>${i.manufacturer || '—'}</td>
-        <td>${i.supplier || '—'}</td>
-        <td>${i.employee_name || '—'}</td>
+        <td>${escapeHtml(i.epi_name || i.epi_display_name || '—')}</td>
+        <td>${escapeHtml(i.ca || i.epi_ca || '—')}</td>
+        <td>${escapeHtml(i.manufacturer || '—')}</td>
+        <td>${escapeHtml(i.supplier || '—')}</td>
+        <td>${escapeHtml(i.employee_name || '—')}</td>
         <td>${i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('ui.app.estoque_min_8776c1', 'Estoque Mín.', {}))}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
         <td>${i.quantity_requested || 1}</td>
@@ -14485,7 +14487,7 @@ function checkSupplierAuthorized(cnpj) {
   if (!clean) { statusEl.textContent = ''; return; }
   const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
   if (found) {
-    statusEl.innerHTML = `<span style="color:var(--color-success,green)">${(globalThis.EpiI18n?.bindText?.("ui.app.fornecedor_autorizado_p0_2a74cd",{p0:(found.name)},"\u2713 Fornecedor autorizado: {p0}") ?? `✓ Fornecedor autorizado: ${found.name}`)}</span>`;
+    statusEl.innerHTML = `<span style="color:var(--color-success,green)">${(globalThis.EpiI18n?.bindText?.("ui.app.fornecedor_autorizado_p0_2a74cd",{p0:(found.name)},"\u2713 Fornecedor autorizado: {p0}") ?? `✓ Fornecedor autorizado: ${escapeHtml(found.name)}`)}</span>`;
   } else {
     const supplierName = document.querySelector('[name="supplier"]')?.value?.trim() || '';
     const mailtoHref = buildSupplierInclusionMailto(supplierName, cnpj);
@@ -14932,15 +14934,15 @@ function buildPoItemRow(index, epi) {
   const unitId = document.getElementById('po-unit')?.value || '';
   const epis = _getPoUnitEpis(unitId);
   const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
-    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
+    epis.map(e => `<option value="${esc(e.id)}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}</option>`).join('');
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2.5fr 0.6fr 1fr 0.9fr 0.9fr 1fr 1.1fr 32px;gap:5px;margin-bottom:8px;align-items:end;">
     <div style="display:flex;flex-direction:column;gap:2px;">
       <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="epi.tableName">EPI</span>
       <select data-poi-epi="${index}">
         ${epiOpts}
       </select>
-      <input type="hidden" value="${epi?.epi_id||''}" data-poi-epi-id="${index}">
-      <input type="hidden" value="${epi?.epi_name||''}" data-poi-name="${index}">
+      <input type="hidden" value="${esc(epi?.epi_id||'')}" data-poi-epi-id="${index}">
+      <input type="hidden" value="${esc(epi?.epi_name||'')}" data-poi-name="${index}">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="stock.receipt.qty">Qtd</span>
@@ -14988,7 +14990,7 @@ function refreshPoItemEpiSelects() {
   if (hint) hint.style.display = unitId ? 'none' : '';
   const epis = _getPoUnitEpis(unitId);
   const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
-    epis.map(e => `<option value="${e.id}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${e.ca}` : ''}</option>`).join('');
+    epis.map(e => `<option value="${esc(e.id)}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}</option>`).join('');
   document.querySelectorAll('[data-poi-epi]').forEach(sel => {
     const idx = sel.dataset.poiEpi;
     const curId = document.querySelector(`[data-poi-epi-id="${idx}"]`)?.value || '';
@@ -15048,7 +15050,7 @@ function populatePurchaseUnitSelects() {
     const sel = document.getElementById(id);
     if (!sel) return;
     const prev = sel.value;
-    sel.innerHTML = "<option value=\"\" data-i18n=\"purchase.functionsSelectPlaceholder\">Selecione...</option>" + filtered.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+    sel.innerHTML = "<option value=\"\" data-i18n=\"purchase.functionsSelectPlaceholder\">Selecione...</option>" + filtered.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)}</option>`).join('');
     if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
       sel.value = operationalUnitId;
     } else if (filtered.length === 1) {
@@ -15086,7 +15088,7 @@ async function _populatePurchaseRequestEpiSelect() {
     const payload = await apiWithBootstrapRetry(`/api/stock/epis?${params.toString()}`);
     const epis = (payload.items || []).filter(e => Number(e.active) !== 0);
     sel.innerHTML = placeholder +
-      epis.map(e => `<option value="${e.id}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
+      epis.map(e => `<option value="${esc(e.id)}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}${e.manufacturer ? ` (${esc(e.manufacturer)})` : ''}</option>`).join('');
     if (prev) sel.value = prev;
   } catch (error) {
     reportNonCriticalError('[purchase-request-epi] Falha ao carregar EPIs visíveis da unidade', error);
@@ -15175,7 +15177,7 @@ async function loadAprovacoesSolicitacoes() {
         <td>${esc(r.unit_name || '—')}</td>
         <td>${esc(r.epi_name || '—')}</td>
         <td>${esc(r.ca || '—')}</td>
-        <td style="font-size:12px;">${sizeInfo}</td>
+        <td style="font-size:12px;">${esc(sizeInfo)}</td>
         <td>${esc(r.quantity)}</td>
         <td style="font-size:12px;">${formatDate(r.requested_at)}</td>
         <td>${epiRequestStatusBadge(r.status)}${extra}</td>

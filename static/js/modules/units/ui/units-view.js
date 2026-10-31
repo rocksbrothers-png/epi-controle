@@ -43,11 +43,11 @@
     // Sem esta coluna, uma empresa com vários CNPJs vê uma lista em que todas as
     // unidades parecem iguais — e é justamente aqui que a distinção importa.
     const legalEntity = escapeHtml(unitLegalEntityLabel(item)) || '-';
-    return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${legalEntity}</td><td>${item.name}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${item.city}</td><td>${actions}</td></tr>`;
+    return `<tr><td>${escapeHtml(`${item.company_name}`)}</td><td>${legalEntity}</td><td>${escapeHtml(`${item.name}`)}</td><td>${unitTypeLabel(item.unit_type)}</td><td>${escapeHtml(`${item.city}`)}</td><td>${actions}</td></tr>`;
   }
 
   function formatUnitOption(item) {
-    return `<option value="${item.id}">${item.name} - ${unitTypeLabel(item.unit_type)}</option>`;
+    return `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`;
   }
 
   function startEditUnit(unitId) {

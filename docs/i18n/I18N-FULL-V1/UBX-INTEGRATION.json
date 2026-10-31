@@ -1,10 +1,11 @@
 {
-  "status": "conflicts resolved in PR working branches; publication and exact-head CI pending",
+  "status": "Conflict resolution applied in draft branch; exact-head checks linked in PR",
   "products": {
     "corporate": {
       "main_integrated": "776d516dd38f1605605638ab2eecee1766229de6",
       "pre_integration_head": "8a0ded84677f578524279e0e936f95ff923f8ae6",
-      "additional_main_integrated": "91b60160dfb7e4bcf0b341ae2404e4fb68f14dae"
+      "additional_main_integrated": "91b60160dfb7e4bcf0b341ae2404e4fb68f14dae",
+      "current_main_ancestor": "55f7c11fd194abbbd01cf23e8fe0c16139d129c9"
     },
     "saas": {
       "main_integrated": "df453a5c88c530e521994fb9856072ccac40acf1",
@@ -32,7 +33,8 @@
     "new_regressions": "Keep JV name in textFor variables. Language event renders presentation without navigation/loaders; dirty employee form retains identity, unit/CNPJ, data and active tab across five locales.",
     "test_fixtures": "Locale API fixture includes locale field and reports returns canonical empty shape. Characterization requires exact added translation bindings; permission/payload comparisons remain.",
     "security_output": "Preserve main SECURITY-OUTPUT-XSS-V1 escapes together with I18N bindings in all five app conflict regions; inherit all service/module security changes.",
-    "user_drafts": "Keep role and employee link after rebuilding localized select options only if still allowed in the existing role/company filters. Independent browser reproduced unintended employee->admin and link32->31 before fix; regression covers all named field values/disabled states across five locales."
+    "user_drafts": "Keep role and employee link after rebuilding localized select options only if still allowed in the existing role/company filters. Independent browser reproduced unintended employee->admin and link32->31 before fix; regression covers all named field values/disabled states across five locales.",
+    "security_output_v2": "Retain SECURITY-OUTPUT-XSS-V2 escapes together with localized placeholders, bindText variables and safe fallbacks. Both security V2 and I18N CodeQL browser steps retained."
   },
   "validation": {
     "javascript_per_product": "659 passed before final language-handler verification; final results linked in PR",

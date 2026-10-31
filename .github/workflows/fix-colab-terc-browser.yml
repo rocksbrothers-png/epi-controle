@@ -12,6 +12,7 @@ on:
       - 'scripts/browser/security_logo_xss.py'
       - 'scripts/browser/security_output_xss.py'
       - 'scripts/browser/i18n_codeql_regression.py'
+      - 'scripts/browser/security_output_xss_v2.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -56,6 +57,9 @@ jobs:
       - if: ${{ !cancelled() }}
         name: I18N CodeQL DOM regression (five locales)
         run: python scripts/browser/i18n_codeql_regression.py --output browser-evidence/i18n-codeql
+      # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
+      - if: ${{ !cancelled() }}
+        run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2
       - uses: actions/upload-artifact@v7
         if: always()
         with:

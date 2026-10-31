@@ -210,12 +210,12 @@
             .filter(function (option) { return !term || String(option.textContent || '').toLowerCase().includes(term); })
             .slice(0, 8);
           if (!options.length) {
-            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + emptyText + '</button>';
+            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + escapeHtml(emptyText) + '</button>';
             open();
             return;
           }
           dropdown.innerHTML = options.map(function (option) {
-            return '<button type="button" data-value="' + String(option.value) + '">' + String(option.textContent || '') + '</button>';
+            return '<button type="button" data-value="' + escapeHtml(option.value) + '">' + escapeHtml(option.textContent || '') + '</button>';
           }).join('');
           open();
         }

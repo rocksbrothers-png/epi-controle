@@ -22,7 +22,11 @@
     values.actor_user_id = actor.id;
     if (['general_admin', 'admin'].includes(actor.role)) { values.company_id = actor.company_id; }
 
-    values.active = Number(values.active || 1);
+    // FIX-USERS-ACTIVE-V1: o formulário não tem campo de status. Sem valor explícito,
+    // `active` não vai no corpo: na edição o servidor mantém o status atual (na criação, ativo).
+    // Ativar/desativar é só pelo botão próprio (userAccessUpdatePayload).
+    if (values.active === undefined || String(values.active).trim() === '') {delete values.active;}
+    else {values.active = Number(values.active);}
     if (!String(values.company_id || '').trim()) { throw new Error('Empresa Usuário.'); }
     if (!roleLabels[values.role]) { throw new Error('Perfil inválido.'); }
     const noLink = !String(values.linked_employee_id || '').trim();
@@ -36,16 +40,19 @@
   }
 
   // Corpo do PUT /api/users/{id} usado por promover/rebaixar/ativar/desativar.
+  // FIX-USERS-ACTIVE-V1: `active` só vai quando a ação é ativar/desativar. Promover ou
+  // rebaixar com a lista desatualizada mandava o status antigo e podia reativar a conta.
   function userAccessUpdatePayload(target, changes, actorUserId) {
-    return {
+    const payload = {
       actor_user_id: actorUserId,
       username: target.username,
       full_name: target.full_name,
       password: '',
       role: changes.role || target.role,
-      company_id: changes.company_id === undefined ? target.company_id : changes.company_id,
-      active: changes.active === undefined ? target.active : changes.active
+      company_id: changes.company_id === undefined ? target.company_id : changes.company_id
     };
+    if (changes.active !== undefined) {payload.active = changes.active;}
+    return payload;
   }
 
   globalThis.__EPI_USERS_BUSINESS__ = Object.freeze({ prepareUserFormValues, userAccessUpdatePayload });

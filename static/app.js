@@ -5832,7 +5832,7 @@ async function copyUserAccessMessage(userId, channel = 'email') {
 async function applyTemporaryPassword(userId, password, username, options = {}) {
   const target = state.users.find((item) => String(item.id) === String(userId));
   if (!target) return false;
-  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, active: target.active, force_password_change: 1 }) });
+  await api(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ actor_user_id: state.user.id, username: target.username, full_name: target.full_name, password, role: target.role, company_id: target.company_id, force_password_change: 1 }) });
   const label = username || target.username;
   if (options.notify !== false) alert(`Senha provisória definida para ${label}.`);
   return true;
@@ -9770,6 +9770,8 @@ function populateLinkedEmployeeOptions() {
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${item.id}">${item.employee_id_code} - ${item.name}</option>`).join('');
+  // FIX-USERS-ACTIVE-V1: refazer as opções apagava a seleção — ao editar, o colaborador
+  // vinculado sumia do formulário. Mantém o valor quando ele continua entre as opções.
   field.innerHTML = `${firstOption}${employeeOptions}`;
   if ((canUseWithoutLink && previousEmployeeId === '') || employees.some((item) => String(item.id) === previousEmployeeId)) field.value = previousEmployeeId;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);

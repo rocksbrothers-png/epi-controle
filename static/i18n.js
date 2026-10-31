@@ -97,6 +97,29 @@
     })[char]);
   }
 
+  // Só a ênfase sem atributos do catálogo vira elemento. Dados interpolados
+  // chegam escapados e são decodificados uma vez, já como nós de texto.
+  function setRichText(element, value) {
+    const fragment = document.createDocumentFragment();
+    const parents = [fragment];
+    const entities = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" };
+    for (const part of String(value).split(/(<\/?(?:strong|em|b|i)>|<br\s*\/?>)/gi)) {
+      if (!part) {continue;}
+      const tag = /^<(\/?)(strong|em|b|i|br)\s*\/?>$/i.exec(part);
+      if (tag && !tag[1]) {
+        const node = document.createElement(tag[2].toLowerCase());
+        parents[parents.length - 1].appendChild(node);
+        if (tag[2].toLowerCase() !== 'br') {parents.push(node);}
+      } else if (tag && parents.length > 1 && parents[parents.length - 1].nodeName.toLowerCase() === tag[2].toLowerCase()) {
+        parents.pop();
+      } else {
+        parents[parents.length - 1].appendChild(document.createTextNode(
+          part.replace(/&(?:amp|lt|gt|quot);|&#39;/g, entity => entities[entity])));
+      }
+    }
+    element.replaceChildren(fragment);
+  }
+
   // Binding de mensagem dinâmica: valores são texto, nunca HTML executável.
   // Os parâmetros ficam no DOM para uma troca de idioma preservar o conteúdo.
   function formatNumber(value, options) {
@@ -368,7 +391,7 @@
         let variableKeys;
         try { variableKeys = JSON.parse(el.getAttribute(attr + '-var-keys') || el.getAttribute('data-i18n-var-keys') || 'null'); } catch { variableKeys = null; }
         vars = resolveMessageVars(vars, variableKeys);
-        if (kind === 'html' && vars && typeof vars === 'object') {
+        if (kind === 'html') {
           vars = Object.fromEntries(Object.entries(vars).map(([name, value]) => [name, escapeMarkup(value)]));
         }
         const val = t(key, vars);
@@ -377,7 +400,7 @@
           _setTextPreservingChildren(el, val);
           _boundText.set(el, _ownLabel(el));
         }
-        else if (kind === 'html') {el.innerHTML = val;}
+        else if (kind === 'html') {setRichText(el, val);}
         else {
           el.setAttribute(kind, val);
           const attributes = _boundAttributes.get(el) || new Map();

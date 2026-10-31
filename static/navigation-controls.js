@@ -15,6 +15,11 @@
     ? helpers.createScopedAbortController
     : function () { return new AbortController(); };
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function isEnabled() {
     try {
       if (typeof helpers.getFeatureFlag === 'function') {
@@ -203,8 +208,8 @@
       var classes = ['hierarchy-crumb'];
       classes.push(isLast ? 'is-active' : 'is-link');
       if (!isClickable) classes.push('is-disabled');
-      var attrs = isClickable ? ' data-crumb-view="' + entry.view + '"' : ' aria-disabled="true"';
-      return '<button type="button" class="' + classes.join(' ') + '"' + attrs + '>' + entry.label + '</button>';
+      var attrs = isClickable ? ' data-crumb-view="' + escapeHtml(entry.view) + '"' : ' aria-disabled="true"';
+      return '<button type="button" class="' + classes.join(' ') + '"' + attrs + '>' + escapeHtml(entry.label) + '</button>';
     }).join('<span class="hierarchy-sep">&gt;</span>');
   }
 
@@ -243,12 +248,12 @@
 
     return groups.map(function (group, groupIndex) {
       var nodes = group.views.filter(canAccessView).map(function (view) {
-        return '<button class="ux-operation-item level-' + (groupIndex > 0 ? 1 : 0) + '" type="button" data-nav-view="' + view + '">' + resolveViewLabel(view) + '</button>';
+        return '<button class="ux-operation-item level-' + (groupIndex > 0 ? 1 : 0) + '" type="button" data-nav-view="' + view + '">' + escapeHtml(resolveViewLabel(view)) + '</button>';
       }).join('');
       if (!nodes) return '';
       return [
         '<div class="ux-operation-group">',
-        '  <div class="ux-operation-group-title">' + group.label + '</div>',
+        '  <div class="ux-operation-group-title">' + escapeHtml(group.label) + '</div>',
         '  <div class="ux-operation-group-body">' + nodes + '</div>',
         '</div>'
       ].join('');

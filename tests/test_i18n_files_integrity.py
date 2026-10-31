@@ -95,7 +95,7 @@ def _used_keys():
     html = (_STATIC / "index.html").read_text(encoding="utf-8")
     keys |= set(re.findall(r'data-i18n(?:-\w+)?="([\w.]+)"', html))
     for path in glob.glob(str(_STATIC / "**" / "*.js"), recursive=True):
-        src = open(path, encoding="utf-8").read()
+        src = Path(path).read_text(encoding="utf-8")
         keys |= set(re.findall(r"""\btr\(\s*['"]([\w.]+)['"]""", src))
     # Descarta prefixos dinâmicos (tr('purchase.poStatus.' + x)) e fragmentos soltos.
     return {k for k in keys if "." in k and not k.endswith(".")}

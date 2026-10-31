@@ -24,7 +24,6 @@ physical={43:{'as_of_date':today.isoformat(),'nearest_known_expiry':(today-timed
 epis=[{'id':43,'active':1,'company_id':41,'unit_id':42,'name':name,'company_name':'Empresa original','stock':6,'unit_measure':'par','ca_expiry':(today+timedelta(days=10)).isoformat()}]
 with patch('modules.alerts.service.physical_summary_map',return_value=physical):
  alerts=compute_alerts(None,{'role':'admin'},fetch_low_stock_items=lambda *_:low,actor_operational_unit_id=lambda *_:42,fetch_epis=lambda *_:epis)
-original=json.dumps(alerts,ensure_ascii=False)
 physical[44]={**physical[43],'nearest_known_expiry':(today+timedelta(days=3)).isoformat(),'unknown':1,'expiring':1}
 epis.append({**epis[0],'id':44})
 with patch('modules.alerts.service.physical_summary_map',return_value=physical):

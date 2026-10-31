@@ -128,7 +128,8 @@ def handle_get_supplier_portal_data(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         payload_out = get_portal_payload(connection, link)
         connection.commit()
-        return send_json(handler, 200, {'item': payload_out})
+        send_json(handler, 200, {'item': payload_out})
+        return
 
 
 def handle_post_supplier_portal_quote(handler, parsed, payload, match):
@@ -139,7 +140,8 @@ def handle_post_supplier_portal_quote(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         quote = portal_answer_quote(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'status': quote.get('status')})
+        send_json(handler, 200, {'ok': True, 'status': quote.get('status')})
+        return
 
 
 def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
@@ -150,7 +152,8 @@ def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         po = portal_confirm_po(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'supplier_confirmation_status': po.get('supplier_confirmation_status')})
+        send_json(handler, 200, {'ok': True, 'supplier_confirmation_status': po.get('supplier_confirmation_status')})
+        return
 
 
 def register_routes(router):

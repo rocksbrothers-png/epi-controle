@@ -53,11 +53,23 @@ const dictionaries = {
 function element(attrs = {}) {
   return {nodeType:1, firstElementChild:null, textContent:'',
     attrs:{...attrs}, querySelectorAll(){return []},
+    replaceChildren(fragment){this.innerHTML=fragment.childNodes.map(serializeNode).join('');this.textContent=fragment.textContent},
     hasAttribute(k){return Object.hasOwn(this.attrs,k)}, removeAttribute(k){delete this.attrs[k]},
     getAttribute(k){return this.attrs[k] ?? null}, setAttribute(k,v){this.attrs[k]=String(v)}
   };
 }
-const doc = {documentElement:element(), querySelectorAll(){return []}};
+function serializeNode(node) {
+  if(node.nodeType===3) return node.textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const tag=node.nodeName.toLowerCase();
+  return '<'+tag+'>'+node.childNodes.map(serializeNode).join('')+(tag==='br'?'':'</'+tag+'>');
+}
+function treeNode(nodeName) {
+  return {nodeName,childNodes:[],appendChild(node){this.childNodes.push(node)},get textContent(){return this.childNodes.map(n=>n.textContent).join('')}};
+}
+const doc = {documentElement:element(), querySelectorAll(){return []},
+  createDocumentFragment(){return treeNode('#document-fragment')},
+  createElement(tag){return treeNode(tag.toUpperCase())},
+  createTextNode(value){return {nodeType:3,textContent:String(value)}}};
 const sandbox = {document:doc, navigator:{language:'pt-BR'},
   CustomEvent:class {constructor(type, init){this.type=type;this.detail=init?.detail}},
   Node:{TEXT_NODE:3}, console,
@@ -127,6 +139,25 @@ assert(!markup.includes('<img')); assert(markup.includes('&lt;img'));
 assert.equal(sandbox.trEpi('missing','Value: {name}',{name:'Ana'}),'Value: Ana');
 const html=element({'data-i18n-html':'greeting','data-i18n-vars':JSON.stringify({name:'<script>bad</script>'})});
 api.translateDOM(html); assert.equal(html.innerHTML,'Hello, &lt;script&gt;bad&lt;/script&gt;');
+''')
+
+
+def test_rich_translation_keeps_emphasis_and_treats_all_variable_markup_as_text():
+    run_scenario(r'''
+const locales=['pt-BR','en-GB','es-ES','fr-FR','nb-NO'];
+for(const locale of locales) dictionaries[locale]={rich:'<strong>{name}</strong><br><em>'+locale+'</em><img src=x onerror=bad>'};
+for(const locale of locales) {
+  await api.setLang(locale,{persist:false});
+  for(const name of ['<img src=x onerror=bad>','<strong>original</strong>','&lt;literal&gt;','{literal}', '"&\'']) {
+    const node=element({'data-i18n-html':'rich','data-i18n-vars':JSON.stringify({name})});
+    api.translateDOM(node);
+    assert.equal(node.textContent,name+locale+'<img src=x onerror=bad>');
+    assert(node.innerHTML.startsWith('<strong>'));
+    assert(node.innerHTML.includes('</strong><br><em>'+locale+'</em>'));
+    assert(!node.innerHTML.includes('<img'));
+    assert.equal((node.innerHTML.match(/<strong>/g)||[]).length,1);
+  }
+}
 ''')
 
 

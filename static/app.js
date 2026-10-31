@@ -1527,7 +1527,7 @@ function renderInteractiveNavTabs(activeView) {
   const labels = interactiveNavState.recentViews.slice(-5).map((viewName) => {
     const menuLabel = document.querySelector(`.menu-link[data-view="${viewName}"]`)?.textContent?.trim() || viewName;
     const activeClass = viewName === activeView ? 'is-active' : '';
-    return `<button class="interactive-nav-tab ${activeClass}" type="button" data-nav-tab-view="${viewName}">${menuLabel}</button>`;
+    return `<button class="interactive-nav-tab ${activeClass}" type="button" data-nav-tab-view="${escapeHtml(viewName)}">${escapeHtml(menuLabel)}</button>`;
   });
   refs.interactiveNavTabs.innerHTML = labels.join('');
 }
@@ -6903,7 +6903,7 @@ function formatActiveJoinventureOption(entry) {
     ? state.units.find((item) => String(item.id) === String(entry.unit_id))?.name || `Unidade #${entry.unit_id}`
     : '';
   const label = unitLabel ? `${entry.name} - ${unitLabel}` : entry.name;
-  return `<option value="${token}">${label}</option>`;
+  return `<option value="${escapeHtml(token)}">${escapeHtml(label)}</option>`;
 }
 
 function renderJoinventureList() {
@@ -6921,7 +6921,7 @@ function renderJoinventureList() {
     const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
     const unitLabel = unit ? unit.name : tr('unit.undefined', 'Sem unidade definida');
     const token = activeJoinventureToken(entry);
-    return `<button class="ghost" type="button" data-joinventure-remove="${token}">${entry.name} (${unitLabel}) - ${tr('delete', 'Apagar')}</button>`;
+    return `<button class="ghost" type="button" data-joinventure-remove="${escapeHtml(token)}">${escapeHtml(entry.name)} (${escapeHtml(unitLabel)}) - ${escapeHtml(tr('delete', 'Apagar'))}</button>`;
   }).join('') || `<span class="hint">${tr('epi.noJoinventure', 'Nenhuma JoinVenture cadastrada ou Unidade Única.')}</span>`;
   const previous = parseActiveJoinventureToken(activeSelect.value);
   activeSelect.innerHTML = `<option value="">${tr('epi.noActiveJoinventureOption', 'Sem Joint Venture ou Unidade Única ativa (EPI geral)')}</option>` + values.map(formatActiveJoinventureOption).join('');
@@ -7159,7 +7159,7 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   if (!hasPermission('deliveries:view')) return;
   if (unitFilter === '__NO_UNIT__') {
     state.deliveryEpis = [];
-    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
+    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter}`;
     const epiField = document.getElementById('delivery-epi');
     if (epiField) populateDeliveryEpiField(epiField, []);
     return;

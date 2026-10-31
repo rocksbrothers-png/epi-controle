@@ -1,0 +1,71 @@
+{
+  "review": "Independent read-only CodeQL security and main integration audit",
+  "verdict": "No remaining P0/P1/P2 found in reviewed delta; required CodeQL CI remains authoritative. This is not a whole-project or complete I18N certification.",
+  "product_heads": {
+    "corporate": "ada4696c76e4dab1d51a6887316b9ca88a8ad056",
+    "saas": "058773b08e7032cfb3ab0ff40e20c27c57d206e5"
+  },
+  "browser": {
+    "corporate_before": {
+      "passed": 15,
+      "failed": 25,
+      "results": "/workspace/i18n-full-v1/independent-active-review/codeql-corporate-before/results.json",
+      "source_sha256": {
+        "app.js": "0b0c7ed6595bb48f405de33fcb5fdce07ccf60a06d245a576a194c8c36037802",
+        "navigation-controls.js": "851a0ec4033ce36f2e59d64827f58f7877f4e3e524839fd05bd766859be48317",
+        "entrega-epi.js": "5ce66b2161ca8c741980db18685136889f1bc992249fe99b9c5802878c3325c5",
+        "i18n.js": "e3b7c50a4b5523fd0012dbc3d679234b151709346615287bae606b4a867ed7c5",
+        "js/modules/auth.js": "d3bedc6285f2eb7b4cd2cd501e2eab6fa281a62a32d6e0c75b22d890d5de97bb"
+      }
+    },
+    "corporate_current": {
+      "passed": 40,
+      "failed": 0,
+      "results": "/workspace/i18n-full-v1/independent-active-review/codeql-corporate-current/results.json",
+      "source_sha256": {
+        "app.js": "b94ac05dbae57455e2487ef16d10e265967ec9dc30e356c235dadda156cbd7ed",
+        "navigation-controls.js": "3ccb4c88dd5f7faa1892194cdff8390df0179cbe5e37eeb6c64d54fc2b3f354a",
+        "entrega-epi.js": "60d91adc723c029f261b221b779f7e55cb0faf0696dbad15a9e2bfe93b239d41",
+        "i18n.js": "2fd1af44242886687aa632fa52501961f483fae1d39285c3a9903ec5b69ba825",
+        "js/modules/auth.js": "2202df0a4e5aff6a4fbcaeb0b02bd5c93d6da03264e42967d85d68a1d8dac90c"
+      }
+    },
+    "saas_before": {
+      "passed": 15,
+      "failed": 25,
+      "results": "/workspace/i18n-full-v1/independent-active-review/codeql-saas-before/results.json",
+      "source_sha256": {
+        "app.js": "0b0c7ed6595bb48f405de33fcb5fdce07ccf60a06d245a576a194c8c36037802",
+        "navigation-controls.js": "851a0ec4033ce36f2e59d64827f58f7877f4e3e524839fd05bd766859be48317",
+        "entrega-epi.js": "5ce66b2161ca8c741980db18685136889f1bc992249fe99b9c5802878c3325c5",
+        "i18n.js": "e3b7c50a4b5523fd0012dbc3d679234b151709346615287bae606b4a867ed7c5",
+        "js/modules/auth.js": "d3bedc6285f2eb7b4cd2cd501e2eab6fa281a62a32d6e0c75b22d890d5de97bb"
+      }
+    },
+    "saas_current": {
+      "passed": 40,
+      "failed": 0,
+      "results": "/workspace/i18n-full-v1/independent-active-review/codeql-saas-current/results.json",
+      "source_sha256": {
+        "app.js": "b94ac05dbae57455e2487ef16d10e265967ec9dc30e356c235dadda156cbd7ed",
+        "navigation-controls.js": "3ccb4c88dd5f7faa1892194cdff8390df0179cbe5e37eeb6c64d54fc2b3f354a",
+        "entrega-epi.js": "60d91adc723c029f261b221b779f7e55cb0faf0696dbad15a9e2bfe93b239d41",
+        "i18n.js": "2fd1af44242886687aa632fa52501961f483fae1d39285c3a9903ec5b69ba825",
+        "js/modules/auth.js": "2202df0a4e5aff6a4fbcaeb0b02bd5c93d6da03264e42967d85d68a1d8dac90c"
+      }
+    }
+  },
+  "closed_adjacent_finding": "Delivery employee/EPI search dropdown raw option label/value HTML concatenation now escapes both; independently exercised.",
+  "scope_limits": [
+    "All API calls intercepted with synthetic fixtures; no real database or external application writes.",
+    "Synthetic catalogue rejection verifies generic renderer boundary; no claim that an external actor can alter shipped catalogues.",
+    "Boolean persistence preserved its old runtime contract; literal branch removes taint provenance, without evidence of stored credentials at this key.",
+    "No alert dismissals, rule reductions or CodeQL gate modifications reviewed or performed."
+  ],
+  "main_locale_merge_probe": {
+    "corporate": "no form snapshot changes; invalid role/foreign employee rejected; locale GET only; no JS errors",
+    "saas": "same"
+  },
+  "python_warnings_review": "send_json has no return and Router.dispatch maps None to HANDLED, so five call-plus-return rewrites preserve response and routing semantics. Path.read_text closes source files.",
+  "probe_sha256": "83c94ea67085e7a6295cd015b0a9e2b2ae60f6803bd656e6dd250143b17b5798"
+}

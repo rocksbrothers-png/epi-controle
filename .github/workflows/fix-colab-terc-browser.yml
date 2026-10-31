@@ -11,6 +11,7 @@ on:
       - 'scripts/browser/ubx_my_company.py'
       - 'scripts/browser/security_logo_xss.py'
       - 'scripts/browser/security_output_xss.py'
+      - 'scripts/browser/i18n_codeql_regression.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -51,6 +52,10 @@ jobs:
       # SECURITY-OUTPUT-XSS-V1: nome/CNPJ, EPI/foto e ficha HTML (com CSP) não executam HTML do cadastro.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss.py --output browser-evidence/security-output-xss
+      # I18N-FULL-V1: texto DOM permanece inerte; bindings ricos só criam ênfase permitida.
+      - if: ${{ !cancelled() }}
+        name: I18N CodeQL DOM regression (five locales)
+        run: python scripts/browser/i18n_codeql_regression.py --output browser-evidence/i18n-codeql
       - uses: actions/upload-artifact@v7
         if: always()
         with:

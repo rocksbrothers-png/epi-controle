@@ -45,12 +45,12 @@
 
   function fmtBrl(v) {
     return typeof globalThis.fmtBrl === 'function'
-      ? globalThis.fmtBrl(v)
-      : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
+      ? globalThis.fmtBrl(v, globalThis.EpiI18n?.lang)
+      : new Intl.NumberFormat(globalThis.EpiI18n?.lang || 'pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
   }
 
-  function tr(key, fallback) {
-    return typeof globalThis.trEpi === 'function' ? globalThis.trEpi(key, fallback) : fallback;
+  function tr(key, fallback, vars) {
+    return typeof globalThis.trEpi === 'function' ? globalThis.trEpi(key, fallback, vars) : String(fallback).replace(/\{(\w+)\}/g, (match, name) => Object.prototype.hasOwnProperty.call(vars || {}, name) ? String(vars[name]) : match);
   }
 
   function filterByUserCompany(items) {
@@ -102,7 +102,7 @@
     const PURCHASE_APPROVAL_REJECTION_REASONS = globalThis.PURCHASE_APPROVAL_REJECTION_REASONS || ['Item não necessário', 'Valor acima do esperado', 'Quantidade incorreta', 'Fornecedor inadequado', 'EPI incompatível', 'Fora do escopo da solicitação', 'Outro'];
 
     function workflowReasonOptions(group) {
-      return (PURCHASE_REVIEW_REASONS[group] || []).map(reason => `<option value="${esc(reason)}">${esc(reason)}</option>`).join('');
+      return (PURCHASE_REVIEW_REASONS[group] || []).map(reason => `<option value="${esc(reason)}" data-i18n="${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.key(reason) || '')}">${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.label(reason) ?? reason)}</option>`).join('');
     }
 
     return new Promise((resolve) => {
@@ -115,43 +115,43 @@
       const needsComment = !!config.requiresComment;
       const needsChanges = !!config.showRequesterChecklist;
       const selectableItems = Array.isArray(config.items) ? config.items : [];
-      const itemSelectionHtml = config.showItemSelection ? `<div style="margin-bottom:10px;max-height:180px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong>Itens para recotar</strong>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-workflow-item> ${esc(item.epi_name || item.epi_display_name || 'Item')} — Qtd ${esc(item.quantity_requested || item.quantity || 1)}</label>`).join('')}</div>` : '';
-      const approvalReasonOptions = PURCHASE_APPROVAL_REJECTION_REASONS.map(reason => `<option value="${esc(reason)}">${esc(reason)}</option>`).join('');
+      const itemSelectionHtml = config.showItemSelection ? `<div style="margin-bottom:10px;max-height:180px;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;"><strong data-i18n="ui.purchases.itens_para_recotar_6d449a">Itens para recotar</strong>${selectableItems.map(item => `<label style="display:block;margin-top:6px;"><input type="checkbox" value="${esc(item.id)}" data-purchase-workflow-item> ${(globalThis.EpiI18n?.bindText?.('ui.purchases.p1_qtd_p2_78f538',{p1:(item.epi_name || item.epi_display_name || (globalThis.trEpi?.('ui.purchases.item_652bcc','Item',{}) ?? 'Item')),p2:(item.quantity_requested || item.quantity || 1)},'{p1} \u2014 Qtd {p2}') ?? `${esc(item.epi_name || item.epi_display_name || (globalThis.trEpi?.('ui.purchases.item_652bcc','Item',{}) ?? 'Item'))} — Qtd ${esc(item.quantity_requested || item.quantity || 1)}`)}</label>`).join('')}</div>` : '';
+      const approvalReasonOptions = PURCHASE_APPROVAL_REJECTION_REASONS.map(reason => `<option value="${esc(reason)}" data-i18n="${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.key(reason) || '')}">${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.label(reason) ?? reason)}</option>`).join('');
       const approvalItemsHtml = config.showApprovalItems ? `<div style="margin-bottom:10px;max-height:50vh;overflow:auto;border:1px solid var(--color-border);padding:8px;border-radius:6px;">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
-        <div><strong>Aprovação item a item</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;">Itens marcados serão aprovados; itens desmarcados exigem motivo e justificativa individual.</p></div>
-        <div style="display:flex;gap:6px;"><button type="button" class="ghost" data-purchase-approval-select-all>Selecionar todos</button><button type="button" class="ghost" data-purchase-approval-clear>Limpar seleção</button></div>
+        <div><strong data-i18n="ui.purchases.aprovacao_item_a_item_988920">Aprovação item a item</strong><p style="font-size:12px;color:var(--color-text-muted);margin:4px 0;" data-i18n="ui.purchases.itens_marcados_serao_aprovados_itens_desmarcados_exigem_motivo_e_justificat_3a7d77">Itens marcados serão aprovados; itens desmarcados exigem motivo e justificativa individual.</p></div>
+        <div style="display:flex;gap:6px;"><button type="button" class="ghost" data-purchase-approval-select-all data-i18n="ui.compras.selecionar_todos_2a8ff8">Selecionar todos</button><button type="button" class="ghost" data-purchase-approval-clear data-i18n="bulk.clear">Limpar seleção</button></div>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th scope="col">Aprovar</th><th scope="col">Item</th><th scope="col">Qtd</th><th scope="col">Fornecedor</th><th scope="col">Colaborador</th><th scope="col">Unidade</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th><th scope="col">Justificativa dos reprovados</th></tr></thead><tbody>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr><th scope="col" data-i18n="purchase.approve">Aprovar</th><th scope="col" data-i18n="ui.purchases.item_652bcc">Item</th><th scope="col" data-i18n="stock.receipt.qty">Qtd</th><th scope="col" data-i18n="epi.supplierShort">Fornecedor</th><th scope="col" data-i18n="handover.collaborator">Colaborador</th><th scope="col" data-i18n="moduleVisibility.unitLabel">Unidade</th><th scope="col" data-i18n="ui.compras.vlr_unit_cf81b5">Vlr Unit.</th><th scope="col" data-i18n="evaluation.total">Total</th><th scope="col" data-i18n="ui.purchases.justificativa_dos_reprovados_70aa36">Justificativa dos reprovados</th></tr></thead><tbody>
         ${selectableItems.map(item => {
           const total = Number(item.total_price || 0);
           const unitPrice = Number(item.unit_price || 0);
           return `<tr data-purchase-approval-row="${esc(item.id)}">
             <td><input type="checkbox" value="${esc(item.id)}" data-purchase-approval-item checked></td>
-            <td><strong>${esc(item.epi_name || item.epi_display_name || 'Item')}</strong><br><small>${tr('epi.caShort', 'CA')}: ${esc(item.ca || item.epi_ca || '—')}</small></td>
+            <td><strong>${esc(item.epi_name || item.epi_display_name || (globalThis.trEpi?.('ui.purchases.item_652bcc','Item',{}) ?? 'Item'))}</strong><br><small>${tr('epi.caShort', 'CA')}: ${esc(item.ca || item.epi_ca || '—')}</small></td>
             <td>${esc(item.quantity_requested || item.quantity || 1)}</td>
             <td>${esc(item.supplier || '—')}</td>
             <td>${esc(item.employee_name || '—')}</td>
             <td>${esc(item.unit_name || '—')}</td>
             <td>${unitPrice ? esc(fmtBrl(unitPrice)) : '—'}</td>
             <td>${total ? esc(fmtBrl(total)) : '—'}</td>
-            <td><select data-purchase-rejection-reason="${esc(item.id)}" disabled><option value="">Motivo...</option>${approvalReasonOptions}</select><textarea data-purchase-rejection-comment="${esc(item.id)}" rows="2" placeholder="Observação" disabled style="width:100%;margin-top:4px;"></textarea></td>
+            <td><select data-purchase-rejection-reason="${esc(item.id)}" disabled><option value="" data-i18n="ui.purchases.motivo_f961aa">Motivo...</option>${approvalReasonOptions}</select><textarea data-purchase-rejection-comment="${esc(item.id)}" rows="2" placeholder="Observação" disabled style="width:100%;margin-top:4px;" data-i18n-placeholder="employee.notes"></textarea></td>
           </tr>`;
         }).join('')}
       </tbody></table>
     </div>` : '';
       overlay.innerHTML = `
       <div class="card" style="max-width:${config.showApprovalItems ? '1120px' : '520px'};width:min(${config.showApprovalItems ? '1120px' : '520px'},96vw);margin:auto;padding:24px;">
-        <h3 style="margin:0 0 8px;">${esc(config.title || 'Confirmar ação')}</h3>
+        <h3 style="margin:0 0 8px;">${esc(config.title || (globalThis.trEpi?.('ui.purchases.confirmar_acao_7b6010','Confirmar a\u00e7\u00e3o',{}) ?? 'Confirmar a\u00e7\u00e3o'))}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(config.description || '')}</p>
-        ${needsReason ? `<label style="display:block;margin-bottom:10px;">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
+        ${needsReason ? `<label style="display:block;margin-bottom:10px;" data-i18n="ppetest.reason">Motivo <span style="color:var(--color-danger)">*</span><select id="purchase-workflow-reason" style="width:100%;margin-top:4px;"><option value="" data-i18n="purchase.functionsSelectPlaceholder">Selecione...</option>${workflowReasonOptions(config.reasonGroup)}</select></label>` : ''}
         ${itemSelectionHtml}${approvalItemsHtml}
-        ${needsChanges ? `<div style="margin-bottom:10px;"><strong>O que precisa ser revisado?</strong><div style="display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px;font-size:13px;">${PURCHASE_REVIEW_REASONS.requester.map(reason => `<label><input type="checkbox" value="${esc(reason)}" data-purchase-review-change> ${esc(reason)}</label>`).join('')}</div></div>` : ''}
-        <label style="display:block;">Observação ${needsComment ? '<span style="color:var(--color-danger)">*</span>' : ''}<textarea id="purchase-workflow-comment" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva a decisão ou correção necessária..."></textarea></label>
+        ${needsChanges ? `<div style="margin-bottom:10px;"><strong data-i18n="ui.purchases.o_que_precisa_ser_revisado_765441">O que precisa ser revisado?</strong><div style="display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px;font-size:13px;">${PURCHASE_REVIEW_REASONS.requester.map(reason => `<label data-i18n="${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.key(reason) || '')}"><input type="checkbox" value="${esc(reason)}" data-purchase-review-change> ${esc(globalThis.__EPI_PURCHASE_REASON_LABELS__?.label(reason) ?? reason)}</label>`).join('')}</div></div>` : ''}
+        <label style="display:block;"><span data-i18n="employee.notes">Observação</span> ${needsComment ? '<span style="color:var(--color-danger)">*</span>' : ''}<textarea id="purchase-workflow-comment" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva a decisão ou correção necessária..." data-i18n-placeholder="ui.purchases.descreva_a_decisao_ou_correcao_necessaria_e473f1"></textarea></label>
         <div id="purchase-workflow-error" style="display:none;color:var(--color-danger);font-size:13px;margin-top:8px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-          <button class="btn ghost" id="purchase-workflow-cancel">Cancelar</button>
-          <button class="btn" id="purchase-workflow-confirm">Confirmar</button>
+          <button class="btn ghost" id="purchase-workflow-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
+          <button class="btn" id="purchase-workflow-confirm" data-i18n="confirm">Confirmar</button>
         </div>
       </div>`;
       document.body.appendChild(overlay);
@@ -169,7 +169,7 @@
       overlay.querySelectorAll('[data-purchase-rejection-reason]').forEach(select => bindAppListener(select, 'change', () => {
         const row = select.closest('[data-purchase-approval-row]');
         const comment = row?.querySelector('[data-purchase-rejection-comment]');
-        if (comment) {comment.placeholder = select.value === 'Outro' ? 'Obrigatório para Outro' : 'Observação';}
+        if (comment) {comment.placeholder = select.value === 'Outro' ? (globalThis.EpiI18n?.attributeFor?.(comment,'placeholder','ui.purchases.obrigatorio_para_outro_b9081a','Obrigat\u00f3rio para Outro',{}) ?? globalThis.trEpi?.('ui.purchases.obrigatorio_para_outro_b9081a','Obrigat\u00f3rio para Outro',{}) ?? 'Obrigat\u00f3rio para Outro') : (globalThis.EpiI18n?.attributeFor?.(comment,'placeholder','employee.notes','Observa\u00e7\u00e3o',{}) ?? globalThis.trEpi?.('employee.notes','Observa\u00e7\u00e3o',{}) ?? 'Observa\u00e7\u00e3o');}
       }));
       bindAppListener(overlay.querySelector('[data-purchase-approval-select-all]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = true; }); syncApprovalRows(); });
       bindAppListener(overlay.querySelector('[data-purchase-approval-clear]'), 'click', () => { overlay.querySelectorAll('[data-purchase-approval-item]').forEach(input => { input.checked = false; }); syncApprovalRows(); });
@@ -197,11 +197,11 @@
         const invalidRejected = decisions.find(item => !item.approved && !item.rejection_reason);
         const missingOther = decisions.find(item => !item.approved && item.rejection_reason === 'Outro' && !item.rejection_comment);
         if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
-        if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione o motivo.'; } return; }
-        if (config.showItemSelection && !itemIds.length) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Selecione ao menos um item.'; } return; }
-        if (invalidRejected) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = `Selecione o motivo do item #${invalidRejected.item_id}.`; } return; }
-        if (missingOther) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = `Informe observação para o motivo Outro no item #${missingOther.item_id}.`; } return; }
-        if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = 'Informe a observação obrigatória.'; } return; }
+        if (needsReason && !reason) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.selecione_o_motivo_476d88','Selecione o motivo.',{}) ?? globalThis.trEpi?.('ui.purchases.selecione_o_motivo_476d88','Selecione o motivo.',{})) ?? 'Selecione o motivo.'); } return; }
+        if (config.showItemSelection && !itemIds.length) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.selecione_ao_menos_um_item_efb519','Selecione ao menos um item.',{}) ?? globalThis.trEpi?.('ui.purchases.selecione_ao_menos_um_item_efb519','Selecione ao menos um item.',{})) ?? 'Selecione ao menos um item.'); } return; }
+        if (invalidRejected) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.selecione_o_motivo_do_item_p0_4680f0','Selecione o motivo do item #{p0}.',{p0:(invalidRejected.item_id)}) ?? globalThis.trEpi?.('ui.purchases.selecione_o_motivo_do_item_p0_4680f0','Selecione o motivo do item #{p0}.',{p0:(invalidRejected.item_id)})) ?? `Selecione o motivo do item #${invalidRejected.item_id}.`); } return; }
+        if (missingOther) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.informe_observacao_para_o_motivo_outro_no_item_p0_57fb33','Informe observa\u00e7\u00e3o para o motivo Outro no item #{p0}.',{p0:(missingOther.item_id)}) ?? globalThis.trEpi?.('ui.purchases.informe_observacao_para_o_motivo_outro_no_item_p0_57fb33','Informe observa\u00e7\u00e3o para o motivo Outro no item #{p0}.',{p0:(missingOther.item_id)})) ?? `Informe observação para o motivo Outro no item #${missingOther.item_id}.`); } return; }
+        if (needsComment && !comment) { if (errorEl) { errorEl.style.display = ''; errorEl.textContent = ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.informe_a_observacao_obrigatoria_63dc79','Informe a observa\u00e7\u00e3o obrigat\u00f3ria.',{}) ?? globalThis.trEpi?.('ui.purchases.informe_a_observacao_obrigatoria_63dc79','Informe a observa\u00e7\u00e3o obrigat\u00f3ria.',{})) ?? 'Informe a observa\u00e7\u00e3o obrigat\u00f3ria.'); } return; }
         finish({ reason, comment, requested_changes: requestedChanges, item_ids: itemIds, approved_item_ids: approvedItemIds, rejected_item_ids: rejectedItemIds, decisions });
       });
     });
@@ -226,13 +226,13 @@
       const epiOptions = availableEpis.map(e => `<option value="${esc(e.id)}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')}:${esc(e.ca)}` : ''}</option>`).join('');
       overlay.innerHTML = `
       <div class="card" style="max-width:680px;width:min(680px,96vw);margin:auto;padding:24px;max-height:90vh;overflow-y:auto;">
-        <h3 style="margin:0 0 8px;">Editar Itens da Requisição</h3>
-        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 14px;">Corrija quantidades, remova ou acrescente itens antes de reenviar.</p>
+        <h3 style="margin:0 0 8px;" data-i18n="ui.purchases.editar_itens_da_requisicao_6416ba">Editar Itens da Requisição</h3>
+        <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 14px;" data-i18n="ui.purchases.corrija_quantidades_remova_ou_acrescente_itens_antes_de_reenviar_0b55c2">Corrija quantidades, remova ou acrescente itens antes de reenviar.</p>
         <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;">
           <thead><tr style="border-bottom:2px solid var(--color-border);">
-            <th scope="col" style="text-align:left;padding:6px 4px;">EPI</th>
-            <th scope="col" style="text-align:center;padding:6px 4px;width:80px;">Qtd</th>
-            <th scope="col" style="text-align:center;padding:6px 4px;width:70px;">Remover</th>
+            <th scope="col" style="text-align:left;padding:6px 4px;" data-i18n="epi.tableName">EPI</th>
+            <th scope="col" style="text-align:center;padding:6px 4px;width:80px;" data-i18n="stock.receipt.qty">Qtd</th>
+            <th scope="col" style="text-align:center;padding:6px 4px;width:70px;" data-i18n="user.remove">Remover</th>
           </tr></thead>
           <tbody>
             ${editableItems.map(item => `<tr data-rr-row="${esc(item.id)}" style="border-bottom:1px solid var(--color-border);">
@@ -248,24 +248,24 @@
           </tbody>
         </table>
         <div style="margin-bottom:14px;border:1px dashed var(--color-border);border-radius:6px;padding:12px;">
-          <strong style="font-size:13px;">Acrescentar EPI</strong>
+          <strong style="font-size:13px;" data-i18n="ui.purchases.acrescentar_epi_7a3697">Acrescentar EPI</strong>
           <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;flex-wrap:wrap;">
-            <label style="flex:1;min-width:200px;">EPI<select id="rr-add-epi" style="width:100%;margin-top:4px;"><option value="">Selecione...</option>${epiOptions}</select></label>
-            <label style="width:72px;">Qtd<input type="number" id="rr-add-qty" min="1" value="1" style="width:100%;margin-top:4px;padding:4px;"></label>
-            <button type="button" class="btn ghost" id="rr-add-btn" style="margin-bottom:1px;">+ Adicionar</button>
+            <label style="flex:1;min-width:200px;" data-i18n="epi.tableName">EPI<select id="rr-add-epi" style="width:100%;margin-top:4px;"><option value="" data-i18n="purchase.functionsSelectPlaceholder">Selecione...</option>${epiOptions}</select></label>
+            <label style="width:72px;" data-i18n="stock.receipt.qty">Qtd<input type="number" id="rr-add-qty" min="1" value="1" style="width:100%;margin-top:4px;padding:4px;"></label>
+            <button type="button" class="btn ghost" id="rr-add-btn" style="margin-bottom:1px;" data-i18n="ui.compras.adicionar_c7880f">+ Adicionar</button>
           </div>
           <table id="rr-new-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;display:none;">
-            <thead><tr><th scope="col" style="text-align:left;">EPI</th><th scope="col" style="text-align:center;">Qtd</th><th scope="col"></th></tr></thead>
+            <thead><tr><th scope="col" style="text-align:left;" data-i18n="epi.tableName">EPI</th><th scope="col" style="text-align:center;" data-i18n="stock.receipt.qty">Qtd</th><th scope="col"></th></tr></thead>
             <tbody id="rr-new-tbody"></tbody>
           </table>
         </div>
-        <label style="display:block;margin-bottom:14px;">Observações / Justificativa
-          <textarea id="rr-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva as correções realizadas...">${esc(pr.notes || '')}</textarea>
+        <label style="display:block;margin-bottom:14px;" data-i18n="ui.purchases.observacoes_justificativa_269687">Observações / Justificativa
+          <textarea id="rr-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva as correções realizadas..." data-i18n-placeholder="ui.purchases.descreva_as_correcoes_realizadas_4f0d2d">${esc(pr.notes || '')}</textarea>
         </label>
         <div id="rr-error" style="display:none;color:var(--color-danger);font-size:13px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn ghost" id="rr-cancel">Cancelar</button>
-          <button class="btn" id="rr-confirm">Salvar Correções</button>
+          <button class="btn ghost" id="rr-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
+          <button class="btn" id="rr-confirm" data-i18n="ui.purchases.salvar_correcoes_121d25">Salvar Correções</button>
         </div>
       </div>`;
       document.body.appendChild(overlay);
@@ -313,10 +313,10 @@
           const state2 = getState();
           await api(`/api/purchase-requests/${pr.id}/review-items`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, updates, add_items: newItems, remove_item_ids: removeItemIds, notes }) });
           finish(true);
-          showToast('Correções da requisição salvas.');
+          showToast((globalThis.trEpi?.('ui.purchases.correcoes_da_requisicao_salvas_01baa5','Corre\u00e7\u00f5es da requisi\u00e7\u00e3o salvas.',{}) ?? 'Corre\u00e7\u00f5es da requisi\u00e7\u00e3o salvas.'));
           globalThis.openPrDetail?.(pr.id);
         } catch (error) {
-          if (errorEl) { errorEl.style.display = ''; errorEl.textContent = error.message || 'Erro ao salvar correções.'; }
+          if (errorEl) { errorEl.style.display = ''; errorEl.textContent = error.message || ((globalThis.EpiI18n?.textFor?.(errorEl,'ui.purchases.erro_ao_salvar_correcoes_631e39','Erro ao salvar corre\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.purchases.erro_ao_salvar_correcoes_631e39','Erro ao salvar corre\u00e7\u00f5es.',{})) ?? 'Erro ao salvar corre\u00e7\u00f5es.'); }
         }
       });
     });
@@ -352,7 +352,7 @@
     safeOn(document.getElementById('aprovacoes-refresh'), 'click', () => globalThis.loadAprovacoesSolicitacoes?.());
     safeOn(document.getElementById('aprovacoes-aprovar-btn'), 'click', async () => {
       if (!globalThis._selectedAprovacoes?.size) {return;}
-      if (!confirm(`Aprovar ${globalThis._selectedAprovacoes.size} solicitação(ões)?`)) {return;}
+      if (!confirm((globalThis.trEpi?.('ui.purchases.aprovar_p0_solicitacao_oes_cf3b60','Aprovar {p0} solicita\u00e7\u00e3o(\u00f5es)?',{p0:(globalThis._selectedAprovacoes.size)}) ?? `Aprovar ${globalThis._selectedAprovacoes.size} solicitação(ões)?`))) {return;}
       globalThis._executarAprovacaoEmLote?.(globalThis._buildBulkUpdates?.('aprovado'));
     });
     safeOn(document.getElementById('aprovacoes-reprovar-btn'), 'click', () => {
@@ -380,7 +380,7 @@
       const motivo = document.getElementById('aprovacoes-reprovar-motivo')?.value;
       const outro = document.getElementById('aprovacoes-reprovar-outro')?.value?.trim();
       const reason = motivo === 'Outro' ? (outro || 'Outro') : motivo;
-      if (!reason) { alert('Selecione o motivo da reprovação.'); return; }
+      if (!reason) { alert((globalThis.trEpi?.('ui.purchases.selecione_o_motivo_da_reprovacao_2254f8','Selecione o motivo da reprova\u00e7\u00e3o.',{}) ?? 'Selecione o motivo da reprova\u00e7\u00e3o.')); return; }
       document.getElementById('aprovacoes-reprovar-modal').style.display = 'none';
       globalThis._executarAprovacaoEmLote?.(globalThis._buildBulkUpdates?.('rejeitado', { rejection_reason: reason }));
     });
@@ -390,7 +390,7 @@
     });
     safeOn(document.getElementById('aprovacoes-prorrogar-confirm'), 'click', async () => {
       const date = document.getElementById('aprovacoes-prorrogar-data')?.value;
-      if (!date) { alert('Informe a data de prorrogação.'); return; }
+      if (!date) { alert((globalThis.trEpi?.('ui.purchases.informe_a_data_de_prorrogacao_9aa278','Informe a data de prorroga\u00e7\u00e3o.',{}) ?? 'Informe a data de prorroga\u00e7\u00e3o.')); return; }
       document.getElementById('aprovacoes-prorrogar-modal').style.display = 'none';
       globalThis._executarAprovacaoEmLote?.(globalThis._buildBulkUpdates?.('prorrogado', { postponed_until: date }));
     });
@@ -409,7 +409,7 @@
   function requireQuoteImportFn(name) {
     const fn = globalThis[name];
     if (typeof fn !== 'function') {
-      throw new Error(`Importação de cotação indisponível (${name} não carregou). Recarregue a página.`);
+      throw new Error((globalThis.trEpi?.('ui.purchases.importacao_de_cotacao_indisponivel_p0_nao_carregou_recarregue_a_pagina_a46115','Importa\u00e7\u00e3o de cota\u00e7\u00e3o indispon\u00edvel ({p0} n\u00e3o carregou). Recarregue a p\u00e1gina.',{p0:(name)}) ?? `Importação de cotação indisponível (${name} não carregou). Recarregue a página.`));
     }
     return fn;
   }
@@ -420,7 +420,7 @@
   function quoteImportPrItems(pr) {
     const detail = globalThis._currentPrDetail;
     if (!detail || String(detail.item?.id ?? '') !== String(pr.id)) {
-      throw new Error('Detalhe da requisição indisponível. Reabra a requisição e importe novamente.');
+      throw new Error((globalThis.trEpi?.('ui.purchases.detalhe_da_requisicao_indisponivel_reabra_a_requisicao_e_importe_novamente_43deca','Detalhe da requisi\u00e7\u00e3o indispon\u00edvel. Reabra a requisi\u00e7\u00e3o e importe novamente.',{}) ?? 'Detalhe da requisi\u00e7\u00e3o indispon\u00edvel. Reabra a requisi\u00e7\u00e3o e importe novamente.'));
     }
     return (detail.items || []).filter(item => !['approved','partially_approved'].includes(String(pr.status || '')) || String(item.status || '') === 'approved');
   }
@@ -449,8 +449,8 @@
     if (sizes) { parts.push(sizes); }
     if (candidate.blocked) { return `⛔ ${parts.join(' · ')} — ${candidate.blockReason}`; }
     if (candidate.contradicted) { return `${parts.join(' · ')} — diverge do arquivo`; }
-    if (!candidate.eligible) { return `${parts.join(' · ')} — identificação insuficiente`; }
-    return `${parts.join(' · ')}${suggested ? ' — sugerido' : ''}`;
+    if (!candidate.eligible) { return (globalThis.trEpi?.('ui.purchases.p0_identificacao_insuficiente_210588','{p0} \u2014 identifica\u00e7\u00e3o insuficiente',{p0:(parts.join(' · '))}) ?? `${parts.join(' · ')} — identificação insuficiente`); }
+    return `${parts.join(' · ')}${suggested ? (globalThis.trEpi?.('ui.purchases.sugerido_c672af',' \u2014 sugerido',{}) ?? ' \u2014 sugerido') : ''}`;
   }
 
   function quoteRowView(rowEval, decision, parseMoney, parseQuantity) {
@@ -479,11 +479,11 @@
     const validate = requireQuoteImportFn('validatePurchaseImportDecisions');
     const parseMoney = requireQuoteImportFn('_parsePurchaseMoney');
     const parseQuantity = requireQuoteImportFn('_parsePurchaseQuantity');
-    const errors = validate(quoteImport.evaluation, quoteImport.decisions);
+    const errors = validate(quoteImport.evaluation, quoteImport.decisions, tr);
     if (errors.length) { throw new Error(errors.join(' ')); }
     const lines = quoteImport.evaluation.map((rowEval) => ({ rowEval, ...quoteRowView(rowEval, quoteImport.decisions[rowEval.rowIndex], parseMoney, parseQuantity) }));
     const associated = lines.filter((l) => !l.ignored && l.candidate);
-    if (!associated.length) { throw new Error('Nenhuma linha foi associada a um item da requisição.'); }
+    if (!associated.length) { throw new Error((globalThis.trEpi?.('ui.purchases.nenhuma_linha_foi_associada_a_um_item_da_requisicao_470470','Nenhuma linha foi associada a um item da requisi\u00e7\u00e3o.',{}) ?? 'Nenhuma linha foi associada a um item da requisi\u00e7\u00e3o.')); }
     return { kind, associated, ignored: lines.filter((l) => l.ignored).length };
   }
 
@@ -517,7 +517,7 @@
     const body = document.getElementById('req-po-csv-confirm-body');
     const check = document.getElementById('req-po-csv-confirm-check');
     const confirmBtn = document.getElementById('req-po-csv-confirm-btn');
-    if (!box || !body) { throw new Error('Confirmação indisponível. Recarregue a página.'); }
+    if (!box || !body) { throw new Error((globalThis.trEpi?.('ui.purchases.confirmacao_indisponivel_recarregue_a_pagina_cd082f','Confirma\u00e7\u00e3o indispon\u00edvel. Recarregue a p\u00e1gina.',{}) ?? 'Confirma\u00e7\u00e3o indispon\u00edvel. Recarregue a p\u00e1gina.')); }
     let grand = 0;
     const rowsHtml = operation.associated.map((l) => {
       grand += l.total;
@@ -527,17 +527,17 @@
       return `<tr>
       <td>${l.rowEval.rowIndex + 1}</td>
       <td>${esc(row.epi || '—')}<br><small>CA ${esc(row.ca || 'ausente')}</small></td>
-      <td><strong>#${esc(l.candidate.itemId)}</strong> ${esc(item.epi_name || item.epi_display_name || '')}<br><small>CA ${esc(item.ca || item.epi_ca || '—')} · coincide: ${esc(l.candidate.matches.join(', '))}</small>${warn}</td>
+      <td><strong>#${esc(l.candidate.itemId)}</strong> ${esc(item.epi_name || item.epi_display_name || '')}<br><small>${(globalThis.EpiI18n?.bindText?.('ui.purchases.ca_p5_coincide_p6_91e862',{p5:(item.ca || item.epi_ca || '—'),p6:((globalThis.__EPI_PURCHASE_IMPORT_LABELS__?.matches(l.candidate.matches) ?? l.candidate.matches.join(', ')))},'CA {p5} \u00b7 coincide: {p6}') ?? `CA ${esc(item.ca || item.epi_ca || '—')} · coincide: ${esc((globalThis.__EPI_PURCHASE_IMPORT_LABELS__?.matches(l.candidate.matches) ?? l.candidate.matches.join(', ')))}`)}</small>${warn}</td>
       <td>${l.qty}</td><td>${fmtBrl(l.price)}</td><td>${fmtBrl(l.total)}</td>
     </tr>`;
     }).join('');
-    const action = operation.kind === 'po' ? 'Criar a PO com' : 'Gravar preço em';
-    body.innerHTML = `<p style="margin:0 0 6px;">${action} <strong>${operation.associated.length}</strong> item(ns). Linhas não importadas: ${operation.ignored}.</p>
-    <table style="font-size:12px;"><thead><tr><th scope="col">Linha</th><th scope="col">No arquivo</th><th scope="col">Item da requisição</th><th scope="col">Qtd</th><th scope="col">Vlr Unit.</th><th scope="col">Total</th></tr></thead>
+    const action = operation.kind === 'po' ? (globalThis.trEpi?.('ui.purchases.criar_a_po_com_9dd5c5','Criar a PO com',{}) ?? 'Criar a PO com') : (globalThis.trEpi?.('ui.purchases.gravar_preco_em_7b16fc','Gravar pre\u00e7o em',{}) ?? 'Gravar pre\u00e7o em');
+    body.innerHTML = `<p style="margin:0 0 6px;">${action} <strong>${operation.associated.length}</strong> ${(globalThis.EpiI18n?.bindText?.('ui.purchases.item_ns_linhas_nao_importadas_p2_7ca067',{p2:(operation.ignored)},'item(ns). Linhas n\u00e3o importadas: {p2}.') ?? `item(ns). Linhas não importadas: ${operation.ignored}.`)}</p>
+    <table style="font-size:12px;"><thead><tr><th scope="col" data-i18n="ui.purchases.linha_c6d3c6">Linha</th><th scope="col" data-i18n="ui.purchases.no_arquivo_62ea80">No arquivo</th><th scope="col" data-i18n="ui.purchases.item_da_requisicao_ae27eb">Item da requisição</th><th scope="col" data-i18n="stock.receipt.qty">Qtd</th><th scope="col" data-i18n="ui.compras.vlr_unit_cf81b5">Vlr Unit.</th><th scope="col" data-i18n="evaluation.total">Total</th></tr></thead>
     <tbody>${rowsHtml}</tbody></table>
-    <div style="margin-top:6px;font-weight:600;">Total confirmado: ${fmtBrl(grand)}</div>`;
+    <div style="margin-top:6px;font-weight:600;">${(globalThis.EpiI18n?.bindText?.('ui.purchases.total_confirmado_p4_5e4ed1',{p4:(fmtBrl(grand))},'Total confirmado: {p4}') ?? `Total confirmado: ${fmtBrl(grand)}`)}</div>`;
     if (check) { check.checked = false; }
-    if (confirmBtn) { confirmBtn.textContent = operation.kind === 'po' ? 'Confirmar e criar PO' : 'Confirmar e salvar preços'; }
+    if (confirmBtn) { confirmBtn.textContent = operation.kind === 'po' ? ((globalThis.EpiI18n?.textFor?.(confirmBtn,'ui.purchases.confirmar_e_criar_po_7c3da0','Confirmar e criar PO',{}) ?? globalThis.trEpi?.('ui.purchases.confirmar_e_criar_po_7c3da0','Confirmar e criar PO',{})) ?? 'Confirmar e criar PO') : ((globalThis.EpiI18n?.textFor?.(confirmBtn,'ui.purchases.confirmar_e_salvar_precos_0fbbab','Confirmar e salvar pre\u00e7os',{}) ?? globalThis.trEpi?.('ui.purchases.confirmar_e_salvar_precos_0fbbab','Confirmar e salvar pre\u00e7os',{})) ?? 'Confirmar e salvar pre\u00e7os'); }
     box.style.display = '';
   }
 
@@ -575,12 +575,12 @@
 
     if (previewBtn) {previewBtn.onclick = async () => {
       const file = document.getElementById('req-po-csv-file')?.files?.[0];
-      if (!file) { if (feedback) {feedback.textContent = 'Selecione um arquivo CSV ou XLSX.';} return; }
+      if (!file) { if (feedback) {feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.selecione_um_arquivo_csv_ou_xlsx_f6ea32','Selecione um arquivo CSV ou XLSX.',{}) ?? globalThis.trEpi?.('ui.purchases.selecione_um_arquivo_csv_ou_xlsx_f6ea32','Selecione um arquivo CSV ou XLSX.',{})) ?? 'Selecione um arquivo CSV ou XLSX.');} return; }
       try {
-        if (feedback) { feedback.textContent = 'Lendo arquivo...'; feedback.style.color = ''; }
+        if (feedback) { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.lendo_arquivo_3a1608','Lendo arquivo...',{}) ?? globalThis.trEpi?.('ui.purchases.lendo_arquivo_3a1608','Lendo arquivo...',{})) ?? 'Lendo arquivo...'); feedback.style.color = ''; }
         const result = await requireQuoteImportFn('_parsePoImportFile')(file, pr.id) || [];
-        if (!result.length) { if (feedback) {feedback.textContent = 'Nenhuma linha válida encontrada no arquivo.';} return; }
-        const evaluation = requireQuoteImportFn('evaluatePurchaseImportCandidates')(result, quoteImportPrItems(pr));
+        if (!result.length) { if (feedback) {feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.nenhuma_linha_valida_encontrada_no_arquivo_530aff','Nenhuma linha v\u00e1lida encontrada no arquivo.',{}) ?? globalThis.trEpi?.('ui.purchases.nenhuma_linha_valida_encontrada_no_arquivo_530aff','Nenhuma linha v\u00e1lida encontrada no arquivo.',{})) ?? 'Nenhuma linha v\u00e1lida encontrada no arquivo.');} return; }
+        const evaluation = requireQuoteImportFn('evaluatePurchaseImportCandidates')(result, quoteImportPrItems(pr), tr);
         quoteImport.rows = result;
         quoteImport.evaluation = evaluation;
         quoteImport.decisions = evaluation.map((r) => (r.suggestedItemId != null ? String(r.suggestedItemId) : ''));
@@ -589,9 +589,9 @@
         globalThis._poCsvParsed = result;
         if (confirmBox) {confirmBox.style.display = 'none';}
         if (preview) {preview.style.display = '';}
-        if (feedback) { feedback.textContent = 'Confira a associação de cada linha antes de salvar.'; feedback.style.color = ''; }
+        if (feedback) { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.confira_a_associacao_de_cada_linha_antes_de_salvar_4d3fd1','Confira a associa\u00e7\u00e3o de cada linha antes de salvar.',{}) ?? globalThis.trEpi?.('ui.purchases.confira_a_associacao_de_cada_linha_antes_de_salvar_4d3fd1','Confira a associa\u00e7\u00e3o de cada linha antes de salvar.',{})) ?? 'Confira a associa\u00e7\u00e3o de cada linha antes de salvar.'); feedback.style.color = ''; }
       } catch (error) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || 'Erro ao ler arquivo de cotação.'; }
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = error.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.erro_ao_ler_arquivo_de_cotacao_b45e5f','Erro ao ler arquivo de cota\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.purchases.erro_ao_ler_arquivo_de_cotacao_b45e5f','Erro ao ler arquivo de cota\u00e7\u00e3o.',{})) ?? 'Erro ao ler arquivo de cota\u00e7\u00e3o.'); }
       }
     };}
 
@@ -607,16 +607,16 @@
     };}
 
     const prepare = (kind) => {
-      if (!quoteImport.rows.length) { showQuoteImportError(feedback, new Error('Visualize o arquivo antes de continuar.')); return; }
+      if (!quoteImport.rows.length) { showQuoteImportError(feedback, new Error((globalThis.trEpi?.('ui.purchases.visualize_o_arquivo_antes_de_continuar_00b39a','Visualize o arquivo antes de continuar.',{}) ?? 'Visualize o arquivo antes de continuar.'))); return; }
       try {
         quoteImportPrItems(pr);
         if (kind === 'po' && !document.getElementById('req-po-csv-supplier')?.value?.trim()) {
-          throw new Error('Informe o fornecedor principal.');
+          throw new Error((globalThis.trEpi?.('ui.purchases.informe_o_fornecedor_principal_60c159','Informe o fornecedor principal.',{}) ?? 'Informe o fornecedor principal.'));
         }
         const operation = buildQuoteImportOperation(kind);
         renderQuoteConfirmation(operation);
         quoteImport.pending = operation;
-        if (feedback) { feedback.style.color = ''; feedback.textContent = 'Revise o resumo e confirme.'; }
+        if (feedback) { feedback.style.color = ''; feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.revise_o_resumo_e_confirme_358f3d','Revise o resumo e confirme.',{}) ?? globalThis.trEpi?.('ui.purchases.revise_o_resumo_e_confirme_358f3d','Revise o resumo e confirme.',{})) ?? 'Revise o resumo e confirme.'); }
       } catch (error) { quoteImport.pending = null; showQuoteImportError(feedback, error); }
     };
     if (savePricesBtn) {savePricesBtn.onclick = () => prepare('save');}
@@ -625,14 +625,14 @@
     if (confirmCancelBtn) {confirmCancelBtn.onclick = () => {
       quoteImport.pending = null;
       if (confirmBox) {confirmBox.style.display = 'none';}
-      if (feedback) { feedback.style.color = ''; feedback.textContent = 'Nada foi gravado. Revise as associações.'; }
+      if (feedback) { feedback.style.color = ''; feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.nada_foi_gravado_revise_as_associacoes_ee0a20','Nada foi gravado. Revise as associa\u00e7\u00f5es.',{}) ?? globalThis.trEpi?.('ui.purchases.nada_foi_gravado_revise_as_associacoes_ee0a20','Nada foi gravado. Revise as associa\u00e7\u00f5es.',{})) ?? 'Nada foi gravado. Revise as associa\u00e7\u00f5es.'); }
     };}
 
     if (confirmBtn) {confirmBtn.onclick = async () => {
       const operation = quoteImport.pending;
-      if (!operation) { showQuoteImportError(feedback, new Error('Nada a confirmar. Revise as associações.')); return; }
+      if (!operation) { showQuoteImportError(feedback, new Error((globalThis.trEpi?.('ui.purchases.nada_a_confirmar_revise_as_associacoes_9351e0','Nada a confirmar. Revise as associa\u00e7\u00f5es.',{}) ?? 'Nada a confirmar. Revise as associa\u00e7\u00f5es.'))); return; }
       if (!document.getElementById('req-po-csv-confirm-check')?.checked) {
-        showQuoteImportError(feedback, new Error('Marque a conferência das associações, preços e quantidades antes de confirmar.'));
+        showQuoteImportError(feedback, new Error((globalThis.trEpi?.('ui.purchases.marque_a_conferencia_das_associacoes_precos_e_quantidades_antes_de_confirma_eb8eaf','Marque a confer\u00eancia das associa\u00e7\u00f5es, pre\u00e7os e quantidades antes de confirmar.',{}) ?? 'Marque a confer\u00eancia das associa\u00e7\u00f5es, pre\u00e7os e quantidades antes de confirmar.')));
         return;
       }
       let fresh;
@@ -645,7 +645,7 @@
       const state2 = getState();
       try {
         if (fresh.kind === 'save') {
-          if (feedback) { feedback.textContent = 'Salvando preços...'; feedback.style.color = ''; }
+          if (feedback) { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.salvando_precos_32cb35','Salvando pre\u00e7os...',{}) ?? globalThis.trEpi?.('ui.purchases.salvando_precos_32cb35','Salvando pre\u00e7os...',{})) ?? 'Salvando pre\u00e7os...'); feedback.style.color = ''; }
           const items = fresh.associated.map((l) => ({ item_id: l.candidate.itemId, unit_price: l.price, quantity: l.qty, ...quoteAssociationPayload(l) }));
           const response = await api(`/api/purchase-requests/${pr.id}/save-prices`, { method: 'POST', body: JSON.stringify({ actor_user_id: state2.user?.id, items }) });
           const affected = new Set((response?.affected_item_ids || []).map(String));
@@ -656,11 +656,11 @@
           // A reabertura reinicia o painel; a confirmação vem depois dela.
           if (feedback) {
             feedback.style.color = skipped.length ? 'var(--color-warning)' : 'var(--color-success)';
-            feedback.textContent = `Preços salvos em ${items.length - skipped.length} item(s) confirmados. Status atualizado.`
-              + (skipped.length ? ` Não alterados (já aprovados): ${skipped.join(', ')}.` : '');
+            feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.precos_salvos_em_p0_item_s_confirmados_status_atualizado_b31c12','Pre\u00e7os salvos em {p0} item(s) confirmados. Status atualizado.',{p0:(items.length - skipped.length)}) ?? globalThis.trEpi?.('ui.purchases.precos_salvos_em_p0_item_s_confirmados_status_atualizado_b31c12','Pre\u00e7os salvos em {p0} item(s) confirmados. Status atualizado.',{p0:(items.length - skipped.length)})) ?? `Preços salvos em ${items.length - skipped.length} item(s) confirmados. Status atualizado.`)
+              + (skipped.length ? ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.nao_alterados_ja_aprovados_p0_606aa8',' N\u00e3o alterados (j\u00e1 aprovados): {p0}.',{p0:(skipped.join(', '))}) ?? globalThis.trEpi?.('ui.purchases.nao_alterados_ja_aprovados_p0_606aa8',' N\u00e3o alterados (j\u00e1 aprovados): {p0}.',{p0:(skipped.join(', '))})) ?? ` Não alterados (já aprovados): ${skipped.join(', ')}.`) : '');
           }
         } else {
-          if (feedback) { feedback.textContent = 'Criando PO...'; feedback.style.color = ''; }
+          if (feedback) { feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.criando_po_ca3f6a','Criando PO...',{}) ?? globalThis.trEpi?.('ui.purchases.criando_po_ca3f6a','Criando PO...',{})) ?? 'Criando PO...'); feedback.style.color = ''; }
           const supplier = document.getElementById('req-po-csv-supplier')?.value?.trim();
           const poNumber = document.getElementById('req-po-csv-number')?.value?.trim();
           const items = fresh.associated.map((l) => {
@@ -701,11 +701,11 @@
           globalThis._poCsvParsed = [];
           await globalThis.openPrDetail?.(pr.id);
           globalThis.loadPurchaseOrders?.();
-          if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = `PO criada com ${items.length} item(s) confirmados.`; }
+          if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.po_criada_com_p0_item_s_confirmados_c9c940','PO criada com {p0} item(s) confirmados.',{p0:(items.length)}) ?? globalThis.trEpi?.('ui.purchases.po_criada_com_p0_item_s_confirmados_c9c940','PO criada com {p0} item(s) confirmados.',{p0:(items.length)})) ?? `PO criada com ${items.length} item(s) confirmados.`); }
         }
         if (confirmBox) {confirmBox.style.display = 'none';}
       } catch(err) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || 'Erro ao gravar a cotação.'; }
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = err.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.erro_ao_gravar_a_cotacao_dc40e8','Erro ao gravar a cota\u00e7\u00e3o.',{}) ?? globalThis.trEpi?.('ui.purchases.erro_ao_gravar_a_cotacao_dc40e8','Erro ao gravar a cota\u00e7\u00e3o.',{})) ?? 'Erro ao gravar a cota\u00e7\u00e3o.'); }
       } finally {
         if (confirmBtn) {confirmBtn.disabled = false;}
       }
@@ -749,19 +749,19 @@
       const decision = decisions?.[idx] ?? '';
       const view = quoteRowView(rowEval, decision, parseMoney, parseQuantity);
       if (!view.ignored) { grandTotal += view.total; }
-      const options = [`<option value=""${decision === '' ? ' selected' : ''}>— escolha o item —</option>`]
+      const options = [`<option value=""${decision === '' ? ' selected' : ''} data-i18n="ui.purchases.escolha_o_item_f3775c">— escolha o item —</option>`]
         .concat(rowEval.candidates.map((c) => {
           const selectable = c.eligible && !c.blocked;
           const selected = String(c.itemId) === String(decision) ? ' selected' : '';
           return `<option value="${esc(c.itemId)}"${selected}${selectable ? '' : ' disabled'}>${esc(quoteCandidateLabel(c, String(c.itemId) === String(rowEval.suggestedItemId)))}</option>`;
         }))
-        .concat([`<option value="ignore"${decision === 'ignore' ? ' selected' : ''}>Não importar esta linha</option>`])
+        .concat([`<option value="ignore"${decision === 'ignore' ? ' selected' : ''} data-i18n="ui.purchases.nao_importar_esta_linha_90824a">Não importar esta linha</option>`])
         .join('');
       const notes = [];
       if (view.candidate) {
-        if (view.candidate.matches.length) { notes.push(`<div style="color:var(--color-success);">✔ coincide: ${esc(view.candidate.matches.join(', '))}</div>`); }
+        if (view.candidate.matches.length) { notes.push(`<div style="color:var(--color-success);">${(globalThis.EpiI18n?.bindText?.('ui.purchases.coincide_p0_4e38a9',{p0:((globalThis.__EPI_PURCHASE_IMPORT_LABELS__?.matches(view.candidate.matches) ?? view.candidate.matches.join(', ')))},'\u2714 coincide: {p0}') ?? `✔ coincide: ${esc((globalThis.__EPI_PURCHASE_IMPORT_LABELS__?.matches(view.candidate.matches) ?? view.candidate.matches.join(', ')))}`)}</div>`); }
         if (view.candidate.divergences.length) { notes.push(`<div style="color:var(--color-warning);">⚠ ${esc(view.candidate.divergences.join('; '))}</div>`); }
-        if (String(view.candidate.itemId) === String(rowEval.suggestedItemId)) { notes.push('<div>Sugestão automática: confirme se é este o item.</div>'); }
+        if (String(view.candidate.itemId) === String(rowEval.suggestedItemId)) { notes.push('<div data-i18n="ui.purchases.sugestao_automatica_confirme_se_e_este_o_item_100f5b">Sugest\u00e3o autom\u00e1tica: confirme se \u00e9 este o item.</div>'); }
       }
       rowEval.notes.forEach((n) => notes.push(`<div style="color:var(--color-warning);">${esc(n)}</div>`));
       const blocked = rowEval.candidates.filter((c) => c.blocked);
@@ -770,10 +770,10 @@
       <td>${esc(r.epi || '—')}</td><td>${esc(r.ca || '—')}</td><td>${esc(r.fabricante || '—')}${r.modelo ? `<br><small>${esc(r.modelo)}</small>` : ''}</td>
       <td>${esc(r.fornecedor || '—')}</td><td>${esc([r.tamanho_luva ? `L:${r.tamanho_luva}`:null, r.tamanho ? `T:${r.tamanho}`:null, r.tamanho_uniforme ? `U:${r.tamanho_uniforme}`:null].filter(Boolean).join(' ') || '—')}</td>
       <td>${view.qty}</td><td>${fmtBrl(view.price)}</td><td>${fmtBrl(view.total)}</td>
-      <td style="min-width:260px;"><select data-quote-row="${idx}" aria-label="Item da requisição para a linha ${idx + 1}">${options}</select><div style="font-size:11px;margin-top:2px;">${notes.join('')}</div></td>
+      <td style="min-width:260px;"><select data-quote-row="${idx}" aria-label="${globalThis.EpiI18n?.escapeMarkup?.((globalThis.trEpi?.('ui.purchases.item_da_requisicao_para_a_linha_p11_dcf96b','Item da requisi\u00e7\u00e3o para a linha {p11}',{p11:(idx + 1)}) ?? `Item da requisição para a linha ${idx + 1}`)) ?? `Item da requisição para a linha ${idx + 1}`}">${options}</select><div style="font-size:11px;margin-top:2px;">${notes.join('')}</div></td>
     </tr>`;
     }).join('');
-    if (totalEl) {totalEl.textContent = `Total das linhas a importar: ${fmtBrl(grandTotal)}`;}
+    if (totalEl) {totalEl.textContent = ((globalThis.EpiI18n?.textFor?.(totalEl,'ui.purchases.total_das_linhas_a_importar_p0_b64b7e','Total das linhas a importar: {p0}',{p0:(fmtBrl(grandTotal))}) ?? globalThis.trEpi?.('ui.purchases.total_das_linhas_a_importar_p0_b64b7e','Total das linhas a importar: {p0}',{p0:(fmtBrl(grandTotal))})) ?? `Total das linhas a importar: ${fmtBrl(grandTotal)}`);}
   }
 
   // ── initPurchaseModule ──────────────────────────────────────────────────────
@@ -857,7 +857,7 @@
               epi_request_id: null,
               glove_size: s.glove_size || 'N/A', size: s.size || 'N/A', uniform_size: s.uniform_size || 'N/A',
             }));
-          if (perSize.length) return perSize;
+          if (perSize.length) {return perSize;}
         }
         return [{
           epi_id: d.epi_id, quantity_requested: d.quantity_requested || d.quantity || 1,
@@ -892,8 +892,8 @@
       const uniformSizeSel = document.getElementById('purchase-request-uniform-size');
       const epiId = epiSel?.value;
       const qty = parseInt(qtyInput?.value || '1', 10);
-      if (!epiId) { alert('Selecione um EPI para adicionar.'); return; }
-      if (!qty || qty < 1) { alert('Informe uma quantidade válida.'); return; }
+      if (!epiId) { alert((globalThis.trEpi?.('ui.purchases.selecione_um_epi_para_adicionar_d195dd','Selecione um EPI para adicionar.',{}) ?? 'Selecione um EPI para adicionar.')); return; }
+      if (!qty || qty < 1) { alert((globalThis.trEpi?.('ui.purchases.informe_uma_quantidade_valida_117aa4','Informe uma quantidade v\u00e1lida.',{}) ?? 'Informe uma quantidade v\u00e1lida.')); return; }
       if (!globalThis._manualRequestItems) {globalThis._manualRequestItems = [];}
       globalThis._manualRequestItems.push({
         epi_id: Number(epiId),
@@ -928,7 +928,7 @@
       let items;
       try { items = JSON.parse(itemsJson); } catch { items = []; }
       if (!items.length) {
-        alert('Adicione ao menos um EPI à requisição usando o seletor acima.');
+        alert((globalThis.trEpi?.('ui.purchases.adicione_ao_menos_um_epi_a_requisicao_usando_o_seletor_acima_b6fe2c','Adicione ao menos um EPI \u00e0 requisi\u00e7\u00e3o usando o seletor acima.',{}) ?? 'Adicione ao menos um EPI \u00e0 requisi\u00e7\u00e3o usando o seletor acima.'));
         return;
       }
       const state2 = getState();
@@ -948,9 +948,9 @@
         globalThis._selectedDemands?.clear();
         globalThis.updateCreateRequestBtn?.();
         globalThis.loadPurchaseDemands?.();
-        alert('Requisição criada com sucesso!');
+        alert((globalThis.trEpi?.('ui.purchases.requisicao_criada_com_sucesso_91da6b','Requisi\u00e7\u00e3o criada com sucesso!',{}) ?? 'Requisi\u00e7\u00e3o criada com sucesso!'));
       } catch(err) {
-        alert(err.message || 'Erro ao criar requisição.');
+        alert(err.message || (globalThis.trEpi?.('ui.purchases.erro_ao_criar_requisicao_da0d6e','Erro ao criar requisi\u00e7\u00e3o.',{}) ?? 'Erro ao criar requisi\u00e7\u00e3o.'));
       } finally {
         if (submitBtn) {submitBtn.disabled = false;}
       }
@@ -1052,7 +1052,7 @@
       const cnpjInput = document.getElementById('po-supplier-cnpj');
       const statusEl = document.getElementById('po-supplier-status');
       if (cnpjInput) {cnpjInput.value = cnpj ? (globalThis.formatCNPJ?.(cnpj) || cnpj) : '';}
-      if (statusEl) {statusEl.textContent = e.target.value ? '✓ Fornecedor autorizado' : '';}
+      if (statusEl) {statusEl.textContent = e.target.value ? ((globalThis.EpiI18n?.textFor?.(statusEl,'ui.purchases.fornecedor_autorizado_0a4f30','\u2713 Fornecedor autorizado',{}) ?? globalThis.trEpi?.('ui.purchases.fornecedor_autorizado_0a4f30','\u2713 Fornecedor autorizado',{})) ?? '\u2713 Fornecedor autorizado') : '';}
     });
 
     // Fornecedores autorizados tab
@@ -1081,7 +1081,7 @@
     bindAppListener(document.getElementById('compras-suppliers-add-submit'), 'click', async () => {
       const feedback = document.getElementById('compras-suppliers-add-feedback');
       const name = document.getElementById('compras-supplier-name')?.value?.trim();
-      if (!name) { if (feedback) {feedback.textContent = 'Nome é obrigatório.';} return; }
+      if (!name) { if (feedback) {feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.nome_e_obrigatorio_a4329a','Nome \u00e9 obrigat\u00f3rio.',{}) ?? globalThis.trEpi?.('ui.purchases.nome_e_obrigatorio_a4329a','Nome \u00e9 obrigat\u00f3rio.',{})) ?? 'Nome \u00e9 obrigat\u00f3rio.');} return; }
       const state2 = getState();
       try {
         if (feedback) {feedback.textContent = '';}
@@ -1095,13 +1095,13 @@
             notes: document.getElementById('compras-supplier-notes')?.value?.trim() || '',
           })
         });
-        if (feedback) {feedback.textContent = 'Fornecedor salvo com sucesso.';}
+        if (feedback) {feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.fornecedor_salvo_com_sucesso_707d8c','Fornecedor salvo com sucesso.',{}) ?? globalThis.trEpi?.('ui.purchases.fornecedor_salvo_com_sucesso_707d8c','Fornecedor salvo com sucesso.',{})) ?? 'Fornecedor salvo com sucesso.');}
         ['compras-supplier-name','compras-supplier-cnpj','compras-supplier-email','compras-supplier-notes'].forEach(id => {
           const el = document.getElementById(id); if (el) {el.value = '';}
         });
         globalThis.loadAuthorizedSuppliers?.();
       } catch(e) {
-        if (feedback) {feedback.textContent = e.message || 'Erro ao salvar fornecedor.';}
+        if (feedback) {feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,'ui.purchases.erro_ao_salvar_fornecedor_813304','Erro ao salvar fornecedor.',{}) ?? globalThis.trEpi?.('ui.purchases.erro_ao_salvar_fornecedor_813304','Erro ao salvar fornecedor.',{})) ?? 'Erro ao salvar fornecedor.');}
       }
     });
     bindAppListener(document.getElementById('compras-suppliers-upload-btn'), 'click', () => {
@@ -1132,11 +1132,11 @@
     bindAppListener(document.getElementById('purchase-order-form'), 'submit', async (e) => {
       e.preventDefault();
       const form = e.target;
-      if (!form.elements.unit_id.value) { alert('Selecione a unidade.'); return; }
-      if (!form.elements.supplier.value) { alert('Selecione o fornecedor.'); return; }
+      if (!form.elements.unit_id.value) { alert((globalThis.trEpi?.('ui.purchases.selecione_a_unidade_e74c5a','Selecione a unidade.',{}) ?? 'Selecione a unidade.')); return; }
+      if (!form.elements.supplier.value) { alert((globalThis.trEpi?.('ui.purchases.selecione_o_fornecedor_ae7e21','Selecione o fornecedor.',{}) ?? 'Selecione o fornecedor.')); return; }
       const items = globalThis.collectPoItems?.() || [];
-      if (!items.length) { alert('Adicione ao menos um item.'); return; }
-      if (items.some(i => !i.epi_id)) { alert('Selecione o EPI em todos os itens.'); return; }
+      if (!items.length) { alert((globalThis.trEpi?.('ui.purchases.adicione_ao_menos_um_item_553f89','Adicione ao menos um item.',{}) ?? 'Adicione ao menos um item.')); return; }
+      if (items.some(i => !i.epi_id)) { alert((globalThis.trEpi?.('ui.purchases.selecione_o_epi_em_todos_os_itens_618405','Selecione o EPI em todos os itens.',{}) ?? 'Selecione o EPI em todos os itens.')); return; }
       const state2 = getState();
       try {
         await api('/api/purchase-orders', { method: 'POST', body: JSON.stringify({
@@ -1161,12 +1161,28 @@
         const hint = document.getElementById('po-items-unit-hint');
         if (hint) {hint.style.display = '';}
         globalThis.loadPurchaseOrders?.();
-        alert('PO criada com sucesso!');
+        alert((globalThis.trEpi?.('ui.purchases.po_criada_com_sucesso_5f3046','PO criada com sucesso!',{}) ?? 'PO criada com sucesso!'));
       } catch(err) {
-        alert(err.message || 'Erro ao criar PO.');
+        alert(err.message || (globalThis.trEpi?.('ui.purchases.erro_ao_criar_po_3090d9','Erro ao criar PO.',{}) ?? 'Erro ao criar PO.'));
       }
     });
   }
+
+  // Atualiza somente a apresentação já carregada. Linhas assinadas,
+  // decisões do operador e checkbox de confirmação conservam seus valores.
+  globalThis.addEventListener?.('epi:langchange', () => {
+    if (!quoteImport.rows.length || !quoteImport.pr || !document.getElementById('req-po-csv-preview-tbody')) {return;}
+    quoteImport.evaluation = requireQuoteImportFn('evaluatePurchaseImportCandidates')(quoteImport.rows, quoteImportPrItems(quoteImport.pr), tr);
+    renderQuoteMapping();
+    const box = document.getElementById('req-po-csv-confirm');
+    if (quoteImport.pending && box && box.style.display !== 'none') {
+      const check = document.getElementById('req-po-csv-confirm-check');
+      const checked = Boolean(check?.checked);
+      quoteImport.pending = buildQuoteImportOperation(quoteImport.pending.kind);
+      renderQuoteConfirmation(quoteImport.pending);
+      if (check) {check.checked = checked;}
+    }
+  });
 
   // ── Exports ────────────────────────────────────────────────────────────────
 

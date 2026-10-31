@@ -1,0 +1,205 @@
+{
+  "note": "Backend and Flutter CI approved 8a0ded84 (Corporate) and 3b016875 (SaaS) before main integration. Integration fixes require their own exact-head checks linked in PRs. Whole task remains incomplete.",
+  "runs": [
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 41051335197,
+      "headSha": "8a0ded84677f578524279e0e936f95ff923f8ae6",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/41051335197"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 41051340440,
+      "headSha": "8a0ded84677f578524279e0e936f95ff923f8ae6",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/41051340440"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 41051337497,
+      "headSha": "3b016875bba78ac059a04eb4e055ab1f2d1688e5",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle-app/actions/runs/41051337497"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 41051342224,
+      "headSha": "3b016875bba78ac059a04eb4e055ab1f2d1688e5",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle-app/actions/runs/41051342224"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40717395418,
+      "headSha": "46fd5d677a10e5c4d1be0732f40c31a7c7393719",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40717395418"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40561809388,
+      "headSha": "5baea4bc1028b53ea6e6ff7a564b76c8281c1868",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40561809388"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40561803264,
+      "headSha": "5baea4bc1028b53ea6e6ff7a564b76c8281c1868",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40561803264"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40558058533,
+      "headSha": "c1faf3a3e58c05b2656a70ea67495d1ea451923a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40558058533"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40558053149,
+      "headSha": "c1faf3a3e58c05b2656a70ea67495d1ea451923a",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40558053149"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40552793834,
+      "headSha": "0f83da08d0ebff7b0f4e7aaa202634d5173ef44e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40552793834"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40552788644,
+      "headSha": "0f83da08d0ebff7b0f4e7aaa202634d5173ef44e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40552788644"
+    },
+    {
+      "workflowName": "Backend CI",
+      "databaseId": 40538504176,
+      "conclusion": "failure",
+      "headSha": "454bee6862a12dc820f78899cd3fb17331a7d5d5",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40538504176"
+    },
+    {
+      "workflowName": "Flutter CI",
+      "databaseId": 40538496487,
+      "conclusion": "success",
+      "headSha": "454bee6862a12dc820f78899cd3fb17331a7d5d5",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40538496487"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40534614724,
+      "headSha": "624d89153bfbddfd2853810b521376dd7f1811ed",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40534614724",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40534608574,
+      "headSha": "624d89153bfbddfd2853810b521376dd7f1811ed",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40534608574",
+      "workflowName": "Flutter CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40532653713,
+      "headSha": "51794c00955860f123e0704d7504edc127b3d626",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40532653713",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40439226968,
+      "headSha": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40439226968",
+      "workflowName": "Flutter CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40439223946,
+      "headSha": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40439223946",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40435981453,
+      "headSha": "3f32341d5be89cedf49024b2480b57156cad6b8c",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40435981453",
+      "workflowName": "Backend Isolation Guard"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40435978922,
+      "headSha": "3f32341d5be89cedf49024b2480b57156cad6b8c",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40435978922",
+      "workflowName": "Contract Tests"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40435975037,
+      "headSha": "3f32341d5be89cedf49024b2480b57156cad6b8c",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40435975037",
+      "workflowName": "Flutter CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40435971729,
+      "headSha": "3f32341d5be89cedf49024b2480b57156cad6b8c",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40435971729",
+      "workflowName": "Backend CI"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40434076866,
+      "headSha": "3693b04f7a7f6a50d60466f73fb3a72e883408df",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40434076866",
+      "workflowName": "Portal Docs V1"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40434074188,
+      "headSha": "3693b04f7a7f6a50d60466f73fb3a72e883408df",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40434074188",
+      "workflowName": "Flutter CI"
+    },
+    {
+      "conclusion": "failure",
+      "databaseId": 40434070887,
+      "headSha": "3693b04f7a7f6a50d60466f73fb3a72e883408df",
+      "status": "completed",
+      "url": "https://github.com/rocksbrothers-png/epi-controle/actions/runs/40434070887",
+      "workflowName": "Backend CI"
+    }
+  ]
+}

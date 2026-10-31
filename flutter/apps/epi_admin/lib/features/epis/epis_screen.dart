@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -57,7 +59,8 @@ class _EpisBodyState extends State<_EpisBody> {
         title: Text(l10n.episTitle),
         actions: [
           BlocBuilder<EpisCubit, EpisState>(
-            buildWhen: (prev, curr) => prev.filterCritical != curr.filterCritical,
+            buildWhen: (prev, curr) =>
+                prev.filterCritical != curr.filterCritical,
             builder: (ctx, state) => IconButton(
               icon: Icon(
                 Icons.inventory_2_outlined,
@@ -70,7 +73,9 @@ class _EpisBodyState extends State<_EpisBody> {
           BlocBuilder<EpisCubit, EpisState>(
             buildWhen: (prev, curr) => prev.showArchived != curr.showArchived,
             builder: (ctx, state) => IconButton(
-              tooltip: state.showArchived ? 'Ver EPIs ativos' : 'Ver EPIs arquivados',
+              tooltip: state.showArchived
+                  ? l10n.epiShowActive
+                  : l10n.epiShowArchived,
               icon: Icon(
                 state.showArchived
                     ? Icons.shield_outlined
@@ -89,7 +94,10 @@ class _EpisBodyState extends State<_EpisBody> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              EpiSpacing.lg, EpiSpacing.lg, EpiSpacing.lg, 0,
+              EpiSpacing.lg,
+              EpiSpacing.lg,
+              EpiSpacing.lg,
+              0,
             ),
             child: TextField(
               controller: _searchController,
@@ -128,14 +136,17 @@ class _EpisBodyState extends State<_EpisBody> {
                 if (state.showArchived) {
                   final archived = state.filteredArchived;
                   if (archived.isEmpty) {
-                    return const EpiEmptyState(title: 'Nenhum EPI arquivado.');
+                    return EpiEmptyState(title: l10n.epiArchivedEmpty);
                   }
                   return RefreshIndicator(
                     onRefresh: () => context.read<EpisCubit>().load(),
                     child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: EpiSpacing.md),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: EpiSpacing.md,
+                      ),
                       itemCount: archived.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 72),
                       itemBuilder: (_, i) => _ArchivedEpiTile(epi: archived[i]),
                     ),
                   );
@@ -147,9 +158,12 @@ class _EpisBodyState extends State<_EpisBody> {
                 return RefreshIndicator(
                   onRefresh: () => context.read<EpisCubit>().load(),
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: EpiSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: EpiSpacing.md,
+                    ),
                     itemCount: items.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, indent: 72),
                     itemBuilder: (_, i) => _EpiTile(epi: items[i]),
                   ),
                 );
@@ -185,28 +199,23 @@ class _EpiTile extends StatelessWidget {
     BuildContext context,
     EpisCubit cubit,
   ) async {
-    final l10n = AppLocalizations.of(context);
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Arquivar EPI'),
+        scrollable: true,
+        title: Text(AppLocalizations.of(dialogCtx).epiArchiveTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'O EPI "${epi.name}" será arquivado e deixará de receber novas '
-              'operações (entregas, estoque, requisições e compras).\n\n'
-              'Todo o histórico permanecerá preservado pelo período mínimo de '
-              'retenção configurado (mínimo de 5 anos).',
-            ),
+            Text(AppLocalizations.of(dialogCtx).epiArchiveBody(epi.name)),
             const SizedBox(height: EpiSpacing.md),
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
               decoration: InputDecoration(
-                labelText: l10n.epiArchiveReasonLabel,
+                labelText: AppLocalizations.of(dialogCtx).epiArchiveReasonLabel,
                 border: const OutlineInputBorder(),
                 isDense: true,
               ),
@@ -216,12 +225,12 @@ class _EpiTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).archive),
           ),
         ],
       ),
@@ -270,14 +279,18 @@ class _EpiTile extends StatelessWidget {
           color: EpiColors.brandSoft,
           borderRadius: BorderRadius.circular(EpiRadius.sm),
         ),
-        child: const Icon(Icons.shield_outlined, color: EpiColors.brand, size: 24),
+        child: const Icon(
+          Icons.shield_outlined,
+          color: EpiColors.brand,
+          size: 24,
+        ),
       ),
       title: Text(epi.name),
       subtitle: Text(subtitle),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          EpiBadge(status: badgeStatus),
+          LocalizedEpiBadge(status: badgeStatus),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'archive') {
@@ -292,15 +305,14 @@ class _EpiTile extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
+              PopupMenuItem<String>(value: 'edit', child: Builder(builder: (i18nContext) => Text(AppLocalizations.of(i18nContext).edit))),
               PopupMenuItem<String>(
-                value: 'edit',
-                child: Text(l10n.edit),
-              ),
-              const PopupMenuItem<String>(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
+                child: Builder(
+                  builder: (i18nContext) => Text(
+                    AppLocalizations.of(i18nContext).archive,
+                    style: const TextStyle(color: EpiColors.danger),
+                  ),
                 ),
               ),
             ],
@@ -320,26 +332,22 @@ class _ArchivedEpiTile extends StatelessWidget {
   final Map<String, dynamic> epi;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final cubit = context.read<EpisCubit>();
     final name = epi['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Desarquivar EPI'),
-        content: Text(
-          'O EPI "$name" será desarquivado e voltará a ficar ativo, podendo '
-          'receber novas operações.\n\nTodo o histórico preservado permanece '
-          'intacto.',
-        ),
+        scrollable: true,
+        title: Text(AppLocalizations.of(dialogCtx).epiRestoreTitle),
+        content: Text(AppLocalizations.of(dialogCtx).epiRestoreBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).restore),
           ),
         ],
       ),
@@ -349,19 +357,27 @@ class _ArchivedEpiTile extends StatelessWidget {
     }
   }
 
-  String _subtitle() {
+  String _subtitle(AppLocalizations l10n) {
     final parts = <String>[];
     final ca = epi['ca'] as String? ?? '';
     if (ca.isNotEmpty) parts.add('CA $ca');
     final archivedAt = (epi['archived_at'] as String? ?? '').split('T').first;
-    if (archivedAt.isNotEmpty) parts.add('Arquivado em $archivedAt');
+    if (archivedAt.isNotEmpty)
+      parts.add(
+        l10n.archivedOnDate(formatDisplayDate(archivedAt, l10n.localeName)),
+      );
     final reason = epi['archive_reason'] as String? ?? '';
     if (reason.isNotEmpty) parts.add(reason);
     final remaining = epi['retention_days_remaining'];
     if (remaining is num) {
-      parts.add(remaining > 0
-          ? 'Retenção restante: ${remaining.toInt()} dia(s)'
-          : 'Retenção cumprida');
+      parts.add(
+        remaining > 0
+            ? l10n.retentionRemainingDays(
+                remaining.toInt(),
+                formatDisplayCount(remaining.toInt(), l10n.localeName),
+              )
+            : l10n.retentionSatisfied,
+      );
     }
     return parts.join(' · ');
   }
@@ -389,18 +405,17 @@ class _ArchivedEpiTile extends StatelessWidget {
       ),
       title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        _subtitle(),
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: EpiColors.textMuted),
+        _subtitle(AppLocalizations.of(context)),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }
@@ -416,14 +431,21 @@ class _RetryView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(
             AppLocalizations.of(context).errorNetwork,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: EpiSpacing.xl),
-          EpiButton(label: AppLocalizations.of(context).retry, onPressed: onRetry),
+          EpiButton(
+            label: AppLocalizations.of(context).retry,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );
@@ -492,8 +514,10 @@ class _BlockArchiveDialogState extends State<_BlockArchiveDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(widget.epi.name,
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              widget.epi.name,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: EpiSpacing.sm),
             Text(l10n.epiArchiveBlockBody),
             const SizedBox(height: EpiSpacing.md),
@@ -511,26 +535,28 @@ class _BlockArchiveDialogState extends State<_BlockArchiveDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(l10n.epiArchiveBlockableLabel),
-                      Text('$blockable',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: EpiColors.warning)),
+                      Text(
+                        '$blockable',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: EpiColors.warning,
+                        ),
+                      ),
                     ],
                   ),
                   if (links.isNotEmpty) ...[
                     const Divider(height: EpiSpacing.lg),
-                    Text(l10n.epiArchiveLiveLinksTitle,
-                        style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      l10n.epiArchiveLiveLinksTitle,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                     const SizedBox(height: EpiSpacing.xs),
                     ...links.map(
                       (e) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(e.key),
-                            Text('${e.value}'),
-                          ],
+                          children: [Text(e.key), Text('${e.value}')],
                         ),
                       ),
                     ),
@@ -550,7 +576,9 @@ class _BlockArchiveDialogState extends State<_BlockArchiveDialog> {
                 labelText: l10n.epiArchiveReasonLabel,
                 border: const OutlineInputBorder(),
                 isDense: true,
-                errorText: _reasonMissing ? l10n.epiArchiveReasonRequired : null,
+                errorText: _reasonMissing
+                    ? l10n.epiArchiveReasonRequired
+                    : null,
               ),
             ),
           ],

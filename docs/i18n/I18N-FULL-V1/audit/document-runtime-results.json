@@ -1,0 +1,112 @@
+{
+  "pdfs": [
+    {
+      "locale": "pt-BR",
+      "kind": "rfq",
+      "items": 125,
+      "pages": 3,
+      "filename": "cotacao_88.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "pt-BR",
+      "kind": "po",
+      "items": 125,
+      "pages": 3,
+      "filename": "pedido_PO-(77) / original.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "en-GB",
+      "kind": "rfq",
+      "items": 125,
+      "pages": 3,
+      "filename": "quotation_88.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "en-GB",
+      "kind": "po",
+      "items": 125,
+      "pages": 3,
+      "filename": "purchase_order_PO-(77) / original.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "es-ES",
+      "kind": "rfq",
+      "items": 125,
+      "pages": 3,
+      "filename": "cotización_88.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "es-ES",
+      "kind": "po",
+      "items": 125,
+      "pages": 3,
+      "filename": "orden_compra_PO-(77) / original.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "fr-FR",
+      "kind": "rfq",
+      "items": 125,
+      "pages": 3,
+      "filename": "devis_88.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "fr-FR",
+      "kind": "po",
+      "items": 125,
+      "pages": 3,
+      "filename": "commande_PO-(77) / original.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "nb-NO",
+      "kind": "rfq",
+      "items": 125,
+      "pages": 3,
+      "filename": "tilbud_88.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    },
+    {
+      "locale": "nb-NO",
+      "kind": "po",
+      "items": 125,
+      "pages": 3,
+      "filename": "innkjøpsordre_PO-(77) / original.pdf",
+      "all_items_preserved": true,
+      "cp1252_roundtrip": true
+    }
+  ],
+  "concurrent_presentations": 210,
+  "locale_isolation": "PASS",
+  "flutter_aliases": "PASS",
+  "original_params_one_interpolation": "PASS",
+  "financial_float_2675_2dp_preserved": "PASS",
+  "input_data_unchanged": true,
+  "default_portal_URL": "EXACTLY_EQUAL",
+  "localized_URL_token_path": "UNCHANGED; advisory lang query only",
+  "Accept_Language_quality_and_query_validation": "PASS",
+  "missing_catalog_and_key": "FAIL_CLOSED",
+  "limits": "Pure builders/translator and local artifacts; no email transport or database used. This does not execute recipient delivery or HTTP authorization.",
+  "documents_catalog_leaf_and_placeholder_parity": {
+    "pt-BR": 29,
+    "en-GB": 29,
+    "es-ES": 29,
+    "fr-FR": 29,
+    "nb-NO": 29
+  }
+}

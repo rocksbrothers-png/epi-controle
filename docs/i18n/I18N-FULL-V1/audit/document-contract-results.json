@@ -1,0 +1,56 @@
+{
+  "baseline": "bc9cf725d52933c977d2550bb0e032221756bc4e",
+  "files": [
+    {
+      "path": "modules/purchases/quotes_service.py",
+      "modified_functions": [
+        "_pdf_lines",
+        "build_rfq_email",
+        "send_quote_to_supplier",
+        "build_po_email",
+        "send_po_to_supplier"
+      ],
+      "SQL_literals": "EXACTLY_EQUAL",
+      "audit_event_calls": "EXACTLY_EQUAL",
+      "mail_recipient_and_send_arguments": "EXACTLY_EQUAL",
+      "sha256": "783550e738ef414af4c752cba5cbde3ec066f85cab3a78f15c51a0c9907f3ed3"
+    },
+    {
+      "path": "modules/purchases/supplier_portal_service.py",
+      "modified_functions": [
+        "portal_link_url",
+        "send_portal_link_email"
+      ],
+      "SQL_literals": "EXACTLY_EQUAL",
+      "audit_event_calls": "EXACTLY_EQUAL",
+      "mail_recipient_and_send_arguments": "EXACTLY_EQUAL",
+      "sha256": "5ef7947680ac4bc0726ef1ad72bcdb67b0c7a0cb8671a38cef122cd4c5192586"
+    },
+    {
+      "path": "modules/purchases/quotes_routes.py",
+      "modified_functions": [
+        "handle_post_quote_send",
+        "handle_post_purchase_order_send"
+      ],
+      "SQL_literals": "EXACTLY_EQUAL",
+      "audit_event_calls": "EXACTLY_EQUAL",
+      "mail_recipient_and_send_arguments": "EXACTLY_EQUAL",
+      "sha256": "ff2186e859336cc6c5062c77fb3c0abd4fadb55f4bf8bab228a3a12212364d8c"
+    },
+    {
+      "path": "modules/purchases/supplier_portal_routes.py",
+      "modified_functions": [
+        "handle_post_quote_portal_link",
+        "handle_post_po_portal_link"
+      ],
+      "SQL_literals": "EXACTLY_EQUAL",
+      "audit_event_calls": "EXACTLY_EQUAL",
+      "mail_recipient_and_send_arguments": "EXACTLY_EQUAL",
+      "sha256": "dd2000501fedab49feaeb510349a4300276877c87a51c106701dab41dcbd89cd"
+    }
+  ],
+  "route_auth_and_scope": "EXACTLY_EQUAL after removing only locale import/keyword",
+  "PO_calculations": "EXACTLY_EQUAL",
+  "token_generation_resolution_hashes_scopes": "EXACTLY_EQUAL",
+  "limits": "AST source proof only; no mail transport or shared database executed."
+}

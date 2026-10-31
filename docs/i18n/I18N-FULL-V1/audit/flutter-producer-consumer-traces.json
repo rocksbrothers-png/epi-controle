@@ -1,0 +1,114 @@
+[
+  {
+    "surface": "Nova requisição",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/purchases_cubit.dart:132",
+    "consumer": "flutter/apps/epi_admin/lib/features/purchases/new_purchase_screen.dart:60",
+    "class": "confirmed_literal",
+    "finding": "Sucesso PT literal é mostrado em SnackBar; não é apenas sinalizador."
+  },
+  {
+    "surface": "Nova requisição — erro",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/purchases_cubit.dart:137",
+    "consumer": "flutter/apps/epi_admin/lib/features/purchases/new_purchase_screen.dart:69",
+    "class": "raw_dynamic",
+    "finding": "e.toString chega cru ao SnackBar; idioma final depende da exception/backend."
+  },
+  {
+    "surface": "Relatórios — sucesso",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/reports_cubit.dart:118",
+    "consumer": "flutter/apps/epi_admin/lib/features/reports/reports_screen.dart:72",
+    "class": "localized_consumer_sentinel",
+    "finding": "Literal PT é ignorado como texto; consumer usa reportsRequestSuccess. Não contar como gap UI."
+  },
+  {
+    "surface": "Relatórios — erro",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/reports_cubit.dart:92/121",
+    "consumer": "flutter/apps/epi_admin/lib/features/reports/reports_screen.dart:79",
+    "class": "raw_dynamic",
+    "finding": "e.toString é exibido cru mesmo com labels e sucesso traduzidos."
+  },
+  {
+    "surface": "Feedback",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/feedback_cubit.dart:49/63/72/81/90/103",
+    "consumer": "flutter/apps/epi_admin/lib/features/feedback/feedback_screen.dart:122",
+    "class": "raw_dynamic",
+    "finding": "feedbackLoadFailed traduz o título, mas detalhe state.error continua cru. Não implica que toda resposta do servidor venha em PT."
+  },
+  {
+    "surface": "CNPJs",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/legal_entities_cubit.dart:102/123/136/150/167/172",
+    "consumer": "flutter/apps/epi_admin/lib/features/legal_entities/legal_entities_screen.dart:95",
+    "class": "raw_dynamic",
+    "finding": "Extrai error/detail ou e.toString e exibe sem mapeamento local; payload original precisa preservação."
+  },
+  {
+    "surface": "Minha Empresa",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/my_company_cubit.dart:66/76/88/99/110",
+    "consumer": "flutter/apps/epi_admin/lib/features/settings/my_company_screen.dart:44",
+    "class": "raw_dynamic",
+    "finding": "Erro de ações/load exibido cru; título e saved já localizados."
+  },
+  {
+    "surface": "Configurações",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/settings_cubit.dart:94/121/144",
+    "consumer": "flutter/apps/epi_admin/lib/features/settings/settings_screen.dart:62",
+    "class": "raw_dynamic",
+    "finding": "Exceptions apresentadas como state.error cru; sucesso ok é marcador, não gap confirmado."
+  },
+  {
+    "surface": "Senha temporária — fallback de transporte",
+    "producer": "flutter/apps/epi_admin/lib/core/api/api_client.dart:258",
+    "consumer": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart:75/189",
+    "class": "confirmed_literal",
+    "finding": "Fallback PT local Erro ao comunicar com o servidor vira ApiException.message e texto; ramos genéricos do formulário já localizados."
+  },
+  {
+    "surface": "Política de arquivamento — erro remoto",
+    "producer": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart:137",
+    "consumer": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart:199",
+    "class": "raw_dynamic_with_localized_fallback",
+    "finding": "Falhas locais de load/validação são lazy l10n; exception de save preservada crua intencionalmente pelo recorte."
+  },
+  {
+    "surface": "Formulário Usuário — erro remoto",
+    "producer": "flutter/apps/epi_admin/lib/features/users/users_screen.dart:300/403/409",
+    "consumer": "flutter/apps/epi_admin/lib/features/users/users_screen.dart:537",
+    "class": "raw_dynamic_with_localized_fallback",
+    "finding": "Extrai mensagem específica/error/message/detail; fallback sem mensagem é l10n. Não descartar detalhe backend para esconder lacuna."
+  },
+  {
+    "surface": "Formulário Unidade — erro remoto",
+    "producer": "flutter/apps/epi_admin/lib/features/units/units_screen.dart:520/529",
+    "consumer": "flutter/apps/epi_admin/lib/features/units/units_screen.dart:655",
+    "class": "raw_dynamic_with_localized_fallback",
+    "finding": "detail ou e.toString continuam opacos; fallback e validação local já l10n."
+  },
+  {
+    "surface": "Notificação de estoque",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/stock_cubit.dart:231/232",
+    "consumer": "flutter/apps/epi_admin/lib/core/notifications/notification_overlay.dart:88/97",
+    "class": "confirmed_literal",
+    "finding": "Título/corpo local PT → stream NotificationService; overlay conectado em app.dart:98 exibe ambos."
+  },
+  {
+    "surface": "Devoluções — sucesso",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/devolutions_cubit.dart:101",
+    "consumer": "flutter/apps/epi_admin/lib/features/returns/new_return_screen.dart:267/275",
+    "class": "localized_consumer_sentinel",
+    "finding": "String vazia usa returnSuccess; não contar vazio como tradução ausente."
+  },
+  {
+    "surface": "Login — códigos",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/auth_cubit.dart:60/92/113/120/125/148",
+    "consumer": "flutter/apps/epi_admin/lib/features/auth/login_screen.dart:65/70",
+    "class": "canonical_with_localized_consumer",
+    "finding": "empty/network têm recursos; demais códigos caem em loginError. Não traduzir códigos."
+  },
+  {
+    "surface": "Configuração estoque — códigos",
+    "producer": "flutter/apps/epi_admin/lib/core/bloc/stock_config_cubit.dart:323/353",
+    "consumer": "flutter/apps/epi_admin/lib/features/stock/stock_config_screen.dart:448/449",
+    "class": "canonical_with_localized_consumer",
+    "finding": "negative/range são códigos de validação com apresentação localizada."
+  }
+]

@@ -49,12 +49,14 @@ class EpiButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[Icon(icon, size: 18, color: fg), const SizedBox(width: 6)],
-              Text(label, style: textStyle.copyWith(color: fg)),
+              Flexible(
+                child: Text(label, textAlign: TextAlign.center, style: textStyle.copyWith(color: fg)),
+              ),
             ],
           );
 
-    final button = SizedBox(
-      height: h,
+    final button = ConstrainedBox(
+      constraints: BoxConstraints(minHeight: h),
       child: OutlinedButton(
         onPressed: loading ? null : onPressed,
         style: OutlinedButton.styleFrom(

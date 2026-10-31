@@ -1,0 +1,397 @@
+{
+  "newResources": 40,
+  "regionalMessageCount": 919,
+  "locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "webSourceLocalesPreserved": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+  ],
+  "keys": [
+    {
+      "key": "qrInstruction",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "key": "qrDetected",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+          "line": 193
+        }
+      ]
+    },
+    {
+      "key": "qrScanAgain",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+          "line": 215
+        }
+      ]
+    },
+    {
+      "key": "qrTorchOn",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "key": "qrTorchOff",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "key": "formNameLabel",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 547
+        }
+      ]
+    },
+    {
+      "key": "formCityLabel",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 554
+        }
+      ]
+    },
+    {
+      "key": "formSaveFailed",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 404
+        },
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 524
+        }
+      ]
+    },
+    {
+      "key": "formExample",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 428
+        },
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 435
+        },
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 487
+        },
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 555
+        }
+      ]
+    },
+    {
+      "key": "userNewTitle",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 418
+        }
+      ]
+    },
+    {
+      "key": "userTemporaryPassword",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 496
+        }
+      ]
+    },
+    {
+      "key": "userPasswordHint",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 497
+        }
+      ]
+    },
+    {
+      "key": "userCopyPassword",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 517
+        }
+      ]
+    },
+    {
+      "key": "userGeneratePassword",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 530
+        }
+      ]
+    },
+    {
+      "key": "userPasswordCopied",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 293
+        }
+      ]
+    },
+    {
+      "key": "userEmployeeIdRequired",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 486
+        }
+      ]
+    },
+    {
+      "key": "userIdentityRequired",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 360
+        }
+      ]
+    },
+    {
+      "key": "userDeleteNamed",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+          "line": 137
+        }
+      ]
+    },
+    {
+      "key": "unitNewTitle",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 538
+        }
+      ]
+    },
+    {
+      "key": "unitFieldsRequired",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 485
+        }
+      ]
+    },
+    {
+      "key": "archivalLoadFailed",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "key": "archivalInvalidPeriods",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 109
+        }
+      ]
+    },
+    {
+      "key": "archivalSaved",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 130
+        }
+      ]
+    },
+    {
+      "key": "archivalSave",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 206
+        }
+      ]
+    },
+    {
+      "key": "archivalYearsSuffix",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 149
+        }
+      ]
+    },
+    {
+      "key": "archivalPolicyIntro",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 176
+        }
+      ]
+    },
+    {
+      "key": "archivalPpeRecordRule",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+          "line": 190
+        }
+      ]
+    },
+    {
+      "key": "roleMasterAdmin",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "key": "roleGeneralAdmin",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "key": "roleRegistryAdmin",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "key": "roleLocalAdmin",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "key": "rolePpeManager",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "key": "roleEmployee",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "key": "roleBuyer",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "key": "roleApprover",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "key": "roleCertificationReadOnly",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "key": "unitNameHint",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+          "line": 548
+        }
+      ]
+    },
+    {
+      "key": "unitTypeBase",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "key": "unitTypeVessel",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "key": "unitTypePlatform",
+      "consumers": [
+        {
+          "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+          "line": 20
+        }
+      ]
+    }
+  ],
+  "limits": "New resource bindings only; not a total screen/module coverage count. Specific backend errors remain opaque."
+}

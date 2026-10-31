@@ -1,0 +1,305 @@
+{
+  "actionAndAriaLiveTransition": {
+    "englishAction": "Regularise Validity",
+    "englishAria": "Regularise validity: Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\"",
+    "frenchAction": "Régulariser la validité",
+    "frenchAria": "Régulariser la validité : Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+  },
+  "findings": [],
+  "locales": [
+    {
+      "locale": "pt-BR",
+      "translatedSearch": "PASS",
+      "sizesSearch": "PASS",
+      "typedDatesAndNumbers": "PASS",
+      "escaping": "PASS",
+      "unknownAndMissingMetadataFallback": "PASS"
+    },
+    {
+      "locale": "en-GB",
+      "translatedSearch": "PASS",
+      "sizesSearch": "PASS",
+      "typedDatesAndNumbers": "PASS",
+      "escaping": "PASS",
+      "unknownAndMissingMetadataFallback": "PASS"
+    },
+    {
+      "locale": "es-ES",
+      "translatedSearch": "PASS",
+      "sizesSearch": "PASS",
+      "typedDatesAndNumbers": "PASS",
+      "escaping": "PASS",
+      "unknownAndMissingMetadataFallback": "PASS"
+    },
+    {
+      "locale": "fr-FR",
+      "translatedSearch": "PASS",
+      "sizesSearch": "PASS",
+      "typedDatesAndNumbers": "PASS",
+      "escaping": "PASS",
+      "unknownAndMissingMetadataFallback": "PASS"
+    },
+    {
+      "locale": "nb-NO",
+      "translatedSearch": "PASS",
+      "sizesSearch": "PASS",
+      "typedDatesAndNumbers": "PASS",
+      "escaping": "PASS",
+      "unknownAndMissingMetadataFallback": "PASS"
+    }
+  ],
+  "inputDataUnchanged": true,
+  "capturedPendingScopes": [
+    {
+      "company_id": "31",
+      "unit_id": "51",
+      "epi_id": "71",
+      "epi_name": "Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+    },
+    {
+      "company_id": "31",
+      "unit_id": "51",
+      "epi_id": "71",
+      "epi_name": "Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+    },
+    {
+      "company_id": "31",
+      "unit_id": "51",
+      "epi_id": "71",
+      "epi_name": "Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+    },
+    {
+      "company_id": "31",
+      "unit_id": "51",
+      "epi_id": "71",
+      "epi_name": "Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+    },
+    {
+      "company_id": "31",
+      "unit_id": "51",
+      "epi_id": "71",
+      "epi_name": "Luva <img src=x onerror=\"window.pwned=1\"> & \"Original\""
+    }
+  ],
+  "readPermissionGate": "PRESERVED",
+  "helperAbsentSafeLegacyFallback": true,
+  "pwned": false,
+  "plural_matrix": [
+    {
+      "locale": "pt-BR",
+      "count": 0,
+      "category": "one",
+      "text": "EPI original: 0 peça física.",
+      "nestedDaysLabel": "0 dia"
+    },
+    {
+      "locale": "pt-BR",
+      "count": 1,
+      "category": "one",
+      "text": "EPI original: 1 peça física.",
+      "nestedDaysLabel": "1 dia"
+    },
+    {
+      "locale": "pt-BR",
+      "count": 2,
+      "category": "other",
+      "text": "EPI original: 2 peças físicas.",
+      "nestedDaysLabel": "2 dias"
+    },
+    {
+      "locale": "pt-BR",
+      "count": 1234,
+      "category": "other",
+      "text": "EPI original: 1.234 peças físicas.",
+      "nestedDaysLabel": "1.234 dias"
+    },
+    {
+      "locale": "pt-BR",
+      "count": -1,
+      "category": "one",
+      "text": "EPI original: -1 peça física.",
+      "nestedDaysLabel": "-1 dia"
+    },
+    {
+      "locale": "pt-BR",
+      "count": 0.5,
+      "category": "one",
+      "text": "EPI original: 0,5 peça física.",
+      "nestedDaysLabel": "0,5 dia"
+    },
+    {
+      "locale": "en-GB",
+      "count": 0,
+      "category": "other",
+      "text": "EPI original: 0 physical items.",
+      "nestedDaysLabel": "0 days"
+    },
+    {
+      "locale": "en-GB",
+      "count": 1,
+      "category": "one",
+      "text": "EPI original: 1 physical item.",
+      "nestedDaysLabel": "1 day"
+    },
+    {
+      "locale": "en-GB",
+      "count": 2,
+      "category": "other",
+      "text": "EPI original: 2 physical items.",
+      "nestedDaysLabel": "2 days"
+    },
+    {
+      "locale": "en-GB",
+      "count": 1234,
+      "category": "other",
+      "text": "EPI original: 1,234 physical items.",
+      "nestedDaysLabel": "1,234 days"
+    },
+    {
+      "locale": "en-GB",
+      "count": -1,
+      "category": "one",
+      "text": "EPI original: -1 physical item.",
+      "nestedDaysLabel": "-1 day"
+    },
+    {
+      "locale": "en-GB",
+      "count": 0.5,
+      "category": "other",
+      "text": "EPI original: 0.5 physical items.",
+      "nestedDaysLabel": "0.5 days"
+    },
+    {
+      "locale": "es-ES",
+      "count": 0,
+      "category": "other",
+      "text": "EPI original: 0 piezas físicas.",
+      "nestedDaysLabel": "0 días"
+    },
+    {
+      "locale": "es-ES",
+      "count": 1,
+      "category": "one",
+      "text": "EPI original: 1 pieza física.",
+      "nestedDaysLabel": "1 día"
+    },
+    {
+      "locale": "es-ES",
+      "count": 2,
+      "category": "other",
+      "text": "EPI original: 2 piezas físicas.",
+      "nestedDaysLabel": "2 días"
+    },
+    {
+      "locale": "es-ES",
+      "count": 1234,
+      "category": "other",
+      "text": "EPI original: 1234 piezas físicas.",
+      "nestedDaysLabel": "1234 días"
+    },
+    {
+      "locale": "es-ES",
+      "count": -1,
+      "category": "one",
+      "text": "EPI original: -1 pieza física.",
+      "nestedDaysLabel": "-1 día"
+    },
+    {
+      "locale": "es-ES",
+      "count": 0.5,
+      "category": "other",
+      "text": "EPI original: 0,5 piezas físicas.",
+      "nestedDaysLabel": "0,5 días"
+    },
+    {
+      "locale": "fr-FR",
+      "count": 0,
+      "category": "one",
+      "text": "EPI original : 0 pièce physique.",
+      "nestedDaysLabel": "0 jour"
+    },
+    {
+      "locale": "fr-FR",
+      "count": 1,
+      "category": "one",
+      "text": "EPI original : 1 pièce physique.",
+      "nestedDaysLabel": "1 jour"
+    },
+    {
+      "locale": "fr-FR",
+      "count": 2,
+      "category": "other",
+      "text": "EPI original : 2 pièces physiques.",
+      "nestedDaysLabel": "2 jours"
+    },
+    {
+      "locale": "fr-FR",
+      "count": 1234,
+      "category": "other",
+      "text": "EPI original : 1 234 pièces physiques.",
+      "nestedDaysLabel": "1 234 jours"
+    },
+    {
+      "locale": "fr-FR",
+      "count": -1,
+      "category": "one",
+      "text": "EPI original : -1 pièce physique.",
+      "nestedDaysLabel": "-1 jour"
+    },
+    {
+      "locale": "fr-FR",
+      "count": 0.5,
+      "category": "one",
+      "text": "EPI original : 0,5 pièce physique.",
+      "nestedDaysLabel": "0,5 jour"
+    },
+    {
+      "locale": "nb-NO",
+      "count": 0,
+      "category": "other",
+      "text": "EPI original: 0 fysiske enheter.",
+      "nestedDaysLabel": "0 dager"
+    },
+    {
+      "locale": "nb-NO",
+      "count": 1,
+      "category": "one",
+      "text": "EPI original: 1 fysisk enhet.",
+      "nestedDaysLabel": "1 dag"
+    },
+    {
+      "locale": "nb-NO",
+      "count": 2,
+      "category": "other",
+      "text": "EPI original: 2 fysiske enheter.",
+      "nestedDaysLabel": "2 dager"
+    },
+    {
+      "locale": "nb-NO",
+      "count": 1234,
+      "category": "other",
+      "text": "EPI original: 1 234 fysiske enheter.",
+      "nestedDaysLabel": "1 234 dager"
+    },
+    {
+      "locale": "nb-NO",
+      "count": -1,
+      "category": "one",
+      "text": "EPI original: −1 fysisk enhet.",
+      "nestedDaysLabel": "−1 dag"
+    },
+    {
+      "locale": "nb-NO",
+      "count": 0.5,
+      "category": "other",
+      "text": "EPI original: 0,5 fysiske enheter.",
+      "nestedDaysLabel": "0,5 dager"
+    }
+  ],
+  "page_errors": [],
+  "snapshot_sha256": {
+    "static/i18n.js": "e3b7c50a4b5523fd0012dbc3d679234b151709346615287bae606b4a867ed7c5",
+    "static/js/modules/dashboard/ui/alert-presentation.js": "0410a114929a9336b237eead9ffbf64177e509318aeb2d288e2ccbdc0b4d5ef1",
+    "static/js/views/dashboard.js": "ef63b2a1cfd671769e670226bea7b6bc6d848984d55bca477f74f356bba80ec4"
+  }
+}

@@ -7,12 +7,12 @@
         </header>
         <article class="phase3-context-bar" data-phase3-screen="colaboradores" hidden>
           <div>
-            <strong>Cadastro de Colaborador</strong>
-            <small>Preencha o cadastro e acompanhe a listagem com atualização parcial.</small>
+            <strong data-i18n="nav.employeesRegister">Cadastro de Colaborador</strong>
+            <small data-i18n="ui.colaboradores.preencha_o_cadastro_e_acompanhe_a_listagem_com_atualizacao_parcial_8471f2">Preencha o cadastro e acompanhe a listagem com atualização parcial.</small>
           </div>
-          <span id="phase3-colaboradores-context-status" class="phase3-context-status">Pronto</span>
+          <span id="phase3-colaboradores-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
-        <nav class="view-tabs" data-vtabs="colaboradores" aria-label="Colaboradores">
+        <nav class="view-tabs" data-vtabs="colaboradores" aria-label="Colaboradores" data-i18n-aria-label="nav.employees">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
           <button type="button" class="vtab" data-vtab="arquivados" data-i18n="tabs.archived">Arquivados</button>
@@ -20,8 +20,8 @@
         <div class="vtab-panel" data-vtab-panel="cadastro">
           <form id="employee-form" class="card form-stack" data-update-permission="employees:update">
             <div class="phase29-form-toolbar" data-phase2="colaboradores" hidden>
-              <span class="phase29-pill">UX produtiva</span>
-              <span id="phase29-colab-form-status" class="phase29-inline-status">Preencha os campos e salve sem sair da tela.</span>
+              <span class="phase29-pill" data-i18n="employee.productiveUx">UX produtiva</span>
+              <span id="phase29-colab-form-status" class="phase29-inline-status" data-i18n="ui.colaboradores.preencha_os_campos_e_salve_sem_sair_da_tela_239e24">Preencha os campos e salve sem sair da tela.</span>
             </div>
             <h3 data-i18n="employee.createEdit">Cadastro de colaborador</h3>
             <input type="hidden" name="id">
@@ -31,7 +31,7 @@
               <label><span data-i18n="employee.mainUnit">Unidade principal (opcional neste cadastro)</span><select name="unit_id" id="employee-unit"></select></label>
               <label id="employee-legal-entity-field" hidden><span data-i18n="employee.legalEntity">CNPJ (vínculo jurídico)</span><select name="legal_entity_id" id="employee-legal-entity"></select><small class="hint" data-i18n="employee.legalEntityHint">Vínculo do contrato de trabalho. Imutável após a admissão: alterações exigem transferência auditada.</small></label>
               <label><span data-i18n="employee.employeeId">ID do colaborador</span><input name="employee_id_code" type="text" required></label>
-              <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required></label>
+              <label><span data-i18n="employee.cpf">CPF</span><input name="cpf" type="text" placeholder="Somente Números" required data-i18n-placeholder="ui.colaboradores.somente_numeros_e80d32"></label>
               <label><span data-i18n="employee.name">Nome</span><input name="name" type="text" required></label>
             </fieldset>
             <fieldset class="form-fieldset">
@@ -41,7 +41,7 @@
               <label><span data-i18n="employee.preferredChannel">Canal preferido</span>
                 <select name="preferred_contact_channel">
                   <option value="whatsapp">WhatsApp</option>
-                  <option value="email">E-mail</option>
+                  <option value="email" data-i18n="employee.email">E-mail</option>
                 </select>
               </label>
             </fieldset>
@@ -49,7 +49,7 @@
               <legend data-i18n="employee.vincType">Tipo de Vínculo</legend>
               <label><span data-i18n="employee.sector">SETOR</span><input name="sector" type="text" required></label>
               <label><span data-i18n="employee.function">Função do colaborador</span><input name="role_name" type="text" required></label>
-              <label><span data-i18n="employee.scheduleType">Escala</span><select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias">30 dias</option></select></label>
+              <label><span data-i18n="employee.scheduleType">Escala</span><select name="schedule_type"><option value="14x14">14x14</option><option value="28x28">28x28</option><option value="30 dias" data-i18n="ui.colaboradores.30_dias_59c86f">30 dias</option></select></label>
               <label><span data-i18n="employee.admissionDate">Data de Admissão</span><input name="admission_date" type="date" required></label>
               <label><span data-i18n="employee.vincType">Tipo de Vínculo</span>
                 <select name="tipo_vinculo" id="employee-tipo-vinculo">
@@ -59,7 +59,7 @@
                   <option value="Estagiário" data-i18n="employee.vincIntern">Estagiário</option>
                 </select>
               </label>
-              <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador"></label>
+              <label id="employee-empresa-origem-row" hidden><span data-i18n="employee.sourceCompany">Empresa de Origem</span><input name="empresa_origem" type="text" placeholder="Nome da empresa de origem do colaborador" data-i18n-placeholder="ui.colaboradores.nome_da_empresa_de_origem_do_colaborador_46fd3d"></label>
             </fieldset>
             <button class="primary" type="submit" data-i18n="employee.save">Salvar colaborador</button>
           </form>
@@ -78,12 +78,12 @@
               <div class="phase2-actions" data-ui-dropdown data-ux-module="colaboradores">
                 <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
-                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores">Limpar filtros</button>
-                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores">Recarregar dados</button>
-                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="colaboradores">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="colaboradores">Modo compacto/detalhado</button>
-                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="colaboradores">Recarregar esta seção</button>
-                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores">Fechar painel</button>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="colaboradores" data-i18n="dashboard.clearFilters">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="colaboradores" data-i18n="ui.colaboradores.recarregar_dados_57f156">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="colaboradores" data-i18n="ui.colaboradores.ir_para_topo_f6d938">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="colaboradores" data-i18n="ui.colaboradores.modo_compacto_detalhado_8b4617">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="colaboradores" data-i18n="ui.colaboradores.recarregar_esta_secao_be094c">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="colaboradores" data-i18n="ui.colaboradores.fechar_painel_458570">Fechar painel</button>
                 </div>
               </div>
               <button class="ghost" type="button" data-phase2-refresh-module="colaboradores" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-colaboradores-status" hx-swap="innerHTML" hx-indicator="#phase2-colaboradores-loading" data-i18n="employee.updateData">Atualizar dados</button>
@@ -103,7 +103,7 @@
               <label><span data-i18n="employee.roleFilter">Função</span><input id="employees-filter-role" type="search" placeholder="Função" data-i18n-placeholder="employee.roleFilter"></label>
             </div>
             <div id="employees-bulk-bar"></div>
-            <div class="table-wrap"><table><thead><tr><th scope="col" class="ds-bulk-cell"><input type="checkbox" id="employees-select-all" class="ds-bulk-checkbox" aria-label="Selecionar todos da página" title="Selecionar todos da página"></th><th scope="col" data-i18n="company.title">Empresa</th><th scope="col">ID</th><th scope="col" data-i18n="employee.name">Nome</th><th scope="col" data-i18n="employee.contact">Contato</th><th scope="col" data-i18n="employee.sector">SETOR</th><th scope="col" data-i18n="employee.roleFilter">Função</th><th scope="col" data-i18n="employee.vincType">Tipo Vínculo</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="employee.allocation">Alocação</th><th scope="col" data-i18n="employee.link">Link</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th scope="col" class="ds-bulk-cell"><input type="checkbox" id="employees-select-all" class="ds-bulk-checkbox" aria-label="Selecionar todos da página" title="Selecionar todos da página" data-i18n-title="ui.colaboradores.selecionar_todos_da_pagina_cc0e5a" data-i18n-aria-label="ui.colaboradores.selecionar_todos_da_pagina_cc0e5a"></th><th scope="col" data-i18n="company.title">Empresa</th><th scope="col">ID</th><th scope="col" data-i18n="employee.name">Nome</th><th scope="col" data-i18n="employee.contact">Contato</th><th scope="col" data-i18n="employee.sector">SETOR</th><th scope="col" data-i18n="employee.roleFilter">Função</th><th scope="col" data-i18n="employee.vincType">Tipo Vínculo</th><th scope="col" data-i18n="unit.title">Unidade</th><th scope="col" data-i18n="employee.allocation">Alocação</th><th scope="col" data-i18n="employee.link">Link</th><th scope="col" data-i18n="unit.tableActions">Ações</th></tr></thead><tbody id="employees-table"></tbody></table></div>
             <div id="employees-pagination" class="ds-pagination-bar"></div>
           </article>
         </div>
@@ -114,8 +114,8 @@
             <div class="form-grid">
               <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-employees-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
               <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-employees-filter-date" type="date"></label>
-              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-employees-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
-              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-employees-filter-user" type="search" placeholder="Usuário responsável"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-employees-filter-reason" type="search" placeholder="Motivo do arquivamento" data-i18n-placeholder="ui.colaboradores.motivo_do_arquivamento_c7c318"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-employees-filter-user" type="search" placeholder="Usuário responsável" data-i18n-placeholder="ui.colaboradores.usuario_responsavel_5edc51"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="unit.tableCompany">Empresa</th>

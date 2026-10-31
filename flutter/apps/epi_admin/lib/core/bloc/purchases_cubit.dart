@@ -46,39 +46,40 @@ class PurchasesState extends Equatable {
     String? statusFilter,
     bool clearError = false,
     bool clearSuccess = false,
-  }) =>
-      PurchasesState(
-        isLoading: isLoading ?? this.isLoading,
-        isSubmitting: isSubmitting ?? this.isSubmitting,
-        error: clearError ? null : (error ?? this.error),
-        successMessage:
-            clearSuccess ? null : (successMessage ?? this.successMessage),
-        requests: requests ?? this.requests,
-        demands: demands ?? this.demands,
-        purchaseOrders: purchaseOrders ?? this.purchaseOrders,
-        statusFilter: statusFilter ?? this.statusFilter,
-      );
+  }) => PurchasesState(
+    isLoading: isLoading ?? this.isLoading,
+    isSubmitting: isSubmitting ?? this.isSubmitting,
+    error: clearError ? null : (error ?? this.error),
+    successMessage: clearSuccess
+        ? null
+        : (successMessage ?? this.successMessage),
+    requests: requests ?? this.requests,
+    demands: demands ?? this.demands,
+    purchaseOrders: purchaseOrders ?? this.purchaseOrders,
+    statusFilter: statusFilter ?? this.statusFilter,
+  );
 
   @override
   List<Object?> get props => [
-        isLoading,
-        isSubmitting,
-        error,
-        successMessage,
-        requests,
-        demands,
-        purchaseOrders,
-        statusFilter,
-      ];
+    isLoading,
+    isSubmitting,
+    error,
+    successMessage,
+    requests,
+    demands,
+    purchaseOrders,
+    statusFilter,
+  ];
 }
 
 // ── Cubit ──────────────────────────────────────────────────────────────────
 
 class PurchasesCubit extends Cubit<PurchasesState> {
   PurchasesCubit({PurchasesRepository? repository})
-      : _repository = repository ??
-            const PurchasesRepositoryImpl(ApiPurchasesRemoteDataSource()),
-        super(const PurchasesState());
+    : _repository =
+          repository ??
+          const PurchasesRepositoryImpl(ApiPurchasesRemoteDataSource()),
+      super(const PurchasesState());
 
   final PurchasesRepository _repository;
 
@@ -99,11 +100,13 @@ class PurchasesCubit extends Cubit<PurchasesState> {
         _repository.getPurchaseRequests(),
         _repository.getPurchaseDemands(),
       ]);
-      emit(state._copyWith(
-        isLoading: false,
-        requests: results[0] as List<PurchaseRequest>,
-        demands: results[1] as List<PurchaseDemand>,
-      ));
+      emit(
+        state._copyWith(
+          isLoading: false,
+          requests: results[0] as List<PurchaseRequest>,
+          demands: results[1] as List<PurchaseDemand>,
+        ),
+      );
     } on Exception catch (e) {
       emit(state._copyWith(isLoading: false, error: e.toString()));
     }
@@ -127,10 +130,7 @@ class PurchasesCubit extends Cubit<PurchasesState> {
         title: title,
         notes: notes,
       );
-      emit(state._copyWith(
-        isSubmitting: false,
-        successMessage: 'Requisição criada com sucesso',
-      ));
+      emit(state._copyWith(isSubmitting: false, successMessage: ''));
       unawaited(load());
       return true;
     } on Exception catch (e) {

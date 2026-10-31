@@ -1,0 +1,119 @@
+{
+  "classification": "public JavaScript source hashes copied verbatim from independent before/after evidence",
+  "validation": "all 16 values recomputed from Git source blobs; no credential",
+  "findings": [
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json:generic-api-key:11"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 18,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:18"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 30,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:30"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 42,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:42"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 54,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:54"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json:generic-api-key:11"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json:generic-api-key:11"
+    },
+    {
+      "product": "corporate",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "8f66f99b2e40961807476ef4f595161362d242d6:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json:generic-api-key:11"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-after.json:generic-api-key:11"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 18,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:18"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 30,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:30"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 42,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:42"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json",
+      "line": 54,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/audit/CODEQL-INDEPENDENT-AUDIT.json:generic-api-key:54"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-after.json:generic-api-key:11"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/saas-before.json:generic-api-key:11"
+    },
+    {
+      "product": "saas",
+      "file": "docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json",
+      "line": 11,
+      "classification": "reproducible public JS source hash",
+      "fingerprint": "0ea7b957c4862f231c004ba2dd6ed076e8ee2aff:docs/i18n/I18N-FULL-V1/evidence/codeql-dom/corporate-before.json:generic-api-key:11"
+    }
+  ],
+  "scope": "exact historical fingerprint only; all prior entries and rules preserved"
+}

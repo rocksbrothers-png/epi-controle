@@ -49,14 +49,14 @@
 
   const TARGET_VIEWS = Object.freeze(['dashboard', 'empresas', 'usuarios', 'unidades', 'colaboradores', 'gestao-colaborador', 'epis', 'estoque']);
   const VIEW_META = Object.freeze({
-    dashboard: { title: 'Dashboard', subtitle: 'Visão consolidada de indicadores, alertas e pendências operacionais.' },
-    empresas: { title: 'Empresas', subtitle: 'Gestão comercial e operacional das empresas com visão rápida de licenças e status.' },
-    usuarios: { title: 'Usuários', subtitle: 'Controle de acesso com foco em perfil, empresa e estado de ativação.' },
-    unidades: { title: 'Unidades', subtitle: 'Estrutura de unidades para organização operacional e rastreabilidade por contexto.' },
-    colaboradores: { title: 'Cadastro de Colaborador', subtitle: 'Cadastro estruturado com foco em conferência e rastreabilidade dos dados.' },
-    'gestao-colaborador': { title: 'Gestão de Colaborador', subtitle: 'Administração de colaboradores já cadastrados com ações rápidas e seguras.' },
-    epis: { title: 'Cadastro de EPI', subtitle: 'Cadastro padronizado de EPIs com apoio visual e melhor legibilidade.' },
-    estoque: { title: 'Controle de Estoque', subtitle: 'Monitoramento de saldo, filtros e movimentações em uma visualização uniforme.' }
+    dashboard: { get ["title"]() { return (globalThis.trEpi?.("dashboard.title","Dashboard",{}) ?? "Dashboard"); }, subtitle: 'Visão consolidada de indicadores, alertas e pendências operacionais.' },
+    empresas: { get ["title"]() { return (globalThis.trEpi?.("company.kpiTotal","Empresas",{}) ?? "Empresas"); }, subtitle: 'Gestão comercial e operacional das empresas com visão rápida de licenças e status.' },
+    usuarios: { get ["title"]() { return (globalThis.trEpi?.("user.title","Usu\u00e1rios",{}) ?? "Usu\u00e1rios"); }, subtitle: 'Controle de acesso com foco em perfil, empresa e estado de ativação.' },
+    unidades: { get ["title"]() { return (globalThis.trEpi?.("dashboard.units","Unidades",{}) ?? "Unidades"); }, subtitle: 'Estrutura de unidades para organização operacional e rastreabilidade por contexto.' },
+    colaboradores: { get ["title"]() { return (globalThis.trEpi?.("nav.employeesRegister","Cadastro de Colaborador",{}) ?? "Cadastro de Colaborador"); }, subtitle: 'Cadastro estruturado com foco em conferência e rastreabilidade dos dados.' },
+    'gestao-colaborador': { get ["title"]() { return (globalThis.trEpi?.("employee.manageTitle","Gest\u00e3o de Colaborador",{}) ?? "Gest\u00e3o de Colaborador"); }, subtitle: 'Administração de colaboradores já cadastrados com ações rápidas e seguras.' },
+    epis: { get ["title"]() { return (globalThis.trEpi?.("epi.createEdit","Cadastro de EPI",{}) ?? "Cadastro de EPI"); }, subtitle: 'Cadastro padronizado de EPIs com apoio visual e melhor legibilidade.' },
+    estoque: { get ["title"]() { return (globalThis.trEpi?.("stock.controlTitle","Controle de Estoque",{}) ?? "Controle de Estoque"); }, subtitle: 'Monitoramento de saldo, filtros e movimentações em uma visualização uniforme.' }
   });
 
   function enhanceHeader(viewName, viewElement) {
@@ -69,7 +69,7 @@
     if (!header) {
       header = document.createElement('header');
       header.className = 'ux-global-page-header';
-      header.innerHTML = '<div><span class="ux-kicker">UX Global</span><h3></h3><p></p></div><span class="ux-active-dot">Ativo</span>';
+      header.innerHTML = "<div><span class=\"ux-kicker\">UX Global</span><h3></h3><p></p></div><span class=\"ux-active-dot\" data-i18n=\"outsourcedCompany.linkActive\">Ativo</span>";
       viewElement.insertBefore(header, viewElement.firstChild);
     }
     const titleNode = header.querySelector('h3');

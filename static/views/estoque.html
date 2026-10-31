@@ -12,7 +12,7 @@
           </div>
           <span id="phase3-estoque-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
-        <nav class="view-tabs" data-vtabs="estoque" aria-label="Controle de Estoque">
+        <nav class="view-tabs" data-vtabs="estoque" aria-label="Controle de Estoque" data-i18n-aria-label="nav.stock">
           <button type="button" class="vtab" data-vtab="estoque" data-i18n="tabs.stock">Estoque</button>
           <button type="button" class="vtab" data-vtab="movimentacoes" data-i18n="tabs.movements">Movimentações</button>
           <button type="button" class="vtab" data-vtab="validade" data-i18n="tabs.validity">Validade e Bloqueios</button>
@@ -218,7 +218,7 @@
                 <option value="100x100mm">100x100mm</option>
                 <option value="__personalizado__" data-i18n="stock.customTypeBelow">Personalizado (digitar abaixo)</option>
               </select>
-              <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;">
+              <input type="text" id="stock-label-format-custom" placeholder="Ex.: 70x45mm" style="display:none;margin-top:6px;" data-i18n-placeholder="ui.estoque.ex_70x45mm_153882">
             </label>
             <label><span data-i18n="employee.notes">Observação</span><textarea name="notes" rows="2"></textarea></label>
             <button class="primary" type="submit" data-i18n="stock.save">Registrar movimentação</button>
@@ -233,12 +233,12 @@
               <div class="phase2-actions" data-ui-dropdown data-ux-module="estoque">
                 <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
-                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque">Limpar filtros</button>
-                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque">Recarregar dados</button>
-                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="estoque">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque">Modo compacto/detalhado</button>
-                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="estoque">Recarregar esta seção</button>
-                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque">Fechar painel</button>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="estoque" data-i18n="dashboard.clearFilters">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="estoque" data-i18n="ui.estoque.recarregar_dados_57f156">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="estoque" data-i18n="ui.estoque.ir_para_topo_f6d938">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="estoque" data-i18n="ui.estoque.modo_compacto_detalhado_8b4617">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="estoque" data-i18n="ui.estoque.recarregar_esta_secao_be094c">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="estoque" data-i18n="ui.estoque.fechar_painel_458570">Fechar painel</button>
                 </div>
               </div>
               <button class="ghost" type="button" data-estoque-refresh data-phase2-refresh-module="estoque" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-estoque-status" hx-swap="innerHTML" hx-indicator="#phase2-estoque-loading" data-i18n="employee.updateData">Atualizar dados</button>
@@ -284,7 +284,7 @@
             <div id="smr-pending-requests" style="display:none;margin-bottom:12px;"></div>
             <form id="stock-movements-report-form" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;">
               <label style="flex:1;min-width:120px;"> <span data-i18n="stock.year">Ano</span>
-                <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;">
+                <input id="smr-year" type="number" min="2020" max="2099" placeholder="Ex: 2025" style="width:100%;" data-i18n-placeholder="ui.estoque.ex_2025_64d2be">
               </label>
               <label style="flex:1;min-width:100px;"> <span data-i18n="stock.month">Mês</span>
                 <select id="smr-month" style="width:100%;">
@@ -371,7 +371,7 @@
           <article class="card" id="validity-mgmt-card">
             <h3 data-i18n="validity.title">Gestão de Validade</h3>
             <p class="hint" data-i18n="validity.hint">Estoque disponível em risco de validade. A validade do fabricante rege o uso/entrega (FEFO); o CA rege a compra. Clique num indicador para abrir os EPIs já filtrados.</p>
-            <div class="dashboard-kpi-grid" id="validity-mgmt-kpis" role="group" aria-label="Indicadores de validade"></div>
+            <div class="dashboard-kpi-grid" id="validity-mgmt-kpis" role="group" aria-label="Indicadores de validade" data-i18n-aria-label="ui.estoque.indicadores_de_validade_b5855b"></div>
             <p class="hint" id="validity-mgmt-value" aria-live="polite"></p>
             <div class="action-group" style="margin-top:8px;">
               <button id="validity-mgmt-refresh" class="ghost" type="button" data-i18n="stock.refresh">Atualizar</button>
@@ -467,7 +467,7 @@
             <p class="hint" data-i18n="stock.blockedHint">Peças vencidas são bloqueadas automaticamente pela validade física. A unidade indica o destinatário para doação, devolução ou descarte e confirma o envio para baixar o estoque.</p>
             <div class="qr-inline">
               <input id="blocked-stock-qr" type="text" placeholder="Bipe/digite o QR do item" data-i18n-placeholder="stock.blockedQrPlaceholder">
-              <select id="blocked-stock-status" aria-label="Status de bloqueio"></select>
+              <select id="blocked-stock-status" aria-label="Status de bloqueio" data-i18n-aria-label="ui.estoque.status_de_bloqueio_398058"></select>
             </div>
             <label style="margin-top:8px;"><span data-i18n="stock.blockedReason">Motivo</span><input id="blocked-stock-reason" type="text" placeholder="Motivo (opcional)" data-i18n-placeholder="stock.blockedReasonPlaceholder"></label>
             <p class="hint" data-i18n="stock.blockedUnitHint">Usa a empresa/unidade selecionadas acima nesta tela.</p>
@@ -493,7 +493,7 @@
             <small id="blocked-stock-empty" class="hint" style="display:none;" data-i18n="stock.blockedEmpty">Nenhum item bloqueado.</small>
             <h4 data-i18n="stock.physical.history">Destinações registradas</h4>
             <p class="hint" data-i18n="stock.physical.historyHint">Saídas confirmadas pela unidade, com destinatário e referência de envio. As peças e o histórico são preservados.</p>
-            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.physical.action">Destinação</th><th data-i18n="stock.physical.recipient">Destinatário sugerido pela unidade</th><th data-i18n="stock.physical.shipment_reference">Comprovante / referência de envio</th><th data-i18n="stock.physical.actor">Responsável / data</th></tr></thead><tbody id="stock-disposition-tbody"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="ui.estoque.epi_qr_ac27f2">EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.physical.action">Destinação</th><th data-i18n="stock.physical.recipient">Destinatário sugerido pela unidade</th><th data-i18n="stock.physical.shipment_reference">Comprovante / referência de envio</th><th data-i18n="stock.physical.actor">Responsável / data</th></tr></thead><tbody id="stock-disposition-tbody"></tbody></table></div>
 
           </article>
           <article class="card" id="stock-physical-metadata-card">
@@ -501,7 +501,7 @@
             <p class="hint" data-i18n="stock.physical.incompleteHint">Confira pelo QR as peças com dados incompletos. Fabricação vem da etiqueta/documento do lote e tamanho da própria peça; dados do catálogo não substituem a conferência.</p>
             <button type="button" class="ghost" id="stock-physical-refresh" data-i18n="stock.refresh">Atualizar</button>
             <p id="stock-physical-status" class="hint" aria-live="polite"></p>
-            <div class="table-wrap"><table><thead><tr><th>EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.lot">Lote</th><th data-i18n="stock.physical.manufacture_date">Fabricação comprovada do lote</th><th data-i18n="stock.lotProof.size">Tamanho fisicamente conferido</th><th data-i18n="employee.actions">Ações</th></tr></thead><tbody id="stock-physical-tbody"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th data-i18n="ui.estoque.epi_qr_ac27f2">EPI / QR</th><th data-i18n="unit.title">Unidade</th><th data-i18n="stock.lot">Lote</th><th data-i18n="stock.physical.manufacture_date">Fabricação comprovada do lote</th><th data-i18n="stock.lotProof.size">Tamanho fisicamente conferido</th><th data-i18n="employee.actions">Ações</th></tr></thead><tbody id="stock-physical-tbody"></tbody></table></div>
             <small id="stock-physical-empty" class="hint" style="display:none;" data-i18n="stock.physical.complete">Nenhuma peça com fabricação ou tamanho pendente neste escopo.</small>
           </article>
         </div>

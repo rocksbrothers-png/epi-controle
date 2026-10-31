@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
 import 'package:dio/dio.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/i18n/entity_labels.dart';
 import '../../core/bloc/units_cubit.dart';
 import 'unit_labels.dart';
 
@@ -43,14 +45,14 @@ class _UnitsBody extends StatelessWidget {
           appBar: AppBar(
             title: Text(
               state.showArchived
-                  ? '${l10n.navUnits} · Arquivadas'
+                  ? l10n.unitArchivedTitle(l10n.navUnits)
                   : l10n.navUnits,
             ),
             actions: [
               IconButton(
                 tooltip: state.showArchived
-                    ? 'Ver unidades ativas'
-                    : 'Ver unidades arquivadas',
+                    ? l10n.unitShowActive
+                    : l10n.unitShowArchived,
                 icon: Icon(
                   state.showArchived
                       ? Icons.location_on_outlined
@@ -61,6 +63,7 @@ class _UnitsBody extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
+                tooltip: l10n.refresh,
                 onPressed: () => context.read<UnitsCubit>().load(),
               ),
             ],
@@ -105,7 +108,7 @@ class _UnitsBody extends StatelessWidget {
                     if (items.isEmpty) {
                       return EpiEmptyState(
                         title: state.showArchived
-                            ? 'Nenhuma unidade arquivada.'
+                            ? l10n.unitArchivedEmpty
                             : l10n.noResults,
                         icon: state.showArchived
                             ? Icons.inventory_2_outlined
@@ -154,26 +157,21 @@ class _UnitTile extends StatelessWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final name = unit['name'] as String? ?? '';
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Arquivar Unidade'),
+        scrollable: true,
+        title: Text(AppLocalizations.of(ctx).unitArchiveTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'A unidade "$name" será arquivada e deixará de receber novas '
-              'operações.\n\nTodo o histórico permanecerá preservado pelo '
-              'período mínimo de retenção configurado (mínimo de 5 anos) '
-              'para consultas, relatórios e auditorias.',
-            ),
+            Text(AppLocalizations.of(ctx).unitArchiveBody(name)),
             const SizedBox(height: EpiSpacing.md),
             EpiInput(
-              label: 'Motivo do arquivamento (auditoria)',
+              label: AppLocalizations.of(ctx).archiveReasonLabel,
               controller: reasonCtrl,
               maxLines: 2,
             ),
@@ -182,20 +180,21 @@ class _UnitTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(ctx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(ctx).archive),
           ),
         ],
       ),
     );
     if (confirmed == true && context.mounted) {
-      context
-          .read<UnitsCubit>()
-          .archiveUnit(unit['id'] as int, reason: reasonCtrl.text.trim());
+      context.read<UnitsCubit>().archiveUnit(
+        unit['id'] as int,
+        reason: reasonCtrl.text.trim(),
+      );
     }
   }
 
@@ -225,18 +224,13 @@ class _UnitTile extends StatelessWidget {
           size: 22,
         ),
       ),
-      title: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: subtitle.isNotEmpty
           ? Text(
               subtitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: EpiColors.textMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             )
@@ -245,15 +239,20 @@ class _UnitTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (type.isNotEmpty)
-            EpiBadge(status: EpiBadgeStatus.inReview, label: type),
+            EpiBadge(
+              status: EpiBadgeStatus.inReview,
+              label: appUnitTypeLabel(type, l10n),
+            ),
           PopupMenuButton<String>(
             itemBuilder: (ctx) => [
-              PopupMenuItem(value: 'edit', child: Text(l10n.edit)),
-              const PopupMenuItem(
+              PopupMenuItem(value: 'edit', child: Builder(builder: (i18nContext) => Text(AppLocalizations.of(i18nContext).edit))),
+              PopupMenuItem(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
+                child: Builder(
+                  builder: (i18nContext) => Text(
+                    AppLocalizations.of(i18nContext).archive,
+                    style: const TextStyle(color: EpiColors.danger),
+                  ),
                 ),
               ),
             ],
@@ -278,25 +277,21 @@ class _ArchivedUnitTile extends StatelessWidget {
   final Map<String, dynamic> unit;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final name = unit['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Desarquivar Unidade'),
-        content: Text(
-          'A unidade "$name" será desarquivada e voltará a ficar ativa, '
-          'podendo receber novas operações.\n\nTodo o histórico preservado '
-          'permanece intacto.',
-        ),
+        scrollable: true,
+        title: Text(AppLocalizations.of(ctx).unitRestoreTitle),
+        content: Text(AppLocalizations.of(ctx).unitRestoreBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(ctx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(ctx).restore),
           ),
         ],
       ),
@@ -306,19 +301,27 @@ class _ArchivedUnitTile extends StatelessWidget {
     }
   }
 
-  String _subtitle() {
+  String _subtitle(AppLocalizations l10n) {
     final parts = <String>[];
     final companyName = unit['company_name'] as String? ?? '';
     if (companyName.isNotEmpty) parts.add(companyName);
     final archivedAt = (unit['archived_at'] as String? ?? '').split('T').first;
-    if (archivedAt.isNotEmpty) parts.add('Arquivada em $archivedAt');
+    if (archivedAt.isNotEmpty)
+      parts.add(
+        l10n.unitArchivedOnDate(formatDisplayDate(archivedAt, l10n.localeName)),
+      );
     final reason = unit['archive_reason'] as String? ?? '';
     if (reason.isNotEmpty) parts.add(reason);
     final remaining = unit['retention_days_remaining'];
     if (remaining is num) {
-      parts.add(remaining > 0
-          ? 'Retenção restante: ${remaining.toInt()} dia(s)'
-          : 'Retenção cumprida');
+      parts.add(
+        remaining > 0
+            ? l10n.retentionRemainingDays(
+                remaining.toInt(),
+                formatDisplayCount(remaining.toInt(), l10n.localeName),
+              )
+            : l10n.retentionSatisfied,
+      );
     }
     return parts.join(' · ');
   }
@@ -347,18 +350,17 @@ class _ArchivedUnitTile extends StatelessWidget {
       ),
       title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        _subtitle(),
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: EpiColors.textMuted),
+        _subtitle(AppLocalizations.of(context)),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }
@@ -385,6 +387,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
   bool _loadingCompanies = true;
   bool _saving = false;
   String? _error;
+  String Function(AppLocalizations)? _localError;
 
   /// CNPJs da empresa selecionada. A unidade pertence a **um** CNPJ: é ele que
   /// responde fiscalmente pelas entregas e pelo estoque daquela unidade.
@@ -477,7 +480,10 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
     final name = _nameCtrl.text.trim();
     final city = _cityCtrl.text.trim();
     if (name.isEmpty || city.isEmpty || _companyId == null) {
-      setState(() => _error = 'Preencha nome, cidade e empresa');
+      setState(() {
+        _error = null;
+        _localError = (l) => l.unitFieldsRequired;
+      });
       return;
     }
 
@@ -493,15 +499,16 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
     setState(() {
       _saving = true;
       _error = null;
+      _localError = null;
     });
 
     try {
       final actorId = ApiClient.actorUserId;
       if (_isEdit) {
-        await ApiClient.units.updateUnit(
-          widget.unit!['id'] as int,
-          {...body, 'actor_user_id': actorId},
-        );
+        await ApiClient.units.updateUnit(widget.unit!['id'] as int, {
+          ...body,
+          'actor_user_id': actorId,
+        });
       } else {
         await ApiClient.units.createUnit({...body, 'actor_user_id': actorId});
       }
@@ -513,7 +520,8 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
       final detail = data is Map ? data['detail']?.toString() : null;
       setState(() {
         _saving = false;
-        _error = detail ?? 'Erro ao salvar';
+        _error = detail;
+        _localError = detail == null ? (l) => l.formSaveFailed : null;
       });
     } catch (e) {
       setState(() {
@@ -527,7 +535,7 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(_isEdit ? l10n.edit : 'Nova unidade'),
+      title: Text(_isEdit ? l10n.edit : l10n.unitNewTitle),
       content: SizedBox(
         width: 360,
         child: SingleChildScrollView(
@@ -536,28 +544,46 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               EpiInput(
-                label: 'Nome',
-                hint: 'Ex: Plataforma P-40',
+                label: l10n.formNameLabel,
+                hint: l10n.unitNameHint,
                 controller: _nameCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               EpiInput(
-                label: 'Cidade',
-                hint: 'Ex: Macaé',
+                label: l10n.formCityLabel,
+                hint: l10n.formExample('Macaé'),
                 controller: _cityCtrl,
                 enabled: !_saving,
               ),
               const SizedBox(height: EpiSpacing.md),
               DropdownButtonFormField<String>(
+                isExpanded: true,
+                itemHeight: null,
                 value: _unitType,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).legalEntityTypeLabel,
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
+                selectedItemBuilder: (context) => _unitTypes
+                    .map(
+                      (t) => _selectedDropdownLabel(
+                        appUnitTypeLabel(t, AppLocalizations.of(context)),
+                      ),
+                    )
+                    .toList(),
                 items: _unitTypes
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Builder(
+                          builder: (context) => Text(
+                            appUnitTypeLabel(t, AppLocalizations.of(context)),
+                          ),
+                        ),
+                      ),
+                    )
                     .toList(),
                 onChanged: _saving
                     ? null
@@ -575,14 +601,24 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 )
               else
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  itemHeight: null,
                   value: _companyId,
-                  decoration: const InputDecoration(
-                    labelText: 'Empresa',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(
+                      context,
+                    ).settingsCompanyLabel,
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
+                  selectedItemBuilder: (context) => _companies
+                      .map((c) => _selectedDropdownLabel(c.name))
+                      .toList(),
                   items: _companies
-                      .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                      .map(
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      )
                       .toList(),
                   onChanged: _saving
                       ? null
@@ -607,6 +643,8 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                 )
               else if (_legalEntities.isNotEmpty) ...[
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
+                  itemHeight: null,
                   value: _legalEntityId,
                   decoration: InputDecoration(
                     labelText: l10n.unitLegalEntityLabel,
@@ -615,27 +653,33 @@ class _UnitFormDialogState extends State<_UnitFormDialog> {
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
-                  items: _legalEntities
-                      .map((e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(e.displayLabel),
-                          ))
+                  selectedItemBuilder: (context) => _legalEntities
+                      .map((e) => _selectedDropdownLabel(e.displayLabel))
                       .toList(),
-                  onChanged:
-                      _saving ? null : (v) => setState(() => _legalEntityId = v),
+                  items: _legalEntities
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.id,
+                          child: Text(e.displayLabel),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _saving
+                      ? null
+                      : (v) => setState(() => _legalEntityId = v),
                 ),
                 const SizedBox(height: EpiSpacing.md),
               ],
               EpiInput(
-                label: 'Observações (opcional)',
+                label: AppLocalizations.of(context).reportsRequestNotes,
                 controller: _notesCtrl,
                 maxLines: 2,
                 enabled: !_saving,
               ),
-              if (_error != null) ...[
+              if (_error != null || _localError != null) ...[
                 const SizedBox(height: EpiSpacing.md),
                 Text(
-                  _error!,
+                  _error ?? _localError!(l10n),
                   style: const TextStyle(color: EpiColors.danger, fontSize: 12),
                 ),
               ],
@@ -671,7 +715,11 @@ class _RetryView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(l10n.errorNetwork, style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: EpiSpacing.xl),
@@ -681,3 +729,8 @@ class _RetryView extends StatelessWidget {
     );
   }
 }
+
+Widget _selectedDropdownLabel(String text) => Tooltip(
+  message: text,
+  child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+);

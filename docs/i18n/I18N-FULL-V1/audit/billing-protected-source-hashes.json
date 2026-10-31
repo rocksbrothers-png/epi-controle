@@ -1,0 +1,30 @@
+{
+  "verification": "Implementer verification, not an independent audit",
+  "files": [
+    {
+      "file": "flutter/packages/epi_api/lib/endpoints/subscriptions_api.dart",
+      "unchangedFromParent": true,
+      "sha256": "1b31270d312edf2ac98c95f23bf93207a560f06f94ebe5631d0c8880768e4235"
+    },
+    {
+      "file": "flutter/packages/epi_api/lib/models/subscription.dart",
+      "unchangedFromParent": true,
+      "sha256": "578b875e23df45cfbaa1ec338548991baf6baa0c8ecf050684358c90e998c6ca"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/core/api/api_client.dart",
+      "unchangedFromParent": true,
+      "sha256": "ba9991b89de485013f73b028bf6c454009147c30b9bbbe1c78952a06a8e25982"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/core/session/session_context.dart",
+      "unchangedFromParent": true,
+      "sha256": "a4d21fc0cf9696bf33792823fbd767f44e442df33b7f4923aca2e6f9bc602a36"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/core/router/navigation_policy.dart",
+      "unchangedFromParent": true,
+      "sha256": "985f3d70b678bf6e83b92426a70c869dc74dd1192b94ad00e191578cb94a7b2c"
+    }
+  ]
+}

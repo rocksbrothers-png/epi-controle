@@ -166,7 +166,7 @@ module.exports = ({ test, testAsync, assert, eq }) => {
     assert(html.includes('data-quote-row="0"') && html.includes('data-quote-row="3"'), 'um seletor por linha');
     assert(html.includes('<option value="501" selected>'), 'sugestão única pré-marcada e visível');
     assert(html.includes('— sugerido'), 'sugestão rotulada');
-    assert(html.includes('<option value="" selected>— escolha o item —</option>'), 'linhas sem sugestão começam vazias');
+    assert(/<option value="" selected(?:\s+[^>]*)?>— escolha o item —<\/option>/.test(html), 'linhas sem sugestão começam vazias');
     assert(html.includes('CA ausente: escolha e confirme o item manualmente.'), 'aviso de CA ausente');
     assert(html.includes('Nenhum item da requisição corresponde a esta linha.'), 'linha sem candidato');
     assert(!h.confirmVisible(), 'resumo só aparece ao pedir para salvar');

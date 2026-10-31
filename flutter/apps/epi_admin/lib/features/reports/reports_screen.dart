@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -304,14 +305,12 @@ class _RequestTile extends StatelessWidget {
         _ => request.status,
       };
 
-  String get _periodLabel {
+  String _periodLabel(AppLocalizations l10n) {
     if (request.periodYear != null && request.periodMonth != null) {
-      const months = [
-        '', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-      ];
       final m = request.periodMonth!;
-      final month = (m >= 1 && m <= 12) ? months[m] : '$m';
+      final month = (m >= 1 && m <= 12)
+          ? DateFormat.MMM(l10n.localeName).format(DateTime(request.periodYear!, m))
+          : '$m';
       return '$month ${request.periodYear}';
     }
     return '';
@@ -353,7 +352,7 @@ class _RequestTile extends StatelessWidget {
                           .bodySmall
                           ?.copyWith(color: EpiColors.textMuted),
                     ),
-                    if (_periodLabel.isNotEmpty) ...[
+                    if (_periodLabel(l10n).isNotEmpty) ...[
                       const SizedBox(width: EpiSpacing.sm),
                       const Icon(
                         Icons.calendar_today_outlined,
@@ -362,7 +361,7 @@ class _RequestTile extends StatelessWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        _periodLabel,
+                        _periodLabel(l10n),
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
@@ -413,20 +412,11 @@ class _RequestDialogState extends State<_RequestDialog> {
   int? _selectedYear;
   int? _selectedMonth;
 
-  static const _months = [
-    (label: 'Janeiro', value: 1),
-    (label: 'Fevereiro', value: 2),
-    (label: 'Março', value: 3),
-    (label: 'Abril', value: 4),
-    (label: 'Maio', value: 5),
-    (label: 'Junho', value: 6),
-    (label: 'Julho', value: 7),
-    (label: 'Agosto', value: 8),
-    (label: 'Setembro', value: 9),
-    (label: 'Outubro', value: 10),
-    (label: 'Novembro', value: 11),
-    (label: 'Dezembro', value: 12),
-  ];
+  List<({String label, int value})> _months(AppLocalizations l10n) =>
+      List.generate(12, (index) => (
+        label: DateFormat.MMMM(l10n.localeName).format(DateTime(2000, index + 1)),
+        value: index + 1,
+      ));
 
   @override
   void initState() {
@@ -471,7 +461,7 @@ class _RequestDialogState extends State<_RequestDialog> {
                 DropdownButtonFormField<int>(
                   value: _selectedMonth,
                   decoration: InputDecoration(labelText: l10n.reportsRequestMonth),
-                  items: _months
+                  items: _months(l10n)
                       .map((m) => DropdownMenuItem(
                             value: m.value,
                             child: Text(m.label),

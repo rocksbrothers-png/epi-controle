@@ -12,7 +12,7 @@
           </div>
           <span id="phase3-epis-context-status" class="phase3-context-status" data-i18n="dashboard.ready">Pronto</span>
         </article>
-        <nav class="view-tabs" data-vtabs="epis" aria-label="EPIs">
+        <nav class="view-tabs" data-vtabs="epis" aria-label="EPIs" data-i18n-aria-label="nav.epis">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
           <button type="button" class="vtab" data-vtab="arquivados" data-i18n="tabs.archived">Arquivados</button>
@@ -103,12 +103,12 @@
               <div class="phase2-actions" data-ui-dropdown data-ux-module="epis">
                 <button class="ghost" type="button" data-dropdown-trigger aria-expanded="false" data-i18n="employee.quickActions">Ações rápidas</button>
                 <div class="phase2-dropdown" data-dropdown-panel hidden>
-                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="epis">Limpar filtros</button>
-                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="epis">Recarregar dados</button>
-                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="epis">Ir para topo</button>
-                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="epis">Modo compacto/detalhado</button>
-                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="epis">Recarregar esta seção</button>
-                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="epis">Fechar painel</button>
+                  <button class="ghost" type="button" data-ux-action="clear-filters" data-ux-module="epis" data-i18n="dashboard.clearFilters">Limpar filtros</button>
+                  <button class="ghost" type="button" data-ux-action="refresh-data" data-ux-module="epis" data-i18n="ui.epis.recarregar_dados_57f156">Recarregar dados</button>
+                  <button class="ghost" type="button" data-ux-action="scroll-top" data-ux-module="epis" data-i18n="ui.epis.ir_para_topo_f6d938">Ir para topo</button>
+                  <button class="ghost" type="button" data-ux-action="toggle-density" data-ux-module="epis" data-i18n="ui.epis.modo_compacto_detalhado_8b4617">Modo compacto/detalhado</button>
+                  <button class="ghost" type="button" data-ux-action="reload-section" data-ux-module="epis" data-i18n="ui.epis.recarregar_esta_secao_be094c">Recarregar esta seção</button>
+                  <button class="ghost" type="button" data-ux-action="close-panel" data-ux-module="epis" data-i18n="ui.epis.fechar_painel_458570">Fechar painel</button>
                 </div>
               </div>
               <button class="ghost" type="button" data-phase2-refresh-module="epis" hx-get="/fragments/phase2-refresh-status.html" hx-target="#phase2-epis-status" hx-swap="innerHTML" hx-indicator="#phase2-epis-loading" data-i18n="employee.updateData">Atualizar dados</button>
@@ -144,8 +144,8 @@
             <div class="form-grid">
               <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-epis-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
               <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-epis-filter-date" type="date"></label>
-              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-epis-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
-              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-epis-filter-user" type="search" placeholder="Usuário responsável"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-epis-filter-reason" type="search" placeholder="Motivo do arquivamento" data-i18n-placeholder="ui.epis.motivo_do_arquivamento_c7c318"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-epis-filter-user" type="search" placeholder="Usuário responsável" data-i18n-placeholder="ui.epis.usuario_responsavel_5edc51"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="unit.tableCompany">Empresa</th>

@@ -59,11 +59,15 @@ class EpiKpiCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: EpiSpacing.md),
-            Text(
-              value,
-              style: theme.textTheme.displayMedium!.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: theme.textTheme.displayMedium!.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
             if (delta != null) ...[

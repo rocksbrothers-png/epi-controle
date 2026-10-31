@@ -1,0 +1,3 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/dashboard_i18n_mobile_test.dart
+00:00 +0: real dashboard in all five languages fits mobile and larger text without refetch
+00:04 +1: All tests passed!

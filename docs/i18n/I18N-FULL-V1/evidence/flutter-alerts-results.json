@@ -1,0 +1,27 @@
+{
+  "scope": "Flutter operational alert presentation and request locale only; whole-task coverage incomplete",
+  "locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "newMessages": 24,
+  "messagesPerRegionalCatalogue": 805,
+  "baseRegionalPairs": 5,
+  "targetedTests": 33,
+  "result": "passed",
+  "syntheticNetwork": true,
+  "realBusinessWrites": false,
+  "parityManifestFiles": 276,
+  "analyzer": "No issues found in new/extended files",
+  "tests": [
+    "alert_presentation_i18n_test.dart",
+    "i18n_catalogue_runtime_test.dart",
+    "api_locale_i18n_test.dart",
+    "refresh_interceptor_test.dart",
+    "api_client_actor_test.dart",
+    "f3_theme_locale_scope_test.dart"
+  ]
+}

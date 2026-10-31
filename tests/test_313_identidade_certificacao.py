@@ -18,6 +18,8 @@ provam é isolamento entre tenants, e isso se mede consultando, não lendo.
 """
 
 import ast
+import json
+import subprocess
 import pathlib
 import re
 
@@ -93,10 +95,15 @@ def test_fora_das_listas_privilegiadas_do_web_legado(lista):
 def test_tem_rotulo_na_ui():
     """Decisão explícita: a conta técnica precisa ser identificável numa
     listagem ou auditoria. Rótulo é visibilidade, não permissão."""
-    texto = CONSTANTS_JS.read_text(encoding='utf-8')
-    casado = re.search(r'ROLE_LABELS\s*=\s*Object\.freeze\(\{(.*?)\}\)', texto, re.DOTALL)
-    assert casado, 'ROLE_LABELS não encontrada — matcher quebrado'
-    assert f'{PAPEL}:' in casado.group(1)
+    # Execute the published role table: nested translation getters are valid JS
+    # and cannot be delimited reliably by a regex ending at the first brace.
+    result = subprocess.run([
+        'node', '-e',
+        "require(process.argv[1]);process.stdout.write(JSON.stringify(globalThis.ROLE_LABELS));",
+        str(CONSTANTS_JS),
+    ], check=True, capture_output=True, text=True, timeout=10)
+    labels = json.loads(result.stdout)
+    assert labels[PAPEL] == 'Certificação (somente leitura)'
 
 
 def test_fora_do_seletor_de_criacao_do_flutter():

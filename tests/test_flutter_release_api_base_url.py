@@ -316,8 +316,11 @@ def test_dio_baseurl_comes_from_resolved_param():
     always-on (R2-A) e localmente. Uma sabotagem real o torna vermelho."""
     api = REPO_ROOT / 'flutter' / 'apps' / 'epi_admin' / 'lib' / 'core' / 'api' / 'api_client.dart'
     src = api.read_text(encoding='utf-8')
-    assert re.search(r'init\(\{\s*required\s+String\s+baseUrl\s*\}\)', src), (
-        'assinatura ApiClient.init({required String baseUrl}) ausente/alterada'
+    assert re.search(
+        r'init\(\{\s*required\s+String\s+baseUrl\s*,'
+        r'\s*String\?\s+Function\(\)\?\s+localeTag\s*,?\s*\}\)', src
+    ), (
+        'ApiClient.init deve exigir baseUrl e permitir somente o callback opcional de locale'
     )
     assigns = re.findall(r'baseUrl:\s*([^,\n)]+)', src)
     assert assigns, 'nenhuma atribuição `baseUrl:` encontrada em api_client.dart'

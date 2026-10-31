@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="pagehead.units">Cadastre, consulte e arquive as unidades operacionais das empresas.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="unidades" aria-label="Unidades">
+        <nav class="view-tabs" data-vtabs="unidades" aria-label="Unidades" data-i18n-aria-label="nav.units">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
           <button type="button" class="vtab" data-vtab="arquivadas" data-i18n="tabs.archived">Arquivadas</button>
@@ -49,8 +49,8 @@
             <div class="form-grid">
               <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-units-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
               <label><span data-i18n="unit.archivedFilterDate">Arquivada em</span><input id="archived-units-filter-date" type="date"></label>
-              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-units-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
-              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-units-filter-user" type="search" placeholder="Usuário responsável"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-units-filter-reason" type="search" placeholder="Motivo do arquivamento" data-i18n-placeholder="ui.unidades.motivo_do_arquivamento_c7c318"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-units-filter-user" type="search" placeholder="Usuário responsável" data-i18n-placeholder="ui.unidades.usuario_responsavel_5edc51"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="unit.tableCompany">Empresa</th>

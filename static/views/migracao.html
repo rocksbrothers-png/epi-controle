@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="dataMigration.pageDesc">Centro de Migração de Dados: leia uma planilha ou export do sistema antigo, confira o que o sistema entendeu, veja o resultado antes de gravar e desfaça a importação se precisar.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="migracao" aria-label="Migração de Dados">
+        <nav class="view-tabs" data-vtabs="migracao" aria-label="Migração de Dados" data-i18n-aria-label="nav.dataMigration">
           <button type="button" class="vtab" data-vtab="painel" data-i18n="dataMigration.panelTab">Painel</button>
           <button type="button" class="vtab" data-vtab="assistente" data-i18n="dataMigration.wizardTab">Assistente de Importação</button>
           <button type="button" class="vtab" data-vtab="historico" data-i18n="dataMigration.historyTab">Histórico</button>
@@ -17,7 +17,7 @@
             <h3 data-i18n="dataMigration.catalogTitle">O que você quer importar</h3>
             <p class="muted" data-i18n="dataMigration.catalogHint">Escolha um dos seis cartões para abrir o assistente com a entidade selecionada.</p>
             <div class="form-grid">
-              <label><span data-i18n="dataMigration.catalogFilter">Buscar</span><input id="migracao-catalog-filter" type="search" placeholder="Colaboradores, EPIs, estoque..."></label>
+              <label><span data-i18n="dataMigration.catalogFilter">Buscar</span><input id="migracao-catalog-filter" type="search" placeholder="Colaboradores, EPIs, estoque..." data-i18n-placeholder="ui.migracao.colaboradores_epis_estoque_f4311b"></label>
             </div>
             <div id="migracao-catalog-cards" class="migracao-card-grid"></div>
           </article>
@@ -26,7 +26,7 @@
         <!-- ── Assistente: as 4 etapas ───────────────────────────────────── -->
         <div class="vtab-panel" data-vtab-panel="assistente">
           <article class="card">
-            <ol id="migracao-steps" class="migracao-steps" aria-label="Etapas da importação">
+            <ol id="migracao-steps" class="migracao-steps" aria-label="Etapas da importação" data-i18n-aria-label="ui.migracao.etapas_da_importacao_22ee20">
               <li data-step="entidade" class="active"><span class="migracao-step-num">1</span><span data-i18n="dataMigration.step1">O que importar</span></li>
               <li data-step="origem"><span class="migracao-step-num">2</span><span data-i18n="dataMigration.step2">Origem dos dados</span></li>
               <li data-step="leitura"><span class="migracao-step-num">3</span><span data-i18n="dataMigration.step3">Leitura automática</span></li>
@@ -55,7 +55,7 @@
               <input id="migracao-file" type="file" hidden accept=".xlsx,.csv,.ods,.json,.xml,.txt">
             </div>
             <small class="muted" id="migracao-file-hint" data-i18n="dataMigration.fileHint">Formatos aceitos nesta fase: XLSX, CSV, ODS, JSON, XML e TXT. Limite de 25 MB por arquivo.</small>
-            <label id="migracao-sheet-wrap" hidden><span data-i18n="dataMigration.sheetLabel">Planilha (aba)</span><input id="migracao-sheet" type="text" placeholder="Deixe vazio para a primeira"></label>
+            <label id="migracao-sheet-wrap" hidden><span data-i18n="dataMigration.sheetLabel">Planilha (aba)</span><input id="migracao-sheet" type="text" placeholder="Deixe vazio para a primeira" data-i18n-placeholder="ui.migracao.deixe_vazio_para_a_primeira_04de66"></label>
           </article>
 
           <!-- Etapa 3 -->

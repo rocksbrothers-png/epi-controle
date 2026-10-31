@@ -354,3 +354,32 @@ def test_manual_answer_still_works_after_portal_send():
         'items': [{'quote_item_id': fetch_quote_items(conn, quote['id'])[0]['id'], 'unit_price': 7.7}],
     })
     assert answered['status'] == 'answered'
+
+
+@pytest.mark.parametrize('locale',['pt-BR','en-GB','es-ES','fr-FR','nb-NO'])
+def test_localized_portal_email_keeps_hashed_token_scope_and_only_changes_presentation(locale):
+    from urllib.parse import parse_qs, urlparse
+    from modules.i18n.presentation import Translator
+    conn=_conn()
+    supplier=_supplier(conn)
+    quote=_quote(conn,supplier)
+    spy=_MailSpy()
+    link=send_portal_link_email(conn,BUYER,'quote',quote['id'],base_url='https://epi.example.com',
+                                send_email_fn=spy,locale=locale)
+    assert len(spy.sent)==1 and spy.sent[0]['to']=='vendas@loja.com'
+    message=spy.sent[0]
+    url=next(line.strip() for line in message['body'].splitlines() if line.strip().startswith('https://'))
+    parsed=urlparse(url)
+    assert parsed.netloc=='epi.example.com'
+    assert parse_qs(parsed.query)=={'lang':[locale]}
+    token=parsed.path.rsplit('/',1)[1]
+    assert token!=link['token_hash']
+    resolved=resolve_portal_token(conn,token)
+    assert resolved['company_id']==BUYER['company_id']
+    assert resolved['entity_type']=='quote' and resolved['entity_id']==quote['id']
+    translator=Translator(locale)
+    assert message['subject']==translator.t('documents.portal.quoteSubject',id=quote['id'])
+    assert translator.t('documents.portal.private') in message['body']
+    assert translator.date(link['expires_at']) in message['body']
+    updated=get_quote_by_id(conn,quote['id'])
+    assert updated['status']=='sent' and updated['channel']=='portal'

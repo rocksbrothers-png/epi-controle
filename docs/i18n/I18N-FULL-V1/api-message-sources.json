@@ -1,0 +1,1284 @@
+[
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 18,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "O conversor requer Linux com libseccomp.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ba4a43ec8174"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 37,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Não foi possível iniciar isolamento do conversor.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ee439c95c59b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 44,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro de rede indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c1d24f3587bb"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 48,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro do conversor indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8f5dd2196152"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 50,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Filtro do conversor não pôde ser aplicado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6997d9543ff7"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 58,
+    "function": "offline_sandbox",
+    "exception": "ValueError",
+    "message_template": "Isolamento de rede não confirmado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_9487cbe18214"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 66,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a XLS.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_27a26ecb33d6"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 73,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Macros, objetos ativos e arquivos cifrados não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_24afb962e184"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 80,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "XLS cifrado ou folha de macro não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_44c60e57c0c1"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 83,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Referências externas ativas não são permitidas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_3f3173600d4c"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 87,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Planilha excede 30 abas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c8ea67ef966e"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 90,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a Office Open XML.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_71a93f325c28"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 97,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Arquivo Office excede os limites de descompactação.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1a53447a937d"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 101,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Formato Office incompatível com a extensão.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c39b6b62d4d2"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 105,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Arquivo cifrado ou excessivamente comprimido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_46c285c88160"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 107,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Macros, objetos ativos e referências externas não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_fe6172e1da05"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 109,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "SVG incorporado requer conversão prévia para PDF ou imagem raster segura.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4726b9667c5e"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 117,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f2d56c1a8237"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 119,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Campos DDE não são permitidos.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_93aa01a4acd4"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 124,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f2d56c1a8237"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 130,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Template externo com formato ativo ou desconhecido não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_bcf5323da830"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 138,
+    "function": "validate_office",
+    "exception": "ValueError",
+    "message_template": "Recurso externo ativo não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4c38ee20a9ea"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 155,
+    "function": "validate_pdf_content",
+    "exception": "ValueError",
+    "message_template": "Conteúdo ativo de PDF não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_89d7c0bfd2e9"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 161,
+    "function": "validate_pdf_content",
+    "exception": "ValueError",
+    "message_template": "Ação automática de PDF não permitida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_65480dc7ee02"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 187,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde a PDF.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_5685f6cf3d8b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 193,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Conteúdo não corresponde à imagem declarada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0d2fb05f35b3"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 201,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Imagem excede o limite de pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_028b3e24adad"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 210,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "PDF cifrado ou sem páginas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_213cafb5a3d2"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 216,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Documento excede os limites de páginas ou pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_47f279fff99b"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 222,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excede o limite de armazenamento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_75f777ce750f"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 226,
+    "function": "render",
+    "exception": "ValueError",
+    "message_template": "Documento sem conteúdo visível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_5a09a82b50a7"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 44,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Conversor Office indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_149bcc1bb9fc"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 51,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Conversor Office não respondeu.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_2c096c34ad8e"
+  },
+  {
+    "path": "modules/safety_library/uno_convert.py",
+    "line": 59,
+    "function": "convert",
+    "exception": "ValueError",
+    "message_template": "Arquivo Office não pôde ser aberto com segurança.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_9f5c5df89fec"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 42,
+    "function": "_origin",
+    "exception": "PermissionError",
+    "message_template": "Origem não autorizada para a biblioteca.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_e7be18ecf79e"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 50,
+    "function": "employee_context",
+    "exception": "PermissionError",
+    "message_template": "Colaborador indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_904db392637d"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 57,
+    "function": "employee_context",
+    "exception": "PermissionError",
+    "message_template": "Empresa ou unidade indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b0f878fb330b"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 98,
+    "function": "handle",
+    "exception": "ValueError",
+    "message_template": "Política e justificativa obrigatórias.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_91ba8a222f56"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 115,
+    "function": "handle",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 129,
+    "function": "handle",
+    "exception": "ValueError",
+    "message_template": "Página indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6c08b8b684f6"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 140,
+    "function": "handle",
+    "exception": "PermissionError",
+    "message_template": "Operação não autorizada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_15837cda9084"
+  },
+  {
+    "path": "modules/safety_library/routes.py",
+    "line": 162,
+    "function": "_id",
+    "exception": "ValueError",
+    "message_template": "{key} inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_6597a98cce2e"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 45,
+    "function": "manager",
+    "exception": "PermissionError",
+    "message_template": "Administrador sem empresa efetiva.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_cffc167ff2c8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 58,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Associações devem ser listas com no máximo 200 entradas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c420760ff822"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 61,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Identificador inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d34ba284de79"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 64,
+    "function": "_array",
+    "exception": "ValueError",
+    "message_template": "Setor ou atividade inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1e1d36494bf0"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 73,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Campo {key} inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8e28dd2bfad8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 76,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Data de vigência deve usar AAAA-MM-DD.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_86efa1ec4410"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 80,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Categoria inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_bf09808ae926"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 82,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Defina explicitamente o alcance de unidades.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_57483342e079"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 87,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Escolha todas as unidades ou unidades específicas.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4f9ccb25db5e"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 89,
+    "function": "validate_metadata",
+    "exception": "ValueError",
+    "message_template": "Informe pelo menos uma unidade.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_18cfbe2515f8"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 95,
+    "function": "validate_metadata",
+    "exception": "PermissionError",
+    "message_template": "EPI fora do escopo da empresa.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_470c612e4cfd"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 115,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_1937451d7218"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 118,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Nome de arquivo inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_83583fd74839"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 121,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Arquivo ausente ou maior que 20 MiB.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_cfc2c9ecd606"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 125,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Conteúdo base64 inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_dc43826781de"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 129,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Documento inválido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_429c84dacd58"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 137,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência reutilizada com conteúdo diferente.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d5793e2ff0bf"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 144,
+    "function": "upload",
+    "exception": "PermissionError",
+    "message_template": "Escopo do administrador alterado durante o envio. Reinicie a operação.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_c6264d16f8c5"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 150,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Chave de idempotência reutilizada com conteúdo diferente.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_d5793e2ff0bf"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 158,
+    "function": "upload",
+    "exception": "ValueError",
+    "message_template": "Documento arquivado; crie um novo documento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f7f6f9bc9f0f"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 172,
+    "function": "own_document",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 179,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Justificativa obrigatória (até 2000 caracteres).",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_4e98ab463a83"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 185,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Versão não pode ser publicada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_f381bb828999"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 198,
+    "function": "change_state",
+    "exception": "ValueError",
+    "message_template": "Ação inválida.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_518b636439eb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 205,
+    "function": "company_today",
+    "exception": "PermissionError",
+    "message_template": "Calendário da empresa indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b4f086fbbdfb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 209,
+    "function": "company_today",
+    "exception": "PermissionError",
+    "message_template": "Calendário da empresa indisponível.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_b4f086fbbdfb"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 235,
+    "function": "visible_version",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 288,
+    "function": "download_original",
+    "exception": "PermissionError",
+    "message_template": "Download de original não autorizado.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_ec7bf1a153d5"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 291,
+    "function": "download_original",
+    "exception": "PermissionError",
+    "message_template": "Documento indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_673c687b8844"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 298,
+    "function": "photo",
+    "exception": "PermissionError",
+    "message_template": "EPI indisponível neste escopo.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_8a2411e51342"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 302,
+    "function": "photo",
+    "exception": "ValueError",
+    "message_template": "Foto indisponível em formato seguro.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_76319fb726e6"
+  },
+  {
+    "path": "modules/safety_library/service.py",
+    "line": 306,
+    "function": "photo",
+    "exception": "ValueError",
+    "message_template": "Foto excede limite de pixels.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_705ecaf0eb26"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 29,
+    "function": "render_preview",
+    "exception": "ValueError",
+    "message_template": "Conversor ocupado. Tente novamente em instantes.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_36a7ee157a9c"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 39,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Extensão ou MIME não permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0c821a3b3204"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 41,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Arquivo vazio ou maior que 20 MiB.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_2db3a78cfd98"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 65,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excedeu o tempo permitido.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_0d3da595826a"
+  },
+  {
+    "path": "modules/safety_library/preview.py",
+    "line": 79,
+    "function": "_render_preview",
+    "exception": "ValueError",
+    "message_template": "Pré-visualização excede o limite de armazenamento.",
+    "structured_code": "",
+    "key": "apiErrors.messages.m_75f777ce750f"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 173,
+    "function": "render",
+    "kind": "preview_warning",
+    "message_template": "Pré-visualização gerada: fontes e paginação podem diferir do aplicativo Office original.",
+    "key": "apiErrors.messages.m_69ed8bc9a667"
+  },
+  {
+    "path": "modules/safety_library/render_worker.py",
+    "line": 135,
+    "function": "validate_office",
+    "kind": "preview_warning",
+    "message_template": "Modelo externo do Word ignorado; apenas estilos incorporados foram utilizados.",
+    "key": "apiErrors.messages.m_d8fe3c76b8e2"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 65,
+    "message_template": "Fornecedor não encontrado.",
+    "key": "apiErrors.messages.m_0d3a841b89b5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 77,
+    "message_template": "Produto não encontrado.",
+    "key": "apiErrors.messages.m_1ee863587351",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 85,
+    "message_template": "Empresa é obrigatória para cadastrar fornecedor.",
+    "key": "apiErrors.messages.m_f2de247cc3e6",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 88,
+    "message_template": "Nome do fornecedor é obrigatório.",
+    "key": "apiErrors.messages.m_4135cc3ec49e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 92,
+    "message_template": "Nível de integração inválido (email, portal ou api).",
+    "key": "apiErrors.messages.m_440a1f3e33f7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 98,
+    "message_template": "Já existe fornecedor com este CNPJ nesta empresa.",
+    "key": "apiErrors.messages.m_0272d51c4178",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 174,
+    "message_template": "Fornecedor não encontrado.",
+    "key": "apiErrors.messages.m_0d3a841b89b5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 178,
+    "message_template": "Informe SKU ou descrição do produto.",
+    "key": "apiErrors.messages.m_1da58be87f83",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 276,
+    "message_template": "Requisição não encontrada.",
+    "key": "apiErrors.messages.m_b2071b0a7a3f",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 279,
+    "message_template": "Informe ao menos um fornecedor para cotar.",
+    "key": "apiErrors.messages.m_e6492d02730b",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 286,
+    "message_template": "A requisição não possui itens cotáveis.",
+    "key": "apiErrors.messages.m_e771eb420de3",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 411,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 413,
+    "message_template": "Cotação com status \"{p1}\" não pode receber resposta.",
+    "key": "apiErrors.messages.m_8b32f538600d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 416,
+    "message_template": "Informe os itens respondidos da cotação.",
+    "key": "apiErrors.messages.m_26e01b46a315",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 479,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 481,
+    "message_template": "Apenas cotações respondidas podem ser selecionadas.",
+    "key": "apiErrors.messages.m_4f7bc5df0d9f",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 595,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 597,
+    "message_template": "Cotação com status \"{p1}\" não pode ser enviada.",
+    "key": "apiErrors.messages.m_e93095efbe8a",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 601,
+    "message_template": "Fornecedor da cotação não encontrado.",
+    "key": "apiErrors.messages.m_a03235d0a593",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 604,
+    "message_template": "Fornecedor sem e-mail de contato cadastrado.",
+    "key": "apiErrors.messages.m_14afc9faa80c",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 682,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 684,
+    "message_template": "Apenas POs aprovadas podem ser enviadas ao fornecedor.",
+    "key": "apiErrors.messages.m_f1e64b251de7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 704,
+    "message_template": "Fornecedor da PO sem e-mail de contato. Informe to_email ou cadastre o fornecedor.",
+    "key": "apiErrors.messages.m_89eacf5f005d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 731,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 734,
+    "message_template": "Status de confirmação inválido (confirmed, rejected ou delivery_update).",
+    "key": "apiErrors.messages.m_bffbd38d799e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 139,
+    "message_template": "Nível de integração inválido (email, portal ou api).",
+    "key": "apiErrors.messages.m_440a1f3e33f7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 185,
+    "message_template": "EPI vinculado não encontrado nesta empresa.",
+    "key": "apiErrors.messages.m_e6e5ec1dbb6d",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 294,
+    "message_template": "Fornecedor {p1} não encontrado nesta empresa.",
+    "key": "apiErrors.messages.m_72c03b3bd866",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 296,
+    "message_template": "Fornecedor \"{p1}\" está inativo.",
+    "key": "apiErrors.messages.m_195e3dbeae42",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 303,
+    "message_template": "Já existe cotação aberta para o fornecedor \"{p1}\" nesta requisição.",
+    "key": "apiErrors.messages.m_c8fc22f90fad",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 431,
+    "message_template": "Item de cotação não encontrado na cotação informada.",
+    "key": "apiErrors.messages.m_c1a0c4919a69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 435,
+    "message_template": "Item \"{p1}\": informe preço unitário ou marque como recusado.",
+    "key": "apiErrors.messages.m_e1675ea0f5e5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 86,
+    "message_template": "Tipo de entidade do portal inválido (quote ou purchase_order).",
+    "key": "apiErrors.messages.m_f68bafe5789a",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 107,
+    "message_template": "Expiração deve estar entre 1 e {p1} dias.",
+    "key": "apiErrors.messages.m_453f7d4089b6",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 166,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 172,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 182,
+    "message_template": "Link do portal inválido ou expirado.",
+    "key": "apiErrors.messages.m_9a943509a244",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 280,
+    "message_template": "Proposta anexada sem nome ou conteúdo.",
+    "key": "apiErrors.messages.m_73781fd61a84",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 282,
+    "message_template": "Tipo de arquivo da proposta inválido (PDF, JPEG ou PNG).",
+    "key": "apiErrors.messages.m_c742b21ed7e4",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 290,
+    "message_template": "Proposta excede o limite de 5 MB.",
+    "key": "apiErrors.messages.m_150d8a0b8902",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 307,
+    "message_template": "Este link não permite responder cotação.",
+    "key": "apiErrors.messages.m_6cce4cad6983",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 310,
+    "message_template": "Fornecedor do link não encontrado.",
+    "key": "apiErrors.messages.m_294a17d5b2d2",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 332,
+    "message_template": "Este link não permite confirmar pedido.",
+    "key": "apiErrors.messages.m_b1b0ecbfee89",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 335,
+    "message_template": "Fornecedor do link não encontrado.",
+    "key": "apiErrors.messages.m_294a17d5b2d2",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 374,
+    "message_template": "Fornecedor sem e-mail de contato cadastrado.",
+    "key": "apiErrors.messages.m_14afc9faa80c",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 379,
+    "message_template": "WEB_BASE_URL não configurada para gerar o link do portal.",
+    "key": "apiErrors.messages.m_38c8746e6bf4",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 90,
+    "message_template": "Cotação não encontrada.",
+    "key": "apiErrors.messages.m_158ce479ab69",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 95,
+    "message_template": "PO não encontrada.",
+    "key": "apiErrors.messages.m_8ae40a55b605",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 102,
+    "message_template": "PO sem fornecedor cadastrado — cadastre o fornecedor (CNPJ) antes de gerar o link.",
+    "key": "apiErrors.messages.m_8eead2050e66",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 216,
+    "message_template": "Cotação do link não encontrada.",
+    "key": "apiErrors.messages.m_e55d0e79b9dd",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 246,
+    "message_template": "PO do link não encontrada.",
+    "key": "apiErrors.messages.m_fab0d68c071e",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 288,
+    "message_template": "Conteúdo do arquivo da proposta inválido.",
+    "key": "apiErrors.messages.m_b7a4dae4fe74",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 364,
+    "message_template": "Cotação com status \"{p1}\" não pode ser enviada ao portal.",
+    "key": "apiErrors.messages.m_60d276d721d5",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 369,
+    "message_template": "Apenas POs aprovadas podem ser enviadas ao fornecedor.",
+    "key": "apiErrors.messages.m_f1e64b251de7",
+    "kind": "raise"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 75,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 108,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "modules/i18n/presentation.py",
+    "line": 116,
+    "message_template": "Não foi possível carregar o idioma solicitado para o documento.",
+    "key": "apiErrors.messages.m_d84b6bd17b4f",
+    "structured_code": "DOCUMENT_LOCALE_UNAVAILABLE"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 32,
+    "function": "_base_url",
+    "exception": "ConnectorError",
+    "message_template": "Integração exige base_url HTTPS.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorHttpsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 65,
+    "function": "get_catalog",
+    "exception": "ConnectorError",
+    "message_template": "Catálogo da loja sem a chave \"items\".",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorCatalogItemsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 83,
+    "function": "get_price_and_stock",
+    "exception": "ConnectorError",
+    "message_template": "Cotação da loja sem a chave \"items\".",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorQuoteItemsRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 120,
+    "function": "get_order_status",
+    "exception": "ConnectorError",
+    "message_template": "PO sem referência de pedido na loja.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorOrderReferenceRequired"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 53,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Loja respondeu HTTP {status} em {path}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorHttpFailure"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 55,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Falha de comunicação com a loja em {detail}",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorNetworkFailure",
+    "source_template": "Falha de comunicação com a loja em {path}: {cause}",
+    "parameter_policy": "detail preserves the complete original path, separator and external exception as opaque text; parsing path/cause would be ambiguous for supplier references containing colon-space."
+  },
+  {
+    "path": "epi_backend/supplier_connectors/http_json.py",
+    "line": 59,
+    "function": "_request",
+    "exception": "ConnectorError",
+    "message_template": "Resposta inválida (não-JSON) da loja em {path}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorInvalidJson"
+  },
+  {
+    "path": "epi_backend/supplier_connectors/__init__.py",
+    "line": 25,
+    "function": "get_connector",
+    "exception": "ValueError",
+    "message_template": "Conector desconhecido: {connector}.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorUnknown",
+    "parameter_policy": "connector preserves the Python repr of the original key, including quotes."
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 119,
+    "function": "_active_connector_for_supplier",
+    "exception": "ValueError",
+    "message_template": "Fornecedor sem integração de API ativa.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorActiveIntegrationRequired"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 206,
+    "function": "_po_supplier_id",
+    "exception": "ValueError",
+    "message_template": "PO sem fornecedor cadastrado (CNPJ) para integração de API.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorSupplierCnpjRequired"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 260,
+    "function": "refresh_po_status_from_connector",
+    "exception": "ValueError",
+    "message_template": "PO ainda não foi enviada via API (sem referência na loja).",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorOrderNotSent"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 130,
+    "function": "ping_supplier_integration",
+    "exception": "ValueError",
+    "message_template": "Teste da integração falhou: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorTestFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 149,
+    "function": "sync_catalog_from_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao consultar o catálogo da loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorCatalogQueryFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 183,
+    "function": "quote_via_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao cotar na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorQuoteFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 224,
+    "function": "send_po_via_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao criar o pedido na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorOrderCreationFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_service.py",
+    "line": 267,
+    "function": "refresh_po_status_from_connector",
+    "exception": "ValueError",
+    "message_template": "Falha ao consultar o pedido na loja: {cause}",
+    "structured_code": "",
+    "key": "apiErrors.wrappers.connectorOrderStatusFailed"
+  },
+  {
+    "path": "modules/purchases/connectors_routes.py",
+    "line": 55,
+    "function": "handle_get_supplier_integration",
+    "exception": "HTTP 404 response",
+    "message_template": "Fornecedor sem integração configurada.",
+    "structured_code": "",
+    "key": "apiErrors.messages.connectorIntegrationNotConfigured"
+  }
+]

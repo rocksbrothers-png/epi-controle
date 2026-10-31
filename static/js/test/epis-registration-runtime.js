@@ -53,7 +53,7 @@ function makeEnv() {
     globals: {
       Promise, JSON, Object, Array, String, Number, Error,
       document: { getElementById: (id) => (id === 'epi-form' ? (env.noForm ? null : form) : nodes[id] || null) },
-      tr: (_k, fallback) => fallback,
+      tr: (_k, fallback, vars = {}) => String(fallback).replace(/\{(\w+)\}/g, (match, key) => Object.hasOwn(vars, key) ? String(vars[key]) : match),
       alert: (m) => log.push(['alert', m]),
       isMobileUserAgent: () => env.mobile,
       isOperationalProfile: () => env.operational,

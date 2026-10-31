@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -194,7 +196,13 @@ class _StockBodyState extends State<_StockBody> {
                   child: Row(
                     children: [
                       Text(
-                        '${state.epis.length} EPIs',
+                        l10n.stockPpeCount(
+                          state.epis.length,
+                          formatDisplayCount(
+                            state.epis.length,
+                            l10n.localeName,
+                          ),
+                        ),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       if (state.criticalCount > 0) ...[
@@ -478,17 +486,17 @@ class _ComplianceFilters extends StatelessWidget {
                 state.noPhysicalStockCount,
               ),
               chip(
-                'CA vencido',
+                l10n.complianceCaExpired,
                 StockComplianceFilter.caExpired,
                 state.caExpiredCount,
               ),
               chip(
-                'Validade do fabricante próxima',
+                l10n.stockManufacturerExpiring,
                 StockComplianceFilter.manufacturerExpiring,
                 state.manufacturerExpiringCount,
               ),
               chip(
-                'Validade do fabricante vencida',
+                l10n.stockManufacturerExpired,
                 StockComplianceFilter.manufacturerExpired,
                 state.manufacturerExpiredCount,
               ),
@@ -564,10 +572,10 @@ class _StockTile extends StatelessWidget {
                 // ela devolvia era a corporativa — nesta tela, que é da
                 // Unidade.
                 if (validade != null) ...[
-                  EpiBadge(status: validade),
+                  LocalizedEpiBadge(status: validade),
                   const SizedBox(width: EpiSpacing.xs),
                 ],
-                if (status != null) EpiStockBadge(status: status),
+                if (status != null) LocalizedEpiStockBadge(status: status),
                 // Abre os QRs disponíveis deste EPI. Botão próprio em vez de
                 // reaproveitar o toque do card, que já abre a movimentação —
                 // duas ações distintas não devem disputar o mesmo gesto.
@@ -686,12 +694,18 @@ class _StockTile extends StatelessWidget {
     }
     final status = epi.manufacturerValidityStatus;
     if (status == 'expired') {
-      return 'Validade do fabricante vencida — retirar do estoque (não entregar).';
+      return l10n.stockManufacturerExpiredNote;
     }
     if (status == 'expiring') {
       final days = epi.daysUntilManufacturerValidity;
-      return 'Validade do fabricante próxima'
-          '${days != null ? ' (em $days dia(s))' : ''} — priorizar entrega (PEPS).';
+      return days == null
+          ? l10n.stockManufacturerExpiringNote
+          : l10n.stockManufacturerExpiringInNote(
+              l10n.operationalAlertDays(
+                days,
+                formatDisplayCount(days, l10n.localeName),
+              ),
+            );
     }
     return null;
   }

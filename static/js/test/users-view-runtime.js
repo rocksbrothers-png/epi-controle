@@ -318,7 +318,8 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     // filtro; a validação do saveUser segue com a tabela do app.js.
     const coreCtx = vm.createContext({ encodeURIComponent }); coreCtx.globalThis = coreCtx;
     vm.runInContext(fs.readFileSync(path.join(JS_ROOT, 'core', 'constants.js'), 'utf8'), coreCtx);
-    const appLabels = vm.runInNewContext(`(${app.match(/^const ROLE_LABELS = (\{[\s\S]*?\n\});/m)[1]})`);
+    const appLabels = vm.runInNewContext(`(${app.match(/^const ROLE_LABELS = (\{[\s\S]*?\n\});/m)[1]})`,
+      { tr: (_key, fallback) => fallback });
     for (const key of ['master_admin', 'general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']) {
       eq(coreCtx.ROLE_LABELS[key], appLabels[key], `ROLE_LABELS.${key} igual nos dois`);
     }

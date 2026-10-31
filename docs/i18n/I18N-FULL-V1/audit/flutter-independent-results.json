@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "locale": "pt_BR",
+      "pluralCases": 6,
+      "dateAndNestedDays": true,
+      "sizesAndOpaqueNames": true,
+      "fullFallbackCases": 5,
+      "dataUnchanged": true
+    },
+    {
+      "locale": "en_US",
+      "pluralCases": 6,
+      "dateAndNestedDays": true,
+      "sizesAndOpaqueNames": true,
+      "fullFallbackCases": 5,
+      "dataUnchanged": true
+    },
+    {
+      "locale": "es_ES",
+      "pluralCases": 6,
+      "dateAndNestedDays": true,
+      "sizesAndOpaqueNames": true,
+      "fullFallbackCases": 5,
+      "dataUnchanged": true
+    },
+    {
+      "locale": "fr_FR",
+      "pluralCases": 6,
+      "dateAndNestedDays": true,
+      "sizesAndOpaqueNames": true,
+      "fullFallbackCases": 5,
+      "dataUnchanged": true
+    },
+    {
+      "locale": "no_NO",
+      "pluralCases": 6,
+      "dateAndNestedDays": true,
+      "sizesAndOpaqueNames": true,
+      "fullFallbackCases": 5,
+      "dataUnchanged": true
+    }
+  ],
+  "localeInterceptorCanonicalBodyAndAuth": true,
+  "realDashboardWidgetLocales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "localeChangeNoRefetch": true,
+  "realRequests": [
+    {
+      "path": "/api/dashboard/summary",
+      "headers": {
+        "Accept-Language": "pt-BR"
+      },
+      "query": {
+        "actor_user_id": 0
+      },
+      "data": null
+    }
+  ]
+}

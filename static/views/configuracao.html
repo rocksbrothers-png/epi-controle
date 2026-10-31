@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="pagehead.settings">Configurações da empresa, ficha, regras e retenção de dados.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="configuracoes" aria-label="Configurações">
+        <nav class="view-tabs" data-vtabs="configuracoes" aria-label="Configurações" data-i18n-aria-label="nav.settings">
           <button type="button" class="vtab" data-vtab="empresa" data-i18n="settingsTabs.company">Empresa</button>
           <button type="button" class="vtab" data-vtab="ficha" data-i18n="settingsTabs.record">Ficha de EPI</button>
           <button type="button" class="vtab" data-vtab="regras" data-i18n="settingsTabs.rules">Regras</button>
@@ -15,80 +15,80 @@
           <!-- Minha Empresa — configuração da própria tenant pelo Administrador Geral (Owner) -->
           <form id="my-company-form" class="card form-stack" style="display:none;" autocomplete="off">
             <div class="section-intro">
-              <span class="eyebrow">Minha Empresa</span>
-              <h3>Configurações da empresa</h3>
-              <p class="hint">Dados cadastrais, identidade visual, tema, domínio e preferências da sua empresa. Plano, limites, licença e módulos são administrados pela plataforma.</p>
+              <span class="eyebrow" data-i18n="ui.configuracao.minha_empresa_c1588a">Minha Empresa</span>
+              <h3 data-i18n="ui.configuracao.configuracoes_da_empresa_946164">Configurações da empresa</h3>
+              <p class="hint" data-i18n="ui.configuracao.dados_cadastrais_identidade_visual_tema_dominio_e_preferencias_da_sua_empre_9442eb">Dados cadastrais, identidade visual, tema, domínio e preferências da sua empresa. Plano, limites, licença e módulos são administrados pela plataforma.</p>
             </div>
             <div id="my-company-readonly" class="summary-item"></div>
-            <h4>Dados cadastrais</h4>
+            <h4 data-i18n="ui.configuracao.dados_cadastrais_db49f9">Dados cadastrais</h4>
             <div class="inline-grid">
-              <label>Nome fantasia<input data-mc-field="name" type="text" required></label>
-              <label>Razão social<input data-mc-field="legal_name" type="text" required></label>
+              <label data-i18n="legalEntity.tradeName">Nome fantasia<input data-mc-field="name" type="text" required></label>
+              <label data-i18n="legalEntity.legalName">Razão social<input data-mc-field="legal_name" type="text" required></label>
               <label>CNPJ<input data-mc-field="cnpj" type="text" required></label>
-              <label>Inscrição estadual<input data-mc-field="state_registration" type="text"></label>
-              <label>Inscrição municipal<input data-mc-field="municipal_registration" type="text"></label>
-              <label>Telefone<input data-mc-field="contact_phone" type="text"></label>
+              <label data-i18n="legalEntity.stateRegistration">Inscrição estadual<input data-mc-field="state_registration" type="text"></label>
+              <label data-i18n="legalEntity.municipalRegistration">Inscrição municipal<input data-mc-field="municipal_registration" type="text"></label>
+              <label data-i18n="ui.configuracao.telefone_2f1517">Telefone<input data-mc-field="contact_phone" type="text"></label>
               <label>WhatsApp<input data-mc-field="whatsapp" type="text"></label>
-              <label>E-mail institucional<input data-mc-field="contact_email" type="email"></label>
-              <label>Website<input data-mc-field="website" type="text"></label>
+              <label data-i18n="ui.configuracao.e_mail_institucional_ebf91c">E-mail institucional<input data-mc-field="contact_email" type="email"></label>
+              <label data-i18n="company.website">Website<input data-mc-field="website" type="text"></label>
             </div>
-            <label>Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
-            <h4>Identidade visual</h4>
-            <label>Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+            <label data-i18n="legalEntity.address">Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
+            <h4 data-i18n="ui.configuracao.identidade_visual_6b7c9a">Identidade visual</h4>
+            <label data-i18n="company.logo">Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
             <input type="hidden" data-mc-field="logo_type">
             <div data-mc-preview="logo_type" class="logo-preview"></div>
-            <label>Favicon (PNG ou SVG)<input type="file" data-mc-image="favicon_type" accept=".png,.svg,image/png,image/svg+xml"></label>
+            <label data-i18n="ui.configuracao.favicon_png_ou_svg_cedad0">Favicon (PNG ou SVG)<input type="file" data-mc-image="favicon_type" accept=".png,.svg,image/png,image/svg+xml"></label>
             <input type="hidden" data-mc-field="favicon_type">
-            <label>Imagem da tela de login (PNG ou SVG)<input type="file" data-mc-image="login_logo_type" accept=".png,.svg,image/png,image/svg+xml"></label>
+            <label data-i18n="ui.configuracao.imagem_da_tela_de_login_png_ou_svg_eec826">Imagem da tela de login (PNG ou SVG)<input type="file" data-mc-image="login_logo_type" accept=".png,.svg,image/png,image/svg+xml"></label>
             <input type="hidden" data-mc-field="login_logo_type">
             <div class="inline-grid">
-              <label>Nome exibido no sistema<input data-mc-field="display_name" type="text"></label>
-              <label>Mensagem institucional<input data-mc-field="institutional_message" type="text"></label>
+              <label data-i18n="ui.configuracao.nome_exibido_no_sistema_e56dfa">Nome exibido no sistema<input data-mc-field="display_name" type="text"></label>
+              <label data-i18n="ui.configuracao.mensagem_institucional_c04ad8">Mensagem institucional<input data-mc-field="institutional_message" type="text"></label>
             </div>
-            <h4>Tema</h4>
+            <h4 data-i18n="settings.theme">Tema</h4>
             <div class="inline-grid">
-              <label>Modo do tema
+              <label data-i18n="ui.configuracao.modo_do_tema_32fa03">Modo do tema
                 <select data-mc-field="theme_mode">
-                  <option value="auto">Automático</option>
-                  <option value="light">Claro</option>
-                  <option value="dark">Escuro</option>
+                  <option value="auto" data-i18n="ui.configuracao.automatico_b803f2">Automático</option>
+                  <option value="light" data-i18n="settings.themeLight">Claro</option>
+                  <option value="dark" data-i18n="settings.themeDark">Escuro</option>
                 </select>
               </label>
-              <label>Cor principal<input data-mc-field="primary_color" type="color" value="#1565C0"></label>
-              <label>Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
-              <label>Cor de destaque<input data-mc-field="accent_color" type="color" value="#FF6F00"></label>
+              <label data-i18n="ui.configuracao.cor_principal_205067">Cor principal<input data-mc-field="primary_color" type="color" value="#1565C0"></label>
+              <label data-i18n="ui.configuracao.cor_secundaria_3c1219">Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
+              <label data-i18n="ui.configuracao.cor_de_destaque_555148">Cor de destaque<input data-mc-field="accent_color" type="color" value="#FF6F00"></label>
             </div>
-            <h4>Domínio</h4>
+            <h4 data-i18n="ui.configuracao.dominio_356377">Domínio</h4>
             <div class="inline-grid">
-              <label>Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa"></label>
-              <label>Domínio personalizado<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
+              <label data-i18n="ui.configuracao.subdominio_da_plataforma_cd856d">Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa" data-i18n-placeholder="ui.configuracao.empresa_307ca7"></label>
+              <label data-i18n="ui.configuracao.dominio_personalizado_14c67b">Domínio personalizado<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
             </div>
-            <p class="hint">O subdomínio dá acesso via <strong>seu-subdominio</strong>.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</p>
+            <p class="hint"><span data-i18n="ui.configuracao.o_subdominio_da_acesso_via_476f65">O subdomínio dá acesso via</span> <strong data-i18n="ui.configuracao.seu_subdominio_260309">seu-subdominio</strong><span data-i18n="ui.configuracao.epicontrole_com_br_dominio_personalizado_exige_apontamento_cname_e_validaca_4e2f86">.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</span></p>
             <div class="summary-item">
-              <strong>Domínios registrados (verificação CNAME/SSL)</strong>
+              <strong data-i18n="ui.configuracao.dominios_registrados_verificacao_cname_ssl_7cca8d">Domínios registrados (verificação CNAME/SSL)</strong>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th scope="col">Domínio</th><th scope="col">Tipo</th><th scope="col">Verificação</th><th scope="col">SSL</th><th scope="col">Ações</th></tr></thead>
+                  <thead><tr><th scope="col" data-i18n="ui.configuracao.dominio_356377">Domínio</th><th scope="col" data-i18n="stock.type">Tipo</th><th scope="col" data-i18n="ui.configuracao.verificacao_a9e123">Verificação</th><th scope="col">SSL</th><th scope="col" data-i18n="company.actions">Ações</th></tr></thead>
                   <tbody id="my-company-domains-table"></tbody>
                 </table>
               </div>
               <div id="my-company-domain-instructions" class="hint"></div>
               <div class="inline-grid">
-                <label>Novo domínio<input id="my-company-domain-input" type="text" placeholder="empresa ou epi.empresa.com.br"></label>
-                <label>Tipo
+                <label data-i18n="ui.configuracao.novo_dominio_78511f">Novo domínio<input id="my-company-domain-input" type="text" placeholder="empresa ou epi.empresa.com.br" data-i18n-placeholder="ui.configuracao.empresa_ou_epi_empresa_com_br_9301a9"></label>
+                <label data-i18n="stock.type">Tipo
                   <select id="my-company-domain-type">
-                    <option value="platform_subdomain">Subdomínio da plataforma</option>
-                    <option value="custom_subdomain">Subdomínio personalizado</option>
-                    <option value="custom_domain">Domínio personalizado</option>
+                    <option value="platform_subdomain" data-i18n="ui.configuracao.subdominio_da_plataforma_cd856d">Subdomínio da plataforma</option>
+                    <option value="custom_subdomain" data-i18n="ui.configuracao.subdominio_personalizado_872416">Subdomínio personalizado</option>
+                    <option value="custom_domain" data-i18n="ui.configuracao.dominio_personalizado_14c67b">Domínio personalizado</option>
                   </select>
                 </label>
               </div>
-              <button id="my-company-domain-add" class="ghost" type="button">Registrar domínio</button>
+              <button id="my-company-domain-add" class="ghost" type="button" data-i18n="ui.configuracao.registrar_dominio_d64a30">Registrar domínio</button>
               <div id="my-company-domain-feedback" class="form-feedback" aria-live="polite"></div>
             </div>
-            <h4>Preferências</h4>
+            <h4 data-i18n="ui.configuracao.preferencias_6706db">Preferências</h4>
             <div class="inline-grid">
-              <label>Idioma
+              <label data-i18n="settings.language">Idioma
                 <select data-mc-field="default_language">
                   <option value="pt-BR">Português (Brasil)</option>
                   <option value="en-GB">English (UK)</option>
@@ -97,7 +97,7 @@
                   <option value="nb-NO">Norsk</option>
                 </select>
               </label>
-              <label>Fuso horário<input data-mc-field="timezone" type="text" placeholder="America/Sao_Paulo"></label>
+              <label data-i18n="ui.configuracao.fuso_horario_e87f8d">Fuso horário<input data-mc-field="timezone" type="text" placeholder="America/Sao_Paulo"></label>
               <label><span data-i18n="myCompany.stockScope">Consolidar saldos de estoque por</span>
                 <select data-mc-field="stock_control_scope">
                   <option value="unit" data-i18n="unit.title">Unidade</option>
@@ -107,7 +107,7 @@
                 <small class="hint" data-i18n="myCompany.stockScopeHint">Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.</small>
               </label>
             </div>
-            <button class="primary" type="submit">Salvar configurações da empresa</button>
+            <button class="primary" type="submit" data-i18n="ui.configuracao.salvar_configuracoes_da_empresa_04e838">Salvar configurações da empresa</button>
             <div id="my-company-feedback" class="form-feedback" aria-live="polite"></div>
           </form>
         </div>
@@ -116,56 +116,56 @@
             <div class="section-intro">
               <span class="eyebrow" data-i18n="settings.title">Configuração</span>
               <h3 data-i18n="records.configTitle">Personalização da Ficha de EPI</h3>
-              <p class="hint">Esses campos são aplicados automaticamente às fichas geradas para a empresa.</p>
+              <p class="hint" data-i18n="ui.configuracao.esses_campos_sao_aplicados_automaticamente_as_fichas_geradas_para_a_empresa_26c5ed">Esses campos são aplicados automaticamente às fichas geradas para a empresa.</p>
             </div>
-            <label id="ficha-config-company-row" style="display:none;">Empresa (Admin Master)
+            <label id="ficha-config-company-row" style="display:none;" data-i18n="ui.configuracao.empresa_admin_master_eaf07b">Empresa (Admin Master)
               <select id="ficha-config-company" name="company_id"></select>
             </label>
             <p id="ficha-config-company-banner" class="hint" style="display:none;"></p>
-            <label>Título da ficha<input name="titulo" type="text" placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI..."></label>
-            <label>Declaração / texto principal<textarea name="declaracao" rows="5" placeholder="Texto de declaração que o colaborador assina..."></textarea></label>
-            <p class="hint">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
-            <label>Observações finais<textarea name="observacoes" rows="3" placeholder="OBS.: Cada EPI tem um prazo de validade..."></textarea></label>
-            <label>Rastreabilidade do formulário<input name="rastreabilidade" type="text" placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025"></label>
+            <label data-i18n="ui.configuracao.titulo_da_ficha_7a3786">Título da ficha<input name="titulo" type="text" placeholder="FICHA INDIVIDUAL DE CONTROLE DE EPI..." data-i18n-placeholder="ui.configuracao.ficha_individual_de_controle_de_epi_d2aa76"></label>
+            <label data-i18n="ui.configuracao.declaracao_texto_principal_a98707">Declaração / texto principal<textarea name="declaracao" rows="5" placeholder="Texto de declaração que o colaborador assina..." data-i18n-placeholder="ui.configuracao.texto_de_declaracao_que_o_colaborador_assina_6680c6"></textarea></label>
+            <p class="hint" data-i18n="ui.configuracao.automatico_dados_do_colaborador_epis_e_assinaturas_vem_do_sistema_684f0c">Automático: dados do colaborador, EPIs e assinaturas vêm do sistema.</p>
+            <label data-i18n="ui.configuracao.observacoes_finais_ee7e08">Observações finais<textarea name="observacoes" rows="3" placeholder="OBS.: Cada EPI tem um prazo de validade..." data-i18n-placeholder="ui.configuracao.obs_cada_epi_tem_um_prazo_de_validade_e89587"></textarea></label>
+            <label data-i18n="ui.configuracao.rastreabilidade_do_formulario_3bf431">Rastreabilidade do formulário<input name="rastreabilidade" type="text" placeholder="Ex.: HS-FF-3962 - Ficha Individual de Controle de EPI - Ver. 02 - Valid from date: 11/06/2025" data-i18n-placeholder="ui.configuracao.ex_hs_ff_3962_ficha_individual_de_controle_de_epi_ver_02_valid_from_date_11_38c28a"></label>
             <button class="primary" type="submit" data-i18n="records.save">Salvar configurações da ficha</button>
           </form>
           <article class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Auditoria</span>
+              <span class="eyebrow" data-i18n="ui.configuracao.auditoria_3c7d69">Auditoria</span>
               <h3 data-i18n="records.audit">Auditoria de Acesso às Fichas de EPI</h3>
-              <p class="hint">Rastreia visualização, impressão, snapshots e acessos negados.</p>
+              <p class="hint" data-i18n="ui.configuracao.rastreia_visualizacao_impressao_snapshots_e_acessos_negados_38928c">Rastreia visualização, impressão, snapshots e acessos negados.</p>
             </div>
             <div class="inline-grid">
-              <label>Colaborador
-                <select id="ficha-audit-employee"><option value="">Todos os colaboradores</option></select>
+              <label data-i18n="employee.title">Colaborador
+                <select id="ficha-audit-employee"><option value="" data-i18n="employee.allEmployees">Todos os colaboradores</option></select>
               </label>
-              <label>Gestor
-                <select id="ficha-audit-manager"><option value="">Todos os gestores</option></select>
+              <label data-i18n="ui.configuracao.gestor_4c271a">Gestor
+                <select id="ficha-audit-manager"><option value="" data-i18n="ui.configuracao.todos_os_gestores_b7332e">Todos os gestores</option></select>
               </label>
-              <label>Ação
+              <label data-i18n="employee.action">Ação
                 <select id="ficha-audit-action">
-                  <option value="">Todas</option>
-                  <option value="view">Visualizou</option>
-                  <option value="print">Imprimiu</option>
-                  <option value="snapshot_view">Snapshot</option>
-                  <option value="snapshot_print">Snapshot (impressão)</option>
-                  <option value="snapshot_export">Snapshot (exportação)</option>
-                  <option value="denied">Negado</option>
+                  <option value="" data-i18n="employee.filterAllCompanies">Todas</option>
+                  <option value="view" data-i18n="ui.configuracao.visualizou_b86564">Visualizou</option>
+                  <option value="print" data-i18n="ui.configuracao.imprimiu_6530c0">Imprimiu</option>
+                  <option value="snapshot_view" data-i18n="ui.configuracao.snapshot_6ad27b">Snapshot</option>
+                  <option value="snapshot_print" data-i18n="ui.configuracao.snapshot_impressao_ce5c61">Snapshot (impressão)</option>
+                  <option value="snapshot_export" data-i18n="ui.configuracao.snapshot_exportacao_ea2632">Snapshot (exportação)</option>
+                  <option value="denied" data-i18n="ui.configuracao.negado_1da31a">Negado</option>
                 </select>
               </label>
-              <label>Data inicial<input id="ficha-audit-date-from" type="date"></label>
-              <label>Data final<input id="ficha-audit-date-to" type="date"></label>
+              <label data-i18n="delivery.startDate">Data inicial<input id="ficha-audit-date-from" type="date"></label>
+              <label data-i18n="delivery.endDate">Data final<input id="ficha-audit-date-to" type="date"></label>
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th scope="col">Data/hora</th><th scope="col">Gestor</th><th scope="col">Colaborador</th><th scope="col">Ação</th><th scope="col">Unidade</th><th scope="col">IP</th><th scope="col">Dispositivo</th></tr></thead>
+                <thead><tr><th scope="col" data-i18n="ui.configuracao.data_hora_1ff01e">Data/hora</th><th scope="col" data-i18n="ui.configuracao.gestor_4c271a">Gestor</th><th scope="col" data-i18n="employee.title">Colaborador</th><th scope="col" data-i18n="employee.action">Ação</th><th scope="col" data-i18n="employee.unit">Unidade</th><th scope="col">IP</th><th scope="col" data-i18n="ui.configuracao.dispositivo_1c555e">Dispositivo</th></tr></thead>
                 <tbody id="ficha-audit-table"></tbody>
               </table>
             </div>
           </article>
         </div>
         <div class="vtab-panel" data-vtab-panel="regras">
-          <nav class="view-tabs view-tabs--sub" data-vtabs="config-regras" aria-label="Regras">
+          <nav class="view-tabs view-tabs--sub" data-vtabs="config-regras" aria-label="Regras" data-i18n-aria-label="settingsTabs.rules">
             <button type="button" class="vtab" data-vtab="arquivamento" data-i18n="rulesTabs.archival">Arquivamento</button>
             <button type="button" class="vtab" data-vtab="ficha" data-i18n="rulesTabs.record">Ficha de EPI</button>
             <button type="button" class="vtab" data-vtab="visualizacao" data-i18n="rulesTabs.visibility">Visualização</button>
@@ -196,71 +196,71 @@
           <div class="vtab-panel" data-vtab-panel="ficha" data-vtab-group="config-regras">
           <article class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Retenção</span>
+              <span class="eyebrow" data-i18n="ui.configuracao.retencao_a4b252">Retenção</span>
               <h3 data-i18n="records.retention">Auditoria e retenção de fichas de EPI</h3>
-              <p class="hint">Política padrão de 5 anos com expiração automática e purge opcional.</p>
+              <p class="hint" data-i18n="ui.configuracao.politica_padrao_de_5_anos_com_expiracao_automatica_e_purge_opcional_f90b5b">Política padrão de 5 anos com expiração automática e purge opcional.</p>
             </div>
             <form id="ficha-retention-form" class="form-stack">
-              <label>Anos de retenção
+              <label data-i18n="ui.configuracao.anos_de_retencao_95bd79">Anos de retenção
                 <input id="ficha-retention-years" name="retention_years" type="number" min="1" max="15" step="1" value="5" required>
               </label>
-              <label><input id="ficha-retention-purge-enabled" name="purge_enabled" type="checkbox"> Habilitar purge automático após expiração</label>
-              <button class="primary" type="submit">Salvar política de retenção</button>
+              <label data-i18n="ui.configuracao.habilitar_purge_automatico_apos_expiracao_417866"><input id="ficha-retention-purge-enabled" name="purge_enabled" type="checkbox"> Habilitar purge automático após expiração</label>
+              <button class="primary" type="submit" data-i18n="ui.configuracao.salvar_politica_de_retencao_b8c5b0">Salvar política de retenção</button>
             </form>
             <div class="summary-item">
-              <strong>Linha do tempo de retenção</strong>
+              <strong data-i18n="ui.configuracao.linha_do_tempo_de_retencao_49b900">Linha do tempo de retenção</strong>
               <ul class="bullet-list" id="ficha-retention-timeline">
-                <li>Fechamento: snapshot gerado</li>
-                <li>Ano 1-2: retenção ativa</li>
-                <li>Ano 3-4: auditoria legal</li>
-                <li>5 anos: expiração NR-6</li>
-                <li>Purge: limpeza automática (se habilitada)</li>
+                <li data-i18n="ui.configuracao.fechamento_snapshot_gerado_82340d">Fechamento: snapshot gerado</li>
+                <li data-i18n="ui.configuracao.ano_1_2_retencao_ativa_fe0461">Ano 1-2: retenção ativa</li>
+                <li data-i18n="ui.configuracao.ano_3_4_auditoria_legal_bbfd64">Ano 3-4: auditoria legal</li>
+                <li data-i18n="ui.configuracao.5_anos_expiracao_nr_6_0a7a0f">5 anos: expiração NR-6</li>
+                <li data-i18n="ui.configuracao.purge_limpeza_automatica_se_habilitada_e3641b">Purge: limpeza automática (se habilitada)</li>
               </ul>
             </div>
-            <button class="ghost" id="ficha-retention-purge-run" type="button">Executar purge/expiração agora</button>
+            <button class="ghost" id="ficha-retention-purge-run" type="button" data-i18n="ui.configuracao.executar_purge_expiracao_agora_3dad48">Executar purge/expiração agora</button>
           </article>
           </div>
           <div class="vtab-panel" data-vtab-panel="visualizacao" data-vtab-group="config-regras">
           <article class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Regras</span>
-              <h3>Visualização por Unidade e Colaborador</h3>
-              <p class="hint">Defina quais perfis podem visualizar unidade, EPIs e colaboradores conforme contexto da unidade.</p>
+              <span class="eyebrow" data-i18n="settingsTabs.rules">Regras</span>
+              <h3 data-i18n="ui.configuracao.visualizacao_por_unidade_e_colaborador_5cbba0">Visualização por Unidade e Colaborador</h3>
+              <p class="hint" data-i18n="ui.configuracao.defina_quais_perfis_podem_visualizar_unidade_epis_e_colaboradores_conforme__a03335">Defina quais perfis podem visualizar unidade, EPIs e colaboradores conforme contexto da unidade.</p>
             </div>
             <form id="config-rules-form" class="form-stack">
-              <label>Perfil<select id="config-rule-role" name="role" required></select></label>
-              <label>Unidade<select id="config-rule-unit" name="unit_id" required></select></label>
-              <label>Contexto da unidade
+              <label data-i18n="settings.profile">Perfil<select id="config-rule-role" name="role" required></select></label>
+              <label data-i18n="employee.unit">Unidade<select id="config-rule-unit" name="unit_id" required></select></label>
+              <label data-i18n="ui.configuracao.contexto_da_unidade_5e3c56">Contexto da unidade
                 <select id="config-rule-context" name="unit_context" required>
-                  <option value="outside_jv">Fora de JV</option>
-                  <option value="inside_jv">Em JV</option>
+                  <option value="outside_jv" data-i18n="ui.configuracao.fora_de_jv_01487d">Fora de JV</option>
+                  <option value="inside_jv" data-i18n="ui.configuracao.em_jv_3f4214">Em JV</option>
                 </select>
               </label>
-              <label><input type="checkbox" name="can_view_unit" checked> Permite visualizar Unidade</label>
-              <label><input type="checkbox" name="can_view_epis" checked> Permite visualizar EPIs</label>
-              <label><input type="checkbox" name="can_view_employees" checked> Permite visualizar Colaboradores</label>
-              <button class="primary" type="submit">Adicionar regra</button>
+              <label data-i18n="ui.configuracao.permite_visualizar_unidade_a1aa98"><input type="checkbox" name="can_view_unit" checked> Permite visualizar Unidade</label>
+              <label data-i18n="ui.configuracao.permite_visualizar_epis_6424e2"><input type="checkbox" name="can_view_epis" checked> Permite visualizar EPIs</label>
+              <label data-i18n="ui.configuracao.permite_visualizar_colaboradores_07084e"><input type="checkbox" name="can_view_employees" checked> Permite visualizar Colaboradores</label>
+              <button class="primary" type="submit" data-i18n="ui.configuracao.adicionar_regra_d5f7fc">Adicionar regra</button>
             </form>
             <div class="table-wrap">
               <table>
-                <thead><tr><th scope="col">Perfil</th><th scope="col">Unidade</th><th scope="col">Contexto</th><th scope="col">Unidade</th><th scope="col">EPIs</th><th scope="col">Colab.</th><th scope="col">Ações</th></tr></thead>
+                <thead><tr><th scope="col" data-i18n="settings.profile">Perfil</th><th scope="col" data-i18n="employee.unit">Unidade</th><th scope="col" data-i18n="ui.configuracao.contexto_dbb654">Contexto</th><th scope="col" data-i18n="employee.unit">Unidade</th><th scope="col" data-i18n="nav.epis">EPIs</th><th scope="col" data-i18n="ui.configuracao.colab_698ae5">Colab.</th><th scope="col" data-i18n="company.actions">Ações</th></tr></thead>
                 <tbody id="config-rules-table"></tbody>
               </table>
             </div>
           </article>
           <article class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Regras</span>
-              <h3>Visibilidade por Módulo</h3>
-              <p class="hint"><strong>Permissões padrão.</strong> Cada perfil possui permissões padrão definidas pelo sistema.</p>
-              <p class="hint"><strong>Personalizações.</strong> O Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.</p>
+              <span class="eyebrow" data-i18n="settingsTabs.rules">Regras</span>
+              <h3 data-i18n="ui.configuracao.visibilidade_por_modulo_bc80c7">Visibilidade por Módulo</h3>
+              <p class="hint" data-i18n="ui.configuracao.cada_perfil_possui_permissoes_padrao_definidas_pelo_sistema_9bce50"><strong data-i18n="ui.configuracao.permissoes_padrao_37783e">Permissões padrão.</strong> Cada perfil possui permissões padrão definidas pelo sistema.</p>
+              <p class="hint" data-i18n="ui.configuracao.o_administrador_geral_pode_personalizar_a_visualizacao_e_a_utilizacao_dos_m_3c1057"><strong data-i18n="ui.configuracao.personalizacoes_077029">Personalizações.</strong> O Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.</p>
             </div>
             <form id="module-visibility-form" class="form-stack">
-              <label>Perfil<select id="module-visibility-role" name="role" required></select></label>
+              <label data-i18n="settings.profile">Perfil<select id="module-visibility-role" name="role" required></select></label>
               <div id="module-visibility-default-panel" class="default-permissions-panel" hidden>
-                <h4>Permissões padrão deste perfil</h4>
+                <h4 data-i18n="ui.configuracao.permissoes_padrao_deste_perfil_7a99d9">Permissões padrão deste perfil</h4>
                 <div class="chips-row" id="module-visibility-default-list"></div>
-                <p class="hint">Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.</p>
+                <p class="hint" data-i18n="ui.configuracao.estas_permissoes_representam_o_comportamento_padrao_do_sistema_as_configura_6c0cee">Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.</p>
               </div>
               <label id="module-visibility-unit-wrap" hidden>
                 <span data-i18n="moduleVisibility.unitLabel">Unidade</span>
@@ -268,7 +268,7 @@
               </label>
               <p class="hint" id="module-visibility-unit-hint" data-i18n="moduleVisibility.unitHint" hidden>Um módulo não marcado especificamente para esta Unidade herda o valor de "Todas as unidades".</p>
               <div class="form-grid" id="module-visibility-checkboxes"></div>
-              <button class="primary" type="submit">Salvar visibilidade de módulos</button>
+              <button class="primary" type="submit" data-i18n="ui.configuracao.salvar_visibilidade_de_modulos_8d18a1">Salvar visibilidade de módulos</button>
             </form>
             <p class="hint" id="module-visibility-feedback"></p>
           </article>
@@ -276,56 +276,56 @@
           <div class="vtab-panel" data-vtab-panel="motor" data-vtab-group="config-regras">
           <form id="config-framework-form" class="card form-stack">
             <div class="section-intro">
-              <span class="eyebrow">Hardening incremental</span>
-              <h3>Feature Flag, Hierarquia e Relatórios</h3>
-              <p class="hint">Base de governança para ativação gradual do novo motor de regras, sem alterar o comportamento legado por padrão.</p>
+              <span class="eyebrow" data-i18n="ui.configuracao.hardening_incremental_9caa84">Hardening incremental</span>
+              <h3 data-i18n="ui.configuracao.feature_flag_hierarquia_e_relatorios_e2e1b9">Feature Flag, Hierarquia e Relatórios</h3>
+              <p class="hint" data-i18n="ui.configuracao.base_de_governanca_para_ativacao_gradual_do_novo_motor_de_regras_sem_altera_e43fce">Base de governança para ativação gradual do novo motor de regras, sem alterar o comportamento legado por padrão.</p>
             </div>
-            <label><input id="config-enable-new-engine" type="checkbox"> Ativar novo motor de regras (default: desativado)</label>
-            <label>Modo de execução
+            <label data-i18n="ui.configuracao.ativar_novo_motor_de_regras_default_desativado_f34b05"><input id="config-enable-new-engine" type="checkbox"> Ativar novo motor de regras (default: desativado)</label>
+            <label data-i18n="ui.configuracao.modo_de_execucao_af8166">Modo de execução
               <select id="config-execution-mode">
-                <option value="off">off (somente legado)</option>
-                <option value="shadow">shadow (dupla execução + diff)</option>
-                <option value="canary">canary (dupla execução direcionada)</option>
-                <option value="enforced">enforced (preparado para futuro)</option>
+                <option value="off" data-i18n="ui.configuracao.off_somente_legado_246a52">off (somente legado)</option>
+                <option value="shadow" data-i18n="ui.configuracao.shadow_dupla_execucao_diff_cd9033">shadow (dupla execução + diff)</option>
+                <option value="canary" data-i18n="ui.configuracao.canary_dupla_execucao_direcionada_0627a3">canary (dupla execução direcionada)</option>
+                <option value="enforced" data-i18n="ui.configuracao.enforced_preparado_para_futuro_779b2b">enforced (preparado para futuro)</option>
               </select>
             </label>
-            <label>Percentual de rollout (0-100)
+            <label data-i18n="ui.configuracao.percentual_de_rollout_0_100_a9c7d1">Percentual de rollout (0-100)
               <input id="config-rollout-percentage" type="number" min="0" max="100" step="1" placeholder="0">
             </label>
-            <label><input id="config-allow-new-response" type="checkbox"> Permitir resposta do novo motor (manter desmarcado em produção)</label>
-            <label>Perfis habilitados (CSV)
+            <label data-i18n="ui.configuracao.permitir_resposta_do_novo_motor_manter_desmarcado_em_producao_17e42d"><input id="config-allow-new-response" type="checkbox"> Permitir resposta do novo motor (manter desmarcado em produção)</label>
+            <label data-i18n="ui.configuracao.perfis_habilitados_csv_5e33c1">Perfis habilitados (CSV)
               <input id="config-enabled-profiles" type="text" placeholder="general_admin, registry_admin">
             </label>
-            <label>Empresas habilitadas (IDs CSV)
+            <label data-i18n="ui.configuracao.empresas_habilitadas_ids_csv_81bfab">Empresas habilitadas (IDs CSV)
               <input id="config-enabled-companies" type="text" placeholder="1, 2">
             </label>
-            <label>Endpoints habilitados (CSV)
+            <label data-i18n="ui.configuracao.endpoints_habilitados_csv_354e25">Endpoints habilitados (CSV)
               <input id="config-enabled-endpoints" type="text" placeholder="/api/reports, /api/stock/epis">
             </label>
-            <label>Ambientes habilitados (CSV)
+            <label data-i18n="ui.configuracao.ambientes_habilitados_csv_a410a8">Ambientes habilitados (CSV)
               <input id="config-enabled-environments" type="text" placeholder="staging, canary">
             </label>
-            <h4>Hierarquia padrão (quem pode ver o quê)</h4>
+            <h4 data-i18n="ui.configuracao.hierarquia_padrao_quem_pode_ver_o_que_5dc911">Hierarquia padrão (quem pode ver o quê)</h4>
             <div class="table-wrap">
               <table>
-                <thead><tr><th scope="col">Perfil</th><th scope="col">Unidades</th><th scope="col">EPIs</th><th scope="col">Colaboradores</th></tr></thead>
+                <thead><tr><th scope="col" data-i18n="settings.profile">Perfil</th><th scope="col" data-i18n="nav.units">Unidades</th><th scope="col" data-i18n="nav.epis">EPIs</th><th scope="col" data-i18n="nav.employees">Colaboradores</th></tr></thead>
                 <tbody id="config-hierarchy-table"></tbody>
               </table>
             </div>
-            <label>Override de hierarquia (JSON opcional)
+            <label data-i18n="ui.configuracao.override_de_hierarquia_json_opcional_46ca6e">Override de hierarquia (JSON opcional)
               <textarea id="config-hierarchy-json" rows="4" placeholder='{"admin":{"units":"operational","epis":"operational","employees":"operational"}}'></textarea>
             </label>
-            <h4>Escopo de relatórios configuráveis</h4>
+            <h4 data-i18n="ui.configuracao.escopo_de_relatorios_configuraveis_9a59b8">Escopo de relatórios configuráveis</h4>
             <div class="table-wrap">
               <table>
-                <thead><tr><th scope="col">Relatório</th><th scope="col">Habilitado</th><th scope="col">Escopo por Unidade</th><th scope="col">Usa regras novas</th><th scope="col">Perfis permitidos</th></tr></thead>
+                <thead><tr><th scope="col" data-i18n="report.title">Relatório</th><th scope="col" data-i18n="ui.configuracao.habilitado_ba5f33">Habilitado</th><th scope="col" data-i18n="ui.configuracao.escopo_por_unidade_8523b8">Escopo por Unidade</th><th scope="col" data-i18n="ui.configuracao.usa_regras_novas_26143f">Usa regras novas</th><th scope="col" data-i18n="ui.configuracao.perfis_permitidos_c9cf5f">Perfis permitidos</th></tr></thead>
                 <tbody id="config-report-scopes-table"></tbody>
               </table>
             </div>
-            <label>Override de relatórios (JSON opcional)
+            <label data-i18n="ui.configuracao.override_de_relatorios_json_opcional_f0076b">Override de relatórios (JSON opcional)
               <textarea id="config-report-scopes-json" rows="5" placeholder='{"stock_by_unit":{"enabled":true,"allowed_profiles":["general_admin","registry_admin"]}}'></textarea>
             </label>
-            <button class="primary" type="submit">Salvar framework de hardening</button>
+            <button class="primary" type="submit" data-i18n="ui.configuracao.salvar_framework_de_hardening_2ced84">Salvar framework de hardening</button>
           </form>
           </div>
         </div>
@@ -333,16 +333,16 @@
           <!-- Fluxo de aprovação de compras — Administrador Geral -->
           <div class="card form-stack" id="compras-workflow-config-card" style="display:none;">
             <div class="section-intro">
-              <span class="eyebrow">Compras</span>
-              <h3>Fluxo de Aprovação de Requisições</h3>
-              <p class="hint">Configure como as requisições de compra devem percorrer o fluxo de aprovação na sua empresa.</p>
+              <span class="eyebrow" data-i18n="nav.purchases">Compras</span>
+              <h3 data-i18n="ui.configuracao.fluxo_de_aprovacao_de_requisicoes_c51c7d">Fluxo de Aprovação de Requisições</h3>
+              <p class="hint" data-i18n="ui.configuracao.configure_como_as_requisicoes_de_compra_devem_percorrer_o_fluxo_de_aprovaca_e477b2">Configure como as requisições de compra devem percorrer o fluxo de aprovação na sua empresa.</p>
             </div>
             <label style="display:flex;align-items:center;gap:10px;">
               <input type="checkbox" id="compras-config-require-admin-review">
-              <span><strong>Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
+              <span data-i18n="ui.configuracao.antes_de_enviar_ao_aprovador_formal_251e01"><strong data-i18n="ui.configuracao.exigir_revisao_do_administrador_f03026">Exigir revisão do Administrador</strong> antes de enviar ao Aprovador formal</span>
             </label>
             <div>
-              <button class="btn" id="compras-config-save-btn">Salvar Configuração</button>
+              <button class="btn" id="compras-config-save-btn" data-i18n="ui.configuracao.salvar_configuracao_9b182d">Salvar Configuração</button>
               <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
             </div>
           </div>

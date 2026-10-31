@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/i18n/presentation_formatters.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -17,13 +19,13 @@ class InvoicesScreen extends StatefulWidget {
 }
 
 class _InvoicesScreenState extends State<InvoicesScreen> {
-  static const _statusFilters = <(String?, String)>[
-    (null, 'Todos'),
-    ('paid', 'Pago'),
-    ('pending', 'Pendente'),
-    ('cancelled', 'Cancelado'),
-    ('refunded', 'Reembolsado'),
-    ('failed', 'Falhou'),
+  static List<(String?, String)> _statusFilters(AppLocalizations l) => [
+    (null, l.dashboardFilterAll),
+    ('paid', l.billingInvoicePaid),
+    ('pending', l.billingInvoicePending),
+    ('cancelled', l.billingInvoiceCancelled),
+    ('refunded', l.billingInvoiceRefunded),
+    ('failed', l.billingInvoiceFailed),
   ];
 
   String? _status;
@@ -47,19 +49,19 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     });
   }
 
-  static String _statusLabel(String status) {
+  static String _statusLabel(String status, AppLocalizations l) {
     switch (status.toLowerCase()) {
       case 'paid':
-        return 'Pago';
+        return l.billingInvoicePaid;
       case 'pending':
-        return 'Pendente';
+        return l.billingInvoicePending;
       case 'cancelled':
       case 'canceled':
-        return 'Cancelado';
+        return l.billingInvoiceCancelled;
       case 'refunded':
-        return 'Reembolsado';
+        return l.billingInvoiceRefunded;
       case 'failed':
-        return 'Falhou';
+        return l.billingInvoiceFailed;
       default:
         return status.isEmpty ? '—' : status;
     }
@@ -82,31 +84,18 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     }
   }
 
-  static String _methodLabel(String method) {
+  static String _methodLabel(String method, AppLocalizations l) {
     switch (method.toLowerCase()) {
       case 'card':
       case 'subscription':
-        return 'Cartão';
+        return l.billingCard;
       case 'pix':
         return 'PIX';
       case 'boleto':
-        return 'Boleto';
+        return l.billingBoleto;
       default:
         return method.isEmpty ? '—' : method;
     }
-  }
-
-  static String _money(double value, String currency) {
-    final symbol = currency == 'BRL' ? 'R\$' : currency;
-    return '$symbol ${value.toStringAsFixed(2)}';
-  }
-
-  static String _date(String iso) {
-    if (iso.isEmpty) return '—';
-    final datePart = iso.length >= 10 ? iso.substring(0, 10) : iso;
-    final parts = datePart.split('-');
-    if (parts.length == 3) return '${parts[2]}/${parts[1]}/${parts[0]}';
-    return datePart;
   }
 
   Future<void> _openReceipt(String url) async {
@@ -115,16 +104,22 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível abrir o recibo.')),
+        SnackBar(
+          content: Builder(
+            builder: (context) =>
+                Text(AppLocalizations.of(context).billingReceiptOpenFailed),
+          ),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Histórico Financeiro'),
+        title: Text(l.settingsInvoicesTileTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -136,7 +131,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _FilterBar(
-            filters: _statusFilters,
+            filters: _statusFilters(l),
             selected: _status,
             onSelected: _setStatus,
           ),
@@ -151,23 +146,23 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   return _CenteredMessage(
                     icon: Icons.error_outline,
                     color: EpiColors.danger,
-                    title: 'Não foi possível carregar o histórico.',
+                    title: l.billingHistoryLoadFailed,
                     subtitle: '${snapshot.error}',
                     onRetry: _reload,
                   );
                 }
                 final invoices = snapshot.data ?? const [];
                 if (invoices.isEmpty) {
-                  return const _CenteredMessage(
+                  return _CenteredMessage(
                     icon: Icons.receipt_long_outlined,
-                    title: 'Nenhuma cobrança encontrada',
-                    subtitle: 'As cobranças da sua assinatura aparecerão aqui.',
+                    title: l.billingInvoicesEmptyTitle,
+                    subtitle: l.billingInvoicesEmptyBody,
                   );
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: EpiSpacing.sm),
                   itemCount: invoices.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, i) => _InvoiceTile(
                     invoice: invoices[i],
                     onOpenReceipt: _openReceipt,
@@ -226,6 +221,7 @@ class _InvoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final color = _InvoicesScreenState._statusColor(invoice.status);
     final hasReceipt = invoice.receiptUrl.isNotEmpty;
     return ListTile(
@@ -235,12 +231,17 @@ class _InvoiceTile extends StatelessWidget {
       ),
       title: Row(
         children: [
-          Text(
-            _InvoicesScreenState._money(invoice.amount, invoice.currency),
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
+          Flexible(
+            child: Text(
+              formatDisplayMoney(
+                invoice.amount,
+                invoice.currency,
+                l.localeName,
+              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(width: EpiSpacing.sm),
           Container(
@@ -253,11 +254,11 @@ class _InvoiceTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              _InvoicesScreenState._statusLabel(invoice.status),
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: color, fontWeight: FontWeight.w700),
+              _InvoicesScreenState._statusLabel(invoice.status, l),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -265,18 +266,18 @@ class _InvoiceTile extends StatelessWidget {
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 2),
         child: Text(
-          '${_InvoicesScreenState._date(invoice.createdAt)} · '
-          '${_InvoicesScreenState._methodLabel(invoice.paymentMethod)}'
+          '${formatDisplayDate(invoice.createdAt, l.localeName)} · '
+          '${_InvoicesScreenState._methodLabel(invoice.paymentMethod, l)}'
           '${invoice.mpPaymentId.isNotEmpty ? ' · MP ${invoice.mpPaymentId}' : ''}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).hintColor,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
         ),
       ),
       trailing: hasReceipt
           ? IconButton(
               icon: const Icon(Icons.receipt_outlined),
-              tooltip: 'Abrir recibo',
+              tooltip: l.billingOpenReceipt,
               onPressed: () => onOpenReceipt(invoice.receiptUrl),
             )
           : null,
@@ -301,6 +302,7 @@ class _CenteredMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.xl2),
@@ -319,12 +321,12 @@ class _CenteredMessage extends StatelessWidget {
               subtitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
+                color: Theme.of(context).hintColor,
+              ),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: EpiSpacing.lg),
-              EpiButton(label: 'Tentar novamente', onPressed: onRetry!),
+              EpiButton(label: l.retry, onPressed: onRetry!),
             ],
           ],
         ),

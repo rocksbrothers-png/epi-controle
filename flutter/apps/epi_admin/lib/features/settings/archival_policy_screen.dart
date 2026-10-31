@@ -45,6 +45,7 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
   bool _loading = true;
   bool _saving = false;
   String? _error;
+  String Function(AppLocalizations)? _localError;
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
     setState(() {
       _loading = true;
       _error = null;
+      _localError = null;
     });
     try {
       final policy = await ApiClient.settings
@@ -85,7 +87,8 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Não foi possível carregar a política de arquivamento.';
+        _error = null;
+        _localError = (l) => l.archivalLoadFailed;
       });
     }
   }
@@ -101,12 +104,16 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
     final epis = _parseYears(_episCtrl);
     final employees = _parseYears(_employeesCtrl);
     if (units == null || epis == null || employees == null) {
-      setState(() => _error = 'Informe períodos válidos (mínimo 5 anos).');
+      setState(() {
+        _error = null;
+        _localError = (l) => l.archivalInvalidPeriods;
+      });
       return;
     }
     setState(() {
       _saving = true;
       _error = null;
+      _localError = null;
     });
     try {
       await ApiClient.settings.updateArchivalPolicy(
@@ -119,8 +126,8 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Política de arquivamento salva com sucesso.'),
+        SnackBar(
+          content: Builder(builder: (context) => Text(AppLocalizations.of(context).archivalSaved)),
         ),
       );
     } on Exception catch (e) {
@@ -139,7 +146,7 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: label,
-        suffixText: 'anos',
+        suffixText: AppLocalizations.of(context).archivalYearsSuffix,
         border: const OutlineInputBorder(),
         isDense: true,
       ),
@@ -148,6 +155,7 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final authState = context.watch<AuthCubit>().state;
     final role = authState is AuthAuthenticated
         ? authState.sessionContext.role
@@ -165,40 +173,37 @@ class _ArchivalPolicyFormState extends State<_ArchivalPolicyForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Defina, conforme a política interna da empresa, por quantos anos '
-            'os registros arquivados de cada item permanecem preservados antes '
-            'de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).',
+            l10n.archivalPolicyIntro,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
                 ?.copyWith(color: EpiColors.textMuted),
           ),
           const SizedBox(height: EpiSpacing.md),
-          _yearsField('Unidades', _unitsCtrl, canEdit && !_saving),
+          _yearsField(l10n.navUnits, _unitsCtrl, canEdit && !_saving),
           const SizedBox(height: EpiSpacing.md),
-          _yearsField('EPIs', _episCtrl, canEdit && !_saving),
+          _yearsField(l10n.navEpis, _episCtrl, canEdit && !_saving),
           const SizedBox(height: EpiSpacing.md),
-          _yearsField('Colaboradores', _employeesCtrl, canEdit && !_saving),
+          _yearsField(l10n.navEmployees, _employeesCtrl, canEdit && !_saving),
           const SizedBox(height: EpiSpacing.md),
           Text(
-            'Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, '
-            'não alterada por esta política.',
+            l10n.archivalPpeRecordRule,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
                 ?.copyWith(color: EpiColors.textMuted),
           ),
-          if (_error != null) ...[
+          if (_error != null || _localError != null) ...[
             const SizedBox(height: EpiSpacing.sm),
             Text(
-              _error!,
+              _error ?? _localError!(l10n),
               style: const TextStyle(color: EpiColors.danger, fontSize: 12),
             ),
           ],
           if (canEdit) ...[
             const SizedBox(height: EpiSpacing.md),
             EpiButton(
-              label: 'Salvar política de arquivamento',
+              label: l10n.archivalSave,
               onPressed: _saving ? null : _save,
               loading: _saving,
             ),

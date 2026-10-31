@@ -43,7 +43,7 @@
       const now = currentContext();
       const error = overlay.querySelector('#stock-physical-error');
       if (String(now.companyId) !== String(context.companyId) || String(now.unitId) !== String(context.unitId)) {
-        error.textContent = text('stock.physical.contextChanged', 'A empresa/unidade mudou. Feche e abra novamente a conferência.');
+        error.textContent = text('stock.physical.contextChanged', (globalThis.trEpi?.('stock.physical.contextChanged','A empresa/unidade mudou. Feche e abra novamente a confer\u00eancia.',{}) ?? 'A empresa/unidade mudou. Feche e abra novamente a confer\u00eancia.'));
         return;
       }
       const values = Object.fromEntries(new FormData(form));
@@ -62,7 +62,7 @@
         overlay.remove();
         await refresh();
       } catch (failure) {
-        error.textContent = failure.message || text('stock.physical.failed', 'Não foi possível registrar a ação.');
+        error.textContent = failure.message || text('stock.physical.failed', (globalThis.trEpi?.('stock.physical.failed','N\u00e3o foi poss\u00edvel registrar a a\u00e7\u00e3o.',{}) ?? 'N\u00e3o foi poss\u00edvel registrar a a\u00e7\u00e3o.'));
       } finally { busy = false; submit.disabled = false; cancel.disabled = false; }
     });
   }

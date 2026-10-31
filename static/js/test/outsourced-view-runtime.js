@@ -362,6 +362,15 @@ for (const key of ['vinculoUnidadeLink', 'vinculoUnidadeAtivar', 'vinculoUnidade
   EXPECTED[key].log = EXPECTED[key].log.slice(0, -1).concat([['bootstrap', { preserveView: true }]], EXPECTED.renderColab.log);
 }
 
+// I18N-FULL-V1: as opções vazias mantêm value=""; só ganham binding.
+for (const expected of Object.values(EXPECTED)) {
+  for (const id of ['outsourced-company-unit', 'outsourced-employee-unit']) {
+    if (expected.nodes?.[id]?.[1] === '<option value="">Sem unidade operacional ativa</option>') {
+      expected.nodes[id][1] = '<option value="" data-i18n="employee.noActiveOperationalUnit">Sem unidade operacional ativa</option>';
+    }
+  }
+}
+
 module.exports = function ({ testAsync, test, assert, eq }) {
   testAsync('UBX-V4 Terceirizados: os módulos reproduzem as funções originais', async () => {
     const actual = await scenario(loadModules);

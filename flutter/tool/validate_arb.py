@@ -23,6 +23,8 @@ import os
 import re
 import sys
 
+from sync_locale_aliases import ALIASES, expected_alias
+
 ARB_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "..", "packages", "epi_i18n", "lib", "l10n",
@@ -113,6 +115,12 @@ def main() -> int:
                     errors.append(
                         f"{name}: chave parametrizada '{key}' sem metadata "
                         f"@{key}.placeholders")
+
+    # Partial base-language ARBs silently fall back to Portuguese during generation.
+    for alias, regional in ALIASES.items():
+        name = f'app_{alias}.arb'
+        if parsed.get(name) != expected_alias(alias, regional):
+            errors.append(f'{name}: base-language catalogue differs from {regional}; run tool/sync_locale_aliases.py --write.')
 
     _report(errors)
     return 1 if errors else 0

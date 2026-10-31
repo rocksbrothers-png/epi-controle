@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:epi_api/epi_api.dart';
 import '../observability/app_monitoring.dart';
+import 'locale_header_interceptor.dart';
 import '../session/session_context.dart';
 
 const _kTokenKey       = 'access_token';
@@ -73,7 +74,10 @@ class ApiClient {
   /// querystring (ex.: download de PDF aberto pelo navegador).
   static String baseUrl = '';
 
-  static Future<void> init({required String baseUrl}) async {
+  static Future<void> init({
+    required String baseUrl,
+    String? Function()? localeTag,
+  }) async {
     ApiClient.baseUrl = baseUrl;
     _storage = const FlutterSecureStorage();
     final dio = Dio(BaseOptions(
@@ -87,6 +91,10 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 30),
     ));
+    if (localeTag != null) {
+      dio.interceptors.add(LocaleHeaderInterceptor(localeTag));
+      _refreshDio.interceptors.add(LocaleHeaderInterceptor(localeTag));
+    }
     dio.interceptors.add(_BearerInterceptor());
     dio.interceptors.add(_RetryInterceptor(dio));
     auth = AuthApi(dio, baseUrl: baseUrl);

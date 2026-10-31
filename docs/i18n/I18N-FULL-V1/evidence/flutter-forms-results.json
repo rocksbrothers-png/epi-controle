@@ -1,0 +1,25 @@
+{
+  "scope": "Flutter password form, supplier PO labels, report month presentation and responsive localized labels/KPIs",
+  "wholeTaskComplete": false,
+  "locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "newMessages": 16,
+  "regionalMessages": 821,
+  "tests": {
+    "appTargeted": 32,
+    "designSystemCorporate": 39,
+    "releaseBackendGuard": 25
+  },
+  "dashboardCases": 30,
+  "reportPoCases": 10,
+  "passwordLocaleTransition": "pt_BR → fr_FR → en_US preserves all fields and updates prior validation messages",
+  "syntheticNetwork": true,
+  "realBusinessWrites": false,
+  "parityFiles": 280,
+  "legitimateTestDifference": "Corporate has the preexisting change_password_gate_test.dart; SaaS does not. Both execute the same newly added functional cases."
+}

@@ -11,6 +11,10 @@ on:
       - 'scripts/browser/ubx_my_company.py'
       - 'scripts/browser/security_logo_xss.py'
       - 'scripts/browser/security_output_xss.py'
+      - 'scripts/browser/i18n_codeql_regression.py'
+      - 'scripts/i18n/check_connectors_browser.py'
+      - 'scripts/browser/security_csp_v1.py'
+      - 'scripts/i18n/check_supplier_portal_csp_sri.py'
       - 'scripts/browser/security_output_xss_v2.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
@@ -52,9 +56,24 @@ jobs:
       # SECURITY-OUTPUT-XSS-V1: nome/CNPJ, EPI/foto e ficha HTML (com CSP) não executam HTML do cadastro.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss.py --output browser-evidence/security-output-xss
+      # I18N-FULL-V1: texto DOM permanece inerte; bindings ricos só criam ênfase permitida.
+      - if: ${{ !cancelled() }}
+        name: I18N CodeQL DOM regression (five locales)
+        run: python scripts/browser/i18n_codeql_regression.py --output browser-evidence/i18n-codeql
+      # I18N-FULL-V1: erros aninhados, nomes de conectores e JSON preservado.
+      - if: ${{ !cancelled() }}
+        name: I18N supplier connectors (five locales)
+        run: python scripts/i18n/check_connectors_browser.py --output browser-evidence/i18n-connectors
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2
+      # CSP aplicada: ações delegadas da SPA, portal modular com SRI e negativos.
+      - if: ${{ !cancelled() }}
+        name: CSP functional regression (five locales)
+        run: python -u scripts/browser/security_csp_v1.py --output browser-evidence/security-csp
+      - if: ${{ !cancelled() }}
+        name: Supplier portal CSP and SRI boundaries (five locales)
+        run: python scripts/i18n/check_supplier_portal_csp_sri.py --output browser-evidence/portal-csp-sri
       - uses: actions/upload-artifact@v7
         if: always()
         with:

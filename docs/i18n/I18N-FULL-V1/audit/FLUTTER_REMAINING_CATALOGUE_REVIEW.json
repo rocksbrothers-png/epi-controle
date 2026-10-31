@@ -1,0 +1,98 @@
+{
+  "new_resource_count": 64,
+  "alias_pairs": {
+    "pt/pt_BR": {
+      "resources": 983,
+      "equal_resources": true
+    },
+    "en/en_US": {
+      "resources": 983,
+      "equal_resources": true
+    },
+    "es/es_ES": {
+      "resources": 983,
+      "equal_resources": true
+    },
+    "fr/fr_FR": {
+      "resources": 983,
+      "equal_resources": true
+    },
+    "no/no_NO": {
+      "resources": 983,
+      "equal_resources": true
+    }
+  },
+  "resource_parity": {
+    "pt_BR": 64,
+    "en_US": 64,
+    "es_ES": 64,
+    "fr_FR": 64,
+    "no_NO": 64
+  },
+  "new_keys": [
+    "employeeShowActive",
+    "employeeShowArchived",
+    "employeeArchivedEmpty",
+    "employeeArchiveTitle",
+    "employeeRestoreTitle",
+    "employeeArchiveBody",
+    "employeeRestoreBody",
+    "epiShowActive",
+    "epiShowArchived",
+    "epiArchivedEmpty",
+    "epiArchiveTitle",
+    "epiRestoreTitle",
+    "epiArchiveBody",
+    "epiRestoreBody",
+    "unitArchivedTitle",
+    "unitShowActive",
+    "unitShowArchived",
+    "unitArchivedEmpty",
+    "unitArchiveTitle",
+    "unitRestoreTitle",
+    "unitArchiveBody",
+    "unitRestoreBody",
+    "archivedOnDate",
+    "retentionRemainingDays",
+    "retentionSatisfied",
+    "employeeDetailsSection",
+    "epiDaysRemaining",
+    "epiIdentificationSection",
+    "recordsPendingCount",
+    "stockPpeCount",
+    "stockManufacturerExpiring",
+    "stockManufacturerExpired",
+    "stockManufacturerExpiredNote",
+    "stockManufacturerExpiringNote",
+    "stockManufacturerExpiringInNote",
+    "moduleVisibilityLoadError",
+    "moduleRequests",
+    "moduleAdministration",
+    "importRowError",
+    "responsibilityContracting",
+    "responsibilityOutsourced",
+    "responsibilityProvider",
+    "responsibilityShared",
+    "responsibilityContract",
+    "responsibilityUndefined",
+    "purchaseCreated",
+    "criticalStockTitle",
+    "criticalStockBody",
+    "companyNewTitle",
+    "companyCnpjLength",
+    "companyUserLimit",
+    "companyMinimumUsers",
+    "companyOwnerOptional",
+    "companyOwnerInviteHint",
+    "companyOwnerName",
+    "companyOwnerEmail",
+    "companyPlanIndividual",
+    "companyPlanStart",
+    "companyPlanBusiness",
+    "companyPlanCorporate",
+    "formValidNumber",
+    "formValidEmail",
+    "moduleEmployeeRegistration",
+    "unitArchivedOnDate"
+  ]
+}

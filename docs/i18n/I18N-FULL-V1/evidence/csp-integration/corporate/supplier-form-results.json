@@ -1,0 +1,762 @@
+[
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "kind": "quote",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "pt-BR"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "pt-BR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "kind": "order",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "pt-BR"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "pt-BR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "kind": "answered",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "pt-BR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "kind": "invalid",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "pt-BR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "kind": "quote",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "en-GB"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "en-GB"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "kind": "order",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "en-GB"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "en-GB"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "kind": "answered",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "en-GB"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "kind": "invalid",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "en-GB"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "kind": "quote",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "es-ES"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "es-ES"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "kind": "order",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "es-ES"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "es-ES"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "kind": "answered",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "es-ES"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "kind": "invalid",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "es-ES"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "kind": "quote",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "en-GB"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "fr-FR"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "fr-FR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "kind": "order",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "en-GB"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "fr-FR"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "fr-FR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "kind": "answered",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "fr-FR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "kind": "invalid",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "fr-FR"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "kind": "quote",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/quote",
+        "body": {
+          "items": [
+            {
+              "quote_item_id": 33,
+              "unit_price": 1234.56,
+              "lead_time_days": 5,
+              "declined": false
+            },
+            {
+              "quote_item_id": 34,
+              "unit_price": 0,
+              "lead_time_days": 0,
+              "declined": true
+            }
+          ],
+          "freight_value": 12.34,
+          "payment_terms": "Condição preservada",
+          "notes": "Observação preservada Aprovado",
+          "proposal": {
+            "file_name": "Aprovado original.pdf",
+            "file_type": "application/pdf",
+            "content_base64": "data:application/pdf;base64,JVBERi1zeW50aGV0aWMtbG9jYWwtZml4dHVyZQ=="
+          }
+        },
+        "language": "nb-NO"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "nb-NO"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "kind": "order",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "fr-FR"
+      },
+      {
+        "path": "/api/portal/supplier/synthetic-fixture/confirm",
+        "body": {
+          "status": "delivery_update",
+          "delivery_forecast": "2026-12-31",
+          "carrier": "Transportadora original",
+          "tracking_code": "TRACK-original",
+          "comment": "Comentário preservado"
+        },
+        "language": "nb-NO"
+      }
+    ],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "nb-NO"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "kind": "answered",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "nb-NO"
+      }
+    ]
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "kind": "invalid",
+    "forms_preserved": true,
+    "token_context": "synthetic-fixture",
+    "canonical_payloads_preserved": true,
+    "mobile_overflow": false,
+    "errors": [],
+    "csp_violations": [],
+    "posts": [],
+    "reads": [
+      {
+        "path": "/api/portal/supplier/synthetic-fixture",
+        "language": "nb-NO"
+      }
+    ]
+  }
+]

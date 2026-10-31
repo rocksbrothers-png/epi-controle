@@ -100,7 +100,7 @@
       : units;
     unitField.innerHTML = scopedUnits.length
       ? scopedUnits.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('')
-      : '<option value="">Sem unidade operacional ativa</option>';
+      : '<option value="" data-i18n="employee.noActiveOperationalUnit">Sem unidade operacional ativa</option>';
     if (scopedUnits.length && !scopedUnits.some((item) => String(item.id) === String(unitField.value))) {
       unitField.value = String(scopedUnits[0].id);
     } else if (!scopedUnits.length) {

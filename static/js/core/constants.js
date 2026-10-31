@@ -12,21 +12,21 @@
   });
 
   const ROLE_LABELS = Object.freeze({
-    master_admin: 'Administrador Master',
-    general_admin: 'Administrador Geral',
-    registry_admin: 'Administrador de Registro',
-    admin: 'Administrador Local',
-    user: 'Gestor de EPI',
-    buyer: 'Comprador',
-    approver: 'Aprovador',
-    employee: 'Funcionário',
+    get ['master_admin']() { return (globalThis.trEpi?.('role.master_admin','Administrador Master',{}) ?? 'Administrador Master'); },
+    get ['general_admin']() { return (globalThis.trEpi?.('role.general_admin','Administrador Geral',{}) ?? 'Administrador Geral'); },
+    get ['registry_admin']() { return (globalThis.trEpi?.('role.registry_admin','Administrador de Registro',{}) ?? 'Administrador de Registro'); },
+    get ['admin']() { return (globalThis.trEpi?.('role.admin','Administrador Local',{}) ?? 'Administrador Local'); },
+    get ['user']() { return (globalThis.trEpi?.('role.user','Gestor de EPI',{}) ?? 'Gestor de EPI'); },
+    get ['buyer']() { return (globalThis.trEpi?.('role.buyer','Comprador',{}) ?? 'Comprador'); },
+    get ['approver']() { return (globalThis.trEpi?.('role.approver','Aprovador',{}) ?? 'Aprovador'); },
+    get ['employee']() { return (globalThis.trEpi?.('role.employee','Funcion\u00e1rio',{}) ?? 'Funcion\u00e1rio'); },
     // Identidade técnica da certificação B4-B (#313). Presente só como
     // RÓTULO: a conta precisa ser identificável numa listagem ou auditoria em
     // vez de aparecer com o nome cru. Deliberadamente ausente de
     // USER_COMPANY_REQUIRED_ROLES, CONFIGURATION_ADMIN_ROLES e
     // EPI_ALL_UNITS_PROFILES, e de todo seletor de criação/edição: visibilidade
     // não é permissão para criar pela tela.
-    certification_readonly: 'Certificação (somente leitura)'
+    get certification_readonly() { return globalThis.trEpi?.('role.certification_readonly', 'Certificação (somente leitura)') ?? 'Certificação (somente leitura)'; }
   });
 
   const ROLE_ALIASES = Object.freeze({

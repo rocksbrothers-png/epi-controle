@@ -29,7 +29,7 @@
       </div>
       <footer class="signature-modal__footer">
         <button id="signature-modal-cancel" class="ghost" type="button" data-i18n="cancel">Cancelar</button>
-        <button id="signature-modal-confirm" class="primary" type="button">OK</button>
+        <button id="signature-modal-confirm" class="primary" type="button" data-i18n="ui.modals.ok_565339">OK</button>
       </footer>
     </div>
   </div>
@@ -37,31 +37,31 @@
   <!-- Modal: Solicitar Relatório de Movimentações -->
   <div id="smr-request-report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
     <div style="background:var(--color-surface);border-radius:10px;padding:24px;max-width:440px;width:95%;box-shadow:0 4px 24px rgba(0,0,0,.18);">
-      <h3 style="margin-top:0;">Solicitar Relatório de Movimentações</h3>
-      <p style="font-size:13px;color:var(--color-text-muted);margin-top:0;">O Administrador Local receberá a solicitação e gerará o relatório para a unidade selecionada.</p>
-      <label style="display:block;margin-bottom:10px;">Unidade
-        <select id="smr-req-unit" style="width:100%;margin-top:4px;"><option value="">Todas as unidades</option></select>
+      <h3 style="margin-top:0;" data-i18n="ui.modals.solicitar_relatorio_de_movimentacoes_867a7a">Solicitar Relatório de Movimentações</h3>
+      <p style="font-size:13px;color:var(--color-text-muted);margin-top:0;" data-i18n="ui.modals.o_administrador_local_recebera_a_solicitacao_e_gerara_o_relatorio_para_a_un_0e98c2">O Administrador Local receberá a solicitação e gerará o relatório para a unidade selecionada.</p>
+      <label style="display:block;margin-bottom:10px;" data-i18n="employee.unit">Unidade
+        <select id="smr-req-unit" style="width:100%;margin-top:4px;"><option value="" data-i18n="ui.modals.todas_as_unidades_94b398">Todas as unidades</option></select>
       </label>
       <div style="display:flex;gap:10px;margin-bottom:10px;">
-        <label style="flex:1;">Ano
-          <input id="smr-req-year" type="number" min="2020" max="2099" style="width:100%;margin-top:4px;" placeholder="Ex: 2025">
+        <label style="flex:1;" data-i18n="stock.year">Ano
+          <input id="smr-req-year" type="number" min="2020" max="2099" style="width:100%;margin-top:4px;" placeholder="Ex: 2025" data-i18n-placeholder="ui.modals.ex_2025_64d2be">
         </label>
-        <label style="flex:1;">Mês
+        <label style="flex:1;" data-i18n="stock.month">Mês
           <select id="smr-req-month" style="width:100%;margin-top:4px;">
-            <option value="">Todos</option>
-            <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-            <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-            <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            <option value="" data-i18n="employee.filterAll">Todos</option>
+            <option value="1" data-i18n="month.january">Janeiro</option><option value="2" data-i18n="month.february">Fevereiro</option><option value="3" data-i18n="month.march">Março</option>
+            <option value="4" data-i18n="month.april">Abril</option><option value="5" data-i18n="month.may">Maio</option><option value="6" data-i18n="month.june">Junho</option>
+            <option value="7" data-i18n="month.july">Julho</option><option value="8" data-i18n="month.august">Agosto</option><option value="9" data-i18n="month.september">Setembro</option>
+            <option value="10" data-i18n="month.october">Outubro</option><option value="11" data-i18n="month.november">Novembro</option><option value="12" data-i18n="month.december">Dezembro</option>
           </select>
         </label>
       </div>
-      <label style="display:block;margin-bottom:16px;">Observação (opcional)
-        <textarea id="smr-req-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Ex: Relatório mensal para auditoria..."></textarea>
+      <label style="display:block;margin-bottom:16px;" data-i18n="ui.modals.observacao_opcional_6cc2c6">Observação (opcional)
+        <textarea id="smr-req-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Ex: Relatório mensal para auditoria..." data-i18n-placeholder="ui.modals.ex_relatorio_mensal_para_auditoria_63b132"></textarea>
       </label>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button id="smr-req-report-cancel" class="btn ghost" type="button">Cancelar</button>
-        <button id="smr-req-report-confirm" class="btn primary" type="button">Solicitar</button>
+        <button id="smr-req-report-cancel" class="btn ghost" type="button" data-i18n="cancel">Cancelar</button>
+        <button id="smr-req-report-confirm" class="btn primary" type="button" data-i18n="ui.modals.solicitar_a12787">Solicitar</button>
       </div>
     </div>
   </div>
@@ -69,14 +69,14 @@
   <!-- Recovery token modal -->
   <div id="recovery-token-modal" class="modal-overlay" hidden>
     <div class="card form-stack modal-card" style="max-width:480px;width:90%;">
-      <h3>Chave de recuperação gerada</h3>
-      <p class="hint">Compartilhe esta chave com o usuário. Válida por <strong>24 horas</strong> e de uso único.</p>
+      <h3 data-i18n="ui.modals.chave_de_recuperacao_gerada_5b35dc">Chave de recuperação gerada</h3>
+      <p class="hint"><span data-i18n="ui.modals.compartilhe_esta_chave_com_o_usuario_valida_por_b7d0dd">Compartilhe esta chave com o usuário. Válida por</span> <strong data-i18n="ui.modals.24_horas_102804">24 horas</strong> <span data-i18n="ui.modals.e_de_uso_unico_df14e8">e de uso único.</span></p>
       <div style="display:flex;align-items:center;gap:8px;background:var(--color-bg-alt);border:1px solid var(--line);border-radius:6px;padding:10px 14px;">
         <code id="recovery-token-value" style="flex:1;font-size:13px;word-break:break-all;font-family:monospace;"></code>
-        <button id="recovery-token-copy" class="ghost" type="button" style="white-space:nowrap;">Copiar</button>
+        <button id="recovery-token-copy" class="ghost" type="button" style="white-space:nowrap;" data-i18n="ui.modals.copiar_39dcf1">Copiar</button>
       </div>
-      <p class="hint" style="margin-top:4px;">Após fechar, esta chave não poderá ser recuperada novamente.</p>
-      <button id="recovery-token-close" class="primary" type="button">Fechar</button>
+      <p class="hint" style="margin-top:4px;" data-i18n="ui.modals.apos_fechar_esta_chave_nao_podera_ser_recuperada_novamente_a0f49a">Após fechar, esta chave não poderá ser recuperada novamente.</p>
+      <button id="recovery-token-close" class="primary" type="button" data-i18n="close">Fechar</button>
     </div>
   </div>
 
@@ -84,25 +84,25 @@
   <div id="master-profile-modal" class="modal-overlay" hidden>
     <div class="card form-stack modal-card" style="max-width:440px;width:90%;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <h3 style="margin:0;">Meu Perfil</h3>
+        <h3 style="margin:0;" data-i18n="ui.modals.meu_perfil_549596">Meu Perfil</h3>
         <button id="master-profile-close" class="ghost" type="button" style="padding:4px 10px;" aria-label="Fechar" data-i18n-aria-label="cancel">✕</button>
       </div>
 
       <!-- Section 1: Email -->
       <div style="background:var(--color-bg-alt);border-radius:8px;padding:14px 16px;">
-        <strong style="font-size:13px;display:block;margin-bottom:8px;">E-mail de recuperação</strong>
+        <strong style="font-size:13px;display:block;margin-bottom:8px;" data-i18n="ui.modals.e_mail_de_recuperacao_b07d5c">E-mail de recuperação</strong>
         <input id="master-profile-email" type="email" autocomplete="email" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
-        <small class="hint" style="margin-top:4px;display:block;">Usado para receber chave de recuperação de senha por e-mail.</small>
-        <button id="master-profile-save" class="primary" type="button" style="margin-top:10px;width:100%;">Salvar e-mail</button>
+        <small class="hint" style="margin-top:4px;display:block;" data-i18n="ui.modals.usado_para_receber_chave_de_recuperacao_de_senha_por_e_mail_1b9a1e">Usado para receber chave de recuperação de senha por e-mail.</small>
+        <button id="master-profile-save" class="primary" type="button" style="margin-top:10px;width:100%;" data-i18n="ui.modals.salvar_e_mail_0b496c">Salvar e-mail</button>
       </div>
 
       <!-- Section 2: Change password -->
       <div style="background:var(--color-bg-alt);border-radius:8px;padding:14px 16px;">
-        <strong style="font-size:13px;display:block;margin-bottom:8px;">Trocar senha</strong>
-        <label style="display:block;margin-bottom:6px;">Senha atual<input id="master-current-password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;"></label>
-        <label style="display:block;margin-bottom:6px;">Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
-        <label style="display:block;margin-bottom:6px;">Confirmar nova senha<input id="master-confirm-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
-        <button id="master-change-password" class="primary" type="button" style="margin-top:4px;width:100%;">Atualizar senha</button>
+        <strong style="font-size:13px;display:block;margin-bottom:8px;" data-i18n="ui.modals.trocar_senha_689eb9">Trocar senha</strong>
+        <label style="display:block;margin-bottom:6px;" data-i18n="login.currentPassword">Senha atual<input id="master-current-password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;"></label>
+        <label style="display:block;margin-bottom:6px;" data-i18n="login.recovery.newPassword">Nova senha<input id="master-new-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
+        <label style="display:block;margin-bottom:6px;" data-i18n="login.confirmPassword">Confirmar nova senha<input id="master-confirm-password" type="password" autocomplete="new-password" minlength="6" style="width:100%;box-sizing:border-box;"></label>
+        <button id="master-change-password" class="primary" type="button" style="margin-top:4px;width:100%;" data-i18n="login.updatePassword">Atualizar senha</button>
       </div>
 
       <div id="master-profile-feedback" class="form-feedback" aria-live="polite"></div>
@@ -113,74 +113,74 @@
   <div id="onboarding-wizard-modal" class="modal-overlay" hidden>
     <div class="card form-stack modal-card" style="max-width:640px;width:94%;max-height:90vh;overflow:auto;">
       <div class="section-intro">
-        <span class="eyebrow">Primeiro acesso</span>
-        <h3>Assistente de implantação</h3>
-        <p class="hint" id="onboarding-step-label">Etapa 1 de 5 — Segurança da conta</p>
+        <span class="eyebrow" data-i18n="ui.modals.primeiro_acesso_229b92">Primeiro acesso</span>
+        <h3 data-i18n="ui.modals.assistente_de_implantacao_e0e9fb">Assistente de implantação</h3>
+        <p class="hint" id="onboarding-step-label" data-i18n="ui.modals.etapa_1_de_5_seguranca_da_conta_0e6737">Etapa 1 de 5 — Segurança da conta</p>
       </div>
       <div data-onboarding-step="1">
-        <p class="hint">Sua conta foi criada pelo convite de primeiro acesso. Recomendamos ativar a autenticação em duas etapas (2FA) com um app autenticador (Google Authenticator, Authy, 1Password).</p>
+        <p class="hint" data-i18n="ui.modals.sua_conta_foi_criada_pelo_convite_de_primeiro_acesso_recomendamos_ativar_a__f226e5">Sua conta foi criada pelo convite de primeiro acesso. Recomendamos ativar a autenticação em duas etapas (2FA) com um app autenticador (Google Authenticator, Authy, 1Password).</p>
         <div id="onboarding-2fa-status" class="summary-item"></div>
-        <button id="onboarding-2fa-setup" class="ghost" type="button">Ativar autenticação em duas etapas</button>
+        <button id="onboarding-2fa-setup" class="ghost" type="button" data-i18n="ui.modals.ativar_autenticacao_em_duas_etapas_97f6e6">Ativar autenticação em duas etapas</button>
         <div id="onboarding-2fa-panel" hidden>
-          <p class="hint">Adicione a chave abaixo no seu app autenticador e confirme com o código de 6 dígitos:</p>
+          <p class="hint" data-i18n="ui.modals.adicione_a_chave_abaixo_no_seu_app_autenticador_e_confirme_com_o_codigo_de__211b3f">Adicione a chave abaixo no seu app autenticador e confirme com o código de 6 dígitos:</p>
           <p><code id="onboarding-2fa-secret" style="word-break:break-all;"></code></p>
           <p class="hint" id="onboarding-2fa-uri" style="word-break:break-all;"></p>
           <div class="inline-grid">
-            <label>Código do autenticador<input id="onboarding-2fa-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+            <label data-i18n="ui.modals.codigo_do_autenticador_017e7c">Código do autenticador<input id="onboarding-2fa-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
           </div>
-          <button id="onboarding-2fa-enable" class="primary" type="button">Confirmar e ativar 2FA</button>
+          <button id="onboarding-2fa-enable" class="primary" type="button" data-i18n="ui.modals.confirmar_e_ativar_2fa_335261">Confirmar e ativar 2FA</button>
         </div>
         <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;">
           <input id="onboarding-terms" type="checkbox">
-          <span>Li e aceito os <strong>termos de uso</strong> e a <strong>política de privacidade</strong>.</span>
+          <span><span data-i18n="ui.modals.li_e_aceito_os_c25866">Li e aceito os</span> <strong data-i18n="ui.modals.termos_de_uso_3eec48">termos de uso</strong> <span data-i18n="ui.modals.e_a_71476f">e a</span> <strong data-i18n="ui.modals.politica_de_privacidade_adbdf7">política de privacidade</strong>.</span>
         </label>
       </div>
       <div data-onboarding-step="2">
         <div class="inline-grid">
-          <label>Nome fantasia<input data-mc-field="name" type="text" required></label>
-          <label>Razão social<input data-mc-field="legal_name" type="text" required></label>
+          <label data-i18n="legalEntity.tradeName">Nome fantasia<input data-mc-field="name" type="text" required></label>
+          <label data-i18n="legalEntity.legalName">Razão social<input data-mc-field="legal_name" type="text" required></label>
           <label>CNPJ<input data-mc-field="cnpj" type="text" required></label>
-          <label>Telefone<input data-mc-field="contact_phone" type="text"></label>
-          <label>E-mail institucional<input data-mc-field="contact_email" type="email"></label>
-          <label>Website<input data-mc-field="website" type="text"></label>
+          <label data-i18n="ui.modals.telefone_2f1517">Telefone<input data-mc-field="contact_phone" type="text"></label>
+          <label data-i18n="ui.modals.e_mail_institucional_ebf91c">E-mail institucional<input data-mc-field="contact_email" type="email"></label>
+          <label data-i18n="company.website">Website<input data-mc-field="website" type="text"></label>
         </div>
-        <label>Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
+        <label data-i18n="legalEntity.address">Endereço<textarea data-mc-field="address" rows="2"></textarea></label>
       </div>
       <div data-onboarding-step="3" hidden>
-        <label>Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+        <label data-i18n="company.logo">Logotipo<input type="file" data-mc-image="logo_type" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
         <input type="hidden" data-mc-field="logo_type">
         <div data-mc-preview="logo_type" class="logo-preview"></div>
-        <label>Favicon (PNG ou SVG)<input type="file" data-mc-image="favicon_type" accept=".png,.svg,image/png,image/svg+xml"></label>
+        <label data-i18n="ui.modals.favicon_png_ou_svg_cedad0">Favicon (PNG ou SVG)<input type="file" data-mc-image="favicon_type" accept=".png,.svg,image/png,image/svg+xml"></label>
         <input type="hidden" data-mc-field="favicon_type">
         <div class="inline-grid">
-          <label>Nome exibido no sistema<input data-mc-field="display_name" type="text"></label>
-          <label>Modo do tema
+          <label data-i18n="ui.modals.nome_exibido_no_sistema_e56dfa">Nome exibido no sistema<input data-mc-field="display_name" type="text"></label>
+          <label data-i18n="ui.modals.modo_do_tema_32fa03">Modo do tema
             <select data-mc-field="theme_mode">
-              <option value="auto">Automático</option>
-              <option value="light">Claro</option>
-              <option value="dark">Escuro</option>
+              <option value="auto" data-i18n="ui.modals.automatico_b803f2">Automático</option>
+              <option value="light" data-i18n="settings.themeLight">Claro</option>
+              <option value="dark" data-i18n="settings.themeDark">Escuro</option>
             </select>
           </label>
-          <label>Cor principal<input data-mc-field="primary_color" type="color" value="#1565C0"></label>
-          <label>Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
+          <label data-i18n="ui.modals.cor_principal_205067">Cor principal<input data-mc-field="primary_color" type="color" value="#1565C0"></label>
+          <label data-i18n="ui.modals.cor_secundaria_3c1219">Cor secundária<input data-mc-field="secondary_color" type="color" value="#42A5F5"></label>
         </div>
       </div>
       <div data-onboarding-step="4" hidden>
         <div class="inline-grid">
-          <label>Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa"></label>
-          <label>Domínio personalizado (opcional)<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
+          <label data-i18n="ui.modals.subdominio_da_plataforma_cd856d">Subdomínio da plataforma<input data-mc-field="subdomain" type="text" placeholder="empresa" data-i18n-placeholder="ui.modals.empresa_307ca7"></label>
+          <label data-i18n="ui.modals.dominio_personalizado_opcional_6f4341">Domínio personalizado (opcional)<input data-mc-field="custom_domain" type="text" placeholder="epi.empresa.com.br"></label>
         </div>
-        <p class="hint">O subdomínio dá acesso via <strong>seu-subdominio</strong>.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</p>
+        <p class="hint"><span data-i18n="ui.modals.o_subdominio_da_acesso_via_476f65">O subdomínio dá acesso via</span> <strong data-i18n="ui.modals.seu_subdominio_260309">seu-subdominio</strong><span data-i18n="ui.modals.epicontrole_com_br_dominio_personalizado_exige_apontamento_cname_e_validaca_4e2f86">.epicontrole.com.br. Domínio personalizado exige apontamento CNAME e validação antes da ativação.</span></p>
       </div>
       <div data-onboarding-step="5" hidden>
-        <p><strong>Sua empresa foi configurada com sucesso.</strong></p>
-        <p class="hint">Você pode ajustar dados cadastrais, identidade visual, tema, domínio e preferências a qualquer momento em Configurações &gt; Minha Empresa.</p>
+        <p><strong data-i18n="ui.modals.sua_empresa_foi_configurada_com_sucesso_a140c9">Sua empresa foi configurada com sucesso.</strong></p>
+        <p class="hint"><span data-i18n="ui.modals.voce_pode_ajustar_dados_cadastrais_identidade_visual_tema_dominio_e_prefere_dbe54f">Você pode ajustar dados cadastrais, identidade visual, tema, domínio e preferências a qualquer momento em Configurações</span> &gt; <span data-i18n="ui.modals.minha_empresa_4bfbec">Minha Empresa.</span></p>
       </div>
       <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;">
-        <button id="onboarding-later" class="ghost" type="button">Concluir depois</button>
+        <button id="onboarding-later" class="ghost" type="button" data-i18n="ui.modals.concluir_depois_d4f1bb">Concluir depois</button>
         <div style="display:flex;gap:8px;">
-          <button id="onboarding-back" class="ghost" type="button">Voltar</button>
-          <button id="onboarding-next" class="primary" type="button">Salvar e continuar</button>
+          <button id="onboarding-back" class="ghost" type="button" data-i18n="back">Voltar</button>
+          <button id="onboarding-next" class="primary" type="button" data-i18n="ui.modals.salvar_e_continuar_af2b1a">Salvar e continuar</button>
         </div>
       </div>
       <div id="onboarding-feedback" class="form-feedback" aria-live="polite"></div>

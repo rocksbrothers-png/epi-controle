@@ -1,0 +1,68 @@
+{
+  "scope": "I18N connector errors and labels",
+  "observed_at": "2026-10-31T17:05:53.476127+00:00",
+  "source_review_verdict": "APPROVED; no remaining P0/P1/P2 in reviewed connector delta",
+  "global_READY_FOR_HUMAN_MERGE_DECISION": "NO",
+  "products": {
+    "corporate": {
+      "head": "e90a2d62a4e2110091fd2ea46e2f73d062127ff8",
+      "expected_head": "e90a2d62a4e2110091fd2ea46e2f73d062127ff8",
+      "tree_clean_at_source_seal": true,
+      "no_unmerged_entries": true,
+      "delta_file_count": 48,
+      "gitleaks_ignore_and_config_unchanged": true,
+      "no_backend_changes": true,
+      "independent_browser": {
+        "passed": 60,
+        "failed": 0,
+        "non_get_calls": []
+      },
+      "versioned_browser165": {
+        "before_failures": 26,
+        "after_failures": 0,
+        "before_checks": 165,
+        "after_checks": 165
+      },
+      "P2": "CLOSED; complete network diagnostic tail is one opaque detail parameter, preserving colon-containing supplier reference",
+      "latest_main_ref": "13a1e8bf22a3151dae449c2f78f68a474612e183",
+      "behind_latest_main": 4,
+      "live_pr_draft_open_unmerged": true,
+      "live_pr_mergeable": false,
+      "live_pr_mergeable_state": "dirty",
+      "live_PR_runs_for_head_observed": 0
+    },
+    "saas": {
+      "head": "ced27428c85b3349f3d8f508442c906bfaa736b3",
+      "expected_head": "ced27428c85b3349f3d8f508442c906bfaa736b3",
+      "tree_clean_at_source_seal": true,
+      "no_unmerged_entries": true,
+      "delta_file_count": 48,
+      "gitleaks_ignore_and_config_unchanged": true,
+      "no_backend_changes": true,
+      "independent_browser": {
+        "passed": 60,
+        "failed": 0,
+        "non_get_calls": []
+      },
+      "versioned_browser165": {
+        "before_failures": 26,
+        "after_failures": 0,
+        "before_checks": 165,
+        "after_checks": 165
+      },
+      "P2": "CLOSED; complete network diagnostic tail is one opaque detail parameter, preserving colon-containing supplier reference",
+      "latest_main_ref": "25b0170be057f7040f3139669ba02da9acc52f8c",
+      "behind_latest_main": 5,
+      "live_pr_draft_open_unmerged": true,
+      "live_pr_mergeable": false,
+      "live_pr_mergeable_state": "dirty",
+      "live_PR_runs_for_head_observed": 0
+    }
+  },
+  "integration_caveat": "Current main refs advanced after reviewed checkpoint. Live PR metadata reports mergeable=false/dirty and no PR workflow runs for these HEADs. Source approval does not certify current-main integration or CI.",
+  "same_changed_paths": true,
+  "different_bytes": [
+    "static/index.html"
+  ],
+  "index_only_cache_difference": true
+}

@@ -2,6 +2,11 @@
   if (globalThis.__EPI_ENTREGA_EPI_BOUND__) return;
   globalThis.__EPI_ENTREGA_EPI_BOUND__ = true;
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   function safeOn(target, eventName, handler, options) {
     try {
       if (typeof globalThis.safeOn === 'function') return globalThis.safeOn(target, eventName, handler, options);
@@ -69,7 +74,7 @@
       function setLoading(value, text) {
         if (!loading) return;
         loading.hidden = !value;
-        loading.textContent = text || 'Atualizando dados...';
+        loading.textContent = text || (globalThis.trEpi?.("delivery.updatingData","Atualizando dados...",{}) ?? "Atualizando dados...");
       }
 
       function setFeedback(message, tone) {
@@ -136,14 +141,14 @@
         if (!reviewBox) return;
         reviewBox.innerHTML = [
           '<strong>Resumo da entrega</strong>',
-          '<div>Empresa: ' + selectedText(companyField) + '</div>',
-          '<div>Unidade: ' + selectedText(unitField) + '</div>',
-          '<div>Colaborador: ' + selectedText(employeeField) + '</div>',
-          '<div>EPI: ' + selectedText(epiField) + '</div>',
-          '<div>Qtd: ' + (qtyField?.value || '1') + '</div>',
-          '<div>Data entrega: ' + (dateField?.value || '-') + '</div>',
-          '<div>Próxima troca: ' + (nextField?.value || '-') + '</div>',
-          '<div>Código lido: ' + (qrCodeField?.value || 'pendente') + '</div>'
+          '<div>Empresa: ' + escapeHtml(selectedText(companyField)) + '</div>',
+          '<div>Unidade: ' + escapeHtml(selectedText(unitField)) + '</div>',
+          '<div>Colaborador: ' + escapeHtml(selectedText(employeeField)) + '</div>',
+          '<div>EPI: ' + escapeHtml(selectedText(epiField)) + '</div>',
+          '<div>Qtd: ' + escapeHtml(qtyField?.value || '1') + '</div>',
+          '<div>Data entrega: ' + escapeHtml(dateField?.value || '-') + '</div>',
+          '<div>Próxima troca: ' + escapeHtml(nextField?.value || '-') + '</div>',
+          '<div>Código lido: ' + escapeHtml(qrCodeField?.value || 'pendente') + '</div>'
         ].join('');
       }
 
@@ -205,12 +210,12 @@
             .filter(function (option) { return !term || String(option.textContent || '').toLowerCase().includes(term); })
             .slice(0, 8);
           if (!options.length) {
-            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + emptyText + '</button>';
+            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + escapeHtml(emptyText) + '</button>';
             open();
             return;
           }
           dropdown.innerHTML = options.map(function (option) {
-            return '<button type="button" data-value="' + String(option.value) + '">' + String(option.textContent || '') + '</button>';
+            return '<button type="button" data-value="' + escapeHtml(option.value) + '">' + escapeHtml(option.textContent || '') + '</button>';
           }).join('');
           open();
         }

@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/entity_labels.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -50,8 +51,11 @@ class _ReturnsBody extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.wifi_off_rounded,
-                      size: 48, color: EpiColors.textMuted),
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    size: 48,
+                    color: EpiColors.textMuted,
+                  ),
                   const SizedBox(height: EpiSpacing.lg),
                   Text(l10n.errorNetwork),
                   const SizedBox(height: EpiSpacing.xl),
@@ -78,8 +82,7 @@ class _ReturnsBody extends StatelessWidget {
                 bottom: EpiSpacing.xl5,
               ),
               itemCount: items.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, indent: 16),
+              separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
               itemBuilder: (_, i) => _DevolutionTile(devolution: items[i]),
             ),
           );
@@ -97,10 +100,7 @@ class _ReturnsBody extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: cubit,
-          child: NewReturnScreen(
-            employees: bootstrap.$1,
-            epis: bootstrap.$2,
-          ),
+          child: NewReturnScreen(employees: bootstrap.$1, epis: bootstrap.$2),
         ),
       ),
     );
@@ -124,12 +124,6 @@ class _DevolutionTile extends StatelessWidget {
   const _DevolutionTile({required this.devolution});
   final Devolution devolution;
 
-  static const _conditionLabels = <String, String>{
-    'good': 'Bom estado',
-    'damaged': 'Danificado',
-    'lost': 'Extraviado',
-  };
-
   static const _conditionColors = <String, Color>{
     'good': EpiColors.success,
     'damaged': EpiColors.warning,
@@ -138,8 +132,10 @@ class _DevolutionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final conditionLabel =
-        _conditionLabels[devolution.condition] ?? devolution.condition;
+    final conditionLabel = appReturnConditionLabel(
+      devolution.condition,
+      AppLocalizations.of(context),
+    );
     final conditionColor =
         _conditionColors[devolution.condition] ?? EpiColors.textMuted;
 
@@ -172,17 +168,15 @@ class _DevolutionTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   devolution.employeeName,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: EpiColors.textMuted),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
                 ),
                 Text(
                   devolution.returnedDate,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: EpiColors.textMuted),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
                 ),
               ],
             ),
@@ -197,9 +191,9 @@ class _DevolutionTile extends StatelessWidget {
             child: Text(
               conditionLabel,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: conditionColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: conditionColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

@@ -64,7 +64,8 @@ import 'app_localizations_pt.dart' deferred as app_localizations_pt;
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -72,7 +73,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,12 +86,13 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -102,7 +105,7 @@ abstract class AppLocalizations {
     Locale('no'),
     Locale('no', 'NO'),
     Locale('pt'),
-    Locale('pt', 'BR')
+    Locale('pt', 'BR'),
   ];
 
   /// Nome da aplicação
@@ -660,7 +663,7 @@ abstract class AppLocalizations {
   /// No description provided for @episSearchHint.
   ///
   /// In pt_BR, this message translates to:
-  /// **'Buscar por nome, CA ou código'**
+  /// **'Buscar por nome, CA brasileiro ou código'**
   String get episSearchHint;
 
   /// No description provided for @epiNameLabel.
@@ -678,7 +681,7 @@ abstract class AppLocalizations {
   /// No description provided for @epiCaLabel.
   ///
   /// In pt_BR, this message translates to:
-  /// **'CA'**
+  /// **'CA — Certificado de Aprovação'**
   String get epiCaLabel;
 
   /// No description provided for @epiSectorLabel.
@@ -732,7 +735,7 @@ abstract class AppLocalizations {
   /// No description provided for @epiCaExpiryLabel.
   ///
   /// In pt_BR, this message translates to:
-  /// **'Vencimento CA'**
+  /// **'Validade do CA'**
   String get epiCaExpiryLabel;
 
   /// No description provided for @epiValidityDaysLabel.
@@ -4111,7 +4114,12 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.'**
-  String stockPhysicalPieceCounts(int valid, int expiring, int expired, int unknown);
+  String stockPhysicalPieceCounts(
+    int valid,
+    int expiring,
+    int expired,
+    int unknown,
+  );
 
   /// No description provided for @deliveryPhysicalItemIneligible.
   ///
@@ -4543,7 +4551,12 @@ abstract class AppLocalizations {
   ///
   /// In pt_BR, this message translates to:
   /// **'Versão {version} / revisão {revision} · {state} · Vigência {date}'**
-  String safetyVersionSummary(String version, String revision, String state, String date);
+  String safetyVersionSummary(
+    String version,
+    String revision,
+    String state,
+    String date,
+  );
 
   /// No description provided for @safetyActorDetails.
   ///
@@ -4610,159 +4623,1423 @@ abstract class AppLocalizations {
   /// In pt_BR, this message translates to:
   /// **'Arquivado'**
   String get safetyStateArchived;
-  /// No description provided for @prConfInvalidQuantityLine.
-  ///
-  /// In pt_BR, this message translates to:
-  /// **'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
-  String prConfInvalidQuantityLine(int line, String item, String id);
+
   /// No description provided for @prConfTitle.
   ///
   /// In pt_BR, this message translates to:
   /// **'Conferência de Recebimento'**
   String get prConfTitle;
+
   /// No description provided for @prConfIntro.
   ///
   /// In pt_BR, this message translates to:
   /// **'Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.'**
   String get prConfIntro;
+
   /// No description provided for @prConfReceivedYes.
   ///
   /// In pt_BR, this message translates to:
   /// **'Recebido'**
   String get prConfReceivedYes;
+
   /// No description provided for @prConfReceivedNo.
   ///
   /// In pt_BR, this message translates to:
   /// **'Não recebido'**
   String get prConfReceivedNo;
+
   /// No description provided for @prConfEvidence.
   ///
   /// In pt_BR, this message translates to:
   /// **'Evidência verificável'**
   String get prConfEvidence;
+
   /// No description provided for @prConfEvidenceHint.
   ///
   /// In pt_BR, this message translates to:
   /// **'Etiqueta / NF / foto'**
   String get prConfEvidenceHint;
+
   /// No description provided for @prConfEvidenceRequired.
   ///
   /// In pt_BR, this message translates to:
   /// **'Evidência verificável é obrigatória quando há validade.'**
   String get prConfEvidenceRequired;
+
   /// No description provided for @prConfSplitLots.
   ///
   /// In pt_BR, this message translates to:
   /// **'Separar em lotes'**
   String get prConfSplitLots;
+
   /// No description provided for @prConfSingleDate.
   ///
   /// In pt_BR, this message translates to:
   /// **'Usar data única'**
   String get prConfSingleDate;
+
   /// No description provided for @prConfAddLot.
   ///
   /// In pt_BR, this message translates to:
   /// **'Adicionar lote'**
   String get prConfAddLot;
+
   /// No description provided for @prConfAddException.
   ///
   /// In pt_BR, this message translates to:
   /// **'Exceção (1 peça)'**
   String get prConfAddException;
+
   /// No description provided for @prConfLotQty.
   ///
   /// In pt_BR, this message translates to:
   /// **'Qtd'**
   String get prConfLotQty;
+
   /// No description provided for @prConfLotCode.
   ///
   /// In pt_BR, this message translates to:
   /// **'Identificação'**
   String get prConfLotCode;
+
   /// No description provided for @prConfRemoveLot.
   ///
   /// In pt_BR, this message translates to:
   /// **'Remover lote'**
   String get prConfRemoveLot;
+
   /// No description provided for @prConfPreview.
   ///
   /// In pt_BR, this message translates to:
   /// **'Prévia — validade física por peça'**
   String get prConfPreview;
+
   /// No description provided for @prConfBlocked.
   ///
   /// In pt_BR, this message translates to:
   /// **'SEM validade → BLOQUEADAS'**
   String get prConfBlocked;
+
   /// No description provided for @prConfExpired.
   ///
   /// In pt_BR, this message translates to:
   /// **'vencida'**
   String get prConfExpired;
+
   /// No description provided for @prConfPiece.
   ///
   /// In pt_BR, this message translates to:
   /// **'peça(s)'**
   String get prConfPiece;
+
   /// No description provided for @prConfSumMismatch.
   ///
   /// In pt_BR, this message translates to:
   /// **'A soma das quantidades dos lotes não confere com a quantidade recebida.'**
   String get prConfSumMismatch;
+
   /// No description provided for @prConfLotQtyPositive.
   ///
   /// In pt_BR, this message translates to:
   /// **'Cada lote precisa de quantidade maior que zero.'**
   String get prConfLotQtyPositive;
+
   /// No description provided for @prConfNotes.
   ///
   /// In pt_BR, this message translates to:
   /// **'Observações sobre itens não recebidos'**
   String get prConfNotes;
+
   /// No description provided for @prConfNotesRequired.
   ///
   /// In pt_BR, this message translates to:
   /// **'Informe as observações sobre os itens não recebidos.'**
   String get prConfNotesRequired;
+
   /// No description provided for @prConfSubmit.
   ///
   /// In pt_BR, this message translates to:
   /// **'Registrar Conferência'**
   String get prConfSubmit;
+
   /// No description provided for @prConfDone.
   ///
   /// In pt_BR, this message translates to:
   /// **'Conferência registrada.'**
   String get prConfDone;
+
   /// No description provided for @prConfEmpty.
   ///
   /// In pt_BR, this message translates to:
   /// **'Nenhum item elegível para conferência.'**
   String get prConfEmpty;
+
   /// No description provided for @prConfInvalidQuantity.
   ///
   /// In pt_BR, this message translates to:
   /// **'Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
   String get prConfInvalidQuantity;
+
   /// No description provided for @prConfNoPersistedPieces.
   ///
   /// In pt_BR, this message translates to:
   /// **'Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.'**
   String get prConfNoPersistedPieces;
+
   /// No description provided for @prConfDoneQuantity.
   ///
   /// In pt_BR, this message translates to:
   /// **'{count} peças efetivamente registradas no estoque.'**
   String prConfDoneQuantity(int count);
+
   /// No description provided for @prConfNoStockEntry.
   ///
   /// In pt_BR, this message translates to:
   /// **'Conferência salva sem entrada de peças no estoque.'**
   String get prConfNoStockEntry;
+
+  /// No description provided for @prConfInvalidQuantityLine.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.'**
+  String prConfInvalidQuantityLine(int line, String item, String id);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque próximo do mínimo: {epi}'**
+  String operationalAlertStockNearMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Saldo negativo: {epi}'**
+  String operationalAlertStockNegative(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque zerado: {epi}'**
+  String operationalAlertStockZero(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque abaixo do mínimo: {epi}'**
+  String operationalAlertStockBelowMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque no limite mínimo: {epi}'**
+  String operationalAlertStockAtMinimum(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} / {unit} - saldo atual de {stock} {measure}, mínimo {minimum}.'**
+  String operationalAlertStockDescription(
+    String company,
+    String unit,
+    String stock,
+    String measure,
+    String minimum,
+  );
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CA próximo do vencimento: {epi}'**
+  String operationalAlertCaTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - vence em {date}.'**
+  String operationalAlertCaDescription(String company, String date);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida: {epi}'**
+  String operationalAlertManufacturerExpiredTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima: {epi}'**
+  String operationalAlertManufacturerExpiringTitle(String epi);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - validade do fabricante venceu em {date}. Retire do estoque ({stock} {measure}): EPI vencido não pode ser entregue ao trabalhador.'**
+  String operationalAlertManufacturerExpiredDescription(
+    String company,
+    String date,
+    String stock,
+    String measure,
+  );
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{company} - validade do fabricante vence em {date} (em {daysLabel}). Priorize a entrega deste lote ({stock} {measure} em estoque) antes do vencimento (PEPS).'**
+  String operationalAlertManufacturerExpiringDescription(
+    String company,
+    String date,
+    String daysLabel,
+    String stock,
+    String measure,
+  );
+
+  /// No description provided for @operationalAlertSizes.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tamanhos em estoque:'**
+  String get operationalAlertSizes;
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Luva:{value}'**
+  String operationalAlertSizeGlove(String value);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tam:{value}'**
+  String operationalAlertSizeSize(String value);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Unif:{value}'**
+  String operationalAlertSizeUniform(String value);
+
+  /// No description provided for @operationalAlertSizeUnspecified.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'S/Tam'**
+  String get operationalAlertSizeUnspecified;
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count}'**
+  String operationalAlertQuantity(String count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{unidade} other{unidades}}'**
+  String operationalAlertMeasureUnit(num count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{par} other{pares}}'**
+  String operationalAlertMeasurePair(num count);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} dia} other{{countLabel} dias}}'**
+  String operationalAlertDays(num count, String countLabel);
+
+  /// Operational alert presentation; canonical metadata and original names stay unchanged.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{epi}: {countLabel} peça física.} other{{epi}: {countLabel} peças físicas.}}'**
+  String operationalAlertPhysicalDescription(
+    num count,
+    String countLabel,
+    String epi,
+  );
+
+  /// No description provided for @operationalAlertPhysicalUnknownTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade física desconhecida'**
+  String get operationalAlertPhysicalUnknownTitle;
+
+  /// No description provided for @operationalAlertPhysicalExpiringTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Lotes próximos do vencimento'**
+  String get operationalAlertPhysicalExpiringTitle;
+
+  /// No description provided for @passwordChangeTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Defina uma nova senha'**
+  String get passwordChangeTitle;
+
+  /// No description provided for @passwordChangeIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sua senha é temporária. Por segurança, defina uma nova senha para continuar.'**
+  String get passwordChangeIntro;
+
+  /// No description provided for @passwordChangeCurrent.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha atual (temporária)'**
+  String get passwordChangeCurrent;
+
+  /// No description provided for @passwordChangeNew.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova senha'**
+  String get passwordChangeNew;
+
+  /// No description provided for @passwordChangeConfirm.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar nova senha'**
+  String get passwordChangeConfirm;
+
+  /// No description provided for @passwordChangeSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar nova senha'**
+  String get passwordChangeSave;
+
+  /// No description provided for @passwordChangeLogout.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Sair'**
+  String get passwordChangeLogout;
+
+  /// No description provided for @passwordChangeCurrentRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe a senha atual'**
+  String get passwordChangeCurrentRequired;
+
+  /// No description provided for @passwordChangeMinLength.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A nova senha deve ter ao menos 6 caracteres'**
+  String get passwordChangeMinLength;
+
+  /// No description provided for @passwordChangeMustDiffer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A nova senha deve ser diferente da temporária'**
+  String get passwordChangeMustDiffer;
+
+  /// No description provided for @passwordChangeMismatch.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'As senhas não coincidem'**
+  String get passwordChangeMismatch;
+
+  /// No description provided for @passwordChangeFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao trocar a senha'**
+  String get passwordChangeFailed;
+
+  /// No description provided for @poSupplierConfirmed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmado'**
+  String get poSupplierConfirmed;
+
+  /// No description provided for @poSupplierDeliveryUpdated.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Entrega atualizada'**
+  String get poSupplierDeliveryUpdated;
+
+  /// No description provided for @poSupplierRejected.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recusado'**
+  String get poSupplierRejected;
+
+  /// No description provided for @poSupplierIsoDateHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'AAAA-MM-DD'**
+  String get poSupplierIsoDateHint;
+
+  /// No description provided for @billingActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ativa'**
+  String get billingActive;
+
+  /// No description provided for @billingPending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pendente'**
+  String get billingPending;
+
+  /// No description provided for @billingPaused.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pausada'**
+  String get billingPaused;
+
+  /// No description provided for @billingCancelled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelada'**
+  String get billingCancelled;
+
+  /// No description provided for @billingExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Expirada'**
+  String get billingExpired;
+
+  /// No description provided for @billingAnnual.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Anual'**
+  String get billingAnnual;
+
+  /// No description provided for @billingMonthly.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mensal'**
+  String get billingMonthly;
+
+  /// No description provided for @billingRecurringCard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cartão (recorrente)'**
+  String get billingRecurringCard;
+
+  /// No description provided for @billingCard.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cartão'**
+  String get billingCard;
+
+  /// No description provided for @billingBoleto.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Boleto'**
+  String get billingBoleto;
+
+  /// No description provided for @billingConfirmTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tem certeza?'**
+  String get billingConfirmTitle;
+
+  /// No description provided for @billingConfirmBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.'**
+  String get billingConfirmBody;
+
+  /// No description provided for @billingConfirmCancel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Confirmar Cancelamento'**
+  String get billingConfirmCancel;
+
+  /// No description provided for @billingCancelledNotice.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Assinatura cancelada.'**
+  String get billingCancelledNotice;
+
+  /// No description provided for @billingCancelFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível cancelar: {detail}'**
+  String billingCancelFailed(String detail);
+
+  /// No description provided for @billingAmount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Valor'**
+  String get billingAmount;
+
+  /// No description provided for @billingCycle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Periodicidade'**
+  String get billingCycle;
+
+  /// No description provided for @billingMethod.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Forma de pagamento'**
+  String get billingMethod;
+
+  /// No description provided for @billingStarted.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Data da contratação'**
+  String get billingStarted;
+
+  /// No description provided for @billingNextPayment.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Próxima cobrança'**
+  String get billingNextPayment;
+
+  /// No description provided for @billingLastPayment.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Última cobrança'**
+  String get billingLastPayment;
+
+  /// No description provided for @billingCancelDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelada em'**
+  String get billingCancelDate;
+
+  /// No description provided for @billingManualRenewal.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Renovação manual'**
+  String get billingManualRenewal;
+
+  /// No description provided for @billingMpSubscriptionId.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'ID da assinatura (MP)'**
+  String get billingMpSubscriptionId;
+
+  /// No description provided for @billingMpStatus.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Status Mercado Pago'**
+  String get billingMpStatus;
+
+  /// No description provided for @billingTenant.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Tenant'**
+  String get billingTenant;
+
+  /// No description provided for @billingCancelAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelar assinatura'**
+  String get billingCancelAction;
+
+  /// No description provided for @billingCancelledBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.'**
+  String get billingCancelledBody;
+
+  /// No description provided for @billingEmptyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma assinatura ativa'**
+  String get billingEmptyTitle;
+
+  /// No description provided for @billingEmptyBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Quando uma assinatura for contratada, os detalhes aparecerão aqui.'**
+  String get billingEmptyBody;
+
+  /// No description provided for @billingLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a assinatura.'**
+  String get billingLoadFailed;
+
+  /// No description provided for @billingInvoicePaid.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pago'**
+  String get billingInvoicePaid;
+
+  /// No description provided for @billingInvoicePending.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Pendente'**
+  String get billingInvoicePending;
+
+  /// No description provided for @billingInvoiceCancelled.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cancelado'**
+  String get billingInvoiceCancelled;
+
+  /// No description provided for @billingInvoiceRefunded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reembolsado'**
+  String get billingInvoiceRefunded;
+
+  /// No description provided for @billingInvoiceFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Falhou'**
+  String get billingInvoiceFailed;
+
+  /// No description provided for @billingOpenReceipt.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Abrir recibo'**
+  String get billingOpenReceipt;
+
+  /// No description provided for @billingReceiptOpenFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível abrir o recibo.'**
+  String get billingReceiptOpenFailed;
+
+  /// No description provided for @billingHistoryLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar o histórico.'**
+  String get billingHistoryLoadFailed;
+
+  /// No description provided for @billingInvoicesEmptyTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma cobrança encontrada'**
+  String get billingInvoicesEmptyTitle;
+
+  /// No description provided for @billingInvoicesEmptyBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'As cobranças da sua assinatura aparecerão aqui.'**
+  String get billingInvoicesEmptyBody;
+
+  /// No description provided for @feedbackTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Avaliações de EPIs'**
+  String get feedbackTitle;
+
+  /// No description provided for @feedbackLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao carregar avaliações'**
+  String get feedbackLoadFailed;
+
+  /// No description provided for @feedbackEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma avaliação encontrada'**
+  String get feedbackEmpty;
+
+  /// No description provided for @feedbackValidate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validar'**
+  String get feedbackValidate;
+
+  /// No description provided for @feedbackStatusOpen.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aberto'**
+  String get feedbackStatusOpen;
+
+  /// No description provided for @feedbackStatusResolved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Resolvido'**
+  String get feedbackStatusResolved;
+
+  /// No description provided for @feedbackStatusClosed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Fechado'**
+  String get feedbackStatusClosed;
+
+  /// No description provided for @feedbackStatusReceived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Recebido'**
+  String get feedbackStatusReceived;
+
+  /// No description provided for @feedbackStatusManagerReview.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Em Análise pelo Gestor de EPI'**
+  String get feedbackStatusManagerReview;
+
+  /// No description provided for @feedbackStatusAwaitingHseq.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando HSEQ'**
+  String get feedbackStatusAwaitingHseq;
+
+  /// No description provided for @feedbackStatusHseqCompleted.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Análise HSEQ Concluída'**
+  String get feedbackStatusHseqCompleted;
+
+  /// No description provided for @feedbackStatusForwardedAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Encaminhado para Administração'**
+  String get feedbackStatusForwardedAdmin;
+
+  /// No description provided for @feedbackStatusAwaitingAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aguardando Aprovação Administrativa'**
+  String get feedbackStatusAwaitingAdmin;
+
+  /// No description provided for @feedbackStatusCorrectiveAction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ação Corretiva Aberta'**
+  String get feedbackStatusCorrectiveAction;
+
+  /// No description provided for @feedbackStatusMoreInformation.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Solicitada Mais Informação'**
+  String get feedbackStatusMoreInformation;
+
+  /// No description provided for @feedbackStatusEnded.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Encerrado'**
+  String get feedbackStatusEnded;
+
+  /// No description provided for @feedbackStatusNotApproved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Reprovado'**
+  String get feedbackStatusNotApproved;
+
+  /// No description provided for @qrInstruction.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aponte para um código QR ou de barras'**
+  String get qrInstruction;
+
+  /// No description provided for @qrDetected.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Código detectado'**
+  String get qrDetected;
+
+  /// No description provided for @qrScanAgain.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Escanear novamente'**
+  String get qrScanAgain;
+
+  /// No description provided for @qrTorchOn.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ligar lanterna'**
+  String get qrTorchOn;
+
+  /// No description provided for @qrTorchOff.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desligar lanterna'**
+  String get qrTorchOff;
+
+  /// No description provided for @formNameLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome'**
+  String get formNameLabel;
+
+  /// No description provided for @formCityLabel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cidade'**
+  String get formCityLabel;
+
+  /// No description provided for @formSaveFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Erro ao salvar'**
+  String get formSaveFailed;
+
+  /// No description provided for @formExample.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ex: {value}'**
+  String formExample(String value);
+
+  /// No description provided for @userNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Novo usuário'**
+  String get userNewTitle;
+
+  /// No description provided for @userTemporaryPassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha temporária'**
+  String get userTemporaryPassword;
+
+  /// No description provided for @userPasswordHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Digite ou use o botão para gerar'**
+  String get userPasswordHint;
+
+  /// No description provided for @userCopyPassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Copiar senha'**
+  String get userCopyPassword;
+
+  /// No description provided for @userGeneratePassword.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gerar senha segura'**
+  String get userGeneratePassword;
+
+  /// No description provided for @userPasswordCopied.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Senha copiada para a área de transferência.'**
+  String get userPasswordCopied;
+
+  /// No description provided for @userEmployeeIdRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'ID do Colaborador (obrigatório)'**
+  String get userEmployeeIdRequired;
+
+  /// No description provided for @userIdentityRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha usuário e nome completo'**
+  String get userIdentityRequired;
+
+  /// No description provided for @userDeleteNamed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Excluir usuário \"{name}\"?'**
+  String userDeleteNamed(String name);
+
+  /// No description provided for @unitNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova unidade'**
+  String get unitNewTitle;
+
+  /// No description provided for @unitFieldsRequired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Preencha nome, cidade e empresa'**
+  String get unitFieldsRequired;
+
+  /// No description provided for @archivalLoadFailed.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a política de arquivamento.'**
+  String get archivalLoadFailed;
+
+  /// No description provided for @archivalInvalidPeriods.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe períodos válidos (mínimo 5 anos).'**
+  String get archivalInvalidPeriods;
+
+  /// No description provided for @archivalSaved.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Política de arquivamento salva com sucesso.'**
+  String get archivalSaved;
+
+  /// No description provided for @archivalSave.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Salvar política de arquivamento'**
+  String get archivalSave;
+
+  /// No description provided for @archivalYearsSuffix.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'anos'**
+  String get archivalYearsSuffix;
+
+  /// No description provided for @archivalPolicyIntro.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).'**
+  String get archivalPolicyIntro;
+
+  /// No description provided for @archivalPpeRecordRule.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.'**
+  String get archivalPpeRecordRule;
+
+  /// No description provided for @roleMasterAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Master'**
+  String get roleMasterAdmin;
+
+  /// No description provided for @roleGeneralAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Geral'**
+  String get roleGeneralAdmin;
+
+  /// No description provided for @roleRegistryAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador de Registro'**
+  String get roleRegistryAdmin;
+
+  /// No description provided for @roleLocalAdmin.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administrador Local'**
+  String get roleLocalAdmin;
+
+  /// No description provided for @rolePpeManager.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Gestor de EPI'**
+  String get rolePpeManager;
+
+  /// No description provided for @roleEmployee.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Funcionário'**
+  String get roleEmployee;
+
+  /// No description provided for @roleBuyer.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Comprador'**
+  String get roleBuyer;
+
+  /// No description provided for @roleApprover.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Aprovador'**
+  String get roleApprover;
+
+  /// No description provided for @roleCertificationReadOnly.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Certificação (somente leitura)'**
+  String get roleCertificationReadOnly;
+
+  /// No description provided for @unitNameHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ex: Plataforma P-40'**
+  String get unitNameHint;
+
+  /// No description provided for @unitTypeBase.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Base'**
+  String get unitTypeBase;
+
+  /// No description provided for @unitTypeVessel.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Embarcação'**
+  String get unitTypeVessel;
+
+  /// No description provided for @unitTypePlatform.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Plataforma'**
+  String get unitTypePlatform;
+
+  /// No description provided for @employeeShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver colaboradores ativos'**
+  String get employeeShowActive;
+
+  /// No description provided for @employeeShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver colaboradores arquivados'**
+  String get employeeShowArchived;
+
+  /// No description provided for @employeeArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum colaborador arquivado.'**
+  String get employeeArchivedEmpty;
+
+  /// No description provided for @employeeArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar Colaborador'**
+  String get employeeArchiveTitle;
+
+  /// No description provided for @employeeRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar Colaborador'**
+  String get employeeRestoreTitle;
+
+  /// No description provided for @employeeArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O colaborador \"{name}\" será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).'**
+  String employeeArchiveBody(String name);
+
+  /// No description provided for @employeeRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O colaborador \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String employeeRestoreBody(String name);
+
+  /// No description provided for @epiShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPIs ativos'**
+  String get epiShowActive;
+
+  /// No description provided for @epiShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver EPIs arquivados'**
+  String get epiShowArchived;
+
+  /// No description provided for @epiArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhum EPI arquivado.'**
+  String get epiArchivedEmpty;
+
+  /// No description provided for @epiArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar EPI'**
+  String get epiArchiveTitle;
+
+  /// No description provided for @epiRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar EPI'**
+  String get epiRestoreTitle;
+
+  /// No description provided for @epiArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O EPI \"{name}\" será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).'**
+  String epiArchiveBody(String name);
+
+  /// No description provided for @epiRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'O EPI \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String epiRestoreBody(String name);
+
+  /// No description provided for @unitArchivedTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{title} · Arquivadas'**
+  String unitArchivedTitle(String title);
+
+  /// No description provided for @unitShowActive.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver unidades ativas'**
+  String get unitShowActive;
+
+  /// No description provided for @unitShowArchived.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Ver unidades arquivadas'**
+  String get unitShowArchived;
+
+  /// No description provided for @unitArchivedEmpty.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nenhuma unidade arquivada.'**
+  String get unitArchivedEmpty;
+
+  /// No description provided for @unitArchiveTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivar Unidade'**
+  String get unitArchiveTitle;
+
+  /// No description provided for @unitRestoreTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Desarquivar Unidade'**
+  String get unitRestoreTitle;
+
+  /// No description provided for @unitArchiveBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A unidade \"{name}\" será arquivada e deixará de receber novas operações.\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.'**
+  String unitArchiveBody(String name);
+
+  /// No description provided for @unitRestoreBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'A unidade \"{name}\" será desarquivada e voltará a ficar ativa, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.'**
+  String unitRestoreBody(String name);
+
+  /// No description provided for @archivedOnDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivado em {date}'**
+  String archivedOnDate(String date);
+
+  /// No description provided for @retentionRemainingDays.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{Retenção restante: {countLabel} dia} other{Retenção restante: {countLabel} dias}}'**
+  String retentionRemainingDays(num count, String countLabel);
+
+  /// No description provided for @retentionSatisfied.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Retenção cumprida'**
+  String get retentionSatisfied;
+
+  /// No description provided for @employeeDetailsSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dados do colaborador'**
+  String get employeeDetailsSection;
+
+  /// No description provided for @epiDaysRemaining.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Dias restantes'**
+  String get epiDaysRemaining;
+
+  /// No description provided for @epiIdentificationSection.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Identificação'**
+  String get epiIdentificationSection;
+
+  /// No description provided for @recordsPendingCount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} pendente} other{{countLabel} pendentes}}'**
+  String recordsPendingCount(num count, String countLabel);
+
+  /// No description provided for @stockPpeCount.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} EPI} other{{countLabel} EPIs}}'**
+  String stockPpeCount(num count, String countLabel);
+
+  /// No description provided for @stockManufacturerExpiring.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima'**
+  String get stockManufacturerExpiring;
+
+  /// No description provided for @stockManufacturerExpired.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida'**
+  String get stockManufacturerExpired;
+
+  /// No description provided for @stockManufacturerExpiredNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante vencida — retirar do estoque (não entregar).'**
+  String get stockManufacturerExpiredNote;
+
+  /// No description provided for @stockManufacturerExpiringNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima — priorizar entrega (PEPS).'**
+  String get stockManufacturerExpiringNote;
+
+  /// No description provided for @stockManufacturerExpiringInNote.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Validade do fabricante próxima (em {days}) — priorizar entrega (PEPS).'**
+  String stockManufacturerExpiringInNote(String days);
+
+  /// No description provided for @moduleVisibilityLoadError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não foi possível carregar a visualização de módulos.'**
+  String get moduleVisibilityLoadError;
+
+  /// No description provided for @moduleRequests.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Solicitações'**
+  String get moduleRequests;
+
+  /// No description provided for @moduleAdministration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Administração'**
+  String get moduleAdministration;
+
+  /// No description provided for @importRowError.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Linha {row}: {detail}'**
+  String importRowError(String row, String detail);
+
+  /// No description provided for @responsibilityContracting.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Contratante'**
+  String get responsibilityContracting;
+
+  /// No description provided for @responsibilityOutsourced.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Terceirizada'**
+  String get responsibilityOutsourced;
+
+  /// No description provided for @responsibilityProvider.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Empresa Prestadora de Serviço'**
+  String get responsibilityProvider;
+
+  /// No description provided for @responsibilityShared.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Responsabilidade Compartilhada'**
+  String get responsibilityShared;
+
+  /// No description provided for @responsibilityContract.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Conforme Contrato'**
+  String get responsibilityContract;
+
+  /// No description provided for @responsibilityUndefined.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Não Definido'**
+  String get responsibilityUndefined;
+
+  /// No description provided for @purchaseCreated.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Requisição criada com sucesso'**
+  String get purchaseCreated;
+
+  /// No description provided for @criticalStockTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Estoque Crítico'**
+  String get criticalStockTitle;
+
+  /// No description provided for @criticalStockBody.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'{count, plural, one{{countLabel} EPI abaixo do estoque mínimo} other{{countLabel} EPIs abaixo do estoque mínimo}}'**
+  String criticalStockBody(num count, String countLabel);
+
+  /// No description provided for @companyNewTitle.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nova empresa'**
+  String get companyNewTitle;
+
+  /// No description provided for @companyCnpjLength.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'CNPJ deve ter 14 dígitos'**
+  String get companyCnpjLength;
+
+  /// No description provided for @companyUserLimit.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Limite de usuários'**
+  String get companyUserLimit;
+
+  /// No description provided for @companyMinimumUsers.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Mínimo de {count} para este plano'**
+  String companyMinimumUsers(int count);
+
+  /// No description provided for @companyOwnerOptional.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Owner ({role}) — opcional'**
+  String companyOwnerOptional(String role);
+
+  /// No description provided for @companyOwnerInviteHint.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Se informado, o Owner recebe por e-mail o convite com a chave de primeiro acesso. A senha nunca é conhecida pelo {role}.'**
+  String companyOwnerInviteHint(String role);
+
+  /// No description provided for @companyOwnerName.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Nome do Owner'**
+  String get companyOwnerName;
+
+  /// No description provided for @companyOwnerEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'E-mail do Owner (envia o convite)'**
+  String get companyOwnerEmail;
+
+  /// No description provided for @companyPlanIndividual.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Individual (1 usuário)'**
+  String get companyPlanIndividual;
+
+  /// No description provided for @companyPlanStart.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Start (até 10)'**
+  String get companyPlanStart;
+
+  /// No description provided for @companyPlanBusiness.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Business (11 a 25)'**
+  String get companyPlanBusiness;
+
+  /// No description provided for @companyPlanCorporate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Corporate (26 a 100)'**
+  String get companyPlanCorporate;
+
+  /// No description provided for @formValidNumber.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Informe um número válido'**
+  String get formValidNumber;
+
+  /// No description provided for @formValidEmail.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'E-mail inválido'**
+  String get formValidEmail;
+
+  /// No description provided for @moduleEmployeeRegistration.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Cadastro de Colaboradores'**
+  String get moduleEmployeeRegistration;
+
+  /// No description provided for @unitArchivedOnDate.
+  ///
+  /// In pt_BR, this message translates to:
+  /// **'Arquivada em {date}'**
+  String unitArchivedOnDate(String date);
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -4771,61 +6048,96 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'es', 'fr', 'no', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 Future<AppLocalizations> lookupAppLocalizations(Locale locale) {
-
   // Lookup logic when language+country codes are specified.
   switch (locale.languageCode) {
-    case 'en': {
-  switch (locale.countryCode) {
-    case 'US': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEnUs());
-   }
-  break;
-   }
-    case 'es': {
-  switch (locale.countryCode) {
-    case 'ES': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEsEs());
-   }
-  break;
-   }
-    case 'fr': {
-  switch (locale.countryCode) {
-    case 'FR': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFrFr());
-   }
-  break;
-   }
-    case 'no': {
-  switch (locale.countryCode) {
-    case 'NO': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNoNo());
-   }
-  break;
-   }
-    case 'pt': {
-  switch (locale.countryCode) {
-    case 'BR': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPtBr());
-   }
-  break;
-   }
+    case 'en':
+      {
+        switch (locale.countryCode) {
+          case 'US':
+            return app_localizations_en.loadLibrary().then(
+              (dynamic _) => app_localizations_en.AppLocalizationsEnUs(),
+            );
+        }
+        break;
+      }
+    case 'es':
+      {
+        switch (locale.countryCode) {
+          case 'ES':
+            return app_localizations_es.loadLibrary().then(
+              (dynamic _) => app_localizations_es.AppLocalizationsEsEs(),
+            );
+        }
+        break;
+      }
+    case 'fr':
+      {
+        switch (locale.countryCode) {
+          case 'FR':
+            return app_localizations_fr.loadLibrary().then(
+              (dynamic _) => app_localizations_fr.AppLocalizationsFrFr(),
+            );
+        }
+        break;
+      }
+    case 'no':
+      {
+        switch (locale.countryCode) {
+          case 'NO':
+            return app_localizations_no.loadLibrary().then(
+              (dynamic _) => app_localizations_no.AppLocalizationsNoNo(),
+            );
+        }
+        break;
+      }
+    case 'pt':
+      {
+        switch (locale.countryCode) {
+          case 'BR':
+            return app_localizations_pt.loadLibrary().then(
+              (dynamic _) => app_localizations_pt.AppLocalizationsPtBr(),
+            );
+        }
+        break;
+      }
   }
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en': return app_localizations_en.loadLibrary().then((dynamic _) => app_localizations_en.AppLocalizationsEn());
-    case 'es': return app_localizations_es.loadLibrary().then((dynamic _) => app_localizations_es.AppLocalizationsEs());
-    case 'fr': return app_localizations_fr.loadLibrary().then((dynamic _) => app_localizations_fr.AppLocalizationsFr());
-    case 'no': return app_localizations_no.loadLibrary().then((dynamic _) => app_localizations_no.AppLocalizationsNo());
-    case 'pt': return app_localizations_pt.loadLibrary().then((dynamic _) => app_localizations_pt.AppLocalizationsPt());
+    case 'en':
+      return app_localizations_en.loadLibrary().then(
+        (dynamic _) => app_localizations_en.AppLocalizationsEn(),
+      );
+    case 'es':
+      return app_localizations_es.loadLibrary().then(
+        (dynamic _) => app_localizations_es.AppLocalizationsEs(),
+      );
+    case 'fr':
+      return app_localizations_fr.loadLibrary().then(
+        (dynamic _) => app_localizations_fr.AppLocalizationsFr(),
+      );
+    case 'no':
+      return app_localizations_no.loadLibrary().then(
+        (dynamic _) => app_localizations_no.AppLocalizationsNo(),
+      );
+    case 'pt':
+      return app_localizations_pt.loadLibrary().then(
+        (dynamic _) => app_localizations_pt.AppLocalizationsPt(),
+      );
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.'
+    'that was used.',
   );
 }

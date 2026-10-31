@@ -245,11 +245,11 @@ class _ConfirmationFormDialogState extends State<_ConfirmationFormDialog> {
           children: [
             DropdownButtonFormField<String>(
               value: _status,
-              items: const [
-                DropdownMenuItem(value: 'confirmed', child: Text('confirmed')),
+              items: [
+                DropdownMenuItem(value: 'confirmed', child: Text(l10n.poSupplierConfirmed)),
                 DropdownMenuItem(
-                    value: 'delivery_update', child: Text('delivery_update')),
-                DropdownMenuItem(value: 'rejected', child: Text('rejected')),
+                    value: 'delivery_update', child: Text(l10n.poSupplierDeliveryUpdated)),
+                DropdownMenuItem(value: 'rejected', child: Text(l10n.poSupplierRejected)),
               ],
               onChanged: (v) => setState(() => _status = v ?? 'confirmed'),
             ),
@@ -258,7 +258,7 @@ class _ConfirmationFormDialogState extends State<_ConfirmationFormDialog> {
               controller: _forecast,
               decoration: InputDecoration(
                   labelText: l10n.poDeliveryForecastLabel,
-                  hintText: 'AAAA-MM-DD'),
+                  hintText: l10n.poSupplierIsoDateHint),
             ),
             const SizedBox(height: EpiSpacing.md),
             TextField(

@@ -1,0 +1,18 @@
+{
+  "locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "messagesPerRegionalCatalogue": 862,
+  "newBillingMessages": 41,
+  "targetedTests": 28,
+  "receiptSpecificCases": 5,
+  "externalReceiptOpens": 0,
+  "realBusinessWrites": 0,
+  "sourceFixtureUnchanged": true,
+  "independentReview": "pending: agent usage limit interrupted review",
+  "wholeTaskComplete": false
+}

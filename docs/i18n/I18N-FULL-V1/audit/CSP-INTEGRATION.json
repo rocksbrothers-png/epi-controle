@@ -39,6 +39,6 @@
     "connector_checks_after_integration_per_product": 165,
     "DOM_regression_after_integration_per_product": 40
   },
-  "CI": "Backend CI calls reusable I18N Runtime. Browser workflow runs main CSP negative/legitimate flows and retained independent SRI boundary script. Exact HEAD and results will be recorded in draft PR descriptions.",
+  "CI": "Backend CI retains its single existing i18n-runtime reusable job, expands frontend/harness filters, and runs retained CSP/SRI checks. An accidental duplicate call was removed after observing concurrency cancellation; final exact HEADs/checks are recorded in PR descriptions.",
   "ready_for_human_merge_decision": false
 }

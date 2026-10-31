@@ -12,6 +12,8 @@ A regressão ampla SECURITY-CSP-V1 da main continua exercitando as telas e açõ
 
 Os guards F4/F5B foram recalculados depois da conciliação; listas e normalização não mudaram. Index foi regenerado por produto e a guarda UBX mantém 727 declarações/104 endpoints, sem novos ciclos. Passaram 225 testes Python dirigidos Corporate/223 SaaS e 665 testes JS por produto.
 
-Backend CI passou a chamar o workflow I18N reutilizável, incluindo alterações em harness/workflow/dependências no filtro. Um arquivo de workflow novo só nesta branch retorna 404 ao tentar workflow_dispatch antes de existir na default branch; a chamada local ao mesmo commit executa a validação sem merge de PR. Nenhum check obrigatório foi removido ou rebaixado.
+Backend CI conserva a chamada I18N reutilizável já existente e amplia o filtro para alterações em harness/workflow/dependências. Um arquivo de workflow novo só nesta branch retorna 404 ao tentar workflow_dispatch antes de existir na default branch; a chamada local já existente executa a validação no mesmo commit sem merge de PR. Nenhum check obrigatório foi removido ou rebaixado.
 
 Resultados locais e da revisão não substituem CI dos HEADs finais. Eles constam nas descrições dos PRs. I18N integral continua aberto para mensagens dinâmicas globais, documentos/superfícies remanescentes e matriz completa. **READY FOR HUMAN MERGE DECISION: NO.**
+
+Uma chamada I18N adicional introduzida na conciliação foi cancelada pela concorrência; a chamada original passou. A duplicação foi removida. O filtro ampliado e o gate original permanecem, com uma única execução por workflow Backend CI. CI dos novos HEADs é a autoridade final.

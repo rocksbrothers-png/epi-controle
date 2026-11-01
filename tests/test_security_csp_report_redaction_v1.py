@@ -16,13 +16,13 @@ import app
 from core import csp_report
 from core.rate_limit import RateLimiter
 
-SECRETS = ('SEGREDO-QA-123', 'T0K3N-QA', 'senha-qa', 'tokfornecedorQA1234567890', 'tokapiQA1234567890abcd',
+SECRETS = ('qa-qa-qa-qa-qa-qa', 'T0K3N-QA', 'senha-qa', 'tokfornecedorQA1234567890', 'tokapiQA1234567890abcd',
            'frag-segredo-qa', 'amostra-secreta-qa')
 
 
 @pytest.mark.parametrize('raw,expected', [
-    ('https://epi.test/?employee_token=SEGREDO-QA-123&lang=pt', 'https://epi.test/?…'),
-    ('https://epi.test/app?code=SEGREDO-QA-123#frag-segredo-qa', 'https://epi.test/app?…#…'),
+    ('https://epi.test/?employee_token=qa-qa-qa-qa-qa-qa&lang=pt', 'https://epi.test/?…'),
+    ('https://epi.test/app?code=qa-qa-qa-qa-qa-qa#frag-segredo-qa', 'https://epi.test/app?…#…'),
     ('https://evil.test/x.js?token=T0K3N-QA', 'https://evil.test/x.js?…'),
     ('https://qa:senha-qa@epi.test/a', 'https://epi.test/a'),
     ('https://epi.test/fornecedor/curto', 'https://epi.test/fornecedor/***'),
@@ -57,7 +57,7 @@ def _secret_free(obj):
 
 def test_parse_legacy_report_uri_format():
     body = {'csp-report': {
-        'document-uri': 'https://epi.test/?employee_token=SEGREDO-QA-123',
+        'document-uri': 'https://epi.test/?employee_token=qa-qa-qa-qa-qa-qa',
         'referrer': 'https://epi.test/fornecedor/tokfornecedorQA1234567890',
         'violated-directive': "script-src-elem 'self'", 'effective-directive': 'script-src-elem',
         'blocked-uri': 'https://evil.test/x.js?token=T0K3N-QA', 'source-file': 'https://epi.test/app.js',
@@ -78,7 +78,7 @@ def test_parse_plain_object_and_reporting_api_formats():
     assert plain == [dict(document_uri='https://epi.test/?…', blocked_uri='data', source_file='', referrer='',
                           violated_directive='img-src', disposition='', line_number='', column_number='', status_code='')]
     reporting = [
-        {'type': 'csp-violation', 'body': {'documentURL': 'https://epi.test/?employee_token=SEGREDO-QA-123',
+        {'type': 'csp-violation', 'body': {'documentURL': 'https://epi.test/?employee_token=qa-qa-qa-qa-qa-qa',
                                             'blockedURL': 'inline', 'effectiveDirective': 'script-src-elem',
                                             'disposition': 'enforce', 'lineNumber': 3, 'sample': 'amostra-secreta-qa'}},
         {'type': 'deprecation', 'body': {'message': 'ignorado'}},
@@ -135,7 +135,7 @@ def _csp_logs(logged):
 def test_http_endpoint_logs_only_sanitized_fields(server):
     post, logged, _ = server
     body = json.dumps({'csp-report': {
-        'document-uri': 'https://epi.test/?employee_token=SEGREDO-QA-123&lang=pt',
+        'document-uri': 'https://epi.test/?employee_token=qa-qa-qa-qa-qa-qa&lang=pt',
         'blocked-uri': 'https://epi.test/api/portal/supplier/tokapiQA1234567890abcd',
         'source-file': 'https://qa:senha-qa@epi.test/fornecedor/tokfornecedorQA1234567890#frag-segredo-qa',
         'effective-directive': 'script-src-elem', 'line-number': 4, 'script-sample': 'amostra-secreta-qa'}})
@@ -161,7 +161,7 @@ def test_http_endpoint_reporting_api_and_malformed(server):
 
 def test_http_endpoint_keeps_64k_cap(server):
     post, logged, _ = server
-    big = json.dumps({'csp-report': {'document-uri': 'https://epi.test/?employee_token=SEGREDO-QA-123',
+    big = json.dumps({'csp-report': {'document-uri': 'https://epi.test/?employee_token=qa-qa-qa-qa-qa-qa',
                                      'padding': 'A' * 200_000}})
     assert post(big) == 204  # só os primeiros 64 KiB são lidos: JSON incompleto, nada registrado
     assert _csp_logs(logged) == []

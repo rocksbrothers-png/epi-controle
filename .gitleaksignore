@@ -3,3 +3,9 @@
 # Preserve PR commit history; no future file/line or rule is exempted.
 11e05c6fadb8804068815a2238ef8e1e5a0f24aa:.github/workflows/stock-validity-integration.yml:generic-api-key:31
 b2ab7f2b5d60c3cfb61fb869f0f4076b37ec4916:.github/workflows/stock-validity-integration.yml:generic-api-key:31
+# SECURITY-CSP-REPORT-REDACTION-V1: valor fictício de teste ("SEGREDO-QA-123") no commit 072b484d do
+# PR #1076, já substituído por um valor de baixa entropia no commit seguinte. Nenhuma credencial real.
+# Mantém o histórico do PR sem force-push; nenhum arquivo, linha ou regra futura fica isento.
+072b484d67b8bd652f0ed934dc593e3c8cc2eecb:tests/test_security_csp_report_redaction_v1.py:generic-api-key:60
+072b484d67b8bd652f0ed934dc593e3c8cc2eecb:tests/test_security_csp_report_redaction_v1.py:generic-api-key:81
+072b484d67b8bd652f0ed934dc593e3c8cc2eecb:tests/test_security_csp_report_redaction_v1.py:generic-api-key:164

@@ -448,6 +448,7 @@ from modules.commercial.service import (
     validate_platform_brand_payload,
 )
 from core.router import router
+from core import csp_report
 from core.rate_limit import get_client_ip, login_limiter, recovery_limiter
 from modules.settings.routes import register_routes as _reg_settings
 from modules.devolutions.routes import register_routes as _reg_devolutions
@@ -758,32 +759,24 @@ class EpiHandler(SimpleHTTPRequestHandler):
         return ctype
 
     def _handle_csp_report(self):
+        # SECURITY-CSP-REPORT-REDACTION-V1: o corpo é do cliente e as URLs carregam tokens de portal;
+        # só campos sanitizados por core.csp_report chegam ao log (sem query, fragmento, credenciais
+        # ou segmentos de token). Corpo limitado a 64 KiB; resposta sempre sem conteúdo.
         try:
             length = int(self.headers.get('Content-Length', '0') or '0')
         except (TypeError, ValueError):
             length = 0
-        raw = self.rfile.read(min(max(length, 0), 65536)) if length else b'{}'
-        try:
-            payload = json.loads(raw.decode('utf-8') or '{}')
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            payload = {}
-        report = payload.get('csp-report') if isinstance(payload, dict) else {}
-        if not isinstance(report, dict):
-            report = payload if isinstance(payload, dict) else {}
-
-        def _compact(value, limit=240):
-            text = str(value or '').replace('\r', ' ').replace('\n', ' ').strip()
-            return text[:limit]
-
-        structured_log(
-            'warning',
-            'security.csp_report',
-            document_uri=_compact(report.get('document-uri')),
-            violated_directive=_compact(report.get('violated-directive') or report.get('effective-directive')),
-            blocked_uri=_compact(report.get('blocked-uri')),
-            source_file=_compact(report.get('source-file')),
-            line_number=_compact(report.get('line-number'), 32),
-        )
+        raw = self.rfile.read(min(max(length, 0), csp_report.MAX_BODY_BYTES)) if length > 0 else b''
+        client_key = get_client_ip(self)
+        if not csp_report.csp_report_limiter.is_allowed(client_key):
+            self.send_response(429)
+            self.send_header('Content-Length', '0')
+            return self.end_headers()
+        # O teto conta RELATÓRIOS registrados (cada item além do primeiro consome outra vaga).
+        for index, fields in enumerate(csp_report.parse_reports(raw)):
+            if index and not csp_report.csp_report_limiter.is_allowed(client_key):
+                break
+            structured_log('warning', 'security.csp_report', **fields)
         self.send_response(204)
         self.send_header('Content-Length', '0')
         return self.end_headers()

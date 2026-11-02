@@ -767,11 +767,15 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except (TypeError, ValueError):
             length = 0
         raw = self.rfile.read(min(max(length, 0), csp_report.MAX_BODY_BYTES)) if length > 0 else b''
-        if not csp_report.csp_report_limiter.is_allowed(get_client_ip(self)):
+        client_key = get_client_ip(self)
+        if not csp_report.csp_report_limiter.is_allowed(client_key):
             self.send_response(429)
             self.send_header('Content-Length', '0')
             return self.end_headers()
-        for fields in csp_report.parse_reports(raw):
+        # O teto conta RELATÓRIOS registrados (cada item além do primeiro consome outra vaga).
+        for index, fields in enumerate(csp_report.parse_reports(raw)):
+            if index and not csp_report.csp_report_limiter.is_allowed(client_key):
+                break
             structured_log('warning', 'security.csp_report', **fields)
         self.send_response(204)
         self.send_header('Content-Length', '0')

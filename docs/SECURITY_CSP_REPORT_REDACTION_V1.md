@@ -28,7 +28,11 @@ os gerados por extensões de navegador na página do portal.
     - usuário e senha embutidos são removidos;
     - o segmento após `/fornecedor/` e `/api/portal/supplier/` vira `***`, assim como qualquer segmento com 20 ou mais
       caracteres de token (urlsafe, hex ou `%`);
-    - `data:` fica só com o esquema e `blob:` só com esquema e origem;
+    - `data:` fica só com o esquema; `blob:` recebe a mesma sanitização da URL interna (origem e caminho, sem query),
+      e prefixos `blob:` repetidos contam uma vez só;
+    - `\\` vira `/` e a comparação com as rotas dos portais usa o segmento decodificado (`/%66ornecedor/…`), inclusive em
+      caminho relativo;
+    - caracteres de controle e separadores de linha Unicode (U+2028, U+2029, NEL) viram espaço;
     - palavras-chave da CSP (`inline`, `eval`, …) passam como estão;
     - URL inválida vira `[inválido]`, sem ecoar o valor;
     - o resultado é limitado a 240 caracteres.
@@ -49,8 +53,8 @@ os gerados por extensões de navegador na página do portal.
   - a ausência de autenticação, que é necessária;
   - a execução antes da barreira de bootstrap, sem depender do banco.
 - **Abuso:** `core/csp_report.py` instancia `csp_report_limiter` (com a classe `RateLimiter` existente; o
-  `core/rate_limit.py` tem digesto fixado e não muda), com 120 relatórios por minuto por chave de origem; o
-  excedente recebe 429, sem log.
+  `core/rate_limit.py` tem digesto fixado e não muda), com 120 relatórios registrados por minuto por chave de origem (cada
+  item de uma requisição da Reporting API consome uma vaga); requisição acima do teto recebe 429, sem log.
   - Atrás do proxy, com `TRUSTED_PROXY_HOPS=0`, a chave é o IP do proxy, e o limite funciona como teto global contra
     inundação de log.
   - Relatórios legítimos são poucos por página.
@@ -59,7 +63,7 @@ os gerados por extensões de navegador na página do portal.
 
 | Teste | Resultado |
 |---|---|
-| `tests/test_security_csp_report_redaction_v1.py` (40) | 40/40 passaram |
+| `tests/test_security_csp_report_redaction_v1.py` (47) | 47/47 passaram |
 | ↳ sanitização: query, fragmento, credenciais, tokens no caminho (fornecedor e API), segmentos longos, `data:`/`blob:`, palavras-chave, IPv6, porta inválida, entradas hostis | coberta |
 | ↳ formatos: `csp-report`, objeto sem envelope, Reporting API (com limite de itens e filtro por tipo) | coberta |
 | ↳ dados malformados ou ausentes: vazio, `null`, número, texto, aninhamento excessivo, UTF-8 inválido, envelope não-objeto | coberta |
@@ -74,7 +78,8 @@ os gerados por extensões de navegador na página do portal.
   - tokens e credenciais de URL não chegam mais ao log, venham na query, no fragmento, no caminho dos portais ou
     embutidos na URL;
   - o conteúdo das amostras de script nunca é registrado;
-  - campos livres não permitem injeção de texto no log;
+  - o caminho continua sendo texto do cliente, mas sai escapado em JSON e sem controles nem separadores de linha: não
+    dá para forjar linhas no log;
   - há um teto de volume.
 - **O que se perde de diagnóstico:** a query e o fragmento das URLs. Origem, caminho, diretiva, linha, coluna e
   disposição continuam disponíveis, e isso basta para localizar a violação.

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import json
 import re
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from core.rate_limit import RateLimiter
 
@@ -46,6 +46,7 @@ INVALID = '[inválido]'
 _TOKEN_PATH_PREFIXES = (('fornecedor',), ('api', 'portal', 'supplier'))
 # Segmento "com cara de token": longo e só com caracteres de token urlsafe/hex.
 _TOKENISH_SEGMENT = re.compile(r'^[A-Za-z0-9_\-.~%]{20,}$')
+_UNSAFE_CHARS = re.compile('[\x00-\x1f\x7f-\x9f\u2028\u2029]')
 _KEYWORD = re.compile(r'^[a-z][a-z0-9-]{0,39}$')
 _DIRECTIVE = re.compile(r'^[a-z][a-z0-9-]{0,39}$')
 
@@ -69,22 +70,35 @@ def _clip(text):
     return text if len(text) <= MAX_FIELD_CHARS else text[:MAX_FIELD_CHARS] + '…'
 
 
+def _decoded(segment):
+    try:
+        return unquote(segment).lower()
+    except Exception:  # noqa: BLE001
+        return segment.lower()
+
+
 def _sanitize_path(path):
-    segments = path.split('/')
-    lowered = [segment.lower() for segment in segments]
+    # `\` vira `/` (navegadores tratam igual) e a comparação usa o segmento decodificado
+    # (`/%66ornecedor/<t>`), inclusive em caminho relativo (segmento 0).
+    segments = path.replace('\\', '/').split('/')
+    lowered = [_decoded(segment) for segment in segments]
     for prefix in _TOKEN_PATH_PREFIXES:
         size = len(prefix)
-        for start in range(1, len(segments) - size):
+        for start in range(0, len(segments) - size):
             if tuple(lowered[start:start + size]) == prefix and segments[start + size]:
                 segments[start + size] = '***'
-    return '/'.join('***' if _TOKENISH_SEGMENT.match(segment) else segment for segment in segments)
+    return '/'.join(
+        '***' if (_TOKENISH_SEGMENT.match(segment) or _TOKENISH_SEGMENT.match(unquote(segment))) else segment
+        for segment in segments
+    )
 
 
 def sanitize_url(value):
     """URL de relatório → origem + caminho sem query/fragmento/credenciais/tokens. Nunca levanta."""
     if value is None:
         return ''
-    text = str(value).replace('\r', ' ').replace('\n', ' ').strip()
+    # Controles e separadores de linha Unicode (U+2028/2029, NEL) viram espaço: nada forja linha no log.
+    text = _UNSAFE_CHARS.sub(' ', str(value)).strip()
     if not text:
         return ''
     try:
@@ -94,8 +108,12 @@ def sanitize_url(value):
         if lowered.startswith('data:'):
             return 'data:'
         if lowered.startswith('blob:'):
-            inner = sanitize_url(text[5:])
-            return 'blob:' + (inner if inner not in (INVALID, '') else '')
+            # Sem recursão: prefixos repetidos (`blob:blob:…`) contam uma vez só; resultado com o mesmo teto.
+            inner = text
+            while inner.lower().startswith('blob:'):
+                inner = inner[5:].lstrip()
+            inner = sanitize_url(inner) if not inner.lower().startswith('blob:') else ''
+            return _clip('blob:' + (inner if inner not in (INVALID, '') else ''))
         parts = urlsplit(text)
         scheme = parts.scheme.lower()
         if parts.netloc:

@@ -180,3 +180,37 @@ def test_handler_does_not_need_database_bootstrap(server, monkeypatch):
     post, logged, _ = server
     monkeypatch.setattr(app.EpiHandler, '_require_bootstrap_ready', lambda self, path: False)
     assert post(json.dumps({'csp-report': {'document-uri': 'https://epi.test/'}})) == 204
+
+
+# ── Rodada da auditoria independente (P3) ────────────────────────────────────
+
+def test_nested_blob_is_flat_and_clipped():
+    result = csp_report.sanitize_url('blob:' * 13000 + 'https://epi.test/x?q=qa-qa-qa-qa-qa-qa')
+    assert result == 'blob:https://epi.test/x?…'
+    long_path = 'blob:https://epi.test/' + '/'.join(['abc'] * 400)
+    assert len(csp_report.sanitize_url(long_path)) <= csp_report.MAX_FIELD_CHARS + 1
+
+
+@pytest.mark.parametrize('raw,expected', [
+    ('https://epi.test/fornecedor\\tokfornecedorQA1234567890', 'https://epi.test/fornecedor/***'),
+    ('https://epi.test/%66ornecedor/curto', 'https://epi.test/%66ornecedor/***'),
+    ('fornecedor/curto', 'fornecedor/***'),
+    ('https://epi.test/%74%6f%6b%51%41aaaaaaaaaaaaaaaaaaaa', 'https://epi.test/***'),
+])
+def test_portal_token_variants_are_masked(raw, expected):
+    assert csp_report.sanitize_url(raw) == expected
+
+
+def test_unicode_line_separators_never_reach_the_log():
+    result = csp_report.sanitize_url('https://epi.test/a b c\u0085d\x1be')
+    assert result == 'https://epi.test/a b c d e'
+
+
+def test_rate_limit_counts_logged_reports(server):
+    post, logged, monkeypatch = server
+    monkeypatch.setattr(csp_report, 'csp_report_limiter', RateLimiter(max_calls=3, period_seconds=60))
+    batch = [{'type': 'csp-violation', 'body': {'documentURL': 'https://epi.test/', 'effectiveDirective': 'img-src'}}] * 10
+    assert post(json.dumps(batch), 'application/reports+json') == 204
+    assert len(_csp_logs(logged)) == 3  # 10 relatórios numa requisição: só 3 vagas
+    assert post(json.dumps(batch), 'application/reports+json') == 429
+    assert len(_csp_logs(logged)) == 3

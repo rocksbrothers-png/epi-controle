@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PT = re.compile(r'[ãõçáéíóúâêôàÃÕÇÁÉÍÓÚÂÊÔÀ]|\b(não|de|para|sem|inválid|obrigatóri|encontrad|deve|permitid|informe|selecione)', re.I)
+PT = re.compile(r'[ãõçáéíóúâêôàÃÕÇÁÉÍÓÚÂÊÔÀ]|\b(não|de|para|sem|inválid|obrigatóri|encontrad|deve|permitid|informe|selecione)', re.IGNORECASE)
 STATUS_BY_EXCEPTION = {
     'ValueError': 400, 'PermissionError': 403, 'LookupError': 404, 'KeyError': 404,
     'RuntimeError': 500, 'TypeError': 400,
@@ -88,7 +88,7 @@ def template_of(node):
         parts, used, names = [], set(), []
         for v in node.values:
             if isinstance(v, ast.Constant):
-                parts.append(str(v.value).replace('{', '{{').replace('}', '}}') if False else str(v.value))
+                parts.append(str(v.value))
             else:
                 n = var_name(v.value, used)
                 names.append(n)
@@ -153,7 +153,7 @@ class Collector(ast.NodeVisitor):
                         msg = v2
                 if msg is not None:
                     text, names = template_of(msg)
-                    self.add(node, text, names, kind, status, "{'ok': False, 'error': {'code': %r, 'message': <mensagem>}}" % code)
+                    self.add(node, text, names, kind, status, f"{{'ok': False, 'error': {{'code': {code!r}, 'message': <mensagem>}}}}")
             else:
                 text, names = template_of(v)
                 self.add(node, text, names, kind, status, "{'error': <mensagem>}")
@@ -222,7 +222,7 @@ def main():
     catalog = json.loads((ROOT / 'static/i18n/pt-BR.json').read_text(encoding='utf-8'))
     existing = {shape(v): 'apiErrors.' + k for k, v in flatten(catalog['apiErrors']).items()}
     other = {shape(v): k for k, v in flatten(catalog).items() if not k.startswith('apiErrors.')
-             and re.search(r'error|invalid|failed|denied|notfound|required|mismatch|unavailable|forbidden', k, re.I)}
+             and re.search(r'error|invalid|failed|denied|notfound|required|mismatch|unavailable|forbidden', k, re.IGNORECASE)}
     tests_src = {p.name: p.read_text(encoding='utf-8', errors='ignore') for p in (ROOT / 'tests').glob('test_*.py')}
     graph = CallGraph()
     rows, shapes_seen = [], {}
@@ -257,7 +257,7 @@ def main():
                     decision, reason, key = 'preservar', 'mensagem é só um valor dinâmico (opaco)', None
                 elif item['vars'] and len(fixed) < 8:
                     decision, reason, key = 'preservar', 'texto fixo < 8 caracteres: o motor recusa por segurança', None
-                elif any(re.search(r'\{\w+\}\{\w+\}', text) for _ in [0]):
+                elif re.search(r'\{\w+\}\{\w+\}', text):
                     decision, reason, key = 'preservar', 'variáveis adjacentes: correspondência ambígua', None
                 else:
                     decision, reason, key = 'traduzir', 'apresentação no cliente; contrato intacto', key_for(text)

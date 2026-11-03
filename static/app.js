@@ -5075,7 +5075,7 @@ function commercialActions(company) {
   const canReactivate = company.license_status === 'suspended' || company.license_status === 'expired' || Number(company.active) !== 1;
   const actionMode = canReactivate ? 'reactivate' : 'suspend';
   const toggleLabel = canReactivate ? tr('commercial.panel.reactivate', 'Reativar') : tr('commercial.panel.suspend', 'Suspender');
-  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">${escapeHtml(tr('commercial.panel.openContract', 'Abrir contrato'))}</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${escapeHtml(toggleLabel)}</button></div>`;
+  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${escapeHtml(company.id)}">${escapeHtml(tr('commercial.panel.openContract', 'Abrir contrato'))}</button><button class="ghost" data-commercial-toggle="${escapeHtml(company.id)}" data-commercial-mode="${actionMode}">${escapeHtml(toggleLabel)}</button></div>`;
 }
 
 function commercialAlertTone(item) {
@@ -5814,41 +5814,41 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
   const companyName = target.company_name || tr('user.accessMessage.defaultCompany', 'sua empresa');
   const loginUrl = globalThis.location.origin;
-  const m = (key, fallback, vars) => tr(`user.accessMessage.${key}`, fallback, vars);
-  const usernameLine = m('username', 'Usuário: {username}', { username: target.username });
-  const passwordLine = m('password', 'Senha provisória: {password}', { password });
+  const trAccess = (key, fallback, vars) => tr(`user.accessMessage.${key}`, fallback, vars);
+  const usernameLine = trAccess('username', 'Usuário: {username}', { username: target.username });
+  const passwordLine = trAccess('password', 'Senha provisória: {password}', { password });
   if (channel === 'whatsapp') {
     const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
     return [
       `${target.full_name}.`,
       '',
-      m('grantedWhatsapp', 'Seu acesso ao sistema {brand} foi liberado para a empresa {company}.', { brand: brandName, company: companyName }),
+      trAccess('grantedWhatsapp', 'Seu acesso ao sistema {brand} foi liberado para a empresa {company}.', { brand: brandName, company: companyName }),
       usernameLine,
       passwordLine,
       '',
-      m('firstAccessShort', 'No primeiro acesso, crie a sua senha e substitua a provisória.'),
-      m('accessShort', 'Acesso: {url}', { url: loginUrl }),
+      trAccess('firstAccessShort', 'No primeiro acesso, crie a sua senha e substitua a provisória.'),
+      trAccess('accessShort', 'Acesso: {url}', { url: loginUrl }),
       '',
       footer
     ].join('\n');
   }
   return [
-    m('subject', 'Assunto: Acesso ao sistema {brand}', { brand: brandName }),
+    trAccess('subject', 'Assunto: Acesso ao sistema {brand}', { brand: brandName }),
     '',
     `${target.full_name},`,
     '',
-    m('grantedEmail', 'Seu acesso ao sistema {brand} foi liberado para operação na empresa {company}.', { brand: brandName, company: companyName }),
+    trAccess('grantedEmail', 'Seu acesso ao sistema {brand} foi liberado para operação na empresa {company}.', { brand: brandName, company: companyName }),
     '',
-    m('initialData', 'Dados de acesso inicial:'),
+    trAccess('initialData', 'Dados de acesso inicial:'),
     usernameLine,
     passwordLine,
-    m('link', 'Link de acesso: {url}', { url: loginUrl }),
+    trAccess('link', 'Link de acesso: {url}', { url: loginUrl }),
     '',
-    m('firstAccess', 'Importante: no primeiro acesso, troque a senha provisória por uma senha definitiva antes de entrar no painel.'),
+    trAccess('firstAccess', 'Importante: no primeiro acesso, troque a senha provisória por uma senha definitiva antes de entrar no painel.'),
     '',
-    m('lostPassword', 'Em caso de perda ou esquecimento da senha, entre em contato com sua empresa.'),
+    trAccess('lostPassword', 'Em caso de perda ou esquecimento da senha, entre em contato com sua empresa.'),
     '',
-    m('regards', 'Atenciosamente,'),
+    trAccess('regards', 'Atenciosamente,'),
     legalName,
     brandCnpj
   ].filter(Boolean).join('\n');
@@ -10117,7 +10117,7 @@ async function handleForcedPasswordChange(event) {
     const confPwd = String(document.getElementById('confirm-password')?.value || '').trim();
     if (!curPwd) throw new Error(tr('login.passwordChange.currentRequired', 'Informe a senha atual.'));
     if (!newPwd) throw new Error(tr('login.passwordChange.newRequired', 'Informe a nova senha.'));
-    if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
+    if (newPwd.length < 6) throw new Error(tr('login.passwordChange.tooShort', 'A nova senha deve ter pelo menos 6 caracteres.'));
     if (newPwd !== confPwd) throw new Error(tr('login.passwordChange.mismatch', 'A confirmação da nova senha não confere.'));
     await api('/api/change-password', {
       method: 'POST',
@@ -10127,7 +10127,7 @@ async function handleForcedPasswordChange(event) {
     if (refs.passwordChangeForm) refs.passwordChangeForm.reset();
     showScreen(true);
     await loadBootstrap();
-    alert('Senha atualizada com sucesso. Bem-vindo!');
+    alert(tr('login.passwordChange.updated', 'Senha atualizada com sucesso. Bem-vindo!'));
   } catch (error) {
     alert(error.message || tr('login.passwordChange.updateFailed', 'Não foi possível atualizar a senha.'));
   } finally {
@@ -11580,18 +11580,18 @@ function renderMyCompanyDomains(domains) {
   const instructions = document.getElementById('my-company-domain-instructions');
   if (!table) return;
   table.innerHTML = domains.map((item) => {
-    const primaryMark = Number(item.is_primary) === 1 ? ` <strong>${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
+    const primaryMark = Number(item.is_primary) === 1 ? ` <strong data-i18n="myCompany.domains.primary">${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
     const actions = [];
     if (item.verification_status !== 'verified') {
-      actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}" data-i18n="myCompany.domains.verify">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
     } else if (Number(item.is_primary) !== 1) {
-      actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}" data-i18n="myCompany.domains.makePrimary">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
     }
     actions.push(`<button class="ghost" type="button" data-domain-delete="${escapeHtml(item.id)}" data-i18n="user.remove">Remover</button>`);
     return `<tr><td>${escapeHtml(item.full_host)}${primaryMark}</td><td>${escapeHtml(item.type_label)}</td>` +
       `<td>${escapeHtml(domainStatusLabel(item.verification_status))}</td><td>${escapeHtml(domainStatusLabel(item.ssl_status))}</td>` +
       `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
-  }).join('') || `<tr><td colspan="5">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
+  }).join('') || `<tr><td colspan="5" data-i18n="myCompany.domains.none">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
 
   const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
   if (instructions) {
@@ -13111,22 +13111,22 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         }
         // I18N-FULL-V1: painéis do Comercial e data do topo. Só leem o estado já
         // carregado; formulário, contrato e filtros digitados não são recriados.
-        try {
-          if (refs.currentDate) refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date());
-          renderCommercialStats();
-          renderCommercialSummary();
-          renderCommercialAlerts();
-          renderCommercialExpiring();
-          renderCommercialHistory();
-          if (refs.commercialPlanHint && refs.commercialForm) {
-            refs.commercialPlanHint.textContent = planHintText(refs.commercialForm.elements.plan_name.value || 'start', refs.commercialForm.elements.addendum_enabled.checked);
-          }
+        // Cada passo é independente: a falha de um não impede os demais.
+        [
+          () => { if (refs.currentDate) refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date()); },
+          renderCommercialStats, renderCommercialSummary, renderCommercialAlerts, renderCommercialExpiring, renderCommercialHistory,
+          () => {
+            const elements = refs.commercialForm?.elements;
+            if (refs.commercialPlanHint && elements) {
+              refs.commercialPlanHint.textContent = planHintText(elements.plan_name?.value || 'start', Boolean(elements.addendum_enabled?.checked));
+            }
+          },
           // Prévia a partir do valor atual do formulário: renderPlatformBrand regravaria os campos.
-          if (refs.platformBrandForm) {
-            renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type?.value || '');
-            renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type?.value || '');
-          }
-        } catch (error) { reportNonCriticalError('[i18n] re-render do Comercial falhou', error); }
+          () => { if (refs.platformBrandForm) renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type?.value || ''); },
+          () => { if (refs.platformBrandForm) renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type?.value || ''); }
+        ].forEach((step) => {
+          try { step(); } catch (error) { reportNonCriticalError('[i18n] re-render do Comercial falhou', error); }
+        });
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
       }

@@ -108,7 +108,9 @@
       "currentRequired": "Skriv inn det nåværende passordet.",
       "newRequired": "Skriv inn det nye passordet.",
       "mismatch": "Bekreftelsen av det nye passordet stemmer ikke.",
-      "updateFailed": "Passordet kunne ikke oppdateres."
+      "updateFailed": "Passordet kunne ikke oppdateres.",
+      "tooShort": "Det nye passordet må ha minst 6 tegn.",
+      "updated": "Passordet er oppdatert. Velkommen!"
     }
   },
   "dashboard": {

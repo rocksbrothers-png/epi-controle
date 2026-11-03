@@ -143,3 +143,21 @@ Legenda: ✅ concluído e validado · 🟡 implementado sem teste suficiente · 
    verde; a lista de funções acompanha os módulos).
 3. `scripts/browser/i18n_commercial.py` verde nos 5 idiomas após a extração.
 4. #1079/#453 integrados ou conciliados (índice e dígitos regenerados).
+
+## 8. Auditoria independente (agente separado, só leitura)
+
+Sobre `5c104a3c`/`71ad568`. **Nenhum P0/P1.** Conferidos: hunks do `app.js` sem mudança de
+payload/API/declaração; escapes (inclusive a técnica de marcadores das instruções DNS); handler de troca
+de idioma sem loaders nem escrita em formulário; 99 chaves novas com placeholders idênticos nos 5 idiomas;
+52 usos de `formatDate`/`formatDateTime` só de exibição; permissões e escopos intactos; paridade byte a
+byte e dígitos iguais; conflitos só com os arquivos gerados do PR UBX; Chromium 15/15.
+
+| ID | Sev. | Achado | Tratamento |
+|---|---|---|---|
+| F1 | P2 | `handleForcedPasswordChange` ainda tinha 2 textos pt-BR | Corrigido (`login.passwordChange.tooShort`/`.updated`) e função incluída no gate |
+| F2 | P2 | Gate isentava o literal inteiro com `data-i18n`, allowlist por texto e cobertura só do Comercial | Isenção restrita ao texto do elemento ligado; allowlist da impressão removida (já em `tr`); login/Usuários cobertos; teste de bypass. Limites remanescentes documentados no próprio teste |
+| F3 | P3 | Rótulos de domínio não retraduziam ao vivo | `data-i18n` nos rótulos e no estado vazio |
+| F4 | P3 | `company.id` sem escape em `commercialActions` (preexistente) | Escapado |
+| F5 | P3 | Um único `try` no redesenho do Comercial | Passos independentes, com encadeamento opcional |
+| F6 | P3 | Redação en-GB (`Responsible`, `grantedEmail`) e apóstrofos mistos no fr-FR | Corrigido. Nomes de perfil nas mensagens (“Administrador”/“Usuário” × `role.*`) espelham o pt-BR e ficam para revisão terminológica |
+| F7 | P3 | Nome dos arquivos exportados em português | Mantido (cosmético) |

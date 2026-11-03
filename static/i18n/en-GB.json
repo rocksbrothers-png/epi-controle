@@ -108,7 +108,9 @@
       "currentRequired": "Enter your current password.",
       "newRequired": "Enter the new password.",
       "mismatch": "The new password confirmation does not match.",
-      "updateFailed": "The password could not be updated."
+      "updateFailed": "The password could not be updated.",
+      "tooShort": "The new password must be at least 6 characters long.",
+      "updated": "Password updated successfully. Welcome!"
     }
   },
   "dashboard": {
@@ -1339,7 +1341,7 @@
       "firstAccessShort": "When you first sign in, create your own password to replace the temporary one.",
       "accessShort": "Access: {url}",
       "subject": "Subject: Access to {brand}",
-      "grantedEmail": "Your access to {brand} has been enabled to operate for {company}.",
+      "grantedEmail": "Your access to {brand} has been enabled for {company}.",
       "initialData": "Initial sign-in details:",
       "link": "Sign-in link: {url}",
       "firstAccess": "Important: when you first sign in, replace the temporary password with a permanent one before entering the dashboard.",
@@ -1476,13 +1478,13 @@
       "historyBy": "{action} by {actor}",
       "colCompany": "Company",
       "colAction": "Action",
-      "colActor": "Responsible",
+      "colActor": "Performed by",
       "colDate": "Date",
       "colSummary": "Summary",
       "colDetails": "Details",
       "filterStatus": "Status: {status}",
       "filterStatusAll": "Status: all",
-      "filterActor": "Responsible: {actor}",
+      "filterActor": "Performed by: {actor}",
       "filterFrom": "From: {date}",
       "filterTo": "to: {date}",
       "filtersLabel": "Filters: {filters}",

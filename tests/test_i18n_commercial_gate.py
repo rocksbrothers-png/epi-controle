@@ -13,6 +13,10 @@ falha: ou foi renomeada (atualize a lista) ou foi apagada.
 
 O detector é léxico (strings, templates, comentários, regex) e não depende de
 Node; ``test_detector_*`` prova que ele acusa o padrão do defeito.
+
+Limites conhecidos (registrados, não escondidos): uma palavra isolada minúscula e
+sem acento (``todos``) não é acusada, para não confundir com códigos canônicos; e
+prosa escrita no lugar da CHAVE de ``tr()`` passa — a revisão do catálogo pega.
 """
 import re
 from pathlib import Path
@@ -33,6 +37,8 @@ FUNCTIONS = [
     'printCommercialHistory', 'savePlatformBrand', 'saveCommercialContractDraft', 'generateCommercialContract',
     'signCommercialContractAction', 'fileToBase64', 'uploadSignedCommercialContract', 'sendCommercialContractByEmail',
     'exportCommercialHistory',
+    # Login, troca de senha e Usuários (mesma continuação).
+    'handleForcedPasswordChange', 'askTemporaryPassword', 'buildUserAccessMessage', 'saveUser',
 ]
 
 # (função, literal) aceitos sem tradução, com o motivo.
@@ -41,10 +47,6 @@ ALLOWED = {
     ('contractStatusLabel', 'Rascunho'), ('contractStatusLabel', 'Gerado'), ('contractStatusLabel', 'Enviado'),
     ('contractStatusLabel', 'Pendente de assinatura'), ('contractStatusLabel', 'Assinado'),
     ('contractStatusLabel', 'Ativo'), ('contractStatusLabel', 'Encerrado'), ('contractStatusLabel', 'Arquivado'),
-    # Fallbacks pt-BR dos cabeçalhos da janela de impressão, passados a tr(`commercial.panel.<col>`, ...).
-    ('printCommercialHistory', 'Empresa'), ('printCommercialHistory', 'Ação'),
-    ('printCommercialHistory', 'Responsável'), ('printCommercialHistory', 'Data'),
-    ('printCommercialHistory', 'Resumo'), ('printCommercialHistory', 'Detalhes'),
     # E-mail do contrato: texto padrão do documento (contrato brasileiro), editável e enviado ao
     # contratante; mesma regra dos documentos assinados — não é texto de interface.
     ('renderCommercialContractPanel', 'Contrato comercial EPI Controle'),
@@ -53,8 +55,10 @@ ALLOWED = {
     ('resetCommercialContractForm', 'Segue contrato comercial para análise e assinatura.'),
 }
 
-TRANSLATORS = {'tr', 'trEpi', 'textFor', 'attributeFor', 'bindText', 't'}
+# trAccess: atalho local de buildUserAccessMessage para tr(`user.accessMessage.<chave>`, ...).
+TRANSLATORS = {'tr', 'trEpi', 'textFor', 'attributeFor', 'bindText', 't', 'trAccess'}
 TAG = re.compile(r'<[^>]*>')
+BOUND_TEXT = re.compile(r'data-i18n="[^"]*"[^>]*>[^<]*')
 ENTITY = re.compile(r'&[#\w]+;')
 
 
@@ -72,8 +76,9 @@ def _visible_prose(text):
 
 
 def _is_prose(text):
-    if 'data-i18n=' in text:
-        return False  # elemento ligado a uma chave: o motor traduz ao inserir e ao trocar idioma
+    # Só o texto do PRÓPRIO elemento ligado a uma chave é traduzido pelo motor;
+    # prosa fora dele continua sendo acusada.
+    text = BOUND_TEXT.sub('>', text)
     visible = _visible_prose(text)
     if not visible:
         return False
@@ -266,6 +271,17 @@ function commercialActions(company) {
     achados = _untranslated('commercialActions', _function_body(antes, 'commercialActions'))
     assert 'Reativar' in achados and 'Suspender' in achados
     assert any('Abrir contrato' in a for a in achados)
+
+
+def test_detector_nao_isenta_prosa_fora_do_elemento_ligado():
+    codigo = '''function y() {
+  return '<span data-i18n="k">Texto ligado</span> Texto livre sem chave';
+}
+function z() {
+  return `<th>Empresa</th>${tr('commercial.panel.colAction', 'Ação')}`;
+}'''
+    assert _untranslated('y', _function_body(codigo, 'y')) != []
+    assert _untranslated('z', _function_body(codigo, 'z')) != []
 
 
 def test_detector_aceita_texto_traduzido():

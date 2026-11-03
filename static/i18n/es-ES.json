@@ -108,7 +108,9 @@
       "currentRequired": "Introduzca la contraseña actual.",
       "newRequired": "Introduzca la nueva contraseña.",
       "mismatch": "La confirmación de la nueva contraseña no coincide.",
-      "updateFailed": "No se pudo actualizar la contraseña."
+      "updateFailed": "No se pudo actualizar la contraseña.",
+      "tooShort": "La nueva contraseña debe tener al menos 6 caracteres.",
+      "updated": "Contraseña actualizada correctamente. ¡Bienvenido!"
     }
   },
   "dashboard": {

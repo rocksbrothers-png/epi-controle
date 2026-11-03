@@ -108,7 +108,9 @@
       "currentRequired": "Saisissez votre mot de passe actuel.",
       "newRequired": "Saisissez le nouveau mot de passe.",
       "mismatch": "La confirmation du nouveau mot de passe ne correspond pas.",
-      "updateFailed": "Impossible de mettre à jour le mot de passe."
+      "updateFailed": "Impossible de mettre à jour le mot de passe.",
+      "tooShort": "Le nouveau mot de passe doit comporter au moins 6 caractères.",
+      "updated": "Mot de passe mis à jour avec succès. Bienvenue !"
     }
   },
   "dashboard": {
@@ -1335,15 +1337,15 @@
       "defaultCompany": "votre entreprise",
       "username": "Identifiant : {username}",
       "password": "Mot de passe temporaire : {password}",
-      "grantedWhatsapp": "Votre accès au système {brand} a été activé pour l’entreprise {company}.",
+      "grantedWhatsapp": "Votre accès au système {brand} a été activé pour l'entreprise {company}.",
       "firstAccessShort": "Lors de votre première connexion, créez votre mot de passe pour remplacer le mot de passe temporaire.",
       "accessShort": "Accès : {url}",
       "subject": "Objet : Accès au système {brand}",
-      "grantedEmail": "Votre accès au système {brand} a été activé pour travailler au sein de l’entreprise {company}.",
+      "grantedEmail": "Votre accès au système {brand} a été activé pour travailler au sein de l'entreprise {company}.",
       "initialData": "Informations de première connexion :",
       "link": "Lien de connexion : {url}",
-      "firstAccess": "Important : lors de votre première connexion, remplacez le mot de passe temporaire par un mot de passe définitif avant d’accéder au tableau de bord.",
-      "lostPassword": "En cas de perte ou d’oubli du mot de passe, contactez votre entreprise.",
+      "firstAccess": "Important : lors de votre première connexion, remplacez le mot de passe temporaire par un mot de passe définitif avant d'accéder au tableau de bord.",
+      "lostPassword": "En cas de perte ou d'oubli du mot de passe, contactez votre entreprise.",
       "regards": "Cordialement,"
     }
   },

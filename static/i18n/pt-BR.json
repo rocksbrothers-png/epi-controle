@@ -108,7 +108,9 @@
       "currentRequired": "Informe a senha atual.",
       "newRequired": "Informe a nova senha.",
       "mismatch": "A confirmação da nova senha não confere.",
-      "updateFailed": "Não foi possível atualizar a senha."
+      "updateFailed": "Não foi possível atualizar a senha.",
+      "tooShort": "A nova senha deve ter pelo menos 6 caracteres.",
+      "updated": "Senha atualizada com sucesso. Bem-vindo!"
     }
   },
   "dashboard": {

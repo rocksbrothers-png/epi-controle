@@ -99,7 +99,7 @@
     if (logoEl) {
       const logoSrc = branding.login_logo_type || branding.logo_type || '';
       // SECURITY-LOGO-XSS-V1: página pública — só data URL base64 de PNG/JPEG/SVG
-      // (mesma regra do backend e de companyLogoSrc no app.js), e escapada no atributo.
+      // (mesma regra do backend e de companyLogoSrc em js/modules/shared/ui/company-logo.js), e escapada no atributo.
       if (/^data:image\/(?:png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/.test(String(logoSrc))) {
         logoEl.innerHTML = `<img src="${escHtml(logoSrc)}" alt="${escHtml(tenantName || 'Logo')}" class="tenant-login-logo">`;
       }

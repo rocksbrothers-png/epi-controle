@@ -56,12 +56,14 @@ function loadOriginalLogo() {
 }
 
 // Módulo: o arquivo real carregado como na página; DEFAULT_COMPANY_LOGO vem de
-// globalThis (publicado por js/core/constants.js).
-function loadModuleLogo() {
+// globalThis. Com `realConstants`, js/core/constants.js roda antes (como na
+// página); sem ele, o padrão de teste é semeado para comparar com a fixture.
+function loadModuleLogo({ realConstants = false } = {}) {
   const src = fs.readFileSync(path.join(STATIC, 'js', 'modules', 'shared', 'ui', 'company-logo.js'), 'utf8');
-  const ctx = { DEFAULT_COMPANY_LOGO: TEST_DEFAULT_LOGO, String, RegExp, Object };
+  const ctx = realConstants ? { String, RegExp, Object, encodeURIComponent } : { DEFAULT_COMPANY_LOGO: TEST_DEFAULT_LOGO, String, RegExp, Object };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
+  if (realConstants) { vm.runInContext(fs.readFileSync(path.join(STATIC, 'js', 'core', 'constants.js'), 'utf8'), ctx); }
   vm.runInContext(src, ctx);
   return ctx;
 }
@@ -151,6 +153,10 @@ module.exports = function ({ test, assert, eq }) {
     assert(line, 'DEFAULT_COMPANY_LOGO no app.js');
     const appValue = vm.runInNewContext(line.replace('const DEFAULT_COMPANY_LOGO = ', '').replace(/;\s*$/, ''), { encodeURIComponent });
     eq(ctx.DEFAULT_COMPANY_LOGO, appValue, 'mesmo logotipo padrão');
+    // Página real: constants.js + módulo; valor inválido cai no padrão do app.js.
+    const real = loadModuleLogo({ realConstants: true });
+    eq(real.companyLogoSrc('javascript:alert(1)'), appValue, 'módulo com constants.js reais usa o padrão do app.js');
+    eq(real.companyLogoMarkup({ name: 'ACME' }), `<img class="company-logo" src="${appValue.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" alt="Logotipo de ACME">`, 'markup com o padrão real');
     const scripts = fs.readFileSync(path.join(STATIC, 'views', '_scripts.html'), 'utf8');
     const order = [...scripts.matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
     const iConst = order.indexOf('/js/core/constants.js');

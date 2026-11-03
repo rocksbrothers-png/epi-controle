@@ -673,6 +673,22 @@ test('view-helpers: formatDate formata ISO date', () => {
   assert(result.includes('15'));
   assert(result.includes('03') || result.includes('3'));
 });
+test('view-helpers: formatDate segue o idioma ativo e cai em pt-BR', () => {
+  const h = globalThis.__EPI_VIEW_HELPERS__;
+  const previous = globalThis.EpiI18n;
+  try {
+    globalThis.EpiI18n = { lang: 'nb-NO' };
+    eq(h.formatDate('2025-03-15'), new Intl.DateTimeFormat('nb-NO').format(new Date('2025-03-15T00:00:00')));
+    globalThis.EpiI18n = { lang: 'en-GB' };
+    eq(h.formatDateTime('2025-03-15T10:30:00'), new Date('2025-03-15T10:30:00').toLocaleString('en-GB'));
+    globalThis.EpiI18n = { lang: 'xx-invalid-@@' };
+    eq(h.formatDate('2025-03-15'), new Intl.DateTimeFormat('pt-BR').format(new Date('2025-03-15T00:00:00')));
+    globalThis.EpiI18n = undefined;
+    eq(h.formatDate('2025-03-15'), '15/03/2025');
+  } finally {
+    globalThis.EpiI18n = previous;
+  }
+});
 test('view-helpers: formatDate retorna hífen para vazio', () => {
   eq(globalThis.__EPI_VIEW_HELPERS__.formatDate(''), '-');
   eq(globalThis.__EPI_VIEW_HELPERS__.formatDate(null), '-');

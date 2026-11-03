@@ -96,7 +96,20 @@
     "confirmPassword": "Bekreft nytt passord",
     "updatePassword": "Oppdater passord",
     "firstAccessHint": "Ved første innlogging med midlertidig passord, må Brukeren angi sitt endelige passord før de kan logge inn i systemet.",
-    "newPassword": "Nytt passord"
+    "newPassword": "Nytt passord",
+    "messages": {
+      "enterCredentials": "Skriv inn brukernavn og passord for å logge inn.",
+      "invalidAuthResponse": "Autentisering mislyktes: ugyldig svar fra serveren.",
+      "bootstrapAfterLoginFailed": "Kunne ikke laste inn startdata etter innlogging.",
+      "serverWarmingUp": "Serveren er midlertidig utilgjengelig (oppstart pågår). Du kan prøve å logge inn manuelt nå.",
+      "loginScreenFailed": "Feil ved lasting av innloggingssiden. Last inn siden på nytt og prøv igjen."
+    },
+    "passwordChange": {
+      "currentRequired": "Skriv inn det nåværende passordet.",
+      "newRequired": "Skriv inn det nye passordet.",
+      "mismatch": "Bekreftelsen av det nye passordet stemmer ikke.",
+      "updateFailed": "Passordet kunne ikke oppdateres."
+    }
   },
   "dashboard": {
     "title": "Dashbord",
@@ -453,7 +466,8 @@
     "archiveReasonRequired": "Årsak kreves for å blokkere beholdning og arkivere.",
     "archivedOk": "Post arkivert.",
     "archiveFailed": "Kunne ikke arkivere.",
-    "itemsBlockedArchived": "lagervare(r) blokkert og PVU arkivert."
+    "itemsBlockedArchived": "lagervare(r) blokkert og PVU arkivert.",
+    "filterCompanyLevelAll": "Alle på virksomhetsnivå"
   },
   "stock": {
     "title": "Lager",
@@ -1194,7 +1208,11 @@
     "densityCompact": "Kompakt",
     "hint": "Innstillingene lagres på denne enheten.",
     "restore": "Tilbakestill",
-    "advanced": "Avanserte innstillinger"
+    "advanced": "Avanserte innstillinger",
+    "retention": {
+      "updated": "Oppbevaringspolicyen er oppdatert.",
+      "executed": "Oppbevaringsrutinen er fullført."
+    }
   },
   "errors": {
     "unauthorized": "Uautorisert tilgang.",
@@ -1298,7 +1316,36 @@
     "externalQr": "QR Ekstern Tilgang",
     "kpiVisible": "Synlige",
     "kpiAdmins": "Administratorer",
-    "kpiActive": "Aktive"
+    "kpiActive": "Aktive",
+    "messages": {
+      "tempPasswordPrompt": "Angi det midlertidige passordet:",
+      "tempPasswordTooShort": "Det midlertidige passordet må ha minst 8 tegn.",
+      "tempPasswordGenerated": "Midlertidig passord generert for {username}: {password}",
+      "tempPasswordNotCopied": "Midlertidig passord generert, men det kunne ikke kopieres til utklippstavlen.",
+      "updated": "Brukeren er oppdatert.",
+      "created": "Brukeren er opprettet.",
+      "promotedAdmin": "Profilen er endret til administrator.",
+      "promotedGeneral": "Profilen er endret til generell administrator.",
+      "demotedAdmin": "Administrator nedgradert til bruker.",
+      "demotedGeneral": "Generell administrator nedgradert til administrator.",
+      "deactivated": "Brukeren er deaktivert.",
+      "reactivated": "Brukeren er reaktivert."
+    },
+    "accessMessage": {
+      "defaultCompany": "virksomheten din",
+      "username": "Brukernavn: {username}",
+      "password": "Midlertidig passord: {password}",
+      "grantedWhatsapp": "Tilgangen din til {brand} er aktivert for virksomheten {company}.",
+      "firstAccessShort": "Ved første innlogging oppretter du ditt eget passord som erstatter det midlertidige.",
+      "accessShort": "Tilgang: {url}",
+      "subject": "Emne: Tilgang til {brand}",
+      "grantedEmail": "Tilgangen din til {brand} er aktivert for arbeid i virksomheten {company}.",
+      "initialData": "Opplysninger for første innlogging:",
+      "link": "Innloggingslenke: {url}",
+      "firstAccess": "Viktig: ved første innlogging må du bytte det midlertidige passordet med et permanent passord før du går inn i oversikten.",
+      "lostPassword": "Hvis du mister eller glemmer passordet, kontakt virksomheten din.",
+      "regards": "Med vennlig hilsen"
+    }
   },
   "records": {
     "title": "Individuelt PVU-kort",
@@ -1401,7 +1448,67 @@
     "urgentBadge": "Haster",
     "monitorBadge": "Overvåk",
     "expiresOn": "Utløper {date}",
-    "daysRemaining": "{days} dag(er) igjen"
+    "daysRemaining": "{days} dag(er) igjen",
+    "panel": {
+      "planUnlimited": "uten tak",
+      "planUpTo": "opptil {max}",
+      "planHint": "{plan}: bruker(e), {limit}.",
+      "planHintAddendum": "{plan}: bruker(e), {limit} med kontraktstillegg.",
+      "defaultBrandName": "Din virksomhet",
+      "logoLoaded": "Logo lastet opp",
+      "logoDefault": "Standardbilde i bruk",
+      "loginLogoName": "Logo på innloggingssiden",
+      "loginLogoLoaded": "Innloggingslogo lastet opp",
+      "loginLogoDefault": "Ingen innloggingslogo (standard)",
+      "contractStatus": "Kontraktstatus: {status}",
+      "noContractHistory": "Ingen kontraktshistorikk.",
+      "openContract": "Åpne kontrakt",
+      "reactivate": "Reaktiver",
+      "suspend": "Suspender",
+      "statMonthlyRevenue": "Månedlig omsetning",
+      "statActive": "Aktive virksomheter",
+      "statSuspended": "Suspenderte",
+      "statExpired": "Utløpte",
+      "noCompanies": "Ingen registrerte virksomheter.",
+      "noAlerts": "Ingen virksomheter med kommersielt varsel.",
+      "noHistory": "Ingen kommersiell historikk registrert.",
+      "noExpiring": "Ingen kontrakter utløper de neste 30 dagene.",
+      "historyBy": "{action} av {actor}",
+      "colCompany": "Virksomhet",
+      "colAction": "Handling",
+      "colActor": "Ansvarlig",
+      "colDate": "Dato",
+      "colSummary": "Sammendrag",
+      "colDetails": "Detaljer",
+      "filterStatus": "Status: {status}",
+      "filterStatusAll": "Status: alle",
+      "filterActor": "Ansvarlig: {actor}",
+      "filterFrom": "Fra: {date}",
+      "filterTo": "til: {date}",
+      "filtersLabel": "Filtre: {filters}",
+      "printTitle": "Kommersiell historikk",
+      "popupBlocked": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet.",
+      "brandUpdated": "Virksomhetens merkevare er oppdatert.",
+      "draftSaved": "Kontrakten er lagret som utkast.",
+      "generated": "Kontrakten er generert.",
+      "signatureRecorded": "Digital signatur er registrert.",
+      "signedUploaded": "Den signerte kontrakten er lastet opp.",
+      "emailLogged": "Registreringen av e-postutsendelsen er oppdatert.",
+      "selectSignedPdf": "Velg en signert PDF.",
+      "fileReadFailed": "Kunne ikke lese filen.",
+      "loginLogoFormat": "Logoen på innloggingssiden godtar bare PNG eller SVG.",
+      "noAccess": "Profilen din har ikke tilgang til området Kommersiell."
+    },
+    "contractStatusLabels": {
+      "draft": "Utkast",
+      "generated": "Generert",
+      "sent": "Sendt",
+      "pending_signature": "Venter på signatur",
+      "signed": "Signert",
+      "active": "Aktiv",
+      "closed": "Avsluttet",
+      "archived": "Arkivert"
+    }
   },
   "devolution": {
     "title": "Registrer PVU-retur",
@@ -1467,7 +1574,8 @@
   },
   "common": {
     "yes": "Ja",
-    "no": "Nei"
+    "no": "Nei",
+    "copied": "Kopiert!"
   },
   "reload": "Last inn på nytt",
   "theme": {
@@ -1740,7 +1848,14 @@
   },
   "myCompany": {
     "stockScope": "Konsolider lagersaldo etter",
-    "stockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet."
+    "stockScopeHint": "Denne innstillingen endrer bare den konsoliderte visningen av saldoer. Innganger, reservasjoner, uttak, utleveringer og andre bevegelser forblir knyttet til lageret i hver enhet.",
+    "domains": {
+      "primary": "(primær)",
+      "verify": "Verifiser",
+      "makePrimary": "Gjør til primær",
+      "none": "Ingen domener registrert.",
+      "instructions": "For å aktivere {host}: opprett en CNAME som peker til {cname} og en TXT-post på {txt} med verdien {token}, og klikk deretter på Verifiser."
+    }
   },
   "dataMigration": {
     "pageTitle": "Datamigrering",

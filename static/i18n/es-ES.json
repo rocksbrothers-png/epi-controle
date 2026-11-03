@@ -96,7 +96,20 @@
     "confirmPassword": "Confirmar nueva contraseña",
     "updatePassword": "Actualizar contraseña",
     "firstAccessHint": "En el primer acceso con contraseña provisional, el Usuario debe definir su contraseña final antes de ingresar al sistema.",
-    "newPassword": "Nueva contraseña"
+    "newPassword": "Nueva contraseña",
+    "messages": {
+      "enterCredentials": "Introduzca su usuario y contraseña para iniciar sesión.",
+      "invalidAuthResponse": "Error de autenticación: respuesta no válida del servidor.",
+      "bootstrapAfterLoginFailed": "No se pudieron cargar los datos iniciales después de la autenticación.",
+      "serverWarmingUp": "Servidor no disponible temporalmente (inicio en curso). Puede intentar iniciar sesión manualmente ahora.",
+      "loginScreenFailed": "Error al cargar la pantalla de inicio de sesión. Vuelva a cargar la página e inténtelo de nuevo."
+    },
+    "passwordChange": {
+      "currentRequired": "Introduzca la contraseña actual.",
+      "newRequired": "Introduzca la nueva contraseña.",
+      "mismatch": "La confirmación de la nueva contraseña no coincide.",
+      "updateFailed": "No se pudo actualizar la contraseña."
+    }
   },
   "dashboard": {
     "title": "Panel",
@@ -453,7 +466,8 @@
     "archiveReasonRequired": "El motivo es obligatorio para bloquear el saldo y archivar.",
     "archivedOk": "Registro archivado.",
     "archiveFailed": "No se pudo archivar.",
-    "itemsBlockedArchived": "ítem(s) de stock bloqueado(s) y EPP archivado."
+    "itemsBlockedArchived": "ítem(s) de stock bloqueado(s) y EPP archivado.",
+    "filterCompanyLevelAll": "Todas a nivel de empresa"
   },
   "stock": {
     "title": "Inventario",
@@ -1194,7 +1208,11 @@
     "densityCompact": "Compacta",
     "hint": "Las preferencias se guardan en este dispositivo.",
     "restore": "Restaurar valores",
-    "advanced": "Configuración avanzada"
+    "advanced": "Configuración avanzada",
+    "retention": {
+      "updated": "Política de retención actualizada correctamente.",
+      "executed": "Rutina de retención ejecutada correctamente."
+    }
   },
   "errors": {
     "unauthorized": "Acceso no autorizado.",
@@ -1298,7 +1316,36 @@
     "externalQr": "QR Acceso Externo",
     "kpiVisible": "Visibles",
     "kpiAdmins": "Administradores",
-    "kpiActive": "Activos"
+    "kpiActive": "Activos",
+    "messages": {
+      "tempPasswordPrompt": "Defina la contraseña provisional:",
+      "tempPasswordTooShort": "La contraseña provisional debe tener al menos 8 caracteres.",
+      "tempPasswordGenerated": "Contraseña provisional generada para {username}: {password}",
+      "tempPasswordNotCopied": "Contraseña provisional generada, pero no se pudo copiar al portapapeles.",
+      "updated": "Usuario actualizado correctamente.",
+      "created": "Usuario creado correctamente.",
+      "promotedAdmin": "Perfil cambiado a Administrador.",
+      "promotedGeneral": "Perfil cambiado a Administrador General.",
+      "demotedAdmin": "Administrador degradado a Usuario.",
+      "demotedGeneral": "Administrador General degradado a Administrador.",
+      "deactivated": "Usuario desactivado.",
+      "reactivated": "Usuario reactivado."
+    },
+    "accessMessage": {
+      "defaultCompany": "su empresa",
+      "username": "Usuario: {username}",
+      "password": "Contraseña provisional: {password}",
+      "grantedWhatsapp": "Su acceso al sistema {brand} se ha habilitado para la empresa {company}.",
+      "firstAccessShort": "En el primer acceso, cree su contraseña para sustituir la provisional.",
+      "accessShort": "Acceso: {url}",
+      "subject": "Asunto: Acceso al sistema {brand}",
+      "grantedEmail": "Su acceso al sistema {brand} se ha habilitado para operar en la empresa {company}.",
+      "initialData": "Datos de acceso inicial:",
+      "link": "Enlace de acceso: {url}",
+      "firstAccess": "Importante: en el primer acceso, sustituya la contraseña provisional por una definitiva antes de entrar en el panel.",
+      "lostPassword": "En caso de pérdida u olvido de la contraseña, póngase en contacto con su empresa.",
+      "regards": "Atentamente,"
+    }
   },
   "records": {
     "title": "Ficha Individual de EPP",
@@ -1401,7 +1448,67 @@
     "urgentBadge": "Urgente",
     "monitorBadge": "Seguimiento",
     "expiresOn": "Vence el {date}",
-    "daysRemaining": "{days} día(s) restantes"
+    "daysRemaining": "{days} día(s) restantes",
+    "panel": {
+      "planUnlimited": "sin límite",
+      "planUpTo": "hasta {max}",
+      "planHint": "{plan}: usuario(s), {limit}.",
+      "planHintAddendum": "{plan}: usuario(s), {limit} con adenda contractual.",
+      "defaultBrandName": "Su empresa",
+      "logoLoaded": "Logotipo cargado",
+      "logoDefault": "Imagen predeterminada en uso",
+      "loginLogoName": "Logotipo de la pantalla de inicio de sesión",
+      "loginLogoLoaded": "Logotipo de inicio de sesión cargado",
+      "loginLogoDefault": "Sin logotipo de inicio de sesión (predeterminado)",
+      "contractStatus": "Estado del contrato: {status}",
+      "noContractHistory": "Sin historial del contrato.",
+      "openContract": "Abrir contrato",
+      "reactivate": "Reactivar",
+      "suspend": "Suspender",
+      "statMonthlyRevenue": "Facturación mensual",
+      "statActive": "Empresas activas",
+      "statSuspended": "Suspendidas",
+      "statExpired": "Vencidas",
+      "noCompanies": "No hay empresas registradas.",
+      "noAlerts": "Ninguna empresa con alerta comercial.",
+      "noHistory": "No hay historial comercial registrado.",
+      "noExpiring": "Ningún contrato vence en los próximos 30 días.",
+      "historyBy": "{action} por {actor}",
+      "colCompany": "Empresa",
+      "colAction": "Acción",
+      "colActor": "Responsable",
+      "colDate": "Fecha",
+      "colSummary": "Resumen",
+      "colDetails": "Detalles",
+      "filterStatus": "Estado: {status}",
+      "filterStatusAll": "Estado: todos",
+      "filterActor": "Responsable: {actor}",
+      "filterFrom": "Desde: {date}",
+      "filterTo": "hasta: {date}",
+      "filtersLabel": "Filtros: {filters}",
+      "printTitle": "Historial comercial",
+      "popupBlocked": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio.",
+      "brandUpdated": "Se ha actualizado la marca de su empresa.",
+      "draftSaved": "Contrato guardado como borrador.",
+      "generated": "Contrato generado correctamente.",
+      "signatureRecorded": "Firma digital registrada.",
+      "signedUploaded": "Contrato firmado enviado correctamente.",
+      "emailLogged": "Registro de envío por correo electrónico actualizado.",
+      "selectSignedPdf": "Seleccione un PDF firmado.",
+      "fileReadFailed": "No se pudo leer el archivo.",
+      "loginLogoFormat": "El logotipo de la pantalla de inicio de sesión solo admite PNG o SVG.",
+      "noAccess": "Su perfil no puede acceder al área Comercial."
+    },
+    "contractStatusLabels": {
+      "draft": "Borrador",
+      "generated": "Generado",
+      "sent": "Enviado",
+      "pending_signature": "Pendiente de firma",
+      "signed": "Firmado",
+      "active": "Activo",
+      "closed": "Cerrado",
+      "archived": "Archivado"
+    }
   },
   "devolution": {
     "title": "Registrar devolución de EPI",
@@ -1467,7 +1574,8 @@
   },
   "common": {
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "copied": "¡Copiado!"
   },
   "reload": "Recargar",
   "theme": {
@@ -1740,7 +1848,14 @@
   },
   "myCompany": {
     "stockScope": "Consolidar saldos de stock por",
-    "stockScopeHint": "Esta configuración solo cambia la vista consolidada de los saldos. Entradas, reservas, salidas, entregas y demás movimientos siguen vinculados al stock de cada unidad."
+    "stockScopeHint": "Esta configuración solo cambia la vista consolidada de los saldos. Entradas, reservas, salidas, entregas y demás movimientos siguen vinculados al stock de cada unidad.",
+    "domains": {
+      "primary": "(principal)",
+      "verify": "Verificar",
+      "makePrimary": "Establecer como principal",
+      "none": "No hay dominios registrados.",
+      "instructions": "Para activar {host}: cree un CNAME que apunte a {cname} y un registro TXT en {txt} con el valor {token}; después haga clic en Verificar."
+    }
   },
   "dataMigration": {
     "pageTitle": "Migración de Datos",

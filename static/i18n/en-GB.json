@@ -96,7 +96,20 @@
     "confirmPassword": "Confirm new password",
     "updatePassword": "Update password",
     "firstAccessHint": "On first access with a provisional password, the User must set their final password before entering the system.",
-    "newPassword": "New password"
+    "newPassword": "New password",
+    "messages": {
+      "enterCredentials": "Enter your username and password to sign in.",
+      "invalidAuthResponse": "Authentication failed: invalid server response.",
+      "bootstrapAfterLoginFailed": "Failed to load the initial data after signing in.",
+      "serverWarmingUp": "Server temporarily unavailable (start-up in progress). You can try signing in manually now.",
+      "loginScreenFailed": "Error loading the sign-in screen. Reload the page and try again."
+    },
+    "passwordChange": {
+      "currentRequired": "Enter your current password.",
+      "newRequired": "Enter the new password.",
+      "mismatch": "The new password confirmation does not match.",
+      "updateFailed": "The password could not be updated."
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -453,7 +466,8 @@
     "archiveReasonRequired": "A reason is required to block stock and archive.",
     "archivedOk": "Record archived.",
     "archiveFailed": "Could not archive.",
-    "itemsBlockedArchived": "stock item(s) blocked and PPE archived."
+    "itemsBlockedArchived": "stock item(s) blocked and PPE archived.",
+    "filterCompanyLevelAll": "All at company level"
   },
   "stock": {
     "title": "Stock",
@@ -1194,7 +1208,11 @@
     "densityCompact": "Compact",
     "hint": "Preferences are saved on this device.",
     "restore": "Restore defaults",
-    "advanced": "Advanced settings"
+    "advanced": "Advanced settings",
+    "retention": {
+      "updated": "Retention policy updated successfully.",
+      "executed": "Retention routine completed successfully."
+    }
   },
   "errors": {
     "unauthorized": "Unauthorised access.",
@@ -1298,7 +1316,36 @@
     "externalQr": "External Access QR",
     "kpiVisible": "Visible",
     "kpiAdmins": "Administrators",
-    "kpiActive": "Active"
+    "kpiActive": "Active",
+    "messages": {
+      "tempPasswordPrompt": "Set the temporary password:",
+      "tempPasswordTooShort": "The temporary password must be at least 8 characters long.",
+      "tempPasswordGenerated": "Temporary password generated for {username}: {password}",
+      "tempPasswordNotCopied": "Temporary password generated, but it could not be copied to the clipboard.",
+      "updated": "User updated successfully.",
+      "created": "User created successfully.",
+      "promotedAdmin": "Profile changed to Administrator.",
+      "promotedGeneral": "Profile changed to General Administrator.",
+      "demotedAdmin": "Administrator demoted to User.",
+      "demotedGeneral": "General Administrator demoted to Administrator.",
+      "deactivated": "User deactivated.",
+      "reactivated": "User reactivated."
+    },
+    "accessMessage": {
+      "defaultCompany": "your company",
+      "username": "Username: {username}",
+      "password": "Temporary password: {password}",
+      "grantedWhatsapp": "Your access to {brand} has been enabled for {company}.",
+      "firstAccessShort": "When you first sign in, create your own password to replace the temporary one.",
+      "accessShort": "Access: {url}",
+      "subject": "Subject: Access to {brand}",
+      "grantedEmail": "Your access to {brand} has been enabled to operate for {company}.",
+      "initialData": "Initial sign-in details:",
+      "link": "Sign-in link: {url}",
+      "firstAccess": "Important: when you first sign in, replace the temporary password with a permanent one before entering the dashboard.",
+      "lostPassword": "If you lose or forget your password, contact your company.",
+      "regards": "Kind regards,"
+    }
   },
   "records": {
     "title": "Individual PPE record",
@@ -1401,7 +1448,67 @@
     "urgentBadge": "Urgent",
     "monitorBadge": "Monitor",
     "expiresOn": "Expires on {date}",
-    "daysRemaining": "{days} day(s) remaining"
+    "daysRemaining": "{days} day(s) remaining",
+    "panel": {
+      "planUnlimited": "no cap",
+      "planUpTo": "up to {max}",
+      "planHint": "{plan}: user(s), {limit}.",
+      "planHintAddendum": "{plan}: user(s), {limit} with a contract addendum.",
+      "defaultBrandName": "Your company",
+      "logoLoaded": "Logo uploaded",
+      "logoDefault": "Default image in use",
+      "loginLogoName": "Login screen logo",
+      "loginLogoLoaded": "Login logo uploaded",
+      "loginLogoDefault": "No login logo (default)",
+      "contractStatus": "Contract status: {status}",
+      "noContractHistory": "No contract history.",
+      "openContract": "Open contract",
+      "reactivate": "Reactivate",
+      "suspend": "Suspend",
+      "statMonthlyRevenue": "Monthly revenue",
+      "statActive": "Active companies",
+      "statSuspended": "Suspended",
+      "statExpired": "Expired",
+      "noCompanies": "No companies registered.",
+      "noAlerts": "No companies with a commercial alert.",
+      "noHistory": "No commercial history recorded.",
+      "noExpiring": "No contracts expiring in the next 30 days.",
+      "historyBy": "{action} by {actor}",
+      "colCompany": "Company",
+      "colAction": "Action",
+      "colActor": "Responsible",
+      "colDate": "Date",
+      "colSummary": "Summary",
+      "colDetails": "Details",
+      "filterStatus": "Status: {status}",
+      "filterStatusAll": "Status: all",
+      "filterActor": "Responsible: {actor}",
+      "filterFrom": "From: {date}",
+      "filterTo": "to: {date}",
+      "filtersLabel": "Filters: {filters}",
+      "printTitle": "Commercial history",
+      "popupBlocked": "The print window could not be opened. Allow pop-ups for this site.",
+      "brandUpdated": "Your company's brand has been updated.",
+      "draftSaved": "Contract saved as a draft.",
+      "generated": "Contract generated successfully.",
+      "signatureRecorded": "Digital signature recorded.",
+      "signedUploaded": "Signed contract uploaded successfully.",
+      "emailLogged": "Email sending record updated.",
+      "selectSignedPdf": "Select a signed PDF.",
+      "fileReadFailed": "Failed to read the file.",
+      "loginLogoFormat": "The login screen logo accepts PNG or SVG only.",
+      "noAccess": "Your profile cannot access the Commercial area."
+    },
+    "contractStatusLabels": {
+      "draft": "Draft",
+      "generated": "Generated",
+      "sent": "Sent",
+      "pending_signature": "Awaiting signature",
+      "signed": "Signed",
+      "active": "Active",
+      "closed": "Closed",
+      "archived": "Archived"
+    }
   },
   "devolution": {
     "title": "Record PPE return",
@@ -1467,7 +1574,8 @@
   },
   "common": {
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "copied": "Copied!"
   },
   "reload": "Reload",
   "theme": {
@@ -1740,7 +1848,14 @@
   },
   "myCompany": {
     "stockScope": "Consolidate stock balances by",
-    "stockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock."
+    "stockScopeHint": "This setting only changes the consolidated view of balances. Receipts, reservations, issues, deliveries and all other movements stay tied to each unit’s own stock.",
+    "domains": {
+      "primary": "(primary)",
+      "verify": "Verify",
+      "makePrimary": "Make primary",
+      "none": "No domains registered.",
+      "instructions": "To activate {host}: create a CNAME pointing to {cname} and a TXT record at {txt} with the value {token}, then click Verify."
+    }
   },
   "dataMigration": {
     "pageTitle": "Data Migration",

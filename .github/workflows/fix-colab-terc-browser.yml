@@ -16,6 +16,7 @@ on:
       - 'scripts/browser/security_csp_v1.py'
       - 'scripts/i18n/check_supplier_portal_csp_sri.py'
       - 'scripts/browser/security_output_xss_v2.py'
+      - 'scripts/browser/i18n_commercial.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -64,6 +65,10 @@ jobs:
       - if: ${{ !cancelled() }}
         name: I18N supplier connectors (five locales)
         run: python scripts/i18n/check_connectors_browser.py --output browser-evidence/i18n-connectors
+      # I18N-FULL-V1: Comercial traduzido, BRL no idioma ativo, troca ao vivo sem requisição nem perda do formulário.
+      - if: ${{ !cancelled() }}
+        name: I18N commercial (five locales)
+        run: python scripts/browser/i18n_commercial.py --output browser-evidence/i18n-commercial
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

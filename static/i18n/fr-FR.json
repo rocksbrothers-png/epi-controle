@@ -96,7 +96,20 @@
     "confirmPassword": "Confirmer le nouveau mot de passe",
     "updatePassword": "Mettre à jour le mot de passe",
     "firstAccessHint": "Lors du premier accès avec un mot de passe provisoire, l'Utilisateur doit définir son mot de passe final avant d'entrer dans le système.",
-    "newPassword": "Nouveau mot de passe"
+    "newPassword": "Nouveau mot de passe",
+    "messages": {
+      "enterCredentials": "Saisissez votre identifiant et votre mot de passe pour vous connecter.",
+      "invalidAuthResponse": "Échec de l'authentification : réponse du serveur non valide.",
+      "bootstrapAfterLoginFailed": "Échec du chargement des données initiales après l'authentification.",
+      "serverWarmingUp": "Serveur temporairement indisponible (démarrage en cours). Vous pouvez essayer de vous connecter manuellement.",
+      "loginScreenFailed": "Erreur lors du chargement de l'écran de connexion. Rechargez la page et réessayez."
+    },
+    "passwordChange": {
+      "currentRequired": "Saisissez votre mot de passe actuel.",
+      "newRequired": "Saisissez le nouveau mot de passe.",
+      "mismatch": "La confirmation du nouveau mot de passe ne correspond pas.",
+      "updateFailed": "Impossible de mettre à jour le mot de passe."
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -453,7 +466,8 @@
     "archiveReasonRequired": "Un motif est requis pour bloquer le stock et archiver.",
     "archivedOk": "Enregistrement archivé.",
     "archiveFailed": "Impossible d'archiver.",
-    "itemsBlockedArchived": "article(s) de stock bloqué(s) et EPI archivé."
+    "itemsBlockedArchived": "article(s) de stock bloqué(s) et EPI archivé.",
+    "filterCompanyLevelAll": "Toutes au niveau de l'entreprise"
   },
   "stock": {
     "title": "Stock",
@@ -1194,7 +1208,11 @@
     "densityCompact": "Compacte",
     "hint": "Les préférences sont enregistrées sur cet appareil.",
     "restore": "Réinitialiser",
-    "advanced": "Paramètres avancés"
+    "advanced": "Paramètres avancés",
+    "retention": {
+      "updated": "Politique de conservation mise à jour avec succès.",
+      "executed": "Routine de conservation exécutée avec succès."
+    }
   },
   "errors": {
     "unauthorized": "Accès non autorisé.",
@@ -1298,7 +1316,36 @@
     "externalQr": "QR Accès Externe",
     "kpiVisible": "Visibles",
     "kpiAdmins": "Administrateurs",
-    "kpiActive": "Actifs"
+    "kpiActive": "Actifs",
+    "messages": {
+      "tempPasswordPrompt": "Définissez le mot de passe temporaire :",
+      "tempPasswordTooShort": "Le mot de passe temporaire doit comporter au moins 8 caractères.",
+      "tempPasswordGenerated": "Mot de passe temporaire généré pour {username} : {password}",
+      "tempPasswordNotCopied": "Mot de passe temporaire généré, mais impossible de le copier dans le presse-papiers.",
+      "updated": "Utilisateur mis à jour avec succès.",
+      "created": "Utilisateur créé avec succès.",
+      "promotedAdmin": "Profil modifié en Administrateur.",
+      "promotedGeneral": "Profil modifié en Administrateur Général.",
+      "demotedAdmin": "Administrateur rétrogradé en Utilisateur.",
+      "demotedGeneral": "Administrateur Général rétrogradé en Administrateur.",
+      "deactivated": "Utilisateur désactivé.",
+      "reactivated": "Utilisateur réactivé."
+    },
+    "accessMessage": {
+      "defaultCompany": "votre entreprise",
+      "username": "Identifiant : {username}",
+      "password": "Mot de passe temporaire : {password}",
+      "grantedWhatsapp": "Votre accès au système {brand} a été activé pour l’entreprise {company}.",
+      "firstAccessShort": "Lors de votre première connexion, créez votre mot de passe pour remplacer le mot de passe temporaire.",
+      "accessShort": "Accès : {url}",
+      "subject": "Objet : Accès au système {brand}",
+      "grantedEmail": "Votre accès au système {brand} a été activé pour travailler au sein de l’entreprise {company}.",
+      "initialData": "Informations de première connexion :",
+      "link": "Lien de connexion : {url}",
+      "firstAccess": "Important : lors de votre première connexion, remplacez le mot de passe temporaire par un mot de passe définitif avant d’accéder au tableau de bord.",
+      "lostPassword": "En cas de perte ou d’oubli du mot de passe, contactez votre entreprise.",
+      "regards": "Cordialement,"
+    }
   },
   "records": {
     "title": "Fiche Individuelle EPI",
@@ -1401,7 +1448,67 @@
     "urgentBadge": "Urgent",
     "monitorBadge": "Surveiller",
     "expiresOn": "Expire le {date}",
-    "daysRemaining": "{days} jour(s) restants"
+    "daysRemaining": "{days} jour(s) restants",
+    "panel": {
+      "planUnlimited": "sans plafond",
+      "planUpTo": "jusqu'à {max}",
+      "planHint": "{plan} : utilisateur(s), {limit}.",
+      "planHintAddendum": "{plan} : utilisateur(s), {limit} avec avenant au contrat.",
+      "defaultBrandName": "Votre entreprise",
+      "logoLoaded": "Logo chargé",
+      "logoDefault": "Image par défaut utilisée",
+      "loginLogoName": "Logo de l'écran de connexion",
+      "loginLogoLoaded": "Logo de connexion chargé",
+      "loginLogoDefault": "Aucun logo de connexion (par défaut)",
+      "contractStatus": "Statut du contrat : {status}",
+      "noContractHistory": "Aucun historique de contrat.",
+      "openContract": "Ouvrir le contrat",
+      "reactivate": "Réactiver",
+      "suspend": "Suspendre",
+      "statMonthlyRevenue": "Chiffre d'affaires mensuel",
+      "statActive": "Entreprises actives",
+      "statSuspended": "Suspendues",
+      "statExpired": "Expirées",
+      "noCompanies": "Aucune entreprise enregistrée.",
+      "noAlerts": "Aucune entreprise en alerte commerciale.",
+      "noHistory": "Aucun historique commercial enregistré.",
+      "noExpiring": "Aucun contrat n'expire dans les 30 prochains jours.",
+      "historyBy": "{action} par {actor}",
+      "colCompany": "Entreprise",
+      "colAction": "Action",
+      "colActor": "Responsable",
+      "colDate": "Date",
+      "colSummary": "Résumé",
+      "colDetails": "Détails",
+      "filterStatus": "Statut : {status}",
+      "filterStatusAll": "Statut : tous",
+      "filterActor": "Responsable : {actor}",
+      "filterFrom": "Du : {date}",
+      "filterTo": "au : {date}",
+      "filtersLabel": "Filtres : {filters}",
+      "printTitle": "Historique commercial",
+      "popupBlocked": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site.",
+      "brandUpdated": "La marque de votre entreprise a été mise à jour.",
+      "draftSaved": "Contrat enregistré comme brouillon.",
+      "generated": "Contrat généré avec succès.",
+      "signatureRecorded": "Signature électronique enregistrée.",
+      "signedUploaded": "Contrat signé envoyé avec succès.",
+      "emailLogged": "Enregistrement de l'envoi par e-mail mis à jour.",
+      "selectSignedPdf": "Sélectionnez un PDF signé.",
+      "fileReadFailed": "Échec de la lecture du fichier.",
+      "loginLogoFormat": "Le logo de l'écran de connexion n'accepte que le PNG ou le SVG.",
+      "noAccess": "Votre profil ne peut pas accéder à l'espace Commercial."
+    },
+    "contractStatusLabels": {
+      "draft": "Brouillon",
+      "generated": "Généré",
+      "sent": "Envoyé",
+      "pending_signature": "En attente de signature",
+      "signed": "Signé",
+      "active": "Actif",
+      "closed": "Clôturé",
+      "archived": "Archivé"
+    }
   },
   "devolution": {
     "title": "Enregistrer le retour d’EPI",
@@ -1467,7 +1574,8 @@
   },
   "common": {
     "yes": "Oui",
-    "no": "Non"
+    "no": "Non",
+    "copied": "Copié !"
   },
   "reload": "Recharger",
   "theme": {
@@ -1740,7 +1848,14 @@
   },
   "myCompany": {
     "stockScope": "Consolider les soldes de stock par",
-    "stockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité."
+    "stockScopeHint": "Ce paramètre ne modifie que la vue consolidée des soldes. Entrées, réservations, sorties, livraisons et autres mouvements restent rattachés au stock de chaque unité.",
+    "domains": {
+      "primary": "(principal)",
+      "verify": "Vérifier",
+      "makePrimary": "Définir comme principal",
+      "none": "Aucun domaine enregistré.",
+      "instructions": "Pour activer {host} : créez un CNAME pointant vers {cname} et un enregistrement TXT sur {txt} avec la valeur {token}, puis cliquez sur Vérifier."
+    }
   },
   "dataMigration": {
     "pageTitle": "Migration de Données",

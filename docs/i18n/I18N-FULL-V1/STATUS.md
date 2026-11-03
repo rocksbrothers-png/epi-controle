@@ -204,3 +204,12 @@ O inventário global anterior não deve ser interpretado como cobertura atual au
 ## Conciliação com SECURITY-CSP-V1
 
 Main 13a1e8bf/25b0170b incorporada nas branches draft, conservando ações delegadas e bindings. A incompatibilidade do portal modular com hash de script inline foi reproduzida na importação e corrigida por SRI nos três assets exatos e CSP somente por hashes. Foram retestados 20 fluxos de formulário e 20 negativos/positivos independentes por produto nos cinco idiomas. Ver audit/CSP_INTEGRATION_REVIEW.md e CSP-INTEGRATION.json; os novos HEADs e CI são registrados nas descrições dos drafts. READY FOR HUMAN MERGE DECISION: NO.
+
+## Continuação Claude — Comercial, login/Usuários e formatação (03/11/2026)
+
+Branch `claude/inspiring-cray-iphlu3`, a partir dos HEADs do Codex (`d6d79b3f`/`736345e`) com a main atual.
+Comercial e as três funções sobrepostas com a UBX foram internacionalizados e travados por gate estático e
+Chromium nos cinco idiomas; login, troca de senha, Usuários e a mensagem de acesso (com o mojibake do pt-BR
+corrigido) também. Datas globais e BRL seguem o idioma ativo. Matriz, inventário medido e pendências em
+`CLAUDE_CONTINUATION.md`. **A tarefa integral continua aberta** (backend ≈17% dos templates, Feedback/EPI em
+teste, QR/entregas, estoque, encerramento de sessão). READY FOR HUMAN MERGE DECISION: NO.

@@ -2775,8 +2775,12 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: Usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null
+    ? tr('commercial.panel.planUnlimited', 'sem teto')
+    : tr('commercial.panel.planUpTo', 'até {max}', { max: plan.max_users });
+  return addendumEnabled
+    ? tr('commercial.panel.planHintAddendum', '{plan}: Usuário(s), {limit} com aditivo contratual.', { plan: plan.label, limit: maxText })
+    : tr('commercial.panel.planHint', '{plan}: Usuário(s), {limit}.', { plan: plan.label, limit: maxText });
 }
 
 function formValues(form) {
@@ -2814,12 +2818,12 @@ function companyLogoMarkup(company, className = 'company-logo') {
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || tr('commercial.panel.defaultBrandName', 'Sua Empresa'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.logoLoaded', 'Logotipo carregado') : tr('commercial.panel.logoDefault', 'Imagem padrão em uso'))}</span></div>`;
 }
 
 function renderPlatformLoginLogoPreview(logoValue) {
   if (!refs.platformLoginLogoPreview) return;
-  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Logo da tela de login', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo de login carregado' : 'Sem logotipo de login (padrão)'}</span></div>`;
+  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: tr('commercial.panel.loginLogoName', 'Logo da tela de login'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.loginLogoLoaded', 'Logotipo de login carregado') : tr('commercial.panel.loginLogoDefault', 'Sem logotipo de login (padrão)'))}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -2853,7 +2857,7 @@ async function handlePlatformLoginLogoUpload(event) {
   }
   const allowed = ['image/png', 'image/svg+xml'];
   if (!allowed.includes(file.type)) {
-    alert('A logo da tela de login aceita apenas PNG ou SVG.');
+    alert(tr('commercial.panel.loginLogoFormat', 'A logo da tela de login aceita apenas PNG ou SVG.'));
     event.target.value = '';
     return;
   }
@@ -4631,7 +4635,7 @@ function populateScopedSearchFilters() {
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
-      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}" data-i18n="epi.filterCompanyLevelAll">${escapeHtml(tr('epi.filterCompanyLevelAll', 'Todas a nível de empresa'))}</option>`);
     }
     if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
   }
@@ -4673,7 +4677,7 @@ function syncEpisSearchFilters() {
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
-      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}" data-i18n="epi.filterCompanyLevelAll">${escapeHtml(tr('epi.filterCompanyLevelAll', 'Todas a nível de empresa'))}</option>`);
     }
     if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
   }
@@ -4925,13 +4929,20 @@ function contractStatusLabel(status) {
     closed: 'Encerrado',
     archived: 'Arquivado'
   };
-  return labels[String(status || '').toLowerCase()] || (status || 'Rascunho');
+  const code = String(status || '').toLowerCase() || 'draft';
+  // Código desconhecido continua visível como veio do backend.
+  return labels[code] ? tr(`commercial.contractStatusLabels.${code}`, labels[code]) : status;
 }
 
 function renderCommercialContractPanel() {
   const contract = state.commercialContract;
   if (!contract) return;
-  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = `Status do contrato: ${contractStatusLabel(contract.status)}`;
+  if (refs.commercialContractStatus) {
+    const code = String(contract.status || '').toLowerCase() || 'draft';
+    // Binding vivo: a troca de idioma retraduz o rótulo sem reler o contrato nem tocar no formulário.
+    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) }, { status: `commercial.contractStatusLabels.${code}` })
+      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) });
+  }
   if (refs.commercialContractNumber) refs.commercialContractNumber.value = contract.contract_number || '';
   if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = contract.issue_date || '';
   if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = contract.contractor_address || '';
@@ -4959,13 +4970,16 @@ function renderCommercialContractPanel() {
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
   if (refs.commercialEmailBody) refs.commercialEmailBody.value = contract.last_email_body || 'Segue contrato comercial para análise e assinatura.';
   if (refs.commercialContractEvents) {
-    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${event.event_type}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || '<div class="summary-item">Sem histórico de contrato.</div>';
+    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${escapeHtml(event.event_type)}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
   }
 }
 
 function resetCommercialContractForm({ preserveClauses = true } = {}) {
   const clauses = preserveClauses ? (refs.commercialContractClauses?.value || state.commercialClauseTemplate || '') : '';
-  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = 'Status do contrato: Rascunho';
+  if (refs.commercialContractStatus) {
+    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') }, { status: 'commercial.contractStatusLabels.draft' })
+      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') });
+  }
   if (refs.commercialContractNumber) refs.commercialContractNumber.value = '';
   if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = '';
   if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = '';
@@ -4991,7 +5005,7 @@ function resetCommercialContractForm({ preserveClauses = true } = {}) {
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = 'Contrato comercial EPI Controle';
   if (refs.commercialEmailBody) refs.commercialEmailBody.value = 'Segue contrato comercial para análise e assinatura.';
   if (refs.commercialSignedFile) refs.commercialSignedFile.value = '';
-  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = '<div class="summary-item">Sem histórico de contrato.</div>';
+  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
   state.commercialContract = null;
   state.commercialClauseTemplate = clauses;
 }
@@ -5060,8 +5074,8 @@ function commercialActions(company) {
   if (!hasPermission('companies:update')) return '';
   const canReactivate = company.license_status === 'suspended' || company.license_status === 'expired' || Number(company.active) !== 1;
   const actionMode = canReactivate ? 'reactivate' : 'suspend';
-  const toggleLabel = canReactivate ? 'Reativar' : 'Suspender';
-  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${toggleLabel}</button></div>`;
+  const toggleLabel = canReactivate ? tr('commercial.panel.reactivate', 'Reativar') : tr('commercial.panel.suspend', 'Suspender');
+  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">${escapeHtml(tr('commercial.panel.openContract', 'Abrir contrato'))}</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${escapeHtml(toggleLabel)}</button></div>`;
 }
 
 function commercialAlertTone(item) {
@@ -5136,23 +5150,23 @@ function renderCommercialStats() {
   const suspendedCount = companies.filter((item) => item.license_status === 'suspended').length;
   const expiredCount = companies.filter((item) => item.license_status === 'expired').length;
   refs.commercialStats.innerHTML = [
-    ['Faturamento mensal', monthlyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-    ['Empresas ativas', activeCount],
-    ['Suspensas', suspendedCount],
-    ['Expiradas', expiredCount]
-  ].map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
+    [tr('commercial.panel.statMonthlyRevenue', 'Faturamento mensal'), formatCurrency(monthlyTotal, globalThis.EpiI18n?.lang)],
+    [tr('commercial.panel.statActive', 'Empresas ativas'), (globalThis.EpiI18n?.formatNumber?.(activeCount) ?? String(activeCount))],
+    [tr('commercial.panel.statSuspended', 'Suspensas'), (globalThis.EpiI18n?.formatNumber?.(suspendedCount) ?? String(suspendedCount))],
+    [tr('commercial.panel.statExpired', 'Expiradas'), (globalThis.EpiI18n?.formatNumber?.(expiredCount) ?? String(expiredCount))]
+  ].map((item) => `<article class="stat-card"><div class="stat-label">${escapeHtml(item[0])}</div><div class="stat-value">${escapeHtml(item[1])}</div></article>`).join('');
 }
 
 function renderCommercialSummary() {
   if (!refs.commercialSummary) return;
   const companies = filteredCommercialCompanies();
-  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
+  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noCompanies', 'Sem empresas cadastradas.'))}</div>`;
 }
 
 function renderCommercialAlerts() {
   if (!refs.commercialAlerts) return;
   const alerts = filteredCommercialCompanies().filter((item) => Number(item.limit_reached) === 1 || item.near_limit || ['suspended', 'expired'].includes(item.license_status) || Number(item.active) !== 1);
-  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
+  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noAlerts', 'Nenhuma empresa em alerta comercial.'))}</div>`;
 }
 
 function formatCommercialAuditDetails(details) {
@@ -5161,14 +5175,14 @@ function formatCommercialAuditDetails(details) {
 }
 
 function renderCommercialHistoryItem(item) {
-  const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${escapeHtml(item.company_name)}</strong><span>${escapeHtml(item.action_label)} por ${escapeHtml(item.actor_name)}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${escapeHtml(item.action_label)}</span></div><div class="summary-item">${escapeHtml(item.summary)}</div>${formatCommercialAuditDetails(item.details)}</div>`;
+  const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${escapeHtml(item.company_name)}</strong><span>${escapeHtml(tr('commercial.panel.historyBy', '{action} por {actor}', { action: item.action_label, actor: item.actor_name }))}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${escapeHtml(item.action_label)}</span></div><div class="summary-item">${escapeHtml(item.summary)}</div>${formatCommercialAuditDetails(item.details)}</div>`;
 }
 
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem Histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noHistory', 'Sem histórico comercial registrado.'))}</div>`;
 }
 
 function renderCommercialExpiring() {
@@ -5177,14 +5191,14 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noExpiring', 'Nenhum contrato vencendo nos próximos 30 dias.'))}</div>`;
 }
 
 // companyRowActions: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
-  const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => String(a).localeCompare(String(b), globalThis.EpiI18n?.lang || 'pt-BR'));
   const optionsHtml = names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
   refs.commercialFilterActor.innerHTML = `<option value="" data-i18n="user.filterAll">Todos</option>` + optionsHtml;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
@@ -5200,14 +5214,22 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = [
+    tr('commercial.brand', 'Marca'),
+    tr('commercial.panel.colCompany', 'Empresa'),
+    tr('commercial.panel.colAction', 'Ação'),
+    tr('commercial.panel.colActor', 'Responsável'),
+    tr('commercial.panel.colDate', 'Data'),
+    tr('commercial.panel.colSummary', 'Resumo'),
+    tr('commercial.panel.colDetails', 'Detalhes')
+  ];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${escapeHtml(exportBrandName)}</td><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
   const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
-  const headerCells = header.map((item) => `<th scope="col">${item}</th>`).join('');
+  const headerCells = header.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
@@ -5219,10 +5241,12 @@ function exportCommercialExcel() {
 
 function formatCommercialFiltersLabel() {
   return [
-    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
-    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.status
+      ? tr('commercial.panel.filterStatus', 'Status: {status}', { status: tr(`license.${state.commercialFilters.status}`, state.commercialFilters.status) })
+      : tr('commercial.panel.filterStatusAll', 'Status: todos'),
+    state.commercialFilters.actor_name ? tr('commercial.panel.filterActor', 'Responsável: {actor}', { actor: state.commercialFilters.actor_name }) : '',
+    state.commercialFilters.date_from ? tr('commercial.panel.filterFrom', 'De: {date}', { date: formatDate(state.commercialFilters.date_from) }) : '',
+    state.commercialFilters.date_to ? tr('commercial.panel.filterTo', 'até: {date}', { date: formatDate(state.commercialFilters.date_to) }) : ''
   ].filter(Boolean).join(' | ');
 }
 
@@ -5260,11 +5284,14 @@ function printCommercialHistory() {
   const filters = formatCommercialFiltersLabel();
   const rowsHtml = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${escapeHtml(filters)}</p><table><thead><tr><th scope="col" data-i18n="outsourcedCompany.reportsCompanyLabel">Empresa</th><th scope="col">ação</th><th scope="col" data-i18n="dataMigration.jobActor">Responsável</th><th scope="col" data-i18n="outsourcedCompany.requestDate">Data</th><th scope="col" data-i18n="report.summary">Resumo</th><th scope="col" data-i18n="tabs.details">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
+  const printTitle = escapeHtml(tr('commercial.panel.printTitle', 'Histórico Comercial'));
+  const printHeaders = ['colCompany', 'colAction', 'colActor', 'colDate', 'colSummary', 'colDetails']
+    .map((key, index) => `<th scope="col">${escapeHtml(tr(`commercial.panel.${key}`, ['Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'][index]))}</th>`).join('');
+  const html = `<!DOCTYPE html><html lang="${escapeHtml(String(globalThis.EpiI18n?.lang || 'pt-BR').toLowerCase())}"><head><meta charset="utf-8"><title>${printTitle}</title></head><body><h1>${printTitle}</h1><p>${escapeHtml(tr('commercial.panel.filtersLabel', 'Filtros: {filters}', { filters }))}</p><table><thead><tr>${printHeaders}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert(tr('commercial.panel.popupBlocked', 'Não foi possível abrir a janela de impressão. Permita pop-ups para este site.'));
 }
 
 async function savePlatformBrand(event) {
@@ -5277,7 +5304,7 @@ async function savePlatformBrand(event) {
     const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
     renderPlatformBrand();
-    alert('Marca da sua empresa atualizada.');
+    alert(tr('commercial.panel.brandUpdated', 'Marca da sua empresa atualizada.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5294,7 +5321,7 @@ async function saveCommercialContractDraft(showToast = false) {
   const response = await api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(payload) });
   state.commercialContract = response.contract || null;
   renderCommercialContractPanel();
-  if (showToast) alert('Contrato salvo em rascunho.');
+  if (showToast) alert(tr('commercial.panel.draftSaved', 'Contrato salvo em rascunho.'));
 }
 
 async function generateCommercialContract() {
@@ -5303,7 +5330,7 @@ async function generateCommercialContract() {
     const response = await api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(payload) });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Contrato gerado com sucesso.');
+    alert(tr('commercial.panel.generated', 'Contrato gerado com sucesso.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5332,7 +5359,7 @@ async function signCommercialContractAction() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Assinatura digital registrada.');
+    alert(tr('commercial.panel.signatureRecorded', 'Assinatura digital registrada.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5343,7 +5370,7 @@ function fileToBase64(file) {
       const full = String(reader.result || '');
       resolve(full.includes(',') ? full.split(',')[1] : full);
     };
-    reader.onerror = () => reject(new Error('Falha ao ler arquivo.'));
+    reader.onerror = () => reject(new Error(tr('commercial.panel.fileReadFailed', 'Falha ao ler arquivo.')));
     reader.readAsDataURL(file);
   });
 }
@@ -5351,7 +5378,7 @@ function fileToBase64(file) {
 async function uploadSignedCommercialContract() {
   try {
     const file = refs.commercialSignedFile?.files?.[0];
-    if (!file) return alert('Selecione um PDF assinado.');
+    if (!file) return alert(tr('commercial.panel.selectSignedPdf', 'Selecione um PDF assinado.'));
     const companyId = refs.commercialCompany?.value;
     const fileBase64 = await fileToBase64(file);
     const response = await api('/api/commercial-contract/upload-signed', {
@@ -5366,7 +5393,7 @@ async function uploadSignedCommercialContract() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Contrato assinado enviado com sucesso.');
+    alert(tr('commercial.panel.signedUploaded', 'Contrato assinado enviado com sucesso.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5385,14 +5412,22 @@ async function sendCommercialContractByEmail() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Registro de envio por e-mail atualizado.');
+    alert(tr('commercial.panel.emailLogged', 'Registro de envio por e-mail atualizado.'));
   } catch (error) { alert(error.message); }
 }
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = [
+    tr('commercial.brand', 'Marca'),
+    tr('commercial.panel.colCompany', 'Empresa'),
+    tr('commercial.panel.colAction', 'Ação'),
+    tr('commercial.panel.colActor', 'Responsável'),
+    tr('commercial.panel.colDate', 'Data'),
+    tr('commercial.panel.colSummary', 'Resumo'),
+    tr('commercial.panel.colDetails', 'Detalhes')
+  ];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -5732,9 +5767,9 @@ function bindDependentSelects() {
 // canDemote*, canToggleActive, canGenerateRecoveryToken): modules/auth/ (UBX-V4, Etapa C).
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
+  const password = globalThis.prompt(tr('user.messages.tempPasswordPrompt', 'Defina a senha provisória:'), defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error(tr('user.messages.tempPasswordTooShort', 'A senha provisória precisa ter pelo menos 8 caracteres.'));
   return String(password).trim();
 }
 
@@ -5777,40 +5812,43 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const brandName = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const legalName = brand.legal_name || brandName;
   const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
-  const companyName = target.company_name || 'sua empresa';
+  const companyName = target.company_name || tr('user.accessMessage.defaultCompany', 'sua empresa');
   const loginUrl = globalThis.location.origin;
+  const m = (key, fallback, vars) => tr(`user.accessMessage.${key}`, fallback, vars);
+  const usernameLine = m('username', 'Usuário: {username}', { username: target.username });
+  const passwordLine = m('password', 'Senha provisória: {password}', { password });
   if (channel === 'whatsapp') {
     const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
     return [
       `${target.full_name}.`,
       '',
-      `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
+      m('grantedWhatsapp', 'Seu acesso ao sistema {brand} foi liberado para a empresa {company}.', { brand: brandName, company: companyName }),
+      usernameLine,
+      passwordLine,
       '',
-      'No primeiro acesso, crie a sua e troque a de provisÃÂ£o.',
-      `Acesso: ${loginUrl}`,
+      m('firstAccessShort', 'No primeiro acesso, crie a sua senha e substitua a provisória.'),
+      m('accessShort', 'Acesso: {url}', { url: loginUrl }),
       '',
       footer
     ].join('\n');
   }
   return [
-    `Assunto: Acesso ao sistema ${brandName}`,
+    m('subject', 'Assunto: Acesso ao sistema {brand}', { brand: brandName }),
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operação na empresa ${companyName}.`,
+    m('grantedEmail', 'Seu acesso ao sistema {brand} foi liberado para operação na empresa {company}.', { brand: brandName, company: companyName }),
     '',
-    'Dados de acesso inicial:',
-    `Usuário: ${target.username}`,
-    `Senha provisória: ${password}`,
-    `Link de acesso: ${loginUrl}`,
+    m('initialData', 'Dados de acesso inicial:'),
+    usernameLine,
+    passwordLine,
+    m('link', 'Link de acesso: {url}', { url: loginUrl }),
     '',
-    'Importante: no primeiro acesso, Você definir a sua provisória para senha final antes de entrar no painel.',
+    m('firstAccess', 'Importante: no primeiro acesso, troque a senha provisória por uma senha definitiva antes de entrar no painel.'),
     '',
-    'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
+    m('lostPassword', 'Em caso de perda ou esquecimento da senha, entre em contato com sua empresa.'),
     '',
-    'Atenciosamente,',
+    m('regards', 'Atenciosamente,'),
     legalName,
     brandCnpj
   ].filter(Boolean).join('\n');
@@ -5858,7 +5896,9 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possí­vel copiar para a Área de transferÃÂªncia.');
+    alert(copied
+      ? tr('user.messages.tempPasswordGenerated', 'Senha provisória gerada para {username}: {password}', { username: target.username, password })
+      : tr('user.messages.tempPasswordNotCopied', 'Senha provisória gerada, mas não foi possível copiá-la para a área de transferência.'));
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
@@ -9857,7 +9897,7 @@ function renderAll(options = null) {
   // Mutation refreshes keep the current module; initial/session loads retain
   // their default navigation. showView still enforces the current RBAC gates.
   const activeView = preserveView ? viewAtivaNoDom() : '';
-  refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+  refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date());
   applySpaNavigationVisibility();
   applyPhase3UiVisibility();
   applyRoleVisibility();
@@ -9953,7 +9993,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe Usuário e senha para entrar.', true);
+      setLoginMessage(tr('login.messages.enterCredentials', 'Informe usuário e senha para entrar.'), true);
       return;
     }
 
@@ -9970,7 +10010,7 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+      throw new Error(tr('login.messages.invalidAuthResponse', 'Falha ao autenticar: resposta inválida do servidor.'));
     }
 
     console.info('[auth] Login concluído com sucesso', {
@@ -9999,7 +10039,7 @@ async function handleLogin(event) {
         // updateBootstrapDegradedUi() inside renderAll() will show the banner.
         try { renderAll(); } catch (_renderErr) { reportNonCriticalError('[auth] renderAll em modo degradado', _renderErr); }
       } else {
-        const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
+        const wrapped = new Error(bootstrapError?.message || tr('login.messages.bootstrapAfterLoginFailed', 'Falha ao carregar dados iniciais após autenticação.'));
         wrapped.phase = 'post_login_bootstrap';
         wrapped.status = bootstrapError?.status;
         wrapped.code = bootstrapError?.code || '';
@@ -10075,10 +10115,10 @@ async function handleForcedPasswordChange(event) {
     const curPwd = String(document.getElementById('current-password')?.value || '').trim();
     const newPwd = String(document.getElementById('new-password')?.value || '').trim();
     const confPwd = String(document.getElementById('confirm-password')?.value || '').trim();
-    if (!curPwd) throw new Error('Informe a senha atual.');
-    if (!newPwd) throw new Error('Informe a nova senha.');
+    if (!curPwd) throw new Error(tr('login.passwordChange.currentRequired', 'Informe a senha atual.'));
+    if (!newPwd) throw new Error(tr('login.passwordChange.newRequired', 'Informe a nova senha.'));
     if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
-    if (newPwd !== confPwd) throw new Error('A confirmação da nova senha nao confere.');
+    if (newPwd !== confPwd) throw new Error(tr('login.passwordChange.mismatch', 'A confirmação da nova senha não confere.'));
     await api('/api/change-password', {
       method: 'POST',
       body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
@@ -10089,7 +10129,7 @@ async function handleForcedPasswordChange(event) {
     await loadBootstrap();
     alert('Senha atualizada com sucesso. Bem-vindo!');
   } catch (error) {
-    alert(error.message || 'Nao foi possivel atualizar a senha.');
+    alert(error.message || tr('login.passwordChange.updateFailed', 'Não foi possível atualizar a senha.'));
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -10105,7 +10145,7 @@ async function saveUser(event) {
     globalThis.__EPI_USERS_BUSINESS__.prepareUserFormValues(values, { actor: state.user, roleLabels: ROLE_LABELS });
 
     await globalThis.__EPI_USERS_API__.saveUser(state.editingUserId, values);
-    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+    setUserFormFeedback(state.editingUserId ? tr('user.messages.updated', 'Usuário atualizado com sucesso.') : tr('user.messages.created', 'Usuário criado com sucesso.'));
     resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -11540,24 +11580,30 @@ function renderMyCompanyDomains(domains) {
   const instructions = document.getElementById('my-company-domain-instructions');
   if (!table) return;
   table.innerHTML = domains.map((item) => {
-    const primaryMark = Number(item.is_primary) === 1 ? ' <strong>(principal)</strong>' : '';
+    const primaryMark = Number(item.is_primary) === 1 ? ` <strong>${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
     const actions = [];
     if (item.verification_status !== 'verified') {
-      actions.push(`<button class="ghost" type="button" data-domain-verify="${item.id}">Verificar</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
     } else if (Number(item.is_primary) !== 1) {
-      actions.push(`<button class="ghost" type="button" data-domain-primary="${item.id}">Tornar principal</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
     }
-    actions.push(`<button class="ghost" type="button" data-domain-delete="${item.id}" data-i18n="user.remove">Remover</button>`);
-    return `<tr><td>${item.full_host}${primaryMark}</td><td>${item.type_label}</td>` +
-      `<td>${domainStatusLabel(item.verification_status)}</td><td>${domainStatusLabel(item.ssl_status)}</td>` +
+    actions.push(`<button class="ghost" type="button" data-domain-delete="${escapeHtml(item.id)}" data-i18n="user.remove">Remover</button>`);
+    return `<tr><td>${escapeHtml(item.full_host)}${primaryMark}</td><td>${escapeHtml(item.type_label)}</td>` +
+      `<td>${escapeHtml(domainStatusLabel(item.verification_status))}</td><td>${escapeHtml(domainStatusLabel(item.ssl_status))}</td>` +
       `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
-  }).join('') || '<tr><td colspan="5">Nenhum domínio registrado.</td></tr>';
+  }).join('') || `<tr><td colspan="5">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
 
   const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
   if (instructions) {
+    // O texto vem do catálogo (sem marcação); só os valores DNS, escapados, recebem <strong>/<code>.
     instructions.innerHTML = pending
-      ? `Para ativar <strong>${pending.full_host}</strong>: crie um CNAME apontando para <code>${pending.cname_target}</code> ` +
-        `e um registro TXT em <code>${pending.txt_record}</code> com o valor <code>${pending.verification_token}</code>, depois clique em Verificar.`
+      ? escapeHtml(tr('myCompany.domains.instructions', 'Para ativar {host}: crie um CNAME apontando para {cname} e um registro TXT em {txt} com o valor {token}, depois clique em Verificar.', {
+        host: '\u0000host\u0000', cname: '\u0000cname\u0000', txt: '\u0000txt\u0000', token: '\u0000token\u0000'
+      }))
+        .replace('\u0000host\u0000', () => `<strong>${escapeHtml(pending.full_host)}</strong>`)
+        .replace('\u0000cname\u0000', () => `<code>${escapeHtml(pending.cname_target)}</code>`)
+        .replace('\u0000txt\u0000', () => `<code>${escapeHtml(pending.txt_record)}</code>`)
+        .replace('\u0000token\u0000', () => `<code>${escapeHtml(pending.verification_token)}</code>`)
       : '';
   }
 }
@@ -12089,7 +12135,7 @@ async function init() {
     const val = document.getElementById('recovery-token-value')?.textContent || '';
     navigator.clipboard?.writeText(val).catch(() => {});
     const btn = document.getElementById('recovery-token-copy');
-    if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => { btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,"ui.modals.copiar_39dcf1","Copiar",{}) ?? tr("ui.modals.copiar_39dcf1", "Copiar", {}))); }, 2000); }
+    if (btn) { btn.textContent = tr('common.copied', 'Copiado!'); setTimeout(() => { btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,"ui.modals.copiar_39dcf1","Copiar",{}) ?? tr("ui.modals.copiar_39dcf1", "Copiar", {}))); }, 2000); }
   });
   safeOn(document.getElementById('recovery-token-close'), 'click', () => {
     const modal = document.getElementById('recovery-token-modal');
@@ -12697,7 +12743,7 @@ async function init() {
       });
       state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
       renderRetentionPolicy();
-      alert('Política de retenção atualizada com sucesso.');
+      alert(tr('settings.retention.updated', 'Política de retenção atualizada com sucesso.'));
     } catch (error) {
       alert(error.message);
     }
@@ -12740,7 +12786,7 @@ async function init() {
         body: JSON.stringify({ actor_user_id: state.user.id })
       });
       await renderReports(collectReportFilters());
-      alert('Rotina de retenção executada com sucesso.');
+      alert(tr('settings.retention.executed', 'Rotina de retenção executada com sucesso.'));
     } catch (error) {
       alert(error.message);
     }
@@ -12768,7 +12814,7 @@ async function init() {
     if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
     if (event.target.dataset.companyCommercial) {
       if (!canAccessCommercialArea()) {
-        alert('Seu perfil não pode acessar a área Comercial.');
+        alert(tr('commercial.panel.noAccess', 'Seu perfil não pode acessar a área Comercial.'));
         return;
       }
       state.selectedCompanyId = event.target.dataset.companyCommercial;
@@ -12798,10 +12844,10 @@ async function init() {
       userEdit: () => startEditUser(target.dataset.userEdit),
       userDelete: () => deleteUser(target.dataset.userDelete),
       userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
-      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
-      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
-      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
-      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
+      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, tr('user.messages.promotedAdmin', 'Perfil alterado para Administrador.')),
+      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, tr('user.messages.promotedGeneral', 'Perfil alterado para Administrador Geral.')),
+      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, tr('user.messages.demotedAdmin', 'Administrador rebaixado para Usuário.')),
+      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, tr('user.messages.demotedGeneral', 'Administrador Geral rebaixado para Administrador.'))
     };
 
     for (const [key, handler] of Object.entries(handlers)) {
@@ -12813,7 +12859,7 @@ async function init() {
 
     if (target.dataset.userToggle) {
       const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
-      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? tr('user.messages.deactivated', 'Usuário desativado.') : tr('user.messages.reactivated', 'Usuário reativado.'));
     }
     if (target.dataset.userRecoveryToken) {
       void generateRecoveryToken(target.dataset.userRecoveryToken);
@@ -12979,7 +13025,7 @@ async function init() {
             }, delay);
           } else {
             console.warn('[auth] Backend indisponível após todas as tentativas de restauração de sessão', { attempt, error });
-            setLoginMessage('Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.', true);
+            setLoginMessage(tr('login.messages.serverWarmingUp', 'Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.'), true);
           }
           return;
         }
@@ -13002,7 +13048,7 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   safeOn(document, 'DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
-      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
+      setLoginMessage(tr('login.messages.loginScreenFailed', 'Erro ao carregar a tela de login. Recarregue a página e tente novamente.'), true);
     });
   });
 }
@@ -13063,6 +13109,24 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         if (typeof renderCompaniesSummary === 'function') {
           try { renderCompaniesSummary(); } catch (_e) {}
         }
+        // I18N-FULL-V1: painéis do Comercial e data do topo. Só leem o estado já
+        // carregado; formulário, contrato e filtros digitados não são recriados.
+        try {
+          if (refs.currentDate) refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date());
+          renderCommercialStats();
+          renderCommercialSummary();
+          renderCommercialAlerts();
+          renderCommercialExpiring();
+          renderCommercialHistory();
+          if (refs.commercialPlanHint && refs.commercialForm) {
+            refs.commercialPlanHint.textContent = planHintText(refs.commercialForm.elements.plan_name.value || 'start', refs.commercialForm.elements.addendum_enabled.checked);
+          }
+          // Prévia a partir do valor atual do formulário: renderPlatformBrand regravaria os campos.
+          if (refs.platformBrandForm) {
+            renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type?.value || '');
+            renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type?.value || '');
+          }
+        } catch (error) { reportNonCriticalError('[i18n] re-render do Comercial falhou', error); }
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
       }

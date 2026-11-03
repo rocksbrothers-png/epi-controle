@@ -68,7 +68,7 @@ Legenda: ✅ concluído e validado · 🟡 implementado sem teste suficiente · 
 | Colaboradores | 🟠 | 🟠 | poucos literais | P3 |
 | Relatórios | 🟠 | 🟠 | literais em `reports-view.js` e `app.js` | P2 |
 | Configurações, retenção, feature flags | 🟠 (retenção ✅) | 🟠 | ~40 literais | P2 |
-| Feedback / EPI em teste | ⛔ (maior bloco) | ⛔ | ~130 literais | P1 |
+| Feedback / EPI em teste | 🟠 formulários, títulos, rótulos e avisos do fluxo de EPI em teste (165 chaves) | idem | Tabelas de reclamações/elogios/ranking, chips de status, exportações CSV e escala de avaliação (`scaleFields`) | P2 |
 | Mensagens de erro do backend | 🟠 ~17% | 🟠 | ~700 templates em `apiErrors` ou metadados `i18n` nas respostas | P1 |
 | Flutter | 🟠 (Codex: 983 mensagens/locale; inventário de 117 lacunas) | 🟠 | ver `audit/FLUTTER_GAP_INVENTORY_AUDIT.md` | P2 |
 | Contratos/fichas/documentos assinados históricos | ➖ não retraduzidos (regra do Codex mantida) | ➖ | — | — |
@@ -174,3 +174,11 @@ byte e dígitos iguais; conflitos só com os arquivos gerados do PR UBX; Chromiu
   texto traduzido), `PURCHASE_APPROVAL_REJECTION_REASONS` (valores canônicos de Compras) e o assunto do e-mail
   de assinatura ao gestor (conteúdo documental).
 - Chromium: cenário `delivery_qr_messages` (modo USB e sessão sem QR válido, sem gravação) nos 5 idiomas.
+
+## 10. Lote 5 — Feedback / EPI em teste
+
+- 165 chaves `ppetest.ui.*`: títulos dos formulários (`openForm`), rótulos de campos e opções (`label:`),
+  avisos (`showToast`) e o aviso de campo obrigatório. Os `value:` das opções são códigos canônicos
+  (`leve`, `grave`, `convidado`…) e não foram tocados; nenhuma chamada `post`/`put` recebe texto traduzido.
+- `openForm` entrou no gate estático. Chromium: `ppe_tests_view` abre a tela nos 5 idiomas sem erro nem gravação.
+- Restante do bloco (P2): tabelas de reclamações/elogios/ranking, chips de status, CSV e `scaleFields`.

@@ -39,6 +39,8 @@ FUNCTIONS = [
     'exportCommercialHistory',
     # Login, troca de senha e Usuários (mesma continuação).
     'handleForcedPasswordChange', 'askTemporaryPassword', 'buildUserAccessMessage', 'saveUser',
+    # Formulário dinâmico de EPI em teste (rótulos vêm de tr() nos chamadores).
+    'openForm',
 ]
 
 # (função, literal) aceitos sem tradução, com o motivo.

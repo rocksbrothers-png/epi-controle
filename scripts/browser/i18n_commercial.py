@@ -208,8 +208,20 @@ def delivery_qr_messages(f):
     assert posts == [], f'mensagens de status não podem gravar nada: {posts}'
 
 
+def ppe_tests_view(f):
+    """Avaliações / EPI em teste: a tela abre nos 5 idiomas sem erro de página nem gravação."""
+    if 'epi_evaluation:view' not in f.permissions:
+        f.permissions.append('epi_evaluation:view')
+        f.page.evaluate('async()=>{await loadBootstrap()}')
+    before = len(f.calls)
+    f.view('avaliacoes')
+    f.page.wait_for_timeout(300)
+    writes = [c for c in f.calls[before:] if c['method'] != 'GET']
+    assert writes == [], f'abrir a tela não pode gravar: {writes}'
+
+
 login_message.needs_session = False
-SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages]
+SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages, ppe_tests_view]
 
 
 def main():

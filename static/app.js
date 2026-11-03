@@ -15964,7 +15964,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             notes,
           }),
         });
-        showToast('Avaliação validada e encaminhada ao administrador.');
+        showToast(tr('ppetest.ui.avaliacao_validada_e_encaminhada_ao_administrado', 'Avaliação validada e encaminhada ao administrador.'));
       } else if (action === 'reject') {
         const rejReason = document.getElementById('aval-modal-rejection-reason')?.value || 'outro';
         const supplierEval = document.getElementById('aval-modal-supplier-eval')?.checked || false;
@@ -15972,20 +15972,20 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, rejection_reason: rejReason, supplier_eval_requested: supplierEval, notes }),
         });
-        showToast('Avaliação rejeitada.');
+        showToast(tr('ppetest.ui.avaliacao_rejeitada', 'Avaliação rejeitada.'));
       } else if (action === 'reassessment') {
         const period = document.getElementById('aval-modal-period')?.value || '3_meses';
         await api('/api/avaliacoes/set-reassessment', {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, period, notes }),
         });
-        showToast('Período de reavaliação definido.');
+        showToast(tr('ppetest.ui.periodo_de_reavaliacao_definido', 'Período de reavaliação definido.'));
       } else if (action === 'accept_suggestion') {
         await api('/api/avaliacoes/accept-suggestion', {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, notes }),
         });
-        showToast('Sugestão aceita — encaminhada ao fluxo de Novos EPIs em Teste.');
+        showToast(tr('ppetest.ui.sugestao_aceita_encaminhada_ao_fluxo_de_novos_ep', 'Sugestão aceita — encaminhada ao fluxo de Novos EPIs em Teste.'));
       } else if (action === 'pre_evaluate') {
         const preRec = document.getElementById('aval-modal-tech-decision')?.value || 'recomenda_aceitar';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -16006,7 +16006,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             admin_tech_notes: techNotes, marca_modelo_sugerido: marcaModelo, notes,
           }),
         });
-        showToast('Avaliação prévia registrada. Aguardando decisão final do Administrador Geral.');
+        showToast(tr('ppetest.ui.avaliacao_previa_registrada_aguardando_decisao_f', 'Avaliação prévia registrada. Aguardando decisão final do Administrador Geral.'));
       } else if (action === 'admin_evaluate') {
         const techDecision = document.getElementById('aval-modal-tech-decision')?.value || 'aceito';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -16130,9 +16130,9 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   const STAGE_LABELS = { inicial: 'Inicial', intermediaria: 'Intermediária', final: 'Final' };
   const SCALE_OPTIONS = [
     { value: '', label: '—' },
-    { value: '1', label: '1 — Muito ruim' }, { value: '2', label: '2 — Ruim' },
-    { value: '3', label: '3 — Regular' }, { value: '4', label: '4 — Bom' },
-    { value: '5', label: '5 — Excelente' },
+    { value: '1', label: tr('ppetest.ui.1_muito_ruim', '1 — Muito ruim') }, { value: '2', label: tr('ppetest.ui.2_ruim', '2 — Ruim') },
+    { value: '3', label: tr('ppetest.ui.3_regular', '3 — Regular') }, { value: '4', label: tr('ppetest.ui.4_bom', '4 — Bom') },
+    { value: '5', label: tr('ppetest.ui.5_excelente', '5 — Excelente') },
   ];
 
   let _suggestions = [];
@@ -16186,7 +16186,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       });
       for (const f of fields) {
         if (f.required && !values[f.name]) {
-          showToast(`Campo obrigatório: ${f.label}`, 'error');
+          showToast(tr('ppetest.ui.required_field', 'Campo obrigatório: {field}', { field: f.label }), 'error');
           return;
         }
       }
@@ -16300,93 +16300,93 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 
   // ── Ações de sugestão ───────────────────────────────────────────────────────
   function openNewSuggestion() {
-    openForm('Nova Sugestão de EPI em Teste', [
+    openForm(tr('ppetest.ui.nova_sugestao_de_epi_em_teste', 'Nova Sugestão de EPI em Teste'), [
       { name: 'suggested_name', label: (tr('portal.suggestedPpeName', 'Nome do EPI sugerido', {})), required: true },
       {
         name: 'source_type', label: (tr('dataMigration.jobSource', 'Origem', {})), type: 'select', value: 'colaborador',
         options: Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
       },
-      { name: 'requester_name', label: 'Nome do solicitante', required: true, value: state.user?.full_name || '' },
+      { name: 'requester_name', label: tr('ppetest.ui.nome_do_solicitante', 'Nome do solicitante'), required: true, value: state.user?.full_name || '' },
       {
         name: 'unit_id', label: (tr('moduleVisibility.unitLabel', 'Unidade', {})), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
       },
       {
-        name: 'employee_id', label: 'Colaborador (quando origem = colaborador)', type: 'select',
+        name: 'employee_id', label: tr('ppetest.ui.colaborador_quando_origem_colaborador', 'Colaborador (quando origem = colaborador)'), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.employees || []).map((e) => ({ value: e.id, label: e.name }))),
       },
       {
-        name: 'current_epi_id', label: 'EPI atual utilizado', type: 'select',
+        name: 'current_epi_id', label: tr('ppetest.ui.epi_atual_utilizado', 'EPI atual utilizado'), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
       },
       { name: 'reason', label: (tr('ppetest.reason', 'Motivo', {})), type: 'textarea', required: true },
-      { name: 'problem_identified', label: 'Problema identificado', type: 'textarea' },
-      { name: 'expected_benefit', label: 'Benefício esperado', type: 'textarea' },
-      { name: 'related_activity', label: 'Função ou atividade relacionada' },
-      { name: 'risks', label: 'Riscos que pretende controlar' },
-      { name: 'current_epi_issue', label: 'Dificuldade encontrada no EPI atual', type: 'textarea' },
+      { name: 'problem_identified', label: tr('ppetest.ui.problema_identificado', 'Problema identificado'), type: 'textarea' },
+      { name: 'expected_benefit', label: tr('ppetest.ui.beneficio_esperado', 'Benefício esperado'), type: 'textarea' },
+      { name: 'related_activity', label: tr('ppetest.ui.funcao_ou_atividade_relacionada', 'Função ou atividade relacionada') },
+      { name: 'risks', label: tr('ppetest.ui.riscos_que_pretende_controlar', 'Riscos que pretende controlar') },
+      { name: 'current_epi_issue', label: tr('ppetest.ui.dificuldade_encontrada_no_epi_atual', 'Dificuldade encontrada no EPI atual'), type: 'textarea' },
       { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-test-suggestions', values);
-      showToast('Sugestão registrada. Ela seguirá para triagem.');
+      showToast(tr('ppetest.ui.sugestao_registrada_ela_seguira_para_triagem', 'Sugestão registrada. Ela seguirá para triagem.'));
       await loadPpeTests();
     });
   }
 
   function openTriage(suggestionId) {
-    openForm('Triagem Inicial da Sugestão', [
+    openForm(tr('ppetest.ui.triagem_inicial_da_sugestao', 'Triagem Inicial da Sugestão'), [
       {
-        name: 'result', label: 'Resultado da triagem', type: 'select', required: true,
+        name: 'result', label: tr('ppetest.ui.resultado_da_triagem', 'Resultado da triagem'), type: 'select', required: true,
         options: [
-          { value: 'aprovado_analise_tecnica', label: 'Aprovado para análise técnica' },
-          { value: 'solicitar_informacoes', label: 'Solicitar mais informações' },
+          { value: 'aprovado_analise_tecnica', label: tr('ppetest.ui.aprovado_para_analise_tecnica', 'Aprovado para análise técnica') },
+          { value: 'solicitar_informacoes', label: tr('ppetest.ui.solicitar_mais_informacoes', 'Solicitar mais informações') },
           { value: 'duplicado', label: (tr('dataMigration.classification.duplicate', 'Duplicado', {})) },
-          { value: 'inviavel', label: 'Inviável para teste' },
-          { value: 'rejeitado', label: 'Rejeitado na triagem' },
+          { value: 'inviavel', label: tr('ppetest.ui.inviavel_para_teste', 'Inviável para teste') },
+          { value: 'rejeitado', label: tr('ppetest.ui.rejeitado_na_triagem', 'Rejeitado na triagem') },
         ],
       },
-      { name: 'ck_banco', label: 'Verificado: EPI não existe no banco aprovado', type: 'checkbox' },
-      { name: 'ck_teste', label: 'Verificado: não há teste semelhante em andamento', type: 'checkbox' },
-      { name: 'ck_ca', label: 'Verificado: CA válido (quando aplicável)', type: 'checkbox' },
-      { name: 'ck_risco', label: 'Verificado: produto atende ao risco', type: 'checkbox' },
-      { name: 'ck_fornecedor', label: 'Verificado: fornecedor regular', type: 'checkbox' },
-      { name: 'ck_orcamento', label: 'Verificado: há orçamento e unidade para o piloto', type: 'checkbox' },
-      { name: 'notes', label: 'Justificativa / observações (obrigatória para rejeição)', type: 'textarea' },
+      { name: 'ck_banco', label: tr('ppetest.ui.verificado_epi_nao_existe_no_banco_aprovado', 'Verificado: EPI não existe no banco aprovado'), type: 'checkbox' },
+      { name: 'ck_teste', label: tr('ppetest.ui.verificado_nao_ha_teste_semelhante_em_andamento', 'Verificado: não há teste semelhante em andamento'), type: 'checkbox' },
+      { name: 'ck_ca', label: tr('ppetest.ui.verificado_ca_valido_quando_aplicavel', 'Verificado: CA válido (quando aplicável)'), type: 'checkbox' },
+      { name: 'ck_risco', label: tr('ppetest.ui.verificado_produto_atende_ao_risco', 'Verificado: produto atende ao risco'), type: 'checkbox' },
+      { name: 'ck_fornecedor', label: tr('ppetest.ui.verificado_fornecedor_regular', 'Verificado: fornecedor regular'), type: 'checkbox' },
+      { name: 'ck_orcamento', label: tr('ppetest.ui.verificado_ha_orcamento_e_unidade_para_o_piloto', 'Verificado: há orçamento e unidade para o piloto'), type: 'checkbox' },
+      { name: 'notes', label: tr('ppetest.ui.justificativa_observacoes_obrigatoria_para_rejei', 'Justificativa / observações (obrigatória para rejeição)'), type: 'textarea' },
     ], async (values) => {
       const checklist = {};
       Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
       await post(`/api/ppe-test-suggestions/${suggestionId}/triage`, {
         result: values.result, notes: values.notes, checklist,
       });
-      showToast('Triagem registrada.');
+      showToast(tr('ppetest.ui.triagem_registrada', 'Triagem registrada.'));
       await loadPpeTests();
     });
   }
 
   function openNewCandidate(suggestionId = null) {
     const sug = suggestionId ? _suggestions.find((s) => String(s.id) === String(suggestionId)) : null;
-    openForm('Cadastro Provisório do EPI em Teste', [
-      { name: 'name', label: 'Nome provisório', required: true, value: sug?.suggested_name || '' },
-      { name: 'category', label: 'Categoria / setor' },
-      { name: 'protection_type', label: 'Tipo de proteção' },
+    openForm(tr('ppetest.ui.cadastro_provisorio_do_epi_em_teste', 'Cadastro Provisório do EPI em Teste'), [
+      { name: 'name', label: tr('ppetest.ui.nome_provisorio', 'Nome provisório'), required: true, value: sug?.suggested_name || '' },
+      { name: 'category', label: tr('ppetest.ui.categoria_setor', 'Categoria / setor') },
+      { name: 'protection_type', label: tr('ppetest.ui.tipo_de_protecao', 'Tipo de proteção') },
       { name: 'manufacturer', label: (tr('epi.manufacturer', 'Fabricante', {})) },
-      { name: 'model_reference', label: 'Modelo' },
+      { name: 'model_reference', label: tr('ppetest.ui.modelo', 'Modelo') },
       { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
       { name: 'ca', label: 'CA' },
       { name: 'ca_expiry', label: (tr('epi.caExpiry', 'Validade do CA', {})), type: 'date' },
       { name: 'size', label: (tr('delivery.size', 'Tamanho', {})) },
-      { name: 'material', label: 'Material' },
-      { name: 'test_batch', label: 'Lote de teste' },
-      { name: 'quantity_available', label: 'Quantidade disponível para o teste', type: 'number', value: '0' },
-      { name: 'estimated_value', label: 'Valor estimado' },
-      { name: 'test_cost', label: 'Custo do teste' },
-      { name: 'risks_covered', label: 'Riscos atendidos', type: 'textarea' },
-      { name: 'activities', label: 'Atividades indicadas' },
-      { name: 'restrictions', label: 'Restrições' },
+      { name: 'material', label: tr('ppetest.ui.material', 'Material') },
+      { name: 'test_batch', label: tr('ppetest.ui.lote_de_teste', 'Lote de teste') },
+      { name: 'quantity_available', label: tr('ppetest.ui.quantidade_disponivel_para_o_teste', 'Quantidade disponível para o teste'), type: 'number', value: '0' },
+      { name: 'estimated_value', label: tr('ppetest.ui.valor_estimado', 'Valor estimado') },
+      { name: 'test_cost', label: tr('ppetest.ui.custo_do_teste', 'Custo do teste') },
+      { name: 'risks_covered', label: tr('ppetest.ui.riscos_atendidos', 'Riscos atendidos'), type: 'textarea' },
+      { name: 'activities', label: tr('ppetest.ui.atividades_indicadas', 'Atividades indicadas') },
+      { name: 'restrictions', label: tr('ppetest.ui.restricoes', 'Restrições') },
       { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-tests', { ...values, suggestion_id: suggestionId || undefined });
-      showToast('Cadastro provisório criado — fora do banco oficial de EPIs.');
+      showToast(tr('ppetest.ui.cadastro_provisorio_criado_fora_do_banco_oficial', 'Cadastro provisório criado — fora do banco oficial de EPIs.'));
       await loadPpeTests();
     });
   }
@@ -16591,184 +16591,184 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     const participantOptions = (t.participants || []).map((p) => ({ value: p.id, label: p.employee_name || `#${p.employee_id}` }));
     switch (action) {
       case 'tech-review':
-        openForm('Análise Técnica e Documental', [
+        openForm(tr('ppetest.ui.analise_tecnica_e_documental', 'Análise Técnica e Documental'), [
           {
             name: 'result', label: (tr('dataMigration.jobCounters', 'Resultado', {})), type: 'select', required: true,
             options: [
-              { value: 'aprovar_para_teste', label: 'Aprovar para teste' },
-              { value: 'solicitar_correcao', label: 'Solicitar correção' },
-              { value: 'solicitar_documento', label: 'Solicitar documento' },
-              { value: 'encaminhar_aprovacao_superior', label: 'Encaminhar para aprovação superior' },
+              { value: 'aprovar_para_teste', label: tr('ppetest.ui.aprovar_para_teste', 'Aprovar para teste') },
+              { value: 'solicitar_correcao', label: tr('ppetest.ui.solicitar_correcao', 'Solicitar correção') },
+              { value: 'solicitar_documento', label: tr('ppetest.ui.solicitar_documento', 'Solicitar documento') },
+              { value: 'encaminhar_aprovacao_superior', label: tr('ppetest.ui.encaminhar_para_aprovacao_superior', 'Encaminhar para aprovação superior') },
               { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
             ],
           },
-          { name: 'ck_ca_valido', label: 'CA válido', type: 'checkbox' },
-          { name: 'ck_compatibilidade_risco', label: 'Compatível com o risco', type: 'checkbox' },
-          { name: 'ck_ficha_tecnica', label: 'Ficha técnica presente', type: 'checkbox' },
-          { name: 'ck_normas', label: 'Normas aplicáveis atendidas', type: 'checkbox' },
-          { name: 'ck_higienizacao', label: 'Instruções de uso/higienização/manutenção', type: 'checkbox' },
-          { name: 'ck_compatibilidade_epis', label: 'Compatível com outros EPIs', type: 'checkbox' },
-          { name: 'ck_treinamento', label: 'Necessidade de treinamento avaliada', type: 'checkbox' },
-          { name: 'ck_custo', label: 'Custo/impacto operacional avaliado', type: 'checkbox' },
-          { name: 'notes', label: 'Parecer / justificativa', type: 'textarea' },
+          { name: 'ck_ca_valido', label: tr('ppetest.ui.ca_valido', 'CA válido'), type: 'checkbox' },
+          { name: 'ck_compatibilidade_risco', label: tr('ppetest.ui.compativel_com_o_risco', 'Compatível com o risco'), type: 'checkbox' },
+          { name: 'ck_ficha_tecnica', label: tr('ppetest.ui.ficha_tecnica_presente', 'Ficha técnica presente'), type: 'checkbox' },
+          { name: 'ck_normas', label: tr('ppetest.ui.normas_aplicaveis_atendidas', 'Normas aplicáveis atendidas'), type: 'checkbox' },
+          { name: 'ck_higienizacao', label: tr('ppetest.ui.instrucoes_de_uso_higienizacao_manutencao', 'Instruções de uso/higienização/manutenção'), type: 'checkbox' },
+          { name: 'ck_compatibilidade_epis', label: tr('ppetest.ui.compativel_com_outros_epis', 'Compatível com outros EPIs'), type: 'checkbox' },
+          { name: 'ck_treinamento', label: tr('ppetest.ui.necessidade_de_treinamento_avaliada', 'Necessidade de treinamento avaliada'), type: 'checkbox' },
+          { name: 'ck_custo', label: tr('ppetest.ui.custo_impacto_operacional_avaliado', 'Custo/impacto operacional avaliado'), type: 'checkbox' },
+          { name: 'notes', label: tr('ppetest.ui.parecer_justificativa', 'Parecer / justificativa'), type: 'textarea' },
         ], async (values) => {
           const checklist = {};
           Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
           await post(`/api/ppe-tests/${id}/technical-review`, { result: values.result, notes: values.notes, checklist });
-          showToast('Análise técnica registrada.');
+          showToast(tr('ppetest.ui.analise_tecnica_registrada', 'Análise técnica registrada.'));
           await reloadDetail();
         });
         break;
       case 'plan': {
         const plan = t.plan || {};
-        openForm('Plano de Teste', [
+        openForm(tr('ppetest.ui.plano_de_teste', 'Plano de Teste'), [
           { name: 'start_date', label: (tr('delivery.startDate', 'Data inicial', {})), type: 'date', required: true, value: plan.start_date || '' },
-          { name: 'end_date', label: 'Data final prevista', type: 'date', required: true, value: plan.end_date || '' },
+          { name: 'end_date', label: tr('ppetest.ui.data_final_prevista', 'Data final prevista'), type: 'date', required: true, value: plan.end_date || '' },
           {
-            name: 'pilot_unit_id', label: 'Unidade piloto', type: 'select', value: plan.pilot_unit_id || '',
+            name: 'pilot_unit_id', label: tr('ppetest.ui.unidade_piloto', 'Unidade piloto'), type: 'select', value: plan.pilot_unit_id || '',
             options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
           },
-          { name: 'objective', label: 'Objetivo do teste', type: 'textarea', value: plan.objective || '' },
-          { name: 'hypothesis', label: 'Hipótese', value: plan.hypothesis || '' },
+          { name: 'objective', label: tr('ppetest.ui.objetivo_do_teste', 'Objetivo do teste'), type: 'textarea', value: plan.objective || '' },
+          { name: 'hypothesis', label: tr('ppetest.ui.hipotese', 'Hipótese'), value: plan.hypothesis || '' },
           { name: 'sector', label: (tr('employee.sector', 'Setor', {})), value: plan.sector || '' },
-          { name: 'activity', label: 'Atividade', value: plan.activity || '' },
-          { name: 'participants_target', label: 'Quantidade de participantes', type: 'number', value: plan.participants_target || '' },
-          { name: 'epis_quantity', label: 'Quantidade de EPIs', type: 'number', value: plan.epis_quantity || '' },
+          { name: 'activity', label: tr('ppetest.ui.atividade', 'Atividade'), value: plan.activity || '' },
+          { name: 'participants_target', label: tr('ppetest.ui.quantidade_de_participantes', 'Quantidade de participantes'), type: 'number', value: plan.participants_target || '' },
+          { name: 'epis_quantity', label: tr('ppetest.ui.quantidade_de_epis', 'Quantidade de EPIs'), type: 'number', value: plan.epis_quantity || '' },
           {
-            name: 'current_epi_id', label: 'Modelo comparativo atual', type: 'select', value: plan.current_epi_id || '',
+            name: 'current_epi_id', label: tr('ppetest.ui.modelo_comparativo_atual', 'Modelo comparativo atual'), type: 'select', value: plan.current_epi_id || '',
             options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
           },
-          { name: 'approval_criteria', label: 'Critérios de aprovação', type: 'textarea', value: plan.approval_criteria || '' },
-          { name: 'rejection_criteria', label: 'Critérios de reprovação', type: 'textarea', value: plan.rejection_criteria || '' },
-          { name: 'evaluation_frequency', label: 'Frequência das avaliações (ex.: inicial, 15d, 30d, final)', value: plan.evaluation_frequency || '' },
-          { name: 'technical_manager', label: 'Responsável técnico', value: plan.technical_manager || '' },
-          { name: 'operational_manager', label: 'Responsável operacional', value: plan.operational_manager || '' },
-          { name: 'min_participants', label: 'Mínimo de participantes p/ decisão', type: 'number', value: plan.min_participants || '' },
-          { name: 'min_response_rate', label: 'Taxa mínima de respostas (%)', type: 'number', value: plan.min_response_rate || '' },
-          { name: 'training_required', label: 'Exige treinamento', type: 'checkbox', value: !!plan.training_required },
-          { name: 'contingency_plan', label: 'Plano de contingência', type: 'textarea', value: plan.contingency_plan || '' },
-          { name: 'interruption_condition', label: 'Condição de interrupção', value: plan.interruption_condition || '' },
+          { name: 'approval_criteria', label: tr('ppetest.ui.criterios_de_aprovacao', 'Critérios de aprovação'), type: 'textarea', value: plan.approval_criteria || '' },
+          { name: 'rejection_criteria', label: tr('ppetest.ui.criterios_de_reprovacao', 'Critérios de reprovação'), type: 'textarea', value: plan.rejection_criteria || '' },
+          { name: 'evaluation_frequency', label: tr('ppetest.ui.frequencia_das_avaliacoes_ex_inicial_15d_30d_fin', 'Frequência das avaliações (ex.: inicial, 15d, 30d, final)'), value: plan.evaluation_frequency || '' },
+          { name: 'technical_manager', label: tr('ppetest.ui.responsavel_tecnico', 'Responsável técnico'), value: plan.technical_manager || '' },
+          { name: 'operational_manager', label: tr('ppetest.ui.responsavel_operacional', 'Responsável operacional'), value: plan.operational_manager || '' },
+          { name: 'min_participants', label: tr('ppetest.ui.minimo_de_participantes_p_decisao', 'Mínimo de participantes p/ decisão'), type: 'number', value: plan.min_participants || '' },
+          { name: 'min_response_rate', label: tr('ppetest.ui.taxa_minima_de_respostas', 'Taxa mínima de respostas (%)'), type: 'number', value: plan.min_response_rate || '' },
+          { name: 'training_required', label: tr('ppetest.ui.exige_treinamento', 'Exige treinamento'), type: 'checkbox', value: !!plan.training_required },
+          { name: 'contingency_plan', label: tr('ppetest.ui.plano_de_contingencia', 'Plano de contingência'), type: 'textarea', value: plan.contingency_plan || '' },
+          { name: 'interruption_condition', label: tr('ppetest.ui.condicao_de_interrupcao', 'Condição de interrupção'), value: plan.interruption_condition || '' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/plan`, values);
-          showToast('Plano de teste salvo.');
+          showToast(tr('ppetest.ui.plano_de_teste_salvo', 'Plano de teste salvo.'));
           await reloadDetail();
         });
         break;
       }
       case 'participant':
-        openForm('Selecionar Participante', [
+        openForm(tr('ppetest.ui.selecionar_participante', 'Selecionar Participante'), [
           {
             name: 'employee_id', label: (tr('handover.collaborator', 'Colaborador', {})), type: 'select', required: true,
             options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
           },
-          { name: 'size', label: 'Tamanho necessário' },
+          { name: 'size', label: tr('ppetest.ui.tamanho_necessario', 'Tamanho necessário') },
           {
-            name: 'current_epi_id', label: 'EPI atual do participante', type: 'select',
+            name: 'current_epi_id', label: tr('ppetest.ui.epi_atual_do_participante', 'EPI atual do participante'), type: 'select',
             options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
           },
-          { name: 'orientation_confirmed', label: 'Orientação de uso confirmada', type: 'checkbox' },
-          { name: 'signature_name', label: 'Assinatura (nome)' },
+          { name: 'orientation_confirmed', label: tr('ppetest.ui.orientacao_de_uso_confirmada', 'Orientação de uso confirmada'), type: 'checkbox' },
+          { name: 'signature_name', label: tr('ppetest.ui.assinatura_nome', 'Assinatura (nome)') },
           {
-            name: 'status', label: 'Status inicial', type: 'select', value: 'convidado',
-            options: [{ value: 'convidado', label: 'Convidado' }, { value: 'confirmado', label: 'Confirmado' }],
+            name: 'status', label: tr('ppetest.ui.status_inicial', 'Status inicial'), type: 'select', value: 'convidado',
+            options: [{ value: 'convidado', label: tr('ppetest.ui.convidado', 'Convidado') }, { value: 'confirmado', label: tr('ppetest.ui.confirmado', 'Confirmado') }],
           },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/participants`, values);
-          showToast('Participante adicionado.');
+          showToast(tr('ppetest.ui.participante_adicionado', 'Participante adicionado.'));
           await reloadDetail();
         });
         break;
       case 'receive':
-        openForm('Receber Lote de Teste', [
-          { name: 'quantity', label: 'Quantidade recebida', type: 'number', required: true },
+        openForm(tr('ppetest.ui.receber_lote_de_teste', 'Receber Lote de Teste'), [
+          { name: 'quantity', label: tr('ppetest.ui.quantidade_recebida', 'Quantidade recebida'), type: 'number', required: true },
           { name: 'batch', label: (tr('handover.lot', 'Lote', {})) },
           { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
-          { name: 'storage_location', label: 'Local de armazenamento' },
+          { name: 'storage_location', label: tr('ppetest.ui.local_de_armazenamento', 'Local de armazenamento') },
           { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'recebimento' });
-          showToast('Recebimento registrado no controle próprio do teste.');
+          showToast(tr('ppetest.ui.recebimento_registrado_no_controle_proprio_do_te', 'Recebimento registrado no controle próprio do teste.'));
           await reloadDetail();
         });
         break;
       case 'deliver':
-        openForm('Entregar EPI de Teste (uso controlado)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
+        openForm(tr('ppetest.ui.entregar_epi_de_teste_uso_controlado', 'Entregar EPI de Teste (uso controlado)'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
           { name: 'quantity', label: (tr('delivery.quantity', 'Quantidade', {})), type: 'number', required: true, value: '1' },
-          { name: 'signature_name', label: 'Assinatura (nome)' },
-          { name: 'expected_return', label: 'Devolução esperada', type: 'date' },
+          { name: 'signature_name', label: tr('ppetest.ui.assinatura_nome', 'Assinatura (nome)') },
+          { name: 'expected_return', label: tr('ppetest.ui.devolucao_esperada', 'Devolução esperada'), type: 'date' },
           { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'entrega' });
-          showToast('Entrega controlada registrada.');
+          showToast(tr('ppetest.ui.entrega_controlada_registrada', 'Entrega controlada registrada.'));
           await reloadDetail();
         });
         break;
       case 'start':
-        openForm('Iniciar Período de Teste', [
+        openForm(tr('ppetest.ui.iniciar_periodo_de_teste', 'Iniciar Período de Teste'), [
           { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/start`, values);
-          showToast('Teste iniciado.');
+          showToast(tr('ppetest.ui.teste_iniciado', 'Teste iniciado.'));
           await reloadDetail();
         });
         break;
       case 'suspend':
-        openForm('Suspender Teste', [
+        openForm(tr('ppetest.ui.suspender_teste', 'Suspender Teste'), [
           { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/suspend`, values);
-          showToast('Teste suspenso.');
+          showToast(tr('ppetest.ui.teste_suspenso', 'Teste suspenso.'));
           await reloadDetail();
         });
         break;
       case 'resume':
-        openForm('Retomar Teste', [
+        openForm(tr('ppetest.ui.retomar_teste', 'Retomar Teste'), [
           { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/resume`, values);
-          showToast('Teste retomado.');
+          showToast(tr('ppetest.ui.teste_retomado', 'Teste retomado.'));
           await reloadDetail();
         });
         break;
       case 'complete':
-        openForm('Concluir Período de Teste', [
+        openForm(tr('ppetest.ui.concluir_periodo_de_teste', 'Concluir Período de Teste'), [
           { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/complete`, values);
-          showToast('Teste concluído — pronto para consolidação e decisão.');
+          showToast(tr('ppetest.ui.teste_concluido_pronto_para_consolidacao_e_decis', 'Teste concluído — pronto para consolidação e decisão.'));
           await reloadDetail();
         });
         break;
       case 'evaluate':
-        openForm('Registrar Avaliação (escala 1–5)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
+        openForm(tr('ppetest.ui.registrar_avaliacao_escala_15', 'Registrar Avaliação (escala 1–5)'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
           {
-            name: 'stage', label: 'Momento', type: 'select', required: true,
+            name: 'stage', label: tr('ppetest.ui.momento', 'Momento'), type: 'select', required: true,
             options: Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
           },
-          { type: 'section', label: 'Critérios do EPI em teste' },
+          { type: 'section', label: tr('ppetest.ui.criterios_do_epi_em_teste', 'Critérios do EPI em teste') },
           ...scaleFields([
             ['r_conforto', 'Conforto'], ['r_ergonomia', 'Ergonomia'], ['r_mobilidade', 'Mobilidade'],
             ['r_resistencia', 'Resistência'], ['r_peso', 'Peso'], ['r_facilidade_uso', 'Facilidade de uso'],
             ['r_protecao_percebida', 'Proteção percebida'], ['r_satisfacao_geral', 'Satisfação geral'],
             ['r_durabilidade', 'Durabilidade'], ['r_adequacao_funcao', 'Adequação à função'],
           ]),
-          { type: 'section', label: 'Comparação com o EPI atual (opcional)' },
+          { type: 'section', label: tr('ppetest.ui.comparacao_com_o_epi_atual_opcional', 'Comparação com o EPI atual (opcional)') },
           ...scaleFields([
             ['c_conforto', 'Conforto (EPI atual)'], ['c_mobilidade', 'Mobilidade (EPI atual)'],
             ['c_facilidade_uso', 'Facilidade de uso (EPI atual)'], ['c_protecao_percebida', 'Proteção percebida (EPI atual)'],
             ['c_durabilidade', 'Durabilidade (EPI atual)'],
           ]),
           {
-            name: 'preference', label: 'Preferência', type: 'select',
-            options: [{ value: '', label: '—' }, { value: 'novo', label: 'EPI em teste' }, { value: 'atual', label: 'EPI atual' }, { value: 'indiferente', label: 'Indiferente' }],
+            name: 'preference', label: tr('ppetest.ui.preferencia', 'Preferência'), type: 'select',
+            options: [{ value: '', label: '—' }, { value: 'novo', label: tr('ppetest.ui.epi_em_teste', 'EPI em teste') }, { value: 'atual', label: tr('ppetest.ui.epi_atual', 'EPI atual') }, { value: 'indiferente', label: tr('ppetest.ui.indiferente', 'Indiferente') }],
           },
-          { name: 'recommend', label: 'Recomenda a aprovação', type: 'checkbox' },
-          { name: 'continue_intent', label: 'Pretende continuar usando', type: 'checkbox' },
-          { name: 'positive_points', label: 'Pontos positivos', type: 'textarea' },
-          { name: 'negative_points', label: 'Pontos negativos', type: 'textarea' },
-          { name: 'comments', label: 'Comentários (pergunta aberta)', type: 'textarea' },
+          { name: 'recommend', label: tr('ppetest.ui.recomenda_a_aprovacao', 'Recomenda a aprovação'), type: 'checkbox' },
+          { name: 'continue_intent', label: tr('ppetest.ui.pretende_continuar_usando', 'Pretende continuar usando'), type: 'checkbox' },
+          { name: 'positive_points', label: tr('ppetest.ui.pontos_positivos', 'Pontos positivos'), type: 'textarea' },
+          { name: 'negative_points', label: tr('ppetest.ui.pontos_negativos', 'Pontos negativos'), type: 'textarea' },
+          { name: 'comments', label: tr('ppetest.ui.comentarios_pergunta_aberta', 'Comentários (pergunta aberta)'), type: 'textarea' },
         ], async (values) => {
           const ratings = {};
           const current = {};
@@ -16784,25 +16784,25 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             positive_points: values.positive_points, negative_points: values.negative_points,
             comments: values.comments,
           });
-          showToast('Avaliação registrada.');
+          showToast(tr('ppetest.ui.avaliacao_registrada', 'Avaliação registrada.'));
           await reloadDetail();
         });
         break;
       case 'incident':
-        openForm('Registrar Ocorrência', [
-          { name: 'participant_id', label: 'Participante', type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
+        openForm(tr('ppetest.ui.registrar_ocorrencia', 'Registrar Ocorrência'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
           {
             name: 'incident_type', label: (tr('outsourcedCompany.filterKind', 'Tipo', {})), type: 'select', required: true,
             options: ['desconforto', 'irritacao', 'falha', 'ruptura', 'incompatibilidade', 'tamanho_inadequado', 'perda', 'dano', 'incidente', 'quase_acidente', 'interrupcao_uso', 'substituicao', 'recusa', 'treinamento_adicional'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') })),
           },
           {
-            name: 'severity', label: 'Gravidade', type: 'select', required: true,
-            options: [{ value: 'leve', label: 'Leve' }, { value: 'moderada', label: 'Moderada' }, { value: 'grave', label: 'Grave' }, { value: 'critica', label: 'Crítica' }],
+            name: 'severity', label: tr('ppetest.ui.gravidade', 'Gravidade'), type: 'select', required: true,
+            options: [{ value: 'leve', label: tr('ppetest.ui.leve', 'Leve') }, { value: 'moderada', label: tr('ppetest.ui.moderada', 'Moderada') }, { value: 'grave', label: tr('ppetest.ui.grave', 'Grave') }, { value: 'critica', label: tr('ppetest.ui.critica', 'Crítica') }],
           },
           { name: 'description', label: (tr('ui.procurement.descricao_46332f', 'Descrição', {})), type: 'textarea', required: true },
           { name: 'evidence', label: (tr('stock.receipt.evidence', 'Evidência', {})) },
-          { name: 'action_taken', label: 'Ação tomada' },
-          { name: 'suspend_test', label: 'Suspender o teste (apenas gravidade crítica)', type: 'checkbox' },
+          { name: 'action_taken', label: tr('ppetest.ui.acao_tomada', 'Ação tomada') },
+          { name: 'suspend_test', label: tr('ppetest.ui.suspender_o_teste_apenas_gravidade_critica', 'Suspender o teste (apenas gravidade crítica)'), type: 'checkbox' },
         ], async (values) => {
           const result = await post(`/api/ppe-tests/${id}/incidents`, { ...values, suspend_test: !!values.suspend_test });
           showToast(result.suspended ? 'Ocorrência crítica registrada — teste suspenso.' : 'Ocorrência registrada.');
@@ -16810,55 +16810,55 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         });
         break;
       case 'decision':
-        openForm('Decisão Técnica Formal', [
+        openForm(tr('ppetest.ui.decisao_tecnica_formal', 'Decisão Técnica Formal'), [
           {
-            name: 'decision', label: 'Decisão', type: 'select', required: true,
+            name: 'decision', label: tr('ppetest.ui.decisao', 'Decisão'), type: 'select', required: true,
             options: [
               { value: 'aprovar', label: (tr('purchase.approve', 'Aprovar', {})) },
-              { value: 'aprovar_com_restricao', label: 'Aprovar com restrição' },
-              { value: 'prorrogar_teste', label: 'Prorrogar teste' },
-              { value: 'nova_rodada', label: 'Nova rodada de avaliação' },
-              { value: 'solicitar_ajuste_fornecedor', label: 'Solicitar ajuste ao fornecedor' },
+              { value: 'aprovar_com_restricao', label: tr('ppetest.ui.aprovar_com_restricao', 'Aprovar com restrição') },
+              { value: 'prorrogar_teste', label: tr('ppetest.ui.prorrogar_teste', 'Prorrogar teste') },
+              { value: 'nova_rodada', label: tr('ppetest.ui.nova_rodada_de_avaliacao', 'Nova rodada de avaliação') },
+              { value: 'solicitar_ajuste_fornecedor', label: tr('ppetest.ui.solicitar_ajuste_ao_fornecedor', 'Solicitar ajuste ao fornecedor') },
               { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
               { value: 'arquivar', label: (tr('outsourcedCompany.archive', 'Arquivar', {})) },
             ],
           },
           { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
-          { name: 'technical_opinion', label: 'Parecer técnico (obrigatório p/ aprovação)', type: 'textarea' },
-          { name: 'operational_opinion', label: 'Parecer operacional', type: 'textarea' },
-          { name: 'purchasing_opinion', label: 'Parecer de compras', type: 'textarea' },
-          { name: 'restrictions', label: 'Restrições' },
-          { name: 'conditions', label: 'Condições' },
-          { name: 'approval_validity', label: 'Validade da aprovação' },
-          { name: 'new_end_date', label: 'Nova data final (se prorrogar)', type: 'date' },
-          { name: 'override_minimums', label: 'Exceção justificada aos critérios mínimos', type: 'checkbox' },
+          { name: 'technical_opinion', label: tr('ppetest.ui.parecer_tecnico_obrigatorio_p_aprovacao', 'Parecer técnico (obrigatório p/ aprovação)'), type: 'textarea' },
+          { name: 'operational_opinion', label: tr('ppetest.ui.parecer_operacional', 'Parecer operacional'), type: 'textarea' },
+          { name: 'purchasing_opinion', label: tr('ppetest.ui.parecer_de_compras', 'Parecer de compras'), type: 'textarea' },
+          { name: 'restrictions', label: tr('ppetest.ui.restricoes', 'Restrições') },
+          { name: 'conditions', label: tr('ppetest.ui.condicoes', 'Condições') },
+          { name: 'approval_validity', label: tr('ppetest.ui.validade_da_aprovacao', 'Validade da aprovação') },
+          { name: 'new_end_date', label: tr('ppetest.ui.nova_data_final_se_prorrogar', 'Nova data final (se prorrogar)'), type: 'date' },
+          { name: 'override_minimums', label: tr('ppetest.ui.excecao_justificada_aos_criterios_minimos', 'Exceção justificada aos critérios mínimos'), type: 'checkbox' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/decision`, { ...values, override_minimums: !!values.override_minimums });
-          showToast('Decisão registrada.');
+          showToast(tr('ppetest.ui.decisao_registrada', 'Decisão registrada.'));
           await reloadDetail();
         });
         break;
       case 'homologate':
-        openForm('Homologar — Definir Escopo de Validade', [
+        openForm(tr('ppetest.ui.homologar_definir_escopo_de_validade', 'Homologar — Definir Escopo de Validade'), [
           {
-            name: 'scope_type', label: 'Escopo de aprovação', type: 'select', required: true,
+            name: 'scope_type', label: tr('ppetest.ui.escopo_de_aprovacao', 'Escopo de aprovação'), type: 'select', required: true,
             options: [
-              { value: 'GLOBAL', label: 'Global da empresa' },
-              { value: 'JOINT_VENTURE', label: 'Joint Venture' },
-              { value: 'UNIT', label: 'Exclusivo de uma unidade' },
+              { value: 'GLOBAL', label: tr('ppetest.ui.global_da_empresa', 'Global da empresa') },
+              { value: 'JOINT_VENTURE', label: tr('ppetest.ui.joint_venture', 'Joint Venture') },
+              { value: 'UNIT', label: tr('ppetest.ui.exclusivo_de_uma_unidade', 'Exclusivo de uma unidade') },
             ],
           },
           {
-            name: 'scope_unit_id', label: 'Unidade (escopo UNIT ou JV)', type: 'select',
+            name: 'scope_unit_id', label: tr('ppetest.ui.unidade_escopo_unit_ou_jv', 'Unidade (escopo UNIT ou JV)'), type: 'select',
             options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
           },
-          { name: 'scope_joint_venture', label: 'Joint Venture (nome da operação, escopo JV)' },
-          { name: 'official_name', label: 'Nome oficial do EPI', value: t.name },
-          { name: 'purchase_code', label: 'Código oficial (vazio = automático)' },
-          { name: 'manufacture_date', label: 'Data de fabricação', type: 'date' },
+          { name: 'scope_joint_venture', label: tr('ppetest.ui.joint_venture_nome_da_operacao_escopo_jv', 'Joint Venture (nome da operação, escopo JV)') },
+          { name: 'official_name', label: tr('ppetest.ui.nome_oficial_do_epi', 'Nome oficial do EPI'), value: t.name },
+          { name: 'purchase_code', label: tr('ppetest.ui.codigo_oficial_vazio_automatico', 'Código oficial (vazio = automático)') },
+          { name: 'manufacture_date', label: tr('ppetest.ui.data_de_fabricacao', 'Data de fabricação'), type: 'date' },
           { name: 'epi_validity_date', label: (tr('epi.validityDate', 'Validade do EPI', {})), type: 'date' },
-          { name: 'validity_days', label: 'Validade (dias) p/ substituição', type: 'number' },
-          { name: 'notes', label: 'Observações da homologação', type: 'textarea' },
+          { name: 'validity_days', label: tr('ppetest.ui.validade_dias_p_substituicao', 'Validade (dias) p/ substituição'), type: 'number' },
+          { name: 'notes', label: tr('ppetest.ui.observacoes_da_homologacao', 'Observações da homologação'), type: 'textarea' },
         ], async (values) => {
           const result = await post(`/api/ppe-tests/${id}/homologate`, values);
           const scope = result.scope || {};
@@ -16867,20 +16867,20 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         });
         break;
       case 'reject':
-        openForm('Reprovar EPI em Teste', [
+        openForm(tr('ppetest.ui.reprovar_epi_em_teste', 'Reprovar EPI em Teste'), [
           { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
           {
-            name: 'items_destination', label: 'Destino dos itens', type: 'select',
+            name: 'items_destination', label: tr('ppetest.ui.destino_dos_itens', 'Destino dos itens'), type: 'select',
             options: [
               { value: '', label: '—' },
-              { value: 'devolucao_fornecedor', label: 'Devolução ao fornecedor' },
+              { value: 'devolucao_fornecedor', label: tr('ppetest.ui.devolucao_ao_fornecedor', 'Devolução ao fornecedor') },
               { value: 'descarte', label: (tr('stock.physical.discard', 'Descarte', {})) },
-              { value: 'recolhimento', label: 'Recolhimento e guarda' },
+              { value: 'recolhimento', label: tr('ppetest.ui.recolhimento_e_guarda', 'Recolhimento e guarda') },
             ],
           },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/reject`, values);
-          showToast('EPI reprovado — novas distribuições bloqueadas.');
+          showToast(tr('ppetest.ui.epi_reprovado_novas_distribuicoes_bloqueadas', 'EPI reprovado — novas distribuições bloqueadas.'));
           await reloadDetail();
         });
         break;
@@ -16892,12 +16892,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   function openIncidentResolve(incidentId) {
     const t = _detail;
     if (!t) return;
-    openForm('Tratar Ocorrência', [
-      { name: 'action_taken', label: 'Ação tomada' },
-      { name: 'conclusion_notes', label: 'Conclusão', type: 'textarea', required: true },
+    openForm(tr('ppetest.ui.tratar_ocorrencia', 'Tratar Ocorrência'), [
+      { name: 'action_taken', label: tr('ppetest.ui.acao_tomada', 'Ação tomada') },
+      { name: 'conclusion_notes', label: tr('ppetest.ui.conclusao', 'Conclusão'), type: 'textarea', required: true },
     ], async (values) => {
       await post(`/api/ppe-tests/${t.id}/incidents/${incidentId}/resolve`, values);
-      showToast('Ocorrência tratada.');
+      showToast(tr('ppetest.ui.ocorrencia_tratada', 'Ocorrência tratada.'));
       await loadPpeTests();
       await openDetail(t.id);
     });

@@ -64,7 +64,7 @@ Legenda: ✅ concluído e validado · 🟡 implementado sem teste suficiente · 
 | Usuários (mensagens de perfil/ativação, senha provisória, mensagem de acesso) | ✅ nesta continuação | ✅ | — | — |
 | Compras, Portal do Fornecedor, conectores, e-mails/PDF novos | ✅ (Codex, Chromium 5 idiomas) | ✅ | `purchases.js` ~33 literais | P2 |
 | Estoque | 🟠 | 🟠 | ~45 literais (`app.js`, `estoque.js`) | P2 |
-| Entregas e devoluções, leitor de QR | 🟠 | 🟠 | ~120 literais (QR, `entrega-epi.js`) | P1 |
+| Entregas e devoluções, leitor de QR | ✅ mensagens do QR/câmera/compartilhamento/período, OCR de fabricação, reimpressão e fluxo guiado (`entrega-epi.js`); 🟠 templates com contagem (`Leitura finalizada. N código(s)…`) e assunto do e-mail ao gestor | idem | Templates restantes; devoluções (`devolution.js`) | P2 |
 | Colaboradores | 🟠 | 🟠 | poucos literais | P3 |
 | Relatórios | 🟠 | 🟠 | literais em `reports-view.js` e `app.js` | P2 |
 | Configurações, retenção, feature flags | 🟠 (retenção ✅) | 🟠 | ~40 literais | P2 |
@@ -161,3 +161,16 @@ byte e dígitos iguais; conflitos só com os arquivos gerados do PR UBX; Chromiu
 | F5 | P3 | Um único `try` no redesenho do Comercial | Passos independentes, com encadeamento opcional |
 | F6 | P3 | Redação en-GB (`Responsible`, `grantedEmail`) e apóstrofos mistos no fr-FR | Corrigido. Nomes de perfil nas mensagens (“Administrador”/“Usuário” × `role.*`) espelham o pt-BR e ficam para revisão terminológica |
 | F7 | P3 | Nome dos arquivos exportados em português | Mantido (cosmético) |
+
+## 9. Lote 3 — Entregas, leitor de QR, OCR e reimpressão (continuação)
+
+- 77 chaves em `app.js` (`delivery.qr.*`, `delivery.share.*`, `delivery.period.*`, `delivery.replacement.*`,
+  `stock.ocr.*`, `stock.reprint.*`, `common.unknownError`) e 35 no fluxo guiado de `entrega-epi.js`
+  (`delivery.guided.*`, atrás da flag `entrega_epi_htmx_enabled`).
+- Correções do pt-BR: “ler código da imagem.” (frase truncada) → “Não foi possível ler o código da imagem.”;
+  maiúsculas indevidas (“Etiqueta Não encontrada.”, “permissão de Câmera”, “Área de Câmera”).
+- Mantidos de propósito: comparações com texto do backend (`includes('não encontrado')`,
+  `'temporariamente indisponível'`), as palavras validadas da reimpressão (`Perdeu`/`Rasgou`, explicadas no
+  texto traduzido), `PURCHASE_APPROVAL_REJECTION_REASONS` (valores canônicos de Compras) e o assunto do e-mail
+  de assinatura ao gestor (conteúdo documental).
+- Chromium: cenário `delivery_qr_messages` (modo USB e sessão sem QR válido, sem gravação) nos 5 idiomas.

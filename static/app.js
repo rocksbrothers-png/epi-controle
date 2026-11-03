@@ -7159,7 +7159,7 @@ async function loadAvailableQrsForSelectedEpi() {
     if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrCountAvailableFefo','{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).') ?? tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).')).replace('{count}', String(items.length));
   } catch (error) {
     target.innerHTML = `<option value="">${tr('delivery.qrLoadFailure', 'Falha ao carregar QR disponíveis')}</option>`;
-    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrLoadFailureHint','Falha ao carregar QRs disponíveis: {error}') ?? tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}')).replace('{error}', String(error?.message || 'erro desconhecido'));
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrLoadFailureHint','Falha ao carregar QRs disponíveis: {error}') ?? tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}')).replace('{error}', String(error?.message || tr('common.unknownError', 'erro desconhecido')));
   }
 }
   
@@ -8135,7 +8135,7 @@ function syncDeliveryQrSessionOwner(options = {}) {
   resetDeliveryQrSession();
   clearDeliveryStockItemSelection();
   if (shouldWarn) {
-    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
+    setDeliveryQrStatus(tr('delivery.qr.ownerChanged', 'Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.'), true);
   }
   return true;
 }
@@ -8281,7 +8281,7 @@ async function handleDeliveryQrScan(options = {}) {
     console.warn('[qr][scan] rejeitado na validação', { raw: value, interpreted, reason: error?.message || 'erro_desconhecido' });
     const loweredMessage = String(error?.message || '').toLowerCase();
     if (loweredMessage.includes('não encontrado')) {
-      setDeliveryQrStatus('Código não encontrado no estoque.', true);
+      setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     } else {
       setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
     }
@@ -8289,7 +8289,7 @@ async function handleDeliveryQrScan(options = {}) {
   }
   if (!stockItem) {
     console.warn('[qr][scan] rejeitado: não encontrado', { raw: value, interpreted });
-    setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     return false;
   }
   const returnedCode = String(stockItem?.qr_code_value || '').trim().toLowerCase();
@@ -8303,7 +8303,7 @@ async function handleDeliveryQrScan(options = {}) {
       returned_code: returnedCode,
       returned_stock_item_id: stockItem?.id
     });
-    setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     return false;
   }
   if (input) input.value = value;
@@ -8316,7 +8316,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   const input = document.getElementById('delivery-qr-scan');
   const rawInputValue = String(options.sourceValue || input?.value || '').trim();
   if (!rawInputValue) {
-    showToast('Digite ou leia um código antes de validar.', 'error');
+    showToast(tr('delivery.qr.enterCodeFirst', 'Digite ou leia um código antes de validar.'), 'error');
     return false;
   }
   const normalizedInputValue = String(rawInputValue).trim();
@@ -8340,15 +8340,15 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   const addResult = addStockQrToSession(stockItem);
   if (!addResult.added) {
     if (addResult.reason === 'missing_employee') {
-      setDeliveryQrStatus('Selecione o colaborador antes de validar o QR.', true);
+      setDeliveryQrStatus(tr('delivery.qr.selectEmployeeFirst', 'Selecione o colaborador antes de validar o QR.'), true);
       return false;
     }
     if (addResult.reason === 'employee_changed') {
-      setDeliveryQrStatus('Colaborador alterado durante a sessão. Limpe a lista e inicie nova leitura.', true);
+      setDeliveryQrStatus(tr('delivery.qr.ownerChangedDuringSession', 'Colaborador alterado durante a sessão. Limpe a lista e inicie nova leitura.'), true);
       return false;
     }
     if (addResult.reason === 'duplicate') {
-      setDeliveryQrStatus('Este código já está na lista/conferência.', true);
+      setDeliveryQrStatus(tr('delivery.qr.alreadyListed', 'Este código já está na lista/conferência.'), true);
       return false;
     }
     return false;
@@ -8371,13 +8371,13 @@ async function applySelectedAvailableDeliveryQr() {
   if (!selectField) return false;
   const selectedStockItemId = String(selectField.value || '').trim();
   if (!selectedStockItemId) {
-    setDeliveryQrStatus('Selecione um QR disponível antes de aplicar.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectAvailableFirst', 'Selecione um QR disponível antes de aplicar.'), true);
     return false;
   }
   const selectedOption = selectField.options?.[selectField.selectedIndex] || null;
   const selectedCode = String(selectedOption?.dataset?.qrCode || '').trim();
   if (!selectedCode) {
-    setDeliveryQrStatus('QR selecionado inválido. Atualize a lista e tente novamente.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectedInvalid', 'QR selecionado inválido. Atualize a lista e tente novamente.'), true);
     return false;
   }
   const stockItem = await handleDeliveryQrScan({
@@ -8386,16 +8386,16 @@ async function applySelectedAvailableDeliveryQr() {
   });
   if (!stockItem) return false;
   if (String(stockItem.id || '') !== selectedStockItemId) {
-    setDeliveryQrStatus('Divergência entre QR escolhido e item validado. Selecione novamente o código físico.', true);
+    setDeliveryQrStatus(tr('delivery.qr.mismatch', 'Divergência entre QR escolhido e item validado. Selecione novamente o código físico.'), true);
     return false;
   }
   const addResult = addStockQrToSession(stockItem);
   if (!addResult.added && addResult.reason === 'duplicate') {
-    setDeliveryQrStatus('Este QR já foi adicionado na sessão.', true);
+    setDeliveryQrStatus(tr('delivery.qr.alreadyInSession', 'Este QR já foi adicionado na sessão.'), true);
     return false;
   }
   if (!addResult.added && addResult.reason === 'missing_employee') {
-    setDeliveryQrStatus('Selecione o colaborador antes de escolher o QR.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectEmployeeBeforeChoosing', 'Selecione o colaborador antes de escolher o QR.'), true);
     return false;
   }
   applyStockItemToDeliverySelection(stockItem, { source: 'stock_selection' });
@@ -8409,7 +8409,7 @@ async function applySelectedAvailableDeliveryQr() {
 async function handleDeliveryManualValidationRequest() {
   const rawCode = String(document.getElementById('delivery-qr-scan')?.value || '').trim();
   if (isCodeAutoValidatedBySelection(rawCode)) {
-    setDeliveryQrStatus('Este código já foi validado automaticamente via seleção do sistema.');
+    setDeliveryQrStatus(tr('delivery.qr.autoValidated', 'Este código já foi validado automaticamente via seleção do sistema.'));
     return false;
   }
   return queueDeliveryQrForCurrentSession({ trigger: 'manual_button' });
@@ -8940,7 +8940,7 @@ function preencherCampoPorQr(decodedData) {
 async function onQrScanSuccess(decodedText) {
   const text = String(decodedText || '').trim();
   if (!text) {
-    setDeliveryQrStatus('Leitura vazia ignorada.', true);
+    setDeliveryQrStatus(tr('delivery.qr.emptyIgnored', 'Leitura vazia ignorada.'), true);
     return;
   }
   const now = Date.now();
@@ -8957,7 +8957,7 @@ async function onQrScanSuccess(decodedText) {
   const stockItem = await handleDeliveryQrScan({ sourceValue: text, applyToForm: false });
   if (!stockItem) {
     console.warn('[qr][scan] leitura sem confirmação', { raw: text, reason: 'stock_lookup_failed' });
-    setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
+    setDeliveryQrStatus(tr('delivery.qr.notRecognized', 'QR lido, mas não reconhecido para preenchimento automático.'), true);
     return;
   }
   const addResult = addStockQrToSession(stockItem);
@@ -8967,7 +8967,7 @@ async function onQrScanSuccess(decodedText) {
       return;
     }
     if (addResult.reason === 'throttled') return;
-    setDeliveryQrStatus('QR lido, mas inválido para a sessão.', true);
+    setDeliveryQrStatus(tr('delivery.qr.invalidForSession', 'QR lido, mas inválido para a sessão.'), true);
     return;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
@@ -9075,7 +9075,7 @@ async function stopDeliveryQrCamera(options = {}) {
       wrap.classList.remove('is-active');
       wrap.classList.remove('qr-camera-fullscreen');
     }
-    setDeliveryQrStatus('Leitura encerrada.');
+    setDeliveryQrStatus(tr('delivery.qr.stopped', 'Leitura encerrada.'));
   })()
     .finally(() => {
       qrScannerState.stopping = null;
@@ -9088,13 +9088,13 @@ async function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de código.');
+  setDeliveryQrStatus(tr('delivery.qr.usbMode', 'Modo leitor USB ativo: faça o bipe no campo de código.'));
 }
 
 function finalizeDeliveryQrSession() {
   const lastItem = qrScannerState.scanSession[qrScannerState.scanSession.length - 1] || null;
   if (!lastItem) {
-    setDeliveryQrStatus('Nenhum QR válido lido para aplicar no movimento.', true);
+    setDeliveryQrStatus(tr('delivery.qr.noneValid', 'Nenhum QR válido lido para aplicar no movimento.'), true);
     return false;
   }
   applyStockItemToDeliveryForm(lastItem);
@@ -9127,11 +9127,11 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
       }
     } catch (error) {
       console.error('QR detection error:', error);
-      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
+      setDeliveryQrStatus(tr('delivery.qr.cameraRetry', 'Erro na leitura por câmera. Tentando novamente...'), true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Câmera ativa. Aponte para QR Code ou código de barras.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraActive', 'Câmera ativa. Aponte para QR Code ou código de barras.'));
   detectFrame();
 }
 
@@ -9139,14 +9139,14 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraActiveCompat', 'Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.'));
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`Código lido: ${input.value}`);
       void onQrScanSuccess(input.value);
     } else if (error?.name && error.name !== 'NotFoundException') {
-      setDeliveryQrStatus('Aguardando leitura...', false);
+      setDeliveryQrStatus(tr('delivery.qr.waiting', 'Aguardando leitura...'), false);
     }
   });
 }
@@ -9155,7 +9155,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('Área de Câmera indisponível.');
+  if (!readerBox) throw new Error(tr('delivery.qr.cameraAreaUnavailable', 'Área da câmera indisponível.'));
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
@@ -9168,7 +9168,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
     if (rear?.id) cameraConfig = { deviceId: { exact: rear.id } };
     else if (cameras?.[0]?.id) cameraConfig = { deviceId: { exact: cameras[0].id } };
   }
-  setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraContinuous', 'Câmera ativa (QR contínuo). Alinhe o QR na área central.'));
   await scanner.start(
     cameraConfig,
     {
@@ -9216,16 +9216,16 @@ async function startDeliveryQrCamera() {
 
   if (!input || !wrap) {
     console.error('[qr] INPUT/WRAP não encontrados no DOM.');
-    alert('Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.');
+    alert(tr('delivery.qr.readerUnavailable', 'Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.'));
     return;
   }
   if (!video) {
     console.error('[qr] VIDEO NÃO ENCONTRADO');
-    alert('Elemento de vídeo não encontrado. Recarregue a página e tente novamente.');
+    alert(tr('delivery.qr.videoMissing', 'Elemento de vídeo não encontrado. Recarregue a página e tente novamente.'));
     return;
   }
   if (qrScannerState.starting) {
-    setDeliveryQrStatus('Aguardando permissão da câmera. Conclua a solicitação do navegador.');
+    setDeliveryQrStatus(tr('delivery.qr.awaitingPermission', 'Aguardando permissão da câmera. Conclua a solicitação do navegador.'));
     return;
   }
   qrScannerState.starting = true;
@@ -9233,7 +9233,7 @@ async function startDeliveryQrCamera() {
     await stopDeliveryQrCamera({ preserveStarting: true });
     const startToken = qrScannerState.startToken;
     if (!qrScannerState.starting) return;
-    setDeliveryQrStatus('Iniciando câmera...');
+    setDeliveryQrStatus(tr('delivery.qr.starting', 'Iniciando câmera...'));
     wrap.hidden = false;
     wrap.classList.add('is-active');
     wrap.style.display = 'block';
@@ -9248,7 +9248,7 @@ async function startDeliveryQrCamera() {
       try {
         const cameraPermission = await navigator.permissions.query({ name: 'camera' });
         if (cameraPermission?.state === 'prompt') {
-          setDeliveryQrStatus('Permita o acesso à câmera no navegador para iniciar a leitura.');
+          setDeliveryQrStatus(tr('delivery.qr.allowToStart', 'Permita o acesso à câmera no navegador para iniciar a leitura.'));
         }
       } catch (permissionError) {
         console.warn('[qr] consulta de permissão de câmera indisponível', permissionError);
@@ -9256,13 +9256,13 @@ async function startDeliveryQrCamera() {
     }
 
     if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-      setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
-      alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+      setDeliveryQrStatus(tr('delivery.qr.noCameraAccess', 'Navegador sem acesso à câmera. Use leitor USB ou digite o código.'), true);
+      alert(tr('delivery.qr.cameraNotAvailable', 'Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.'));
       return;
     }
     const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
     if (location.protocol !== 'https:' && !isLocalhost) {
-      setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
+      setDeliveryQrStatus(tr('delivery.qr.httpsRequired', 'Câmera exige HTTPS para funcionar neste navegador.'), true);
       return;
     }
 
@@ -9281,7 +9281,7 @@ async function startDeliveryQrCamera() {
       readerBox.innerHTML = '';
     }
     qrScannerState.active = true;
-    setDeliveryQrStatus('Solicitando permissão da câmera...');
+    setDeliveryQrStatus(tr('delivery.qr.requestingPermission', 'Solicitando permissão da câmera...'));
     if (readerBox) {
       const html5Timeout = new Promise((_, reject) => {
         setTimeout(() => {
@@ -9312,7 +9312,7 @@ async function startDeliveryQrCamera() {
       let timeoutId = null;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          const timeoutError = new Error('Permissão de câmera pendente por muito tempo.');
+          const timeoutError = new Error(tr('delivery.qr.permissionTimeout', 'Permissão de câmera pendente por muito tempo.'));
           timeoutError.name = 'PermissionPromptTimeout';
           reject(timeoutError);
         }, timeoutMs);
@@ -9370,35 +9370,35 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (String(error?.name || '') === 'PermissionPromptTimeout') {
-      setDeliveryQrStatus('Permita o acesso à câmera no navegador e tente novamente.', true);
-      alert('Permita o acesso à câmera no navegador.');
+      setDeliveryQrStatus(tr('delivery.qr.allowAndRetry', 'Permita o acesso à câmera no navegador e tente novamente.'), true);
+      alert(tr('delivery.qr.allowAccess', 'Permita o acesso à câmera no navegador.'));
       return;
     }
     if (blocked) {
-      setDeliveryQrStatus('permissão de Câmera negada.', true);
-      alert('permissão da Câmera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus(tr('delivery.qr.permissionDenied', 'Permissão da câmera negada.'), true);
+      alert(tr('delivery.qr.permissionDeniedRetry', 'Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.'));
       return;
     }
     if (String(error?.name || '') === 'NotFoundError') {
-      setDeliveryQrStatus('Nenhuma câmera encontrada neste dispositivo.', true);
-      alert('Nenhuma câmera foi encontrada neste dispositivo.');
+      setDeliveryQrStatus(tr('delivery.qr.noCameraStatus', 'Nenhuma câmera encontrada neste dispositivo.'), true);
+      alert(tr('delivery.qr.noCameraAlert', 'Nenhuma câmera foi encontrada neste dispositivo.'));
       return;
     }
     if (String(error?.name || '') === 'NotReadableError') {
-      setDeliveryQrStatus('Câmera ocupada por outro aplicativo/aba.', true);
-      alert('A câmera está em uso por outro aplicativo ou aba.');
+      setDeliveryQrStatus(tr('delivery.qr.busyStatus', 'Câmera ocupada por outro aplicativo/aba.'), true);
+      alert(tr('delivery.qr.busyAlert', 'A câmera está em uso por outro aplicativo ou aba.'));
       return;
     }
     if (String(error?.name || '') === 'OverconstrainedError') {
-      setDeliveryQrStatus('Configuração de câmera não suportada; tentando modo compatível.', true);
-      alert('Configuração de câmera não suportada neste dispositivo.');
+      setDeliveryQrStatus(tr('delivery.qr.unsupportedRetry', 'Configuração de câmera não suportada; tentando modo compatível.'), true);
+      alert(tr('delivery.qr.unsupported', 'Configuração de câmera não suportada neste dispositivo.'));
       return;
     }
     if (String(error?.name || '') === 'AbortError') {
-      setDeliveryQrStatus('Inicialização da câmera foi interrompida.', true);
+      setDeliveryQrStatus(tr('delivery.qr.interrupted', 'Inicialização da câmera foi interrompida.'), true);
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    setDeliveryQrStatus(tr('delivery.qr.startFailed', 'Falha ao iniciar câmera neste dispositivo/navegador.'), true);
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   } finally {
     qrScannerState.starting = false;
@@ -9418,14 +9418,14 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('Não identificado na imagem.');
+    if (!result?.text) throw new Error(tr('delivery.qr.notInImage', 'Não identificado na imagem.'));
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
     void onQrScanSuccess(inputField.value);
   } catch (error) {
     console.error('Image QR detection error:', error);
-    setDeliveryQrStatus('ler código da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
+    setDeliveryQrStatus(tr('delivery.qr.imageReadFailedStatus', 'Não foi possível ler o código da imagem.'), true);
+    alert(tr('delivery.qr.imageReadFailed', 'Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.'));
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -9463,7 +9463,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   };
   const buildWhatsAppHref = ({ phone, message }) => {
     const safeMessage = String(message || '').trim();
-    if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
+    if (!safeMessage) throw new Error(tr('delivery.share.invalidWhatsapp', 'Mensagem do WhatsApp inválida.'));
     const normalizedPhone = String(phone || '').replace(/\D/g, '');
     const encodedMessage = encodeURIComponent(safeMessage);
     return normalizedPhone
@@ -9483,7 +9483,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   let whatsappLaunchHandled = false;
   const launchWhatsAppOrFallback = (launchUrl) => {
     const safeUrl = String(launchUrl || '').trim();
-    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    if (!safeUrl) throw new Error(tr('delivery.share.openFailed', 'Não foi possível abrir o compartilhamento. Gere o link novamente.'));
     if (whatsappLaunchHandled) return;
     whatsappLaunchHandled = true;
     const mobileTarget = isMobileWhatsAppTarget();
@@ -9510,7 +9510,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
-    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
+    if (!/^https?:\/\//i.test(accessLink)) throw new Error(tr('delivery.share.linkFailed', 'Não foi possível gerar um link válido da ficha para compartilhamento.'));
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
@@ -9523,7 +9523,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const phone = resolveEmployeePhone();
 	if (!phone) {
-    	throw new Error('WhatsApp do colaborador não cadastrado.');
+    	throw new Error(tr('delivery.share.noEmployeeWhatsapp', 'WhatsApp do colaborador não cadastrado.'));
     }
     const message = normalizeWhatsappText(
     	String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
@@ -9532,7 +9532,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
     if (!managerEmail) { 
-      throw new Error('E-mail do gestor não cadastrado.');
+      throw new Error(tr('delivery.share.noManagerEmail', 'E-mail do gestor não cadastrado.'));
     }
     const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
     const body = encodeURIComponent([
@@ -9547,7 +9547,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     const safeUrl = String(targetUrl || '').trim();
     
     if (!safeUrl) { 
-      throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+      throw new Error(tr('delivery.share.openFailed', 'Não foi possível abrir o compartilhamento. Gere o link novamente.'));
     }
       
     const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
@@ -9559,7 +9559,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     }
 
     if (!/^https:\/\//i.test(safeUrl)) {
-      throw new Error('URL de compartilhamento inválida.');
+      throw new Error(tr('delivery.share.invalidUrl', 'URL de compartilhamento inválida.'));
     }
     
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -9607,8 +9607,8 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     if (!_raw.ok) {
       const _errCode = String(_raw.error?.code || '').toUpperCase();
       const _errMsg = (_res.status === 503 || _errCode === 'DB_BOOTSTRAP_NOT_READY')
-        ? 'O servidor ainda está inicializando. Aguarde alguns instantes e tente novamente.'
-        : (_raw.error?.message || 'Erro ao finalizar período.');
+        ? tr('delivery.period.serverStarting', 'O servidor ainda está inicializando. Aguarde alguns instantes e tente novamente.')
+        : (_raw.error?.message || tr('delivery.period.finalizeFailed', 'Erro ao finalizar período.'));
       throw new Error(_errMsg);
     }
 
@@ -9629,7 +9629,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     openValidatedUrl(launchUrl);
     await loadBootstrap();
     renderFicha();
-    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+    showToast(tr('delivery.period.linkSent', 'Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.'), 'success');
   } catch (error) {
     alert(error.message);
   } finally {
@@ -9759,7 +9759,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
   const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   const selectedEpi = (state.deliveryEpis || []).find((item) => String(item.id) === selectedEpiId);
   if (selectedEpi && unitStockOf(selectedEpi) <= 0) {
-    setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
+    setDeliveryQrStatus(tr('delivery.qr.noStock', 'EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.'), true);
   }
   const sizesPanel = document.getElementById('delivery-epi-sizes');
   if (sizesPanel) {
@@ -10442,24 +10442,24 @@ async function handleStockManufactureCameraCapture(event) {
   const dateField = document.getElementById('stock-manufacture-date');
   if (!file || !dateField) return;
   if (!String(file.type || '').startsWith('image/')) {
-    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    setStockManufactureStatus(tr('stock.ocr.invalidFile', 'Arquivo inválido. Use uma imagem para leitura da data.'), 'error');
     event.target.value = '';
     return;
   }
   if (file.size > 10 * 1024 * 1024) {
-    setStockManufactureStatus('Imagem muito grande (máximo: 10MB).', 'error');
+    setStockManufactureStatus(tr('stock.ocr.tooLarge', 'Imagem muito grande (máximo: 10MB).'), 'error');
     event.target.value = '';
     return;
   }
-  setStockManufactureStatus('Processando imagem da câmera...');
+  setStockManufactureStatus(tr('stock.ocr.processing', 'Processando imagem da câmera...'));
   try {
     const imageData = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Falha ao carregar imagem para OCR.'));
+      reader.onerror = () => reject(new Error(tr('stock.ocr.loadFailed', 'Falha ao carregar imagem para OCR.')));
       reader.readAsDataURL(file);
     });
-    if (!imageData) throw new Error('Imagem inválida para OCR.');
+    if (!imageData) throw new Error(tr('stock.ocr.invalidImage', 'Imagem inválida para OCR.'));
     const payload = await api('/api/stock/manufacture-date-ocr', {
       method: 'POST',
       body: JSON.stringify({
@@ -10470,23 +10470,23 @@ async function handleStockManufactureCameraCapture(event) {
     const selectedDate = String(payload?.manufacture_date || '').trim();
     const confidence = Number(payload?.confidence || 0);
     if (!selectedDate) {
-      setStockManufactureStatus('Não foi possível identificar a data. Revise foco/iluminação e tente novamente.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.notFound', 'Não foi possível identificar a data. Revise foco/iluminação e tente novamente.'), 'error');
       return;
     }
     if (confidence > 0 && confidence < 45) {
-      setStockManufactureStatus('Data detectada com baixa confiança. Confirme manualmente antes de salvar.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.lowConfidence', 'Data detectada com baixa confiança. Confirme manualmente antes de salvar.'), 'error');
     }
     setManufactureDateAutofillValue(dateField, selectedDate);
     if (dateField.value === selectedDate) {
-      setStockManufactureStatus('Data de fabricação identificada com sucesso.', 'success');
+      setStockManufactureStatus(tr('stock.ocr.success', 'Data de fabricação identificada com sucesso.'), 'success');
     } else {
-      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.manualKept', 'Data encontrada, mas o campo já foi ajustado manualmente.'), 'error');
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
     const msg = isTemporaryBootstrapUnavailable(error)
       ? 'Sistema inicializando — aguarde alguns segundos e tente novamente.'
-      : `Falha na captura automática: ${error.message || 'erro desconhecido'}`;
+      : `Falha na captura automática: ${error.message || tr('common.unknownError', 'erro desconhecido')}`;
     setStockManufactureStatus(msg, 'error');
   } finally {
     event.target.value = '';
@@ -11383,7 +11383,7 @@ async function regularizePendingPiece(piece) {
 
 async function reprintStockLabelByQr() {
   const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
-  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  if (!qrCode) return alert(tr('stock.reprint.codeRequired', 'Informe o código da etiqueta para reimpressão.'));
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
   const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
   if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
@@ -11396,12 +11396,12 @@ async function reprintStockLabelByQr() {
     });
     const lookup = await apiWithBootstrapRetry(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
-    if (!item?.id) throw new Error('Etiqueta Não encontrada.');
-    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (!item?.id) throw new Error(tr('stock.reprint.notFound', 'Etiqueta não encontrada.'));
+    const reason = prompt(tr('stock.reprint.reasonPrompt', 'Justificativa da reimpressão (Perdeu ou Rasgou):'), 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
-      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+      throw new Error(tr('stock.reprint.reasonInvalid', 'Justificativa inválida. Use "Perdeu" ou "Rasgou".'));
     }
     const result = await apiWithBootstrapRetry('/api/stock/labels/reprint', {
       method: 'POST',
@@ -11414,7 +11414,7 @@ async function reprintStockLabelByQr() {
     });
     const label = result?.label || null;
     if (!label?.qr_code_value || !label?.stock_item_id) {
-      throw new Error('Reimpressão concluída sem dados da etiqueta. Tente novamente.');
+      throw new Error(tr('stock.reprint.noData', 'Reimpressão concluída sem dados da etiqueta. Tente novamente.'));
     }
     printStockLabels([label], 1);
     alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(label?.reprint_count || 0)}.`);
@@ -11422,10 +11422,10 @@ async function reprintStockLabelByQr() {
     const rawMessage = String(error?.message || '').trim();
     const loweredMessage = rawMessage.toLowerCase();
     if (loweredMessage.includes('503') || loweredMessage.includes('service unavailable') || loweredMessage.includes('temporariamente indisponível')) {
-      alert('Serviço de reimpressão temporariamente indisponível (503). Tente novamente em instantes.');
+      alert(tr('stock.reprint.unavailable', 'Serviço de reimpressão temporariamente indisponível (503). Tente novamente em instantes.'));
       return;
     }
-    alert(rawMessage || 'Não foi possível reimprimir a etiqueta.');
+    alert(rawMessage || tr('stock.reprint.failed', 'Não foi possível reimprimir a etiqueta.'));
   }
 }
 
@@ -13157,7 +13157,7 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
   if (replacementDays <= 0) {
     if (hint) {
       hint.style.display = 'block';
-      hint.textContent = 'Sem prazo padrão de troca para este EPI. Defina manualmente ou use os atalhos.';
+      hint.textContent = tr('delivery.replacement.noDefault', 'Sem prazo padrão de troca para este EPI. Defina manualmente ou use os atalhos.');
     }
     if (presets) presets.style.display = 'flex';
     return;

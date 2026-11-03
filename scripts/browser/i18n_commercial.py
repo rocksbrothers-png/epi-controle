@@ -13,6 +13,8 @@ empresas no bootstrap). Para cada um dos 5 idiomas confere, na tela Comercial:
 6. Login: credenciais vazias mostram o aviso no idioma ativo, sem POST.
 7. Mensagem de acesso do novo usuário (e-mail/WhatsApp) no idioma ativo, sem o
    mojibake que existia no pt-BR, com nome/usuário/senha intactos.
+8. Leitor de QR em Entregas: status (modo USB, sessão sem QR válido) no idioma
+   ativo, sem gravação.
 
 python scripts/browser/i18n_commercial.py --output /tmp/i18n-commercial
 CHROMIUM_EXECUTABLE=/usr/bin/chromium seleciona um navegador já instalado.
@@ -192,8 +194,22 @@ def access_message(f):
         assert leaf(cat, 'user.accessMessage.' + key) in text, (channel, text)
 
 
+def delivery_qr_messages(f):
+    """Leitor de QR em Entregas: mensagens de status no idioma ativo, sem requisição nova."""
+    cat = catalog(f.locale)
+    f.view('entregas')
+    before = len(f.calls)
+    f.page.locator('#delivery-qr-reader').evaluate('(b)=>b.click()')
+    expect(f.page.locator('#delivery-qr-status')).to_have_text(leaf(cat, 'delivery.qr.usbMode'))
+    # Concluir sem nenhum QR lido: aviso local, sem chamada ao backend.
+    f.page.locator('#delivery-qr-finish').evaluate('(b)=>b.click()')
+    expect(f.page.locator('#delivery-qr-status')).to_have_text(leaf(cat, 'delivery.qr.noneValid'))
+    posts = [c for c in f.calls[before:] if c['method'] != 'GET']
+    assert posts == [], f'mensagens de status não podem gravar nada: {posts}'
+
+
 login_message.needs_session = False
-SCENARIOS = [commercial, login_message, access_message]
+SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages]
 
 
 def main():

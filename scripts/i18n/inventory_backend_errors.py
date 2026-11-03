@@ -243,14 +243,16 @@ def main():
                 fixed = re.sub(r'\{\w+\}', '', text)
                 logic = [f['where'] for f in FRONTEND_TEXT_LOGIC
                          if f['needle'] in text.lower() and any(f['endpoint'] in e for e in eps)]
-                if shape(text) in existing:
+                # Contrato primeiro: uma mensagem que alimenta comparação textual continua
+                # "preservar" mesmo que alguém crie um template para ela (o gate então reprova).
+                if logic:
+                    decision, reason, key = 'preservar', 'comparação textual no frontend decide comportamento', None
+                elif shape(text) in existing:
                     decision, reason, key = 'já coberto', 'template existente', existing[shape(text)]
                 elif shape(text) in other:
                     decision, reason, key = 'já coberto', 'chave de UI casada pelo motor', other[shape(text)]
                 elif shape(text) in shapes_seen:
                     decision, reason, key = 'traduzir', 'mesma forma de outra mensagem: reutiliza a chave', shapes_seen[shape(text)]
-                elif logic:
-                    decision, reason, key = 'preservar', 'comparação textual no frontend decide comportamento', None
                 elif not fixed.strip() or re.fullmatch(r'\{\w+\}', text.strip()):
                     decision, reason, key = 'preservar', 'mensagem é só um valor dinâmico (opaco)', None
                 elif item['vars'] and len(fixed) < 8:

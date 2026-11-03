@@ -237,3 +237,53 @@ idêntica.
 
 Achado de segurança fora do lote (P3, preexistente): `static/js/modules/my-company/ui/my-company-view.js:156`
 insere `error.message` sem escape em `innerHTML`. Esse módulo é da UBX e o ponto não foi alterado aqui.
+
+## 12. Lotes B (EPI em teste) e C (Estoque) — erros do backend
+
+| Indicador | B — EPI em teste | C — Estoque |
+|---|---|---|
+| Ocorrências inventariadas | 72 | 158 |
+| Mensagens únicas | 66 | 143 |
+| Traduzidas nesta etapa (5 idiomas) | 65 | 137 |
+| Já cobertas antes (Codex, lote A ou chave de UI) | 1 | 4 |
+| Preservadas por contrato | 0 | 2 (alcançáveis por `GET /api/stock/lookup-qr`, que alimentam `includes('não encontrado')`) |
+| Cobertura | **66/66 = 100%** | **141/143 = 98,6%** (143/143 resolvidas, contando as 2 preservadas) |
+
+**Variáveis com texto pt-BR montado no backend** (a frase é traduzida; o valor da variável continua em
+pt-BR):
+- `{actionlabel}`/`{get}` em “Ação … não permitida no status atual”;
+- `{label}` em datas de Estoque;
+- `{acao}` em permissões de Estoque;
+- `{get}` em “Reserva já …”.
+
+Resolvê-las exige o backend enviar o identificador estável junto do texto, o que seria um campo novo no
+contrato. **Isso não foi feito**; está proposto em §13.
+
+**Correção no gate (feita na auditoria interna):**
+- **Problema:** a regra “já coberto” era avaliada antes de “preservar por contrato”, então um template
+  indevido para uma mensagem preservada passava despercebido.
+- **Correção:** a regra de contrato vem primeiro.
+- **Prova de mutação:** criar um template para “QR não encontrado…” reprova o gate.
+
+**Cobertura global do backend** (`modules/**`, 25 módulos): **444 de 870** mensagens únicas cobertas
+(51,0%), mais 3 preservadas por contrato. Antes destes lotes eram cerca de 133/870 (15,3%).
+
+Pendentes por módulo (maiores primeiro): `data_migration` 83, `employees` 35, `users` 27,
+`deliveries` 26, `outsourced_companies` 25, `portal` 23, `units` 21, `ficha` 21, `epis` 19,
+`tenant` 17, `auth` 17, `payments` 16, `legal_entities` 14, `settings` 13, `feedback` 13, `companies` 13,
+`commercial` 12, `company_settings` 11, `devolutions` 10, `reports` 5, `safety_library` 1, `i18n` 1.
+
+Antes de traduzir o `portal`, a comparação `bloqueado`/`novo link` (`employee-portal.js:135`) precisa
+entrar em `FRONTEND_TEXT_LOGIC`. Mensagens fora de `modules/` (`app.py`, `server_postgres.py`, `core/`)
+não fazem parte deste inventário.
+
+## 13. Proposta (não implementada) — identificadores estáveis para variáveis
+
+Para traduzir também as variáveis que hoje chegam como texto pt-BR (status, ação, rótulo de campo), a
+opção compatível é **aditiva**:
+- o backend passa a enviar, além de `error`, um campo opcional `i18n: {key, params}` com códigos
+  canônicos (por exemplo `status: 'approved'`);
+- o motor já aceita esse formato (`describeApiError` lê `payload.i18n`);
+- clientes antigos ignoram o campo; `error`, `code` e o status HTTP ficam idênticos.
+
+Por introduzir um campo novo no contrato da API, a mudança **aguarda autorização**.

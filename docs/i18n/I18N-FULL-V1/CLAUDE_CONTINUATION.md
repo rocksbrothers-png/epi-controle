@@ -287,3 +287,37 @@ opção compatível é **aditiva**:
 - clientes antigos ignoram o campo; `error`, `code` e o status HTTP ficam idênticos.
 
 Por introduzir um campo novo no contrato da API, a mudança **aguarda autorização**.
+
+## 14. Auditoria independente dos lotes A–C e correções
+
+Auditoria feita por um agente separado, só leitura, sobre `08a55651`/`01a8f16`. **Nenhum P0/P1.**
+Verificou e aprovou:
+- contrato intacto: nenhuma mudança em `modules/`, `app.py`, `core/` ou `epi_backend/`;
+- todos os ramos de comparação textual;
+- ausência de colisão ou sombreamento indevido, com 1.431 amostras comparando o catálogo antigo e o novo;
+- origem única de “Linha {n} da cotação”;
+- ausência de XSS nas telas dos lotes;
+- risco de gitleaks;
+- paridade entre Corporate e SaaS;
+- análise F2, com linhas e textos conferidos.
+
+| ID | Sev. | Achado | Tratamento |
+|---|---|---|---|
+| F1 | P2 | O inventário não via mensagens repassadas a helpers (`_finite_money`, `_positive_quantity`), a mensagem de `ReceiptValidationError` (embrulhada em “Linha N — item (item #id): …”) nem concatenações; “152/152” estava superestimado | O inventário passou a detectar helpers que levantam com o próprio parâmetro, wrappers (`apiErrors.wrappers.w_*`, com `{cause}` traduzido pelo motor) e concatenação. Foram 10 templates novos em Compras e o wrapper do recebimento |
+| F2 | P2 | `{acao}`/`{label}` ficavam em pt-BR no meio da frase traduzida, e a §13 dizia que exigia backend | Expansão por domínio literal: quando **todas** as chamadas passam literais (6 valores de `acao`, 6 rótulos de `physical_date`), cada valor vira um template próprio (30 variantes). O genérico fica como fallback. A §13 vale só para valores dinâmicos |
+| F3 | P3 | A busca usava `'não encontrad'`, que preservava sem necessidade “Empresa não encontrada para a política de validade.” | O inventário usa o texto exato do frontend (`'não encontrado'`). Essa mensagem foi traduzida e só 1 continua preservada |
+| F4 | P2 | Lacunas do gate: cópia do pt-BR passava; comparações no frontend eram uma lista manual; o caso real sempre tinha `code`; `/tmp` fixo; teste tautológico | O gate agora: reprova cópia do pt-BR; varre `static/**/*.js` e exige que toda comparação textual sobre mensagem esteja em `FRONTEND_TEXT_LOGIC` (6 encontradas: lookup-qr, reimpressão ×3, portal ×2); roda com e sem `code`; usa `tmp_path`; e prova o detector com linhas sintéticas |
+| F5 | P3 | Código morto no script | Corrigido antes, em `dcb05ff0`/`09b74f8` |
+| F6 | P3 | fr “Administrateur de registre” × `role.registry_admin`; nb com “enhet” ambíguo | Alinhado ao nome oficial da função; frase nb reescrita |
+| F7 | P3 | O template genérico do Codex `{key} inválido.` gera frase mista | Mitigado: “Preço unitário inválido.” e as datas ganharam templates específicos, mais prioritários. O genérico continua para outros módulos |
+| F8 | P3 | `my-company-view.js:156` insere `innerHTML` sem escape (anterior a esta branch, módulo da UBX) | Não alterado; registrado |
+
+**Números corrigidos** (substituem os das §11–12). O denominador cresceu porque agora inclui helpers, wrappers,
+concatenações e as variantes de domínio literal:
+
+| Módulo | Únicas | Cobertas | Preservadas | Cobertura |
+|---|---|---|---|---|
+| Compras | 162 | 162 | 0 | 100% |
+| EPI em teste | 66 | 66 | 0 | 100% |
+| Estoque | 176 | 175 | 1 (`QR não encontrado…`, lookup-qr) | 99,4% (100% resolvidas) |
+| **Global (`modules/**`)** | 950 | 488 | 2 | **51,4%** |

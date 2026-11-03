@@ -9,7 +9,11 @@ a partir do código (AST) e exige, para os módulos já concluídos:
 2. uma instância real da mensagem (valores sintéticos nos placeholders) resolve,
    no motor, para essa chave em todos os idiomas, sem alterar o payload;
 3. mensagens preservadas por contrato (comparação textual no frontend) NÃO têm
-   template — traduzi-las quebraria o ramo que depende do texto.
+   template — traduzi-las quebraria o ramo que depende do texto;
+4. nenhuma tradução é cópia do pt-BR (en/es/fr/nb diferentes do texto de origem);
+5. toda comparação textual sobre mensagem no frontend (`includes`/`startsWith`/...)
+   está registrada em FRONTEND_TEXT_LOGIC do inventário — senão uma tradução
+   futura poderia quebrar um ramo que ninguém declarou.
 
 Uma mensagem nova num módulo concluído reprova o gate até ganhar tradução (ou
 ser classificada como preservada no inventário, com motivo).
@@ -35,12 +39,43 @@ def _inventory():
     return inv
 
 
-def _rows(module):
-    inv = _inventory()
-    out = Path('/tmp') / f'i18n-inventory-{module}.json'
-    subprocess.run(['python', str(ROOT / 'scripts/i18n/inventory_backend_errors.py'), '--modules', module,
-                    '--json', str(out)], check=True, capture_output=True, cwd=ROOT)
-    return inv, json.loads(out.read_text(encoding='utf-8'))['items']
+_CACHE = {}
+
+
+def _rows(module, tmp_dir):
+    if module not in _CACHE:
+        out = Path(tmp_dir) / f'i18n-inventory-{module}.json'
+        subprocess.run(['python', str(ROOT / 'scripts/i18n/inventory_backend_errors.py'), '--modules', module,
+                        '--json', str(out)], check=True, capture_output=True, cwd=ROOT)
+        _CACHE[module] = json.loads(out.read_text(encoding='utf-8'))['items']
+    return _inventory(), _CACHE[module]
+
+
+def _missing(rows, cats):
+    """Faltas de cobertura: chave ausente, placeholders divergentes ou cópia do pt-BR."""
+    faltas = []
+    for r in rows:
+        # Depois de aplicada, a tradução aparece no inventário como "já coberto";
+        # o gate vale para toda mensagem não preservada, nova ou já coberta.
+        if r['decision'] == 'preservar':
+            continue
+        try:
+            source = _leaf(cats['pt-BR'], r['catalog_entry'])
+        except (KeyError, TypeError):
+            faltas.append(f"pt-BR {r['catalog_entry']} ← {r['file']}:{r['line']} {r['template']!r}")
+            continue
+        pt_vars = sorted(set(re.findall(r'\{(\w+)\}', source)))
+        for loc in LOCALES[1:]:
+            try:
+                value = _leaf(cats[loc], r['catalog_entry'])
+            except (KeyError, TypeError):
+                faltas.append(f"{loc} {r['catalog_entry']} ← {r['file']}:{r['line']} {r['template']!r}")
+                continue
+            if sorted(set(re.findall(r'\{(\w+)\}', value))) != pt_vars:
+                faltas.append(f'{loc} {r["catalog_entry"]}: placeholders divergentes')
+            if value == source:
+                faltas.append(f'{loc} {r["catalog_entry"]}: cópia do pt-BR')
+    return faltas
 
 
 def _catalogs():
@@ -54,31 +89,16 @@ def _leaf(data, key):
 
 
 @pytest.mark.parametrize('module', DONE)
-def test_toda_mensagem_traduzivel_tem_chave_nos_5_idiomas(module):
-    _inv, rows = _rows(module)
+def test_toda_mensagem_traduzivel_tem_chave_nos_5_idiomas(module, tmp_path_factory):
+    _inv, rows = _rows(module, tmp_path_factory.mktemp('inv'))
     assert any(r['decision'] != 'preservar' for r in rows), 'inventário vazio: o gate não estaria verificando nada'
-    cats = _catalogs()
-    faltas = []
-    for r in rows:
-        # Depois de aplicada, a tradução aparece no inventário como "já coberto";
-        # o gate vale para toda mensagem não preservada, nova ou já coberta.
-        if r['decision'] == 'preservar':
-            continue
-        for loc in LOCALES:
-            try:
-                value = _leaf(cats[loc], r['catalog_entry'])
-            except (KeyError, TypeError):
-                faltas.append(f"{loc} {r['catalog_entry']} ← {r['file']}:{r['line']} {r['template']!r}")
-                continue
-            pt_vars = sorted(set(re.findall(r'\{(\w+)\}', _leaf(cats['pt-BR'], r['catalog_entry']))))
-            if sorted(set(re.findall(r'\{(\w+)\}', value))) != pt_vars:
-                faltas.append(f'{loc} {r["catalog_entry"]}: placeholders divergentes')
+    faltas = _missing(rows, _catalogs())
     assert not faltas, 'mensagens sem tradução:\n' + '\n'.join(faltas[:40])
 
 
 @pytest.mark.parametrize('module', DONE)
-def test_instancia_real_resolve_para_a_chave_e_preserva_payload(module):
-    _inv, rows = _rows(module)
+def test_instancia_real_resolve_para_a_chave_e_preserva_payload(module, tmp_path_factory):
+    _inv, rows = _rows(module, tmp_path_factory.mktemp('inv'))
     cases, preserved = [], []
     for r in rows:
         sample = re.sub(r'\{(\w+)\}', lambda m: f'X{m.group(1)}7', r['template'])
@@ -98,7 +118,7 @@ ctx.window=ctx;ctx.globalThis=ctx;vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(root,'static/i18n.js'),'utf8'),ctx);
 (async()=>{const errs=[];
  for(const l of ['pt-BR','en-GB','es-ES','fr-FR','nb-NO']){await ctx.EpiI18n.setLang(l,{persist:false,translate:false});
-  for(const c of cases){const payload={error:c.source,code:'X_CODE'};const before=JSON.stringify(payload);
+  for(const c of cases)for(const extra of [{code:'X_CODE'},{}]){const payload={error:c.source,...extra};const before=JSON.stringify(payload);
    const r=ctx.EpiI18n.describeApiError(payload);
    if(r.key!==c.key)errs.push(l+' '+c.key+' <- '+c.source+' => '+r.key);
    if(JSON.stringify(payload)!==before)errs.push('payload alterado '+c.key);
@@ -108,14 +128,46 @@ vm.runInContext(fs.readFileSync(path.join(root,'static/i18n.js'),'utf8'),ctx);
  if(errs.length){console.error(errs.slice(0,40).join('\n'));process.exit(1);}})();
 '''
     result = subprocess.run(['node', '-e', script, str(ROOT), json.dumps(cases), json.dumps(preserved)],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr[-4000:]
 
 
-def test_detector_acusa_mensagem_sem_traducao(tmp_path):
-    """Prova do gate: um template novo sem chave aparece como falta."""
-    inv = _inventory()
-    assert inv.key_for('Mensagem nova de teste {x}.').startswith('apiErrors.messages.m_')
+def test_detector_acusa_falta_copia_e_placeholder():
+    """Prova do gate com linhas sintéticas: cada defeito aparece como falta."""
     cats = _catalogs()
-    with pytest.raises(KeyError):
-        _leaf(cats['en-GB'], inv.key_for('Mensagem nova de teste {x}.'))
+    real = next(k for k in cats['pt-BR']['apiErrors']['messages'] if '{' in cats['pt-BR']['apiErrors']['messages'][k])
+    rows = [{'decision': 'traduzir', 'catalog_entry': 'apiErrors.messages.m_inexistente', 'file': 'x.py', 'line': 1,
+             'template': 'Mensagem nova.'},
+            {'decision': 'já coberto', 'catalog_entry': f'apiErrors.messages.{real}', 'file': 'x.py', 'line': 2,
+             'template': cats['pt-BR']['apiErrors']['messages'][real]}]
+    assert any('m_inexistente' in f for f in _missing(rows, cats))
+    copia = json.loads(json.dumps(cats))
+    copia['en-GB']['apiErrors']['messages'][real] = cats['pt-BR']['apiErrors']['messages'][real]
+    assert any('cópia do pt-BR' in f for f in _missing(rows[1:], copia))
+    copia['fr-FR']['apiErrors']['messages'][real] = 'Texte sans variable.'
+    assert any('placeholders divergentes' in f for f in _missing(rows[1:], copia))
+
+
+COMPARISON = re.compile(r"""(?:message|msg|Message|error|reason)\w*(?:\(\))?(?:\?\.)?\s*\.?(?:toLowerCase\(\)\s*\.)?"""
+                        r"""(?:includes|startsWith|endsWith|indexOf)\(\s*['"]([^'"]+)['"]""")
+
+
+def test_toda_comparacao_textual_do_frontend_esta_declarada():
+    """Uma comparação com o texto do erro no frontend precisa estar em FRONTEND_TEXT_LOGIC:
+    assim a mensagem que a alimenta é preservada e não ganha tradução por engano."""
+    needles = _inventory().FRONTEND_TEXT_LOGIC_NEEDLES
+    achados = []
+    for path in sorted((ROOT / 'static').rglob('*.js')):
+        if '/test/' in str(path) or path.name == 'i18n.js':
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8', errors='ignore').splitlines(), 1):
+            for needle in COMPARISON.findall(line):
+                if re.search(r'[A-Za-zÀ-ÿ0-9]', needle) and needle.lower() not in needles:
+                    achados.append(f'{path.relative_to(ROOT)}:{number}: {needle!r}')
+    assert not achados, 'comparação textual não declarada em FRONTEND_TEXT_LOGIC:\n' + '\n'.join(achados)
+
+
+def test_scanner_de_comparacao_pega_o_padrao():
+    assert COMPARISON.findall("if (loweredMessage.includes('não encontrado')) {") == ['não encontrado']
+    assert COMPARISON.findall("msg.toLowerCase().includes('bloqueado')") == ['bloqueado']
+    assert COMPARISON.findall("if (error?.message?.startsWith('Prazo')) {") == ['Prazo']

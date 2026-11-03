@@ -35,11 +35,21 @@ STATUS_BY_EXCEPTION = {
 # Comparações textuais do frontend que decidem comportamento (inventário manual, conferido por grep):
 # a mensagem que as alimenta precisa continuar idêntica para o ramo continuar funcionando.
 FRONTEND_TEXT_LOGIC = [
-    {'endpoint': '/api/stock/lookup-qr', 'needle': 'não encontrad',
+    {'endpoint': '/api/stock/lookup-qr', 'needle': 'não encontrado',
      'where': 'static/app.js handleDeliveryQrScan: loweredMessage.includes("não encontrado")'},
     {'endpoint': '/api/stock/labels/reprint', 'needle': 'temporariamente indisponível',
      'where': 'static/app.js reprintStockLabelByQr: loweredMessage.includes("temporariamente indisponível")'},
+    {'endpoint': '/api/stock/labels/reprint', 'needle': 'service unavailable',
+     'where': 'static/app.js reprintStockLabelByQr: loweredMessage.includes("service unavailable")'},
+    {'endpoint': '/api/stock/labels/reprint', 'needle': '503',
+     'where': 'static/app.js reprintStockLabelByQr: loweredMessage.includes("503")'},
+    {'endpoint': '/api/employee-access', 'needle': 'bloqueado',
+     'where': 'static/js/views/employee-portal.js: msg.includes("bloqueado")'},
+    {'endpoint': '/api/employee-access', 'needle': 'novo link',
+     'where': 'static/js/views/employee-portal.js: msg.includes("novo link")'},
 ]
+# O gate confere que toda comparação textual sobre mensagem no frontend está nesta lista.
+FRONTEND_TEXT_LOGIC_NEEDLES = {f['needle'] for f in FRONTEND_TEXT_LOGIC}
 
 
 # Prefixos montados no backend com formato fixo e uma única origem (conferido no código):
@@ -56,8 +66,20 @@ def shape(text):
     return re.sub(r'\{\w+\}', '{}', text)
 
 
+# Exceções que embrulham a mensagem num prefixo fixo. O wrapper vai para
+# apiErrors.wrappers (o motor traduz {cause} recursivamente) e a mensagem interna
+# é inventariada como mensagem própria.
+WRAPPERS = {
+    'ReceiptValidationError': {  # modules/purchases/service.py: f"Linha {index} — {item_name} (item #{item_id}): {message}"
+        'message_index': 2, 'template': 'Linha {line} — {item} (item #{itemid}): {cause}', 'status': 400,
+        'payload': "{'ok': False, 'error': <mensagem>, 'validation': {code, line_index, item_id, item_name, field}}",
+    },
+}
+
+
 def key_for(text):
-    return 'apiErrors.messages.m_' + hashlib.sha256(text.encode()).hexdigest()[:12]
+    digest = hashlib.sha256(text.encode()).hexdigest()[:12]
+    return ('apiErrors.wrappers.w_' if '{cause}' in text else 'apiErrors.messages.m_') + digest
 
 
 def flatten(node, prefix=''):
@@ -81,11 +103,24 @@ def var_name(expr, used):
     return name
 
 
-def template_of(node):
+def template_of(node, used=None):
+    used = set() if used is None else used
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value, []
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        # 'Texto fixo: ' + valor  →  'Texto fixo: {valor}'
+        parts, names = [], []
+        for side in (node.left, node.right):
+            text, side_names = template_of(side, used)
+            if text is None:
+                name = var_name(side, used)
+                text, side_names = '{' + name + '}', [name]
+            parts.append(text)
+            names += side_names
+        joined = ''.join(parts)
+        return (joined, names) if re.sub(r'\{\w+\}', '', joined).strip() else (None, [])
     if isinstance(node, ast.JoinedStr):
-        parts, used, names = [], set(), []
+        parts, names = [], []
         for v in node.values:
             if isinstance(v, ast.Constant):
                 parts.append(str(v.value))
@@ -97,9 +132,31 @@ def template_of(node):
     return None, []
 
 
+def find_forwarders(sources):
+    """Funções que levantam a exceção com o próprio parâmetro como mensagem
+    (ex.: _finite_money(value, message) → raise ValueError(message))."""
+    out = {}
+    for path in sources:
+        try:
+            tree = ast.parse(path.read_text(encoding='utf-8'))
+        except SyntaxError:
+            continue
+        for fn in ast.walk(tree):
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            params = [a.arg for a in fn.args.args]
+            for node in ast.walk(fn):
+                if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call) and node.exc.args \
+                        and isinstance(node.exc.args[0], ast.Name) and node.exc.args[0].id in params:
+                    exc = node.exc.func.id if isinstance(node.exc.func, ast.Name) else getattr(node.exc.func, 'attr', '?')
+                    out[fn.name] = (params.index(node.exc.args[0].id), node.exc.args[0].id, exc)
+    return out
+
+
 class Collector(ast.NodeVisitor):
-    def __init__(self, path, source):
+    def __init__(self, path, source, forwarders=None):
         self.path, self.source, self.stack, self.items = path, source, [], []
+        self.forwarders = forwarders or {}
 
     def visit_FunctionDef(self, node):
         self.stack.append(node.name)
@@ -109,7 +166,7 @@ class Collector(ast.NodeVisitor):
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def add(self, node, text, names, kind, status, payload):
-        if not text or not PT.search(text):
+        if not text or (not PT.search(text) and not kind.startswith('wrapper ')):
             return
         self.items.append({'file': str(self.path.relative_to(ROOT)), 'line': node.lineno,
                            'function': self.stack[-1] if self.stack else '<module>', 'kind': kind,
@@ -119,6 +176,14 @@ class Collector(ast.NodeVisitor):
         exc = node.exc
         if isinstance(exc, ast.Call) and exc.args:
             name = exc.func.id if isinstance(exc.func, ast.Name) else getattr(exc.func, 'attr', '?')
+            if name in WRAPPERS:
+                w = WRAPPERS[name]
+                self.add(node, w['template'], ['line', 'item', 'itemid', 'cause'], f'wrapper {name}', w['status'], w['payload'])
+                if len(exc.args) > w['message_index']:
+                    text, names = template_of(exc.args[w['message_index']])
+                    self.add(node, text, names, f'causa de {name}', w['status'], w['payload'])
+                self.generic_visit(node)
+                return
             text, names = template_of(exc.args[0])
             status = STATUS_BY_EXCEPTION.get(name)
             payload = "{'error': <mensagem>}" if status in (400, 403) else 'tratado pela rota'
@@ -127,6 +192,14 @@ class Collector(ast.NodeVisitor):
 
     def visit_Call(self, node):
         fn = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, 'attr', '')
+        if fn in self.forwarders:
+            index, param, exc = self.forwarders[fn]
+            arg = node.args[index] if len(node.args) > index else next(
+                (k.value for k in node.keywords if k.arg == param), None)
+            if arg is not None:
+                text, names = template_of(arg)
+                status = STATUS_BY_EXCEPTION.get(exc, 'depende da rota')
+                self.add(node, text, names, f'via {fn}() → raise {exc}', status, "{'error': <mensagem>}")
         if fn == 'send_json' and len(node.args) >= 3 and isinstance(node.args[2], ast.Dict):
             status = node.args[1].value if isinstance(node.args[1], ast.Constant) else '?'
             self._dict(node.args[2], node, f'send_json {status}', status)
@@ -157,6 +230,48 @@ class Collector(ast.NodeVisitor):
             else:
                 text, names = template_of(v)
                 self.add(node, text, names, kind, status, "{'error': <mensagem>}")
+
+
+class LiteralDomains:
+    """Valores possíveis de um parâmetro quando TODAS as chamadas passam literais
+    (ou usam o default literal). Ex.: acao='editar estoque mínimo' em stock/routes.py,
+    physical_date(..., 'Validade física'). Se uma chamada passar valor dinâmico, o
+    domínio é desconhecido e o template não é expandido."""
+
+    def __init__(self, sources):
+        self.defs, self.calls = {}, {}
+        for path in sources:
+            try:
+                tree = ast.parse(path.read_text(encoding='utf-8'))
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    args = node.args
+                    params = [a.arg for a in args.args] + [a.arg for a in args.kwonlyargs]
+                    defaults = dict(zip([a.arg for a in args.args][len(args.args) - len(args.defaults):], args.defaults))
+                    defaults.update({a.arg: d for a, d in zip(args.kwonlyargs, args.kw_defaults) if d is not None})
+                    self.defs.setdefault(node.name, (params, defaults))
+                elif isinstance(node, ast.Call):
+                    callee = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, 'attr', None)
+                    if callee:
+                        self.calls.setdefault(callee, []).append(node)
+
+    def domain(self, function, param):
+        if function not in self.defs or param not in self.defs[function][0]:
+            return None
+        params, defaults = self.defs[function]
+        index, values = params.index(param), set()
+        for call in self.calls.get(function, []):
+            arg = next((k.value for k in call.keywords if k.arg == param), None)
+            if arg is None and len(call.args) > index:
+                arg = call.args[index]
+            if arg is None:
+                arg = defaults.get(param)
+            if not (isinstance(arg, ast.Constant) and isinstance(arg.value, str)):
+                return None
+            values.add(arg.value)
+        return sorted(values) or None
 
 
 class CallGraph:
@@ -225,14 +340,27 @@ def main():
              and re.search(r'error|invalid|failed|denied|notfound|required|mismatch|unavailable|forbidden', k, re.IGNORECASE)}
     tests_src = {p.name: p.read_text(encoding='utf-8', errors='ignore') for p in (ROOT / 'tests').glob('test_*.py')}
     graph = CallGraph()
+    every_source = sorted((ROOT / 'modules').rglob('*.py'))
+    forwarders = find_forwarders(every_source)
+    domains = LiteralDomains(every_source)
     rows, shapes_seen = [], {}
     for module in args.modules:
         mdir = ROOT / 'modules' / module
         for path in sorted(mdir.glob('*.py')):
             src = path.read_text(encoding='utf-8')
-            c = Collector(path, src)
+            c = Collector(path, src, forwarders)
             c.visit(ast.parse(src))
+            expanded = []
             for item in c.items:
+                expanded.append(item)
+                for var in item['vars']:
+                    values = domains.domain(item['function'], var)
+                    if values:
+                        for value in values:
+                            expanded.append(dict(item, template=item['template'].replace('{' + var + '}', value),
+                                                 vars=[v for v in item['vars'] if v != var],
+                                                 literal_domain=f'{var}={value!r} (todas as chamadas de {item["function"]}() passam literais)'))
+            for item in expanded:
                 for old, new in EXPANSIONS.get(module, []):
                     if item['template'].startswith(old):
                         item['template'] = new + item['template'][len(old):]

@@ -15,6 +15,9 @@ empresas no bootstrap). Para cada um dos 5 idiomas confere, na tela Comercial:
    mojibake que existia no pt-BR, com nome/usuário/senha intactos.
 8. Leitor de QR em Entregas: status (modo USB, sessão sem QR válido) no idioma
    ativo, sem gravação.
+9. Erros do backend (Compras) pelo api() real: mensagem traduzida na
+   apresentação; status, code e payload intactos; mensagem preservada por
+   contrato continua idêntica.
 
 python scripts/browser/i18n_commercial.py --output /tmp/i18n-commercial
 CHROMIUM_EXECUTABLE=/usr/bin/chromium seleciona um navegador já instalado.
@@ -220,8 +223,40 @@ def ppe_tests_view(f):
     assert writes == [], f'abrir a tela não pode gravar: {writes}'
 
 
+BACKEND_ERRORS = [
+    # (texto pt-BR exato do backend, chave do catálogo ou None se preservado por contrato)
+    ('A requisição precisa ter pelo menos um item.', 'apiErrors.messages.m_' + __import__('hashlib').sha256(
+        'A requisição precisa ter pelo menos um item.'.encode()).hexdigest()[:12]),
+    ('Linha 3 da cotação: assinatura do arquivo inválida.', 'apiErrors.messages.m_' + __import__('hashlib').sha256(
+        'Linha {line} da cotação: assinatura do arquivo inválida.'.encode()).hexdigest()[:12]),
+]
+
+
+def backend_error_presentation(f):
+    """Erro 400 de Compras pelo api() real: só a apresentação muda; status, code e payload ficam."""
+    cat = catalog(f.locale)
+    for source, key in BACKEND_ERRORS:
+        body = {'error': source, 'code': 'X_PROBE', 'validation': {'line': 3}}
+        def reply(route, _body=body):
+            route.fulfill(status=400, json=_body)
+        f.page.route('**/api/__i18n_probe', lambda route: reply(route))
+        got = f.page.evaluate('''async()=>{try{await api('/api/__i18n_probe',{method:'POST',body:'{}'});return null}
+          catch(e){return {message:e.message,status:e.status,code:e.code,payload:e.payload}}}''')
+        f.page.unroute('**/api/__i18n_probe')
+        assert got and got['status'] == 400 and got['code'] == 'X_PROBE', got
+        assert got['payload'] == body, ('payload alterado', got['payload'])
+        expected = leaf(cat, key).replace('{line}', '3')
+        assert got['message'] == expected, (f.locale, got['message'], expected)
+    # Preservada por contrato (comparação textual em handleDeliveryQrScan): continua idêntica.
+    kept = 'QR não encontrado com correspondência exata no estoque da unidade.'
+    f.page.route('**/api/__i18n_probe', lambda route: route.fulfill(status=400, json={'error': kept}))
+    got = f.page.evaluate('''async()=>{try{await api('/api/__i18n_probe');return null}catch(e){return e.message}}''')
+    f.page.unroute('**/api/__i18n_probe')
+    assert got == kept, (f.locale, got)
+
+
 login_message.needs_session = False
-SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages, ppe_tests_view]
+SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages, ppe_tests_view, backend_error_presentation]
 
 
 def main():

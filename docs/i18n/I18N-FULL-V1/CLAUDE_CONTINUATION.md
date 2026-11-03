@@ -182,3 +182,58 @@ byte e dígitos iguais; conflitos só com os arquivos gerados do PR UBX; Chromiu
   (`leve`, `grave`, `convidado`…) e não foram tocados; nenhuma chamada `post`/`put` recebe texto traduzido.
 - `openForm` entrou no gate estático. Chromium: `ppe_tests_view` abre a tela nos 5 idiomas sem erro nem gravação.
 - Restante do bloco (P2): tabelas de reclamações/elogios/ranking, chips de status, CSV e `scaleFields`.
+
+## 11. Erros do backend — método e lote A (Compras)
+
+**Método (sem mudar contrato).** O backend não é alterado. O `api-client` (`createApiError`) passa o
+payload do erro por `EpiI18n.describeApiError`, que casa o texto pt-BR recebido com
+`apiErrors.messages.m_<sha256[:12]>` (convenção do Codex).
+- Só `error.message` muda.
+- `status`, `code` e `payload` ficam idênticos, e o servidor continua enviando o texto pt-BR.
+- Sem template, o texto original aparece intacto; sem tradução num idioma, aparece o pt-BR do catálogo.
+
+**Inventário reprodutível:** `scripts/i18n/inventory_backend_errors.py` (AST, sem executar nada) gera
+`backend-errors-inventory.json`. Para cada mensagem, registra:
+- arquivo, linha, função, tipo de saída, status HTTP e formato do payload;
+- endpoint(s), por grafo de chamadas: `router.register` → handler → serviço, incluindo handlers de
+  fábrica;
+- testes Python que citam o texto;
+- comparações textuais no frontend;
+- chave, idiomas e fallback.
+
+**Regras de preservação:**
+- **Comparação textual no frontend decide comportamento.** Inventário manual por grep:
+  - `handleDeliveryQrScan` usa `includes('não encontrado')` (`/api/stock/lookup-qr`);
+  - a reimpressão usa `includes('temporariamente indisponível')`;
+  - o portal usa `bloqueado`/`novo link` (fora destes lotes).
+- **Mensagem que é só um valor dinâmico.**
+- **Texto fixo menor que 8 caracteres**, que o motor recusa.
+- **Variáveis adjacentes.**
+- **Formas duplicadas** reutilizam a mesma chave. Formas já cobertas por template do Codex, inclusive os
+  wrappers com `{cause}`, não ganham duplicata.
+- **Prefixo `Linha {n} da cotação`** (`service.py`, origem única) é expandido no template para traduzir
+  a frase inteira.
+
+**Gate:** `tests/test_i18n_backend_errors_coverage.py` regenera o inventário e exige, nos módulos
+concluídos:
+- chave nos 5 idiomas, com os mesmos placeholders;
+- instância real resolvendo para a chave sem alterar o payload;
+- mensagens preservadas sem template.
+
+A prova de mutação está feita: apagar uma chave do en-GB reprova o gate. O teste do motor do Codex
+(`test_api_messages_preserve_specific_details_payload_and_live_field_labels`) percorre todos os templates
+nos 5 idiomas e acusa colisão entre templates. O Chromium `backend_error_presentation` usa o `api()` real
+com um 400 interceptado e verifica mensagem traduzida, status/code/payload intactos e mensagem preservada
+idêntica.
+
+| Lote A — Compras | Valor |
+|---|---|
+| Ocorrências inventariadas | 200 |
+| Mensagens únicas | 152 |
+| Cobertas com validação | 152 (104 novas, 47 já existentes, 1 reutilizando forma) |
+| Cobertura | **152/152 = 100%** |
+| Preservadas por contrato | 0 (nenhuma mensagem de Compras alimenta comparação textual) |
+| Variáveis com texto pt-BR do backend | `{status}` em “PO {number} vinculada ({status})” e `{get}` de status; o valor da variável continua em pt-BR |
+
+Achado de segurança fora do lote (P3, preexistente): `static/js/modules/my-company/ui/my-company-view.js:156`
+insere `error.message` sem escape em `innerHTML`. Esse módulo é da UBX e o ponto não foi alterado aqui.

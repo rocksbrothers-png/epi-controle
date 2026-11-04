@@ -4471,7 +4471,19 @@
       "m_bea51ee84751": "Somente Administrador Master pode consultar divergências do shadow mode.",
       "m_a7626fd1c33f": "Somente Administrador Master pode consultar a saúde do shadow log.",
       "m_7751a5067223": "Somente Administrador Master pode consultar diagnósticos do motor de regras.",
-      "m_8c530be85d77": "Somente Administrador Master pode salvar o framework de hardening."
+      "m_8c530be85d77": "Somente Administrador Master pode salvar o framework de hardening.",
+      "m_6ad1a58b10e9": "Campos não permitidos no checkout público: {join}. Empresa, tenant e preço são determinados pelo servidor.",
+      "m_74fa98139703": "Perfil sem empresa vinculada para consultar solicitações de relatório.",
+      "m_7e4148661c79": "Selecione uma unidade para solicitar o relatório.",
+      "m_d7df859a4fe8": "Perfil sem empresa vinculada para atualizar solicitações de relatório.",
+      "m_e19f5e1ac1db": "checkout_token é obrigatório.",
+      "m_45b7c84800da": "Checkout inválido ou expirado.",
+      "m_eb956956e180": "Checkout já utilizado.",
+      "m_300b07ae8194": "Página de cadastro indisponível.",
+      "m_310c95cb0540": "E-mail do responsável inválido.",
+      "m_f5bc649edce1": "Nome do responsável é obrigatório.",
+      "m_18570ea66fe3": "Já existe um usuário cadastrado com este e-mail.",
+      "m_597384bc7bae": "Servidor de e-mail não configurado (SMTP_HOST/SMTP_USER)."
     },
     "fields": {
       "title": "Título",

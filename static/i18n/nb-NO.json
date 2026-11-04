@@ -4471,7 +4471,19 @@
       "m_bea51ee84751": "Bare masteradministrator kan se avvik i shadow mode.",
       "m_a7626fd1c33f": "Bare masteradministrator kan se helsetilstanden til shadow-loggen.",
       "m_7751a5067223": "Bare masteradministrator kan se diagnostikk for regelmotoren.",
-      "m_8c530be85d77": "Bare masteradministrator kan lagre herdingsrammeverket."
+      "m_8c530be85d77": "Bare masteradministrator kan lagre herdingsrammeverket.",
+      "m_6ad1a58b10e9": "Felt som ikke er tillatt i den offentlige betalingen: {join}. Virksomhet, tenant og pris bestemmes av serveren.",
+      "m_74fa98139703": "Profilen har ingen tilknyttet virksomhet for å se rapportforespørsler.",
+      "m_7e4148661c79": "Velg en enhet for å be om rapporten.",
+      "m_d7df859a4fe8": "Profilen har ingen tilknyttet virksomhet for å oppdatere rapportforespørsler.",
+      "m_e19f5e1ac1db": "checkout_token er påkrevd.",
+      "m_45b7c84800da": "Ugyldig eller utløpt betaling.",
+      "m_eb956956e180": "Betalingen er allerede brukt.",
+      "m_300b07ae8194": "Registreringssiden er utilgjengelig.",
+      "m_310c95cb0540": "Ugyldig e-post for den ansvarlige.",
+      "m_f5bc649edce1": "Navnet på den ansvarlige er påkrevd.",
+      "m_18570ea66fe3": "Det finnes allerede en bruker registrert med denne e-posten.",
+      "m_597384bc7bae": "E-postserveren er ikke konfigurert (SMTP_HOST/SMTP_USER)."
     },
     "fields": {
       "title": "Tittel",

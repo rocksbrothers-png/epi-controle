@@ -4471,7 +4471,19 @@
       "m_bea51ee84751": "Only the Master Administrator can view shadow mode discrepancies.",
       "m_a7626fd1c33f": "Only the Master Administrator can view the shadow log health.",
       "m_7751a5067223": "Only the Master Administrator can view rules engine diagnostics.",
-      "m_8c530be85d77": "Only the Master Administrator can save the hardening framework."
+      "m_8c530be85d77": "Only the Master Administrator can save the hardening framework.",
+      "m_6ad1a58b10e9": "Fields not allowed at public checkout: {join}. Company, tenant and price are set by the server.",
+      "m_74fa98139703": "Profile has no linked company to view report requests.",
+      "m_7e4148661c79": "Select a unit to request the report.",
+      "m_d7df859a4fe8": "Profile has no linked company to update report requests.",
+      "m_e19f5e1ac1db": "checkout_token is required.",
+      "m_45b7c84800da": "Invalid or expired checkout.",
+      "m_eb956956e180": "Checkout already used.",
+      "m_300b07ae8194": "Sign-up page unavailable.",
+      "m_310c95cb0540": "Invalid email for the person in charge.",
+      "m_f5bc649edce1": "The name of the person in charge is required.",
+      "m_18570ea66fe3": "A user with this email is already registered.",
+      "m_597384bc7bae": "Email server not configured (SMTP_HOST/SMTP_USER)."
     },
     "fields": {
       "title": "Title",

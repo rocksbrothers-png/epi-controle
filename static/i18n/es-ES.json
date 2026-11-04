@@ -4471,7 +4471,19 @@
       "m_bea51ee84751": "Solo el Administrador Master puede consultar las divergencias del shadow mode.",
       "m_a7626fd1c33f": "Solo el Administrador Master puede consultar el estado del shadow log.",
       "m_7751a5067223": "Solo el Administrador Master puede consultar los diagnósticos del motor de reglas.",
-      "m_8c530be85d77": "Solo el Administrador Master puede guardar el framework de hardening."
+      "m_8c530be85d77": "Solo el Administrador Master puede guardar el framework de hardening.",
+      "m_6ad1a58b10e9": "Campos no permitidos en el pago público: {join}. La empresa, el tenant y el precio los determina el servidor.",
+      "m_74fa98139703": "Perfil sin empresa vinculada para consultar solicitudes de informe.",
+      "m_7e4148661c79": "Seleccione una unidad para solicitar el informe.",
+      "m_d7df859a4fe8": "Perfil sin empresa vinculada para actualizar solicitudes de informe.",
+      "m_e19f5e1ac1db": "checkout_token es obligatorio.",
+      "m_45b7c84800da": "Pago no válido o caducado.",
+      "m_eb956956e180": "Pago ya utilizado.",
+      "m_300b07ae8194": "Página de registro no disponible.",
+      "m_310c95cb0540": "Correo electrónico del responsable no válido.",
+      "m_f5bc649edce1": "El nombre del responsable es obligatorio.",
+      "m_18570ea66fe3": "Ya existe un usuario registrado con este correo electrónico.",
+      "m_597384bc7bae": "Servidor de correo electrónico no configurado (SMTP_HOST/SMTP_USER)."
     },
     "fields": {
       "title": "Título",

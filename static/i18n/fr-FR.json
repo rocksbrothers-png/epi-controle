@@ -4471,7 +4471,19 @@
       "m_bea51ee84751": "Seul l'Administrateur Principal peut consulter les écarts du shadow mode.",
       "m_a7626fd1c33f": "Seul l'Administrateur Principal peut consulter l'état du shadow log.",
       "m_7751a5067223": "Seul l'Administrateur Principal peut consulter les diagnostics du moteur de règles.",
-      "m_8c530be85d77": "Seul l'Administrateur Principal peut enregistrer le framework de durcissement."
+      "m_8c530be85d77": "Seul l'Administrateur Principal peut enregistrer le framework de durcissement.",
+      "m_6ad1a58b10e9": "Champs non autorisés au paiement public : {join}. L'entreprise, le tenant et le prix sont déterminés par le serveur.",
+      "m_74fa98139703": "Profil sans entreprise liée pour consulter les demandes de rapport.",
+      "m_7e4148661c79": "Sélectionnez une unité pour demander le rapport.",
+      "m_d7df859a4fe8": "Profil sans entreprise liée pour mettre à jour les demandes de rapport.",
+      "m_e19f5e1ac1db": "checkout_token est obligatoire.",
+      "m_45b7c84800da": "Paiement invalide ou expiré.",
+      "m_eb956956e180": "Paiement déjà utilisé.",
+      "m_300b07ae8194": "Page d'inscription indisponible.",
+      "m_310c95cb0540": "E-mail du responsable invalide.",
+      "m_f5bc649edce1": "Le nom du responsable est obligatoire.",
+      "m_18570ea66fe3": "Un utilisateur avec cet e-mail est déjà enregistré.",
+      "m_597384bc7bae": "Serveur e-mail non configuré (SMTP_HOST/SMTP_USER)."
     },
     "fields": {
       "title": "Titre",

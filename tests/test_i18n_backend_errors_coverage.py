@@ -34,7 +34,10 @@ DONE = ['purchases', 'ppe_tests', 'stock', 'data_migration', 'employees', 'units
         'legal_entities', 'feedback', 'companies', 'commercial', 'company_settings', 'devolutions',
         'safety_library', 'reports', 'i18n',
         # Camada compartilhada (fora de modules/): autenticação, arquivamento, HTTP, compras comuns.
-        'core', 'epi_backend', 'app']
+        'core', 'epi_backend', 'app',
+        # Só existe no SaaS (cadastro público); no Corporate é ignorado.
+        'onboarding']
+DONE = [m for m in DONE if m in ('core', 'epi_backend', 'app') or (ROOT / 'modules' / m).is_dir()]
 
 
 def _inventory():

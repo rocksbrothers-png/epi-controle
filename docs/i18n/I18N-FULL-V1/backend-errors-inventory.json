@@ -8,17 +8,17 @@
    "preservar": 0
   },
   "ppe_tests": {
-   "ocorrencias": 72,
-   "unicas": 66,
+   "ocorrencias": 87,
+   "unicas": 81,
    "traduzir": 0,
-   "já coberto": 66,
+   "já coberto": 81,
    "preservar": 0
   },
   "stock": {
-   "ocorrencias": 199,
-   "unicas": 177,
+   "ocorrencias": 207,
+   "unicas": 185,
    "traduzir": 0,
-   "já coberto": 176,
+   "já coberto": 184,
    "preservar": 1
   },
   "data_migration": {
@@ -43,10 +43,10 @@
    "preservar": 0
   },
   "ficha": {
-   "ocorrencias": 37,
-   "unicas": 31,
+   "ocorrencias": 28,
+   "unicas": 22,
    "traduzir": 0,
-   "já coberto": 31,
+   "já coberto": 22,
    "preservar": 0
   },
   "users": {
@@ -57,10 +57,10 @@
    "preservar": 0
   },
   "deliveries": {
-   "ocorrencias": 29,
-   "unicas": 26,
+   "ocorrencias": 33,
+   "unicas": 30,
    "traduzir": 0,
-   "já coberto": 26,
+   "já coberto": 30,
    "preservar": 0
   },
   "outsourced_companies": {
@@ -78,10 +78,10 @@
    "preservar": 2
   },
   "payments": {
-   "ocorrencias": 26,
-   "unicas": 22,
+   "ocorrencias": 21,
+   "unicas": 19,
    "traduzir": 0,
-   "já coberto": 22,
+   "já coberto": 19,
    "preservar": 0
   },
   "epis": {
@@ -155,10 +155,10 @@
    "preservar": 0
   },
   "safety_library": {
-   "ocorrencias": 77,
-   "unicas": 70,
+   "ocorrencias": 72,
+   "unicas": 65,
    "traduzir": 0,
-   "já coberto": 70,
+   "já coberto": 65,
    "preservar": 0
   },
   "reports": {
@@ -176,10 +176,10 @@
    "preservar": 0
   },
   "core": {
-   "ocorrencias": 89,
-   "unicas": 82,
+   "ocorrencias": 92,
+   "unicas": 85,
    "traduzir": 0,
-   "já coberto": 56,
+   "já coberto": 59,
    "preservar": 26
   },
   "epi_backend": {
@@ -6767,6 +6767,666 @@
   },
   {
    "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"adicionar participante\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='adicionar participante' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_56ef5b3991a2",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"análise técnica\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='análise técnica' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_36fdeaffc0e0",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"concluir teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='concluir teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_42b91430e00b",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"definir plano de teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='definir plano de teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_bc766802edc7",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"editar cadastro provisório\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='editar cadastro provisório' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_f81d7ca89f46",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"entregar EPI de teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='entregar EPI de teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_10e118630af7",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"homologar\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='homologar' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_05befbd3934c",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"iniciar teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='iniciar teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_64794f9829cd",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"movimentar EPI de teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='movimentar EPI de teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_001c86729716",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"registrar avaliação\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='registrar avaliação' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_d614adc71360",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"registrar decisão\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='registrar decisão' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_ce517bdc0995",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"registrar ocorrência\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='registrar ocorrência' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_6d1dbcf29c25",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"reprovar\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='reprovar' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_22583c7c3b37",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"retomar teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='retomar teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_ffd0ff56209d",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
+   "line": 163,
+   "function": "_require_status",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Ação \"suspender teste\" não permitida no status atual ({get}).",
+   "vars": [
+    "get"
+   ],
+   "literal_domain": "actionlabel='suspender teste' (todas as chamadas de _require_status() passam literais)",
+   "module": "ppe_tests",
+   "endpoints": [
+    "POST /api/ppe-tests/<id>/complete",
+    "POST /api/ppe-tests/<id>/decision",
+    "POST /api/ppe-tests/<id>/distributions",
+    "POST /api/ppe-tests/<id>/evaluations",
+    "POST /api/ppe-tests/<id>/homologate",
+    "POST /api/ppe-tests/<id>/incidents",
+    "POST /api/ppe-tests/<id>/participants",
+    "POST /api/ppe-tests/<id>/plan",
+    "POST /api/ppe-tests/<id>/reject",
+    "POST /api/ppe-tests/<id>/resume",
+    "POST /api/ppe-tests/<id>/start",
+    "POST /api/ppe-tests/<id>/suspend",
+    "POST /api/ppe-tests/<id>/technical-review",
+    "POST /api/ppe-tests/<id>/update"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_1c3a908d60c4",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/ppe_tests/service.py",
    "line": 176,
    "function": "create_suggestion",
    "kind": "raise ValueError",
@@ -9049,6 +9709,126 @@
   },
   {
    "file": "modules/stock/disposition.py",
+   "line": 61,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Comprovante/referência de envio inválido.",
+   "vars": [],
+   "literal_domain": "label='Comprovante/referência de envio' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_ff2ad04ec6b1",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 61,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Destinatário sugerido pela unidade inválido.",
+   "vars": [],
+   "literal_domain": "label='Destinatário sugerido pela unidade' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_03677e22d467",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 61,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Identificação do destinatário inválido.",
+   "vars": [],
+   "literal_domain": "label='Identificação do destinatário' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_1bba9d2edc6a",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 61,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Motivo da destinação inválido.",
+   "vars": [],
+   "literal_domain": "label='Motivo da destinação' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_d8420ad86f0e",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
    "line": 64,
    "function": "dispose_item",
    "kind": "raise ValueError",
@@ -9069,6 +9849,126 @@
    "decision": "já coberto",
    "reason": "template existente",
    "catalog_entry": "apiErrors.messages.m_32cdc68928f9",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 64,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Comprovante/referência de envio é obrigatório.",
+   "vars": [],
+   "literal_domain": "label='Comprovante/referência de envio' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_0a922d43b150",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 64,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Destinatário sugerido pela unidade é obrigatório.",
+   "vars": [],
+   "literal_domain": "label='Destinatário sugerido pela unidade' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_9eaac50e9b06",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 64,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Identificação do destinatário é obrigatório.",
+   "vars": [],
+   "literal_domain": "label='Identificação do destinatário' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_e3fbad0695c9",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/stock/disposition.py",
+   "line": 64,
+   "function": "dispose_item",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Motivo da destinação é obrigatório.",
+   "vars": [],
+   "literal_domain": "label='Motivo da destinação' (todas as chamadas de dispose_item() passam literais)",
+   "module": "stock",
+   "endpoints": [
+    "POST /api/stock/items/disposition",
+    "POST /api/stock/items/physical-metadata"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_f4d7a77fbc3c",
    "locales": [
     "pt-BR",
     "en-GB",
@@ -22573,151 +23473,6 @@
   },
   {
    "file": "modules/ficha/service.py",
-   "line": 806,
-   "function": "parse_optional_int",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: company_id deve ser numérico.",
-   "vars": [],
-   "literal_domain": "key='company_id' (todas as chamadas de parse_optional_int() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_599185f5165d",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 806,
-   "function": "parse_optional_int",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: employee_id deve ser numérico.",
-   "vars": [],
-   "literal_domain": "key='employee_id' (todas as chamadas de parse_optional_int() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_b27a55933d63",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 806,
-   "function": "parse_optional_int",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: epi_id deve ser numérico.",
-   "vars": [],
-   "literal_domain": "key='epi_id' (todas as chamadas de parse_optional_int() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_6fee62917fc8",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 806,
-   "function": "parse_optional_int",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: legal_entity_id deve ser numérico.",
-   "vars": [],
-   "literal_domain": "key='legal_entity_id' (todas as chamadas de parse_optional_int() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_1c2b952c667e",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 806,
-   "function": "parse_optional_int",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: unit_id deve ser numérico.",
-   "vars": [],
-   "literal_domain": "key='unit_id' (todas as chamadas de parse_optional_int() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_53d0eb20e63a",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
    "line": 815,
    "function": "parse_optional_date",
    "kind": "raise ValueError",
@@ -22737,122 +23492,6 @@
    "decision": "já coberto",
    "reason": "template existente",
    "catalog_entry": "apiErrors.messages.m_f4166247e0b0",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 815,
-   "function": "parse_optional_date",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: date_from deve estar no formato YYYY-MM-DD.",
-   "vars": [],
-   "literal_domain": "key='date_from' (todas as chamadas de parse_optional_date() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_b92e8b4e6be6",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 815,
-   "function": "parse_optional_date",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: date_to deve estar no formato YYYY-MM-DD.",
-   "vars": [],
-   "literal_domain": "key='date_to' (todas as chamadas de parse_optional_date() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_2c3590558130",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 815,
-   "function": "parse_optional_date",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: end_date deve estar no formato YYYY-MM-DD.",
-   "vars": [],
-   "literal_domain": "key='end_date' (todas as chamadas de parse_optional_date() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_ccb12e4ebccc",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/ficha/service.py",
-   "line": 815,
-   "function": "parse_optional_date",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Filtro inválido: start_date deve estar no formato YYYY-MM-DD.",
-   "vars": [],
-   "literal_domain": "key='start_date' (todas as chamadas de parse_optional_date() passam literais)",
-   "module": "ficha",
-   "endpoints": [
-    "GET /api/ficha-archive"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_c8162d98af03",
    "locales": [
     "pt-BR",
     "en-GB",
@@ -23991,6 +24630,64 @@
   },
   {
    "file": "modules/deliveries/service.py",
+   "line": 54,
+   "function": "_normalize_history_date",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Data da entrega em formato não reconhecido: \"{value}\". Use DD/MM/AAAA ou AAAA-MM-DD.",
+   "vars": [
+    "value"
+   ],
+   "literal_domain": "fieldlabel='Data da entrega' (todas as chamadas de _normalize_history_date() passam literais)",
+   "module": "deliveries",
+   "endpoints": [],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_e2608a32a24d",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/deliveries/service.py",
+   "line": 54,
+   "function": "_normalize_history_date",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Data de devolução em formato não reconhecido: \"{value}\". Use DD/MM/AAAA ou AAAA-MM-DD.",
+   "vars": [
+    "value"
+   ],
+   "literal_domain": "fieldlabel='Data de devolução' (todas as chamadas de _normalize_history_date() passam literais)",
+   "module": "deliveries",
+   "endpoints": [],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_1604988dd250",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/deliveries/service.py",
    "line": 68,
    "function": "_normalize_history_date",
    "kind": "raise ValueError",
@@ -24009,6 +24706,64 @@
    "decision": "já coberto",
    "reason": "template existente",
    "catalog_entry": "apiErrors.messages.m_1fdbdd2d5f05",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/deliveries/service.py",
+   "line": 68,
+   "function": "_normalize_history_date",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Data da entrega inválida: \"{value}\".",
+   "vars": [
+    "value"
+   ],
+   "literal_domain": "fieldlabel='Data da entrega' (todas as chamadas de _normalize_history_date() passam literais)",
+   "module": "deliveries",
+   "endpoints": [],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_ad0ad77ae28a",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "modules/deliveries/service.py",
+   "line": 68,
+   "function": "_normalize_history_date",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Data de devolução inválida: \"{value}\".",
+   "vars": [
+    "value"
+   ],
+   "literal_domain": "fieldlabel='Data de devolução' (todas as chamadas de _normalize_history_date() passam literais)",
+   "module": "deliveries",
+   "endpoints": [],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_c0e993983fba",
    "locales": [
     "pt-BR",
     "en-GB",
@@ -27509,161 +28264,6 @@
    "decision": "já coberto",
    "reason": "chave de UI casada pelo motor",
    "catalog_entry": "ppetest.ui.required_field",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/payments/service.py",
-   "line": 324,
-   "function": "_require",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Campo obrigatório: amount",
-   "vars": [],
-   "literal_domain": "field='amount' (todas as chamadas de _require() passam literais)",
-   "module": "payments",
-   "endpoints": [
-    "POST /api/payments/boleto",
-    "POST /api/payments/pix",
-    "POST /api/payments/plans"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_ddb605afb3d5",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/payments/service.py",
-   "line": 324,
-   "function": "_require",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Campo obrigatório: card_token",
-   "vars": [],
-   "literal_domain": "field='card_token' (todas as chamadas de _require() passam literais)",
-   "module": "payments",
-   "endpoints": [
-    "POST /api/payments/boleto",
-    "POST /api/payments/pix",
-    "POST /api/payments/plans"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_5d750a1e5b3e",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/payments/service.py",
-   "line": 324,
-   "function": "_require",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Campo obrigatório: payer_email",
-   "vars": [],
-   "literal_domain": "field='payer_email' (todas as chamadas de _require() passam literais)",
-   "module": "payments",
-   "endpoints": [
-    "POST /api/payments/boleto",
-    "POST /api/payments/pix",
-    "POST /api/payments/plans"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_362cc4dcaf83",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/payments/service.py",
-   "line": 324,
-   "function": "_require",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Campo obrigatório: plan_id",
-   "vars": [],
-   "literal_domain": "field='plan_id' (todas as chamadas de _require() passam literais)",
-   "module": "payments",
-   "endpoints": [
-    "POST /api/payments/boleto",
-    "POST /api/payments/pix",
-    "POST /api/payments/plans"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_339aa535b304",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/payments/service.py",
-   "line": 324,
-   "function": "_require",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "Campo obrigatório: reason",
-   "vars": [],
-   "literal_domain": "field='reason' (todas as chamadas de _require() passam literais)",
-   "module": "payments",
-   "endpoints": [
-    "POST /api/payments/boleto",
-    "POST /api/payments/pix",
-    "POST /api/payments/plans"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_8870208fc99d",
    "locales": [
     "pt-BR",
     "en-GB",
@@ -34439,151 +35039,6 @@
    "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
   },
   {
-   "file": "modules/safety_library/routes.py",
-   "line": 162,
-   "function": "_id",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "document_id inválido.",
-   "vars": [],
-   "literal_domain": "key='document_id' (todas as chamadas de _id() passam literais)",
-   "module": "safety_library",
-   "endpoints": [
-    "POST /api/(?:safety-library|employee-library)/(?P<action>[a-z-]+)"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_419becae44a1",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/safety_library/routes.py",
-   "line": 162,
-   "function": "_id",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "epi_id inválido.",
-   "vars": [],
-   "literal_domain": "key='epi_id' (todas as chamadas de _id() passam literais)",
-   "module": "safety_library",
-   "endpoints": [
-    "POST /api/(?:safety-library|employee-library)/(?P<action>[a-z-]+)"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_d7fb078b9890",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/safety_library/routes.py",
-   "line": 162,
-   "function": "_id",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "page_index inválido.",
-   "vars": [],
-   "literal_domain": "key='page_index' (todas as chamadas de _id() passam literais)",
-   "module": "safety_library",
-   "endpoints": [
-    "POST /api/(?:safety-library|employee-library)/(?P<action>[a-z-]+)"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_86c0036360f0",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/safety_library/routes.py",
-   "line": 162,
-   "function": "_id",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "part_index inválido.",
-   "vars": [],
-   "literal_domain": "key='part_index' (todas as chamadas de _id() passam literais)",
-   "module": "safety_library",
-   "endpoints": [
-    "POST /api/(?:safety-library|employee-library)/(?P<action>[a-z-]+)"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_dd9cb9aaaaf3",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
-   "file": "modules/safety_library/routes.py",
-   "line": 162,
-   "function": "_id",
-   "kind": "raise ValueError",
-   "http_status": 400,
-   "payload": "{'error': <mensagem>}",
-   "template": "version_id inválido.",
-   "vars": [],
-   "literal_domain": "key='version_id' (todas as chamadas de _id() passam literais)",
-   "module": "safety_library",
-   "endpoints": [
-    "POST /api/(?:safety-library|employee-library)/(?P<action>[a-z-]+)"
-   ],
-   "python_tests": [],
-   "frontend_text_logic": [],
-   "consumers": "api-client.createApiError → describeApiError",
-   "decision": "já coberto",
-   "reason": "template existente",
-   "catalog_entry": "apiErrors.messages.m_3de0bcde7ad2",
-   "locales": [
-    "pt-BR",
-    "en-GB",
-    "es-ES",
-    "fr-FR",
-    "nb-NO"
-   ],
-   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
-  },
-  {
    "file": "modules/safety_library/service.py",
    "line": 45,
    "function": "manager",
@@ -35838,6 +36293,123 @@
    "decision": "já coberto",
    "reason": "template existente",
    "catalog_entry": "apiErrors.messages.m_a0eeee987249",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "core/archival.py",
+   "line": 85,
+   "function": "ensure_record_operational",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Colaborador arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
+   "vars": [
+    "operation"
+   ],
+   "literal_domain": "entitylabel='Colaborador' (todas as chamadas de ensure_record_operational() passam literais)",
+   "module": "core",
+   "endpoints": [
+    "POST /api/deliveries",
+    "POST /api/employee-unit-movements",
+    "POST /api/employees/outsourced-simplified",
+    "POST /api/purchase-orders",
+    "POST /api/purchase-requests",
+    "POST /api/requests",
+    "POST /api/stock/lots/reconcile",
+    "POST /api/stock/movements",
+    "PUT /api/employees/outsourced-simplified/<id>"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_968997453735",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "core/archival.py",
+   "line": 85,
+   "function": "ensure_record_operational",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "EPI arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
+   "vars": [
+    "operation"
+   ],
+   "literal_domain": "entitylabel='EPI' (todas as chamadas de ensure_record_operational() passam literais)",
+   "module": "core",
+   "endpoints": [
+    "POST /api/deliveries",
+    "POST /api/employee-unit-movements",
+    "POST /api/employees/outsourced-simplified",
+    "POST /api/purchase-orders",
+    "POST /api/purchase-requests",
+    "POST /api/requests",
+    "POST /api/stock/lots/reconcile",
+    "POST /api/stock/movements",
+    "PUT /api/employees/outsourced-simplified/<id>"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_bea0b10cd6b2",
+   "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+   ],
+   "fallback": "sem tradução no idioma → pt-BR do catálogo; sem template → texto original do servidor"
+  },
+  {
+   "file": "core/archival.py",
+   "line": 85,
+   "function": "ensure_record_operational",
+   "kind": "raise ValueError",
+   "http_status": 400,
+   "payload": "{'error': <mensagem>}",
+   "template": "Empresa terceirizada arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
+   "vars": [
+    "operation"
+   ],
+   "literal_domain": "entitylabel='Empresa terceirizada' (todas as chamadas de ensure_record_operational() passam literais)",
+   "module": "core",
+   "endpoints": [
+    "POST /api/deliveries",
+    "POST /api/employee-unit-movements",
+    "POST /api/employees/outsourced-simplified",
+    "POST /api/purchase-orders",
+    "POST /api/purchase-requests",
+    "POST /api/requests",
+    "POST /api/stock/lots/reconcile",
+    "POST /api/stock/movements",
+    "PUT /api/employees/outsourced-simplified/<id>"
+   ],
+   "python_tests": [],
+   "frontend_text_logic": [],
+   "consumers": "api-client.createApiError → describeApiError",
+   "decision": "já coberto",
+   "reason": "template existente",
+   "catalog_entry": "apiErrors.messages.m_f08064028fbd",
    "locales": [
     "pt-BR",
     "en-GB",
@@ -40246,7 +40818,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -40275,7 +40847,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -40742,7 +41314,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -41119,7 +41691,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -41145,7 +41717,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -41952,7 +42524,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -41980,7 +42552,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42008,7 +42580,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42037,7 +42609,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42065,7 +42637,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42094,7 +42666,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42120,7 +42692,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42148,7 +42720,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42174,7 +42746,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42202,7 +42774,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42230,7 +42802,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42256,7 +42828,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42282,7 +42854,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42308,7 +42880,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42334,7 +42906,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42360,7 +42932,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42386,7 +42958,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42412,7 +42984,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42438,7 +43010,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42464,7 +43036,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42490,7 +43062,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42516,7 +43088,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -42544,7 +43116,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -44027,7 +44599,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -44053,7 +44625,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -44464,7 +45036,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",
@@ -44841,7 +45413,7 @@
    "frontend_text_logic": [],
    "consumers": "api-client.createApiError → describeApiError",
    "decision": "preservar",
-   "reason": "infraestrutura: inicialização/migração do servidor, não chega ao cliente",
+   "reason": "infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico",
    "catalog_entry": null,
    "locales": [
     "pt-BR",

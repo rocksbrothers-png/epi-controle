@@ -55,9 +55,20 @@ COVERED_BY = {
 }
 # Camada compartilhada fora de modules/: entra no inventário como pseudo-módulo.
 SHARED = {'core': 'core', 'epi_backend': 'epi_backend', 'app': 'app.py'}
-# Mensagens que só existem na inicialização/migração do servidor (não viram resposta de API):
-# não são traduzidas — ficam em pt-BR nos logs, com o motivo registrado.
+# Falhas de inicialização, migração e conexão (RuntimeError/SchemaMigrationError). Não são
+# validação de negócio: quando chegam ao cliente é como 500/503 genérico, com o texto técnico
+# para diagnóstico. Ficam em pt-BR de propósito (o mesmo texto dos logs do servidor).
 INFRA_FILES = {'core/bootstrap.py', 'core/schema.py', 'core/database.py', 'epi_backend/db.py', 'epi_backend/config.py'}
+# Classificação textual de TELEMETRIA (não muda o que o usuário vê nem o limite de rollback,
+# que conta antes do teste): static/error-monitor.js trackCritical marca como critical_error
+# um erro NÃO tratado cuja mensagem casa este padrão.
+TELEMETRY_TEXT_LOGIC = {
+    'where': 'static/error-monitor.js trackCritical',
+    'pattern': r'critical|failed to fetch|unexpected end|ficha_audit_unavailable|5\d\d',
+    # Traduções que casam o padrão sem o pt-BR casar. Justificativa: "critical" é o rótulo
+    # oficial da gravidade (ppetest.ui.critica = "Critical"); efeito só na etiqueta de telemetria.
+    'allow': {'m_9c08b9fbeab1', 'm_82e5ebce0c26', 'm_1fb80631c605'},
+}
 # O gate confere que toda comparação textual sobre mensagem no frontend está nesta lista.
 FRONTEND_TEXT_LOGIC_NEEDLES = {f['needle'] for f in FRONTEND_TEXT_LOGIC}
 
@@ -265,7 +276,7 @@ class LiteralDomains:
     domínio é desconhecido e o template não é expandido."""
 
     def __init__(self, sources):
-        self.defs, self.calls = {}, {}
+        self.defs, self.calls, self.loops = {}, {}, {}
         for path in sources:
             try:
                 tree = ast.parse(path.read_text(encoding='utf-8'))
@@ -278,14 +289,44 @@ class LiteralDomains:
                     defaults = dict(zip([a.arg for a in args.args][len(args.args) - len(args.defaults):], args.defaults))
                     defaults.update({a.arg: d for a, d in zip(args.kwonlyargs, args.kw_defaults) if d is not None})
                     self.defs.setdefault(node.name, (params, defaults))
+                    self.loops.setdefault(node.name, []).extend(
+                        n for n in ast.walk(node) if isinstance(n, ast.For))
                 elif isinstance(node, ast.Call):
                     callee = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, 'attr', None)
                     if callee:
                         self.calls.setdefault(callee, []).append(node)
 
+    @staticmethod
+    def _plain(name):
+        return name.replace('_', '').lower()
+
+    def _loop_domain(self, function, var):
+        """`for key, label, limit in [('a', 'Rótulo', 1), ...]`: o domínio de `label` é a
+        coluna literal da lista (todas as tuplas com o mesmo formato e só constantes)."""
+        for loop in self.loops.get(function, []):
+            if not isinstance(loop.target, ast.Tuple) or not isinstance(loop.iter, (ast.List, ast.Tuple)):
+                continue
+            names = [t.id if isinstance(t, ast.Name) else None for t in loop.target.elts]
+            index = next((i for i, n in enumerate(names) if n and self._plain(n) == var), None)
+            if index is None:
+                continue
+            values = set()
+            for row in loop.iter.elts:
+                if not (isinstance(row, ast.Tuple) and len(row.elts) == len(names)):
+                    return None
+                cell = row.elts[index]
+                if not (isinstance(cell, ast.Constant) and isinstance(cell.value, str)):
+                    return None
+                values.add(cell.value)
+            return sorted(values) or None
+        return None
+
     def domain(self, function, param):
+        if function in self.defs and param not in self.defs[function][0]:
+            # O placeholder perde os sublinhados (field_label → {fieldlabel}).
+            param = next((p for p in self.defs[function][0] if self._plain(p) == param), param)
         if function not in self.defs or param not in self.defs[function][0]:
-            return None
+            return self._loop_domain(function, self._plain(param))
         params, defaults = self.defs[function]
         index, values = params.index(param), set()
         for call in self.calls.get(function, []):
@@ -418,7 +459,8 @@ def main():
             for item in c.items:
                 expanded.append(item)
                 for var in item['vars']:
-                    values = domains.domain(item['function'], var)
+                    # {key}/{field} já viram rótulo traduzido pelo motor (apiErrors.fields.*).
+                    values = None if var in ('key', 'field') else domains.domain(item['function'], var)
                     if values:
                         for value in values:
                             expanded.append(dict(item, template=item['template'].replace('{' + var + '}', value),
@@ -442,7 +484,7 @@ def main():
                 if logic:
                     decision, reason, key = 'preservar', 'comparação textual no frontend decide comportamento', None
                 elif item['file'] in INFRA_FILES:
-                    decision, reason, key = 'preservar', 'infraestrutura: inicialização/migração do servidor, não chega ao cliente', None
+                    decision, reason, key = 'preservar', 'infraestrutura: falha técnica (500/503 genérico), mantida em pt-BR para diagnóstico', None
                 elif text in COVERED_BY:
                     decision, reason, key = 'já coberto', 'template mais geral; detalhe externo opaco', COVERED_BY[text]
                 elif shape(text) in existing:

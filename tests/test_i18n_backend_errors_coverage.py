@@ -206,6 +206,10 @@ def test_traducao_nao_dispara_comparacao_textual_do_frontend(module, tmp_path_fa
                     continue
                 if rule['needle'] in value.lower():
                     achados.append(f"{loc} {r['catalog_entry']} contém {rule['needle']!r} ({rule['endpoint']})")
+            # Sentido inverso: uma mensagem traduzida cujo pt-BR alimenta o ramo perderia o
+            # ramo nos outros idiomas — ela deveria estar preservada.
+            if rule['needle'] in r['template'].lower():
+                achados.append(f"{r['catalog_entry']} traduzida, mas o pt-BR contém {rule['needle']!r} ({rule['endpoint']})")
     assert not achados, 'tradução dispararia ramo do frontend:\n' + '\n'.join(achados)
 
 
@@ -228,7 +232,66 @@ def test_modulos_sem_mensagens_continuam_sem_mensagens(module, tmp_path):
     assert rows == [], [r['template'] for r in rows]
 
 
-def test_mensagens_de_infraestrutura_nao_chegam_ao_cliente():
-    """As preservadas por 'infraestrutura' só podem vir dos arquivos de inicialização/migração."""
-    inv = _inventory()
+@pytest.mark.parametrize('module', ['core', 'epi_backend'])
+def test_mensagens_de_infraestrutura_sao_falhas_tecnicas(module, tmp_path):
+    """As preservadas por 'infraestrutura' vêm só dos arquivos de inicialização/migração/conexão
+    e são falhas técnicas (500/503), nunca validação de negócio (400/403)."""
+    inv, rows = _rows(module, tmp_path)
     assert inv.INFRA_FILES <= {str(p.relative_to(ROOT)) for p in inv.shared_files()}
+    infra = [r for r in rows if r['decision'] == 'preservar' and r['reason'].startswith('infraestrutura')]
+    assert infra
+    for r in infra:
+        assert r['file'] in inv.INFRA_FILES, r
+        assert r['kind'] in ('raise RuntimeError', 'raise SchemaMigrationError'), (r['file'], r['line'], r['kind'])
+
+
+REGEX_TEST = re.compile(r"""/((?:[^/\\\n]|\\.)+)/[gimsuy]*\.test\([^)]*(?:message|msg|error|reason)""")
+
+
+def test_teste_por_regex_sobre_mensagem_esta_declarado():
+    """`/padrão/.test(...message...)` também decide pelo texto: precisa estar declarado."""
+    inv = _inventory()
+    declarados = {inv.TELEMETRY_TEXT_LOGIC['pattern']}
+    achados = []
+    for path in sorted((ROOT / 'static').rglob('*.js')):
+        if 'node_modules' in path.parts or '/test/' in str(path) or path.name.endswith('.min.js'):
+            continue
+        for number, line in enumerate(path.read_text(encoding='utf-8', errors='ignore').splitlines(), 1):
+            for pattern in REGEX_TEST.findall(line):
+                if pattern not in declarados:
+                    achados.append(f'{path.relative_to(ROOT)}:{number}: /{pattern}/')
+    assert not achados, 'teste por regex sobre mensagem não declarado:\n' + '\n'.join(achados)
+
+
+def test_scanner_de_regex_pega_o_padrao():
+    linha = "const isCritical = /critical|5\\d\\d/i.test(String(payload.message || ''));"
+    assert REGEX_TEST.findall(linha) == ['critical|5\\d\\d']
+
+
+def test_traducao_nao_muda_classificacao_da_telemetria():
+    inv = _inventory()
+    rule = inv.TELEMETRY_TEXT_LOGIC
+    pattern = re.compile(rule['pattern'], re.IGNORECASE)
+    cats = _catalogs()
+    novos = []
+    for key, source in cats['pt-BR']['apiErrors']['messages'].items():
+        if pattern.search(source):
+            continue
+        for loc in LOCALES[1:]:
+            value = cats[loc]['apiErrors']['messages'].get(key, '')
+            if pattern.search(value) and key not in rule['allow']:
+                novos.append(f'{loc} {key}: {value}')
+    assert not novos, 'tradução passa a casar a telemetria (justifique em allow):\n' + '\n'.join(novos)
+    for key in rule['allow']:
+        assert key in cats['pt-BR']['apiErrors']['messages'], key
+
+
+def test_fallback_do_gateway_continua_sem_template():
+    """reprintStockLabelByQr compara 'temporariamente indisponível' com o fallback do gateway
+    (api-client.js, texto do próprio frontend). Um template para ele quebraria o ramo em en/es/fr/nb."""
+    api_client = (ROOT / 'static/js/modules/api-client.js').read_text(encoding='utf-8')
+    texto = 'Servidor temporariamente indisponível. Tente novamente em instantes.'
+    assert texto in api_client
+    for key, template in _catalogs()['pt-BR']['apiErrors']['messages'].items():
+        regex = '^' + re.sub(r'\\\{\w+\\\}', '.+', re.escape(template)) + '$'
+        assert not re.match(regex, texto), key

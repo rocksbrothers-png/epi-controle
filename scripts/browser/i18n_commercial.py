@@ -238,6 +238,7 @@ BACKEND_ERRORS = [
     ('Somente Administrador Master pode promover o motor de regras.', {}),        # settings (via core)
     ('Perfil sem permissão para esta ação.', {}),                                 # core/auth
     ('Corpo da requisição excede o limite permitido.', {}),                       # app.py (413)
+    ('Data da entrega inválida: "{value}".', {'value': '31/02/2020'}),           # rótulo expandido (auditoria P1-a)
 ]
 
 

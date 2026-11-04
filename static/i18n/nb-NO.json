@@ -102,7 +102,9 @@
       "invalidAuthResponse": "Autentisering mislyktes: ugyldig svar fra serveren.",
       "bootstrapAfterLoginFailed": "Kunne ikke laste inn startdata etter innlogging.",
       "serverWarmingUp": "Serveren er midlertidig utilgjengelig (oppstart pågår). Du kan prøve å logge inn manuelt nå.",
-      "loginScreenFailed": "Feil ved lasting av innloggingssiden. Last inn siden på nytt og prøv igjen."
+      "loginScreenFailed": "Feil ved lasting av innloggingssiden. Last inn siden på nytt og prøv igjen.",
+      "sessionEnded": "Økten din er avsluttet. Logg inn på nytt for å fortsette.",
+      "restoreFailed": "Økten din kunne ikke gjenopprettes automatisk. Logg inn for å fortsette."
     },
     "passwordChange": {
       "currentRequired": "Skriv inn det nåværende passordet.",

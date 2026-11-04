@@ -102,7 +102,9 @@
       "invalidAuthResponse": "Falha ao autenticar: resposta inválida do servidor.",
       "bootstrapAfterLoginFailed": "Falha ao carregar dados iniciais após autenticação.",
       "serverWarmingUp": "Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.",
-      "loginScreenFailed": "Erro ao carregar a tela de login. Recarregue a página e tente novamente."
+      "loginScreenFailed": "Erro ao carregar a tela de login. Recarregue a página e tente novamente.",
+      "sessionEnded": "Sua sessão foi encerrada. Faça login novamente para continuar.",
+      "restoreFailed": "Não foi possível restaurar sua sessão automaticamente. Faça login para continuar."
     },
     "passwordChange": {
       "currentRequired": "Informe a senha atual.",

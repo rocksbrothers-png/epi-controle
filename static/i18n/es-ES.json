@@ -102,7 +102,9 @@
       "invalidAuthResponse": "Error de autenticación: respuesta no válida del servidor.",
       "bootstrapAfterLoginFailed": "No se pudieron cargar los datos iniciales después de la autenticación.",
       "serverWarmingUp": "Servidor no disponible temporalmente (inicio en curso). Puede intentar iniciar sesión manualmente ahora.",
-      "loginScreenFailed": "Error al cargar la pantalla de inicio de sesión. Vuelva a cargar la página e inténtelo de nuevo."
+      "loginScreenFailed": "Error al cargar la pantalla de inicio de sesión. Vuelva a cargar la página e inténtelo de nuevo.",
+      "sessionEnded": "Su sesión ha finalizado. Inicie sesión de nuevo para continuar.",
+      "restoreFailed": "No se pudo restaurar su sesión automáticamente. Inicie sesión para continuar."
     },
     "passwordChange": {
       "currentRequired": "Introduzca la contraseña actual.",

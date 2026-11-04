@@ -15,6 +15,8 @@ empresas no bootstrap). Para cada um dos 5 idiomas confere, na tela Comercial:
    mojibake que existia no pt-BR, com nome/usuário/senha intactos.
 8. Leitor de QR em Entregas: status (modo USB, sessão sem QR válido) no idioma
    ativo, sem gravação.
+10. F2: aviso de encerramento de sessão gravado com o texto canônico aparece traduzido no login,
+   uso único, troca de idioma sem requisição nem sessão; texto fora do mapa intacto.
 9. Erros do backend (Compras) pelo api() real: mensagem traduzida na
    apresentação; status, code e payload intactos; mensagem preservada por
    contrato continua idêntica.
@@ -255,8 +257,44 @@ def backend_error_presentation(f):
     assert got == kept, (f.locale, got)
 
 
+F2_NOTICES = {
+    'Sua sessão foi encerrada. Faça login novamente para continuar.': 'login.messages.sessionEnded',
+    'Sessão expirada. Faça login novamente.': 'errors.sessionExpired',
+    'Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.': 'login.messages.restoreFailed',
+}
+
+
+def f2_session_notice(f):
+    """F2: o aviso gravado por terminateSession (texto canônico pt-BR) aparece traduzido no login,
+    é consumido uma única vez e a troca de idioma não cria sessão, requisição nem gravação."""
+    cat = catalog(f.locale)
+    other = 'fr-FR' if f.locale != 'fr-FR' else 'nb-NO'
+    for canonical, key in list(F2_NOTICES.items()) + [('Aviso desconhecido <b>x</b>', None)]:
+        f.page.goto(f.origin + '/', wait_until='load')
+        f.page.evaluate('([k,v])=>{sessionStorage.setItem(k,v)}', ['epi-session-end-message', canonical])
+        f.page.reload(wait_until='load')
+        f.page.wait_for_function('!!globalThis.EpiI18n')
+        f.page.evaluate('(l)=>EpiI18n.setLang(l,{persist:false})', f.locale)
+        f.page.wait_for_function('(l)=>EpiI18n.lang===l', arg=f.locale)
+        expected = leaf(cat, key) if key else canonical
+        expect(f.page.locator('#login-message')).to_have_text(expected)
+        assert f.page.evaluate("sessionStorage.getItem('epi-session-end-message')") is None, 'aviso não foi consumido'
+        before = len(f.calls)
+        f.page.evaluate('(l)=>EpiI18n.setLang(l,{persist:false})', other)
+        f.page.wait_for_function('(l)=>EpiI18n.lang===l', arg=other)
+        expect(f.page.locator('#login-message')).to_have_text(leaf(catalog(other), key) if key else canonical)
+        business = [c for c in f.calls[before:] if not c['path'].startswith('/api/i18n/')]
+        assert business == [], f'troca de idioma disparou requisições: {business}'
+        state = f.page.evaluate("({user: globalThis.__EPI_APP_STATE__?.user || null, token: globalThis.__EPI_APP_STATE__?.token || null,"
+                                " notice: sessionStorage.getItem('epi-session-end-message')})")
+        assert state == {'user': None, 'token': None, 'notice': None}, state
+        assert f.page.locator('#login-message b').count() == 0, 'marcação do aviso desconhecido foi interpretada'
+
+
 login_message.needs_session = False
-SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages, ppe_tests_view, backend_error_presentation]
+f2_session_notice.needs_session = False
+SCENARIOS = [commercial, login_message, access_message, delivery_qr_messages, ppe_tests_view, backend_error_presentation,
+             f2_session_notice]
 
 
 def main():

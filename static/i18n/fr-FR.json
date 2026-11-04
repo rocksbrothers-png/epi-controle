@@ -102,7 +102,9 @@
       "invalidAuthResponse": "Échec de l'authentification : réponse du serveur non valide.",
       "bootstrapAfterLoginFailed": "Échec du chargement des données initiales après l'authentification.",
       "serverWarmingUp": "Serveur temporairement indisponible (démarrage en cours). Vous pouvez essayer de vous connecter manuellement.",
-      "loginScreenFailed": "Erreur lors du chargement de l'écran de connexion. Rechargez la page et réessayez."
+      "loginScreenFailed": "Erreur lors du chargement de l'écran de connexion. Rechargez la page et réessayez.",
+      "sessionEnded": "Votre session a été fermée. Reconnectez-vous pour continuer.",
+      "restoreFailed": "Impossible de restaurer votre session automatiquement. Connectez-vous pour continuer."
     },
     "passwordChange": {
       "currentRequired": "Saisissez votre mot de passe actuel.",

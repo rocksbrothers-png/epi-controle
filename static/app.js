@@ -2703,7 +2703,22 @@ function consumePendingSessionMessage() {
   } catch (_e) {
     return;
   }
-  if (pendente) setLoginMessage(pendente, true);
+  if (!pendente) return;
+  // I18N-FULL-V1 (F2, só apresentação): o texto gravado por terminateSession
+  // continua sendo o canônico pt-BR. Aqui ele é apenas EXIBIDO no idioma ativo,
+  // por um mapa fechado {texto canônico → chave}. Texto fora do mapa aparece
+  // como veio. O binding retraduz quando o catálogo termina de carregar ou o
+  // idioma muda, sem tocar sessão, armazenamento ou eventos.
+  const avisosCanonicos = {
+    'Sua sessão foi encerrada. Faça login novamente para continuar.': 'login.messages.sessionEnded',
+    'Sessão expirada. Faça login novamente.': 'errors.sessionExpired',
+    'Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.': 'login.messages.restoreFailed'
+  };
+  const chave = Object.prototype.hasOwnProperty.call(avisosCanonicos, pendente) ? avisosCanonicos[pendente] : '';
+  const exibido = chave && refs.loginMessage
+    ? (globalThis.EpiI18n?.textFor?.(refs.loginMessage, chave, pendente) ?? tr(chave, pendente))
+    : pendente;
+  setLoginMessage(exibido, true);
 }
 
 function setLoginPasswordVisibility(isVisible) {

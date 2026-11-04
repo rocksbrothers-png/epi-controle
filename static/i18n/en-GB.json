@@ -102,7 +102,9 @@
       "invalidAuthResponse": "Authentication failed: invalid server response.",
       "bootstrapAfterLoginFailed": "Failed to load the initial data after signing in.",
       "serverWarmingUp": "Server temporarily unavailable (start-up in progress). You can try signing in manually now.",
-      "loginScreenFailed": "Error loading the sign-in screen. Reload the page and try again."
+      "loginScreenFailed": "Error loading the sign-in screen. Reload the page and try again.",
+      "sessionEnded": "Your session has ended. Please sign in again to continue.",
+      "restoreFailed": "Your session could not be restored automatically. Sign in to continue."
     },
     "passwordChange": {
       "currentRequired": "Enter your current password.",
